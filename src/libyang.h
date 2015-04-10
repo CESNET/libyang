@@ -19,35 +19,42 @@
  *    software without specific prior written permission.
  */
 
-#ifndef LY_COMMON_H_
-#define LY_COMMON_H_
+#ifndef LY_LIBYANG_H_
+#define LY_LIBYANG_H_
 
-#include <stdint.h>
-
-#include "libyang.h"
-
-#ifdef __GNUC__
-#  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
-#else
-#  define UNUSED(x) UNUSED_ ## x
-#endif
-
-/*
- * logger
+/**
+ * @page howto How To ...
+ *
+ * - @subpage howtologger
  */
-extern volatile uint8_t ly_verb_level;
-void ly_log(LY_VERB_LEVEL level, int errno_, const char *format, ...);
-#define LY_ERR(errno,str,args...) ly_log(LY_VERB_ERR,errno,str,##args)
-#define LY_WRN(format,args...) if(ly_verb_level>=LY_VERB_WRN){ly_log(LY_VERB_WRN,format,##args);}
-#define LY_VRB(format,args...) if(ly_verb_level>=LY_VERB_VRB){ly_log(LY_VERB_VRB,format,##args);}
-#define LY_DBG(format,args...) if(ly_verb_level>=LY_VERB_DBG){ly_log(LY_VERB_DBG,format,##args);}
 
-/*
- * libyang's errno
+/**
+ * @defgroup logger libyang logger
+ *
+ * @page howtologger Logger
+ *
+ * There are 4 verbosity levels defined as ::LY_VERB_LEVEL. The level can be
+ * changed by the ly_verbosity() function. By default, the verbosity level is
+ * set to #LY_VERB_ERR value;
+ *
  */
-extern int ly_errno;
 
-#define	LY_EINVAL   1 /* Invalid argument */
+/**
+ * @typedef LY_VERB_LEVEL
+ * @brief Verbosity levels.
+ * @ingroup logger
+ */
+typedef enum {
+	LY_VERB_ERR,  /**< Print only error messages. */
+	LY_VERB_WRN,  /**< Print error and warning messages. */
+	LY_VERB_VRB,  /**< Besides errors and warnings, print some other verbose messages. */
+	LY_VERB_DBG   /**< Print all messages including some development debug messages. */
+} LY_VERB_LEVEL;
+
+/**
+ *
+ */
+void ly_verbosity(LY_VERB_LEVEL level);
 
 
-#endif /* LY_COMMON_H_ */
+#endif /* LY_LIBYANG_H_ */
