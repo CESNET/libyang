@@ -27,7 +27,7 @@
 
 volatile uint8_t ly_verb_level = LY_VERB_ERR;
 
-void ly_verbosity(LY_VERB_LEVEL level)
+API void ly_verbosity(LY_VERB_LEVEL level)
 {
 	ly_verb_level = level;
 }

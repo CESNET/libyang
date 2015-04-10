@@ -15,7 +15,7 @@ if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE debug)
 endif()
 
-set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra")
+set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -fvisibility=hidden")
 set(CMAKE_C_FLAGS_RELEASE "-O2")
 set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
 
@@ -40,3 +40,4 @@ add_custom_target(cclean
                   COMMAND find . -iname '*cmake*' -not -name CMakeLists.txt -exec rm -rf {} +
                   COMMAND rm -rf Makefile
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+

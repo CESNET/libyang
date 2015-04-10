@@ -33,6 +33,13 @@
 #endif
 
 /*
+ * If the compiler supports attribute to mark objects as hidden, mark all
+ * objects as hidden and export only objects explicitly marked to be part of
+ * the public API.
+ */
+#define API __attribute__((visibility("default")))
+
+/*
  * logger
  */
 extern volatile uint8_t ly_verb_level;
