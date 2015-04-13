@@ -51,10 +51,12 @@ typedef enum lyxml_attr_type {
  * also covered by lyxml_attr structure.
  */
 struct lyxml_ns {
-	LYXML_ATTR_TYPE type; /**< type of the attribute = LYXML_ATTR_NS */
-	char *value;          /**< the namespace value */
-	char *prefix;         /**< the namespace prefix if defined, NULL for
-	                           default namespace */
+	LYXML_ATTR_TYPE type;      /**< type of the attribute = LYXML_ATTR_NS */
+	struct lyxml_ns *next;     /**< next sibling attribute */
+	struct lyxml_elem *parent; /**< parent node of the attribute */
+	char *value;               /**< the namespace value */
+	char *prefix;              /**< the namespace prefix if defined, NULL for
+	                                default namespace */
 };
 
 /**
@@ -62,9 +64,14 @@ struct lyxml_ns {
  *
  * The structure actually covers both the attributes as well as namespace
  * definitions.
+ *
+ * Attributes are being connected only into a singly linked list (compare it
+ * with the elements).
  */
 struct lyxml_attr {
 	LYXML_ATTR_TYPE type;      /**< type of the attribute */
+	struct lyxml_attr *next;   /**< next sibling attribute */
+	struct lyxml_elem *parent; /**< parent node of the attribute */
 	char *value;               /**< data stored in the attribute */
 	char *name;                /**< name of the attribute (the LocalPart of
 	                                the qualified name) */
@@ -78,6 +85,14 @@ struct lyxml_attr {
  * The structure extends the basic lyxml_node structure with attributes
  * specific to XML elements and not applicable to XML comments and PIs
  * (Processing instructions).
+ *
+ * If the name item is NULL, then the content is part of the mixed content.
+ *
+ * Children elements are connected in a ring doubly linked list. Therefore,
+ * next and prev are never NULL, if there is only one child, the next and prev
+ * points to itself. The first child is where the child points to. The last
+ * child (where a new element is being added) is at prev pointer of the first
+ * child.
  */
 struct lyxml_elem {
 	struct lyxml_elem *next;   /**< next sibling node */
@@ -93,6 +108,7 @@ struct lyxml_elem {
 
 /*
  * Functions
+ * Parser
  */
 
 /**
@@ -123,17 +139,74 @@ struct lyxml_elem* lyxml_read_fd(int fd, int options);
  */
 struct lyxml_elem* lyxml_read_file(const char* filename, int options);
 
+/*
+ * Functions
+ * Tree Manipulation
+ */
+
 /**
- * @brief Free the element structure with all its attributes.
+ * @brief Connect the attribute into the specified element.
  *
- * The operation includes unlinking the element from the XML tree. If the
- * element includes a namespace definition used in children, it is moved into
- * the children elements (in case the recursion value is 0).
+ * @param[in] parent Element where to connect the attribute.
+ * @param[in] attr Attribute to connect. Can be both, the common attribute as
+ * well as a namespace definition.
+ * @return EXIT_SUCCESS or EXIT_FAILURE
+ */
+int lyxml_add_attr(struct lyxml_elem *parent, struct lyxml_attr *attr);
+
+/**
+ * @brief Add a child element into a parent element.
+ *
+ * The child is added as a last child.
+ *
+ * @param[in] parent Element where to add the child.
+ * @param[in] child Element to be added as a last child of the parent.
+ * @return EXIT_SUCCESS or EXIT_FAILURE
+ */
+int lyxml_add_child(struct lyxml_elem *parent, struct lyxml_elem *child);
+
+/**
+ * @brief Free attribute. Includes unlinking from an element if the attribute
+ * is placed anywhere.
+ *
+ * @param[in] attr Attribute to free.
+ */
+void lyxml_free_attr(struct lyxml_attr *attr);
+
+/**
+ * @brief Free (and unlink from their element) all attributes (including
+ * namespace definitions) of the specified element.
+ *
+ * @param[in] elem Element to modify.
+ */
+void lyxml_free_attrs(struct lyxml_elem *elem);
+
+/**
+ * @brief Free (and unlink from the XML tree) the specified element with all
+ * its attributes and namespace definitions.
  *
  * @param[in] elem Pointer to the element to free.
- * @param[in] recursive Flag for free also all the children of the element.
  */
-void lyxml_free_elem(struct lyxml_elem* elem, int recursive);
+void lyxml_free_elem(struct lyxml_elem* elem);
+
+/**
+ * @brief Unlink the attribute from its parent element. In contrast to
+ * lyxml_free_attr(), after return the caller can still manipulate with the
+ * attr.
+ *
+ * @param[in] attr Attribute to unlink from its parent (if any).
+ * @return EXIT_SUCCESS or EXIT_FAILURE
+ */
+int lyxml_unlink_attr(struct lyxml_attr *attr);
+
+/**
+ * @brief Unlink the element from its parent. In contrast to lyxml_free_elem(),
+ * after return the caller can still manipulate with the elem.
+ *
+ * @param[in] elem Element to unlink from its parent (if any).
+ * @return EXIT_SUCCESS or EXIT_FAILURE
+ */
+int lyxml_unlink_elem(struct lyxml_elem *elem);
 
 /**@}*/
 #endif /* LY_XML_H_ */
