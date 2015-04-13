@@ -40,21 +40,21 @@
 #define API __attribute__((visibility("default")))
 
 /*
- * logger
- */
-extern volatile uint8_t ly_verb_level;
-void ly_log(LY_VERB_LEVEL level, int errno_, const char *format, ...);
-#define LY_ERR(errno,str,args...) ly_log(LY_VERB_ERR,errno,str,##args)
-#define LY_WRN(format,args...) if(ly_verb_level>=LY_VERB_WRN){ly_log(LY_VERB_WRN,format,##args);}
-#define LY_VRB(format,args...) if(ly_verb_level>=LY_VERB_VRB){ly_log(LY_VERB_VRB,format,##args);}
-#define LY_DBG(format,args...) if(ly_verb_level>=LY_VERB_DBG){ly_log(LY_VERB_DBG,format,##args);}
-
-/*
  * libyang's errno
  */
 extern int ly_errno;
 
 #define	LY_EINVAL   1 /* Invalid argument */
+
+/*
+ * logger
+ */
+extern volatile uint8_t ly_verb_level;
+void ly_log(LY_VERB_LEVEL level, int errno_, const char *format, ...);
+#define LY_ERR(errno,str,args...) if(str){ly_log(LY_VERB_ERR,errno,str,##args);}else{ly_errno=errno;}
+#define LY_WRN(str,args...) if(ly_verb_level>=LY_VERB_WRN){ly_log(LY_VERB_WRN,0,str,##args);}
+#define LY_VRB(str,args...) if(ly_verb_level>=LY_VERB_VRB){ly_log(LY_VERB_VRB,0,str,##args);}
+#define LY_DBG(str,args...) if(ly_verb_level>=LY_VERB_DBG){ly_log(LY_VERB_DBG,0,str,##args);}
 
 
 #endif /* LY_COMMON_H_ */
