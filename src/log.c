@@ -51,9 +51,7 @@ void ly_log(LY_VERB_LEVEL level, int errno_, const char *format, ...)
 		ly_errno = errno_;
 	}
 
-	if (format) {
-		va_start(ap, format);
-		log_vprintf(level, format, ap);
-		va_end(ap);
-	}
+	va_start(ap, format);
+	log_vprintf(level, format, ap);
+	va_end(ap);
 }
