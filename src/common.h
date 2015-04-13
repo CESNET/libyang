@@ -44,7 +44,9 @@
  */
 extern int ly_errno;
 
-#define	LY_EINVAL   1 /* Invalid argument */
+#define LY_EINVAL    1 /* Invalid argument */
+#define LY_EEOF      2 /* Input end */
+#define LY_EWELLFORM 3 /* Not a well formed data */
 
 /*
  * logger
