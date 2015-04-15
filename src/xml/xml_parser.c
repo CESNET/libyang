@@ -415,26 +415,28 @@ static unsigned int pututf8(char *dst, int32_t value)
 	}
 }
 
-static int parse_ignore(const char *data, const char *endstr)
+static int parse_ignore(const char *data, const char *endstr,
+		                unsigned int *len)
 {
-	int len;
+	unsigned int slen;
 	const char *c = data;
 
-	len = strlen(endstr);
+	slen = strlen(endstr);
 
-	while (*c && memcmp(c, endstr, len)) {
+	while (*c && memcmp(c, endstr, slen)) {
 		c++;
 	}
 	if (!*c) {
 		LY_ERR(LY_EWELLFORM, "Missing close sequence \"%s\".", endstr);
-		return -1;
+		return EXIT_FAILURE;
 	}
-	c += len;
+	c += slen;
 
-	return (c - data);
+	*len = c - data;
+	return EXIT_SUCCESS;
 }
 
-static char *parse_text(const char *data, int *len)
+static char *parse_text(const char *data, unsigned int *len)
 {
 #define BUFSIZE 1024
 
@@ -554,7 +556,7 @@ error:
 	return NULL;
 }
 
-static struct lyxml_attr *parse_attr(const char *data, int *len)
+static struct lyxml_attr *parse_attr(const char *data, unsigned int *len)
 {
 	const char *c = data, *start = data, *delim;
 	int uc;
@@ -626,7 +628,7 @@ error:
 	return NULL;
 }
 
-static struct lyxml_elem *parse_elem(const char *data, int *len)
+static struct lyxml_elem *parse_elem(const char *data, unsigned int *len)
 {
 	const char *c = data, *e;
 	const char *lws; /* leading white space for handling mixed content */
@@ -634,8 +636,7 @@ static struct lyxml_elem *parse_elem(const char *data, int *len)
 	char *str;
 	struct lyxml_elem *elem, *child;
 	struct lyxml_attr *attr;
-	int size;
-	unsigned int usize;
+	unsigned int size;
 
 	*len = 0;
 
@@ -647,16 +648,16 @@ static struct lyxml_elem *parse_elem(const char *data, int *len)
 	c++;
 	e = c;
 
-	uc = getutf8(e, &usize);
+	uc = getutf8(e, &size);
 	if (!is_xmlnamestartchar(uc)) {
 		LY_ERR(LY_EWELLFORM, "Invalid NameStartChar of the attribute");
 		return NULL;
 	}
-	e += usize;
-	uc = getutf8(e, &usize);
+	e += size;
+	uc = getutf8(e, &size);
 	while (is_xmlnamechar(uc)) {
-		e += usize;
-		uc = getutf8(e, &usize);
+		e += size;
+		uc = getutf8(e, &size);
 	}
 	if (!*e) {
 		LY_ERR(LY_EWELLFORM, "Unexpected end of input data.");
@@ -696,17 +697,17 @@ process:
 				c += 2;
 				/* get name and check it */
 				e = c;
-				uc = getutf8(e, &usize);
+				uc = getutf8(e, &size);
 				if (!is_xmlnamestartchar(uc)) {
 					LY_ERR(LY_EWELLFORM,
 					       "Invalid NameStartChar of the attribute");
 					goto error;
 				}
-				e += usize;
-				uc = getutf8(e, &usize);
+				e += size;
+				uc = getutf8(e, &size);
 				while (is_xmlnamechar(uc)) {
-					e += usize;
-					uc = getutf8(e, &usize);
+					e += size;
+					uc = getutf8(e, &size);
 				}
 				if (!*e) {
 					LY_ERR(LY_EWELLFORM, "Unexpected end of input data.");
@@ -714,12 +715,12 @@ process:
 				}
 
 				/* check that it corresponds to opening tag */
-				usize = e - c;
-				str = malloc((usize + 1) * sizeof *str);
+				size = e - c;
+				str = malloc((size + 1) * sizeof *str);
 				memcpy(str, c, e - c);
 				str[e - c] = '\0';
-				if (usize != strlen(elem->name) ||
-						memcmp(str, elem->name, usize)) {
+				if (size != strlen(elem->name) ||
+						memcmp(str, elem->name, size)) {
 					LY_ERR(LY_EWELLFORM,
 					       "Mixed opening (%s) and closing (%s) element tag",
 					       elem->name);
@@ -745,8 +746,7 @@ process:
 				}
 				/* PI - ignore it */
 				c += 2;
-				size = parse_ignore(c, "?>");
-				if (size == -1) {
+				if (parse_ignore(c, "?>", &size)) {
 					goto error;
 				}
 				c += size;
@@ -757,8 +757,7 @@ process:
 				}
 				/* Comment - ignore it */
 				c += 4;
-				size = parse_ignore(c, "-->");
-				if (size == -1) {
+				if (parse_ignore(c, "-->", &size)) {
 					goto error;
 				}
 				c += size;
@@ -767,8 +766,7 @@ process:
 
 				/* TODO , temporarily ignored */
 				c += 9;
-				size = parse_ignore(c, "]]>");
-				if (size == -1) {
+				if (parse_ignore(c, "]]>", &size)) {
 					goto error;
 				}
 				c += size;
@@ -844,7 +842,7 @@ error:
 API struct lyxml_elem *lyxml_read(const char *data, int UNUSED(options))
 {
 	const char *c = data;
-	int len;
+	unsigned int len;
 	struct lyxml_elem *root = NULL;
 
 	if (!data) {
@@ -860,8 +858,7 @@ API struct lyxml_elem *lyxml_read(const char *data, int UNUSED(options))
 		} else if (!memcmp(c, "<?", 2)) {
 			/* XMLDecl or PI - ignore it */
 			c += 2;
-			len = parse_ignore(c, "?>");
-			if (len == -1) {
+			if (parse_ignore(c, "?>", &len)) {
 				LY_ERR(LY_EWELLFORM, "Missing close sequence \"?>\".");
 				return NULL;
 			}
@@ -869,8 +866,7 @@ API struct lyxml_elem *lyxml_read(const char *data, int UNUSED(options))
 		} else if (!memcmp(c, "<!--", 4)) {
 			/* Comment - ignore it */
 			c += 2;
-			len = parse_ignore(c, "-->");
-			if (len == -1) {
+			if (parse_ignore(c, "-->", &len)) {
 				LY_ERR(LY_EWELLFORM, "Missing close sequence \"-->\".");
 				return NULL;
 			}
