@@ -436,7 +436,7 @@ static int parse_ignore(const char *data, const char *endstr,
 	return EXIT_SUCCESS;
 }
 
-static char *parse_text(const char *data, unsigned int *len)
+static char *parse_text(const char *data, char delim, unsigned int *len)
 {
 #define BUFSIZE 1024
 
@@ -446,7 +446,7 @@ static char *parse_text(const char *data, unsigned int *len)
 	int o, size = 0;
 	int32_t n;
 
-	for (*len = o = 0; data[*len] != '<'; o++) {
+	for (*len = o = 0; data[*len] != delim; o++) {
 		if (!data[*len] || !memcmp(&data[*len], "]]>", 2)) {
 			LY_ERR(LY_EWELLFORM, "Invalid element content, \"]]>\" found.");
 			goto error;
@@ -558,7 +558,7 @@ error:
 
 static struct lyxml_attr *parse_attr(const char *data, unsigned int *len)
 {
-	const char *c = data, *start = data, *delim;
+	const char *c = data, *delim;
 	int uc;
 	struct lyxml_attr *attr = NULL;
 	unsigned int size;
@@ -579,9 +579,9 @@ static struct lyxml_attr *parse_attr(const char *data, unsigned int *len)
 	attr = calloc(1, sizeof *attr);
 
 	/* store the name */
-	size = c - start;
+	size = c - data;
 	attr->name = malloc((size + 1) * sizeof *attr->name);
-	memcpy(attr->name, start, size);
+	memcpy(attr->name, data, size);
 	attr->name[size] = '\0';
 
 	/* check Eq mark that can be surrounded by whitespaces */
@@ -592,7 +592,6 @@ static struct lyxml_attr *parse_attr(const char *data, unsigned int *len)
 	}
 	c++;
 	ign_xmlws(c);
-	start = c + 1;
 
 	/* process value part of the attribute */
 	if (!*c || (*c != '"' && *c != '\'')) {
@@ -600,27 +599,12 @@ static struct lyxml_attr *parse_attr(const char *data, unsigned int *len)
 		goto error;
 	}
 	delim = c;
-	c++;
-	while (*c && *c != *delim) {
-		if (*c == '<') {
-			LY_ERR(LY_EWELLFORM, "Invalid attribute value, \"<\" found.");
-			goto error;
-		}
-		c++;
-	}
-	if (!*c) {
-		LY_ERR(LY_EWELLFORM,
-		       "Invalid attribute value, missing close %c character.", *delim);
+	attr->value = parse_text(++c, *delim, &size);
+	if (ly_errno) {
 		goto error;
 	}
 
-	/* store the value */
-	size = c - start;
-	attr->value = malloc((size + 1) * sizeof *attr->value);
-	memcpy(attr->value, start, size);
-	attr->value[size] = '\0';
-
-	*len = ++c - data;
+	*len = c + size + 1 - data; /* +1 is delimiter size */
 	return attr;
 
 error:
@@ -800,8 +784,8 @@ store_content:
 					c = lws;
 					lws = NULL;
 				}
-				elem->content = parse_text(c, &size);
-				if (!elem->content && ly_errno) {
+				elem->content = parse_text(c, '<', &size);
+				if (ly_errno) {
 					goto error;
 				}
 				c += size; /* move after processed text content */
