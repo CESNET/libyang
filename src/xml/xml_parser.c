@@ -19,8 +19,9 @@
  *    software without specific prior written permission.
  */
 
-#include <stdio.h>
 
+#include <ctype.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -368,6 +369,52 @@ static int getutf8(const char *buf, unsigned int *read)
 	return c;
 }
 
+/**
+ * Store UTF-8 character specified as 4byte integer into the dst buffer.
+ * Returns number of written bytes (4 max), expects that dst has enough space.
+ *
+ * UTF-8 mapping:
+ * 00000000 -- 0000007F: 	0xxxxxxx
+ * 00000080 -- 000007FF: 	110xxxxx 10xxxxxx
+ * 00000800 -- 0000FFFF: 	1110xxxx 10xxxxxx 10xxxxxx
+ * 00010000 -- 001FFFFF: 	11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+ *
+ */
+static unsigned int pututf8(char *dst, int32_t value)
+{
+	if (value < 0x80) {
+		/* one byte character */
+		dst[0] = value;
+
+		return 1;
+	} else if (value < 0x800) {
+		/* two bytes character */
+		dst[0] = 0xc0 | (value >> 6);
+	    dst[1] = 0x80 | (value & 0x3f);
+
+		return 2;
+	} else if (value < 0x10000) {
+		/* three bytes character */
+		dst[0] = 0xe0 | (value >> 12);
+	    dst[1] = 0x80 | ((value >> 6) & 0x3f);
+	    dst[2] = 0x80 | (value & 0x3f);
+
+		return 3;
+	} else if (value < 0x200000) {
+		/* four bytes character */
+		dst[0] = 0xf0 | (value >> 18);
+		dst[1] = 0x80 | ((value >> 12) & 0x3f);
+		dst[2] = 0x80 | ((value >> 6) & 0x3f);
+		dst[3] = 0x80 | (value & 0x3f);
+
+		return 4;
+	} else {
+		/* out of range */
+		LY_ERR(LY_EINVAL, NULL);
+		return 0;
+	}
+}
+
 static int parse_ignore(const char *data, const char *endstr)
 {
 	int len;
@@ -389,25 +436,122 @@ static int parse_ignore(const char *data, const char *endstr)
 
 static char *parse_text(const char *data, int *len)
 {
-	const char *c = data;
-	char *result = NULL;
-	unsigned int size;
+#define BUFSIZE 1024
 
-	while (*c != '<') {
-		if (!memcmp(c, "]]>", 2)) {
+	char buf[BUFSIZE];
+	char *result = NULL, *aux;
+	unsigned int r;
+	int o, size = 0;
+	int32_t n;
+
+	for (*len = o = 0; data[*len] != '<'; o++) {
+		if (!data[*len] || !memcmp(&data[*len], "]]>", 2)) {
 			LY_ERR(LY_EWELLFORM, "Invalid element content, \"]]>\" found.");
-			return NULL;
+			goto error;
 		}
-		c++;
+
+		if (o > BUFSIZE - 3) {
+			/* add buffer into the result */
+			if (result) {
+				size = size + o;
+				aux = realloc(result, size + 1);
+				result = aux;
+			} else {
+				size = o;
+				result = malloc((size + 1) * sizeof *result);
+			}
+			memcpy(&result[size - o], buf, o);
+
+			/* write again into the beginning of the buffer */
+			o = 0;
+		}
+
+		if (data[*len] == '&') {
+			(*len)++;
+			if (data[*len] != '#') {
+				/* entity reference - only predefined refs are supported */
+				if (!memcmp(&data[*len], "lt;", 3)) {
+					buf[o] = '<';
+					*len += 3;
+				} else if (!memcmp(&data[*len], "gt;", 3)) {
+					buf[o] = '>';
+					*len += 3;
+				} else if (!memcmp(&data[*len], "amp;", 4)) {
+					buf[o] = '&';
+					*len += 4;
+				} else if (!memcmp(&data[*len], "apos;", 5)) {
+					buf[o] = '\'';
+					*len += 5;
+				} else if (!memcmp(&data[*len], "quot;", 5)) {
+					buf[o] = '\"';
+					*len += 5;
+				} else {
+					LY_ERR(LY_EWELLFORM,
+					       "Invalid entity reference, only predefined entity references are supported.");
+					goto error;
+				}
+			} else {
+				/* character reference */
+				(*len)++;
+				if (isdigit(data[*len])) {
+					for (n = 0; isdigit(data[*len]); (*len)++) {
+						n = (10 * n) + (data[*len] - '0');
+					}
+					if (data[*len] != ';') {
+						LY_ERR(LY_EWELLFORM,
+						       "Invalid character reference, missing semicolon.");
+						goto error;
+					}
+				} else if (data[(*len)++] == 'x' && isxdigit(data[*len])) {
+					for (n = 0; isxdigit(data[*len]); (*len)++) {
+						if (isdigit(data[*len])) {
+							r = (data[*len] - '0');
+						} else if (data[*len] > 'F') {
+							r = 10 + (data[*len] - 'a');
+						} else {
+							r = 10 + (data[*len] - 'A');
+						}
+						n = (16 * n) + r;
+					}
+				} else {
+					LY_ERR(LY_EWELLFORM, "Invalid character reference.");
+					goto error;
+
+				}
+				r = pututf8(&buf[o], n);
+				if (!r) {
+					LY_ERR(LY_EWELLFORM, "Invalid character reference value.");
+					goto error;
+				}
+				o += r - 1; /* o is ++ in for loop */
+				(*len)++;
+			}
+		} else {
+			buf[o] = data[*len];
+			(*len)++;
+		}
 	}
 
-	size = c - data;
-	result = malloc((size + 1) * sizeof *result);
-	memcpy(result, data, size);
+#undef BUFSIZE
+
+	if (o) {
+		if (result) {
+			size = size + o;
+			aux = realloc(result, *len + 1);
+			result = aux;
+		} else {
+			size = o;
+			result = malloc(size * sizeof *result);
+		}
+		memcpy(&result[size - o], buf, o);
+	}
 	result[size] = '\0';
 
-	*len = size;
 	return result;
+
+error:
+	free(result);
+	return NULL;
 }
 
 static struct lyxml_attr *parse_attr(const char *data, int *len)
@@ -531,6 +675,7 @@ static struct lyxml_elem *parse_elem(const char *data, int *len)
 	c = e;
 
 process:
+	ly_errno = 0;
 	ign_xmlws(c);
 	if (!memcmp("/>", c, 2)) {
 		/* we are done, it was EmptyElemTag */
@@ -658,6 +803,9 @@ store_content:
 					lws = NULL;
 				}
 				elem->content = parse_text(c, &size);
+				if (!elem->content && ly_errno) {
+					goto error;
+				}
 				c += size; /* move after processed text content */
 
 				if (elem->child) {
