@@ -444,13 +444,16 @@ static char *parse_text(const char *data, char delim, unsigned int *len)
 	char *result = NULL, *aux;
 	unsigned int r;
 	int o, size = 0;
+	int cdsect = 0;
 	int32_t n;
 
-	for (*len = o = 0; data[*len] != delim; o++) {
-		if (!data[*len] || !memcmp(&data[*len], "]]>", 2)) {
+	for (*len = o = 0; cdsect || data[*len] != delim; o++) {
+		if (!data[*len] || (!cdsect && !memcmp(&data[*len], "]]>", 2))) {
 			LY_ERR(LY_EWELLFORM, "Invalid element content, \"]]>\" found.");
 			goto error;
 		}
+
+loop:
 
 		if (o > BUFSIZE - 3) {
 			/* add buffer into the result */
@@ -468,7 +471,21 @@ static char *parse_text(const char *data, char delim, unsigned int *len)
 			o = 0;
 		}
 
-		if (data[*len] == '&') {
+		if (cdsect || !memcmp(&data[*len], "<![CDATA[", 9)) {
+			/* CDSect */
+			if (!cdsect) {
+				cdsect = 1;
+				*len += 9;
+			}
+			if (data[*len] && !memcmp(&data[*len], "]]>", 3)) {
+				*len += 3;
+				cdsect = 0;
+				o--; /* we don't write any data in this iteration */
+			} else {
+				buf[o] = data[*len];
+				(*len)++;
+			}
+		} else if (data[*len] == '&') {
 			(*len)++;
 			if (data[*len] != '#') {
 				/* entity reference - only predefined refs are supported */
@@ -532,6 +549,11 @@ static char *parse_text(const char *data, char delim, unsigned int *len)
 			buf[o] = data[*len];
 			(*len)++;
 		}
+	}
+
+	if (delim == '<' && !memcmp(&data[*len], "<![CDATA[", 9)) {
+		/* ignore loop's end condition on beginning of CDSect */
+		goto loop;
 	}
 
 #undef BUFSIZE
@@ -747,13 +769,7 @@ process:
 				c += size;
 			} else if (!memcmp(c, "<![CDATA[", 9)) {
 				/* CDSect */
-
-				/* TODO , temporarily ignored */
-				c += 9;
-				if (parse_ignore(c, "]]>", &size)) {
-					goto error;
-				}
-				c += size;
+				goto store_content;
 			} else if (*c == '<') {
 				if (lws) {
 					/* leading white spaces were only formatting */
