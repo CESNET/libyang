@@ -561,11 +561,11 @@ loop:
 	if (o) {
 		if (result) {
 			size = size + o;
-			aux = realloc(result, *len + 1);
+			aux = realloc(result, size + 1);
 			result = aux;
 		} else {
 			size = o;
-			result = malloc(size * sizeof *result);
+			result = malloc((size + 1) * sizeof *result);
 		}
 		memcpy(&result[size - o], buf, o);
 	}
