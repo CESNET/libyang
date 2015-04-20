@@ -27,6 +27,7 @@
 #include <unistd.h>
 
 #include "../common.h"
+#include "../dict.h"
 #include "xml.h"
 
 /*
@@ -146,7 +147,7 @@ API void lyxml_free_attr(struct lyxml_attr *attr)
 	}
 
 	lyxml_unlink_attr(attr);
-	free(attr->name);
+	dict_remove(attr->name);
 	free(attr->value);
 	free(attr);
 }
@@ -162,7 +163,7 @@ API void lyxml_free_attrs(struct lyxml_elem *elem)
 	do {
 		next = a->next;
 
-		free(a->name);
+		dict_remove(a->name);
 		free(a->value);
 		free(a);
 
@@ -188,7 +189,7 @@ static void lyxml_free_elem_(struct lyxml_elem *elem)
 			e = next;
 		} while (e);
 	}
-	free(elem->name);
+	dict_remove(elem->name);
 	free(elem->content);
 	free(elem);
 }
@@ -602,9 +603,7 @@ static struct lyxml_attr *parse_attr(const char *data, unsigned int *len)
 
 	/* store the name */
 	size = c - data;
-	attr->name = malloc((size + 1) * sizeof *attr->name);
-	memcpy(attr->name, data, size);
-	attr->name[size] = '\0';
+	attr->name = dict_insert(data, size);
 
 	/* check Eq mark that can be surrounded by whitespaces */
 	ign_xmlws(c);
@@ -676,9 +675,7 @@ static struct lyxml_elem *parse_elem(const char *data, unsigned int *len)
 	elem->prev = elem;
 
 	/* store the name into the element structure */
-	elem->name = malloc((e - c + 1) * sizeof *elem->name);
-	memcpy(elem->name, c, e - c);
-	elem->name[e - c] = '\0';
+	elem->name = dict_insert(c, e - c);
 	c = e;
 
 process:

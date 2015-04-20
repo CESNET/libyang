@@ -22,6 +22,7 @@ set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
 set(src
 	src/common.c
 	src/log.c
+	src/dict.c
 	src/xml/xml_parser.c)
 
 add_library(yang SHARED ${src})
