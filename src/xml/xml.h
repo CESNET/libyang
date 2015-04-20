@@ -104,6 +104,9 @@ struct lyxml_elem {
 	struct lyxml_attr *attr;   /**< first attribute declared in the element */
 	const struct lyxml_ns *ns; /**< namespace of the element */
 	char *name;                /**< name of the element */
+
+	char flags;                /**< special flags */
+#define LYXML_ELEM_MIXED 0x01  /* element contains mixed content */
 };
 
 /*
@@ -138,6 +141,17 @@ struct lyxml_elem* lyxml_read_fd(int fd, int options);
  * @return pointer to root of the parsed XML document tree.
  */
 struct lyxml_elem* lyxml_read_file(const char* filename, int options);
+
+/**
+ * @brief Dump XML tree to a IO stream
+ *
+ * @param[in] stream IO stream to print out the tree.
+ * @param[in] elem Root element of the XML tree to print
+ * @param[in] options Parser options. Currently ignored, no option defined yet.
+ * @return number of printed characters.
+ *
+ */
+int lyxml_dump(FILE *stream, struct lyxml_elem *elem, int options);
 
 /*
  * Functions

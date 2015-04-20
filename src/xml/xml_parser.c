@@ -22,6 +22,7 @@
 
 #include <ctype.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -769,8 +770,13 @@ process:
 				goto store_content;
 			} else if (*c == '<') {
 				if (lws) {
-					/* leading white spaces were only formatting */
-					lws = NULL;
+					if (elem->flags & LYXML_ELEM_MIXED) {
+						/* we have a mixed content */
+						goto store_content;
+					} else {
+						/* leading white spaces were only formatting */
+						lws = NULL;
+					}
 				}
 				if (elem->content) {
 					/* we have a mixed content */
@@ -778,6 +784,7 @@ process:
 					child->content = elem->content;
 					elem->content = NULL;
 					lyxml_add_child(elem, child);
+					elem->flags |= LYXML_ELEM_MIXED;
 				}
 				child = parse_elem(c, &size);
 				if (!child) {
@@ -809,6 +816,7 @@ store_content:
 					child->content = elem->content;
 					elem->content = NULL;
 					lyxml_add_child(elem, child);
+					elem->flags |= LYXML_ELEM_MIXED;
 				}
 			}
 		}
@@ -919,3 +927,92 @@ API struct lyxml_elem *lyxml_read_file(const char *filename,
 	return NULL;
 }
 
+static int dump_text(FILE *f, char* text)
+{
+	unsigned int i, n;
+
+	for (i = n = 0; text[i]; i++) {
+		switch (text[i]) {
+		case '&':
+			n += fprintf(f, "&amp;");
+			break;
+		case '<':
+			n += fprintf(f, "&lt;");
+			break;
+		default:
+			fputc(text[i], f);
+			n++;
+		}
+	}
+
+	return n;
+}
+
+static int dump_elem(FILE *f, struct lyxml_elem *e, int level)
+{
+	int size = 0;
+	struct lyxml_attr *a;
+	struct lyxml_elem *child;
+
+	if (!e->name) {
+		/* mixed content */
+		if (e->content) {
+			return dump_text(f, e->content);
+		} else {
+			return 0;
+		}
+	}
+
+	if (!e->parent || (e->parent->flags & LYXML_ELEM_MIXED)) {
+		size += fprintf(f, "<%s", e->name);
+	} else {
+		size += fprintf(f, "\n%*s<%s", 2 * level, "", e->name);
+	}
+
+	for (a = e->attr; a; a = a->next) {
+		size += fprintf(f, " %s=\"%s\"", a->name, a->value);
+	}
+	if (!e->child && !e->content) {
+		size += fprintf(f, "/>");
+		return size;
+	} else if (e->content) {
+		fputc('>', f);
+		size++;
+
+		size += dump_text(f, e->content);
+
+		size += fprintf(f, "</%s>", e->name);
+		return size;
+	} else {
+		size += fprintf(f, ">");
+	}
+
+	/* go recursively */
+	child = e->child;
+	do {
+		size += dump_elem(f, child, level + 1);
+		child = child->next;
+	} while (child != e->child);
+
+	if ((e->flags & LYXML_ELEM_MIXED)) {
+		size += fprintf(f, "</%s>", e->name);
+	} else {
+		size += fprintf(f, "\n%*s</%s>", 2 * level, "", e->name);
+	}
+
+	if (!e->parent) {
+		fputc('\n', f);
+		size++;
+	}
+
+	return size;
+}
+
+API int lyxml_dump(FILE *stream, struct lyxml_elem *elem, int UNUSED(options))
+{
+	if (!elem) {
+		return 0;
+	}
+
+	return dump_elem(stream, elem, 0);
+}
