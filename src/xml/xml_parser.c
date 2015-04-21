@@ -148,8 +148,8 @@ API void lyxml_free_attr(struct lyxml_attr *attr)
 	}
 
 	lyxml_unlink_attr(attr);
-	dict_remove(attr->name);
-	free(attr->value);
+	lydict_remove(attr->name);
+	lydict_remove(attr->value);
 	free(attr);
 }
 
@@ -164,8 +164,8 @@ API void lyxml_free_attrs(struct lyxml_elem *elem)
 	do {
 		next = a->next;
 
-		dict_remove(a->name);
-		free(a->value);
+		lydict_remove(a->name);
+		lydict_remove(a->value);
 		free(a);
 
 		a = next;
@@ -190,8 +190,8 @@ static void lyxml_free_elem_(struct lyxml_elem *elem)
 			e = next;
 		} while (e);
 	}
-	dict_remove(elem->name);
-	free(elem->content);
+	lydict_remove(elem->name);
+	lydict_remove(elem->content);
 	free(elem);
 }
 
@@ -587,6 +587,9 @@ static struct lyxml_attr *parse_attr(const char *data, unsigned int *len)
 	struct lyxml_attr *attr = NULL;
 	unsigned int size;
 
+	/* check if it is attribute or namespace */
+
+
 	/* process name part of the attribute */
 	uc = getutf8(c, &size);
 	if (!is_xmlnamestartchar(uc)) {
@@ -604,7 +607,7 @@ static struct lyxml_attr *parse_attr(const char *data, unsigned int *len)
 
 	/* store the name */
 	size = c - data;
-	attr->name = dict_insert(data, size);
+	attr->name = lydict_insert(data, size);
 
 	/* check Eq mark that can be surrounded by whitespaces */
 	ign_xmlws(c);
@@ -621,7 +624,7 @@ static struct lyxml_attr *parse_attr(const char *data, unsigned int *len)
 		goto error;
 	}
 	delim = c;
-	attr->value = parse_text(++c, *delim, &size);
+	attr->value = lydict_insert_zc(parse_text(++c, *delim, &size));
 	if (ly_errno) {
 		goto error;
 	}
@@ -676,7 +679,7 @@ static struct lyxml_elem *parse_elem(const char *data, unsigned int *len)
 	elem->prev = elem;
 
 	/* store the name into the element structure */
-	elem->name = dict_insert(c, e - c);
+	elem->name = lydict_insert(c, e - c);
 	c = e;
 
 process:
@@ -804,7 +807,7 @@ store_content:
 					c = lws;
 					lws = NULL;
 				}
-				elem->content = parse_text(c, '<', &size);
+				elem->content = lydict_insert_zc(parse_text(c, '<', &size));
 				if (ly_errno) {
 					goto error;
 				}

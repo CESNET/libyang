@@ -63,27 +63,7 @@ static uint32_t dict_hash(const char *key, size_t len)
     return hash;
 }
 
-struct dict_rec *dict_lookup(const char *value, size_t len)
-{
-	uint32_t index;
-	struct dict_rec *record;
-
-	index = dict_hash(value, len) & dict.hash_mask;
-
-	if (!dict.recs[index].value) {
-		/* no such record */
-		return NULL;
-	}
-	record = &dict.recs[index];
-
-	if (!memcmp(value, record->value, len) && record->value[len] == '\0') {
-		return record;
-	}
-
-	return NULL;
-}
-
-void dict_remove(const char *value)
+void lydict_remove(const char *value)
 {
 	size_t len;
 	uint32_t index;
@@ -114,7 +94,7 @@ void dict_remove(const char *value)
 		if (record->next) {
 			if (prev) {
 				/* change in dynamically allocated chain */
-				prev = record->next;
+				prev->next = record->next;
 				free(record);
 			} else {
 				/* move dynamically allocated record into the static array */
@@ -130,7 +110,7 @@ void dict_remove(const char *value)
 	}
 }
 
-char *dict_insert(const char *value, size_t len)
+static char *dict_insert(char *value, size_t len, int zerocopy)
 {
 	uint32_t index;
 	struct dict_rec *record, *new;
@@ -144,13 +124,17 @@ char *dict_insert(const char *value, size_t len)
 
 	if (!record->value) {
 		/* first record with this hash */
-		record->value = malloc((len + 1) * sizeof *record->value);
-		memcpy(record->value, value, len);
-		record->value[len] = '\0';
+		if (zerocopy) {
+			record->value = value;
+		} else {
+			record->value = malloc((len + 1) * sizeof *record->value);
+			memcpy(record->value, value, len);
+			record->value[len] = '\0';
+		}
 		record->refcount = 1;
 		record->next = NULL;
 
-		LY_VRB("DICT: inserting \"%s\"", record->value);
+		LY_DBG("DICT: inserting \"%s\"", record->value);
 		return record->value;
 	}
 
@@ -159,7 +143,12 @@ char *dict_insert(const char *value, size_t len)
 		if (!memcmp(value, record->value, len) && record->value[len] == '\0') {
 			/* record found */
 			record->refcount++;
-			LY_VRB("DICT: inserting (refcount) \"%s\"", record->value);
+
+			if (zerocopy) {
+				free(value);
+			}
+
+			LY_DBG("DICT: inserting (refcount) \"%s\"", record->value);
 			return record->value;
 		}
 
@@ -171,15 +160,30 @@ char *dict_insert(const char *value, size_t len)
 		record = record->next;
 	}
 
-	/* create new record and add it behind the record */
+	/* create new record and add it behind the last record */
 	new = malloc(sizeof *record);
-	new->value = malloc((len + 1) * sizeof *record->value);
-	memcpy(new->value, value, len);
-	new->value[len] = '\0';
+	if (zerocopy) {
+		new->value = value;
+	} else {
+		new->value = malloc((len + 1) * sizeof *record->value);
+		memcpy(new->value, value, len);
+		new->value[len] = '\0';
+	}
 	new->refcount = 1;
+	new->next = NULL;
 
 	record->next = new;
 
-	LY_VRB("DICT: inserting \"%s\" with collision ", record->value);
+	LY_DBG("DICT: inserting \"%s\" with collision ", record->value);
 	return new->value;
+}
+
+char *lydict_insert(const char *value, size_t len)
+{
+	return dict_insert((char *)value, len, 0);
+}
+
+char *lydict_insert_zc(char *value)
+{
+	return dict_insert((char *)value, strlen(value), 1);
 }
