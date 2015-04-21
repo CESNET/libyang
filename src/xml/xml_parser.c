@@ -571,7 +571,9 @@ loop:
 		}
 		memcpy(&result[size - o], buf, o);
 	}
-	result[size] = '\0';
+	if (result) {
+		result[size] = '\0';
+	}
 
 	return result;
 
@@ -580,35 +582,100 @@ error:
 	return NULL;
 }
 
-static struct lyxml_attr *parse_attr(const char *data, unsigned int *len)
+static struct lyxml_ns *get_ns(struct lyxml_elem *elem, const char *prefix)
 {
-	const char *c = data, *delim;
+	struct lyxml_attr *attr;
+	int len;
+
+	if (!elem) {
+		return NULL;
+	}
+
+	if (!prefix) {
+		len = 0;
+	} else {
+		len = strlen(prefix);
+	}
+
+	for (attr = elem->attr; attr; attr = attr->next) {
+		if (attr->type != LYXML_ATTR_NS) {
+			continue;
+		}
+		if (!attr->name) {
+			if (!len) {
+				/* default namespace found */
+				if (!attr->value) {
+					/* empty default namespace -> no default namespace */
+					return NULL;
+				}
+				return (struct lyxml_ns *)attr;
+			}
+		} else if (len && !memcmp(attr->name, prefix, len)) {
+			/* prefix found */
+			return (struct lyxml_ns *)attr;
+		}
+	}
+
+	/* go recursively */
+	return get_ns(elem->parent, prefix);
+}
+
+static struct lyxml_attr *parse_attr(const char *data, unsigned int *len, struct lyxml_elem *elem)
+{
+	const char *c = data, *start, *delim;
+	char prefix[32];
 	int uc;
 	struct lyxml_attr *attr = NULL;
 	unsigned int size;
 
-	/* check if it is attribute or namespace */
 
+	/* check if it is attribute or namespace */
+	if (!memcmp(c, "xmlns", 5)) {
+		/* namespace */
+		attr = calloc(1, sizeof(struct lyxml_ns));
+		attr->type = LYXML_ATTR_NS;
+		c += 5;
+		if (*c != ':') {
+			/* default namespace, prefix will be empty */
+			goto equal;
+		}
+		c++; /* go after ':' to the prefix value */
+	} else {
+		/* attribute */
+		attr = calloc(1, sizeof(struct lyxml_attr));
+		attr->type = LYXML_ATTR_STD;
+	}
 
 	/* process name part of the attribute */
+	start = c;
 	uc = getutf8(c, &size);
 	if (!is_xmlnamestartchar(uc)) {
 		LY_ERR(LY_EWELLFORM, "Invalid NameStartChar of the attribute");
+		free(attr);
 		return NULL;
 	}
 	c += size;
 	uc = getutf8(c, &size);
 	while (is_xmlnamechar(uc)) {
+		if (attr->type == LYXML_ATTR_STD && *c == ':') {
+			/* attribute in a namespace */
+			start = c + 1;
+
+			/* look for the prefix in namespaces */
+			memcpy(prefix, data, c - data);
+			prefix[c - data] = '\0';
+			attr->ns = get_ns(elem, prefix);
+		}
 		c += size;
 		uc = getutf8(c, &size);
 	}
 
-	attr = calloc(1, sizeof *attr);
-
 	/* store the name */
-	size = c - data;
-	attr->name = lydict_insert(data, size);
+	size = c - start;
+	attr->name = lydict_insert(start, size);
 
+
+equal:
 	/* check Eq mark that can be surrounded by whitespaces */
 	ign_xmlws(c);
 	if (*c != '=') {
@@ -637,15 +704,18 @@ error:
 	return NULL;
 }
 
-static struct lyxml_elem *parse_elem(const char *data, unsigned int *len)
+static struct lyxml_elem *parse_elem(const char *data, unsigned int *len, struct lyxml_elem *parent)
 {
-	const char *c = data, *e;
+	const char *c = data, *start, *e;
 	const char *lws; /* leading white space for handling mixed content */
 	int uc;
 	char *str;
+	char prefix[32] = {0};
+	unsigned int prefix_len = 0;
 	struct lyxml_elem *elem, *child;
 	struct lyxml_attr *attr;
 	unsigned int size;
+	int nons_flag = 0, closed_flag = 0;
 
 	*len = 0;
 
@@ -665,6 +735,19 @@ static struct lyxml_elem *parse_elem(const char *data, unsigned int *len)
 	e += size;
 	uc = getutf8(e, &size);
 	while (is_xmlnamechar(uc)) {
+		if (*e == ':') {
+			if (prefix_len) {
+				LY_ERR(LY_EWELLFORM, "Multiple colons in element name.");
+				goto error;
+			}
+			/* element in a namespace */
+			start = e + 1;
+
+			/* look for the prefix in namespaces */
+			memcpy(prefix, c, prefix_len = e - c);
+			prefix[prefix_len] = '\0';
+			c = start;
+		}
 		e += size;
 		uc = getutf8(e, &size);
 	}
@@ -677,6 +760,9 @@ static struct lyxml_elem *parse_elem(const char *data, unsigned int *len)
 	elem = calloc(1, sizeof *elem);
 	elem->next = elem;
 	elem->prev = elem;
+	if (parent) {
+		lyxml_add_child(parent, elem);
+	}
 
 	/* store the name into the element structure */
 	elem->name = lydict_insert(c, e - c);
@@ -688,6 +774,7 @@ process:
 	if (!memcmp("/>", c, 2)) {
 		/* we are done, it was EmptyElemTag */
 		c += 2;
+		closed_flag = 1;
 	} else if (*c == '>') {
 		/* process element content */
 		c++;
@@ -695,7 +782,7 @@ process:
 
 		while (*c) {
 			if (!memcmp(c, "</", 2)) {
-				if (lws) {
+				if (lws && !elem->child) {
 					/* leading white spaces were actually content */
 					goto store_content;
 				}
@@ -713,6 +800,18 @@ process:
 				e += size;
 				uc = getutf8(e, &size);
 				while (is_xmlnamechar(uc)) {
+					if (*e == ':') {
+						/* element in a namespace */
+						start = e + 1;
+
+						/* look for the prefix in namespaces */
+						if (memcmp(prefix, c, e - c)) {
+							LY_ERR(LY_EWELLFORM,
+							       "Mixed opening (%s) and closing element tag - different namespaces",
+							       elem->name);
+						}
+						c = start;
+					}
 					e += size;
 					uc = getutf8(e, &size);
 				}
@@ -730,7 +829,7 @@ process:
 						memcmp(str, elem->name, size)) {
 					LY_ERR(LY_EWELLFORM,
 					       "Mixed opening (%s) and closing (%s) element tag",
-					       elem->name);
+					       elem->name, str);
 					goto error;
 				}
 				free(str);
@@ -744,6 +843,7 @@ process:
 					goto error;
 				}
 				c++;
+				closed_flag = 1;
 				break;
 
 			} else if (!memcmp(c, "<?", 2)) {
@@ -789,12 +889,11 @@ process:
 					lyxml_add_child(elem, child);
 					elem->flags |= LYXML_ELEM_MIXED;
 				}
-				child = parse_elem(c, &size);
+				child = parse_elem(c, &size, elem);
 				if (!child) {
 					LY_ERR(LY_EWELLFORM, "Unexpected end of input data.");
 					goto error;
 				}
-				lyxml_add_child(elem, child);
 				c += size; /* move after processed child element */
 			} else if (is_xmlws(*c)) {
 				lws = c;
@@ -825,7 +924,7 @@ store_content:
 		}
 	} else {
 		/* process attribute */
-		attr = parse_attr(c, &size);
+		attr = parse_attr(c, &size, elem);
 		if (!attr) {
 			LY_ERR(LY_EWELLFORM, "Unexpected end of input data.");
 			goto error;
@@ -833,11 +932,37 @@ store_content:
 		lyxml_add_attr(elem, attr);
 		c += size; /* move after processed attribute */
 
+		/* check namespace */
+		if (attr->type == LYXML_ATTR_NS) {
+			if (!prefix[0] && !attr->name) {
+				if (attr->value) {
+					/* default prefix */
+					elem->ns = (struct lyxml_ns *)attr;
+				} else {
+					/* xmlns="" -> no namespace */
+					nons_flag = 1;
+				}
+			} else if (prefix[0] && attr->name &&
+			           !memcmp(attr->name, prefix, prefix_len + 1)) {
+				/* matching namespace with prefix */
+				elem->ns = (struct lyxml_ns *)attr;
+			}
+		}
+
 		/* go back to finish element processing */
 		goto process;
 	}
 
 	*len = c - data;
+
+	if (!closed_flag) {
+		LY_ERR(LY_EWELLFORM, "Missing closing element tag (%s).", elem->name);
+		goto error;
+	}
+
+	if (!nons_flag && parent) {
+		elem->ns = get_ns(parent, prefix_len ? prefix : NULL);
+	}
 
 	return elem;
 
@@ -892,7 +1017,7 @@ API struct lyxml_elem *lyxml_read(const char *data, int UNUSED(options))
 		}
 	}
 
-	root = parse_elem(c, &len);
+	root = parse_elem(c, &len, NULL);
 	if (!root) {
 		return NULL;
 	}
@@ -942,6 +1067,10 @@ static int dump_text(FILE *f, char* text)
 		case '<':
 			n += fprintf(f, "&lt;");
 			break;
+		case '>':
+			/* not needed, just for readability */
+			n += fprintf(f, "&gt;");
+			break;
 		default:
 			fputc(text[i], f);
 			n++;
@@ -956,6 +1085,8 @@ static int dump_elem(FILE *f, struct lyxml_elem *e, int level)
 	int size = 0;
 	struct lyxml_attr *a;
 	struct lyxml_elem *child;
+	const char *delim, *delim_outer;
+	int indent;
 
 	if (!e->name) {
 		/* mixed content */
@@ -966,17 +1097,42 @@ static int dump_elem(FILE *f, struct lyxml_elem *e, int level)
 		}
 	}
 
-	if (!e->parent || (e->parent->flags & LYXML_ELEM_MIXED)) {
-		size += fprintf(f, "<%s", e->name);
-	} else {
-		size += fprintf(f, "\n%*s<%s", 2 * level, "", e->name);
+	delim = delim_outer = "\n";
+	indent = 2 * level;
+	if ((e->flags & LYXML_ELEM_MIXED) || (e->parent && (e->parent->flags & LYXML_ELEM_MIXED))) {
+		delim = "";
+	}
+	if (e->parent && (e->parent->flags & LYXML_ELEM_MIXED)) {
+		delim_outer = "";
+		indent = 0;
 	}
 
-	for (a = e->attr; a; a = a->next) {
-		size += fprintf(f, " %s=\"%s\"", a->name, a->value);
+	/* opening tag */
+	if (e->ns && e->ns->prefix) {
+		size += fprintf(f, "%*s<%s:%s", indent, "", e->ns->prefix, e->name);
+	} else {
+		size += fprintf(f, "%*s<%s", indent, "", e->name);
 	}
+
+	/* attributes */
+	for (a = e->attr; a; a = a->next) {
+		if (a->type == LYXML_ATTR_NS) {
+			if (a->name) {
+				size += fprintf(f, " xmlns:%s=\"%s\"", a->name,
+				                a->value ? a->value : "");
+			} else {
+				size += fprintf(f, " xmlns=\"%s\"", a->value ? a->value : "");
+			}
+		} else if (a->ns && a->ns->prefix) {
+			size += fprintf(f, " %s:%s=\"%s\"", a->ns->prefix, a->name,
+			                a->value);
+		} else {
+			size += fprintf(f, " %s=\"%s\"", a->name, a->value);
+		}
+	}
+
 	if (!e->child && !e->content) {
-		size += fprintf(f, "/>");
+		size += fprintf(f, "/>%s", delim);
 		return size;
 	} else if (e->content) {
 		fputc('>', f);
@@ -984,10 +1140,15 @@ static int dump_elem(FILE *f, struct lyxml_elem *e, int level)
 
 		size += dump_text(f, e->content);
 
-		size += fprintf(f, "</%s>", e->name);
+
+		if (e->ns && e->ns->prefix) {
+			size += fprintf(f, "</%s:%s>%s", e->ns->prefix, e->name, delim);
+		} else {
+			size += fprintf(f, "</%s>%s", e->name, delim);
+		}
 		return size;
 	} else {
-		size += fprintf(f, ">");
+		size += fprintf(f, ">%s", delim);
 	}
 
 	/* go recursively */
@@ -997,15 +1158,12 @@ static int dump_elem(FILE *f, struct lyxml_elem *e, int level)
 		child = child->next;
 	} while (child != e->child);
 
-	if ((e->flags & LYXML_ELEM_MIXED)) {
-		size += fprintf(f, "</%s>", e->name);
+	/* closing tag */
+	if (e->ns && e->ns->prefix) {
+		size += fprintf(f, "%*s</%s:%s>%s", indent, "", e->ns->prefix, e->name,
+		                delim_outer);
 	} else {
-		size += fprintf(f, "\n%*s</%s>", 2 * level, "", e->name);
-	}
-
-	if (!e->parent) {
-		fputc('\n', f);
-		size++;
+		size += fprintf(f, "%*s</%s>%s", indent, "", e->name, delim_outer);
 	}
 
 	return size;

@@ -115,10 +115,6 @@ static char *dict_insert(char *value, size_t len, int zerocopy)
 	uint32_t index;
 	struct dict_rec *record, *new;
 
-	if (!value || len == 0) {
-		return NULL;
-	}
-
 	index = dict_hash(value, len) & dict.hash_mask;
 	record = &dict.recs[index];
 
@@ -180,10 +176,18 @@ static char *dict_insert(char *value, size_t len, int zerocopy)
 
 char *lydict_insert(const char *value, size_t len)
 {
+	if (!value || !len) {
+		return NULL;
+	}
 	return dict_insert((char *)value, len, 0);
 }
 
 char *lydict_insert_zc(char *value)
 {
-	return dict_insert((char *)value, strlen(value), 1);
+	int len;
+
+	if (!value || !(len = strlen(value))) {
+		return NULL;
+	}
+	return dict_insert((char *)value, len, 1);
 }
