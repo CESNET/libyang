@@ -27,8 +27,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../common.h"
-#include "../dict.h"
+#include "common.h"
+#include "dict.h"
 #include "xml.h"
 
 /*

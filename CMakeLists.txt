@@ -23,7 +23,7 @@ set(src
 	src/common.c
 	src/log.c
 	src/dict.c
-	src/xml/xml_parser.c)
+	src/xml.c)
 
 add_library(yang SHARED ${src})
 set_target_properties(yang PROPERTIES VERSION 0.1.0 SOVERSION 0.1)
