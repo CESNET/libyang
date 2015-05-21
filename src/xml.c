@@ -29,6 +29,7 @@
 
 #include "common.h"
 #include "dict.h"
+#include "tree.h"
 #include "xml.h"
 
 /*
@@ -57,7 +58,7 @@
 
 #define ign_xmlws(p) while(is_xmlws(*p)) {p++;}
 
-API int lyxml_unlink_attr(struct lyxml_attr *attr)
+int lyxml_unlink_attr(struct lyxml_attr *attr)
 {
 	struct lyxml_attr *a;
 
@@ -95,7 +96,7 @@ API int lyxml_unlink_attr(struct lyxml_attr *attr)
 	return EXIT_SUCCESS;
 }
 
-API int lyxml_unlink_elem(struct lyxml_elem *elem)
+int lyxml_unlink_elem(struct lyxml_elem *elem)
 {
 	struct lyxml_elem *e;
 
@@ -105,7 +106,7 @@ API int lyxml_unlink_elem(struct lyxml_elem *elem)
 	}
 
 	if (!elem->parent) {
-		return EXIT_SUCCESS;
+		goto siblings;
 	}
 
 	e = elem->parent->child;
@@ -113,47 +114,58 @@ API int lyxml_unlink_elem(struct lyxml_elem *elem)
 		LY_ERR(LY_EINVAL, "Broken structure (%s).", __func__);
 		return EXIT_FAILURE;
 	} else if (e == elem) {
-		/* child element of parent is going to be the next element after the
-		 * one being unlinked
-		 */
-		if (e == e->next) {
-			elem->parent->child = NULL;
-		} else {
-			elem->parent->child = e->next;
-		}
+		/* we unlink the first child */
+		/* update the parent's link */
+		elem->parent->child = e->next;
 	}
 
 	/* remove elem from ring list of sibling elements */
-	while (e != elem) {
+	while (e && e != elem) {
 		e = e->next;
 	}
 	if (!e) {
 		LY_ERR(LY_EINVAL, "Broken structure (%s).", __func__);
 		return EXIT_FAILURE;
 	}
-	e->prev->next = e->next;
-	e->next->prev = e->prev;
 
+siblings:
+	if (elem == elem->prev) {
+		/* there are no more siblings */
+		goto end;
+	}
+
+	if (elem->next) {
+		elem->next->prev = elem->prev;
+	} else {
+		/* unlinking the last child -> update the first's prev pointer */
+		elem->parent->child->prev = elem->prev;
+	}
+	if (elem->prev && elem->prev->next) {
+		elem->prev->next = elem->next;
+	}
+
+end:
 	/* clean up the unlinked element */
-	e->next = e;
-	e->prev = e;
+	elem->next = NULL;
+	elem->prev = elem;
+	elem->parent = NULL;
 
 	return EXIT_SUCCESS;
 }
 
-API void lyxml_free_attr(struct lyxml_attr *attr)
+void lyxml_free_attr(struct ly_ctx *ctx, struct lyxml_attr *attr)
 {
 	if (!attr) {
 		return;
 	}
 
 	lyxml_unlink_attr(attr);
-	lydict_remove(attr->name);
-	lydict_remove(attr->value);
+	lydict_remove(ctx, attr->name);
+	lydict_remove(ctx, attr->value);
 	free(attr);
 }
 
-API void lyxml_free_attrs(struct lyxml_elem *elem)
+void lyxml_free_attrs(struct ly_ctx *ctx, struct lyxml_elem *elem)
 {
 	struct lyxml_attr *a, *next;
 	if (!elem || !elem->attr) {
@@ -164,15 +176,15 @@ API void lyxml_free_attrs(struct lyxml_elem *elem)
 	do {
 		next = a->next;
 
-		lydict_remove(a->name);
-		lydict_remove(a->value);
+		lydict_remove(ctx, a->name);
+		lydict_remove(ctx, a->value);
 		free(a);
 
 		a = next;
 	} while (a);
 }
 
-static void lyxml_free_elem_(struct lyxml_elem *elem)
+static void lyxml_free_elem_(struct ly_ctx *ctx, struct lyxml_elem *elem)
 {
 	struct lyxml_elem *e, *next;
 
@@ -180,32 +192,26 @@ static void lyxml_free_elem_(struct lyxml_elem *elem)
 		return;
 	}
 
-	lyxml_free_attrs(elem);
-	if (elem->child) {
-		e = elem->child;
-		e->prev->next = NULL;
-		do {
-			next = e->next;
-			lyxml_free_elem_(e);
-			e = next;
-		} while (e);
+	lyxml_free_attrs(ctx, elem);
+	LY_TREE_FOR_SAFE(elem->child, next, e) {
+		lyxml_free_elem_(ctx, e);
 	}
-	lydict_remove(elem->name);
-	lydict_remove(elem->content);
+	lydict_remove(ctx, elem->name);
+	lydict_remove(ctx, elem->content);
 	free(elem);
 }
 
-API void lyxml_free_elem(struct lyxml_elem *elem)
+void lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem *elem)
 {
 	if (!elem) {
 		return;
 	}
 
 	lyxml_unlink_elem(elem);
-	lyxml_free_elem_(elem);
+	lyxml_free_elem_(ctx, elem);
 }
 
-API int lyxml_add_attr(struct lyxml_elem *parent, struct lyxml_attr *attr)
+int lyxml_add_attr(struct lyxml_elem *parent, struct lyxml_attr *attr)
 {
 	struct lyxml_attr *a;
 
@@ -231,7 +237,33 @@ API int lyxml_add_attr(struct lyxml_elem *parent, struct lyxml_attr *attr)
 	return EXIT_SUCCESS;
 }
 
-API int lyxml_add_child(struct lyxml_elem *parent, struct lyxml_elem *elem)
+const char *lyxml_get_attr(struct lyxml_elem *elem, const char *name,
+                               const char *ns)
+{
+	struct lyxml_attr *a;
+
+	if (!elem || !name) {
+		LY_ERR(LY_EINVAL, NULL);
+		return NULL;
+	}
+
+	for (a = elem->attr; a; a = a->next) {
+		if (a->type != LYXML_ATTR_STD) {
+			continue;
+		}
+
+		if (!strcmp(name, a->name)) {
+			if ((!ns && !a->ns)
+					|| (ns && a->ns && !strcmp(ns, a->ns->value))) {
+				return a->value;
+			}
+		}
+	}
+
+	return NULL;
+}
+
+int lyxml_add_child(struct lyxml_elem *parent, struct lyxml_elem *elem)
 {
 	struct lyxml_elem *e;
 
@@ -250,13 +282,13 @@ API int lyxml_add_child(struct lyxml_elem *parent, struct lyxml_elem *elem)
 	if (parent->child) {
 		e = parent->child;
 		elem->prev = e->prev;
-		elem->next = e;
+		elem->next = NULL;
 		elem->prev->next = elem;
-		elem->next->prev = elem;
+		e->prev = elem;
 	} else {
 		parent->child = elem;
-		elem->next = elem;
 		elem->prev = elem;
+		elem->next = NULL;
 	}
 
 	return EXIT_SUCCESS;
@@ -620,7 +652,8 @@ static struct lyxml_ns *get_ns(struct lyxml_elem *elem, const char *prefix)
 	return get_ns(elem->parent, prefix);
 }
 
-static struct lyxml_attr *parse_attr(const char *data, unsigned int *len, struct lyxml_elem *elem)
+static struct lyxml_attr *parse_attr(struct ly_ctx *ctx, const char *data,
+		                             unsigned int *len, struct lyxml_elem *elem)
 {
 	const char *c = data, *start, *delim;
 	char prefix[32];
@@ -672,7 +705,7 @@ static struct lyxml_attr *parse_attr(const char *data, unsigned int *len, struct
 
 	/* store the name */
 	size = c - start;
-	attr->name = lydict_insert(start, size);
+	attr->name = lydict_insert(ctx, start, size);
 
 
 equal:
@@ -691,7 +724,7 @@ equal:
 		goto error;
 	}
 	delim = c;
-	attr->value = lydict_insert_zc(parse_text(++c, *delim, &size));
+	attr->value = lydict_insert_zc(ctx, parse_text(++c, *delim, &size));
 	if (ly_errno) {
 		goto error;
 	}
@@ -700,11 +733,13 @@ equal:
 	return attr;
 
 error:
-	lyxml_free_attr(attr);
+	lyxml_free_attr(ctx, attr);
 	return NULL;
 }
 
-static struct lyxml_elem *parse_elem(const char *data, unsigned int *len, struct lyxml_elem *parent)
+static struct lyxml_elem *parse_elem(struct ly_ctx *ctx, const char *data,
+		                             unsigned int *len,
+		                             struct lyxml_elem *parent)
 {
 	const char *c = data, *start, *e;
 	const char *lws; /* leading white space for handling mixed content */
@@ -758,14 +793,14 @@ static struct lyxml_elem *parse_elem(const char *data, unsigned int *len, struct
 
 	/* allocate element structure */
 	elem = calloc(1, sizeof *elem);
-	elem->next = elem;
+	elem->next = NULL;
 	elem->prev = elem;
 	if (parent) {
 		lyxml_add_child(parent, elem);
 	}
 
 	/* store the name into the element structure */
-	elem->name = lydict_insert(c, e - c);
+	elem->name = lydict_insert(ctx, c, e - c);
 	c = e;
 
 process:
@@ -889,7 +924,7 @@ process:
 					lyxml_add_child(elem, child);
 					elem->flags |= LYXML_ELEM_MIXED;
 				}
-				child = parse_elem(c, &size, elem);
+				child = parse_elem(ctx, c, &size, elem);
 				if (!child) {
 					LY_ERR(LY_EWELLFORM, "Unexpected end of input data.");
 					goto error;
@@ -906,7 +941,7 @@ store_content:
 					c = lws;
 					lws = NULL;
 				}
-				elem->content = lydict_insert_zc(parse_text(c, '<', &size));
+				elem->content = lydict_insert_zc(ctx, parse_text(c, '<', &size));
 				if (ly_errno) {
 					goto error;
 				}
@@ -924,7 +959,7 @@ store_content:
 		}
 	} else {
 		/* process attribute */
-		attr = parse_attr(c, &size, elem);
+		attr = parse_attr(ctx, c, &size, elem);
 		if (!attr) {
 			LY_ERR(LY_EWELLFORM, "Unexpected end of input data.");
 			goto error;
@@ -967,18 +1002,19 @@ store_content:
 	return elem;
 
 error:
-	lyxml_free_elem(elem);
+	lyxml_free_elem(ctx, elem);
 
 	return NULL;
 }
 
-API struct lyxml_elem *lyxml_read(const char *data, int UNUSED(options))
+struct lyxml_elem *lyxml_read(struct ly_ctx *ctx, const char *data,
+                              int UNUSED(options))
 {
 	const char *c = data;
 	unsigned int len;
 	struct lyxml_elem *root = NULL;
 
-	if (!data) {
+	if (!data || !ctx) {
 		ly_errno = LY_EINVAL;
 		return NULL;
 	}
@@ -1017,7 +1053,7 @@ API struct lyxml_elem *lyxml_read(const char *data, int UNUSED(options))
 		}
 	}
 
-	root = parse_elem(c, &len, NULL);
+	root = parse_elem(ctx, c, &len, NULL);
 	if (!root) {
 		return NULL;
 	}
@@ -1034,9 +1070,10 @@ API struct lyxml_elem *lyxml_read(const char *data, int UNUSED(options))
 	return root;
 }
 
-API struct lyxml_elem *lyxml_read_fd(int fd, int UNUSED(options))
+struct lyxml_elem *lyxml_read_fd(struct ly_ctx *ctx, int fd,
+                                     int UNUSED(options))
 {
-	if (fd == -1) {
+	if (fd == -1 || !ctx) {
 		ly_errno = LY_EINVAL;
 		return NULL;
 	}
@@ -1044,10 +1081,10 @@ API struct lyxml_elem *lyxml_read_fd(int fd, int UNUSED(options))
 	return NULL;
 }
 
-API struct lyxml_elem *lyxml_read_file(const char *filename,
-		                               int UNUSED(options))
+struct lyxml_elem *lyxml_read_file(struct ly_ctx *ctx, const char *filename,
+                                       int UNUSED(options))
 {
-	if (!filename) {
+	if (!filename || !ctx) {
 		LY_ERR(LY_EINVAL, NULL);
 		return NULL;
 	}
@@ -1152,11 +1189,9 @@ static int dump_elem(FILE *f, struct lyxml_elem *e, int level)
 	}
 
 	/* go recursively */
-	child = e->child;
-	do {
+	LY_TREE_FOR(e->child, child) {
 		size += dump_elem(f, child, level + 1);
-		child = child->next;
-	} while (child != e->child);
+	}
 
 	/* closing tag */
 	if (e->ns && e->ns->prefix) {
@@ -1169,7 +1204,7 @@ static int dump_elem(FILE *f, struct lyxml_elem *e, int level)
 	return size;
 }
 
-API int lyxml_dump(FILE *stream, struct lyxml_elem *elem, int UNUSED(options))
+int lyxml_dump(FILE *stream, struct lyxml_elem *elem, int UNUSED(options))
 {
 	if (!elem) {
 		return 0;

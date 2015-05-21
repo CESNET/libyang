@@ -21,9 +21,14 @@ set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
 
 set(src
 	src/common.c
+	src/context.c
 	src/log.c
 	src/dict.c
-	src/xml.c)
+	src/xml.c
+	src/yin.c
+	src/tree.c
+	src/print.c
+	src/yang_types.c)
 
 add_library(yang SHARED ${src})
 set_target_properties(yang PROPERTIES VERSION 0.1.0 SOVERSION 0.1)

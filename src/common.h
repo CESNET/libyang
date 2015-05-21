@@ -47,6 +47,9 @@ extern int ly_errno;
 #define LY_EINVAL    1 /* Invalid argument */
 #define LY_EEOF      2 /* Input end */
 #define LY_EWELLFORM 3 /* Not a well formed data */
+#define LY_EVALID    4 /* Not a valid data */
+#define LY_ESYS      5 /* system function error */
+#define LY_EFATAL    6 /* Fatal error */
 
 /*
  * logger

@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 
+#include <stdio.h>
+
 /**
  * @defgroup xmlparser XML Parser
  * @{
@@ -88,11 +90,9 @@ struct lyxml_attr {
  *
  * If the name item is NULL, then the content is part of the mixed content.
  *
- * Children elements are connected in a ring doubly linked list. Therefore,
- * next and prev are never NULL, if there is only one child, the next and prev
- * points to itself. The first child is where the child points to. The last
- * child (where a new element is being added) is at prev pointer of the first
- * child.
+ * Children elements are connected in a half ring doubly linked list:
+ * - first's prev pointer points to the last children
+ * - last's next pointer is NULL
  */
 struct lyxml_elem {
 	struct lyxml_elem *next;   /**< next sibling node */
@@ -122,7 +122,8 @@ struct lyxml_elem {
  * @param[in] options Parser options. Currently ignored, no option defined yet.
  * @return pointer to root of the parsed XML document tree.
  */
-struct lyxml_elem* lyxml_read(const char *data, int options);
+struct lyxml_elem* lyxml_read(struct ly_ctx *ctx, const char *data,
+                              int options);
 
 /**
  * @brief Parse XML from file descriptor
@@ -131,7 +132,7 @@ struct lyxml_elem* lyxml_read(const char *data, int options);
  * @param[in] options Parser options. Currently ignored, no option defined yet.
  * @return pointer to root of the parsed XML document tree.
  */
-struct lyxml_elem* lyxml_read_fd(int fd, int options);
+struct lyxml_elem* lyxml_read_fd(struct ly_ctx *ctx, int fd, int options);
 
 /**
  * @brief Parse XML from filesystem
@@ -140,7 +141,8 @@ struct lyxml_elem* lyxml_read_fd(int fd, int options);
  * @param[in] options Parser options. Currently ignored, no option defined yet.
  * @return pointer to root of the parsed XML document tree.
  */
-struct lyxml_elem* lyxml_read_file(const char* filename, int options);
+struct lyxml_elem* lyxml_read_file(struct ly_ctx *ctx, const char* filename,
+                                   int options);
 
 /**
  * @brief Dump XML tree to a IO stream
@@ -169,6 +171,12 @@ int lyxml_dump(FILE *stream, struct lyxml_elem *elem, int options);
 int lyxml_add_attr(struct lyxml_elem *parent, struct lyxml_attr *attr);
 
 /**
+ * @brief Get value of the attribute in the specified element.
+ */
+const char *lyxml_get_attr(struct lyxml_elem *elem, const char *name,
+                           const char *ns);
+
+/**
  * @brief Add a child element into a parent element.
  *
  * The child is added as a last child.
@@ -183,9 +191,10 @@ int lyxml_add_child(struct lyxml_elem *parent, struct lyxml_elem *child);
  * @brief Free attribute. Includes unlinking from an element if the attribute
  * is placed anywhere.
  *
+ * @param[in] ctx libyang context to use
  * @param[in] attr Attribute to free.
  */
-void lyxml_free_attr(struct lyxml_attr *attr);
+void lyxml_free_attr(struct ly_ctx *ctx, struct lyxml_attr *attr);
 
 /**
  * @brief Free (and unlink from their element) all attributes (including
@@ -193,15 +202,16 @@ void lyxml_free_attr(struct lyxml_attr *attr);
  *
  * @param[in] elem Element to modify.
  */
-void lyxml_free_attrs(struct lyxml_elem *elem);
+void lyxml_free_attrs(struct ly_ctx *ctx, struct lyxml_elem *elem);
 
 /**
  * @brief Free (and unlink from the XML tree) the specified element with all
  * its attributes and namespace definitions.
  *
+ * @param[in] ctx libyang context to use
  * @param[in] elem Pointer to the element to free.
  */
-void lyxml_free_elem(struct lyxml_elem* elem);
+void lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem* elem);
 
 /**
  * @brief Unlink the attribute from its parent element. In contrast to

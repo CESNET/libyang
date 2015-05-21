@@ -26,20 +26,42 @@
 
 #include "common.h"
 #include "dict.h"
+#include "context.h"
 
-struct dict_rec {
-	char *value;
-	uint32_t refcount;
-	struct dict_rec *next;
-};
+void lydict_init(struct dict_table *dict)
+{
+	if (!dict) {
+		ly_errno = LY_EINVAL;
+		return;
+	}
 
-#define DICT_SIZE 1024
-struct dict_table {
-	struct dict_rec recs[DICT_SIZE];
-	int hash_mask;
-	uint32_t used;
-};
-static struct dict_table dict = {{{ 0 }}, DICT_SIZE - 1, 0};
+	dict->hash_mask = DICT_SIZE - 1;
+}
+
+void lydict_clean(struct dict_table *dict)
+{
+	int i;
+	struct dict_rec *chain, *rec;
+
+	if (!dict) {
+		ly_errno = LY_EINVAL;
+		return;
+	}
+
+	for (i = 0; i < DICT_SIZE; i++) {
+		rec = &dict->recs[i];
+		chain = rec->next;
+
+		free(rec->value);
+		while(chain) {
+			rec = chain;
+			chain = rec->next;
+
+			free(rec->value);
+			free(rec);
+		}
+	}
+}
 
 /*
  * Bob Jenkin's one-at-a-time hash
@@ -63,20 +85,20 @@ static uint32_t dict_hash(const char *key, size_t len)
     return hash;
 }
 
-void lydict_remove(const char *value)
+void lydict_remove(struct ly_ctx *ctx, const char *value)
 {
 	size_t len;
 	uint32_t index;
 	struct dict_rec *record, *prev = NULL;
 
-	if (!value) {
+	if (!ctx || !value) {
 		return;
 	}
 
 	len = strlen(value);
 
-	index = dict_hash(value, len) & dict.hash_mask;
-	record = &dict.recs[index];
+	index = dict_hash(value, len) & ctx->dict.hash_mask;
+	record = &ctx->dict.recs[index];
 
 	while (record && record->value != value) {
 		prev = record;
@@ -106,17 +128,20 @@ void lydict_remove(const char *value)
 			/* removing last record from the dynamically allocated chain */
 			prev->next = NULL;
 			free(record);
+		} else {
+			/* clean the static record content */
+			memset(record, 0, sizeof *record);
 		}
 	}
 }
 
-static char *dict_insert(char *value, size_t len, int zerocopy)
+static char *dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
 {
 	uint32_t index;
 	struct dict_rec *record, *new;
 
-	index = dict_hash(value, len) & dict.hash_mask;
-	record = &dict.recs[index];
+	index = dict_hash(value, len) & ctx->dict.hash_mask;
+	record = &ctx->dict.recs[index];
 
 	if (!record->value) {
 		/* first record with this hash */
@@ -174,20 +199,20 @@ static char *dict_insert(char *value, size_t len, int zerocopy)
 	return new->value;
 }
 
-char *lydict_insert(const char *value, size_t len)
+char *lydict_insert(struct ly_ctx *ctx, const char *value, size_t len)
 {
 	if (!value || !len) {
 		return NULL;
 	}
-	return dict_insert((char *)value, len, 0);
+	return dict_insert(ctx, (char *)value, len, 0);
 }
 
-char *lydict_insert_zc(char *value)
+char *lydict_insert_zc(struct ly_ctx *ctx, char *value)
 {
 	int len;
 
 	if (!value || !(len = strlen(value))) {
 		return NULL;
 	}
-	return dict_insert((char *)value, len, 1);
+	return dict_insert(ctx, (char *)value, len, 1);
 }
