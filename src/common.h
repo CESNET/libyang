@@ -61,5 +61,12 @@ void ly_log(LY_VERB_LEVEL level, int errno_, const char *format, ...);
 #define LY_VRB(str,args...) if(ly_verb_level>=LY_VERB_VRB){ly_log(LY_VERB_VRB,0,str,##args);}
 #define LY_DBG(str,args...) if(ly_verb_level>=LY_VERB_DBG){ly_log(LY_VERB_DBG,0,str,##args);}
 
+enum LY_VERR {
+	LY_VERR_UNEXP_STMT,
+	LY_VERR_MISS_STMT1,
+	LY_VERR_MISS_STMT2,
+	LY_VERR_MISS_ARG
+};
+void ly_verr(enum LY_VERR code, ...);
 
 #endif /* LY_COMMON_H_ */

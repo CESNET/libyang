@@ -637,15 +637,7 @@ struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data)
 	/* check root element */
 	if (!yin->name || strcmp(yin->name, "module")) {
 		/* TODO: support submodules */
-		LY_ERR(LY_EVALID, "Expected \"module\" element, but have \"%s\".");
-		goto error;
-	}
-
-	/* check its namespace */
-	if (!yin->ns || !yin->ns->value || strcmp(yin->ns->value, LY_NSYIN)) {
-		LY_ERR(LY_EVALID,
-		       "Invalid namespace of the \"module\" element, \"" LY_NSYIN
-		       "\" expected.");
+		ly_verr(LY_VERR_UNEXP_STMT, yin->name);
 		goto error;
 	}
 
@@ -739,6 +731,17 @@ struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data)
 			lyxml_free_elem(ctx, node);
 		}
 	}
+
+	/* check for mandatory statements */
+	if (!module->ns) {
+		ly_verr(LY_VERR_MISS_STMT2, "namespace", "module");
+		goto error;
+	}
+	if (!module->prefix) {
+		ly_verr(LY_VERR_MISS_STMT2, "prefix", "module");
+		goto error;
+	}
+
 
 	/* allocate arrays for elements with cardinality of 0..n */
 	if (c_imp) {

@@ -55,3 +55,30 @@ void ly_log(LY_VERB_LEVEL level, int errno_, const char *format, ...)
 	log_vprintf(level, format, ap);
 	va_end(ap);
 }
+
+struct {
+	LY_VERB_LEVEL level; /* verbose level */
+	const char *fmt;     /* format string to be printed */
+} verrs[] = {
+		{LY_VERB_ERR,    /* LY_VERR_UNEXP_STMT */
+		"Unexpected keyword \"%s\"."},
+		{LY_VERB_ERR,    /* LY_VERR_MISS_STMT1 */
+		"Missing keyword \"%s\"."},
+		{LY_VERB_ERR,    /* LY_VERR_MISS_STMT2 */
+		"Missing keyword \"%s\" as child to \"%s\"."},
+		{LY_VERB_ERR,    /* LY_VERR_MISS_ARG */
+		"Missing argument \"%s\" to keyword \"%s\"."},
+};
+
+void ly_verr(enum LY_VERR code, ...)
+{
+	va_list ap;
+
+	if (verrs[code].level == LY_VERB_ERR) {
+		ly_errno = LY_EVALID;
+	}
+
+	va_start(ap, code);
+	log_vprintf(verrs[code].level, verrs[code].fmt, ap);
+	va_end(ap);
+}
