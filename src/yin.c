@@ -709,25 +709,45 @@ struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data)
 
 		/* optional statements */
 		} else if (!strcmp(node->name, "description")) {
+			if (module->dsc) {
+				ly_verr(LY_VERR_TOOMANY, "description", "module");
+				goto error;
+			}
 			module->dsc = read_yin_text(ctx, node, "description");
 			lyxml_free_elem(ctx, node);
 		} else if (!strcmp(node->name, "reference")) {
+			if (module->ref) {
+				ly_verr(LY_VERR_TOOMANY, "reference", "module");
+				goto error;
+			}
 			module->ref = read_yin_text(ctx, node, "reference");
 			lyxml_free_elem(ctx, node);
 		} else if (!strcmp(node->name, "organization")) {
+			if (module->org) {
+				ly_verr(LY_VERR_TOOMANY, "organization", "module");
+				goto error;
+			}
 			module->org = read_yin_text(ctx, node, "organization");
 			lyxml_free_elem(ctx, node);
 		} else if (!strcmp(node->name, "contact")) {
+			if (module->contact) {
+				ly_verr(LY_VERR_TOOMANY, "contact", "module");
+				goto error;
+			}
 			module->contact = read_yin_text(ctx, node, "contact");
 			lyxml_free_elem(ctx, node);
 		} else if (!strcmp(node->name, "yang-version")) {
 			/* TODO: support YANG 1.1 */
-			value = lyxml_get_attr(node, "value", NULL);
-			if (strcmp(value, "1")) {
-				LY_ERR(LY_EVALID, "%s: Invalid \"yang-version\" value.", module->name);
+			if (module->version) {
+				ly_verr(LY_VERR_TOOMANY, "yang-version", "module");
 				goto error;
 			}
-			module->version = 0;
+			value = lyxml_get_attr(node, "value", NULL);
+			if (strcmp(value, "1")) {
+				ly_verr(LY_VERR_UNEXP_ARG, value, "yang-version");
+				goto error;
+			}
+			module->version = 1;
 			lyxml_free_elem(ctx, node);
 		}
 	}

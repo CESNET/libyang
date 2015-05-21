@@ -118,7 +118,7 @@ struct ly_module {
 	char *name;             /**< name of the module */
 	char *ns;               /**< namespace of the module */
 	char *prefix;           /**< prefix of the module */
-	uint8_t version;        /**< yang-version: 0 = 1.0, 1 = 1.1*/
+	uint8_t version;        /**< yang-version: 1 = 1.0, 2 = 1.1 */
 
 #define LY_REV_SIZE 11
 	int imp_size;           /**< number of elements in imp array */

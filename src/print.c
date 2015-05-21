@@ -266,12 +266,13 @@ API int ly_model_print(FILE *f, struct ly_module *module, LY_MFORMAT format)
 
 	fprintf(f, "module %s {\n", module->name);
 	level++;
-	/*
+
 	fprintf(f, "%*snamespace \"%s\";\n", LEVEL, INDENT, module->ns);
 	fprintf(f, "%*sprefix \"%s\";\n", LEVEL, INDENT, module->prefix);
-	*/
-	yang_print_text(f, level, "namespace", module->ns);
-	yang_print_text(f, level, "prefix", module->prefix);
+
+	if (module->version) {
+		fprintf(f, "%*syang-version \"%s\";\n", LEVEL, INDENT, module->version == 1 ? "1.0" : "1.1");
+	}
 
 	for (i = 0; i < module->imp_size; i++) {
 		fprintf(f, "%*simport \"%s\" {\n", LEVEL, INDENT,

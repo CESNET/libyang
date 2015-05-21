@@ -68,6 +68,10 @@ struct {
 		"Missing keyword \"%s\" as child to \"%s\"."},
 		{LY_VERB_ERR,    /* LY_VERR_MISS_ARG */
 		"Missing argument \"%s\" to keyword \"%s\"."},
+		{LY_VERB_ERR,    /* LY_VERR_TOOMANY */
+		"Too many instances of \"%s\" in \"%s\"."},
+		{LY_VERB_ERR,    /* LY_VERR_UNEXP_ARG */
+		"Unexpected value \"%s\" of \"%s\"."}
 };
 
 void ly_verr(enum LY_VERR code, ...)
