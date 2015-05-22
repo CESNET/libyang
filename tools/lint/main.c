@@ -135,5 +135,9 @@ cleanup:
 	munmap(addr, sb.st_size);
 	close(fd);
 
+	if (output && output != stdout) {
+		fclose(output);
+	}
+
 	return ret;
 }
