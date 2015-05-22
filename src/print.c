@@ -94,7 +94,7 @@ static void yang_print_mnode_common2(FILE *f, int level, struct ly_mnode *mnode)
 	yang_print_mnode_common(f, level, mnode);
 }
 
-static void yang_print_type(FILE *f, int level, struct ly_type *type)
+static void yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *type)
 {
 	int i;
 
@@ -115,6 +115,13 @@ static void yang_print_type(FILE *f, int level, struct ly_type *type)
 			fprintf(f, "%*s}\n", LEVEL, INDENT);
 		}
 		break;
+	case LY_TYPE_IDENT:
+		if (module == type->info.ident.ref->module) {
+			fprintf(f, "%*sbase %s;\n", LEVEL, INDENT, type->info.ident.ref->name);
+		} else {
+			fprintf(f, "%*sbase %s:%s;\n", LEVEL, INDENT, type->info.ident.ref->module->prefix, type->info.ident.ref->name);
+		}
+		break;
 	default:
 		/* TODO other cases */
 		break;
@@ -123,13 +130,13 @@ static void yang_print_type(FILE *f, int level, struct ly_type *type)
 	fprintf(f, "%*s}\n", LEVEL, INDENT);
 }
 
-static void yang_print_typedef(FILE *f, int level, struct ly_tpdf *tpdf)
+static void yang_print_typedef(FILE *f, int level, struct ly_module *module, struct ly_tpdf *tpdf)
 {
 	fprintf(f, "%*stypedef %s {\n", LEVEL, INDENT, tpdf->name);
 	level++;
 
 	yang_print_mnode_common(f, level, (struct ly_mnode *)tpdf);
-	yang_print_type(f, level, &tpdf->type);
+	yang_print_type(f, level, module, &tpdf->type);
 
 	level--;
 	fprintf(f, "%*s}\n", LEVEL, INDENT);
@@ -165,7 +172,7 @@ static void yang_print_container(FILE *f, int level, struct ly_mnode *mnode)
 	yang_print_mnode_common2(f, level, mnode);
 
 	for (i = 0; i < cont->tpdf_size; i++) {
-		yang_print_typedef(f, level, &cont->tpdf[i]);
+		yang_print_typedef(f, level, mnode->module, &cont->tpdf[i]);
 	}
 
 	LY_TREE_FOR(mnode->child, sub) {
@@ -200,7 +207,7 @@ static void yang_print_leaf(FILE *f, int level, struct ly_mnode *mnode)
 	fprintf(f, "%*sleaf %s {\n", LEVEL, INDENT, mnode->name);
 	level++;
 	yang_print_mnode_common2(f, level, mnode);
-	yang_print_type(f, level, &leaf->type);
+	yang_print_type(f, level, mnode->module, &leaf->type);
 	level--;
 	fprintf(f, "%*s}\n", LEVEL, INDENT);
 }
@@ -212,7 +219,7 @@ static void yang_print_leaflist(FILE *f, int level, struct ly_mnode *mnode)
 	fprintf(f, "%*sleaf-list %s {\n", LEVEL, INDENT, mnode->name);
 	level++;
 	yang_print_mnode_common2(f, level, mnode);
-	yang_print_type(f, level, &llist->type);
+	yang_print_type(f, level, mnode->module, &llist->type);
 	level--;
 	fprintf(f, "%*s}\n", LEVEL, INDENT);
 }
@@ -228,7 +235,7 @@ static void yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
 	yang_print_mnode_common2(f, level, mnode);
 
 	for (i = 0; i < list->tpdf_size; i++) {
-		yang_print_typedef(f, level, &list->tpdf[i]);
+		yang_print_typedef(f, level, list->module, &list->tpdf[i]);
 	}
 
 	LY_TREE_FOR(mnode->child, sub) {
@@ -251,7 +258,7 @@ static void yang_print_grouping(FILE *f, int level, struct ly_mnode *mnode)
 	yang_print_mnode_common(f, level, mnode);
 
 	for (i = 0; i < grp->tpdf_size; i++) {
-		yang_print_typedef(f, level, &grp->tpdf[i]);
+		yang_print_typedef(f, level, mnode->module, &grp->tpdf[i]);
 	}
 
 	LY_TREE_FOR(mnode->child, node) {
@@ -363,7 +370,7 @@ API int ly_model_print(FILE *f, struct ly_module *module, LY_MFORMAT format)
 	}
 
 	for (i = 0; i < module->tpdf_size; i++) {
-		yang_print_typedef(f, level, &module->tpdf[i]);
+		yang_print_typedef(f, level, module, &module->tpdf[i]);
 	}
 
 	LY_TREE_FOR(module->data, mnode) {

@@ -144,6 +144,117 @@ static struct ly_tpdf *find_superior_type(const char *name,
 	return NULL;
 }
 
+static struct ly_ident *find_base_ident(struct ly_module *module, struct ly_ident *ident, const char *basename)
+{
+	const char *name;
+	int prefix_len = 0;
+	int i, found = 0;
+	struct ly_ident *base_iter;
+	struct ly_ident_der *der;
+
+	if (!basename) {
+		ly_verr(LY_VERR_MISS_ARG, "name", "base");
+		return NULL;
+	}
+
+	/* search for the base identity */
+	name = strchr(basename, ':');
+	if (name) {
+		/* set name to correct position after colon */
+		prefix_len = name - basename;
+		name++;
+
+		if (!strncmp(basename, module->prefix, prefix_len) && !module->prefix[prefix_len]) {
+			/* prefix refers to the current module, ignore it */
+			prefix_len = 0;
+		}
+	} else {
+		name = basename;
+	}
+
+	if (prefix_len) {
+		/* get module where to search */
+		for (i = 0; i < module->imp_size; i++) {
+			if (!strncmp(module->imp[i].prefix, basename, prefix_len)
+					&& !module->imp[i].prefix[prefix_len]) {
+				module = module->imp[i].module;
+				found = 1;
+				break;
+			}
+		}
+		if (!found) {
+			/* identity refers unknown data model */
+			ly_verr(LY_VERR_UNEXP_PREFIX, basename);
+			return NULL;
+		}
+	}
+
+	/* search in the identified module */
+	/* TODO what about submodules? */
+	for (i = 0; i < module->ident_size; i++) {
+		if (!strcmp(name, module->ident[i].name)) {
+			/* we are done */
+
+			if (!ident) {
+				/* just search for type, so do not modify anything, just return
+				 * the base identity pointer
+				 */
+				return &module->ident[i];
+			}
+
+			/* we are resolving identity definition, so now update structures */
+			ident->base = base_iter = &module->ident[i];
+
+			while (base_iter) {
+				for (der = base_iter->der; der && der->next; der = der->next);
+				if (der) {
+					der->next = malloc(sizeof *der);
+					der = der->next;
+				} else {
+					ident->base->der = der = malloc(sizeof *der);
+				}
+				der->next = NULL;
+				der->ident = ident;
+
+				base_iter = base_iter->base;
+			}
+			return ident->base;
+		}
+	}
+
+	ly_verr(LY_VERR_UNEXP_VAL, basename, ident ? "identity" : "type");
+	return NULL;
+}
+
+static int fill_yin_identity(struct ly_module *module, struct lyxml_elem *yin, struct ly_ident *ident)
+{
+	struct lyxml_elem *node, *next;
+
+	if (read_yin_common(module, NULL, (struct ly_mnode *)ident, yin, 0)) {
+		return EXIT_FAILURE;
+	}
+	ident->module = module;
+
+	LY_TREE_FOR_SAFE(yin->child, next, node) {
+		if (!strcmp(node->name, "base")) {
+			if (ident->base) {
+				ly_verr(LY_VERR_TOOMANY, "base", "identity");
+				return EXIT_FAILURE;
+			}
+			if (!find_base_ident(module, ident, lyxml_get_attr(node, "name", NULL))) {
+				return EXIT_FAILURE;
+			}
+		} else {
+			ly_verr(LY_VERR_UNEXP_STMT, node->name, "identity");
+			return EXIT_FAILURE;
+		}
+
+		lyxml_free_elem(module->ctx, node);
+	}
+
+	return EXIT_SUCCESS;
+}
+
 static int fill_yin_type(struct ly_module *module, struct ly_mnode *parent,
                          struct lyxml_elem *yin, struct ly_type *type)
 {
@@ -164,7 +275,8 @@ static int fill_yin_type(struct ly_module *module, struct ly_mnode *parent,
 	switch (type->base) {
 	case LY_TYPE_BINARY:
 		/* length, 9.4.4
-		 * - optional, 0..1, rekurzivni - omezuje, string (podobne jako range), hodnoty se musi vejit do 64b, podelementy
+		 * - optional, 0..1, rekurzivni - omezuje, string (podobne jako range),
+		 * hodnoty se musi vejit do 64b, podelementy
 		 */
 		break;
 	case LY_TYPE_BITS:
@@ -179,10 +291,7 @@ static int fill_yin_type(struct ly_module *module, struct ly_mnode *parent,
 		break;
 	case LY_TYPE_ENUM:
 		/* RFC 6020 9.6 */
-		if (type->der->module) {
-			ly_verr(LY_VERR_BAD_RESTR, "enum");
-			goto error;
-		}
+
 		/* get enum specification, at least one must be present */
 		LY_TREE_FOR_SAFE(yin->child, next, node) {
 			if (!strcmp(node->name, "enum")) {
@@ -269,8 +378,25 @@ static int fill_yin_type(struct ly_module *module, struct ly_mnode *parent,
 		}
 		break;
 	case LY_TYPE_IDENT:
-		/* base, 9.10.2
-		 * - 1, nerekurzivni. string */
+		/* RFC 6020 9.10 */
+
+		/* get base specification, exactly one must be present */
+		if (!yin->child) {
+			ly_verr(LY_VERR_MISS_STMT2, "base", "type");
+			goto error;
+		}
+		if (strcmp(yin->child->name, "base")) {
+			ly_verr(LY_VERR_UNEXP_STMT, yin->child->name);
+			goto error;
+		}
+		if (yin->child->next) {
+			ly_verr(LY_VERR_UNEXP_STMT, yin->child->next->name);
+			goto error;
+		}
+		type->info.ident.ref = find_base_ident(module, NULL, lyxml_get_attr(yin->child, "name", NULL));
+		if (!type->info.ident.ref) {
+			return EXIT_FAILURE;
+		}
 		break;
 	case LY_TYPE_INST:
 		/* require-instance, 9.13.2
@@ -430,100 +556,6 @@ static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 			/* default config is true */
 			mnode->flags |= LY_NODE_CONFIG_W;
 		}
-	}
-
-	return EXIT_SUCCESS;
-}
-
-static int fill_yin_identity(struct ly_module *module, struct lyxml_elem *yin, struct ly_ident *ident)
-{
-	const char *basename;
-	struct lyxml_elem *node, *next;
-	const char *name;
-	int prefix_len = 0;
-	int i, found = 0;
-	struct ly_ident *bident;
-	struct ly_ident_der *der;
-
-	if (read_yin_common(module, NULL, (struct ly_mnode *)ident, yin, 0)) {
-		return EXIT_FAILURE;
-	}
-	ident->module = module;
-
-	LY_TREE_FOR_SAFE(yin->child, next, node) {
-		if (!strcmp(node->name, "base")) {
-			if (ident->base) {
-				ly_verr(LY_VERR_TOOMANY, "base", "identity");
-				return EXIT_FAILURE;
-			}
-
-			basename = lyxml_get_attr(node, "name", NULL);
-
-			/* search for the base identity */
-			name = strchr(basename, ':');
-			if (name) {
-				/* set name to correct position after colon */
-				prefix_len = name - basename;
-				name++;
-
-				if (!strncmp(basename, module->prefix, prefix_len) && !module->prefix[prefix_len]) {
-					/* prefix refers to the current module, ignore it */
-					prefix_len = 0;
-				}
-			} else {
-				name = basename;
-			}
-
-			if (prefix_len) {
-				/* get module where to search */
-				for (i = 0; i < module->imp_size; i++) {
-					if (!strncmp(module->imp[i].prefix, basename, prefix_len)
-							&& !module->imp[i].prefix[prefix_len]) {
-						module = module->imp[i].module;
-						found = 1;
-						break;
-					}
-				}
-				if (!found) {
-					/* identity refers unknown data model */
-					ly_verr(LY_VERR_UNEXP_PREFIX, basename);
-					return EXIT_FAILURE;
-				}
-			}
-
-			/* search in the identified module */
-			/* TODO what about submodules? */
-			found = 0;
-			for (i = 0; i < module->ident_size; i++) {
-				if (!strcmp(name, module->ident[i].name)) {
-					/* we are done, now update structures */
-					found = 1;
-
-					ident->base = bident = &module->ident[i];
-
-					while (bident) {
-						for (der = bident->der; der && der->next; der = der->next);
-						if (der) {
-							der->next = malloc(sizeof *der);
-							der = der->next;
-						} else {
-							ident->base->der = der = malloc(sizeof *der);
-						}
-						der->next = NULL;
-						der->ident = ident;
-
-						bident = bident->base;
-					}
-					break;
-				}
-			}
-
-		} else {
-			ly_verr(LY_VERR_UNEXP_STMT, node->name, "identity");
-			return EXIT_FAILURE;
-		}
-
-		lyxml_free_elem(module->ctx, node);
 	}
 
 	return EXIT_SUCCESS;

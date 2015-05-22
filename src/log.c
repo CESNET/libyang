@@ -70,7 +70,7 @@ struct {
 		"Missing argument \"%s\" to keyword \"%s\"."},
 		{LY_VERB_ERR,    /* LY_VERR_TOOMANY */
 		"Too many instances of \"%s\" in \"%s\"."},
-		{LY_VERB_ERR,    /* LY_VERR_UNEXP_ARG */
+		{LY_VERB_ERR,    /* LY_VERR_UNEXP_VAL */
 		"Unexpected value \"%s\" of \"%s\"."},
 		{LY_VERB_ERR,    /* LY_VERR_BAD_RESTR */
 		"Restriction \"%s\" not allowed for this base type."},

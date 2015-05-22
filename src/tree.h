@@ -127,8 +127,7 @@ struct ly_type {
 
 		/* LY_TYPE_IDENT */
 		struct {
-			char *base;
-			struct ly_ident *ident;
+			struct ly_ident *ref;
 		} ident;
 
 		/* LY_TYPE_INST */
