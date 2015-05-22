@@ -43,6 +43,7 @@
 #include <stdint.h>
 
 typedef enum {
+	LY_UNKNOWN,
 	LY_YANG,
 	LY_YIN,
 } LY_MFORMAT;
@@ -83,23 +84,93 @@ struct ly_types {
 extern struct ly_types ly_types[LY_DATA_TYPE_COUNT];
 
 struct ly_type {
-	char *name;             /**< full (with prefix) name of the specified type*/
+	char *prefix;           /**< prefix for the type referenced in der pointer*/
+	LY_DATA_TYPE base;      /**< base type */
 	struct ly_tpdf *der;    /**< pointer to the superior type. If NULL,
 	                             structure describes one of the built-in type */
 
-	/* TODO */
+	union {
+		/* LY_TYPE_BINARY */
+		struct {
+			char* length;
+		} binary;
+
+		/* LY_TYPE_BITS */
+		struct {
+			struct {
+				char *value;
+				char *dsc;
+				char *ref;
+				uint8_t status;
+				uint32_t pos;
+			} *bit;
+			int count;
+		} bits;
+
+		/* LY_TYPE_DEC64 */
+		struct {
+			char *range;
+			int dig;
+		} dec64;
+
+		/* LY_TYPE_ENUM */
+		struct {
+			struct {
+				char *name;
+				char *dsc;
+				char *ref;
+				uint8_t status;
+				int32_t value;
+			} *list;
+			int count;
+		} enums;
+
+		/* LY_TYPE_IDENT */
+		struct {
+			char *base;
+		} ident;
+
+		/* LY_TYPE_INST */
+		struct {
+			int req; /* -1 not defined, 0 = false, 1 = true */
+		} inst;
+
+		/* LY_TYPE_*INT* */
+		struct {
+			char *range;
+		} num;
+
+		/* LY_TYPE_LEAFREF */
+		struct {
+			char *path;
+		} lref;
+
+		/* LY_TYPE_STRING */
+		struct {
+			char *length;
+			char **pattern;
+			int pat_count;
+		} str;
+
+		/* LY_TYPE_UNION */
+		struct {
+			struct ly_type *type;
+			int count;
+		};
+	} info;
 };
 
 struct ly_tpdf {
 	char *name;             /**< name of the module */
-	struct ly_module *module;
+	struct ly_module *module; /**< module where the data type is defined, NULL
+	                               in case of built-in type */
 	char *dsc;              /**< description */
 	char *ref;              /**< reference */
 	uint8_t flags;	        /**< only for LY_NODE_STATUS_ values */
 
-	LY_DATA_TYPE base;      /**< base type */
 	struct ly_type type;    /**< type restrictions and reference to a superior
-	                             type definition.  */
+	                             type definition. Empty in case of built-in
+	                             type */
 };
 
 typedef enum ly_node_type {
@@ -167,10 +238,10 @@ struct ly_module {
  */
 struct ly_mnode {
 	char *name;                /**< name argument */
-	struct ly_module *module;  /**< link to the node's data model */
 	char *dsc;                 /**< description statement */
 	char *ref;                 /**< reference statement */
 	uint8_t flags;
+	struct ly_module *module;  /**< link to the node's data model */
 
 	LY_NODE_TYPE nodetype;     /**< YANG statement */
 	struct ly_mnode *parent;
@@ -193,10 +264,10 @@ struct ly_mnode {
 
 struct ly_mnode_grp {
 	char *name;             /**< name of the module */
-	struct ly_module *module;
 	char *dsc;              /**< description */
 	char *ref;              /**< reference */
 	uint8_t flags;	        /**< only for LY_NODE_STATUS_ values */
+	struct ly_module *module;
 
 	LY_NODE_TYPE nodetype;     /**< YANG statement */
 	struct ly_mnode *parent;
@@ -213,10 +284,10 @@ struct ly_mnode_grp {
 
 struct ly_mnode_container {
 	char *name;                /**< name argument */
-	struct ly_module *module;  /**< link to the node's data model */
 	char *dsc;                 /**< description statement */
 	char *ref;                 /**< reference statement */
 	uint8_t flags;
+	struct ly_module *module;  /**< link to the node's data model */
 
 	LY_NODE_TYPE nodetype;     /**< YANG statement - LY_NODE_CONTAINER */
 	struct ly_mnode *parent;
@@ -234,10 +305,10 @@ struct ly_mnode_container {
 
 struct ly_mnode_choice {
 	char *name;                /**< name argument */
-	struct ly_module *module;  /**< link to the node's data model */
 	char *dsc;                 /**< description statement */
 	char *ref;                 /**< reference statement */
 	uint8_t flags;
+	struct ly_module *module;  /**< link to the node's data model */
 
 	LY_NODE_TYPE nodetype;     /**< YANG statement - LY_NODE_CHOICE */
 	struct ly_mnode *parent;
@@ -251,10 +322,10 @@ struct ly_mnode_choice {
 
 struct ly_mnode_leaf {
 	char *name;                /**< name argument */
-	struct ly_module *module;  /**< link to the node's data model */
 	char *dsc;                 /**< description statement */
 	char *ref;                 /**< reference statement */
 	uint8_t flags;
+	struct ly_module *module;  /**< link to the node's data model */
 
 	LY_NODE_TYPE nodetype;     /**< YANG statement - LY_NODE_LEAF */
 	struct ly_mnode *parent;
@@ -271,10 +342,10 @@ struct ly_mnode_leaf {
 
 struct ly_mnode_leaflist {
 	char *name;                /**< name argument */
-	struct ly_module *module;  /**< link to the node's data model */
 	char *dsc;                 /**< description statement */
 	char *ref;                 /**< reference statement */
 	uint8_t flags;
+	struct ly_module *module;  /**< link to the node's data model */
 
 	LY_NODE_TYPE nodetype;     /**< YANG statement - LY_NODE_LEAFLIST */
 	struct ly_mnode *parent;
@@ -291,10 +362,10 @@ struct ly_mnode_leaflist {
 
 struct ly_mnode_list {
 	char *name;                /**< name argument */
-	struct ly_module *module;  /**< link to the node's data model */
 	char *dsc;                 /**< description statement */
 	char *ref;                 /**< reference statement */
 	uint8_t flags;
+	struct ly_module *module;  /**< link to the node's data model */
 
 	LY_NODE_TYPE nodetype;     /**< YANG statement - LY_NODE_LIST */
 	struct ly_mnode *parent;

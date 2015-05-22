@@ -19,7 +19,7 @@ set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -fvisibility=hidden")
 set(CMAKE_C_FLAGS_RELEASE "-O2")
 set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
 
-set(src
+set(libsrc
 	src/common.c
 	src/context.c
 	src/log.c
@@ -30,7 +30,10 @@ set(src
 	src/print.c
 	src/yang_types.c)
 
-add_library(yang SHARED ${src})
+set(lintsrc
+	tools/lint/main.c)
+
+add_library(yang SHARED ${libsrc})
 set_target_properties(yang PROPERTIES VERSION 0.1.0 SOVERSION 0.1)
 
 install(TARGETS yang DESTINATION ${LIB_INSTALL_DIR})
@@ -46,4 +49,7 @@ add_custom_target(cclean
                   COMMAND find . -iname '*cmake*' -not -name CMakeLists.txt -exec rm -rf {} +
                   COMMAND rm -rf Makefile
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_executable(yanglint ${lintsrc})
+target_link_libraries(yanglint yang)
 

@@ -135,6 +135,7 @@ API struct ly_module *ly_model_read(struct ly_ctx *ctx, const char *data,
 	case LY_YIN:
 		return ly_read_yin(ctx, data);
 	case LY_YANG:
+	default:
 		/* TODO */
 		return NULL;
 	}
@@ -167,13 +168,34 @@ API struct ly_module *ly_model_read_fd(struct ly_ctx *ctx, int fd,
 	return module;
 }
 
+void ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
+{
+	int i;
+
+	lydict_remove(ctx, type->prefix);
+
+	switch(type->base) {
+	case LY_TYPE_ENUM:
+		for (i = 0; i < type->info.enums.count; i++) {
+			lydict_remove(ctx, type->info.enums.list[i].name);
+			lydict_remove(ctx, type->info.enums.list[i].dsc);
+			lydict_remove(ctx, type->info.enums.list[i].ref);
+		}
+		free(type->info.enums.list);
+		break;
+	default:
+		/* TODO */
+		break;
+	}
+}
+
 void ly_tpdf_free(struct ly_ctx *ctx, struct ly_tpdf *tpdf)
 {
 	lydict_remove(ctx, tpdf->name);
 	lydict_remove(ctx, tpdf->dsc);
 	lydict_remove(ctx, tpdf->ref);
 
-	lydict_remove(ctx, tpdf->type.name);
+	ly_type_free(ctx, &tpdf->type);
 }
 
 void ly_grp_free(struct ly_ctx *ctx, struct ly_mnode_grp *grp)
@@ -187,6 +209,16 @@ void ly_grp_free(struct ly_ctx *ctx, struct ly_mnode_grp *grp)
 		}
 		free(grp->tpdf);
 	}
+}
+
+void ly_leaf_free(struct ly_ctx *ctx, struct ly_mnode_leaf *leaf)
+{
+	ly_type_free(ctx, &leaf->type);
+}
+
+void ly_leaflist_free(struct ly_ctx *ctx, struct ly_mnode_leaflist *llist)
+{
+	ly_type_free(ctx, &llist->type);
 }
 
 void ly_list_free(struct ly_ctx *ctx, struct ly_mnode_list *list)
@@ -225,7 +257,6 @@ void ly_mnode_free(struct ly_mnode *node)
 	}
 
 	ctx = node->module->ctx;
-	ly_mnode_unlink(node);
 
 	/* common part */
 	LY_TREE_FOR_SAFE(node->child, next, sub) {
@@ -244,8 +275,10 @@ void ly_mnode_free(struct ly_mnode *node)
 	case LY_NODE_CHOICE:
 		break;
 	case LY_NODE_LEAF:
+		ly_leaf_free(ctx, (struct ly_mnode_leaf *)node);
 		break;
 	case LY_NODE_LEAFLIST:
+		ly_leaflist_free(ctx, (struct ly_mnode_leaflist *)node);
 		break;
 	case LY_NODE_LIST:
 		ly_list_free(ctx, (struct ly_mnode_list *)node);
@@ -258,6 +291,9 @@ void ly_mnode_free(struct ly_mnode *node)
 		ly_grp_free(ctx, (struct ly_mnode_grp *)node);
 		break;
 	}
+
+	/* again common part */
+	ly_mnode_unlink(node);
 	free(node);
 }
 
@@ -272,6 +308,12 @@ API void ly_model_free(struct ly_module *module)
 	}
 
 	ctx = module->ctx;
+
+	while(module->data) {
+		mnode = module->data;
+		module->data = mnode;
+		ly_mnode_free(mnode);
+	}
 
 	lydict_remove(ctx, module->name);
 	lydict_remove(ctx, module->ns);
@@ -298,12 +340,6 @@ API void ly_model_free(struct ly_module *module)
 			ly_tpdf_free(ctx, &module->tpdf[i]);
 		}
 		free(module->tpdf);
-	}
-
-	while(module->data) {
-		mnode = module->data;
-		module->data = mnode;
-		ly_mnode_free(mnode);
 	}
 
 	free(module);
