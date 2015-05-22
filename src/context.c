@@ -37,6 +37,7 @@ API struct ly_ctx *ly_ctx_new(const char *search_dir)
 {
 	struct stat st;
 	struct ly_ctx *ctx;
+	char *cwd;
 
 	ctx = calloc(1, sizeof *ctx);
 	if (!ctx) {
@@ -66,7 +67,13 @@ API struct ly_ctx *ly_ctx_new(const char *search_dir)
 			return NULL;
 		}
 
-		ctx->models.search_path = strdup(search_dir);
+		if (search_dir) {
+			cwd = get_current_dir_name();
+			chdir(search_dir);
+			ctx->models.search_path = get_current_dir_name();
+			chdir(cwd);
+			free(cwd);
+		}
 	}
 
 	return ctx;
@@ -140,6 +147,10 @@ API struct ly_module *ly_ctx_get_model(struct ly_ctx *ctx, const char *name,
 	len = strlen(name);
 	cwd = get_current_dir_name();
 	dir = opendir(ctx->models.search_path);
+	if (!dir) {
+		fprintf(stderr, "%s \n %s \n (%s)", cwd, ctx->models.search_path, strerror(errno));
+		return (NULL);
+	}
 	chdir(ctx->models.search_path);
 	while ((file = readdir(dir))) {
 		if (strncmp(name, file->d_name, len)) {

@@ -128,6 +128,7 @@ struct ly_type {
 		/* LY_TYPE_IDENT */
 		struct {
 			char *base;
+			struct ly_ident *ident;
 		} ident;
 
 		/* LY_TYPE_INST */
@@ -217,6 +218,9 @@ struct ly_module {
 	int tpdf_size;          /**< number of elements in tpdf array */
 	struct ly_tpdf *tpdf;   /**< array of typedefs */
 
+	int ident_size;         /**< number of elements in ident array */
+	struct ly_ident *ident; /**< array if identities */
+
 	struct ly_mnode *data;  /**< first data statement */
 
 };
@@ -263,7 +267,7 @@ struct ly_mnode {
 };
 
 struct ly_mnode_grp {
-	char *name;             /**< name of the module */
+	char *name;             /**< name argument */
 	char *dsc;              /**< description */
 	char *ref;              /**< reference */
 	uint8_t flags;	        /**< only for LY_NODE_STATUS_ values */
@@ -382,6 +386,21 @@ struct ly_mnode_list {
 
 	int keys_size;          /**< number of elements in keys array */
 	struct ly_mnode **keys; /**< array of pointers to the keys */
+};
+
+struct ly_ident_der {
+	struct ly_ident *ident;
+	struct ly_ident_der *next;
+};
+struct ly_ident {
+	char *name;             /**< name argument */
+	char *dsc;              /**< description */
+	char *ref;              /**< reference */
+	uint8_t flags;	        /**< only for LY_NODE_STATUS_ values */
+	struct ly_module *module;  /**< link to the module of the identity */
+
+	struct ly_ident *base;  /**< pointer to the base identity */
+	struct ly_ident_der *der; /**< list of pointers to the derived identities */
 };
 
 #endif /* LY_TREE_H_ */

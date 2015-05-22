@@ -178,7 +178,7 @@ static int fill_yin_type(struct ly_module *module, struct ly_mnode *parent,
 		 * - optional, 0..1, rekurzivne - omezuje, string,  podelementy*/
 		break;
 	case LY_TYPE_ENUM:
-		/* RFC 6020 9.6.4 */
+		/* RFC 6020 9.6 */
 		if (type->der->module) {
 			ly_verr(LY_VERR_BAD_RESTR, "enum");
 			goto error;
@@ -430,6 +430,100 @@ static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 			/* default config is true */
 			mnode->flags |= LY_NODE_CONFIG_W;
 		}
+	}
+
+	return EXIT_SUCCESS;
+}
+
+static int fill_yin_identity(struct ly_module *module, struct lyxml_elem *yin, struct ly_ident *ident)
+{
+	const char *basename;
+	struct lyxml_elem *node, *next;
+	const char *name;
+	int prefix_len = 0;
+	int i, found = 0;
+	struct ly_ident *bident;
+	struct ly_ident_der *der;
+
+	if (read_yin_common(module, NULL, (struct ly_mnode *)ident, yin, 0)) {
+		return EXIT_FAILURE;
+	}
+	ident->module = module;
+
+	LY_TREE_FOR_SAFE(yin->child, next, node) {
+		if (!strcmp(node->name, "base")) {
+			if (ident->base) {
+				ly_verr(LY_VERR_TOOMANY, "base", "identity");
+				return EXIT_FAILURE;
+			}
+
+			basename = lyxml_get_attr(node, "name", NULL);
+
+			/* search for the base identity */
+			name = strchr(basename, ':');
+			if (name) {
+				/* set name to correct position after colon */
+				prefix_len = name - basename;
+				name++;
+
+				if (!strncmp(basename, module->prefix, prefix_len) && !module->prefix[prefix_len]) {
+					/* prefix refers to the current module, ignore it */
+					prefix_len = 0;
+				}
+			} else {
+				name = basename;
+			}
+
+			if (prefix_len) {
+				/* get module where to search */
+				for (i = 0; i < module->imp_size; i++) {
+					if (!strncmp(module->imp[i].prefix, basename, prefix_len)
+							&& !module->imp[i].prefix[prefix_len]) {
+						module = module->imp[i].module;
+						found = 1;
+						break;
+					}
+				}
+				if (!found) {
+					/* identity refers unknown data model */
+					ly_verr(LY_VERR_UNEXP_PREFIX, basename);
+					return EXIT_FAILURE;
+				}
+			}
+
+			/* search in the identified module */
+			/* TODO what about submodules? */
+			found = 0;
+			for (i = 0; i < module->ident_size; i++) {
+				if (!strcmp(name, module->ident[i].name)) {
+					/* we are done, now update structures */
+					found = 1;
+
+					ident->base = bident = &module->ident[i];
+
+					while (bident) {
+						for (der = bident->der; der && der->next; der = der->next);
+						if (der) {
+							der->next = malloc(sizeof *der);
+							der = der->next;
+						} else {
+							ident->base->der = der = malloc(sizeof *der);
+						}
+						der->next = NULL;
+						der->ident = ident;
+
+						bident = bident->base;
+					}
+					break;
+				}
+			}
+
+		} else {
+			ly_verr(LY_VERR_UNEXP_STMT, node->name, "identity");
+			return EXIT_FAILURE;
+		}
+
+		lyxml_free_elem(module->ctx, node);
 	}
 
 	return EXIT_SUCCESS;
@@ -882,7 +976,7 @@ struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data)
 	int r;
 	int i;
 	/* counters */
-	int c_imp = 0, c_rev = 0, c_tpdf = 0;
+	int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0;
 
 	yin = lyxml_read(ctx, data, 0);
 	if (!yin) {
@@ -951,6 +1045,8 @@ struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data)
 			c_rev++;
 		} else if (!strcmp(node->name, "typedef")) {
 			c_tpdf++;
+		} else if (!strcmp(node->name, "identity")) {
+			c_ident++;
 
 		/* data statements */
 		} else if (!strcmp(node->name, "container") ||
@@ -1034,6 +1130,11 @@ struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data)
 		module->tpdf = calloc(c_tpdf, sizeof *module->tpdf);
 		c_tpdf = 0;
 	}
+	if (c_ident) {
+		module->ident_size = c_ident;
+		module->ident = calloc(c_ident, sizeof *module->ident);
+		c_ident = 0;
+	}
 
 	/* middle part - process nodes with cardinality of 0..n except the data nodes */
 	LY_TREE_FOR_SAFE(yin->child, next, node) {
@@ -1077,6 +1178,15 @@ struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data)
 				module->tpdf_size = c_tpdf;
 				goto error;
 			}
+		} else if (!strcmp(node->name, "identity")) {
+			r = fill_yin_identity(module, node, &module->ident[c_ident]);
+			c_ident++;
+
+			if (r) {
+				module->ident_size = c_ident;
+				goto error;
+			}
+
 		}
 
 		lyxml_free_elem(ctx, node);

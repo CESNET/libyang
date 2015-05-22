@@ -135,6 +135,25 @@ static void yang_print_typedef(FILE *f, int level, struct ly_tpdf *tpdf)
 	fprintf(f, "%*s}\n", LEVEL, INDENT);
 }
 
+static void yang_print_identity(FILE *f, int level, struct ly_ident *ident)
+{
+	fprintf(f, "%*sidentity %s {\n", LEVEL, INDENT, ident->name);
+	level++;
+
+	yang_print_mnode_common(f, level, (struct ly_mnode *)ident);
+	if (ident->base) {
+		if (ident->base->module == ident->module) {
+			fprintf(f, "%*sbase %s;\n", LEVEL, INDENT, ident->base->name);
+		} else {
+			fprintf(f, "%*sbase %s:%s;\n", LEVEL, INDENT, ident->base->module->prefix, ident->base->name);
+		}
+	}
+
+	level--;
+	fprintf(f, "%*s}\n", LEVEL, INDENT);
+
+}
+
 static void yang_print_container(FILE *f, int level, struct ly_mnode *mnode)
 {
 	int i;
@@ -337,6 +356,10 @@ API int ly_model_print(FILE *f, struct ly_module *module, LY_MFORMAT format)
 		} else {
 			yang_print_text(f, level, "revision", module->rev[i].date);
 		}
+	}
+
+	for (i = 0; i < module->ident_size; i++) {
+		yang_print_identity(f, level, &module->ident[i]);
 	}
 
 	for (i = 0; i < module->tpdf_size; i++) {

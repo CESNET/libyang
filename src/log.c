@@ -79,7 +79,9 @@ struct {
 		{LY_VERB_ERR,    /* LY_VERR_ENUM_DUP_NAME */
 		"The enum name \"%s\" has already been assigned to another enum."},
 		{LY_VERB_ERR,    /* LY_VERR_ENUM_WS */
-		"The enum name \"%s\" includes invalid leading or trailing whitespaces."}
+		"The enum name \"%s\" includes invalid leading or trailing whitespaces."},
+		{LY_VERB_ERR,    /* LY_VERR_UNEXP_PREFIX */
+		"Prefix in \"%s\" refers to an unknown module."}
 };
 
 void ly_verr(enum LY_VERR code, ...)

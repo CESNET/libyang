@@ -198,6 +198,29 @@ void ly_tpdf_free(struct ly_ctx *ctx, struct ly_tpdf *tpdf)
 	ly_type_free(ctx, &tpdf->type);
 }
 
+void ly_ident_free(struct ly_ctx *ctx, struct ly_ident *ident)
+{
+	struct ly_ident_der *der;
+
+	/*
+	 * TODO
+	 * if caller free only a single data model which is used (its identity is
+	 * reference from identity in another module), this silly freeing can lead
+	 * to segmentation fault. But without noting if the module is used by some
+	 * other, it cannot be solved.
+	 */
+	while(ident->der) {
+		der = ident->der;
+		ident->der = der->next;
+		free(der);
+	}
+
+	lydict_remove(ctx, ident->name);
+	lydict_remove(ctx, ident->dsc);
+	lydict_remove(ctx, ident->ref);
+
+}
+
 void ly_grp_free(struct ly_ctx *ctx, struct ly_mnode_grp *grp)
 {
 	int i;
@@ -315,9 +338,6 @@ API void ly_model_free(struct ly_module *module)
 		ly_mnode_free(mnode);
 	}
 
-	lydict_remove(ctx, module->name);
-	lydict_remove(ctx, module->ns);
-	lydict_remove(ctx, module->prefix);
 	lydict_remove(ctx, module->dsc);
 	lydict_remove(ctx, module->ref);
 	lydict_remove(ctx, module->org);
@@ -331,8 +351,12 @@ API void ly_model_free(struct ly_module *module)
 		free(module->rev);
 	}
 
-	if (module->imp_size) {
-		free(module->imp);
+	if (module->ident_size) {
+		for (i = 0; i < module->ident_size; i++) {
+			ly_ident_free(ctx, &module->ident[i]);
+		}
+		free(module->ident);
+		module->ident_size = 0;
 	}
 
 	if (module->tpdf_size) {
@@ -341,6 +365,14 @@ API void ly_model_free(struct ly_module *module)
 		}
 		free(module->tpdf);
 	}
+
+	if (module->imp_size) {
+		free(module->imp);
+	}
+
+	lydict_remove(ctx, module->name);
+	lydict_remove(ctx, module->ns);
+	lydict_remove(ctx, module->prefix);
 
 	free(module);
 }
