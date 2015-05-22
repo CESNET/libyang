@@ -71,7 +71,15 @@ struct {
 		{LY_VERB_ERR,    /* LY_VERR_TOOMANY */
 		"Too many instances of \"%s\" in \"%s\"."},
 		{LY_VERB_ERR,    /* LY_VERR_UNEXP_ARG */
-		"Unexpected value \"%s\" of \"%s\"."}
+		"Unexpected value \"%s\" of \"%s\"."},
+		{LY_VERB_ERR,    /* LY_VERR_BAD_RESTR */
+		"Restriction \"%s\" not allowed for this base type."},
+		{LY_VERB_ERR,    /* LY_VERR_ENUM_DUP_VAL */
+		"The value \"%d\" of \"%s\" enum has already been assigned to another enum value."},
+		{LY_VERB_ERR,    /* LY_VERR_ENUM_DUP_NAME */
+		"The enum name \"%s\" has already been assigned to another enum."},
+		{LY_VERB_ERR,    /* LY_VERR_ENUM_WS */
+		"The enum name \"%s\" includes invalid leading or trailing whitespaces."}
 };
 
 void ly_verr(enum LY_VERR code, ...)

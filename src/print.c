@@ -96,7 +96,30 @@ static void yang_print_mnode_common2(FILE *f, int level, struct ly_mnode *mnode)
 
 static void yang_print_type(FILE *f, int level, struct ly_type *type)
 {
-	fprintf(f, "%*stype %s {\n", LEVEL, INDENT, type->name);
+	int i;
+
+	if (type->prefix) {
+		fprintf(f, "%*stype %s:%s {\n", LEVEL, INDENT, type->prefix, type->der->name);
+	} else {
+		fprintf(f, "%*stype %s {\n", LEVEL, INDENT, type->der->name);
+	}
+	level++;
+	switch (type->base) {
+	case LY_TYPE_ENUM:
+		for (i = 0; i < type->info.enums.count; i++) {
+			fprintf(f, "%*senum %s {\n", LEVEL, INDENT, type->info.enums.list[i].name);
+			level++;
+			yang_print_mnode_common(f, level, (struct ly_mnode *)&type->info.enums.list[i]);
+			fprintf(f, "%*svalue %d;\n", LEVEL, INDENT, type->info.enums.list[i].value);
+			level--;
+			fprintf(f, "%*s}\n", LEVEL, INDENT);
+		}
+		break;
+	default:
+		/* TODO other cases */
+		break;
+	}
+	level--;
 	fprintf(f, "%*s}\n", LEVEL, INDENT);
 }
 

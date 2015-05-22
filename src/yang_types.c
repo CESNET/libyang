@@ -29,8 +29,7 @@ struct ly_tpdf ly_type_binary = {
 		.dsc = "Any binary data",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_BINARY,
-		.type = {0}
+		.type = {.base = LY_TYPE_BINARY}
 };
 
 struct ly_tpdf ly_type_bits = {
@@ -39,8 +38,7 @@ struct ly_tpdf ly_type_bits = {
 		.dsc = "A set of bits or flags",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_BITS,
-		.type = {0}
+		.type = {.base = LY_TYPE_BITS}
 };
 
 struct ly_tpdf ly_type_bool = {
@@ -49,8 +47,7 @@ struct ly_tpdf ly_type_bool = {
 		.dsc = "true or false",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_BOOL,
-		.type = {0}
+		.type = {.base = LY_TYPE_BOOL}
 };
 
 struct ly_tpdf ly_type_dec64 = {
@@ -59,8 +56,7 @@ struct ly_tpdf ly_type_dec64 = {
 		.dsc = "64-bit signed decimal number",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_DEC64,
-		.type = {0}
+		.type = {.base = LY_TYPE_DEC64}
 };
 
 struct ly_tpdf ly_type_empty = {
@@ -69,8 +65,7 @@ struct ly_tpdf ly_type_empty = {
 		.dsc = "A leaf that does not have any value",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_EMPTY,
-		.type = {0}
+		.type = {.base = LY_TYPE_EMPTY}
 };
 
 struct ly_tpdf ly_type_enum = {
@@ -79,8 +74,7 @@ struct ly_tpdf ly_type_enum = {
 		.dsc = "Enumerated strings",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_ENUM,
-		.type = {0}
+		.type = {.base = LY_TYPE_ENUM}
 };
 
 struct ly_tpdf ly_type_ident = {
@@ -89,8 +83,7 @@ struct ly_tpdf ly_type_ident = {
 		.dsc = "A reference to an abstract identity",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_IDENT,
-		.type = {0}
+		.type = {.base = LY_TYPE_IDENT}
 };
 
 struct ly_tpdf ly_type_inst = {
@@ -99,8 +92,7 @@ struct ly_tpdf ly_type_inst = {
 		.dsc = "References a data tree node",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_INST,
-		.type = {0}
+		.type = {.base = LY_TYPE_INST}
 };
 
 struct ly_tpdf ly_type_int8 = {
@@ -109,8 +101,7 @@ struct ly_tpdf ly_type_int8 = {
 		.dsc = "8-bit signed integer",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_INT8,
-		.type = {0}
+		.type = {.base = LY_TYPE_INT8}
 };
 
 struct ly_tpdf ly_type_int16 = {
@@ -119,8 +110,7 @@ struct ly_tpdf ly_type_int16 = {
 		.dsc = "16-bit signed integer",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_INT16,
-		.type = {0}
+		.type = {.base = LY_TYPE_INT16}
 };
 
 struct ly_tpdf ly_type_int32 = {
@@ -129,8 +119,7 @@ struct ly_tpdf ly_type_int32 = {
 		.dsc = "32-bit signed integer",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_INT32,
-		.type = {0}
+		.type = {.base = LY_TYPE_INT32}
 };
 
 struct ly_tpdf ly_type_int64 = {
@@ -139,8 +128,7 @@ struct ly_tpdf ly_type_int64 = {
 		.dsc = "64-bit signed integer",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_INT64,
-		.type = {0}
+		.type = {.base = LY_TYPE_INT64}
 };
 
 struct ly_tpdf ly_type_leafref = {
@@ -149,8 +137,7 @@ struct ly_tpdf ly_type_leafref = {
 		.dsc = "A reference to a leaf instance",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_LEAFREF,
-		.type = {0}
+		.type = {.base = LY_TYPE_LEAFREF}
 };
 
 struct ly_tpdf ly_type_string = {
@@ -159,8 +146,7 @@ struct ly_tpdf ly_type_string = {
 		.dsc = "Human-readable string",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_STRING,
-		.type = {0}
+		.type = {.base = LY_TYPE_STRING}
 };
 
 struct ly_tpdf ly_type_uint8 = {
@@ -169,8 +155,7 @@ struct ly_tpdf ly_type_uint8 = {
 		.dsc = "8-bit unsigned integer",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_UINT8,
-		.type = {0}
+		.type = {.base = LY_TYPE_UINT8}
 };
 
 struct ly_tpdf ly_type_uint16 = {
@@ -179,8 +164,7 @@ struct ly_tpdf ly_type_uint16 = {
 		.dsc = "16-bit unsigned integer",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_UINT16,
-		.type = {0}
+		.type = {.base = LY_TYPE_UINT16}
 };
 
 struct ly_tpdf ly_type_uint32 = {
@@ -189,8 +173,7 @@ struct ly_tpdf ly_type_uint32 = {
 		.dsc = "32-bit unsigned integer",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_UINT32,
-		.type = {0}
+		.type = {.base = LY_TYPE_UINT32}
 };
 
 struct ly_tpdf ly_type_uint64 = {
@@ -199,8 +182,7 @@ struct ly_tpdf ly_type_uint64 = {
 		.dsc = "64-bit unsigned integer",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_UINT64,
-		.type = {0}
+		.type = {.base = LY_TYPE_UINT64}
 };
 
 struct ly_tpdf ly_type_union = {
@@ -209,8 +191,7 @@ struct ly_tpdf ly_type_union = {
 		.dsc = "Choice of member types",
 		.ref = "RFC 6020, section 4.2.4",
 		.flags = 0,
-		.base = LY_TYPE_UNION,
-		.type = {0}
+		.type = {.base = LY_TYPE_UNION}
 };
 
 struct ly_types ly_types[LY_DATA_TYPE_COUNT] = {

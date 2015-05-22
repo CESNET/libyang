@@ -129,6 +129,11 @@ API struct ly_module *ly_ctx_get_model(struct ly_ctx *ctx, const char *name,
 
 	/* not found in context, try to get it from the search directory */
 	if (!ctx->models.search_path) {
+		if (revision) {
+			LY_ERR(LY_EVALID, "Unknown data model \"%s\", revision \"%s\" (search path not specified)", name, revision);
+		} else {
+			LY_ERR(LY_EVALID, "Unknown data model \"%s\" (search path not specified)", name);
+		}
 		return NULL;
 	}
 
@@ -169,6 +174,10 @@ API struct ly_module *ly_ctx_get_model(struct ly_ctx *ctx, const char *name,
 	chdir(cwd);
 	free(cwd);
 	closedir(dir);
+
+	if (!m) {
+		LY_ERR(LY_EVALID, "Data model \"%s\" not found (search path is \"%s\")", ctx->models.search_path);
+	}
 
 	return m;
 }
