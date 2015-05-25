@@ -40,6 +40,7 @@ static struct ly_mnode *read_yin_container(struct ly_module *, struct ly_mnode *
 static struct ly_mnode *read_yin_leaf(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
 static struct ly_mnode *read_yin_leaflist(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
 static struct ly_mnode *read_yin_list(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
+static struct ly_mnode *read_yin_uses(struct ly_module *, struct ly_mnode *, struct lyxml_elem *, int);
 static struct ly_mnode *read_yin_grouping(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
 
 static char *read_yin_text(struct ly_ctx *ctx, struct lyxml_elem *node, const char *name)
@@ -743,6 +744,7 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 				!strcmp(sub->name, "leaf") ||
 				!strcmp(sub->name, "list") ||
 				!strcmp(sub->name, "choice") ||
+				!strcmp(sub->name, "uses") ||
 				!strcmp(sub->name, "grouping")) {
 			lyxml_unlink_elem(sub);
 			lyxml_add_child(&root, sub);
@@ -813,6 +815,8 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 			mnode = read_yin_list(module, retval, sub);
 		} else if (!strcmp(sub->name, "choice")) {
 			mnode = read_yin_choice(module, retval, sub);
+		} else if (!strcmp(sub->name, "uses")) {
+			mnode = read_yin_uses(module, retval, sub, 1);
 		} else if (!strcmp(sub->name, "grouping")) {
 			mnode = read_yin_grouping(module, retval, sub);
 		} else {
@@ -939,6 +943,7 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 				!strcmp(sub->name, "leaf") ||
 				!strcmp(sub->name, "list") ||
 				!strcmp(sub->name, "choice") ||
+				!strcmp(sub->name, "uses") ||
 				!strcmp(sub->name, "grouping")) {
 			lyxml_unlink_elem(sub);
 			lyxml_add_child(&root, sub);
@@ -981,6 +986,8 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 			mnode = read_yin_list(module, retval, sub);
 		} else if (!strcmp(sub->name, "choice")) {
 			mnode = read_yin_choice(module, retval, sub);
+		} else if (!strcmp(sub->name, "uses")) {
+			mnode = read_yin_uses(module, retval, sub, 1);
 		} else if (!strcmp(sub->name, "grouping")) {
 			mnode = read_yin_grouping(module, retval, sub);
 		} else {
@@ -1036,6 +1043,7 @@ static struct ly_mnode *read_yin_grouping(struct ly_module *module,
 				!strcmp(sub->name, "leaf") ||
 				!strcmp(sub->name, "list") ||
 				!strcmp(sub->name, "choice") ||
+				!strcmp(sub->name, "uses") ||
 				!strcmp(sub->name, "grouping")) {
 			lyxml_unlink_elem(sub);
 			lyxml_add_child(&root, sub);
@@ -1078,6 +1086,8 @@ static struct ly_mnode *read_yin_grouping(struct ly_module *module,
 			mnode = read_yin_list(module, retval, sub);
 		} else if (!strcmp(sub->name, "choice")) {
 			mnode = read_yin_choice(module, retval, sub);
+		} else if (!strcmp(sub->name, "uses")) {
+			mnode = read_yin_uses(module, retval, sub, 0);
 		} else if (!strcmp(sub->name, "grouping")) {
 			mnode = read_yin_grouping(module, retval, sub);
 		} else {
@@ -1101,6 +1111,116 @@ error:
 	while (root.child) {
 		lyxml_free_elem(module->ctx, root.child);
 	}
+
+	return NULL;
+}
+
+/*
+ * resolve - referenced grouping should be bounded to the namespace (resolved)
+ * only when uses does not appear in grouping. In a case of grouping's uses,
+ * we just get information but we do not apply augment or refine to it.
+ */
+static struct ly_mnode *read_yin_uses(struct ly_module *module,
+                                      struct ly_mnode *parent,
+                                      struct lyxml_elem *node, int resolve)
+{
+	struct ly_mnode *retval;
+	struct ly_mnode *mnode = NULL, *par;
+	struct ly_mnode_uses *uses;
+	struct ly_module *searchmod = NULL;
+	const char *name;
+	int prefix_len = 0;
+	int i;
+
+	uses = calloc(1, sizeof *uses);
+	uses->nodetype = LY_NODE_USES;
+	uses->module = module;
+	uses->prev = (struct ly_mnode *)uses;
+	retval = (struct ly_mnode *)uses;
+
+	if (read_yin_common(module, parent, retval, node, 0)) {
+		goto error;
+	}
+
+	/* get referenced grouping */
+	name = strchr(uses->name, ':');
+	if (!name) {
+		/* no prefix, search in local tree */
+		name = uses->name;
+	} else {
+		/* there is some prefix, check if it refer the same data model */
+
+		/* set name to correct position after colon */
+		prefix_len = name - uses->name;
+		name++;
+
+		if (!strncmp(uses->name, module->prefix, prefix_len) && !module->prefix[prefix_len]) {
+			/* prefix refers to the current module, ignore it */
+			prefix_len = 0;
+		}
+	}
+
+	/* search */
+	if (prefix_len) {
+		/* in top-level groupings of some other module */
+		for (i = 0; i < module->imp_size; i++) {
+			if (!strncmp(module->imp[i].prefix, uses->name, prefix_len)
+					&& !module->imp[i].prefix[prefix_len]) {
+				searchmod = module->imp[i].module;
+				break;
+			}
+		}
+		if (!searchmod) {
+			/* uses refers unknown data model */
+			ly_verr(LY_VERR_UNEXP_PREFIX, name);
+			goto error;
+		}
+
+		LY_TREE_FOR(module->data, mnode) {
+			if (mnode->nodetype == LY_NODE_GROUPING && !strcmp(mnode->name, name)) {
+				uses->grp = (struct ly_mnode_grp *)mnode;
+				break;
+			}
+		}
+
+		if (!uses->grp) {
+			ly_verr(LY_VERR_UNEXP_VAL, uses->name, "uses");
+			goto error;
+		}
+
+	} else {
+		/* in local tree hierarchy */
+		for(par = parent; par; par = par->parent) {
+			LY_TREE_FOR(parent->child, mnode) {
+				if (mnode->nodetype == LY_NODE_GROUPING && !strcmp(mnode->name, name)) {
+					uses->grp = (struct ly_mnode_grp *)mnode;
+					break;
+				}
+			}
+		}
+
+		/* search in top level of the current module */
+		LY_TREE_FOR(module->data, mnode) {
+			if (mnode->nodetype == LY_NODE_GROUPING && !strcmp(mnode->name, name)) {
+				uses->grp = (struct ly_mnode_grp *)mnode;
+				break;
+			}
+		}
+	}
+
+	ly_mnode_addchild(parent, retval);
+
+	if (!resolve) {
+		return retval;
+	}
+
+	/* TODO */
+
+	return retval;
+
+error:
+
+	ly_mnode_free(retval);
 
 	return NULL;
 }
@@ -1192,6 +1312,7 @@ struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data)
 				!strcmp(node->name, "leaf") ||
 				!strcmp(node->name, "list") ||
 				!strcmp(node->name, "choice") ||
+				!strcmp(node->name, "uses") ||
 				!strcmp(node->name, "grouping")) {
 			lyxml_unlink_elem(node);
 			lyxml_add_child(&root, node);
@@ -1345,6 +1466,8 @@ struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data)
 			mnode = read_yin_choice(module, NULL, node);
 		} else if (!strcmp(node->name, "grouping")) {
 			mnode = read_yin_grouping(module, NULL, node);
+		} else if (!strcmp(node->name, "uses")) {
+			mnode = read_yin_uses(module, NULL, node, 1);
 		} else {
 			/* TODO error */
 			continue;

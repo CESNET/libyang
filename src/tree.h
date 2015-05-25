@@ -281,8 +281,26 @@ struct ly_mnode_grp {
 	/* specific container's data */
 	int tpdf_size;          /**< number of elements in tpdf array */
 	struct ly_tpdf *tpdf;   /**< array of typedefs */
+};
 
-	/* TODO uses */
+struct ly_mnode_uses {
+	char *name;                /**< name argument */
+	char *dsc;                 /**< description statement */
+	char *ref;                 /**< reference statement */
+	uint8_t flags;             /**< only for LY_NODE_STATUS_ values */
+	struct ly_module *module;  /**< link to the node's data model */
+
+	LY_NODE_TYPE nodetype;     /**< YANG statement - LY_NODE_USES */
+	struct ly_mnode *parent;
+	struct ly_mnode *child;
+	struct ly_mnode *next;
+	struct ly_mnode *prev;
+
+	char *feature;   /**< if-feature statement */
+	char *when;      /**< when statement */
+
+	/* specific uses's data */
+	struct ly_mnode_grp *grp;  /**< referred grouping definition */
 };
 
 struct ly_mnode_container {
