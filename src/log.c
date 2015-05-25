@@ -81,7 +81,17 @@ struct {
 		{LY_VERB_ERR,    /* LY_VERR_ENUM_WS */
 		"The enum name \"%s\" includes invalid leading or trailing whitespaces."},
 		{LY_VERB_ERR,    /* LY_VERR_UNEXP_PREFIX */
-		"Prefix in \"%s\" refers to an unknown module."}
+		"Prefix in \"%s\" refers to an unknown module."},
+		{LY_VERB_ERR,    /* LY_VERR_KEY_NLEAF */
+		"Key \"%s\" in \"%s\" list is not a leaf."},
+		{LY_VERB_ERR,    /* LY_VERR_KEY_TYPE */
+		"Key \"%s\" in \"%s\" list must not be the built-in type \"empty\"."},
+		{LY_VERB_ERR,    /* LY_VERR_KEY_CONFIG */
+		"The \"config\" value of the \"%s\" key differs from its \"%s\" list config value."},
+		{LY_VERB_ERR,    /* LY_VERR_KEY_MISS */
+		"Leaf \"%s\" defined as key in a list not found."},
+		{LY_VERB_ERR,    /* LY_VERR_KEY_DUP */
+		"Key identifier \"%s\" in the \"%s\" list is not unique."}
 };
 
 void ly_verr(enum LY_VERR code, ...)

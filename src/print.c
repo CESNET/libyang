@@ -234,6 +234,14 @@ static void yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
 	level++;
 	yang_print_mnode_common2(f, level, mnode);
 
+	if (list->keys_size) {
+		fprintf(f, "%*skey \"", LEVEL, INDENT);
+		for (i = 0; i < list->keys_size; i++) {
+			fprintf(f, "%s%s", list->keys[i]->name, i + 1 < list->keys_size ? " " : "");
+		}
+		fprintf(f, "\";\n");
+	}
+
 	for (i = 0; i < list->tpdf_size; i++) {
 		yang_print_typedef(f, level, list->module, &list->tpdf[i]);
 	}

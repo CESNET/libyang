@@ -713,9 +713,13 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 {
 	struct ly_mnode *retval, *mnode;
 	struct ly_mnode_list *list;
+	struct ly_mnode_leaf *key;
 	struct lyxml_elem *sub, *next, root = {0};
-	int r;
+	int i, j, r;
+	size_t len;
 	int c_tpdf = 0;
+	const char *key_str = NULL, *s;
+	char *dup;
 
 	if (!module || !node) {
 		ly_errno = LY_EINVAL;
@@ -744,9 +748,38 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 			lyxml_add_child(&root, sub);
 
 		/* array counters */
+		} else if (!strcmp(sub->name, "key")) {
+			/* check cardinality 0..1 */
+			if (list->keys_size) {
+				ly_verr(LY_VERR_TOOMANY, "key", list->name);
+				goto error;
+			}
+
+			/* count the number of keys */
+			key_str = s = lyxml_get_attr(sub, "value", NULL);
+			if (!s) {
+				ly_verr(LY_VERR_MISS_ARG, "value", "key");
+				goto error;
+			}
+			while((s = strpbrk(s, " \t\n"))) {
+				list->keys_size++;
+				while(isspace(*s)) {
+					s++;
+				}
+			}
+			list->keys_size++;
+
+			list->keys = calloc(list->keys_size, sizeof *list->keys);
+
 		} else if (!strcmp(sub->name, "typedef")) {
 			c_tpdf++;
 		}
+	}
+
+	/* check - if list is configuration, key statement is mandatory */
+	if ((list->flags & LY_NODE_CONFIG_W) && !list->keys_size) {
+		ly_verr(LY_VERR_MISS_STMT2, "key", "list");
+		goto error;
 	}
 
 	/* middle part - process nodes with cardinality of 0..n except the data nodes */
@@ -764,9 +797,8 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 				list->tpdf_size = c_tpdf;
 				goto error;
 			}
+			lyxml_free_elem(module->ctx, sub);
 		}
-
-		lyxml_free_elem(module->ctx, sub);
 	}
 
 	/* last part - process data nodes */
@@ -793,6 +825,72 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 			goto error;
 		}
 	}
+
+	/* link key leafs into the list structure and check all constraints  */
+	/* TODO - include searching in uses/grouping */
+	for (i = 0; i < list->keys_size; i++) {
+		/* get the key name */
+		if ((s = strpbrk(key_str, " \t\n"))) {
+			len = s - key_str;
+		} else {
+			len = strlen(key_str);
+		}
+		LY_TREE_FOR(list->child, mnode) {
+			if (!strncmp(mnode->name, key_str, len) && !mnode->name[len]) {
+				list->keys[i] = mnode;
+				break;
+			}
+		}
+		key = (struct ly_mnode_leaf *)list->keys[i];
+
+		/* existence */
+		if (!key) {
+			if ((s = strpbrk(key_str, " \t\n"))) {
+				len = s - key_str;
+				dup = strdup(key_str);
+				dup[len] = '\0';
+				key_str = dup;
+			}
+			ly_verr(LY_VERR_KEY_MISS, key_str);
+			if (s) {
+				free(dup);
+			}
+			goto error;
+		}
+
+		/* uniquness */
+		for (j = i - 1; j >= 0; j--) {
+			if (list->keys[i] == list->keys[j]) {
+				ly_verr(LY_VERR_KEY_DUP, key->name, list->name);
+				goto error;
+			}
+		}
+
+		/* key is a leaf */
+		if (key->nodetype != LY_NODE_LEAF) {
+			ly_verr(LY_VERR_KEY_NLEAF, key->name, list->name);
+			goto error;
+		}
+
+		/* type of the leaf is not built-in empty */
+		if (key->type.base == LY_TYPE_EMPTY) {
+			ly_verr(LY_VERR_KEY_TYPE, key->name, list->name);
+			goto error;
+		}
+
+		/* config attribute is the same as of the list */
+		if ((list->flags & LY_NODE_CONFIG_MASK) != (key->flags & LY_NODE_CONFIG_MASK)) {
+			ly_verr(LY_VERR_KEY_CONFIG, key->name, list->name);
+			goto error;
+		}
+
+		/* prepare for next iteration */
+		while (s && isspace(*s)) {
+			s++;
+		}
+		key_str = s;
+	}
+
 
 	ly_mnode_addchild(parent, retval);
 

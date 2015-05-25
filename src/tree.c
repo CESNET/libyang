@@ -255,6 +255,8 @@ void ly_list_free(struct ly_ctx *ctx, struct ly_mnode_list *list)
 		}
 		free(list->tpdf);
 	}
+
+	free(list->keys);
 }
 
 void ly_container_free(struct ly_ctx *ctx, struct ly_mnode_container *cont)
