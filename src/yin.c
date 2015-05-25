@@ -264,10 +264,16 @@ static int fill_yin_type(struct ly_module *module, struct ly_mnode *parent,
 	int64_t v, v_;
 
 	value = lyxml_get_attr(yin, "name", NULL);
+	if (!value) {
+		ly_verr(LY_VERR_MISS_ARG, "name", yin->name);
+		return EXIT_FAILURE;
+	}
+
 	delim = strchr(value, ':');
 	if (delim) {
 		type->prefix = lydict_insert(module->ctx, value, delim - value);
 	}
+
 	type->der = find_superior_type(value, module, parent);
 	/* TODO error */
 	type->base = type->der->type.base;
@@ -595,6 +601,8 @@ static struct ly_mnode *read_yin_choice(struct ly_module *module,
 			r = read_yin_leaf(module, retval, sub);
 		} else if (!strcmp(sub->name, "list")) {
 			r = read_yin_list(module, retval, sub);
+		} else {
+			continue;
 		}
 		lyxml_free_elem(ctx, sub);
 		if (!r) {
