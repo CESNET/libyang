@@ -865,6 +865,7 @@ process:
 					LY_ERR(LY_EWELLFORM,
 					       "Mixed opening (%s) and closing (%s) element tag",
 					       elem->name, str);
+					free(str);
 					goto error;
 				}
 				free(str);
