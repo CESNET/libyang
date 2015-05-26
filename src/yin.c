@@ -759,7 +759,7 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 	}
 
 	/* check - if list is configuration, key statement is mandatory */
-	if ((list->flags & LY_NODE_CONFIG_W) && !list->keys_size) {
+	if ((list->flags & LY_NODE_CONFIG_W) && !key_str) {
 		ly_verr(LY_VERR_MISS_STMT2, "key", "list");
 		goto error;
 	}
@@ -808,6 +808,12 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 		if (!mnode) {
 			goto error;
 		}
+	}
+
+	ly_mnode_addchild(parent, retval);
+	if (!key_str) {
+		/* config false list without a key */
+		return retval;
 	}
 
 	/* link key leafs into the list structure and check all constraints  */
@@ -874,9 +880,6 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 		}
 		key_str = s;
 	}
-
-
-	ly_mnode_addchild(parent, retval);
 
 	return retval;
 
