@@ -35,7 +35,6 @@
 
 API struct ly_ctx *ly_ctx_new(const char *search_dir)
 {
-	struct stat st;
 	struct ly_ctx *ctx;
 	char *cwd;
 
@@ -53,27 +52,17 @@ API struct ly_ctx *ly_ctx_new(const char *search_dir)
 	ctx->models.used = 0;
 	ctx->models.size = 16;
 	if (search_dir) {
-		if (stat(search_dir, &st) == -1) {
-			LY_ERR(LY_ESYS,
-			       "Unable to get information about search directory (%s)",
-				   strerror(errno));
-			ly_ctx_destroy(ctx);
-			return NULL;
-		}
-		if (!S_ISDIR(st.st_mode)) {
-			LY_ERR(LY_EINVAL,
-			       "Search directory parameter does not specify a directory");
-			ly_ctx_destroy(ctx);
-			return NULL;
-		}
-
-		if (search_dir) {
-			cwd = get_current_dir_name();
-			chdir(search_dir);
-			ctx->models.search_path = get_current_dir_name();
-			chdir(cwd);
+		cwd = get_current_dir_name();
+		if (chdir(search_dir)) {
+			LY_ERR(LY_ESYS, "Unable to use search directory \"%s\" (%s)",
+				   search_dir, strerror(errno));
 			free(cwd);
+			ly_ctx_destroy(ctx);
+			return NULL;
 		}
+		ctx->models.search_path = get_current_dir_name();
+		chdir(cwd);
+		free(cwd);
 	}
 
 	return ctx;
