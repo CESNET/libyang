@@ -145,12 +145,12 @@ API struct ly_module *ly_ctx_get_model(struct ly_ctx *ctx, const char *name,
 	}
 
 	len = strlen(name);
-	cwd = get_current_dir_name();
 	dir = opendir(ctx->models.search_path);
 	if (!dir) {
 		LY_ERR(LY_ESYS, "Unable to open data model search directory \"%s\" (%s).", ctx->models.search_path, strerror(errno));
 		return NULL;
 	}
+	cwd = get_current_dir_name();
 	chdir(ctx->models.search_path);
 	while ((file = readdir(dir))) {
 		if (strncmp(name, file->d_name, len)) {
@@ -176,7 +176,7 @@ API struct ly_module *ly_ctx_get_model(struct ly_ctx *ctx, const char *name,
 		fd = open(file->d_name, O_RDONLY);
 		if (fd < 0) {
 			LY_ERR(LY_ESYS, "Unable to open data model file \"%s\" (%s).", file->d_name, strerror(errno));
-			return NULL;
+			goto cleanup;
 		}
 		m = ly_model_read_fd(ctx, fd, format);
 		close(fd);
@@ -186,6 +186,7 @@ API struct ly_module *ly_ctx_get_model(struct ly_ctx *ctx, const char *name,
 		}
 	}
 
+cleanup:
 	chdir(cwd);
 	free(cwd);
 	closedir(dir);
