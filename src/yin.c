@@ -577,11 +577,6 @@ static struct ly_mnode *read_yin_choice(struct ly_module *module,
 	struct ly_mnode *retval, *r;
 	struct ly_mnode_choice *choice;
 
-	if (!module || !node) {
-		ly_errno = LY_EINVAL;
-		return NULL;
-	}
-
 	choice = calloc(1, sizeof *choice);
 	choice->nodetype = LY_NODE_CHOICE;
 	choice->module = module;
@@ -631,11 +626,6 @@ static struct ly_mnode *read_yin_leaf(struct ly_module *module,
 	struct lyxml_elem *sub, *next;
 	int r;
 
-	if (!module || !node) {
-		ly_errno = LY_EINVAL;
-		return NULL;
-	}
-
 	leaf = calloc(1, sizeof *leaf);
 	leaf->nodetype = LY_NODE_LEAF;
 	leaf->prev = (struct ly_mnode *)leaf;
@@ -673,11 +663,6 @@ static struct ly_mnode *read_yin_leaflist(struct ly_module *module,
 	struct ly_mnode_leaflist *llist;
 	struct lyxml_elem *sub, *next;
 	int r;
-
-	if (!module || !node) {
-		ly_errno = LY_EINVAL;
-		return NULL;
-	}
 
 	llist = calloc(1, sizeof *llist);
 	llist->nodetype = LY_NODE_LEAFLIST;
@@ -721,11 +706,6 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 	int c_tpdf = 0;
 	const char *key_str = NULL, *s;
 	char *dup;
-
-	if (!module || !node) {
-		ly_errno = LY_EINVAL;
-		return NULL;
-	}
 
 	list = calloc(1, sizeof *list);
 	list->nodetype = LY_NODE_LIST;
@@ -920,11 +900,6 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 	struct ly_mnode_container *cont;
 	int r;
 	int c_tpdf = 0;
-
-	if (!module || !node) {
-		ly_errno = LY_EINVAL;
-		return NULL;
-	}
 
 	cont = calloc(1, sizeof *cont);
 	cont->nodetype = LY_NODE_CONTAINER;
