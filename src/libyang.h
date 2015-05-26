@@ -24,7 +24,7 @@
 
 #include <stdio.h>
 
-#include "yin.h"
+#include "parser.h"
 
 int ly_model_print(FILE *f, struct ly_module *module, LY_MFORMAT format);
 

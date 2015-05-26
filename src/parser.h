@@ -1,7 +1,7 @@
 /**
- * @file yin.h
+ * @file parser.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief YIN parser for libyang
+ * @brief Parsers for libyang
  *
  * Copyright (c) 2015 CESNET, z.s.p.o.
  *
@@ -37,8 +37,8 @@
  *
  */
 
-#ifndef LY_YIN_H_
-#define LY_YIN_H_
+#ifndef LY_PARSER_H_
+#define LY_PARSER_H_
 
 #include "context.h"
 #include "tree.h"
@@ -47,8 +47,6 @@
  * @defgroup yin YIN format support
  * @{
  */
-#define LY_NSYIN "urn:ietf:params:xml:ns:yang:yin:1"
-
 struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data);
 
-#endif /* LY_YIN_H_ */
+#endif /* LY_PARSER_H_ */

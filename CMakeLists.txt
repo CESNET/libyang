@@ -25,9 +25,10 @@ set(libsrc
 	src/log.c
 	src/dict.c
 	src/xml.c
-	src/yin.c
+	src/parser/yin.c
 	src/tree.c
-	src/print.c
+	src/printer.c
+	src/printer/yang.c
 	src/yang_types.c)
 
 set(lintsrc

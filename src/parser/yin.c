@@ -25,14 +25,16 @@
 #include <string.h>
 #include <stddef.h>
 
-#include "libyang.h"
-#include "common.h"
-#include "context.h"
-#include "dict.h"
-#include "yin.h"
+#include "../libyang.h"
+#include "../common.h"
+#include "../context.h"
+#include "../dict.h"
+#include "../parser.h"
 
-#include "tree_internal.h"
-#include "xml.h"
+#include "../tree_internal.h"
+#include "../xml.h"
+
+#define LY_NSYIN "urn:ietf:params:xml:ns:yang:yin:1"
 
 static int read_yin_common(struct ly_module *, struct ly_mnode *, struct ly_mnode *, struct lyxml_elem *, int );
 static struct ly_mnode *read_yin_choice(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);

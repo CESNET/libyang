@@ -1,7 +1,7 @@
 /**
- * @file print.c
+ * @file printer/yang.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief Printers for libyang data structures
+ * @brief YANG printer for libyang data model structure
  *
  * Copyright (c) 2015 CESNET, z.s.p.o.
  *
@@ -23,8 +23,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "common.h"
-#include "tree.h"
+#include "../common.h"
+#include "../tree.h"
 
 #define INDENT ""
 #define LEVEL (level*2)
@@ -323,22 +323,13 @@ static void yang_print_mnode(FILE *f, int level, struct ly_mnode *mnode,
 	}
 }
 
-API int ly_model_print(FILE *f, struct ly_module *module, LY_MFORMAT format)
+int yang_print_model(FILE *f, struct ly_module *module)
 {
 	int i;
 	int level = 0;
 #define LEVEL (level*2)
 
 	struct ly_mnode *mnode;
-
-	if (!f || !module) {
-		ly_errno = LY_EINVAL;
-		return EXIT_FAILURE;
-	}
-
-	if (format != LY_YANG) {
-		return EXIT_FAILURE;
-	}
 
 	fprintf(f, "module %s {\n", module->name);
 	level++;
