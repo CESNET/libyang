@@ -670,7 +670,7 @@ static struct lyxml_attr *parse_attr(struct ly_ctx *ctx, const char *data,
 		c++; /* go after ':' to the prefix value */
 	} else {
 		/* attribute */
-		attr = calloc(1, sizeof(struct lyxml_attr));
+		attr = calloc(1, sizeof *attr);
 		attr->type = LYXML_ATTR_STD;
 	}
 
