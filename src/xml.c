@@ -78,7 +78,7 @@ int lyxml_unlink_attr(struct lyxml_attr *attr)
 	} else if (a == attr) {
 		attr->parent->attr = attr->next;
 	} else {
-		while(a->next != attr) {
+		while(a && a->next != attr) {
 			a = a->next;
 		}
 
