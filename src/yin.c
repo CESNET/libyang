@@ -1382,9 +1382,11 @@ struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data)
 					module->imp[c_imp].prefix = lydict_insert(ctx, value, strlen(value));
 				} else if (!strcmp(child->name, "revision-date")) {
 					value = lyxml_get_attr(child, "date", NULL);
-					memcpy(module->imp[c_imp].rev,
-					       lyxml_get_attr(child, "date", NULL),
-					       LY_REV_SIZE - 1);
+					if (!value) {
+						ly_verr(LY_VERR_MISS_ARG, "date", "revision-date");
+						goto error;
+					}
+					memcpy(module->imp[c_imp].rev, value, LY_REV_SIZE - 1);
 				}
 			}
 			value = lyxml_get_attr(node, "module", NULL);
