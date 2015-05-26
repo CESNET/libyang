@@ -742,7 +742,7 @@ static struct lyxml_elem *parse_elem(struct ly_ctx *ctx, const char *data,
 	char *str;
 	char prefix[32] = {0};
 	unsigned int prefix_len = 0;
-	struct lyxml_elem *elem, *child;
+	struct lyxml_elem *elem = NULL, *child;
 	struct lyxml_attr *attr;
 	unsigned int size;
 	int nons_flag = 0, closed_flag = 0;
