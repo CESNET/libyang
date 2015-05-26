@@ -327,7 +327,7 @@ static int getutf8(const char *buf, unsigned int *read)
 	*read = 1;
 
 	/* process character byte(s) */
-	if ((c && 0xf8) == 0xf0) {
+	if ((c & 0xf8) == 0xf0) {
 		/* four bytes character */
 		*read = 4;
 
