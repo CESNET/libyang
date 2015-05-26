@@ -457,7 +457,7 @@ static int fill_yin_typedef(struct ly_module *module, struct ly_mnode *parent,
 {
 	const char *value;
 	struct lyxml_elem *node, *next;
-	int r;
+	int r = 0;
 
 	value = lyxml_get_attr(yin, "name", NULL);
 	tpdf->name = lydict_insert(module->ctx, value, strlen(value));
