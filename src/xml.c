@@ -58,99 +58,94 @@
 
 #define ign_xmlws(p) while(is_xmlws(*p)) {p++;}
 
-int lyxml_unlink_attr(struct lyxml_attr *attr)
+void lyxml_unlink_attr(struct lyxml_attr *attr)
 {
-	struct lyxml_attr *a;
+	struct lyxml_attr *prev;
 
 	if (!attr) {
-		LY_ERR(LY_EINVAL, NULL);
-		return EXIT_FAILURE;
+		return;
 	}
 
 	if (!attr->parent) {
-		return EXIT_SUCCESS;
+		/* hmm, something is probably wrong */
+		attr->next = NULL;
+		return;
 	}
 
-	a = attr->parent->attr;
-	if (!a) {
-		LY_ERR(LY_EINVAL, "Broken structure (%s).", __func__);
-		return EXIT_FAILURE;
-	} else if (a == attr) {
+	prev = attr->parent->attr;
+	if (prev == attr) {
+		/* unlinking the first attribute -> update the element's pointer */
 		attr->parent->attr = attr->next;
 	} else {
-		while(a && a->next != attr) {
-			a = a->next;
+		while(prev && prev->next != attr) {
+			prev = prev->next;
 		}
 
-		if (!a) {
-			LY_ERR(LY_EINVAL, "Broken structure (%s).", __func__);
-			return EXIT_FAILURE;
+		if (!prev) {
+			/* something is probably broken */
+			attr->parent = NULL;
+			attr->next = NULL;
+			return;
 		}
 
-		a->next = attr->next;
+		/* fix the previous's attribute pointer to next in the list */
+		prev->next = attr->next;
 	}
 
 	attr->parent = NULL;
 	attr->next = NULL;
 
-	return EXIT_SUCCESS;
+	return;
 }
 
-int lyxml_unlink_elem(struct lyxml_elem *elem)
+void lyxml_unlink_elem(struct lyxml_elem *elem)
 {
-	struct lyxml_elem *e;
+	struct lyxml_elem *parent, *first;
 
 	if (!elem) {
-		LY_ERR(LY_EINVAL, NULL);
-		return EXIT_FAILURE;
+		return;
 	}
 
-	if (!elem->parent) {
-		goto siblings;
+	/* store pointers to important nodes */
+	parent = elem->parent;
+
+	/* unlink from parent */
+	if (parent) {
+		if (parent->child == elem) {
+			/* we unlink the first child */
+			/* update the parent's link */
+			parent->child = elem->next;
+		}
+		/* forget about the parent */
+		elem->parent = NULL;
 	}
 
-	e = elem->parent->child;
-	if (!e) {
-		LY_ERR(LY_EINVAL, "Broken structure (%s).", __func__);
-		return EXIT_FAILURE;
-	} else if (e == elem) {
-		/* we unlink the first child */
-		/* update the parent's link */
-		elem->parent->child = e->next;
-	}
-
-	/* remove elem from ring list of sibling elements */
-	while (e && e != elem) {
-		e = e->next;
-	}
-	if (!e) {
-		LY_ERR(LY_EINVAL, "Broken structure (%s).", __func__);
-		return EXIT_FAILURE;
-	}
-
-siblings:
-	if (elem == elem->prev) {
+	/* unlink from siblings */
+	if (elem->prev == elem) {
 		/* there are no more siblings */
-		goto end;
+		return;
 	}
-
 	if (elem->next) {
 		elem->next->prev = elem->prev;
 	} else {
-		/* unlinking the last child -> update the first's prev pointer */
-		elem->parent->child->prev = elem->prev;
+		/* unlinking the last element */
+		if (parent) {
+			first = parent->child;
+		} else {
+			first = elem;
+			while (elem->prev->next) {
+				first = elem->prev;
+			}
+		}
+		first->prev = elem->prev;
 	}
-	if (elem->prev && elem->prev->next) {
+	if (elem->prev->next) {
 		elem->prev->next = elem->next;
 	}
 
-end:
 	/* clean up the unlinked element */
 	elem->next = NULL;
 	elem->prev = elem;
-	elem->parent = NULL;
-
-	return EXIT_SUCCESS;
 }
 
 void lyxml_free_attr(struct ly_ctx *ctx, struct lyxml_attr *attr)

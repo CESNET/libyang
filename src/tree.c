@@ -55,7 +55,6 @@ void ly_mnode_unlink(struct ly_mnode *node)
 	/* unlink from siblings */
 	if (node->prev == node) {
 		/* there are no more siblings */
-		node->parent = NULL;
 		return;
 	}
 	if (node->next) {
@@ -79,7 +78,6 @@ void ly_mnode_unlink(struct ly_mnode *node)
 	/* clean up the unlinked element */
 	node->next = NULL;
 	node->prev = node;
-	node->parent = NULL;
 }
 
 /*

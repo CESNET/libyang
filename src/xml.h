@@ -219,18 +219,16 @@ void lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem* elem);
  * attr.
  *
  * @param[in] attr Attribute to unlink from its parent (if any).
- * @return EXIT_SUCCESS or EXIT_FAILURE
  */
-int lyxml_unlink_attr(struct lyxml_attr *attr);
+void lyxml_unlink_attr(struct lyxml_attr *attr);
 
 /**
  * @brief Unlink the element from its parent. In contrast to lyxml_free_elem(),
  * after return the caller can still manipulate with the elem.
  *
  * @param[in] elem Element to unlink from its parent (if any).
- * @return EXIT_SUCCESS or EXIT_FAILURE
  */
-int lyxml_unlink_elem(struct lyxml_elem *elem);
+void lyxml_unlink_elem(struct lyxml_elem *elem);
 
 /**@}*/
 #endif /* LY_XML_H_ */
