@@ -474,7 +474,7 @@ static int fill_yin_typedef(struct ly_module *module, struct ly_mnode *parent,
 			}
 		} else if (!strcmp(node->name, "reference")) {
 			tpdf->ref = read_yin_text(module->ctx, node, "reference");
-			if (!tpdf->dsc) {
+			if (!tpdf->ref) {
 				r = 1;
 			}
 		} else if (!strcmp(node->name, "status")) {
