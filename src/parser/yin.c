@@ -1317,6 +1317,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin, int
 	 * we need to allocate arrays to store them.
 	 */
 	LY_TREE_FOR_SAFE(yin->child, next, node) {
+		/* TODO: belongs-to */
 		if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
 			lyxml_free_elem(ctx, node);
 			continue;
@@ -1632,7 +1633,28 @@ struct ly_module *yin_read_module(struct ly_ctx *ctx, const char *data)
 		ctx->models.size *= 2;
 		ctx->models.list = newlist;
 	}
-	for (i = 0; ctx->models.list[i]; i++);
+	for (i = 0; ctx->models.list[i]; i++) {
+		/* check name (name/revision) uniqueness */
+		if (!strcmp(ctx->models.list[i]->name, module->name)) {
+			if (!ctx->models.list[i]->rev_size && !module->rev_size) {
+				/* both data models are same, with no revision specified */
+				LY_ERR(LY_EINVAL, "Module \"%s\" (no revision in either of them specified) already in context.", module->name);
+				goto error;
+			} else if (!ctx->models.list[i]->rev_size || !module->rev_size) {
+				/* one of the models does not have a revision, so they differs */
+				continue;
+			} else {
+				/* both models have a revision statement which we have to
+				 * compare, revision at position 0 is the last revision
+				 */
+				if (!strcmp(ctx->models.list[i]->rev[0].date, module->rev[0].date)) {
+					/* we have the same modules */
+					LY_ERR(LY_EINVAL, "Module \"%s\", revision %s already in context.", module->name, module->rev[0].date);
+					goto error;
+				}
+			}
+		}
+	}
 	ctx->models.list[i] = module;
 	ctx->models.used++;
 
