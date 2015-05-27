@@ -104,25 +104,20 @@ static struct ly_module *search_file(struct ly_ctx *ctx, struct ly_module *modul
 	DIR *dir;
 	struct dirent *file;
 	LY_MFORMAT format;
-	struct ly_module *result;
-
-	if (!ctx->models.search_path) {
-		if (revision) {
-			LY_ERR(LY_EVALID, "Unknown data model \"%s\", revision \"%s\" (search path not specified)", name, revision);
-		} else {
-			LY_ERR(LY_EVALID, "Unknown data model \"%s\" (search path not specified)", name);
-		}
-		return NULL;
-	}
+	struct ly_module *result = NULL;
+	int localsearch = 1;
 
 	len = strlen(name);
-	dir = opendir(ctx->models.search_path);
-	if (!dir) {
-		LY_ERR(LY_ESYS, "Unable to open data model search directory \"%s\" (%s).", ctx->models.search_path, strerror(errno));
-		return NULL;
-	}
 	cwd = get_current_dir_name();
-	chdir(ctx->models.search_path);
+	dir = opendir(cwd);
+	LY_VRB("Searching for \"%s\" in %s.", name, cwd);
+	if (!dir) {
+		LY_WRN("Unable to open local directory for searching referenced modules (%s)", strerror(errno));
+		/* try search directory */
+		goto searchpath;
+	}
+
+search:
 	while ((file = readdir(dir))) {
 		if (strncmp(name, file->d_name, len)) {
 			continue;
@@ -160,6 +155,25 @@ static struct ly_module *search_file(struct ly_ctx *ctx, struct ly_module *modul
 		if (result) {
 			break;
 		}
+	}
+
+searchpath:
+	if (!ctx->models.search_path) {
+		LY_WRN("No search path defined for the current context.");
+	} else if (!result && localsearch) {
+		/* search in local directory done, try context's search_path */
+		closedir(dir);
+		dir = opendir(ctx->models.search_path);
+		if (!dir) {
+			LY_ERR(LY_ESYS, "Unable to open data model search directory \"%s\" (%s).", ctx->models.search_path, strerror(errno));
+			goto cleanup;
+		}
+
+		chdir(ctx->models.search_path);
+		LY_VRB("Searching for \"%s\" in %s.", name, ctx->models.search_path);
+
+		localsearch = 0;
+		goto search;
 	}
 
 cleanup:
