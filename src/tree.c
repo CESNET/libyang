@@ -25,6 +25,10 @@
 
 #include "common.h"
 #include "context.h"
+#include "parser_internal.h"
+
+void ly_submodule_free(struct ly_submodule *submodule);
+
 
 void ly_mnode_unlink(struct ly_mnode *node)
 {
@@ -121,7 +125,7 @@ int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
 	return EXIT_SUCCESS;
 }
 
-API struct ly_module *ly_model_read(struct ly_ctx *ctx, const char *data,
+API struct ly_module *ly_module_read(struct ly_ctx *ctx, const char *data,
                                     LY_MFORMAT format)
 {
 	if (!ctx || !data) {
@@ -131,7 +135,7 @@ API struct ly_module *ly_model_read(struct ly_ctx *ctx, const char *data,
 
 	switch (format) {
 	case LY_YIN:
-		return ly_read_yin(ctx, data);
+		return yin_read_module(ctx, data);
 	case LY_YANG:
 	default:
 		/* TODO */
@@ -141,7 +145,27 @@ API struct ly_module *ly_model_read(struct ly_ctx *ctx, const char *data,
 	return NULL;
 }
 
-API struct ly_module *ly_model_read_fd(struct ly_ctx *ctx, int fd,
+struct ly_submodule *ly_submodule_read(struct ly_module *module,
+                                       const char *data, LY_MFORMAT format)
+{
+	if (!module || !data) {
+		ly_errno = LY_EINVAL;
+		return NULL;
+	}
+
+	switch (format) {
+	case LY_YIN:
+		return yin_read_submodule(module, data);
+	case LY_YANG:
+	default:
+		/* TODO */
+		return NULL;
+	}
+
+	return NULL;
+}
+
+API struct ly_module *ly_module_read_fd(struct ly_ctx *ctx, int fd,
                                        LY_MFORMAT format)
 {
 	struct ly_module *module;
@@ -160,10 +184,36 @@ API struct ly_module *ly_model_read_fd(struct ly_ctx *ctx, int fd,
 	 */
 	fstat(fd, &sb);
 	addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-	module = ly_model_read(ctx, addr, format);
+	module = ly_module_read(ctx, addr, format);
 	munmap(addr, sb.st_size);
 
 	return module;
+}
+
+struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd,
+                                          LY_MFORMAT format)
+{
+	struct ly_submodule *submodule;
+	struct stat sb;
+	char *addr;
+
+	if (!module || fd < 0) {
+		ly_errno = LY_EINVAL;
+		return NULL;
+	}
+
+	/*
+	 * TODO
+	 * This is just a temporary solution to make working automatic search for
+	 * imported modules. This doesn't work e.g. for streams (stdin)
+	 */
+	fstat(fd, &sb);
+	addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	submodule = ly_submodule_read(module, addr, format);
+	munmap(addr, sb.st_size);
+
+	return submodule;
+
 }
 
 void ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
@@ -320,19 +370,15 @@ void ly_mnode_free(struct ly_mnode *node)
 	free(node);
 }
 
-API void ly_model_free(struct ly_module *module)
+static void module_free_common(struct ly_module *module)
 {
 	struct ly_ctx *ctx;
 	struct ly_mnode *mnode;
 	int i;
 
-	if (!module) {
-		return;
-	}
-
 	ctx = module->ctx;
 
-	while(module->data) {
+	while (module->data) {
 		mnode = module->data;
 		module->data = mnode;
 		ly_mnode_free(mnode);
@@ -370,9 +416,42 @@ API void ly_model_free(struct ly_module *module)
 		free(module->imp);
 	}
 
+	if (module->inc_size) {
+		for (i = 0; i < module->inc_size; i++) {
+			ly_submodule_free(module->inc[i].submodule);
+		}
+		free(module->inc);
+	}
+
 	lydict_remove(ctx, module->name);
-	lydict_remove(ctx, module->ns);
-	lydict_remove(ctx, module->prefix);
+}
+
+void ly_submodule_free(struct ly_submodule *submodule)
+{
+	if (!submodule) {
+		return;
+	}
+
+	/* common part with struct ly_module */
+	module_free_common((struct ly_module *)submodule);
+
+	/* no specific items to free */
+
+	free(submodule);
+}
+
+API void ly_module_free(struct ly_module *module)
+{
+	if (!module) {
+		return;
+	}
+
+	/* common part with struct ly_submodule */
+	module_free_common(module);
+
+	/* specific items to free */
+	lydict_remove(module->ctx, module->ns);
+	lydict_remove(module->ctx, module->prefix);
 
 	free(module);
 }

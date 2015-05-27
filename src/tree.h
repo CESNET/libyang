@@ -173,6 +173,19 @@ struct ly_tpdf {
 	                             type */
 };
 
+#define LY_REV_SIZE 11
+struct ly_import {
+	struct ly_module *module; /**< link to the imported module */
+	char *prefix;             /**< prefix for the data from the imported
+	                               module */
+	char rev[LY_REV_SIZE];    /**< revision-date of the imported module */
+};
+
+struct ly_include {
+	struct ly_submodule *submodule;
+	char rev[LY_REV_SIZE];
+};
+
 typedef enum ly_node_type {
 	LY_NODE_CONTAINER = 0x01,
 	LY_NODE_CHOICE = 0x02,
@@ -187,21 +200,18 @@ typedef enum ly_node_type {
 struct ly_module {
 	struct ly_ctx *ctx;     /**< libyang context of the module */
 	char *name;             /**< name of the module */
-	char *ns;               /**< namespace of the module */
-	char *prefix;           /**< prefix of the module */
-	uint8_t version;        /**< yang-version: 1 = 1.0, 2 = 1.1 */
-
-#define LY_REV_SIZE 11
-	int imp_size;           /**< number of elements in imp array */
-	struct {
-		struct ly_module *module; /**< link to the imported module */
-		char *prefix;             /**< prefix for the data from the imported
-		                               module */
-		char rev[LY_REV_SIZE];    /**< revision-date of the imported module */
-	} *imp;                 /**< array of imported modules */
-
+	char *dsc;              /**< description of the module */
+	char *ref;              /**< cross-reference for the module */
 	char *org;              /**< party responsible for the module */
 	char *contact;          /**< contact information for the module */
+	uint8_t version;        /**< yang-version: 1 = 1.0, 2 = 1.1 */
+
+
+	int imp_size;           /**< number of elements in imp array */
+	struct ly_import *imp;  /**< array of imported modules */
+
+	int inc_size;
+	struct ly_include *inc;
 
 	int rev_size;           /**< number of elements in rev array */
 	struct {
@@ -211,8 +221,6 @@ struct ly_module {
 	} *rev;                 /**< array of the module revisions,
 	                             revisions[0] is the last revision of the
 	                             module */
-	char *dsc;              /**< description of the module */
-	char *ref;              /**< cross-reference for the module */
 
 	int tpdf_size;          /**< number of elements in tpdf array */
 	struct ly_tpdf *tpdf;   /**< array of typedefs */
@@ -222,6 +230,45 @@ struct ly_module {
 
 	struct ly_mnode *data;  /**< first data statement */
 
+	/* specific module's items in comparison to submodules */
+	char *ns;               /**< namespace of the module */
+	char *prefix;           /**< prefix of the module */
+};
+
+struct ly_submodule {
+	struct ly_ctx *ctx;     /**< libyang context of the module */
+	char *name;             /**< name of the submodule */
+	char *dsc;              /**< description of the submodule */
+	char *ref;              /**< cross-reference for the submodule */
+	char *org;              /**< party responsible for the submodule */
+	char *contact;          /**< contact information for the submodule */
+	uint8_t version;        /**< yang-version: 1 = 1.0, 2 = 1.1 */
+
+	int imp_size;           /**< number of elements in imp array */
+	struct ly_import *imp;  /**< array of imported modules */
+
+	int inc_size;
+	struct ly_include *inc;
+
+	int rev_size;           /**< number of elements in rev array */
+	struct {
+		char date[LY_REV_SIZE];   /**< revision-date */
+		char *dsc;                /**< revision's dsc */
+		char *ref;                /**< revision's reference */
+	} *rev;                 /**< array of the module revisions,
+	                             revisions[0] is the last revision of the
+	                             module */
+
+	int tpdf_size;          /**< number of elements in tpdf array */
+	struct ly_tpdf *tpdf;   /**< array of typedefs */
+
+	int ident_size;         /**< number of elements in ident array */
+	struct ly_ident *ident; /**< array if identities */
+
+	struct ly_mnode *data;  /**< first data statement */
+
+	/* specific submodule's items in comparison to modules */
+	struct ly_module *module; /**< belongs-to (parent module) */
 };
 
 /* Macros to iterate via all trees elements */
@@ -419,6 +466,10 @@ struct ly_ident {
 	struct ly_ident *base;  /**< pointer to the base identity */
 	struct ly_ident_der *der; /**< list of pointers to the derived identities */
 };
+
+/* private libyang functions */
+struct ly_submodule *ly_submodule_read(struct ly_module *module, const char *data, LY_MFORMAT format);
+struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LY_MFORMAT format);
 
 #endif /* LY_TREE_H_ */
 

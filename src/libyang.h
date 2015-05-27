@@ -73,10 +73,10 @@ void ly_ctx_destroy(struct ly_ctx *ctx);
  * @param[in] ctx Context to work in.
  * @param[in] name Name of the YANG module to get.
  * @param[in] revision Optional revision date of the YANG module to get. If not
- * specified, the newest revision is returned.
+ * specified, the newest revision is returned (TODO).
  */
-struct ly_module *ly_ctx_get_model(struct ly_ctx *ctx, const char *name,
-                                   const char *revision);
+struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name,
+                                    const char *revision);
 
 /**
  * @defgroup libyang libyang
@@ -92,12 +92,12 @@ struct ly_module *ly_ctx_get_model(struct ly_ctx *ctx, const char *name,
  * @param[in] format Format of the input data (YANG or YIN).
  * @return Pointer to the data model structure or NULL on error.
  */
-struct ly_module *ly_model_read(struct ly_ctx *ctx, const char *data,
-                                LY_MFORMAT format);
+struct ly_module *ly_module_read(struct ly_ctx *ctx, const char *data,
+                                 LY_MFORMAT format);
 
 
-struct ly_module *ly_model_read_fd(struct ly_ctx *ctx, int fd,
-                                   LY_MFORMAT format);
+struct ly_module *ly_module_read_fd(struct ly_ctx *ctx, int fd,
+                                    LY_MFORMAT format);
 
 /**
  * @brief Free data model
@@ -107,7 +107,7 @@ struct ly_module *ly_model_read_fd(struct ly_ctx *ctx, int fd,
  *
  * @param[in] module Data model to free.
  */
-void ly_model_free(struct ly_module *module);
+void ly_module_free(struct ly_module *module);
 
 /**@}*/
 

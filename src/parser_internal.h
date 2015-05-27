@@ -1,8 +1,7 @@
 /**
- * @file tree_internal.h
+ * @file parser_internal.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief libyang internal functions for manipulating with the data model and
- * data trees.
+ * @brief Internal functionality of libyang parsers
  *
  * Copyright (c) 2015 CESNET, z.s.p.o.
  *
@@ -38,32 +37,11 @@
  *
  */
 
-#ifndef LY_TREE_INTERNAL_H_
-#define LY_TREE_INTERNAL_H_
+#ifndef LY_PARSER_INTERNAL_H_
+#define LY_PARSER_INTERNAL_H_
 
 #include "tree.h"
 
-/*
- * Unlink data model tree node from the tree.
- */
-void ly_mnode_unlink(struct ly_mnode *node);
+struct ly_submodule *yin_read_submodule(struct ly_module *module, const char *data);
 
-/*
- * Free data model tree node structure, includes unlinking from the tree
- */
-void ly_mnode_free(struct ly_mnode *node);
-
-void ly_submodule_free(struct ly_submodule *submodule);
-
-/*
- * Add child model node at the end of the parent's child list.
- * If the child is connected somewhere (has a parent), it is completely
- * unlinked and none of the following conditions applies.
- * If the child has prev sibling(s), they are ignored (child is added at the
- * end of the child list).
- * If the child has next sibling(s), all of them are connected with the parent.
- */
-int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child);
-
-#endif /* LY_TREE_INTERNAL_H_ */
-
+#endif /* LY_PARSER_INTERNAL_H_ */

@@ -66,7 +66,7 @@ static struct ly_tpdf *find_superior_type(const char *name,
                                           struct ly_module *module,
                                           struct ly_mnode *parent)
 {
-	int i, found = 0;
+	int i, j, found = 0;
 	int prefix_len = 0;
 	const char *qname;
 	struct ly_tpdf *tpdf;
@@ -144,6 +144,55 @@ static struct ly_tpdf *find_superior_type(const char *name,
 		}
 	}
 
+	/* search in submodules */
+	for (i = 0; i < module->inc_size; i++) {
+		for (j = 0; j < module->inc[i].submodule->tpdf_size; j++) {
+			if (!strcmp(module->inc[i].submodule->tpdf[j].name, qname)) {
+				return &module->inc[i].submodule->tpdf[j];
+			}
+		}
+	}
+
+	return NULL;
+}
+
+static struct ly_ident *find_base_ident_sub(struct ly_module *module, struct ly_ident *ident, const char *basename)
+{
+	int i;
+	struct ly_ident *base_iter;
+	struct ly_ident_der *der;
+
+	for (i = 0; i < module->ident_size; i++) {
+		if (!strcmp(basename, module->ident[i].name)) {
+			/* we are done */
+
+			if (!ident) {
+				/* just search for type, so do not modify anything, just return
+				 * the base identity pointer
+				 */
+				return &module->ident[i];
+			}
+
+			/* we are resolving identity definition, so now update structures */
+			ident->base = base_iter = &module->ident[i];
+
+			while (base_iter) {
+				for (der = base_iter->der; der && der->next; der = der->next);
+				if (der) {
+					der->next = malloc(sizeof *der);
+					der = der->next;
+				} else {
+					ident->base->der = der = malloc(sizeof *der);
+				}
+				der->next = NULL;
+				der->ident = ident;
+
+				base_iter = base_iter->base;
+			}
+			return ident->base;
+		}
+	}
+
 	return NULL;
 }
 
@@ -152,8 +201,7 @@ static struct ly_ident *find_base_ident(struct ly_module *module, struct ly_iden
 	const char *name;
 	int prefix_len = 0;
 	int i, found = 0;
-	struct ly_ident *base_iter;
-	struct ly_ident_der *der;
+	struct ly_ident *result;
 
 	if (!basename) {
 		ly_verr(LY_VERR_MISS_ARG, "name", "base");
@@ -190,43 +238,23 @@ static struct ly_ident *find_base_ident(struct ly_module *module, struct ly_iden
 			ly_verr(LY_VERR_UNEXP_PREFIX, basename);
 			return NULL;
 		}
-	}
-
-	/* search in the identified module */
-	/* TODO what about submodules? */
-	for (i = 0; i < module->ident_size; i++) {
-		if (!strcmp(name, module->ident[i].name)) {
-			/* we are done */
-
-			if (!ident) {
-				/* just search for type, so do not modify anything, just return
-				 * the base identity pointer
-				 */
-				return &module->ident[i];
+	} else {
+		/* search in submodules */
+		for (i = 0; i < module->inc_size; i++) {
+			result = find_base_ident_sub((struct ly_module *)module->inc[i].submodule, ident, name);
+			if (result) {
+				return result;
 			}
-
-			/* we are resolving identity definition, so now update structures */
-			ident->base = base_iter = &module->ident[i];
-
-			while (base_iter) {
-				for (der = base_iter->der; der && der->next; der = der->next);
-				if (der) {
-					der->next = malloc(sizeof *der);
-					der = der->next;
-				} else {
-					ident->base->der = der = malloc(sizeof *der);
-				}
-				der->next = NULL;
-				der->ident = ident;
-
-				base_iter = base_iter->base;
-			}
-			return ident->base;
 		}
 	}
 
-	ly_verr(LY_VERR_UNEXP_VAL, basename, ident ? "identity" : "type");
-	return NULL;
+	/* search in the identified module */
+	result = find_base_ident_sub(module, ident, name);
+	if (!result) {
+		ly_verr(LY_VERR_UNEXP_VAL, basename, ident ? "identity" : "type");
+	}
+
+	return result;
 }
 
 static int fill_yin_identity(struct ly_module *module, struct lyxml_elem *yin, struct ly_ident *ident)
@@ -505,6 +533,71 @@ static int fill_yin_typedef(struct ly_module *module, struct ly_mnode *parent,
 
 	return EXIT_SUCCESS;
 }
+
+static int fill_yin_import(struct ly_module *module, struct lyxml_elem *yin, struct ly_import *imp)
+{
+	struct lyxml_elem *child;
+	const char *value;
+
+	LY_TREE_FOR(yin->child, child) {
+		if (!strcmp(child->name, "prefix")) {
+			value = lyxml_get_attr(child, "value", NULL);
+			imp->prefix = lydict_insert(module->ctx, value, strlen(value));
+		} else if (!strcmp(child->name, "revision-date")) {
+			value = lyxml_get_attr(child, "date", NULL);
+			if (!value) {
+				ly_verr(LY_VERR_MISS_ARG, "date", "revision-date");
+				return EXIT_FAILURE;
+			}
+			memcpy(imp->rev, value, LY_REV_SIZE - 1);
+		} else {
+			ly_verr(LY_VERR_UNEXP_STMT, child->name);
+			return EXIT_FAILURE;
+		}
+	}
+
+	value = lyxml_get_attr(yin, "module", NULL);
+	imp->module = ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
+	if (!imp->module) {
+		LY_ERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.",
+		       value, module->name);
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
+}
+
+static int fill_yin_include(struct ly_module *module, struct lyxml_elem *yin, struct ly_include *inc)
+{
+	struct lyxml_elem *child;
+	const char *value;
+
+	LY_TREE_FOR(yin->child, child) {
+		if (!strcmp(child->name, "revision-date")) {
+			value = lyxml_get_attr(child, "date", NULL);
+			if (!value) {
+				ly_verr(LY_VERR_MISS_ARG, "date", "revision-date");
+				return EXIT_FAILURE;
+			}
+			memcpy(inc->rev, value, LY_REV_SIZE - 1);
+		} else {
+			ly_verr(LY_VERR_UNEXP_STMT, child->name);
+			return EXIT_FAILURE;
+		}
+	}
+
+	value = lyxml_get_attr(yin, "module", NULL);
+	inc->submodule = ly_ctx_get_submodule(module, value, inc->rev[0] ? inc->rev : NULL);
+	if (!inc->submodule) {
+		LY_ERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.",
+		       value, module->name);
+		return EXIT_FAILURE;
+	}
+
+
+	return EXIT_SUCCESS;
+}
+
 
 /*
  * Covers:
@@ -1205,45 +1298,15 @@ error:
 	return NULL;
 }
 
-struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data)
+/* common code for yin_read_module() and yin_read_submodule() */
+static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin, int submodule)
 {
-	struct lyxml_elem *yin, *node, *next, *child, root = {0};
-	struct ly_module *module = NULL, **newlist = NULL, *imp;
+	struct ly_ctx *ctx = module->ctx;
+	struct lyxml_elem *next, *node, *child, root = {0};
 	struct ly_mnode *mnode = NULL;
 	const char *value;
+	int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0, c_inc = 0; /* counters */
 	int r;
-	int i;
-	/* counters */
-	int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0;
-
-	yin = lyxml_read(ctx, data, 0);
-	if (!yin) {
-		return NULL;
-	}
-
-	/* check root element */
-	if (!yin->name || strcmp(yin->name, "module")) {
-		/* TODO: support submodules */
-		ly_verr(LY_VERR_UNEXP_STMT, yin->name);
-		goto error;
-	}
-
-	value = lyxml_get_attr(yin, "name", NULL);
-	if (!value) {
-		LY_ERR(LY_EVALID, "Missing \"name\" attribute of the \"module\".");
-		goto error;
-	}
-
-	module = calloc(1, sizeof *module);
-	if (!module) {
-		ly_errno = LY_EFATAL;
-		goto error;
-	}
-
-	module->ctx = ctx;
-	module->name = lydict_insert(ctx, value, strlen(value));
-
-	LY_VRB("reading module %s", module->name);
 
 	/*
 	 * in the first run, we process elements with cardinality of 1 or 0..1 and
@@ -1259,20 +1322,18 @@ struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data)
 			continue;
 		}
 
-		if (!strcmp(node->name, "namespace")) {
+		if (!submodule && !strcmp(node->name, "namespace")) {
 			value = lyxml_get_attr(node, "uri", NULL);
 			if (!value) {
-				LY_ERR(LY_EVALID,
-				       "%s: Missing \"uri\" attribute in \"namespace\" element.", module->name);
+				LY_ERR(LY_EVALID, "%s: Missing \"uri\" attribute in \"namespace\" element.", module->name);
 				goto error;
 			}
 			module->ns = lydict_insert(ctx, value, strlen(value));
 			lyxml_free_elem(ctx, node);
-		} else if (!strcmp(node->name, "prefix")) {
+		} else if (!submodule && !strcmp(node->name, "prefix")) {
 			value = lyxml_get_attr(node, "value", NULL);
 			if (!value) {
-				LY_ERR(LY_EVALID,
-				       "%s: Missing \"value\" attribute in \"prefix\" element.", module->name);
+				LY_ERR(LY_EVALID, "%s: Missing \"value\" attribute in \"prefix\" element.", module->name);
 				goto error;
 			}
 			module->prefix = lydict_insert(ctx, value, strlen(value));
@@ -1285,6 +1346,8 @@ struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data)
 			c_tpdf++;
 		} else if (!strcmp(node->name, "identity")) {
 			c_ident++;
+		} else if (!strcmp(node->name, "include")) {
+			c_inc++;
 
 		/* data statements */
 		} else if (!strcmp(node->name, "container") ||
@@ -1342,92 +1405,76 @@ struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data)
 		}
 	}
 
-	/* check for mandatory statements */
-	if (!module->ns) {
-		ly_verr(LY_VERR_MISS_STMT2, "namespace", "module");
-		goto error;
+	if (!submodule) {
+		/* check for mandatory statements */
+		if (!module->ns) {
+			ly_verr(LY_VERR_MISS_STMT2, "namespace", "module");
+			goto error;
+		}
+		if (!module->prefix) {
+			ly_verr(LY_VERR_MISS_STMT2, "prefix", "module");
+			goto error;
+		}
 	}
-	if (!module->prefix) {
-		ly_verr(LY_VERR_MISS_STMT2, "prefix", "module");
-		goto error;
-	}
-
 
 	/* allocate arrays for elements with cardinality of 0..n */
 	if (c_imp) {
-		module->imp_size = c_imp;
 		module->imp = calloc(c_imp, sizeof *module->imp);
-		c_imp = 0;
 	}
 	if (c_rev) {
-		module->rev_size = c_rev;
 		module->rev = calloc(c_rev, sizeof *module->rev);
-		c_rev = 0;
 	}
 	if (c_tpdf) {
-		module->tpdf_size = c_tpdf;
 		module->tpdf = calloc(c_tpdf, sizeof *module->tpdf);
-		c_tpdf = 0;
 	}
 	if (c_ident) {
-		module->ident_size = c_ident;
 		module->ident = calloc(c_ident, sizeof *module->ident);
-		c_ident = 0;
+	}
+	if (c_inc) {
+		module->inc = calloc(c_inc, sizeof *module->inc);
 	}
 
 	/* middle part - process nodes with cardinality of 0..n except the data nodes */
 	LY_TREE_FOR_SAFE(yin->child, next, node) {
 		if (!strcmp(node->name, "import")) {
-			LY_TREE_FOR(node->child, child) {
-				if (!strcmp(child->name, "prefix")) {
-					value = lyxml_get_attr(child, "value", NULL);
-					module->imp[c_imp].prefix = lydict_insert(ctx, value, strlen(value));
-				} else if (!strcmp(child->name, "revision-date")) {
-					value = lyxml_get_attr(child, "date", NULL);
-					if (!value) {
-						ly_verr(LY_VERR_MISS_ARG, "date", "revision-date");
-						goto error;
-					}
-					memcpy(module->imp[c_imp].rev, value, LY_REV_SIZE - 1);
-				}
-			}
-			value = lyxml_get_attr(node, "module", NULL);
-			imp = ly_ctx_get_model(ctx, value, module->imp[c_imp].rev[0] ? module->imp[c_imp].rev : NULL);
-			if (!imp) {
-				LY_ERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.",
-				       value, module->name);
+			r = fill_yin_import(module, node, &module->imp[module->imp_size]);
+			module->imp_size++;
+
+			if (r) {
 				goto error;
 			}
-			module->imp[c_imp].module = imp;
-			c_imp++;
+		} else if (!strcmp(node->name, "include")) {
+			r = fill_yin_include(module, node, &module->inc[module->inc_size]);
+			module->inc_size++;
+
+			if (r) {
+				goto error;
+			}
 		} else if (!strcmp(node->name, "revision")) {
-			memcpy(module->rev[c_rev].date,
+			memcpy(module->rev[module->rev_size].date,
 			       lyxml_get_attr(node, "date", NULL), LY_REV_SIZE - 1);
 			LY_TREE_FOR(node->child, child) {
 				if (!strcmp(child->name, "description")) {
-					module->rev[c_rev].dsc = read_yin_text(ctx, child, "description");
+					module->rev[module->rev_size].dsc = read_yin_text(ctx, child, "description");
 				} else if (!strcmp(child->name, "reference")) {
-					module->rev[c_rev].ref = read_yin_text(ctx, child, "reference");
+					module->rev[module->rev_size].ref = read_yin_text(ctx, child, "reference");
 				}
 			}
-			c_rev++;
+			module->rev_size++;
 		} else if (!strcmp(node->name, "typedef")) {
-			r = fill_yin_typedef(module, NULL, node, &module->tpdf[c_tpdf]);
-			c_tpdf++;
+			r = fill_yin_typedef(module, NULL, node, &module->tpdf[module->tpdf_size]);
+			module->tpdf_size++;
 
 			if (r) {
-				module->tpdf_size = c_tpdf;
 				goto error;
 			}
 		} else if (!strcmp(node->name, "identity")) {
-			r = fill_yin_identity(module, node, &module->ident[c_ident]);
-			c_ident++;
+			r = fill_yin_identity(module, node, &module->ident[module->ident_size]);
+			module->ident_size++;
 
 			if (r) {
-				module->ident_size = c_ident;
 				goto error;
 			}
-
 		}
 
 		lyxml_free_elem(ctx, node);
@@ -1470,6 +1517,108 @@ struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data)
 		}
 	}
 
+	return EXIT_SUCCESS;
+
+error:
+	/* cleanup */
+	while (root.child) {
+		lyxml_free_elem(module->ctx, root.child);
+	}
+
+	return EXIT_FAILURE;
+}
+
+struct ly_submodule *yin_read_submodule(struct ly_module *module, const char *data)
+{
+	struct lyxml_elem *yin;
+	struct ly_submodule *submodule;
+	const char *value;
+
+
+	yin = lyxml_read(module->ctx, data, 0);
+	if (!yin) {
+		return NULL;
+	}
+
+	/* check root element */
+	if (!yin->name || strcmp(yin->name, "submodule")) {
+		ly_verr(LY_VERR_UNEXP_STMT, yin->name);
+		goto error;
+	}
+
+	value = lyxml_get_attr(yin, "name", NULL);
+	if (!value) {
+		ly_verr(LY_VERR_MISS_ARG, "name", "submodule");
+		goto error;
+	}
+
+	submodule = calloc(1, sizeof *submodule);
+	if (!submodule) {
+		ly_errno = LY_EFATAL;
+		goto error;
+	}
+
+	submodule->ctx = module->ctx;
+	submodule->name = lydict_insert(submodule->ctx, value, strlen(value));
+
+	LY_VRB("reading submodule %s", submodule->name);
+	if (read_sub_module((struct ly_module *)submodule, yin, 1)) {
+		goto error;
+	}
+
+	/* cleanup */
+	lyxml_free_elem(module->ctx, yin);
+
+	LY_VRB("submodule %s successfully parsed", submodule->name);
+
+	return submodule;
+
+error:
+	/* cleanup */
+	lyxml_free_elem(module->ctx, yin);
+	ly_submodule_free(submodule);
+
+	return NULL;
+}
+
+struct ly_module *yin_read_module(struct ly_ctx *ctx, const char *data)
+{
+	struct lyxml_elem *yin;
+	struct ly_module *module = NULL, **newlist = NULL;
+	const char *value;
+	int i;
+
+	yin = lyxml_read(ctx, data, 0);
+	if (!yin) {
+		return NULL;
+	}
+
+	/* check root element */
+	if (!yin->name || strcmp(yin->name, "module")) {
+		ly_verr(LY_VERR_UNEXP_STMT, yin->name);
+		goto error;
+	}
+
+	value = lyxml_get_attr(yin, "name", NULL);
+	if (!value) {
+		ly_verr(LY_VERR_MISS_ARG, "name", "module");
+		goto error;
+	}
+
+	module = calloc(1, sizeof *module);
+	if (!module) {
+		ly_errno = LY_EFATAL;
+		goto error;
+	}
+
+	module->ctx = ctx;
+	module->name = lydict_insert(ctx, value, strlen(value));
+
+	LY_VRB("reading module %s", module->name);
+	if (read_sub_module(module, yin, 0)) {
+		goto error;
+	}
+
 	/* add to the context's list of modules */
 	if (ctx->models.used == ctx->models.size) {
 		newlist = realloc(ctx->models.list, ctx->models.size * 2);
@@ -1496,11 +1645,8 @@ struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data)
 
 error:
 	/* cleanup */
-	while (root.child) {
-		lyxml_free_elem(module->ctx, root.child);
-	}
 	lyxml_free_elem(ctx, yin);
-	ly_model_free(module);
+	ly_module_free(module);
 
 	return NULL;
 }

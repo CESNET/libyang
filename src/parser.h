@@ -47,6 +47,6 @@
  * @defgroup yin YIN format support
  * @{
  */
-struct ly_module *ly_read_yin(struct ly_ctx *ctx, const char *data);
+struct ly_module *yin_read_module(struct ly_ctx *ctx, const char *data);
 
 #endif /* LY_PARSER_H_ */

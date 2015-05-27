@@ -82,7 +82,7 @@ API void ly_ctx_destroy(struct ly_ctx *ctx)
 	if (ctx->models.used) {
 		for (i = 0; i < ctx->models.size; i++) {
 			if (ctx->models.list[i]) {
-				ly_model_free(ctx->models.list[i]);
+				ly_module_free(ctx->models.list[i]);
 			}
 		}
 	}
@@ -95,35 +95,17 @@ API void ly_ctx_destroy(struct ly_ctx *ctx)
 	free(ctx);
 }
 
-API struct ly_module *ly_ctx_get_model(struct ly_ctx *ctx, const char *name,
-                                      const char *revision)
+static struct ly_module *search_file(struct ly_ctx *ctx, struct ly_module *module,
+                                     const char *name, const char *revision)
 {
-	int i, len, flen;
-	char *cwd;
+	size_t len, flen;
 	int fd;
+	char *cwd;
 	DIR *dir;
 	struct dirent *file;
-	struct ly_module *m;
 	LY_MFORMAT format;
+	struct ly_module *result;
 
-	if (!ctx || !name) {
-		ly_errno = LY_EINVAL;
-		return NULL;
-	}
-
-	for (i = 0; i < ctx->models.size; i++) {
-		m = ctx->models.list[i];
-		if (!m || strcmp(name, m->name)) {
-			continue;
-		}
-
-		if (!revision || (m->rev_size && !strcmp(revision, m->rev[0].date))) {
-			return m;
-		}
-	}
-	m = NULL;
-
-	/* not found in context, try to get it from the search directory */
 	if (!ctx->models.search_path) {
 		if (revision) {
 			LY_ERR(LY_EVALID, "Unknown data model \"%s\", revision \"%s\" (search path not specified)", name, revision);
@@ -167,10 +149,15 @@ API struct ly_module *ly_ctx_get_model(struct ly_ctx *ctx, const char *name,
 			LY_ERR(LY_ESYS, "Unable to open data model file \"%s\" (%s).", file->d_name, strerror(errno));
 			goto cleanup;
 		}
-		m = ly_model_read_fd(ctx, fd, format);
+
+		if (module) {
+			result = (struct ly_module *)ly_submodule_read_fd(module, fd, format);
+		} else {
+			result = ly_module_read_fd(ctx, fd, format);
+		}
 		close(fd);
 
-		if (m) {
+		if (result) {
 			break;
 		}
 	}
@@ -180,9 +167,57 @@ cleanup:
 	free(cwd);
 	closedir(dir);
 
-	if (!m) {
+	return result;
+}
+
+struct ly_submodule *ly_ctx_get_submodule(struct ly_module *module, const char *name,
+                                           const char *revision)
+{
+	struct ly_submodule *result;
+
+	if (!module || !name) {
+		ly_errno = LY_EINVAL;
+		return NULL;
+	}
+
+	/* not found in context, try to get it from the search directory */
+	result = (struct ly_submodule *) search_file(module->ctx, module, name, revision);
+	if (!result) {
+		LY_ERR(LY_EVALID, "Submodule \"%s\" of the \"%s\" data model not found (search path is \"%s\")",
+		       name, module->name, module->ctx->models.search_path);
+	}
+
+	return result;
+}
+
+API struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name,
+                                        const char *revision)
+{
+	int i;
+	struct ly_module *result;
+
+	if (!ctx || !name) {
+		ly_errno = LY_EINVAL;
+		return NULL;
+	}
+
+	for (i = 0; i < ctx->models.size; i++) {
+		result = ctx->models.list[i];
+		if (!result || strcmp(name, result->name)) {
+			continue;
+		}
+
+		if (!revision || (result->rev_size && !strcmp(revision, result->rev[0].date))) {
+			return result;
+		}
+	}
+	result = NULL;
+
+	/* not found in context, try to get it from the search directory */
+	result = search_file(ctx, NULL, name, revision);
+	if (!result) {
 		LY_ERR(LY_EVALID, "Data model \"%s\" not found (search path is \"%s\")", ctx->models.search_path);
 	}
 
-	return m;
+	return result;
 }
