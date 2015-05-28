@@ -36,6 +36,7 @@
 unsigned int lineno, lws_lineno;
 #define COUNTLINE(c) if ((c) == 0xa) {lineno++;}
 #else
+#define lineno 0
 #define COUNTLINE(C)
 #endif
 
@@ -468,7 +469,7 @@ static int parse_ignore(const char *data, const char *endstr,
 		c++;
 	}
 	if (!*c) {
-		LOGERR(LY_EWELLFORM, "Missing close sequence \"%s\".", endstr);
+		LOGVAL(VE_XML_MISS, lineno, "closing sequence", endstr);
 		return EXIT_FAILURE;
 	}
 	c += slen;
@@ -490,7 +491,7 @@ static char *parse_text(const char *data, char delim, unsigned int *len)
 
 	for (*len = o = 0; cdsect || data[*len] != delim; o++) {
 		if (!data[*len] || (!cdsect && !memcmp(&data[*len], "]]>", 2))) {
-			LOGERR(LY_EWELLFORM, "Invalid element content, \"]]>\" found.");
+			LOGVAL(VE_XML_INVAL, lineno, "element content, \"]]>\" found");
 			goto error;
 		}
 
@@ -546,8 +547,7 @@ loop:
 					buf[o] = '\"';
 					*len += 5;
 				} else {
-					LOGERR(LY_EWELLFORM,
-					       "Invalid entity reference, only predefined entity references are supported.");
+					LOGVAL(VE_XML_INVAL, lineno, "entity reference (only predefined references are supported)");
 					goto error;
 				}
 			} else {
@@ -558,8 +558,7 @@ loop:
 						n = (10 * n) + (data[*len] - '0');
 					}
 					if (data[*len] != ';') {
-						LOGERR(LY_EWELLFORM,
-						       "Invalid character reference, missing semicolon.");
+						LOGVAL(VE_XML_INVAL, lineno, "character reference, missing semicolon");
 						goto error;
 					}
 				} else if (data[(*len)++] == 'x' && isxdigit(data[*len])) {
@@ -574,13 +573,13 @@ loop:
 						n = (16 * n) + r;
 					}
 				} else {
-					LOGERR(LY_EWELLFORM, "Invalid character reference.");
+					LOGVAL(VE_XML_INVAL, lineno, "character reference");
 					goto error;
 
 				}
 				r = pututf8(&buf[o], n);
 				if (!r) {
-					LOGERR(LY_EWELLFORM, "Invalid character reference value.");
+					LOGVAL(VE_XML_INVAL, lineno, "character reference value");
 					goto error;
 				}
 				o += r - 1; /* o is ++ in for loop */
@@ -691,7 +690,7 @@ static struct lyxml_attr *parse_attr(struct ly_ctx *ctx, const char *data,
 	start = c;
 	uc = getutf8(c, &size);
 	if (!is_xmlnamestartchar(uc)) {
-		LOGERR(LY_EWELLFORM, "Invalid NameStartChar of the attribute");
+		LOGVAL(VE_XML_INVAL, lineno, "NameStartChar of the attribute");
 		free(attr);
 		return NULL;
 	}
@@ -720,7 +719,7 @@ equal:
 	/* check Eq mark that can be surrounded by whitespaces */
 	ign_xmlws(c);
 	if (*c != '=') {
-		LOGERR(LY_EWELLFORM, "Invalid attribute definition, \"=\" expected.");
+		LOGVAL(VE_XML_INVAL, lineno, "attribute definition, \"=\" expected");
 		goto error;
 	}
 	c++;
@@ -728,7 +727,7 @@ equal:
 
 	/* process value part of the attribute */
 	if (!*c || (*c != '"' && *c != '\'')) {
-		LOGERR(LY_EWELLFORM, "Invalid attribute value, \" or \' expected.");
+		LOGVAL(VE_XML_INVAL, lineno, "attribute value, \" or \' expected");
 		goto error;
 	}
 	delim = c;
@@ -772,7 +771,7 @@ static struct lyxml_elem *parse_elem(struct ly_ctx *ctx, const char *data,
 
 	uc = getutf8(e, &size);
 	if (!is_xmlnamestartchar(uc)) {
-		LOGERR(LY_EWELLFORM, "Invalid NameStartChar of the attribute");
+		LOGVAL(VE_XML_INVAL, lineno, "NameStartChar of the element");
 		return NULL;
 	}
 	e += size;
@@ -780,7 +779,7 @@ static struct lyxml_elem *parse_elem(struct ly_ctx *ctx, const char *data,
 	while (is_xmlnamechar(uc)) {
 		if (*e == ':') {
 			if (prefix_len) {
-				LOGERR(LY_EWELLFORM, "Multiple colons in element name.");
+				LOGVAL(VE_XML_INVAL, lineno, "element name, multiple colons found");
 				goto error;
 			}
 			/* element in a namespace */
@@ -795,7 +794,7 @@ static struct lyxml_elem *parse_elem(struct ly_ctx *ctx, const char *data,
 		uc = getutf8(e, &size);
 	}
 	if (!*e) {
-		LOGERR(LY_EWELLFORM, "Unexpected end of input data.");
+		LOGVAL(VE_EOF, lineno);
 		return NULL;
 	}
 
@@ -839,8 +838,7 @@ process:
 				e = c;
 				uc = getutf8(e, &size);
 				if (!is_xmlnamestartchar(uc)) {
-					LOGERR(LY_EWELLFORM,
-					       "Invalid NameStartChar of the attribute");
+					LOGVAL(VE_XML_INVAL, lineno, "NameStartChar of the attribute");
 					goto error;
 				}
 				e += size;
@@ -852,9 +850,8 @@ process:
 
 						/* look for the prefix in namespaces */
 						if (memcmp(prefix, c, e - c)) {
-							LOGERR(LY_EWELLFORM,
-							       "Mixed opening (%s) and closing element tag - different namespaces",
-							       elem->name);
+							LOGVAL(VE_SPEC, lineno, "Mixed opening (%s) and closing element tags (different namespaces).", elem->name);
+							goto error;
 						}
 						c = start;
 					}
@@ -862,7 +859,7 @@ process:
 					uc = getutf8(e, &size);
 				}
 				if (!*e) {
-					LOGERR(LY_EWELLFORM, "Unexpected end of input data.");
+					LOGVAL(VE_EOF, lineno);
 					goto error;
 				}
 
@@ -873,8 +870,7 @@ process:
 				str[e - c] = '\0';
 				if (size != strlen(elem->name) ||
 						memcmp(str, elem->name, size)) {
-					LOGERR(LY_EWELLFORM,
-					       "Mixed opening (%s) and closing (%s) element tag",
+					LOGVAL(VE_SPEC, lineno, "Mixed opening (%s) and closing (%s) element tags.",
 					       elem->name, str);
 					free(str);
 					goto error;
@@ -884,8 +880,7 @@ process:
 
 				ign_xmlws(c);
 				if (*c != '>') {
-					LOGERR(LY_EWELLFORM,
-					       "Close element tag \"%s\" contain additional data.",
+					LOGVAL(VE_SPEC, lineno, "Close element tag \"%s\" contain additional data.",
 					       elem->name);
 					goto error;
 				}
@@ -938,7 +933,6 @@ process:
 				}
 				child = parse_elem(ctx, c, &size, elem);
 				if (!child) {
-					LOGERR(LY_EWELLFORM, "Unexpected end of input data.");
 					goto error;
 				}
 				c += size; /* move after processed child element */
@@ -979,7 +973,6 @@ store_content:
 		/* process attribute */
 		attr = parse_attr(ctx, c, &size, elem);
 		if (!attr) {
-			LOGERR(LY_EWELLFORM, "Unexpected end of input data.");
 			goto error;
 		}
 		lyxml_add_attr(elem, attr);
@@ -1009,7 +1002,7 @@ store_content:
 	*len = c - data;
 
 	if (!closed_flag) {
-		LOGERR(LY_EWELLFORM, "Missing closing element tag (%s).", elem->name);
+		LOGVAL(VE_XML_MISS, lineno, "closing element tag", elem->name);
 		goto error;
 	}
 
@@ -1051,7 +1044,7 @@ struct lyxml_elem *lyxml_read(struct ly_ctx *ctx, const char *data,
 			/* XMLDecl or PI - ignore it */
 			c += 2;
 			if (parse_ignore(c, "?>", &len)) {
-				LOGERR(LY_EWELLFORM, "Missing close sequence \"?>\".");
+				LOGVAL(VE_XML_MISS, lineno, "close sequence", "?>");
 				return NULL;
 			}
 			c += len;
@@ -1059,7 +1052,7 @@ struct lyxml_elem *lyxml_read(struct ly_ctx *ctx, const char *data,
 			/* Comment - ignore it */
 			c += 2;
 			if (parse_ignore(c, "-->", &len)) {
-				LOGERR(LY_EWELLFORM, "Missing close sequence \"-->\".");
+				LOGVAL(VE_XML_MISS, lineno, "close sequence", "-->");
 				return NULL;
 			}
 			c += len;

@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 		ret = EXIT_FAILURE;
 		goto cleanup;
 	}
-sleep(10);
+	
 	if (output) {
 		ly_model_print(output, model, format);
 	}

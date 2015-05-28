@@ -168,7 +168,6 @@ typedef enum {
 	LY_ESYS,
 	LY_EINVAL,
 	LY_EEOF,
-	LY_EWELLFORM,
 	LY_EVALID
 } LY_ERR;
 extern LY_ERR ly_errno;

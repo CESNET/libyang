@@ -70,6 +70,9 @@ void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 
 enum LY_VERR {
 	VE_SPEC = -1,
+	VE_XML_MISS,
+	VE_XML_INVAL,
+	VE_EOF,
 	VE_INSTMT,
 	VE_INARG,
 	VE_MISSSTMT1,
