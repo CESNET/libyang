@@ -107,6 +107,10 @@ struct lyxml_elem {
 
 	char flags;                /**< special flags */
 #define LYXML_ELEM_MIXED 0x01  /* element contains mixed content */
+
+#ifndef NDEBUG
+	unsigned int line;         /* input line number */
+#endif
 };
 
 /*

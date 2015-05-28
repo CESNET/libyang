@@ -25,7 +25,7 @@
 
 #include "common.h"
 #include "context.h"
-#include "parser_internal.h"
+#include "parser.h"
 
 void ly_submodule_free(struct ly_submodule *submodule);
 

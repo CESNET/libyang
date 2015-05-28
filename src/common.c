@@ -24,4 +24,4 @@
 /*
  * libyang errno
  */
-int ly_errno = 0;
+LY_ERR ly_errno = 0;

@@ -1,7 +1,7 @@
 /**
  * @file common.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief common definitions for libyang
+ * @brief common internal definitions for libyang
  *
  * Copyright (c) 2015 CESNET, z.s.p.o.
  *
@@ -40,45 +40,61 @@
 #define API __attribute__((visibility("default")))
 
 /*
- * libyang's errno
- */
-extern int ly_errno;
-
-#define LY_EINVAL    1 /* Invalid argument */
-#define LY_EEOF      2 /* Input end */
-#define LY_EWELLFORM 3 /* Not a well formed data */
-#define LY_EVALID    4 /* Not a valid data */
-#define LY_ESYS      5 /* system function error */
-#define LY_EFATAL    6 /* Fatal error */
-
-/*
  * logger
  */
-extern volatile uint8_t ly_verb_level;
-void ly_log(LY_VERB_LEVEL level, int errno_, const char *format, ...);
-#define LY_ERR(errno,str,args...) if(str){ly_log(LY_VERB_ERR,errno,str,##args);}else{ly_errno=errno;}
-#define LY_WRN(str,args...) if(ly_verb_level>=LY_VERB_WRN){ly_log(LY_VERB_WRN,0,str,##args);}
-#define LY_VRB(str,args...) if(ly_verb_level>=LY_VERB_VRB){ly_log(LY_VERB_VRB,0,str,##args);}
-#define LY_DBG(str,args...) if(ly_verb_level>=LY_VERB_DBG){ly_log(LY_VERB_DBG,0,str,##args);}
+extern volatile uint8_t ly_log_level;
+void ly_log(LY_LOG_LEVEL level, const char *format, ...);
+
+#define LOGERR(errno, str, args...)                                 \
+	ly_errno = errno;                                               \
+	ly_log(LY_LLERR, str, ##args)
+
+#define LOGWRN(str, args...)                                        \
+	if (ly_log_level >= LY_LLWRN) {                                 \
+		ly_log(LY_LLWRN, str, ##args);                              \
+	}
+
+#define LOGVRB(str, args...)                                        \
+	if (ly_log_level >= LY_LLVRB) {                                 \
+		ly_log(LY_LLVRB, str, ##args);                              \
+	}
+
+#ifdef NDEBUG
+#define LOGDBG(str, args...)
+#else
+#define LOGDBG(str, args...)                                        \
+	if (ly_log_level >= LY_LLDBG) {                                 \
+		ly_log(LY_LLDBG, str, ##args);                              \
+	}
+#endif
 
 enum LY_VERR {
-	LY_VERR_UNEXP_STMT,
-	LY_VERR_MISS_STMT1,
-	LY_VERR_MISS_STMT2,
-	LY_VERR_MISS_ARG,
-	LY_VERR_TOOMANY,
-	LY_VERR_UNEXP_VAL,
-	LY_VERR_BAD_RESTR,
-	LY_VERR_ENUM_DUP_VAL,
-	LY_VERR_ENUM_DUP_NAME,
-	LY_VERR_ENUM_WS,
-	LY_VERR_UNEXP_PREFIX,
-	LY_VERR_KEY_NLEAF,
-	LY_VERR_KEY_TYPE,
-	LY_VERR_KEY_CONFIG,
-	LY_VERR_KEY_MISS,
-	LY_VERR_KEY_DUP
+	VE_SPEC = -1,
+	VE_INSTMT,
+	VE_INARG,
+	VE_MISSSTMT1,
+	VE_MISSSTMT2,
+	VE_MISSARG,
+	VE_TOOMANY,
+	VE_ENUM_DUPVAL,
+	VE_ENUM_DUPNAME,
+	VE_ENUM_WS,
+	VE_INPREFIX,
+	VE_KEY_NLEAF,
+	VE_KEY_TYPE,
+	VE_KEY_CONFIG,
+	VE_KEY_MISS,
+	VE_KEY_DUP
 };
-void ly_verr(enum LY_VERR code, ...);
+void ly_vlog(enum LY_VERR code, unsigned int line, ...);
+
+#define LOGVAL(code, line, args...)                                       \
+	ly_vlog(code, line, ##args)
+
+#ifdef NDEBUG
+#define LOGLINE(node) 0
+#else
+#define LOGLINE(node) node->line
+#endif
 
 #endif /* LY_COMMON_H_ */

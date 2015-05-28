@@ -1,7 +1,7 @@
 /**
- * @file common.h
+ * @file libyang.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief common definitions for libyang
+ * @brief The main libyang public header.
  *
  * Copyright (c) 2015 CESNET, z.s.p.o.
  *
@@ -24,9 +24,16 @@
 
 #include <stdio.h>
 
-#include "parser.h"
+#include "tree.h"
 
 int ly_model_print(FILE *f, struct ly_module *module, LY_MFORMAT format);
+
+/**
+ * @defgroup libyang libyang
+ * @{
+ *
+ * General libyang functions and structures.
+ */
 
 /**
  * @brief libyang context handler.
@@ -46,23 +53,9 @@ struct ly_ctx;
  * or included modules and submodules. If no such directory is available, NULL
  * is accepted.
  *
- * @retrurn Pointer to the created libyang context, NULL in case of error.
+ * @return Pointer to the created libyang context, NULL in case of error.
  */
 struct ly_ctx *ly_ctx_new(const char *search_dir);
-
-/**
- * @brief Free all internal structures of the specified context.
- *
- * The function should be used before terminating the application to destroy
- * and free all structures internally used by libyang. If the caller uses
- * multiple contexts, the function should be called for each used context.
- *
- * All instance data are supposed to be freed before destroying the context.
- * Data models are destroyed automatically as part of ly_ctx_destroy() call.
- *
- * @param[in] ctx libyang context to destroy
- */
-void ly_ctx_destroy(struct ly_ctx *ctx);
 
 /**
  * @brief Get pointer to the data model structure of the specified name.
@@ -79,9 +72,18 @@ struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name,
                                     const char *revision);
 
 /**
- * @defgroup libyang libyang
- * @{
+ * @brief Free all internal structures of the specified context.
+ *
+ * The function should be used before terminating the application to destroy
+ * and free all structures internally used by libyang. If the caller uses
+ * multiple contexts, the function should be called for each used context.
+ *
+ * All instance data are supposed to be freed before destroying the context.
+ * Data models are destroyed automatically as part of ly_ctx_destroy() call.
+ *
+ * @param[in] ctx libyang context to destroy
  */
+void ly_ctx_destroy(struct ly_ctx *ctx);
 
 /**
  * @brief Load a data model into the specified context.
@@ -109,7 +111,7 @@ struct ly_module *ly_module_read_fd(struct ly_ctx *ctx, int fd,
  */
 void ly_module_free(struct ly_module *module);
 
-/**@}*/
+/**@} libyang */
 
 /**
  * @page howto How To ...
@@ -118,32 +120,59 @@ void ly_module_free(struct ly_module *module);
  */
 
 /**
- * @defgroup logger libyang logger
  *
  * @page howtologger Logger
  *
- * There are 4 verbosity levels defined as ::LY_VERB_LEVEL. The level can be
- * changed by the ly_verbosity() function. By default, the verbosity level is
- * set to #LY_VERB_ERR value;
+ * There are 4 verbosity levels defined as ::LY_LOG_LEVEL. The level can be
+ * changed by the ly_verb() function. By default, the verbosity level is
+ * set to #LY_LLERR value.
  *
+ * In case the logger has an error message (LY_LLERR) to print, also an error
+ * code is recorded in extern ly_errno variable. Possible values are of type
+ * ::LY_ERR.
  */
 
 /**
- * @typedef LY_VERB_LEVEL
- * @brief Verbosity levels.
+ * @defgroup logger Logger
+ * @{
+ *
+ * Publicly visible functions and values of the libyang logger. For more
+ * information, see \ref howtologger.
+ */
+
+/**
+ * @typedef LY_LOG_LEVEL
+ * @brief Verbosity levels of the libyang logger.
+ */
+typedef enum {
+	LY_LLERR,  /**< Print only error messages. */
+	LY_LLWRN,  /**< Print error and warning messages. */
+	LY_LLVRB,  /**< Besides errors and warnings, print some other verbose messages. */
+	LY_LLDBG   /**< Print all messages including some development debug messages. */
+} LY_LOG_LEVEL;
+
+/**
+ * @brief Set logger verbosity level.
+ * @param[in] level Verbosity level.
+ */
+void ly_verb(LY_LOG_LEVEL level);
+
+/**
+ * @typedef LY_ERR
+ * @brief libyang's error codes available via ly_errno extern variable
  * @ingroup logger
  */
 typedef enum {
-	LY_VERB_ERR,  /**< Print only error messages. */
-	LY_VERB_WRN,  /**< Print error and warning messages. */
-	LY_VERB_VRB,  /**< Besides errors and warnings, print some other verbose messages. */
-	LY_VERB_DBG   /**< Print all messages including some development debug messages. */
-} LY_VERB_LEVEL;
+	LY_EMEM,
+	LY_EFATAL,
+	LY_ESYS,
+	LY_EINVAL,
+	LY_EEOF,
+	LY_EWELLFORM,
+	LY_EVALID
+} LY_ERR;
+extern LY_ERR ly_errno;
 
-/**
- *
- */
-void ly_verbosity(LY_VERB_LEVEL level);
-
+/**@} logger */
 
 #endif /* LY_LIBYANG_H_ */

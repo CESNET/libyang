@@ -38,12 +38,12 @@ API int ly_model_print(FILE *f, struct ly_module *module, LY_MFORMAT format)
 
 	switch(format) {
 	case LY_YIN:
-		LY_ERR(LY_EINVAL, "YIN output format not supported yet.");
+		LOGERR(LY_EINVAL, "YIN output format not supported yet.");
 		return EXIT_FAILURE;
 	case LY_YANG:
 		return yang_print_model(f, module);
 	default:
-		LY_ERR(LY_EINVAL, "Unknown output format.");
+		LOGERR(LY_EINVAL, "Unknown output format.");
 		return EXIT_FAILURE;
 	}
 }

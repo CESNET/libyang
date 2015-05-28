@@ -155,7 +155,7 @@ static char *dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zeroco
 		record->refcount = 1;
 		record->next = NULL;
 
-		LY_DBG("DICT: inserting \"%s\"", record->value);
+		LOGDBG("DICT: inserting \"%s\"", record->value);
 		return record->value;
 	}
 
@@ -169,7 +169,7 @@ static char *dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zeroco
 				free(value);
 			}
 
-			LY_DBG("DICT: inserting (refcount) \"%s\"", record->value);
+			LOGDBG("DICT: inserting (refcount) \"%s\"", record->value);
 			return record->value;
 		}
 
@@ -195,7 +195,7 @@ static char *dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zeroco
 
 	record->next = new;
 
-	LY_DBG("DICT: inserting \"%s\" with collision ", record->value);
+	LOGDBG("DICT: inserting \"%s\" with collision ", record->value);
 	return new->value;
 }
 

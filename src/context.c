@@ -54,7 +54,7 @@ API struct ly_ctx *ly_ctx_new(const char *search_dir)
 	if (search_dir) {
 		cwd = get_current_dir_name();
 		if (chdir(search_dir)) {
-			LY_ERR(LY_ESYS, "Unable to use search directory \"%s\" (%s)",
+			LOGERR(LY_ESYS, "Unable to use search directory \"%s\" (%s)",
 				   search_dir, strerror(errno));
 			free(cwd);
 			ly_ctx_destroy(ctx);
@@ -110,9 +110,9 @@ static struct ly_module *search_file(struct ly_ctx *ctx, struct ly_module *modul
 	len = strlen(name);
 	cwd = get_current_dir_name();
 	dir = opendir(cwd);
-	LY_VRB("Searching for \"%s\" in %s.", name, cwd);
+	LOGVRB("Searching for \"%s\" in %s.", name, cwd);
 	if (!dir) {
-		LY_WRN("Unable to open local directory for searching referenced modules (%s)", strerror(errno));
+		LOGWRN("Unable to open local directory for searching referenced modules (%s)", strerror(errno));
 		/* try search directory */
 		goto searchpath;
 	}
@@ -141,7 +141,7 @@ search:
 		/* open the file */
 		fd = open(file->d_name, O_RDONLY);
 		if (fd < 0) {
-			LY_ERR(LY_ESYS, "Unable to open data model file \"%s\" (%s).", file->d_name, strerror(errno));
+			LOGERR(LY_ESYS, "Unable to open data model file \"%s\" (%s).", file->d_name, strerror(errno));
 			goto cleanup;
 		}
 
@@ -159,18 +159,18 @@ search:
 
 searchpath:
 	if (!ctx->models.search_path) {
-		LY_WRN("No search path defined for the current context.");
+		LOGWRN("No search path defined for the current context.");
 	} else if (!result && localsearch) {
 		/* search in local directory done, try context's search_path */
 		closedir(dir);
 		dir = opendir(ctx->models.search_path);
 		if (!dir) {
-			LY_ERR(LY_ESYS, "Unable to open data model search directory \"%s\" (%s).", ctx->models.search_path, strerror(errno));
+			LOGERR(LY_ESYS, "Unable to open data model search directory \"%s\" (%s).", ctx->models.search_path, strerror(errno));
 			goto cleanup;
 		}
 
 		chdir(ctx->models.search_path);
-		LY_VRB("Searching for \"%s\" in %s.", name, ctx->models.search_path);
+		LOGVRB("Searching for \"%s\" in %s.", name, ctx->models.search_path);
 
 		localsearch = 0;
 		goto search;
@@ -197,7 +197,7 @@ struct ly_submodule *ly_ctx_get_submodule(struct ly_module *module, const char *
 	/* not found in context, try to get it from the search directory */
 	result = (struct ly_submodule *) search_file(module->ctx, module, name, revision);
 	if (!result) {
-		LY_ERR(LY_EVALID, "Submodule \"%s\" of the \"%s\" data model not found (search path is \"%s\")",
+		LOGERR(LY_EVALID, "Submodule \"%s\" of the \"%s\" data model not found (search path is \"%s\")",
 		       name, module->name, module->ctx->models.search_path);
 	}
 
@@ -230,7 +230,7 @@ API struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name,
 	/* not found in context, try to get it from the search directory */
 	result = search_file(ctx, NULL, name, revision);
 	if (!result) {
-		LY_ERR(LY_EVALID, "Data model \"%s\" not found (search path is \"%s\")", ctx->models.search_path);
+		LOGERR(LY_EVALID, "Data model \"%s\" not found (search path is \"%s\")", ctx->models.search_path);
 	}
 
 	return result;

@@ -32,6 +32,13 @@
 #include "tree.h"
 #include "xml.h"
 
+#ifndef NDEBUG
+unsigned int lineno, lws_lineno;
+#define COUNTLINE(c) if ((c) == 0xa) {lineno++;}
+#else
+#define COUNTLINE(C)
+#endif
+
 /*
  * Macro to test if character is #x20 | #x9 | #xA | #xD (whitespace)
  */
@@ -56,7 +63,11 @@
 		(c >= 0xf900 && c <= 0xfdcf) || (c >= 0xfdf0 && c <= 0xfffd) || \
 		(c >= 0x10000 && c <= 0xeffff))
 
-#define ign_xmlws(p) while(is_xmlws(*p)) {p++;}
+#define ign_xmlws(p)                                                    \
+	while (is_xmlws(*p)) {                                              \
+		COUNTLINE(*p);                                                      \
+		p++;                                                            \
+	}
 
 void lyxml_unlink_attr(struct lyxml_attr *attr)
 {
@@ -211,7 +222,7 @@ int lyxml_add_attr(struct lyxml_elem *parent, struct lyxml_attr *attr)
 	struct lyxml_attr *a;
 
 	if (!parent || !attr) {
-		LY_ERR(LY_EINVAL, NULL);
+		LOGERR(LY_EINVAL, NULL);
 		return EXIT_FAILURE;
 	}
 
@@ -238,7 +249,7 @@ const char *lyxml_get_attr(struct lyxml_elem *elem, const char *name,
 	struct lyxml_attr *a;
 
 	if (!elem || !name) {
-		LY_ERR(LY_EINVAL, NULL);
+		LOGERR(LY_EINVAL, NULL);
 		return NULL;
 	}
 
@@ -263,7 +274,7 @@ int lyxml_add_child(struct lyxml_elem *parent, struct lyxml_elem *elem)
 	struct lyxml_elem *e;
 
 	if (!parent || !elem) {
-		LY_ERR(LY_EINVAL, NULL);
+		LOGERR(LY_EINVAL, NULL);
 		return EXIT_FAILURE;
 	}
 
@@ -313,7 +324,7 @@ static int getutf8(const char *buf, unsigned int *read)
 
 	/* check input variable */
 	if (!buf || !read) {
-		LY_ERR(LY_EINVAL, NULL);
+		LOGERR(LY_EINVAL, NULL);
 		return 0;
 	}
 	c = buf[0];
@@ -321,7 +332,7 @@ static int getutf8(const char *buf, unsigned int *read)
 
 	/* buf is NULL terminated string, so 0 means EOF */
 	if (!c) {
-		LY_ERR(LY_EEOF, NULL);
+		LOGERR(LY_EEOF, NULL);
 		return 0;
 	}
 	*read = 1;
@@ -335,7 +346,7 @@ static int getutf8(const char *buf, unsigned int *read)
 		for (i = 1; i <= 3; i++) {
 			aux = buf[i];
 			if ((aux & 0xc0) != 0x80) {
-				LY_ERR(LY_EINVAL, NULL);
+				LOGERR(LY_EINVAL, NULL);
 				return 0;
 			}
 
@@ -344,7 +355,7 @@ static int getutf8(const char *buf, unsigned int *read)
 
 
 		if (c < 0x1000 || c > 0x10ffff) {
-			LY_ERR(LY_EINVAL, NULL);
+			LOGERR(LY_EINVAL, NULL);
 		    return 0;
 		}
 	} else if ((c & 0xf0) == 0xe0) {
@@ -355,7 +366,7 @@ static int getutf8(const char *buf, unsigned int *read)
 		for (i = 1; i <= 2; i++) {
 			aux = buf[i];
 			if ((aux & 0xc0) != 0x80) {
-				LY_ERR(LY_EINVAL, NULL);
+				LOGERR(LY_EINVAL, NULL);
 				return 0;
 			}
 
@@ -364,7 +375,7 @@ static int getutf8(const char *buf, unsigned int *read)
 
 
 		if (c < 0x800 || (c > 0xd7ff && c < 0xe000) || c > 0xfffd ) {
-			LY_ERR(LY_EINVAL, NULL);
+			LOGERR(LY_EINVAL, NULL);
 		    return 0;
 		}
 	} else if ((c & 0xe0) == 0xc0) {
@@ -373,25 +384,25 @@ static int getutf8(const char *buf, unsigned int *read)
 
 		aux = buf[1];
 		if ((aux & 0xc0) != 0x80) {
-			LY_ERR(LY_EINVAL, NULL);
+			LOGERR(LY_EINVAL, NULL);
 		    return 0;
 		}
 		c = ((c & 0x1f) << 6) | (aux & 0x3f);
 
 		if (c < 0x80) {
-			LY_ERR(LY_EINVAL, NULL);
+			LOGERR(LY_EINVAL, NULL);
 		    return 0;
 		}
 	} else if (!(c & 0x80)) {
 		/* one byte character */
 		if (c < 0x20 && c != 0x9 && c != 0xa && c != 0xd) {
 			/* invalid character */
-			LY_ERR(LY_EINVAL, NULL);
+			LOGERR(LY_EINVAL, NULL);
 			return 0;
 		}
 	} else {
 		/* invalid character */
-		LY_ERR(LY_EINVAL, NULL);
+		LOGERR(LY_EINVAL, NULL);
 		return 0;
 	}
 
@@ -439,7 +450,7 @@ static unsigned int pututf8(char *dst, int32_t value)
 		return 4;
 	} else {
 		/* out of range */
-		LY_ERR(LY_EINVAL, NULL);
+		LOGERR(LY_EINVAL, NULL);
 		return 0;
 	}
 }
@@ -453,10 +464,11 @@ static int parse_ignore(const char *data, const char *endstr,
 	slen = strlen(endstr);
 
 	while (*c && memcmp(c, endstr, slen)) {
+		COUNTLINE(*c);
 		c++;
 	}
 	if (!*c) {
-		LY_ERR(LY_EWELLFORM, "Missing close sequence \"%s\".", endstr);
+		LOGERR(LY_EWELLFORM, "Missing close sequence \"%s\".", endstr);
 		return EXIT_FAILURE;
 	}
 	c += slen;
@@ -478,7 +490,7 @@ static char *parse_text(const char *data, char delim, unsigned int *len)
 
 	for (*len = o = 0; cdsect || data[*len] != delim; o++) {
 		if (!data[*len] || (!cdsect && !memcmp(&data[*len], "]]>", 2))) {
-			LY_ERR(LY_EWELLFORM, "Invalid element content, \"]]>\" found.");
+			LOGERR(LY_EWELLFORM, "Invalid element content, \"]]>\" found.");
 			goto error;
 		}
 
@@ -534,7 +546,7 @@ loop:
 					buf[o] = '\"';
 					*len += 5;
 				} else {
-					LY_ERR(LY_EWELLFORM,
+					LOGERR(LY_EWELLFORM,
 					       "Invalid entity reference, only predefined entity references are supported.");
 					goto error;
 				}
@@ -546,7 +558,7 @@ loop:
 						n = (10 * n) + (data[*len] - '0');
 					}
 					if (data[*len] != ';') {
-						LY_ERR(LY_EWELLFORM,
+						LOGERR(LY_EWELLFORM,
 						       "Invalid character reference, missing semicolon.");
 						goto error;
 					}
@@ -562,13 +574,13 @@ loop:
 						n = (16 * n) + r;
 					}
 				} else {
-					LY_ERR(LY_EWELLFORM, "Invalid character reference.");
+					LOGERR(LY_EWELLFORM, "Invalid character reference.");
 					goto error;
 
 				}
 				r = pututf8(&buf[o], n);
 				if (!r) {
-					LY_ERR(LY_EWELLFORM, "Invalid character reference value.");
+					LOGERR(LY_EWELLFORM, "Invalid character reference value.");
 					goto error;
 				}
 				o += r - 1; /* o is ++ in for loop */
@@ -576,6 +588,7 @@ loop:
 			}
 		} else {
 			buf[o] = data[*len];
+			COUNTLINE(buf[o]);
 			(*len)++;
 		}
 	}
@@ -678,7 +691,7 @@ static struct lyxml_attr *parse_attr(struct ly_ctx *ctx, const char *data,
 	start = c;
 	uc = getutf8(c, &size);
 	if (!is_xmlnamestartchar(uc)) {
-		LY_ERR(LY_EWELLFORM, "Invalid NameStartChar of the attribute");
+		LOGERR(LY_EWELLFORM, "Invalid NameStartChar of the attribute");
 		free(attr);
 		return NULL;
 	}
@@ -707,7 +720,7 @@ equal:
 	/* check Eq mark that can be surrounded by whitespaces */
 	ign_xmlws(c);
 	if (*c != '=') {
-		LY_ERR(LY_EWELLFORM, "Invalid attribute definition, \"=\" expected.");
+		LOGERR(LY_EWELLFORM, "Invalid attribute definition, \"=\" expected.");
 		goto error;
 	}
 	c++;
@@ -715,7 +728,7 @@ equal:
 
 	/* process value part of the attribute */
 	if (!*c || (*c != '"' && *c != '\'')) {
-		LY_ERR(LY_EWELLFORM, "Invalid attribute value, \" or \' expected.");
+		LOGERR(LY_EWELLFORM, "Invalid attribute value, \" or \' expected.");
 		goto error;
 	}
 	delim = c;
@@ -759,7 +772,7 @@ static struct lyxml_elem *parse_elem(struct ly_ctx *ctx, const char *data,
 
 	uc = getutf8(e, &size);
 	if (!is_xmlnamestartchar(uc)) {
-		LY_ERR(LY_EWELLFORM, "Invalid NameStartChar of the attribute");
+		LOGERR(LY_EWELLFORM, "Invalid NameStartChar of the attribute");
 		return NULL;
 	}
 	e += size;
@@ -767,7 +780,7 @@ static struct lyxml_elem *parse_elem(struct ly_ctx *ctx, const char *data,
 	while (is_xmlnamechar(uc)) {
 		if (*e == ':') {
 			if (prefix_len) {
-				LY_ERR(LY_EWELLFORM, "Multiple colons in element name.");
+				LOGERR(LY_EWELLFORM, "Multiple colons in element name.");
 				goto error;
 			}
 			/* element in a namespace */
@@ -782,12 +795,15 @@ static struct lyxml_elem *parse_elem(struct ly_ctx *ctx, const char *data,
 		uc = getutf8(e, &size);
 	}
 	if (!*e) {
-		LY_ERR(LY_EWELLFORM, "Unexpected end of input data.");
+		LOGERR(LY_EWELLFORM, "Unexpected end of input data.");
 		return NULL;
 	}
 
 	/* allocate element structure */
 	elem = calloc(1, sizeof *elem);
+#ifndef NDEBUG
+	elem->line = lineno;
+#endif
 	elem->next = NULL;
 	elem->prev = elem;
 	if (parent) {
@@ -823,7 +839,7 @@ process:
 				e = c;
 				uc = getutf8(e, &size);
 				if (!is_xmlnamestartchar(uc)) {
-					LY_ERR(LY_EWELLFORM,
+					LOGERR(LY_EWELLFORM,
 					       "Invalid NameStartChar of the attribute");
 					goto error;
 				}
@@ -836,7 +852,7 @@ process:
 
 						/* look for the prefix in namespaces */
 						if (memcmp(prefix, c, e - c)) {
-							LY_ERR(LY_EWELLFORM,
+							LOGERR(LY_EWELLFORM,
 							       "Mixed opening (%s) and closing element tag - different namespaces",
 							       elem->name);
 						}
@@ -846,7 +862,7 @@ process:
 					uc = getutf8(e, &size);
 				}
 				if (!*e) {
-					LY_ERR(LY_EWELLFORM, "Unexpected end of input data.");
+					LOGERR(LY_EWELLFORM, "Unexpected end of input data.");
 					goto error;
 				}
 
@@ -857,7 +873,7 @@ process:
 				str[e - c] = '\0';
 				if (size != strlen(elem->name) ||
 						memcmp(str, elem->name, size)) {
-					LY_ERR(LY_EWELLFORM,
+					LOGERR(LY_EWELLFORM,
 					       "Mixed opening (%s) and closing (%s) element tag",
 					       elem->name, str);
 					free(str);
@@ -868,7 +884,7 @@ process:
 
 				ign_xmlws(c);
 				if (*c != '>') {
-					LY_ERR(LY_EWELLFORM,
+					LOGERR(LY_EWELLFORM,
 					       "Close element tag \"%s\" contain additional data.",
 					       elem->name);
 					goto error;
@@ -922,12 +938,15 @@ process:
 				}
 				child = parse_elem(ctx, c, &size, elem);
 				if (!child) {
-					LY_ERR(LY_EWELLFORM, "Unexpected end of input data.");
+					LOGERR(LY_EWELLFORM, "Unexpected end of input data.");
 					goto error;
 				}
 				c += size; /* move after processed child element */
 			} else if (is_xmlws(*c)) {
 				lws = c;
+#ifndef NDEBUG
+				lws_lineno = lineno;
+#endif
 				ign_xmlws(c);
 			} else {
 store_content:
@@ -935,6 +954,9 @@ store_content:
 				if (lws) {
 					/* process content including the leading white spaces */
 					c = lws;
+#ifndef NDEBUG
+					lineno = lws_lineno;
+#endif
 					lws = NULL;
 				}
 				elem->content = lydict_insert_zc(ctx, parse_text(c, '<', &size));
@@ -957,7 +979,7 @@ store_content:
 		/* process attribute */
 		attr = parse_attr(ctx, c, &size, elem);
 		if (!attr) {
-			LY_ERR(LY_EWELLFORM, "Unexpected end of input data.");
+			LOGERR(LY_EWELLFORM, "Unexpected end of input data.");
 			goto error;
 		}
 		lyxml_add_attr(elem, attr);
@@ -987,7 +1009,7 @@ store_content:
 	*len = c - data;
 
 	if (!closed_flag) {
-		LY_ERR(LY_EWELLFORM, "Missing closing element tag (%s).", elem->name);
+		LOGERR(LY_EWELLFORM, "Missing closing element tag (%s).", elem->name);
 		goto error;
 	}
 
@@ -1015,16 +1037,21 @@ struct lyxml_elem *lyxml_read(struct ly_ctx *ctx, const char *data,
 		return NULL;
 	}
 
+#ifndef NDEBUG
+	/* TODO: threads support */
+	lineno = 1;
+#endif
+
 	/* process document */
 	while (*c) {
 		if (is_xmlws(*c)) {
 			/* skip whitespaces */
-			c++;
+			ign_xmlws(c);
 		} else if (!memcmp(c, "<?", 2)) {
 			/* XMLDecl or PI - ignore it */
 			c += 2;
 			if (parse_ignore(c, "?>", &len)) {
-				LY_ERR(LY_EWELLFORM, "Missing close sequence \"?>\".");
+				LOGERR(LY_EWELLFORM, "Missing close sequence \"?>\".");
 				return NULL;
 			}
 			c += len;
@@ -1032,14 +1059,14 @@ struct lyxml_elem *lyxml_read(struct ly_ctx *ctx, const char *data,
 			/* Comment - ignore it */
 			c += 2;
 			if (parse_ignore(c, "-->", &len)) {
-				LY_ERR(LY_EWELLFORM, "Missing close sequence \"-->\".");
+				LOGERR(LY_EWELLFORM, "Missing close sequence \"-->\".");
 				return NULL;
 			}
 			c += len;
 		} else if (!memcmp(c, "<!", 2)) {
 			/* DOCTYPE */
 			/* TODO - standalone ignore counting < and > */
-			LY_ERR(LY_EINVAL, "DOCTYPE not implemented.");
+			LOGERR(LY_EINVAL, "DOCTYPE not implemented.");
 			return NULL;
 		} else if (*c == '<') {
 			/* element - process it in next loop to strictly follow XML
@@ -1060,7 +1087,7 @@ struct lyxml_elem *lyxml_read(struct ly_ctx *ctx, const char *data,
 	 */
 	ign_xmlws(c);
 	if (*c) {
-		LY_WRN("There are some not parsed data:\n%s", c);
+		LOGWRN("There are some not parsed data:\n%s", c);
 	}
 
 	return root;
@@ -1081,7 +1108,7 @@ struct lyxml_elem *lyxml_read_file(struct ly_ctx *ctx, const char *filename,
                                        int UNUSED(options))
 {
 	if (!filename || !ctx) {
-		LY_ERR(LY_EINVAL, NULL);
+		LOGERR(LY_EINVAL, NULL);
 		return NULL;
 	}
 

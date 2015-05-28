@@ -40,7 +40,7 @@
 #ifndef LY_PARSER_H_
 #define LY_PARSER_H_
 
-#include "context.h"
+#include "libyang.h"
 #include "tree.h"
 
 /**
@@ -48,5 +48,8 @@
  * @{
  */
 struct ly_module *yin_read_module(struct ly_ctx *ctx, const char *data);
+struct ly_submodule *yin_read_submodule(struct ly_module *module, const char *data);
+
+/**@} yin */
 
 #endif /* LY_PARSER_H_ */

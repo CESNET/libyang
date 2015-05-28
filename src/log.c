@@ -25,14 +25,14 @@
 
 #include "common.h"
 
-volatile uint8_t ly_verb_level = LY_VERB_ERR;
+volatile uint8_t ly_log_level = LY_LLERR;
 
-API void ly_verbosity(LY_VERB_LEVEL level)
+API void ly_verb(LY_LOG_LEVEL level)
 {
-	ly_verb_level = level;
+	ly_log_level = level;
 }
 
-static void log_vprintf(LY_VERB_LEVEL level, const char *format, va_list args)
+static void log_vprintf(LY_LOG_LEVEL level, const char *format, va_list args)
 {
 #define PRV_MSG_SIZE 4096
 	char prv_msg[PRV_MSG_SIZE];
@@ -43,66 +43,49 @@ static void log_vprintf(LY_VERB_LEVEL level, const char *format, va_list args)
 #undef PRV_MSG_SIZE
 }
 
-void ly_log(LY_VERB_LEVEL level, int errno_, const char *format, ...)
+void ly_log(LY_LOG_LEVEL level, const char *format, ...)
 {
 	va_list ap;
-
-	if (level == LY_VERB_ERR) {
-		ly_errno = errno_;
-	}
 
 	va_start(ap, format);
 	log_vprintf(level, format, ap);
 	va_end(ap);
 }
 
-struct {
-	LY_VERB_LEVEL level; /* verbose level */
-	const char *fmt;     /* format string to be printed */
-} verrs[] = {
-		{LY_VERB_ERR,    /* LY_VERR_UNEXP_STMT */
-		"Unexpected keyword \"%s\"."},
-		{LY_VERB_ERR,    /* LY_VERR_MISS_STMT1 */
-		"Missing keyword \"%s\"."},
-		{LY_VERB_ERR,    /* LY_VERR_MISS_STMT2 */
-		"Missing keyword \"%s\" as child to \"%s\"."},
-		{LY_VERB_ERR,    /* LY_VERR_MISS_ARG */
-		"Missing argument \"%s\" to keyword \"%s\"."},
-		{LY_VERB_ERR,    /* LY_VERR_TOOMANY */
-		"Too many instances of \"%s\" in \"%s\"."},
-		{LY_VERB_ERR,    /* LY_VERR_UNEXP_VAL */
-		"Unexpected value \"%s\" of \"%s\"."},
-		{LY_VERB_ERR,    /* LY_VERR_BAD_RESTR */
-		"Restriction \"%s\" not allowed for this base type."},
-		{LY_VERB_ERR,    /* LY_VERR_ENUM_DUP_VAL */
-		"The value \"%d\" of \"%s\" enum has already been assigned to another enum value."},
-		{LY_VERB_ERR,    /* LY_VERR_ENUM_DUP_NAME */
-		"The enum name \"%s\" has already been assigned to another enum."},
-		{LY_VERB_ERR,    /* LY_VERR_ENUM_WS */
-		"The enum name \"%s\" includes invalid leading or trailing whitespaces."},
-		{LY_VERB_ERR,    /* LY_VERR_UNEXP_PREFIX */
-		"Prefix in \"%s\" refers to an unknown module."},
-		{LY_VERB_ERR,    /* LY_VERR_KEY_NLEAF */
-		"Key \"%s\" in \"%s\" list is not a leaf."},
-		{LY_VERB_ERR,    /* LY_VERR_KEY_TYPE */
-		"Key \"%s\" in \"%s\" list must not be the built-in type \"empty\"."},
-		{LY_VERB_ERR,    /* LY_VERR_KEY_CONFIG */
-		"The \"config\" value of the \"%s\" key differs from its \"%s\" list config value."},
-		{LY_VERB_ERR,    /* LY_VERR_KEY_MISS */
-		"Leaf \"%s\" defined as key in a list not found."},
-		{LY_VERB_ERR,    /* LY_VERR_KEY_DUP */
-		"Key identifier \"%s\" in the \"%s\" list is not unique."}
+const char *verrs[] = {
+/* VE_INSTMT */       "Unexpected keyword \"%s\".",
+/* VE_INARG */        "Unexpected value \"%s\" of \"%s\".",
+/* VE_MISSSTMT1 */    "Missing keyword \"%s\".",
+/* VE_MISSSTMT2 */    "Missing keyword \"%s\" as child to \"%s\".",
+/* VE_MISSARG */      "Missing argument \"%s\" to keyword \"%s\".",
+/* VE_TOOMANY */      "Too many instances of \"%s\" in \"%s\".",
+/* VE_ENUM_DUPVAL */  "The value \"%d\" of \"%s\" enum has already been assigned to another enum value.",
+/* VE_ENUM_DUPNAME */ "The enum name \"%s\" has already been assigned to another enum.",
+/* VE_ENUM_WS */      "The enum name \"%s\" includes invalid leading or trailing whitespaces.",
+/* VE_INPREFIX */     "Prefix in \"%s\" refers to an unknown module.",
+/* VE_KEY_NLEAF */    "Key \"%s\" in \"%s\" list is not a leaf.",
+/* VE_KEY_TYPE */     "Key \"%s\" in \"%s\" list must not be the built-in type \"empty\".",
+/* VE_KEY_CONFIG */   "The \"config\" value of the \"%s\" key differs from its \"%s\" list config value.",
+/* VE_KEY_MISS */     "Leaf \"%s\" defined as key in a list not found.",
+/* VE_KEY_DUP */      "Key identifier \"%s\" in the \"%s\" list is not unique."
 };
 
-void ly_verr(enum LY_VERR code, ...)
+void ly_vlog(enum LY_VERR code, unsigned int line, ...)
 {
 	va_list ap;
+	const char *fmt;
 
-	if (verrs[code].level == LY_VERB_ERR) {
-		ly_errno = LY_EVALID;
+	ly_errno = LY_EVALID;
+	if (line) {
+		fprintf(stderr, "libyang[%d]: Parser fails around line %u.\n", LY_LLERR, line);
 	}
 
-	va_start(ap, code);
-	log_vprintf(verrs[code].level, verrs[code].fmt, ap);
+	va_start(ap, line);
+	if (code == VE_SPEC) {
+		fmt = va_arg(ap, char *);
+		log_vprintf(LY_LLERR, fmt, ap);
+	} else {
+		log_vprintf(LY_LLERR, verrs[code], ap);
+	}
 	va_end(ap);
 }

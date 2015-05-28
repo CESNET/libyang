@@ -42,6 +42,15 @@
 
 #include <stdint.h>
 
+/**
+ * @defgroup tree Tree
+ * @{
+ *
+ * Definitions of libyang data structures (for both the data models and
+ * instance data trees) and functions to manipulate them.
+ *
+ */
+
 typedef enum {
 	LY_UNKNOWN,
 	LY_YANG,
@@ -470,6 +479,8 @@ struct ly_ident {
 /* private libyang functions */
 struct ly_submodule *ly_submodule_read(struct ly_module *module, const char *data, LY_MFORMAT format);
 struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LY_MFORMAT format);
+
+/**@} tree */
 
 #endif /* LY_TREE_H_ */
 

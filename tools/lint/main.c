@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 			searchpath = optarg;
 			break;
 		case 'v':
-			ly_verbosity(atoi(optarg));
+			ly_verb(atoi(optarg));
 			break;
 		default: /* '?' */
 			usage(argv[0]);
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 		ret = EXIT_FAILURE;
 		goto cleanup;
 	}
-
+sleep(10);
 	if (output) {
 		ly_model_print(output, model, format);
 	}
