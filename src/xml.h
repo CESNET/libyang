@@ -130,7 +130,7 @@ struct lyxml_elem* lyxml_read(struct ly_ctx *ctx, const char *data,
                               int options);
 
 /**
- * @brief Parse XML from file descriptor
+ * @brief Parse XML from file descriptor - TODO: NOT IMPLEMENTED
  *
  * @param[in] fd File descriptor where read data to parse
  * @param[in] options Parser options. Currently ignored, no option defined yet.
@@ -139,7 +139,7 @@ struct lyxml_elem* lyxml_read(struct ly_ctx *ctx, const char *data,
 struct lyxml_elem* lyxml_read_fd(struct ly_ctx *ctx, int fd, int options);
 
 /**
- * @brief Parse XML from filesystem
+ * @brief Parse XML from filesystem - TODO: NOT IMPLEMENTED
  *
  * @param[in] filename Path to the file where read data to parse
  * @param[in] options Parser options. Currently ignored, no option defined yet.

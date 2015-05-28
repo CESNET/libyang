@@ -163,12 +163,11 @@ void ly_verb(LY_LOG_LEVEL level);
  * @ingroup logger
  */
 typedef enum {
-	LY_EMEM,
-	LY_EFATAL,
-	LY_ESYS,
-	LY_EINVAL,
-	LY_EEOF,
-	LY_EVALID
+	LY_EMEM,   /**< Memory allocation failure */
+	LY_ESYS,   /**< System call failure */
+	LY_EINVAL, /**< Invalid value */
+	LY_EINT,   /**< Internal error */
+	LY_EVALID  /**< Validation failure */
 } LY_ERR;
 extern LY_ERR ly_errno;
 

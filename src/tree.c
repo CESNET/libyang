@@ -19,6 +19,7 @@
  *    software without specific prior written permission.
  */
 
+#include <assert.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -96,10 +97,8 @@ int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
 {
 	struct ly_mnode *last;
 
-	if (!parent || !child) {
-		ly_errno = LY_EINVAL;
-		return EXIT_FAILURE;
-	}
+	assert(parent);
+	assert(child);
 
 	if (child->parent) {
 		ly_mnode_unlink(child);
@@ -129,7 +128,7 @@ API struct ly_module *ly_module_read(struct ly_ctx *ctx, const char *data,
                                     LY_MFORMAT format)
 {
 	if (!ctx || !data) {
-		ly_errno = LY_EINVAL;
+		LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
 		return NULL;
 	}
 
@@ -148,10 +147,8 @@ API struct ly_module *ly_module_read(struct ly_ctx *ctx, const char *data,
 struct ly_submodule *ly_submodule_read(struct ly_module *module,
                                        const char *data, LY_MFORMAT format)
 {
-	if (!module || !data) {
-		ly_errno = LY_EINVAL;
-		return NULL;
-	}
+	assert(module);
+	assert(data);
 
 	switch (format) {
 	case LY_YIN:
@@ -173,7 +170,7 @@ API struct ly_module *ly_module_read_fd(struct ly_ctx *ctx, int fd,
 	char *addr;
 
 	if (!ctx || fd < 0) {
-		ly_errno = LY_EINVAL;
+		LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
 		return NULL;
 	}
 
@@ -197,10 +194,8 @@ struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd,
 	struct stat sb;
 	char *addr;
 
-	if (!module || fd < 0) {
-		ly_errno = LY_EINVAL;
-		return NULL;
-	}
+	assert(module);
+	assert(fd >= 0);
 
 	/*
 	 * TODO
@@ -209,6 +204,7 @@ struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd,
 	 */
 	fstat(fd, &sb);
 	addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	/* TODO addr error check */
 	submodule = ly_submodule_read(module, addr, format);
 	munmap(addr, sb.st_size);
 
@@ -219,6 +215,11 @@ struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd,
 void ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
 {
 	int i;
+
+	assert(ctx);
+	if (!type) {
+		return;
+	}
 
 	lydict_remove(ctx, type->prefix);
 
@@ -239,6 +240,11 @@ void ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
 
 void ly_tpdf_free(struct ly_ctx *ctx, struct ly_tpdf *tpdf)
 {
+	assert(ctx);
+	if (!tpdf) {
+		return;
+	}
+
 	lydict_remove(ctx, tpdf->name);
 	lydict_remove(ctx, tpdf->dsc);
 	lydict_remove(ctx, tpdf->ref);
@@ -249,6 +255,11 @@ void ly_tpdf_free(struct ly_ctx *ctx, struct ly_tpdf *tpdf)
 void ly_ident_free(struct ly_ctx *ctx, struct ly_ident *ident)
 {
 	struct ly_ident_der *der;
+
+	assert(ctx);
+	if (!ident) {
+		return;
+	}
 
 	/*
 	 * TODO
@@ -329,6 +340,9 @@ void ly_mnode_free(struct ly_mnode *node)
 		return;
 	}
 
+	assert(node->module);
+	assert(node->module->ctx);
+
 	ctx = node->module->ctx;
 
 	/* common part */
@@ -376,6 +390,7 @@ static void module_free_common(struct ly_module *module)
 	struct ly_mnode *mnode;
 	int i;
 
+	assert(module->ctx);
 	ctx = module->ctx;
 
 	while (module->data) {

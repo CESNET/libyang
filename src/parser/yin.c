@@ -19,6 +19,7 @@
  *    software without specific prior written permission.
  */
 
+#include <assert.h>
 #include <ctype.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -705,7 +706,9 @@ static struct ly_mnode *read_yin_choice(struct ly_module *module,
 		}
 	}
 
-	ly_mnode_addchild(parent, retval);
+	if (parent) {
+		ly_mnode_addchild(parent, retval);
+	}
 
 	return retval;
 
@@ -743,7 +746,9 @@ static struct ly_mnode *read_yin_leaf(struct ly_module *module,
 		}
 	}
 
-	ly_mnode_addchild(parent, retval);
+	if (parent) {
+		ly_mnode_addchild(parent, retval);
+	}
 
 	return retval;
 
@@ -781,7 +786,9 @@ static struct ly_mnode *read_yin_leaflist(struct ly_module *module,
 		}
 	}
 
-	ly_mnode_addchild(parent, retval);
+	if (parent) {
+		ly_mnode_addchild(parent, retval);
+	}
 
 	return retval;
 
@@ -909,7 +916,10 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 		}
 	}
 
-	ly_mnode_addchild(parent, retval);
+	if (parent) {
+		ly_mnode_addchild(parent, retval);
+	}
+
 	if (!key_str) {
 		/* config false list without a key */
 		return retval;
@@ -1078,7 +1088,9 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 		}
 	}
 
-	ly_mnode_addchild(parent, retval);
+	if (parent) {
+		ly_mnode_addchild(parent, retval);
+	}
 
 	return retval;
 
@@ -1178,7 +1190,9 @@ static struct ly_mnode *read_yin_grouping(struct ly_module *module,
 		}
 	}
 
-	ly_mnode_addchild(parent, retval);
+	if (parent) {
+		ly_mnode_addchild(parent, retval);
+	}
 
 	return retval;
 
@@ -1285,9 +1299,14 @@ static struct ly_mnode *read_yin_uses(struct ly_module *module,
 		}
 	}
 
-	ly_mnode_addchild(parent, retval);
+	if (parent) {
+		ly_mnode_addchild(parent, retval);
+	}
 
 	if (!resolve) {
+		/* this is uses statement inside the grouping, so do not bound grouping
+		 * to the current content
+		 */
 		return retval;
 	}
 
@@ -1539,6 +1558,7 @@ struct ly_submodule *yin_read_submodule(struct ly_module *module, const char *da
 	struct ly_submodule *submodule = NULL;
 	const char *value;
 
+	assert(module->ctx);
 
 	yin = lyxml_read(module->ctx, data, 0);
 	if (!yin) {
@@ -1559,7 +1579,7 @@ struct ly_submodule *yin_read_submodule(struct ly_module *module, const char *da
 
 	submodule = calloc(1, sizeof *submodule);
 	if (!submodule) {
-		ly_errno = LY_EFATAL;
+		LOGMEM;
 		goto error;
 	}
 
@@ -1612,7 +1632,7 @@ struct ly_module *yin_read_module(struct ly_ctx *ctx, const char *data)
 
 	module = calloc(1, sizeof *module);
 	if (!module) {
-		ly_errno = LY_EFATAL;
+		LOGMEM;
 		goto error;
 	}
 
@@ -1628,7 +1648,7 @@ struct ly_module *yin_read_module(struct ly_ctx *ctx, const char *data)
 	if (ctx->models.used == ctx->models.size) {
 		newlist = realloc(ctx->models.list, ctx->models.size * 2);
 		if (!newlist) {
-			LOGERR(LY_EFATAL, NULL);
+			LOGMEM;
 			goto error;
 		}
 		for (i = ctx->models.size; i < ctx->models.size * 2; i++) {

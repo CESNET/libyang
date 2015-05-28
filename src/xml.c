@@ -19,7 +19,7 @@
  *    software without specific prior written permission.
  */
 
-
+#include <assert.h>
 #include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -222,10 +222,8 @@ int lyxml_add_attr(struct lyxml_elem *parent, struct lyxml_attr *attr)
 {
 	struct lyxml_attr *a;
 
-	if (!parent || !attr) {
-		LOGERR(LY_EINVAL, NULL);
-		return EXIT_FAILURE;
-	}
+	assert(parent);
+	assert(attr);
 
 	/* (re)link attribute to parent */
 	if (attr->parent) {
@@ -249,10 +247,8 @@ const char *lyxml_get_attr(struct lyxml_elem *elem, const char *name,
 {
 	struct lyxml_attr *a;
 
-	if (!elem || !name) {
-		LOGERR(LY_EINVAL, NULL);
-		return NULL;
-	}
+	assert(elem);
+	assert(name);
 
 	for (a = elem->attr; a; a = a->next) {
 		if (a->type != LYXML_ATTR_STD) {
@@ -274,10 +270,8 @@ int lyxml_add_child(struct lyxml_elem *parent, struct lyxml_elem *elem)
 {
 	struct lyxml_elem *e;
 
-	if (!parent || !elem) {
-		LOGERR(LY_EINVAL, NULL);
-		return EXIT_FAILURE;
-	}
+	assert(parent);
+	assert(elem);
 
 	/* (re)link element to parent */
 	if (elem->parent) {
@@ -323,17 +317,12 @@ static int getutf8(const char *buf, unsigned int *read)
 	int c, aux;
 	int i;
 
-	/* check input variable */
-	if (!buf || !read) {
-		LOGERR(LY_EINVAL, NULL);
-		return 0;
-	}
 	c = buf[0];
 	*read = 0;
 
 	/* buf is NULL terminated string, so 0 means EOF */
 	if (!c) {
-		LOGERR(LY_EEOF, NULL);
+		LOGVAL(VE_EOF, lineno);
 		return 0;
 	}
 	*read = 1;
@@ -347,7 +336,7 @@ static int getutf8(const char *buf, unsigned int *read)
 		for (i = 1; i <= 3; i++) {
 			aux = buf[i];
 			if ((aux & 0xc0) != 0x80) {
-				LOGERR(LY_EINVAL, NULL);
+				LOGVAL(VE_XML_INVAL, lineno, "input character");
 				return 0;
 			}
 
@@ -356,7 +345,7 @@ static int getutf8(const char *buf, unsigned int *read)
 
 
 		if (c < 0x1000 || c > 0x10ffff) {
-			LOGERR(LY_EINVAL, NULL);
+			LOGVAL(VE_XML_INVAL, lineno, "input character");
 		    return 0;
 		}
 	} else if ((c & 0xf0) == 0xe0) {
@@ -367,7 +356,7 @@ static int getutf8(const char *buf, unsigned int *read)
 		for (i = 1; i <= 2; i++) {
 			aux = buf[i];
 			if ((aux & 0xc0) != 0x80) {
-				LOGERR(LY_EINVAL, NULL);
+				LOGVAL(VE_XML_INVAL, lineno, "input character");
 				return 0;
 			}
 
@@ -376,7 +365,7 @@ static int getutf8(const char *buf, unsigned int *read)
 
 
 		if (c < 0x800 || (c > 0xd7ff && c < 0xe000) || c > 0xfffd ) {
-			LOGERR(LY_EINVAL, NULL);
+			LOGVAL(VE_XML_INVAL, lineno, "input character");
 		    return 0;
 		}
 	} else if ((c & 0xe0) == 0xc0) {
@@ -385,25 +374,25 @@ static int getutf8(const char *buf, unsigned int *read)
 
 		aux = buf[1];
 		if ((aux & 0xc0) != 0x80) {
-			LOGERR(LY_EINVAL, NULL);
+			LOGVAL(VE_XML_INVAL, lineno, "input character");
 		    return 0;
 		}
 		c = ((c & 0x1f) << 6) | (aux & 0x3f);
 
 		if (c < 0x80) {
-			LOGERR(LY_EINVAL, NULL);
+			LOGVAL(VE_XML_INVAL, lineno, "input character");
 		    return 0;
 		}
 	} else if (!(c & 0x80)) {
 		/* one byte character */
 		if (c < 0x20 && c != 0x9 && c != 0xa && c != 0xd) {
 			/* invalid character */
-			LOGERR(LY_EINVAL, NULL);
+			LOGVAL(VE_XML_INVAL, lineno, "input character");
 			return 0;
 		}
 	} else {
 		/* invalid character */
-		LOGERR(LY_EINVAL, NULL);
+		LOGVAL(VE_XML_INVAL, lineno, "input character");
 		return 0;
 	}
 
@@ -451,7 +440,7 @@ static unsigned int pututf8(char *dst, int32_t value)
 		return 4;
 	} else {
 		/* out of range */
-		LOGERR(LY_EINVAL, NULL);
+		LOGVAL(VE_SPEC, lineno, "Invalid UTF-8 value 0x%08x", value);
 		return 0;
 	}
 }
@@ -1025,11 +1014,6 @@ struct lyxml_elem *lyxml_read(struct ly_ctx *ctx, const char *data,
 	unsigned int len;
 	struct lyxml_elem *root = NULL;
 
-	if (!data || !ctx) {
-		ly_errno = LY_EINVAL;
-		return NULL;
-	}
-
 #ifndef NDEBUG
 	/* TODO: threads support */
 	lineno = 1;
@@ -1059,7 +1043,7 @@ struct lyxml_elem *lyxml_read(struct ly_ctx *ctx, const char *data,
 		} else if (!memcmp(c, "<!", 2)) {
 			/* DOCTYPE */
 			/* TODO - standalone ignore counting < and > */
-			LOGERR(LY_EINVAL, "DOCTYPE not implemented.");
+			LOGERR(LY_EINVAL, "DOCTYPE not supported in XML documents.");
 			return NULL;
 		} else if (*c == '<') {
 			/* element - process it in next loop to strictly follow XML
@@ -1090,10 +1074,11 @@ struct lyxml_elem *lyxml_read_fd(struct ly_ctx *ctx, int fd,
                                      int UNUSED(options))
 {
 	if (fd == -1 || !ctx) {
-		ly_errno = LY_EINVAL;
+		LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
 		return NULL;
 	}
 
+	LOGERR(LY_EINT, "%s function is not implemented", __func__);
 	return NULL;
 }
 
@@ -1101,10 +1086,11 @@ struct lyxml_elem *lyxml_read_file(struct ly_ctx *ctx, const char *filename,
                                        int UNUSED(options))
 {
 	if (!filename || !ctx) {
-		LOGERR(LY_EINVAL, NULL);
+		LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
 		return NULL;
 	}
 
+	LOGERR(LY_EINT, "%s function is not implemented", __func__);
 	return NULL;
 }
 

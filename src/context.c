@@ -40,7 +40,7 @@ API struct ly_ctx *ly_ctx_new(const char *search_dir)
 
 	ctx = calloc(1, sizeof *ctx);
 	if (!ctx) {
-		ly_errno = LY_EFATAL;
+		LOGMEM;
 		return NULL;
 	}
 
