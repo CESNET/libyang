@@ -36,7 +36,7 @@ There are two build modes:
   This generates library with the debug information and disables optimization
   of the code.
 
-The `Debug mode is currently used as the default one. to switch to the
+The `Debug` mode is currently used as the default one. to switch to the
 `Release` mode, enter at the command line:
 ```
 $ cmake -D CMAKE_BUILD_TYPE:String="Release" .
