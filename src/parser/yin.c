@@ -1654,7 +1654,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin, int
 
 			/* check duplications in include submodules */
 			for (i = 0; i < module->inc_size - 1; i++) {
-				if (!strcmp(module->inc[i].submodule->name, module->inc[module->imp_size - 1].submodule->name)) {
+				if (!strcmp(module->inc[i].submodule->name, module->inc[module->inc_size - 1].submodule->name)) {
 					LOGVAL(VE_SPEC, LOGLINE(node), "Importing module \"%s\" repeatedly.", module->inc[i].submodule->name);
 					goto error;
 				}
