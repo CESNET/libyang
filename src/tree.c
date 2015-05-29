@@ -388,7 +388,7 @@ static void module_free_common(struct ly_module *module)
 {
 	struct ly_ctx *ctx;
 	struct ly_mnode *mnode;
-	int i;
+	unsigned int i;
 
 	assert(module->ctx);
 	ctx = module->ctx;
@@ -404,37 +404,37 @@ static void module_free_common(struct ly_module *module)
 	lydict_remove(ctx, module->org);
 	lydict_remove(ctx, module->contact);
 
-	if (module->rev_size) {
-		for (i = 0; i < module->rev_size; i++) {
-			lydict_remove(ctx, module->rev[i].dsc);
-			lydict_remove(ctx, module->rev[i].ref);
-		}
+	for (i = 0; i < module->rev_size; i++) {
+		lydict_remove(ctx, module->rev[i].dsc);
+		lydict_remove(ctx, module->rev[i].ref);
+	}
+	if (module->rev) {
 		free(module->rev);
 	}
 
-	if (module->ident_size) {
-		for (i = 0; i < module->ident_size; i++) {
-			ly_ident_free(ctx, &module->ident[i]);
-		}
+	for (i = 0; i < module->ident_size; i++) {
+		ly_ident_free(ctx, &module->ident[i]);
+	}
+	module->ident_size = 0;
+	if (module->ident) {
 		free(module->ident);
-		module->ident_size = 0;
 	}
 
-	if (module->tpdf_size) {
-		for (i = 0; i < module->tpdf_size; i++) {
-			ly_tpdf_free(ctx, &module->tpdf[i]);
-		}
+	for (i = 0; i < module->tpdf_size; i++) {
+		ly_tpdf_free(ctx, &module->tpdf[i]);
+	}
+	if (module->tpdf) {
 		free(module->tpdf);
 	}
 
-	if (module->imp_size) {
+	if (module->imp) {
 		free(module->imp);
 	}
 
-	if (module->inc_size) {
-		for (i = 0; i < module->inc_size; i++) {
-			ly_submodule_free(module->inc[i].submodule);
-		}
+	for (i = 0; i < module->inc_size; i++) {
+		ly_submodule_free(module->inc[i].submodule);
+	}
+	if (module->inc) {
 		free(module->inc);
 	}
 

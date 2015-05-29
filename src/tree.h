@@ -37,6 +37,8 @@
  *
  */
 
+#include <netinet/ip.h>
+
 #ifndef LY_TREE_H_
 #define LY_TREE_H_
 
@@ -93,7 +95,7 @@ struct ly_types {
 extern struct ly_types ly_types[LY_DATA_TYPE_COUNT];
 
 struct ly_type {
-	char *prefix;           /**< prefix for the type referenced in der pointer*/
+	const char *prefix;           /**< prefix for the type referenced in der pointer*/
 	LY_DATA_TYPE base;      /**< base type */
 	struct ly_tpdf *der;    /**< pointer to the superior type. If NULL,
 	                             structure describes one of the built-in type */
@@ -101,15 +103,15 @@ struct ly_type {
 	union {
 		/* LY_TYPE_BINARY */
 		struct {
-			char* length;
+			const char* length;
 		} binary;
 
 		/* LY_TYPE_BITS */
 		struct {
 			struct {
-				char *value;
-				char *dsc;
-				char *ref;
+				const char *value;
+				const char *dsc;
+				const char *ref;
 				uint8_t status;
 				uint32_t pos;
 			} *bit;
@@ -118,16 +120,16 @@ struct ly_type {
 
 		/* LY_TYPE_DEC64 */
 		struct {
-			char *range;
+			const char *range;
 			int dig;
 		} dec64;
 
 		/* LY_TYPE_ENUM */
 		struct {
 			struct {
-				char *name;
-				char *dsc;
-				char *ref;
+				const char *name;
+				const char *dsc;
+				const char *ref;
 				uint8_t status;
 				int32_t value;
 			} *list;
@@ -146,18 +148,18 @@ struct ly_type {
 
 		/* LY_TYPE_*INT* */
 		struct {
-			char *range;
+			const char *range;
 		} num;
 
 		/* LY_TYPE_LEAFREF */
 		struct {
-			char *path;
+			const char *path;
 		} lref;
 
 		/* LY_TYPE_STRING */
 		struct {
-			char *length;
-			char **pattern;
+			const char *length;
+			const char **pattern;
 			int pat_count;
 		} str;
 
@@ -170,11 +172,11 @@ struct ly_type {
 };
 
 struct ly_tpdf {
-	char *name;             /**< name of the module */
+	const char *name;             /**< name of the module */
 	struct ly_module *module; /**< module where the data type is defined, NULL
 	                               in case of built-in type */
-	char *dsc;              /**< description */
-	char *ref;              /**< reference */
+	const char *dsc;              /**< description */
+	const char *ref;              /**< reference */
 	uint8_t flags;	        /**< only for LY_NODE_STATUS_ values */
 
 	struct ly_type type;    /**< type restrictions and reference to a superior
@@ -185,7 +187,7 @@ struct ly_tpdf {
 #define LY_REV_SIZE 11
 struct ly_import {
 	struct ly_module *module; /**< link to the imported module */
-	char *prefix;             /**< prefix for the data from the imported
+	const char *prefix;             /**< prefix for the data from the imported
 	                               module */
 	char rev[LY_REV_SIZE];    /**< revision-date of the imported module */
 };
@@ -208,76 +210,74 @@ typedef enum ly_node_type {
 
 struct ly_module {
 	struct ly_ctx *ctx;     /**< libyang context of the module */
-	char *name;             /**< name of the module */
-	char *dsc;              /**< description of the module */
-	char *ref;              /**< cross-reference for the module */
-	char *org;              /**< party responsible for the module */
-	char *contact;          /**< contact information for the module */
-	uint8_t version;        /**< yang-version: 1 = 1.0, 2 = 1.1 */
+	const char *name;             /**< name of the module */
+	const char *prefix;           /**< prefix of the module */
+	const char *dsc;              /**< description of the module */
+	const char *ref;              /**< cross-reference for the module */
+	const char *org;              /**< party responsible for the module */
+	const char *contact;          /**< contact information for the module */
+	uint8_t version:7;      /**< yang-version: 1 = 1.0, 2 = 1.1 */
+	uint8_t type:1;         /**< structure type: 0 - module */
 
+	/* array sizes */
+	uint8_t rev_size;       /**< number of elements in rev array */
+	uint16_t imp_size;      /**< number of elements in imp array */
+	uint16_t inc_size;      /**< number of elements in inc array */
+	uint16_t tpdf_size;     /**< number of elements in tpdf array */
+	uint32_t ident_size;    /**< number of elements in ident array */
 
-	int imp_size;           /**< number of elements in imp array */
-	struct ly_import *imp;  /**< array of imported modules */
-
-	int inc_size;
-	struct ly_include *inc;
-
-	int rev_size;           /**< number of elements in rev array */
 	struct {
 		char date[LY_REV_SIZE];   /**< revision-date */
-		char *dsc;                /**< revision's dsc */
-		char *ref;                /**< revision's reference */
+		const char *dsc;                /**< revision's dsc */
+		const char *ref;                /**< revision's reference */
 	} *rev;                 /**< array of the module revisions,
 	                             revisions[0] is the last revision of the
 	                             module */
-
-	int tpdf_size;          /**< number of elements in tpdf array */
+	struct ly_import *imp;  /**< array of imported modules */
+	struct ly_include *inc; /**< array of included submodules */
 	struct ly_tpdf *tpdf;   /**< array of typedefs */
-
-	int ident_size;         /**< number of elements in ident array */
 	struct ly_ident *ident; /**< array if identities */
 
 	struct ly_mnode *data;  /**< first data statement */
 
 	/* specific module's items in comparison to submodules */
-	char *ns;               /**< namespace of the module */
-	char *prefix;           /**< prefix of the module */
+	const char *ns;               /**< namespace of the module */
 };
 
 struct ly_submodule {
 	struct ly_ctx *ctx;     /**< libyang context of the module */
-	char *name;             /**< name of the submodule */
-	char *dsc;              /**< description of the submodule */
-	char *ref;              /**< cross-reference for the submodule */
-	char *org;              /**< party responsible for the submodule */
-	char *contact;          /**< contact information for the submodule */
-	uint8_t version;        /**< yang-version: 1 = 1.0, 2 = 1.1 */
+	const char *name;             /**< name of the submodule */
+	const char *prefix;           /**< prefix of the belongs-to module */
+	const char *dsc;              /**< description of the submodule */
+	const char *ref;              /**< cross-reference for the submodule */
+	const char *org;              /**< party responsible for the submodule */
+	const char *contact;          /**< contact information for the submodule */
+	uint8_t version:7;      /**< yang-version: 1 = 1.0, 2 = 1.1 */
+	uint8_t type:1;         /**< structure type: 1 - submodule */
 
-	int imp_size;           /**< number of elements in imp array */
-	struct ly_import *imp;  /**< array of imported modules */
+	/* array sizes */
+	uint8_t rev_size;       /**< number of elements in rev array */
+	uint16_t imp_size;      /**< number of elements in imp array */
+	uint16_t inc_size;      /**< number of elements in inc array */
+	uint16_t tpdf_size;     /**< number of elements in tpdf array */
+	uint32_t ident_size;    /**< number of elements in ident array */
 
-	int inc_size;
-	struct ly_include *inc;
-
-	int rev_size;           /**< number of elements in rev array */
 	struct {
 		char date[LY_REV_SIZE];   /**< revision-date */
-		char *dsc;                /**< revision's dsc */
-		char *ref;                /**< revision's reference */
+		const char *dsc;                /**< revision's dsc */
+		const char *ref;                /**< revision's reference */
 	} *rev;                 /**< array of the module revisions,
 	                             revisions[0] is the last revision of the
 	                             module */
-
-	int tpdf_size;          /**< number of elements in tpdf array */
+	struct ly_import *imp;  /**< array of imported modules */
+	struct ly_include *inc; /**< array of included submodules */
 	struct ly_tpdf *tpdf;   /**< array of typedefs */
-
-	int ident_size;         /**< number of elements in ident array */
 	struct ly_ident *ident; /**< array if identities */
 
 	struct ly_mnode *data;  /**< first data statement */
 
 	/* specific submodule's items in comparison to modules */
-	struct ly_module *module; /**< belongs-to (parent module) */
+	struct ly_module *belongsto; /**< belongs-to (parent module) */
 };
 
 /* Macros to iterate via all trees elements */
@@ -296,9 +296,9 @@ struct ly_submodule {
  * choice, container, leaf, leaf-list and list
  */
 struct ly_mnode {
-	char *name;                /**< name argument */
-	char *dsc;                 /**< description statement */
-	char *ref;                 /**< reference statement */
+	const char *name;                /**< name argument */
+	const char *dsc;                 /**< description statement */
+	const char *ref;                 /**< reference statement */
 	uint8_t flags;
 	struct ly_module *module;  /**< link to the node's data model */
 
@@ -317,14 +317,14 @@ struct ly_mnode {
 #define LY_NODE_STATUS_OBSLT 0x10 /**< status obsolete; */
 #define LY_NODE_STATUS_MASK  0x1c /**< mask for status value */
 
-	char *feature;   /**< if-feature statement */
-	char *when;      /**< when statement */
+	const char *feature;   /**< if-feature statement */
+	const char *when;      /**< when statement */
 };
 
 struct ly_mnode_grp {
-	char *name;             /**< name argument */
-	char *dsc;              /**< description */
-	char *ref;              /**< reference */
+	const char *name;             /**< name argument */
+	const char *dsc;              /**< description */
+	const char *ref;              /**< reference */
 	uint8_t flags;	        /**< only for LY_NODE_STATUS_ values */
 	struct ly_module *module;
 
@@ -340,9 +340,9 @@ struct ly_mnode_grp {
 };
 
 struct ly_mnode_uses {
-	char *name;                /**< name argument */
-	char *dsc;                 /**< description statement */
-	char *ref;                 /**< reference statement */
+	const char *name;                /**< name argument */
+	const char *dsc;                 /**< description statement */
+	const char *ref;                 /**< reference statement */
 	uint8_t flags;             /**< only for LY_NODE_STATUS_ values */
 	struct ly_module *module;  /**< link to the node's data model */
 
@@ -352,17 +352,17 @@ struct ly_mnode_uses {
 	struct ly_mnode *next;
 	struct ly_mnode *prev;
 
-	char *feature;   /**< if-feature statement */
-	char *when;      /**< when statement */
+	const char *feature;   /**< if-feature statement */
+	const char *when;      /**< when statement */
 
 	/* specific uses's data */
 	struct ly_mnode_grp *grp;  /**< referred grouping definition */
 };
 
 struct ly_mnode_container {
-	char *name;                /**< name argument */
-	char *dsc;                 /**< description statement */
-	char *ref;                 /**< reference statement */
+	const char *name;                /**< name argument */
+	const char *dsc;                 /**< description statement */
+	const char *ref;                 /**< reference statement */
 	uint8_t flags;
 	struct ly_module *module;  /**< link to the node's data model */
 
@@ -372,8 +372,8 @@ struct ly_mnode_container {
 	struct ly_mnode *next;
 	struct ly_mnode *prev;
 
-	char *feature;   /**< if-feature statement */
-	char *when;      /**< when statement */
+	const char *feature;   /**< if-feature statement */
+	const char *when;      /**< when statement */
 
 	/* specific container's data */
 	int tpdf_size;          /**< number of elements in tpdf array */
@@ -381,9 +381,9 @@ struct ly_mnode_container {
 };
 
 struct ly_mnode_choice {
-	char *name;                /**< name argument */
-	char *dsc;                 /**< description statement */
-	char *ref;                 /**< reference statement */
+	const char *name;                /**< name argument */
+	const char *dsc;                 /**< description statement */
+	const char *ref;                 /**< reference statement */
 	uint8_t flags;
 	struct ly_module *module;  /**< link to the node's data model */
 
@@ -393,14 +393,14 @@ struct ly_mnode_choice {
 	struct ly_mnode *next;
 	struct ly_mnode *prev;
 
-	char *feature;   /**< if-feature statement */
-	char *when;      /**< when statement */
+	const char *feature;   /**< if-feature statement */
+	const char *when;      /**< when statement */
 };
 
 struct ly_mnode_leaf {
-	char *name;                /**< name argument */
-	char *dsc;                 /**< description statement */
-	char *ref;                 /**< reference statement */
+	const char *name;                /**< name argument */
+	const char *dsc;                 /**< description statement */
+	const char *ref;                 /**< reference statement */
 	uint8_t flags;
 	struct ly_module *module;  /**< link to the node's data model */
 
@@ -410,17 +410,17 @@ struct ly_mnode_leaf {
 	struct ly_mnode *next;
 	struct ly_mnode *prev;
 
-	char *feature;   /**< if-feature statement */
-	char *when;      /**< when statement */
+	const char *feature;   /**< if-feature statement */
+	const char *when;      /**< when statement */
 
 	/* specific leaf's data */
 	struct ly_type type;    /**< YANG type of the element */
 };
 
 struct ly_mnode_leaflist {
-	char *name;                /**< name argument */
-	char *dsc;                 /**< description statement */
-	char *ref;                 /**< reference statement */
+	const char *name;                /**< name argument */
+	const char *dsc;                 /**< description statement */
+	const char *ref;                 /**< reference statement */
 	uint8_t flags;
 	struct ly_module *module;  /**< link to the node's data model */
 
@@ -430,17 +430,17 @@ struct ly_mnode_leaflist {
 	struct ly_mnode *next;
 	struct ly_mnode *prev;
 
-	char *feature;   /**< if-feature statement */
-	char *when;      /**< when statement */
+	const char *feature;   /**< if-feature statement */
+	const char *when;      /**< when statement */
 
 	/* specific leaf's data */
 	struct ly_type type;    /**< YANG type of the element */
 };
 
 struct ly_mnode_list {
-	char *name;                /**< name argument */
-	char *dsc;                 /**< description statement */
-	char *ref;                 /**< reference statement */
+	const char *name;                /**< name argument */
+	const char *dsc;                 /**< description statement */
+	const char *ref;                 /**< reference statement */
 	uint8_t flags;
 	struct ly_module *module;  /**< link to the node's data model */
 
@@ -450,8 +450,8 @@ struct ly_mnode_list {
 	struct ly_mnode *next;
 	struct ly_mnode *prev;
 
-	char *feature;   /**< if-feature statement */
-	char *when;      /**< when statement */
+	const char *feature;   /**< if-feature statement */
+	const char *when;      /**< when statement */
 
 	/* specific list's data */
 	int tpdf_size;          /**< number of elements in tpdf array */
@@ -466,9 +466,9 @@ struct ly_ident_der {
 	struct ly_ident_der *next;
 };
 struct ly_ident {
-	char *name;             /**< name argument */
-	char *dsc;              /**< description */
-	char *ref;              /**< reference */
+	const char *name;             /**< name argument */
+	const char *dsc;              /**< description */
+	const char *ref;              /**< reference */
 	uint8_t flags;	        /**< only for LY_NODE_STATUS_ values */
 	struct ly_module *module;  /**< link to the module of the identity */
 

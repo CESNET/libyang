@@ -188,10 +188,26 @@ struct ly_submodule *ly_ctx_get_submodule(struct ly_module *module, const char *
                                            const char *revision)
 {
 	struct ly_submodule *result;
+	int i;
 
 	if (!module || !name) {
 		ly_errno = LY_EINVAL;
 		return NULL;
+	}
+
+	/* search in modules included by the main module */
+	if (module->type) {
+		module = ((struct ly_submodule *)module)->belongsto;
+	}
+	for (i = 0; i < module->inc_size; i++) {
+		result = module->inc[i].submodule;
+		if (strcmp(name, result->name)) {
+			continue;
+		}
+
+		if (!revision || (result->rev_size && !strcmp(revision, result->rev[0].date))) {
+			return result;
+		}
 	}
 
 	/* not found in context, try to get it from the search directory */
@@ -225,7 +241,6 @@ API struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name,
 			return result;
 		}
 	}
-	result = NULL;
 
 	/* not found in context, try to get it from the search directory */
 	result = search_file(ctx, NULL, name, revision);

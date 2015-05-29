@@ -35,7 +35,22 @@
 #include "../tree_internal.h"
 #include "../xml.h"
 
+enum LY_IDENT {
+	LY_IDENT_FEATURE,
+	LY_IDENT_IDENTITY,
+	LY_IDENT_TYPE,
+	LY_IDENT_NODE,
+	LY_IDENT_PREFIX
+};
+
 #define LY_NSYIN "urn:ietf:params:xml:ns:yang:yin:1"
+
+#define GETVAL(value, node, arg)                                    \
+	value = lyxml_get_attr(node, arg, NULL);                        \
+	if (!value) {                                                   \
+		LOGVAL(VE_MISSARG, LOGLINE(node), arg, node->name);         \
+		goto error;                                                 \
+	}
 
 static int read_yin_common(struct ly_module *, struct ly_mnode *, struct ly_mnode *, struct lyxml_elem *, int );
 static struct ly_mnode *read_yin_choice(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
@@ -46,20 +61,117 @@ static struct ly_mnode *read_yin_list(struct ly_module *, struct ly_mnode *, str
 static struct ly_mnode *read_yin_uses(struct ly_module *, struct ly_mnode *, struct lyxml_elem *, int);
 static struct ly_mnode *read_yin_grouping(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
 
-static char *read_yin_text(struct ly_ctx *ctx, struct lyxml_elem *node, const char *name)
+static int dup_prefix_check(const char* prefix, struct ly_module *module)
 {
-	char *value;
+	int i;
+
+	if (!module->type && module->prefix && !strcmp(module->prefix, prefix)) {
+		return EXIT_FAILURE;
+	}
+	for (i = 0; i < module->imp_size; i++) {
+		if (!strcmp(module->imp[i].prefix, prefix)) {
+			return EXIT_FAILURE;
+		}
+	}
+
+	return EXIT_SUCCESS;
+}
+
+static int check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
+                            struct ly_module *module, struct ly_mnode *parent)
+{
+	int i;
+
+	assert(id);
+
+	/* check id syntax */
+	if (!(id[0] >= 'A' && id[0] <= 'Z') && !(id[0] >= 'a' && id[0] <= 'z') && id[0] != '_') {
+		LOGVAL(VE_INID, line, id, "invalid start character");
+		return EXIT_FAILURE;
+	}
+	for (i = 1; id[i]; i++) {
+		if (!(id[i] >= 'A' && id[i] <= 'Z') && !(id[i] >= 'a' && id[i] <= 'z')
+				&& !(id[i] >= '0' && id[i] <= '9') && id[i] != '_' && id[i] != '-' && id[i] != '.') {
+			LOGVAL(VE_INID, line, id, "invalid %d. character", i + 1);
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (i > 64) {
+		LOGWRN("Identifier \"%s\" is long, you should use something shorter.", id);
+	}
+
+	switch(type) {
+	case LY_IDENT_PREFIX:
+		if (module->type) {
+			/* go to the main module */
+			module = ((struct ly_submodule *)module)->belongsto;
+		}
+
+		/* check the main module itself */
+		if (dup_prefix_check(id, module)) {
+			LOGVAL(VE_DUPID, line, "prefix", id);
+			return EXIT_FAILURE;
+		}
+
+		/* and all its submodules */
+		for (i = 0; i < module->inc_size; i++) {
+			if (dup_prefix_check(id, (struct ly_module *)module->inc[i].submodule)) {
+				LOGVAL(VE_DUPID, line, "prefix", id);
+				return EXIT_FAILURE;
+			}
+		}
+		break;
+	default:
+		/* no check required */
+		break;
+	}
+
+	return EXIT_SUCCESS;
+}
+
+static int check_date(const char* date, unsigned int line)
+{
+	int i;
+
+	assert(date);
+
+	if (strlen(date) != LY_REV_SIZE - 1) {
+		goto error;
+	}
+
+	for (i = 0; i < LY_REV_SIZE - 1; i++) {
+		if (i == 4 || i == 7) {
+			if (date[i] != '-') {
+				goto error;
+			}
+		} else if (!isdigit(date[i])) {
+			goto error;
+		}
+	}
+
+	return EXIT_SUCCESS;
+
+error:
+
+	LOGVAL(VE_INDATE, line, date);
+	return EXIT_FAILURE;
+}
+
+static const char *read_yin_text(struct ly_ctx *ctx, struct lyxml_elem *node, const char *name)
+{
+	int len;
 
 	/* there should be <text> child */
 	if (!node->child || !node->child->name
 	        || strcmp(node->child->name, "text")) {
 		LOGWRN("Expected \"text\" element in \"%s\" element.", name);
-	} else {
-		value = node->child->content;
-		if (value) {
-			return lydict_insert(ctx, value, strlen(value));
-		}
+	} else if (node->child->content) {
+		len = strlen(node->child->content);
+		return lydict_insert(ctx, node->child->content, len);
 	}
+
+	LOGVAL(VE_INARG, LOGLINE(node), "text", node->name);
 	return NULL;
 }
 
@@ -158,7 +270,7 @@ static struct ly_tpdf *find_superior_type(const char *name,
 
 static struct ly_ident *find_base_ident_sub(struct ly_module *module, struct ly_ident *ident, const char *basename)
 {
-	int i;
+	unsigned int i;
 	struct ly_ident *base_iter;
 	struct ly_ident_der *der;
 
@@ -546,30 +658,45 @@ static int fill_yin_import(struct ly_module *module, struct lyxml_elem *yin, str
 
 	LY_TREE_FOR(yin->child, child) {
 		if (!strcmp(child->name, "prefix")) {
-			value = lyxml_get_attr(child, "value", NULL);
+			GETVAL(value, child, "value");
+			check_identifier(value, LY_IDENT_PREFIX, LOGLINE(child), module, NULL);
 			imp->prefix = lydict_insert(module->ctx, value, strlen(value));
 		} else if (!strcmp(child->name, "revision-date")) {
-			value = lyxml_get_attr(child, "date", NULL);
-			if (!value) {
-				LOGVAL(VE_MISSARG, LOGLINE(child), "date", "revision-date");
-				return EXIT_FAILURE;
+			if (imp->rev[0]) {
+				LOGVAL(VE_TOOMANY, LOGLINE(child), "revision-date", yin->name);
+				goto error;
+			}
+			GETVAL(value, child, "date");
+			if (check_date(value, LOGLINE(child))) {
+				goto error;
 			}
 			memcpy(imp->rev, value, LY_REV_SIZE - 1);
 		} else {
 			LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
-			return EXIT_FAILURE;
+			goto error;
 		}
 	}
 
-	value = lyxml_get_attr(yin, "module", NULL);
+	/* check mandatory information */
+	if (!imp->prefix) {
+		LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "prefix", yin->name);
+		goto error;
+	}
+
+	GETVAL(value, yin, "module");
 	imp->module = ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
 	if (!imp->module) {
 		LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.",
 		       value, module->name);
-		return EXIT_FAILURE;
+		LOGVAL(VE_INARG, LOGLINE(yin), value, yin->name);
+		goto error;
 	}
 
 	return EXIT_SUCCESS;
+
+error:
+
+	return EXIT_FAILURE;
 }
 
 static int fill_yin_include(struct ly_module *module, struct lyxml_elem *yin, struct ly_include *inc)
@@ -579,28 +706,45 @@ static int fill_yin_include(struct ly_module *module, struct lyxml_elem *yin, st
 
 	LY_TREE_FOR(yin->child, child) {
 		if (!strcmp(child->name, "revision-date")) {
-			value = lyxml_get_attr(child, "date", NULL);
-			if (!value) {
-				LOGVAL(VE_MISSARG, LOGLINE(child), "date", "revision-date");
-				return EXIT_FAILURE;
+			if (inc->rev[0]) {
+				LOGVAL(VE_TOOMANY, LOGLINE(child), "revision-date", yin->name);
+				goto error;
+			}
+			GETVAL(value, child, "date");
+			if (check_date(value, LOGLINE(child))) {
+				goto error;
 			}
 			memcpy(inc->rev, value, LY_REV_SIZE - 1);
 		} else {
 			LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
-			return EXIT_FAILURE;
+			goto error;
 		}
 	}
 
-	value = lyxml_get_attr(yin, "module", NULL);
+	GETVAL(value, yin, "module");
 	inc->submodule = ly_ctx_get_submodule(module, value, inc->rev[0] ? inc->rev : NULL);
 	if (!inc->submodule) {
-		LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.",
+		LOGERR(LY_EVALID, "Including \"%s\" module into \"%s\" failed.",
 		       value, module->name);
-		return EXIT_FAILURE;
+		LOGVAL(VE_INARG, LOGLINE(yin), value, yin->name);
+		goto error;
 	}
 
+	/* check that belongs-to corresponds */
+	if (module->type) {
+		module = ((struct ly_submodule *)module)->belongsto;
+	}
+	if (inc->submodule->belongsto != module) {
+		LOGVAL(VE_INARG, LOGLINE(yin), value, yin->name);
+		LOGVAL(VE_SPEC, 0, "The included module does not belongs-to the \"%s\" module", module->name);
+		goto error;
+	}
 
 	return EXIT_SUCCESS;
+
+error:
+
+	return EXIT_FAILURE;
 }
 
 
@@ -614,6 +758,7 @@ static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 	const char *value;
 	struct lyxml_elem *sub, *next;
 	struct ly_ctx * const ctx = module->ctx;
+	int r = 0;
 
 	if (ext) {
 		mnode->module = module;
@@ -630,8 +775,14 @@ static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 	LY_TREE_FOR_SAFE(xmlnode->child, next, sub) {
 		if (!strcmp(sub->name, "description")) {
 			mnode->dsc = read_yin_text(ctx, sub, "description");
+			if (!mnode->dsc) {
+				r = 1;
+			}
 		} else if (!strcmp(sub->name, "reference")) {
 			mnode->ref = read_yin_text(ctx, sub, "reference");
+			if (!mnode->ref) {
+				r = 1;
+			}
 		} else if (!strcmp(sub->name, "status")) {
 			value = lyxml_get_attr(sub, "value", NULL);
 			if (!strcmp(value, "current")) {
@@ -640,6 +791,9 @@ static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 				mnode->flags |= LY_NODE_STATUS_DEPRC;
 			} else if (!strcmp(value, "obsolete")) {
 				mnode->flags |= LY_NODE_STATUS_OBSLT;
+			} else {
+				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
+				r = 1;
 			}
 		} else if (ext && !strcmp(sub->name, "config")) {
 			value = lyxml_get_attr(sub, "value", NULL);
@@ -647,12 +801,18 @@ static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 				mnode->flags |= LY_NODE_CONFIG_R;
 			} else if (!strcmp(value, "false")) {
 				mnode->flags |= LY_NODE_CONFIG_W;
+			} else {
+				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
+				r = 1;
 			}
 		} else {
 			/* skip the lyxml_free_elem */
 			continue;
 		}
 		lyxml_free_elem(ctx, sub);
+		if (r) {
+			EXIT_FAILURE;
+		}
 	}
 
 	if (ext && !(mnode->flags & LY_NODE_CONFIG_MASK)) {
@@ -1330,6 +1490,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin, int
 	const char *value;
 	int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0, c_inc = 0; /* counters */
 	int r;
+	int i;
 
 	/*
 	 * in the first run, we process elements with cardinality of 1 or 0..1 and
@@ -1347,19 +1508,12 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin, int
 		}
 
 		if (!submodule && !strcmp(node->name, "namespace")) {
-			value = lyxml_get_attr(node, "uri", NULL);
-			if (!value) {
-				LOGERR(LY_EVALID, "%s: Missing \"uri\" attribute in \"namespace\" element.", module->name);
-				goto error;
-			}
+			GETVAL(value, node, "uri");
 			module->ns = lydict_insert(ctx, value, strlen(value));
 			lyxml_free_elem(ctx, node);
 		} else if (!submodule && !strcmp(node->name, "prefix")) {
-			value = lyxml_get_attr(node, "value", NULL);
-			if (!value) {
-				LOGERR(LY_EVALID, "%s: Missing \"value\" attribute in \"prefix\" element.", module->name);
-				goto error;
-			}
+			GETVAL(value, node, "value");
+			check_identifier(value, LY_IDENT_PREFIX, LOGLINE(node), module, NULL);
 			module->prefix = lydict_insert(ctx, value, strlen(value));
 			lyxml_free_elem(ctx, node);
 		} else if (!strcmp(node->name, "import")) {
@@ -1392,6 +1546,9 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin, int
 			}
 			module->dsc = read_yin_text(ctx, node, "description");
 			lyxml_free_elem(ctx, node);
+			if (!module->dsc) {
+				goto error;
+			}
 		} else if (!strcmp(node->name, "reference")) {
 			if (module->ref) {
 				LOGVAL(VE_TOOMANY, LOGLINE(node), "reference", "module");
@@ -1399,6 +1556,9 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin, int
 			}
 			module->ref = read_yin_text(ctx, node, "reference");
 			lyxml_free_elem(ctx, node);
+			if (!module->ref) {
+				goto error;
+			}
 		} else if (!strcmp(node->name, "organization")) {
 			if (module->org) {
 				LOGVAL(VE_TOOMANY, LOGLINE(node), "organization", "module");
@@ -1406,6 +1566,9 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin, int
 			}
 			module->org = read_yin_text(ctx, node, "organization");
 			lyxml_free_elem(ctx, node);
+			if (!module->org) {
+				goto error;
+			}
 		} else if (!strcmp(node->name, "contact")) {
 			if (module->contact) {
 				LOGVAL(VE_TOOMANY, LOGLINE(node), "contact", "module");
@@ -1413,19 +1576,27 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin, int
 			}
 			module->contact = read_yin_text(ctx, node, "contact");
 			lyxml_free_elem(ctx, node);
+			if (!module->contact) {
+				goto error;
+			}
 		} else if (!strcmp(node->name, "yang-version")) {
-			/* TODO: support YANG 1.1 */
+			/* TODO: support YANG 1.1 ? */
 			if (module->version) {
 				LOGVAL(VE_TOOMANY, LOGLINE(node), "yang-version", "module");
 				goto error;
 			}
-			value = lyxml_get_attr(node, "value", NULL);
+			GETVAL(value, node, "value");
 			if (strcmp(value, "1")) {
 				LOGVAL(VE_INARG, LOGLINE(node), value, "yang-version");
 				goto error;
 			}
 			module->version = 1;
 			lyxml_free_elem(ctx, node);
+#if 0
+		} else {
+			LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
+			goto error;
+#endif
 		}
 	}
 
@@ -1463,27 +1634,91 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin, int
 		if (!strcmp(node->name, "import")) {
 			r = fill_yin_import(module, node, &module->imp[module->imp_size]);
 			module->imp_size++;
-
 			if (r) {
 				goto error;
+			}
+
+			/* check duplicities in imported modules */
+			for (i = 0; i < module->imp_size - 1; i++) {
+				if (!strcmp(module->imp[i].module->name, module->imp[module->imp_size - 1].module->name)) {
+					LOGVAL(VE_SPEC, LOGLINE(node), "Importing module \"%s\" repeatedly.", module->imp[i].module->name);
+					goto error;
+				}
 			}
 		} else if (!strcmp(node->name, "include")) {
 			r = fill_yin_include(module, node, &module->inc[module->inc_size]);
 			module->inc_size++;
-
 			if (r) {
 				goto error;
 			}
-		} else if (!strcmp(node->name, "revision")) {
-			memcpy(module->rev[module->rev_size].date,
-			       lyxml_get_attr(node, "date", NULL), LY_REV_SIZE - 1);
-			LY_TREE_FOR(node->child, child) {
-				if (!strcmp(child->name, "description")) {
-					module->rev[module->rev_size].dsc = read_yin_text(ctx, child, "description");
-				} else if (!strcmp(child->name, "reference")) {
-					module->rev[module->rev_size].ref = read_yin_text(ctx, child, "reference");
+
+			/* check duplications in include submodules */
+			for (i = 0; i < module->inc_size - 1; i++) {
+				if (!strcmp(module->inc[i].submodule->name, module->inc[module->imp_size - 1].submodule->name)) {
+					LOGVAL(VE_SPEC, LOGLINE(node), "Importing module \"%s\" repeatedly.", module->inc[i].submodule->name);
+					goto error;
 				}
 			}
+		} else if (!strcmp(node->name, "revision")) {
+			GETVAL(value, node, "date");
+			if (check_date(value, LOGLINE(node))) {
+				goto error;
+			}
+			memcpy(module->rev[module->rev_size].date, value, LY_REV_SIZE - 1);
+			/* check uniqueness of the revision date - not required by RFC */
+			for (i = 0; i < module->rev_size; i++) {
+				if (!strcmp(value, module->rev[i].date)) {
+					LOGVAL(VE_INARG, LOGLINE(node), value, node->name);
+					LOGVAL(VE_SPEC, 0, "Revision is not unique.");
+				}
+			}
+
+			LY_TREE_FOR(node->child, child) {
+				if (!strcmp(child->name, "description")) {
+					if (module->rev[module->rev_size].dsc) {
+						LOGVAL(VE_TOOMANY, LOGLINE(node), child->name, node->name);
+						goto error;
+					}
+					module->rev[module->rev_size].dsc = read_yin_text(ctx, child, "description");
+					if (!module->rev[module->rev_size].dsc) {
+						goto error;
+					}
+				} else if (!strcmp(child->name, "reference")) {
+					if (module->rev[module->rev_size].ref) {
+						LOGVAL(VE_TOOMANY, LOGLINE(node), child->name, node->name);
+						goto error;
+					}
+					module->rev[module->rev_size].ref = read_yin_text(ctx, child, "reference");
+					if (!module->rev[module->rev_size].ref) {
+						goto error;
+					}
+				} else {
+					LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+					goto error;
+				}
+			}
+
+			/* keep the latest revision at position 0 */
+			if (module->rev_size && strcmp(module->rev[module->rev_size].date, module->rev[0].date) > 0) {
+				/* switch their position */
+				value = strdup(module->rev[0].date);
+				memcpy(module->rev[0].date, module->rev[module->rev_size].date, LY_REV_SIZE - 1);
+				memcpy(module->rev[module->rev_size].date, value, LY_REV_SIZE - 1);
+				free((char*)value);
+
+				if (module->rev[0].dsc != module->rev[module->rev_size].dsc) {
+					value = module->rev[0].dsc;
+					module->rev[0].dsc = module->rev[module->rev_size].dsc;
+					module->rev[module->rev_size].dsc = value;
+				}
+
+				if (module->rev[0].ref != module->rev[module->rev_size].ref) {
+					value = module->rev[0].ref;
+					module->rev[0].ref = module->rev[module->rev_size].ref;
+					module->rev[module->rev_size].ref = value;
+				}
+			}
+
 			module->rev_size++;
 		} else if (!strcmp(node->name, "typedef")) {
 			r = fill_yin_typedef(module, NULL, node, &module->tpdf[module->tpdf_size]);
@@ -1585,6 +1820,7 @@ struct ly_submodule *yin_read_submodule(struct ly_module *module, const char *da
 
 	submodule->ctx = module->ctx;
 	submodule->name = lydict_insert(submodule->ctx, value, strlen(value));
+	submodule->type = 1;
 
 	LOGVRB("reading submodule %s", submodule->name);
 	if (read_sub_module((struct ly_module *)submodule, yin, 1)) {
@@ -1658,7 +1894,7 @@ struct ly_module *yin_read_module(struct ly_ctx *ctx, const char *data)
 		ctx->models.list = newlist;
 	}
 	for (i = 0; ctx->models.list[i]; i++) {
-		/* check name (name/revision) uniqueness */
+		/* check name (name/revision) and namespace uniqueness */
 		if (!strcmp(ctx->models.list[i]->name, module->name)) {
 			if (!ctx->models.list[i]->rev_size && !module->rev_size) {
 				/* both data models are same, with no revision specified */
@@ -1677,6 +1913,10 @@ struct ly_module *yin_read_module(struct ly_ctx *ctx, const char *data)
 					goto error;
 				}
 			}
+		} else if (!strcmp(ctx->models.list[i]->ns, module->ns)) {
+			LOGERR(LY_EINVAL, "Two different modules (\"%s\" and \"%s\") have the same namespace \"%s\"",
+					ctx->models.list[i]->name, module->name, module->ns);
+			goto error;
 		}
 	}
 	ctx->models.list[i] = module;

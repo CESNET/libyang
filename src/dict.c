@@ -199,7 +199,7 @@ static char *dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zeroco
 	return new->value;
 }
 
-char *lydict_insert(struct ly_ctx *ctx, const char *value, size_t len)
+const char *lydict_insert(struct ly_ctx *ctx, const char *value, size_t len)
 {
 	if (!value || !len) {
 		return NULL;
@@ -207,7 +207,7 @@ char *lydict_insert(struct ly_ctx *ctx, const char *value, size_t len)
 	return dict_insert(ctx, (char *)value, len, 0);
 }
 
-char *lydict_insert_zc(struct ly_ctx *ctx, char *value)
+const char *lydict_insert_zc(struct ly_ctx *ctx, char *value)
 {
 	int len;
 

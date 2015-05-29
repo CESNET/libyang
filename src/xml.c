@@ -1094,7 +1094,7 @@ struct lyxml_elem *lyxml_read_file(struct ly_ctx *ctx, const char *filename,
 	return NULL;
 }
 
-static int dump_text(FILE *f, char* text)
+static int dump_text(FILE *f, const char* text)
 {
 	unsigned int i, n;
 

@@ -325,7 +325,7 @@ static void yang_print_mnode(FILE *f, int level, struct ly_mnode *mnode,
 
 int yang_print_model(FILE *f, struct ly_module *module)
 {
-	int i;
+	unsigned int i;
 	int level = 0;
 #define LEVEL (level*2)
 
