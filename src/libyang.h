@@ -67,9 +67,12 @@ struct ly_ctx *ly_ctx_new(const char *search_dir);
  * @param[in] name Name of the YANG module to get.
  * @param[in] revision Optional revision date of the YANG module to get. If not
  * specified, the newest revision is returned (TODO).
+ * @param[in] read Flag for reading the module from a file. If set to 0, libyang
+ * searches for the module only in the modules already loaded to the context.
+ * @return Pointer to the data model structure.
  */
 struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name,
-                                    const char *revision);
+                                    const char *revision, int read);
 
 /**
  * @brief Free all internal structures of the specified context.

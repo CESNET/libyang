@@ -221,10 +221,10 @@ struct ly_submodule *ly_ctx_get_submodule(struct ly_module *module, const char *
 }
 
 API struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name,
-                                        const char *revision)
+                                        const char *revision, int read)
 {
 	int i;
-	struct ly_module *result;
+	struct ly_module *result = NULL;
 
 	if (!ctx || !name) {
 		ly_errno = LY_EINVAL;
@@ -240,6 +240,10 @@ API struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name,
 		if (!revision || (result->rev_size && !strcmp(revision, result->rev[0].date))) {
 			return result;
 		}
+	}
+
+	if (!read) {
+		return result;
 	}
 
 	/* not found in context, try to get it from the search directory */

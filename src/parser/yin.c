@@ -40,6 +40,7 @@ enum LY_IDENT {
 	LY_IDENT_IDENTITY,
 	LY_IDENT_TYPE,
 	LY_IDENT_NODE,
+	LY_IDENT_NAME,
 	LY_IDENT_PREFIX
 };
 
@@ -158,14 +159,14 @@ error:
 	return EXIT_FAILURE;
 }
 
-static const char *read_yin_text(struct ly_ctx *ctx, struct lyxml_elem *node, const char *name)
+static const char *read_yin_text(struct ly_ctx *ctx, struct lyxml_elem *node)
 {
 	int len;
 
 	/* there should be <text> child */
 	if (!node->child || !node->child->name
 	        || strcmp(node->child->name, "text")) {
-		LOGWRN("Expected \"text\" element in \"%s\" element.", name);
+		LOGWRN("Expected \"text\" element in \"%s\" element.", node->name);
 	} else if (node->child->content) {
 		len = strlen(node->child->content);
 		return lydict_insert(ctx, node->child->content, len);
@@ -615,12 +616,12 @@ static int fill_yin_typedef(struct ly_module *module, struct ly_mnode *parent,
 
 		/* optional statements */
 		} else if (!strcmp(node->name, "description")) {
-			tpdf->dsc = read_yin_text(module->ctx, node, "description");
+			tpdf->dsc = read_yin_text(module->ctx, node);
 			if (!tpdf->dsc) {
 				r = 1;
 			}
 		} else if (!strcmp(node->name, "reference")) {
-			tpdf->ref = read_yin_text(module->ctx, node, "reference");
+			tpdf->ref = read_yin_text(module->ctx, node);
 			if (!tpdf->ref) {
 				r = 1;
 			}
@@ -659,7 +660,9 @@ static int fill_yin_import(struct ly_module *module, struct lyxml_elem *yin, str
 	LY_TREE_FOR(yin->child, child) {
 		if (!strcmp(child->name, "prefix")) {
 			GETVAL(value, child, "value");
-			check_identifier(value, LY_IDENT_PREFIX, LOGLINE(child), module, NULL);
+			if (check_identifier(value, LY_IDENT_PREFIX, LOGLINE(child), module, NULL)) {
+				goto error;
+			}
 			imp->prefix = lydict_insert(module->ctx, value, strlen(value));
 		} else if (!strcmp(child->name, "revision-date")) {
 			if (imp->rev[0]) {
@@ -684,7 +687,7 @@ static int fill_yin_import(struct ly_module *module, struct lyxml_elem *yin, str
 	}
 
 	GETVAL(value, yin, "module");
-	imp->module = ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
+	imp->module = ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL, 1);
 	if (!imp->module) {
 		LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.",
 		       value, module->name);
@@ -774,12 +777,12 @@ static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 	/* process local parameters */
 	LY_TREE_FOR_SAFE(xmlnode->child, next, sub) {
 		if (!strcmp(sub->name, "description")) {
-			mnode->dsc = read_yin_text(ctx, sub, "description");
+			mnode->dsc = read_yin_text(ctx, sub);
 			if (!mnode->dsc) {
 				r = 1;
 			}
 		} else if (!strcmp(sub->name, "reference")) {
-			mnode->ref = read_yin_text(ctx, sub, "reference");
+			mnode->ref = read_yin_text(ctx, sub);
 			if (!mnode->ref) {
 				r = 1;
 			}
@@ -1482,9 +1485,10 @@ error:
 }
 
 /* common code for yin_read_module() and yin_read_submodule() */
-static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin, int submodule)
+static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 {
 	struct ly_ctx *ctx = module->ctx;
+	struct ly_submodule *submodule = (struct ly_submodule *)module;
 	struct lyxml_elem *next, *node, *child, root = {0};
 	struct ly_mnode *mnode = NULL;
 	const char *value;
@@ -1501,20 +1505,63 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin, int
 	 * we need to allocate arrays to store them.
 	 */
 	LY_TREE_FOR_SAFE(yin->child, next, node) {
-		/* TODO: belongs-to */
 		if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
 			lyxml_free_elem(ctx, node);
 			continue;
 		}
 
-		if (!submodule && !strcmp(node->name, "namespace")) {
+		if (!module->type && !strcmp(node->name, "namespace")) {
+			if (module->ns) {
+				LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
+				goto error;
+			}
 			GETVAL(value, node, "uri");
 			module->ns = lydict_insert(ctx, value, strlen(value));
 			lyxml_free_elem(ctx, node);
-		} else if (!submodule && !strcmp(node->name, "prefix")) {
+		} else if (!module->type && !strcmp(node->name, "prefix")) {
+			if (module->prefix) {
+				LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
+				goto error;
+			}
 			GETVAL(value, node, "value");
-			check_identifier(value, LY_IDENT_PREFIX, LOGLINE(node), module, NULL);
+			if (check_identifier(value, LY_IDENT_PREFIX, LOGLINE(node), module, NULL)) {
+				goto error;
+			}
 			module->prefix = lydict_insert(ctx, value, strlen(value));
+			lyxml_free_elem(ctx, node);
+		} else if (module->type && !strcmp(node->name, "belongs-to")) {
+			if (submodule->belongsto) {
+				LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
+				goto error;
+			}
+			GETVAL(value, node, "module");
+			submodule->belongsto = ly_ctx_get_module(module->ctx, value, NULL, 0);
+			if (!submodule->belongsto) {
+				LOGVAL(VE_INARG, LOGLINE(node), value, node->name);
+				goto error;
+			}
+			/* get the prefix substatement, start with checks */
+			if (!node->child) {
+				LOGVAL(VE_MISSSTMT2, LOGLINE(node), "prefix", node->name);
+				goto error;
+			} else if (strcmp(node->child->name, "prefix")) {
+				LOGVAL(VE_INSTMT, LOGLINE(node->child), node->child->name);
+				goto error;
+			} else if (node->child->next) {
+				LOGVAL(VE_INSTMT, LOGLINE(node->child->next), node->child->next->name);
+				goto error;
+			}
+			/* and now finally get the value */
+			GETVAL(value, node->child, "value");
+			/* check here differs from a generic prefix check, since this prefix
+			 * don't have to be unique
+			 */
+			if (check_identifier(value, LY_IDENT_NAME, LOGLINE(node->child), NULL, NULL)) {
+				goto error;
+			}
+			module->prefix = lydict_insert(ctx, value, strlen(value));
+
+			/* we are done with belongs-to */
 			lyxml_free_elem(ctx, node);
 		} else if (!strcmp(node->name, "import")) {
 			c_imp++;
@@ -1541,40 +1588,40 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin, int
 		/* optional statements */
 		} else if (!strcmp(node->name, "description")) {
 			if (module->dsc) {
-				LOGVAL(VE_TOOMANY, LOGLINE(node), "description", "module");
+				LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
 				goto error;
 			}
-			module->dsc = read_yin_text(ctx, node, "description");
+			module->dsc = read_yin_text(ctx, node);
 			lyxml_free_elem(ctx, node);
 			if (!module->dsc) {
 				goto error;
 			}
 		} else if (!strcmp(node->name, "reference")) {
 			if (module->ref) {
-				LOGVAL(VE_TOOMANY, LOGLINE(node), "reference", "module");
+				LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
 				goto error;
 			}
-			module->ref = read_yin_text(ctx, node, "reference");
+			module->ref = read_yin_text(ctx, node);
 			lyxml_free_elem(ctx, node);
 			if (!module->ref) {
 				goto error;
 			}
 		} else if (!strcmp(node->name, "organization")) {
 			if (module->org) {
-				LOGVAL(VE_TOOMANY, LOGLINE(node), "organization", "module");
+				LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
 				goto error;
 			}
-			module->org = read_yin_text(ctx, node, "organization");
+			module->org = read_yin_text(ctx, node);
 			lyxml_free_elem(ctx, node);
 			if (!module->org) {
 				goto error;
 			}
 		} else if (!strcmp(node->name, "contact")) {
 			if (module->contact) {
-				LOGVAL(VE_TOOMANY, LOGLINE(node), "contact", "module");
+				LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
 				goto error;
 			}
-			module->contact = read_yin_text(ctx, node, "contact");
+			module->contact = read_yin_text(ctx, node);
 			lyxml_free_elem(ctx, node);
 			if (!module->contact) {
 				goto error;
@@ -1582,7 +1629,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin, int
 		} else if (!strcmp(node->name, "yang-version")) {
 			/* TODO: support YANG 1.1 ? */
 			if (module->version) {
-				LOGVAL(VE_TOOMANY, LOGLINE(node), "yang-version", "module");
+				LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
 				goto error;
 			}
 			GETVAL(value, node, "value");
@@ -1679,7 +1726,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin, int
 						LOGVAL(VE_TOOMANY, LOGLINE(node), child->name, node->name);
 						goto error;
 					}
-					module->rev[module->rev_size].dsc = read_yin_text(ctx, child, "description");
+					module->rev[module->rev_size].dsc = read_yin_text(ctx, child);
 					if (!module->rev[module->rev_size].dsc) {
 						goto error;
 					}
@@ -1688,7 +1735,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin, int
 						LOGVAL(VE_TOOMANY, LOGLINE(node), child->name, node->name);
 						goto error;
 					}
-					module->rev[module->rev_size].ref = read_yin_text(ctx, child, "reference");
+					module->rev[module->rev_size].ref = read_yin_text(ctx, child);
 					if (!module->rev[module->rev_size].ref) {
 						goto error;
 					}
@@ -1806,9 +1853,8 @@ struct ly_submodule *yin_read_submodule(struct ly_module *module, const char *da
 		goto error;
 	}
 
-	value = lyxml_get_attr(yin, "name", NULL);
-	if (!value) {
-		LOGVAL(VE_MISSARG, LOGLINE(yin), "name", "submodule");
+	GETVAL(value, yin, "name");
+	if (check_identifier(value, LY_IDENT_NAME, LOGLINE(yin), NULL, NULL)) {
 		goto error;
 	}
 
@@ -1823,7 +1869,7 @@ struct ly_submodule *yin_read_submodule(struct ly_module *module, const char *da
 	submodule->type = 1;
 
 	LOGVRB("reading submodule %s", submodule->name);
-	if (read_sub_module((struct ly_module *)submodule, yin, 1)) {
+	if (read_sub_module((struct ly_module *)submodule, yin)) {
 		goto error;
 	}
 
@@ -1860,9 +1906,8 @@ struct ly_module *yin_read_module(struct ly_ctx *ctx, const char *data)
 		goto error;
 	}
 
-	value = lyxml_get_attr(yin, "name", NULL);
-	if (!value) {
-		LOGVAL(VE_MISSARG, LOGLINE(yin), "name", "module");
+	GETVAL(value, yin, "name");
+	if (check_identifier(value, LY_IDENT_NAME, LOGLINE(yin), NULL, NULL)) {
 		goto error;
 	}
 
@@ -1874,9 +1919,10 @@ struct ly_module *yin_read_module(struct ly_ctx *ctx, const char *data)
 
 	module->ctx = ctx;
 	module->name = lydict_insert(ctx, value, strlen(value));
+	module->type = 0;
 
 	LOGVRB("reading module %s", module->name);
-	if (read_sub_module(module, yin, 0)) {
+	if (read_sub_module(module, yin)) {
 		goto error;
 	}
 
