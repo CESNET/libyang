@@ -172,16 +172,18 @@ struct ly_type {
 };
 
 struct ly_tpdf {
-	const char *name;             /**< name of the module */
+	const char *name;         /**< name of the module */
+	const char *dsc;          /**< description */
+	const char *ref;          /**< reference */
+	uint8_t flags;	          /**< only for LY_NODE_STATUS_ values */
 	struct ly_module *module; /**< module where the data type is defined, NULL
 	                               in case of built-in type */
-	const char *dsc;              /**< description */
-	const char *ref;              /**< reference */
-	uint8_t flags;	        /**< only for LY_NODE_STATUS_ values */
 
-	struct ly_type type;    /**< type restrictions and reference to a superior
-	                             type definition. Empty in case of built-in
-	                             type */
+	struct ly_type type;      /**< type restrictions and reference to a superior
+	                               type definition. Empty in case of built-in
+	                               type */
+	const char *units;        /**< units of the type */
+	const char *dflt;         /**< default value of the type - TODO */
 };
 
 #define LY_REV_SIZE 11

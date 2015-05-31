@@ -62,6 +62,20 @@ static struct ly_mnode *read_yin_list(struct ly_module *, struct ly_mnode *, str
 static struct ly_mnode *read_yin_uses(struct ly_module *, struct ly_mnode *, struct lyxml_elem *, int);
 static struct ly_mnode *read_yin_grouping(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
 
+static int dup_typedef_check(const char* type, struct ly_tpdf *tpdf, int size)
+{
+	int i;
+
+	for (i = 0; i < size; i++) {
+		if (!strcmp(type, tpdf[i].name)) {
+			/* name collision */
+			return EXIT_FAILURE;
+		}
+	}
+
+	return EXIT_SUCCESS;
+}
+
 static int dup_prefix_check(const char* prefix, struct ly_module *module)
 {
 	int i;
@@ -82,6 +96,10 @@ static int check_identifier(const char *id, enum LY_IDENT type, unsigned int lin
                             struct ly_module *module, struct ly_mnode *parent)
 {
 	int i;
+	int size;
+	struct ly_tpdf *tpdf;
+
+
 
 	assert(id);
 
@@ -103,7 +121,76 @@ static int check_identifier(const char *id, enum LY_IDENT type, unsigned int lin
 	}
 
 	switch(type) {
+	case LY_IDENT_TYPE:
+		assert(module);
+
+		/* check collision with the built-in types */
+		if (!strcmp(id, "binary") || !strcmp(id,"bits") ||
+				!strcmp(id, "boolean") || !strcmp(id, "decimal64") ||
+				!strcmp(id, "empty") || !strcmp(id, "enumeration") ||
+				!strcmp(id, "identityref") || !strcmp(id, "instance-identifier") ||
+				!strcmp(id, "int8") || !strcmp(id, "int16") ||
+				!strcmp(id, "int32") || !strcmp(id, "int64") ||
+				!strcmp(id, "leafref") || !strcmp(id, "string") ||
+				!strcmp(id, "uint8") || !strcmp(id, "uint16") ||
+				!strcmp(id, "uint32") || !strcmp(id, "uint64") ||
+				!strcmp(id, "union")) {
+			LOGVAL(VE_SPEC, line, "Typedef name duplicates built-in type.");
+			return EXIT_FAILURE;
+		}
+
+		/* check locally scoped typedefs (avoid name shadowing) */
+		for ( ; parent; parent = parent->parent) {
+			switch(parent->nodetype) {
+			case LY_NODE_CONTAINER:
+				size = ((struct ly_mnode_container *)parent)->tpdf_size;
+				tpdf = ((struct ly_mnode_container *)parent)->tpdf;
+				break;
+			case LY_NODE_LIST:
+				size = ((struct ly_mnode_list *)parent)->tpdf_size;
+				tpdf = ((struct ly_mnode_list *)parent)->tpdf;
+				break;
+			case LY_NODE_GROUPING:
+				size = ((struct ly_mnode_grp *)parent)->tpdf_size;
+				tpdf = ((struct ly_mnode_grp *)parent)->tpdf;
+				break;
+			default:
+				continue;
+			}
+
+			if (dup_typedef_check(id, tpdf, size)) {
+				LOGVAL(VE_DUPID, line, "typedef", id);
+				return EXIT_FAILURE;
+			}
+		}
+
+		/* check top-level names */
+		if (dup_typedef_check(id, module->tpdf, module->tpdf_size)) {
+			LOGVAL(VE_DUPID, line, "typedef", id);
+			return EXIT_FAILURE;
+		}
+
+		/* check submodule's top-level names */
+		for (i = 0; i < module->inc_size; i++) {
+			if (dup_typedef_check(id, module->inc[i].submodule->tpdf, module->inc[i].submodule->tpdf_size)) {
+				LOGVAL(VE_DUPID, line, "typedef", id);
+				return EXIT_FAILURE;
+			}
+		}
+
+		/* check top-level names in the main module */
+		if (module->type) {
+			if (dup_typedef_check(id, ((struct ly_submodule *)module)->belongsto->tpdf,
+					((struct ly_submodule *)module)->belongsto->tpdf_size)) {
+				LOGVAL(VE_DUPID, line, "typedef", id);
+				return EXIT_FAILURE;
+			}
+		}
+
+		break;
 	case LY_IDENT_PREFIX:
+		assert(module);
+
 		if (module->type) {
 			/* go to the main module */
 			module = ((struct ly_submodule *)module)->belongsto;
@@ -128,6 +215,13 @@ static int check_identifier(const char *id, enum LY_IDENT type, unsigned int lin
 		break;
 	}
 
+	return EXIT_SUCCESS;
+}
+
+static int check_default(struct ly_tpdf *tpdf)
+{
+	/* TODO - RFC 6020, sec. 7.3.4 */
+	(void)tpdf;
 	return EXIT_SUCCESS;
 }
 
@@ -607,49 +701,60 @@ static int fill_yin_typedef(struct ly_module *module, struct ly_mnode *parent,
 	struct lyxml_elem *node, *next;
 	int r = 0;
 
-	value = lyxml_get_attr(yin, "name", NULL);
+	GETVAL(value, yin, "name");
+	if (check_identifier(value, LY_IDENT_TYPE, LOGLINE(yin), module, parent)) {
+		goto error;
+	}
 	tpdf->name = lydict_insert(module->ctx, value, strlen(value));
+
+	/* generic part - status, description, reference */
+	if (read_yin_common(module, NULL, (struct ly_mnode *)tpdf, yin, 0)) {
+		goto error;
+	}
 
 	LY_TREE_FOR_SAFE(yin->child, next, node) {
 		if (!strcmp(node->name, "type")) {
 			r = fill_yin_type(module, parent, node, &tpdf->type);
-
-		/* optional statements */
-		} else if (!strcmp(node->name, "description")) {
-			tpdf->dsc = read_yin_text(module->ctx, node);
-			if (!tpdf->dsc) {
-				r = 1;
+		} else if (!strcmp(node->name, "default"))  {
+			if (tpdf->dflt) {
+				LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
+				goto error;
 			}
-		} else if (!strcmp(node->name, "reference")) {
-			tpdf->ref = read_yin_text(module->ctx, node);
-			if (!tpdf->ref) {
-				r = 1;
+			GETVAL(value, node, "value");
+			tpdf->dflt = lydict_insert(module->ctx, value, strlen(value));
+		} else if (!strcmp(node->name, "units")) {
+			if (tpdf->units) {
+				LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
+				goto error;
 			}
-		} else if (!strcmp(node->name, "status")) {
-			value = lyxml_get_attr(node, "value", NULL);
-			if (!strcmp(value, "current")) {
-				tpdf->flags |= LY_NODE_STATUS_CURR;
-			} else if (!strcmp(value, "deprecated")) {
-				tpdf->flags |= LY_NODE_STATUS_DEPRC;
-			} else if (!strcmp(value, "obsolete")) {
-				tpdf->flags |= LY_NODE_STATUS_OBSLT;
-			} else {
-				LOGVAL(VE_INARG, LOGLINE(node), value, "status");
-				r = 1;
-			}
+			GETVAL(value, node, "name");
+			tpdf->units = lydict_insert(module->ctx, value, strlen(value));
+		} else {
+			LOGVAL(VE_INSTMT, LOGLINE(node), value);
+			r = 1;
 		}
 		lyxml_free_elem(module->ctx, node);
 		if (r) {
-			return EXIT_FAILURE;
+			goto error;
 		}
 	}
 
+	/* check mandatory value */
 	if (!tpdf->type.der) {
 		LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "type", "typedef");
-		return EXIT_FAILURE;
+		goto error;
+	}
+
+	/* default value */
+	if (check_default(tpdf)) {
+		goto error;
 	}
 
 	return EXIT_SUCCESS;
+
+error:
+
+	return EXIT_FAILURE;
 }
 
 static int fill_yin_import(struct ly_module *module, struct lyxml_elem *yin, struct ly_import *imp)
@@ -771,23 +876,35 @@ static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 	mnode->name = lydict_insert(ctx, value, strlen(value));
 	if (!mnode->name || !mnode->name[0]) {
 		LOGVAL(VE_MISSARG, LOGLINE(xmlnode), "name", xmlnode->name);
-		return EXIT_FAILURE;
+		goto error;
 	}
 
 	/* process local parameters */
 	LY_TREE_FOR_SAFE(xmlnode->child, next, sub) {
 		if (!strcmp(sub->name, "description")) {
+			if (mnode->dsc) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, xmlnode->name);
+				goto error;
+			}
 			mnode->dsc = read_yin_text(ctx, sub);
 			if (!mnode->dsc) {
 				r = 1;
 			}
 		} else if (!strcmp(sub->name, "reference")) {
+			if (mnode->ref) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, xmlnode->name);
+				goto error;
+			}
 			mnode->ref = read_yin_text(ctx, sub);
 			if (!mnode->ref) {
 				r = 1;
 			}
 		} else if (!strcmp(sub->name, "status")) {
-			value = lyxml_get_attr(sub, "value", NULL);
+			if (mnode->flags & LY_NODE_STATUS_MASK) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, xmlnode->name);
+				goto error;
+			}
+			GETVAL(value, sub, "value");
 			if (!strcmp(value, "current")) {
 				mnode->flags |= LY_NODE_STATUS_CURR;
 			} else if (!strcmp(value, "deprecated")) {
@@ -799,7 +916,11 @@ static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 				r = 1;
 			}
 		} else if (ext && !strcmp(sub->name, "config")) {
-			value = lyxml_get_attr(sub, "value", NULL);
+			if (mnode->flags & LY_NODE_CONFIG_MASK) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, xmlnode->name);
+				goto error;
+			}
+			GETVAL(value, sub, "value");
 			if (!strcmp(value, "false")) {
 				mnode->flags |= LY_NODE_CONFIG_R;
 			} else if (!strcmp(value, "false")) {
@@ -814,7 +935,7 @@ static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 		}
 		lyxml_free_elem(ctx, sub);
 		if (r) {
-			EXIT_FAILURE;
+			goto error;
 		}
 	}
 
@@ -829,6 +950,10 @@ static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 	}
 
 	return EXIT_SUCCESS;
+
+error:
+
+	return EXIT_FAILURE;
 }
 
 static struct ly_mnode *read_yin_choice(struct ly_module *module,
