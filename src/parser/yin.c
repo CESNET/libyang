@@ -503,12 +503,7 @@ static int fill_yin_type(struct ly_module *module, struct ly_mnode *parent,
 	int i, j, r;
 	int64_t v, v_;
 
-	value = lyxml_get_attr(yin, "name", NULL);
-	if (!value) {
-		LOGVAL(VE_MISSARG, LOGLINE(yin), "name", yin->name);
-		return EXIT_FAILURE;
-	}
-
+	GETVAL(value, yin, "name")
 	delim = strchr(value, ':');
 	if (delim) {
 		type->prefix = lydict_insert(module->ctx, value, delim - value);
@@ -517,25 +512,25 @@ static int fill_yin_type(struct ly_module *module, struct ly_mnode *parent,
 	type->der = find_superior_type(value, module, parent);
 	if (!type->der) {
 		LOGVAL(VE_INARG, LOGLINE(yin), value, yin->name);
-		return EXIT_FAILURE;
+		goto error;
 	}
 	type->base = type->der->type.base;
 
 	switch (type->base) {
 	case LY_TYPE_BINARY:
-		/* length, 9.4.4
+		/* TODO length, 9.4.4
 		 * - optional, 0..1, rekurzivni - omezuje, string (podobne jako range),
 		 * hodnoty se musi vejit do 64b, podelementy
 		 */
 		break;
 	case LY_TYPE_BITS:
-		/* bit, 9.7.4
+		/* TODO bit, 9.7.4
 		 * 1..n, nerekurzivni, stringy s podelementy */
 		break;
 	case LY_TYPE_DEC64:
-		/* fraction-digits, 9.3.4
+		/* TODO fraction-digits, 9.3.4
 		 * - MUST, 1, nerekurzivni, hodnota 1-18 */
-		/* range, 9.2.4
+		/* TODO range, 9.2.4
 		 * - optional, 0..1, rekurzivne - omezuje, string,  podelementy*/
 		break;
 	case LY_TYPE_ENUM:
@@ -648,7 +643,7 @@ static int fill_yin_type(struct ly_module *module, struct ly_mnode *parent,
 		}
 		break;
 	case LY_TYPE_INST:
-		/* require-instance, 9.13.2
+		/* TODO require-instance, 9.13.2
 		 * - 0..1, true/false */
 		break;
 	case LY_TYPE_INT8:
@@ -659,21 +654,21 @@ static int fill_yin_type(struct ly_module *module, struct ly_mnode *parent,
 	case LY_TYPE_UINT16:
 	case LY_TYPE_UINT32:
 	case LY_TYPE_UINT64:
-		/* range, 9.2.4
+		/* TODO range, 9.2.4
 		 * - optional, 0..1, i rekurzivne - omezuje, string, podelementy*/
 		break;
 	case LY_TYPE_LEAFREF:
-		/* path, 9.9.2
+		/* TODO path, 9.9.2
 		 * - 1, nerekurzivni, string */
 		break;
 	case LY_TYPE_STRING:
-		/* length, 9.4.4
+		/* TODO length, 9.4.4
 		 * - optional, 0..1, rekurzivni - omezuje, string (podobne jako range), hodnoty se musi vejit do 64b, podelementy
 		 * pattern, 9.4.6
 		 * - optional, 0..n, rekurzivni - rozsiruje, string, podelementy */
 		break;
 	case LY_TYPE_UNION:
-		/* type, 7.4
+		/* TODO type, 7.4
 		 * - 1..n, nerekurzivni, resp rekurzivni pro union ale bez vazby na predky, nesmi byt empty nebo leafref */
 		break;
 	default:
@@ -749,6 +744,67 @@ static int fill_yin_typedef(struct ly_module *module, struct ly_mnode *parent,
 	if (check_default(tpdf)) {
 		goto error;
 	}
+
+	return EXIT_SUCCESS;
+
+error:
+
+	return EXIT_FAILURE;
+}
+
+static int fill_yin_must(struct ly_module *module, struct lyxml_elem *yin, struct ly_must *must)
+{
+	struct lyxml_elem *child;
+	const char *value;
+
+	GETVAL(value, yin, "condition");
+	must->cond = lydict_insert(module->ctx, value, strlen(value));
+
+	LY_TREE_FOR(yin->child, child) {
+		if (!strcmp(child->name, "description")) {
+			if (must->dsc) {
+				LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+				goto error;
+			}
+			must->dsc = read_yin_text(module->ctx, child);
+			if (!must->dsc) {
+				goto error;
+			}
+		} else if (!strcmp(child->name, "reference")) {
+			if (must->ref) {
+				LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+				goto error;
+			}
+			must->ref = read_yin_text(module->ctx, child);
+			if (!must->ref) {
+				goto error;
+			}
+		} else if (!strcmp(child->name, "error-app-tag")) {
+			if (must->eapptag) {
+				LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+				goto error;
+			}
+			must->eapptag = read_yin_text(module->ctx, child);
+			if (!must->eapptag) {
+				goto error;
+			}
+		} else if (!strcmp(child->name, "error-message")) {
+			if (must->emsg) {
+				LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+				goto error;
+			}
+			must->emsg = read_yin_text(module->ctx, child);
+			if (!must->emsg) {
+				goto error;
+			}
+		} else {
+			LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+			goto error;
+		}
+
+		lyxml_free_elem(module->ctx, child);
+	}
+
 
 	return EXIT_SUCCESS;
 
@@ -872,12 +928,11 @@ static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 		mnode->module = module;
 	}
 
-	value = lyxml_get_attr(xmlnode, "name", NULL);
-	mnode->name = lydict_insert(ctx, value, strlen(value));
-	if (!mnode->name || !mnode->name[0]) {
-		LOGVAL(VE_MISSARG, LOGLINE(xmlnode), "name", xmlnode->name);
+	GETVAL(value, xmlnode, "name");
+	if (check_identifier(value, LY_IDENT_NAME, LOGLINE(xmlnode), NULL, NULL)) {
 		goto error;
 	}
+	mnode->name = lydict_insert(ctx, value, strlen(value));
 
 	/* process local parameters */
 	LY_TREE_FOR_SAFE(xmlnode->child, next, sub) {
@@ -1298,8 +1353,9 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 	struct ly_mnode *mnode = NULL;
 	struct ly_mnode *retval;
 	struct ly_mnode_container *cont;
+	const char *value;
 	int r;
-	int c_tpdf = 0;
+	int c_tpdf = 0, c_must = 0;
 
 	cont = calloc(1, sizeof *cont);
 	cont->nodetype = LY_NODE_CONTAINER;
@@ -1312,8 +1368,16 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 
 	/* process container's specific children */
 	LY_TREE_FOR_SAFE(node->child, next, sub) {
+		if (!strcmp(sub->name, "presence")) {
+			if (cont->presence) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, node->name);
+				goto error;
+			}
+			GETVAL(value, sub, "value");
+			cont->presence = lydict_insert(module->ctx, value, strlen(value));
+
 		/* data statements */
-		if (!strcmp(sub->name, "container") ||
+		} else if (!strcmp(sub->name, "container") ||
 				!strcmp(sub->name, "leaf-list") ||
 				!strcmp(sub->name, "leaf") ||
 				!strcmp(sub->name, "list") ||
@@ -1326,24 +1390,41 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 		/* array counters */
 		} else if (!strcmp(sub->name, "typedef")) {
 			c_tpdf++;
+		} else if (!strcmp(sub->name, "must")) {
+			c_must++;
+		} else {
+
 		}
 	}
 
 	/* middle part - process nodes with cardinality of 0..n except the data nodes */
 	if (c_tpdf) {
-		cont->tpdf_size = c_tpdf;
 		cont->tpdf = calloc(c_tpdf, sizeof *cont->tpdf);
-		c_tpdf = 0;
 	}
+	if (c_must) {
+		cont->must = calloc(c_must, sizeof *cont->must);
+	}
+
 	LY_TREE_FOR_SAFE(node->child, next, sub) {
 		if (!strcmp(sub->name, "typedef")) {
-			r = fill_yin_typedef(module, retval, sub, &cont->tpdf[c_tpdf]);
-			c_tpdf++;
+			r = fill_yin_typedef(module, retval, sub, &cont->tpdf[cont->tpdf_size]);
+			cont->tpdf_size++;
 
 			if (r) {
-				cont->tpdf_size = c_tpdf;
 				goto error;
 			}
+		} else if (!strcmp(sub->name, "must")) {
+			r = fill_yin_must(module, sub, &cont->must[cont->must_size]);
+			cont->must_size++;
+
+			if (r) {
+				goto error;
+			}
+#if 0
+		} else {
+			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
+			goto error;
+#endif
 		}
 
 		lyxml_free_elem(module->ctx, sub);

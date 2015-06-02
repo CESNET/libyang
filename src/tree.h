@@ -186,6 +186,14 @@ struct ly_tpdf {
 	const char *dflt;         /**< default value of the type - TODO */
 };
 
+struct ly_must {
+	const char *cond;         /**< XPath expression of the must statement */
+	const char *dsc;          /**< description */
+	const char *ref;          /**< reference */
+	const char *eapptag;      /**< error-app-tag value */
+	const char *emsg;         /**< error-message */
+};
+
 #define LY_REV_SIZE 11
 struct ly_import {
 	struct ly_module *module; /**< link to the imported module */
@@ -378,8 +386,13 @@ struct ly_mnode_container {
 	const char *when;      /**< when statement */
 
 	/* specific container's data */
+	const char* presence;   /**< presence description, working also as a flag */
+
 	int tpdf_size;          /**< number of elements in tpdf array */
 	struct ly_tpdf *tpdf;   /**< array of typedefs */
+
+	int must_size;          /**< number of elements in must array */
+	struct ly_must *must;   /**< array of must constraints */
 };
 
 struct ly_mnode_choice {

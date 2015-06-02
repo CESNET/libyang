@@ -252,6 +252,20 @@ void ly_tpdf_free(struct ly_ctx *ctx, struct ly_tpdf *tpdf)
 	ly_type_free(ctx, &tpdf->type);
 }
 
+void ly_must_free(struct ly_ctx *ctx, struct ly_must *must)
+{
+	assert(ctx);
+	if (!must) {
+		return;
+	}
+
+	lydict_remove(ctx, must->cond);
+	lydict_remove(ctx, must->dsc);
+	lydict_remove(ctx, must->ref);
+	lydict_remove(ctx, must->eapptag);
+	lydict_remove(ctx, must->emsg);
+}
+
 void ly_ident_free(struct ly_ctx *ctx, struct ly_ident *ident)
 {
 	struct ly_ident_der *der;
@@ -323,9 +337,18 @@ void ly_container_free(struct ly_ctx *ctx, struct ly_mnode_container *cont)
 	int i;
 
 	/* handle only specific parts for LY_NODE_CONTAINER */
+	lydict_remove(ctx, cont->presence);
+
 	if (cont->tpdf_size) {
 		for (i = 0; i < cont->tpdf_size; i++) {
 			ly_tpdf_free(ctx, &cont->tpdf[i]);
+		}
+		free(cont->tpdf);
+	}
+
+	if (cont->must_size) {
+		for (i = 0; i < cont->must_size; i++) {
+			ly_must_free(ctx, &cont->must[i]);
 		}
 		free(cont->tpdf);
 	}
