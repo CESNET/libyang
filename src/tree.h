@@ -327,6 +327,7 @@ struct ly_mnode {
 #define LY_NODE_STATUS_OBSLT 0x10 /**< status obsolete; */
 #define LY_NODE_STATUS_MASK  0x1c /**< mask for status value */
 #define LY_NODE_MANDATORY    0x20 /**< mandatory flag of the node */
+#define LY_NODE_USERORDERED  0x40 /**< ordered-by user lists */
 
 	const char *feature;         /**< if-feature statement */
 	const char *when;            /**< when statement */
@@ -457,6 +458,13 @@ struct ly_mnode_leaflist {
 
 	/* specific leaf's data */
 	struct ly_type type;         /**< YANG type of the element */
+	const char *units;           /**< units of the type */
+
+	uint32_t min;                /**< min-elements constraint */
+	uint32_t max;                /**< max-elements constraint, 0 means unbounded */
+
+	int must_size;               /**< number of elements in must array */
+	struct ly_must *must;        /**< array of must constraints */
 };
 
 struct ly_mnode_list {

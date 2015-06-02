@@ -21,6 +21,8 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1182,29 +1184,150 @@ error:
 
 static struct ly_mnode *read_yin_leaflist(struct ly_module *module,
                                           struct ly_mnode *parent,
-                                          struct lyxml_elem *node)
+                                          struct lyxml_elem *yin)
 {
 	struct ly_mnode *retval;
 	struct ly_mnode_leaflist *llist;
 	struct lyxml_elem *sub, *next;
+	const char *value;
+	char *endptr;
+	long val;
 	int r;
+	int c_must = 0;
+	int f_ordr = 0, f_min = 0, f_max;
 
 	llist = calloc(1, sizeof *llist);
 	llist->nodetype = LY_NODE_LEAFLIST;
 	llist->prev = (struct ly_mnode *)llist;
 	retval = (struct ly_mnode *)llist;
 
-	if (read_yin_common(module, parent, retval, node, 1)) {
+	if (read_yin_common(module, parent, retval, yin, 1)) {
 		goto error;
 	}
 
-	LY_TREE_FOR_SAFE(node->child, next, sub) {
+	LY_TREE_FOR_SAFE(yin->child, next, sub) {
 		if (!strcmp(sub->name, "type")) {
-			r = fill_yin_type(module, parent, sub, &llist->type);
+			if (llist->type.der) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			if (fill_yin_type(module, parent, sub, &llist->type)) {
+				goto error;
+			}
+		} else if (!strcmp(sub->name, "units"))  {
+			if (llist->units) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			GETVAL(value, sub, "value");
+			llist->units = lydict_insert(module->ctx, value, strlen(value));
+		} else if (!strcmp(sub->name, "ordered-by")) {
+			if (f_ordr) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			/* just checking the flags in llist is not sufficient, we would
+			 * allow multiple ordered-by statements with the "system" value
+			 */
+			f_ordr = 1;
+
+			if (llist->flags & LY_NODE_CONFIG_R) {
+				/* RFC 6020, 7.7.5 - ignore ordering when the list represents
+				 * state data
+				 */
+				lyxml_free_elem(module->ctx, sub);
+				continue;
+			}
+
+			GETVAL(value, sub, "value");
+			if (!strcmp(value, "user")) {
+				llist->flags |= LY_NODE_USERORDERED;
+			} else if (strcmp(value, "system")) {
+				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
+				goto error;
+			} /* else system is the default value, so we can ignore it */
+		} else if (!strcmp(sub->name, "must")) {
+			c_must++;
+
+			/* skip element free at the end of the loop */
+			continue;
+		} else if (!strcmp(sub->name, "min-elements")) {
+			if (f_min) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			f_min = 1;
+
+			GETVAL(value, sub, "value");
+			while(isspace(value[0])) {
+				value++;
+			}
+
+			/* convert it to uint32_t */
+			errno = 0;
+			endptr = NULL;
+			val = strtoul(value, &endptr, 10);
+			if (!*endptr || value[0] == '-' || errno) {
+				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
+				goto error;
+			}
+			llist->min = val;
+		} else if (!strcmp(sub->name, "max-elements")) {
+			if (f_max) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			f_max = 1;
+
+			GETVAL(value, sub, "value");
+			while(isspace(value[0])) {
+				value++;
+			}
+
+			/* convert it to uint32_t */
+			errno = 0;
+			endptr = NULL;
+			val = strtoul(value, &endptr, 10);
+			if (!*endptr || value[0] == '-' || errno || val == 0) {
+				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
+				goto error;
+			}
+			llist->max = val;
+
+		} else {
+			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
+			goto error;
+		}
+
+		lyxml_free_elem(module->ctx, sub);
+	}
+
+	/* check constraints */
+	if (!llist->type.der) {
+		LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "type", yin->name);
+		goto error;
+	}
+	if (llist->max && llist->min > llist->max) {
+		LOGVAL(VE_SPEC, LOGLINE(yin), "\"min-elements\" is bigger than \"max-elements\".");
+		goto error;
+	}
+
+	/* middle part - process nodes with cardinality of 0..n */
+	if (c_must) {
+		llist->must = calloc(c_must, sizeof *llist->must);
+	}
+
+	LY_TREE_FOR_SAFE(yin->child, next, sub) {
+		if (!strcmp(sub->name, "must")) {
+			r = fill_yin_must(module, sub, &llist->must[llist->must_size]);
+			llist->must_size++;
+
 			if (r) {
 				goto error;
 			}
 		}
+
+		lyxml_free_elem(module->ctx, sub);
 	}
 
 	if (parent) {
