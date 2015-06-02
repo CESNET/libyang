@@ -218,10 +218,11 @@ static int check_identifier(const char *id, enum LY_IDENT type, unsigned int lin
 	return EXIT_SUCCESS;
 }
 
-static int check_default(struct ly_tpdf *tpdf)
+static int check_default(struct ly_type *type, const char* value)
 {
 	/* TODO - RFC 6020, sec. 7.3.4 */
-	(void)tpdf;
+	(void)type;
+	(void)value;
 	return EXIT_SUCCESS;
 }
 
@@ -709,6 +710,10 @@ static int fill_yin_typedef(struct ly_module *module, struct ly_mnode *parent,
 
 	LY_TREE_FOR_SAFE(yin->child, next, node) {
 		if (!strcmp(node->name, "type")) {
+			if (tpdf->type.der) {
+				LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
+				goto error;
+			}
 			r = fill_yin_type(module, parent, node, &tpdf->type);
 		} else if (!strcmp(node->name, "default"))  {
 			if (tpdf->dflt) {
@@ -736,12 +741,12 @@ static int fill_yin_typedef(struct ly_module *module, struct ly_mnode *parent,
 
 	/* check mandatory value */
 	if (!tpdf->type.der) {
-		LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "type", "typedef");
+		LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "type", yin->name);
 		goto error;
 	}
 
-	/* default value */
-	if (check_default(tpdf)) {
+	/* check default value */
+	if (check_default(&tpdf->type, tpdf->dflt)) {
 		goto error;
 	}
 
@@ -1064,29 +1069,102 @@ error:
 
 static struct ly_mnode *read_yin_leaf(struct ly_module *module,
                                       struct ly_mnode *parent,
-                                      struct lyxml_elem *node)
+                                      struct lyxml_elem *yin)
 {
 	struct ly_mnode *retval;
 	struct ly_mnode_leaf *leaf;
 	struct lyxml_elem *sub, *next;
+	const char *value;
 	int r;
+	int c_must = 0, f_mand = 0;
 
 	leaf = calloc(1, sizeof *leaf);
 	leaf->nodetype = LY_NODE_LEAF;
 	leaf->prev = (struct ly_mnode *)leaf;
 	retval = (struct ly_mnode *)leaf;
 
-	if (read_yin_common(module, parent, retval, node, 1)) {
+	if (read_yin_common(module, parent, retval, yin, 1)) {
 		goto error;
 	}
 
-	LY_TREE_FOR_SAFE(node->child, next, sub) {
+	LY_TREE_FOR_SAFE(yin->child, next, sub) {
 		if (!strcmp(sub->name, "type")) {
-			r = fill_yin_type(module, parent, sub, &leaf->type);
+			if (leaf->type.der) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			if (fill_yin_type(module, parent, sub, &leaf->type)) {
+				goto error;
+			}
+		} else if (!strcmp(sub->name, "default"))  {
+			if (leaf->dflt) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			GETVAL(value, sub, "value");
+			leaf->dflt = lydict_insert(module->ctx, value, strlen(value));
+		} else if (!strcmp(sub->name, "units"))  {
+			if (leaf->units) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			GETVAL(value, sub, "value");
+			leaf->units = lydict_insert(module->ctx, value, strlen(value));
+		} else if (!strcmp(sub->name, "mandatory")) {
+			if (f_mand) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			/* just checking the flags in leaf is not sufficient, we would allow
+			 * multiple mandatory statements with the "false" value
+			 */
+			f_mand = 1;
+
+			GETVAL(value, sub, "value");
+			if (!strcmp(value, "true")) {
+				leaf->flags |= LY_NODE_MANDATORY;
+			} else if (strcmp(value, "false")) {
+				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
+				goto error;
+			} /* else false is the default value, so we can ignore it */
+		} else if (!strcmp(sub->name, "must")) {
+			c_must++;
+
+			/* skip element free at the end of the loop */
+			continue;
+		} else {
+			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
+			goto error;
+		}
+
+		lyxml_free_elem(module->ctx, sub);
+	}
+
+	/* check mandatory parameters */
+	if (!leaf->type.der) {
+		LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "type", yin->name);
+		goto error;
+	}
+	if (leaf->dflt && !check_default(&leaf->type, leaf->dflt)) {
+		goto error;
+	}
+
+	/* middle part - process nodes with cardinality of 0..n */
+	if (c_must) {
+		leaf->must = calloc(c_must, sizeof *leaf->must);
+	}
+
+	LY_TREE_FOR_SAFE(yin->child, next, sub) {
+		if (!strcmp(sub->name, "must")) {
+			r = fill_yin_must(module, sub, &leaf->must[leaf->must_size]);
+			leaf->must_size++;
+
 			if (r) {
 				goto error;
 			}
 		}
+
+		lyxml_free_elem(module->ctx, sub);
 	}
 
 	if (parent) {
@@ -1347,7 +1425,7 @@ error:
 
 static struct ly_mnode *read_yin_container(struct ly_module *module,
                                            struct ly_mnode *parent,
-                                           struct lyxml_elem *node)
+                                           struct lyxml_elem *yin)
 {
 	struct lyxml_elem *sub, *next, root = {0};
 	struct ly_mnode *mnode = NULL;
@@ -1362,19 +1440,21 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 	cont->prev = (struct ly_mnode *)cont;
 	retval = (struct ly_mnode *)cont;
 
-	if (read_yin_common(module, parent, retval, node, 1)) {
+	if (read_yin_common(module, parent, retval, yin, 1)) {
 		goto error;
 	}
 
 	/* process container's specific children */
-	LY_TREE_FOR_SAFE(node->child, next, sub) {
+	LY_TREE_FOR_SAFE(yin->child, next, sub) {
 		if (!strcmp(sub->name, "presence")) {
 			if (cont->presence) {
-				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, node->name);
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
 				goto error;
 			}
 			GETVAL(value, sub, "value");
 			cont->presence = lydict_insert(module->ctx, value, strlen(value));
+
+			lyxml_free_elem(module->ctx, sub);
 
 		/* data statements */
 		} else if (!strcmp(sub->name, "container") ||
@@ -1393,7 +1473,8 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 		} else if (!strcmp(sub->name, "must")) {
 			c_must++;
 		} else {
-
+			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
+			goto error;
 		}
 	}
 
@@ -1405,7 +1486,7 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 		cont->must = calloc(c_must, sizeof *cont->must);
 	}
 
-	LY_TREE_FOR_SAFE(node->child, next, sub) {
+	LY_TREE_FOR_SAFE(yin->child, next, sub) {
 		if (!strcmp(sub->name, "typedef")) {
 			r = fill_yin_typedef(module, retval, sub, &cont->tpdf[cont->tpdf_size]);
 			cont->tpdf_size++;
@@ -1420,11 +1501,6 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 			if (r) {
 				goto error;
 			}
-#if 0
-		} else {
-			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
-			goto error;
-#endif
 		}
 
 		lyxml_free_elem(module->ctx, sub);
@@ -1446,9 +1522,6 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 			mnode = read_yin_uses(module, retval, sub, 1);
 		} else if (!strcmp(sub->name, "grouping")) {
 			mnode = read_yin_grouping(module, retval, sub);
-		} else {
-			/* TODO error */
-			continue;
 		}
 		lyxml_free_elem(module->ctx, sub);
 
@@ -1845,11 +1918,9 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 			}
 			module->version = 1;
 			lyxml_free_elem(ctx, node);
-#if 0
 		} else {
 			LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
 			goto error;
-#endif
 		}
 	}
 
