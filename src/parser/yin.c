@@ -113,7 +113,7 @@ static int check_identifier(const char *id, enum LY_IDENT type, unsigned int lin
 	for (i = 1; id[i]; i++) {
 		if (!(id[i] >= 'A' && id[i] <= 'Z') && !(id[i] >= 'a' && id[i] <= 'z')
 				&& !(id[i] >= '0' && id[i] <= '9') && id[i] != '_' && id[i] != '-' && id[i] != '.') {
-			LOGVAL(VE_INID, line, id, "invalid %d. character", i + 1);
+			LOGVAL(VE_INID, line, id, "invalid character");
 			return EXIT_FAILURE;
 		}
 	}
