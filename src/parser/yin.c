@@ -55,7 +55,7 @@ enum LY_IDENT {
 		goto error;                                                 \
 	}
 
-static int read_yin_common(struct ly_module *, struct ly_mnode *, struct ly_mnode *, struct lyxml_elem *, int );
+static int read_yin_common(struct ly_module *, struct ly_mnode *, struct ly_mnode *, struct lyxml_elem *, int, int);
 static struct ly_mnode *read_yin_choice(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
 static struct ly_mnode *read_yin_container(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
 static struct ly_mnode *read_yin_leaf(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
@@ -519,7 +519,7 @@ static int fill_yin_identity(struct ly_module *module, struct lyxml_elem *yin, s
 {
 	struct lyxml_elem *node, *next;
 
-	if (read_yin_common(module, NULL, (struct ly_mnode *)ident, yin, 0)) {
+	if (read_yin_common(module, NULL, (struct ly_mnode *)ident, yin, 0, 1)) {
 		return EXIT_FAILURE;
 	}
 	ident->module = module;
@@ -608,7 +608,7 @@ static int fill_yin_type(struct ly_module *module, struct ly_mnode *parent,
 
 		type->info.enums.list = calloc(type->info.enums.count, sizeof *type->info.enums.list);
 		for (i = v = 0; root.child; i++) {
-			r = read_yin_common(module, NULL, (struct ly_mnode *)&type->info.enums.list[i], root.child, 0);
+			r = read_yin_common(module, NULL, (struct ly_mnode *)&type->info.enums.list[i], root.child, 0, 1);
 			if (r) {
 				type->info.enums.count = i + 1;
 				goto error;
@@ -752,7 +752,7 @@ static int fill_yin_typedef(struct ly_module *module, struct ly_mnode *parent,
 	tpdf->name = lydict_insert(module->ctx, value, strlen(value));
 
 	/* generic part - status, description, reference */
-	if (read_yin_common(module, NULL, (struct ly_mnode *)tpdf, yin, 0)) {
+	if (read_yin_common(module, NULL, (struct ly_mnode *)tpdf, yin, 0, 1)) {
 		goto error;
 	}
 
@@ -970,7 +970,7 @@ error:
  * description, reference, status, optionaly config
  */
 static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
-		                   struct ly_mnode *mnode, struct lyxml_elem *xmlnode, int ext)
+		                   struct ly_mnode *mnode, struct lyxml_elem *xmlnode, int ext, int id)
 {
 	const char *value;
 	struct lyxml_elem *sub, *next;
@@ -982,7 +982,7 @@ static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 	}
 
 	GETVAL(value, xmlnode, "name");
-	if (check_identifier(value, LY_IDENT_NAME, LOGLINE(xmlnode), NULL, NULL)) {
+	if (id && check_identifier(value, LY_IDENT_NAME, LOGLINE(xmlnode), NULL, NULL)) {
 		goto error;
 	}
 	mnode->name = lydict_insert(ctx, value, strlen(value));
@@ -1079,7 +1079,7 @@ static struct ly_mnode *read_yin_choice(struct ly_module *module,
 	choice->prev = (struct ly_mnode *)choice;
 	retval = (struct ly_mnode *)choice;
 
-	if (read_yin_common(module, parent, retval, node, 1)) {
+	if (read_yin_common(module, parent, retval, node, 1, 1)) {
 		goto error;
 	}
 
@@ -1131,7 +1131,7 @@ static struct ly_mnode *read_yin_leaf(struct ly_module *module,
 	leaf->prev = (struct ly_mnode *)leaf;
 	retval = (struct ly_mnode *)leaf;
 
-	if (read_yin_common(module, parent, retval, yin, 1)) {
+	if (read_yin_common(module, parent, retval, yin, 1, 1)) {
 		goto error;
 	}
 
@@ -1249,7 +1249,7 @@ static struct ly_mnode *read_yin_leaflist(struct ly_module *module,
 	llist->prev = (struct ly_mnode *)llist;
 	retval = (struct ly_mnode *)llist;
 
-	if (read_yin_common(module, parent, retval, yin, 1)) {
+	if (read_yin_common(module, parent, retval, yin, 1, 1)) {
 		goto error;
 	}
 
@@ -1414,7 +1414,7 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 	list->prev = (struct ly_mnode *)list;
 	retval = (struct ly_mnode *)list;
 
-	if (read_yin_common(module, parent, retval, yin, 1)) {
+	if (read_yin_common(module, parent, retval, yin, 1, 1)) {
 		goto error;
 	}
 
@@ -1704,7 +1704,7 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 	cont->prev = (struct ly_mnode *)cont;
 	retval = (struct ly_mnode *)cont;
 
-	if (read_yin_common(module, parent, retval, yin, 1)) {
+	if (read_yin_common(module, parent, retval, yin, 1, 1)) {
 		goto error;
 	}
 
@@ -1829,7 +1829,7 @@ static struct ly_mnode *read_yin_grouping(struct ly_module *module,
 	grp->prev = (struct ly_mnode *)grp;
 	retval = (struct ly_mnode *)grp;
 
-	if (read_yin_common(module, parent, retval, node, 0)) {
+	if (read_yin_common(module, parent, retval, node, 0, 1)) {
 		goto error;
 	}
 
@@ -1937,7 +1937,7 @@ static struct ly_mnode *read_yin_uses(struct ly_module *module,
 	uses->prev = (struct ly_mnode *)uses;
 	retval = (struct ly_mnode *)uses;
 
-	if (read_yin_common(module, parent, retval, node, 0)) {
+	if (read_yin_common(module, parent, retval, node, 0, 0)) {
 		goto error;
 	}
 
