@@ -125,7 +125,7 @@ int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
 }
 
 API struct ly_module *ly_module_read(struct ly_ctx *ctx, const char *data,
-                                    LY_MFORMAT format)
+                                    LY_MINFORMAT format)
 {
 	if (!ctx || !data) {
 		LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -133,9 +133,9 @@ API struct ly_module *ly_module_read(struct ly_ctx *ctx, const char *data,
 	}
 
 	switch (format) {
-	case LY_YIN:
+	case LY_IN_YIN:
 		return yin_read_module(ctx, data);
-	case LY_YANG:
+	case LY_IN_YANG:
 	default:
 		/* TODO */
 		return NULL;
@@ -145,15 +145,15 @@ API struct ly_module *ly_module_read(struct ly_ctx *ctx, const char *data,
 }
 
 struct ly_submodule *ly_submodule_read(struct ly_module *module,
-                                       const char *data, LY_MFORMAT format)
+                                       const char *data, LY_MINFORMAT format)
 {
 	assert(module);
 	assert(data);
 
 	switch (format) {
-	case LY_YIN:
+	case LY_IN_YIN:
 		return yin_read_submodule(module, data);
-	case LY_YANG:
+	case LY_IN_YANG:
 	default:
 		/* TODO */
 		return NULL;
@@ -163,7 +163,7 @@ struct ly_submodule *ly_submodule_read(struct ly_module *module,
 }
 
 API struct ly_module *ly_module_read_fd(struct ly_ctx *ctx, int fd,
-                                       LY_MFORMAT format)
+                                       LY_MINFORMAT format)
 {
 	struct ly_module *module;
 	struct stat sb;
@@ -188,7 +188,7 @@ API struct ly_module *ly_module_read_fd(struct ly_ctx *ctx, int fd,
 }
 
 struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd,
-                                          LY_MFORMAT format)
+                                          LY_MINFORMAT format)
 {
 	struct ly_submodule *submodule;
 	struct stat sb;

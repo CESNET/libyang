@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 	struct stat sb;
 	char *addr;
 	char *searchpath = NULL;
-	LY_MFORMAT format = LY_YANG;
+	LY_MOUTFORMAT out_format = LY_OUT_YANG;
 
 	int opt_i;
 	struct option opt[] = {
@@ -70,11 +70,13 @@ int main(int argc, char *argv[])
 	while ((c = getopt_long(argc, argv, "f:ho:p:v:", opt, &opt_i)) != -1) {
 		switch (c) {
 		case 'f':
-			if (strcmp(optarg, "yang")) {
+			if (strcmp(optarg, "yang") && strcmp(optarg, "tree")) {
 				fprintf(stderr, "Output format \"%s\" not supported.\n", optarg);
 				return EXIT_FAILURE;
 			}
-			format = LY_YANG;
+			if (strcmp(optarg, "tree") == 0) {
+				out_format = LY_OUT_TREE;
+			}
 
 			if (!output) {
 				output = stdout;
@@ -106,7 +108,7 @@ int main(int argc, char *argv[])
 		usage(argv[0]);
 		return EXIT_FAILURE;
 	}
-	
+
 	fd = open(argv[optind], O_RDONLY);
 	if (fd == -1) {
 		fprintf(stderr, "Opening input file failed (%s).\n", strerror(errno));
@@ -118,15 +120,15 @@ int main(int argc, char *argv[])
 
 	/* libyang */
 	ctx = ly_ctx_new(searchpath);
-	model = ly_module_read(ctx, addr, LY_YIN);
+	model = ly_module_read(ctx, addr, LY_IN_YIN);
 	if (!model) {
 		fprintf(stderr, "Parsing data model failed.\n");
 		ret = EXIT_FAILURE;
 		goto cleanup;
 	}
-	
+
 	if (output) {
-		ly_model_print(output, model, format);
+		ly_model_print(output, model, out_format);
 	}
 
 

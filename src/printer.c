@@ -27,9 +27,10 @@
 
 /* printer/yang.c */
 int yang_print_model(FILE *f, struct ly_module *module);
+int tree_print_model(FILE *f, struct ly_module *module);
 
 
-API int ly_model_print(FILE *f, struct ly_module *module, LY_MFORMAT format)
+API int ly_model_print(FILE *f, struct ly_module *module, LY_MOUTFORMAT format)
 {
 	if (!f || !module) {
 		ly_errno = LY_EINVAL;
@@ -37,11 +38,13 @@ API int ly_model_print(FILE *f, struct ly_module *module, LY_MFORMAT format)
 	}
 
 	switch(format) {
-	case LY_YIN:
+	case LY_OUT_YIN:
 		LOGERR(LY_EINVAL, "YIN output format not supported yet.");
 		return EXIT_FAILURE;
-	case LY_YANG:
+	case LY_OUT_YANG:
 		return yang_print_model(f, module);
+	case LY_OUT_TREE:
+		return tree_print_model(f, module);
 	default:
 		LOGERR(LY_EINVAL, "Unknown output format.");
 		return EXIT_FAILURE;

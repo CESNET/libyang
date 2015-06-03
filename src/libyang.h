@@ -26,7 +26,7 @@
 
 #include "tree.h"
 
-int ly_model_print(FILE *f, struct ly_module *module, LY_MFORMAT format);
+int ly_model_print(FILE *f, struct ly_module *module, LY_MOUTFORMAT format);
 
 /**
  * @defgroup libyang libyang
@@ -98,11 +98,11 @@ void ly_ctx_destroy(struct ly_ctx *ctx);
  * @return Pointer to the data model structure or NULL on error.
  */
 struct ly_module *ly_module_read(struct ly_ctx *ctx, const char *data,
-                                 LY_MFORMAT format);
+                                 LY_MINFORMAT format);
 
 
 struct ly_module *ly_module_read_fd(struct ly_ctx *ctx, int fd,
-                                    LY_MFORMAT format);
+                                    LY_MINFORMAT format);
 
 /**
  * @brief Free data model

@@ -103,7 +103,7 @@ static struct ly_module *search_file(struct ly_ctx *ctx, struct ly_module *modul
 	char *cwd;
 	DIR *dir;
 	struct dirent *file;
-	LY_MFORMAT format;
+	LY_MINFORMAT format;
 	struct ly_module *result = NULL;
 	int localsearch = 1;
 
@@ -131,9 +131,9 @@ search:
 
 		/* get type according to filename suffix */
 		if (!strcmp(&file->d_name[flen-4], ".yin")) {
-			format = LY_YIN;
+			format = LY_IN_YIN;
 		} else if (!strcmp(&file->d_name[flen-5], ".yang")) {
-			format = LY_YANG;
+			format = LY_IN_YANG;
 		} else {
 			continue;
 		}
@@ -249,7 +249,7 @@ API struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name,
 	/* not found in context, try to get it from the search directory */
 	result = search_file(ctx, NULL, name, revision);
 	if (!result) {
-		LOGERR(LY_EVALID, "Data model \"%s\" not found (search path is \"%s\")", ctx->models.search_path);
+		LOGERR(LY_EVALID, "Data model \"%s\" not found (search path is \"%s\")", name, ctx->models.search_path);
 	}
 
 	return result;

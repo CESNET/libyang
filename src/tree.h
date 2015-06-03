@@ -54,10 +54,17 @@
  */
 
 typedef enum {
-	LY_UNKNOWN,
-	LY_YANG,
-	LY_YIN,
-} LY_MFORMAT;
+	LY_IN_UNKNOWN,
+	LY_IN_YANG,
+	LY_IN_YIN,
+} LY_MINFORMAT;
+
+typedef enum {
+	LY_OUT_UNKNOWN,
+	LY_OUT_YANG,
+	LY_OUT_YIN,
+	LY_OUT_TREE,
+} LY_MOUTFORMAT;
 
 typedef enum {
 	LY_XML,
@@ -543,8 +550,8 @@ struct ly_ident {
 };
 
 /* private libyang functions */
-struct ly_submodule *ly_submodule_read(struct ly_module *module, const char *data, LY_MFORMAT format);
-struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LY_MFORMAT format);
+struct ly_submodule *ly_submodule_read(struct ly_module *module, const char *data, LY_MINFORMAT format);
+struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LY_MINFORMAT format);
 
 /**@} tree */
 
