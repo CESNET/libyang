@@ -821,13 +821,13 @@ error:
 
 static int fill_yin_must(struct ly_module *module, struct lyxml_elem *yin, struct ly_must *must)
 {
-	struct lyxml_elem *child;
+	struct lyxml_elem *child, *next;
 	const char *value;
 
 	GETVAL(value, yin, "condition");
 	must->cond = lydict_insert(module->ctx, value, strlen(value));
 
-	LY_TREE_FOR(yin->child, child) {
+	LY_TREE_FOR_SAFE(yin->child, next, child) {
 		if (!strcmp(child->name, "description")) {
 			if (must->dsc) {
 				LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
