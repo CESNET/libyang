@@ -1128,7 +1128,7 @@ static struct ly_mnode *read_yin_case(struct ly_module *module,
 {
 	struct lyxml_elem *sub, *next;
 	struct ly_mnode_case *mcase;
-	struct ly_mnode *retval, *mnode;
+	struct ly_mnode *retval, *mnode = NULL;
 
 	mcase = calloc(1, sizeof *mcase);
 	mcase->nodetype = LY_NODE_CASE;
