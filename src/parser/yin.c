@@ -58,6 +58,7 @@ enum LY_IDENT {
 static int read_yin_common(struct ly_module *, struct ly_mnode *, struct ly_mnode *, struct lyxml_elem *, int, int);
 static struct ly_mnode *read_yin_choice(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
 static struct ly_mnode *read_yin_case(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
+static struct ly_mnode *read_yin_anyxml(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
 static struct ly_mnode *read_yin_container(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
 static struct ly_mnode *read_yin_leaf(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
 static struct ly_mnode *read_yin_leaflist(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
@@ -1153,6 +1154,8 @@ static struct ly_mnode *read_yin_case(struct ly_module *module,
 			mnode = read_yin_case(module, retval, sub);
 		} else if (!strcmp(sub->name, "choice")) {
 			mnode = read_yin_choice(module, retval, sub);
+		} else if (!strcmp(sub->name, "anyxml")) {
+			mnode = read_yin_anyxml(module, retval, sub);
 #if 0
 		} else {
 			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
@@ -1224,6 +1227,10 @@ static struct ly_mnode *read_yin_choice(struct ly_module *module,
 			if (!(mnode = read_yin_case(module, retval, sub))) {
 				goto error;
 			}
+		} else if (!strcmp(sub->name, "anyxml")) {
+			if (!(mnode = read_yin_anyxml(module, retval, sub))) {
+				goto error;
+			}
 		} else if (!strcmp(sub->name, "default"))  {
 			if (dflt_str) {
 				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
@@ -1284,6 +1291,90 @@ static struct ly_mnode *read_yin_choice(struct ly_module *module,
 	}
 
 	/* insert the node into the schema tree */
+	if (parent) {
+		ly_mnode_addchild(parent, retval);
+	}
+
+	return retval;
+
+error:
+
+	ly_mnode_free(retval);
+
+	return NULL;
+}
+
+static struct ly_mnode *read_yin_anyxml(struct ly_module *module,
+                                        struct ly_mnode *parent,
+                                        struct lyxml_elem *yin)
+{
+	struct ly_mnode *retval;
+	struct ly_mnode_leaf *anyxml;
+	struct lyxml_elem *sub, *next;
+	const char *value;
+	int r;
+	int f_mand = 0;
+	int c_must = 0;
+
+	anyxml = calloc(1, sizeof *anyxml);
+	anyxml->nodetype = LY_NODE_ANYXML;
+	anyxml->prev = (struct ly_mnode *)anyxml;
+	retval = (struct ly_mnode *)anyxml;
+
+	if (read_yin_common(module, parent, retval, yin, 1, 1)) {
+		goto error;
+	}
+
+	LY_TREE_FOR_SAFE(yin->child, next, sub)
+	{
+		if (!strcmp(sub->name, "mandatory")) {
+			if (f_mand) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			/* just checking the flags in leaf is not sufficient, we would allow
+			 * multiple mandatory statements with the "false" value
+			 */
+			f_mand = 1;
+
+			GETVAL(value, sub, "value");
+			if (!strcmp(value, "true")) {
+				anyxml->flags |= LY_NODE_MANDATORY;
+			} else if (strcmp(value, "false")) {
+				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
+				goto error;
+			} /* else false is the default value, so we can ignore it */
+
+			lyxml_free_elem(module->ctx, sub);
+		} else if (!strcmp(sub->name, "must")) {
+			c_must++;
+
+#if 0
+		} else {
+			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
+			goto error;
+#endif
+		}
+	}
+
+	/* middle part - process nodes with cardinality of 0..n */
+	if (c_must) {
+		anyxml->must = calloc(c_must, sizeof *anyxml->must);
+	}
+
+	LY_TREE_FOR_SAFE(yin->child, next, sub) {
+		if (!strcmp(sub->name, "must")) {
+			r = fill_yin_must(module, sub, &anyxml->must[anyxml->must_size]);
+			anyxml->must_size++;
+
+			if (r) {
+				goto error;
+			}
+		}
+
+		lyxml_free_elem(module->ctx, sub);
+	}
+
 	if (parent) {
 		ly_mnode_addchild(parent, retval);
 	}
@@ -1609,7 +1700,8 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 				!strcmp(sub->name, "list") ||
 				!strcmp(sub->name, "choice") ||
 				!strcmp(sub->name, "uses") ||
-				!strcmp(sub->name, "grouping")) {
+				!strcmp(sub->name, "grouping") ||
+				!strcmp(sub->name, "anyxml")) {
 			lyxml_unlink_elem(sub);
 			lyxml_add_child(&root, sub);
 
@@ -1807,6 +1899,8 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 			mnode = read_yin_uses(module, retval, sub, 1);
 		} else if (!strcmp(sub->name, "grouping")) {
 			mnode = read_yin_grouping(module, retval, sub);
+		} else if (!strcmp(sub->name, "anyxml")) {
+			mnode = read_yin_anyxml(module, retval, sub);
 		} else {
 			/* TODO error */
 			continue;
@@ -1909,7 +2003,8 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 				!strcmp(sub->name, "list") ||
 				!strcmp(sub->name, "choice") ||
 				!strcmp(sub->name, "uses") ||
-				!strcmp(sub->name, "grouping")) {
+				!strcmp(sub->name, "grouping")||
+				!strcmp(sub->name, "anyxml")) {
 			lyxml_unlink_elem(sub);
 			lyxml_add_child(&root, sub);
 
@@ -1970,6 +2065,8 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 			mnode = read_yin_uses(module, retval, sub, 1);
 		} else if (!strcmp(sub->name, "grouping")) {
 			mnode = read_yin_grouping(module, retval, sub);
+		} else if (!strcmp(sub->name, "anyxml")) {
+			mnode = read_yin_anyxml(module, retval, sub);
 		}
 		lyxml_free_elem(module->ctx, sub);
 
@@ -2308,7 +2405,8 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 				!strcmp(node->name, "list") ||
 				!strcmp(node->name, "choice") ||
 				!strcmp(node->name, "uses") ||
-				!strcmp(node->name, "grouping")) {
+				!strcmp(node->name, "grouping") ||
+				!strcmp(node->name, "anyxml")) {
 			lyxml_unlink_elem(node);
 			lyxml_add_child(&root, node);
 
@@ -2530,6 +2628,8 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 			mnode = read_yin_grouping(module, NULL, node);
 		} else if (!strcmp(node->name, "uses")) {
 			mnode = read_yin_uses(module, NULL, node, 1);
+		} else if (!strcmp(node->name, "anyxml")) {
+			mnode = read_yin_anyxml(module, NULL, node);
 		} else {
 			/* TODO error */
 			continue;

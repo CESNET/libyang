@@ -449,6 +449,27 @@ struct ly_mnode_case {
 	const char *when;            /**< when statement */
 };
 
+struct ly_mnode_anyxml {
+	const char *name;            /**< name argument */
+	const char *dsc;             /**< description statement */
+	const char *ref;             /**< reference statement */
+	uint8_t flags;
+	struct ly_module *module;    /**< link to the node's data model */
+
+	LY_NODE_TYPE nodetype;       /**< YANG statement - LY_NODE_ANYXML */
+	struct ly_mnode *parent;
+	struct ly_mnode *child;
+	struct ly_mnode *next;
+	struct ly_mnode *prev;
+
+	const char *feature;         /**< if-feature statement */
+	const char *when;            /**< when statement */
+
+	/* specific leaf's data */
+	uint8_t must_size;           /**< number of elements in must array */
+	struct ly_must *must;        /**< array of must constraints */
+};
+
 struct ly_mnode_leaf {
 	const char *name;            /**< name argument */
 	const char *dsc;             /**< description statement */
