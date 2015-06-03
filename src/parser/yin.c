@@ -1147,7 +1147,7 @@ static struct ly_mnode *read_yin_leaf(struct ly_module *module,
 		LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "type", yin->name);
 		goto error;
 	}
-	if (leaf->dflt && !check_default(&leaf->type, leaf->dflt)) {
+	if (leaf->dflt && check_default(&leaf->type, leaf->dflt)) {
 		goto error;
 	}
 
