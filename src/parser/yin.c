@@ -1192,7 +1192,8 @@ static struct ly_mnode *read_yin_choice(struct ly_module *module,
 	struct ly_ctx * const ctx = module->ctx;
 	struct ly_mnode *retval, *mnode = NULL;
 	struct ly_mnode_choice *choice;
-	const char *value, *dflt_str = NULL;
+	const char *value;
+	char *dflt_str = NULL;
 	int f_mand = 0;
 
 	choice = calloc(1, sizeof *choice);
@@ -1288,6 +1289,7 @@ static struct ly_mnode *read_yin_choice(struct ly_module *module,
 			LOGVAL(VE_INARG, LOGLINE(yin), dflt_str, "default");
 			goto error;
 		}
+		free(dflt_str);
 	}
 
 	/* insert the node into the schema tree */
@@ -1300,6 +1302,7 @@ static struct ly_mnode *read_yin_choice(struct ly_module *module,
 error:
 
 	ly_mnode_free(retval);
+	free(dflt_str);
 
 	return NULL;
 }
