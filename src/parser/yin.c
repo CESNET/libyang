@@ -2120,29 +2120,30 @@ static struct ly_mnode *read_yin_grouping(struct ly_module *module,
 				!strcmp(sub->name, "list") ||
 				!strcmp(sub->name, "choice") ||
 				!strcmp(sub->name, "uses") ||
-				!strcmp(sub->name, "grouping")) {
+				!strcmp(sub->name, "grouping") ||
+				!strcmp(sub->name, "anyxml")) {
 			lyxml_unlink_elem(sub);
 			lyxml_add_child(&root, sub);
 
 		/* array counters */
 		} else if (!strcmp(sub->name, "typedef")) {
 			c_tpdf++;
+		} else {
+			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
+			goto error;
 		}
 	}
 
 	/* middle part - process nodes with cardinality of 0..n except the data nodes */
 	if (c_tpdf) {
-		grp->tpdf_size = c_tpdf;
 		grp->tpdf = calloc(c_tpdf, sizeof *grp->tpdf);
-		c_tpdf = 0;
 	}
 	LY_TREE_FOR_SAFE(node->child, next, sub) {
 		if (!strcmp(sub->name, "typedef")) {
-			r = fill_yin_typedef(module, retval, sub, &grp->tpdf[c_tpdf]);
-			c_tpdf++;
+			r = fill_yin_typedef(module, retval, sub, &grp->tpdf[grp->tpdf_size]);
+			grp->tpdf_size++;
 
 			if (r) {
-				grp->tpdf_size = c_tpdf;
 				goto error;
 			}
 		}
@@ -2166,9 +2167,8 @@ static struct ly_mnode *read_yin_grouping(struct ly_module *module,
 			mnode = read_yin_uses(module, retval, sub, 0);
 		} else if (!strcmp(sub->name, "grouping")) {
 			mnode = read_yin_grouping(module, retval, sub);
-		} else {
-			/* TODO error */
-			continue;
+		} else if (!strcmp(sub->name, "anyxml")) {
+			mnode = read_yin_anyxml(module, retval, sub);
 		}
 		lyxml_free_elem(module->ctx, sub);
 
