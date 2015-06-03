@@ -220,7 +220,8 @@ typedef enum ly_node_type {
 	LY_NODE_LIST = 0x10,
 	LY_NODE_ANYXML = 0x20,
 	LY_NODE_USES = 0x40,
-	LY_NODE_GROUPING = 0x80
+	LY_NODE_GROUPING = 0x80,
+	LY_NODE_CASE = 0x100
 } LY_NODE_TYPE;
 
 struct ly_module {
@@ -412,6 +413,26 @@ struct ly_mnode_choice {
 	struct ly_module *module;    /**< link to the node's data model */
 
 	LY_NODE_TYPE nodetype;       /**< YANG statement - LY_NODE_CHOICE */
+	struct ly_mnode *parent;
+	struct ly_mnode *child;
+	struct ly_mnode *next;
+	struct ly_mnode *prev;
+
+	const char *feature;         /**< if-feature statement */
+	const char *when;            /**< when statement */
+
+	/* specific choice's data */
+	struct ly_mnode *dflt;       /**< default case of the choice */
+};
+
+struct ly_mnode_case {
+	const char *name;            /**< name argument */
+	const char *dsc;             /**< description statement */
+	const char *ref;             /**< reference statement */
+	uint8_t flags;
+	struct ly_module *module;    /**< link to the node's data model */
+
+	LY_NODE_TYPE nodetype;       /**< YANG statement - LY_NODE_CASE */
 	struct ly_mnode *parent;
 	struct ly_mnode *child;
 	struct ly_mnode *next;

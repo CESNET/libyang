@@ -57,6 +57,7 @@ enum LY_IDENT {
 
 static int read_yin_common(struct ly_module *, struct ly_mnode *, struct ly_mnode *, struct lyxml_elem *, int, int);
 static struct ly_mnode *read_yin_choice(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
+static struct ly_mnode *read_yin_case(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
 static struct ly_mnode *read_yin_container(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
 static struct ly_mnode *read_yin_leaf(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
 static struct ly_mnode *read_yin_leaflist(struct ly_module *, struct ly_mnode *, struct lyxml_elem *);
@@ -100,8 +101,7 @@ static int check_identifier(const char *id, enum LY_IDENT type, unsigned int lin
 	int i;
 	int size;
 	struct ly_tpdf *tpdf;
-
-
+	struct ly_mnode *mnode;
 
 	assert(id);
 
@@ -123,6 +123,19 @@ static int check_identifier(const char *id, enum LY_IDENT type, unsigned int lin
 	}
 
 	switch(type) {
+	case LY_IDENT_NAME:
+		/* check uniqueness of the node within its siblings */
+		if (!parent) {
+			break;
+		}
+
+		LY_TREE_FOR(parent->child, mnode) {
+			if (mnode->name == id) {
+				LOGVAL(VE_INID, line, id, "name duplication");
+				return EXIT_FAILURE;
+			}
+		}
+		break;
 	case LY_IDENT_TYPE:
 		assert(module);
 
@@ -1064,14 +1077,120 @@ error:
 	return EXIT_FAILURE;
 }
 
+/* additional check in case statement - the child must be unique across
+ * all other case names and its data children
+ */
+static int check_branch_id(struct ly_mnode *parent, struct ly_mnode *new, struct ly_mnode *excl, int line)
+{
+	struct ly_mnode *mnode, *submnode;
+
+	if (new->nodetype == LY_NODE_CHOICE) {
+		/* we have nested choice in case, so we need recursion */
+		LY_TREE_FOR(new->child, mnode) {
+			if (mnode->nodetype == LY_NODE_CASE) {
+				LY_TREE_FOR(mnode->child, submnode)	{
+					if (check_branch_id(parent, submnode, new, line)) {
+						return EXIT_FAILURE;
+					}
+				}
+			} else if (check_branch_id(parent, mnode, new, line)) {
+				return EXIT_FAILURE;
+			}
+		}
+	} else {
+		LY_TREE_FOR(parent->child, mnode) {
+			if (mnode == excl) {
+				continue;
+			}
+
+			if (!strcmp(new->name, mnode->name)) {
+				LOGVAL(VE_INID, line, new->name, "duplicated identifier within a choice's cases");
+				return EXIT_FAILURE;
+			}
+			if (mnode->nodetype == LY_NODE_CASE) {
+				LY_TREE_FOR(mnode->child, submnode) {
+					if (!strcmp(new->name, submnode->name)) {
+						LOGVAL(VE_INID, line, new->name, "duplicated identifier within a choice's cases");
+						return EXIT_FAILURE;
+					}
+				}
+			}
+		}
+	}
+
+	return EXIT_SUCCESS;
+}
+
+static struct ly_mnode *read_yin_case(struct ly_module *module,
+                                        struct ly_mnode *parent,
+                                        struct lyxml_elem *yin)
+{
+	struct lyxml_elem *sub, *next;
+	struct ly_mnode_case *mcase;
+	struct ly_mnode *retval, *mnode;
+
+	mcase = calloc(1, sizeof *mcase);
+	mcase->nodetype = LY_NODE_CASE;
+	mcase->module = module;
+	mcase->prev = (struct ly_mnode *)mcase;
+	retval = (struct ly_mnode *)mcase;
+
+	if (read_yin_common(module, parent, retval, yin, 0, 1)) {
+		goto error;
+	}
+
+	/* process choice's specific children */
+	LY_TREE_FOR_SAFE(yin->child, next, sub) {
+		if (!strcmp(sub->name, "container")) {
+			mnode = read_yin_container(module, retval, sub);
+		} else if (!strcmp(sub->name, "leaf-list")) {
+			mnode = read_yin_leaflist(module, retval, sub);
+		} else if (!strcmp(sub->name, "leaf")) {
+			mnode = read_yin_leaf(module, retval, sub);
+		} else if (!strcmp(sub->name, "list")) {
+			mnode = read_yin_list(module, retval, sub);
+		} else if (!strcmp(sub->name, "uses")) {
+			mnode = read_yin_case(module, retval, sub);
+		} else if (!strcmp(sub->name, "choice")) {
+			mnode = read_yin_choice(module, retval, sub);
+#if 0
+		} else {
+			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
+			goto error;
+#endif
+		}
+
+		if (!mnode) {
+			goto error;
+		} else if (check_branch_id(parent, mnode, mnode, LOGLINE(sub))) {
+			goto error;
+		}
+
+		mnode = NULL;
+		lyxml_free_elem(module->ctx, sub);
+	}
+
+	/* insert the node into the schema tree */
+	ly_mnode_addchild(parent, retval);
+	return retval;
+
+error:
+
+	ly_mnode_free(retval);
+
+	return NULL;
+}
+
 static struct ly_mnode *read_yin_choice(struct ly_module *module,
                                         struct ly_mnode *parent,
-                                        struct lyxml_elem *node)
+                                        struct lyxml_elem *yin)
 {
 	struct lyxml_elem *sub, *next;
 	struct ly_ctx * const ctx = module->ctx;
-	struct ly_mnode *retval, *r;
+	struct ly_mnode *retval, *mnode;
 	struct ly_mnode_choice *choice;
+	const char *value, *dflt_str = NULL;
+	int f_mand = 0;
 
 	choice = calloc(1, sizeof *choice);
 	choice->nodetype = LY_NODE_CHOICE;
@@ -1079,29 +1198,92 @@ static struct ly_mnode *read_yin_choice(struct ly_module *module,
 	choice->prev = (struct ly_mnode *)choice;
 	retval = (struct ly_mnode *)choice;
 
-	if (read_yin_common(module, parent, retval, node, 1, 1)) {
+	if (read_yin_common(module, parent, retval, yin, 1, 1)) {
 		goto error;
 	}
 
 	/* process choice's specific children */
-	LY_TREE_FOR_SAFE(node->child, next, sub) {
+	LY_TREE_FOR_SAFE(yin->child, next, sub) {
 		if (!strcmp(sub->name, "container")) {
-			r = read_yin_container(module, retval, sub);
+			if (!(mnode = read_yin_container(module, retval, sub))) {
+				goto error;
+			}
 		} else if (!strcmp(sub->name, "leaf-list")) {
-			r = read_yin_leaflist(module, retval, sub);
+			if (!(mnode = read_yin_leaflist(module, retval, sub))) {
+				goto error;
+			}
 		} else if (!strcmp(sub->name, "leaf")) {
-			r = read_yin_leaf(module, retval, sub);
+			if (!(mnode = read_yin_leaf(module, retval, sub))) {
+				goto error;
+			}
 		} else if (!strcmp(sub->name, "list")) {
-			r = read_yin_list(module, retval, sub);
+			if (!(mnode = read_yin_list(module, retval, sub))) {
+				goto error;
+			}
+		} else if (!strcmp(sub->name, "case")) {
+			if (!(mnode = read_yin_case(module, retval, sub))) {
+				goto error;
+			}
+		} else if (!strcmp(sub->name, "default"))  {
+			if (dflt_str) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			GETVAL(value, sub, "value");
+			dflt_str = strdup(value);
+		} else if (!strcmp(sub->name, "mandatory")) {
+			if (f_mand) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			/* just checking the flags in leaf is not sufficient, we would allow
+			 * multiple mandatory statements with the "false" value
+			 */
+			f_mand = 1;
+
+			GETVAL(value, sub, "value");
+			if (!strcmp(value, "true")) {
+				choice->flags |= LY_NODE_MANDATORY;
+			} else if (strcmp(value, "false")) {
+				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
+				goto error;
+			} /* else false is the default value, so we can ignore it */
+#if 0
 		} else {
-			continue;
+			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
+			goto error;
+#endif
 		}
+
+		if (mnode && check_branch_id(retval, mnode, mnode,LOGLINE(sub))) {
+			goto error;
+		}
+		mnode = NULL;
 		lyxml_free_elem(ctx, sub);
-		if (!r) {
+	}
+
+	/* check - default is prohibited in combination with mandatory */
+	if (dflt_str && (choice->flags & LY_NODE_MANDATORY)) {
+		LOGVAL(VE_SPEC, LOGLINE(yin), "The \"default\" statement MUST NOT be present on choices where \"mandatory\" is true.");
+		goto error;
+	}
+
+	/* link default with the case */
+	if (dflt_str) {
+		LY_TREE_FOR(choice->child, mnode) {
+			if (!strcmp(mnode->name, dflt_str)) {
+				choice->dflt = mnode;
+				break;
+			}
+		}
+		if (!choice->dflt) {
+			/* default branch not found */
+			LOGVAL(VE_INARG, LOGLINE(yin), dflt_str, "default");
 			goto error;
 		}
 	}
 
+	/* insert the node into the schema tree */
 	if (parent) {
 		ly_mnode_addchild(parent, retval);
 	}

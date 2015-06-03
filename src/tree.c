@@ -400,6 +400,8 @@ void ly_mnode_free(struct ly_mnode *node)
 	case LY_NODE_GROUPING:
 		ly_grp_free(ctx, (struct ly_mnode_grp *)node);
 		break;
+	case LY_NODE_CASE:
+		break;
 	}
 
 	/* again common part */
