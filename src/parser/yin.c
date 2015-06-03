@@ -1187,7 +1187,7 @@ static struct ly_mnode *read_yin_choice(struct ly_module *module,
 {
 	struct lyxml_elem *sub, *next;
 	struct ly_ctx * const ctx = module->ctx;
-	struct ly_mnode *retval, *mnode;
+	struct ly_mnode *retval, *mnode = NULL;
 	struct ly_mnode_choice *choice;
 	const char *value, *dflt_str = NULL;
 	int f_mand = 0;
