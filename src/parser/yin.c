@@ -1269,7 +1269,7 @@ static struct ly_mnode *read_yin_leaflist(struct ly_module *module,
 			errno = 0;
 			endptr = NULL;
 			val = strtoul(value, &endptr, 10);
-			if (!*endptr || value[0] == '-' || errno) {
+			if (*endptr || value[0] == '-' || errno || val > UINT32_MAX) {
 				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
 				goto error;
 			}
@@ -1290,7 +1290,7 @@ static struct ly_mnode *read_yin_leaflist(struct ly_module *module,
 			errno = 0;
 			endptr = NULL;
 			val = strtoul(value, &endptr, 10);
-			if (!*endptr || value[0] == '-' || errno || val == 0) {
+			if (*endptr || value[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
 				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
 				goto error;
 			}
