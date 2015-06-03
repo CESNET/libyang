@@ -1134,9 +1134,11 @@ static struct ly_mnode *read_yin_leaf(struct ly_module *module,
 
 			/* skip element free at the end of the loop */
 			continue;
+#if 0
 		} else {
 			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
 			goto error;
+#endif
 		}
 
 		lyxml_free_elem(module->ctx, sub);
@@ -1295,8 +1297,10 @@ static struct ly_mnode *read_yin_leaflist(struct ly_module *module,
 			llist->max = val;
 
 		} else {
+#if 0
 			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
 			goto error;
+#endif
 		}
 
 		lyxml_free_elem(module->ctx, sub);
@@ -1595,9 +1599,11 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 			c_tpdf++;
 		} else if (!strcmp(sub->name, "must")) {
 			c_must++;
+#if 0
 		} else {
 			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
 			goto error;
+#endif
 		}
 	}
 
@@ -2041,9 +2047,11 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 			}
 			module->version = 1;
 			lyxml_free_elem(ctx, node);
+#if 0
 		} else {
 			LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
 			goto error;
+#endif
 		}
 	}
 
