@@ -220,6 +220,52 @@ static int check_identifier(const char *id, enum LY_IDENT type, unsigned int lin
 	return EXIT_SUCCESS;
 }
 
+static int check_key(struct ly_mnode_leaf *key, uint8_t flags, struct ly_mnode_leaf **list, int index, unsigned int line, const char *name, int len)
+{
+	char *dup = NULL;
+	int j;
+
+	/* existence */
+	if (!key) {
+		if (name[len] != '\0') {
+			dup = strdup(name);
+			dup[len] = '\0';
+			name = dup;
+		}
+		LOGVAL(VE_KEY_MISS, line, name);
+		free(dup);
+		return EXIT_FAILURE;
+	}
+
+	/* uniqueness */
+	for (j = index - 1; j >= 0; j--) {
+		if (list[index] == list[j]) {
+			LOGVAL(VE_KEY_DUP, line, key->name);
+			return EXIT_FAILURE;
+		}
+	}
+
+	/* key is a leaf */
+	if (key->nodetype != LY_NODE_LEAF) {
+		LOGVAL(VE_KEY_NLEAF, line, key->name);
+		return EXIT_FAILURE;
+	}
+
+	/* type of the leaf is not built-in empty */
+	if (key->type.base == LY_TYPE_EMPTY) {
+		LOGVAL(VE_KEY_TYPE, line, key->name);
+		return EXIT_FAILURE;
+	}
+
+	/* config attribute is the same as of the list */
+	if ((flags & LY_NODE_CONFIG_MASK) != (key->flags & LY_NODE_CONFIG_MASK)) {
+		LOGVAL(VE_KEY_CONFIG, line, key->name);
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
+}
+
 static int check_default(struct ly_type *type, const char* value)
 {
 	/* TODO - RFC 6020, sec. 7.3.4 */
@@ -1349,29 +1395,31 @@ error:
 
 static struct ly_mnode *read_yin_list(struct ly_module *module,
                                       struct ly_mnode *parent,
-                                      struct lyxml_elem *node)
+                                      struct lyxml_elem *yin)
 {
 	struct ly_mnode *retval, *mnode;
 	struct ly_mnode_list *list;
-	struct ly_mnode_leaf *key;
-	struct lyxml_elem *sub, *next, root = {0};
-	int i, j, r;
+	struct ly_unique *uniq_s;
+	struct lyxml_elem *sub, *next, root = {0}, uniq = {0};
+	int i, r;
 	size_t len;
-	int c_tpdf = 0;
-	const char *key_str = NULL, *s;
-	char *dup;
+	int c_tpdf = 0, c_must = 0, c_uniq = 0;
+	int f_ordr = 0, f_max = 0, f_min = 0;
+	const char *key_str = NULL, *uniq_str, *value;
+	char *auxs;
+	unsigned long val;
 
 	list = calloc(1, sizeof *list);
 	list->nodetype = LY_NODE_LIST;
 	list->prev = (struct ly_mnode *)list;
 	retval = (struct ly_mnode *)list;
 
-	if (read_yin_common(module, parent, retval, node, 1)) {
+	if (read_yin_common(module, parent, retval, yin, 1)) {
 		goto error;
 	}
 
 	/* process list's specific children */
-	LY_TREE_FOR_SAFE(node->child, next, sub) {
+	LY_TREE_FOR_SAFE(yin->child, next, sub) {
 		/* data statements */
 		if (!strcmp(sub->name, "container") ||
 				!strcmp(sub->name, "leaf-list") ||
@@ -1387,53 +1435,177 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 		} else if (!strcmp(sub->name, "key")) {
 			/* check cardinality 0..1 */
 			if (list->keys_size) {
-				LOGVAL(VE_TOOMANY, LOGLINE(sub), "key", list->name);
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, list->name);
 				goto error;
 			}
 
 			/* count the number of keys */
-			key_str = s = lyxml_get_attr(sub, "value", NULL);
-			if (!s) {
-				LOGVAL(VE_MISSARG, LOGLINE(sub), "value", "key");
-				goto error;
-			}
-			while((s = strpbrk(s, " \t\n"))) {
+			GETVAL(value, sub, "value");
+			key_str = value;
+			while((value = strpbrk(value, " \t\n"))) {
 				list->keys_size++;
-				while(isspace(*s)) {
-					s++;
+				while(isspace(*value)) {
+					value++;
 				}
 			}
 			list->keys_size++;
-
 			list->keys = calloc(list->keys_size, sizeof *list->keys);
-
+		} else if (!strcmp(sub->name, "unique")) {
+			c_uniq++;
+			lyxml_unlink_elem(sub);
+			lyxml_add_child(&uniq, sub);
 		} else if (!strcmp(sub->name, "typedef")) {
 			c_tpdf++;
+		} else if (!strcmp(sub->name, "must")) {
+			c_must++;
+
+		/* optional stetments */
+		} else if (!strcmp(sub->name, "ordered-by")) {
+			if (f_ordr) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			/* just checking the flags in llist is not sufficient, we would
+			 * allow multiple ordered-by statements with the "system" value
+			 */
+			f_ordr = 1;
+
+			if (list->flags & LY_NODE_CONFIG_R) {
+				/* RFC 6020, 7.7.5 - ignore ordering when the list represents
+				 * state data
+				 */
+				lyxml_free_elem(module->ctx, sub);
+				continue;
+			}
+
+			GETVAL(value, sub, "value");
+			if (!strcmp(value, "user")) {
+				list->flags |= LY_NODE_USERORDERED;
+			} else if (strcmp(value, "system")) {
+				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
+				goto error;
+			} /* else system is the default value, so we can ignore it */
+
+			lyxml_free_elem(module->ctx, sub);
+		} else if (!strcmp(sub->name, "min-elements")) {
+			if (f_min) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			f_min = 1;
+
+			GETVAL(value, sub, "value");
+			while(isspace(value[0])) {
+				value++;
+			}
+
+			/* convert it to uint32_t */
+			errno = 0;
+			auxs = NULL;
+			val = strtoul(value, &auxs, 10);
+			if (*auxs || value[0] == '-' || errno || val > UINT32_MAX) {
+				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
+				goto error;
+			}
+			list->min = (uint32_t)val;
+			lyxml_free_elem(module->ctx, sub);
+		} else if (!strcmp(sub->name, "max-elements")) {
+			if (f_max) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			f_max = 1;
+
+			GETVAL(value, sub, "value");
+			while(isspace(value[0])) {
+				value++;
+			}
+
+			/* convert it to uint32_t */
+			errno = 0;
+			auxs = NULL;
+			val = strtoul(value, &auxs, 10);
+			if (*auxs || value[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
+				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
+				goto error;
+			}
+			list->max = (uint32_t)val;
+			lyxml_free_elem(module->ctx, sub);
 		}
 	}
 
 	/* check - if list is configuration, key statement is mandatory */
 	if ((list->flags & LY_NODE_CONFIG_W) && !key_str) {
-		LOGVAL(VE_MISSSTMT2, LOGLINE(node), "key", "list");
+		LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "key", "list");
+		goto error;
+	}
+	if (list->max && list->min > list->max) {
+		LOGVAL(VE_SPEC, LOGLINE(yin), "\"min-elements\" is bigger than \"max-elements\".");
 		goto error;
 	}
 
 	/* middle part - process nodes with cardinality of 0..n except the data nodes */
 	if (c_tpdf) {
-		list->tpdf_size = c_tpdf;
 		list->tpdf = calloc(c_tpdf, sizeof *list->tpdf);
-		c_tpdf = 0;
 	}
-	LY_TREE_FOR_SAFE(node->child, next, sub) {
+	LY_TREE_FOR_SAFE(yin->child, next, sub) {
 		if (!strcmp(sub->name, "typedef")) {
-			r = fill_yin_typedef(module, retval, sub, &list->tpdf[c_tpdf]);
-			c_tpdf++;
+			r = fill_yin_typedef(module, retval, sub, &list->tpdf[list->tpdf_size]);
+			list->tpdf_size++;
 
 			if (r) {
-				list->tpdf_size = c_tpdf;
 				goto error;
 			}
 			lyxml_free_elem(module->ctx, sub);
+		}
+	}
+
+	/* process unique statements */
+	if (c_uniq) {
+		list->unique = calloc(c_uniq, sizeof *list->unique);
+	}
+	LY_TREE_FOR_SAFE(uniq.child, next, sub) {
+		/* count the number of unique values */
+		GETVAL(value, sub, "value");
+		uniq_str = value;
+		uniq_s = &list->unique[list->unique_size];
+		while((value = strpbrk(value, " \t\n"))) {
+			uniq_s->leafs_size++;
+			while(isspace(*value)) {
+				value++;
+			}
+		}
+		uniq_s->leafs_size++;
+		uniq_s->leafs = calloc(uniq_s->leafs_size, sizeof *uniq_s->leafs);
+		list->unique_size++;
+
+		/* interconnect unique values with the leafs */
+		/* TODO - include searching in uses/grouping */
+		for (i = 0; i < uniq_s->leafs_size; i++) {
+			if ((value = strpbrk(uniq_str, " \t\n"))) {
+				len = value - uniq_str;
+				while(isspace(*value)) {
+					value++;
+				}
+			} else {
+				len = strlen(uniq_str);
+			}
+			LY_TREE_FOR(list->child, mnode) {
+				if (!strncmp(mnode->name, uniq_str, len) && !mnode->name[len]) {
+					uniq_s->leafs[i] = (struct ly_mnode_leaf *)mnode;
+					break;
+				}
+			}
+
+			if (check_key(uniq_s->leafs[i], list->flags, uniq_s->leafs, i, LOGLINE(yin), uniq_str, len)) {
+				goto error;
+			}
+
+			/* prepare for next iteration */
+			while (value && isspace(*value)) {
+				value++;
+			}
+			uniq_str = value;
 		}
 	}
 
@@ -1477,65 +1649,30 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 	/* TODO - include searching in uses/grouping */
 	for (i = 0; i < list->keys_size; i++) {
 		/* get the key name */
-		if ((s = strpbrk(key_str, " \t\n"))) {
-			len = s - key_str;
+		if ((value = strpbrk(key_str, " \t\n"))) {
+			len = value - key_str;
+			while(isspace(*value)) {
+				value++;
+			}
 		} else {
 			len = strlen(key_str);
 		}
 		LY_TREE_FOR(list->child, mnode) {
 			if (!strncmp(mnode->name, key_str, len) && !mnode->name[len]) {
-				list->keys[i] = mnode;
+				list->keys[i] = (struct ly_mnode_leaf *)mnode;
 				break;
 			}
 		}
-		key = (struct ly_mnode_leaf *)list->keys[i];
 
-		/* existence */
-		if (!key) {
-			if ((s = strpbrk(key_str, " \t\n"))) {
-				len = s - key_str;
-				dup = strdup(key_str);
-				dup[len] = '\0';
-				key_str = dup;
-			}
-			LOGVAL(VE_KEY_MISS, LOGLINE(node), key_str);
-			if (s) {
-				free(dup);
-			}
-			goto error;
-		}
-
-		/* uniqueness */
-		for (j = i - 1; j >= 0; j--) {
-			if (list->keys[i] == list->keys[j]) {
-				LOGVAL(VE_KEY_DUP, LOGLINE(node), key->name, list->name);
-				goto error;
-			}
-		}
-
-		/* key is a leaf */
-		if (key->nodetype != LY_NODE_LEAF) {
-			LOGVAL(VE_KEY_NLEAF, LOGLINE(node), key->name, list->name);
-			goto error;
-		}
-
-		/* type of the leaf is not built-in empty */
-		if (key->type.base == LY_TYPE_EMPTY) {
-			LOGVAL(VE_KEY_TYPE, LOGLINE(node), key->name, list->name);
-			goto error;
-		}
-
-		/* config attribute is the same as of the list */
-		if ((list->flags & LY_NODE_CONFIG_MASK) != (key->flags & LY_NODE_CONFIG_MASK)) {
-			LOGVAL(VE_KEY_CONFIG, LOGLINE(node), key->name, list->name);
+		if (check_key(list->keys[i], list->flags, list->keys, i, LOGLINE(yin), key_str, len)) {
 			goto error;
 		}
 
 		/* prepare for next iteration */
-		while (s && isspace(*s)) {
-			s++;
+		while (value && isspace(*value)) {
+			value++;
 		}
-		key_str = s;
+		key_str = value;
 	}
 
 	return retval;

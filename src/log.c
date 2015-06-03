@@ -69,11 +69,11 @@ const char *verrs[] = {
 /* VE_ENUM_DUPNAME */ "The enum name \"%s\" has already been assigned to another enum.",
 /* VE_ENUM_WS */      "The enum name \"%s\" includes invalid leading or trailing whitespaces.",
 /* VE_INPREFIX */     "Prefix in \"%s\" refers to an unknown module.",
-/* VE_KEY_NLEAF */    "Key \"%s\" in \"%s\" list is not a leaf.",
-/* VE_KEY_TYPE */     "Key \"%s\" in \"%s\" list must not be the built-in type \"empty\".",
-/* VE_KEY_CONFIG */   "The \"config\" value of the \"%s\" key differs from its \"%s\" list config value.",
+/* VE_KEY_NLEAF */    "Key \"%s\" is not a leaf.",
+/* VE_KEY_TYPE */     "Key \"%s\" must not be the built-in type \"empty\".",
+/* VE_KEY_CONFIG */   "The \"config\" value of the \"%s\" key differs from its list config value.",
 /* VE_KEY_MISS */     "Leaf \"%s\" defined as key in a list not found.",
-/* VE_KEY_DUP */      "Key identifier \"%s\" in the \"%s\" list is not unique."
+/* VE_KEY_DUP */      "Key identifier \"%s\" is not unique."
 };
 
 void ly_vlog(enum LY_VERR code, unsigned int line, ...)

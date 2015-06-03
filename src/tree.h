@@ -207,6 +207,11 @@ struct ly_include {
 	char rev[LY_REV_SIZE];
 };
 
+struct ly_unique {
+	uint8_t leafs_size;
+	struct ly_mnode_leaf **leafs;
+};
+
 typedef enum ly_node_type {
 	LY_NODE_CONTAINER = 0x01,
 	LY_NODE_CHOICE = 0x02,
@@ -231,9 +236,9 @@ struct ly_module {
 
 	/* array sizes */
 	uint8_t rev_size;            /**< number of elements in rev array */
-	uint16_t imp_size;           /**< number of elements in imp array */
-	uint16_t inc_size;           /**< number of elements in inc array */
-	uint16_t tpdf_size;          /**< number of elements in tpdf array */
+	uint8_t imp_size;            /**< number of elements in imp array */
+	uint8_t inc_size;            /**< number of elements in inc array */
+	uint8_t tpdf_size;           /**< number of elements in tpdf array */
 	uint32_t ident_size;         /**< number of elements in ident array */
 
 	struct {
@@ -267,9 +272,9 @@ struct ly_submodule {
 
 	/* array sizes */
 	uint8_t rev_size;            /**< number of elements in rev array */
-	uint16_t imp_size;           /**< number of elements in imp array */
-	uint16_t inc_size;           /**< number of elements in inc array */
-	uint16_t tpdf_size;          /**< number of elements in tpdf array */
+	uint8_t imp_size;            /**< number of elements in imp array */
+	uint8_t inc_size;            /**< number of elements in inc array */
+	uint8_t tpdf_size;           /**< number of elements in tpdf array */
 	uint32_t ident_size;         /**< number of elements in ident array */
 
 	struct {
@@ -347,7 +352,8 @@ struct ly_mnode_grp {
 	struct ly_mnode *prev;
 
 	/* specific container's data */
-	int tpdf_size;               /**< number of elements in tpdf array */
+	uint8_t tpdf_size;           /**< number of elements in tpdf array */
+
 	struct ly_tpdf *tpdf;        /**< array of typedefs */
 };
 
@@ -391,10 +397,10 @@ struct ly_mnode_container {
 	const char* presence;        /**< presence description, used also as a
 	                                  presence flag */
 
-	int tpdf_size;               /**< number of elements in tpdf array */
-	struct ly_tpdf *tpdf;        /**< array of typedefs */
+	uint8_t must_size;           /**< number of elements in must array */
+	uint8_t tpdf_size;           /**< number of elements in tpdf array */
 
-	int must_size;               /**< number of elements in must array */
+	struct ly_tpdf *tpdf;        /**< array of typedefs */
 	struct ly_must *must;        /**< array of must constraints */
 };
 
@@ -436,7 +442,7 @@ struct ly_mnode_leaf {
 	const char *units;           /**< units of the type */
 	const char *dflt;            /**< default value of the type */
 
-	int must_size;               /**< number of elements in must array */
+	uint8_t must_size;           /**< number of elements in must array */
 	struct ly_must *must;        /**< array of must constraints */
 };
 
@@ -463,7 +469,8 @@ struct ly_mnode_leaflist {
 	uint32_t min;                /**< min-elements constraint */
 	uint32_t max;                /**< max-elements constraint, 0 means unbounded */
 
-	int must_size;               /**< number of elements in must array */
+	uint8_t must_size;           /**< number of elements in must array */
+
 	struct ly_must *must;        /**< array of must constraints */
 };
 
@@ -484,11 +491,19 @@ struct ly_mnode_list {
 	const char *when;            /**< when statement */
 
 	/* specific list's data */
-	int tpdf_size;               /**< number of elements in tpdf array */
-	struct ly_tpdf *tpdf;        /**< array of typedefs */
+	uint32_t min;                /**< min-elements constraint */
+	uint32_t max;                /**< max-elements constraint, 0 means unbounded */
 
-	int keys_size;               /**< number of elements in keys array */
-	struct ly_mnode **keys;      /**< array of pointers to the keys */
+	uint8_t must_size;           /**< number of elements in must array */
+	uint8_t tpdf_size;           /**< number of elements in tpdf array */
+	uint8_t keys_size;           /**< number of elements in keys array */
+	uint8_t unique_size;         /**< number of elements in unique array (number
+	                                  of unique statements in the list */
+
+	struct ly_must *must;        /**< array of must constraints */
+	struct ly_tpdf *tpdf;        /**< array of typedefs */
+	struct ly_mnode_leaf **keys; /**< array of pointers to the keys */
+	struct ly_unique *unique;    /**< array of unique statement structures */
 };
 
 struct ly_ident_der {
