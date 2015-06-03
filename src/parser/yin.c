@@ -1193,10 +1193,10 @@ static struct ly_mnode *read_yin_leaflist(struct ly_module *module,
 	struct lyxml_elem *sub, *next;
 	const char *value;
 	char *endptr;
-	long val;
+	unsigned long val;
 	int r;
 	int c_must = 0;
-	int f_ordr = 0, f_min = 0, f_max;
+	int f_ordr = 0, f_min = 0, f_max = 0;
 
 	llist = calloc(1, sizeof *llist);
 	llist->nodetype = LY_NODE_LEAFLIST;
@@ -1273,7 +1273,7 @@ static struct ly_mnode *read_yin_leaflist(struct ly_module *module,
 				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
 				goto error;
 			}
-			llist->min = val;
+			llist->min = (uint32_t)val;
 		} else if (!strcmp(sub->name, "max-elements")) {
 			if (f_max) {
 				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
@@ -1294,7 +1294,7 @@ static struct ly_mnode *read_yin_leaflist(struct ly_module *module,
 				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
 				goto error;
 			}
-			llist->max = val;
+			llist->max = (uint32_t)val;
 
 		} else {
 #if 0
