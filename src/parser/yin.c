@@ -1110,7 +1110,7 @@ static struct ly_mnode *read_yin_leaf(struct ly_module *module,
 				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
 				goto error;
 			}
-			GETVAL(value, sub, "value");
+			GETVAL(value, sub, "name");
 			leaf->units = lydict_insert(module->ctx, value, strlen(value));
 		} else if (!strcmp(sub->name, "mandatory")) {
 			if (f_mand) {
@@ -1219,7 +1219,7 @@ static struct ly_mnode *read_yin_leaflist(struct ly_module *module,
 				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
 				goto error;
 			}
-			GETVAL(value, sub, "value");
+			GETVAL(value, sub, "name");
 			llist->units = lydict_insert(module->ctx, value, strlen(value));
 		} else if (!strcmp(sub->name, "ordered-by")) {
 			if (f_ordr) {
