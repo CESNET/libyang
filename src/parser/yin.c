@@ -1975,7 +1975,7 @@ static struct ly_mnode *read_yin_uses(struct ly_module *module,
 			goto error;
 		}
 
-		LY_TREE_FOR(module->data, mnode) {
+		LY_TREE_FOR(searchmod->data, mnode) {
 			if (mnode->nodetype == LY_NODE_GROUPING && !strcmp(mnode->name, name)) {
 				uses->grp = (struct ly_mnode_grp *)mnode;
 				break;
