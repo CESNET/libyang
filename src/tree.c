@@ -350,7 +350,7 @@ void ly_container_free(struct ly_ctx *ctx, struct ly_mnode_container *cont)
 		for (i = 0; i < cont->must_size; i++) {
 			ly_must_free(ctx, &cont->must[i]);
 		}
-		free(cont->tpdf);
+		free(cont->must);
 	}
 }
 
