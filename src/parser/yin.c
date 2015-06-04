@@ -1160,6 +1160,9 @@ static struct ly_mnode *read_yin_case(struct ly_module *module,
 		} else {
 			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
 			goto error;
+#else
+		} else {
+			continue;
 #endif
 		}
 
@@ -1260,6 +1263,9 @@ static struct ly_mnode *read_yin_choice(struct ly_module *module,
 		} else {
 			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
 			goto error;
+#else
+		} else {
+			continue;
 #endif
 		}
 
@@ -1356,6 +1362,9 @@ static struct ly_mnode *read_yin_anyxml(struct ly_module *module,
 		} else {
 			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
 			goto error;
+#else
+		} else {
+			continue;
 #endif
 		}
 	}
@@ -1460,6 +1469,9 @@ static struct ly_mnode *read_yin_leaf(struct ly_module *module,
 		} else {
 			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
 			goto error;
+#else
+		} else {
+			continue;
 #endif
 		}
 
@@ -1618,10 +1630,13 @@ static struct ly_mnode *read_yin_leaflist(struct ly_module *module,
 			}
 			llist->max = (uint32_t)val;
 
-		} else {
 #if 0
+		} else {
 			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
 			goto error;
+#else
+		} else {
+			continue;
 #endif
 		}
 
@@ -2020,6 +2035,9 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 		} else {
 			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
 			goto error;
+#else
+		} else {
+			continue;
 #endif
 		}
 	}
@@ -2471,6 +2489,9 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 		} else {
 			LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
 			goto error;
+#else
+		} else {
+			continue;
 #endif
 		}
 	}
