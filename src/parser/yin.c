@@ -2359,6 +2359,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 	int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0, c_inc = 0; /* counters */
 	int r;
 	int i;
+	int belongsto_flag = 0;
 
 	/*
 	 * in the first run, we process elements with cardinality of 1 or 0..1 and
@@ -2394,16 +2395,20 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 			module->prefix = lydict_insert(ctx, value, strlen(value));
 			lyxml_free_elem(ctx, node);
 		} else if (module->type && !strcmp(node->name, "belongs-to")) {
-			if (submodule->belongsto) {
+			if (belongsto_flag) {
 				LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
 				goto error;
 			}
+			belongsto_flag = 1;
 			GETVAL(value, node, "module");
-			submodule->belongsto = ly_ctx_get_module(module->ctx, value, NULL, 0);
-			if (!submodule->belongsto) {
+			while(submodule->belongsto->type) {
+				submodule->belongsto = ((struct ly_submodule *)submodule->belongsto)->belongsto;
+			}
+			if (value != submodule->belongsto->name) {
 				LOGVAL(VE_INARG, LOGLINE(node), value, node->name);
 				goto error;
 			}
+
 			/* get the prefix substatement, start with checks */
 			if (!node->child) {
 				LOGVAL(VE_MISSSTMT2, LOGLINE(node), "prefix", node->name);
@@ -2737,6 +2742,7 @@ struct ly_submodule *yin_read_submodule(struct ly_module *module, const char *da
 	submodule->ctx = module->ctx;
 	submodule->name = lydict_insert(submodule->ctx, value, strlen(value));
 	submodule->type = 1;
+	submodule->belongsto = module;
 
 	LOGVRB("reading submodule %s", submodule->name);
 	if (read_sub_module((struct ly_module *)submodule, yin)) {

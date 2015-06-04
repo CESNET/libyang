@@ -595,35 +595,25 @@ static void module_free_common(struct ly_module *module)
 		lydict_remove(ctx, module->rev[i].dsc);
 		lydict_remove(ctx, module->rev[i].ref);
 	}
-	if (module->rev) {
-		free(module->rev);
-	}
+	free(module->rev);
 
 	for (i = 0; i < module->ident_size; i++) {
 		ly_ident_free(ctx, &module->ident[i]);
 	}
 	module->ident_size = 0;
-	if (module->ident) {
-		free(module->ident);
-	}
+	free(module->ident);
 
 	for (i = 0; i < module->tpdf_size; i++) {
 		ly_tpdf_free(ctx, &module->tpdf[i]);
 	}
-	if (module->tpdf) {
-		free(module->tpdf);
-	}
+	free(module->tpdf);
 
-	if (module->imp) {
-		free(module->imp);
-	}
+	free(module->imp);
 
 	for (i = 0; i < module->inc_size; i++) {
 		ly_submodule_free(module->inc[i].submodule);
 	}
-	if (module->inc) {
-		free(module->inc);
-	}
+	free(module->inc);
 
 	lydict_remove(ctx, module->name);
 }
@@ -633,6 +623,10 @@ void ly_submodule_free(struct ly_submodule *submodule)
 	if (!submodule) {
 		return;
 	}
+
+	submodule->inc_size = 0;
+	free(submodule->inc);
+	submodule->inc = NULL;
 
 	/* common part with struct ly_module */
 	module_free_common((struct ly_module *)submodule);
