@@ -570,7 +570,7 @@ struct ly_ident {
 	struct ly_ident_der *der;    /**< list of pointers to the derived identities */
 };
 
-/* private libyang functions */
+/* public libyang functions */
 struct ly_submodule *ly_submodule_read(struct ly_module *module, const char *data, LY_MINFORMAT format);
 struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LY_MINFORMAT format);
 

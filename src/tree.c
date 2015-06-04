@@ -23,13 +23,47 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <string.h>
 
 #include "common.h"
 #include "context.h"
 #include "parser.h"
+#include "tree_internal.h"
 
 void ly_submodule_free(struct ly_submodule *submodule);
 
+struct ly_mnode_leaf *find_leaf(struct ly_mnode *parent, const char *name, int len)
+{
+	struct ly_mnode *child;
+	struct ly_mnode_leaf *result;
+
+	if (!len) {
+		len = strlen(name);
+	}
+
+	LY_TREE_FOR(parent->child, child) {
+		switch (child->nodetype) {
+		case LY_NODE_LEAF:
+			/* direct check */
+			if (child->name == name || !strcmp(child->name, name)) {
+				return (struct ly_mnode_leaf *)child;
+			}
+			break;
+		case LY_NODE_USES:
+			/* search recursively */
+			result = find_leaf(child, name, len);
+			if (result) {
+				return result;
+			}
+			break;
+		default:
+			/* ignore */
+			break;
+		}
+	}
+
+	return NULL;
+}
 
 void ly_mnode_unlink(struct ly_mnode *node)
 {
@@ -124,6 +158,28 @@ int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
 	return EXIT_SUCCESS;
 }
 
+int resolve_uses(struct ly_mnode_uses *uses)
+{
+	struct ly_mnode *mnode = NULL, *mnode_aux;
+
+	/* copy the data nodes from grouping into the uses context */
+	LY_TREE_FOR(uses->grp->child, mnode) {
+		mnode_aux = ly_mnode_dup(uses->module, mnode, 1);
+		if (!mnode_aux) {
+			return EXIT_FAILURE;
+		}
+		ly_mnode_addchild((struct ly_mnode *)uses, mnode_aux);
+
+		if (mnode_aux->nodetype == LY_NODE_USES) {
+			if (resolve_uses((struct ly_mnode_uses *)mnode_aux)) {
+				return EXIT_FAILURE;
+			}
+		}
+	}
+
+	return EXIT_SUCCESS;
+}
+
 API struct ly_module *ly_module_read(struct ly_ctx *ctx, const char *data,
                                     LY_MINFORMAT format)
 {
@@ -212,6 +268,32 @@ struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd,
 
 }
 
+void ly_type_dup(struct ly_ctx *ctx, struct ly_type *new, struct ly_type *old)
+{
+	int i;
+
+	new->prefix = lydict_insert(ctx, old->prefix, 0);
+	new->base = old->base;
+	new->der = old->der;
+
+	switch(new->base) {
+	case LY_TYPE_ENUM:
+		new->info.enums.count = old->info.enums.count;
+		if (new->info.enums.count) {
+			new->info.enums.list = calloc(new->info.enums.count, sizeof *new->info.enums.list);
+			for (i = 0; i < new->info.enums.count; i++) {
+				new->info.enums.list[i].name = lydict_insert(ctx, old->info.enums.list[i].name, 0);
+				new->info.enums.list[i].dsc = lydict_insert(ctx, old->info.enums.list[i].dsc, 0);
+				new->info.enums.list[i].ref = lydict_insert(ctx, old->info.enums.list[i].ref, 0);
+			}
+		}
+		break;
+	default:
+		/* TODO */
+		break;
+	}
+}
+
 void ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
 {
 	int i;
@@ -238,6 +320,32 @@ void ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
 	}
 }
 
+struct ly_tpdf *ly_tpdf_dup(struct ly_ctx *ctx, struct ly_tpdf *old, int size)
+{
+	struct ly_tpdf *result;
+	int i;
+
+	if (!size) {
+		return NULL;
+	}
+
+	result = calloc(size, sizeof *result);
+	for (i = 0; i < size; i++) {
+		result[i].name = lydict_insert(ctx, old[i].name, 0);
+		result[i].dsc = lydict_insert(ctx, old[i].dsc, 0);
+		result[i].ref = lydict_insert(ctx, old[i].ref, 0);
+		result[i].flags = old[i].flags;
+		result[i].module = old[i].module;
+
+		ly_type_dup(ctx, &(result[i].type), &(old[i].type));
+
+		result[i].dflt = lydict_insert(ctx, old[i].dflt, 0);
+		result[i].units = lydict_insert(ctx, old[i].units, 0);
+	}
+
+	return result;
+}
+
 void ly_tpdf_free(struct ly_ctx *ctx, struct ly_tpdf *tpdf)
 {
 	assert(ctx);
@@ -250,6 +358,30 @@ void ly_tpdf_free(struct ly_ctx *ctx, struct ly_tpdf *tpdf)
 	lydict_remove(ctx, tpdf->ref);
 
 	ly_type_free(ctx, &tpdf->type);
+
+	lydict_remove(ctx, tpdf->units);
+	lydict_remove(ctx, tpdf->dflt);
+}
+
+struct ly_must *ly_must_dup(struct ly_ctx *ctx, struct ly_must *old, int size)
+{
+	struct ly_must *result;
+	int i;
+
+	if (!size) {
+		return NULL;
+	}
+
+	result = calloc(size, sizeof *result);
+	for (i = 0; i < size; i++) {
+		result[i].cond = lydict_insert(ctx, old[i].cond, 0);
+		result[i].dsc = lydict_insert(ctx, old[i].dsc, 0);
+		result[i].ref = lydict_insert(ctx, old[i].ref, 0);
+		result[i].eapptag = lydict_insert(ctx, old[i].eapptag, 0);
+		result[i].emsg = lydict_insert(ctx, old[i].emsg, 0);
+	}
+
+	return result;
 }
 
 void ly_must_free(struct ly_ctx *ctx, struct ly_must *must)
@@ -508,6 +640,198 @@ void ly_submodule_free(struct ly_submodule *submodule)
 	/* no specific items to free */
 
 	free(submodule);
+}
+
+struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, int recursive)
+{
+	struct ly_mnode *retval = NULL, *aux, *child;
+	struct ly_ctx *ctx = module->ctx;
+	int i, j;
+
+	struct ly_mnode_container *cont;
+	struct ly_mnode_container *cont_orig = (struct ly_mnode_container *)mnode;
+	struct ly_mnode_choice *choice;
+	struct ly_mnode_choice *choice_orig = (struct ly_mnode_choice *)mnode;
+	struct ly_mnode_leaf *leaf;
+	struct ly_mnode_leaf *leaf_orig = (struct ly_mnode_leaf *)mnode;
+	struct ly_mnode_leaflist *llist;
+	struct ly_mnode_leaflist *llist_orig = (struct ly_mnode_leaflist *)mnode;
+	struct ly_mnode_list *list;
+	struct ly_mnode_list *list_orig = (struct ly_mnode_list *)mnode;
+	struct ly_mnode_anyxml *anyxml;
+	struct ly_mnode_anyxml *anyxml_orig = (struct ly_mnode_anyxml *)mnode;
+	struct ly_mnode_uses *uses;
+	struct ly_mnode_uses *uses_orig = (struct ly_mnode_uses *)mnode;
+	struct ly_mnode_grp *grp;
+	struct ly_mnode_grp *grp_orig = (struct ly_mnode_grp *)mnode;
+	struct ly_mnode_case *cs;
+
+	/* we cannot just duplicate memory since the strings are stored in
+	 * dictionary and we need to update dictionary counters.
+	 */
+
+	switch(mnode->nodetype) {
+	case LY_NODE_CONTAINER:
+		cont = calloc(1, sizeof *cont);
+		retval = (struct ly_mnode *)cont;
+		break;
+	case LY_NODE_CHOICE:
+		choice = calloc(1, sizeof *choice);
+		retval = (struct ly_mnode *)choice;
+		break;
+	case LY_NODE_LEAF:
+		leaf = calloc(1, sizeof *leaf);
+		retval = (struct ly_mnode *)leaf;
+		break;
+	case LY_NODE_LEAFLIST:
+		llist = calloc(1, sizeof *llist);
+		retval = (struct ly_mnode *)llist;
+		break;
+	case LY_NODE_LIST:
+		list = calloc(1, sizeof *list);
+		retval = (struct ly_mnode *)list;
+		break;
+	case LY_NODE_ANYXML:
+		anyxml = calloc(1, sizeof *anyxml);
+		retval = (struct ly_mnode *)anyxml;
+		break;
+	case LY_NODE_USES:
+		uses = calloc(1, sizeof *uses);
+		retval = (struct ly_mnode *)uses;
+		break;
+	case LY_NODE_GROUPING:
+		grp = calloc(1, sizeof *grp);
+		retval = (struct ly_mnode *)grp;
+		break;
+	case LY_NODE_CASE:
+		cs = calloc(1, sizeof *cs);
+		retval = (struct ly_mnode *)cs;
+		break;
+	}
+
+	/*
+	 * duplicate generic part of the structure
+	 */
+	retval->name = lydict_insert(ctx, mnode->name, 0);
+	retval->dsc = lydict_insert(ctx, mnode->dsc, 0);
+	retval->ref = lydict_insert(ctx, mnode->ref, 0);
+	retval->flags = mnode->flags;
+	retval->module = module;
+	retval->nodetype = mnode->nodetype;
+
+	retval->prev = retval;
+
+	retval->feature = NULL; /* TODO */
+	retval->when = NULL; /* TODO */
+
+	if (recursive) {
+		/* go recursively */
+		LY_TREE_FOR(mnode->child, child) {
+			aux = ly_mnode_dup(module, child, 1);
+			if (!aux) {
+				goto error;
+			}
+			ly_mnode_addchild(retval, aux);
+		}
+	}
+
+	/*
+	 * duplicate specific part of the structure
+	 */
+	switch(mnode->nodetype) {
+	case LY_NODE_CONTAINER:
+		cont->presence = lydict_insert(ctx, cont_orig->presence, 0);
+
+		cont->must_size = cont_orig->must_size;
+		cont->tpdf_size = cont_orig->tpdf_size;
+
+		cont->must = ly_must_dup(ctx, cont_orig->must, cont->must_size);
+		cont->tpdf = ly_tpdf_dup(ctx, cont_orig->tpdf, cont->tpdf_size);
+		break;
+	case LY_NODE_CHOICE:
+		if (choice->dflt) {
+			LY_TREE_FOR(choice->child, child) {
+				if (child->name == choice_orig->dflt->name) {
+					choice->dflt = child;
+					break;
+				}
+			}
+		}
+		break;
+	case LY_NODE_LEAF:
+		ly_type_dup(ctx, &(leaf->type), &(leaf_orig->type));
+		leaf->units = lydict_insert(ctx, leaf_orig->units, 0);
+		leaf->dflt = lydict_insert(ctx, leaf_orig->dflt, 0);
+
+		leaf->must_size = leaf_orig->must_size;
+		leaf->must = ly_must_dup(ctx, leaf_orig->must, leaf->must_size);
+		break;
+	case LY_NODE_LEAFLIST:
+
+		ly_type_dup(ctx, &(llist->type), &(llist_orig->type));
+		llist->units = lydict_insert(ctx, llist_orig->units, 0);
+
+		llist->min = llist_orig->min;
+		llist->max = llist_orig->max;
+
+		llist->must_size = llist_orig->must_size;
+		llist->must = ly_must_dup(ctx, llist_orig->must, llist->must_size);
+		break;
+	case LY_NODE_LIST:
+		list->min = list_orig->min;
+		list->max = list_orig->max;
+
+		list->must_size = list_orig->must_size;
+		list->tpdf_size = list_orig->tpdf_size;
+		list->keys_size = list_orig->keys_size;
+		list->unique_size = list_orig->unique_size;
+
+		list->must = ly_must_dup(ctx, list_orig->must, list->must_size);
+		list->tpdf = ly_tpdf_dup(ctx, list_orig->tpdf, list->tpdf_size);
+
+		if (list->keys_size) {
+			list->keys = calloc(list->keys_size, sizeof *list->keys);
+			for (i = 0; i < list->keys_size; i++) {
+				list->keys[i] = find_leaf(retval, list_orig->keys[i]->name, 0);
+			}
+		}
+		if (list->unique_size) {
+			list->unique = calloc(list->unique_size, sizeof *list->unique);
+			for (i = 0; i < list->unique_size; i++) {
+				list->unique[i].leafs = calloc(list->unique[i].leafs_size, sizeof *list->unique[i].leafs);
+				for (j = 0; j < list->unique[i].leafs_size; j++) {
+					list->unique[i].leafs[j] = find_leaf(retval, list_orig->unique[i].leafs[j]->name, 0);
+				}
+			}
+		}
+		break;
+	case LY_NODE_ANYXML:
+		anyxml->must_size = anyxml_orig->must_size;
+		anyxml->must = ly_must_dup(ctx, anyxml_orig->must, anyxml->must_size);
+		break;
+	case LY_NODE_USES:
+		uses->grp = uses_orig->grp;
+		if (resolve_uses(uses)) {
+			goto error;
+		}
+		break;
+	case LY_NODE_GROUPING:
+		grp->tpdf_size = grp_orig->tpdf_size;
+		grp->tpdf = ly_tpdf_dup(ctx, grp_orig->tpdf, grp->tpdf_size);
+		break;
+	case LY_NODE_CASE:
+		/* nothing to do */
+		break;
+	}
+
+
+	return retval;
+
+error:
+	LOGDBG("error: %s:%d", __FILE__, __LINE__);
+
+	ly_mnode_free(retval);
+	return NULL;
 }
 
 API void ly_module_free(struct ly_module *module)
