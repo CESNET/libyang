@@ -299,22 +299,47 @@ void ly_grp_free(struct ly_ctx *ctx, struct ly_mnode_grp *grp)
 	int i;
 
 	/* handle only specific parts for LY_NODE_GROUPING */
-	if (grp->tpdf_size) {
-		for (i = 0; i < grp->tpdf_size; i++) {
-			ly_tpdf_free(ctx, &grp->tpdf[i]);
-		}
-		free(grp->tpdf);
+	for (i = 0; i < grp->tpdf_size; i++) {
+		ly_tpdf_free(ctx, &grp->tpdf[i]);
 	}
+	free(grp->tpdf);
+}
+
+void ly_anyxml_free(struct ly_ctx *ctx, struct ly_mnode_anyxml *anyxml)
+{
+	int i;
+
+	for (i = 0; i < anyxml->must_size; i++) {
+		ly_must_free(ctx, &anyxml->must[i]);
+	}
+	free(anyxml->must);
 }
 
 void ly_leaf_free(struct ly_ctx *ctx, struct ly_mnode_leaf *leaf)
 {
+	int i;
+
+	for (i = 0; i < leaf->must_size; i++) {
+		ly_must_free(ctx, &leaf->must[i]);
+	}
+	free(leaf->must);
+
 	ly_type_free(ctx, &leaf->type);
+	lydict_remove(ctx, leaf->units);
+	lydict_remove(ctx, leaf->dflt);
 }
 
 void ly_leaflist_free(struct ly_ctx *ctx, struct ly_mnode_leaflist *llist)
 {
+	int i;
+
+	for (i = 0; i < llist->must_size; i++) {
+		ly_must_free(ctx, &llist->must[i]);
+	}
+	free(llist->must);
+
 	ly_type_free(ctx, &llist->type);
+	lydict_remove(ctx, llist->units);
 }
 
 void ly_list_free(struct ly_ctx *ctx, struct ly_mnode_list *list)
@@ -322,12 +347,20 @@ void ly_list_free(struct ly_ctx *ctx, struct ly_mnode_list *list)
 	int i;
 
 	/* handle only specific parts for LY_NODE_LIST */
-	if (list->tpdf_size) {
-		for (i = 0; i < list->tpdf_size; i++) {
-			ly_tpdf_free(ctx, &list->tpdf[i]);
-		}
-		free(list->tpdf);
+	for (i = 0; i < list->tpdf_size; i++) {
+		ly_tpdf_free(ctx, &list->tpdf[i]);
 	}
+	free(list->tpdf);
+
+	for (i = 0; i < list->must_size; i++) {
+		ly_must_free(ctx, &list->must[i]);
+	}
+	free(list->must);
+
+	for (i = 0; i < list->unique_size; i++) {
+		free(list->unique[i].leafs);
+	}
+	free(list->unique);
 
 	free(list->keys);
 }
@@ -339,19 +372,15 @@ void ly_container_free(struct ly_ctx *ctx, struct ly_mnode_container *cont)
 	/* handle only specific parts for LY_NODE_CONTAINER */
 	lydict_remove(ctx, cont->presence);
 
-	if (cont->tpdf_size) {
-		for (i = 0; i < cont->tpdf_size; i++) {
-			ly_tpdf_free(ctx, &cont->tpdf[i]);
-		}
-		free(cont->tpdf);
+	for (i = 0; i < cont->tpdf_size; i++) {
+		ly_tpdf_free(ctx, &cont->tpdf[i]);
 	}
+	free(cont->tpdf);
 
-	if (cont->must_size) {
-		for (i = 0; i < cont->must_size; i++) {
-			ly_must_free(ctx, &cont->must[i]);
-		}
-		free(cont->must);
+	for (i = 0; i < cont->must_size; i++) {
+		ly_must_free(ctx, &cont->must[i]);
 	}
+	free(cont->must);
 }
 
 void ly_mnode_free(struct ly_mnode *node)
@@ -394,6 +423,7 @@ void ly_mnode_free(struct ly_mnode *node)
 		ly_list_free(ctx, (struct ly_mnode_list *)node);
 		break;
 	case LY_NODE_ANYXML:
+		ly_anyxml_free(ctx, (struct ly_mnode_anyxml *)node);
 		break;
 	case LY_NODE_USES:
 		break;
