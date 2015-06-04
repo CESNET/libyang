@@ -164,7 +164,7 @@ int resolve_uses(struct ly_mnode_uses *uses)
 
 	/* copy the data nodes from grouping into the uses context */
 	LY_TREE_FOR(uses->grp->child, mnode) {
-		mnode_aux = ly_mnode_dup(uses->module, mnode, 1);
+		mnode_aux = ly_mnode_dup(uses->module, mnode, uses->flags, 1);
 		if (!mnode_aux) {
 			return EXIT_FAILURE;
 		}
@@ -642,7 +642,7 @@ void ly_submodule_free(struct ly_submodule *submodule)
 	free(submodule);
 }
 
-struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, int recursive)
+struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, int recursive)
 {
 	struct ly_mnode *retval = NULL, *aux, *child;
 	struct ly_ctx *ctx = module->ctx;
@@ -716,6 +716,11 @@ struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, 
 	retval->dsc = lydict_insert(ctx, mnode->dsc, 0);
 	retval->ref = lydict_insert(ctx, mnode->ref, 0);
 	retval->flags = mnode->flags;
+	if (!(retval->flags & LY_NODE_CONFIG_MASK)) {
+		/* set parent's config flag */
+		retval->flags |= flags & LY_NODE_CONFIG_MASK;
+	}
+
 	retval->module = module;
 	retval->nodetype = mnode->nodetype;
 
@@ -727,7 +732,7 @@ struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, 
 	if (recursive) {
 		/* go recursively */
 		LY_TREE_FOR(mnode->child, child) {
-			aux = ly_mnode_dup(module, child, 1);
+			aux = ly_mnode_dup(module, child, retval->flags, 1);
 			if (!aux) {
 				goto error;
 			}
