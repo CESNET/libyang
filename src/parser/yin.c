@@ -1872,55 +1872,6 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 		}
 	}
 
-	/* process unique statements */
-	if (c_uniq) {
-		list->unique = calloc(c_uniq, sizeof *list->unique);
-	}
-	LY_TREE_FOR_SAFE(uniq.child, next, sub) {
-		/* count the number of unique values */
-		GETVAL(value, sub, "value");
-		uniq_str = value;
-		uniq_s = &list->unique[list->unique_size];
-		while((value = strpbrk(value, " \t\n"))) {
-			uniq_s->leafs_size++;
-			while(isspace(*value)) {
-				value++;
-			}
-		}
-		uniq_s->leafs_size++;
-		uniq_s->leafs = calloc(uniq_s->leafs_size, sizeof *uniq_s->leafs);
-		list->unique_size++;
-
-		/* interconnect unique values with the leafs */
-		/* TODO - include searching in uses/grouping */
-		for (i = 0; i < uniq_s->leafs_size; i++) {
-			if ((value = strpbrk(uniq_str, " \t\n"))) {
-				len = value - uniq_str;
-				while(isspace(*value)) {
-					value++;
-				}
-			} else {
-				len = strlen(uniq_str);
-			}
-			LY_TREE_FOR(list->child, mnode) {
-				if (!strncmp(mnode->name, uniq_str, len) && !mnode->name[len]) {
-					uniq_s->leafs[i] = (struct ly_mnode_leaf *)mnode;
-					break;
-				}
-			}
-
-			if (check_key(uniq_s->leafs[i], list->flags, uniq_s->leafs, i, LOGLINE(yin), uniq_str, len)) {
-				goto error;
-			}
-
-			/* prepare for next iteration */
-			while (value && isspace(*value)) {
-				value++;
-			}
-			uniq_str = value;
-		}
-	}
-
 	/* last part - process data nodes */
 	LY_TREE_FOR_SAFE(root.child, next, sub) {
 		if (!strcmp(sub->name, "container")) {
@@ -1984,6 +1935,51 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 		key_str = value;
 	}
 
+	/* process unique statements */
+	if (c_uniq) {
+		list->unique = calloc(c_uniq, sizeof *list->unique);
+	}
+	LY_TREE_FOR_SAFE(uniq.child, next, sub) {
+		/* count the number of unique values */
+		GETVAL(value, sub, "tag");
+		uniq_str = value;
+		uniq_s = &list->unique[list->unique_size];
+		while((value = strpbrk(value, " \t\n"))) {
+			uniq_s->leafs_size++;
+			while(isspace(*value)) {
+				value++;
+			}
+		}
+		uniq_s->leafs_size++;
+		uniq_s->leafs = calloc(uniq_s->leafs_size, sizeof *uniq_s->leafs);
+		list->unique_size++;
+
+		/* interconnect unique values with the leafs */
+		for (i = 0; i < uniq_s->leafs_size; i++) {
+			if ((value = strpbrk(uniq_str, " \t\n"))) {
+				len = value - uniq_str;
+				while(isspace(*value)) {
+					value++;
+				}
+			} else {
+				len = strlen(uniq_str);
+			}
+
+			uniq_s->leafs[i] = find_leaf(retval, uniq_str, len);
+			if (check_key(uniq_s->leafs[i], list->flags, uniq_s->leafs, i, LOGLINE(yin), uniq_str, len)) {
+				goto error;
+			}
+
+			/* prepare for next iteration */
+			while (value && isspace(*value)) {
+				value++;
+			}
+			uniq_str = value;
+		}
+
+		lyxml_free_elem(module->ctx, sub);
+	}
+
 	return retval;
 
 error:
@@ -1991,6 +1987,9 @@ error:
 	ly_mnode_free(retval);
 	while(root.child) {
 		lyxml_free_elem(module->ctx, root.child);
+	}
+	while(uniq.child) {
+		lyxml_free_elem(module->ctx, uniq.child);
 	}
 
 	return NULL;
@@ -2293,7 +2292,7 @@ static struct ly_mnode *read_yin_uses(struct ly_module *module,
 		LY_TREE_FOR(searchmod->data, mnode) {
 			if (mnode->nodetype == LY_NODE_GROUPING && !strcmp(mnode->name, name)) {
 				uses->grp = (struct ly_mnode_grp *)mnode;
-				break;
+				goto done;
 			}
 		}
 	} else {
@@ -2311,10 +2310,22 @@ static struct ly_mnode *read_yin_uses(struct ly_module *module,
 		LY_TREE_FOR(module->data, mnode) {
 			if (mnode->nodetype == LY_NODE_GROUPING && !strcmp(mnode->name, name)) {
 				uses->grp = (struct ly_mnode_grp *)mnode;
-				break;
+				goto done;
+			}
+		}
+
+		/* search in top-level of included modules */
+		for (i = 0; i < module->inc_size; i++) {
+			LY_TREE_FOR(module->inc[i].submodule->data, mnode) {
+				if (mnode->nodetype == LY_NODE_GROUPING && !strcmp(mnode->name, name)) {
+					uses->grp = (struct ly_mnode_grp *)mnode;
+					goto done;
+				}
 			}
 		}
 	}
+
+done:
 	if (!uses->grp) {
 		LOGVAL(VE_INARG, LOGLINE(node), uses->name, "uses");
 		goto error;

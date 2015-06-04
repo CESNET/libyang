@@ -45,7 +45,7 @@ struct ly_mnode_leaf *find_leaf(struct ly_mnode *parent, const char *name, int l
 		switch (child->nodetype) {
 		case LY_NODE_LEAF:
 			/* direct check */
-			if (child->name == name || !strcmp(child->name, name)) {
+			if (child->name == name || (!strncmp(child->name, name, len) && !child->name[len])) {
 				return (struct ly_mnode_leaf *)child;
 			}
 			break;
