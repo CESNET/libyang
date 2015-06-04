@@ -316,20 +316,20 @@ error:
 	return EXIT_FAILURE;
 }
 
-static const char *read_yin_text(struct ly_ctx *ctx, struct lyxml_elem *node)
+static const char *read_yin_subnode(struct ly_ctx *ctx, struct lyxml_elem *node, const char *name)
 {
 	int len;
 
 	/* there should be <text> child */
 	if (!node->child || !node->child->name
-	        || strcmp(node->child->name, "text")) {
-		LOGWRN("Expected \"text\" element in \"%s\" element.", node->name);
+	        || strcmp(node->child->name, name)) {
+		LOGWRN("Expected \"%s\" element in \"%s\" element.", name, node->name);
 	} else if (node->child->content) {
 		len = strlen(node->child->content);
 		return lydict_insert(ctx, node->child->content, len);
 	}
 
-	LOGVAL(VE_INARG, LOGLINE(node), "text", node->name);
+	LOGVAL(VE_INARG, LOGLINE(node), name, node->name);
 	return NULL;
 }
 
@@ -833,7 +833,7 @@ static int fill_yin_must(struct ly_module *module, struct lyxml_elem *yin, struc
 				LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
 				goto error;
 			}
-			must->dsc = read_yin_text(module->ctx, child);
+			must->dsc = read_yin_subnode(module->ctx, child, "text");
 			if (!must->dsc) {
 				goto error;
 			}
@@ -842,7 +842,7 @@ static int fill_yin_must(struct ly_module *module, struct lyxml_elem *yin, struc
 				LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
 				goto error;
 			}
-			must->ref = read_yin_text(module->ctx, child);
+			must->ref = read_yin_subnode(module->ctx, child, "text");
 			if (!must->ref) {
 				goto error;
 			}
@@ -851,7 +851,7 @@ static int fill_yin_must(struct ly_module *module, struct lyxml_elem *yin, struc
 				LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
 				goto error;
 			}
-			must->eapptag = read_yin_text(module->ctx, child);
+			must->eapptag = read_yin_subnode(module->ctx, child, "value");
 			if (!must->eapptag) {
 				goto error;
 			}
@@ -860,7 +860,7 @@ static int fill_yin_must(struct ly_module *module, struct lyxml_elem *yin, struc
 				LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
 				goto error;
 			}
-			must->emsg = read_yin_text(module->ctx, child);
+			must->emsg = read_yin_subnode(module->ctx, child, "value");
 			if (!must->emsg) {
 				goto error;
 			}
@@ -1008,7 +1008,7 @@ static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, xmlnode->name);
 				goto error;
 			}
-			mnode->dsc = read_yin_text(ctx, sub);
+			mnode->dsc = read_yin_subnode(ctx, sub, "text");
 			if (!mnode->dsc) {
 				r = 1;
 			}
@@ -1017,7 +1017,7 @@ static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, xmlnode->name);
 				goto error;
 			}
-			mnode->ref = read_yin_text(ctx, sub);
+			mnode->ref = read_yin_subnode(ctx, sub, "text");
 			if (!mnode->ref) {
 				r = 1;
 			}
@@ -2419,7 +2419,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 				LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
 				goto error;
 			}
-			module->dsc = read_yin_text(ctx, node);
+			module->dsc = read_yin_subnode(ctx, node, "text");
 			lyxml_free_elem(ctx, node);
 			if (!module->dsc) {
 				goto error;
@@ -2429,7 +2429,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 				LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
 				goto error;
 			}
-			module->ref = read_yin_text(ctx, node);
+			module->ref = read_yin_subnode(ctx, node, "text");
 			lyxml_free_elem(ctx, node);
 			if (!module->ref) {
 				goto error;
@@ -2439,7 +2439,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 				LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
 				goto error;
 			}
-			module->org = read_yin_text(ctx, node);
+			module->org = read_yin_subnode(ctx, node, "text");
 			lyxml_free_elem(ctx, node);
 			if (!module->org) {
 				goto error;
@@ -2449,7 +2449,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 				LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
 				goto error;
 			}
-			module->contact = read_yin_text(ctx, node);
+			module->contact = read_yin_subnode(ctx, node, "text");
 			lyxml_free_elem(ctx, node);
 			if (!module->contact) {
 				goto error;
@@ -2554,7 +2554,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 						LOGVAL(VE_TOOMANY, LOGLINE(node), child->name, node->name);
 						goto error;
 					}
-					module->rev[module->rev_size].dsc = read_yin_text(ctx, child);
+					module->rev[module->rev_size].dsc = read_yin_subnode(ctx, child, "text");
 					if (!module->rev[module->rev_size].dsc) {
 						goto error;
 					}
@@ -2563,7 +2563,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 						LOGVAL(VE_TOOMANY, LOGLINE(node), child->name, node->name);
 						goto error;
 					}
-					module->rev[module->rev_size].ref = read_yin_text(ctx, child);
+					module->rev[module->rev_size].ref = read_yin_subnode(ctx, child, "text");
 					if (!module->rev[module->rev_size].ref) {
 						goto error;
 					}
