@@ -73,17 +73,17 @@ static char *create_indent(int level, const char *old_indent, const struct ly_mn
 
 static unsigned int get_max_name_len(struct ly_mnode *mnode)
 {
-	struct ly_mnode *sub, *sub2;
-	unsigned int max_name_len = 0;
+	struct ly_mnode *sub;
+	unsigned int max_name_len = 0, uses_max_name_len;
 
 	LY_TREE_FOR(mnode, sub) {
 		if (sub->nodetype == LY_NODE_USES) {
-			LY_TREE_FOR(sub->child, sub2) {
-				if (strlen(sub2->name) > max_name_len) {
-					max_name_len = strlen(sub2->name);
-				}
+			uses_max_name_len = get_max_name_len(sub->child);
+			if (uses_max_name_len > max_name_len) {
+				max_name_len = uses_max_name_len;
 			}
-		} else {
+		} else if (sub->nodetype & (LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF |
+				   LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML)) {
 			if (strlen(sub->name) > max_name_len) {
 				max_name_len = strlen(sub->name);
 			}
@@ -251,18 +251,13 @@ static void tree_print_list(FILE *f, int level, char *indent, struct ly_mnode *m
 	free(new_indent);
 }
 
-static void tree_print_uses(FILE *f, int level, char *indent, struct ly_mnode *mnode)
+static void tree_print_uses(FILE *f, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode)
 {
-	unsigned int max_child_len;
 	struct ly_mnode *node;
-	struct ly_mnode_uses *uses = (struct ly_mnode_uses *)mnode;
-
-	level++;
-
-	max_child_len = get_max_name_len(uses->child);
+	struct ly_mnode_uses *uses = (struct ly_mnode_uses *)mnode;;
 
 	LY_TREE_FOR(uses->child, node) {
-		tree_print_mnode(f, level, indent, max_child_len, node, LY_NODE_CHOICE | LY_NODE_CONTAINER |
+		tree_print_mnode(f, level, indent, max_name_len, node, LY_NODE_CHOICE | LY_NODE_CONTAINER |
 		                 LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
 						 LY_NODE_USES);
 	}
@@ -303,7 +298,7 @@ static void tree_print_mnode(FILE *f, int level, char *indent, unsigned int max_
 		tree_print_anyxml(f, indent, mnode);
 		break;
 	case LY_NODE_USES:
-		tree_print_uses(f, level, indent, mnode);
+		tree_print_uses(f, level, indent, max_name_len, mnode);
 		break;
 	default: break;
 	}
