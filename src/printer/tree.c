@@ -78,8 +78,8 @@ static void tree_print_container(FILE *f, int level, char *indent, struct ly_mno
 	}
 
 	LY_TREE_FOR(cont->child, sub) {
-		tree_print_mnode(f, level, new_indent, max_name_len, sub, LY_NODE_CHOICE | LY_NODE_CONTAINER |
-						 LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
+		tree_print_mnode(f, level, new_indent, max_child_len, sub, LY_NODE_CHOICE | LY_NODE_CONTAINER |
+						 LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML |
 						 LY_NODE_USES);
 	}
 
@@ -130,17 +130,25 @@ static void tree_print_case(FILE *f, int level, char *indent, unsigned int max_n
 		tree_print_mnode(f, level, new_indent, max_name_len, mnode,
 						 LY_NODE_CHOICE | LY_NODE_CONTAINER |
 						 LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
-						 LY_NODE_USES);
+						 LY_NODE_ANYXML | LY_NODE_USES);
 	} else {
 		LY_TREE_FOR(mnode->child, sub) {
 			tree_print_mnode(f, level, new_indent, max_name_len, sub,
 							LY_NODE_CHOICE | LY_NODE_CONTAINER |
 							LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
-							LY_NODE_USES);
+							LY_NODE_ANYXML | LY_NODE_USES);
 		}
 	}
 
 	free(new_indent);
+}
+
+static void tree_print_anyxml(FILE *f, char *indent, struct ly_mnode *mnode)
+{
+	struct ly_mnode_anyxml *anyxml = (struct ly_mnode_anyxml *)mnode;
+
+	fprintf(f, "%s+--%s %s\n", indent, (anyxml->flags & LY_NODE_CONFIG_W ? "rw" : "ro"),
+			anyxml->name);
 }
 
 static void tree_print_leaf(FILE *f, char *indent, unsigned int max_name_len, struct ly_mnode *mnode)
@@ -262,6 +270,9 @@ static void tree_print_mnode(FILE *f, int level, char *indent, unsigned int max_
 	case LY_NODE_LIST:
 		tree_print_list(f, level, indent, mnode);
 		break;
+	case LY_NODE_ANYXML:
+		tree_print_anyxml(f, indent, mnode);
+		break;
 	case LY_NODE_USES:
 		tree_print_uses(f, level, indent, mnode);
 		break;
@@ -292,8 +303,8 @@ int tree_print_model(FILE *f, struct ly_module *module)
 	}*/
 
 	LY_TREE_FOR(module->data, mnode) {
-		tree_print_mnode(f, level, indent, max_child_name_len, mnode, LY_NODE_CHOICE | LY_NODE_CONTAINER |
-						 LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
+		tree_print_mnode(f, level, indent, max_child_len, mnode, LY_NODE_CHOICE | LY_NODE_CONTAINER |
+						 LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML |
 						 LY_NODE_USES);
 	}
 
