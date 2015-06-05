@@ -312,7 +312,7 @@ int tree_print_model(FILE *f, struct ly_module *module)
 	char *indent = malloc((level*4+1)*sizeof(char));
 	strcpy(indent, "   ");
 
-	fprintf(f, "module: %s \n", module->name);
+	fprintf(f, "module: %s\n", module->name);
 
 	/* included submodules */
 	for (i = 0; i < module->inc_size; ++i) {
