@@ -31,11 +31,38 @@ static void tree_print_mnode_choice(FILE *f, int level, char *indent, unsigned i
 static void tree_print_mnode(FILE *f, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode,
                              int mask);
 
-static char *create_indent(int level, const char *old_indent, const struct ly_mnode *mnode)
+static char *create_indent(int level, const char *old_indent, const struct ly_mnode *mnode, int shorthand)
 {
+	int next_is_case = 0, sibling_in_submodule = 0;
+	int is_case = 0;
 	char *new_indent = malloc((level*4+1)*sizeof(char));
+
 	strcpy(new_indent, old_indent);
-	if (mnode->next) {
+
+	/* this is the indent of a case (standard or shorthand) */
+	if (mnode->nodetype == LY_NODE_CASE || shorthand) {
+		is_case = 1;
+	}
+
+	/* this is the direct child of a case */
+	if (!is_case && mnode->parent != NULL && mnode->parent->nodetype & (LY_NODE_CASE | LY_NODE_CHOICE)) {
+		/* it is not the only child */
+		if (mnode->next != NULL && mnode->next->parent != NULL && mnode->next->parent->nodetype == LY_NODE_CHOICE) {
+			next_is_case = 1;
+		}
+	}
+
+	/* we are in a submodule and we don't have a parent */
+	if (mnode->module->type == 1 && mnode->parent == NULL) {
+		struct ly_submodule *submod = (struct ly_submodule *)mnode->module;
+
+		/* this submodule is not the last submodule of the module */
+		if (strcmp(mnode->module->name, submod->belongsto->inc[submod->belongsto->inc_size-1].submodule->name) != 0) {
+			sibling_in_submodule = 1;
+		}
+	}
+
+	if ((mnode->next && !next_is_case) || sibling_in_submodule) {
 		strcat(new_indent, "|  ");
 	} else {
 		strcat(new_indent, "   ");
@@ -87,7 +114,7 @@ static void tree_print_container(FILE *f, int level, char *indent, struct ly_mno
 	fprintf(f, "%s+--%s %s%s\n", indent, (cont->flags & LY_NODE_CONFIG_W ? "rw" : "ro"), cont->name, (cont->presence ? "!" : ""));
 
 	level++;
-	new_indent = create_indent(level, indent, mnode);
+	new_indent = create_indent(level, indent, mnode, 0);
 
 	max_child_len = get_max_name_len(mnode->child);
 
@@ -110,7 +137,7 @@ static void tree_print_choice(FILE *f, int level, char *indent, struct ly_mnode 
 	fprintf(f, "%s+--%s (%s)%s\n", indent, (choice->flags & LY_NODE_CONFIG_W ? "rw" : "ro"), choice->name, (choice->flags & LY_NODE_MANDATORY ? "" : "?"));
 
 	level++;
-	new_indent = create_indent(level, indent, mnode);
+	new_indent = create_indent(level, indent, mnode, 0);
 
 	max_child_len = get_max_name_len(mnode->child);
 
@@ -133,7 +160,7 @@ static void tree_print_case(FILE *f, int level, char *indent, unsigned int max_n
 	fprintf(f, "%s+--:(%s)\n", indent, mnode->name);
 
 	level++;
-	new_indent = create_indent(level, indent, mnode);
+	new_indent = create_indent(level, indent, mnode, shorthand);
 
 	if (shorthand) {
 		tree_print_mnode(f, level, new_indent, max_name_len, mnode,
@@ -211,7 +238,7 @@ static void tree_print_list(FILE *f, int level, char *indent, struct ly_mnode *m
 	fprintf(f, "\n");
 
 	level++;
-	new_indent = create_indent(level, indent, mnode);
+	new_indent = create_indent(level, indent, mnode, 0);
 
 	max_child_len = get_max_name_len(mnode->child);
 
