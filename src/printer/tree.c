@@ -200,12 +200,15 @@ static void tree_print_list(FILE *f, int level, char *indent, struct ly_mnode *m
 	struct ly_mnode *sub;
 	struct ly_mnode_list *list = (struct ly_mnode_list *)mnode;
 
-	fprintf(f, "%s+--%s %s* [", indent, (mnode->flags & LY_NODE_CONFIG_W ? "rw" : "ro"), mnode->name);
+	fprintf(f, "%s+--%s %s*", indent, (mnode->flags & LY_NODE_CONFIG_W ? "rw" : "ro"), mnode->name);
 
 	for (i = 0; i < list->keys_size; i++) {
-		fprintf(f, "%s%s", list->keys[i]->name, i + 1 < list->keys_size ? "," : "");
+		if (i == 0) {
+			fprintf(f, " [");
+		}
+		fprintf(f, "%s%s", list->keys[i]->name, i + 1 < list->keys_size ? "," : "]");
 	}
-	fprintf(f, "]\n");
+	fprintf(f, "\n");
 
 	level++;
 	new_indent = create_indent(level, indent, mnode);
