@@ -65,9 +65,10 @@ void ly_submodule_free(struct ly_submodule *submodule);
  */
 int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child);
 
-struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode,  uint8_t flags, int recursive);
+struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode,  uint8_t flags, int recursive, unsigned int line);
 
-int resolve_uses(struct ly_mnode_uses *uses);
+int resolve_uses(struct ly_mnode_uses *uses, unsigned int line);
+struct ly_mnode *resolve_schema_nodeid(const char *id, struct ly_mnode *start, int type);
 struct ly_mnode_leaf *find_leaf(struct ly_mnode *parent, const char *name, int len);
 
 #endif /* LY_TREE_INTERNAL_H_ */

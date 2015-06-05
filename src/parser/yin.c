@@ -891,6 +891,246 @@ error:
 	return EXIT_FAILURE;
 }
 
+static int fill_yin_refine(struct ly_module *module, struct lyxml_elem *yin, struct ly_refine *rfn)
+{
+	struct lyxml_elem *sub, *next;
+	const char *value;
+	char *endptr;
+	int f_mand = 0, f_min = 0, f_max = 0;
+	int c_must = 0;
+	int r;
+	unsigned long int val;
+
+	GETVAL(value, yin, "target-node");
+	rfn->target = lydict_insert(module->ctx, value, strlen(value));
+
+	LY_TREE_FOR_SAFE(yin->child, next, sub) {
+		/* applicable to any target */
+		if (!strcmp(sub->name, "description")) {
+			if (rfn->dsc) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			rfn->dsc = read_yin_subnode(module->ctx, sub, "text");
+			if (!rfn->dsc) {
+				goto error;
+			}
+		} else if (!strcmp(sub->name, "reference")) {
+			if (rfn->ref) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			rfn->ref = read_yin_subnode(module->ctx, sub, "text");
+			if (!rfn->ref) {
+				goto error;
+			}
+		} else if (!strcmp(sub->name, "config")) {
+			if (rfn->flags & LY_NODE_CONFIG_MASK) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			GETVAL(value, sub, "value");
+			if (!strcmp(value, "false")) {
+				rfn->flags |= LY_NODE_CONFIG_R;
+			} else if (!strcmp(value, "false")) {
+				rfn->flags |= LY_NODE_CONFIG_W;
+			} else {
+				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
+				goto error;
+			}
+
+		/* limited applicability */
+		} else if (!strcmp(sub->name, "default")) {
+			/* leaf or choice */
+			if (rfn->mod.dflt) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+
+			/* check possibility of statements combination */
+			if (rfn->target_type) {
+				rfn->target_type &= (LY_NODE_LEAF | LY_NODE_CHOICE);
+				if (!rfn->target_type) {
+					LOGVAL(VE_SPEC, LOGLINE(sub), "invalid combination of refine substatements");
+					goto error;
+				}
+			} else {
+				rfn->target_type = LY_NODE_LEAF | LY_NODE_CHOICE;
+			}
+
+			GETVAL(value, sub, "value");
+			rfn->mod.dflt = lydict_insert(module->ctx, value, strlen(value));
+		} else if (!strcmp(sub->name, "mandatory")) {
+			/* leaf, choice or anyxml */
+			if (f_mand) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			/* just checking the flags in leaf is not sufficient, we would allow
+			 * multiple mandatory statements with the "false" value
+			 */
+			f_mand = 1;
+
+			/* check possibility of statements combination */
+			if (rfn->target_type) {
+				rfn->target_type &= (LY_NODE_LEAF | LY_NODE_CHOICE | LY_NODE_ANYXML);
+				if (!rfn->target_type) {
+					LOGVAL(VE_SPEC, LOGLINE(sub), "invalid combination of refine substatements");
+					goto error;
+				}
+			} else {
+				rfn->target_type = LY_NODE_LEAF | LY_NODE_CHOICE | LY_NODE_ANYXML;
+			}
+
+			GETVAL(value, sub, "value");
+			if (!strcmp(value, "true")) {
+				rfn->flags |= LY_NODE_MAND_TRUE;
+			} else if (!strcmp(value, "false")) {
+				rfn->flags |= LY_NODE_MAND_FALSE;
+			} else {
+				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
+				goto error;
+			}
+		} else if (!strcmp(sub->name, "min-elements")) {
+			/* list or leaf-list */
+			if (f_min) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			f_min = 1;
+
+			/* check possibility of statements combination */
+			if (rfn->target_type) {
+				rfn->target_type &= (LY_NODE_LIST | LY_NODE_LEAFLIST);
+				if (!rfn->target_type) {
+					LOGVAL(VE_SPEC, LOGLINE(sub), "invalid combination of refine substatements");
+					goto error;
+				}
+			} else {
+				rfn->target_type = LY_NODE_LIST | LY_NODE_LEAFLIST;
+			}
+
+			GETVAL(value, sub, "value");
+			while(isspace(value[0])) {
+				value++;
+			}
+
+			/* convert it to uint32_t */
+			errno = 0;
+			endptr = NULL;
+			val = strtoul(value, &endptr, 10);
+			if (*endptr || value[0] == '-' || errno || val > UINT32_MAX) {
+				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
+				goto error;
+			}
+			rfn->mod.list.min = (uint32_t)val;
+
+			/* magic - bit 3 in flags means min set */
+			rfn->flags |= 0x04;
+		} else if (!strcmp(sub->name, "max-elements")) {
+			/* list or leaf-list */
+			if (f_max) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+			f_max = 1;
+
+			/* check possibility of statements combination */
+			if (rfn->target_type) {
+				rfn->target_type &= (LY_NODE_LIST | LY_NODE_LEAFLIST);
+				if (!rfn->target_type) {
+					LOGVAL(VE_SPEC, LOGLINE(sub), "invalid combination of refine substatements");
+					goto error;
+				}
+			} else {
+				rfn->target_type = LY_NODE_LIST | LY_NODE_LEAFLIST;
+			}
+
+			GETVAL(value, sub, "value");
+			while(isspace(value[0])) {
+				value++;
+			}
+
+			/* convert it to uint32_t */
+			errno = 0;
+			endptr = NULL;
+			val = strtoul(value, &endptr, 10);
+			if (*endptr || value[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
+				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
+				goto error;
+			}
+			rfn->mod.list.max = (uint32_t)val;
+
+			/* magic - bit 4 in flags means min set */
+			rfn->flags |= 0x08;
+		} else if (!strcmp(sub->name, "presence")) {
+			/* container */
+			if (rfn->mod.presence) {
+				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+				goto error;
+			}
+
+			/* check possibility of statements combination */
+			if (rfn->target_type) {
+				rfn->target_type &= LY_NODE_CONTAINER;
+				if (!rfn->target_type) {
+					LOGVAL(VE_SPEC, LOGLINE(sub), "invalid combination of refine substatements");
+					goto error;
+				}
+			} else {
+				rfn->target_type = LY_NODE_CONTAINER;
+			}
+
+			GETVAL(value, sub, "value");
+			rfn->mod.presence = lydict_insert(module->ctx, value, strlen(value));
+		} else if (!strcmp(sub->name, "must")) {
+			/* leaf-list, list, container or anyxml */
+			/* check possibility of statements combination */
+			if (rfn->target_type) {
+				rfn->target_type &= (LY_NODE_LIST | LY_NODE_LEAFLIST | LY_NODE_CONTAINER | LY_NODE_ANYXML);
+				if (!rfn->target_type) {
+					LOGVAL(VE_SPEC, LOGLINE(sub), "invalid combination of refine substatements");
+					goto error;
+				}
+			} else {
+				rfn->target_type = LY_NODE_LIST | LY_NODE_LEAFLIST | LY_NODE_CONTAINER | LY_NODE_ANYXML;
+			}
+
+			c_must++;
+
+		} else {
+			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
+			goto error;
+		}
+
+		lyxml_free_elem(module->ctx, sub);
+	}
+
+	/* process nodes with cardinality of 0..n */
+	if (c_must) {
+		rfn->must = calloc(c_must, sizeof *rfn->must);
+	}
+
+	LY_TREE_FOR_SAFE(yin->child, next, sub) {
+		if (!strcmp(sub->name, "must")) {
+			r = fill_yin_must(module, sub, &rfn->must[rfn->must_size]);
+			rfn->must_size++;
+
+			if (r) {
+				goto error;
+			}
+		}
+
+		lyxml_free_elem(module->ctx, sub);
+	}
+
+	return EXIT_SUCCESS;
+
+error:
+
+	return EXIT_FAILURE;
+}
+
 static int fill_yin_import(struct ly_module *module, struct lyxml_elem *yin, struct ly_import *imp)
 {
 	struct lyxml_elem *child;
@@ -1277,7 +1517,7 @@ static struct ly_mnode *read_yin_choice(struct ly_module *module,
 
 			GETVAL(value, sub, "value");
 			if (!strcmp(value, "true")) {
-				choice->flags |= LY_NODE_MANDATORY;
+				choice->flags |= LY_NODE_MAND_TRUE;
 			} else if (strcmp(value, "false")) {
 				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
 				goto error;
@@ -1300,19 +1540,14 @@ static struct ly_mnode *read_yin_choice(struct ly_module *module,
 	}
 
 	/* check - default is prohibited in combination with mandatory */
-	if (dflt_str && (choice->flags & LY_NODE_MANDATORY)) {
+	if (dflt_str && (choice->flags & LY_NODE_MAND_TRUE)) {
 		LOGVAL(VE_SPEC, LOGLINE(yin), "The \"default\" statement MUST NOT be present on choices where \"mandatory\" is true.");
 		goto error;
 	}
 
 	/* link default with the case */
 	if (dflt_str) {
-		LY_TREE_FOR(choice->child, mnode) {
-			if (!strcmp(mnode->name, dflt_str)) {
-				choice->dflt = mnode;
-				break;
-			}
-		}
+		choice->dflt = resolve_schema_nodeid(dflt_str, retval, 0);
 		if (!choice->dflt) {
 			/* default branch not found */
 			LOGVAL(VE_INARG, LOGLINE(yin), dflt_str, "default");
@@ -1372,7 +1607,7 @@ static struct ly_mnode *read_yin_anyxml(struct ly_module *module,
 
 			GETVAL(value, sub, "value");
 			if (!strcmp(value, "true")) {
-				anyxml->flags |= LY_NODE_MANDATORY;
+				anyxml->flags |= LY_NODE_MAND_TRUE;
 			} else if (strcmp(value, "false")) {
 				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
 				goto error;
@@ -1480,7 +1715,7 @@ static struct ly_mnode *read_yin_leaf(struct ly_module *module,
 
 			GETVAL(value, sub, "value");
 			if (!strcmp(value, "true")) {
-				leaf->flags |= LY_NODE_MANDATORY;
+				leaf->flags |= LY_NODE_MAND_TRUE;
 			} else if (strcmp(value, "false")) {
 				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
 				goto error;
@@ -2329,9 +2564,12 @@ static struct ly_mnode *read_yin_uses(struct ly_module *module,
                                       struct lyxml_elem *node, int resolve,
 									  struct mnode_list **unres)
 {
+	struct lyxml_elem *sub, *next;
 	struct ly_mnode *retval;
 	struct ly_mnode_uses *uses;
 	struct mnode_list *unres_new;
+	int c_ref = 0, c_aug = 0;
+	int r;
 
 	uses = calloc(1, sizeof *uses);
 	uses->nodetype = LY_NODE_USES;
@@ -2342,11 +2580,48 @@ static struct ly_mnode *read_yin_uses(struct ly_module *module,
 		goto error;
 	}
 
+	/* get other properties of uses */
+	LY_TREE_FOR_SAFE(node->child, next, sub) {
+		if (!strcmp(sub->name, "refine")) {
+			c_ref++;
+		} else if (!strcmp(sub->name, "augment")) {
+			c_aug++;
+#if 0
+		} else {
+			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
+			goto error;
+#endif
+		}
+	}
+
+	/* process properties with cardinality 0..n */
+	if (c_ref) {
+		uses->refine = calloc(c_ref, sizeof *uses->refine);
+	}
+	if (c_aug) {
+		uses->augment = calloc(c_aug, sizeof *uses->augment);
+	}
+
+	LY_TREE_FOR_SAFE(node->child, next, sub) {
+		if (!strcmp(sub->name, "refine")) {
+			r = fill_yin_refine(module, sub, &uses->refine[uses->refine_size]);
+			uses->refine_size++;
+		} else if (!strcmp(sub->name, "augment")) {
+			/* TODO r = fill_yin_augment(module, sub, &uses->augment[uses->augment_size]); */
+			r = 0;
+			uses->augment_size++;
+		}
+
+		if (r) {
+			goto error;
+		}
+	}
+
 	if (find_grouping(parent, uses, LOGLINE(node))) {
 		goto error;
 	}
 	if (!uses->grp) {
-		LOGVRB("Unresolved uses of \"%s\", trying to resolve it later", uses->name);
+		LOGVRB("Unresolved uses of \"%s\" (line %d), trying to resolve it later", uses->name, LOGLINE(node));
 		unres_new = calloc(1, sizeof *unres_new);
 		if (*unres) {
 			unres_new->next = *unres;
@@ -2374,7 +2649,7 @@ static struct ly_mnode *read_yin_uses(struct ly_module *module,
 
 	if (resolve && uses->grp) {
 		/* copy the data nodes from grouping into the uses context */
-		if (resolve_uses(uses)) {
+		if (resolve_uses(uses, LOGLINE(node))) {
 			goto error;
 		}
 	}
@@ -2779,7 +3054,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 		}
 
 		/* resolve uses by copying grouping content under the uses */
-		if (resolve_uses((struct ly_mnode_uses *)unres->mnode)) {
+		if (resolve_uses((struct ly_mnode_uses *)unres->mnode, unres->line)) {
 			goto error;
 		}
 

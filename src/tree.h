@@ -219,6 +219,35 @@ struct ly_unique {
 	struct ly_mnode_leaf **leafs;
 };
 
+struct ly_refine {
+	const char *target;
+	const char *dsc;
+	const char *ref;
+	uint8_t flags;
+
+	uint16_t target_type;        /**< 0 - no limitations, ored LY_NODE_TYPE if
+	                                  there are some limitations */
+
+	uint8_t must_size;           /**< number of elements in must array */
+	struct ly_must *must;        /**< array of must constraints */
+
+	union {
+		const char *dflt;        /**< applicable to leaf or choice, in case of
+		                              choice, the value must be resolved to
+		                              target the default branch node */
+		const char* presence;    /**< applicable to container */
+		struct {
+			uint32_t min;
+			uint32_t max;
+		} list;                  /**< applicable to list or leaf-list */
+	} mod;
+};
+
+struct ly_augment {
+	/* TODO */
+	int todo;
+};
+
 typedef enum ly_node_type {
 	LY_NODE_CONTAINER = 0x01,
 	LY_NODE_CHOICE = 0x02,
@@ -339,8 +368,10 @@ struct ly_mnode {
 #define LY_NODE_STATUS_DEPRC 0x08 /**< status deprecated; */
 #define LY_NODE_STATUS_OBSLT 0x10 /**< status obsolete; */
 #define LY_NODE_STATUS_MASK  0x1c /**< mask for status value */
-#define LY_NODE_MANDATORY    0x20 /**< mandatory flag of the node */
-#define LY_NODE_USERORDERED  0x40 /**< ordered-by user lists */
+#define LY_NODE_MAND_TRUE    0x20 /**< mandatory flag of the node */
+#define LY_NODE_MAND_FALSE   0x40 /**< mandatory false */
+#define LY_NODE_MAND_MASK    0x60 /**< mask for mandatory values */
+#define LY_NODE_USERORDERED  0x80 /**< ordered-by user lists */
 
 	const char *feature;         /**< if-feature statement */
 	const char *when;            /**< when statement */
@@ -383,6 +414,12 @@ struct ly_mnode_uses {
 
 	/* specific uses's data */
 	struct ly_mnode_grp *grp;    /**< referred grouping definition */
+
+	uint16_t refine_size;
+	uint16_t augment_size;
+
+	struct ly_refine *refine;
+	struct ly_augment *augment;
 };
 
 struct ly_mnode_container {
@@ -512,11 +549,11 @@ struct ly_mnode_leaflist {
 	const char *when;            /**< when statement */
 
 	/* specific leaf's data */
-	struct ly_type type;         /**< YANG type of the element */
-	const char *units;           /**< units of the type */
-
 	uint32_t min;                /**< min-elements constraint */
 	uint32_t max;                /**< max-elements constraint, 0 means unbounded */
+
+	struct ly_type type;         /**< YANG type of the element */
+	const char *units;           /**< units of the type */
 
 	uint8_t must_size;           /**< number of elements in must array */
 

@@ -158,24 +158,181 @@ int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
 	return EXIT_SUCCESS;
 }
 
-int resolve_uses(struct ly_mnode_uses *uses)
+/*
+ * type: 0 - id is node-identifier (no '/')
+ *       1 - id is descendant-schema-nodeid
+ */
+struct ly_mnode *resolve_schema_nodeid(const char *id, struct ly_mnode *start, int type)
 {
-	struct ly_mnode *mnode = NULL, *mnode_aux;
+	const char *next;
+	struct ly_mnode *child;
+	int len;
 
-	/* copy the data nodes from grouping into the uses context */
-	LY_TREE_FOR(uses->grp->child, mnode) {
-		mnode_aux = ly_mnode_dup(uses->module, mnode, uses->flags, 1);
-		if (!mnode_aux) {
-			return EXIT_FAILURE;
+	/* TODO: support prefixes to go into different data model */
+
+	if (id[0] == '/') {
+		/* TODO absolute nodeid */
+	} else if (id[0]) {
+		/* descendant nodeid */
+		next = strchr(id, '/');
+		if (next) {
+			if (!type) {
+				/* invalid id */
+				return NULL;
+			}
+			len = next - id;
+		} else {
+			len = strlen(id);
 		}
-		ly_mnode_addchild((struct ly_mnode *)uses, mnode_aux);
 
-		if (mnode_aux->nodetype == LY_NODE_USES) {
-			if (resolve_uses((struct ly_mnode_uses *)mnode_aux)) {
-				return EXIT_FAILURE;
+		LY_TREE_FOR(start->child, child) {
+			if (next) {
+				/* we are going through this node into subnodes */
+				switch (child->nodetype) {
+				case LY_NODE_CONTAINER:
+				case LY_NODE_CHOICE:
+				case LY_NODE_CASE:
+				case LY_NODE_LIST:
+					if (!strncmp(child->name, id, len) && child->name[len] == '\0') {
+						/* we have match, go recursively into subnode */
+						next++;
+						return resolve_schema_nodeid(next, child, type);
+					}
+					break;
+				default:
+					/* continue, not chance to have match in this node */
+					continue;
+				}
+			} else {
+				/* we are at the end, matching node must be here */
+				if (!strncmp(child->name, id, len) && child->name[len] == '\0') {
+					/* we have match */
+					return child;
+				}
 			}
 		}
 	}
+
+	return NULL;
+}
+
+int resolve_uses(struct ly_mnode_uses *uses, unsigned int line)
+{
+	struct ly_ctx *ctx;
+	struct ly_mnode *mnode = NULL, *mnode_aux;
+	struct ly_refine *rfn;
+	struct ly_must *newmust;
+	int i, j;
+	uint8_t size;
+
+	/* copy the data nodes from grouping into the uses context */
+	LY_TREE_FOR(uses->grp->child, mnode) {
+		mnode_aux = ly_mnode_dup(uses->module, mnode, uses->flags, 1, line);
+		if (!mnode_aux) {
+			LOGVAL(VE_SPEC, line, "Copying data from grouping failed");
+			return EXIT_FAILURE;
+		}
+		ly_mnode_addchild((struct ly_mnode *)uses, mnode_aux);
+	}
+	ctx = uses->module->ctx;
+
+	/* apply refines */
+	for (i = 0; i < uses->refine_size; i++) {
+		rfn = &uses->refine[i];
+		mnode = resolve_schema_nodeid(rfn->target, (struct ly_mnode *)uses, 1);
+		if (!mnode) {
+			LOGVAL(VE_INARG, line, rfn->target, "uses");
+			return EXIT_FAILURE;
+		}
+
+		if (rfn->target_type && !(mnode->nodetype & rfn->target_type)) {
+			LOGVAL(VE_SPEC, line, "refine substatements not applicable to the target-node");
+			return EXIT_FAILURE;
+		}
+
+		/* description on any nodetype */
+		if (rfn->dsc) {
+			lydict_remove(ctx, mnode->dsc);
+			mnode->dsc = lydict_insert(ctx, rfn->dsc, 0);
+		}
+
+		/* reference on any nodetype */
+		if (rfn->ref) {
+			lydict_remove(ctx, mnode->ref);
+			mnode->ref = lydict_insert(ctx, rfn->ref, 0);
+		}
+
+		/* config on any nodetype */
+		if (rfn->flags & LY_NODE_CONFIG_MASK) {
+			mnode->flags &= ~LY_NODE_CONFIG_MASK;
+			mnode->flags |= (rfn->flags & LY_NODE_CONFIG_MASK);
+		}
+
+		/* default value ... */
+		if (rfn->mod.dflt) {
+			if (mnode->nodetype == LY_NODE_LEAF) {
+				/* leaf */
+				lydict_remove(ctx, ((struct ly_mnode_leaf *)mnode)->dflt);
+				((struct ly_mnode_leaf *)mnode)->dflt = lydict_insert(ctx, rfn->mod.dflt, 0);
+			} else if (mnode->nodetype == LY_NODE_CHOICE) {
+				/* choice */
+				((struct ly_mnode_choice *)mnode)->dflt = resolve_schema_nodeid(rfn->mod.dflt, mnode, 0);
+				if (!((struct ly_mnode_choice *)mnode)->dflt) {
+					LOGVAL(VE_INARG, line, rfn->mod.dflt, "default");
+					return EXIT_FAILURE;
+				}
+			}
+		}
+
+		/* mandatory on leaf, anyxml or choice */
+		if (mnode->nodetype & (LY_NODE_LEAF | LY_NODE_ANYXML | LY_NODE_CHOICE)) {
+			if (rfn->flags & LY_NODE_MAND_FALSE) {
+				/* erase mandatory true flag, we don't use false flag in schema nodes */
+				mnode->flags &= ~LY_NODE_MAND_TRUE;
+			} else if (rfn->flags & LY_NODE_MAND_TRUE) {
+				/* set mandatory true flag */
+				mnode->flags |= LY_NODE_MAND_TRUE;
+			}
+		}
+
+		/* presence on container */
+		if ((mnode->nodetype & LY_NODE_CONTAINER) && rfn->mod.presence) {
+			lydict_remove(ctx, ((struct ly_mnode_container *)mnode)->presence);
+			((struct ly_mnode_container *)mnode)->presence = lydict_insert(ctx, rfn->mod.presence, 0);
+		}
+
+		/* min/max-elements on list or leaf-list */
+		if (mnode->nodetype & (LY_NODE_LEAFLIST | LY_NODE_LIST)) {
+			/* magic - bit 3 in flags means min set, bit 4 says max set */
+			if (rfn->flags & 0x04) {
+				((struct ly_mnode_list *)mnode)->min = rfn->mod.list.min;
+			}
+			if (rfn->flags & 0x08) {
+				((struct ly_mnode_list *)mnode)->max = rfn->mod.list.max;
+			}
+		}
+
+		/* must in leaf, leaf-list, list, container or anyxml */
+		if (rfn->must_size) {
+			size = ((struct ly_mnode_leaf *)mnode)->must_size + rfn->must_size;
+			newmust = realloc(((struct ly_mnode_leaf *)mnode)->must, size * sizeof *rfn->must);
+			if (!newmust) {
+				LOGMEM;
+				return EXIT_FAILURE;
+			}
+			for (i = 0, j = ((struct ly_mnode_leaf *)mnode)->must_size; i < rfn->must_size; i++, j++) {
+				newmust[j].cond = lydict_insert(ctx, rfn->must[i].cond, 0);
+				newmust[j].dsc = lydict_insert(ctx, rfn->must[i].dsc, 0);
+				newmust[j].ref = lydict_insert(ctx, rfn->must[i].ref, 0);
+				newmust[j].eapptag = lydict_insert(ctx, rfn->must[i].eapptag, 0);
+				newmust[j].emsg = lydict_insert(ctx, rfn->must[i].emsg, 0);
+			}
+
+			((struct ly_mnode_leaf *)mnode)->must = newmust;
+			((struct ly_mnode_leaf *)mnode)->must_size = size;
+		}
+	}
+
 
 	return EXIT_SUCCESS;
 }
@@ -636,7 +793,7 @@ void ly_submodule_free(struct ly_submodule *submodule)
 	free(submodule);
 }
 
-struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, int recursive)
+struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, int recursive, unsigned int line)
 {
 	struct ly_mnode *retval = NULL, *aux, *child;
 	struct ly_ctx *ctx = module->ctx;
@@ -726,7 +883,7 @@ struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, 
 	if (recursive) {
 		/* go recursively */
 		LY_TREE_FOR(mnode->child, child) {
-			aux = ly_mnode_dup(module, child, retval->flags, 1);
+			aux = ly_mnode_dup(module, child, retval->flags, 1, line);
 			if (!aux) {
 				goto error;
 			}
@@ -810,7 +967,7 @@ struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, 
 		break;
 	case LY_NODE_USES:
 		uses->grp = uses_orig->grp;
-		if (resolve_uses(uses)) {
+		if (resolve_uses(uses, line)) {
 			goto error;
 		}
 		break;
@@ -822,7 +979,6 @@ struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, 
 		/* nothing to do */
 		break;
 	}
-
 
 	return retval;
 

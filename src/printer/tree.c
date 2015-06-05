@@ -134,7 +134,7 @@ static void tree_print_choice(FILE *f, int level, char *indent, struct ly_mnode 
 	struct ly_mnode_choice *choice = (struct ly_mnode_choice *)mnode;
 	struct ly_mnode *sub;
 
-	fprintf(f, "%s+--%s (%s)%s\n", indent, (choice->flags & LY_NODE_CONFIG_W ? "rw" : "ro"), choice->name, (choice->flags & LY_NODE_MANDATORY ? "" : "?"));
+	fprintf(f, "%s+--%s (%s)%s\n", indent, (choice->flags & LY_NODE_CONFIG_W ? "rw" : "ro"), choice->name, (choice->flags & LY_NODE_MAND_TRUE ? "" : "?"));
 
 	level++;
 	new_indent = create_indent(level, indent, mnode, 0);
@@ -204,7 +204,7 @@ static void tree_print_leaf(FILE *f, char *indent, unsigned int max_name_len, st
 	}
 
 	fprintf(f, "%s+--%s %s%s%*s", indent, (leaf->flags & LY_NODE_CONFIG_W ? "rw" : "ro"),
-			leaf->name, (leaf->flags & LY_NODE_MANDATORY || is_key ? " " : "?"), 3+(int)(max_name_len-strlen(leaf->name)), "   ");
+			leaf->name, (leaf->flags & LY_NODE_MAND_TRUE || is_key ? " " : "?"), 3+(int)(max_name_len-strlen(leaf->name)), "   ");
 	tree_print_type(f, &leaf->type);
 	fprintf(f, "\n");
 }
