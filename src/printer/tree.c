@@ -187,7 +187,7 @@ static void tree_print_choice(FILE *f, int level, char *indent, struct ly_mnode 
 		tree_print_mnode_choice(f, level, new_indent, max_child_len, sub,
 								LY_NODE_CASE | LY_NODE_CONTAINER |
 								LY_NODE_LEAF | LY_NODE_LEAFLIST |
-								LY_NODE_LIST);
+								LY_NODE_LIST | LY_NODE_ANYXML);
 	}
 
 	free(new_indent);
@@ -304,7 +304,7 @@ static void tree_print_uses(FILE *f, int level, char *indent, unsigned int max_n
 	LY_TREE_FOR(uses->child, node) {
 		tree_print_mnode(f, level, indent, max_name_len, node, LY_NODE_CHOICE | LY_NODE_CONTAINER |
 		                 LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
-						 LY_NODE_USES);
+						 LY_NODE_USES | LY_NODE_ANYXML);
 	}
 }
 
