@@ -31,9 +31,30 @@ static void tree_print_mnode_choice(FILE *f, int level, char *indent, unsigned i
 static void tree_print_mnode(FILE *f, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode,
                              int mask);
 
+static int uses_has_valid_child(struct ly_mnode *mnode) {
+	struct ly_mnode *cur;
+
+	if (mnode == NULL) {
+		return 0;
+	}
+
+	for (cur = mnode; cur != NULL; cur = cur->next) {
+		if (cur->nodetype & (LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_CHOICE)) {
+			return 1;
+		}
+
+		if (cur->nodetype == LY_NODE_USES && uses_has_valid_child(cur->child)) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
 static char *create_indent(int level, const char *old_indent, const struct ly_mnode *mnode, int shorthand)
 {
-	int next_is_case = 0, sibling_in_submodule = 0;
+	struct ly_mnode *cur;
+	int next_is_case = 0, sibling_in_submodule = 0, sibling_outside_uses = 0;
 	int is_case = 0;
 	char *new_indent = malloc((level*4+1)*sizeof(char));
 
@@ -62,7 +83,24 @@ static char *create_indent(int level, const char *old_indent, const struct ly_mn
 		}
 	}
 
-	if ((mnode->next && !next_is_case) || sibling_in_submodule) {
+	/* there is no standard sibling and this is a uses */
+	if (mnode->next == NULL && mnode->parent != NULL && mnode->parent->nodetype == LY_NODE_USES) {
+		/* there is a sibling, it contains a valid node */
+		for (cur = mnode->parent->next; cur != NULL; cur = cur->next) {
+			if (cur->nodetype & (LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_CHOICE)) {
+				sibling_outside_uses = 1;
+				break;
+			}
+
+			/* we must check uses recursively for a valid node (it can contain only typedef, for instance) */
+			if (cur->nodetype == LY_NODE_USES && uses_has_valid_child(cur)) {
+				sibling_outside_uses = 1;
+				break;
+			}
+		}
+	}
+
+	if ((mnode->next && !next_is_case) || sibling_in_submodule || sibling_outside_uses) {
 		strcat(new_indent, "|  ");
 	} else {
 		strcat(new_indent, "   ");
