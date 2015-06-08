@@ -672,6 +672,35 @@ void ly_container_free(struct ly_ctx *ctx, struct ly_mnode_container *cont)
 	free(cont->must);
 }
 
+void ly_uses_free(struct ly_ctx *ctx, struct ly_mnode_uses *uses)
+{
+	int i, j;
+
+	for (i = 0; i < uses->refine_size; i++) {
+		lydict_remove(ctx, uses->refine[i].target);
+		lydict_remove(ctx, uses->refine[i].dsc);
+		lydict_remove(ctx, uses->refine[i].ref);
+
+		for (j = 0; j < uses->refine[j].must_size; j++) {
+			ly_must_free(ctx, &uses->refine[i].must[j]);
+		}
+		free(uses->refine[i].must);
+
+		if (uses->refine[i].target_type & (LY_NODE_LEAF | LY_NODE_CHOICE)) {
+			lydict_remove(ctx, uses->refine[i].mod.dflt);
+		} else if (uses->refine[i].target_type & LY_NODE_CONTAINER) {
+			lydict_remove(ctx, uses->refine[i].mod.presence);
+		}
+	}
+	free(uses->refine);
+
+	for (i = 0; i < uses->augment_size; i++) {
+		/* TODO augment */
+	}
+	free(uses->augment);
+
+}
+
 void ly_mnode_free(struct ly_mnode *node)
 {
 	struct ly_ctx *ctx;
@@ -715,6 +744,7 @@ void ly_mnode_free(struct ly_mnode *node)
 		ly_anyxml_free(ctx, (struct ly_mnode_anyxml *)node);
 		break;
 	case LY_NODE_USES:
+		ly_uses_free(ctx, (struct ly_mnode_uses *)node);
 		break;
 	case LY_NODE_GROUPING:
 		ly_grp_free(ctx, (struct ly_mnode_grp *)node);
