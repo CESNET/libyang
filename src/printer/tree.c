@@ -31,7 +31,8 @@ static void tree_print_mnode_choice(FILE *f, int level, char *indent, unsigned i
 static void tree_print_mnode(FILE *f, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode,
                              int mask);
 
-static int uses_has_valid_child(struct ly_mnode *mnode) {
+static int uses_has_valid_child(struct ly_mnode *mnode)
+{
 	struct ly_mnode *cur;
 
 	if (mnode == NULL) {
@@ -299,17 +300,16 @@ static void tree_print_list(FILE *f, int level, char *indent, struct ly_mnode *m
 static void tree_print_uses(FILE *f, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode)
 {
 	struct ly_mnode *node;
-	struct ly_mnode_uses *uses = (struct ly_mnode_uses *)mnode;;
+	struct ly_mnode_uses *uses = (struct ly_mnode_uses *)mnode;
 
 	LY_TREE_FOR(uses->child, node) {
-		tree_print_mnode(f, level, indent, max_name_len, node, LY_NODE_CHOICE | LY_NODE_CONTAINER |
-		                 LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
-						 LY_NODE_USES | LY_NODE_ANYXML);
+		tree_print_mnode(f, level, indent, max_name_len, node,
+						 LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF |
+						 LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_USES | LY_NODE_ANYXML);
 	}
 }
 
-static void tree_print_mnode_choice(FILE *f, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode,
-							 int mask)
+static void tree_print_mnode_choice(FILE *f, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int mask)
 {
 	if (mnode->nodetype & mask) {
 		if (mnode->nodetype == LY_NODE_CASE) {
@@ -320,10 +320,9 @@ static void tree_print_mnode_choice(FILE *f, int level, char *indent, unsigned i
 	}
 }
 
-static void tree_print_mnode(FILE *f, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode,
-							 int mask)
+static void tree_print_mnode(FILE *f, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int mask)
 {
-	switch(mnode->nodetype & mask) {
+	switch (mnode->nodetype & mask) {
 	case LY_NODE_CONTAINER:
 		tree_print_container(f, level, indent, mnode);
 		break;
