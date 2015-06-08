@@ -555,6 +555,36 @@ void ly_must_free(struct ly_ctx *ctx, struct ly_must *must)
 	lydict_remove(ctx, must->emsg);
 }
 
+struct ly_refine *ly_refine_dup(struct ly_ctx *ctx, struct ly_refine *old, int size)
+{
+	struct ly_refine *result;
+	int i;
+
+	if (!size) {
+		return NULL;
+	}
+
+	result = calloc(size, sizeof *result);
+	for (i = 0; i < size; i++) {
+		result[i].target = lydict_insert(ctx, old[i].target, 0);
+		result[i].dsc = lydict_insert(ctx, old[i].dsc, 0);
+		result[i].ref = lydict_insert(ctx, old[i].ref, 0);
+		result[i].flags = old[i].flags;
+		result[i].target_type = old[i].target_type;
+		result[i].must_size = old[i].must_size;
+		result[i].must = ly_must_dup(ctx, old[i].must, old[i].must_size);
+		if (result[i].target_type & (LY_NODE_LEAF | LY_NODE_CHOICE)) {
+			result[i].mod.dflt = lydict_insert(ctx, old[i].mod.dflt, 0);
+		} else if (result[i].target_type == LY_NODE_CONTAINER) {
+			result[i].mod.presence = lydict_insert(ctx, old[i].mod.presence, 0);
+		} else if (result[i].target_type & (LY_NODE_LIST | LY_NODE_LEAFLIST)) {
+			result[i].mod.list = old[i].mod.list;
+		}
+	}
+
+	return result;
+}
+
 void ly_ident_free(struct ly_ctx *ctx, struct ly_ident *ident)
 {
 	struct ly_ident_der *der;
@@ -997,6 +1027,10 @@ struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, 
 		break;
 	case LY_NODE_USES:
 		uses->grp = uses_orig->grp;
+		uses->refine_size = uses_orig->refine_size;
+		uses->refine = ly_refine_dup(ctx, uses_orig->refine, uses_orig->refine_size);
+		uses->augment_size = uses_orig->augment_size;
+		/* TODO uses->augment = ly_augment_dup() */
 		if (resolve_uses(uses, line)) {
 			goto error;
 		}
