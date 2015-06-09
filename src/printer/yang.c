@@ -77,7 +77,7 @@ static void yang_print_mnode_common(FILE *f, int level, struct ly_mnode *mnode)
 
 /*
  * Covers:
- * config
+ * config, mandatory
  * description, reference, status
  */
 static void yang_print_mnode_common2(FILE *f, int level, struct ly_mnode *mnode)
@@ -89,6 +89,12 @@ static void yang_print_mnode_common2(FILE *f, int level, struct ly_mnode *mnode)
 		} else if (mnode->flags & LY_NODE_CONFIG_R) {
 			fprintf(f, "%*sconfig \"false\";\n", LEVEL, INDENT);
 		}
+	}
+
+	if (mnode->flags & LY_NODE_MAND_TRUE) {
+		fprintf(f, "%*smandatory \"true\";\n", LEVEL, INDENT);
+	} else if (mnode->flags & LY_NODE_MAND_FALSE) {
+		fprintf(f, "%*smandatory \"false\";\n", LEVEL, INDENT);
 	}
 
 	yang_print_mnode_common(f, level, mnode);
