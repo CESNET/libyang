@@ -194,6 +194,40 @@ static void yang_print_must(FILE *f, int level, struct ly_must *must)
 	fprintf(f, "%*s}\n", LEVEL, INDENT);
 }
 
+static void yang_print_refine(FILE *f, int level, struct ly_refine *refine)
+{
+	int i;
+
+	fprintf(f, "%*srefine \"%s\" {\n", LEVEL, INDENT, refine->target);
+	level++;
+
+	yang_print_mnode_common2(f, level, (struct ly_mnode *)refine);
+
+	for (i = 0; i < refine->must_size; ++i) {
+		yang_print_must(f, level, &refine->must[i]);
+	}
+
+	if (refine->target_type & (LY_NODE_LEAF | LY_NODE_CHOICE)) {
+		if (refine->mod.dflt != NULL) {
+			fprintf(f, "%*sdefault \"%s\";\n", LEVEL, INDENT, refine->mod.dflt);
+		}
+	} else if (refine->target_type == LY_NODE_CONTAINER) {
+		if (refine->mod.presence != NULL) {
+			yang_print_text(f, level, "presence", refine->mod.presence);
+		}
+	} else if (refine->target_type & (LY_NODE_LIST | LY_NODE_LEAFLIST)) {
+		if (refine->mod.list.min > 0) {
+			fprintf(f, "%*smin-elements %u;\n", LEVEL, INDENT, refine->mod.list.min);
+		}
+		if (refine->mod.list.max > 0) {
+			fprintf(f, "%*smax-elements %u;\n", LEVEL, INDENT, refine->mod.list.max);
+		}
+	}
+
+	level--;
+	fprintf(f, "%*s}\n", LEVEL, INDENT);
+}
+
 static void yang_print_typedef(FILE *f, int level, struct ly_module *module, struct ly_tpdf *tpdf)
 {
 	fprintf(f, "%*stypedef %s {\n", LEVEL, INDENT, tpdf->name);
@@ -365,6 +399,10 @@ static void yang_print_uses(FILE *f, int level, struct ly_mnode *mnode)
 	level++;
 
 	yang_print_mnode_common(f, level, mnode);
+
+	for (i = 0; i < uses->refine_size; i++) {
+		yang_print_refine(f, level, &uses->refine[i]);
+	}
 
 	level--;
 	fprintf(f, "%*s}\n", LEVEL, INDENT);
