@@ -150,7 +150,8 @@ static void tree_print_container(FILE *f, int level, char *indent, struct ly_mno
 	struct ly_mnode_container *cont = (struct ly_mnode_container *)mnode;
 	struct ly_mnode *sub;
 
-	fprintf(f, "%s+--%s %s%s\n", indent, (cont->flags & LY_NODE_CONFIG_W ? "rw" : "ro"), cont->name, (cont->presence ? "!" : ""));
+	fprintf(f, "%s%s--%s %s%s\n", indent, (cont->flags & LY_NODE_STATUS_DEPRC ? "x" : (cont->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")),
+			(cont->flags & LY_NODE_CONFIG_W ? "rw" : "ro"), cont->name, (cont->presence ? "!" : ""));
 
 	level++;
 	new_indent = create_indent(level, indent, mnode, 0);
@@ -173,7 +174,8 @@ static void tree_print_choice(FILE *f, int level, char *indent, struct ly_mnode 
 	struct ly_mnode_choice *choice = (struct ly_mnode_choice *)mnode;
 	struct ly_mnode *sub;
 
-	fprintf(f, "%s+--%s (%s)%s", indent, (choice->flags & LY_NODE_CONFIG_W ? "rw" : "ro"), choice->name, (choice->flags & LY_NODE_MAND_TRUE ? "" : "?"));
+	fprintf(f, "%s%s--%s (%s)%s", indent, (choice->flags & LY_NODE_STATUS_DEPRC ? "x" : (choice->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")),
+			(choice->flags & LY_NODE_CONFIG_W ? "rw" : "ro"), choice->name, (choice->flags & LY_NODE_MAND_TRUE ? "" : "?"));
 	if (choice->dflt != NULL) {
 		fprintf(f, " <%s>", choice->dflt->name);
 	}
@@ -197,10 +199,11 @@ static void tree_print_choice(FILE *f, int level, char *indent, struct ly_mnode 
 static void tree_print_case(FILE *f, int level, char *indent, unsigned int max_name_len, int shorthand, struct ly_mnode *mnode)
 {
 	char *new_indent;
-	//struct ly_mnode_case *cas = (struct ly_mnode_case *)mnode;
+	struct ly_mnode_case *cas = (struct ly_mnode_case *)mnode;
 	struct ly_mnode *sub;
 
-	fprintf(f, "%s+--:(%s)\n", indent, mnode->name);
+	fprintf(f, "%s%s--:(%s)\n", indent, (cas->flags & LY_NODE_STATUS_DEPRC ? "x" : (cas->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")),
+			mnode->name);
 
 	level++;
 	new_indent = create_indent(level, indent, mnode, shorthand);
@@ -246,8 +249,9 @@ static void tree_print_leaf(FILE *f, char *indent, unsigned int max_name_len, st
 		}
 	}
 
-	fprintf(f, "%s+--%s %s%s%*s", indent, (leaf->flags & LY_NODE_CONFIG_W ? "rw" : "ro"),
-			leaf->name, (leaf->flags & LY_NODE_MAND_TRUE || is_key ? " " : "?"), 3+(int)(max_name_len-strlen(leaf->name)), "   ");
+	fprintf(f, "%s%s--%s %s%s%*s", indent, (leaf->flags & LY_NODE_STATUS_DEPRC ? "x" : (leaf->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")),
+			(leaf->flags & LY_NODE_CONFIG_W ? "rw" : "ro"), leaf->name, (leaf->flags & LY_NODE_MAND_TRUE || is_key ? " " : "?"),
+			3+(int)(max_name_len-strlen(leaf->name)), "   ");
 	tree_print_type(f, &leaf->type);
 	if (leaf->dflt != NULL) {
 		fprintf(f, " <%s>", leaf->dflt);
@@ -259,8 +263,8 @@ static void tree_print_leaflist(FILE *f, char *indent, unsigned int max_name_len
 {
 	struct ly_mnode_leaflist *leaflist = (struct ly_mnode_leaflist *)mnode;
 
-	fprintf(f, "%s+--%s %s*%*s", indent, (leaflist->flags & LY_NODE_CONFIG_W ? "rw" : "ro"),
-			leaflist->name, 3+(int)(max_name_len-strlen(leaflist->name)), "   ");
+	fprintf(f, "%s%s--%s %s*%*s", indent, (leaflist->flags & LY_NODE_STATUS_DEPRC ? "x" : (leaflist->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")),
+			(leaflist->flags & LY_NODE_CONFIG_W ? "rw" : "ro"), leaflist->name, 3+(int)(max_name_len-strlen(leaflist->name)), "   ");
 	tree_print_type(f, &leaflist->type);
 	fprintf(f, "\n");
 }
@@ -273,7 +277,8 @@ static void tree_print_list(FILE *f, int level, char *indent, struct ly_mnode *m
 	struct ly_mnode *sub;
 	struct ly_mnode_list *list = (struct ly_mnode_list *)mnode;
 
-	fprintf(f, "%s+--%s %s*", indent, (mnode->flags & LY_NODE_CONFIG_W ? "rw" : "ro"), mnode->name);
+	fprintf(f, "%s%s--%s %s*", indent, (list->flags & LY_NODE_STATUS_DEPRC ? "x" : (list->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")),
+			(mnode->flags & LY_NODE_CONFIG_W ? "rw" : "ro"), mnode->name);
 
 	for (i = 0; i < list->keys_size; i++) {
 		if (i == 0) {
