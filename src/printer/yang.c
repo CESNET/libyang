@@ -171,6 +171,29 @@ static void yang_print_type(FILE *f, int level, struct ly_module *module, struct
 	fprintf(f, "%*s}\n", LEVEL, INDENT);
 }
 
+static void yang_print_must(FILE *f, int level, struct ly_must *must)
+{
+	fprintf(f, "%*smust \"%s\" {\n", LEVEL, INDENT, must->cond);
+	level++;
+
+	if (must->eapptag != NULL) {
+		fprintf(f, "%*serror-app-tag \"%s\";\n", LEVEL, INDENT, must->eapptag);
+	}
+
+	if (must->emsg != NULL) {
+		yang_print_text(f, level, "error-message", must->emsg);
+	}
+	if (must->dsc != NULL) {
+		yang_print_text(f, level, "description", must->dsc);
+	}
+	if (must->ref != NULL) {
+		yang_print_text(f, level, "reference", must->ref);
+	}
+
+	level--;
+	fprintf(f, "%*s}\n", LEVEL, INDENT);
+}
+
 static void yang_print_typedef(FILE *f, int level, struct ly_module *module, struct ly_tpdf *tpdf)
 {
 	fprintf(f, "%*stypedef %s {\n", LEVEL, INDENT, tpdf->name);
@@ -209,7 +232,13 @@ static void yang_print_container(FILE *f, int level, struct ly_mnode *mnode)
 	struct ly_mnode_container *cont = (struct ly_mnode_container *)mnode;
 
 	fprintf(f, "%*scontainer %s {\n", LEVEL, INDENT, mnode->name);
+
 	level++;
+
+	for (i = 0; i < cont->must_size; i++) {
+		yang_print_must(f, level, &cont->must[i]);
+	}
+
 	yang_print_mnode_common2(f, level, mnode);
 
 	for (i = 0; i < cont->tpdf_size; i++) {
@@ -249,6 +278,9 @@ static void yang_print_leaf(FILE *f, int level, struct ly_mnode *mnode)
 	fprintf(f, "%*sleaf %s {\n", LEVEL, INDENT, mnode->name);
 	level++;
 	yang_print_mnode_common2(f, level, mnode);
+	for (i = 0; i < leaf->must_size; i++) {
+		yang_print_must(f, level, &leaf->must[i]);
+	}
 	yang_print_type(f, level, mnode->module, &leaf->type);
 	level--;
 	fprintf(f, "%*s}\n", LEVEL, INDENT);
@@ -261,6 +293,9 @@ static void yang_print_leaflist(FILE *f, int level, struct ly_mnode *mnode)
 	fprintf(f, "%*sleaf-list %s {\n", LEVEL, INDENT, mnode->name);
 	level++;
 	yang_print_mnode_common2(f, level, mnode);
+	for (i = 0; i < llist->must_size; i++) {
+		yang_print_must(f, level, &llist->must[i]);
+	}
 	yang_print_type(f, level, mnode->module, &llist->type);
 	level--;
 	fprintf(f, "%*s}\n", LEVEL, INDENT);
