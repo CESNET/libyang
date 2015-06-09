@@ -1300,7 +1300,7 @@ static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 			GETVAL(value, sub, "value");
 			if (!strcmp(value, "false")) {
 				mnode->flags |= LY_NODE_CONFIG_R;
-			} else if (!strcmp(value, "false")) {
+			} else if (!strcmp(value, "true")) {
 				mnode->flags |= LY_NODE_CONFIG_W;
 			} else {
 				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
