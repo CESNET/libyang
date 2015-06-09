@@ -111,6 +111,17 @@ static void yang_print_type(FILE *f, int level, struct ly_module *module, struct
 	}
 	level++;
 	switch (type->base) {
+	case LY_TYPE_BINARY:
+		if (type->info.binary.length != NULL) {
+			fprintf(f, "%*slength \"%s\";\n", LEVEL, INDENT, type->info.binary.length);
+		}
+		break;
+	case LY_TYPE_BITS:
+		/* TODO */
+		break;
+	case LY_TYPE_DEC64:
+		/* TODO */
+		break;
 	case LY_TYPE_ENUM:
 		for (i = 0; i < type->info.enums.count; i++) {
 			fprintf(f, "%*senum %s {\n", LEVEL, INDENT, type->info.enums.list[i].name);
@@ -128,8 +139,32 @@ static void yang_print_type(FILE *f, int level, struct ly_module *module, struct
 			fprintf(f, "%*sbase %s:%s;\n", LEVEL, INDENT, type->info.ident.ref->module->prefix, type->info.ident.ref->name);
 		}
 		break;
+	case LY_TYPE_INST:
+		/* TODO */
+		break;
+	case LY_TYPE_INT8:
+	case LY_TYPE_INT16:
+	case LY_TYPE_INT32:
+	case LY_TYPE_INT64:
+	case LY_TYPE_UINT8:
+	case LY_TYPE_UINT16:
+	case LY_TYPE_UINT32:
+	case LY_TYPE_UINT64:
+		if (type->info.num.range != NULL) {
+			fprintf(f, "%*srange \"%s\";\n", LEVEL, INDENT, type->info.num.range);
+		}
+		break;
+	case LY_TYPE_LEAFREF:
+		/* TODO */
+		break;
+	case LY_TYPE_STRING:
+		/* TODO */
+		break;
+	case LY_TYPE_UNION:
+		/* TODO */
+		break;
 	default:
-		/* TODO other cases */
+		/* other types do not have substatements */
 		break;
 	}
 	level--;
