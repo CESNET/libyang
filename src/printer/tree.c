@@ -225,12 +225,13 @@ static void tree_print_case(FILE *f, int level, char *indent, unsigned int max_n
 	free(new_indent);
 }
 
-static void tree_print_anyxml(FILE *f, char *indent, struct ly_mnode *mnode)
+static void tree_print_anyxml(FILE *f, char *indent, unsigned int max_name_len, struct ly_mnode *mnode)
 {
 	struct ly_mnode_anyxml *anyxml = (struct ly_mnode_anyxml *)mnode;
 
-	fprintf(f, "%s+--%s %s\n", indent, (anyxml->flags & LY_NODE_CONFIG_W ? "rw" : "ro"),
-			anyxml->name);
+	fprintf(f, "%s%s--%s %s%s%*sanyxml\n", indent, (anyxml->flags & LY_NODE_STATUS_DEPRC ? "x" : (anyxml->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")),
+			(anyxml->flags & LY_NODE_CONFIG_W ? "rw" : "ro"), anyxml->name, (anyxml->flags & LY_NODE_MAND_TRUE ? " " : "?"),
+			3+(int)(max_name_len-strlen(anyxml->name)), "   ");
 }
 
 static void tree_print_leaf(FILE *f, char *indent, unsigned int max_name_len, struct ly_mnode *mnode)
@@ -344,7 +345,7 @@ static void tree_print_mnode(FILE *f, int level, char *indent, unsigned int max_
 		tree_print_list(f, level, indent, mnode);
 		break;
 	case LY_NODE_ANYXML:
-		tree_print_anyxml(f, indent, mnode);
+		tree_print_anyxml(f, indent, max_name_len, mnode);
 		break;
 	case LY_NODE_USES:
 		tree_print_uses(f, level, indent, max_name_len, mnode);
