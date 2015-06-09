@@ -268,6 +268,9 @@ static void yang_print_container(FILE *f, int level, struct ly_mnode *mnode)
 	fprintf(f, "%*scontainer %s {\n", LEVEL, INDENT, mnode->name);
 
 	level++;
+	if (cont->presence != NULL) {
+		yang_print_text(f, level, "presence", cont->presence);
+	}
 
 	for (i = 0; i < cont->must_size; i++) {
 		yang_print_must(f, level, &cont->must[i]);
