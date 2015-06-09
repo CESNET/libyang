@@ -382,6 +382,15 @@ static void yang_print_leaflist(FILE *f, int level, struct ly_mnode *mnode)
 
 	level++;
 	yang_print_mnode_common2(f, level, mnode);
+	if (llist->flags & LY_NODE_USERORDERED) {
+		fprintf(f, "%*sordered-by user;\n", LEVEL, INDENT);
+	}
+	if (llist->min > 0) {
+		fprintf(f, "%*smin-elements %u;\n", LEVEL, INDENT, llist->min);
+	}
+	if (llist->max > 0) {
+		fprintf(f, "%*smax-elements %u;\n", LEVEL, INDENT, llist->max);
+	}
 	for (i = 0; i < llist->must_size; i++) {
 		yang_print_must(f, level, &llist->must[i]);
 	}
@@ -411,6 +420,28 @@ static void yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
 			fprintf(f, "%s%s", list->keys[i]->name, i + 1 < list->keys_size ? " " : "");
 		}
 		fprintf(f, "\";\n");
+	}
+
+	for (j = 0; j < list->unique_size; j++) {
+		uniq = &list->unique[i];
+		fprintf(f, "%*sunique \"", LEVEL, INDENT);
+		for (i = 0; i < uniq->leafs_size; i++) {
+			fprintf(f, "%s%s", uniq->leafs[i]->name, i + 1 < uniq->leafs_size ? " " : "");
+		}
+		fprintf(f, "\";\n");
+	}
+
+	if (list->flags & LY_NODE_USERORDERED) {
+		fprintf(f, "%*sordered-by user;\n", LEVEL, INDENT);
+	}
+	if (list->min > 0) {
+		fprintf(f, "%*smin-elements %u;\n", LEVEL, INDENT, list->min);
+	}
+	if (list->max > 0) {
+		fprintf(f, "%*smax-elements %u;\n", LEVEL, INDENT, list->max);
+	}
+	for (i = 0; i < list->must_size; i++) {
+		yang_print_must(f, level, &list->must[i]);
 	}
 
 	for (i = 0; i < list->tpdf_size; i++) {
