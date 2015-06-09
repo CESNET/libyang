@@ -314,9 +314,15 @@ static void yang_print_case(FILE *f, int level, struct ly_mnode *mnode)
 static void yang_print_choice(FILE *f, int level, struct ly_mnode *mnode)
 {
 	struct ly_mnode *sub;
+	struct ly_mnode_choice *choice = (struct ly_mnode_choice *)mnode;
 
 	fprintf(f, "%*schoice %s {\n", LEVEL, INDENT, mnode->name);
+
 	level++;
+	if (choice->dflt != NULL) {
+		fprintf(f, "%*sdefault \"%s\";\n", LEVEL, INDENT, choice->dflt->name);
+	}
+
 	yang_print_mnode_common2(f, level, mnode);
 	LY_TREE_FOR(mnode->child, sub) {
 		yang_print_mnode(f, level, sub,
@@ -330,38 +336,69 @@ static void yang_print_choice(FILE *f, int level, struct ly_mnode *mnode)
 
 static void yang_print_leaf(FILE *f, int level, struct ly_mnode *mnode)
 {
+	int i;
 	struct ly_mnode_leaf *leaf = (struct ly_mnode_leaf *)mnode;
 
 	fprintf(f, "%*sleaf %s {\n", LEVEL, INDENT, mnode->name);
+
 	level++;
 	yang_print_mnode_common2(f, level, mnode);
 	for (i = 0; i < leaf->must_size; i++) {
 		yang_print_must(f, level, &leaf->must[i]);
 	}
 	yang_print_type(f, level, mnode->module, &leaf->type);
+	if (leaf->units != NULL) {
+		fprintf(f, "%*sunits \"%s\";\n", LEVEL, INDENT, leaf->units);
+	}
+	if (leaf->dflt != NULL) {
+		fprintf(f, "%*sdefault \"%s\";\n", LEVEL, INDENT, leaf->dflt);
+	}
+	level--;
+
+	fprintf(f, "%*s}\n", LEVEL, INDENT);
+}
+
+static void yang_print_anyxml(FILE *f, int level, struct ly_mnode *mnode)
+{
+	int i;
+	struct ly_mnode_anyxml *anyxml = (struct ly_mnode_anyxml *)mnode;
+
+	fprintf(f, "%*sanyxml %s {\n", LEVEL, INDENT, anyxml->name);
+	level++;
+	yang_print_mnode_common2(f, level, mnode);
+	for (i = 0; i < anyxml->must_size; i++) {
+		yang_print_must(f, level, &anyxml->must[i]);
+	}
 	level--;
 	fprintf(f, "%*s}\n", LEVEL, INDENT);
 }
 
 static void yang_print_leaflist(FILE *f, int level, struct ly_mnode *mnode)
 {
+	int i;
 	struct ly_mnode_leaflist *llist = (struct ly_mnode_leaflist *)mnode;
 
 	fprintf(f, "%*sleaf-list %s {\n", LEVEL, INDENT, mnode->name);
+
 	level++;
 	yang_print_mnode_common2(f, level, mnode);
 	for (i = 0; i < llist->must_size; i++) {
 		yang_print_must(f, level, &llist->must[i]);
 	}
 	yang_print_type(f, level, mnode->module, &llist->type);
+	if (llist->units != NULL) {
+		fprintf(f, "%*sunits \"%s\";\n", LEVEL, INDENT, llist->units);
+	}
 	level--;
+
 	fprintf(f, "%*s}\n", LEVEL, INDENT);
 }
 
 static void yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
 {
-	int i;
+	int i, j;
 	struct ly_mnode *sub;
+	struct ly_unique *uniq;
 	struct ly_mnode_list *list = (struct ly_mnode_list *)mnode;
 
 	fprintf(f, "%*slist %s {\n", LEVEL, INDENT, mnode->name);
@@ -416,6 +453,7 @@ static void yang_print_grouping(FILE *f, int level, struct ly_mnode *mnode)
 
 static void yang_print_uses(FILE *f, int level, struct ly_mnode *mnode)
 {
+	int i;
 	struct ly_mnode_uses *uses = (struct ly_mnode_uses *)mnode;
 
 	fprintf(f, "%*suses %s {\n", LEVEL, INDENT, uses->name);
