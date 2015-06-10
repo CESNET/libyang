@@ -1430,7 +1430,10 @@ static struct ly_mnode *read_yin_case(struct ly_module *module,
 	}
 
 	/* insert the node into the schema tree */
-	ly_mnode_addchild(parent, retval);
+	if (ly_mnode_addchild(parent, retval)) {
+		goto error;
+	}
+
 	return retval;
 
 error:
@@ -1543,13 +1546,14 @@ static struct ly_mnode *read_yin_choice(struct ly_module *module,
 			LOGVAL(VE_INARG, LOGLINE(yin), dflt_str, "default");
 			goto error;
 		}
-		free(dflt_str);
 	}
 
 	/* insert the node into the schema tree */
-	if (parent) {
-		ly_mnode_addchild(parent, retval);
+	if (parent && ly_mnode_addchild(parent, retval)) {
+		goto error;
 	}
+
+	free(dflt_str);
 
 	return retval;
 
@@ -1636,8 +1640,8 @@ static struct ly_mnode *read_yin_anyxml(struct ly_module *module,
 		lyxml_free_elem(module->ctx, sub);
 	}
 
-	if (parent) {
-		ly_mnode_addchild(parent, retval);
+	if (parent && ly_mnode_addchild(parent, retval)) {
+		goto error;
 	}
 
 	return retval;
@@ -1755,8 +1759,8 @@ static struct ly_mnode *read_yin_leaf(struct ly_module *module,
 		lyxml_free_elem(module->ctx, sub);
 	}
 
-	if (parent) {
-		ly_mnode_addchild(parent, retval);
+	if (parent && ly_mnode_addchild(parent, retval)) {
+		goto error;
 	}
 
 	return retval;
@@ -1922,8 +1926,8 @@ static struct ly_mnode *read_yin_leaflist(struct ly_module *module,
 		lyxml_free_elem(module->ctx, sub);
 	}
 
-	if (parent) {
-		ly_mnode_addchild(parent, retval);
+	if (parent && ly_mnode_addchild(parent, retval)) {
+		goto error;
 	}
 
 	return retval;
@@ -2133,8 +2137,8 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 		}
 	}
 
-	if (parent) {
-		ly_mnode_addchild(parent, retval);
+	if (parent && ly_mnode_addchild(parent, retval)) {
+		goto error;
 	}
 
 	if (!key_str) {
@@ -2343,8 +2347,8 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
 		}
 	}
 
-	if (parent) {
-		ly_mnode_addchild(parent, retval);
+	if (parent && ly_mnode_addchild(parent, retval)) {
+		goto error;
 	}
 
 	return retval;
@@ -2445,8 +2449,8 @@ static struct ly_mnode *read_yin_grouping(struct ly_module *module,
 		}
 	}
 
-	if (parent) {
-		ly_mnode_addchild(parent, retval);
+	if (parent && ly_mnode_addchild(parent, retval)) {
+		goto error;
 	}
 
 	return retval;
@@ -2562,7 +2566,10 @@ int resolve_uses(struct ly_mnode_uses *uses, unsigned int line)
 			LOGVAL(VE_SPEC, line, "Copying data from grouping failed");
 			return EXIT_FAILURE;
 		}
-		ly_mnode_addchild((struct ly_mnode *)uses, mnode_aux);
+		if (ly_mnode_addchild((struct ly_mnode *)uses, mnode_aux)) {
+			ly_mnode_free(mnode_aux);
+			return EXIT_FAILURE;
+		}
 	}
 	ctx = uses->module->ctx;
 
@@ -2697,8 +2704,8 @@ int resolve_uses(struct ly_mnode_uses *uses, unsigned int line)
 				mnode = read_yin_uses(module, aug->target, sub, 1, NULL);
 			} else if (!strcmp(sub->name, "choice")) {
 				mnode = read_yin_case(module, aug->target, sub, 1, NULL);
-			} else if (aug->target->nodetype == LY_NODE_CHOICE && !strcmp(sub->name, "case")) {
-					mnode = read_yin_case(module, aug->target, sub, 1, NULL);
+			} else if (!strcmp(sub->name, "case")) {
+				mnode = read_yin_case(module, aug->target, sub, 1, NULL);
 			} else if (!strcmp(sub->name, "anyxml")) {
 				mnode = read_yin_anyxml(module, aug->target, sub, 1);
 	#if 0

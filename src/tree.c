@@ -33,6 +33,40 @@
 
 void ly_submodule_free(struct ly_submodule *submodule);
 
+static const char *strnodetype(LY_NODE_TYPE type)
+{
+	switch(type) {
+	case LY_NODE_AUGMENT:
+		return "augment";
+	case LY_NODE_CONTAINER:
+		return "container";
+	case LY_NODE_CHOICE:
+		return "choice";
+	case LY_NODE_LEAF:
+		return "leaf";
+	case LY_NODE_LEAFLIST:
+		return "leaf-list";
+	case LY_NODE_LIST:
+		return "list";
+	case LY_NODE_ANYXML:
+		return "anyxml";
+	case LY_NODE_USES:
+		return "uses";
+	case LY_NODE_GROUPING:
+		return "grouping";
+	case LY_NODE_CASE:
+		return "case";
+	case LY_NODE_INPUT:
+		return "input";
+	case LY_NODE_OUTPUT:
+		return "output";
+	case LY_NODE_NOTIF:
+		return "notification";
+	}
+
+	return NULL;
+}
+
 struct ly_mnode_leaf *find_leaf(struct ly_mnode *parent, const char *name, int len)
 {
 	struct ly_mnode *child;
@@ -142,6 +176,55 @@ int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
 
 	assert(parent);
 	assert(child);
+
+	/* checks */
+	switch(parent->nodetype) {
+	case LY_NODE_CONTAINER:
+	case LY_NODE_LIST:
+	case LY_NODE_GROUPING:
+	case LY_NODE_USES:
+		if (!(child->nodetype & (LY_NODE_ANYXML | LY_NODE_CHOICE
+				| LY_NODE_CONTAINER | LY_NODE_GROUPING | LY_NODE_LEAF
+				| LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_USES))) {
+			LOGVAL(VE_SPEC, 0, "Unexpected substatement \"%s\" in \"%s\" (%s).",
+					strnodetype(child->nodetype), strnodetype(parent->nodetype), parent->name);
+			return EXIT_FAILURE;
+		}
+		break;
+	case LY_NODE_CHOICE:
+		if (!(child->nodetype & (LY_NODE_ANYXML | LY_NODE_CASE
+				| LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST
+				| LY_NODE_LIST))) {
+			LOGVAL(VE_SPEC, 0, "Unexpected substatement \"%s\" in \"choice\" %s.",
+					strnodetype(child->nodetype), parent->name);
+			return EXIT_FAILURE;
+		}
+		break;
+	case LY_NODE_CASE:
+		if (!(child->nodetype & (LY_NODE_ANYXML | LY_NODE_CHOICE
+				| LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST
+				| LY_NODE_LIST | LY_NODE_USES))) {
+			LOGVAL(VE_SPEC, 0, "Unexpected substatement \"%s\" in \"case\" %s.",
+					strnodetype(child->nodetype), parent->name);
+			return EXIT_FAILURE;
+		}
+		break;
+	case LY_NODE_LEAF:
+	case LY_NODE_LEAFLIST:
+	case LY_NODE_ANYXML:
+		LOGVAL(VE_SPEC, 0, "The \"%s\" statement (%s) cannot have any substatement.",
+				strnodetype(parent->nodetype), parent->name);
+		return EXIT_FAILURE;
+	case LY_NODE_AUGMENT:
+		LOGVAL(VE_SPEC, 0, "Internal error (%s:%d)", __FILE__, __LINE__);
+		return EXIT_FAILURE;
+	case LY_NODE_INPUT:
+	case LY_NODE_OUTPUT:
+	case LY_NODE_NOTIF:
+		LOGVAL(VE_SPEC, 0, "\"%s\" not yet implemented (%s:%d)",
+				strnodetype(parent->nodetype), __FILE__, __LINE__);
+		return EXIT_FAILURE;
+	}
 
 	if (child->parent) {
 		ly_mnode_unlink(child);
@@ -694,6 +777,8 @@ void ly_mnode_free(struct ly_mnode *node)
 		ly_grp_free(ctx, (struct ly_mnode_grp *)node);
 		break;
 	case LY_NODE_CASE:
+	case LY_NODE_AUGMENT:
+		/* do nothing */
 		break;
 	case LY_NODE_INPUT:
 		/* TODO */
@@ -870,10 +955,9 @@ struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, 
 		/* go recursively */
 		LY_TREE_FOR(mnode->child, child) {
 			aux = ly_mnode_dup(module, child, retval->flags, 1, line);
-			if (!aux) {
+			if (!aux || ly_mnode_addchild(retval, aux)) {
 				goto error;
 			}
-			ly_mnode_addchild(retval, aux);
 		}
 	}
 

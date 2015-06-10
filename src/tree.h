@@ -244,7 +244,7 @@ struct ly_refine {
 };
 
 typedef enum ly_node_type {
-	/* LY_NODE_AUGMENT = 0 */
+	LY_NODE_AUGMENT = 0,
 	LY_NODE_CONTAINER = 0x01,
 	LY_NODE_CHOICE = 0x02,
 	LY_NODE_LEAF = 0x04,
