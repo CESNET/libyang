@@ -2562,7 +2562,7 @@ static int find_grouping(struct ly_mnode *parent, struct ly_mnode_uses *uses, in
 static struct ly_mnode *read_yin_uses(struct ly_module *module,
                                       struct ly_mnode *parent,
                                       struct lyxml_elem *node, int resolve,
-									  struct mnode_list **unres)
+                                      struct mnode_list **unres)
 {
 	struct lyxml_elem *sub, *next;
 	struct ly_mnode *retval;
