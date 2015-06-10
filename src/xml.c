@@ -657,7 +657,11 @@ struct lyxml_attr *lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_attr *attr)
 	}
 
 	if (attr->type == LYXML_ATTR_NS) {
-		result = calloc(1, sizeof (struct lyxml_ns));
+		/* this is correct, despite that all attributes seems like a standard
+		 * attributes (struct lyxml_attr), some of them can be namespace
+		 * definitions (and in that case they are struct lyxml_ns).
+		 */
+		result = (struct lyxml_attr *)calloc(1, sizeof (struct lyxml_ns));
 	} else {
 		result = calloc(1, sizeof (struct lyxml_attr));
 	}
