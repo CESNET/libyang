@@ -2777,6 +2777,9 @@ static struct ly_mnode *read_yin_uses(struct ly_module *module,
 		} else {
 			LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
 			goto error;
+#else
+		} else {
+			lyxml_free_elem(module->ctx, sub);
 #endif
 		}
 	}
@@ -2793,7 +2796,7 @@ static struct ly_mnode *read_yin_uses(struct ly_module *module,
 		if (!strcmp(sub->name, "refine")) {
 			r = fill_yin_refine(module, sub, &uses->refine[uses->refine_size]);
 			uses->refine_size++;
-		} else if (!strcmp(sub->name, "augment")) {
+		} else { /* augment */
 			r = fill_yin_augment(module, retval, sub, &uses->augment[uses->augment_size]);
 			uses->augment_size++;
 		}
