@@ -411,7 +411,7 @@ static void yang_print_leaflist(FILE *f, int level, struct ly_mnode *mnode)
 
 static void yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
 {
-	int i, j;
+	int i;
 	struct ly_mnode *sub;
 	struct ly_unique *uniq;
 	struct ly_mnode_list *list = (struct ly_mnode_list *)mnode;
@@ -428,7 +428,7 @@ static void yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
 		fprintf(f, "\";\n");
 	}
 
-	for (j = 0; j < list->unique_size; j++) {
+	for (i = 0; i < list->unique_size; i++) {
 		uniq = &list->unique[i];
 		fprintf(f, "%*sunique \"", LEVEL, INDENT);
 		for (i = 0; i < uniq->leafs_size; i++) {
