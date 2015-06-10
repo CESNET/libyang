@@ -891,6 +891,27 @@ error:
 	return EXIT_FAILURE;
 }
 
+static int fill_yin_augment(struct ly_module *module, struct ly_mnode *parent, struct lyxml_elem *yin, struct ly_augment *aug)
+{
+	const char *value;
+
+	GETVAL(value, yin, "target-node");
+	aug->target_name = lydict_insert(module->ctx, value, 0);
+	aug->parent = parent;
+
+	/* do not resolve now, just keep the definition which will be parsed later
+	 * when we will have the target node
+	 */
+	lyxml_unlink_elem(yin);
+	aug->child = (struct ly_mnode *)yin;
+
+	return EXIT_SUCCESS;
+
+error:
+
+	return EXIT_FAILURE;
+}
+
 static int fill_yin_refine(struct ly_module *module, struct lyxml_elem *yin, struct ly_refine *rfn)
 {
 	struct lyxml_elem *sub, *next;
@@ -904,43 +925,13 @@ static int fill_yin_refine(struct ly_module *module, struct lyxml_elem *yin, str
 	GETVAL(value, yin, "target-node");
 	rfn->target = lydict_insert(module->ctx, value, strlen(value));
 
-	LY_TREE_FOR_SAFE(yin->child, next, sub) {
-		/* applicable to any target */
-		if (!strcmp(sub->name, "description")) {
-			if (rfn->dsc) {
-				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
-				goto error;
-			}
-			rfn->dsc = read_yin_subnode(module->ctx, sub, "text");
-			if (!rfn->dsc) {
-				goto error;
-			}
-		} else if (!strcmp(sub->name, "reference")) {
-			if (rfn->ref) {
-				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
-				goto error;
-			}
-			rfn->ref = read_yin_subnode(module->ctx, sub, "text");
-			if (!rfn->ref) {
-				goto error;
-			}
-		} else if (!strcmp(sub->name, "config")) {
-			if (rfn->flags & LY_NODE_CONFIG_MASK) {
-				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
-				goto error;
-			}
-			GETVAL(value, sub, "value");
-			if (!strcmp(value, "false")) {
-				rfn->flags |= LY_NODE_CONFIG_R;
-			} else if (!strcmp(value, "false")) {
-				rfn->flags |= LY_NODE_CONFIG_W;
-			} else {
-				LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
-				goto error;
-			}
+	if (read_yin_common(module, NULL, (struct ly_mnode *)rfn, yin, OPT_CONFIG)) {
+		goto error;
+	}
 
+	LY_TREE_FOR_SAFE(yin->child, next, sub) {
 		/* limited applicability */
-		} else if (!strcmp(sub->name, "default")) {
+		if (!strcmp(sub->name, "default")) {
 			/* leaf or choice */
 			if (rfn->mod.dflt) {
 				LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
@@ -1234,9 +1225,6 @@ error:
  * Covers:
  * description, reference, status, optionaly config
  *
- * ext: 0 - no config
- *      1 - parse config, but not inherit it
- *      2 - parse config and if not present, inherit it from parent
  */
 static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 		                   struct ly_mnode *mnode, struct lyxml_elem *xmlnode, int opt)
@@ -1250,11 +1238,13 @@ static int read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 		mnode->module = module;
 	}
 
-	GETVAL(value, xmlnode, "name");
-	if ((opt & OPT_IDENT) && check_identifier(value, LY_IDENT_NAME, LOGLINE(xmlnode), NULL, NULL)) {
-		goto error;
+	if (opt & OPT_IDENT) {
+		GETVAL(value, xmlnode, "name");
+		if (check_identifier(value, LY_IDENT_NAME, LOGLINE(xmlnode), NULL, NULL)) {
+			goto error;
+		}
+		mnode->name = lydict_insert(ctx, value, strlen(value));
 	}
-	mnode->name = lydict_insert(ctx, value, strlen(value));
 
 	/* process local parameters */
 	LY_TREE_FOR_SAFE(xmlnode->child, next, sub) {
@@ -2553,6 +2543,199 @@ static int find_grouping(struct ly_mnode *parent, struct ly_mnode_uses *uses, in
 	return EXIT_SUCCESS;
 }
 
+int resolve_uses(struct ly_mnode_uses *uses, unsigned int line)
+{
+	struct ly_ctx *ctx;
+	struct ly_mnode *mnode = NULL, *mnode_aux;
+	struct ly_refine *rfn;
+	struct ly_augment *aug;
+	struct ly_must *newmust;
+	struct lyxml_elem *yin, *next, *sub;
+	struct ly_module *module;
+	int i, j;
+	uint8_t size;
+
+	/* copy the data nodes from grouping into the uses context */
+	LY_TREE_FOR(uses->grp->child, mnode) {
+		mnode_aux = ly_mnode_dup(uses->module, mnode, uses->flags, 1, line);
+		if (!mnode_aux) {
+			LOGVAL(VE_SPEC, line, "Copying data from grouping failed");
+			return EXIT_FAILURE;
+		}
+		ly_mnode_addchild((struct ly_mnode *)uses, mnode_aux);
+	}
+	ctx = uses->module->ctx;
+
+	/* apply refines */
+	for (i = 0; i < uses->refine_size; i++) {
+		rfn = &uses->refine[i];
+		mnode = resolve_schema_nodeid(rfn->target, (struct ly_mnode *)uses, 1);
+		if (!mnode) {
+			LOGVAL(VE_INARG, line, rfn->target, "uses");
+			return EXIT_FAILURE;
+		}
+
+		if (rfn->target_type && !(mnode->nodetype & rfn->target_type)) {
+			LOGVAL(VE_SPEC, line, "refine substatements not applicable to the target-node");
+			return EXIT_FAILURE;
+		}
+
+		/* description on any nodetype */
+		if (rfn->dsc) {
+			lydict_remove(ctx, mnode->dsc);
+			mnode->dsc = lydict_insert(ctx, rfn->dsc, 0);
+		}
+
+		/* reference on any nodetype */
+		if (rfn->ref) {
+			lydict_remove(ctx, mnode->ref);
+			mnode->ref = lydict_insert(ctx, rfn->ref, 0);
+		}
+
+		/* config on any nodetype */
+		if (rfn->flags & LY_NODE_CONFIG_MASK) {
+			mnode->flags &= ~LY_NODE_CONFIG_MASK;
+			mnode->flags |= (rfn->flags & LY_NODE_CONFIG_MASK);
+		}
+
+		/* default value ... */
+		if (rfn->mod.dflt) {
+			if (mnode->nodetype == LY_NODE_LEAF) {
+				/* leaf */
+				lydict_remove(ctx, ((struct ly_mnode_leaf *)mnode)->dflt);
+				((struct ly_mnode_leaf *)mnode)->dflt = lydict_insert(ctx, rfn->mod.dflt, 0);
+			} else if (mnode->nodetype == LY_NODE_CHOICE) {
+				/* choice */
+				((struct ly_mnode_choice *)mnode)->dflt = resolve_schema_nodeid(rfn->mod.dflt, mnode, 0);
+				if (!((struct ly_mnode_choice *)mnode)->dflt) {
+					LOGVAL(VE_INARG, line, rfn->mod.dflt, "default");
+					return EXIT_FAILURE;
+				}
+			}
+		}
+
+		/* mandatory on leaf, anyxml or choice */
+		if (mnode->nodetype & (LY_NODE_LEAF | LY_NODE_ANYXML | LY_NODE_CHOICE)) {
+			if (rfn->flags & LY_NODE_MAND_FALSE) {
+				/* erase mandatory true flag, we don't use false flag in schema nodes */
+				mnode->flags &= ~LY_NODE_MAND_TRUE;
+			} else if (rfn->flags & LY_NODE_MAND_TRUE) {
+				/* set mandatory true flag */
+				mnode->flags |= LY_NODE_MAND_TRUE;
+			}
+		}
+
+		/* presence on container */
+		if ((mnode->nodetype & LY_NODE_CONTAINER) && rfn->mod.presence) {
+			lydict_remove(ctx, ((struct ly_mnode_container *)mnode)->presence);
+			((struct ly_mnode_container *)mnode)->presence = lydict_insert(ctx, rfn->mod.presence, 0);
+		}
+
+		/* min/max-elements on list or leaf-list */
+		if (mnode->nodetype & (LY_NODE_LEAFLIST | LY_NODE_LIST)) {
+			/* magic - bit 3 in flags means min set, bit 4 says max set */
+			if (rfn->flags & 0x04) {
+				((struct ly_mnode_list *)mnode)->min = rfn->mod.list.min;
+			}
+			if (rfn->flags & 0x08) {
+				((struct ly_mnode_list *)mnode)->max = rfn->mod.list.max;
+			}
+		}
+
+		/* must in leaf, leaf-list, list, container or anyxml */
+		if (rfn->must_size) {
+			size = ((struct ly_mnode_leaf *)mnode)->must_size + rfn->must_size;
+			newmust = realloc(((struct ly_mnode_leaf *)mnode)->must, size * sizeof *rfn->must);
+			if (!newmust) {
+				LOGMEM;
+				return EXIT_FAILURE;
+			}
+			for (i = 0, j = ((struct ly_mnode_leaf *)mnode)->must_size; i < rfn->must_size; i++, j++) {
+				newmust[j].cond = lydict_insert(ctx, rfn->must[i].cond, 0);
+				newmust[j].dsc = lydict_insert(ctx, rfn->must[i].dsc, 0);
+				newmust[j].ref = lydict_insert(ctx, rfn->must[i].ref, 0);
+				newmust[j].eapptag = lydict_insert(ctx, rfn->must[i].eapptag, 0);
+				newmust[j].emsg = lydict_insert(ctx, rfn->must[i].emsg, 0);
+			}
+
+			((struct ly_mnode_leaf *)mnode)->must = newmust;
+			((struct ly_mnode_leaf *)mnode)->must_size = size;
+		}
+	}
+
+	/* apply augments */
+	for (i = 0; i < uses->augment_size; i++) {
+		/* resolve target node */
+		aug = &uses->augment[i];
+		aug->target = resolve_schema_nodeid(aug->target_name, (struct ly_mnode *)uses, 1);
+		if (!aug->target) {
+			LOGVAL(VE_INARG, line, aug->target, "uses");
+			goto error;
+		}
+
+		if (!aug->child) {
+			continue;
+		}
+
+		yin = (struct lyxml_elem *)aug->child;
+		module = aug->parent->module;
+
+		if (read_yin_common(module, aug->target, (struct ly_mnode *)aug, yin, OPT_CONFIG)) {
+			return EXIT_FAILURE;
+		}
+
+		LY_TREE_FOR_SAFE(yin->child, next, sub) {
+			if (!strcmp(sub->name, "container")) {
+				mnode = read_yin_container(module, aug->target, sub, 1, NULL);
+			} else if (!strcmp(sub->name, "leaf-list")) {
+				mnode = read_yin_leaflist(module, aug->target, sub, 1);
+			} else if (!strcmp(sub->name, "leaf")) {
+				mnode = read_yin_leaf(module, aug->target, sub, 1);
+			} else if (!strcmp(sub->name, "list")) {
+				mnode = read_yin_list(module, aug->target, sub, 1, NULL);
+			} else if (!strcmp(sub->name, "uses")) {
+				mnode = read_yin_uses(module, aug->target, sub, 1, NULL);
+			} else if (!strcmp(sub->name, "choice")) {
+				mnode = read_yin_case(module, aug->target, sub, 1, NULL);
+			} else if (aug->target->nodetype == LY_NODE_CHOICE && !strcmp(sub->name, "case")) {
+					mnode = read_yin_case(module, aug->target, sub, 1, NULL);
+			} else if (!strcmp(sub->name, "anyxml")) {
+				mnode = read_yin_anyxml(module, aug->target, sub, 1);
+	#if 0
+			} else {
+				LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
+				goto error;
+	#else
+			} else {
+				continue;
+	#endif
+			}
+
+			if (!mnode) {
+				goto error;
+			}
+
+			lyxml_free_elem(module->ctx, sub);
+
+			/* the parent pointer will point to the augment node, but all
+			 * siblings pointers and possibly the child node in target does
+			 * not know about the augment and follow the standard schema tree
+			 * structure
+			 */
+			mnode->parent = (struct ly_mnode *)aug;
+			mnode = NULL;
+		}
+
+		lyxml_free_elem(module->ctx, yin);
+		aug->child = NULL;
+	}
+
+	return EXIT_SUCCESS;
+
+error:
+
+	return EXIT_FAILURE;
+}
 
 /*
  * resolve - referenced grouping should be bounded to the namespace (resolved)
@@ -2568,6 +2751,7 @@ static struct ly_mnode *read_yin_uses(struct ly_module *module,
 	struct ly_mnode *retval;
 	struct ly_mnode_uses *uses;
 	struct mnode_list *unres_new;
+	const char *value;
 	int c_ref = 0, c_aug = 0;
 	int r;
 
@@ -2575,6 +2759,9 @@ static struct ly_mnode *read_yin_uses(struct ly_module *module,
 	uses->nodetype = LY_NODE_USES;
 	uses->prev = (struct ly_mnode *)uses;
 	retval = (struct ly_mnode *)uses;
+
+	GETVAL(value, node, "name");
+	uses->name = lydict_insert(module->ctx, value, 0);
 
 	if (read_yin_common(module, parent, retval, node, OPT_MODULE | (resolve ? OPT_INHERIT : 0))) {
 		goto error;
@@ -2607,8 +2794,7 @@ static struct ly_mnode *read_yin_uses(struct ly_module *module,
 			r = fill_yin_refine(module, sub, &uses->refine[uses->refine_size]);
 			uses->refine_size++;
 		} else if (!strcmp(sub->name, "augment")) {
-			/* TODO r = fill_yin_augment(module, sub, &uses->augment[uses->augment_size]); */
-			r = 0;
+			r = fill_yin_augment(module, retval, sub, &uses->augment[uses->augment_size]);
 			uses->augment_size++;
 		}
 

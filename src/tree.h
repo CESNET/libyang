@@ -243,12 +243,8 @@ struct ly_refine {
 	} mod;
 };
 
-struct ly_augment {
-	/* TODO */
-	int todo;
-};
-
 typedef enum ly_node_type {
+	/* LY_NODE_AUGMENT = 0 */
 	LY_NODE_CONTAINER = 0x01,
 	LY_NODE_CHOICE = 0x02,
 	LY_NODE_LEAF = 0x04,
@@ -257,8 +253,22 @@ typedef enum ly_node_type {
 	LY_NODE_ANYXML = 0x20,
 	LY_NODE_USES = 0x40,
 	LY_NODE_GROUPING = 0x80,
-	LY_NODE_CASE = 0x100
+	LY_NODE_CASE = 0x100,
+	LY_NODE_INPUT = 0x200,
+	LY_NODE_OUTPUT = 0x400,
+	LY_NODE_NOTIF = 0x800
 } LY_NODE_TYPE;
+
+struct ly_augment {
+	const char *target_name;
+	const char *dsc;
+	const char *ref;
+	uint8_t flags;
+	struct ly_mnode *target;
+	LY_NODE_TYPE nodetype;       /**< 0 */
+	struct ly_mnode *parent;
+	struct ly_mnode *child;
+};
 
 struct ly_module {
 	struct ly_ctx *ctx;          /**< libyang context of the module */
