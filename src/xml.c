@@ -648,6 +648,72 @@ static struct lyxml_ns *get_ns(struct lyxml_elem *elem, const char *prefix)
 	return get_ns(elem->parent, prefix);
 }
 
+struct lyxml_attr *lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_attr *attr)
+{
+	struct lyxml_attr *result;
+
+	if (!attr) {
+		return NULL;
+	}
+
+	if (attr->type == LYXML_ATTR_NS) {
+		result = calloc(1, sizeof (struct lyxml_ns));
+	} else {
+		result = calloc(1, sizeof (struct lyxml_attr));
+	}
+	result->value = lydict_insert(ctx, attr->value, 0);
+	result->name = lydict_insert(ctx, attr->name, 0);
+	result->type = attr->type;
+
+	return result;
+}
+
+struct lyxml_elem *lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *parent, int recursive)
+{
+	struct lyxml_elem *result, *child;
+	struct lyxml_attr *attr, *attr_dup;
+
+	if (!elem) {
+		return NULL;
+	}
+
+	result = calloc(1, sizeof *result);
+	result->content = lydict_insert(ctx, elem->content, 0);
+	result->name = lydict_insert(ctx, elem->name, 0);
+	result->flags = elem->flags;
+	result->line = elem->line;
+	result->prev = result;
+
+	if (parent) {
+		lyxml_add_child(parent, result);
+	}
+
+	/* namespace */
+	if (elem->ns) {
+		result->ns = get_ns(result, elem->ns->prefix);
+	}
+
+	/* duplicate attributes */
+	for (attr = elem->attr; attr; attr = attr->next) {
+		attr_dup = lyxml_dup_attr(ctx, attr);
+		if (attr->type == LYXML_ATTR_STD && attr->ns) {
+			attr_dup->ns = get_ns(result, attr->ns->prefix);
+		}
+		lyxml_add_attr(result, attr_dup);
+	}
+
+	if (!recursive) {
+		return result;
+	}
+
+	/* duplicate children */
+	LY_TREE_FOR(elem->child, child) {
+		lyxml_dup_elem(ctx, child, result, 1);
+	}
+
+	return result;
+}
+
 static struct lyxml_attr *parse_attr(struct ly_ctx *ctx, const char *data,
 		                             unsigned int *len, struct lyxml_elem *elem)
 {

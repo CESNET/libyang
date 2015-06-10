@@ -191,6 +191,9 @@ const char *lyxml_get_attr(struct lyxml_elem *elem, const char *name,
  */
 int lyxml_add_child(struct lyxml_elem *parent, struct lyxml_elem *child);
 
+struct lyxml_elem *lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem,
+                                  struct lyxml_elem *parent, int recursive);
+
 /**
  * @brief Free attribute. Includes unlinking from an element if the attribute
  * is placed anywhere.
