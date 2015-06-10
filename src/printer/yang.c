@@ -235,6 +235,12 @@ static void yang_print_typedef(FILE *f, int level, struct ly_module *module, str
 
 	yang_print_mnode_common(f, level, (struct ly_mnode *)tpdf);
 	yang_print_type(f, level, module, &tpdf->type);
+	if (tpdf->units != NULL) {
+		fprintf(f, "%*sunits \"%s\";\n", LEVEL, INDENT, tpdf->units);
+	}
+	if (tpdf->dflt != NULL) {
+		fprintf(f, "%*sdefault \"%s\";\n", LEVEL, INDENT, tpdf->dflt);
+	}
 
 	level--;
 	fprintf(f, "%*s}\n", LEVEL, INDENT);
