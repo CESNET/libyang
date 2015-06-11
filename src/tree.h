@@ -174,7 +174,7 @@ struct ly_type {
 		struct {
 			struct ly_type *type;
 			int count;
-		};
+		} uni;
 	} info;
 };
 
