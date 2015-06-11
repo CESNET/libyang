@@ -117,10 +117,18 @@ static void yang_print_type(FILE *f, int level, struct ly_module *module, struct
 		}
 		break;
 	case LY_TYPE_BITS:
-		/* TODO */
+		for (i = 0; i < type->info.bits.count; ++i) {
+			fprintf(f, "%*sbit %s {\n", LEVEL, INDENT, type->info.bits.bit[i].value);
+			level++;
+			yang_print_mnode_common(f, level, (struct ly_mnode *)&type->info.bits.bit[i]);
+			fprintf(f, "%*sposition %u;\n", LEVEL, INDENT, type->info.bits.bit[i].pos);
+			level--;
+			fprintf(f, "%*s}\n", LEVEL, INDENT);
+		}
 		break;
 	case LY_TYPE_DEC64:
-		/* TODO */
+		fprintf(f, "%*sfraction-digits %d;\n", LEVEL, INDENT, type->info.dec64.dig);
+		/* TODO range incomplete */
 		break;
 	case LY_TYPE_ENUM:
 		for (i = 0; i < type->info.enums.count; i++) {
@@ -150,18 +158,21 @@ static void yang_print_type(FILE *f, int level, struct ly_module *module, struct
 	case LY_TYPE_UINT16:
 	case LY_TYPE_UINT32:
 	case LY_TYPE_UINT64:
-		if (type->info.num.range != NULL) {
+		/* TODO wrong - incomplete */
+		/*if (type->info.num.range != NULL) {
 			fprintf(f, "%*srange \"%s\";\n", LEVEL, INDENT, type->info.num.range);
-		}
+		}*/
 		break;
 	case LY_TYPE_LEAFREF:
-		/* TODO */
+		fprintf(f, "%*spath \"%s\";\n", LEVEL, INDENT, type->info.lref.path);
 		break;
 	case LY_TYPE_STRING:
-		/* TODO */
+		/* TODO length, pattern (same as range) incomplete */
 		break;
 	case LY_TYPE_UNION:
-		/* TODO */
+		for (i = 0; i < type->info.uni.count; ++i) {
+			yang_print_type(f, level, module, &type->info.uni.type[i]);
+		}
 		break;
 	default:
 		/* other types do not have substatements */
