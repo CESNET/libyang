@@ -39,7 +39,7 @@ static int uses_has_valid_child(struct ly_mnode *mnode)
 		return 0;
 	}
 
-	for (cur = mnode; cur != NULL; cur = cur->next) {
+	for (cur = mnode; cur; cur = cur->next) {
 		if (cur->nodetype & (LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_CHOICE)) {
 			return 1;
 		}
@@ -67,15 +67,15 @@ static char *create_indent(int level, const char *old_indent, const struct ly_mn
 	}
 
 	/* this is the direct child of a case */
-	if (!is_case && mnode->parent != NULL && mnode->parent->nodetype & (LY_NODE_CASE | LY_NODE_CHOICE)) {
+	if (!is_case && mnode->parent && mnode->parent->nodetype & (LY_NODE_CASE | LY_NODE_CHOICE)) {
 		/* it is not the only child */
-		if (mnode->next != NULL && mnode->next->parent != NULL && mnode->next->parent->nodetype == LY_NODE_CHOICE) {
+		if (mnode->next && mnode->next->parent && mnode->next->parent->nodetype == LY_NODE_CHOICE) {
 			next_is_case = 1;
 		}
 	}
 
 	/* we are in a submodule and we don't have a parent */
-	if (mnode->module->type == 1 && mnode->parent == NULL) {
+	if (mnode->module->type == 1 && !mnode->parent) {
 		struct ly_submodule *submod = (struct ly_submodule *)mnode->module;
 
 		/* this submodule is not the last submodule of the module */
@@ -85,9 +85,9 @@ static char *create_indent(int level, const char *old_indent, const struct ly_mn
 	}
 
 	/* there is no standard sibling and this is a uses */
-	if (mnode->next == NULL && mnode->parent != NULL && mnode->parent->nodetype == LY_NODE_USES) {
+	if (!mnode->next && mnode->parent && mnode->parent->nodetype == LY_NODE_USES) {
 		/* there is a sibling, it contains a valid node */
-		for (cur = mnode->parent->next; cur != NULL; cur = cur->next) {
+		for (cur = mnode->parent->next; cur; cur = cur->next) {
 			if (cur->nodetype & (LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_CHOICE)) {
 				sibling_outside_uses = 1;
 				break;
@@ -378,10 +378,6 @@ int tree_print_model(FILE *f, struct ly_module *module)
 	/* module */
 	max_child_len = get_max_name_len(module->data);
 	level++;
-
-	/*if (module->version) {
-		fprintf(f, "%*syang-version \"%s\";\n", LEVEL, INDENT, module->version == 1 ? "1.0" : "1.1");
-	}*/
 
 	LY_TREE_FOR(module->data, mnode) {
 		tree_print_mnode(f, level, indent, max_child_len, mnode, LY_NODE_CHOICE | LY_NODE_CONTAINER |
