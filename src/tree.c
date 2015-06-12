@@ -251,55 +251,136 @@ int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
 }
 
 /*
- * type: 0 - id is node-identifier (no '/')
- *       1 - id is descendant-schema-nodeid
+ * id - schema-nodeid
  */
-struct ly_mnode *resolve_schema_nodeid(const char *id, struct ly_mnode *start, int type)
+struct ly_mnode *resolve_schema_nodeid(const char *id, struct ly_mnode *start)
 {
-	const char *next;
-	struct ly_mnode *child;
-	int len;
+	char *id_cpy, *ptr, *name, *prefix;
+	struct ly_mnode *sibling;
+    struct ly_submodule *sub_mod;
+	int i, j;
 
-	/* TODO: support prefixes to go into different data model */
+	id_cpy = malloc((strlen(id)+1)*sizeof(char));
+	strcpy(id_cpy, id);
 
+	prefix = strtok_r(id_cpy, "/", &ptr);
+	name = strchr(prefix, ':');
+	if (name) {
+		name[0] = '\0';
+		name++;
+	} else {
+		name = prefix;
+		prefix = NULL;
+	}
+
+	/* identifier now refers to start or its sibling */
+	start = start->child;
+
+	/* absolute-schema-nodeid */
 	if (id[0] == '/') {
-		/* TODO absolute nodeid */
-	} else if (id[0]) {
-		/* descendant nodeid */
-		next = strchr(id, '/');
-		if (next) {
-			if (!type) {
-				/* invalid id */
+		/* it is not the local prefix */
+		if (prefix && strcmp(prefix, start->module->prefix)) {
+			for (i = 0; i < start->module->imp_size; i++) {
+				if (!strcmp(start->module->imp[i].prefix, prefix)) {
+                    start = start->module->imp[i].module->data;
+                    break;
+                }
+			}
+			/* no match */
+			if (i == start->module->imp_size) {
+				free(id_cpy);
 				return NULL;
 			}
-			len = next - id;
+
+		/* it is likely the local prefix */
 		} else {
-			len = strlen(id);
-		}
-
-		LY_TREE_FOR(start->child, child) {
-			if (strncmp(child->name, id, len) || child->name[len] != '\0') {
-				continue;
-			}
-
-			/* we have match */
-			if (next) {
-				/* go recursively into subnode */
-				next++;
-				if (start->nodetype == LY_NODE_CHOICE && child->nodetype != LY_NODE_CASE) {
-					/* shorthand cases */
-					return resolve_schema_nodeid(next, start, type);
-				} else {
-					return resolve_schema_nodeid(next, child, type);
-				}
-			} else {
-				/* we are at the end */
-				return child;
-			}
+			start = start->module->data;
 		}
 	}
 
-	return NULL;
+	/* descendant-schema-nodeid */
+	while (1) {
+		if (!strcmp(name, ".")) {
+			/* this node - start does not change */
+		} else if (!strcmp(name, "..")) {
+			start = start->parent;
+		} else {
+			LY_TREE_FOR(start, sibling) {
+				/* match */
+				if (!strcmp(name, sibling->name)) {
+					/* prefix check, it's not our own */
+                    if (prefix && strcmp(sibling->module->prefix, prefix)) {
+
+                        /* import prefix check */
+                        for (i = 0; i < sibling->module->imp_size; i++) {
+                            if (!strcmp(sibling->module->imp[i].prefix, prefix) && sibling->module->imp[i].module == sibling->module) {
+                                break;
+                            }
+                        }
+
+                        /* import prefix check failed */
+                        if (i == sibling->module->imp_size) {
+                            /* include import prefix check */
+                            for (i = 0; i < sibling->module->inc_size; i++) {
+                                sub_mod = sibling->module->inc[i].submodule;
+                                for (j = 0; j < sub_mod->imp_size; j++) {
+                                    if (!strcmp(sub_mod->imp[j].prefix, prefix) && sub_mod->imp[j].module == sibling->module) {
+                                        break;
+                                    }
+                                }
+
+                                if (j < sub_mod->imp_size) {
+                                    break;
+                                }
+                            }
+
+                            /* include import prefix check failed too - definite fail */
+                            if (i == sibling->module->inc_size) {
+                                free(id_cpy);
+                                return NULL;
+                            }
+                        }
+                    }
+
+                    /* the result node? */
+                    prefix = strtok_r(NULL, "/", &ptr);
+                    if (!prefix) {
+                        free(id_cpy);
+                        return sibling;
+                    }
+
+                    /* check for shorthand cases - then 'start' does not change */
+                    if (!sibling->parent || sibling->parent->nodetype != LY_NODE_CHOICE || sibling->nodetype == LY_NODE_CASE) {
+                        start = sibling->child;
+                    }
+                    break;
+                }
+            }
+            /* no match */
+            if (!sibling) {
+                free(id_cpy);
+                return NULL;
+            }
+        }
+
+        /* parse prefix */
+        name = strchr(prefix, ':');
+        if (name) {
+            name[0] = '\0';
+            name++;
+        } else {
+            name = prefix;
+            prefix = NULL;
+        }
+
+        /*
+         * Now is 'prefix' NULL or the prefix finished with '\0',
+         * 'name' the node name finished with '\0'.
+         */
+    }
+
+    /* cannot get here */
+    return NULL;
 }
 
 API struct ly_module *ly_module_read(struct ly_ctx *ctx, const char *data,

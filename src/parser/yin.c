@@ -1540,7 +1540,7 @@ static struct ly_mnode *read_yin_choice(struct ly_module *module,
 
 	/* link default with the case */
 	if (dflt_str) {
-		choice->dflt = resolve_schema_nodeid(dflt_str, retval, 0);
+		choice->dflt = resolve_schema_nodeid(dflt_str, retval);
 		if (!choice->dflt) {
 			/* default branch not found */
 			LOGVAL(VE_INARG, LOGLINE(yin), dflt_str, "default");
@@ -2576,7 +2576,7 @@ int resolve_uses(struct ly_mnode_uses *uses, unsigned int line)
 	/* apply refines */
 	for (i = 0; i < uses->refine_size; i++) {
 		rfn = &uses->refine[i];
-		mnode = resolve_schema_nodeid(rfn->target, (struct ly_mnode *)uses, 1);
+		mnode = resolve_schema_nodeid(rfn->target, (struct ly_mnode *)uses);
 		if (!mnode) {
 			LOGVAL(VE_INARG, line, rfn->target, "uses");
 			return EXIT_FAILURE;
@@ -2613,7 +2613,7 @@ int resolve_uses(struct ly_mnode_uses *uses, unsigned int line)
 				((struct ly_mnode_leaf *)mnode)->dflt = lydict_insert(ctx, rfn->mod.dflt, 0);
 			} else if (mnode->nodetype == LY_NODE_CHOICE) {
 				/* choice */
-				((struct ly_mnode_choice *)mnode)->dflt = resolve_schema_nodeid(rfn->mod.dflt, mnode, 0);
+				((struct ly_mnode_choice *)mnode)->dflt = resolve_schema_nodeid(rfn->mod.dflt, mnode);
 				if (!((struct ly_mnode_choice *)mnode)->dflt) {
 					LOGVAL(VE_INARG, line, rfn->mod.dflt, "default");
 					return EXIT_FAILURE;
@@ -2674,7 +2674,7 @@ int resolve_uses(struct ly_mnode_uses *uses, unsigned int line)
 	for (i = 0; i < uses->augment_size; i++) {
 		/* resolve target node */
 		aug = &uses->augment[i];
-		aug->target = resolve_schema_nodeid(aug->target_name, (struct ly_mnode *)uses, 1);
+		aug->target = resolve_schema_nodeid(aug->target_name, (struct ly_mnode *)uses);
 		if (!aug->target) {
 			LOGVAL(VE_INARG, line, aug->target, "uses");
 			goto error;
