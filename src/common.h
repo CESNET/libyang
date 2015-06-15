@@ -68,7 +68,7 @@ void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 	}
 #endif
 
-#define LOGMEM ly_log(LY_EMEM, "Memory allocation failed (%s())", __func__)
+#define LOGMEM LOGERR(LY_EMEM, "Memory allocation failed (%s())", __func__)
 
 enum LY_VERR {
 	VE_SPEC = -1,
