@@ -759,8 +759,8 @@ static int fill_yin_type(struct ly_module *module, struct ly_mnode *parent,
 
 error:
 
-	while(root.child) {
-		lyxml_free_elem(module->ctx, root.child);
+	LY_TREE_FOR_SAFE(root.child, next, node) {
+		lyxml_free_elem(module->ctx, node);
 	}
 
 	return EXIT_FAILURE;
@@ -2591,8 +2591,8 @@ static struct ly_mnode *read_yin_input_output(struct ly_module *module,
     error:
 
     ly_mnode_free(retval);
-    while (root.child) {
-        lyxml_free_elem(module->ctx, root.child);
+    LY_TREE_FOR_SAFE(root.child, next, sub) {
+        lyxml_free_elem(module->ctx, sub);
     }
 
     return NULL;
@@ -2701,8 +2701,8 @@ static struct ly_mnode *read_yin_rpc(struct ly_module *module,
     error:
 
     ly_mnode_free(retval);
-    while (root.child) {
-        lyxml_free_elem(module->ctx, root.child);
+    LY_TREE_FOR_SAFE(root.child, next, sub) {
+        lyxml_free_elem(module->ctx, sub);
     }
 
     return NULL;
