@@ -2490,6 +2490,10 @@ static struct ly_mnode *read_yin_input_output(struct ly_module *module,
     inout->prev = (struct ly_mnode *)inout;
     retval = (struct ly_mnode *)inout;
 
+    if (read_yin_common(module, parent, retval, yin, OPT_MODULE)) {
+        goto error;
+    }
+
     /* data statements */
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!strcmp(sub->name, "container") ||
