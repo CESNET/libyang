@@ -573,9 +573,12 @@ static int fill_yin_type(struct ly_module *module, struct ly_mnode *parent,
                          struct lyxml_elem *yin, struct ly_type *type)
 {
 	const char *value, *delim;
-	struct lyxml_elem *next, *node, root = {0};
+	struct lyxml_elem *next, *node, root;
 	int i, j, r;
 	int64_t v, v_;
+
+	/* init */
+	memset(&root, 0, sizeof root);
 
 	GETVAL(value, yin, "name")
 	delim = strchr(value, ':');
@@ -1947,7 +1950,7 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 	struct ly_mnode *retval, *mnode;
 	struct ly_mnode_list *list;
 	struct ly_unique *uniq_s;
-	struct lyxml_elem *sub, *next, root = {0}, uniq = {0};
+	struct lyxml_elem *sub, *next, root, uniq;
 	int i, r;
 	size_t len;
 	int c_tpdf = 0, c_must = 0, c_uniq = 0;
@@ -1955,6 +1958,10 @@ static struct ly_mnode *read_yin_list(struct ly_module *module,
 	const char *key_str = NULL, *uniq_str, *value;
 	char *auxs;
 	unsigned long val;
+
+	/* init */
+	memset(&root, 0, sizeof root);
+	memset(&uniq, 0, sizeof uniq);
 
 	list = calloc(1, sizeof *list);
 	list->nodetype = LY_NODE_LIST;
@@ -2236,13 +2243,16 @@ static struct ly_mnode *read_yin_container(struct ly_module *module,
                                            struct lyxml_elem *yin,
 										   int resolve, struct mnode_list **unres)
 {
-	struct lyxml_elem *sub, *next, root = {0};
+	struct lyxml_elem *sub, *next, root;
 	struct ly_mnode *mnode = NULL;
 	struct ly_mnode *retval;
 	struct ly_mnode_container *cont;
 	const char *value;
 	int r;
 	int c_tpdf = 0, c_must = 0;
+
+	/* init */
+	memset(&root, 0, sizeof root);
 
 	cont = calloc(1, sizeof *cont);
 	cont->nodetype = LY_NODE_CONTAINER;
@@ -2368,12 +2378,15 @@ static struct ly_mnode *read_yin_grouping(struct ly_module *module,
                                           struct lyxml_elem *node,
 										  int resolve, struct mnode_list **unres)
 {
-	struct lyxml_elem *sub, *next, root = {0};
+	struct lyxml_elem *sub, *next, root;
 	struct ly_mnode *mnode = NULL;
 	struct ly_mnode *retval;
 	struct ly_mnode_grp *grp;
 	int r;
 	int c_tpdf = 0;
+
+	/* init */
+	memset(&root, 0, sizeof root);
 
 	grp = calloc(1, sizeof *grp);
 	grp->nodetype = LY_NODE_GROUPING;
@@ -2470,12 +2483,15 @@ static struct ly_mnode *read_yin_input_output(struct ly_module *module,
                                               struct lyxml_elem *yin,
                                               int resolve, struct mnode_list **unres)
 {
-    struct lyxml_elem *sub, *next, root = {0};
+    struct lyxml_elem *sub, *next, root;
     struct ly_mnode *mnode = NULL;
     struct ly_mnode *retval;
     struct ly_mnode_input_output *inout;
     int r;
     int c_tpdf = 0;
+
+    /* init */
+    memset(&root, 0, sizeof root);
 
     inout = calloc(1, sizeof *inout);
 
@@ -2587,12 +2603,15 @@ static struct ly_mnode *read_yin_rpc(struct ly_module *module,
                                      struct lyxml_elem *yin,
                                      int resolve, struct mnode_list **unres)
 {
-    struct lyxml_elem *sub, *next, root = {0};
+    struct lyxml_elem *sub, *next, root;
     struct ly_mnode *mnode = NULL;
     struct ly_mnode *retval;
     struct ly_mnode_rpc *rpc;
     int r;
     int c_tpdf = 0;
+
+    /* init */
+    memset(&root, 0, sizeof root);
 
     rpc = calloc(1, sizeof *rpc);
     rpc->nodetype = LY_NODE_RPC;
@@ -3088,7 +3107,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 {
 	struct ly_ctx *ctx = module->ctx;
 	struct ly_submodule *submodule = (struct ly_submodule *)module;
-	struct lyxml_elem *next, *node, *child, root = {0}, grps = {0}, rpcs = {0};
+	struct lyxml_elem *next, *node, *child, root, grps, rpcs;
 	struct ly_mnode *mnode = NULL;
 	struct mnode_list *unres = NULL, *unres_next; /* unresolved uses */
 	const char *value;
@@ -3096,6 +3115,11 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 	int r;
     int i;
 	int belongsto_flag = 0;
+
+	/* init */
+	memset(&root, 0, sizeof root);
+	memset(&grps, 0, sizeof grps);
+	memset(&rpcs, 0, sizeof rpcs);
 
 	/*
 	 * in the first run, we process elements with cardinality of 1 or 0..1 and
