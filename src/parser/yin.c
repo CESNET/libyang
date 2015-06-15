@@ -3072,9 +3072,9 @@ static struct ly_mnode *read_yin_uses(struct ly_module *module,
 		*unres = unres_new;
 	}
 
-	if (parent) {
-		ly_mnode_addchild(parent, retval);
-	}
+    if (parent && ly_mnode_addchild(parent, retval)) {
+        goto error;
+    }
 
 	if (resolve) {
 		/* inherit config flag */
