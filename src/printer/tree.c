@@ -32,23 +32,26 @@ static void tree_print_mnode_choice(FILE *f, int level, char *indent, unsigned i
 static void tree_print_mnode(FILE *f, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode,
                              int mask, int inout_node);
 
-static int uses_has_valid_child(struct ly_mnode *mnode)
+static int sibling_is_valid_child(const struct ly_mnode *mnode)
 {
 	struct ly_mnode *cur;
 
-	if (mnode == NULL) {
-		return 0;
-	}
+    if (mnode == NULL) {
+        return 0;
+    }
 
-	for (cur = mnode; cur; cur = cur->next) {
-		if (cur->nodetype & (LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_CHOICE)) {
+	/* has a following printed child */
+	LY_TREE_FOR((struct ly_mnode *)mnode->next, cur) {
+		if (cur->nodetype & (LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
+            LY_NODE_ANYXML | LY_NODE_CHOICE | LY_NODE_RPC | LY_NODE_INPUT | LY_NODE_OUTPUT)) {
 			return 1;
 		}
-
-		if (cur->nodetype == LY_NODE_USES && uses_has_valid_child(cur->child)) {
-			return 1;
-		}
 	}
+
+	/* if in uses, the following printed child can actually be in the parent node :-/ */
+    if (mnode->parent && mnode->parent->nodetype == LY_NODE_USES) {
+        return sibling_is_valid_child(mnode->parent);
+    }
 
 	return 0;
 }
@@ -56,8 +59,7 @@ static int uses_has_valid_child(struct ly_mnode *mnode)
 static char *create_indent(int level, const char *old_indent, const struct ly_mnode *mnode, int shorthand)
 {
 	struct ly_mnode *cur;
-	int next_is_case = 0, sibling_in_submodule = 0, sibling_outside_uses = 0;
-	int is_case = 0;
+	int next_is_case = 0, is_case = 0, has_next = 0, i, found;
 	char *new_indent = malloc((level*4+1)*sizeof(char));
 
 	strcpy(new_indent, old_indent);
@@ -75,34 +77,44 @@ static char *create_indent(int level, const char *old_indent, const struct ly_mn
 		}
 	}
 
-	/* we are in a submodule and we don't have a parent */
-	if (mnode->module->type == 1 && !mnode->parent) {
-		struct ly_submodule *submod = (struct ly_submodule *)mnode->module;
+    /* next is a node that will actually be printed */
+    has_next = sibling_is_valid_child(mnode);
 
-		/* this submodule is not the last submodule of the module */
-		if (strcmp(mnode->module->name, submod->belongsto->inc[submod->belongsto->inc_size-1].submodule->name) != 0) {
-			sibling_in_submodule = 1;
-		}
-	}
+    /* there is no next, but we are in top-level of a submodule */
+    if (!has_next && mnode->module->type == 1 && !mnode->parent) {
+        struct ly_submodule *submod = (struct ly_submodule *)mnode->module;
+        struct ly_module *mod = submod->belongsto;
 
-	/* there is no standard sibling and this is a uses */
-	if (!mnode->next && mnode->parent && mnode->parent->nodetype == LY_NODE_USES) {
-		/* there is a sibling, it contains a valid node */
-		for (cur = mnode->parent->next; cur; cur = cur->next) {
-			if (cur->nodetype & (LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_CHOICE)) {
-				sibling_outside_uses = 1;
-				break;
-			}
+        /* find this submodule, check all the next ones for valid printed nodes */
+        found = 0;
+        for (i = 0; i < mod->inc_size; i++) {
+            /* we found ours, check all the following submodules and the module */
+            if (found) {
+                LY_TREE_FOR((mnode->nodetype == LY_NODE_RPC ? mod->inc[i].submodule->rpc : mod->inc[i].submodule->data), cur) {
+                    if (cur->nodetype != LY_NODE_GROUPING) {
+                        has_next = 1;
+                        break;
+                    }
+                }
+            }
 
-			/* we must check uses recursively for a valid node (it can contain only typedef, for instance) */
-			if (cur->nodetype == LY_NODE_USES && uses_has_valid_child(cur)) {
-				sibling_outside_uses = 1;
-				break;
-			}
-		}
-	}
+            if (!found && !strcmp(submod->name, mod->inc[i].submodule->name)) {
+                found = 1;
+            }
+        }
 
-	if ((mnode->next && !next_is_case) || sibling_in_submodule || sibling_outside_uses) {
+        /* there is nothing in submodules, check module */
+        if (!has_next) {
+            LY_TREE_FOR((mnode->nodetype == LY_NODE_RPC ? mod->rpc : mod->data), cur) {
+                if (cur->nodetype != LY_NODE_GROUPING) {
+                    has_next = 1;
+                    break;
+                }
+            }
+        }
+    }
+
+	if (has_next && !next_is_case) {
 		strcat(new_indent, "|  ");
 	} else {
 		strcat(new_indent, "   ");
