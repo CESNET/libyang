@@ -1,14 +1,14 @@
 language: c
+
 compiler:
-  - gcc
   - clang
+
 os:
   - linux
-  - osx
+
 branches:
   only:
     - master
-script: cmake . && make
 
 env:
   global:
@@ -20,9 +20,10 @@ addons:
   coverity_scan:
     project:
       name: "CESNET/libyang"
-      description: "Build submitted via Travis CI"
     notification_email: rkrejci@cesnet.cz
     build_command_prepend: "cmake .; make clean"
-    build_command:   "make -j 1"
+    build_command:   "make"
     branch_pattern: master
+
+script: cmake . && make
 
