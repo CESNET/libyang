@@ -256,7 +256,8 @@ typedef enum ly_node_type {
 	LY_NODE_CASE = 0x100,
 	LY_NODE_INPUT = 0x200,
 	LY_NODE_OUTPUT = 0x400,
-	LY_NODE_NOTIF = 0x800
+	LY_NODE_NOTIF = 0x800,
+    LY_NODE_RPC = 0x1000
 } LY_NODE_TYPE;
 
 struct ly_augment {
@@ -301,6 +302,7 @@ struct ly_module {
 	struct ly_ident *ident;      /**< array if identities */
 
 	struct ly_mnode *data;       /**< first data statement */
+	struct ly_mnode *rpc;        /**< first rpc statement */
 
 	/* specific module's items in comparison to submodules */
 	const char *ns;              /**< namespace of the module */
@@ -337,6 +339,7 @@ struct ly_submodule {
 	struct ly_ident *ident;      /**< array if identities */
 
 	struct ly_mnode *data;       /**< first data statement */
+	struct ly_mnode *rpc;        /**< first rpc statement */
 
 	/* specific submodule's items in comparison to modules */
 	struct ly_module *belongsto; /**< belongs-to (parent module) */
@@ -600,6 +603,48 @@ struct ly_mnode_list {
 	struct ly_tpdf *tpdf;        /**< array of typedefs */
 	struct ly_mnode_leaf **keys; /**< array of pointers to the keys */
 	struct ly_unique *unique;    /**< array of unique statement structures */
+};
+
+struct ly_mnode_input_output {
+    void *name_fill;             /**< just compatibility */
+    void *dsc_fill;
+    void *ref_fill;
+    uint8_t flags;
+    struct ly_module *module;    /**< link to the node's data model */
+
+    LY_NODE_TYPE nodetype;       /**< YANG statement - LY_NODE_INPUT / LY_NODE_OUTPUT */
+    struct ly_mnode *parent;
+    struct ly_mnode *child;
+    struct ly_mnode *next;
+    struct ly_mnode *prev;
+
+    void *feature_fill;
+    void *when_fill;
+
+    /* specific list's data */
+    struct ly_tpdf *tpdf;        /**< array of typedefs */
+    uint8_t tpdf_size;           /**< number of elements in tpdf array */
+};
+
+struct ly_mnode_rpc {
+    const char *name;            /**< name argument */
+    const char *dsc;             /**< description statement */
+    const char *ref;             /**< reference statement */
+    uint8_t flags;
+    struct ly_module *module;    /**< link to the node's data model */
+
+    LY_NODE_TYPE nodetype;       /**< YANG statement - LY_NODE_RPC */
+    struct ly_mnode *parent;
+    struct ly_mnode *child;
+    struct ly_mnode *next;
+    struct ly_mnode *prev;
+
+    const char *feature;         /**< if-feature statement */
+    const char *when;
+
+    /* specific list's data */
+    uint8_t tpdf_size;           /**< number of elements in tpdf array */
+    struct ly_tpdf *tpdf;        /**< array of typedefs */
 };
 
 struct ly_ident_der {

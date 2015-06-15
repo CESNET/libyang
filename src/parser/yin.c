@@ -2465,6 +2465,226 @@ error:
 	return NULL;
 }
 
+static struct ly_mnode *read_yin_input_output(struct ly_module *module,
+                                              struct ly_mnode *parent,
+                                              struct lyxml_elem *yin,
+                                              int resolve, struct mnode_list **unres)
+{
+    struct lyxml_elem *sub, *next, root = {0};
+    struct ly_mnode *mnode = NULL;
+    struct ly_mnode *retval;
+    struct ly_mnode_input_output *inout;
+    int r;
+    int c_tpdf = 0;
+
+    inout = calloc(1, sizeof *inout);
+
+    if (!strcmp(yin->name, "input")) {
+        inout->nodetype = LY_NODE_INPUT;
+    } else if (!strcmp(yin->name, "output")) {
+        inout->nodetype = LY_NODE_OUTPUT;
+    } else {
+        assert(0);
+    }
+
+    inout->prev = (struct ly_mnode *)inout;
+    retval = (struct ly_mnode *)inout;
+
+    /* data statements */
+    LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        if (!strcmp(sub->name, "container") ||
+            !strcmp(sub->name, "leaf-list") ||
+            !strcmp(sub->name, "leaf") ||
+            !strcmp(sub->name, "list") ||
+            !strcmp(sub->name, "choice") ||
+            !strcmp(sub->name, "uses") ||
+            !strcmp(sub->name, "grouping")||
+            !strcmp(sub->name, "anyxml")) {
+
+            lyxml_unlink_elem(sub);
+            lyxml_add_child(&root, sub);
+
+        /* array counters */
+        } else if (!strcmp(sub->name, "typedef")) {
+            c_tpdf++;
+            #if 0
+        } else {
+            LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
+            goto error;
+            #else
+        } else {
+            continue;
+            #endif
+        }
+    }
+
+    /* middle part - process nodes with cardinality of 0..n except the data nodes */
+    if (c_tpdf) {
+        inout->tpdf = calloc(c_tpdf, sizeof *inout->tpdf);
+    }
+
+    LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        if (!strcmp(sub->name, "typedef")) {
+            r = fill_yin_typedef(module, retval, sub, &inout->tpdf[inout->tpdf_size]);
+            inout->tpdf_size++;
+
+            if (r) {
+                goto error;
+            }
+        }
+
+        lyxml_free_elem(module->ctx, sub);
+    }
+
+    /* last part - process data nodes */
+    LY_TREE_FOR_SAFE(root.child, next, sub) {
+        if (!strcmp(sub->name, "container")) {
+            mnode = read_yin_container(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "leaf-list")) {
+            mnode = read_yin_leaflist(module, retval, sub, resolve);
+        } else if (!strcmp(sub->name, "leaf")) {
+            mnode = read_yin_leaf(module, retval, sub, resolve);
+        } else if (!strcmp(sub->name, "list")) {
+            mnode = read_yin_list(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "choice")) {
+            mnode = read_yin_choice(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "uses")) {
+            mnode = read_yin_uses(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "grouping")) {
+            mnode = read_yin_grouping(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "anyxml")) {
+            mnode = read_yin_anyxml(module, retval, sub, resolve);
+        }
+        lyxml_free_elem(module->ctx, sub);
+
+        if (!mnode) {
+            goto error;
+        }
+    }
+
+    if (parent && ly_mnode_addchild(parent, retval)) {
+        goto error;
+    }
+
+    return retval;
+
+    error:
+
+    ly_mnode_free(retval);
+    while (root.child) {
+        lyxml_free_elem(module->ctx, root.child);
+    }
+
+    return NULL;
+}
+
+static struct ly_mnode *read_yin_rpc(struct ly_module *module,
+                                     struct ly_mnode *parent,
+                                     struct lyxml_elem *yin,
+                                     int resolve, struct mnode_list **unres)
+{
+    struct lyxml_elem *sub, *next, root = {0};
+    struct ly_mnode *mnode = NULL;
+    struct ly_mnode *retval;
+    struct ly_mnode_rpc *rpc;
+    int r;
+    int c_tpdf = 0;
+
+    rpc = calloc(1, sizeof *rpc);
+    rpc->nodetype = LY_NODE_RPC;
+    rpc->prev = (struct ly_mnode *)rpc;
+    retval = (struct ly_mnode *)rpc;
+
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE)) {
+        goto error;
+    }
+
+    /* process rpc's specific children */
+    LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        if (!strcmp(sub->name, "input")) {
+            if (rpc->child && (rpc->child->nodetype == LY_NODE_INPUT || (rpc->child->next && rpc->child->next->nodetype == LY_NODE_INPUT))) {
+                LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+                goto error;
+            }
+            lyxml_unlink_elem(sub);
+            lyxml_add_child(&root, sub);
+        } else if (!strcmp(sub->name, "output")) {
+            if (rpc->child && (rpc->child->nodetype == LY_NODE_INPUT || (rpc->child->next && rpc->child->next->nodetype == LY_NODE_INPUT))) {
+                LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+                goto error;
+            }
+            lyxml_unlink_elem(sub);
+            lyxml_add_child(&root, sub);
+
+        /* data statements */
+        } else if (!strcmp(sub->name, "grouping")) {
+            lyxml_unlink_elem(sub);
+            lyxml_add_child(&root, sub);
+
+        /* array counters */
+        } else if (!strcmp(sub->name, "typedef")) {
+            c_tpdf++;
+            #if 0
+        } else {
+            LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
+            goto error;
+            #else
+        } else {
+            continue;
+            #endif
+        }
+    }
+
+    /* middle part - process nodes with cardinality of 0..n except the data nodes */
+    if (c_tpdf) {
+        rpc->tpdf = calloc(c_tpdf, sizeof *rpc->tpdf);
+    }
+
+    LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        if (!strcmp(sub->name, "typedef")) {
+            r = fill_yin_typedef(module, retval, sub, &rpc->tpdf[rpc->tpdf_size]);
+            rpc->tpdf_size++;
+
+            if (r) {
+                goto error;
+            }
+        }
+
+        lyxml_free_elem(module->ctx, sub);
+    }
+
+    /* last part - process data nodes */
+    LY_TREE_FOR_SAFE(root.child, next, sub) {
+        if (!strcmp(sub->name, "grouping")) {
+            mnode = read_yin_grouping(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "input")) {
+            mnode = read_yin_input_output(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "output")) {
+            mnode = read_yin_input_output(module, retval, sub, resolve, unres);
+        }
+        lyxml_free_elem(module->ctx, sub);
+
+        if (!mnode) {
+            goto error;
+        }
+    }
+
+    if (parent && ly_mnode_addchild(parent, retval)) {
+        goto error;
+    }
+
+    return retval;
+
+    error:
+
+    ly_mnode_free(retval);
+    while (root.child) {
+        lyxml_free_elem(module->ctx, root.child);
+    }
+
+    return NULL;
+}
+
 static int find_grouping(struct ly_mnode *parent, struct ly_mnode_uses *uses, int line)
 {
 	struct ly_module *searchmod = NULL, *module = uses->module;
@@ -2864,13 +3084,13 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 {
 	struct ly_ctx *ctx = module->ctx;
 	struct ly_submodule *submodule = (struct ly_submodule *)module;
-	struct lyxml_elem *next, *node, *child, root = {0}, grps = {0};
+	struct lyxml_elem *next, *node, *child, root = {0}, grps = {0}, rpcs = {0};
 	struct ly_mnode *mnode = NULL;
 	struct mnode_list *unres = NULL, *unres_next; /* unresolved uses */
 	const char *value;
 	int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0, c_inc = 0; /* counters */
 	int r;
-	int i;
+    int i;
 	int belongsto_flag = 0;
 
 	/*
@@ -2936,7 +3156,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 			GETVAL(value, node->child, "value");
 			/* check here differs from a generic prefix check, since this prefix
 			 * don't have to be unique
-			 */
+             */
 			if (check_identifier(value, LY_IDENT_NAME, LOGLINE(node->child), NULL, NULL)) {
 				goto error;
 			}
@@ -3024,6 +3244,11 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 			}
 			module->version = 1;
 			lyxml_free_elem(ctx, node);
+
+        /* rpcs */
+        } else if (!strcmp(node->name, "rpc")) {
+            lyxml_unlink_elem(node);
+            lyxml_add_child(&rpcs, node);
 #if 0
 		} else {
 			LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
@@ -3259,6 +3484,36 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 		unres = unres_next;
 	}
 
+	LY_TREE_FOR_SAFE(rpcs.child, next, node) {
+        mnode = read_yin_rpc(module, NULL, node, 0, &unres);
+        lyxml_free_elem(ctx, node);
+
+        if (!mnode) {
+            goto error;
+        }
+
+        /* include rpc element */
+        if (module->rpc) {
+            module->rpc->prev->next = mnode;
+            mnode->prev = module->rpc->prev;
+            module->rpc->prev = mnode;
+        } else {
+            module->rpc = mnode;
+        }
+    }
+    while (unres) {
+        if (find_grouping(unres->mnode->parent, (struct ly_mnode_uses *)unres->mnode, unres->line)) {
+            goto error;
+        }
+        if (!((struct ly_mnode_uses *)unres->mnode)->grp) {
+            LOGVAL(VE_INARG, unres->line, unres->mnode->name, "uses");
+            goto error;
+        }
+        unres_next = unres->next;
+        free(unres);
+        unres = unres_next;
+    }
+
 	return EXIT_SUCCESS;
 
 error:
@@ -3269,6 +3524,9 @@ error:
 	while (grps.child) {
 		lyxml_free_elem(module->ctx, grps.child);
 	}
+	while (rpcs.child) {
+        lyxml_free_elem(module->ctx, rpcs.child);
+    }
 
 	return EXIT_FAILURE;
 }

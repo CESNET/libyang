@@ -62,6 +62,8 @@ static const char *strnodetype(LY_NODE_TYPE type)
 		return "output";
 	case LY_NODE_NOTIF:
 		return "notification";
+    case LY_NODE_RPC:
+        return "rpc";
 	}
 
 	return NULL;
@@ -183,6 +185,8 @@ int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
 	case LY_NODE_LIST:
 	case LY_NODE_GROUPING:
 	case LY_NODE_USES:
+    case LY_NODE_INPUT:
+    case LY_NODE_OUTPUT:
 		if (!(child->nodetype & (LY_NODE_ANYXML | LY_NODE_CHOICE
 				| LY_NODE_CONTAINER | LY_NODE_GROUPING | LY_NODE_LEAF
 				| LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_USES))) {
@@ -209,6 +213,14 @@ int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
 			return EXIT_FAILURE;
 		}
 		break;
+    case LY_NODE_RPC:
+        if (!(child->nodetype & (LY_NODE_INPUT | LY_NODE_OUTPUT
+                | LY_NODE_GROUPING))) {
+            LOGVAL(VE_SPEC, 0, "Unexpected substatement \"%s\" in \"rpc\" %s.",
+                   strnodetype(child->nodetype), parent->name);
+            return EXIT_FAILURE;
+        }
+        break;
 	case LY_NODE_LEAF:
 	case LY_NODE_LEAFLIST:
 	case LY_NODE_ANYXML:
@@ -218,8 +230,6 @@ int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
 	case LY_NODE_AUGMENT:
 		LOGVAL(VE_SPEC, 0, "Internal error (%s:%d)", __FILE__, __LINE__);
 		return EXIT_FAILURE;
-	case LY_NODE_INPUT:
-	case LY_NODE_OUTPUT:
 	case LY_NODE_NOTIF:
 		LOGVAL(VE_SPEC, 0, "\"%s\" not yet implemented (%s:%d)",
 				strnodetype(parent->nodetype), __FILE__, __LINE__);
@@ -776,6 +786,26 @@ void ly_container_free(struct ly_ctx *ctx, struct ly_mnode_container *cont)
 	free(cont->must);
 }
 
+void ly_rpc_free(struct ly_ctx *ctx, struct ly_mnode_rpc *rpc)
+{
+    int i;
+
+    for (i = 0; i < rpc->tpdf_size; i++) {
+        ly_tpdf_free(ctx, &rpc->tpdf[i]);
+    }
+    free(rpc->tpdf);
+}
+
+void ly_input_output_free(struct ly_ctx *ctx, struct ly_mnode_input_output *inout)
+{
+    int i;
+
+    for (i = 0; i < inout->tpdf_size; i++) {
+        ly_tpdf_free(ctx, &inout->tpdf[i]);
+    }
+    free(inout->tpdf);
+}
+
 void ly_uses_free(struct ly_ctx *ctx, struct ly_mnode_uses *uses)
 {
 	int i, j;
@@ -862,14 +892,15 @@ void ly_mnode_free(struct ly_mnode *node)
 		/* do nothing */
 		break;
 	case LY_NODE_INPUT:
-		/* TODO */
-		break;
 	case LY_NODE_OUTPUT:
-		/* TODO */
+		ly_input_output_free(ctx, (struct ly_mnode_input_output *)node);
 		break;
 	case LY_NODE_NOTIF:
 		/* TODO */
 		break;
+    case LY_NODE_RPC:
+        ly_rpc_free(ctx, (struct ly_mnode_rpc *)node);
+        break;
 	}
 
 	/* again common part */
@@ -965,6 +996,10 @@ struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, 
 	struct ly_mnode_grp *grp;
 	struct ly_mnode_grp *grp_orig = (struct ly_mnode_grp *)mnode;
 	struct ly_mnode_case *cs;
+    struct ly_mnode_rpc *rpc;
+    struct ly_mnode_rpc *rpc_orig = (struct ly_mnode_rpc *)mnode;
+    struct ly_mnode_input_output *inout;
+    struct ly_mnode_input_output *inout_orig = (struct ly_mnode_input_output *)mnode;
 
 	/* we cannot just duplicate memory since the strings are stored in
 	 * dictionary and we need to update dictionary counters.
@@ -1007,8 +1042,17 @@ struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, 
 		cs = calloc(1, sizeof *cs);
 		retval = (struct ly_mnode *)cs;
 		break;
+    case LY_NODE_RPC:
+        rpc = calloc(1, sizeof *rpc);
+        retval = (struct ly_mnode *)rpc;
+        break;
+    case LY_NODE_INPUT:
+    case LY_NODE_OUTPUT:
+        inout = calloc(1, sizeof *inout);
+        retval = (struct ly_mnode *)inout;
+        break;
 	default:
-		/* LY_NODE_INPUT, LY_NODE_OUTPUT, LY_NODE_NOTIF */
+		/* LY_NODE_NOTIF */
 		goto error;
 	}
 
@@ -1133,8 +1177,16 @@ struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, 
 	case LY_NODE_CASE:
 		/* nothing to do */
 		break;
+    case LY_NODE_RPC:
+        rpc->tpdf_size = rpc_orig->tpdf_size;
+        rpc->tpdf = ly_tpdf_dup(ctx, rpc_orig->tpdf, rpc->tpdf_size);
+        break;
+    case LY_NODE_INPUT:
+    case LY_NODE_OUTPUT:
+        inout->tpdf_size = inout_orig->tpdf_size;
+        inout->tpdf = ly_tpdf_dup(ctx, inout_orig->tpdf, inout->tpdf_size);
 	default:
-		/* LY_NODE_INPUT, LY_NODE_OUTPUT, LY_NODE_NOTIF */
+		/* LY_NODE_NOTIF */
 		goto error;
 	}
 
