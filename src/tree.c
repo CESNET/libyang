@@ -274,7 +274,7 @@ struct ly_mnode *resolve_schema_nodeid(const char *id, struct ly_mnode *start)
 	strcpy(id_cpy, id);
 
 	prefix = strtok_r(id_cpy, "/", &ptr);
-	name = strchr(prefix, ':');
+	name = prefix ? strchr(prefix, ':') : NULL;
 	if (name) {
 		name[0] = '\0';
 		name++;
@@ -374,7 +374,7 @@ struct ly_mnode *resolve_schema_nodeid(const char *id, struct ly_mnode *start)
         }
 
         /* parse prefix */
-        name = strchr(prefix, ':');
+        name = prefix ? strchr(prefix, ':') : NULL;
         if (name) {
             name[0] = '\0';
             name++;
