@@ -22,10 +22,6 @@
 #ifndef LY_XML_H_
 #define LY_XML_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdio.h>
 
 /**
