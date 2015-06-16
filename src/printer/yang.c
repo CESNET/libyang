@@ -29,10 +29,10 @@
 #define INDENT ""
 #define LEVEL (level*2)
 
-static void yang_print_mnode(FILE * f, int level, struct ly_mnode *mnode, int mask);
+static void yang_print_mnode(FILE *f, int level, struct ly_mnode *mnode, int mask);
 
 static void
-yang_print_text(FILE * f, int level, const char *name, const char *text)
+yang_print_text(FILE *f, int level, const char *name, const char *text)
 {
     const char *s, *t;
 
@@ -42,7 +42,7 @@ yang_print_text(FILE * f, int level, const char *name, const char *text)
     fprintf(f, "%*s\"", LEVEL, INDENT);
     t = text;
     while ((s = strchr(t, '\n'))) {
-        fwrite(t, sizeof *t, s - t + 1, f);
+        fwrite(t, sizeof *t, (s - t) + 1, f);
         t = s + 1;
         fprintf(f, "%*s", LEVEL, INDENT);
     }
@@ -57,7 +57,7 @@ yang_print_text(FILE * f, int level, const char *name, const char *text)
  * description, reference, status
  */
 static void
-yang_print_mnode_common(FILE * f, int level, struct ly_mnode *mnode)
+yang_print_mnode_common(FILE *f, int level, struct ly_mnode *mnode)
 {
     if (mnode->flags & LY_NODE_STATUS_CURR) {
         fprintf(f, "%*sstatus \"current\";\n", LEVEL, INDENT);
@@ -81,7 +81,7 @@ yang_print_mnode_common(FILE * f, int level, struct ly_mnode *mnode)
  * description, reference, status
  */
 static void
-yang_print_mnode_common2(FILE * f, int level, struct ly_mnode *mnode)
+yang_print_mnode_common2(FILE *f, int level, struct ly_mnode *mnode)
 {
     if (!mnode->parent || (mnode->parent->flags & LY_NODE_CONFIG_MASK) != (mnode->flags & LY_NODE_CONFIG_MASK)) {
         /* print config only when it differs from the parent or in root */
@@ -102,7 +102,7 @@ yang_print_mnode_common2(FILE * f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_type(FILE * f, int level, struct ly_module *module, struct ly_type *type)
+yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *type)
 {
     int i;
 
@@ -186,7 +186,7 @@ yang_print_type(FILE * f, int level, struct ly_module *module, struct ly_type *t
 }
 
 static void
-yang_print_must(FILE * f, int level, struct ly_must *must)
+yang_print_must(FILE *f, int level, struct ly_must *must)
 {
     fprintf(f, "%*smust \"%s\" {\n", LEVEL, INDENT, must->cond);
     level++;
@@ -210,7 +210,7 @@ yang_print_must(FILE * f, int level, struct ly_must *must)
 }
 
 static void
-yang_print_refine(FILE * f, int level, struct ly_refine *refine)
+yang_print_refine(FILE *f, int level, struct ly_refine *refine)
 {
     int i;
 
@@ -245,7 +245,7 @@ yang_print_refine(FILE * f, int level, struct ly_refine *refine)
 }
 
 static void
-yang_print_typedef(FILE * f, int level, struct ly_module *module, struct ly_tpdf *tpdf)
+yang_print_typedef(FILE *f, int level, struct ly_module *module, struct ly_tpdf *tpdf)
 {
     fprintf(f, "%*stypedef %s {\n", LEVEL, INDENT, tpdf->name);
     level++;
@@ -264,7 +264,7 @@ yang_print_typedef(FILE * f, int level, struct ly_module *module, struct ly_tpdf
 }
 
 static void
-yang_print_identity(FILE * f, int level, struct ly_ident *ident)
+yang_print_identity(FILE *f, int level, struct ly_ident *ident)
 {
     fprintf(f, "%*sidentity %s {\n", LEVEL, INDENT, ident->name);
     level++;
@@ -284,7 +284,7 @@ yang_print_identity(FILE * f, int level, struct ly_ident *ident)
 }
 
 static void
-yang_print_container(FILE * f, int level, struct ly_mnode *mnode)
+yang_print_container(FILE *f, int level, struct ly_mnode *mnode)
 {
     int i;
     struct ly_mnode *sub;
@@ -318,7 +318,7 @@ yang_print_container(FILE * f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_case(FILE * f, int level, struct ly_mnode *mnode)
+yang_print_case(FILE *f, int level, struct ly_mnode *mnode)
 {
     struct ly_mnode *sub;
     struct ly_mnode_case *cas = (struct ly_mnode_case *)mnode;
@@ -338,7 +338,7 @@ yang_print_case(FILE * f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_choice(FILE * f, int level, struct ly_mnode *mnode)
+yang_print_choice(FILE *f, int level, struct ly_mnode *mnode)
 {
     struct ly_mnode *sub;
     struct ly_mnode_choice *choice = (struct ly_mnode_choice *)mnode;
@@ -360,7 +360,7 @@ yang_print_choice(FILE * f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_leaf(FILE * f, int level, struct ly_mnode *mnode)
+yang_print_leaf(FILE *f, int level, struct ly_mnode *mnode)
 {
     int i;
     struct ly_mnode_leaf *leaf = (struct ly_mnode_leaf *)mnode;
@@ -385,7 +385,7 @@ yang_print_leaf(FILE * f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_anyxml(FILE * f, int level, struct ly_mnode *mnode)
+yang_print_anyxml(FILE *f, int level, struct ly_mnode *mnode)
 {
     int i;
     struct ly_mnode_anyxml *anyxml = (struct ly_mnode_anyxml *)mnode;
@@ -401,7 +401,7 @@ yang_print_anyxml(FILE * f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_leaflist(FILE * f, int level, struct ly_mnode *mnode)
+yang_print_leaflist(FILE *f, int level, struct ly_mnode *mnode)
 {
     int i;
     struct ly_mnode_leaflist *llist = (struct ly_mnode_leaflist *)mnode;
@@ -432,7 +432,7 @@ yang_print_leaflist(FILE * f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_list(FILE * f, int level, struct ly_mnode *mnode)
+yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
 {
     int i, j;
     struct ly_mnode *sub;
@@ -487,7 +487,7 @@ yang_print_list(FILE * f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_grouping(FILE * f, int level, struct ly_mnode *mnode)
+yang_print_grouping(FILE *f, int level, struct ly_mnode *mnode)
 {
     int i;
     struct ly_mnode *node;
@@ -513,7 +513,7 @@ yang_print_grouping(FILE * f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_uses(FILE * f, int level, struct ly_mnode *mnode)
+yang_print_uses(FILE *f, int level, struct ly_mnode *mnode)
 {
     int i;
     struct ly_mnode_uses *uses = (struct ly_mnode_uses *)mnode;
@@ -532,7 +532,8 @@ yang_print_uses(FILE * f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_input_output(FILE *f, int level, struct ly_mnode *mnode) {
+yang_print_input_output(FILE *f, int level, struct ly_mnode *mnode)
+{
     int i;
     struct ly_mnode *sub;
     struct ly_mnode_input_output *inout = (struct ly_mnode_input_output *)mnode;
@@ -605,7 +606,7 @@ yang_print_notif(FILE *f, int level, struct ly_mnode *mnode) {
 }
 
 static void
-yang_print_mnode(FILE * f, int level, struct ly_mnode *mnode, int mask)
+yang_print_mnode(FILE *f, int level, struct ly_mnode *mnode, int mask)
 {
     switch (mnode->nodetype & mask) {
     case LY_NODE_CONTAINER:
@@ -645,7 +646,7 @@ yang_print_mnode(FILE * f, int level, struct ly_mnode *mnode, int mask)
 }
 
 int
-yang_print_model(FILE * f, struct ly_module *module)
+yang_print_model(FILE *f, struct ly_module *module)
 {
     unsigned int i;
     int level = 0;
