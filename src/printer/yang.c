@@ -581,7 +581,8 @@ yang_print_rpc(FILE *f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_notif(FILE *f, int level, struct ly_mnode *mnode) {
+yang_print_notif(FILE *f, int level, struct ly_mnode *mnode)
+{
     int i;
     struct ly_mnode *sub;
     struct ly_mnode_notif *notif = (struct ly_mnode_notif *)mnode;
