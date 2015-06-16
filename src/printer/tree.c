@@ -44,7 +44,7 @@ static int sibling_is_valid_child(const struct ly_mnode *mnode)
 	/* has a following printed child */
 	LY_TREE_FOR((struct ly_mnode *)mnode->next, cur) {
 		if (cur->nodetype & (LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
-            LY_NODE_ANYXML | LY_NODE_CHOICE | LY_NODE_RPC | LY_NODE_INPUT | LY_NODE_OUTPUT | LY_NODE_NOTIF)) {
+            LY_NODE_ANYXML | LY_NODE_CHOICE | LY_NODE_RPC | LY_NODE_INPUT | LY_NODE_OUTPUT | LY_NODE_NOTIF)) {
 			return 1;
 		}
 	}
@@ -59,7 +59,6 @@ static int sibling_is_valid_child(const struct ly_mnode *mnode)
 
 static char *create_indent(int level, const char *old_indent, const struct ly_mnode *mnode, int shorthand)
 {
-	struct ly_mnode *cur;
 	int next_is_case = 0, is_case = 0, has_next = 0, i, found;
 	char *new_indent = malloc((level*4+1)*sizeof(char));
 
@@ -91,11 +90,12 @@ static char *create_indent(int level, const char *old_indent, const struct ly_mn
         for (i = 0; i < mod->inc_size; i++) {
             /* we found ours, check all the following submodules and the module */
             if (found) {
-                LY_TREE_FOR((mnode->nodetype == LY_NODE_RPC ? mod->inc[i].submodule->rpc : mod->inc[i].submodule->data), cur) {
-                    if (cur->nodetype != LY_NODE_GROUPING) {
-                        has_next = 1;
-                        break;
-                    }
+                if (mnode->nodetype == LY_NODE_RPC) {
+                    has_next = sibling_is_valid_child(mod->inc[i].submodule->rpc);
+                } else if (mnode->nodetype == LY_NODE_NOTIF) {
+                    has_next = sibling_is_valid_child(mod->inc[i].submodule->notif);
+                } else {
+                    has_next = sibling_is_valid_child(mod->inc[i].submodule->data);
                 }
             }
 
@@ -106,11 +106,12 @@ static char *create_indent(int level, const char *old_indent, const struct ly_mn
 
         /* there is nothing in submodules, check module */
         if (!has_next) {
-            LY_TREE_FOR((mnode->nodetype == LY_NODE_RPC ? mod->rpc : mod->data), cur) {
-                if (cur->nodetype != LY_NODE_GROUPING) {
-                    has_next = 1;
-                    break;
-                }
+            if (mnode->nodetype == LY_NODE_RPC) {
+                has_next = sibling_is_valid_child(mod->inc[i].submodule->rpc);
+            } else if (mnode->nodetype == LY_NODE_NOTIF) {
+                has_next = sibling_is_valid_child(mod->inc[i].submodule->notif);
+            } else {
+                has_next = sibling_is_valid_child(mod->inc[i].submodule->data);
             }
         }
     }
