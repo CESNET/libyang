@@ -731,11 +731,13 @@ ly_ident_free(struct ly_ctx *ctx, struct ly_ident *ident)
     }
 
     /*
-     * TODO
      * if caller free only a single data model which is used (its identity is
      * reference from identity in another module), this silly freeing can lead
      * to segmentation fault. But without noting if the module is used by some
      * other, it cannot be solved.
+     *
+     * Possible solution is to not allow caller to remove particular schema
+     * from the context.
      */
     while (ident->der) {
         der = ident->der;

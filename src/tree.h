@@ -673,10 +673,27 @@ struct ly_mnode_notif {
     struct ly_tpdf *tpdf;            /**< array of typedefs */
 };
 
+/**
+ * @brief Item to serialize pointers to the identities.
+ *
+ * The list of derived identities cannot be static since any new schema can
+ * extend the current set of derived identities.
+ *
+ * TODO: the list could be just an array and we can reallocate it whenever it
+ * is needed. Since we are not going to allow removing a particular schema from
+ * the context, we don't need to remove a subset of pointers to derived
+ * identities.
+ */
 struct ly_ident_der {
     struct ly_ident *ident;
     struct ly_ident_der *next;
 };
+
+/**
+ * @brief Structure to hold information about identity (RFC 6020, 7.16)
+ *
+ * First 5 members maps to struct ly_mnode.
+ */
 struct ly_ident {
     const char *name;                /**< name argument */
     const char *dsc;                 /**< description */
