@@ -1,21 +1,14 @@
 # libyang Coding Style
 
 This file describes the coding style used in most C files in the libyang
-library. The rules described in this document can be applied to the source code
-using indent(1) with the following option:
-
-```
--nbad -bap -bbb -nbc -nbfda -nbfde -blf -br -brs -bs -cbi4 -ncdb -cdw -ce -cli0
--ncs -cd0 -dj -di1 -hnl -il0 -i4 -l120 -lp -npcs -nprs -psl -npro -saf -sai
--saw -sc -sob -nss -nut
-```
+library.
 
 ## Basics
 
 - Use space instead of tabs for indentations.
 
 - There is no strict limit for the line length, However, try to keep lines in a
-reasonable length. There is 120 characters line length limit for `indent(1)`.
+reasonable length (120 characters).
 
 - Avoid trailing spaces on lines.
 
