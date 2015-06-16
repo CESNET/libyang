@@ -40,9 +40,9 @@ struct ly_ctx;
  * make dictionary size dynamic
  */
 struct dict_rec {
-	char *value;
-	uint32_t refcount;
-	struct dict_rec *next;
+    char *value;
+    uint32_t refcount;
+    struct dict_rec *next;
 };
 
 /**
@@ -50,9 +50,9 @@ struct dict_rec {
  * TODO: make it variable size
  */
 struct dict_table {
-	struct dict_rec recs[DICT_SIZE];
-	int hash_mask;
-	uint32_t used;
+    struct dict_rec recs[DICT_SIZE];
+    int hash_mask;
+    uint32_t used;
 };
 
 /**
@@ -99,7 +99,6 @@ const char *lydict_insert(struct ly_ctx *ctx, const char *value, size_t len);
  * @return pointer to the string stored in the dictionary
  */
 const char *lydict_insert_zc(struct ly_ctx *ctx, char *value);
-
 
 /**
  * @brief Remove specified string from the dictionary. It decrement reference

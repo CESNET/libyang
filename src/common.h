@@ -71,38 +71,37 @@ void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 #define LOGMEM LOGERR(LY_EMEM, "Memory allocation failed (%s())", __func__)
 
 enum LY_VERR {
-	VE_SPEC = -1,
-	VE_XML_MISS,
-	VE_XML_INVAL,
-	VE_EOF,
-	VE_INSTMT,
-	VE_INID,
-	VE_INDATE,
-	VE_INARG,
-	VE_MISSSTMT1,
-	VE_MISSSTMT2,
-	VE_MISSARG,
-	VE_TOOMANY,
-	VE_DUPID,
-	VE_ENUM_DUPVAL,
-	VE_ENUM_DUPNAME,
-	VE_ENUM_WS,
-	VE_INPREFIX,
-	VE_KEY_NLEAF,
-	VE_KEY_TYPE,
-	VE_KEY_CONFIG,
-	VE_KEY_MISS,
-	VE_KEY_DUP
+    VE_SPEC = -1,
+    VE_XML_MISS,
+    VE_XML_INVAL,
+    VE_EOF,
+    VE_INSTMT,
+    VE_INID,
+    VE_INDATE,
+    VE_INARG,
+    VE_MISSSTMT1,
+    VE_MISSSTMT2,
+    VE_MISSARG,
+    VE_TOOMANY,
+    VE_DUPID,
+    VE_ENUM_DUPVAL,
+    VE_ENUM_DUPNAME,
+    VE_ENUM_WS,
+    VE_INPREFIX,
+    VE_KEY_NLEAF,
+    VE_KEY_TYPE,
+    VE_KEY_CONFIG,
+    VE_KEY_MISS,
+    VE_KEY_DUP
 };
 void ly_vlog(enum LY_VERR code, unsigned int line, ...);
 
-#define LOGVAL(code, line, args...)                                       \
-	ly_vlog(code, line, ##args)
+#define LOGVAL(code, line, args...) ly_vlog(code, line, ##args)
 
 #ifdef NDEBUG
-#define LOGLINE(node) 0
+#    define LOGLINE(node) 0
 #else
-#define LOGLINE(node) node->line
+#    define LOGLINE(node) node->line
 #endif
 
 #endif /* LY_COMMON_H_ */

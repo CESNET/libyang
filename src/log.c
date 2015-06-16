@@ -27,29 +27,32 @@
 
 volatile uint8_t ly_log_level = LY_LLERR;
 
-API void ly_verb(LY_LOG_LEVEL level)
+API void
+ly_verb(LY_LOG_LEVEL level)
 {
-	ly_log_level = level;
+    ly_log_level = level;
 }
 
-static void log_vprintf(LY_LOG_LEVEL level, const char *format, va_list args)
+static void
+log_vprintf(LY_LOG_LEVEL level, const char *format, va_list args)
 {
 #define PRV_MSG_SIZE 4096
-	char prv_msg[PRV_MSG_SIZE];
+    char prv_msg[PRV_MSG_SIZE];
 
-	vsnprintf(prv_msg, PRV_MSG_SIZE - 1, format, args);
-	prv_msg[PRV_MSG_SIZE - 1] = '\0';
-	fprintf(stderr, "libyang[%d]: %s\n", level, prv_msg);
+    vsnprintf(prv_msg, PRV_MSG_SIZE - 1, format, args);
+    prv_msg[PRV_MSG_SIZE - 1] = '\0';
+    fprintf(stderr, "libyang[%d]: %s\n", level, prv_msg);
 #undef PRV_MSG_SIZE
 }
 
-void ly_log(LY_LOG_LEVEL level, const char *format, ...)
+void
+ly_log(LY_LOG_LEVEL level, const char *format, ...)
 {
-	va_list ap;
+    va_list ap;
 
-	va_start(ap, format);
-	log_vprintf(level, format, ap);
-	va_end(ap);
+    va_start(ap, format);
+    log_vprintf(level, format, ap);
+    va_end(ap);
 }
 
 const char *verrs[] = {
@@ -76,22 +79,23 @@ const char *verrs[] = {
 /* VE_KEY_DUP */      "Key identifier \"%s\" is not unique."
 };
 
-void ly_vlog(enum LY_VERR code, unsigned int line, ...)
+void
+ly_vlog(enum LY_VERR code, unsigned int line, ...)
 {
-	va_list ap;
-	const char *fmt;
+    va_list ap;
+    const char *fmt;
 
-	ly_errno = LY_EVALID;
-	if (line) {
-		fprintf(stderr, "libyang[%d]: Parser fails around line %u.\n", LY_LLERR, line);
-	}
+    ly_errno = LY_EVALID;
+    if (line) {
+        fprintf(stderr, "libyang[%d]: Parser fails around line %u.\n", LY_LLERR, line);
+    }
 
-	va_start(ap, line);
-	if (code == VE_SPEC) {
-		fmt = va_arg(ap, char *);
-		log_vprintf(LY_LLERR, fmt, ap);
-	} else {
-		log_vprintf(LY_LLERR, verrs[code], ap);
-	}
-	va_end(ap);
+    va_start(ap, line);
+    if (code == VE_SPEC) {
+    fmt = va_arg(ap, char *);
+        log_vprintf(LY_LLERR, fmt, ap);
+    } else {
+        log_vprintf(LY_LLERR, verrs[code], ap);
+    }
+    va_end(ap);
 }

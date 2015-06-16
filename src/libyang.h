@@ -26,7 +26,7 @@
 
 #include "tree.h"
 
-int ly_model_print(FILE *f, struct ly_module *module, LY_MOUTFORMAT format);
+int ly_model_print(FILE * f, struct ly_module *module, LY_MOUTFORMAT format);
 
 /**
  * @defgroup libyang libyang
@@ -71,8 +71,7 @@ struct ly_ctx *ly_ctx_new(const char *search_dir);
  * searches for the module only in the modules already loaded to the context.
  * @return Pointer to the data model structure.
  */
-struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name,
-                                    const char *revision, int read);
+struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision, int read);
 
 /**
  * @brief Free all internal structures of the specified context.
@@ -97,12 +96,9 @@ void ly_ctx_destroy(struct ly_ctx *ctx);
  * @param[in] format Format of the input data (YANG or YIN).
  * @return Pointer to the data model structure or NULL on error.
  */
-struct ly_module *ly_module_read(struct ly_ctx *ctx, const char *data,
-                                 LY_MINFORMAT format);
+struct ly_module *ly_module_read(struct ly_ctx *ctx, const char *data, LY_MINFORMAT format);
 
-
-struct ly_module *ly_module_read_fd(struct ly_ctx *ctx, int fd,
-                                    LY_MINFORMAT format);
+struct ly_module *ly_module_read_fd(struct ly_ctx *ctx, int fd, LY_MINFORMAT format);
 
 /**
  * @brief Free data model
@@ -148,10 +144,10 @@ void ly_module_free(struct ly_module *module);
  * @brief Verbosity levels of the libyang logger.
  */
 typedef enum {
-	LY_LLERR,  /**< Print only error messages. */
-	LY_LLWRN,  /**< Print error and warning messages. */
-	LY_LLVRB,  /**< Besides errors and warnings, print some other verbose messages. */
-	LY_LLDBG   /**< Print all messages including some development debug messages. */
+    LY_LLERR,      /**< Print only error messages. */
+    LY_LLWRN,      /**< Print error and warning messages. */
+    LY_LLVRB,      /**< Besides errors and warnings, print some other verbose messages. */
+    LY_LLDBG       /**< Print all messages including some development debug messages. */
 } LY_LOG_LEVEL;
 
 /**
@@ -166,11 +162,11 @@ void ly_verb(LY_LOG_LEVEL level);
  * @ingroup logger
  */
 typedef enum {
-	LY_EMEM,   /**< Memory allocation failure */
-	LY_ESYS,   /**< System call failure */
-	LY_EINVAL, /**< Invalid value */
-	LY_EINT,   /**< Internal error */
-	LY_EVALID  /**< Validation failure */
+    LY_EMEM,       /**< Memory allocation failure */
+    LY_ESYS,       /**< System call failure */
+    LY_EINVAL,     /**< Invalid value */
+    LY_EINT,       /**< Internal error */
+    LY_EVALID      /**< Validation failure */
 } LY_ERR;
 extern LY_ERR ly_errno;
 

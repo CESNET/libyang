@@ -26,15 +26,15 @@
 #include "tree.h"
 
 struct ly_modules_list {
-	char *search_path;
-	int size;
-	int used;
-	struct ly_module **list;
+    char *search_path;
+    int size;
+    int used;
+    struct ly_module **list;
 };
 
 struct ly_ctx {
-	struct dict_table dict;
-	struct ly_modules_list models;
+    struct dict_table dict;
+    struct ly_modules_list models;
 };
 
 /**

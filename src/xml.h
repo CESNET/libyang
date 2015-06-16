@@ -37,8 +37,8 @@
  * @brief enumeration of attribute types
  */
 typedef enum lyxml_attr_type {
-	LYXML_ATTR_STD = 1, /**< standard XML attribute */
-	LYXML_ATTR_NS = 2   /**< XML namespace definition */
+    LYXML_ATTR_STD = 1,              /**< standard XML attribute */
+    LYXML_ATTR_NS = 2                /**< XML namespace definition */
 } LYXML_ATTR_TYPE;
 
 /**
@@ -49,12 +49,11 @@ typedef enum lyxml_attr_type {
  * also covered by lyxml_attr structure.
  */
 struct lyxml_ns {
-	LYXML_ATTR_TYPE type;      /**< type of the attribute = LYXML_ATTR_NS */
-	struct lyxml_ns *next;     /**< next sibling attribute */
-	struct lyxml_elem *parent; /**< parent node of the attribute */
-	const char *value;         /**< the namespace value */
-	const char *prefix;        /**< the namespace prefix if defined, NULL for
-	                                default namespace */
+    LYXML_ATTR_TYPE type;            /**< type of the attribute = LYXML_ATTR_NS */
+    struct lyxml_ns *next;           /**< next sibling attribute */
+    struct lyxml_elem *parent;       /**< parent node of the attribute */
+    const char *value;               /**< the namespace value */
+    const char *prefix;              /**< the namespace prefix if defined, NULL for default namespace */
 };
 
 /**
@@ -67,14 +66,12 @@ struct lyxml_ns {
  * with the elements).
  */
 struct lyxml_attr {
-	LYXML_ATTR_TYPE type;      /**< type of the attribute */
-	struct lyxml_attr *next;   /**< next sibling attribute */
-	struct lyxml_elem *parent; /**< parent node of the attribute */
-	const char *value;         /**< data stored in the attribute */
-	const char *name;          /**< name of the attribute (the LocalPart of
-	                                the qualified name) */
-	const struct lyxml_ns *ns; /**< pointer to the namespace of the attribute
-	                                if any */
+    LYXML_ATTR_TYPE type;            /**< type of the attribute */
+    struct lyxml_attr *next;         /**< next sibling attribute */
+    struct lyxml_elem *parent;       /**< parent node of the attribute */
+    const char *value;               /**< data stored in the attribute */
+    const char *name;                /**< name of the attribute (the LocalPart of the qualified name) */
+    const struct lyxml_ns *ns;       /**< pointer to the namespace of the attribute if any */
 };
 
 /**
@@ -91,21 +88,21 @@ struct lyxml_attr {
  * - last's next pointer is NULL
  */
 struct lyxml_elem {
-	struct lyxml_elem *next;   /**< next sibling node */
-	struct lyxml_elem *prev;   /**< previous sibling node */
-	struct lyxml_elem *parent; /**< parent node */
-	const char *content;       /**< text content of the node if any */
+    struct lyxml_elem *next;         /**< next sibling node */
+    struct lyxml_elem *prev;         /**< previous sibling node */
+    struct lyxml_elem *parent;       /**< parent node */
+    const char *content;             /**< text content of the node if any */
 
-	struct lyxml_elem *child;  /**< first children element */
-	struct lyxml_attr *attr;   /**< first attribute declared in the element */
-	const struct lyxml_ns *ns; /**< namespace of the element */
-	const char *name;          /**< name of the element */
+    struct lyxml_elem *child;        /**< first children element */
+    struct lyxml_attr *attr;         /**< first attribute declared in the element */
+    const struct lyxml_ns *ns;       /**< namespace of the element */
+    const char *name;                /**< name of the element */
 
-	char flags;                /**< special flags */
-#define LYXML_ELEM_MIXED 0x01  /* element contains mixed content */
+    char flags;                      /**< special flags */
+#define LYXML_ELEM_MIXED 0x01 /* element contains mixed content */
 
 #ifndef NDEBUG
-	unsigned int line;         /* input line number */
+    unsigned int line;               /**< input line number */
 #endif
 };
 
@@ -122,8 +119,7 @@ struct lyxml_elem {
  * @param[in] options Parser options. Currently ignored, no option defined yet.
  * @return pointer to root of the parsed XML document tree.
  */
-struct lyxml_elem* lyxml_read(struct ly_ctx *ctx, const char *data,
-                              int options);
+struct lyxml_elem *lyxml_read(struct ly_ctx *ctx, const char *data, int options);
 
 /**
  * @brief Parse XML from file descriptor - TODO: NOT IMPLEMENTED
@@ -132,7 +128,7 @@ struct lyxml_elem* lyxml_read(struct ly_ctx *ctx, const char *data,
  * @param[in] options Parser options. Currently ignored, no option defined yet.
  * @return pointer to root of the parsed XML document tree.
  */
-struct lyxml_elem* lyxml_read_fd(struct ly_ctx *ctx, int fd, int options);
+struct lyxml_elem *lyxml_read_fd(struct ly_ctx *ctx, int fd, int options);
 
 /**
  * @brief Parse XML from filesystem - TODO: NOT IMPLEMENTED
@@ -141,8 +137,7 @@ struct lyxml_elem* lyxml_read_fd(struct ly_ctx *ctx, int fd, int options);
  * @param[in] options Parser options. Currently ignored, no option defined yet.
  * @return pointer to root of the parsed XML document tree.
  */
-struct lyxml_elem* lyxml_read_file(struct ly_ctx *ctx, const char* filename,
-                                   int options);
+struct lyxml_elem *lyxml_read_file(struct ly_ctx *ctx, const char *filename, int options);
 
 /**
  * @brief Dump XML tree to a IO stream
@@ -153,7 +148,7 @@ struct lyxml_elem* lyxml_read_file(struct ly_ctx *ctx, const char* filename,
  * @return number of printed characters.
  *
  */
-int lyxml_dump(FILE *stream, struct lyxml_elem *elem, int options);
+int lyxml_dump(FILE * stream, struct lyxml_elem *elem, int options);
 
 /*
  * Functions
@@ -173,8 +168,7 @@ int lyxml_add_attr(struct lyxml_elem *parent, struct lyxml_attr *attr);
 /**
  * @brief Get value of the attribute in the specified element.
  */
-const char *lyxml_get_attr(struct lyxml_elem *elem, const char *name,
-                           const char *ns);
+const char *lyxml_get_attr(struct lyxml_elem *elem, const char *name, const char *ns);
 
 /**
  * @brief Add a child element into a parent element.
@@ -214,7 +208,7 @@ void lyxml_free_attrs(struct ly_ctx *ctx, struct lyxml_elem *elem);
  * @param[in] ctx libyang context to use
  * @param[in] elem Pointer to the element to free.
  */
-void lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem* elem);
+void lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem *elem);
 
 /**
  * @brief Unlink the attribute from its parent element. In contrast to

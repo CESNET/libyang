@@ -33,135 +33,138 @@
 
 void ly_submodule_free(struct ly_submodule *submodule);
 
-static const char *strnodetype(LY_NODE_TYPE type)
+static const char *
+strnodetype(LY_NODE_TYPE type)
 {
-	switch(type) {
-	case LY_NODE_AUGMENT:
-		return "augment";
-	case LY_NODE_CONTAINER:
-		return "container";
-	case LY_NODE_CHOICE:
-		return "choice";
-	case LY_NODE_LEAF:
-		return "leaf";
-	case LY_NODE_LEAFLIST:
-		return "leaf-list";
-	case LY_NODE_LIST:
-		return "list";
-	case LY_NODE_ANYXML:
-		return "anyxml";
-	case LY_NODE_USES:
-		return "uses";
-	case LY_NODE_GROUPING:
-		return "grouping";
-	case LY_NODE_CASE:
-		return "case";
-	case LY_NODE_INPUT:
-		return "input";
-	case LY_NODE_OUTPUT:
-		return "output";
-	case LY_NODE_NOTIF:
-		return "notification";
+    switch (type) {
+    case LY_NODE_AUGMENT:
+        return "augment";
+    case LY_NODE_CONTAINER:
+        return "container";
+    case LY_NODE_CHOICE:
+        return "choice";
+    case LY_NODE_LEAF:
+        return "leaf";
+    case LY_NODE_LEAFLIST:
+        return "leaf-list";
+    case LY_NODE_LIST:
+        return "list";
+    case LY_NODE_ANYXML:
+        return "anyxml";
+    case LY_NODE_USES:
+        return "uses";
+    case LY_NODE_GROUPING:
+        return "grouping";
+    case LY_NODE_CASE:
+        return "case";
+    case LY_NODE_INPUT:
+        return "input";
+    case LY_NODE_OUTPUT:
+        return "output";
+    case LY_NODE_NOTIF:
+        return "notification";
     case LY_NODE_RPC:
         return "rpc";
-	}
+    }
 
-	return NULL;
+    return NULL;
 }
 
-struct ly_mnode_leaf *find_leaf(struct ly_mnode *parent, const char *name, int len)
+struct ly_mnode_leaf *
+find_leaf(struct ly_mnode *parent, const char *name, int len)
 {
-	struct ly_mnode *child;
-	struct ly_mnode_leaf *result;
+    struct ly_mnode *child;
+    struct ly_mnode_leaf *result;
 
-	if (!len) {
-		len = strlen(name);
-	}
+    if (!len) {
+        len = strlen(name);
+    }
 
-	LY_TREE_FOR(parent->child, child) {
-		switch (child->nodetype) {
-		case LY_NODE_LEAF:
-			/* direct check */
-			if (child->name == name || (!strncmp(child->name, name, len) && !child->name[len])) {
-				return (struct ly_mnode_leaf *)child;
-			}
-			break;
-		case LY_NODE_USES:
-			/* search recursively */
-			result = find_leaf(child, name, len);
-			if (result) {
-				return result;
-			}
-			break;
-		default:
-			/* ignore */
-			break;
-		}
-	}
+    LY_TREE_FOR(parent->child, child) {
+        switch (child->nodetype) {
+        case LY_NODE_LEAF:
+            /* direct check */
+            if (child->name == name || (!strncmp(child->name, name, len) && !child->name[len])) {
+                return (struct ly_mnode_leaf *)child;
+            }
+            break;
+        case LY_NODE_USES:
+            /* search recursively */
+            result = find_leaf(child, name, len);
+            if (result) {
+                return result;
+            }
+            break;
+        default:
+            /* ignore */
+            break;
+        }
+    }
 
-	return NULL;
+    return NULL;
 }
 
-void ly_mnode_unlink(struct ly_mnode *node)
+void
+ly_mnode_unlink(struct ly_mnode *node)
 {
-	struct ly_mnode *parent, *first;
+    struct ly_mnode *parent, *first;
 
-	if (!node) {
-		return;
-	}
+    if (!node) {
+        return;
+    }
 
-	/* unlink from data model if necessary */
-	if (node->module) {
-		if (node->module->data == node) {
-			node->module->data = node->next;
-		}
-	}
+    /* unlink from data model if necessary */
+    if (node->module) {
+        if (node->module->data == node) {
+            node->module->data = node->next;
+        }
+    }
 
-	/* store pointers to important nodes */
-	parent = node->parent;
-	if (parent && !parent->nodetype) {
-		/* handle augments - first, unlink it from the augment parent ... */
-		if (parent->child == node) {
-			parent->child = node->next;
-		}
-		/* and then continue with the target parent */
-		parent = ((struct ly_augment *)parent)->target;
-	}
+    /* store pointers to important nodes */
+    parent = node->parent;
+    if (parent && !parent->nodetype) {
+        /* handle augments - first, unlink it from the augment parent ... */
+        if (parent->child == node) {
+            parent->child = node->next;
+        }
+        /* and then continue with the target parent */
+        parent = ((struct ly_augment *)parent)->target;
+    }
 
-	/* unlink from parent */
-	if (parent) {
-		if (parent->child == node) {
-			parent->child = node->next;
-		}
-		node->parent = NULL;
-	}
+    /* unlink from parent */
+    if (parent) {
+        if (parent->child == node) {
+            parent->child = node->next;
+        }
+        node->parent = NULL;
+    }
 
-	/* unlink from siblings */
-	if (node->prev == node) {
-		/* there are no more siblings */
-		return;
-	}
-	if (node->next) {
-		node->next->prev = node->prev;
-	} else {
-		/* unlinking the last element */
-		if (parent) {
-			first = parent->child;
-		} else {
-			first = node;
-			while (node->prev->next) {
-				first = node->prev;
-			}
-		}
-		first->prev = node->prev;
-	}
-	if (node->prev->next) {
-		node->prev->next = node->next;
-	}
+    /* unlink from siblings */
+    if (node->prev == node) {
+        /* there are no more siblings */
+        return;
+    }
+    if (node->next) {
+        node->next->prev = node->prev;
+    } else {
+        /* unlinking the last element */
+        if (parent) {
+            first = parent->child;
+        } else {
+            first = node;
+            while (node->prev->next) {
+                first = node->prev;
+            }
+        }
+        first->prev = node->prev;
+    }
+    if (node->prev->next) {
+        node->prev->next = node->next;
+    }
 
-	/* clean up the unlinked element */
-	node->next = NULL;
-	node->prev = node;
+    /* clean up the unlinked element */
+    node->next = NULL;
+    node->prev = node;
 }
 
 /*
@@ -172,155 +175,155 @@ void ly_mnode_unlink(struct ly_mnode *node)
  * end of the child list).
  * If the child has next sibling(s), all of them are connected with the parent.
  */
-int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
+int
+ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
 {
-	struct ly_mnode *last;
+    struct ly_mnode *last;
 
-	assert(parent);
-	assert(child);
+    assert(parent);
+    assert(child);
 
-	/* checks */
-	switch(parent->nodetype) {
-	case LY_NODE_CONTAINER:
-	case LY_NODE_LIST:
-	case LY_NODE_GROUPING:
-	case LY_NODE_USES:
+    /* checks */
+    switch (parent->nodetype) {
+    case LY_NODE_CONTAINER:
+    case LY_NODE_LIST:
+    case LY_NODE_GROUPING:
+    case LY_NODE_USES:
     case LY_NODE_INPUT:
     case LY_NODE_OUTPUT:
     case LY_NODE_NOTIF:
-		if (!(child->nodetype & (LY_NODE_ANYXML | LY_NODE_CHOICE
-				| LY_NODE_CONTAINER | LY_NODE_GROUPING | LY_NODE_LEAF
-				| LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_USES))) {
-			LOGVAL(VE_SPEC, 0, "Unexpected substatement \"%s\" in \"%s\" (%s).",
-					strnodetype(child->nodetype), strnodetype(parent->nodetype), parent->name);
-			return EXIT_FAILURE;
-		}
-		break;
-	case LY_NODE_CHOICE:
-		if (!(child->nodetype & (LY_NODE_ANYXML | LY_NODE_CASE
-				| LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST
-				| LY_NODE_LIST))) {
-			LOGVAL(VE_SPEC, 0, "Unexpected substatement \"%s\" in \"choice\" %s.",
-					strnodetype(child->nodetype), parent->name);
-			return EXIT_FAILURE;
-		}
-		break;
-	case LY_NODE_CASE:
-		if (!(child->nodetype & (LY_NODE_ANYXML | LY_NODE_CHOICE
-				| LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST
-				| LY_NODE_LIST | LY_NODE_USES))) {
-			LOGVAL(VE_SPEC, 0, "Unexpected substatement \"%s\" in \"case\" %s.",
-					strnodetype(child->nodetype), parent->name);
-			return EXIT_FAILURE;
-		}
-		break;
+        if (!(child->nodetype &
+                (LY_NODE_ANYXML | LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_GROUPING | LY_NODE_LEAF |
+                 LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_USES))) {
+            LOGVAL(VE_SPEC, 0, "Unexpected substatement \"%s\" in \"%s\" (%s).",
+                   strnodetype(child->nodetype), strnodetype(parent->nodetype), parent->name);
+            return EXIT_FAILURE;
+        }
+        break;
+    case LY_NODE_CHOICE:
+        if (!(child->nodetype &
+                (LY_NODE_ANYXML | LY_NODE_CASE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST))) {
+            LOGVAL(VE_SPEC, 0, "Unexpected substatement \"%s\" in \"choice\" %s.",
+                   strnodetype(child->nodetype), parent->name);
+            return EXIT_FAILURE;
+        }
+        break;
+    case LY_NODE_CASE:
+        if (!(child->nodetype &
+                (LY_NODE_ANYXML | LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_USES))) {
+            LOGVAL(VE_SPEC, 0, "Unexpected substatement \"%s\" in \"case\" %s.",
+                   strnodetype(child->nodetype), parent->name);
+            return EXIT_FAILURE;
+        }
+        break;
     case LY_NODE_RPC:
-        if (!(child->nodetype & (LY_NODE_INPUT | LY_NODE_OUTPUT
-                | LY_NODE_GROUPING))) {
+        if (!(child->nodetype & (LY_NODE_INPUT | LY_NODE_OUTPUT | LY_NODE_GROUPING))) {
             LOGVAL(VE_SPEC, 0, "Unexpected substatement \"%s\" in \"rpc\" %s.",
                    strnodetype(child->nodetype), parent->name);
             return EXIT_FAILURE;
         }
         break;
-	case LY_NODE_LEAF:
-	case LY_NODE_LEAFLIST:
-	case LY_NODE_ANYXML:
-		LOGVAL(VE_SPEC, 0, "The \"%s\" statement (%s) cannot have any substatement.",
-				strnodetype(parent->nodetype), parent->name);
-		return EXIT_FAILURE;
-	case LY_NODE_AUGMENT:
-		LOGVAL(VE_SPEC, 0, "Internal error (%s:%d)", __FILE__, __LINE__);
-		return EXIT_FAILURE;
-	}
+    case LY_NODE_LEAF:
+    case LY_NODE_LEAFLIST:
+    case LY_NODE_ANYXML:
+        LOGVAL(VE_SPEC, 0, "The \"%s\" statement (%s) cannot have any substatement.",
+               strnodetype(parent->nodetype), parent->name);
+        return EXIT_FAILURE;
+    case LY_NODE_AUGMENT:
+        LOGVAL(VE_SPEC, 0, "Internal error (%s:%d)", __FILE__, __LINE__);
+        return EXIT_FAILURE;
+    }
 
-	if (child->parent) {
-		ly_mnode_unlink(child);
-	}
+    if (child->parent) {
+        ly_mnode_unlink(child);
+    }
 
-	if (!parent->child) {
-		/* the only/first child of the parent */
-		parent->child = child;
-		child->parent = parent;
-		last = child;
-	} else {
-		/* add a new child at the end of parent's child list */
-		last = parent->child->prev;
-		last->next = child;
-		child->prev = last;
-	}
-	while (last->next) {
-		last = last->next;
-		last->parent = parent;
-	}
-	parent->child->prev = last;
+    if (!parent->child) {
+        /* the only/first child of the parent */
+        parent->child = child;
+        child->parent = parent;
+        last = child;
+    } else {
+        /* add a new child at the end of parent's child list */
+        last = parent->child->prev;
+        last->next = child;
+        child->prev = last;
+    }
+    while (last->next) {
+        last = last->next;
+        last->parent = parent;
+    }
+    parent->child->prev = last;
 
-	return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 /*
  * id - schema-nodeid
  */
-struct ly_mnode *resolve_schema_nodeid(const char *id, struct ly_mnode *start)
+struct ly_mnode *
+resolve_schema_nodeid(const char *id, struct ly_mnode *start)
 {
-	char *id_cpy, *ptr, *name, *prefix;
-	struct ly_mnode *sibling;
+    char *id_cpy, *ptr, *name, *prefix;
+    struct ly_mnode *sibling;
     struct ly_submodule *sub_mod;
-	int i, j;
+    int i, j;
 
-	id_cpy = malloc((strlen(id)+1)*sizeof(char));
-	strcpy(id_cpy, id);
+    id_cpy = malloc((strlen(id) + 1) * sizeof (char));
+    strcpy(id_cpy, id);
 
-	prefix = strtok_r(id_cpy, "/", &ptr);
-	name = prefix ? strchr(prefix, ':') : NULL;
-	if (name) {
-		name[0] = '\0';
-		name++;
-	} else {
-		name = prefix;
-		prefix = NULL;
-	}
+    prefix = strtok_r(id_cpy, "/", &ptr);
+    name = prefix ? strchr(prefix, ':') : NULL;
+    if (name) {
+        name[0] = '\0';
+        name++;
+    } else {
+        name = prefix;
+        prefix = NULL;
+    }
 
-	/* identifier now refers to start or its sibling */
-	start = start->child;
+    /* identifier now refers to start or its sibling */
+    start = start->child;
 
-	/* absolute-schema-nodeid */
-	if (id[0] == '/') {
-		/* it is not the local prefix */
-		if (prefix && strcmp(prefix, start->module->prefix)) {
-			for (i = 0; i < start->module->imp_size; i++) {
-				if (!strcmp(start->module->imp[i].prefix, prefix)) {
+    /* absolute-schema-nodeid */
+    if (id[0] == '/') {
+        /* it is not the local prefix */
+        if (prefix && strcmp(prefix, start->module->prefix)) {
+            for (i = 0; i < start->module->imp_size; i++) {
+                if (!strcmp(start->module->imp[i].prefix, prefix)) {
                     start = start->module->imp[i].module->data;
                     break;
                 }
-			}
-			/* no match */
-			if (i == start->module->imp_size) {
-				free(id_cpy);
-				return NULL;
-			}
+            }
+            /* no match */
+            if (i == start->module->imp_size) {
+                free(id_cpy);
+                return NULL;
+            }
 
-		/* it is likely the local prefix */
-		} else {
-			start = start->module->data;
-		}
-	}
+            /* it is likely the local prefix */
+        } else {
+            start = start->module->data;
+        }
+    }
 
-	/* descendant-schema-nodeid */
-	while (1) {
-		if (!strcmp(name, ".")) {
-			/* this node - start does not change */
-		} else if (!strcmp(name, "..")) {
-			start = start->parent;
-		} else {
-			LY_TREE_FOR(start, sibling) {
-				/* match */
-				if (!strcmp(name, sibling->name)) {
-					/* prefix check, it's not our own */
+    /* descendant-schema-nodeid */
+    while (1) {
+        if (!strcmp(name, ".")) {
+            /* this node - start does not change */
+        } else if (!strcmp(name, "..")) {
+            start = start->parent;
+        } else {
+            LY_TREE_FOR(start, sibling) {
+                /* match */
+                if (!strcmp(name, sibling->name)) {
+                    /* prefix check, it's not our own */
                     if (prefix && strcmp(sibling->module->prefix, prefix)) {
 
                         /* import prefix check */
                         for (i = 0; i < sibling->module->imp_size; i++) {
-                            if (!strcmp(sibling->module->imp[i].prefix, prefix) && sibling->module->imp[i].module == sibling->module) {
+                            if (!strcmp(sibling->module->imp[i].prefix, prefix)
+                                && sibling->module->imp[i].module == sibling->module) {
                                 break;
                             }
                         }
@@ -331,7 +334,8 @@ struct ly_mnode *resolve_schema_nodeid(const char *id, struct ly_mnode *start)
                             for (i = 0; i < sibling->module->inc_size; i++) {
                                 sub_mod = sibling->module->inc[i].submodule;
                                 for (j = 0; j < sub_mod->imp_size; j++) {
-                                    if (!strcmp(sub_mod->imp[j].prefix, prefix) && sub_mod->imp[j].module == sibling->module) {
+                                    if (!strcmp(sub_mod->imp[j].prefix, prefix)
+                                        && sub_mod->imp[j].module == sibling->module) {
                                         break;
                                     }
                                 }
@@ -357,7 +361,8 @@ struct ly_mnode *resolve_schema_nodeid(const char *id, struct ly_mnode *start)
                     }
 
                     /* check for shorthand cases - then 'start' does not change */
-                    if (!sibling->parent || sibling->parent->nodetype != LY_NODE_CHOICE || sibling->nodetype == LY_NODE_CASE) {
+                    if (!sibling->parent || sibling->parent->nodetype != LY_NODE_CHOICE
+                        || sibling->nodetype == LY_NODE_CASE) {
                         start = sibling->child;
                     }
                     break;
@@ -390,622 +395,650 @@ struct ly_mnode *resolve_schema_nodeid(const char *id, struct ly_mnode *start)
     return NULL;
 }
 
-API struct ly_module *ly_module_read(struct ly_ctx *ctx, const char *data,
-                                    LY_MINFORMAT format)
+API struct ly_module *
+ly_module_read(struct ly_ctx *ctx, const char *data, LY_MINFORMAT format)
 {
-	if (!ctx || !data) {
-		LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
-		return NULL;
-	}
+    if (!ctx || !data) {
+        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        return NULL;
+    }
 
-	switch (format) {
-	case LY_IN_YIN:
-		return yin_read_module(ctx, data);
-	case LY_IN_YANG:
-	default:
-		/* TODO */
-		return NULL;
-	}
+    switch (format) {
+    case LY_IN_YIN:
+        return yin_read_module(ctx, data);
+    case LY_IN_YANG:
+    default:
+        /* TODO */
+        return NULL;
+    }
 
-	return NULL;
+    return NULL;
 }
 
-struct ly_submodule *ly_submodule_read(struct ly_module *module,
-                                       const char *data, LY_MINFORMAT format)
+struct ly_submodule *
+ly_submodule_read(struct ly_module *module, const char *data, LY_MINFORMAT format)
 {
-	assert(module);
-	assert(data);
+    assert(module);
+    assert(data);
 
-	switch (format) {
-	case LY_IN_YIN:
-		return yin_read_submodule(module, data);
-	case LY_IN_YANG:
-	default:
-		/* TODO */
-		return NULL;
-	}
+    switch (format) {
+    case LY_IN_YIN:
+        return yin_read_submodule(module, data);
+    case LY_IN_YANG:
+    default:
+        /* TODO */
+        return NULL;
+    }
 
-	return NULL;
+    return NULL;
 }
 
-API struct ly_module *ly_module_read_fd(struct ly_ctx *ctx, int fd,
-                                       LY_MINFORMAT format)
+API struct ly_module *
+ly_module_read_fd(struct ly_ctx *ctx, int fd, LY_MINFORMAT format)
 {
-	struct ly_module *module;
-	struct stat sb;
-	char *addr;
+    struct ly_module *module;
+    struct stat sb;
+    char *addr;
 
-	if (!ctx || fd < 0) {
-		LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
-		return NULL;
-	}
+    if (!ctx || fd < 0) {
+        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        return NULL;
+    }
 
-	/*
-	 * TODO
-	 * This is just a temporary solution to make working automatic search for
-	 * imported modules. This doesn't work e.g. for streams (stdin)
-	 */
-	fstat(fd, &sb);
-	addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-	module = ly_module_read(ctx, addr, format);
-	munmap(addr, sb.st_size);
+    /*
+     * TODO
+     * This is just a temporary solution to make working automatic search for
+     * imported modules. This doesn't work e.g. for streams (stdin)
+     */
+    fstat(fd, &sb);
+    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    module = ly_module_read(ctx, addr, format);
+    munmap(addr, sb.st_size);
 
-	return module;
+    return module;
 }
 
-struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd,
-                                          LY_MINFORMAT format)
+struct ly_submodule *
+ly_submodule_read_fd(struct ly_module *module, int fd, LY_MINFORMAT format)
 {
-	struct ly_submodule *submodule;
-	struct stat sb;
-	char *addr;
+    struct ly_submodule *submodule;
+    struct stat sb;
+    char *addr;
 
-	assert(module);
-	assert(fd >= 0);
+    assert(module);
+    assert(fd >= 0);
 
-	/*
-	 * TODO
-	 * This is just a temporary solution to make working automatic search for
-	 * imported modules. This doesn't work e.g. for streams (stdin)
-	 */
-	fstat(fd, &sb);
-	addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-	/* TODO addr error check */
-	submodule = ly_submodule_read(module, addr, format);
-	munmap(addr, sb.st_size);
+    /*
+     * TODO
+     * This is just a temporary solution to make working automatic search for
+     * imported modules. This doesn't work e.g. for streams (stdin)
+     */
+    fstat(fd, &sb);
+    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    /* TODO addr error check */
+    submodule = ly_submodule_read(module, addr, format);
+    munmap(addr, sb.st_size);
 
-	return submodule;
-
-}
-
-void ly_type_dup(struct ly_ctx *ctx, struct ly_type *new, struct ly_type *old)
-{
-	int i;
-
-	new->prefix = lydict_insert(ctx, old->prefix, 0);
-	new->base = old->base;
-	new->der = old->der;
-
-	switch(new->base) {
-	case LY_TYPE_ENUM:
-		new->info.enums.count = old->info.enums.count;
-		if (new->info.enums.count) {
-			new->info.enums.list = calloc(new->info.enums.count, sizeof *new->info.enums.list);
-			for (i = 0; i < new->info.enums.count; i++) {
-				new->info.enums.list[i].name = lydict_insert(ctx, old->info.enums.list[i].name, 0);
-				new->info.enums.list[i].dsc = lydict_insert(ctx, old->info.enums.list[i].dsc, 0);
-				new->info.enums.list[i].ref = lydict_insert(ctx, old->info.enums.list[i].ref, 0);
-			}
-		}
-		break;
-	default:
-		/* TODO */
-		break;
-	}
-}
-
-void ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
-{
-	int i;
-
-	assert(ctx);
-	if (!type) {
-		return;
-	}
-
-	lydict_remove(ctx, type->prefix);
-
-	switch(type->base) {
-	case LY_TYPE_ENUM:
-		for (i = 0; i < type->info.enums.count; i++) {
-			lydict_remove(ctx, type->info.enums.list[i].name);
-			lydict_remove(ctx, type->info.enums.list[i].dsc);
-			lydict_remove(ctx, type->info.enums.list[i].ref);
-		}
-		free(type->info.enums.list);
-		break;
-	default:
-		/* TODO */
-		break;
-	}
-}
-
-struct ly_tpdf *ly_tpdf_dup(struct ly_ctx *ctx, struct ly_tpdf *old, int size)
-{
-	struct ly_tpdf *result;
-	int i;
-
-	if (!size) {
-		return NULL;
-	}
-
-	result = calloc(size, sizeof *result);
-	for (i = 0; i < size; i++) {
-		result[i].name = lydict_insert(ctx, old[i].name, 0);
-		result[i].dsc = lydict_insert(ctx, old[i].dsc, 0);
-		result[i].ref = lydict_insert(ctx, old[i].ref, 0);
-		result[i].flags = old[i].flags;
-		result[i].module = old[i].module;
-
-		ly_type_dup(ctx, &(result[i].type), &(old[i].type));
-
-		result[i].dflt = lydict_insert(ctx, old[i].dflt, 0);
-		result[i].units = lydict_insert(ctx, old[i].units, 0);
-	}
-
-	return result;
-}
-
-void ly_tpdf_free(struct ly_ctx *ctx, struct ly_tpdf *tpdf)
-{
-	assert(ctx);
-	if (!tpdf) {
-		return;
-	}
-
-	lydict_remove(ctx, tpdf->name);
-	lydict_remove(ctx, tpdf->dsc);
-	lydict_remove(ctx, tpdf->ref);
-
-	ly_type_free(ctx, &tpdf->type);
-
-	lydict_remove(ctx, tpdf->units);
-	lydict_remove(ctx, tpdf->dflt);
-}
-
-struct ly_must *ly_must_dup(struct ly_ctx *ctx, struct ly_must *old, int size)
-{
-	struct ly_must *result;
-	int i;
-
-	if (!size) {
-		return NULL;
-	}
-
-	result = calloc(size, sizeof *result);
-	for (i = 0; i < size; i++) {
-		result[i].cond = lydict_insert(ctx, old[i].cond, 0);
-		result[i].dsc = lydict_insert(ctx, old[i].dsc, 0);
-		result[i].ref = lydict_insert(ctx, old[i].ref, 0);
-		result[i].eapptag = lydict_insert(ctx, old[i].eapptag, 0);
-		result[i].emsg = lydict_insert(ctx, old[i].emsg, 0);
-	}
-
-	return result;
-}
-
-void ly_must_free(struct ly_ctx *ctx, struct ly_must *must)
-{
-	assert(ctx);
-	if (!must) {
-		return;
-	}
-
-	lydict_remove(ctx, must->cond);
-	lydict_remove(ctx, must->dsc);
-	lydict_remove(ctx, must->ref);
-	lydict_remove(ctx, must->eapptag);
-	lydict_remove(ctx, must->emsg);
-}
-
-struct ly_augment *ly_augment_dup(struct ly_module *module, struct ly_mnode *parent, struct ly_augment *old, int size)
-{
-	struct ly_augment *new = NULL;
-	int i = -1;
-
-	if (!size) {
-		return NULL;
-	}
-
-	new = calloc(size, sizeof *new);
-	for (i = 0; i < size; i++) {
-		new[i].target_name = lydict_insert(module->ctx, old[i].target_name, 0);
-		new[i].dsc = lydict_insert(module->ctx, old[i].dsc, 0);
-		new[i].ref = lydict_insert(module->ctx, old[i].ref, 0);
-		new[i].flags = old[i].flags;
-		/* .target = NULL; .nodetype = 0 */
-
-		new[i].parent = parent;
-
-		/* copy the definition of augment nodes */
-		if (old[i].child) {
-			new[i].child = (struct ly_mnode *) lyxml_dup_elem(module->ctx, (struct lyxml_elem *)old[i].child, NULL, 1);
-		}
-	}
-
-	return new;
-}
-
-struct ly_refine *ly_refine_dup(struct ly_ctx *ctx, struct ly_refine *old, int size)
-{
-	struct ly_refine *result;
-	int i;
-
-	if (!size) {
-		return NULL;
-	}
-
-	result = calloc(size, sizeof *result);
-	for (i = 0; i < size; i++) {
-		result[i].target = lydict_insert(ctx, old[i].target, 0);
-		result[i].dsc = lydict_insert(ctx, old[i].dsc, 0);
-		result[i].ref = lydict_insert(ctx, old[i].ref, 0);
-		result[i].flags = old[i].flags;
-		result[i].target_type = old[i].target_type;
-		result[i].must_size = old[i].must_size;
-		result[i].must = ly_must_dup(ctx, old[i].must, old[i].must_size);
-		if (result[i].target_type & (LY_NODE_LEAF | LY_NODE_CHOICE)) {
-			result[i].mod.dflt = lydict_insert(ctx, old[i].mod.dflt, 0);
-		} else if (result[i].target_type == LY_NODE_CONTAINER) {
-			result[i].mod.presence = lydict_insert(ctx, old[i].mod.presence, 0);
-		} else if (result[i].target_type & (LY_NODE_LIST | LY_NODE_LEAFLIST)) {
-			result[i].mod.list = old[i].mod.list;
-		}
-	}
-
-	return result;
-}
-
-void ly_ident_free(struct ly_ctx *ctx, struct ly_ident *ident)
-{
-	struct ly_ident_der *der;
-
-	assert(ctx);
-	if (!ident) {
-		return;
-	}
-
-	/*
-	 * TODO
-	 * if caller free only a single data model which is used (its identity is
-	 * reference from identity in another module), this silly freeing can lead
-	 * to segmentation fault. But without noting if the module is used by some
-	 * other, it cannot be solved.
-	 */
-	while(ident->der) {
-		der = ident->der;
-		ident->der = der->next;
-		free(der);
-	}
-
-	lydict_remove(ctx, ident->name);
-	lydict_remove(ctx, ident->dsc);
-	lydict_remove(ctx, ident->ref);
+    return submodule;
 
 }
 
-void ly_grp_free(struct ly_ctx *ctx, struct ly_mnode_grp *grp)
+void
+ly_type_dup(struct ly_ctx *ctx, struct ly_type *new, struct ly_type *old)
 {
-	int i;
+    int i;
 
-	/* handle only specific parts for LY_NODE_GROUPING */
-	for (i = 0; i < grp->tpdf_size; i++) {
-		ly_tpdf_free(ctx, &grp->tpdf[i]);
-	}
-	free(grp->tpdf);
+    new->prefix = lydict_insert(ctx, old->prefix, 0);
+    new->base = old->base;
+    new->der = old->der;
+
+    switch (new->base) {
+    case LY_TYPE_ENUM:
+        new->info.enums.count = old->info.enums.count;
+        if (new->info.enums.count) {
+            new->info.enums.list = calloc(new->info.enums.count, sizeof *new->info.enums.list);
+            for (i = 0; i < new->info.enums.count; i++) {
+                new->info.enums.list[i].name = lydict_insert(ctx, old->info.enums.list[i].name, 0);
+                new->info.enums.list[i].dsc = lydict_insert(ctx, old->info.enums.list[i].dsc, 0);
+                new->info.enums.list[i].ref = lydict_insert(ctx, old->info.enums.list[i].ref, 0);
+            }
+        }
+        break;
+    default:
+        /* TODO */
+        break;
+    }
 }
 
-void ly_anyxml_free(struct ly_ctx *ctx, struct ly_mnode_anyxml *anyxml)
+void
+ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
 {
-	int i;
+    int i;
 
-	for (i = 0; i < anyxml->must_size; i++) {
-		ly_must_free(ctx, &anyxml->must[i]);
-	}
-	free(anyxml->must);
+    assert(ctx);
+    if (!type) {
+        return;
+    }
+
+    lydict_remove(ctx, type->prefix);
+
+    switch (type->base) {
+    case LY_TYPE_ENUM:
+        for (i = 0; i < type->info.enums.count; i++) {
+            lydict_remove(ctx, type->info.enums.list[i].name);
+            lydict_remove(ctx, type->info.enums.list[i].dsc);
+            lydict_remove(ctx, type->info.enums.list[i].ref);
+        }
+        free(type->info.enums.list);
+        break;
+    default:
+        /* TODO */
+        break;
+    }
 }
 
-void ly_leaf_free(struct ly_ctx *ctx, struct ly_mnode_leaf *leaf)
+struct ly_tpdf *
+ly_tpdf_dup(struct ly_ctx *ctx, struct ly_tpdf *old, int size)
 {
-	int i;
+    struct ly_tpdf *result;
+    int i;
 
-	for (i = 0; i < leaf->must_size; i++) {
-		ly_must_free(ctx, &leaf->must[i]);
-	}
-	free(leaf->must);
+    if (!size) {
+        return NULL;
+    }
 
-	ly_type_free(ctx, &leaf->type);
-	lydict_remove(ctx, leaf->units);
-	lydict_remove(ctx, leaf->dflt);
+    result = calloc(size, sizeof *result);
+    for (i = 0; i < size; i++) {
+        result[i].name = lydict_insert(ctx, old[i].name, 0);
+        result[i].dsc = lydict_insert(ctx, old[i].dsc, 0);
+        result[i].ref = lydict_insert(ctx, old[i].ref, 0);
+        result[i].flags = old[i].flags;
+        result[i].module = old[i].module;
+
+        ly_type_dup(ctx, &(result[i].type), &(old[i].type));
+
+        result[i].dflt = lydict_insert(ctx, old[i].dflt, 0);
+        result[i].units = lydict_insert(ctx, old[i].units, 0);
+    }
+
+    return result;
 }
 
-void ly_leaflist_free(struct ly_ctx *ctx, struct ly_mnode_leaflist *llist)
+void
+ly_tpdf_free(struct ly_ctx *ctx, struct ly_tpdf *tpdf)
 {
-	int i;
+    assert(ctx);
+    if (!tpdf) {
+        return;
+    }
 
-	for (i = 0; i < llist->must_size; i++) {
-		ly_must_free(ctx, &llist->must[i]);
-	}
-	free(llist->must);
+    lydict_remove(ctx, tpdf->name);
+    lydict_remove(ctx, tpdf->dsc);
+    lydict_remove(ctx, tpdf->ref);
 
-	ly_type_free(ctx, &llist->type);
-	lydict_remove(ctx, llist->units);
+    ly_type_free(ctx, &tpdf->type);
+
+    lydict_remove(ctx, tpdf->units);
+    lydict_remove(ctx, tpdf->dflt);
 }
 
-void ly_list_free(struct ly_ctx *ctx, struct ly_mnode_list *list)
+struct ly_must *
+ly_must_dup(struct ly_ctx *ctx, struct ly_must *old, int size)
 {
-	int i;
+    struct ly_must *result;
+    int i;
 
-	/* handle only specific parts for LY_NODE_LIST */
-	for (i = 0; i < list->tpdf_size; i++) {
-		ly_tpdf_free(ctx, &list->tpdf[i]);
-	}
-	free(list->tpdf);
+    if (!size) {
+        return NULL;
+    }
 
-	for (i = 0; i < list->must_size; i++) {
-		ly_must_free(ctx, &list->must[i]);
-	}
-	free(list->must);
+    result = calloc(size, sizeof *result);
+    for (i = 0; i < size; i++) {
+        result[i].cond = lydict_insert(ctx, old[i].cond, 0);
+        result[i].dsc = lydict_insert(ctx, old[i].dsc, 0);
+        result[i].ref = lydict_insert(ctx, old[i].ref, 0);
+        result[i].eapptag = lydict_insert(ctx, old[i].eapptag, 0);
+        result[i].emsg = lydict_insert(ctx, old[i].emsg, 0);
+    }
 
-	for (i = 0; i < list->unique_size; i++) {
-		free(list->unique[i].leafs);
-	}
-	free(list->unique);
-
-	free(list->keys);
+    return result;
 }
 
-void ly_container_free(struct ly_ctx *ctx, struct ly_mnode_container *cont)
+void
+ly_must_free(struct ly_ctx *ctx, struct ly_must *must)
 {
-	int i;
+    assert(ctx);
+    if (!must) {
+        return;
+    }
 
-	/* handle only specific parts for LY_NODE_CONTAINER */
-	lydict_remove(ctx, cont->presence);
-
-	for (i = 0; i < cont->tpdf_size; i++) {
-		ly_tpdf_free(ctx, &cont->tpdf[i]);
-	}
-	free(cont->tpdf);
-
-	for (i = 0; i < cont->must_size; i++) {
-		ly_must_free(ctx, &cont->must[i]);
-	}
-	free(cont->must);
+    lydict_remove(ctx, must->cond);
+    lydict_remove(ctx, must->dsc);
+    lydict_remove(ctx, must->ref);
+    lydict_remove(ctx, must->eapptag);
+    lydict_remove(ctx, must->emsg);
 }
 
-void ly_uses_free(struct ly_ctx *ctx, struct ly_mnode_uses *uses)
+struct ly_augment *
+ly_augment_dup(struct ly_module *module, struct ly_mnode *parent, struct ly_augment *old, int size)
 {
-	int i, j;
+    struct ly_augment *new = NULL;
+    int i = -1;
 
-	for (i = 0; i < uses->refine_size; i++) {
-		lydict_remove(ctx, uses->refine[i].target);
-		lydict_remove(ctx, uses->refine[i].dsc);
-		lydict_remove(ctx, uses->refine[i].ref);
+    if (!size) {
+        return NULL;
+    }
 
-		for (j = 0; j < uses->refine[j].must_size; j++) {
-			ly_must_free(ctx, &uses->refine[i].must[j]);
-		}
-		free(uses->refine[i].must);
+    new = calloc(size, sizeof *new);
+    for (i = 0; i < size; i++) {
+        new[i].target_name = lydict_insert(module->ctx, old[i].target_name, 0);
+        new[i].dsc = lydict_insert(module->ctx, old[i].dsc, 0);
+        new[i].ref = lydict_insert(module->ctx, old[i].ref, 0);
+        new[i].flags = old[i].flags;
+        /* .target = NULL; .nodetype = 0 */
 
-		if (uses->refine[i].target_type & (LY_NODE_LEAF | LY_NODE_CHOICE)) {
-			lydict_remove(ctx, uses->refine[i].mod.dflt);
-		} else if (uses->refine[i].target_type & LY_NODE_CONTAINER) {
-			lydict_remove(ctx, uses->refine[i].mod.presence);
-		}
-	}
-	free(uses->refine);
+        new[i].parent = parent;
 
-	for (i = 0; i < uses->augment_size; i++) {
-		lydict_remove(ctx, uses->augment[i].target_name);
-		lydict_remove(ctx, uses->augment[i].dsc);
-		lydict_remove(ctx, uses->augment[i].ref);
+        /* copy the definition of augment nodes */
+        if (old[i].child) {
+            new[i].child = (struct ly_mnode *)lyxml_dup_elem(module->ctx, (struct lyxml_elem *)old[i].child, NULL, 1);
+        }
+    }
 
-		lyxml_free_elem(ctx, (struct lyxml_elem *)uses->augment[i].child);
-	}
-	free(uses->augment);
+    return new;
+}
+
+struct ly_refine *
+ly_refine_dup(struct ly_ctx *ctx, struct ly_refine *old, int size)
+{
+    struct ly_refine *result;
+    int i;
+
+    if (!size) {
+        return NULL;
+    }
+
+    result = calloc(size, sizeof *result);
+    for (i = 0; i < size; i++) {
+        result[i].target = lydict_insert(ctx, old[i].target, 0);
+        result[i].dsc = lydict_insert(ctx, old[i].dsc, 0);
+        result[i].ref = lydict_insert(ctx, old[i].ref, 0);
+        result[i].flags = old[i].flags;
+        result[i].target_type = old[i].target_type;
+        result[i].must_size = old[i].must_size;
+        result[i].must = ly_must_dup(ctx, old[i].must, old[i].must_size);
+        if (result[i].target_type & (LY_NODE_LEAF | LY_NODE_CHOICE)) {
+            result[i].mod.dflt = lydict_insert(ctx, old[i].mod.dflt, 0);
+        } else if (result[i].target_type == LY_NODE_CONTAINER) {
+            result[i].mod.presence = lydict_insert(ctx, old[i].mod.presence, 0);
+        } else if (result[i].target_type & (LY_NODE_LIST | LY_NODE_LEAFLIST)) {
+            result[i].mod.list = old[i].mod.list;
+        }
+    }
+
+    return result;
+}
+
+void
+ly_ident_free(struct ly_ctx *ctx, struct ly_ident *ident)
+{
+    struct ly_ident_der *der;
+
+    assert(ctx);
+    if (!ident) {
+        return;
+    }
+
+    /*
+     * TODO
+     * if caller free only a single data model which is used (its identity is
+     * reference from identity in another module), this silly freeing can lead
+     * to segmentation fault. But without noting if the module is used by some
+     * other, it cannot be solved.
+     */
+    while (ident->der) {
+        der = ident->der;
+        ident->der = der->next;
+        free(der);
+    }
+
+    lydict_remove(ctx, ident->name);
+    lydict_remove(ctx, ident->dsc);
+    lydict_remove(ctx, ident->ref);
 
 }
 
-void ly_mnode_free(struct ly_mnode *node)
+void
+ly_grp_free(struct ly_ctx *ctx, struct ly_mnode_grp *grp)
 {
-	struct ly_ctx *ctx;
-	struct ly_mnode *sub, *next;
+    int i;
 
-	if (!node) {
-		return;
-	}
+    /* handle only specific parts for LY_NODE_GROUPING */
+    for (i = 0; i < grp->tpdf_size; i++) {
+        ly_tpdf_free(ctx, &grp->tpdf[i]);
+    }
+    free(grp->tpdf);
+}
 
-	assert(node->module);
-	assert(node->module->ctx);
+void
+ly_anyxml_free(struct ly_ctx *ctx, struct ly_mnode_anyxml *anyxml)
+{
+    int i;
 
-	ctx = node->module->ctx;
+    for (i = 0; i < anyxml->must_size; i++) {
+        ly_must_free(ctx, &anyxml->must[i]);
+    }
+    free(anyxml->must);
+}
 
-	/* common part */
-	LY_TREE_FOR_SAFE(node->child, next, sub) {
-		ly_mnode_free(sub);
-	}
+void
+ly_leaf_free(struct ly_ctx *ctx, struct ly_mnode_leaf *leaf)
+{
+    int i;
 
-	lydict_remove(ctx, node->name);
-	lydict_remove(ctx, node->dsc);
-	lydict_remove(ctx, node->ref);
+    for (i = 0; i < leaf->must_size; i++) {
+        ly_must_free(ctx, &leaf->must[i]);
+    }
+    free(leaf->must);
 
-	/* specific part */
-	switch(node->nodetype) {
-	case LY_NODE_CONTAINER:
-		ly_container_free(ctx, (struct ly_mnode_container *)node);
-		break;
-	case LY_NODE_CHOICE:
-		break;
-	case LY_NODE_LEAF:
-		ly_leaf_free(ctx, (struct ly_mnode_leaf *)node);
-		break;
-	case LY_NODE_LEAFLIST:
-		ly_leaflist_free(ctx, (struct ly_mnode_leaflist *)node);
-		break;
-	case LY_NODE_LIST:
-		ly_list_free(ctx, (struct ly_mnode_list *)node);
-		break;
-	case LY_NODE_ANYXML:
-		ly_anyxml_free(ctx, (struct ly_mnode_anyxml *)node);
-		break;
-	case LY_NODE_USES:
-		ly_uses_free(ctx, (struct ly_mnode_uses *)node);
-		break;
-	case LY_NODE_CASE:
-	case LY_NODE_AUGMENT:
-		/* do nothing */
-		break;
+    ly_type_free(ctx, &leaf->type);
+    lydict_remove(ctx, leaf->units);
+    lydict_remove(ctx, leaf->dflt);
+}
+
+void
+ly_leaflist_free(struct ly_ctx *ctx, struct ly_mnode_leaflist *llist)
+{
+    int i;
+
+    for (i = 0; i < llist->must_size; i++) {
+        ly_must_free(ctx, &llist->must[i]);
+    }
+    free(llist->must);
+
+    ly_type_free(ctx, &llist->type);
+    lydict_remove(ctx, llist->units);
+}
+
+void
+ly_list_free(struct ly_ctx *ctx, struct ly_mnode_list *list)
+{
+    int i;
+
+    /* handle only specific parts for LY_NODE_LIST */
+    for (i = 0; i < list->tpdf_size; i++) {
+        ly_tpdf_free(ctx, &list->tpdf[i]);
+    }
+    free(list->tpdf);
+
+    for (i = 0; i < list->must_size; i++) {
+        ly_must_free(ctx, &list->must[i]);
+    }
+    free(list->must);
+
+    for (i = 0; i < list->unique_size; i++) {
+        free(list->unique[i].leafs);
+    }
+    free(list->unique);
+
+    free(list->keys);
+}
+
+void
+ly_container_free(struct ly_ctx *ctx, struct ly_mnode_container *cont)
+{
+    int i;
+
+    /* handle only specific parts for LY_NODE_CONTAINER */
+    lydict_remove(ctx, cont->presence);
+
+    for (i = 0; i < cont->tpdf_size; i++) {
+        ly_tpdf_free(ctx, &cont->tpdf[i]);
+    }
+    free(cont->tpdf);
+
+    for (i = 0; i < cont->must_size; i++) {
+        ly_must_free(ctx, &cont->must[i]);
+    }
+    free(cont->must);
+}
+
+void
+ly_uses_free(struct ly_ctx *ctx, struct ly_mnode_uses *uses)
+{
+    int i, j;
+
+    for (i = 0; i < uses->refine_size; i++) {
+        lydict_remove(ctx, uses->refine[i].target);
+        lydict_remove(ctx, uses->refine[i].dsc);
+        lydict_remove(ctx, uses->refine[i].ref);
+
+        for (j = 0; j < uses->refine[j].must_size; j++) {
+            ly_must_free(ctx, &uses->refine[i].must[j]);
+        }
+        free(uses->refine[i].must);
+
+        if (uses->refine[i].target_type & (LY_NODE_LEAF | LY_NODE_CHOICE)) {
+            lydict_remove(ctx, uses->refine[i].mod.dflt);
+        } else if (uses->refine[i].target_type & LY_NODE_CONTAINER) {
+            lydict_remove(ctx, uses->refine[i].mod.presence);
+        }
+    }
+    free(uses->refine);
+
+    for (i = 0; i < uses->augment_size; i++) {
+        lydict_remove(ctx, uses->augment[i].target_name);
+        lydict_remove(ctx, uses->augment[i].dsc);
+        lydict_remove(ctx, uses->augment[i].ref);
+
+        lyxml_free_elem(ctx, (struct lyxml_elem *)uses->augment[i].child);
+    }
+    free(uses->augment);
+
+}
+
+void
+ly_mnode_free(struct ly_mnode *node)
+{
+    struct ly_ctx *ctx;
+    struct ly_mnode *sub, *next;
+
+    if (!node) {
+        return;
+    }
+
+    assert(node->module);
+    assert(node->module->ctx);
+
+    ctx = node->module->ctx;
+
+    /* common part */
+    LY_TREE_FOR_SAFE(node->child, next, sub) {
+        ly_mnode_free(sub);
+    }
+
+    lydict_remove(ctx, node->name);
+    lydict_remove(ctx, node->dsc);
+    lydict_remove(ctx, node->ref);
+
+    /* specific part */
+    switch (node->nodetype) {
+    case LY_NODE_CONTAINER:
+        ly_container_free(ctx, (struct ly_mnode_container *)node);
+        break;
+    case LY_NODE_CHOICE:
+        break;
+    case LY_NODE_LEAF:
+        ly_leaf_free(ctx, (struct ly_mnode_leaf *)node);
+        break;
+    case LY_NODE_LEAFLIST:
+        ly_leaflist_free(ctx, (struct ly_mnode_leaflist *)node);
+        break;
+    case LY_NODE_LIST:
+        ly_list_free(ctx, (struct ly_mnode_list *)node);
+        break;
+    case LY_NODE_ANYXML:
+        ly_anyxml_free(ctx, (struct ly_mnode_anyxml *)node);
+        break;
+    case LY_NODE_USES:
+        ly_uses_free(ctx, (struct ly_mnode_uses *)node);
+        break;
+    case LY_NODE_CASE:
+    case LY_NODE_AUGMENT:
+        /* do nothing */
+        break;
     case LY_NODE_GROUPING:
     case LY_NODE_RPC:
-	case LY_NODE_INPUT:
-	case LY_NODE_OUTPUT:
+    case LY_NODE_INPUT:
+    case LY_NODE_OUTPUT:
     case LY_NODE_NOTIF:
-		ly_grp_free(ctx, (struct ly_mnode_grp *)node);
-		break;
-	}
+        ly_grp_free(ctx, (struct ly_mnode_grp *)node);
+        break;
+    }
 
-	/* again common part */
-	ly_mnode_unlink(node);
-	free(node);
+    /* again common part */
+    ly_mnode_unlink(node);
+    free(node);
 }
 
-static void module_free_common(struct ly_module *module)
+static void
+module_free_common(struct ly_module *module)
 {
-	struct ly_ctx *ctx;
-	struct ly_mnode *mnode;
-	unsigned int i;
+    struct ly_ctx *ctx;
+    struct ly_mnode *mnode;
+    unsigned int i;
 
-	assert(module->ctx);
-	ctx = module->ctx;
+    assert(module->ctx);
+    ctx = module->ctx;
 
-	while (module->data) {
-		mnode = module->data;
-		module->data = mnode;
-		ly_mnode_free(mnode);
-	}
+    while (module->data) {
+        mnode = module->data;
+        module->data = mnode;
+        ly_mnode_free(mnode);
+    }
 
-	lydict_remove(ctx, module->dsc);
-	lydict_remove(ctx, module->ref);
-	lydict_remove(ctx, module->org);
-	lydict_remove(ctx, module->contact);
+    lydict_remove(ctx, module->dsc);
+    lydict_remove(ctx, module->ref);
+    lydict_remove(ctx, module->org);
+    lydict_remove(ctx, module->contact);
 
-	for (i = 0; i < module->rev_size; i++) {
-		lydict_remove(ctx, module->rev[i].dsc);
-		lydict_remove(ctx, module->rev[i].ref);
-	}
-	free(module->rev);
+    for (i = 0; i < module->rev_size; i++) {
+        lydict_remove(ctx, module->rev[i].dsc);
+        lydict_remove(ctx, module->rev[i].ref);
+    }
+    free(module->rev);
 
-	for (i = 0; i < module->ident_size; i++) {
-		ly_ident_free(ctx, &module->ident[i]);
-	}
-	module->ident_size = 0;
-	free(module->ident);
+    for (i = 0; i < module->ident_size; i++) {
+        ly_ident_free(ctx, &module->ident[i]);
+    }
+    module->ident_size = 0;
+    free(module->ident);
 
-	for (i = 0; i < module->tpdf_size; i++) {
-		ly_tpdf_free(ctx, &module->tpdf[i]);
-	}
-	free(module->tpdf);
+    for (i = 0; i < module->tpdf_size; i++) {
+        ly_tpdf_free(ctx, &module->tpdf[i]);
+    }
+    free(module->tpdf);
 
-	free(module->imp);
+    free(module->imp);
 
-	for (i = 0; i < module->inc_size; i++) {
-		ly_submodule_free(module->inc[i].submodule);
-	}
-	free(module->inc);
+    for (i = 0; i < module->inc_size; i++) {
+        ly_submodule_free(module->inc[i].submodule);
+    }
+    free(module->inc);
 
-	lydict_remove(ctx, module->name);
+    lydict_remove(ctx, module->name);
 }
 
-void ly_submodule_free(struct ly_submodule *submodule)
+void
+ly_submodule_free(struct ly_submodule *submodule)
 {
-	if (!submodule) {
-		return;
-	}
+    if (!submodule) {
+        return;
+    }
 
-	submodule->inc_size = 0;
-	free(submodule->inc);
-	submodule->inc = NULL;
+    submodule->inc_size = 0;
+    free(submodule->inc);
+    submodule->inc = NULL;
 
-	/* common part with struct ly_module */
-	module_free_common((struct ly_module *)submodule);
+    /* common part with struct ly_module */
+    module_free_common((struct ly_module *)submodule);
 
-	/* no specific items to free */
+    /* no specific items to free */
 
-	free(submodule);
+    free(submodule);
 }
 
-struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, int recursive, unsigned int line)
+struct ly_mnode *
+ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, int recursive, unsigned int line)
 {
-	struct ly_mnode *retval = NULL, *aux, *child;
-	struct ly_ctx *ctx = module->ctx;
-	int i, j;
+    struct ly_mnode *retval = NULL, *aux, *child;
+    struct ly_ctx *ctx = module->ctx;
+    int i, j;
 
-	struct ly_mnode_container *cont;
-	struct ly_mnode_container *cont_orig = (struct ly_mnode_container *)mnode;
-	struct ly_mnode_choice *choice;
-	struct ly_mnode_choice *choice_orig = (struct ly_mnode_choice *)mnode;
-	struct ly_mnode_leaf *leaf;
-	struct ly_mnode_leaf *leaf_orig = (struct ly_mnode_leaf *)mnode;
-	struct ly_mnode_leaflist *llist;
-	struct ly_mnode_leaflist *llist_orig = (struct ly_mnode_leaflist *)mnode;
-	struct ly_mnode_list *list;
-	struct ly_mnode_list *list_orig = (struct ly_mnode_list *)mnode;
-	struct ly_mnode_anyxml *anyxml;
-	struct ly_mnode_anyxml *anyxml_orig = (struct ly_mnode_anyxml *)mnode;
-	struct ly_mnode_uses *uses;
-	struct ly_mnode_uses *uses_orig = (struct ly_mnode_uses *)mnode;
-	struct ly_mnode_grp *mix;
-	struct ly_mnode_grp *mix_orig = (struct ly_mnode_grp *)mnode;
-	struct ly_mnode_case *cs;
+    struct ly_mnode_container *cont;
+    struct ly_mnode_container *cont_orig = (struct ly_mnode_container *)mnode;
+    struct ly_mnode_choice *choice;
+    struct ly_mnode_choice *choice_orig = (struct ly_mnode_choice *)mnode;
+    struct ly_mnode_leaf *leaf;
+    struct ly_mnode_leaf *leaf_orig = (struct ly_mnode_leaf *)mnode;
+    struct ly_mnode_leaflist *llist;
+    struct ly_mnode_leaflist *llist_orig = (struct ly_mnode_leaflist *)mnode;
+    struct ly_mnode_list *list;
+    struct ly_mnode_list *list_orig = (struct ly_mnode_list *)mnode;
+    struct ly_mnode_anyxml *anyxml;
+    struct ly_mnode_anyxml *anyxml_orig = (struct ly_mnode_anyxml *)mnode;
+    struct ly_mnode_uses *uses;
+    struct ly_mnode_uses *uses_orig = (struct ly_mnode_uses *)mnode;
+    struct ly_mnode_grp *mix;
+    struct ly_mnode_grp *mix_orig = (struct ly_mnode_grp *)mnode;
+    struct ly_mnode_case *cs;
 
-	/* we cannot just duplicate memory since the strings are stored in
-	 * dictionary and we need to update dictionary counters.
-	 */
+    /* we cannot just duplicate memory since the strings are stored in
+     * dictionary and we need to update dictionary counters.
+     */
 
-	switch(mnode->nodetype) {
-	case LY_NODE_CONTAINER:
-		cont = calloc(1, sizeof *cont);
-		retval = (struct ly_mnode *)cont;
-		break;
-	case LY_NODE_CHOICE:
-		choice = calloc(1, sizeof *choice);
-		retval = (struct ly_mnode *)choice;
-		break;
-	case LY_NODE_LEAF:
-		leaf = calloc(1, sizeof *leaf);
-		retval = (struct ly_mnode *)leaf;
-		break;
-	case LY_NODE_LEAFLIST:
-		llist = calloc(1, sizeof *llist);
-		retval = (struct ly_mnode *)llist;
-		break;
-	case LY_NODE_LIST:
-		list = calloc(1, sizeof *list);
-		retval = (struct ly_mnode *)list;
-		break;
-	case LY_NODE_ANYXML:
-		anyxml = calloc(1, sizeof *anyxml);
-		retval = (struct ly_mnode *)anyxml;
-		break;
-	case LY_NODE_USES:
-		uses = calloc(1, sizeof *uses);
-		retval = (struct ly_mnode *)uses;
-		break;
-	case LY_NODE_CASE:
-		cs = calloc(1, sizeof *cs);
-		retval = (struct ly_mnode *)cs;
-		break;
-    /* exact same structure */
+    switch (mnode->nodetype) {
+    case LY_NODE_CONTAINER:
+        cont = calloc(1, sizeof *cont);
+        retval = (struct ly_mnode *)cont;
+        break;
+
+    case LY_NODE_CHOICE:
+        choice = calloc(1, sizeof *choice);
+        retval = (struct ly_mnode *)choice;
+        break;
+
+    case LY_NODE_LEAF:
+        leaf = calloc(1, sizeof *leaf);
+        retval = (struct ly_mnode *)leaf;
+        break;
+
+    case LY_NODE_LEAFLIST:
+        llist = calloc(1, sizeof *llist);
+        retval = (struct ly_mnode *)llist;
+        break;
+
+    case LY_NODE_LIST:
+        list = calloc(1, sizeof *list);
+        retval = (struct ly_mnode *)list;
+        break;
+
+    case LY_NODE_ANYXML:
+        anyxml = calloc(1, sizeof *anyxml);
+        retval = (struct ly_mnode *)anyxml;
+        break;
+
+    case LY_NODE_USES:
+        uses = calloc(1, sizeof *uses);
+        retval = (struct ly_mnode *)uses;
+        break;
+
+    case LY_NODE_CASE:
+        cs = calloc(1, sizeof *cs);
+        retval = (struct ly_mnode *)cs;
+        break;
+
+        /* exact same structure */
     case LY_NODE_GROUPING:
     case LY_NODE_RPC:
     case LY_NODE_INPUT:
@@ -1014,127 +1047,136 @@ struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, 
         mix = calloc(1, sizeof *mix);
         retval = (struct ly_mnode *)mix;
         break;
-	default:
-		goto error;
-	}
 
-	/*
-	 * duplicate generic part of the structure
-	 */
-	retval->name = lydict_insert(ctx, mnode->name, 0);
-	retval->dsc = lydict_insert(ctx, mnode->dsc, 0);
-	retval->ref = lydict_insert(ctx, mnode->ref, 0);
-	retval->flags = mnode->flags;
-	if (!(retval->flags & LY_NODE_CONFIG_MASK)) {
-		/* set parent's config flag */
-		retval->flags |= flags & LY_NODE_CONFIG_MASK;
-	}
+    default:
+        goto error;
+    }
 
-	retval->module = module;
-	retval->nodetype = mnode->nodetype;
+    /*
+     * duplicate generic part of the structure
+     */
+    retval->name = lydict_insert(ctx, mnode->name, 0);
+    retval->dsc = lydict_insert(ctx, mnode->dsc, 0);
+    retval->ref = lydict_insert(ctx, mnode->ref, 0);
+    retval->flags = mnode->flags;
+    if (!(retval->flags & LY_NODE_CONFIG_MASK)) {
+        /* set parent's config flag */
+        retval->flags |= flags & LY_NODE_CONFIG_MASK;
+    }
 
-	retval->prev = retval;
+    retval->module = module;
+    retval->nodetype = mnode->nodetype;
 
-	retval->feature = NULL; /* TODO */
-	retval->when = NULL; /* TODO */
+    retval->prev = retval;
 
-	if (recursive) {
-		/* go recursively */
-		LY_TREE_FOR(mnode->child, child) {
-			aux = ly_mnode_dup(module, child, retval->flags, 1, line);
-			if (!aux || ly_mnode_addchild(retval, aux)) {
-				goto error;
-			}
-		}
-	}
+    retval->feature = NULL;     /* TODO */
+    retval->when = NULL;        /* TODO */
 
-	/*
-	 * duplicate specific part of the structure
-	 */
-	switch(mnode->nodetype) {
-	case LY_NODE_CONTAINER:
-		cont->presence = lydict_insert(ctx, cont_orig->presence, 0);
+    if (recursive) {
+        /* go recursively */
+        LY_TREE_FOR(mnode->child, child) {
+            aux = ly_mnode_dup(module, child, retval->flags, 1, line);
+            if (!aux || ly_mnode_addchild(retval, aux)) {
+                goto error;
+            }
+        }
+    }
 
-		cont->must_size = cont_orig->must_size;
-		cont->tpdf_size = cont_orig->tpdf_size;
+    /*
+     * duplicate specific part of the structure
+     */
+    switch (mnode->nodetype) {
+    case LY_NODE_CONTAINER:
+        cont->presence = lydict_insert(ctx, cont_orig->presence, 0);
 
-		cont->must = ly_must_dup(ctx, cont_orig->must, cont->must_size);
-		cont->tpdf = ly_tpdf_dup(ctx, cont_orig->tpdf, cont->tpdf_size);
-		break;
-	case LY_NODE_CHOICE:
-		if (choice->dflt) {
-			LY_TREE_FOR(choice->child, child) {
-				if (child->name == choice_orig->dflt->name) {
-					choice->dflt = child;
-					break;
-				}
-			}
-		}
-		break;
-	case LY_NODE_LEAF:
-		ly_type_dup(ctx, &(leaf->type), &(leaf_orig->type));
-		leaf->units = lydict_insert(ctx, leaf_orig->units, 0);
-		leaf->dflt = lydict_insert(ctx, leaf_orig->dflt, 0);
+        cont->must_size = cont_orig->must_size;
+        cont->tpdf_size = cont_orig->tpdf_size;
 
-		leaf->must_size = leaf_orig->must_size;
-		leaf->must = ly_must_dup(ctx, leaf_orig->must, leaf->must_size);
-		break;
-	case LY_NODE_LEAFLIST:
+        cont->must = ly_must_dup(ctx, cont_orig->must, cont->must_size);
+        cont->tpdf = ly_tpdf_dup(ctx, cont_orig->tpdf, cont->tpdf_size);
+        break;
 
-		ly_type_dup(ctx, &(llist->type), &(llist_orig->type));
-		llist->units = lydict_insert(ctx, llist_orig->units, 0);
+    case LY_NODE_CHOICE:
+        if (choice->dflt) {
+            LY_TREE_FOR(choice->child, child) {
+                if (child->name == choice_orig->dflt->name) {
+                    choice->dflt = child;
+                    break;
+                }
+            }
+        }
+        break;
 
-		llist->min = llist_orig->min;
-		llist->max = llist_orig->max;
+    case LY_NODE_LEAF:
+        ly_type_dup(ctx, &(leaf->type), &(leaf_orig->type));
+        leaf->units = lydict_insert(ctx, leaf_orig->units, 0);
+        leaf->dflt = lydict_insert(ctx, leaf_orig->dflt, 0);
 
-		llist->must_size = llist_orig->must_size;
-		llist->must = ly_must_dup(ctx, llist_orig->must, llist->must_size);
-		break;
-	case LY_NODE_LIST:
-		list->min = list_orig->min;
-		list->max = list_orig->max;
+        leaf->must_size = leaf_orig->must_size;
+        leaf->must = ly_must_dup(ctx, leaf_orig->must, leaf->must_size);
+        break;
 
-		list->must_size = list_orig->must_size;
-		list->tpdf_size = list_orig->tpdf_size;
-		list->keys_size = list_orig->keys_size;
-		list->unique_size = list_orig->unique_size;
+    case LY_NODE_LEAFLIST:
 
-		list->must = ly_must_dup(ctx, list_orig->must, list->must_size);
-		list->tpdf = ly_tpdf_dup(ctx, list_orig->tpdf, list->tpdf_size);
+        ly_type_dup(ctx, &(llist->type), &(llist_orig->type));
+        llist->units = lydict_insert(ctx, llist_orig->units, 0);
 
-		if (list->keys_size) {
-			list->keys = calloc(list->keys_size, sizeof *list->keys);
-			for (i = 0; i < list->keys_size; i++) {
-				list->keys[i] = find_leaf(retval, list_orig->keys[i]->name, 0);
-			}
-		}
-		if (list->unique_size) {
-			list->unique = calloc(list->unique_size, sizeof *list->unique);
-			for (i = 0; i < list->unique_size; i++) {
-				list->unique[i].leafs = calloc(list->unique[i].leafs_size, sizeof *list->unique[i].leafs);
-				for (j = 0; j < list->unique[i].leafs_size; j++) {
-					list->unique[i].leafs[j] = find_leaf(retval, list_orig->unique[i].leafs[j]->name, 0);
-				}
-			}
-		}
-		break;
-	case LY_NODE_ANYXML:
-		anyxml->must_size = anyxml_orig->must_size;
-		anyxml->must = ly_must_dup(ctx, anyxml_orig->must, anyxml->must_size);
-		break;
-	case LY_NODE_USES:
-		uses->grp = uses_orig->grp;
-		uses->refine_size = uses_orig->refine_size;
-		uses->refine = ly_refine_dup(ctx, uses_orig->refine, uses_orig->refine_size);
-		uses->augment_size = uses_orig->augment_size;
-		uses->augment = ly_augment_dup(module, (struct ly_mnode *)uses, uses_orig->augment, uses_orig->augment_size);
-		if (resolve_uses(uses, line)) {
-			goto error;
-		}
-		break;
-	case LY_NODE_CASE:
-		/* nothing to do */
-		break;
+        llist->min = llist_orig->min;
+        llist->max = llist_orig->max;
+
+        llist->must_size = llist_orig->must_size;
+        llist->must = ly_must_dup(ctx, llist_orig->must, llist->must_size);
+        break;
+
+    case LY_NODE_LIST:
+        list->min = list_orig->min;
+        list->max = list_orig->max;
+
+        list->must_size = list_orig->must_size;
+        list->tpdf_size = list_orig->tpdf_size;
+        list->keys_size = list_orig->keys_size;
+        list->unique_size = list_orig->unique_size;
+
+        list->must = ly_must_dup(ctx, list_orig->must, list->must_size);
+        list->tpdf = ly_tpdf_dup(ctx, list_orig->tpdf, list->tpdf_size);
+
+        if (list->keys_size) {
+            list->keys = calloc(list->keys_size, sizeof *list->keys);
+            for (i = 0; i < list->keys_size; i++) {
+                list->keys[i] = find_leaf(retval, list_orig->keys[i]->name, 0);
+            }
+        }
+        if (list->unique_size) {
+            list->unique = calloc(list->unique_size, sizeof *list->unique);
+            for (i = 0; i < list->unique_size; i++) {
+                list->unique[i].leafs = calloc(list->unique[i].leafs_size, sizeof *list->unique[i].leafs);
+                for (j = 0; j < list->unique[i].leafs_size; j++) {
+                    list->unique[i].leafs[j] = find_leaf(retval, list_orig->unique[i].leafs[j]->name, 0);
+                }
+            }
+        }
+        break;
+
+    case LY_NODE_ANYXML:
+        anyxml->must_size = anyxml_orig->must_size;
+        anyxml->must = ly_must_dup(ctx, anyxml_orig->must, anyxml->must_size);
+        break;
+
+    case LY_NODE_USES:
+        uses->grp = uses_orig->grp;
+        uses->refine_size = uses_orig->refine_size;
+        uses->refine = ly_refine_dup(ctx, uses_orig->refine, uses_orig->refine_size);
+        uses->augment_size = uses_orig->augment_size;
+        uses->augment = ly_augment_dup(module, (struct ly_mnode *)uses, uses_orig->augment, uses_orig->augment_size);
+        if (resolve_uses(uses, line)) {
+            goto error;
+        }
+        break;
+
+    case LY_NODE_CASE:
+        /* nothing to do */
+        break;
+
     case LY_NODE_GROUPING:
     case LY_NODE_RPC:
     case LY_NODE_INPUT:
@@ -1142,34 +1184,34 @@ struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, 
     case LY_NODE_NOTIF:
         mix->tpdf_size = mix_orig->tpdf_size;
         mix->tpdf = ly_tpdf_dup(ctx, mix_orig->tpdf, mix->tpdf_size);
-	default:
-		/* LY_NODE_NOTIF */
-		goto error;
-	}
 
-	return retval;
+    default:
+        /* LY_NODE_NOTIF */
+        goto error;
+    }
+
+    return retval;
 
 error:
-	LOGDBG("error: %s:%d", __FILE__, __LINE__);
+    LOGDBG("error: %s:%d", __FILE__, __LINE__);
 
-	ly_mnode_free(retval);
-	return NULL;
+    ly_mnode_free(retval);
+    return NULL;
 }
 
-API void ly_module_free(struct ly_module *module)
+API void
+ly_module_free(struct ly_module *module)
 {
-	if (!module) {
-		return;
-	}
+    if (!module) {
+        return;
+    }
 
-	/* common part with struct ly_submodule */
-	module_free_common(module);
+    /* common part with struct ly_submodule */
+    module_free_common(module);
 
-	/* specific items to free */
-	lydict_remove(module->ctx, module->ns);
-	lydict_remove(module->ctx, module->prefix);
+    /* specific items to free */
+    lydict_remove(module->ctx, module->ns);
+    lydict_remove(module->ctx, module->prefix);
 
-	free(module);
+    free(module);
 }
-
-
