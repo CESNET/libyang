@@ -2622,12 +2622,14 @@ static struct ly_mnode *
 read_yin_notif(struct ly_module *module,
                struct ly_mnode *parent, struct lyxml_elem *yin, int resolve, struct mnode_list **unres)
 {
-    struct lyxml_elem *sub, *next, root = { 0 };
+    struct lyxml_elem *sub, *next, root;
     struct ly_mnode *mnode = NULL;
     struct ly_mnode *retval;
     struct ly_mnode_notif *notif;
     int r;
     int c_tpdf = 0;
+
+    memset(&root, 0, sizeof root);
 
     notif = calloc(1, sizeof *notif);
     notif->nodetype = LY_NODE_NOTIF;
