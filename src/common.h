@@ -104,4 +104,6 @@ void ly_vlog(enum LY_VERR code, unsigned int line, ...);
 #    define LOGLINE(node) node->line
 #endif
 
+char *strnchr(const char *s, int c, unsigned int len);
+
 #endif /* LY_COMMON_H_ */

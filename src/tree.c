@@ -264,21 +264,31 @@ ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
 struct ly_mnode *
 resolve_schema_nodeid(const char *id, struct ly_mnode *start)
 {
-    char *id_cpy, *ptr, *name, *prefix;
+    const char *name, *prefix, *ptr;
     struct ly_mnode *sibling;
     struct ly_submodule *sub_mod;
-    int i, j;
+    uint32_t i, j, nam_len, pref_len;
 
-    id_cpy = malloc((strlen(id) + 1) * sizeof (char));
-    strcpy(id_cpy, id);
+    if (id[0] == '/') {
+        ptr = strchr(id+1, '/');
+        prefix = id+1;
+    } else {
+        ptr = strchr(id, '/');
+        prefix = id;
+    }
+    pref_len = (ptr ? (unsigned)(ptr-prefix) : strlen(prefix));
 
-    prefix = strtok_r(id_cpy, "/", &ptr);
-    name = prefix ? strchr(prefix, ':') : NULL;
-    if (name) {
-        name[0] = '\0';
-        name++;
+    ptr = strnchr(prefix, ':', pref_len);
+    /* there is prefix */
+    if (ptr) {
+        nam_len = (pref_len-(ptr-prefix))-1;
+        pref_len = ptr-prefix;
+        name = ptr+1;
+
+    /* no prefix used */
     } else {
         name = prefix;
+        nam_len = pref_len;
         prefix = NULL;
     }
 
@@ -288,20 +298,19 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start)
     /* absolute-schema-nodeid */
     if (id[0] == '/') {
         /* it is not the local prefix */
-        if (prefix && strcmp(prefix, start->module->prefix)) {
+        if (prefix && strncmp(prefix, start->module->prefix, pref_len)) {
             for (i = 0; i < start->module->imp_size; i++) {
-                if (!strcmp(start->module->imp[i].prefix, prefix)) {
+                if (!strncmp(start->module->imp[i].prefix, prefix, pref_len)) {
                     start = start->module->imp[i].module->data;
                     break;
                 }
             }
             /* no match */
             if (i == start->module->imp_size) {
-                free(id_cpy);
                 return NULL;
             }
 
-            /* it is likely the local prefix */
+        /* it is likely the local prefix */
         } else {
             start = start->module->data;
         }
@@ -316,14 +325,14 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start)
         } else {
             LY_TREE_FOR(start, sibling) {
                 /* match */
-                if (!strcmp(name, sibling->name)) {
+                if (!strncmp(name, sibling->name, nam_len)) {
                     /* prefix check, it's not our own */
-                    if (prefix && strcmp(sibling->module->prefix, prefix)) {
+                    if (prefix && strncmp(sibling->module->prefix, prefix, pref_len)) {
 
                         /* import prefix check */
                         for (i = 0; i < sibling->module->imp_size; i++) {
-                            if (!strcmp(sibling->module->imp[i].prefix, prefix)
-                                && sibling->module->imp[i].module == sibling->module) {
+                            if (!strncmp(sibling->module->imp[i].prefix, prefix, pref_len)
+                                    && (sibling->module->imp[i].module == sibling->module)) {
                                 break;
                             }
                         }
@@ -334,8 +343,8 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start)
                             for (i = 0; i < sibling->module->inc_size; i++) {
                                 sub_mod = sibling->module->inc[i].submodule;
                                 for (j = 0; j < sub_mod->imp_size; j++) {
-                                    if (!strcmp(sub_mod->imp[j].prefix, prefix)
-                                        && sub_mod->imp[j].module == sibling->module) {
+                                    if (!strncmp(sub_mod->imp[j].prefix, prefix, pref_len)
+                                            && (sub_mod->imp[j].module == sibling->module)) {
                                         break;
                                     }
                                 }
@@ -347,22 +356,22 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start)
 
                             /* include import prefix check failed too - definite fail */
                             if (i == sibling->module->inc_size) {
-                                free(id_cpy);
                                 return NULL;
                             }
                         }
                     }
 
                     /* the result node? */
-                    prefix = strtok_r(NULL, "/", &ptr);
-                    if (!prefix) {
-                        free(id_cpy);
+                    ptr = name+nam_len;
+                    if (!ptr[0]) {
                         return sibling;
                     }
+                    assert(ptr[0] == '/');
+                    prefix = ptr+1;
 
                     /* check for shorthand cases - then 'start' does not change */
-                    if (!sibling->parent || sibling->parent->nodetype != LY_NODE_CHOICE
-                        || sibling->nodetype == LY_NODE_CASE) {
+                    if (!sibling->parent || (sibling->parent->nodetype != LY_NODE_CHOICE)
+                            || (sibling->nodetype == LY_NODE_CASE)) {
                         start = sibling->child;
                     }
                     break;
@@ -370,25 +379,27 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start)
             }
             /* no match */
             if (!sibling) {
-                free(id_cpy);
                 return NULL;
             }
         }
 
         /* parse prefix */
-        name = prefix ? strchr(prefix, ':') : NULL;
-        if (name) {
-            name[0] = '\0';
-            name++;
+        ptr = strchr(prefix, '/');
+        pref_len = (ptr ? (unsigned)(ptr-prefix) : strlen(prefix));
+        ptr = strnchr(prefix, ':', pref_len);
+
+        /* there is prefix */
+        if (ptr) {
+            nam_len = pref_len-((ptr-prefix)-1);
+            pref_len = ptr-prefix;
+            name = ptr+1;
+
+        /* no prefix used */
         } else {
             name = prefix;
+            nam_len = pref_len;
             prefix = NULL;
         }
-
-        /*
-         * Now is 'prefix' NULL or the prefix finished with '\0',
-         * 'name' the node name finished with '\0'.
-         */
     }
 
     /* cannot get here */

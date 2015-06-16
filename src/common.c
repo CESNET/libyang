@@ -25,3 +25,14 @@
  * libyang errno
  */
 LY_ERR ly_errno = 0;
+
+char *
+strnchr(const char *s, int c, unsigned int len)
+{
+    for (; *s != (char)c; ++s, --len) {
+        if ((*s == '\0') || (!len)) {
+            return NULL;
+        }
+    }
+    return (char *)s;
+}
