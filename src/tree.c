@@ -262,12 +262,15 @@ ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
  * id - schema-nodeid
  */
 struct ly_mnode *
-resolve_schema_nodeid(const char *id, struct ly_mnode *start)
+resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *mod)
 {
     const char *name, *prefix, *ptr;
     struct ly_mnode *sibling;
     struct ly_submodule *sub_mod;
     uint32_t i, j, nam_len, pref_len;
+
+    assert(mod);
+    assert(id);
 
     if (id[0] == '/') {
         ptr = strchr(id+1, '/');
@@ -292,37 +295,63 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start)
         prefix = NULL;
     }
 
-    /* identifier now refers to start or its sibling */
-    start = start->child;
-
     /* absolute-schema-nodeid */
     if (id[0] == '/') {
+        start = NULL;
+
         /* it is not the local prefix */
-        if (prefix && strncmp(prefix, start->module->prefix, pref_len)) {
-            for (i = 0; i < start->module->imp_size; i++) {
-                if (!strncmp(start->module->imp[i].prefix, prefix, pref_len)) {
-                    start = start->module->imp[i].module->data;
+        if (prefix && strncmp(prefix, mod->prefix, pref_len)) {
+            /* check imports */
+            for (i = 0; i < mod->imp_size; i++) {
+                if (!strncmp(mod->imp[i].prefix, prefix, pref_len)) {
+                    start = mod->imp[i].module->data;
                     break;
                 }
             }
+
+            /* no match - check include imports */
+            if (!start) {
+                for (i = 0; i < mod->inc_size; i++) {
+                    sub_mod = mod->inc[i].submodule;
+                    for (j = 0; j < sub_mod->imp_size; j++) {
+                        if (!strncmp(sub_mod->imp[j].prefix, prefix, pref_len)) {
+                            start = sub_mod->imp[j].module->data;
+                            break;
+                        }
+                    }
+
+                    if (start) {
+                        break;
+                    }
+                }
+            }
+
             /* no match */
-            if (i == start->module->imp_size) {
+            if (!start) {
                 return NULL;
             }
 
         /* it is likely the local prefix */
         } else {
-            start = start->module->data;
+            start = mod->data;
         }
-    }
 
     /* descendant-schema-nodeid */
+    } else {
+        assert(start);
+        start = start->child;
+    }
+
     while (1) {
         if (!strcmp(name, ".")) {
             /* this node - start does not change */
         } else if (!strcmp(name, "..")) {
+            if (!start) {
+                return NULL;
+            }
             start = start->parent;
         } else {
+            sibling = NULL;
             LY_TREE_FOR(start, sibling) {
                 /* match */
                 if (!strncmp(name, sibling->name, nam_len)) {
@@ -377,6 +406,7 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start)
                     break;
                 }
             }
+
             /* no match */
             if (!sibling) {
                 return NULL;
@@ -815,6 +845,16 @@ ly_container_free(struct ly_ctx *ctx, struct ly_mnode_container *cont)
 }
 
 void
+ly_augment_free(struct ly_ctx *ctx, struct ly_augment *aug)
+{
+    lydict_remove(ctx, aug->target_name);
+    lydict_remove(ctx, aug->dsc);
+    lydict_remove(ctx, aug->ref);
+
+    lyxml_free_elem(ctx, (struct lyxml_elem *)aug->child);
+}
+
+void
 ly_uses_free(struct ly_ctx *ctx, struct ly_mnode_uses *uses)
 {
     int i, j;
@@ -838,11 +878,7 @@ ly_uses_free(struct ly_ctx *ctx, struct ly_mnode_uses *uses)
     free(uses->refine);
 
     for (i = 0; i < uses->augment_size; i++) {
-        lydict_remove(ctx, uses->augment[i].target_name);
-        lydict_remove(ctx, uses->augment[i].dsc);
-        lydict_remove(ctx, uses->augment[i].ref);
-
-        lyxml_free_elem(ctx, (struct lyxml_elem *)uses->augment[i].child);
+        ly_augment_free(ctx, &uses->augment[i]);
     }
     free(uses->augment);
 
@@ -956,6 +992,11 @@ module_free_common(struct ly_module *module)
         ly_submodule_free(module->inc[i].submodule);
     }
     free(module->inc);
+
+    for (i = 0; i < module->augment_size; i++) {
+        ly_augment_free(ctx, &module->augment[i]);
+    }
+    free(module->augment);
 
     lydict_remove(ctx, module->name);
 }

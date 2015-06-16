@@ -288,6 +288,7 @@ struct ly_module {
     uint8_t inc_size;                /**< number of elements in inc array */
     uint8_t tpdf_size;               /**< number of elements in tpdf array */
     uint32_t ident_size;             /**< number of elements in ident array */
+    uint16_t augment_size;           /**< number of elements in augment array */
 
     struct {
         char date[LY_REV_SIZE];          /**< revision-date */
@@ -300,6 +301,7 @@ struct ly_module {
     struct ly_include *inc;          /**< array of included submodules */
     struct ly_tpdf *tpdf;            /**< array of typedefs */
     struct ly_ident *ident;          /**< array if identities */
+    struct ly_augment *augment;      /**< array of augments */
 
     struct ly_mnode *data;           /**< first data statement */
     struct ly_mnode *rpc;            /**< first rpc statement */
@@ -326,6 +328,7 @@ struct ly_submodule {
     uint8_t inc_size;                /**< number of elements in inc array */
     uint8_t tpdf_size;               /**< number of elements in tpdf array */
     uint32_t ident_size;             /**< number of elements in ident array */
+    uint16_t augment_size;           /**< number of elements in augment array */
 
     struct {
         char date[LY_REV_SIZE];          /**< revision-date */
@@ -338,6 +341,7 @@ struct ly_submodule {
     struct ly_include *inc;          /**< array of included submodules */
     struct ly_tpdf *tpdf;            /**< array of typedefs */
     struct ly_ident *ident;          /**< array if identities */
+    struct ly_augment *augment;      /**< array of augments */
 
     struct ly_mnode *data;           /**< first data statement */
     struct ly_mnode *rpc;            /**< first rpc statement */
