@@ -187,6 +187,7 @@ int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
 	case LY_NODE_USES:
     case LY_NODE_INPUT:
     case LY_NODE_OUTPUT:
+    case LY_NODE_NOTIF:
 		if (!(child->nodetype & (LY_NODE_ANYXML | LY_NODE_CHOICE
 				| LY_NODE_CONTAINER | LY_NODE_GROUPING | LY_NODE_LEAF
 				| LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_USES))) {
@@ -229,10 +230,6 @@ int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
 		return EXIT_FAILURE;
 	case LY_NODE_AUGMENT:
 		LOGVAL(VE_SPEC, 0, "Internal error (%s:%d)", __FILE__, __LINE__);
-		return EXIT_FAILURE;
-	case LY_NODE_NOTIF:
-		LOGVAL(VE_SPEC, 0, "\"%s\" not yet implemented (%s:%d)",
-				strnodetype(parent->nodetype), __FILE__, __LINE__);
 		return EXIT_FAILURE;
 	}
 
@@ -786,26 +783,6 @@ void ly_container_free(struct ly_ctx *ctx, struct ly_mnode_container *cont)
 	free(cont->must);
 }
 
-void ly_rpc_free(struct ly_ctx *ctx, struct ly_mnode_rpc *rpc)
-{
-    int i;
-
-    for (i = 0; i < rpc->tpdf_size; i++) {
-        ly_tpdf_free(ctx, &rpc->tpdf[i]);
-    }
-    free(rpc->tpdf);
-}
-
-void ly_input_output_free(struct ly_ctx *ctx, struct ly_mnode_input_output *inout)
-{
-    int i;
-
-    for (i = 0; i < inout->tpdf_size; i++) {
-        ly_tpdf_free(ctx, &inout->tpdf[i]);
-    }
-    free(inout->tpdf);
-}
-
 void ly_uses_free(struct ly_ctx *ctx, struct ly_mnode_uses *uses)
 {
 	int i, j;
@@ -884,23 +861,17 @@ void ly_mnode_free(struct ly_mnode *node)
 	case LY_NODE_USES:
 		ly_uses_free(ctx, (struct ly_mnode_uses *)node);
 		break;
-	case LY_NODE_GROUPING:
-		ly_grp_free(ctx, (struct ly_mnode_grp *)node);
-		break;
 	case LY_NODE_CASE:
 	case LY_NODE_AUGMENT:
 		/* do nothing */
 		break;
+    case LY_NODE_GROUPING:
+    case LY_NODE_RPC:
 	case LY_NODE_INPUT:
 	case LY_NODE_OUTPUT:
-		ly_input_output_free(ctx, (struct ly_mnode_input_output *)node);
+    case LY_NODE_NOTIF:
+		ly_grp_free(ctx, (struct ly_mnode_grp *)node);
 		break;
-	case LY_NODE_NOTIF:
-		/* TODO */
-		break;
-    case LY_NODE_RPC:
-        ly_rpc_free(ctx, (struct ly_mnode_rpc *)node);
-        break;
 	}
 
 	/* again common part */
@@ -993,13 +964,9 @@ struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, 
 	struct ly_mnode_anyxml *anyxml_orig = (struct ly_mnode_anyxml *)mnode;
 	struct ly_mnode_uses *uses;
 	struct ly_mnode_uses *uses_orig = (struct ly_mnode_uses *)mnode;
-	struct ly_mnode_grp *grp;
-	struct ly_mnode_grp *grp_orig = (struct ly_mnode_grp *)mnode;
+	struct ly_mnode_grp *mix;
+	struct ly_mnode_grp *mix_orig = (struct ly_mnode_grp *)mnode;
 	struct ly_mnode_case *cs;
-    struct ly_mnode_rpc *rpc;
-    struct ly_mnode_rpc *rpc_orig = (struct ly_mnode_rpc *)mnode;
-    struct ly_mnode_input_output *inout;
-    struct ly_mnode_input_output *inout_orig = (struct ly_mnode_input_output *)mnode;
 
 	/* we cannot just duplicate memory since the strings are stored in
 	 * dictionary and we need to update dictionary counters.
@@ -1034,25 +1001,20 @@ struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, 
 		uses = calloc(1, sizeof *uses);
 		retval = (struct ly_mnode *)uses;
 		break;
-	case LY_NODE_GROUPING:
-		grp = calloc(1, sizeof *grp);
-		retval = (struct ly_mnode *)grp;
-		break;
 	case LY_NODE_CASE:
 		cs = calloc(1, sizeof *cs);
 		retval = (struct ly_mnode *)cs;
 		break;
+    /* exact same structure */
+    case LY_NODE_GROUPING:
     case LY_NODE_RPC:
-        rpc = calloc(1, sizeof *rpc);
-        retval = (struct ly_mnode *)rpc;
-        break;
     case LY_NODE_INPUT:
     case LY_NODE_OUTPUT:
-        inout = calloc(1, sizeof *inout);
-        retval = (struct ly_mnode *)inout;
+    case LY_NODE_NOTIF:
+        mix = calloc(1, sizeof *mix);
+        retval = (struct ly_mnode *)mix;
         break;
 	default:
-		/* LY_NODE_NOTIF */
 		goto error;
 	}
 
@@ -1170,21 +1132,16 @@ struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, 
 			goto error;
 		}
 		break;
-	case LY_NODE_GROUPING:
-		grp->tpdf_size = grp_orig->tpdf_size;
-		grp->tpdf = ly_tpdf_dup(ctx, grp_orig->tpdf, grp->tpdf_size);
-		break;
 	case LY_NODE_CASE:
 		/* nothing to do */
 		break;
+    case LY_NODE_GROUPING:
     case LY_NODE_RPC:
-        rpc->tpdf_size = rpc_orig->tpdf_size;
-        rpc->tpdf = ly_tpdf_dup(ctx, rpc_orig->tpdf, rpc->tpdf_size);
-        break;
     case LY_NODE_INPUT:
     case LY_NODE_OUTPUT:
-        inout->tpdf_size = inout_orig->tpdf_size;
-        inout->tpdf = ly_tpdf_dup(ctx, inout_orig->tpdf, inout->tpdf_size);
+    case LY_NODE_NOTIF:
+        mix->tpdf_size = mix_orig->tpdf_size;
+        mix->tpdf = ly_tpdf_dup(ctx, mix_orig->tpdf, mix->tpdf_size);
 	default:
 		/* LY_NODE_NOTIF */
 		goto error;

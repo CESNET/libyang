@@ -303,6 +303,7 @@ struct ly_module {
 
 	struct ly_mnode *data;       /**< first data statement */
 	struct ly_mnode *rpc;        /**< first rpc statement */
+	struct ly_mnode *notif;      /**< first notification statement */
 
 	/* specific module's items in comparison to submodules */
 	const char *ns;              /**< namespace of the module */
@@ -340,6 +341,7 @@ struct ly_submodule {
 
 	struct ly_mnode *data;       /**< first data statement */
 	struct ly_mnode *rpc;        /**< first rpc statement */
+	struct ly_mnode *notif;      /**< first notification statement */
 
 	/* specific submodule's items in comparison to modules */
 	struct ly_module *belongsto; /**< belongs-to (parent module) */
@@ -405,7 +407,6 @@ struct ly_mnode_grp {
 
 	/* specific container's data */
 	uint8_t tpdf_size;           /**< number of elements in tpdf array */
-
 	struct ly_tpdf *tpdf;        /**< array of typedefs */
 };
 
@@ -634,6 +635,27 @@ struct ly_mnode_rpc {
     struct ly_module *module;    /**< link to the node's data model */
 
     LY_NODE_TYPE nodetype;       /**< YANG statement - LY_NODE_RPC */
+    struct ly_mnode *parent;
+    struct ly_mnode *child;
+    struct ly_mnode *next;
+    struct ly_mnode *prev;
+
+    const char *feature;         /**< if-feature statement */
+    const char *when;
+
+    /* specific list's data */
+    uint8_t tpdf_size;           /**< number of elements in tpdf array */
+    struct ly_tpdf *tpdf;        /**< array of typedefs */
+};
+
+struct ly_mnode_notif {
+    const char *name;            /**< name argument */
+    const char *dsc;             /**< description statement */
+    const char *ref;             /**< reference statement */
+    uint8_t flags;
+    struct ly_module *module;    /**< link to the node's data model */
+
+    LY_NODE_TYPE nodetype;       /**< YANG statement - LY_NODE_NOTIF */
     struct ly_mnode *parent;
     struct ly_mnode *child;
     struct ly_mnode *next;

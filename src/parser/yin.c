@@ -2598,6 +2598,116 @@ static struct ly_mnode *read_yin_input_output(struct ly_module *module,
     return NULL;
 }
 
+static struct ly_mnode *read_yin_notif(struct ly_module *module,
+                                     struct ly_mnode *parent,
+                                     struct lyxml_elem *yin,
+                                     int resolve, struct mnode_list **unres)
+{
+    struct lyxml_elem *sub, *next, root = {0};
+    struct ly_mnode *mnode = NULL;
+    struct ly_mnode *retval;
+    struct ly_mnode_notif *notif;
+    int r;
+    int c_tpdf = 0;
+
+    notif = calloc(1, sizeof *notif);
+    notif->nodetype = LY_NODE_NOTIF;
+    notif->prev = (struct ly_mnode *)notif;
+    retval = (struct ly_mnode *)notif;
+
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE)) {
+        goto error;
+    }
+
+    /* process rpc's specific children */
+    LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        /* data statements */
+        if (!strcmp(sub->name, "container") ||
+            !strcmp(sub->name, "leaf-list") ||
+            !strcmp(sub->name, "leaf") ||
+            !strcmp(sub->name, "list") ||
+            !strcmp(sub->name, "choice") ||
+            !strcmp(sub->name, "uses") ||
+            !strcmp(sub->name, "grouping")||
+            !strcmp(sub->name, "anyxml")) {
+
+            lyxml_unlink_elem(sub);
+            lyxml_add_child(&root, sub);
+
+        /* array counters */
+        } else if (!strcmp(sub->name, "typedef")) {
+            c_tpdf++;
+            #if 0
+        } else {
+            LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
+            goto error;
+            #else
+        } else {
+            continue;
+            #endif
+        }
+    }
+
+    /* middle part - process nodes with cardinality of 0..n except the data nodes */
+    if (c_tpdf) {
+        notif->tpdf = calloc(c_tpdf, sizeof *notif->tpdf);
+    }
+
+    LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        if (!strcmp(sub->name, "typedef")) {
+            r = fill_yin_typedef(module, retval, sub, &notif->tpdf[notif->tpdf_size]);
+            notif->tpdf_size++;
+
+            if (r) {
+                goto error;
+            }
+        }
+
+        lyxml_free_elem(module->ctx, sub);
+    }
+
+    /* last part - process data nodes */
+    LY_TREE_FOR_SAFE(root.child, next, sub) {
+        if (!strcmp(sub->name, "container")) {
+            mnode = read_yin_container(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "leaf-list")) {
+            mnode = read_yin_leaflist(module, retval, sub, resolve);
+        } else if (!strcmp(sub->name, "leaf")) {
+            mnode = read_yin_leaf(module, retval, sub, resolve);
+        } else if (!strcmp(sub->name, "list")) {
+            mnode = read_yin_list(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "choice")) {
+            mnode = read_yin_choice(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "uses")) {
+            mnode = read_yin_uses(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "grouping")) {
+            mnode = read_yin_grouping(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "anyxml")) {
+            mnode = read_yin_anyxml(module, retval, sub, resolve);
+        }
+        lyxml_free_elem(module->ctx, sub);
+
+        if (!mnode) {
+            goto error;
+        }
+    }
+
+    if (parent && ly_mnode_addchild(parent, retval)) {
+        goto error;
+    }
+
+    return retval;
+
+    error:
+
+    ly_mnode_free(retval);
+    while (root.child) {
+        lyxml_free_elem(module->ctx, root.child);
+    }
+
+    return NULL;
+}
+
 static struct ly_mnode *read_yin_rpc(struct ly_module *module,
                                      struct ly_mnode *parent,
                                      struct lyxml_elem *yin,
@@ -3107,7 +3217,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 {
 	struct ly_ctx *ctx = module->ctx;
 	struct ly_submodule *submodule = (struct ly_submodule *)module;
-	struct lyxml_elem *next, *node, *child, root, grps, rpcs;
+	struct lyxml_elem *next, *node, *child, root, grps, rpcs, notifs;
 	struct ly_mnode *mnode = NULL;
 	struct mnode_list *unres = NULL, *unres_next; /* unresolved uses */
 	const char *value;
@@ -3120,6 +3230,7 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 	memset(&root, 0, sizeof root);
 	memset(&grps, 0, sizeof grps);
 	memset(&rpcs, 0, sizeof rpcs);
+    memset(&notifs, 0, sizeof notifs);
 
 	/*
 	 * in the first run, we process elements with cardinality of 1 or 0..1 and
@@ -3273,10 +3384,13 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 			module->version = 1;
 			lyxml_free_elem(ctx, node);
 
-        /* rpcs */
+        /* rpcs & notifications */
         } else if (!strcmp(node->name, "rpc")) {
             lyxml_unlink_elem(node);
             lyxml_add_child(&rpcs, node);
+        } else if (!strcmp(node->name, "notification")) {
+            lyxml_unlink_elem(node);
+            lyxml_add_child(&notifs, node);
 #if 0
 		} else {
 			LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
@@ -3527,6 +3641,36 @@ static int read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
             module->rpc->prev = mnode;
         } else {
             module->rpc = mnode;
+        }
+    }
+    while (unres) {
+        if (find_grouping(unres->mnode->parent, (struct ly_mnode_uses *)unres->mnode, unres->line)) {
+            goto error;
+        }
+        if (!((struct ly_mnode_uses *)unres->mnode)->grp) {
+            LOGVAL(VE_INARG, unres->line, unres->mnode->name, "uses");
+            goto error;
+        }
+        unres_next = unres->next;
+        free(unres);
+        unres = unres_next;
+    }
+
+    LY_TREE_FOR_SAFE(notifs.child, next, node) {
+        mnode = read_yin_notif(module, NULL, node, 0, &unres);
+        lyxml_free_elem(ctx, node);
+
+        if (!mnode) {
+            goto error;
+        }
+
+        /* include notification element */
+        if (module->notif) {
+            module->notif->prev->next = mnode;
+            mnode->prev = module->notif->prev;
+            module->notif->prev = mnode;
+        } else {
+            module->notif = mnode;
         }
     }
     while (unres) {
