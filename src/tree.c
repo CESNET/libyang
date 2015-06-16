@@ -956,9 +956,26 @@ module_free_common(struct ly_module *module)
     struct ly_ctx *ctx;
     struct ly_mnode *mnode;
     unsigned int i;
+    int j, l;
 
     assert(module->ctx);
     ctx = module->ctx;
+
+    /* as first step, free the imported modules */
+    for (i = 0; i < module->imp_size; i++) {
+        /* get the imported module from the context and then free,
+         * this check is necessary because the imported module can
+         * be already removed
+         */
+        l = ctx->models.used;
+        for (j = 0; j < l; j++) {
+            if (ctx->models.list[j] == module->imp[i].module) {
+                ly_module_free(module->imp[i].module);
+                break;
+            }
+        }
+    }
+    free(module->imp);
 
     while (module->data) {
         mnode = module->data;
@@ -987,8 +1004,6 @@ module_free_common(struct ly_module *module)
         ly_tpdf_free(ctx, &module->tpdf[i]);
     }
     free(module->tpdf);
-
-    free(module->imp);
 
     for (i = 0; i < module->inc_size; i++) {
         ly_submodule_free(module->inc[i].submodule);
@@ -1257,8 +1272,26 @@ error:
 API void
 ly_module_free(struct ly_module *module)
 {
+    struct ly_ctx *ctx;
+    int i;
+
     if (!module) {
         return;
+    }
+
+    /* remove schema from the context */
+    ctx = module->ctx;
+    if (ctx->models.used) {
+        for (i = 0; i < ctx->models.used; i++) {
+            if (ctx->models.list[i] == module) {
+                /* replace the position in the list by the last module in the list */
+                ctx->models.used--;
+                ctx->models.list[i] = ctx->models.list[ctx->models.used];
+                ctx->models.list[ctx->models.used] = NULL;
+                /* we are done */
+                break;
+            }
+        }
     }
 
     /* common part with struct ly_submodule */

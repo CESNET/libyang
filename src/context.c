@@ -72,20 +72,14 @@ ly_ctx_new(const char *search_dir)
 API void
 ly_ctx_destroy(struct ly_ctx *ctx)
 {
-    int i;
-
     if (!ctx) {
         ly_errno = LY_EINVAL;
         return;
     }
 
     /* models list */
-    if (ctx->models.used) {
-        for (i = 0; i < ctx->models.size; i++) {
-            if (ctx->models.list[i]) {
-                ly_module_free(ctx->models.list[i]);
-            }
-        }
+    while (ctx->models.used) {
+        ly_module_free(ctx->models.list[0]);
     }
     free(ctx->models.search_path);
     free(ctx->models.list);
@@ -235,7 +229,7 @@ ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision, in
         return NULL;
     }
 
-    for (i = 0; i < ctx->models.size; i++) {
+    for (i = 0; i < ctx->models.used; i++) {
         result = ctx->models.list[i];
         if (!result || strcmp(name, result->name)) {
             continue;
