@@ -110,11 +110,11 @@ create_indent(int level, const char *old_indent, const struct ly_mnode *mnode, i
         /* there is nothing in submodules, check module */
         if (!has_next) {
             if (mnode->nodetype == LY_NODE_RPC) {
-                has_next = sibling_is_valid_child(mod->inc[i].submodule->rpc);
+                has_next = sibling_is_valid_child(mod->rpc);
             } else if (mnode->nodetype == LY_NODE_NOTIF) {
-                has_next = sibling_is_valid_child(mod->inc[i].submodule->notif);
+                has_next = sibling_is_valid_child(mod->notif);
             } else {
-                has_next = sibling_is_valid_child(mod->inc[i].submodule->data);
+                has_next = sibling_is_valid_child(mod->data);
             }
         }
     }
