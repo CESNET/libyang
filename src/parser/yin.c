@@ -305,6 +305,26 @@ check_key(struct ly_mnode_leaf *key, uint8_t flags, struct ly_mnode_leaf **list,
 }
 
 static int
+check_mandatory(struct ly_mnode *mnode)
+{
+    struct ly_mnode *child;
+
+    assert(mnode);
+
+    if (mnode->flags & LY_NODE_MAND_TRUE) {
+        return EXIT_FAILURE;
+    }
+
+    LY_TREE_FOR(mnode->child, child) {
+        if (check_mandatory(child)) {
+            return EXIT_FAILURE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+static int
 check_default(struct ly_type *type, const char *value)
 {
     /* TODO - RFC 6020, sec. 7.3.4 */
@@ -2970,7 +2990,7 @@ resolve_augment(struct ly_augment *aug, struct ly_mnode *parent, struct ly_modul
 #if 0
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
-            goto error;
+            return EXIT_FAILURE;
 #else
         } else {
             continue;
@@ -2978,6 +2998,13 @@ resolve_augment(struct ly_augment *aug, struct ly_mnode *parent, struct ly_modul
         }
 
         if (!mnode) {
+            return EXIT_FAILURE;
+        }
+        /* check for mandatory nodes - if the target node is in another module
+         * the added nodes cannot be mandatory
+         */
+        if (check_mandatory(mnode)) {
+            LOGVAL(VE_SPEC, LOGLINE(sub), "When augmenting data in another module, mandatory statement is not allowed.");
             return EXIT_FAILURE;
         }
 
