@@ -1184,6 +1184,7 @@ ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, in
     case LY_NODE_NOTIF:
         mix->tpdf_size = mix_orig->tpdf_size;
         mix->tpdf = ly_tpdf_dup(ctx, mix_orig->tpdf, mix->tpdf_size);
+        break;
 
     default:
         /* LY_NODE_NOTIF */
