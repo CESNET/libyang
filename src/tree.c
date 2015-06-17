@@ -396,7 +396,6 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
                         return sibling;
                     }
                     assert(ptr[0] == '/');
-                    prefix = ptr+1;
 
                     /* check for shorthand cases - then 'start' does not change */
                     if (!sibling->parent || (sibling->parent->nodetype != LY_NODE_CHOICE)
@@ -413,14 +412,23 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
             }
         }
 
-        /* parse prefix */
+        assert((*(name+nam_len) == '/') || (*(name+nam_len) == '\0'));
+
+        /* make prefix point to the next node name */
+        prefix = name+nam_len;
+        if (!prefix[0]) {
+            return start;
+        }
+        ++prefix;
+
+        /* parse prefix and node name */
         ptr = strchr(prefix, '/');
         pref_len = (ptr ? (unsigned)(ptr-prefix) : strlen(prefix));
         ptr = strnchr(prefix, ':', pref_len);
 
         /* there is prefix */
         if (ptr) {
-            nam_len = pref_len-((ptr-prefix)-1);
+            nam_len = (pref_len-(ptr-prefix))-1;
             pref_len = ptr-prefix;
             name = ptr+1;
 
