@@ -2631,8 +2631,8 @@ read_yin_input_output(struct ly_module *module,
 error:
 
     ly_mnode_free(retval);
-    LY_TREE_FOR_SAFE(root.child, next, sub) {
-        lyxml_free_elem(module->ctx, sub);
+    while (root.child) {
+        lyxml_free_elem(module->ctx, root.child);
     }
 
     return NULL;
@@ -2854,8 +2854,8 @@ read_yin_rpc(struct ly_module *module,
 error:
 
     ly_mnode_free(retval);
-    LY_TREE_FOR_SAFE(root.child, next, sub) {
-        lyxml_free_elem(module->ctx, sub);
+    while (root.child) {
+        lyxml_free_elem(module->ctx, root.child);
     }
 
     return NULL;
