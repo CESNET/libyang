@@ -708,6 +708,20 @@ ly_must_free(struct ly_ctx *ctx, struct ly_must *must)
     lydict_remove(ctx, must->emsg);
 }
 
+void
+ly_when_free(struct ly_ctx *ctx, struct ly_when *w)
+{
+    if (!w) {
+        return;
+    }
+
+    lydict_remove(ctx, w->cond);
+    lydict_remove(ctx, w->dsc);
+    lydict_remove(ctx, w->ref);
+
+    free(w);
+}
+
 struct ly_augment *
 ly_augment_dup(struct ly_module *module, struct ly_mnode *parent, struct ly_augment *old, int size)
 {
@@ -820,6 +834,8 @@ ly_anyxml_free(struct ly_ctx *ctx, struct ly_mnode_anyxml *anyxml)
         ly_must_free(ctx, &anyxml->must[i]);
     }
     free(anyxml->must);
+
+    ly_when_free(ctx, anyxml->when);
 }
 
 void
@@ -831,6 +847,8 @@ ly_leaf_free(struct ly_ctx *ctx, struct ly_mnode_leaf *leaf)
         ly_must_free(ctx, &leaf->must[i]);
     }
     free(leaf->must);
+
+    ly_when_free(ctx, leaf->when);
 
     ly_type_free(ctx, &leaf->type);
     lydict_remove(ctx, leaf->units);
@@ -846,6 +864,8 @@ ly_leaflist_free(struct ly_ctx *ctx, struct ly_mnode_leaflist *llist)
         ly_must_free(ctx, &llist->must[i]);
     }
     free(llist->must);
+
+    ly_when_free(ctx, llist->when);
 
     ly_type_free(ctx, &llist->type);
     lydict_remove(ctx, llist->units);
@@ -866,6 +886,8 @@ ly_list_free(struct ly_ctx *ctx, struct ly_mnode_list *list)
         ly_must_free(ctx, &list->must[i]);
     }
     free(list->must);
+
+    ly_when_free(ctx, list->when);
 
     for (i = 0; i < list->unique_size; i++) {
         free(list->unique[i].leafs);
@@ -892,6 +914,8 @@ ly_container_free(struct ly_ctx *ctx, struct ly_mnode_container *cont)
         ly_must_free(ctx, &cont->must[i]);
     }
     free(cont->must);
+
+    ly_when_free(ctx, cont->when);
 }
 
 void
@@ -909,6 +933,8 @@ ly_augment_free(struct ly_ctx *ctx, struct ly_augment *aug)
     lydict_remove(ctx, aug->target_name);
     lydict_remove(ctx, aug->dsc);
     lydict_remove(ctx, aug->ref);
+
+    ly_when_free(ctx, aug->when);
 
     lyxml_free_elem(ctx, (struct lyxml_elem *)aug->child);
 }
@@ -941,6 +967,7 @@ ly_uses_free(struct ly_ctx *ctx, struct ly_mnode_uses *uses)
     }
     free(uses->augment);
 
+    ly_when_free(ctx, uses->when);
 }
 
 void
@@ -974,6 +1001,7 @@ ly_mnode_free(struct ly_mnode *node)
         ly_container_free(ctx, (struct ly_mnode_container *)node);
         break;
     case LY_NODE_CHOICE:
+        ly_when_free(ctx, ((struct ly_mnode_choice *)node)->when);
         break;
     case LY_NODE_LEAF:
         ly_leaf_free(ctx, (struct ly_mnode_leaf *)node);
@@ -991,6 +1019,8 @@ ly_mnode_free(struct ly_mnode *node)
         ly_uses_free(ctx, (struct ly_mnode_uses *)node);
         break;
     case LY_NODE_CASE:
+        ly_when_free(ctx, ((struct ly_mnode_case *)node)->when);
+        break;
     case LY_NODE_AUGMENT:
         /* do nothing */
         break;

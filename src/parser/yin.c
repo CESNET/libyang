@@ -85,6 +85,7 @@ static struct ly_mnode *read_yin_uses(struct ly_module *module, struct ly_mnode 
                                       int resolve, struct mnode_list **unres);
 static struct ly_mnode *read_yin_grouping(struct ly_module *module, struct ly_mnode *parent, struct lyxml_elem *node,
                                           int resolve, struct mnode_list **unres);
+static struct ly_when *read_yin_when(struct ly_module *module,struct lyxml_elem *yin);
 
 static int
 dup_typedef_check(const char *type, struct ly_tpdf *tpdf, int size)
@@ -112,6 +113,8 @@ dup_feature_check(const char *id, struct ly_module *module)
             return EXIT_FAILURE;
         }
     }
+
+    return EXIT_SUCCESS;
 }
 
 static int
@@ -993,7 +996,7 @@ fill_yin_feature(struct ly_module *module, struct lyxml_elem *yin, struct ly_fea
     if (check_identifier(value, LY_IDENT_FEATURE, LOGLINE(yin), module, NULL)) {
         goto error;
     }
-    f->name = lydict_insert(ctx, value, strlen(value));
+    f->name = lydict_insert(module->ctx, value, strlen(value));
 
     if (read_yin_common(module, NULL, (struct ly_mnode *)f, yin, 0)) {
         goto error;
@@ -1110,7 +1113,18 @@ fill_yin_augment(struct ly_module *module, struct ly_mnode *parent, struct lyxml
     LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!strcmp(child->name, "if-feature")) {
             c++;
-        /* TODO when */
+        } else if (!strcmp(child->name, "when")) {
+            if (aug->when) {
+                LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+                goto error;
+            }
+
+            aug->when = read_yin_when(module, child);
+            lyxml_free_elem(module->ctx, child);
+
+            if (!aug->when) {
+                goto error;
+            }
 
         /* check allowed sub-statements */
         } else if (strcmp(child->name, "anyxml") && strcmp(child->name, "case") && strcmp(child->name, "choice") &&
@@ -1566,6 +1580,52 @@ error:
     return EXIT_FAILURE;
 }
 
+static struct ly_when *
+read_yin_when(struct ly_module *module,struct lyxml_elem *yin)
+{
+    struct ly_when *retval;
+    struct lyxml_elem *next, *child;
+    const char *value;
+
+    retval = calloc(1, sizeof *retval);
+
+    GETVAL(value, yin, "condition");
+    retval->cond = lydict_insert(module->ctx, value, 0);
+
+    LY_TREE_FOR_SAFE(yin->child, next, child) {
+        if (!strcmp(child->name, "description")) {
+            if (retval->dsc) {
+                LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+                goto error;
+            }
+            retval->dsc = read_yin_subnode(module->ctx, child, "text");
+            if (!retval->dsc) {
+                goto error;
+            }
+        } else if (!strcmp(child->name, "reference")) {
+            if (retval->ref) {
+                LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+                goto error;
+            }
+            retval->ref = read_yin_subnode(module->ctx, child, "text");
+            if (!retval->ref) {
+                goto error;
+            }
+        } else {
+            LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+            goto error;
+        }
+
+        lyxml_free_elem(module->ctx, child);
+    }
+
+    return retval;
+
+error:
+
+    return NULL;
+}
+
 /* additional check in case statement - the child must be unique across
  * all other case names and its data children
  */
@@ -1651,14 +1711,19 @@ read_yin_case(struct ly_module *module,
 
                 /* skip lyxml_free_elem() at the end of the loop, sub is processed later */
                 continue;
-#if 0
+        } else if (!strcmp(sub->name, "when")) {
+            if (mcase->when) {
+                LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+                goto error;
+            }
+
+            mcase->when = read_yin_when(module, sub);
+            if (!mcase->when) {
+                goto error;
+            }
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
             goto error;
-#else
-        } else {
-            continue;
-#endif
         }
 
         if (!mnode) {
@@ -1777,19 +1842,24 @@ read_yin_choice(struct ly_module *module,
                 LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
                 goto error;
             }                   /* else false is the default value, so we can ignore it */
+        } else if (!strcmp(sub->name, "when")) {
+            if (choice->when) {
+                LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+                goto error;
+            }
+
+            choice->when = read_yin_when(module, sub);
+            if (!choice->when) {
+                goto error;
+            }
         } else if (!strcmp(sub->name, "if-feature")) {
             c_ftrs++;
 
             /* skip lyxml_free_elem() at the end of the loop, the sub node is processed later */
             continue;
-#if 0
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
             goto error;
-#else
-        } else {
-            continue;
-#endif
         }
 
         if (mnode && check_branch_id(retval, mnode, mnode, LOGLINE(sub))) {
@@ -1887,19 +1957,26 @@ read_yin_anyxml(struct ly_module *module, struct ly_mnode *parent, struct lyxml_
             }
             /* else false is the default value, so we can ignore it */
             lyxml_free_elem(module->ctx, sub);
+        } else if (!strcmp(sub->name, "when")) {
+            if (anyxml->when) {
+                LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+                goto error;
+            }
+
+            anyxml->when = read_yin_when(module, sub);
+            lyxml_free_elem(module->ctx, sub);
+
+            if (!anyxml->when) {
+                goto error;
+            }
         } else if (!strcmp(sub->name, "must")) {
             c_must++;
         } else if (!strcmp(sub->name, "if-feature")) {
             c_ftrs++;
 
-#if 0
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
             goto error;
-#else
-        } else {
-            continue;
-#endif
         }
     }
 
@@ -2003,6 +2080,17 @@ read_yin_leaf(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                 LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
                 goto error;
             }                   /* else false is the default value, so we can ignore it */
+        } else if (!strcmp(sub->name, "when")) {
+            if (leaf->when) {
+                LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+                goto error;
+            }
+
+            leaf->when = read_yin_when(module, sub);
+            if (!leaf->when) {
+                goto error;
+            }
+
         } else if (!strcmp(sub->name, "must")) {
             c_must++;                 /* else false is the default value, so we can ignore it */
         } else if (!strcmp(sub->name, "if-feature")) {
@@ -2010,14 +2098,9 @@ read_yin_leaf(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
 
             /* skip element free at the end of the loop */
             continue;
-#if 0
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
             goto error;
-#else
-        } else {
-            continue;
-#endif
         }
 
         lyxml_free_elem(module->ctx, sub);
@@ -2185,15 +2268,19 @@ read_yin_leaflist(struct ly_module *module, struct ly_mnode *parent, struct lyxm
                 goto error;
             }
             llist->max = (uint32_t) val;
+        } else if (!strcmp(sub->name, "when")) {
+            if (llist->when) {
+                LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+                goto error;
+            }
 
-#if 0
+            llist->when = read_yin_when(module, sub);
+            if (!llist->when) {
+                goto error;
+            }
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
             goto error;
-#else
-        } else {
-            continue;
-#endif
         }
 
         lyxml_free_elem(module->ctx, sub);
@@ -2395,15 +2482,22 @@ read_yin_list(struct ly_module *module,
             }
             list->max = (uint32_t) val;
             lyxml_free_elem(module->ctx, sub);
-#if 0
+        } else if (!strcmp(sub->name, "when")) {
+            if (list->when) {
+                LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+                goto error;
+            }
+
+            list->when = read_yin_when(module, sub);
+            lyxml_free_elem(module->ctx, sub);
+
+            if (!list->when) {
+                goto error;
+            }
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
             goto error;
-#else
-        } else {
-            continue;
         }
-#endif
     }
 
     /* check - if list is configuration, key statement is mandatory */
@@ -2608,6 +2702,18 @@ read_yin_container(struct ly_module *module,
             cont->presence = lydict_insert(module->ctx, value, strlen(value));
 
             lyxml_free_elem(module->ctx, sub);
+        } else if (!strcmp(sub->name, "when")) {
+            if (cont->when) {
+                LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
+                goto error;
+            }
+
+            cont->when = read_yin_when(module, sub);
+            lyxml_free_elem(module->ctx, sub);
+
+            if (!cont->when) {
+                goto error;
+            }
 
             /* data statements */
         } else if (!strcmp(sub->name, "container") ||
@@ -2628,14 +2734,9 @@ read_yin_container(struct ly_module *module,
             c_must++;
         } else if (!strcmp(sub->name, "if-feature")) {
             c_ftrs++;
-#if 0
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
             goto error;
-#else
-        } else {
-            continue;
-#endif
         }
     }
 
@@ -3516,14 +3617,21 @@ read_yin_uses(struct ly_module *module,
             c_aug++;
         } else if (!strcmp(sub->name, "if-feature")) {
             c_aug++;
-#if 0
+        } else if (!strcmp(sub->name, "when")) {
+            if (uses->when) {
+                LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, node->name);
+                goto error;
+            }
+
+            uses->when = read_yin_when(module, sub);
+            lyxml_free_elem(module->ctx, sub);
+
+            if (!uses->when) {
+                goto error;
+            }
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
             goto error;
-#else
-        } else {
-            lyxml_free_elem(module->ctx, sub);
-#endif
         }
     }
 

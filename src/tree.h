@@ -201,6 +201,12 @@ struct ly_must {
     const char *emsg;             /**< error-message */
 };
 
+struct ly_when {
+    const char *cond;
+    const char *dsc;              /**< description */
+    const char *ref;              /**< reference */
+};
+
 #define LY_REV_SIZE 11
 struct ly_import {
     struct ly_module *module;     /**< link to the imported module */
@@ -274,6 +280,7 @@ struct ly_augment {
     struct ly_feature **features;    /**< array of pointers to feature definitions, this is
                                           not the list of feature definitions itself, but list
                                           of if-feature references */
+    struct ly_when *when;            /**< when statement */
 };
 
 struct ly_feature {
@@ -461,7 +468,7 @@ struct ly_mnode_uses {
                                           of if-feature references */
 
     /* specific uses's data */
-    const char *when;                /**< when statement */
+    struct ly_when *when;            /**< when statement */
     struct ly_mnode_grp *grp;        /**< referred grouping definition */
 
     uint16_t refine_size;
@@ -490,7 +497,7 @@ struct ly_mnode_container {
                                           of if-feature references */
 
     /* specific container's data */
-    const char *when;                /**< when statement */
+    struct ly_when *when;            /**< when statement */
     const char *presence;            /**< presence description, used also as a presence flag */
 
     uint8_t must_size;               /**< number of elements in must array */
@@ -519,7 +526,7 @@ struct ly_mnode_choice {
                                           of if-feature references */
 
     /* specific choice's data */
-    const char *when;                /**< when statement */
+    struct ly_when *when;            /**< when statement */
     struct ly_mnode *dflt;           /**< default case of the choice */
 };
 
@@ -541,7 +548,7 @@ struct ly_mnode_case {
                                           not the list of feature definitions itself, but list
                                           of if-feature references */
 
-    const char *when;                /**< when statement */
+    struct ly_when *when;            /**< when statement */
 };
 
 struct ly_mnode_anyxml {
@@ -563,7 +570,7 @@ struct ly_mnode_anyxml {
                                           of if-feature references */
 
     /* specific leaf's data */
-    const char *when;                /**< when statement */
+    struct ly_when *when;            /**< when statement */
     uint8_t must_size;               /**< number of elements in must array */
     struct ly_must *must;            /**< array of must constraints */
 };
@@ -587,7 +594,7 @@ struct ly_mnode_leaf {
                                           of if-feature references */
 
     /* specific leaf's data */
-    const char *when;                /**< when statement */
+    struct ly_when *when;            /**< when statement */
     struct ly_type type;             /**< YANG type of the element */
     const char *units;               /**< units of the type */
     const char *dflt;                /**< default value of the type */
@@ -615,7 +622,7 @@ struct ly_mnode_leaflist {
                                           of if-feature references */
 
     /* specific leaf's data */
-    const char *when;                /**< when statement */
+    struct ly_when *when;            /**< when statement */
 
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
@@ -647,7 +654,7 @@ struct ly_mnode_list {
                                           of if-feature references */
 
     /* specific list's data */
-    const char *when;                /**< when statement */
+    struct ly_when *when;            /**< when statement */
 
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
