@@ -101,6 +101,19 @@ dup_typedef_check(const char *type, struct ly_tpdf *tpdf, int size)
     return EXIT_SUCCESS;
 }
 
+
+static int
+dup_feature_check(const char *id, struct ly_module *module)
+{
+    int i;
+
+    for (i = 0; i < module->features_size; i++) {
+        if (!strcmp(id, module->features[i].name)) {
+            return EXIT_FAILURE;
+        }
+    }
+}
+
 static int
 dup_prefix_check(const char *prefix, struct ly_module *module)
 {
@@ -248,6 +261,30 @@ check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
             }
         }
         break;
+    case LY_IDENT_FEATURE:
+        assert(module);
+
+        /* check feature name uniqness*/
+        if (module->type) {
+            /* check the main module */
+            module = ((struct ly_submodule *)module)->belongsto;
+        }
+
+        /* check features in the main module */
+        if (dup_feature_check(id, module)) {
+            LOGVAL(VE_DUPID, line, "feature", id);
+            return EXIT_FAILURE;
+        }
+
+        /* and all its submodules */
+        for (i = 0; i < module->inc_size; i++) {
+            if (dup_feature_check(id, (struct ly_module *)module->inc[i].submodule)) {
+                LOGVAL(VE_DUPID, line, "feature", id);
+                return EXIT_FAILURE;
+            }
+        }
+        break;
+
     default:
         /* no check required */
         break;
@@ -957,7 +994,13 @@ fill_yin_feature(struct ly_module *module, struct lyxml_elem *yin, struct ly_fea
     struct lyxml_elem *child, *next;
     int c = 0;
 
-    if (read_yin_common(module, NULL, (struct ly_mnode *)f, yin, OPT_IDENT)) {
+    GETVAL(value, yin, "name");
+    if (check_identifier(value, LY_IDENT_FEATURE, LOGLINE(yin), module, NULL)) {
+        goto error;
+    }
+    f->name = lydict_insert(ctx, value, strlen(value));
+
+    if (read_yin_common(module, NULL, (struct ly_mnode *)f, yin, 0)) {
         goto error;
     }
 
