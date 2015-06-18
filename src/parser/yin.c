@@ -1595,7 +1595,7 @@ read_yin_choice(struct ly_module *module,
 
     /* link default with the case */
     if (dflt_str) {
-        choice->dflt = resolve_schema_nodeid(dflt_str, retval, module);
+        choice->dflt = resolve_schema_nodeid(dflt_str, retval, module, LY_NODE_CHOICE);
         if (!choice->dflt) {
             /* default branch not found */
             LOGVAL(VE_INARG, LOGLINE(yin), dflt_str, "default");
@@ -2953,7 +2953,7 @@ resolve_augment(struct ly_augment *aug, struct ly_mnode *parent, struct ly_modul
     assert(module);
 
     /* resolve target node */
-    aug->target = resolve_schema_nodeid(aug->target_name, parent, module);
+    aug->target = resolve_schema_nodeid(aug->target_name, parent, module, LY_NODE_AUGMENT);
     if (!aug->target) {
         LOGVAL(VE_INARG, line, aug->target, "uses");
         return EXIT_FAILURE;
@@ -3052,7 +3052,7 @@ resolve_uses(struct ly_mnode_uses *uses, unsigned int line)
     /* apply refines */
     for (i = 0; i < uses->refine_size; i++) {
         rfn = &uses->refine[i];
-        mnode = resolve_schema_nodeid(rfn->target, (struct ly_mnode *)uses, uses->module);
+        mnode = resolve_schema_nodeid(rfn->target, (struct ly_mnode *)uses, uses->module, LY_NODE_USES);
         if (!mnode) {
             LOGVAL(VE_INARG, line, rfn->target, "uses");
             return EXIT_FAILURE;
@@ -3089,7 +3089,7 @@ resolve_uses(struct ly_mnode_uses *uses, unsigned int line)
                 ((struct ly_mnode_leaf *)mnode)->dflt = lydict_insert(ctx, rfn->mod.dflt, 0);
             } else if (mnode->nodetype == LY_NODE_CHOICE) {
                 /* choice */
-                ((struct ly_mnode_choice *)mnode)->dflt = resolve_schema_nodeid(rfn->mod.dflt, mnode, mnode->module);
+                ((struct ly_mnode_choice *)mnode)->dflt = resolve_schema_nodeid(rfn->mod.dflt, mnode, mnode->module, LY_NODE_CHOICE);
                 if (!((struct ly_mnode_choice *)mnode)->dflt) {
                     LOGVAL(VE_INARG, line, rfn->mod.dflt, "default");
                     return EXIT_FAILURE;

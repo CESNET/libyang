@@ -260,9 +260,14 @@ ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
 
 /*
  * id - schema-nodeid
+ *
+ * node_type - LY_NODE_AUGMENT (searches also RPCs and notifications)
+ *           - LY_NODE_USES    (the caller is actually either an augment or refine in a uses, only
+ *                              descendant-schema-nodeid allowed, ".." not allowed)
+ *           - LY_NODE_CHOICE  (search only start->child, only descendant-schema-nodeid allowed)
  */
 struct ly_mnode *
-resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *mod)
+resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *mod, LY_NODE_TYPE node_type)
 {
     const char *name, *prefix, *ptr;
     struct ly_mnode *sibling;
@@ -273,6 +278,9 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
     assert(id);
 
     if (id[0] == '/') {
+        if (node_type & (LY_NODE_USES | LY_NODE_CHOICE)) {
+            return NULL;
+        }
         ptr = strchr(id+1, '/');
         prefix = id+1;
     } else {
@@ -346,7 +354,8 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
         if (!strcmp(name, ".")) {
             /* this node - start does not change */
         } else if (!strcmp(name, "..")) {
-            if (!start) {
+            /* ".." is not allowed in refines and augment sin uses, there is no need for it there */
+            if (!start || (node_type == LY_NODE_USES)) {
                 return NULL;
             }
             start = start->parent;
@@ -357,6 +366,11 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
                 if (!strncmp(name, sibling->name, nam_len)) {
                     /* prefix check, it's not our own */
                     if (prefix && strncmp(sibling->module->prefix, prefix, pref_len)) {
+
+                        /* in choice and the prefix is not ours, error for sure */
+                        if (node_type == LY_NODE_CHOICE) {
+                            return NULL;
+                        }
 
                         /* import prefix check */
                         for (i = 0; i < sibling->module->imp_size; i++) {
@@ -406,8 +420,34 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
                 }
             }
 
+            /* we did not find the case in direct siblings */
+            if (node_type == LY_NODE_CHOICE) {
+                return NULL;
+            }
+
             /* no match */
             if (!sibling) {
+                /* on augment search also RPCs and notifications, if we are in top-level */
+                if ((node_type == LY_NODE_AUGMENT) && !start->parent) {
+                    /* we have searched all the data nodes */
+                    if (start == start->module->data) {
+                        start = start->module->rpc;
+                        if (start) {
+                            continue;
+                        }
+                    }
+                    /* we have searched all the RPCs */
+                    if (start == start->module->rpc) {
+                        start = start->module->notif;
+                        if (start) {
+                            continue;
+                        }
+                    }
+                    /* we have searched all the notifications, nothing else to search in */
+                    if (start == start->module->notif) {
+                        return NULL;
+                    }
+                }
                 return NULL;
             }
         }
