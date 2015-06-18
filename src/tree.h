@@ -116,7 +116,7 @@ struct ly_type {
         /* LY_TYPE_BITS */
         struct {
             struct {
-                const char *value;
+                const char *name;
                 const char *dsc;
                 const char *ref;
                 uint8_t status;

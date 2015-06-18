@@ -38,11 +38,12 @@
 #include "../xml.h"
 
 enum LY_IDENT {
+    LY_IDENT_SIMPLE,   /* only syntax rules */
     LY_IDENT_FEATURE,
     LY_IDENT_IDENTITY,
     LY_IDENT_TYPE,
     LY_IDENT_NODE,
-    LY_IDENT_NAME,
+    LY_IDENT_NAME,     /* uniqueness across the siblings */
     LY_IDENT_PREFIX
 };
 
@@ -651,8 +652,9 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
 {
     const char *value, *delim;
     struct lyxml_elem *next, *node, root;
-    int i, j, r;
+    int i, j;
     int64_t v, v_;
+    int64_t p, p_;
 
     /* init */
     memset(&root, 0, sizeof root);
@@ -679,8 +681,89 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         break;
 
     case LY_TYPE_BITS:
-        /* TODO bit, 9.7.4
-         * 1..n, nerekurzivni, stringy s podelementy */
+        /* RFC 6020 9.7.4 - bit */
+
+        /* get bit specifications, at least one must be present */
+        LY_TREE_FOR_SAFE(yin->child, next, node) {
+            if (!strcmp(node->name, "bit")) {
+                lyxml_unlink_elem(node);
+                lyxml_add_child(&root, node);
+                type->info.bits.count++;
+            }
+        }
+        if (yin->child) {
+            LOGVAL(VE_INSTMT, LOGLINE(yin->child), yin->child->name);
+            goto error;
+        }
+        if (!type->info.bits.count) {
+            if (type->der->type.der) {
+                /* this is just a derived type with no bit specified */
+                break;
+            }
+            LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "bit", "type");
+            goto error;
+        }
+
+        type->info.bits.bit = calloc(type->info.bits.count, sizeof *type->info.bits.bit);
+        for (i = p = 0; root.child; i++) {
+            GETVAL(value, root.child, "name");
+            if (check_identifier(value, LY_IDENT_SIMPLE, LOGLINE(root.child), NULL, NULL)) {
+                goto error;
+            }
+            type->info.bits.bit[i].name = lydict_insert(module->ctx, value, strlen(value));
+            if (read_yin_common(module, NULL, (struct ly_mnode *)&type->info.bits.bit[i], root.child, 0)) {
+                type->info.bits.count = i + 1;
+                goto error;
+            }
+
+            /* check the name uniqueness */
+            for (j = 0; j < i; j++) {
+                if (!strcmp(type->info.bits.bit[j].name, type->info.bits.bit[i].name)) {
+                    LOGVAL(VE_BITS_DUPNAME, LOGLINE(root.child), type->info.bits.bit[i].name);
+                    type->info.bits.count = i + 1;
+                    goto error;
+                }
+            }
+
+            node = root.child->child;
+            if (node && !strcmp(node->name, "position")) {
+                value = lyxml_get_attr(node, "value", NULL);
+                p_ = strtol(value, NULL, 10);
+
+                /* range check */
+                if (p_ < 0 || p_ > UINT32_MAX) {
+                    LOGVAL(VE_INARG, LOGLINE(node), value, "bit/position");
+                    type->info.bits.count = i + 1;
+                    goto error;
+                }
+                type->info.bits.bit[i].pos = (uint32_t)p_;
+
+                /* keep the highest enum value for automatic increment */
+                if (type->info.bits.bit[i].pos > p) {
+                    p = type->info.bits.bit[i].pos;
+                    p++;
+                } else {
+                    /* check that the value is unique */
+                    for (j = 0; j < i; j++) {
+                        if (type->info.bits.bit[j].pos == type->info.bits.bit[i].pos) {
+                            LOGVAL(VE_BITS_DUPVAL, LOGLINE(node), type->info.bits.bit[i].pos, type->info.bits.bit[i].name);
+                            type->info.bits.count = i + 1;
+                            goto error;
+                        }
+                    }
+                }
+            } else {
+                /* assign value automatically */
+                if (p > UINT32_MAX) {
+                    LOGVAL(VE_INARG, LOGLINE(root.child), "4294967295", "bit/position");
+                    type->info.bits.count = i + 1;
+                    goto error;
+                }
+                type->info.bits.bit[i].pos = (uint32_t)p;
+                p++;
+            }
+            lyxml_free_elem(module->ctx, root.child);
+        }
         break;
 
     case LY_TYPE_DEC64:
@@ -691,9 +774,9 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         break;
 
     case LY_TYPE_ENUM:
-        /* RFC 6020 9.6 */
+        /* RFC 6020 9.6 - enum */
 
-        /* get enum specification, at least one must be present */
+        /* get enum specifications, at least one must be present */
         LY_TREE_FOR_SAFE(yin->child, next, node) {
             if (!strcmp(node->name, "enum")) {
                 lyxml_unlink_elem(node);
@@ -716,11 +799,16 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
 
         type->info.enums.list = calloc(type->info.enums.count, sizeof *type->info.enums.list);
         for (i = v = 0; root.child; i++) {
-            r = read_yin_common(module, NULL, (struct ly_mnode *)&type->info.enums.list[i], root.child, OPT_IDENT);
-            if (r) {
+            GETVAL(value, root.child, "name");
+            if (check_identifier(value, LY_IDENT_SIMPLE, LOGLINE(root.child), NULL, NULL)) {
+                goto error;
+            }
+            type->info.enums.list[i].name = lydict_insert(module->ctx, value, strlen(value));
+            if (read_yin_common(module, NULL, (struct ly_mnode *)&type->info.enums.list[i], root.child, 0)) {
                 type->info.enums.count = i + 1;
                 goto error;
             }
+
             /* the assigned name MUST NOT have any leading or trailing whitespace characters */
             value = type->info.enums.list[i].name;
             if (isspace(value[0]) || isspace(value[strlen(value) - 1])) {
@@ -759,8 +847,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                     /* check that the value is unique */
                     for (j = 0; j < i; j++) {
                         if (type->info.enums.list[j].value == type->info.enums.list[i].value) {
-                            LOGVAL(VE_ENUM_DUPVAL, LOGLINE(node), type->info.enums.list[i].value,
-                                   type->info.enums.list[i].name);
+                            LOGVAL(VE_ENUM_DUPVAL, LOGLINE(node), type->info.enums.list[i].value, type->info.enums.list[i].name);
                             type->info.enums.count = i + 1;
                             goto error;
                         }
@@ -781,7 +868,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         break;
 
     case LY_TYPE_IDENT:
-        /* RFC 6020 9.10 */
+        /* RFC 6020 9.10 - base */
 
         /* get base specification, exactly one must be present */
         if (!yin->child) {
@@ -2528,7 +2615,6 @@ read_yin_list(struct ly_module *module,
             if (r) {
                 goto error;
             }
-            lyxml_free_elem(module->ctx, sub);
         } else if (!strcmp(sub->name, "if-feature")) {
             GETVAL(value, sub, "name");
             list->features[list->features_size] = resolve_feature(value, module, LOGLINE(sub));

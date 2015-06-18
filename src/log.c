@@ -71,6 +71,8 @@ const char *verrs[] = {
 /* VE_ENUM_DUPVAL */  "The value \"%d\" of \"%s\" enum has already been assigned to another enum value.",
 /* VE_ENUM_DUPNAME */ "The enum name \"%s\" has already been assigned to another enum.",
 /* VE_ENUM_WS */      "The enum name \"%s\" includes invalid leading or trailing whitespaces.",
+/* VE_BITS_DUPVAL */  "The position \"%d\" of \"%s\" bits has already been used to another named bit.",
+/* VE_BITS_DUPNAME */ "The bit name \"%s\" has already been assigned to another bit.",
 /* VE_INPREFIX */     "Prefix in \"%s\" refers to an unknown module.",
 /* VE_KEY_NLEAF */    "Key \"%s\" is not a leaf.",
 /* VE_KEY_TYPE */     "Key \"%s\" must not be the built-in type \"empty\".",

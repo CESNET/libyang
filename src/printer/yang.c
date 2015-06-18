@@ -120,7 +120,7 @@ yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *ty
         break;
     case LY_TYPE_BITS:
         for (i = 0; i < type->info.bits.count; ++i) {
-            fprintf(f, "%*sbit %s {\n", LEVEL, INDENT, type->info.bits.bit[i].value);
+            fprintf(f, "%*sbit %s {\n", LEVEL, INDENT, type->info.bits.bit[i].name);
             level++;
             yang_print_mnode_common(f, level, (struct ly_mnode *)&type->info.bits.bit[i]);
             fprintf(f, "%*sposition %u;\n", LEVEL, INDENT, type->info.bits.bit[i].pos);

@@ -612,6 +612,14 @@ ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
     lydict_remove(ctx, type->prefix);
 
     switch (type->base) {
+    case LY_TYPE_BITS:
+        for (i = 0; i < type->info.bits.count; i++) {
+            lydict_remove(ctx, type->info.bits.bit[i].name);
+            lydict_remove(ctx, type->info.bits.bit[i].dsc);
+            lydict_remove(ctx, type->info.bits.bit[i].ref);
+        }
+        free(type->info.bits.bit);
+        break;
     case LY_TYPE_ENUM:
         for (i = 0; i < type->info.enums.count; i++) {
             lydict_remove(ctx, type->info.enums.list[i].name);
