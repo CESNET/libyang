@@ -315,9 +315,11 @@ check_mandatory(struct ly_mnode *mnode)
         return EXIT_FAILURE;
     }
 
-    LY_TREE_FOR(mnode->child, child) {
-        if (check_mandatory(child)) {
-            return EXIT_FAILURE;
+    if (mnode->nodetype == LY_NODE_CASE || mnode->nodetype == LY_NODE_CHOICE) {
+        LY_TREE_FOR(mnode->child, child) {
+            if (check_mandatory(child)) {
+                return EXIT_FAILURE;
+            }
         }
     }
 
