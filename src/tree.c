@@ -895,6 +895,15 @@ ly_container_free(struct ly_ctx *ctx, struct ly_mnode_container *cont)
 }
 
 void
+ly_feature_free(struct ly_ctx *ctx, struct ly_feature *f)
+{
+    lydict_remove(ctx, f->name);
+    lydict_remove(ctx, f->dsc);
+    lydict_remove(ctx, f->ref);
+    free(f->features);
+}
+
+void
 ly_augment_free(struct ly_ctx *ctx, struct ly_augment *aug)
 {
     lydict_remove(ctx, aug->target_name);
@@ -953,6 +962,7 @@ ly_mnode_free(struct ly_mnode *node)
     LY_TREE_FOR_SAFE(node->child, next, sub) {
         ly_mnode_free(sub);
     }
+    free(node->features);
 
     lydict_remove(ctx, node->name);
     lydict_remove(ctx, node->dsc);
@@ -1062,6 +1072,11 @@ module_free_common(struct ly_module *module)
         ly_augment_free(ctx, &module->augment[i]);
     }
     free(module->augment);
+
+    for (i = 0; i < module->features_size; i++) {
+        ly_feature_free(ctx, &module->features[i]);
+    }
+    free(module->features);
 
     lydict_remove(ctx, module->name);
 }
@@ -1186,8 +1201,9 @@ ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, in
 
     retval->prev = retval;
 
-    retval->feature = NULL;     /* TODO */
-    retval->when = NULL;        /* TODO */
+    retval->features_size = mnode->features_size;
+    retval->features = calloc(retval->features_size, sizeof *retval->features);
+    memcpy(retval->features, mnode->features, retval->features_size * sizeof *retval->features);
 
     if (recursive) {
         /* go recursively */

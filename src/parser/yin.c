@@ -428,6 +428,7 @@ find_superior_type(const char *name, struct ly_module *module, struct ly_mnode *
                 tpdf = ((struct ly_mnode_grp *)parent)->tpdf;
                 break;
 
+                /* TODO add rpc, notification, input, output */
             default:
                 parent = parent->parent;
                 continue;
@@ -883,6 +884,113 @@ error:
     return EXIT_FAILURE;
 }
 
+static struct ly_feature *
+resolve_feature(const char *name, struct ly_module *module, unsigned int line)
+{
+    const char *prefix;
+    unsigned int prefix_len = 0;
+    int i, j, found = 0;
+
+    assert(name);
+    assert(module);
+
+    /* check prefix */
+    prefix = name;
+    name = strchr(prefix, ':');
+    if (name) {
+        /* there is prefix */
+        prefix_len = name - prefix;
+        name++;
+
+        /* check whether the prefix points to the current module */
+        if (!strncmp(prefix, module->prefix, prefix_len) && !module->prefix[prefix_len]) {
+            /* then ignore prefix and works as there is no prefix */
+            prefix_len = 0;
+        }
+    } else {
+        /* no prefix, set pointers correctly */
+        name = prefix;
+    }
+
+    if (prefix_len) {
+        /* search in imported modules */
+        for (i = 0; i < module->imp_size; i++) {
+            if (!strncmp(module->imp[i].prefix, prefix, prefix_len) && !module->imp[i].prefix[prefix_len]) {
+                module = module->imp[i].module;
+                found = 1;
+                break;
+            }
+        }
+        if (!found) {
+            /* identity refers unknown data model */
+            LOGVAL(VE_INPREFIX, line, prefix);
+            return NULL;
+        }
+    } else {
+        /* search in submodules */
+        for (i = 0; i < module->inc_size; i++) {
+            for (j = 0; j < module->inc[i].submodule->features_size; j++) {
+                if (!strcmp(name, module->inc[i].submodule->features[j].name)) {
+                    return &(module->inc[i].submodule->features[j]);
+                }
+            }
+        }
+    }
+
+    /* search in the identified module */
+    for (j = 0; j < module->features_size; j++) {
+        if (!strcmp(name, module->features[j].name)) {
+            return &module->features[j];
+        }
+    }
+
+    /* not found */
+    return NULL;
+}
+
+static int
+fill_yin_feature(struct ly_module *module, struct lyxml_elem *yin, struct ly_feature *f)
+{
+    const char *value;
+    struct lyxml_elem *child, *next;
+    int c = 0;
+
+    if (read_yin_common(module, NULL, (struct ly_mnode *)f, yin, OPT_IDENT)) {
+        goto error;
+    }
+
+    LY_TREE_FOR_SAFE(yin->child, next, child) {
+        if (!strcmp(child->name, "if-feature")) {
+            c++;
+        } else {
+            LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+            goto error;
+        }
+    }
+
+    if (c) {
+        f->features = calloc(c, sizeof *f->features);
+    }
+
+    LY_TREE_FOR_SAFE(yin->child, next, child) {
+        GETVAL(value, child, "name");
+        f->features[f->features_size] = resolve_feature(value, module, LOGLINE(child));
+        if (!f->features[f->features_size]) {
+            goto error;
+        }
+        f->features_size++;
+    }
+
+    /* tmp TODO remove */
+    f->flags |= LY_NODE_FENABLED;
+
+    return EXIT_SUCCESS;
+
+error:
+
+    return EXIT_FAILURE;
+}
+
 static int
 fill_yin_must(struct ly_module *module, struct lyxml_elem *yin, struct ly_must *must)
 {
@@ -948,12 +1056,52 @@ static int
 fill_yin_augment(struct ly_module *module, struct ly_mnode *parent, struct lyxml_elem *yin, struct ly_augment *aug)
 {
     const char *value;
+    struct lyxml_elem *next, *child;
+    int c = 0;
 
     GETVAL(value, yin, "target-node");
     aug->target_name = lydict_insert(module->ctx, value, 0);
     aug->parent = parent;
 
-    /* do not resolve now, just keep the definition which will be parsed later
+    if (read_yin_common(module, NULL, (struct ly_mnode *)aug, yin, 0)) {
+        goto error;
+    }
+
+    LY_TREE_FOR_SAFE(yin->child, next, child) {
+        if (!strcmp(child->name, "if-feature")) {
+            c++;
+        /* TODO when */
+
+        /* check allowed sub-statements */
+        } else if (strcmp(child->name, "anyxml") && strcmp(child->name, "case") && strcmp(child->name, "choice") &&
+                strcmp(child->name, "container") && strcmp(child->name, "leaf-list") && strcmp(child->name, "leaf") &&
+                strcmp(child->name, "list") && strcmp(child->name, "uses")) {
+            LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+            goto error;
+        }
+    }
+
+    if (c) {
+        aug->features = calloc(c, sizeof *aug->features);
+    }
+
+    LY_TREE_FOR_SAFE(yin->child, next, child) {
+        if (!strcmp(child->name, "if-feature")) {
+            GETVAL(value, child, "name");
+            aug->features[aug->features_size] = resolve_feature(value, module, LOGLINE(child));
+            if (!aug->features[aug->features_size]) {
+                goto error;
+            }
+            aug->features_size++;
+        } else {
+            /* keep the data nodes */
+            continue;
+        }
+
+        lyxml_free_elem(module->ctx, child);
+    }
+
+    /* do not resolve data now, just keep the definition which will be parsed later
      * when we will have the target node
      */
     lyxml_unlink_elem(yin);
@@ -1430,6 +1578,8 @@ read_yin_case(struct ly_module *module,
     struct lyxml_elem *sub, *next;
     struct ly_mnode_case *mcase;
     struct ly_mnode *retval, *mnode = NULL;
+    int c_ftrs = 0;
+    const char *value;
 
     mcase = calloc(1, sizeof *mcase);
     mcase->nodetype = LY_NODE_CASE;
@@ -1456,6 +1606,11 @@ read_yin_case(struct ly_module *module,
             mnode = read_yin_choice(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
             mnode = read_yin_anyxml(module, retval, sub, resolve);
+        } else if (!strcmp(sub->name, "if-feature")) {
+                c_ftrs++;
+
+                /* skip lyxml_free_elem() at the end of the loop, sub is processed later */
+                continue;
 #if 0
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
@@ -1473,6 +1628,19 @@ read_yin_case(struct ly_module *module,
         }
 
         mnode = NULL;
+        lyxml_free_elem(module->ctx, sub);
+    }
+
+    if (c_ftrs) {
+        mcase->features = calloc(c_ftrs, sizeof *mcase->features);
+    }
+    LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        GETVAL(value, sub, "name");
+        mcase->features[mcase->features_size] = resolve_feature(value, module, LOGLINE(sub));
+        if (!mcase->features[mcase->features_size]) {
+            goto error;
+        }
+        mcase->features_size++;
         lyxml_free_elem(module->ctx, sub);
     }
 
@@ -1508,7 +1676,7 @@ read_yin_choice(struct ly_module *module,
     struct ly_mnode_choice *choice;
     const char *value;
     char *dflt_str = NULL;
-    int f_mand = 0;
+    int f_mand = 0, c_ftrs = 0;
 
     choice = calloc(1, sizeof *choice);
     choice->nodetype = LY_NODE_CHOICE;
@@ -1569,6 +1737,11 @@ read_yin_choice(struct ly_module *module,
                 LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
                 goto error;
             }                   /* else false is the default value, so we can ignore it */
+        } else if (!strcmp(sub->name, "if-feature")) {
+            c_ftrs++;
+
+            /* skip lyxml_free_elem() at the end of the loop, the sub node is processed later */
+            continue;
 #if 0
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
@@ -1583,6 +1756,20 @@ read_yin_choice(struct ly_module *module,
             goto error;
         }
         mnode = NULL;
+        lyxml_free_elem(ctx, sub);
+    }
+
+    if (c_ftrs) {
+        choice->features = calloc(c_ftrs, sizeof *choice->features);
+    }
+
+    LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        GETVAL(value, sub, "name");
+        choice->features[choice->features_size] = resolve_feature(value, module, LOGLINE(sub));
+        if (!choice->features[choice->features_size]) {
+            goto error;
+        }
+        choice->features_size++;
         lyxml_free_elem(ctx, sub);
     }
 
@@ -1629,7 +1816,7 @@ read_yin_anyxml(struct ly_module *module, struct ly_mnode *parent, struct lyxml_
     const char *value;
     int r;
     int f_mand = 0;
-    int c_must = 0;
+    int c_must = 0, c_ftrs = 0;
 
     anyxml = calloc(1, sizeof *anyxml);
     anyxml->nodetype = LY_NODE_ANYXML;
@@ -1662,6 +1849,8 @@ read_yin_anyxml(struct ly_module *module, struct ly_mnode *parent, struct lyxml_
             lyxml_free_elem(module->ctx, sub);
         } else if (!strcmp(sub->name, "must")) {
             c_must++;
+        } else if (!strcmp(sub->name, "if-feature")) {
+            c_ftrs++;
 
 #if 0
         } else {
@@ -1678,6 +1867,9 @@ read_yin_anyxml(struct ly_module *module, struct ly_mnode *parent, struct lyxml_
     if (c_must) {
         anyxml->must = calloc(c_must, sizeof *anyxml->must);
     }
+    if (c_ftrs) {
+        anyxml->features = calloc(c_ftrs, sizeof *anyxml->features);
+    }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!strcmp(sub->name, "must")) {
@@ -1687,6 +1879,13 @@ read_yin_anyxml(struct ly_module *module, struct ly_mnode *parent, struct lyxml_
             if (r) {
                 goto error;
             }
+        } else if (!strcmp(sub->name, "must")) {
+            GETVAL(value, sub, "name");
+            anyxml->features[anyxml->features_size] = resolve_feature(value, module, LOGLINE(sub));
+            if (!anyxml->features[anyxml->features_size]) {
+                goto error;
+            }
+            anyxml->features_size++;
         }
 
         lyxml_free_elem(module->ctx, sub);
@@ -1713,7 +1912,7 @@ read_yin_leaf(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
     struct lyxml_elem *sub, *next;
     const char *value;
     int r;
-    int c_must = 0, f_mand = 0;
+    int c_must = 0, c_ftrs = 0, f_mand = 0;
 
     leaf = calloc(1, sizeof *leaf);
     leaf->nodetype = LY_NODE_LEAF;
@@ -1765,7 +1964,9 @@ read_yin_leaf(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                 goto error;
             }                   /* else false is the default value, so we can ignore it */
         } else if (!strcmp(sub->name, "must")) {
-            c_must++;
+            c_must++;                 /* else false is the default value, so we can ignore it */
+        } else if (!strcmp(sub->name, "if-feature")) {
+            c_ftrs++;
 
             /* skip element free at the end of the loop */
             continue;
@@ -1795,6 +1996,9 @@ read_yin_leaf(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
     if (c_must) {
         leaf->must = calloc(c_must, sizeof *leaf->must);
     }
+    if (c_ftrs) {
+        leaf->features = calloc(c_ftrs, sizeof *leaf->features);
+    }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!strcmp(sub->name, "must")) {
@@ -1804,6 +2008,13 @@ read_yin_leaf(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
             if (r) {
                 goto error;
             }
+        } else if (!strcmp(sub->name, "if-feature")) {
+            GETVAL(value, sub, "name");
+            leaf->features[leaf->features_size] = resolve_feature(value, module, LOGLINE(sub));
+            if (!leaf->features[leaf->features_size]) {
+                goto error;
+            }
+            leaf->features_size++;
         }
 
         lyxml_free_elem(module->ctx, sub);
@@ -1832,7 +2043,7 @@ read_yin_leaflist(struct ly_module *module, struct ly_mnode *parent, struct lyxm
     char *endptr;
     unsigned long val;
     int r;
-    int c_must = 0;
+    int c_must = 0, c_ftrs = 0;
     int f_ordr = 0, f_min = 0, f_max = 0;
 
     llist = calloc(1, sizeof *llist);
@@ -1887,6 +2098,8 @@ read_yin_leaflist(struct ly_module *module, struct ly_mnode *parent, struct lyxm
             }                   /* else system is the default value, so we can ignore it */
         } else if (!strcmp(sub->name, "must")) {
             c_must++;
+        } else if (!strcmp(sub->name, "if-feature")) {
+            c_ftrs++;
 
             /* skip element free at the end of the loop */
             continue;
@@ -1960,6 +2173,9 @@ read_yin_leaflist(struct ly_module *module, struct ly_mnode *parent, struct lyxm
     if (c_must) {
         llist->must = calloc(c_must, sizeof *llist->must);
     }
+    if (c_ftrs) {
+        llist->features = calloc(c_ftrs, sizeof *llist->features);
+    }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!strcmp(sub->name, "must")) {
@@ -1969,6 +2185,13 @@ read_yin_leaflist(struct ly_module *module, struct ly_mnode *parent, struct lyxm
             if (r) {
                 goto error;
             }
+        } else if (!strcmp(sub->name, "if-feature")) {
+            GETVAL(value, sub, "name");
+            llist->features[llist->features_size] = resolve_feature(value, module, LOGLINE(sub));
+            if (!llist->features[llist->features_size]) {
+                goto error;
+            }
+            llist->features_size++;
         }
 
         lyxml_free_elem(module->ctx, sub);
@@ -1997,7 +2220,7 @@ read_yin_list(struct ly_module *module,
     struct lyxml_elem *sub, *next, root, uniq;
     int i, r;
     size_t len;
-    int c_tpdf = 0, c_must = 0, c_uniq = 0;
+    int c_tpdf = 0, c_must = 0, c_uniq = 0, c_ftrs = 0;
     int f_ordr = 0, f_max = 0, f_min = 0;
     const char *key_str = NULL, *uniq_str, *value;
     char *auxs;
@@ -2057,6 +2280,8 @@ read_yin_list(struct ly_module *module,
             c_tpdf++;
         } else if (!strcmp(sub->name, "must")) {
             c_must++;
+        } else if (!strcmp(sub->name, "if-feature")) {
+            c_ftrs++;
 
             /* optional stetments */
         } else if (!strcmp(sub->name, "ordered-by")) {
@@ -2130,7 +2355,15 @@ read_yin_list(struct ly_module *module,
             }
             list->max = (uint32_t) val;
             lyxml_free_elem(module->ctx, sub);
+#if 0
+        } else {
+            LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
+            goto error;
+#else
+        } else {
+            continue;
         }
+#endif
     }
 
     /* check - if list is configuration, key statement is mandatory */
@@ -2147,6 +2380,12 @@ read_yin_list(struct ly_module *module,
     if (c_tpdf) {
         list->tpdf = calloc(c_tpdf, sizeof *list->tpdf);
     }
+    if (c_must) {
+        list->must = calloc(c_must, sizeof *list->must);
+    }
+    if (c_ftrs) {
+        list->features = calloc(c_ftrs, sizeof *list->features);
+    }
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!strcmp(sub->name, "typedef")) {
             r = fill_yin_typedef(module, retval, sub, &list->tpdf[list->tpdf_size]);
@@ -2156,7 +2395,22 @@ read_yin_list(struct ly_module *module,
                 goto error;
             }
             lyxml_free_elem(module->ctx, sub);
+        } else if (!strcmp(sub->name, "if-feature")) {
+            GETVAL(value, sub, "name");
+            list->features[list->features_size] = resolve_feature(value, module, LOGLINE(sub));
+            if (!list->features[list->features_size]) {
+                goto error;
+            }
+            list->features_size++;
+        } else if (!strcmp(sub->name, "must")) {
+            r = fill_yin_must(module, sub, &list->must[list->must_size]);
+            list->must_size++;
+
+            if (r) {
+                goto error;
+            }
         }
+        lyxml_free_elem(module->ctx, sub);
     }
 
     /* last part - process data nodes */
@@ -2177,9 +2431,6 @@ read_yin_list(struct ly_module *module,
             mnode = read_yin_grouping(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
             mnode = read_yin_anyxml(module, retval, sub, resolve);
-        } else {
-            /* TODO error */
-            continue;
         }
         lyxml_free_elem(module->ctx, sub);
 
@@ -2292,7 +2543,7 @@ read_yin_container(struct ly_module *module,
     struct ly_mnode_container *cont;
     const char *value;
     int r;
-    int c_tpdf = 0, c_must = 0;
+    int c_tpdf = 0, c_must = 0, c_ftrs = 0;
 
     /* init */
     memset(&root, 0, sizeof root);
@@ -2335,6 +2586,8 @@ read_yin_container(struct ly_module *module,
             c_tpdf++;
         } else if (!strcmp(sub->name, "must")) {
             c_must++;
+        } else if (!strcmp(sub->name, "if-feature")) {
+            c_ftrs++;
 #if 0
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
@@ -2353,6 +2606,9 @@ read_yin_container(struct ly_module *module,
     if (c_must) {
         cont->must = calloc(c_must, sizeof *cont->must);
     }
+    if (c_ftrs) {
+        cont->features = calloc(c_ftrs, sizeof *cont->features);
+    }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!strcmp(sub->name, "typedef")) {
@@ -2369,6 +2625,13 @@ read_yin_container(struct ly_module *module,
             if (r) {
                 goto error;
             }
+        } else if (!strcmp(sub->name, "if-feature")) {
+            GETVAL(value, sub, "name");
+            cont->features[cont->features_size] = resolve_feature(value, module, LOGLINE(sub));
+            if (!cont->features[cont->features_size]) {
+                goto error;
+            }
+            cont->features_size++;
         }
 
         lyxml_free_elem(module->ctx, sub);
@@ -2646,8 +2909,9 @@ read_yin_notif(struct ly_module *module,
     struct ly_mnode *mnode = NULL;
     struct ly_mnode *retval;
     struct ly_mnode_notif *notif;
+    const char *value;
     int r;
-    int c_tpdf = 0;
+    int c_tpdf = 0, c_ftrs = 0;
 
     memset(&root, 0, sizeof root);
 
@@ -2677,20 +2941,20 @@ read_yin_notif(struct ly_module *module,
             /* array counters */
         } else if (!strcmp(sub->name, "typedef")) {
             c_tpdf++;
-#if 0
+        } else if (!strcmp(sub->name, "if-feature")) {
+            c_ftrs++;
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
             goto error;
-#else
-        } else {
-            continue;
-#endif
         }
     }
 
     /* middle part - process nodes with cardinality of 0..n except the data nodes */
     if (c_tpdf) {
         notif->tpdf = calloc(c_tpdf, sizeof *notif->tpdf);
+    }
+    if (c_ftrs) {
+        notif->features = calloc(c_ftrs, sizeof *notif->features);
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
@@ -2701,6 +2965,13 @@ read_yin_notif(struct ly_module *module,
             if (r) {
                 goto error;
             }
+        } else if (!strcmp(sub->name, "typedef")) {
+            GETVAL(value, sub, "name");
+            notif->features[notif->features_size] = resolve_feature(value, module, LOGLINE(sub));
+            if (!notif->features[notif->features_size]) {
+                goto error;
+            }
+            notif->features_size++;
         }
 
         lyxml_free_elem(module->ctx, sub);
@@ -2756,8 +3027,9 @@ read_yin_rpc(struct ly_module *module,
     struct ly_mnode *mnode = NULL;
     struct ly_mnode *retval;
     struct ly_mnode_rpc *rpc;
+    const char *value;
     int r;
-    int c_tpdf = 0;
+    int c_tpdf = 0, c_ftrs = 0;
 
     /* init */
     memset(&root, 0, sizeof root);
@@ -2800,20 +3072,20 @@ read_yin_rpc(struct ly_module *module,
             /* array counters */
         } else if (!strcmp(sub->name, "typedef")) {
             c_tpdf++;
-#if 0
+        } else if (!strcmp(sub->name, "if-feature")) {
+            c_ftrs++;
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
             goto error;
-#else
-        } else {
-            continue;
-#endif
         }
     }
 
     /* middle part - process nodes with cardinality of 0..n except the data nodes */
     if (c_tpdf) {
         rpc->tpdf = calloc(c_tpdf, sizeof *rpc->tpdf);
+    }
+    if (c_ftrs) {
+        rpc->features = calloc(c_ftrs, sizeof *rpc->features);
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
@@ -2824,6 +3096,13 @@ read_yin_rpc(struct ly_module *module,
             if (r) {
                 goto error;
             }
+        } else if (!strcmp(sub->name, "if-feature")) {
+            GETVAL(value, sub, "name");
+            rpc->features[rpc->features_size] = resolve_feature(value, module, LOGLINE(sub));
+            if (!rpc->features[rpc->features_size]) {
+                goto error;
+            }
+            rpc->features_size++;
         }
 
         lyxml_free_elem(module->ctx, sub);
@@ -3174,7 +3453,7 @@ read_yin_uses(struct ly_module *module,
     struct ly_mnode_uses *uses;
     struct mnode_list *unres_new;
     const char *value;
-    int c_ref = 0, c_aug = 0;
+    int c_ref = 0, c_aug = 0, c_ftrs = 0;
     int r;
 
     uses = calloc(1, sizeof *uses);
@@ -3195,6 +3474,8 @@ read_yin_uses(struct ly_module *module,
             c_ref++;
         } else if (!strcmp(sub->name, "augment")) {
             c_aug++;
+        } else if (!strcmp(sub->name, "if-feature")) {
+            c_aug++;
 #if 0
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
@@ -3213,14 +3494,26 @@ read_yin_uses(struct ly_module *module,
     if (c_aug) {
         uses->augment = calloc(c_aug, sizeof *uses->augment);
     }
+    if (c_ftrs) {
+        uses->features = calloc(c_ftrs, sizeof *uses->features);
+    }
 
     LY_TREE_FOR_SAFE(node->child, next, sub) {
         if (!strcmp(sub->name, "refine")) {
             r = fill_yin_refine(module, sub, &uses->refine[uses->refine_size]);
             uses->refine_size++;
-        } else {                /* augment */
+            lyxml_free_elem(module->ctx, sub);
+        } else if (!strcmp(sub->name, "augment")) {
             r = fill_yin_augment(module, retval, sub, &uses->augment[uses->augment_size]);
             uses->augment_size++;
+        } else if (!strcmp(sub->name, "if-feature")) {
+            GETVAL(value, sub, "name");
+            uses->features[uses->features_size] = resolve_feature(value, module, LOGLINE(sub));
+            if (!uses->features[uses->features_size]) {
+                goto error;
+            }
+            uses->features_size++;
+            lyxml_free_elem(module->ctx, sub);
         }
 
         if (r) {
@@ -3284,10 +3577,11 @@ read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
     struct ly_mnode *mnode = NULL;
     struct mnode_list *unres = NULL, *unres_next;       /* unresolved uses */
     const char *value;
-    int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0, c_inc = 0, c_aug = 0;       /* counters */
     int r;
     int i;
     int belongsto_flag = 0;
+    /* counters */
+    int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0, c_inc = 0, c_aug = 0, c_ftrs = 0;
 
     /* init */
     memset(&root, 0, sizeof root);
@@ -3378,6 +3672,8 @@ read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
             c_inc++;
         } else if (!strcmp(node->name, "augment")) {
             c_aug++;
+        } else if (!strcmp(node->name, "feature")) {
+            c_ftrs++;
 
             /* data statements */
         } else if (!strcmp(node->name, "container") ||
@@ -3498,6 +3794,9 @@ read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
     if (c_aug) {
         module->augment = calloc(c_aug, sizeof *module->augment);
     }
+    if (c_ftrs) {
+        module->features = calloc(c_ftrs, sizeof *module->features);
+    }
 
     /* middle part - process nodes with cardinality of 0..n except the data nodes */
     LY_TREE_FOR_SAFE(yin->child, next, node) {
@@ -3601,6 +3900,13 @@ read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
         } else if (!strcmp(node->name, "identity")) {
             r = fill_yin_identity(module, node, &module->ident[module->ident_size]);
             module->ident_size++;
+
+            if (r) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "feature")) {
+            r = fill_yin_feature(module, node, &module->features[module->features_size]);
+            module->features_size++;
 
             if (r) {
                 goto error;

@@ -269,6 +269,22 @@ struct ly_augment {
     LY_NODE_TYPE nodetype;           /**< 0 */
     struct ly_mnode *parent;
     struct ly_mnode *child;
+
+    uint8_t features_size;           /**< number of elements in features array */
+    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
+                                          not the list of feature definitions itself, but list
+                                          of if-feature references */
+};
+
+struct ly_feature {
+    const char *name;
+    const char *dsc;
+    const char *ref;
+    uint8_t flags;                   /**< LY_NODE_STATUS_* values and LY_NODE_FENABLED */
+    uint8_t features_size;           /**< number of elements in features array */
+    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
+                                          not the list of feature definitions itself, but list
+                                          of if-feature references */
 };
 
 struct ly_module {
@@ -288,6 +304,7 @@ struct ly_module {
     uint8_t inc_size;                /**< number of elements in inc array */
     uint8_t tpdf_size;               /**< number of elements in tpdf array */
     uint32_t ident_size;             /**< number of elements in ident array */
+    uint16_t features_size;          /**< number of elements in features array */
     uint16_t augment_size;           /**< number of elements in augment array */
 
     struct {
@@ -300,7 +317,8 @@ struct ly_module {
     struct ly_import *imp;           /**< array of imported modules */
     struct ly_include *inc;          /**< array of included submodules */
     struct ly_tpdf *tpdf;            /**< array of typedefs */
-    struct ly_ident *ident;          /**< array if identities */
+    struct ly_ident *ident;          /**< array of identities */
+    struct ly_feature *features;     /**< array of feature definitions */
     struct ly_augment *augment;      /**< array of augments */
 
     struct ly_mnode *data;           /**< first data statement */
@@ -328,6 +346,7 @@ struct ly_submodule {
     uint8_t inc_size;                /**< number of elements in inc array */
     uint8_t tpdf_size;               /**< number of elements in tpdf array */
     uint32_t ident_size;             /**< number of elements in ident array */
+    uint16_t features_size;          /**< number of elements in features array */
     uint16_t augment_size;           /**< number of elements in augment array */
 
     struct {
@@ -341,6 +360,7 @@ struct ly_submodule {
     struct ly_include *inc;          /**< array of included submodules */
     struct ly_tpdf *tpdf;            /**< array of typedefs */
     struct ly_ident *ident;          /**< array if identities */
+    struct ly_feature *features;     /**< array of feature definitions */
     struct ly_augment *augment;      /**< array of augments */
 
     struct ly_mnode *data;           /**< first data statement */
@@ -387,13 +407,18 @@ struct ly_mnode {
 #define LY_NODE_STATUS_DEPRC 0x08 /**< status deprecated; */
 #define LY_NODE_STATUS_OBSLT 0x10 /**< status obsolete; */
 #define LY_NODE_STATUS_MASK  0x1c /**< mask for status value */
-#define LY_NODE_MAND_TRUE    0x20 /**< mandatory flag of the node */
+#define LY_NODE_MAND_TRUE    0x20 /**< mandatory flag of the node, applicable only to
+                                       struct ly_mnode_choice, ly_mnode_leaf and ly_mnode_anyxml */
 #define LY_NODE_MAND_FALSE   0x40 /**< mandatory false */
 #define LY_NODE_MAND_MASK    0x60 /**< mask for mandatory values */
-#define LY_NODE_USERORDERED  0x80 /**< ordered-by user lists */
+#define LY_NODE_USERORDERED  0x80 /**< ordered-by user lists, applicable only to
+                                       struct ly_mnode_list and ly_mnode_leaflist */
+#define LY_NODE_FENABLED     0x80 /**< enable flag for features, applicable only to strcut ly_feature */
 
-    const char *feature;             /**< if-feature statement */
-    const char *when;                /**< when statement */
+    uint8_t features_size;           /**< number of elements in features array */
+    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
+                                          not the list of feature definitions itself, but list
+                                          of if-feature references */
 };
 
 struct ly_mnode_grp {
@@ -408,6 +433,9 @@ struct ly_mnode_grp {
     struct ly_mnode *child;
     struct ly_mnode *next;
     struct ly_mnode *prev;
+
+    uint8_t features_size;           /**< dummy memeber to follow struct ly_mnode, always 0 */
+    struct ly_feature **features;    /**< dummy memeber to follow struct ly_mnode, always NULL */
 
     /* specific container's data */
     uint8_t tpdf_size;               /**< number of elements in tpdf array */
@@ -427,10 +455,13 @@ struct ly_mnode_uses {
     struct ly_mnode *next;
     struct ly_mnode *prev;
 
-    const char *feature;             /**< if-feature statement */
-    const char *when;                /**< when statement */
+    uint8_t features_size;           /**< number of elements in features array */
+    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
+                                          not the list of feature definitions itself, but list
+                                          of if-feature references */
 
     /* specific uses's data */
+    const char *when;                /**< when statement */
     struct ly_mnode_grp *grp;        /**< referred grouping definition */
 
     uint16_t refine_size;
@@ -453,12 +484,14 @@ struct ly_mnode_container {
     struct ly_mnode *next;
     struct ly_mnode *prev;
 
-    const char *feature;             /**< if-feature statement */
-    const char *when;                /**< when statement */
+    uint8_t features_size;           /**< number of elements in features array */
+    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
+                                          not the list of feature definitions itself, but list
+                                          of if-feature references */
 
     /* specific container's data */
-    const char *presence;            /**< presence description, used also as a
-	                                  presence flag */
+    const char *when;                /**< when statement */
+    const char *presence;            /**< presence description, used also as a presence flag */
 
     uint8_t must_size;               /**< number of elements in must array */
     uint8_t tpdf_size;               /**< number of elements in tpdf array */
@@ -480,10 +513,13 @@ struct ly_mnode_choice {
     struct ly_mnode *next;
     struct ly_mnode *prev;
 
-    const char *feature;             /**< if-feature statement */
-    const char *when;                /**< when statement */
+    uint8_t features_size;           /**< number of elements in features array */
+    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
+                                          not the list of feature definitions itself, but list
+                                          of if-feature references */
 
     /* specific choice's data */
+    const char *when;                /**< when statement */
     struct ly_mnode *dflt;           /**< default case of the choice */
 };
 
@@ -500,7 +536,11 @@ struct ly_mnode_case {
     struct ly_mnode *next;
     struct ly_mnode *prev;
 
-    const char *feature;             /**< if-feature statement */
+    uint8_t features_size;           /**< number of elements in features array */
+    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
+                                          not the list of feature definitions itself, but list
+                                          of if-feature references */
+
     const char *when;                /**< when statement */
 };
 
@@ -517,10 +557,13 @@ struct ly_mnode_anyxml {
     struct ly_mnode *next;
     struct ly_mnode *prev;
 
-    const char *feature;             /**< if-feature statement */
-    const char *when;                /**< when statement */
+    uint8_t features_size;           /**< number of elements in features array */
+    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
+                                          not the list of feature definitions itself, but list
+                                          of if-feature references */
 
     /* specific leaf's data */
+    const char *when;                /**< when statement */
     uint8_t must_size;               /**< number of elements in must array */
     struct ly_must *must;            /**< array of must constraints */
 };
@@ -538,10 +581,13 @@ struct ly_mnode_leaf {
     struct ly_mnode *next;
     struct ly_mnode *prev;
 
-    const char *feature;             /**< if-feature statement */
-    const char *when;                /**< when statement */
+    uint8_t features_size;           /**< number of elements in features array */
+    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
+                                          not the list of feature definitions itself, but list
+                                          of if-feature references */
 
     /* specific leaf's data */
+    const char *when;                /**< when statement */
     struct ly_type type;             /**< YANG type of the element */
     const char *units;               /**< units of the type */
     const char *dflt;                /**< default value of the type */
@@ -563,10 +609,14 @@ struct ly_mnode_leaflist {
     struct ly_mnode *next;
     struct ly_mnode *prev;
 
-    const char *feature;             /**< if-feature statement */
-    const char *when;                /**< when statement */
+    uint8_t features_size;           /**< number of elements in features array */
+    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
+                                          not the list of feature definitions itself, but list
+                                          of if-feature references */
 
     /* specific leaf's data */
+    const char *when;                /**< when statement */
+
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
 
@@ -591,10 +641,14 @@ struct ly_mnode_list {
     struct ly_mnode *next;
     struct ly_mnode *prev;
 
-    const char *feature;             /**< if-feature statement */
-    const char *when;                /**< when statement */
+    uint8_t features_size;           /**< number of elements in features array */
+    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
+                                          not the list of feature definitions itself, but list
+                                          of if-feature references */
 
     /* specific list's data */
+    const char *when;                /**< when statement */
+
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
 
@@ -623,8 +677,8 @@ struct ly_mnode_input_output {
     struct ly_mnode *next;
     struct ly_mnode *prev;
 
-    void *feature_fill;
-    void *when_fill;
+    uint8_t features_size;           /**< dummy memeber to follow struct ly_mnode, always 0 */
+    struct ly_feature **features;    /**< dummy memeber to follow struct ly_mnode, always NULL */
 
     /* specific list's data */
     struct ly_tpdf *tpdf;            /**< array of typedefs */
@@ -644,10 +698,12 @@ struct ly_mnode_rpc {
     struct ly_mnode *next;
     struct ly_mnode *prev;
 
-    const char *feature;             /**< if-feature statement */
-    const char *when;
+    uint8_t features_size;           /**< number of elements in features array */
+    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
+                                          not the list of feature definitions itself, but list
+                                          of if-feature references */
 
-    /* specific list's data */
+    /* specific rpc's data */
     uint8_t tpdf_size;               /**< number of elements in tpdf array */
     struct ly_tpdf *tpdf;            /**< array of typedefs */
 };
@@ -665,8 +721,10 @@ struct ly_mnode_notif {
     struct ly_mnode *next;
     struct ly_mnode *prev;
 
-    const char *feature;             /**< if-feature statement */
-    const char *when;
+    uint8_t features_size;           /**< number of elements in features array */
+    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
+                                          not the list of feature definitions itself, but list
+                                          of if-feature references */
 
     /* specific list's data */
     uint8_t tpdf_size;               /**< number of elements in tpdf array */
