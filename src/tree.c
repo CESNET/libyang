@@ -716,6 +716,23 @@ ly_must_free(struct ly_ctx *ctx, struct ly_must *must)
     lydict_remove(ctx, must->emsg);
 }
 
+struct ly_when *
+ly_when_dup(struct ly_ctx *ctx, struct ly_when *old)
+{
+    struct ly_when *new;
+
+    if (!old) {
+        return NULL;
+    }
+
+    new = calloc(1, sizeof *new);
+    new->cond = lydict_insert(ctx, old->cond, 0);
+    new->dsc = lydict_insert(ctx, old->dsc, 0);
+    new->ref = lydict_insert(ctx, old->ref, 0);
+
+    return new;
+}
+
 void
 ly_when_free(struct ly_ctx *ctx, struct ly_when *w)
 {
@@ -1162,6 +1179,7 @@ ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, in
     struct ly_mnode_grp *mix;
     struct ly_mnode_grp *mix_orig = (struct ly_mnode_grp *)mnode;
     struct ly_mnode_case *cs;
+    struct ly_mnode_case *cs_orig = (struct ly_mnode_case *)mnode;
 
     /* we cannot just duplicate memory since the strings are stored in
      * dictionary and we need to update dictionary counters.
@@ -1258,6 +1276,7 @@ ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, in
      */
     switch (mnode->nodetype) {
     case LY_NODE_CONTAINER:
+        cont->when = ly_when_dup(ctx, cont_orig->when);
         cont->presence = lydict_insert(ctx, cont_orig->presence, 0);
 
         cont->must_size = cont_orig->must_size;
@@ -1268,6 +1287,7 @@ ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, in
         break;
 
     case LY_NODE_CHOICE:
+        choice->when = ly_when_dup(ctx, choice_orig->when);
         if (choice->dflt) {
             LY_TREE_FOR(choice->child, child) {
                 if (child->name == choice_orig->dflt->name) {
@@ -1285,6 +1305,8 @@ ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, in
 
         leaf->must_size = leaf_orig->must_size;
         leaf->must = ly_must_dup(ctx, leaf_orig->must, leaf->must_size);
+
+        leaf->when = ly_when_dup(ctx, leaf_orig->when);
         break;
 
     case LY_NODE_LEAFLIST:
@@ -1297,6 +1319,8 @@ ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, in
 
         llist->must_size = llist_orig->must_size;
         llist->must = ly_must_dup(ctx, llist_orig->must, llist->must_size);
+
+        llist->when = ly_when_dup(ctx, llist_orig->when);
         break;
 
     case LY_NODE_LIST:
@@ -1326,15 +1350,18 @@ ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, in
                 }
             }
         }
+        list->when = ly_when_dup(ctx, list_orig->when);
         break;
 
     case LY_NODE_ANYXML:
         anyxml->must_size = anyxml_orig->must_size;
         anyxml->must = ly_must_dup(ctx, anyxml_orig->must, anyxml->must_size);
+        anyxml->when = ly_when_dup(ctx, anyxml_orig->when);
         break;
 
     case LY_NODE_USES:
         uses->grp = uses_orig->grp;
+        uses->when = ly_when_dup(ctx, uses_orig->when);
         uses->refine_size = uses_orig->refine_size;
         uses->refine = ly_refine_dup(ctx, uses_orig->refine, uses_orig->refine_size);
         uses->augment_size = uses_orig->augment_size;
@@ -1345,7 +1372,7 @@ ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, in
         break;
 
     case LY_NODE_CASE:
-        /* nothing to do */
+        cs->when = ly_when_dup(ctx, cs_orig->when);
         break;
 
     case LY_NODE_GROUPING:
@@ -1358,7 +1385,7 @@ ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, in
         break;
 
     default:
-        /* LY_NODE_NOTIF */
+        /* LY_NODE_AUGMENT */
         goto error;
     }
 
