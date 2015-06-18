@@ -164,6 +164,25 @@ tree_print_type(FILE * f, struct ly_type *type)
 }
 
 static void
+tree_print_features(FILE *f, const struct ly_feature **features, uint8_t features_size)
+{
+    int i;
+
+    if (!features_size) {
+        return;
+    }
+
+    fprintf(f, " {");
+    for (i = 0; i < features_size; i++) {
+        if (i > 0) {
+            fprintf(f, ",");
+        }
+        fprintf(f, "%s", features[i]->name);
+    }
+    fprintf(f, "}?");
+}
+
+static void
 tree_print_input_output(FILE * f, int level, char *indent, struct ly_mnode *mnode, int spec_config)
 {
     unsigned int max_child_len;
@@ -209,7 +228,11 @@ tree_print_container(FILE * f, int level, char *indent, struct ly_mnode *mnode, 
         fprintf(f, "ro ");
     }
 
-    fprintf(f, "%s%s\n", cont->name, (cont->presence ? "!" : ""));
+    fprintf(f, "%s%s", cont->name, (cont->presence ? "!" : ""));
+
+    tree_print_features(f, (const struct ly_feature **)cont->features, cont->features_size);
+
+    fprintf(f, "\n");
 
     level++;
     new_indent = create_indent(level, indent, mnode, 0);
@@ -251,6 +274,9 @@ tree_print_choice(FILE * f, int level, char *indent, struct ly_mnode *mnode, int
     if (choice->dflt != NULL) {
         fprintf(f, " <%s>", choice->dflt->name);
     }
+
+    tree_print_features(f, (const struct ly_feature **)choice->features, choice->features_size);
+
     fprintf(f, "\n");
 
     level++;
@@ -274,8 +300,12 @@ tree_print_case(FILE * f, int level, char *indent, unsigned int max_name_len, st
     struct ly_mnode_case *cas = (struct ly_mnode_case *)mnode;
     struct ly_mnode *sub;
 
-    fprintf(f, "%s%s--:(%s)\n", indent,
+    fprintf(f, "%s%s--:(%s)", indent,
             (cas->flags & LY_NODE_STATUS_DEPRC ? "x" : (cas->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")), mnode->name);
+
+    tree_print_features(f, (const struct ly_feature **)cas->features, cas->features_size);
+
+    fprintf(f, "\n");
 
     level++;
     new_indent = create_indent(level, indent, mnode, shorthand);
@@ -313,8 +343,12 @@ tree_print_anyxml(FILE * f, char *indent, unsigned int max_name_len, struct ly_m
         fprintf(f, "ro ");
     }
 
-    fprintf(f, "%s%s%*sanyxml\n", anyxml->name, (anyxml->flags & LY_NODE_MAND_TRUE ? " " : "?"),
+    fprintf(f, "%s%s%*sanyxml", anyxml->name, (anyxml->flags & LY_NODE_MAND_TRUE ? " " : "?"),
             3 + (int)(max_name_len - strlen(anyxml->name)), "   ");
+
+    tree_print_features(f, (const struct ly_feature **)anyxml->features, anyxml->features_size);
+
+    fprintf(f, "\n");
 }
 
 static void
@@ -355,6 +389,9 @@ tree_print_leaf(FILE * f, char *indent, unsigned int max_name_len, struct ly_mno
     if (leaf->dflt != NULL) {
         fprintf(f, " <%s>", leaf->dflt);
     }
+
+    tree_print_features(f, (const struct ly_feature **)leaf->features, leaf->features_size);
+
     fprintf(f, "\n");
 }
 
@@ -379,6 +416,8 @@ tree_print_leaflist(FILE * f, char *indent, unsigned int max_name_len, struct ly
     fprintf(f, "%s*%*s", leaflist->name, 3 + (int)(max_name_len - strlen(leaflist->name)), "   ");
 
     tree_print_type(f, &leaflist->type);
+
+    tree_print_features(f, (const struct ly_feature **)leaflist->features, leaflist->features_size);
 
     fprintf(f, "\n");
 }
@@ -411,6 +450,8 @@ tree_print_list(FILE * f, int level, char *indent, struct ly_mnode *mnode, int s
         }
         fprintf(f, "%s%s", list->keys[i]->name, i + 1 < list->keys_size ? "," : "]");
     }
+
+    tree_print_features(f, (const struct ly_feature **)list->features, list->features_size);
 
     fprintf(f, "\n");
 
@@ -448,8 +489,12 @@ tree_print_rpc(FILE * f, int level, char *indent, struct ly_mnode *mnode)
     struct ly_mnode *node;
     struct ly_mnode_rpc *rpc = (struct ly_mnode_rpc *)mnode;
 
-    fprintf(f, "%s%s---x %s\n", indent,
+    fprintf(f, "%s%s---x %s", indent,
             (rpc->flags & LY_NODE_STATUS_DEPRC ? "x" : (rpc->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")), rpc->name);
+
+    tree_print_features(f, (const struct ly_feature **)rpc->features, rpc->features_size);
+
+    fprintf(f, "\n");
 
     level++;
     new_indent = create_indent(level, indent, mnode, 0);
@@ -473,9 +518,13 @@ tree_print_notif(FILE * f, int level, char *indent, struct ly_mnode *mnode)
     struct ly_mnode *node;
     struct ly_mnode_notif *notif = (struct ly_mnode_notif *)mnode;
 
-    fprintf(f, "%s%s---n %s\n", indent,
+    fprintf(f, "%s%s---n %s", indent,
             (notif->flags & LY_NODE_STATUS_DEPRC ? "x" : (notif->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")),
             notif->name);
+
+    tree_print_features(f, (const struct ly_feature **)notif->features, notif->features_size);
+
+    fprintf(f, "\n");
 
     level++;
     new_indent = create_indent(level, indent, mnode, 0);
