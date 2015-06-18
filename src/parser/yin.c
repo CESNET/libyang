@@ -265,12 +265,7 @@ check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
         assert(module);
 
         /* check feature name uniqness*/
-        if (module->type) {
-            /* check the main module */
-            module = ((struct ly_submodule *)module)->belongsto;
-        }
-
-        /* check features in the main module */
+        /* check features in the current module */
         if (dup_feature_check(id, module)) {
             LOGVAL(VE_DUPID, line, "feature", id);
             return EXIT_FAILURE;
