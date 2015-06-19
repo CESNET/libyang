@@ -659,6 +659,10 @@ ly_type_dup(struct ly_ctx *ctx, struct ly_type *new, struct ly_type *old)
         new->info.inst.req = old->info.inst.req;
         break;
 
+    case LY_TYPE_LEAFREF:
+        new->info.lref.path = lydict_insert(ctx, old->info.lref.path, 0);
+        break;
+
     case LY_TYPE_STRING:
         if (old->info.str.length) {
             new->info.str.length = ly_restr_dup(ctx, old->info.str.length, 1);
@@ -705,6 +709,11 @@ ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
         }
         free(type->info.enums.list);
         break;
+
+    case LY_TYPE_LEAFREF:
+        lydict_remove(ctx, type->info.lref.path);
+        break;
+
     case LY_TYPE_STRING:
         ly_restr_free(ctx, type->info.str.length);
         free(type->info.str.length);

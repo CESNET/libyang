@@ -1118,8 +1118,31 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         break;
 
     case LY_TYPE_LEAFREF:
-        /* TODO path, 9.9.2
-         * - 1, nerekurzivni, string */
+        /* RFC 6020 9.9.2 - path */
+        if (!yin->child) {
+            LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "path", "type");
+            goto error;
+        }
+        LY_TREE_FOR_SAFE(yin->child, next, node) {
+            if (!strcmp(node->name, "path")) {
+                if (type->info.lref.path) {
+                    LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
+                    goto error;
+                }
+
+                GETVAL(value, node, "value");
+                /* TODO
+                 * it would be nice to perform here a check that target is leaf or leaf-list,
+                 * but schema is not finnished yet and path can point almost to anywhere, so
+                 * we will have to check the path at the end of parsing the schema.
+                 */
+                type->info.lref.path = lydict_insert(module->ctx, value, 0);
+            } else {
+                LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
+                goto error;
+            }
+            lyxml_free_elem(module->ctx, node);
+        }
         break;
 
     case LY_TYPE_STRING:
