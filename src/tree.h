@@ -101,6 +101,22 @@ struct ly_types {
 };
 extern struct ly_types ly_types[LY_DATA_TYPE_COUNT];
 
+struct ly_must {
+    const char *cond;             /**< XPath expression of the must statement */
+    const char *dsc;              /**< description */
+    const char *ref;              /**< reference */
+    const char *eapptag;          /**< error-app-tag value */
+    const char *emsg;             /**< error-message */
+};
+
+struct ly_length {
+    const char *expr;             /**< length restriction expression */
+    const char *dsc;              /**< description */
+    const char *ref;              /**< reference */
+    const char *eapptag;          /**< error-app-tag value */
+    const char *emsg;             /**< error-message */
+};
+
 struct ly_type {
     const char *prefix;               /**< prefix for the type referenced in der pointer*/
     LY_DATA_TYPE base;          /**< base type */
@@ -110,7 +126,7 @@ struct ly_type {
     union {
         /* LY_TYPE_BINARY */
         struct {
-            const char *length;
+            struct ly_length *length;
         } binary;
 
         /* LY_TYPE_BITS */
@@ -165,7 +181,7 @@ struct ly_type {
 
         /* LY_TYPE_STRING */
         struct {
-            const char *length;
+            struct ly_length *length;
             const char **pattern;
             int pat_count;
         } str;
@@ -191,14 +207,6 @@ struct ly_tpdf {
 	                               type */
     const char *units;            /**< units of the type */
     const char *dflt;             /**< default value of the type */
-};
-
-struct ly_must {
-    const char *cond;             /**< XPath expression of the must statement */
-    const char *dsc;              /**< description */
-    const char *ref;              /**< reference */
-    const char *eapptag;          /**< error-app-tag value */
-    const char *emsg;             /**< error-message */
 };
 
 struct ly_when {

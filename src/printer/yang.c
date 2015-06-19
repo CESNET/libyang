@@ -102,6 +102,23 @@ yang_print_mnode_common2(FILE *f, int level, struct ly_mnode *mnode)
 }
 
 static void
+yang_print_restr(FILE *f, int level, struct ly_must *must)
+{
+    if (must->dsc != NULL) {
+        yang_print_text(f, level, "description", must->dsc);
+    }
+    if (must->ref != NULL) {
+        yang_print_text(f, level, "reference", must->ref);
+    }
+    if (must->eapptag != NULL) {
+        fprintf(f, "%*serror-app-tag \"%s\";\n", LEVEL, INDENT, must->eapptag);
+    }
+    if (must->emsg != NULL) {
+        yang_print_text(f, level, "error-message", must->emsg);
+    }
+}
+
+static void
 yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *type)
 {
     int i;
@@ -115,7 +132,9 @@ yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *ty
     switch (type->base) {
     case LY_TYPE_BINARY:
         if (type->info.binary.length != NULL) {
-            fprintf(f, "%*slength \"%s\";\n", LEVEL, INDENT, type->info.binary.length);
+            fprintf(f, "%*slength \"%s\" {\n", LEVEL, INDENT, type->info.binary.length->expr);
+            yang_print_restr(f, level + 1, (struct ly_must *)type->info.binary.length);
+            fprintf(f, "%*s}\n", LEVEL, INDENT);
         }
         break;
     case LY_TYPE_BITS:
@@ -189,23 +208,7 @@ static void
 yang_print_must(FILE *f, int level, struct ly_must *must)
 {
     fprintf(f, "%*smust \"%s\" {\n", LEVEL, INDENT, must->cond);
-    level++;
-
-    if (must->eapptag != NULL) {
-        fprintf(f, "%*serror-app-tag \"%s\";\n", LEVEL, INDENT, must->eapptag);
-    }
-
-    if (must->emsg != NULL) {
-        yang_print_text(f, level, "error-message", must->emsg);
-    }
-    if (must->dsc != NULL) {
-        yang_print_text(f, level, "description", must->dsc);
-    }
-    if (must->ref != NULL) {
-        yang_print_text(f, level, "reference", must->ref);
-    }
-
-    level--;
+    yang_print_restr(f, level + 1, must);
     fprintf(f, "%*s}\n", LEVEL, INDENT);
 }
 

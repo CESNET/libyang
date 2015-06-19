@@ -400,6 +400,132 @@ error:
     return EXIT_FAILURE;
 }
 
+static int
+check_length(const char *expr, struct ly_type *type, unsigned int line)
+{
+    const char *c = expr;
+    char *tail;
+    uint64_t limit = 0, n;
+    int flg = 1; /* first run flag */
+
+    assert(expr);
+
+    /* TODO check compatibility with the restriction defined on type from which this type is derived,
+     * it will be the same function to check that the value from instance data respect the restriction */
+    (void)type;
+
+lengthpart:
+
+    while (isspace(*c)) {
+        c++;
+    }
+
+    /* lower boundary or explicit number */
+    if (!strncmp(c, "max", 3)) {
+max:
+        c += 3;
+        while (isspace(*c)) {
+            c++;
+        }
+        if (*c != '\0') {
+            goto error;
+        }
+
+        return EXIT_SUCCESS;
+
+    } else if (!strncmp(c, "min", 3)) {
+        if (!flg) {
+            /* min cannot be used elsewhere than in the first length-part */
+            goto error;
+        } else {
+            flg = 0;
+            /* remember value/lower boundary */
+            limit = 0;
+        }
+        c += 3;
+        while (isspace(*c)) {
+            c++;
+        }
+
+        if (*c == '|') {
+            c++;
+            /* process next length-parth */
+            goto lengthpart;
+        } else if (*c == '\0') {
+            return EXIT_SUCCESS;
+        } else if (!strncmp(c, "..", 2)) {
+upper:
+            c += 2;
+            while (isspace(*c)) {
+                c++;
+            }
+            if (*c == '\0') {
+                goto error;
+            }
+
+            /* upper boundary */
+            if (!strncmp(c, "max", 3)) {
+                goto max;
+            }
+
+            if (!isdigit(*c)) {
+                goto error;
+            }
+
+            n = strtol(c, &tail, 10);
+            c = tail;
+            while (isspace(*c)) {
+                c++;
+            }
+            if (n <= limit) {
+                goto error;
+            }
+            if (*c == '\0') {
+                return EXIT_SUCCESS;
+            } else if (*c == '|') {
+                c++;
+                /* remember the uppre boundary for check in next part */
+                limit = n;
+                /* process next length-parth */
+                goto lengthpart;
+            } else {
+                goto error;
+            }
+        } else {
+            goto error;
+        }
+
+    } else if (isdigit(*c)) {
+        /* number */
+        n = strtol(c, &tail, 10);
+        c = tail;
+        while (isspace(*c)) {
+            c++;
+        }
+        /* skip limit check in first length-part check */
+        if (!flg && n <= limit) {
+            goto error;
+        }
+        flg = 0;
+        limit = n;
+
+        if (*c == '|') {
+            c++;
+            /* process next length-parth */
+            goto lengthpart;
+        } else if (*c == '\0') {
+            return EXIT_SUCCESS;
+        } else if (!strncmp(c, "..", 2)) {
+            goto upper;
+        }
+    } /* else error */
+
+error:
+
+    LOGVAL(VE_INARG, line, expr, "length");
+    return EXIT_FAILURE;
+}
+
 static const char *
 read_yin_subnode(struct ly_ctx *ctx, struct lyxml_elem *node, const char *name)
 {
@@ -648,6 +774,59 @@ fill_yin_identity(struct ly_module *module, struct lyxml_elem *yin, struct ly_id
 }
 
 static int
+read_restr_substmt(struct ly_ctx *ctx, struct ly_must *restr, struct lyxml_elem *yin)
+{
+    struct lyxml_elem *next, *child;
+
+    LY_TREE_FOR_SAFE(yin->child, next, child) {
+        if (!strcmp(child->name, "description")) {
+            if (restr->dsc) {
+                LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+                return EXIT_FAILURE;
+            }
+            restr->dsc = read_yin_subnode(ctx, child, "text");
+            if (!restr->dsc) {
+                return EXIT_FAILURE;
+            }
+        } else if (!strcmp(child->name, "reference")) {
+            if (restr->ref) {
+                LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+                return EXIT_FAILURE;
+            }
+            restr->ref = read_yin_subnode(ctx, child, "text");
+            if (!restr->ref) {
+                return EXIT_FAILURE;
+            }
+        } else if (!strcmp(child->name, "error-app-tag")) {
+            if (restr->eapptag) {
+                LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+                return EXIT_FAILURE;
+            }
+            restr->eapptag = read_yin_subnode(ctx, child, "value");
+            if (!restr->eapptag) {
+                return EXIT_FAILURE;
+            }
+        } else if (!strcmp(child->name, "error-message")) {
+            if (restr->emsg) {
+                LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+                return EXIT_FAILURE;
+            }
+            restr->emsg = read_yin_subnode(ctx, child, "value");
+            if (!restr->emsg) {
+                return EXIT_FAILURE;
+            }
+        } else {
+            LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+            return EXIT_FAILURE;
+        }
+
+        lyxml_free_elem(ctx, child);
+    }
+
+    return EXIT_SUCCESS;
+}
+
+static int
 fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_elem *yin, struct ly_type *type)
 {
     const char *value, *delim;
@@ -674,10 +853,30 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
 
     switch (type->base) {
     case LY_TYPE_BINARY:
-        /* TODO length, 9.4.4
-         * - optional, 0..1, rekurzivni - omezuje, string (podobne jako range),
-         * hodnoty se musi vejit do 64b, podelementy
-         */
+        /* RFC 6020 9.8.1, 9.4.4 - length, number of octets it contains */
+        LY_TREE_FOR_SAFE(yin->child, next, node) {
+            if (!strcmp(node->name, "length")) {
+                if (type->info.binary.length) {
+                    LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
+                    goto error;
+                }
+
+                GETVAL(value, node, "value");
+                if (check_length(value, type, LOGLINE(node))) {
+                    goto error;
+                }
+                type->info.binary.length = calloc(1, sizeof *type->info.binary.length);
+                type->info.binary.length->expr = lydict_insert(module->ctx, value, 0);
+
+                /* get possible substatements */
+                if (read_restr_substmt(module->ctx, (struct ly_must *)type->info.binary.length, node)) {
+                    goto error;
+                }
+            } else {
+                LOGVAL(VE_INSTMT, LOGLINE(yin->child), yin->child->name);
+                goto error;
+            }
+        }
         break;
 
     case LY_TYPE_BITS:
@@ -689,11 +888,10 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                 lyxml_unlink_elem(node);
                 lyxml_add_child(&root, node);
                 type->info.bits.count++;
+            } else {
+                LOGVAL(VE_INSTMT, LOGLINE(yin->child), yin->child->name);
+                goto error;
             }
-        }
-        if (yin->child) {
-            LOGVAL(VE_INSTMT, LOGLINE(yin->child), yin->child->name);
-            goto error;
         }
         if (!type->info.bits.count) {
             if (type->der->type.der) {
@@ -1124,60 +1322,14 @@ error:
 static int
 fill_yin_must(struct ly_module *module, struct lyxml_elem *yin, struct ly_must *must)
 {
-    struct lyxml_elem *child, *next;
     const char *value;
 
     GETVAL(value, yin, "condition");
     must->cond = lydict_insert(module->ctx, value, strlen(value));
 
-    LY_TREE_FOR_SAFE(yin->child, next, child) {
-        if (!strcmp(child->name, "description")) {
-            if (must->dsc) {
-                LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
-                goto error;
-            }
-            must->dsc = read_yin_subnode(module->ctx, child, "text");
-            if (!must->dsc) {
-                goto error;
-            }
-        } else if (!strcmp(child->name, "reference")) {
-            if (must->ref) {
-                LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
-                goto error;
-            }
-            must->ref = read_yin_subnode(module->ctx, child, "text");
-            if (!must->ref) {
-                goto error;
-            }
-        } else if (!strcmp(child->name, "error-app-tag")) {
-            if (must->eapptag) {
-                LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
-                goto error;
-            }
-            must->eapptag = read_yin_subnode(module->ctx, child, "value");
-            if (!must->eapptag) {
-                goto error;
-            }
-        } else if (!strcmp(child->name, "error-message")) {
-            if (must->emsg) {
-                LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
-                goto error;
-            }
-            must->emsg = read_yin_subnode(module->ctx, child, "value");
-            if (!must->emsg) {
-                goto error;
-            }
-        } else {
-            LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
-            goto error;
-        }
+    return read_restr_substmt(module->ctx, must, yin);
 
-        lyxml_free_elem(module->ctx, child);
-    }
-
-    return EXIT_SUCCESS;
-
-error:
+error: /* GETVAL requires this label */
 
     return EXIT_FAILURE;
 }
