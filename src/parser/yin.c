@@ -1110,6 +1110,34 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         break;
 
     case LY_TYPE_STRING:
+        /* RFC 6020 9.4.4 - length */
+        /* RFC 6020 9.4.6 - pattern */
+        LY_TREE_FOR_SAFE(yin->child, next, node) {
+            if (!strcmp(node->name, "length")) {
+                if (type->info.str.length) {
+                    LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
+                    goto error;
+                }
+
+                GETVAL(value, node, "value");
+                if (check_length(value, type, LOGLINE(node))) {
+                    goto error;
+                }
+                type->info.str.length = calloc(1, sizeof *type->info.str.length);
+                type->info.str.length->expr = lydict_insert(module->ctx, value, 0);
+
+                /* get possible substatements */
+                if (read_restr_substmt(module->ctx, (struct ly_restr *)type->info.str.length, node)) {
+                    goto error;
+                }
+            } else if (!strcmp(node->name, "pattern")) {
+
+            } else {
+                LOGVAL(VE_INSTMT, LOGLINE(yin->child), yin->child->name);
+                goto error;
+            }
+        }
+        break;
         /* TODO length, 9.4.4
          * - optional, 0..1, rekurzivni - omezuje, string (podobne jako range), hodnoty se musi vejit do 64b, podelementy
          * pattern, 9.4.6

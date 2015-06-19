@@ -572,31 +572,26 @@ ly_submodule_read_fd(struct ly_module *module, int fd, LY_MINFORMAT format)
 
 }
 
-void
-ly_type_dup(struct ly_ctx *ctx, struct ly_type *new, struct ly_type *old)
+struct ly_restr *
+ly_restr_dup(struct ly_ctx *ctx, struct ly_restr *old, int size)
 {
+    struct ly_restr *result;
     int i;
 
-    new->prefix = lydict_insert(ctx, old->prefix, 0);
-    new->base = old->base;
-    new->der = old->der;
-
-    switch (new->base) {
-    case LY_TYPE_ENUM:
-        new->info.enums.count = old->info.enums.count;
-        if (new->info.enums.count) {
-            new->info.enums.list = calloc(new->info.enums.count, sizeof *new->info.enums.list);
-            for (i = 0; i < new->info.enums.count; i++) {
-                new->info.enums.list[i].name = lydict_insert(ctx, old->info.enums.list[i].name, 0);
-                new->info.enums.list[i].dsc = lydict_insert(ctx, old->info.enums.list[i].dsc, 0);
-                new->info.enums.list[i].ref = lydict_insert(ctx, old->info.enums.list[i].ref, 0);
-            }
-        }
-        break;
-    default:
-        /* TODO */
-        break;
+    if (!size) {
+        return NULL;
     }
+
+    result = calloc(size, sizeof *result);
+    for (i = 0; i < size; i++) {
+        result[i].expr = lydict_insert(ctx, old[i].expr, 0);
+        result[i].dsc = lydict_insert(ctx, old[i].dsc, 0);
+        result[i].ref = lydict_insert(ctx, old[i].ref, 0);
+        result[i].eapptag = lydict_insert(ctx, old[i].eapptag, 0);
+        result[i].emsg = lydict_insert(ctx, old[i].emsg, 0);
+    }
+
+    return result;
 }
 
 void
@@ -612,6 +607,58 @@ ly_restr_free(struct ly_ctx *ctx, struct ly_restr *restr)
     lydict_remove(ctx, restr->ref);
     lydict_remove(ctx, restr->eapptag);
     lydict_remove(ctx, restr->emsg);
+}
+
+void
+ly_type_dup(struct ly_ctx *ctx, struct ly_type *new, struct ly_type *old)
+{
+    int i;
+
+    new->prefix = lydict_insert(ctx, old->prefix, 0);
+    new->base = old->base;
+    new->der = old->der;
+
+    switch (new->base) {
+    case LY_TYPE_BINARY:
+        new->info.binary.length = ly_restr_dup(ctx, old->info.binary.length, 1);
+        break;
+
+    case LY_TYPE_BITS:
+        new->info.bits.count = old->info.bits.count;
+        if (new->info.bits.count) {
+            new->info.bits.bit = calloc(new->info.bits.count, sizeof *new->info.bits.bit);
+            for (i = 0; i < new->info.bits.count; i++) {
+                new->info.bits.bit[i].name = lydict_insert(ctx, old->info.bits.bit[i].name, 0);
+                new->info.bits.bit[i].dsc = lydict_insert(ctx, old->info.bits.bit[i].dsc, 0);
+                new->info.bits.bit[i].ref = lydict_insert(ctx, old->info.bits.bit[i].ref, 0);
+                new->info.bits.bit[i].status = old->info.bits.bit[i].status;
+                new->info.bits.bit[i].pos = old->info.bits.bit[i].pos;
+            }
+        }
+        break;
+
+    case LY_TYPE_ENUM:
+        new->info.enums.count = old->info.enums.count;
+        if (new->info.enums.count) {
+            new->info.enums.list = calloc(new->info.enums.count, sizeof *new->info.enums.list);
+            for (i = 0; i < new->info.enums.count; i++) {
+                new->info.enums.list[i].name = lydict_insert(ctx, old->info.enums.list[i].name, 0);
+                new->info.enums.list[i].dsc = lydict_insert(ctx, old->info.enums.list[i].dsc, 0);
+                new->info.enums.list[i].ref = lydict_insert(ctx, old->info.enums.list[i].ref, 0);
+                new->info.enums.list[i].status = old->info.enums.list[i].status;
+                new->info.enums.list[i].value = old->info.enums.list[i].value;
+            }
+        }
+        break;
+
+    case LY_TYPE_STRING:
+        new->info.str.length = ly_restr_dup(ctx, old->info.str.length, 1);
+        break;
+
+    default:
+        /* TODO */
+        break;
+    }
 }
 
 void
@@ -646,6 +693,10 @@ ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
             lydict_remove(ctx, type->info.enums.list[i].ref);
         }
         free(type->info.enums.list);
+        break;
+    case LY_TYPE_STRING:
+        ly_restr_free(ctx, type->info.str.length);
+        free(type->info.str.length);
         break;
     default:
         /* TODO */
@@ -696,28 +747,6 @@ ly_tpdf_free(struct ly_ctx *ctx, struct ly_tpdf *tpdf)
 
     lydict_remove(ctx, tpdf->units);
     lydict_remove(ctx, tpdf->dflt);
-}
-
-struct ly_restr *
-ly_restr_dup(struct ly_ctx *ctx, struct ly_restr *old, int size)
-{
-    struct ly_restr *result;
-    int i;
-
-    if (!size) {
-        return NULL;
-    }
-
-    result = calloc(size, sizeof *result);
-    for (i = 0; i < size; i++) {
-        result[i].expr = lydict_insert(ctx, old[i].expr, 0);
-        result[i].dsc = lydict_insert(ctx, old[i].dsc, 0);
-        result[i].ref = lydict_insert(ctx, old[i].ref, 0);
-        result[i].eapptag = lydict_insert(ctx, old[i].eapptag, 0);
-        result[i].emsg = lydict_insert(ctx, old[i].emsg, 0);
-    }
-
-    return result;
 }
 
 struct ly_when *
