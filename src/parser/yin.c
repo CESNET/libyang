@@ -3703,7 +3703,7 @@ read_yin_uses(struct ly_module *module,
         } else if (!strcmp(sub->name, "augment")) {
             c_aug++;
         } else if (!strcmp(sub->name, "if-feature")) {
-            c_aug++;
+            c_ftrs++;
         } else if (!strcmp(sub->name, "when")) {
             if (uses->when) {
                 LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, node->name);
