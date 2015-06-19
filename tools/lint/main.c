@@ -58,7 +58,7 @@ usage(const char *progname)
 int main_noninteractive(int argc, char *argv[])
 {
     int c;
-    int ret = EXIT_SUCCESS;
+    int ret = EXIT_FAILURE;
     FILE *output = NULL;
     int fd = -1;
     struct ly_module *model;
@@ -80,7 +80,6 @@ int main_noninteractive(int argc, char *argv[])
         case 'f':
             if (strcmp(optarg, "yang") && strcmp(optarg, "tree")) {
                 fprintf(stderr, "Output format \"%s\" not supported.\n", optarg);
-                ret = EXIT_FAILURE;
                 goto cleanup;
             }
             if (strcmp(optarg, "tree") == 0) {
@@ -93,12 +92,12 @@ int main_noninteractive(int argc, char *argv[])
             break;
         case 'h':
             usage(argv[0]);
-            return EXIT_SUCCESS;
+            ret = EXIT_SUCCESS;
+            goto cleanup;
         case 'o':
             output = fopen(optarg, "w");
             if (!output) {
                 fprintf(stderr, "Unable to use output file (%s).\n", strerror(errno));
-                ret = EXIT_FAILURE;
                 goto cleanup;
             }
             break;
@@ -110,21 +109,18 @@ int main_noninteractive(int argc, char *argv[])
             break;
         default: /* '?' */
             usage(argv[0]);
-            ret = EXIT_FAILURE;
             goto cleanup;
         }
     }
 
     if (optind != argc - 1) {
         usage(argv[0]);
-        ret = EXIT_FAILURE;
         goto cleanup;
     }
 
     fd = open(argv[optind], O_RDONLY);
     if (fd == -1) {
         fprintf(stderr, "Opening input file failed (%s).\n", strerror(errno));
-        ret = EXIT_FAILURE;
         goto cleanup;
     }
     if (fstat(fd, &sb) == -1) {
@@ -139,7 +135,6 @@ int main_noninteractive(int argc, char *argv[])
     model = ly_module_read(ctx, addr, LY_IN_YIN);
     if (!model) {
         fprintf(stderr, "Parsing data model failed.\n");
-        ret = EXIT_FAILURE;
         goto cleanup;
     }
 
@@ -147,6 +142,7 @@ int main_noninteractive(int argc, char *argv[])
         ly_model_print(output, model, out_format);
     }
 
+    ret = EXIT_SUCCESS;
 
 cleanup:
     ly_ctx_destroy(ctx);
