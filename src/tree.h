@@ -158,7 +158,7 @@ struct ly_type {
 
         /* LY_TYPE_INST */
         struct {
-            int req;    /* -1 not defined, 0 = false, 1 = true */
+            int req;    /*  -1 = false, 0 not defined, 1 = true */
         } inst;
 
         /* LY_TYPE_*INT* */

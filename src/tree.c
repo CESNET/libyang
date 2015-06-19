@@ -651,6 +651,10 @@ ly_type_dup(struct ly_ctx *ctx, struct ly_type *new, struct ly_type *old)
         }
         break;
 
+    case LY_TYPE_INST:
+        new->info.inst.req = old->info.inst.req;
+        break;
+
     case LY_TYPE_STRING:
         if (old->info.str.length) {
             new->info.str.length = ly_restr_dup(ctx, old->info.str.length, 1);

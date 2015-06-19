@@ -170,7 +170,11 @@ yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *ty
         }
         break;
     case LY_TYPE_INST:
-        /* TODO */
+        if (type->info.inst.req == 1) {
+            fprintf(f, "%*srequire-instance \"true\";\n", LEVEL, INDENT);
+        } else if (type->info.inst.req == -1) {
+            fprintf(f, "%*srequire-instance \"false\";\n", LEVEL, INDENT);
+        }
         break;
     case LY_TYPE_INT8:
     case LY_TYPE_INT16:

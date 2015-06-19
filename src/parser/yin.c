@@ -1081,8 +1081,28 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         break;
 
     case LY_TYPE_INST:
-        /* TODO require-instance, 9.13.2
-         * - 0..1, true/false */
+        /* RFC 6020 9.13.2 - require-instance */
+        LY_TREE_FOR_SAFE(yin->child, next, node) {
+            if (!strcmp(node->name, "require-instance")) {
+                if (type->info.inst.req) {
+                    LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
+                    goto error;
+                }
+                GETVAL(value, node, "value");
+                if (strcmp(value, "true")) {
+                    type->info.inst.req = 1;
+                } else if (strcmp(value, "false")) {
+                    type->info.inst.req = -1;
+                } else {
+                    LOGVAL(VE_INARG, LOGLINE(node), value, node->name);
+                    goto error;
+                }
+            } else {
+                LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
+                goto error;
+            }
+            lyxml_free_elem(module->ctx, node);
+        }
         break;
 
     case LY_TYPE_INT8:
