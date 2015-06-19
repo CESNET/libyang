@@ -774,7 +774,7 @@ fill_yin_identity(struct ly_module *module, struct lyxml_elem *yin, struct ly_id
 }
 
 static int
-read_restr_substmt(struct ly_ctx *ctx, struct ly_must *restr, struct lyxml_elem *yin)
+read_restr_substmt(struct ly_ctx *ctx, struct ly_restr *restr, struct lyxml_elem *yin)
 {
     struct lyxml_elem *next, *child;
 
@@ -869,7 +869,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                 type->info.binary.length->expr = lydict_insert(module->ctx, value, 0);
 
                 /* get possible substatements */
-                if (read_restr_substmt(module->ctx, (struct ly_must *)type->info.binary.length, node)) {
+                if (read_restr_substmt(module->ctx, (struct ly_restr *)type->info.binary.length, node)) {
                     goto error;
                 }
             } else {
@@ -1320,12 +1320,12 @@ error:
 }
 
 static int
-fill_yin_must(struct ly_module *module, struct lyxml_elem *yin, struct ly_must *must)
+fill_yin_must(struct ly_module *module, struct lyxml_elem *yin, struct ly_restr *must)
 {
     const char *value;
 
     GETVAL(value, yin, "condition");
-    must->cond = lydict_insert(module->ctx, value, strlen(value));
+    must->expr = lydict_insert(module->ctx, value, strlen(value));
 
     return read_restr_substmt(module->ctx, must, yin);
 
@@ -3690,7 +3690,7 @@ resolve_uses(struct ly_mnode_uses *uses, unsigned int line)
     struct ly_ctx *ctx;
     struct ly_mnode *mnode = NULL, *mnode_aux;
     struct ly_refine *rfn;
-    struct ly_must *newmust;
+    struct ly_restr *newmust;
     int i, j;
     uint8_t size;
 
@@ -3793,7 +3793,7 @@ resolve_uses(struct ly_mnode_uses *uses, unsigned int line)
                 return EXIT_FAILURE;
             }
             for (i = 0, j = ((struct ly_mnode_leaf *)mnode)->must_size; i < rfn->must_size; i++, j++) {
-                newmust[j].cond = lydict_insert(ctx, rfn->must[i].cond, 0);
+                newmust[j].expr = lydict_insert(ctx, rfn->must[i].expr, 0);
                 newmust[j].dsc = lydict_insert(ctx, rfn->must[i].dsc, 0);
                 newmust[j].ref = lydict_insert(ctx, rfn->must[i].ref, 0);
                 newmust[j].eapptag = lydict_insert(ctx, rfn->must[i].eapptag, 0);

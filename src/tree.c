@@ -600,6 +600,21 @@ ly_type_dup(struct ly_ctx *ctx, struct ly_type *new, struct ly_type *old)
 }
 
 void
+ly_restr_free(struct ly_ctx *ctx, struct ly_restr *restr)
+{
+    assert(ctx);
+    if (!restr) {
+        return;
+    }
+
+    lydict_remove(ctx, restr->expr);
+    lydict_remove(ctx, restr->dsc);
+    lydict_remove(ctx, restr->ref);
+    lydict_remove(ctx, restr->eapptag);
+    lydict_remove(ctx, restr->emsg);
+}
+
+void
 ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
 {
     int i;
@@ -612,6 +627,10 @@ ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
     lydict_remove(ctx, type->prefix);
 
     switch (type->base) {
+    case LY_TYPE_BINARY:
+        ly_restr_free(ctx, type->info.binary.length);
+        free(type->info.binary.length);
+        break;
     case LY_TYPE_BITS:
         for (i = 0; i < type->info.bits.count; i++) {
             lydict_remove(ctx, type->info.bits.bit[i].name);
@@ -679,10 +698,10 @@ ly_tpdf_free(struct ly_ctx *ctx, struct ly_tpdf *tpdf)
     lydict_remove(ctx, tpdf->dflt);
 }
 
-struct ly_must *
-ly_must_dup(struct ly_ctx *ctx, struct ly_must *old, int size)
+struct ly_restr *
+ly_restr_dup(struct ly_ctx *ctx, struct ly_restr *old, int size)
 {
-    struct ly_must *result;
+    struct ly_restr *result;
     int i;
 
     if (!size) {
@@ -691,7 +710,7 @@ ly_must_dup(struct ly_ctx *ctx, struct ly_must *old, int size)
 
     result = calloc(size, sizeof *result);
     for (i = 0; i < size; i++) {
-        result[i].cond = lydict_insert(ctx, old[i].cond, 0);
+        result[i].expr = lydict_insert(ctx, old[i].expr, 0);
         result[i].dsc = lydict_insert(ctx, old[i].dsc, 0);
         result[i].ref = lydict_insert(ctx, old[i].ref, 0);
         result[i].eapptag = lydict_insert(ctx, old[i].eapptag, 0);
@@ -699,21 +718,6 @@ ly_must_dup(struct ly_ctx *ctx, struct ly_must *old, int size)
     }
 
     return result;
-}
-
-void
-ly_must_free(struct ly_ctx *ctx, struct ly_must *must)
-{
-    assert(ctx);
-    if (!must) {
-        return;
-    }
-
-    lydict_remove(ctx, must->cond);
-    lydict_remove(ctx, must->dsc);
-    lydict_remove(ctx, must->ref);
-    lydict_remove(ctx, must->eapptag);
-    lydict_remove(ctx, must->emsg);
 }
 
 struct ly_when *
@@ -794,7 +798,7 @@ ly_refine_dup(struct ly_ctx *ctx, struct ly_refine *old, int size)
         result[i].flags = old[i].flags;
         result[i].target_type = old[i].target_type;
         result[i].must_size = old[i].must_size;
-        result[i].must = ly_must_dup(ctx, old[i].must, old[i].must_size);
+        result[i].must = ly_restr_dup(ctx, old[i].must, old[i].must_size);
         if (result[i].target_type & (LY_NODE_LEAF | LY_NODE_CHOICE)) {
             result[i].mod.dflt = lydict_insert(ctx, old[i].mod.dflt, 0);
         } else if (result[i].target_type == LY_NODE_CONTAINER) {
@@ -856,7 +860,7 @@ ly_anyxml_free(struct ly_ctx *ctx, struct ly_mnode_anyxml *anyxml)
     int i;
 
     for (i = 0; i < anyxml->must_size; i++) {
-        ly_must_free(ctx, &anyxml->must[i]);
+        ly_restr_free(ctx, &anyxml->must[i]);
     }
     free(anyxml->must);
 
@@ -869,7 +873,7 @@ ly_leaf_free(struct ly_ctx *ctx, struct ly_mnode_leaf *leaf)
     int i;
 
     for (i = 0; i < leaf->must_size; i++) {
-        ly_must_free(ctx, &leaf->must[i]);
+        ly_restr_free(ctx, &leaf->must[i]);
     }
     free(leaf->must);
 
@@ -886,7 +890,7 @@ ly_leaflist_free(struct ly_ctx *ctx, struct ly_mnode_leaflist *llist)
     int i;
 
     for (i = 0; i < llist->must_size; i++) {
-        ly_must_free(ctx, &llist->must[i]);
+        ly_restr_free(ctx, &llist->must[i]);
     }
     free(llist->must);
 
@@ -908,7 +912,7 @@ ly_list_free(struct ly_ctx *ctx, struct ly_mnode_list *list)
     free(list->tpdf);
 
     for (i = 0; i < list->must_size; i++) {
-        ly_must_free(ctx, &list->must[i]);
+        ly_restr_free(ctx, &list->must[i]);
     }
     free(list->must);
 
@@ -936,7 +940,7 @@ ly_container_free(struct ly_ctx *ctx, struct ly_mnode_container *cont)
     free(cont->tpdf);
 
     for (i = 0; i < cont->must_size; i++) {
-        ly_must_free(ctx, &cont->must[i]);
+        ly_restr_free(ctx, &cont->must[i]);
     }
     free(cont->must);
 
@@ -975,7 +979,7 @@ ly_uses_free(struct ly_ctx *ctx, struct ly_mnode_uses *uses)
         lydict_remove(ctx, uses->refine[i].ref);
 
         for (j = 0; j < uses->refine[j].must_size; j++) {
-            ly_must_free(ctx, &uses->refine[i].must[j]);
+            ly_restr_free(ctx, &uses->refine[i].must[j]);
         }
         free(uses->refine[i].must);
 
@@ -1282,7 +1286,7 @@ ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, in
         cont->must_size = cont_orig->must_size;
         cont->tpdf_size = cont_orig->tpdf_size;
 
-        cont->must = ly_must_dup(ctx, cont_orig->must, cont->must_size);
+        cont->must = ly_restr_dup(ctx, cont_orig->must, cont->must_size);
         cont->tpdf = ly_tpdf_dup(ctx, cont_orig->tpdf, cont->tpdf_size);
         break;
 
@@ -1304,7 +1308,7 @@ ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, in
         leaf->dflt = lydict_insert(ctx, leaf_orig->dflt, 0);
 
         leaf->must_size = leaf_orig->must_size;
-        leaf->must = ly_must_dup(ctx, leaf_orig->must, leaf->must_size);
+        leaf->must = ly_restr_dup(ctx, leaf_orig->must, leaf->must_size);
 
         leaf->when = ly_when_dup(ctx, leaf_orig->when);
         break;
@@ -1318,7 +1322,7 @@ ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, in
         llist->max = llist_orig->max;
 
         llist->must_size = llist_orig->must_size;
-        llist->must = ly_must_dup(ctx, llist_orig->must, llist->must_size);
+        llist->must = ly_restr_dup(ctx, llist_orig->must, llist->must_size);
 
         llist->when = ly_when_dup(ctx, llist_orig->when);
         break;
@@ -1332,7 +1336,7 @@ ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, in
         list->keys_size = list_orig->keys_size;
         list->unique_size = list_orig->unique_size;
 
-        list->must = ly_must_dup(ctx, list_orig->must, list->must_size);
+        list->must = ly_restr_dup(ctx, list_orig->must, list->must_size);
         list->tpdf = ly_tpdf_dup(ctx, list_orig->tpdf, list->tpdf_size);
 
         if (list->keys_size) {
@@ -1355,7 +1359,7 @@ ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, in
 
     case LY_NODE_ANYXML:
         anyxml->must_size = anyxml_orig->must_size;
-        anyxml->must = ly_must_dup(ctx, anyxml_orig->must, anyxml->must_size);
+        anyxml->must = ly_restr_dup(ctx, anyxml_orig->must, anyxml->must_size);
         anyxml->when = ly_when_dup(ctx, anyxml_orig->when);
         break;
 

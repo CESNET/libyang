@@ -102,19 +102,19 @@ yang_print_mnode_common2(FILE *f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_restr(FILE *f, int level, struct ly_must *must)
+yang_print_restr(FILE *f, int level, struct ly_restr *restr)
 {
-    if (must->dsc != NULL) {
-        yang_print_text(f, level, "description", must->dsc);
+    if (restr->dsc != NULL) {
+        yang_print_text(f, level, "description", restr->dsc);
     }
-    if (must->ref != NULL) {
-        yang_print_text(f, level, "reference", must->ref);
+    if (restr->ref != NULL) {
+        yang_print_text(f, level, "reference", restr->ref);
     }
-    if (must->eapptag != NULL) {
-        fprintf(f, "%*serror-app-tag \"%s\";\n", LEVEL, INDENT, must->eapptag);
+    if (restr->eapptag != NULL) {
+        fprintf(f, "%*serror-app-tag \"%s\";\n", LEVEL, INDENT, restr->eapptag);
     }
-    if (must->emsg != NULL) {
-        yang_print_text(f, level, "error-message", must->emsg);
+    if (restr->emsg != NULL) {
+        yang_print_text(f, level, "error-message", restr->emsg);
     }
 }
 
@@ -133,7 +133,7 @@ yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *ty
     case LY_TYPE_BINARY:
         if (type->info.binary.length != NULL) {
             fprintf(f, "%*slength \"%s\" {\n", LEVEL, INDENT, type->info.binary.length->expr);
-            yang_print_restr(f, level + 1, (struct ly_must *)type->info.binary.length);
+            yang_print_restr(f, level + 1, type->info.binary.length);
             fprintf(f, "%*s}\n", LEVEL, INDENT);
         }
         break;
@@ -205,9 +205,9 @@ yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *ty
 }
 
 static void
-yang_print_must(FILE *f, int level, struct ly_must *must)
+yang_print_must(FILE *f, int level, struct ly_restr *must)
 {
-    fprintf(f, "%*smust \"%s\" {\n", LEVEL, INDENT, must->cond);
+    fprintf(f, "%*smust \"%s\" {\n", LEVEL, INDENT, must->expr);
     yang_print_restr(f, level + 1, must);
     fprintf(f, "%*s}\n", LEVEL, INDENT);
 }
