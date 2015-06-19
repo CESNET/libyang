@@ -288,6 +288,8 @@ struct ly_feature {
     const char *dsc;
     const char *ref;
     uint8_t flags;                   /**< LY_NODE_STATUS_* values and LY_NODE_FENABLED */
+    struct ly_module *module;        /**< link to the features's data model */
+
     uint8_t features_size;           /**< number of elements in features array */
     struct ly_feature **features;    /**< array of pointers to feature definitions, this is
                                           not the list of feature definitions itself, but list
@@ -773,6 +775,28 @@ struct ly_ident {
 /* public libyang functions */
 struct ly_submodule *ly_submodule_read(struct ly_module *module, const char *data, LY_MINFORMAT format);
 struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LY_MINFORMAT format);
+
+/**
+ * @brief Enable specified feature in the module
+ *
+ * By default, when the module is loaded by libyang parser, all features are disabled.
+ *
+ * @param[in] module Module where the feature will be enabled.
+ * @param[in] name Name of the feature to enable. To enable all features at once, use asterisk character.
+ * @return 0 on success, 1 when the feature is not defined in the specified module
+ */
+int ly_features_enable(struct ly_module *module, const char *name);
+
+/**
+ * @brief Disable specified feature in the module
+ *
+ * By default, when the module is loaded by libyang parser, all features are disabled.
+ *
+ * @param[in] module Module where the feature will be disabled.
+ * @param[in] name Name of the feature to disable. To disable all features at once, use asterisk character.
+ * @return 0 on success, 1 when the feature is not defined in the specified module
+ */
+int ly_features_disable(struct ly_module *module, const char *name);
 
 /**@} tree */
 

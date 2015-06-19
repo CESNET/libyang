@@ -1494,3 +1494,75 @@ ly_module_free(struct ly_module *module)
 
     free(module);
 }
+
+/*
+ * op: 1 - enable, 0 - disable
+ */
+static int
+ly_features_change(struct ly_module *module, const char *name, int op)
+{
+    int all = 0;
+    int i, j, k;
+
+    if (!module || !name || !strlen(name)) {
+        return EXIT_FAILURE;
+    }
+
+    if (!strcmp(name, "*")) {
+        /* enable all */
+        all = 1;
+    }
+
+    /* module itself */
+    for (i = 0; i < module->features_size; i++) {
+        if (all || !strcmp(module->features[i].name, name)) {
+            if (op) {
+                module->features[i].flags |= LY_NODE_FENABLED;
+                /* enable referenced features (recursion) */
+                for (k = 0; k < module->features[i].features_size; k++) {
+                    ly_features_change(module->features[i].features[k]->module,
+                                       module->features[i].features[k]->name, op);
+                }
+            } else {
+                module->features[i].flags &= ~LY_NODE_FENABLED;
+            }
+            if (!all) {
+                return EXIT_SUCCESS;
+            }
+        }
+    }
+
+    /* submodules */
+    for (j = 0; j < module->inc_size; j++) {
+        for (i = 0; i < module->inc[j].submodule->features_size; i++) {
+            if (all || !strcmp(module->inc[j].submodule->features[i].name, name)) {
+                if (op) {
+                    module->inc[j].submodule->features[i].flags |= LY_NODE_FENABLED;
+                } else {
+                    module->inc[j].submodule->features[i].flags &= ~LY_NODE_FENABLED;
+                }
+                if (!all) {
+                    return EXIT_SUCCESS;
+                }
+            }
+        }
+    }
+
+    if (all) {
+        return EXIT_SUCCESS;
+    } else {
+        return EXIT_FAILURE;
+    }
+}
+
+API int
+ly_features_enable(struct ly_module *module, const char *name)
+{
+    return ly_features_change(module, name, 1);
+}
+
+API int
+ly_features_disable(struct ly_module *module, const char *name)
+{
+    return ly_features_change(module, name, 1);
+}

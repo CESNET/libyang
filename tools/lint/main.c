@@ -144,6 +144,8 @@ int main_noninteractive(int argc, char *argv[])
     }
 
     if (output) {
+        /* enable all features for printing */
+        ly_features_enable(model, "*");
         ly_model_print(output, model, out_format);
     }
 

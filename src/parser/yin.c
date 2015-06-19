@@ -1353,7 +1353,7 @@ fill_yin_feature(struct ly_module *module, struct lyxml_elem *yin, struct ly_fea
     }
     f->name = lydict_insert(module->ctx, value, strlen(value));
 
-    if (read_yin_common(module, NULL, (struct ly_mnode *)f, yin, 0)) {
+    if (read_yin_common(module, NULL, (struct ly_mnode *)f, yin, OPT_MODULE)) {
         goto error;
     }
 
@@ -1378,9 +1378,6 @@ fill_yin_feature(struct ly_module *module, struct lyxml_elem *yin, struct ly_fea
         }
         f->features_size++;
     }
-
-    /* tmp TODO remove */
-    f->flags |= LY_NODE_FENABLED;
 
     return EXIT_SUCCESS;
 
