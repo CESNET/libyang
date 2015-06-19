@@ -127,7 +127,10 @@ int main_noninteractive(int argc, char *argv[])
         ret = EXIT_FAILURE;
         goto cleanup;
     }
-    fstat(fd, &sb);
+    if (fstat(fd, &sb) == -1) {
+        fprintf(stderr, "Unable to get input file information (%s).\n", strerror(errno));
+        goto cleanup;
+    }
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 
 
