@@ -73,7 +73,6 @@ API void
 ly_ctx_destroy(struct ly_ctx *ctx)
 {
     if (!ctx) {
-        ly_errno = LY_EINVAL;
         return;
     }
 

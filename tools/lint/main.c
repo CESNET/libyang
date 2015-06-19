@@ -39,7 +39,7 @@
 #include "../../src/libyang.h"
 
 int done;
-struct ly_ctx *ctx;
+struct ly_ctx *ctx = NULL;
 char *search_path;
 
 void
@@ -60,10 +60,10 @@ int main_noninteractive(int argc, char *argv[])
     int c;
     int ret = EXIT_SUCCESS;
     FILE *output = NULL;
-    int fd;
+    int fd = -1;
     struct ly_module *model;
     struct stat sb;
-    char *addr;
+    char *addr = NULL;
     LY_MOUTFORMAT out_format = LY_OUT_YANG;
 
     int opt_i;
@@ -80,7 +80,8 @@ int main_noninteractive(int argc, char *argv[])
         case 'f':
             if (strcmp(optarg, "yang") && strcmp(optarg, "tree")) {
                 fprintf(stderr, "Output format \"%s\" not supported.\n", optarg);
-                return EXIT_FAILURE;
+                ret = EXIT_FAILURE;
+                goto cleanup;
             }
             if (strcmp(optarg, "tree") == 0) {
                 out_format = LY_OUT_TREE;
@@ -97,7 +98,8 @@ int main_noninteractive(int argc, char *argv[])
             output = fopen(optarg, "w");
             if (!output) {
                 fprintf(stderr, "Unable to use output file (%s).\n", strerror(errno));
-                return EXIT_FAILURE;
+                ret = EXIT_FAILURE;
+                goto cleanup;
             }
             break;
         case 'p':
@@ -108,19 +110,22 @@ int main_noninteractive(int argc, char *argv[])
             break;
         default: /* '?' */
             usage(argv[0]);
-            return EXIT_FAILURE;
+            ret = EXIT_FAILURE;
+            goto cleanup;
         }
     }
 
     if (optind != argc - 1) {
         usage(argv[0]);
-        return EXIT_FAILURE;
+        ret = EXIT_FAILURE;
+        goto cleanup;
     }
 
     fd = open(argv[optind], O_RDONLY);
     if (fd == -1) {
         fprintf(stderr, "Opening input file failed (%s).\n", strerror(errno));
-        return EXIT_FAILURE;
+        ret = EXIT_FAILURE;
+        goto cleanup;
     }
     fstat(fd, &sb);
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
@@ -142,9 +147,12 @@ int main_noninteractive(int argc, char *argv[])
 
 cleanup:
     ly_ctx_destroy(ctx);
-    munmap(addr, sb.st_size);
-    close(fd);
-
+    if (addr) {
+        munmap(addr, sb.st_size);
+    }
+    if (fd != -1) {
+        close(fd);
+    }
     if (output && output != stdout) {
         fclose(output);
     }
