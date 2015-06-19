@@ -870,9 +870,10 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                     goto error;
                 }
             } else {
-                LOGVAL(VE_INSTMT, LOGLINE(yin->child), yin->child->name);
+                LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
                 goto error;
             }
+            lyxml_free_elem(module->ctx, node);
         }
         break;
 
@@ -1122,11 +1123,11 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                 if (read_restr_substmt(module->ctx, type->info.str.length, node)) {
                     goto error;
                 }
-                lyxml_free_elem(module->ctx, yin->child);
+                lyxml_free_elem(module->ctx, node);
             } else if (!strcmp(node->name, "pattern")) {
                 type->info.str.pat_count++;
             } else {
-                LOGVAL(VE_INSTMT, LOGLINE(yin->child), yin->child->name);
+                LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
                 goto error;
             }
         }
