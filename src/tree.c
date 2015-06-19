@@ -652,7 +652,10 @@ ly_type_dup(struct ly_ctx *ctx, struct ly_type *new, struct ly_type *old)
         break;
 
     case LY_TYPE_STRING:
-        new->info.str.length = ly_restr_dup(ctx, old->info.str.length, 1);
+        if (old->info.str.length) {
+            new->info.str.length = ly_restr_dup(ctx, old->info.str.length, 1);
+        }
+        new->info.str.patterns = ly_restr_dup(ctx, old->info.str.patterns, old->info.str.pat_count);
         break;
 
     default:
@@ -697,6 +700,10 @@ ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
     case LY_TYPE_STRING:
         ly_restr_free(ctx, type->info.str.length);
         free(type->info.str.length);
+        for (i = 0; i < type->info.str.pat_count; i++) {
+            ly_restr_free(ctx, &type->info.str.patterns[i]);
+        }
+        free(type->info.str.patterns);
         break;
     default:
         /* TODO */

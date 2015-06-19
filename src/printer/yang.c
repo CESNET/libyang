@@ -189,12 +189,16 @@ yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *ty
         fprintf(f, "%*spath \"%s\";\n", LEVEL, INDENT, type->info.lref.path);
         break;
     case LY_TYPE_STRING:
-        if (type->info.str.length != NULL) {
+        if (type->info.str.length) {
             fprintf(f, "%*slength \"%s\" {\n", LEVEL, INDENT, type->info.str.length->expr);
             yang_print_restr(f, level + 1, type->info.str.length);
             fprintf(f, "%*s}\n", LEVEL, INDENT);
         }
-        /* TODO pattern (same as range) incomplete */
+        for (i = 0; i < type->info.str.pat_count; i++) {
+            fprintf(f, "%*spattern \"%s\" {\n", LEVEL, INDENT, type->info.str.patterns[i].expr);
+            yang_print_restr(f, level + 1, &type->info.str.patterns[i]);
+            fprintf(f, "%*s}\n", LEVEL, INDENT);
+        }
         break;
     case LY_TYPE_UNION:
         for (i = 0; i < type->info.uni.count; ++i) {

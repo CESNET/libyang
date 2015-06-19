@@ -174,7 +174,7 @@ struct ly_type {
         /* LY_TYPE_STRING */
         struct {
             struct ly_restr *length;
-            struct ly_restr **patterns;
+            struct ly_restr *patterns; /* array of patterns */
             int pat_count;
         } str;
 
