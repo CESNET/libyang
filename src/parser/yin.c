@@ -921,7 +921,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
 
             node = yin->child->child;
             if (node && !strcmp(node->name, "position")) {
-                value = lyxml_get_attr(node, "value", NULL);
+                GETVAL(value, node, "value");
                 p_ = strtol(value, NULL, 10);
 
                 /* range check */
@@ -1019,7 +1019,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
 
             node = yin->child->child;
             if (node && !strcmp(node->name, "value")) {
-                value = lyxml_get_attr(node, "value", NULL);
+                GETVAL(value, node, "value");
                 v_ = strtol(value, NULL, 10);
 
                 /* range check */
