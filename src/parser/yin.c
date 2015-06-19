@@ -3747,6 +3747,7 @@ read_yin_uses(struct ly_module *module,
             if (!uses->features[uses->features_size]) {
                 goto error;
             }
+            r = 0;
             uses->features_size++;
             lyxml_free_elem(module->ctx, sub);
         }
