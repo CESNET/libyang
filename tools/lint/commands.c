@@ -307,7 +307,7 @@ cleanup:
     free(*argv);
     free(argv);
 
-    if ((output != stdout) && (output != stderr)) {
+    if (output && (output != stdout)) {
         fclose(output);
     }
 
