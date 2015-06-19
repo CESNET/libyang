@@ -95,6 +95,11 @@ int main_noninteractive(int argc, char *argv[])
             ret = EXIT_SUCCESS;
             goto cleanup;
         case 'o':
+            if (output && output != stdout) {
+                fprintf(stderr, "Option -o cannot be used repeatedly.\n");
+                goto cleanup;
+            }
+
             output = fopen(optarg, "w");
             if (!output) {
                 fprintf(stderr, "Unable to use output file (%s).\n", strerror(errno));
