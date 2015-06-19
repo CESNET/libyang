@@ -651,6 +651,10 @@ ly_type_dup(struct ly_ctx *ctx, struct ly_type *new, struct ly_type *old)
         }
         break;
 
+    case LY_TYPE_IDENT:
+        new->info.ident.ref = old->info.ident.ref;
+        break;
+
     case LY_TYPE_INST:
         new->info.inst.req = old->info.inst.req;
         break;
@@ -663,7 +667,7 @@ ly_type_dup(struct ly_ctx *ctx, struct ly_type *new, struct ly_type *old)
         break;
 
     default:
-        /* TODO */
+        /* TODO - remove default to make sure that all types are covered */
         break;
     }
 }
@@ -709,8 +713,13 @@ ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
         }
         free(type->info.str.patterns);
         break;
+
+    case LY_TYPE_IDENT:
+        /* nothing to do */
+        break;
+
     default:
-        /* TODO */
+        /* TODO - remove default to make sure that all types are covered */
         break;
     }
 }
