@@ -204,7 +204,11 @@ cmd_add(const char *arg)
         fprintf(stderr, "Opening input file failed (%s).\n", strerror(errno));
         return 1;
     }
-    fstat(fd, &sb);
+    if (fstat(fd, &sb) == -1) {
+        fprintf(stderr, "Unable to get input file information (%s).\n", strerror(errno));
+        close(fd);
+        return 1;
+    }
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 
     model = ly_module_read(ctx, addr, format);
