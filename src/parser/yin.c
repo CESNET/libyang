@@ -1670,7 +1670,7 @@ error:
 static struct ly_when *
 read_yin_when(struct ly_module *module,struct lyxml_elem *yin)
 {
-    struct ly_when *retval;
+    struct ly_when *retval = NULL;
     struct lyxml_elem *next, *child;
     const char *value;
 
@@ -1710,6 +1710,7 @@ read_yin_when(struct ly_module *module,struct lyxml_elem *yin)
 
 error:
 
+    ly_mnode_free((struct ly_mnode *)retval);
     return NULL;
 }
 
