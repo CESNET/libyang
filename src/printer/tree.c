@@ -214,24 +214,8 @@ tree_print_container(FILE * f, int level, char *indent, struct ly_mnode *mnode, 
     char *new_indent;
     struct ly_mnode_container *cont = (struct ly_mnode_container *)mnode;
     struct ly_mnode *sub;
-    int i;
 
     assert(spec_config >= 0 && spec_config <= 2);
-
-    /* stop if features are not enabled */
-    for (i = 0; i < cont->features_size; i++) {
-        if (!(cont->features[i]->flags & LY_NODE_FENABLED)) {
-            return;
-        }
-    }
-    /* or if the data are from augment under a not enabled feature */
-    if (cont->parent && cont->parent->nodetype == LY_NODE_AUGMENT) {
-        for (i = 0; i < cont->parent->features_size; i++) {
-            if (!(cont->parent->features[i]->flags & LY_NODE_FENABLED)) {
-                return;
-            }
-        }
-    }
 
     fprintf(f, "%s%s--", indent,
             (cont->flags & LY_NODE_STATUS_DEPRC ? "x" : (cont->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")));
@@ -271,24 +255,8 @@ tree_print_choice(FILE * f, int level, char *indent, struct ly_mnode *mnode, int
     char *new_indent;
     struct ly_mnode_choice *choice = (struct ly_mnode_choice *)mnode;
     struct ly_mnode *sub;
-    int i;
 
     assert(spec_config >= 0 && spec_config <= 2);
-
-    /* stop if features are not enabled */
-    for (i = 0; i < choice->features_size; i++) {
-        if (!(choice->features[i]->flags & LY_NODE_FENABLED)) {
-            return;
-        }
-    }
-    /* or if the data are from augment under a not enabled feature */
-    if (choice->parent && choice->parent->nodetype == LY_NODE_AUGMENT) {
-        for (i = 0; i < choice->parent->features_size; i++) {
-            if (!(choice->parent->features[i]->flags & LY_NODE_FENABLED)) {
-                return;
-            }
-        }
-    }
 
     fprintf(f, "%s%s--", indent,
             (choice->flags & LY_NODE_STATUS_DEPRC ? "x" : (choice->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")));
@@ -377,24 +345,8 @@ static void
 tree_print_anyxml(FILE * f, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int spec_config)
 {
     struct ly_mnode_anyxml *anyxml = (struct ly_mnode_anyxml *)mnode;
-    int i;
 
     assert(spec_config >= 0 && spec_config <= 2);
-
-    /* stop if features are not enabled */
-    for (i = 0; i < anyxml->features_size; i++) {
-        if (!(anyxml->features[i]->flags & LY_NODE_FENABLED)) {
-            return;
-        }
-    }
-    /* or if the data are from augment under a not enabled feature */
-    if (anyxml->parent && anyxml->parent->nodetype == LY_NODE_AUGMENT) {
-        for (i = 0; i < anyxml->parent->features_size; i++) {
-            if (!(anyxml->parent->features[i]->flags & LY_NODE_FENABLED)) {
-                return;
-            }
-        }
-    }
 
     fprintf(f, "%s%s--", indent,
             (anyxml->flags & LY_NODE_STATUS_DEPRC ? "x" : (anyxml->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")));
@@ -424,22 +376,7 @@ tree_print_leaf(FILE * f, char *indent, unsigned int max_name_len, struct ly_mno
 
     assert(spec_config >= 0 && spec_config <= 2);
 
-    /* stop if features are not enabled */
-    for (i = 0; i < leaf->features_size; i++) {
-        if (!(leaf->features[i]->flags & LY_NODE_FENABLED)) {
-            return;
-        }
-    }
-    /* or if the data are from augment under a not enabled feature */
-    if (leaf->parent && leaf->parent->nodetype == LY_NODE_AUGMENT) {
-        for (i = 0; i < leaf->parent->features_size; i++) {
-            if (!(leaf->parent->features[i]->flags & LY_NODE_FENABLED)) {
-                return;
-            }
-        }
-    }
-
-    if (leaf->parent->nodetype == LY_NODE_LIST) {
+    if (leaf->parent && leaf->parent->nodetype == LY_NODE_LIST) {
         list = (struct ly_mnode_list *)leaf->parent;
         for (i = 0; i < list->keys_size; i++) {
             if (strcmp(list->keys[i]->name, leaf->name) == 0) {
@@ -478,24 +415,8 @@ static void
 tree_print_leaflist(FILE * f, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int spec_config)
 {
     struct ly_mnode_leaflist *leaflist = (struct ly_mnode_leaflist *)mnode;
-    int i;
 
     assert(spec_config >= 0 && spec_config <= 2);
-
-    /* stop if features are not enabled */
-    for (i = 0; i < leaflist->features_size; i++) {
-        if (!(leaflist->features[i]->flags & LY_NODE_FENABLED)) {
-            return;
-        }
-    }
-    /* or if the data are from augment under a not enabled feature */
-    if (leaflist->parent && leaflist->parent->nodetype == LY_NODE_AUGMENT) {
-        for (i = 0; i < leaflist->parent->features_size; i++) {
-            if (!(leaflist->parent->features[i]->flags & LY_NODE_FENABLED)) {
-                return;
-            }
-        }
-    }
 
     fprintf(f, "%s%s--", indent,
             (leaflist->flags & LY_NODE_STATUS_DEPRC ? "x" : (leaflist->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")));
@@ -525,21 +446,6 @@ tree_print_list(FILE * f, int level, char *indent, struct ly_mnode *mnode, int s
     char *new_indent;
     struct ly_mnode *sub;
     struct ly_mnode_list *list = (struct ly_mnode_list *)mnode;
-
-    /* stop if features are not enabled */
-    for (i = 0; i < list->features_size; i++) {
-        if (!(list->features[i]->flags & LY_NODE_FENABLED)) {
-            return;
-        }
-    }
-    /* or if the data are from augment under a not enabled feature */
-    if (list->parent && list->parent->nodetype == LY_NODE_AUGMENT) {
-        for (i = 0; i < list->parent->features_size; i++) {
-            if (!(list->parent->features[i]->flags & LY_NODE_FENABLED)) {
-                return;
-            }
-        }
-    }
 
     fprintf(f, "%s%s--", indent,
             (list->flags & LY_NODE_STATUS_DEPRC ? "x" : (list->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")));
@@ -584,22 +490,6 @@ tree_print_uses(FILE * f, int level, char *indent, unsigned int max_name_len, st
 {
     struct ly_mnode *node;
     struct ly_mnode_uses *uses = (struct ly_mnode_uses *)mnode;
-    int i;
-
-    /* stop if features are not enabled */
-    for (i = 0; i < uses->features_size; i++) {
-        if (!(uses->features[i]->flags & LY_NODE_FENABLED)) {
-            return;
-        }
-    }
-    /* or if the data are from augment under a not enabled feature */
-    if (uses->parent && uses->parent->nodetype == LY_NODE_AUGMENT) {
-        for (i = 0; i < uses->parent->features_size; i++) {
-            if (!(uses->parent->features[i]->flags & LY_NODE_FENABLED)) {
-                return;
-            }
-        }
-    }
 
     /* FIXME there are no children here */
     LY_TREE_FOR(uses->child, node) {
@@ -700,6 +590,23 @@ static void
 tree_print_mnode(FILE * f, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int mask,
                  int spec_config)
 {
+    int i;
+
+    /* stop if features are not enabled */
+    for (i = 0; i < mnode->features_size; i++) {
+        if (!(mnode->features[i]->flags & LY_NODE_FENABLED)) {
+            return;
+        }
+    }
+    /* or if the data are from augment under a not enabled feature */
+    if (mnode->parent && mnode->parent->nodetype == LY_NODE_AUGMENT) {
+        for (i = 0; i < mnode->parent->features_size; i++) {
+            if (!(mnode->parent->features[i]->flags & LY_NODE_FENABLED)) {
+                return;
+            }
+        }
+    }
+
     switch (mnode->nodetype & mask) {
     case LY_NODE_CONTAINER:
         tree_print_container(f, level, indent, mnode, spec_config);
