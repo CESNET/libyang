@@ -659,6 +659,17 @@ ly_type_dup(struct ly_ctx *ctx, struct ly_type *new, struct ly_type *old)
         new->info.inst.req = old->info.inst.req;
         break;
 
+    case LY_TYPE_INT8:
+    case LY_TYPE_INT16:
+    case LY_TYPE_INT32:
+    case LY_TYPE_INT64:
+    case LY_TYPE_UINT8:
+    case LY_TYPE_UINT16:
+    case LY_TYPE_UINT32:
+    case LY_TYPE_UINT64:
+        new->info.num.range = ly_restr_dup(ctx, old->info.num.range, 1);
+        break;
+
     case LY_TYPE_LEAFREF:
         new->info.lref.path = lydict_insert(ctx, old->info.lref.path, 0);
         break;

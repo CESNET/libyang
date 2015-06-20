@@ -829,8 +829,9 @@ read_restr_substmt(struct ly_ctx *ctx, struct ly_restr *restr, struct lyxml_elem
 static int
 fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_elem *yin, struct ly_type *type)
 {
-    const char *value, *delim;
+    const char *value, *delim, *name;
     struct lyxml_elem *next, *node;
+    struct ly_restr **restr;
     int i, j;
     int64_t v, v_;
     int64_t p, p_;
@@ -849,34 +850,6 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
     type->base = type->der->type.base;
 
     switch (type->base) {
-    case LY_TYPE_BINARY:
-        /* RFC 6020 9.8.1, 9.4.4 - length, number of octets it contains */
-        LY_TREE_FOR_SAFE(yin->child, next, node) {
-            if (!strcmp(node->name, "length")) {
-                if (type->info.binary.length) {
-                    LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
-                    goto error;
-                }
-
-                GETVAL(value, node, "value");
-                if (check_length(value, type, LOGLINE(node))) {
-                    goto error;
-                }
-                type->info.binary.length = calloc(1, sizeof *type->info.binary.length);
-                type->info.binary.length->expr = lydict_insert(module->ctx, value, 0);
-
-                /* get possible substatements */
-                if (read_restr_substmt(module->ctx, (struct ly_restr *)type->info.binary.length, node)) {
-                    goto error;
-                }
-            } else {
-                LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
-                goto error;
-            }
-            lyxml_free_elem(module->ctx, node);
-        }
-        break;
-
     case LY_TYPE_BITS:
         /* RFC 6020 9.7.4 - bit */
 
@@ -1105,6 +1078,8 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         }
         break;
 
+    case LY_TYPE_BINARY:
+        /* RFC 6020 9.8.1, 9.4.4 - length, number of octets it contains */
     case LY_TYPE_INT8:
     case LY_TYPE_INT16:
     case LY_TYPE_INT32:
@@ -1113,8 +1088,44 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
     case LY_TYPE_UINT16:
     case LY_TYPE_UINT32:
     case LY_TYPE_UINT64:
-        /* TODO range, 9.2.4
-         * - optional, 0..1, i rekurzivne - omezuje, string, podelementy*/
+        /* RFC 6020 9.2.4 - range */
+
+        /* length and range are actually the same restriction, so process
+         * them by this common code, we just need to differ the name and
+         * structure where the information will be stored
+         */
+        if (type->base == LY_TYPE_BINARY) {
+            restr = &type->info.binary.length;
+            name = "length";
+        } else {
+            restr = &type->info.num.range;
+            name = "range";
+        }
+
+        LY_TREE_FOR_SAFE(yin->child, next, node) {
+            if (!strcmp(node->name, name)) {
+                if (*restr) {
+                    LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
+                    goto error;
+                }
+
+                GETVAL(value, node, "value");
+                if (check_length(value, type, LOGLINE(node))) {
+                    goto error;
+                }
+                *restr = calloc(1, sizeof **restr);
+                (*restr)->expr = lydict_insert(module->ctx, value, 0);
+
+                /* get possible substatements */
+                if (read_restr_substmt(module->ctx, *restr, node)) {
+                    goto error;
+                }
+            } else {
+                LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
+                goto error;
+            }
+            lyxml_free_elem(module->ctx, node);
+        }
         break;
 
     case LY_TYPE_LEAFREF:

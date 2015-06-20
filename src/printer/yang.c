@@ -184,10 +184,11 @@ yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *ty
     case LY_TYPE_UINT16:
     case LY_TYPE_UINT32:
     case LY_TYPE_UINT64:
-        /* TODO wrong - incomplete */
-        /*if (type->info.num.range != NULL) {
-         * fprintf(f, "%*srange \"%s\";\n", LEVEL, INDENT, type->info.num.range);
-         * } */
+        if (type->info.num.range != NULL) {
+            fprintf(f, "%*srange \"%s\" {\n", LEVEL, INDENT, type->info.num.range->expr);
+            yang_print_restr(f, level + 1, type->info.num.range);
+            fprintf(f, "%*s}\n", LEVEL, INDENT);
+        }
         break;
     case LY_TYPE_LEAFREF:
         fprintf(f, "%*spath \"%s\";\n", LEVEL, INDENT, type->info.lref.path);

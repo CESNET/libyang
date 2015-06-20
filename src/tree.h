@@ -163,7 +163,7 @@ struct ly_type {
 
         /* LY_TYPE_*INT* */
         struct {
-            const char *range;
+            struct ly_restr *range;
         } num;
 
         /* LY_TYPE_LEAFREF */
