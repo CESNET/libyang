@@ -339,7 +339,7 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
                 return NULL;
             }
 
-        /* it is likely the local prefix */
+        /* it is likely the local prefix (checked later) */
         } else {
             start = mod->data;
         }
@@ -363,9 +363,11 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
             sibling = NULL;
             LY_TREE_FOR(start, sibling) {
                 /* match */
-                if (!strncmp(name, sibling->name, nam_len)) {
+                if (!strncmp(name, sibling->name, nam_len)
+                        && ((sibling->name[nam_len] == '/') || (sibling->name[nam_len] == '\0'))) {
                     /* prefix check, it's not our own */
-                    if (prefix && strncmp(sibling->module->prefix, prefix, pref_len)) {
+                    if (prefix && strncmp(sibling->module->prefix, prefix, pref_len)
+                            && (sibling->module->prefix[pref_len] == '\0')) {
 
                         /* in choice and the prefix is not ours, error for sure */
                         if (node_type == LY_NODE_CHOICE) {
@@ -375,6 +377,7 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
                         /* import prefix check */
                         for (i = 0; i < sibling->module->imp_size; i++) {
                             if (!strncmp(sibling->module->imp[i].prefix, prefix, pref_len)
+                                    && (sibling->module->imp[i].prefix[pref_len] == '\0')
                                     && (sibling->module->imp[i].module == sibling->module)) {
                                 break;
                             }
@@ -387,6 +390,7 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
                                 sub_mod = sibling->module->inc[i].submodule;
                                 for (j = 0; j < sub_mod->imp_size; j++) {
                                     if (!strncmp(sub_mod->imp[j].prefix, prefix, pref_len)
+                                            && (sub_mod->imp[j].prefix[pref_len] == '\0')
                                             && (sub_mod->imp[j].module == sibling->module)) {
                                         break;
                                     }
