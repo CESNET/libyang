@@ -864,7 +864,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         }
         if (!type->info.bits.count) {
             if (type->der->type.der) {
-                /* this is just a derived type with no bit specified */
+                /* this is just a derived type with no bit specified/required */
                 break;
             }
             LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "bit", "type");
@@ -954,7 +954,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         }
         if (!type->info.enums.count) {
             if (type->der->type.der) {
-                /* this is just a derived type with no enum specified */
+                /* this is just a derived type with no enum specified/required */
                 break;
             }
             LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "enum", "type");
@@ -1036,6 +1036,10 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
 
         /* get base specification, exactly one must be present */
         if (!yin->child) {
+            if (type->der->type.der) {
+                /* this is just a derived type with no base specified/required */
+                break;
+            }
             LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "base", "type");
             goto error;
         }
@@ -1131,6 +1135,10 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
     case LY_TYPE_LEAFREF:
         /* RFC 6020 9.9.2 - path */
         if (!yin->child) {
+            if (type->der->type.der) {
+                /* this is just a derived type with no path specified/required */
+                break;
+            }
             LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "path", "type");
             goto error;
         }
