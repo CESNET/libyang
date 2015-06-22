@@ -721,6 +721,18 @@ ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
         free(type->info.enums.list);
         break;
 
+    case LY_TYPE_INT8:
+    case LY_TYPE_INT16:
+    case LY_TYPE_INT32:
+    case LY_TYPE_INT64:
+    case LY_TYPE_UINT8:
+    case LY_TYPE_UINT16:
+    case LY_TYPE_UINT32:
+    case LY_TYPE_UINT64:
+        ly_restr_free(ctx, type->info.num.range);
+        free(type->info.num.range);
+        break;
+
     case LY_TYPE_LEAFREF:
         lydict_remove(ctx, type->info.lref.path);
         break;
