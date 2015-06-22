@@ -270,7 +270,7 @@ struct ly_mnode *
 resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *mod, LY_NODE_TYPE node_type)
 {
     const char *name, *prefix, *ptr;
-    struct ly_mnode *sibling;
+    struct ly_mnode *sibling, *new_start;
     struct ly_submodule *sub_mod;
     uint32_t i, j, nam_len, pref_len;
 
@@ -433,24 +433,26 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
             if (!sibling) {
                 /* on augment search also RPCs and notifications, if we are in top-level */
                 if ((node_type == LY_NODE_AUGMENT) && !start->parent) {
+                    new_start = NULL;
+
                     /* we have searched all the data nodes */
                     if (start == start->module->data) {
-                        start = start->module->rpc;
-                        if (start) {
+                        new_start = start->module->rpc;
+                        if (new_start) {
+                            start = new_start;
                             continue;
                         }
                     }
                     /* we have searched all the RPCs */
-                    if (start == start->module->rpc) {
-                        start = start->module->notif;
-                        if (start) {
+                    if ((!new_start && (start != start->module->notif)) || (start == start->module->rpc)) {
+                        new_start = start->module->notif;
+                        if (new_start) {
+                            start = new_start;
                             continue;
                         }
                     }
-                    /* we have searched all the notifications, nothing else to search in */
-                    if (start == start->module->notif) {
-                        return NULL;
-                    }
+                    /* we have searched all the notifications, nothing else to search */
+                    return NULL;
                 }
                 return NULL;
             }
