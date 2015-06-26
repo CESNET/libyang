@@ -1215,9 +1215,13 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         break;
 
     default:
-        /* nothing needed :
+        /* no sub-statement allowed in:
          * LY_TYPE_BOOL, LY_TYPE_EMPTY
          */
+        if (yin->child) {
+            LOGVAL(VE_INSTMT, LOGLINE(yin->child), yin->child->name);
+            goto error;
+        }
         break;
     }
 
