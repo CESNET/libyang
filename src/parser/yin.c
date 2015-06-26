@@ -934,10 +934,52 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         break;
 
     case LY_TYPE_DEC64:
-        /* TODO fraction-digits, 9.3.4
-         * - MUST, 1, nerekurzivni, hodnota 1-18 */
-        /* TODO range, 9.2.4
-         * - optional, 0..1, rekurzivne - omezuje, string,  podelementy*/
+        /* RFC 6020 9.2.4 - range and 9.3.4 - fraction-digits */
+        LY_TREE_FOR_SAFE(yin->child, next, node) {
+            if (!strcmp(node->name, "range")) {
+                if (type->info.dec64.range) {
+                    LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
+                    goto error;
+                }
+
+                GETVAL(value, node, "value");
+                if (check_length(value, type, LOGLINE(node))) {
+                    goto error;
+                }
+                type->info.dec64.range = calloc(1, sizeof *type->info.dec64.range);
+                type->info.dec64.range->expr = lydict_insert(module->ctx, value, 0);
+
+                /* get possible substatements */
+                if (read_restr_substmt(module->ctx, type->info.dec64.range, node)) {
+                    goto error;
+                }
+            } else if (!strcmp(node->name, "fraction-digits")) {
+                if (type->info.dec64.dig) {
+                    LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
+                    goto error;
+                }
+                GETVAL(value, node, "value");
+                v = strtol(value, NULL, 10);
+
+                /* range check */
+                if (v < 1 || v > 18) {
+                    LOGVAL(VE_INARG, LOGLINE(node), value, node->name);
+                    goto error;
+                }
+                type->info.dec64.dig = (uint8_t)v;
+            } else {
+                LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
+                goto error;
+            }
+            lyxml_free_elem(module->ctx, node);
+        }
+
+        /* mandatory sub-statement(s) check */
+        if (!type->info.dec64.dig && !type->der->type.der) {
+            /* decimal64 type directly derived from built-in type requires fraction-digits */
+            LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "fraction-digits", "type");
+            goto error;
+        }
         break;
 
     case LY_TYPE_ENUM:

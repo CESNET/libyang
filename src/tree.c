@@ -645,6 +645,13 @@ ly_type_dup(struct ly_ctx *ctx, struct ly_type *new, struct ly_type *old)
         }
         break;
 
+    case LY_TYPE_DEC64:
+        new->info.dec64.dig = old->info.dec64.dig;
+        if (old->info.dec64.range) {
+            new->info.dec64.range = ly_restr_dup(ctx, old->info.dec64.range, 1);
+        }
+        break;
+
     case LY_TYPE_ENUM:
         new->info.enums.count = old->info.enums.count;
         if (new->info.enums.count) {
@@ -722,6 +729,12 @@ ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
         }
         free(type->info.bits.bit);
         break;
+
+    case LY_TYPE_DEC64:
+        ly_restr_free(ctx, type->info.dec64.range);
+        free(type->info.dec64.range);
+        break;
+
     case LY_TYPE_ENUM:
         for (i = 0; i < type->info.enums.count; i++) {
             lydict_remove(ctx, type->info.enums.list[i].name);

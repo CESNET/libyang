@@ -135,8 +135,8 @@ struct ly_type {
 
         /* LY_TYPE_DEC64 */
         struct {
-            const char *range;
-            int dig;
+            struct ly_restr *range;
+            uint8_t dig;
         } dec64;
 
         /* LY_TYPE_ENUM */
