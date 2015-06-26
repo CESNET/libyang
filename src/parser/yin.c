@@ -1194,7 +1194,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                 GETVAL(value, node, "value");
                 /* TODO
                  * it would be nice to perform here a check that target is leaf or leaf-list,
-                 * but schema is not finnished yet and path can point almost to anywhere, so
+                 * but schema is not finished yet and path can point almost to anywhere, so
                  * we will have to check the path at the end of parsing the schema.
                  */
                 type->info.lref.path = lydict_insert(module->ctx, value, 0);
