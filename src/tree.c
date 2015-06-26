@@ -626,7 +626,9 @@ ly_type_dup(struct ly_ctx *ctx, struct ly_type *new, struct ly_type *old)
 
     switch (new->base) {
     case LY_TYPE_BINARY:
-        new->info.binary.length = ly_restr_dup(ctx, old->info.binary.length, 1);
+        if (old->info.binary.length) {
+            new->info.binary.length = ly_restr_dup(ctx, old->info.binary.length, 1);
+        }
         break;
 
     case LY_TYPE_BITS:
@@ -673,7 +675,9 @@ ly_type_dup(struct ly_ctx *ctx, struct ly_type *new, struct ly_type *old)
     case LY_TYPE_UINT16:
     case LY_TYPE_UINT32:
     case LY_TYPE_UINT64:
-        new->info.num.range = ly_restr_dup(ctx, old->info.num.range, 1);
+        if (old->info.num.range) {
+            new->info.num.range = ly_restr_dup(ctx, old->info.num.range, 1);
+        }
         break;
 
     case LY_TYPE_LEAFREF:
