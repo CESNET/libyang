@@ -802,7 +802,7 @@ read_restr_substmt(struct ly_ctx *ctx, struct ly_restr *restr, struct lyxml_elem
                 LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
                 return EXIT_FAILURE;
             }
-            restr->eapptag = read_yin_subnode(ctx, child, "value");
+            GETVAL(restr->eapptag, yin, "value")
             if (!restr->eapptag) {
                 return EXIT_FAILURE;
             }
@@ -824,6 +824,9 @@ read_restr_substmt(struct ly_ctx *ctx, struct ly_restr *restr, struct lyxml_elem
     }
 
     return EXIT_SUCCESS;
+
+error:
+    return EXIT_FAILURE;
 }
 
 static int
