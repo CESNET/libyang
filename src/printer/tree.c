@@ -34,7 +34,7 @@ static void tree_print_mnode(FILE *f, struct ly_module *module, int level, char 
                              int mask, int spec_config);
 
 static int
-sibling_is_valid_child(const struct ly_mnode *mnode)
+sibling_is_valid_child(const struct ly_mnode *mnode, int including)
 {
     struct ly_mnode *cur;
 
@@ -43,7 +43,7 @@ sibling_is_valid_child(const struct ly_mnode *mnode)
     }
 
     /* has a following printed child */
-    LY_TREE_FOR((struct ly_mnode *)mnode->next, cur) {
+    LY_TREE_FOR((struct ly_mnode *)(including ? mnode : mnode->next), cur) {
         if (cur->nodetype &
                 (LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_CHOICE |
                  LY_NODE_RPC | LY_NODE_INPUT | LY_NODE_OUTPUT | LY_NODE_NOTIF)) {
@@ -53,7 +53,7 @@ sibling_is_valid_child(const struct ly_mnode *mnode)
 
     /* if in uses, the following printed child can actually be in the parent node :-/ */
     if (mnode->parent && mnode->parent->nodetype == LY_NODE_USES) {
-        return sibling_is_valid_child(mnode->parent);
+        return sibling_is_valid_child(mnode->parent, 0);
     }
 
     return 0;
@@ -81,12 +81,12 @@ create_indent(int level, const char *old_indent, const struct ly_mnode *mnode, i
     }
 
     /* next is a node that will actually be printed */
-    has_next = sibling_is_valid_child(mnode);
+    has_next = sibling_is_valid_child(mnode, 0);
 
     /* there is no next, but we are in top-level of a submodule */
     if (!has_next && mnode->module->type == 1 && !mnode->parent) {
-    struct ly_submodule *submod = (struct ly_submodule *)mnode->module;
-    struct ly_module *mod = submod->belongsto;
+        struct ly_submodule *submod = (struct ly_submodule *)mnode->module;
+        struct ly_module *mod = submod->belongsto;
 
         /* find this submodule, check all the next ones for valid printed nodes */
         found = 0;
@@ -94,11 +94,11 @@ create_indent(int level, const char *old_indent, const struct ly_mnode *mnode, i
             /* we found ours, check all the following submodules and the module */
             if (found) {
                 if (mnode->nodetype == LY_NODE_RPC) {
-                    has_next = sibling_is_valid_child(mod->inc[i].submodule->rpc);
+                    has_next = sibling_is_valid_child(mod->inc[i].submodule->rpc, 1);
                 } else if (mnode->nodetype == LY_NODE_NOTIF) {
-                    has_next = sibling_is_valid_child(mod->inc[i].submodule->notif);
+                    has_next = sibling_is_valid_child(mod->inc[i].submodule->notif, 1);
                 } else {
-                    has_next = sibling_is_valid_child(mod->inc[i].submodule->data);
+                    has_next = sibling_is_valid_child(mod->inc[i].submodule->data, 1);
                 }
             }
 
@@ -110,11 +110,11 @@ create_indent(int level, const char *old_indent, const struct ly_mnode *mnode, i
         /* there is nothing in submodules, check module */
         if (!has_next) {
             if (mnode->nodetype == LY_NODE_RPC) {
-                has_next = sibling_is_valid_child(mod->rpc);
+                has_next = sibling_is_valid_child(mod->rpc, 1);
             } else if (mnode->nodetype == LY_NODE_NOTIF) {
-                has_next = sibling_is_valid_child(mod->notif);
+                has_next = sibling_is_valid_child(mod->notif, 1);
             } else {
-                has_next = sibling_is_valid_child(mod->data);
+                has_next = sibling_is_valid_child(mod->data, 1);
             }
         }
     }
