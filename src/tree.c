@@ -270,9 +270,14 @@ struct ly_mnode *
 resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *mod, LY_NODE_TYPE node_type)
 {
     const char *name, *prefix, *ptr;
-    struct ly_mnode *sibling, *new_start;
+    struct ly_mnode *sibling;
     struct ly_submodule *sub_mod;
     uint32_t i, j, nam_len, pref_len;
+    /* 0 - in module, 1 - in 1st submodule, 2 - in second submodule, ... */
+    uint8_t in_submod;
+    /* 0 - in data, 1 - in RPCs, 2 - in notifications */
+    uint8_t in_mod_part;
+    int found;
 
     assert(mod);
     assert(id);
@@ -306,36 +311,41 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
     /* absolute-schema-nodeid */
     if (id[0] == '/') {
         start = NULL;
+        found = 0;
 
         /* it is not the local prefix */
         if (prefix && strncmp(prefix, mod->prefix, pref_len)) {
             /* check imports */
             for (i = 0; i < mod->imp_size; i++) {
                 if (!strncmp(mod->imp[i].prefix, prefix, pref_len)) {
-                    start = mod->imp[i].module->data;
+                    mod = mod->imp[i].module;
+                    start = mod->data;
+                    found = 1;
                     break;
                 }
             }
 
             /* no match - check include imports */
-            if (!start) {
+            if (!found) {
                 for (i = 0; i < mod->inc_size; i++) {
                     sub_mod = mod->inc[i].submodule;
                     for (j = 0; j < sub_mod->imp_size; j++) {
                         if (!strncmp(sub_mod->imp[j].prefix, prefix, pref_len)) {
-                            start = sub_mod->imp[j].module->data;
+                            mod = sub_mod->imp[j].module;
+                            start = mod->data;
+                            found = 1;
                             break;
                         }
                     }
 
-                    if (start) {
+                    if (found) {
                         break;
                     }
                 }
             }
 
             /* no match */
-            if (!start) {
+            if (!found) {
                 return NULL;
             }
 
@@ -350,11 +360,14 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
         start = start->child;
     }
 
+    in_submod = 0;
+    in_mod_part = 0;
+
     while (1) {
         if (!strcmp(name, ".")) {
             /* this node - start does not change */
         } else if (!strcmp(name, "..")) {
-            /* ".." is not allowed in refines and augment sin uses, there is no need for it there */
+            /* ".." is not allowed in refines and augments in uses, there is no need for it there */
             if (!start || (node_type == LY_NODE_USES)) {
                 return NULL;
             }
@@ -432,29 +445,40 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
             /* no match */
             if (!sibling) {
                 /* on augment search also RPCs and notifications, if we are in top-level */
-                if ((node_type == LY_NODE_AUGMENT) && !start->parent) {
-                    new_start = NULL;
-
+                if ((node_type == LY_NODE_AUGMENT) && (!start || !start->parent)) {
                     /* we have searched all the data nodes */
-                    if (start == start->module->data) {
-                        new_start = start->module->rpc;
-                        if (new_start) {
-                            start = new_start;
-                            continue;
+                    if (in_mod_part == 0) {
+                        if (!in_submod) {
+                            start = mod->rpc;
+                        } else {
+                            start = mod->inc[in_submod-1].submodule->rpc;
                         }
+                        in_mod_part = 1;
+                        continue;
                     }
                     /* we have searched all the RPCs */
-                    if ((!new_start && (start != start->module->notif)) || (start == start->module->rpc)) {
-                        new_start = start->module->notif;
-                        if (new_start) {
-                            start = new_start;
-                            continue;
+                    if (in_mod_part == 1) {
+                        if (!in_submod) {
+                            start = mod->notif;
+                        } else {
+                            start = mod->inc[in_submod-1].submodule->notif;
                         }
+                        in_mod_part = 2;
+                        continue;
                     }
-                    /* we have searched all the notifications, nothing else to search */
+                    /* we have searched all the notifications, nothing else to search in this module */
+                }
+
+                /* are we done with the included submodules as well? */
+                if (in_submod-1 == mod->inc_size) {
                     return NULL;
                 }
-                return NULL;
+
+                /* we aren't, check the next one */
+                ++in_submod;
+                in_mod_part = 0;
+                start = mod->inc[in_submod-1].submodule->data;
+                continue;
             }
         }
 
