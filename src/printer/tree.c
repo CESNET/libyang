@@ -28,9 +28,9 @@
 #include "../tree.h"
 
 /* spec_config = 0 (no special config status), 1 (read-only - rpc output, notification), 2 (write-only - rpc input) */
-static void tree_print_mnode_choice(FILE * f, int level, char *indent, unsigned int max_name_len,
+static void tree_print_mnode_choice(FILE *f, struct ly_module* module, int level, char *indent, unsigned int max_name_len,
                                     struct ly_mnode *mnode, int mask, int spec_config);
-static void tree_print_mnode(FILE * f, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode,
+static void tree_print_mnode(FILE *f, struct ly_module *module, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode,
                              int mask, int spec_config);
 
 static int
@@ -129,21 +129,22 @@ create_indent(int level, const char *old_indent, const struct ly_mnode *mnode, i
 }
 
 static unsigned int
-get_max_name_len(struct ly_mnode *mnode)
+get_max_name_len(struct ly_module *module, struct ly_mnode *mnode)
 {
     struct ly_mnode *sub;
-    unsigned int max_name_len = 0, uses_max_name_len;
+    unsigned int max_name_len = 0, uses_max_name_len, name_len;
 
     LY_TREE_FOR(mnode, sub) {
         if (sub->nodetype == LY_NODE_USES) {
-            uses_max_name_len = get_max_name_len(sub->child);
+            uses_max_name_len = get_max_name_len(module, sub->child);
             if (uses_max_name_len > max_name_len) {
                 max_name_len = uses_max_name_len;
             }
         } else if (sub->nodetype &
                 (LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML)) {
-            if (strlen(sub->name) > max_name_len) {
-                max_name_len = strlen(sub->name);
+            name_len = strlen(sub->name) + (module == sub->module ? 0 : strlen(sub->module->prefix)+1);
+            if (name_len > max_name_len) {
+                max_name_len = name_len;
             }
         }
     }
@@ -152,7 +153,7 @@ get_max_name_len(struct ly_mnode *mnode)
 }
 
 static void
-tree_print_type(FILE * f, struct ly_type *type)
+tree_print_type(FILE *f, struct ly_type *type)
 {
     if (type->base == LY_TYPE_LEAFREF) {
         fprintf(f, "-> %s", type->info.lref.path);
@@ -183,7 +184,7 @@ tree_print_features(FILE *f, const struct ly_feature **features, uint8_t feature
 }
 
 static void
-tree_print_input_output(FILE * f, int level, char *indent, struct ly_mnode *mnode, int spec_config)
+tree_print_input_output(FILE *f, struct ly_module *module, int level, char *indent, struct ly_mnode *mnode, int spec_config)
 {
     unsigned int max_child_len;
     char *new_indent;
@@ -196,10 +197,10 @@ tree_print_input_output(FILE * f, int level, char *indent, struct ly_mnode *mnod
     level++;
     new_indent = create_indent(level, indent, mnode, 0);
 
-    max_child_len = get_max_name_len(mnode->child);
+    max_child_len = get_max_name_len(module, mnode->child);
 
     LY_TREE_FOR(mnode->child, sub) {
-        tree_print_mnode(f, level, new_indent, max_child_len, sub,
+        tree_print_mnode(f, module, level, new_indent, max_child_len, sub,
                          LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_USES,
                          spec_config);
     }
@@ -208,7 +209,7 @@ tree_print_input_output(FILE * f, int level, char *indent, struct ly_mnode *mnod
 }
 
 static void
-tree_print_container(FILE * f, int level, char *indent, struct ly_mnode *mnode, int spec_config)
+tree_print_container(FILE *f, struct ly_module *module, int level, char *indent, struct ly_mnode *mnode, int spec_config)
 {
     unsigned int max_child_len;
     char *new_indent;
@@ -228,6 +229,10 @@ tree_print_container(FILE * f, int level, char *indent, struct ly_mnode *mnode, 
         fprintf(f, "ro ");
     }
 
+    if (module != cont->module) {
+        fprintf(f, "%s:", cont->module->prefix);
+    }
+
     fprintf(f, "%s%s", cont->name, (cont->presence ? "!" : ""));
 
     tree_print_features(f, (const struct ly_feature **)cont->features, cont->features_size);
@@ -237,10 +242,10 @@ tree_print_container(FILE * f, int level, char *indent, struct ly_mnode *mnode, 
     level++;
     new_indent = create_indent(level, indent, mnode, 0);
 
-    max_child_len = get_max_name_len(mnode->child);
+    max_child_len = get_max_name_len(module, mnode->child);
 
     LY_TREE_FOR(cont->child, sub) {
-        tree_print_mnode(f, level, new_indent, max_child_len, sub,
+        tree_print_mnode(f, module, level, new_indent, max_child_len, sub,
                          LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_USES,
                          spec_config);
     }
@@ -249,7 +254,7 @@ tree_print_container(FILE * f, int level, char *indent, struct ly_mnode *mnode, 
 }
 
 static void
-tree_print_choice(FILE * f, int level, char *indent, struct ly_mnode *mnode, int spec_config)
+tree_print_choice(FILE *f, struct ly_module *module, int level, char *indent, struct ly_mnode *mnode, int spec_config)
 {
     unsigned int max_child_len;
     char *new_indent;
@@ -269,7 +274,13 @@ tree_print_choice(FILE * f, int level, char *indent, struct ly_mnode *mnode, int
         fprintf(f, "ro ");
     }
 
-    fprintf(f, "(%s)%s", choice->name, (choice->flags & LY_NODE_MAND_TRUE ? "" : "?"));
+    fprintf(f, "(");
+
+    if (module != choice->module) {
+        fprintf(f, "%s:", choice->module->prefix);
+    }
+
+    fprintf(f, "%s)%s", choice->name, (choice->flags & LY_NODE_MAND_TRUE ? "" : "?"));
 
     if (choice->dflt != NULL) {
         fprintf(f, " <%s>", choice->dflt->name);
@@ -282,10 +293,10 @@ tree_print_choice(FILE * f, int level, char *indent, struct ly_mnode *mnode, int
     level++;
     new_indent = create_indent(level, indent, mnode, 0);
 
-    max_child_len = get_max_name_len(mnode->child);
+    max_child_len = get_max_name_len(module, mnode->child);
 
     LY_TREE_FOR(choice->child, sub) {
-        tree_print_mnode_choice(f, level, new_indent, max_child_len, sub,
+        tree_print_mnode_choice(f, module, level, new_indent, max_child_len, sub,
                                 LY_NODE_CASE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML,
                                 spec_config);
     }
@@ -294,7 +305,7 @@ tree_print_choice(FILE * f, int level, char *indent, struct ly_mnode *mnode, int
 }
 
 static void
-tree_print_case(FILE * f, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int shorthand, int spec_config)
+tree_print_case(FILE *f, struct ly_module *module, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int shorthand, int spec_config)
 {
     char *new_indent;
     struct ly_mnode_case *cas = (struct ly_mnode_case *)mnode;
@@ -316,8 +327,14 @@ tree_print_case(FILE * f, int level, char *indent, unsigned int max_name_len, st
         }
     }
 
-    fprintf(f, "%s%s--:(%s)", indent,
-            (cas->flags & LY_NODE_STATUS_DEPRC ? "x" : (cas->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")), mnode->name);
+    fprintf(f, "%s%s--:(", indent,
+            (cas->flags & LY_NODE_STATUS_DEPRC ? "x" : (cas->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")));
+
+    if (module != cas->module) {
+        fprintf(f, "%s:", cas->module->prefix);
+    }
+
+    fprintf(f, "%s)", cas->name);
 
     tree_print_features(f, (const struct ly_feature **)cas->features, cas->features_size);
 
@@ -327,12 +344,12 @@ tree_print_case(FILE * f, int level, char *indent, unsigned int max_name_len, st
     new_indent = create_indent(level, indent, mnode, shorthand);
 
     if (shorthand) {
-        tree_print_mnode(f, level, new_indent, max_name_len, mnode,
+        tree_print_mnode(f, module, level, new_indent, max_name_len, mnode,
                          LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_USES,
                          spec_config);
     } else {
         LY_TREE_FOR(mnode->child, sub) {
-            tree_print_mnode(f, level, new_indent, max_name_len, sub,
+            tree_print_mnode(f, module, level, new_indent, max_name_len, sub,
                              LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_USES,
                              spec_config);
         }
@@ -342,8 +359,9 @@ tree_print_case(FILE * f, int level, char *indent, unsigned int max_name_len, st
 }
 
 static void
-tree_print_anyxml(FILE * f, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int spec_config)
+tree_print_anyxml(FILE *f, struct ly_module *module, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int spec_config)
 {
+    uint8_t prefix_len;
     struct ly_mnode_anyxml *anyxml = (struct ly_mnode_anyxml *)mnode;
 
     assert(spec_config >= 0 && spec_config <= 2);
@@ -359,8 +377,14 @@ tree_print_anyxml(FILE * f, char *indent, unsigned int max_name_len, struct ly_m
         fprintf(f, "ro ");
     }
 
+    prefix_len = 0;
+    if (module != anyxml->module) {
+        fprintf(f, "%s:", anyxml->module->prefix);
+        prefix_len = strlen(anyxml->module->prefix)+1;
+    }
+
     fprintf(f, "%s%s%*sanyxml", anyxml->name, (anyxml->flags & LY_NODE_MAND_TRUE ? " " : "?"),
-            3 + (int)(max_name_len - strlen(anyxml->name)), "   ");
+            3 + (int)((max_name_len - strlen(anyxml->name)) - prefix_len), "   ");
 
     tree_print_features(f, (const struct ly_feature **)anyxml->features, anyxml->features_size);
 
@@ -368,8 +392,9 @@ tree_print_anyxml(FILE * f, char *indent, unsigned int max_name_len, struct ly_m
 }
 
 static void
-tree_print_leaf(FILE * f, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int spec_config)
+tree_print_leaf(FILE *f, struct ly_module *module, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int spec_config)
 {
+    uint8_t prefix_len;
     struct ly_mnode_leaf *leaf = (struct ly_mnode_leaf *)mnode;
     struct ly_mnode_list *list;
     int i, is_key = 0;
@@ -397,8 +422,14 @@ tree_print_leaf(FILE * f, char *indent, unsigned int max_name_len, struct ly_mno
         fprintf(f, "ro ");
     }
 
+    prefix_len = 0;
+    if (module != leaf->module) {
+        fprintf(f, "%s:", leaf->module->prefix);
+        prefix_len = strlen(leaf->module->prefix)+1;
+    }
+
     fprintf(f, "%s%s%*s", leaf->name, ((leaf->flags & LY_NODE_MAND_TRUE) || is_key ? " " : "?"),
-            3 + (int)(max_name_len - strlen(leaf->name)), "   ");
+            3 + (int)((max_name_len - strlen(leaf->name)) - prefix_len), "   ");
 
     tree_print_type(f, &leaf->type);
 
@@ -412,7 +443,7 @@ tree_print_leaf(FILE * f, char *indent, unsigned int max_name_len, struct ly_mno
 }
 
 static void
-tree_print_leaflist(FILE * f, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int spec_config)
+tree_print_leaflist(FILE *f, struct ly_module *module, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int spec_config)
 {
     struct ly_mnode_leaflist *leaflist = (struct ly_mnode_leaflist *)mnode;
 
@@ -429,6 +460,10 @@ tree_print_leaflist(FILE * f, char *indent, unsigned int max_name_len, struct ly
         fprintf(f, "ro ");
     }
 
+    if (module != leaflist->module) {
+        fprintf(f, "%s:", leaflist->module->prefix);
+    }
+
     fprintf(f, "%s*%*s", leaflist->name, 3 + (int)(max_name_len - strlen(leaflist->name)), "   ");
 
     tree_print_type(f, &leaflist->type);
@@ -439,7 +474,7 @@ tree_print_leaflist(FILE * f, char *indent, unsigned int max_name_len, struct ly
 }
 
 static void
-tree_print_list(FILE * f, int level, char *indent, struct ly_mnode *mnode, int spec_config)
+tree_print_list(FILE *f, struct ly_module *module, int level, char *indent, struct ly_mnode *mnode, int spec_config)
 {
     int i;
     unsigned int max_child_len;
@@ -458,6 +493,10 @@ tree_print_list(FILE * f, int level, char *indent, struct ly_mnode *mnode, int s
         fprintf(f, "ro ");
     }
 
+    if (module != list->module) {
+        fprintf(f, "%s:", list->module->prefix);
+    }
+
     fprintf(f, "%s*", list->name);
 
     for (i = 0; i < list->keys_size; i++) {
@@ -474,10 +513,10 @@ tree_print_list(FILE * f, int level, char *indent, struct ly_mnode *mnode, int s
     level++;
     new_indent = create_indent(level, indent, mnode, 0);
 
-    max_child_len = get_max_name_len(mnode->child);
+    max_child_len = get_max_name_len(module, mnode->child);
 
     LY_TREE_FOR(mnode->child, sub) {
-        tree_print_mnode(f, level, new_indent, max_child_len, sub,
+        tree_print_mnode(f, module, level, new_indent, max_child_len, sub,
                          LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_USES | LY_NODE_ANYXML,
                          spec_config);
     }
@@ -486,21 +525,20 @@ tree_print_list(FILE * f, int level, char *indent, struct ly_mnode *mnode, int s
 }
 
 static void
-tree_print_uses(FILE * f, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int spec_config)
+tree_print_uses(FILE *f, struct ly_module *module, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int spec_config)
 {
     struct ly_mnode *node;
     struct ly_mnode_uses *uses = (struct ly_mnode_uses *)mnode;
 
-    /* FIXME there are no children here */
     LY_TREE_FOR(uses->child, node) {
-        tree_print_mnode(f, level, indent, max_name_len, node,
+        tree_print_mnode(f, module, level, indent, max_name_len, node,
                          LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_USES | LY_NODE_ANYXML,
                          spec_config);
     }
 }
 
 static void
-tree_print_rpc(FILE * f, int level, char *indent, struct ly_mnode *mnode)
+tree_print_rpc(FILE *f, struct ly_module *module, int level, char *indent, struct ly_mnode *mnode)
 {
     char *new_indent;
     struct ly_mnode *node;
@@ -526,9 +564,9 @@ tree_print_rpc(FILE * f, int level, char *indent, struct ly_mnode *mnode)
 
     LY_TREE_FOR(rpc->child, node) {
         if (node->nodetype == LY_NODE_INPUT) {
-            tree_print_input_output(f, level, new_indent, node, 1);
+            tree_print_input_output(f, module, level, new_indent, node, 1);
         } else if (node->nodetype == LY_NODE_OUTPUT) {
-            tree_print_input_output(f, level, new_indent, node, 2);
+            tree_print_input_output(f, module, level, new_indent, node, 2);
         }
     }
 
@@ -536,7 +574,7 @@ tree_print_rpc(FILE * f, int level, char *indent, struct ly_mnode *mnode)
 }
 
 static void
-tree_print_notif(FILE * f, int level, char *indent, struct ly_mnode *mnode)
+tree_print_notif(FILE *f, struct ly_module *module, int level, char *indent, struct ly_mnode *mnode)
 {
     unsigned int max_child_len;
     char *new_indent;
@@ -562,10 +600,10 @@ tree_print_notif(FILE * f, int level, char *indent, struct ly_mnode *mnode)
     level++;
     new_indent = create_indent(level, indent, mnode, 0);
 
-    max_child_len = get_max_name_len(mnode->child);
+    max_child_len = get_max_name_len(module, mnode->child);
 
     LY_TREE_FOR(notif->child, node) {
-        tree_print_mnode(f, level, new_indent, max_child_len, node,
+        tree_print_mnode(f, module, level, new_indent, max_child_len, node,
                          LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_USES,
                          2);
     }
@@ -574,20 +612,20 @@ tree_print_notif(FILE * f, int level, char *indent, struct ly_mnode *mnode)
 }
 
 static void
-tree_print_mnode_choice(FILE * f, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int mask,
+tree_print_mnode_choice(FILE *f, struct ly_module *module, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int mask,
                         int spec_config)
 {
     if (mnode->nodetype & mask) {
         if (mnode->nodetype == LY_NODE_CASE) {
-            tree_print_case(f, level, indent, max_name_len, mnode, 0, spec_config);
+            tree_print_case(f, module, level, indent, max_name_len, mnode, 0, spec_config);
         } else {
-            tree_print_case(f, level, indent, max_name_len, mnode, 1, spec_config);
+            tree_print_case(f, module, level, indent, max_name_len, mnode, 1, spec_config);
         }
     }
 }
 
 static void
-tree_print_mnode(FILE * f, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int mask,
+tree_print_mnode(FILE *f, struct ly_module *module, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int mask,
                  int spec_config)
 {
     int i;
@@ -609,25 +647,25 @@ tree_print_mnode(FILE * f, int level, char *indent, unsigned int max_name_len, s
 
     switch (mnode->nodetype & mask) {
     case LY_NODE_CONTAINER:
-        tree_print_container(f, level, indent, mnode, spec_config);
+        tree_print_container(f, module, level, indent, mnode, spec_config);
         break;
     case LY_NODE_CHOICE:
-        tree_print_choice(f, level, indent, mnode, spec_config);
+        tree_print_choice(f, module, level, indent, mnode, spec_config);
         break;
     case LY_NODE_LEAF:
-        tree_print_leaf(f, indent, max_name_len, mnode, spec_config);
+        tree_print_leaf(f, module, indent, max_name_len, mnode, spec_config);
         break;
     case LY_NODE_LEAFLIST:
-        tree_print_leaflist(f, indent, max_name_len, mnode, spec_config);
+        tree_print_leaflist(f, module, indent, max_name_len, mnode, spec_config);
         break;
     case LY_NODE_LIST:
-        tree_print_list(f, level, indent, mnode, spec_config);
+        tree_print_list(f, module, level, indent, mnode, spec_config);
         break;
     case LY_NODE_ANYXML:
-        tree_print_anyxml(f, indent, max_name_len, mnode, spec_config);
+        tree_print_anyxml(f, module, indent, max_name_len, mnode, spec_config);
         break;
     case LY_NODE_USES:
-        tree_print_uses(f, level, indent, max_name_len, mnode, spec_config);
+        tree_print_uses(f, module, level, indent, max_name_len, mnode, spec_config);
         break;
     default:
         break;
@@ -635,7 +673,7 @@ tree_print_mnode(FILE * f, int level, char *indent, unsigned int max_name_len, s
 }
 
 int
-tree_print_model(FILE * f, struct ly_module *module)
+tree_print_model(FILE *f, struct ly_module *module)
 {
     struct ly_mnode *mnode;
     unsigned int max_child_len;
@@ -647,21 +685,21 @@ tree_print_model(FILE * f, struct ly_module *module)
 
     /* included submodules */
     for (i = 0; i < module->inc_size; i++) {
-        max_child_len = get_max_name_len(module->inc[i].submodule->data);
+        max_child_len = get_max_name_len((struct ly_module *)module->inc[i].submodule, module->inc[i].submodule->data);
 
         LY_TREE_FOR(module->inc[i].submodule->data, mnode) {
-            tree_print_mnode(f, level, indent, max_child_len, mnode,
+            tree_print_mnode(f, (struct ly_module *)module->inc[i].submodule, level, indent, max_child_len, mnode,
                              LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_USES,
                              0);
         }
     }
 
     /* module */
-    max_child_len = get_max_name_len(module->data);
+    max_child_len = get_max_name_len(module, module->data);
     level++;
 
     LY_TREE_FOR(module->data, mnode) {
-        tree_print_mnode(f, level, indent, max_child_len, mnode,
+        tree_print_mnode(f, module, level, indent, max_child_len, mnode,
                          LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_USES,
                          0);
     }
@@ -681,11 +719,11 @@ tree_print_model(FILE * f, struct ly_module *module)
         fprintf(f, "rpcs:\n");
         for (i = 0; i < module->inc_size; i++) {
             LY_TREE_FOR(module->inc[i].submodule->rpc, mnode) {
-                tree_print_rpc(f, level, indent, mnode);
+                tree_print_rpc(f, (struct ly_module *)module->inc[i].submodule, level, indent, mnode);
             }
         }
         LY_TREE_FOR(module->rpc, mnode) {
-            tree_print_rpc(f, level, indent, mnode);
+            tree_print_rpc(f, module, level, indent, mnode);
         }
     }
 
@@ -704,11 +742,11 @@ tree_print_model(FILE * f, struct ly_module *module)
         fprintf(f, "notifications:\n");
         for (i = 0; i < module->inc_size; i++) {
             LY_TREE_FOR(module->inc[i].submodule->notif, mnode) {
-                tree_print_notif(f, level, indent, mnode);
+                tree_print_notif(f, (struct ly_module *)module->inc[i].submodule, level, indent, mnode);
             }
         }
         LY_TREE_FOR(module->notif, mnode) {
-            tree_print_notif(f, level, indent, mnode);
+            tree_print_notif(f, module, level, indent, mnode);
         }
     }
 
