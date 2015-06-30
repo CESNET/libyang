@@ -251,3 +251,27 @@ ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision, in
 
     return result;
 }
+
+API char **
+ly_ctx_get_module_names(struct ly_ctx *ctx)
+{
+    int i;
+    char **result = NULL;
+    unsigned int count = 0;
+
+    if (!ctx) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    for (i = 0; i < ctx->models.used; i++) {
+        ++count;
+        result = realloc(result, count * sizeof *result);
+        result[count-1] = strdup(ctx->models.list[i]->name);
+    }
+    ++count;
+    result = realloc(result, count * sizeof *result);
+    result[count-1] = NULL;
+
+    return result;
+}

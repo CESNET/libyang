@@ -74,6 +74,15 @@ struct ly_ctx *ly_ctx_new(const char *search_dir);
 struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision, int read);
 
 /**
+ * @brief Get the names of the loaded modules.
+ *
+ * @param[in] ctx Context with the modules.
+ * @return NULL-terminated array of the module names,
+ * NULL on error. The result must be freed by the caller.
+ */
+char **ly_ctx_get_module_names(struct ly_ctx *ctx);
+
+/**
  * @brief Free all internal structures of the specified context.
  *
  * The function should be used before terminating the application to destroy
