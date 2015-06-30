@@ -240,7 +240,7 @@ ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision, in
     }
 
     if (!read) {
-        return result;
+        return NULL;
     }
 
     /* not found in context, try to get it from the search directory */
