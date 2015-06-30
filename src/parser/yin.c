@@ -777,6 +777,7 @@ static int
 read_restr_substmt(struct ly_ctx *ctx, struct ly_restr *restr, struct lyxml_elem *yin)
 {
     struct lyxml_elem *next, *child;
+    const char *value;
 
     LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!strcmp(child->name, "description")) {
@@ -802,10 +803,8 @@ read_restr_substmt(struct ly_ctx *ctx, struct ly_restr *restr, struct lyxml_elem
                 LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
                 return EXIT_FAILURE;
             }
-            GETVAL(restr->eapptag, yin, "value")
-            if (!restr->eapptag) {
-                return EXIT_FAILURE;
-            }
+            GETVAL(value, yin, "value");
+            restr->eapptag = lydict_insert(ctx, value, 0);
         } else if (!strcmp(child->name, "error-message")) {
             if (restr->emsg) {
                 LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
