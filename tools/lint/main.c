@@ -19,12 +19,12 @@
  *    software without specific prior written permission.
  */
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
-#include <readline/readline.h>
-#include <readline/history.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <dirent.h>
 #include <getopt.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -34,8 +34,7 @@
 #include <string.h>
 
 #include "commands.h"
-#include "mreadline.h"
-
+#include "../../linenoise/linenoise.h"
 #include "../../src/libyang.h"
 
 int done;
@@ -55,7 +54,8 @@ usage(const char *progname)
     fprintf(stdout, "Executing without arguments starts an interactive version.\n\n");
 }
 
-int main_noninteractive(int argc, char *argv[])
+int
+main_noninteractive(int argc, char *argv[])
 {
     int c;
     int ret = EXIT_FAILURE;
@@ -166,6 +166,71 @@ cleanup:
     return ret;
 }
 
+void
+get_path_completion(const char *hint, char ***matches, unsigned int *match_count)
+{
+    const char *ptr, *path;
+    DIR *dir;
+    struct dirent *ent;
+
+    *match_count = 0;
+    *matches = NULL;
+
+    path = strchr(hint, ' ');
+    ++path;
+    ptr = strrchr(path, '/');
+
+    /* new relative path */
+    if (ptr == NULL) {
+        ptr = path;
+        dir = opendir(".");
+    } else {
+        ++ptr;
+        dir = opendir(strndupa(path, ptr-path));
+    }
+
+    if (dir == NULL) {
+        fprintf(stderr, "opendir failed (%s)\n", strerror(errno));
+        return;
+    }
+
+    while ((ent = readdir(dir))) {
+        if (ent->d_name[0] == '.') {
+            continue;
+        }
+
+        if (!strncmp(ptr, ent->d_name, strlen(ptr))) {
+            ++(*match_count);
+            *matches = realloc(*matches, *match_count * sizeof **matches);
+            asprintf(&(*matches)[*match_count-1], "%.*s%s", (int)(ptr-hint), hint, ent->d_name);
+            //(*matches)[*match_count-1] = malloc((ptr-hint)+strlen(ent->d_name)+1);
+            //strncpy((*matches)[*match_count-1], hint, ptr-hint);
+            //strcat((*matches)[*match_count-1], ent->d_name);
+        }
+    }
+
+    closedir(dir);
+}
+
+void
+complete_cmd(const char *buf, linenoiseCompletions *lc)
+{
+    char **matches = NULL;
+    unsigned int match_count = 0, i;
+
+    if (!strncmp(buf, "add ", 4) || !strncmp(buf, "searchpath ", 11)) {
+        get_path_completion(buf, &matches, &match_count);
+    } else {
+        get_cmd_completion(buf, &matches, &match_count);
+    }
+
+    for (i = 0; i < match_count; ++i) {
+        linenoiseAddCompletion(lc, matches[i]);
+        free(matches[i]);
+    }
+    free(matches);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -176,12 +241,12 @@ main(int argc, char **argv)
         return main_noninteractive(argc, argv);
     }
 
-    initialize_readline();
+    linenoiseSetCompletionCallback(complete_cmd);
     ctx = ly_ctx_new(search_path);
 
     while (!done) {
         /* get the command from user */
-        cmdline = readline(PROMPT);
+        cmdline = linenoise(PROMPT);
 
         /* EOF -> exit */
         if (cmdline == NULL) {
@@ -196,9 +261,9 @@ main(int argc, char **argv)
         }
 
         /* isolate the command word. */
-        for (i = 0; cmdline[i] && whitespace(cmdline[i]); i++);
+        for (i = 0; cmdline[i] && (cmdline[i] == ' '); i++);
         cmdstart = cmdline + i;
-        for (j = 0; cmdline[i] && !whitespace(cmdline[i]); i++, j++);
+        for (j = 0; cmdline[i] && (cmdline[i] != ' '); i++, j++);
         cmd = strndup(cmdstart, j);
 
         /* parse the command line */
@@ -219,19 +284,18 @@ main(int argc, char **argv)
                     printf("%s\n", commands[i].helpstring);
                 }
             } else {
-                commands[i].func((const char*)cmdstart);
+                commands[i].func((const char *)cmdstart);
             }
         } else {
             /* if unknown command specified, tell it to user */
             fprintf(stderr, "%s: no such command, type 'help' for more information.\n", cmd);
         }
-        add_history(cmdline);
+        linenoiseHistoryAdd(cmdline);
 
         free(cmd);
         free(cmdline);
     }
 
-    remove_all_hints();
     ly_ctx_destroy(ctx);
     free(search_path);
 

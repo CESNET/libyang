@@ -48,94 +48,30 @@
 #include <unistd.h>
 #include <getopt.h>
 
+#include "commands.h"
 #include "../../src/libyang.h"
 #include "../../src/tree.h"
 
-#include "commands.h"
-#include "mreadline.h"
-
-struct model_hint *model_hints, *model_hints_end;
-
+COMMAND commands[];
 extern int done;
 extern struct ly_ctx *ctx;
 extern char *search_path;
 
 void
-add_hint(const char *name)
+get_cmd_completion(const char *hint, char ***matches, unsigned int *match_count)
 {
-    if (model_hints == NULL) {
-        model_hints = malloc(sizeof(struct model_hint));
-        model_hints_end = model_hints;
-        model_hints_end->hint = strdup(name);
-        model_hints_end->next = NULL;
-    } else {
-        model_hints_end->next = malloc(sizeof(struct model_hint));
-        model_hints_end->next->hint = strdup(name);
-        model_hints_end->next->next = NULL;
-        model_hints_end = model_hints_end->next;
-    }
-}
+    int i;
 
-void
-remove_hint(const char *name)
-{
-    struct model_hint *prev, *cur;
+    *match_count = 0;
+    *matches = NULL;
 
-    if (model_hints == NULL) {
-        return;
-    }
-
-    if (strcmp(model_hints->hint, name) == 0) {
-        if (model_hints == model_hints_end) {
-            free(model_hints->hint);
-            free(model_hints);
-            model_hints = NULL;
-            model_hints_end = NULL;
-        } else {
-            prev = model_hints;
-            model_hints = model_hints->next;
-            free(prev->hint);
-            free(prev);
+    for (i = 0; commands[i].name; i++) {
+        if (!strncmp(hint, commands[i].name, strlen(hint))) {
+            ++(*match_count);
+            *matches = realloc(*matches, *match_count * sizeof **matches);
+            (*matches)[*match_count-1] = strdup(commands[i].name);
         }
-        return;
     }
-
-    prev = model_hints;
-    cur = model_hints->next;
-    while (cur != NULL) {
-        if (strcmp(cur->hint, name) == 0) {
-            if (cur == model_hints_end) {
-                model_hints_end = prev;
-            }
-            prev->next = cur->next;
-            free(cur->hint);
-            free(cur);
-            return;
-        }
-        prev = cur;
-        cur = cur->next;
-    }
-}
-
-void
-remove_all_hints(void)
-{
-    struct model_hint *prev, *cur;
-
-    if (model_hints == NULL) {
-        return;
-    }
-
-    cur = model_hints;
-    while (cur != NULL) {
-        prev = cur;
-        cur = cur->next;
-        free(prev->hint);
-        free(prev);
-    }
-
-    model_hints = NULL;
-    model_hints_end = NULL;
 }
 
 void
@@ -172,17 +108,18 @@ int
 cmd_add(const char *arg)
 {
     int fd;
-    char *argv, *path, *addr, *ptr;
+    char *addr, *ptr;
+    const char *path;
     struct ly_module *model;
     struct stat sb;
     LY_MINFORMAT format;
 
-    argv = strdupa(arg + strlen("add "));
-
-    if ((path = strtok(argv, " ")) == NULL) {
+    if (strlen(arg) < 5) {
         cmd_add_help();
         return 1;
     }
+
+    path = (arg + strlen("add "));
 
     if ((ptr = strrchr(path, '.')) != NULL) {
         ++ptr;
@@ -223,8 +160,6 @@ cmd_add(const char *arg)
         /* libyang printed the error messages */
         return 1;
     }
-
-    add_hint(model->name);
 
     return 0;
 }
@@ -325,18 +260,10 @@ cleanup:
 int
 cmd_list(const char *UNUSED(arg))
 {
-    struct model_hint *hint;
-
     printf("List of the loaded models:\n");
 
-    hint = model_hints;
-    if (!hint) {
-        printf("\t(none)\n");
-    } else {
-        for (; hint; hint = hint->next) {
-            printf("\t%s\n", hint->hint);
-        }
-    }
+    /* TODO */
+    printf("\t(none)\n");
 
     return 0;
 }
@@ -372,7 +299,6 @@ cmd_searchpath(const char *arg)
 
     ly_ctx_destroy(ctx);
     ctx = ly_ctx_new(search_path);
-    remove_all_hints();
 
     printf("All models have been removed.\n");
 

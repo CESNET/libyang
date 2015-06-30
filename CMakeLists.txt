@@ -35,7 +35,7 @@ set(libsrc
 set(lintsrc
 	tools/lint/main.c
 	tools/lint/commands.c
-	tools/lint/mreadline.c)
+	linenoise/linenoise.c)
 
 add_library(yang SHARED ${libsrc})
 set_target_properties(yang PROPERTIES VERSION 0.1.0 SOVERSION 0.1)
@@ -55,5 +55,5 @@ add_custom_target(cclean
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(yanglint ${lintsrc})
-target_link_libraries(yanglint yang readline)
+target_link_libraries(yanglint yang)
 
