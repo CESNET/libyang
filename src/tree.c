@@ -1223,8 +1223,6 @@ module_free_common(struct ly_module *module)
     free(module->imp);
 
     while (module->data) {
-        mnode = module->data;
-        module->data = mnode;
         ly_mnode_free(mnode);
     }
 
