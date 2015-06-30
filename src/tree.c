@@ -117,6 +117,10 @@ ly_mnode_unlink(struct ly_mnode *node)
     if (node->module) {
         if (node->module->data == node) {
             node->module->data = node->next;
+        } else if (node->module->rpc == node) {
+            node->module->rpc = node->next;
+        } else if (node->module->notif == node) {
+            node->module->notif = node->next;
         }
     }
 
@@ -1199,7 +1203,6 @@ static void
 module_free_common(struct ly_module *module)
 {
     struct ly_ctx *ctx;
-    struct ly_mnode *mnode;
     unsigned int i;
     int j, l;
 
@@ -1223,7 +1226,13 @@ module_free_common(struct ly_module *module)
     free(module->imp);
 
     while (module->data) {
-        ly_mnode_free(mnode);
+        ly_mnode_free(module->data);
+    }
+    while (module->rpc) {
+        ly_mnode_free(module->rpc);
+    }
+    while (module->notif) {
+        ly_mnode_free(module->notif);
     }
 
     lydict_remove(ctx, module->dsc);
