@@ -27,6 +27,4 @@ typedef struct {
 
 extern COMMAND commands[];
 
-void get_cmd_completion(const char *hint, char ***matches, unsigned int *match_count);
-
 #endif /* COMMANDS_H_ */

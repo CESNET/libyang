@@ -35,6 +35,7 @@ set(libsrc
 set(lintsrc
 	tools/lint/main.c
 	tools/lint/commands.c
+	tools/lint/completion.c
 	linenoise/linenoise.c)
 
 add_library(yang SHARED ${libsrc})

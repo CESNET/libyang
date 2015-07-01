@@ -1,10 +1,9 @@
-/*
- * commands.c
- * Author Michal Vasko <mvasko@cesnet.cz>
+/**
+ * @file commands.c
+ * @author Michal Vasko <mvasko@cesnet.cz>
+ * @brief libyang's yanglint tool commands
  *
- * Implementation of dev-datastore commands.
- *
- * Copyright (C) 2014 CESNET, z.s.p.o.
+ * Copyright (c) 2015 CESNET, z.s.p.o.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -18,25 +17,8 @@
  * 3. Neither the name of the Company nor the names of its contributors
  *    may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
- *
- * ALTERNATIVELY, provided that this notice is retained in full, this
- * product may be distributed under the terms of the GNU General Public
- * License (GPL) version 2 or later, in which case the provisions
- * of the GPL apply INSTEAD OF those given above.
- *
- * This software is provided ``as is, and any express or implied
- * warranties, including, but not limited to, the implied warranties of
- * merchantability and fitness for a particular purpose are disclaimed.
- * In no event shall the company or contributors be liable for any
- * direct, indirect, incidental, special, exemplary, or consequential
- * damages (including, but not limited to, procurement of substitute
- * goods or services; loss of use, data, or profits; or business
- * interruption) however caused and on any theory of liability, whether
- * in contract, strict liability, or tort (including negligence or
- * otherwise) arising in any way out of the use of this software, even
- * if advised of the possibility of such damage.
- *
  */
+
 #define _GNU_SOURCE
 #include <string.h>
 #include <stdio.h>
@@ -56,23 +38,6 @@ COMMAND commands[];
 extern int done;
 extern struct ly_ctx *ctx;
 extern char *search_path;
-
-void
-get_cmd_completion(const char *hint, char ***matches, unsigned int *match_count)
-{
-    int i;
-
-    *match_count = 0;
-    *matches = NULL;
-
-    for (i = 0; commands[i].name; i++) {
-        if (!strncmp(hint, commands[i].name, strlen(hint))) {
-            ++(*match_count);
-            *matches = realloc(*matches, *match_count * sizeof **matches);
-            (*matches)[*match_count-1] = strdup(commands[i].name);
-        }
-    }
-}
 
 void
 cmd_add_help(void)
@@ -260,10 +225,22 @@ cleanup:
 int
 cmd_list(const char *UNUSED(arg))
 {
+    char **names;
+    int i;
+
     printf("List of the loaded models:\n");
 
-    /* TODO */
-    printf("\t(none)\n");
+    names = ly_ctx_get_module_names(ctx);
+
+    for (i = 0; names[i]; ++i) {
+        printf("\t%s\n", names[i]);
+        free(names[i]);
+    }
+    free(names);
+
+    if (i == 0) {
+        printf("\t(none)\n");
+    }
 
     return 0;
 }
