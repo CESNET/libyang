@@ -27,6 +27,4 @@ typedef struct {
 
 extern COMMAND commands[];
 
-void remove_all_hints(void);
-
 #endif /* COMMANDS_H_ */

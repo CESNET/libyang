@@ -19,10 +19,9 @@
  *    software without specific prior written permission.
  */
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
-#include <readline/readline.h>
-#include <readline/history.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <getopt.h>
@@ -34,8 +33,8 @@
 #include <string.h>
 
 #include "commands.h"
-#include "mreadline.h"
-
+#include "completion.h"
+#include "../../linenoise/linenoise.h"
 #include "../../src/libyang.h"
 
 int done;
@@ -55,7 +54,8 @@ usage(const char *progname)
     fprintf(stdout, "Executing without arguments starts an interactive version.\n\n");
 }
 
-int main_noninteractive(int argc, char *argv[])
+int
+main_noninteractive(int argc, char *argv[])
 {
     int c;
     int ret = EXIT_FAILURE;
@@ -176,12 +176,12 @@ main(int argc, char **argv)
         return main_noninteractive(argc, argv);
     }
 
-    initialize_readline();
+    linenoiseSetCompletionCallback(complete_cmd);
     ctx = ly_ctx_new(search_path);
 
     while (!done) {
         /* get the command from user */
-        cmdline = readline(PROMPT);
+        cmdline = linenoise(PROMPT);
 
         /* EOF -> exit */
         if (cmdline == NULL) {
@@ -196,9 +196,9 @@ main(int argc, char **argv)
         }
 
         /* isolate the command word. */
-        for (i = 0; cmdline[i] && whitespace(cmdline[i]); i++);
+        for (i = 0; cmdline[i] && (cmdline[i] == ' '); i++);
         cmdstart = cmdline + i;
-        for (j = 0; cmdline[i] && !whitespace(cmdline[i]); i++, j++);
+        for (j = 0; cmdline[i] && (cmdline[i] != ' '); i++, j++);
         cmd = strndup(cmdstart, j);
 
         /* parse the command line */
@@ -219,19 +219,18 @@ main(int argc, char **argv)
                     printf("%s\n", commands[i].helpstring);
                 }
             } else {
-                commands[i].func((const char*)cmdstart);
+                commands[i].func((const char *)cmdstart);
             }
         } else {
             /* if unknown command specified, tell it to user */
             fprintf(stderr, "%s: no such command, type 'help' for more information.\n", cmd);
         }
-        add_history(cmdline);
+        linenoiseHistoryAdd(cmdline);
 
         free(cmd);
         free(cmdline);
     }
 
-    remove_all_hints();
     ly_ctx_destroy(ctx);
     free(search_path);
 
