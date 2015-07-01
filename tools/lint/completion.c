@@ -81,13 +81,14 @@ get_path_completion(const char *hint, char ***matches, unsigned int *match_count
             continue;
         }
 
+        /* some serious pointer fun */
         if (!strncmp(ptr, ent->d_name, strlen(ptr))) {
             ++(*match_count);
             *matches = realloc(*matches, *match_count * sizeof **matches);
-            asprintf(&(*matches)[*match_count-1], "%.*s%s", (int)(ptr-hint), hint, ent->d_name);
-            //(*matches)[*match_count-1] = malloc((ptr-hint)+strlen(ent->d_name)+1);
-            //strncpy((*matches)[*match_count-1], hint, ptr-hint);
-            //strcat((*matches)[*match_count-1], ent->d_name);
+            //asprintf(&(*matches)[*match_count-1], "%.*s%s", (int)(ptr-hint), hint, ent->d_name);
+            (*matches)[*match_count-1] = malloc((ptr-hint)+strlen(ent->d_name)+1);
+            strncpy((*matches)[*match_count-1], hint, ptr-hint);
+            strcpy((*matches)[*match_count-1]+(ptr-hint), ent->d_name);
         }
     }
 
