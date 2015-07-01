@@ -53,6 +53,9 @@ void ly_mnode_unlink(struct ly_mnode *node);
  */
 void ly_mnode_free(struct ly_mnode *node);
 
+void ly_restr_free(struct ly_ctx *ctx, struct ly_restr *restr);
+void ly_type_free(struct ly_ctx *ctx, struct ly_type *type);
+void ly_deviation_free(struct ly_ctx *ctx, struct ly_deviation *dev);
 void ly_submodule_free(struct ly_submodule *submodule);
 
 /*

@@ -110,10 +110,10 @@ struct ly_restr {
 };
 
 struct ly_type {
-    const char *prefix;               /**< prefix for the type referenced in der pointer*/
-    LY_DATA_TYPE base;          /**< base type */
-    struct ly_tpdf *der;        /**< pointer to the superior type. If NULL,
-	                             structure describes one of the built-in type */
+    const char *prefix;           /**< prefix for the type referenced in der pointer*/
+    LY_DATA_TYPE base;            /**< base type */
+    struct ly_tpdf *der;          /**< pointer to the superior type. If NULL,
+	                                   structure describes one of the built-in type */
 
     union {
         /* LY_TYPE_BINARY */
@@ -283,6 +283,39 @@ struct ly_augment {
     struct ly_when *when;            /**< when statement */
 };
 
+typedef enum ly_deviate_type {
+    LY_DEVIATE_NO,                   /**< not-supported */
+    LY_DEVIATE_ADD,                  /**< add */
+    LY_DEVIATE_RPL,                  /**< replace */
+    LY_DEVIATE_DEL                   /**< delete */
+} LY_DEVIATE_TYPE;
+
+struct ly_deviate {
+    LY_DEVIATE_TYPE mod;             /**< type of deviation modification */
+
+    uint8_t flags;                   /**< Properties: config, mandatory */
+    const char *dflt;                /**< Properties: default (both type and choice represented as string value */
+    uint32_t min;                    /**< Properties: min-elements */
+    uint32_t max;                    /**< Properties: max-elements */
+    uint8_t must_size;               /**< Properties: must - number of elements in must*/
+    uint8_t unique_size;             /**< Properties: unique - number of elements in unique array */
+    struct ly_restr *must;           /**< Properties: must - array of must constraints */
+    struct ly_unique *unique;        /**< Properties: unique - array of unique statement structures */
+    struct ly_type *type;            /**< Properties: type - pointer to type in target, type cannot be deleted or added */
+    const char *units;               /**< Properties: units */
+};
+
+struct ly_deviation {
+    const char *target_name;
+    const char *dsc;
+    const char *ref;
+    struct ly_mnode *target;
+
+    uint8_t deviate_size;            /**< number of elements in deviate array */
+    struct ly_deviate *deviate;      /**< deviate information */
+
+};
+
 struct ly_feature {
     const char *name;
     const char *dsc;
@@ -304,8 +337,9 @@ struct ly_module {
     const char *ref;                 /**< cross-reference for the module */
     const char *org;                 /**< party responsible for the module */
     const char *contact;             /**< contact information for the module */
-    uint8_t version:7;               /**< yang-version: 1 = 1.0, 2 = 1.1 */
-    uint8_t type:1;                  /**< structure type: 0 - module */
+    uint8_t version:6;               /**< yang-version: 1 = 1.0, 2 = 1.1 */
+    uint8_t type:1;                  /**< structure type: 0 - module, used to distinguish structure from submodule */
+    uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in rev array */
@@ -313,8 +347,9 @@ struct ly_module {
     uint8_t inc_size;                /**< number of elements in inc array */
     uint8_t tpdf_size;               /**< number of elements in tpdf array */
     uint32_t ident_size;             /**< number of elements in ident array */
-    uint16_t features_size;          /**< number of elements in features array */
-    uint16_t augment_size;           /**< number of elements in augment array */
+    uint8_t features_size;           /**< number of elements in features array */
+    uint8_t augment_size;            /**< number of elements in augment array */
+    uint8_t deviation_size;          /**< number of elements in deviation array */
 
     struct {
         char date[LY_REV_SIZE];          /**< revision-date */
@@ -329,6 +364,7 @@ struct ly_module {
     struct ly_ident *ident;          /**< array of identities */
     struct ly_feature *features;     /**< array of feature definitions */
     struct ly_augment *augment;      /**< array of augments */
+    struct ly_deviation *deviation;  /**< array of specified deviations */
 
     struct ly_mnode *data;           /**< first data statement */
     struct ly_mnode *rpc;            /**< first rpc statement */
@@ -346,8 +382,9 @@ struct ly_submodule {
     const char *ref;                 /**< cross-reference for the submodule */
     const char *org;                 /**< party responsible for the submodule */
     const char *contact;             /**< contact information for the submodule */
-    uint8_t version:7;               /**< yang-version: 1 = 1.0, 2 = 1.1 */
-    uint8_t type:1;                  /**< structure type: 1 - submodule */
+    uint8_t version:6;               /**< yang-version: 1 = 1.0, 2 = 1.1 */
+    uint8_t type:1;                  /**< structure type: 1 - submodule, used to distinguish structure from module */
+    uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in rev array */
@@ -355,8 +392,9 @@ struct ly_submodule {
     uint8_t inc_size;                /**< number of elements in inc array */
     uint8_t tpdf_size;               /**< number of elements in tpdf array */
     uint32_t ident_size;             /**< number of elements in ident array */
-    uint16_t features_size;          /**< number of elements in features array */
-    uint16_t augment_size;           /**< number of elements in augment array */
+    uint8_t features_size;           /**< number of elements in features array */
+    uint8_t augment_size;            /**< number of elements in augment array */
+    uint8_t deviation_size;          /**< number of elements in deviation array */
 
     struct {
         char date[LY_REV_SIZE];          /**< revision-date */
@@ -371,6 +409,7 @@ struct ly_submodule {
     struct ly_ident *ident;          /**< array if identities */
     struct ly_feature *features;     /**< array of feature definitions */
     struct ly_augment *augment;      /**< array of augments */
+    struct ly_deviation *deviation;  /**< array of specified deviations */
 
     struct ly_mnode *data;           /**< first data statement */
     struct ly_mnode *rpc;            /**< first rpc statement */

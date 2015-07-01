@@ -1469,6 +1469,763 @@ error: /* GETVAL requires this label */
 }
 
 static int
+parse_unique(struct ly_mnode *parent, struct lyxml_elem *node, struct ly_unique *uniq_s)
+{
+    const char *value;
+    char *uniq_str, *uniq_val, *start;
+    int i, j;
+
+    /* count the number of unique values */
+    GETVAL(value, node, "tag");
+    uniq_val = uniq_str = strdup(value);
+    uniq_s->leafs_size = 0;
+    while ((uniq_val = strpbrk(uniq_val, " \t\n"))) {
+        uniq_s->leafs_size++;
+        while (isspace(*uniq_val)) {
+            uniq_val++;
+        }
+    }
+    uniq_s->leafs_size++;
+    uniq_s->leafs = calloc(uniq_s->leafs_size, sizeof *uniq_s->leafs);
+
+    /* interconnect unique values with the leafs */
+    uniq_val = uniq_str;
+    for (i = 0; uniq_val && i < uniq_s->leafs_size; i++) {
+        start = uniq_val;
+        if ((uniq_val = strpbrk(start, " \t\n"))) {
+            *uniq_val = '\0'; /* add terminating NULL byte */
+            uniq_val++;
+            while (isspace(*uniq_val)) {
+                uniq_val++;
+            }
+        } /* else only one nodeid present/left already NULL byte terminated */
+
+        uniq_s->leafs[i] = (struct ly_mnode_leaf *)resolve_schema_nodeid(start, parent, parent->module, LY_NODE_USES);
+        if (!uniq_s->leafs[i] || uniq_s->leafs[i]->nodetype != LY_NODE_LEAF) {
+            LOGVAL(VE_INARG, LOGLINE(node), start, node->name);
+            if (!uniq_s->leafs[i]) {
+                LOGVAL(VE_SPEC, 0, "Target leaf not found.");
+            } else {
+                LOGVAL(VE_SPEC, 0, "Target is not a leaf.");
+            }
+            goto error;
+        }
+
+        for (j = 0; j < i; j++) {
+            if (uniq_s->leafs[j] == uniq_s->leafs[i]) {
+                LOGVAL(VE_INARG, LOGLINE(node), start, node->name);
+                LOGVAL(VE_SPEC, 0, "The identifier is not unique");
+                goto error;
+            }
+        }
+    }
+
+    free(uniq_str);
+    return EXIT_SUCCESS;
+
+error:
+
+    free(uniq_s->leafs);
+    free(uniq_str);
+
+    return EXIT_FAILURE;
+}
+
+/*
+ * type: 0 - min, 1 - max
+ */
+static int
+deviate_minmax(struct ly_mnode *target, struct lyxml_elem *node, struct ly_deviate *d, int type)
+{
+    const char *value;
+    char *endptr;
+    unsigned long val;
+    uint32_t *ui32val;
+
+    /* check target node type */
+    if (target->nodetype == LY_NODE_LEAFLIST) {
+        if (type) {
+            ui32val = &((struct ly_mnode_leaflist *)target)->max;
+        } else {
+            ui32val = &((struct ly_mnode_leaflist *)target)->min;
+        }
+    } else if (target->nodetype == LY_NODE_LIST) {
+        if (type) {
+            ui32val = &((struct ly_mnode_list *)target)->max;
+        } else {
+            ui32val = &((struct ly_mnode_list *)target)->min;
+        }
+    } else {
+        LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
+        LOGVAL(VE_SPEC, 0, "Target node does not allow \"%s\" property.", node->name);
+        goto error;
+    }
+
+    GETVAL(value, node, "value");
+    while (isspace(value[0])) {
+        value++;
+    }
+
+    /* convert it to uint32_t */
+    errno = 0;
+    endptr = NULL;
+    val = strtoul(value, &endptr, 10);
+    if (*endptr || value[0] == '-' || errno || val > UINT32_MAX) {
+        LOGVAL(VE_INARG, LOGLINE(node), value, node->name);
+        goto error;
+    }
+    if (type) {
+        d->max = (uint32_t)val;
+    } else {
+        d->min = (uint32_t)val;
+    }
+
+    if (d->mod == LY_DEVIATE_ADD) {
+        /* check that there is no current value */
+        if (*ui32val) {
+            LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
+            LOGVAL(VE_SPEC, 0, "Adding property that already exists.");
+            goto error;
+        }
+    }
+
+    if (d->mod == LY_DEVIATE_DEL) {
+        /* check values */
+        if ((uint32_t)val != *ui32val) {
+            LOGVAL(VE_INARG, LOGLINE(node), value, node->name);
+            LOGVAL(VE_SPEC, 0, "Value differs from the target being deleted.");
+            goto error;
+        }
+        /* remove current min-elements value of the target */
+        *ui32val = 0;
+    } else { /* add (already checked) and replace */
+        /* set new value specified in deviation */
+        *ui32val = (uint32_t)val;
+    }
+
+    return EXIT_SUCCESS;
+
+error:
+
+    return EXIT_FAILURE;
+}
+
+static int
+fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_deviation *dev)
+{
+    const char *value, **stritem;
+    struct lyxml_elem *next, *child, *develem;
+    int c_dev = 0, c_must, c_uniq;
+    int f_min = 0; /* flags */
+    int i, j;
+    struct ly_deviate *d;
+    struct ly_mnode *mnode;
+    struct ly_mnode_choice *choice;
+    struct ly_mnode_leaf *leaf;
+    struct ly_mnode_list *list;
+    struct ly_type *t;
+    uint8_t *trg_must_size;
+    struct ly_restr **trg_must;
+
+    GETVAL(value, yin, "target-node");
+    dev->target_name = lydict_insert(module->ctx, value, 0);
+
+    /* resolve target node */
+    dev->target = resolve_schema_nodeid(dev->target_name, NULL, module, LY_NODE_AUGMENT);
+    if (!dev->target) {
+        LOGVAL(VE_INARG, LOGLINE(yin), dev->target_name, yin->name);
+        goto error;
+    }
+    if (dev->target->module == module) {
+        LOGVAL(VE_SPEC, LOGLINE(yin), "Deviating own module is not allowed.");
+        goto error;
+    }
+    /* mark the target module as deviated */
+    dev->target->module->deviated = 1;
+
+    LY_TREE_FOR_SAFE(yin->child, next, child) {
+        if (!strcmp(child->name, "description")) {
+            if (dev->dsc) {
+                LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+                goto error;
+            }
+            dev->dsc = read_yin_subnode(module->ctx, child, "text");
+            if (!dev->dsc) {
+                goto error;
+            }
+        } else if (!strcmp(child->name, "reference")) {
+            if (dev->ref) {
+                LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+                goto error;
+            }
+            dev->ref = read_yin_subnode(module->ctx, child, "text");
+            if (!dev->ref) {
+                goto error;
+            }
+        } else if (!strcmp(child->name, "deviate")) {
+            c_dev++;
+
+            /* skip lyxml_free_elem() at the end of the loop, node will be
+             * further processed later
+             */
+            continue;
+        } else {
+            LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+            goto error;
+        }
+
+        lyxml_free_elem(module->ctx, child);
+    }
+
+    if (c_dev) {
+        dev->deviate = calloc(c_dev, sizeof *dev->deviate);
+    }
+
+    LY_TREE_FOR(yin->child, develem) {
+        /* init */
+        f_min = 0;
+        c_must = 0;
+        c_uniq = 0;
+
+        /* get deviation type */
+        GETVAL(value, develem, "value");
+        if (!strcmp(value, "not-supported")) {
+            dev->deviate[dev->deviate_size].mod = LY_DEVIATE_NO;
+            /* no property expected in this case */
+            if (develem->child) {
+                LOGVAL(VE_INSTMT, LOGLINE(develem->child), develem->child->name);
+                goto error;
+            }
+
+            /* remove target node */
+            ly_mnode_free(dev->target);
+
+            continue;
+        } else if (!strcmp(value, "add")) {
+            dev->deviate[dev->deviate_size].mod = LY_DEVIATE_ADD;
+        } else if (!strcmp(value, "replace")) {
+            dev->deviate[dev->deviate_size].mod = LY_DEVIATE_RPL;
+        } else if (!strcmp(value, "delete")) {
+            dev->deviate[dev->deviate_size].mod = LY_DEVIATE_DEL;
+        } else {
+            LOGVAL(VE_INARG, LOGLINE(develem), value, develem->name);
+            goto error;
+        }
+        d = &dev->deviate[dev->deviate_size];
+
+        /* process deviation properties */
+        LY_TREE_FOR_SAFE(develem->child, next, child) {
+            if (!strcmp(child->name, "config")) {
+                if (d->flags & LY_NODE_CONFIG_MASK) {
+                    LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+                    goto error;
+                }
+
+                /* for we deviate from RFC 6020 and allow config property even it is/is not
+                 * specified in the target explicitly since config property inherits. So we expect
+                 * that config is specified in every node. But for delete, we check that the value
+                 * is the same as here in deviation
+                 */
+                GETVAL(value, child, "value");
+                if (!strcmp(value, "false")) {
+                    d->flags |= LY_NODE_CONFIG_R;
+                } else if (!strcmp(value, "true")) {
+                    d->flags |= LY_NODE_CONFIG_W;
+                } else {
+                    LOGVAL(VE_INARG, LOGLINE(child), value, child->name);
+                    goto error;
+                }
+
+                if (d->mod == LY_DEVIATE_DEL) {
+                    /* check values */
+                    if ((d->flags & LY_NODE_CONFIG_MASK) != (dev->target->flags & LY_NODE_CONFIG_MASK)) {
+                        LOGVAL(VE_INARG, LOGLINE(child), value, child->name);
+                        LOGVAL(VE_SPEC, 0, "Value differs from the target being deleted.");
+                        goto error;
+                    }
+                    /* remove current config value of the target ... */
+                    dev->target->flags &= ~LY_NODE_CONFIG_MASK;
+
+                    /* ... and inherit config value from the target's parent */
+                    if (dev->target->parent) {
+                        dev->target->flags |= dev->target->parent->flags & LY_NODE_CONFIG_MASK;
+                    } else {
+                        /* default config is true */
+                        dev->target->flags |= LY_NODE_CONFIG_W;
+                    }
+                } else { /* add and replace are the same in this case */
+                    /* remove current config value of the target ... */
+                    dev->target->flags &= ~LY_NODE_CONFIG_MASK;
+
+                    /* ... and replace it with the value specified in deviation */
+                    dev->target->flags |= d->flags & LY_NODE_CONFIG_MASK;
+                }
+            } else if (!strcmp(child->name, "default")) {
+                if (d->dflt) {
+                    LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+                    goto error;
+                }
+                GETVAL(value, child, "value");
+                d->dflt = lydict_insert(module->ctx, value, 0);
+
+                if (dev->target->nodetype == LY_NODE_CHOICE) {
+                    choice = (struct ly_mnode_choice *)dev->target;
+
+                    if (d->mod == LY_DEVIATE_ADD) {
+                        /* check that there is no current value */
+                        if (choice->dflt) {
+                            LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+                            LOGVAL(VE_SPEC, 0, "Adding property that already exists.");
+                            goto error;
+                        }
+                    }
+
+                    mnode = resolve_schema_nodeid(d->dflt, (struct ly_mnode *)choice, choice->module, LY_NODE_CHOICE);
+                    if (d->mod == LY_DEVIATE_DEL) {
+                        if (!choice->dflt || choice->dflt != mnode) {
+                            LOGVAL(VE_INARG, LOGLINE(child), value, child->name);
+                            LOGVAL(VE_SPEC, 0, "Value differs from the target being deleted.");
+                            goto error;
+                        }
+                    } else { /* add (already checked) and replace */
+                        choice->dflt = mnode;
+                        if (!choice->dflt) {
+                            /* default branch not found */
+                            LOGVAL(VE_INARG, LOGLINE(yin), value, "default");
+                            goto error;
+                        }
+                    }
+                } else if (dev->target->nodetype == LY_NODE_LEAF) {
+                    leaf = (struct ly_mnode_leaf *)dev->target;
+
+                    if (d->mod == LY_DEVIATE_ADD) {
+                        /* check that there is no current value */
+                        if (leaf->dflt) {
+                            LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+                            LOGVAL(VE_SPEC, 0, "Adding property that already exists.");
+                            goto error;
+                        }
+                    }
+
+                    if (d->mod == LY_DEVIATE_DEL) {
+                        if (!leaf->dflt || leaf->dflt != d->dflt) {
+                            LOGVAL(VE_INARG, LOGLINE(child), value, child->name);
+                            LOGVAL(VE_SPEC, 0, "Value differs from the target being deleted.");
+                            goto error;
+                        }
+                        /* remove value */
+                        lydict_remove(leaf->module->ctx, leaf->dflt);
+                        leaf->dflt = NULL;
+                    } else { /* add (already checked) and replace */
+                        /* remove value */
+                        lydict_remove(leaf->module->ctx, leaf->dflt);
+
+                        /* set new value */
+                        leaf->dflt = lydict_insert(leaf->module->ctx, d->dflt, 0);
+                    }
+                } else {
+                    /* invalid target for default value */
+                    LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+                    LOGVAL(VE_SPEC, 0, "Target node does not allow \"%s\" property.", child->name);
+                    goto error;
+                }
+            } else if (!strcmp(child->name, "mandatory")) {
+                if (d->flags & LY_NODE_MAND_MASK) {
+                    LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+                    goto error;
+                }
+
+                /* check target node type */
+                if (!(dev->target->nodetype &= (LY_NODE_LEAF | LY_NODE_CHOICE | LY_NODE_ANYXML))) {
+                    LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+                    LOGVAL(VE_SPEC, 0, "Target node does not allow \"%s\" property.", child->name);
+                    goto error;
+                }
+
+                GETVAL(value, child, "value");
+                if (!strcmp(value, "false")) {
+                    d->flags |= LY_NODE_MAND_FALSE;
+                } else if (!strcmp(value, "true")) {
+                    d->flags |= LY_NODE_MAND_TRUE;
+                } else {
+                    LOGVAL(VE_INARG, LOGLINE(child), value, child->name);
+                    goto error;
+                }
+
+                if (d->mod == LY_DEVIATE_ADD) {
+                    /* check that there is no current value */
+                    if (dev->target->flags & LY_NODE_MAND_MASK) {
+                        LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+                        LOGVAL(VE_SPEC, 0, "Adding property that already exists.");
+                        goto error;
+                    }
+                }
+
+                if (d->mod == LY_DEVIATE_DEL) {
+                    /* check values */
+                    if ((d->flags & LY_NODE_MAND_MASK) != (dev->target->flags & LY_NODE_MAND_MASK)) {
+                        LOGVAL(VE_INARG, LOGLINE(child), value, child->name);
+                        LOGVAL(VE_SPEC, 0, "Value differs from the target being deleted.");
+                        goto error;
+                    }
+                    /* remove current mandatory value of the target */
+                    dev->target->flags &= ~LY_NODE_MAND_MASK;
+                } else { /* add (already checked) and replace */
+                    /* remove current mandatory value of the target ... */
+                    dev->target->flags &= ~LY_NODE_MAND_MASK;
+
+                    /* ... and replace it with the value specified in deviation */
+                    dev->target->flags |= d->flags & LY_NODE_MAND_MASK;
+                }
+            } else if (!strcmp(child->name, "min-elements")) {
+                if (f_min) {
+                    LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+                    goto error;
+                }
+                f_min = 1;
+
+                if (deviate_minmax(dev->target, child, d, 0)) {
+                    goto error;
+                }
+            } else if (!strcmp(child->name, "max-elements")) {
+                if (d->max) {
+                    LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+                    goto error;
+                }
+
+                if (deviate_minmax(dev->target, child, d, 1)) {
+                    goto error;
+                }
+            } else if (!strcmp(child->name, "must")) {
+                c_must++;
+
+                /* skip lyxml_free_elem() at the end of the loop, this node will be processed later */
+                continue;
+            } else if (!strcmp(child->name, "type")) {
+                if (d->type) {
+                    LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+                    goto error;
+                }
+
+                /* check target node type */
+                if (dev->target->nodetype == LY_NODE_LEAF) {
+                    t = &((struct ly_mnode_leaf *)dev->target)->type;
+                } else if (dev->target->nodetype == LY_NODE_LEAFLIST) {
+                    t = &((struct ly_mnode_leaflist *)dev->target)->type;
+                } else {
+                    LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+                    LOGVAL(VE_SPEC, 0, "Target node does not allow \"%s\" property.", child->name);
+                    goto error;
+                }
+
+                if (d->mod == LY_DEVIATE_ADD) {
+                    /* not allowed, type is always present at the target */
+                    LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+                    LOGVAL(VE_SPEC, 0, "Adding property that already exists.");
+                    goto error;
+                } else if (d->mod == LY_DEVIATE_DEL) {
+                    /* not allowed, type cannot be deleted from the target */
+                    LOGVAL(VE_INARG, LOGLINE(child), value, child->name);
+                    LOGVAL(VE_SPEC, 0, "Deleteing type from the target is not allowed.");
+                    goto error;
+                }
+
+                /* replace */
+                /* remove current units value of the target ... */
+                ly_type_free(dev->target->module->ctx, t);
+
+                /* ... and replace it with the value specified in deviation */
+                if (fill_yin_type(module, dev->target, child, t)) {
+                    goto error;
+                }
+                d->type = t;
+            } else if (!strcmp(child->name, "unique")) {
+                c_uniq++;
+
+                /* skip lyxml_free_elem() at the end of the loop, this node will be processed later */
+                continue;
+            } else if (!strcmp(child->name, "units")) {
+                if (d->units) {
+                    LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
+                    goto error;
+                }
+
+                /* check target node type */
+                if (dev->target->nodetype == LY_NODE_LEAFLIST) {
+                    stritem = &((struct ly_mnode_leaflist *)dev->target)->units;
+                } else if (dev->target->nodetype == LY_NODE_LEAF) {
+                    stritem = &((struct ly_mnode_leaf *)dev->target)->units;
+                } else {
+                    LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+                    LOGVAL(VE_SPEC, 0, "Target node does not allow \"%s\" property.", child->name);
+                    goto error;
+                }
+
+                /* get units value */
+                GETVAL(value, child, "name");
+                d->units = lydict_insert(module->ctx, value, 0);
+
+                /* apply to target */
+                if (d->mod == LY_DEVIATE_ADD) {
+                    /* check that there is no current value */
+                    if (*stritem) {
+                        LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+                        LOGVAL(VE_SPEC, 0, "Adding property that already exists.");
+                        goto error;
+                    }
+                }
+
+                if (d->mod == LY_DEVIATE_DEL) {
+                    /* check values */
+                    if (*stritem != d->units) {
+                        LOGVAL(VE_INARG, LOGLINE(child), value, child->name);
+                        LOGVAL(VE_SPEC, 0, "Value differs from the target being deleted.");
+                        goto error;
+                    }
+                    /* remove current units value of the target */
+                    lydict_remove(dev->target->module->ctx, *stritem);
+                } else { /* add (already checked) and replace */
+                    /* remove current units value of the target ... */
+                    lydict_remove(dev->target->module->ctx, *stritem);
+
+                    /* ... and replace it with the value specified in deviation */
+                    *stritem = lydict_insert(module->ctx, value, 0);
+                }
+            } else {
+                LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+                goto error;
+            }
+
+            lyxml_free_elem(module->ctx, child);
+        }
+
+        if (c_must) {
+            /* check target node type */
+            switch (dev->target->nodetype) {
+            case LY_NODE_LEAF:
+                trg_must = &((struct ly_mnode_leaf *)dev->target)->must;
+                trg_must_size = &((struct ly_mnode_leaf *)dev->target)->must_size;
+                break;
+            case LY_NODE_CONTAINER:
+                trg_must = &((struct ly_mnode_container *)dev->target)->must;
+                trg_must_size = &((struct ly_mnode_container *)dev->target)->must_size;
+                break;
+            case LY_NODE_LEAFLIST:
+                trg_must = &((struct ly_mnode_leaflist *)dev->target)->must;
+                trg_must_size = &((struct ly_mnode_leaflist *)dev->target)->must_size;
+                break;
+            case LY_NODE_LIST:
+                trg_must = &((struct ly_mnode_list *)dev->target)->must;
+                trg_must_size = &((struct ly_mnode_list *)dev->target)->must_size;
+                break;
+            case LY_NODE_ANYXML:
+                trg_must = &((struct ly_mnode_anyxml *)dev->target)->must;
+                trg_must_size = &((struct ly_mnode_anyxml *)dev->target)->must_size;
+                break;
+            default:
+                LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+                LOGVAL(VE_SPEC, 0, "Target node does not allow \"%s\" property.", child->name);
+                goto error;
+            }
+
+            if (d->mod == LY_DEVIATE_RPL) {
+                /* remove target's musts and allocate new array for it */
+                if (!*trg_must) {
+                    LOGVAL(VE_INARG, LOGLINE(develem), "replace", "deviate");
+                    LOGVAL(VE_SPEC, 0, "Property \"must\" to replace does not exists in target.");
+                    goto error;
+                }
+
+                for (i = 0; i < list->must_size; i++) {
+                    ly_restr_free(dev->target->module->ctx, &(*trg_must[i]));
+                }
+                free(*trg_must);
+                *trg_must = d->must = calloc(c_must, sizeof *d->must);
+                d->must_size = c_must;
+                *trg_must_size = 0;
+            } else if (d->mod == LY_DEVIATE_ADD) {
+                /* reallocate the must array of the target */
+                d->must = realloc(*trg_must, (c_must + *trg_must_size) * sizeof *d->must);
+                *trg_must = d->must;
+                d->must = &(*trg_must[*trg_must_size]);
+                d->must_size = c_must;
+            } else { /* LY_DEVIATE_DEL */
+                d->must = calloc(c_must, sizeof *d->must);
+            }
+        }
+        if (c_uniq) {
+            /* check target node type */
+            if (dev->target->nodetype != LY_NODE_LIST) {
+                LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
+                LOGVAL(VE_SPEC, 0, "Target node does not allow \"%s\" property.", child->name);
+                goto error;
+            }
+
+            list = (struct ly_mnode_list *)dev->target;
+            if (d->mod == LY_DEVIATE_RPL) {
+                /* remove target's unique and allocate new array for it */
+                if (!list->unique) {
+                    LOGVAL(VE_INARG, LOGLINE(develem), "replace", "deviate");
+                    LOGVAL(VE_SPEC, 0, "Property \"unique\" to replace does not exists in target.");
+                    goto error;
+                }
+
+                for (i = 0; i < list->unique_size; i++) {
+                    free(list->unique[i].leafs);
+                }
+                free(list->unique);
+                list->unique = d->unique = calloc(c_uniq, sizeof *d->unique);
+                d->unique_size = c_uniq;
+                list->unique_size = 0;
+            } else if (d->mod == LY_DEVIATE_ADD) {
+                /* reallocate the unique array of the target */
+                d->unique = realloc(list->unique, (c_uniq + list->unique_size) * sizeof *d->unique);
+                list->unique = d->unique;
+                d->unique = &list->unique[list->unique_size];
+                d->unique_size = c_uniq;
+            } else { /* LY_DEVIATE_DEL */
+                d->unique = calloc(c_uniq, sizeof *d->unique);
+            }
+        }
+
+        /* process deviation properties with 0..n cardinality */
+        LY_TREE_FOR_SAFE(develem->child, next, child) {
+            if (!strcmp(child->name, "must")) {
+                if (d->mod == LY_DEVIATE_DEL) {
+                    if (fill_yin_must(module, child, &d->must[d->must_size])) {
+                        goto error;
+                    }
+
+                    /* find must to delete, we are ok with just matching conditions */
+                    for (i = 0; i < *trg_must_size; i++) {
+                        if (d->must[d->must_size].expr == (*trg_must)[i].expr) {
+                            /* we have a match, free the must structure ... */
+                            ly_restr_free(dev->target->module->ctx, &(*trg_must[i]));
+                            /* ... and maintain the array */
+                            (*trg_must_size)--;
+                            if (i != *trg_must_size) {
+                                (*trg_must)[i].expr = (*trg_must)[*trg_must_size].expr;
+                                (*trg_must)[i].dsc = (*trg_must)[*trg_must_size].dsc;
+                                (*trg_must)[i].ref = (*trg_must)[*trg_must_size].ref;
+                                (*trg_must)[i].eapptag = (*trg_must)[*trg_must_size].eapptag;
+                                (*trg_must)[i].emsg = (*trg_must)[*trg_must_size].emsg;
+                            }
+                            if (!(*trg_must_size)) {
+                                free(*trg_must);
+                                *trg_must = NULL;
+                            } else {
+                                (*trg_must)[*trg_must_size].expr = NULL;
+                                (*trg_must)[*trg_must_size].dsc = NULL;
+                                (*trg_must)[*trg_must_size].ref = NULL;
+                                (*trg_must)[*trg_must_size].eapptag = NULL;
+                                (*trg_must)[*trg_must_size].emsg = NULL;
+                            }
+
+                            i = -1; /* set match flag */
+                            break;
+                        }
+                    }
+                    d->must_size++;
+                    if (i != -1) {
+                        /* no match found */
+                        LOGVAL(VE_INARG, LOGLINE(child), d->must[d->must_size - 1].expr, child->name);
+                        LOGVAL(VE_SPEC, 0, "Value does not match any must from the target.");
+                        goto error;
+                    }
+                } else { /* replace or add */
+                    if (fill_yin_must(dev->target->module, child, &((*trg_must)[*trg_must_size]))) {
+                        goto error;
+                    }
+                    (*trg_must_size)++;
+                }
+            } else if (!strcmp(child->name, "unique")) {
+                if (d->mod == LY_DEVIATE_DEL) {
+                    if (parse_unique(dev->target, child, &d->unique[d->unique_size])) {
+                        goto error;
+                    }
+
+                    /* find unique structures to delete */
+                    for (i = 0; i < list->unique_size; i++) {
+                        if (list->unique[i].leafs_size != d->unique[d->unique_size].leafs_size) {
+                            continue;
+                        }
+
+                        for (j = 0; j < d->unique[d->unique_size].leafs_size; j++) {
+                            if (list->unique[i].leafs[j] != d->unique[d->unique_size].leafs[j]) {
+                                break;
+                            }
+                        }
+
+                        if (j == d->unique[d->unique_size].leafs_size) {
+                            /* we have a match, free the unique structure ... */
+                            free(list->unique[i].leafs);
+                            /* ... and maintain the array */
+                            list->unique_size--;
+                            if (i != list->unique_size) {
+                                list->unique[i].leafs_size = list->unique[list->unique_size].leafs_size;
+                                list->unique[i].leafs = list->unique[list->unique_size].leafs;
+                            }
+
+                            if (!list->unique_size) {
+                                free(list->unique);
+                                list->unique = NULL;
+                            } else {
+                                list->unique[list->unique_size].leafs_size = 0;
+                                list->unique[list->unique_size].leafs = NULL;
+                            }
+
+                            i = -1; /* set match flag */
+                            break;
+                        }
+                    }
+
+                    d->unique_size++;
+                    if (i != -1) {
+                        /* no match found */
+                        LOGVAL(VE_INARG, LOGLINE(child), lyxml_get_attr(child, "tag", NULL), child->name);
+                        LOGVAL(VE_SPEC, 0, "Value differs from the target being deleted.");
+                        goto error;
+                    }
+                } else { /* replace or add */
+                    if (parse_unique(dev->target, child, &list->unique[list->unique_size])) {
+                        goto error;
+                    }
+                    list->unique_size++;
+                }
+            }
+            lyxml_free_elem(module->ctx, child);
+        }
+    }
+
+    dev->deviate_size++;
+    return EXIT_SUCCESS;
+
+error:
+
+    if (dev->deviate) {
+        for (i = 0; i < dev->deviate_size; i++) {
+            lydict_remove(module->ctx, dev->deviate[i].dflt);
+            lydict_remove(module->ctx, dev->deviate[i].units);
+
+            if (dev->deviate[i].mod == LY_DEVIATE_DEL) {
+                for (j = 0; j < dev->deviate[i].must_size; j++) {
+                    ly_restr_free(module->ctx, &dev->deviate[i].must[j]);
+                }
+                free(dev->deviate[i].must);
+
+                for (j = 0; j < dev->deviate[i].unique_size; j++) {
+                    free(dev->deviate[i].unique[j].leafs);
+                }
+                free(dev->deviate[i].unique);
+            }
+        }
+        free(dev->deviate);
+    }
+
+    return EXIT_FAILURE;
+}
+
+static int
 fill_yin_augment(struct ly_module *module, struct ly_mnode *parent, struct lyxml_elem *yin, struct ly_augment *aug)
 {
     const char *value;
@@ -2212,7 +2969,9 @@ read_yin_choice(struct ly_module *module,
             GETVAL(value, sub, "value");
             if (!strcmp(value, "true")) {
                 choice->flags |= LY_NODE_MAND_TRUE;
-            } else if (strcmp(value, "false")) {
+            } else if (!strcmp(value, "false")) {
+                choice->flags |= LY_NODE_MAND_FALSE;
+            } else {
                 LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
                 goto error;
             }                   /* else false is the default value, so we can ignore it */
@@ -2325,7 +3084,9 @@ read_yin_anyxml(struct ly_module *module, struct ly_mnode *parent, struct lyxml_
             GETVAL(value, sub, "value");
             if (!strcmp(value, "true")) {
                 anyxml->flags |= LY_NODE_MAND_TRUE;
-            } else if (strcmp(value, "false")) {
+            } else if (!strcmp(value, "false")) {
+                anyxml->flags |= LY_NODE_MAND_FALSE;
+            } else {
                 LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
                 goto error;
             }
@@ -2450,7 +3211,9 @@ read_yin_leaf(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
             GETVAL(value, sub, "value");
             if (!strcmp(value, "true")) {
                 leaf->flags |= LY_NODE_MAND_TRUE;
-            } else if (strcmp(value, "false")) {
+            } else if (!strcmp(value, "false")) {
+                leaf->flags |= LY_NODE_MAND_FALSE;
+            } else {
                 LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
                 goto error;
             }                   /* else false is the default value, so we can ignore it */
@@ -2717,13 +3480,12 @@ read_yin_list(struct ly_module *module,
 {
     struct ly_mnode *retval, *mnode;
     struct ly_mnode_list *list;
-    struct ly_unique *uniq_s;
     struct lyxml_elem *sub, *next, root, uniq;
     int i, r;
     size_t len;
     int c_tpdf = 0, c_must = 0, c_uniq = 0, c_ftrs = 0;
     int f_ordr = 0, f_max = 0, f_min = 0;
-    const char *key_str = NULL, *uniq_str, *value;
+    const char *key_str = NULL, *value;
     char *auxs;
     unsigned long val;
 
@@ -2985,41 +3747,8 @@ read_yin_list(struct ly_module *module,
         list->unique = calloc(c_uniq, sizeof *list->unique);
     }
     LY_TREE_FOR_SAFE(uniq.child, next, sub) {
-        /* count the number of unique values */
-        GETVAL(value, sub, "tag");
-        uniq_str = value;
-        uniq_s = &list->unique[list->unique_size];
-        while ((value = strpbrk(value, " \t\n"))) {
-            uniq_s->leafs_size++;
-            while (isspace(*value)) {
-                value++;
-            }
-        }
-        uniq_s->leafs_size++;
-        uniq_s->leafs = calloc(uniq_s->leafs_size, sizeof *uniq_s->leafs);
-        list->unique_size++;
-
-        /* interconnect unique values with the leafs */
-        for (i = 0; i < uniq_s->leafs_size; i++) {
-            if ((value = strpbrk(uniq_str, " \t\n"))) {
-                len = value - uniq_str;
-                while (isspace(*value)) {
-                    value++;
-                }
-            } else {
-                len = strlen(uniq_str);
-            }
-
-            uniq_s->leafs[i] = find_leaf(retval, uniq_str, len);
-            if (check_key(uniq_s->leafs[i], list->flags, uniq_s->leafs, i, LOGLINE(yin), uniq_str, len)) {
-                goto error;
-            }
-
-            /* prepare for next iteration */
-            while (value && isspace(*value)) {
-                value++;
-            }
-            uniq_str = value;
+        if (parse_unique(retval, sub, &list->unique[list->unique_size++])) {
+            goto error;
         }
 
         lyxml_free_elem(module->ctx, sub);
@@ -3891,13 +4620,13 @@ resolve_uses(struct ly_mnode_uses *uses, unsigned int line)
         }
 
         /* mandatory on leaf, anyxml or choice */
-        if (mnode->nodetype & (LY_NODE_LEAF | LY_NODE_ANYXML | LY_NODE_CHOICE)) {
-            if (rfn->flags & LY_NODE_MAND_FALSE) {
-                /* erase mandatory true flag, we don't use false flag in schema nodes */
-                mnode->flags &= ~LY_NODE_MAND_TRUE;
-            } else if (rfn->flags & LY_NODE_MAND_TRUE) {
-                /* set mandatory true flag */
-                mnode->flags |= LY_NODE_MAND_TRUE;
+        if (rfn->flags & LY_NODE_MAND_MASK) {
+            if (mnode->nodetype & (LY_NODE_LEAF | LY_NODE_ANYXML | LY_NODE_CHOICE)) {
+                /* remove current value */
+                mnode->flags &= ~LY_NODE_MAND_MASK;
+
+                /* set new value */
+                mnode->flags |= (rfn->flags & LY_NODE_MAND_MASK);
             }
         }
 
@@ -4103,7 +4832,7 @@ read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
     int i;
     int belongsto_flag = 0;
     /* counters */
-    int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0, c_inc = 0, c_aug = 0, c_ftrs = 0;
+    int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0, c_inc = 0, c_aug = 0, c_ftrs = 0, c_dev = 0;
 
     /* init */
     memset(&root, 0, sizeof root);
@@ -4182,6 +4911,8 @@ read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 
             /* we are done with belongs-to */
             lyxml_free_elem(ctx, node);
+
+            /* counters (statements with n..1 cardinality) */
         } else if (!strcmp(node->name, "import")) {
             c_imp++;
         } else if (!strcmp(node->name, "revision")) {
@@ -4196,6 +4927,8 @@ read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
             c_aug++;
         } else if (!strcmp(node->name, "feature")) {
             c_ftrs++;
+        } else if (!strcmp(node->name, "deviation")) {
+            c_dev++;
 
             /* data statements */
         } else if (!strcmp(node->name, "container") ||
@@ -4318,6 +5051,9 @@ read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
     }
     if (c_ftrs) {
         module->features = calloc(c_ftrs, sizeof *module->features);
+    }
+    if (c_dev) {
+        module->deviation = calloc(c_dev, sizeof *module->deviation);
     }
 
     /* middle part - process nodes with cardinality of 0..n except the data nodes */
@@ -4443,6 +5179,13 @@ read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 
             /* node is reconnected into the augment, so we have to skip its free at the end of the loop */
             continue;
+        } else if (!strcmp(node->name, "deviation")) {
+            r = fill_yin_deviation(module, node, &module->deviation[module->deviation_size]);
+            module->deviation_size++;
+
+            if (r) {
+                goto error;
+            }
         }
 
         lyxml_free_elem(ctx, node);

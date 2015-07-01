@@ -1090,6 +1090,34 @@ ly_feature_free(struct ly_ctx *ctx, struct ly_feature *f)
 }
 
 void
+ly_deviation_free(struct ly_ctx *ctx, struct ly_deviation *dev)
+{
+    int i, j;
+
+    lydict_remove(ctx, dev->target_name);
+    lydict_remove(ctx, dev->dsc);
+    lydict_remove(ctx, dev->ref);
+
+    for (i = 0; i < dev->deviate_size; i++) {
+        lydict_remove(ctx, dev->deviate[i].dflt);
+        lydict_remove(ctx, dev->deviate[i].units);
+
+        if (dev->deviate[i].mod == LY_DEVIATE_DEL) {
+            for (j = 0; j < dev->deviate[i].must_size; j++) {
+                ly_restr_free(ctx, &dev->deviate[i].must[j]);
+            }
+            free(dev->deviate[i].must);
+
+            for (j = 0; j < dev->deviate[i].unique_size; j++) {
+                free(dev->deviate[j].unique[j].leafs);
+            }
+            free(dev->deviate[i].unique);
+        }
+    }
+    free(dev->deviate);
+}
+
+void
 ly_augment_free(struct ly_ctx *ctx, struct ly_augment *aug)
 {
     lydict_remove(ctx, aug->target_name);
@@ -1241,37 +1269,49 @@ module_free_common(struct ly_module *module)
     lydict_remove(ctx, module->org);
     lydict_remove(ctx, module->contact);
 
+    /* revisions */
     for (i = 0; i < module->rev_size; i++) {
         lydict_remove(ctx, module->rev[i].dsc);
         lydict_remove(ctx, module->rev[i].ref);
     }
     free(module->rev);
 
+    /* identities */
     for (i = 0; i < module->ident_size; i++) {
         ly_ident_free(ctx, &module->ident[i]);
     }
     module->ident_size = 0;
     free(module->ident);
 
+    /* typedefs */
     for (i = 0; i < module->tpdf_size; i++) {
         ly_tpdf_free(ctx, &module->tpdf[i]);
     }
     free(module->tpdf);
 
+    /* include */
     for (i = 0; i < module->inc_size; i++) {
         ly_submodule_free(module->inc[i].submodule);
     }
     free(module->inc);
 
+    /* augment */
     for (i = 0; i < module->augment_size; i++) {
         ly_augment_free(ctx, &module->augment[i]);
     }
     free(module->augment);
 
+    /* features */
     for (i = 0; i < module->features_size; i++) {
         ly_feature_free(ctx, &module->features[i]);
     }
     free(module->features);
+
+    /* deviations */
+    for (i = 0; i < module->deviation_size; i++) {
+        ly_deviation_free(ctx, &module->deviation[i]);
+    }
+    free(module->deviation);
 
     lydict_remove(ctx, module->name);
 }
