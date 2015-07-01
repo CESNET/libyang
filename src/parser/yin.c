@@ -1472,7 +1472,7 @@ static int
 parse_unique(struct ly_mnode *parent, struct lyxml_elem *node, struct ly_unique *uniq_s)
 {
     const char *value;
-    char *uniq_str, *uniq_val, *start;
+    char *uniq_str = NULL, *uniq_val, *start;
     int i, j;
 
     /* count the number of unique values */
