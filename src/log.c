@@ -94,7 +94,7 @@ ly_vlog(enum LY_VERR code, unsigned int line, ...)
 
     va_start(ap, line);
     if (code == VE_SPEC) {
-    fmt = va_arg(ap, char *);
+        fmt = va_arg(ap, char *);
         log_vprintf(LY_LLERR, fmt, ap);
     } else {
         log_vprintf(LY_LLERR, verrs[code], ap);
