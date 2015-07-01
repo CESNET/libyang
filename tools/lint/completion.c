@@ -30,6 +30,9 @@
 
 #include "commands.h"
 #include "../../linenoise/linenoise.h"
+#include "../../src/libyang.h"
+
+extern struct ly_ctx *ctx;
 
 void
 get_cmd_completion(const char *hint, char ***matches, unsigned int *match_count)
@@ -98,10 +101,52 @@ get_path_completion(const char *hint, char ***matches, unsigned int *match_count
 void
 get_print_completion(const char *hint, char ***matches, unsigned int *match_count)
 {
-    /* TODO */
-    (void)hint;
-    (void)matches;
-    (void)match_count;
+    int i;
+    const char *ptr;
+    char **names;
+
+    *match_count = 0;
+    *matches = NULL;
+
+    /* skip the print command */
+    ptr = strchr(hint, ' ');
+    while (*ptr == ' ') {
+        ++ptr;
+    }
+
+    /* options - skip them */
+    while (*ptr == '-') {
+        ptr = strchr(ptr, ' ');
+        /* option is last - no hint */
+        if (!ptr) {
+            return;
+        }
+        while (*ptr == ' ') {
+            ++ptr;
+        }
+        ptr = strchr(ptr, ' ');
+        /* option argument is last - no hint */
+        if (!ptr) {
+            return;
+        }
+        while (*ptr == ' ') {
+            ++ptr;
+        }
+    };
+
+    /* now ptr points to the model name hint, can be just "" */
+    names = ly_ctx_get_module_names(ctx);
+    for (i = 0; names[i]; ++i) {
+        if (!strncmp(ptr, names[i], strlen(ptr))) {
+            ++(*match_count);
+            *matches = realloc(*matches, *match_count * sizeof **matches);
+            (*matches)[*match_count-1] = malloc((ptr-hint)+strlen(names[i])+1);
+            strncpy((*matches)[*match_count-1], hint, ptr-hint);
+            strcpy((*matches)[*match_count-1]+(ptr-hint), names[i]);
+        }
+        free(names[i]);
+    }
+    free(names);
 }
 
 void
