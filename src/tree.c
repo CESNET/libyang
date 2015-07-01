@@ -314,10 +314,10 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
         found = 0;
 
         /* it is not the local prefix */
-        if (prefix && strncmp(prefix, mod->prefix, pref_len)) {
+        if (prefix && ((pref_len != strlen(mod->prefix)) || strncmp(prefix, mod->prefix, pref_len))) {
             /* check imports */
             for (i = 0; i < mod->imp_size; i++) {
-                if (!strncmp(mod->imp[i].prefix, prefix, pref_len)) {
+                if ((pref_len == strlen(mod->imp[i].prefix)) && !strncmp(mod->imp[i].prefix, prefix, pref_len)) {
                     mod = mod->imp[i].module;
                     start = mod->data;
                     found = 1;
@@ -330,7 +330,8 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
                 for (i = 0; i < mod->inc_size; i++) {
                     sub_mod = mod->inc[i].submodule;
                     for (j = 0; j < sub_mod->imp_size; j++) {
-                        if (!strncmp(sub_mod->imp[j].prefix, prefix, pref_len)) {
+                        if ((pref_len == strlen(sub_mod->imp[j].prefix))
+                                && !strncmp(sub_mod->imp[j].prefix, prefix, pref_len)) {
                             mod = sub_mod->imp[j].module;
                             start = mod->data;
                             found = 1;
@@ -379,8 +380,8 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
                 if (!strncmp(name, sibling->name, nam_len)
                         && ((sibling->name[nam_len] == '/') || (sibling->name[nam_len] == '\0'))) {
                     /* prefix check, it's not our own */
-                    if (prefix && strncmp(sibling->module->prefix, prefix, pref_len)
-                            && (sibling->module->prefix[pref_len] == '\0')) {
+                    if (prefix && ((pref_len != strlen(sibling->module->prefix))
+                            || strncmp(prefix, sibling->module->prefix, pref_len))) {
 
                         /* in choice and the prefix is not ours, error for sure */
                         if (node_type == LY_NODE_CHOICE) {
@@ -389,8 +390,8 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
 
                         /* import prefix check */
                         for (i = 0; i < sibling->module->imp_size; i++) {
-                            if (!strncmp(sibling->module->imp[i].prefix, prefix, pref_len)
-                                    && (sibling->module->imp[i].prefix[pref_len] == '\0')
+                            if ((pref_len == strlen(sibling->module->imp[i].prefix))
+                                    && !strncmp(sibling->module->imp[i].prefix, prefix, pref_len)
                                     && (sibling->module->imp[i].module == sibling->module)) {
                                 break;
                             }
@@ -402,8 +403,8 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
                             for (i = 0; i < sibling->module->inc_size; i++) {
                                 sub_mod = sibling->module->inc[i].submodule;
                                 for (j = 0; j < sub_mod->imp_size; j++) {
-                                    if (!strncmp(sub_mod->imp[j].prefix, prefix, pref_len)
-                                            && (sub_mod->imp[j].prefix[pref_len] == '\0')
+                                    if ((pref_len == strlen(sub_mod->imp[j].prefix))
+                                            && !strncmp(sub_mod->imp[j].prefix, prefix, pref_len)
                                             && (sub_mod->imp[j].module == sibling->module)) {
                                         break;
                                     }
