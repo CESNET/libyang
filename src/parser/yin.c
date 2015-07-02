@@ -1254,8 +1254,47 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         break;
 
     case LY_TYPE_UNION:
-        /* TODO type, 7.4
-         * - 1..n, nerekurzivni, resp rekurzivni pro union ale bez vazby na predky, nesmi byt empty nebo leafref */
+        /* RFC 6020 7.4 - type */
+        /* count number of types in union */
+        i = 0;
+        LY_TREE_FOR(yin->child, node) {
+            if (!strcmp(node->name, "type")) {
+                i++;
+            } else {
+                LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
+                goto error;
+            }
+        }
+
+        if (!i) {
+            if (type->der->type.der) {
+                /* this is just a derived type with no base specified/required */
+                break;
+            }
+            LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "type", "(union) type");
+            goto error;
+        }
+
+        /* allocate array for union's types ... */
+        type->info.uni.type = calloc(i, sizeof *type->info.uni.type);
+        /* ... and fill the structures */
+        LY_TREE_FOR_SAFE(yin->child, next, node) {
+            if (fill_yin_type(module, parent, node, &type->info.uni.type[type->info.uni.count])) {
+                goto error;
+            }
+            type->info.uni.count++;
+
+            /* union's type cannot be empty or leafref */
+            if (type->info.uni.type[type->info.uni.count - 1].base == LY_TYPE_EMPTY) {
+                LOGVAL(VE_INARG, LOGLINE(node), "empty", node->name);
+                goto error;
+            } else if (type->info.uni.type[type->info.uni.count - 1].base == LY_TYPE_LEAFREF) {
+                LOGVAL(VE_INARG, LOGLINE(node), "leafref", node->name);
+                goto error;
+            }
+
+            lyxml_free_elem(module->ctx, node);
+        }
         break;
 
     default:
@@ -1624,7 +1663,7 @@ fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_d
     struct ly_mnode_leaf *leaf = NULL;
     struct ly_mnode_list *list = NULL;
     struct ly_type *t = NULL;
-    uint8_t *trg_must_size = 0;
+    uint8_t *trg_must_size = NULL;
     struct ly_restr **trg_must = NULL;
 
     GETVAL(value, yin, "target-node");

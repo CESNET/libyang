@@ -727,6 +727,16 @@ ly_type_dup(struct ly_ctx *ctx, struct ly_type *new, struct ly_type *old)
         new->info.str.patterns = ly_restr_dup(ctx, old->info.str.patterns, old->info.str.pat_count);
         break;
 
+    case LY_TYPE_UNION:
+        new->info.uni.count = old->info.uni.count;
+        if (new->info.uni.count) {
+            new->info.uni.type = calloc(new->info.uni.count, sizeof *new->info.uni.type);
+            for (i = 0; i < new->info.uni.count; i++) {
+                ly_type_dup(ctx, &(new->info.uni.type[i]), &(old->info.uni.type[i]));
+            }
+        }
+        break;
+
     default:
         /* TODO - remove default to make sure that all types are covered */
         break;
@@ -773,6 +783,10 @@ ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
         free(type->info.enums.list);
         break;
 
+    case LY_TYPE_IDENT:
+        /* nothing to do */
+        break;
+
     case LY_TYPE_INT8:
     case LY_TYPE_INT16:
     case LY_TYPE_INT32:
@@ -798,8 +812,11 @@ ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
         free(type->info.str.patterns);
         break;
 
-    case LY_TYPE_IDENT:
-        /* nothing to do */
+    case LY_TYPE_UNION:
+        for (i = 0; i < type->info.uni.count; i++) {
+            ly_type_free(ctx, &type->info.uni.type[i]);
+        }
+        free(type->info.uni.type);
         break;
 
     default:
