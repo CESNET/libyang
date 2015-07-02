@@ -4703,7 +4703,7 @@ resolve_augment(struct ly_augment *aug, struct ly_mnode *parent, struct ly_modul
     /* resolve target node */
     aug->target = resolve_schema_nodeid(aug->target_name, parent, module, LY_NODE_AUGMENT);
     if (!aug->target) {
-        LOGVAL(VE_INARG, line, aug->target, "uses");
+        LOGVAL(VE_INARG, line, aug->target_name, "uses");
         return EXIT_FAILURE;
     }
 
