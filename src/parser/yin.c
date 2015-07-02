@@ -1697,10 +1697,22 @@ fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_d
                 goto error;
             }
 
+            /* and neither any other deviate statement is expected,
+             * not-supported deviation must be the only deviation of the target
+             */
+            if (dev->deviate_size || develem->next) {
+                LOGVAL(VE_INARG, LOGLINE(develem), value, develem->name);
+                LOGVAL(VE_SPEC, 0, "\"not-supported\" deviation cannot be combined with any other deviation.");
+                goto error;
+            }
+
+
             /* remove target node */
             ly_mnode_free(dev->target);
+            dev->target = NULL;
 
-            continue;
+            dev->deviate_size = 1;
+            return EXIT_SUCCESS;
         } else if (!strcmp(value, "add")) {
             dev->deviate[dev->deviate_size].mod = LY_DEVIATE_ADD;
         } else if (!strcmp(value, "replace")) {
@@ -2195,9 +2207,10 @@ fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_d
             }
             lyxml_free_elem(module->ctx, child);
         }
+
+        dev->deviate_size++;
     }
 
-    dev->deviate_size++;
     return EXIT_SUCCESS;
 
 error:
