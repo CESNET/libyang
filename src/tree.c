@@ -262,12 +262,52 @@ ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
     return EXIT_SUCCESS;
 }
 
+static struct ly_module *
+find_import_in_includes_recursive(struct ly_module *mod, const char *prefix, uint32_t pref_len)
+{
+    int i, j;
+    struct ly_submodule *sub_mod;
+    struct ly_module *ret;
+
+    for (i = 0; i < mod->inc_size; i++) {
+        sub_mod = mod->inc[i].submodule;
+        for (j = 0; j < sub_mod->imp_size; j++) {
+            if ((pref_len == strlen(sub_mod->imp[j].prefix))
+                    && !strncmp(sub_mod->imp[j].prefix, prefix, pref_len)) {
+                return sub_mod->imp[j].module;
+            }
+        }
+    }
+
+    for (i = 0; i < mod->inc_size; i++) {
+        ret = find_import_in_includes_recursive((struct ly_module *)mod->inc[i].submodule, prefix, pref_len);
+        if (ret) {
+            return ret;
+        }
+    }
+
+    return NULL;
+}
+
+static struct ly_module *
+find_import_in_module(struct ly_module *mod, const char *prefix, uint32_t pref_len)
+{
+    int i;
+
+    for (i = 0; i < mod->imp_size; i++) {
+        if ((pref_len == strlen(mod->imp[i].prefix)) && !strncmp(mod->imp[i].prefix, prefix, pref_len)) {
+            return mod->imp[i].module;
+        }
+    }
+
+    return find_import_in_includes_recursive(mod, prefix, pref_len);
+}
+
 /*
  * id - schema-nodeid
  *
  * node_type - LY_NODE_AUGMENT (searches also RPCs and notifications)
- *           - LY_NODE_USES    (the caller is actually either an augment or refine in a uses, only
- *                              descendant-schema-nodeid allowed, ".." not allowed)
+ *           - LY_NODE_USES    (only descendant-schema-nodeid allowed, ".." not allowed)
  *           - LY_NODE_CHOICE  (search only start->child, only descendant-schema-nodeid allowed)
  */
 struct ly_mnode *
@@ -275,13 +315,12 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
 {
     const char *name, *prefix, *ptr;
     struct ly_mnode *sibling;
-    struct ly_submodule *sub_mod;
-    uint32_t i, j, nam_len, pref_len;
-    /* 0 - in module, 1 - in 1st submodule, 2 - in second submodule, ... */
-    uint8_t in_submod;
-    /* 0 - in data, 1 - in RPCs, 2 - in notifications */
-    uint8_t in_mod_part;
-    int found;
+    uint32_t nam_len, pref_len;
+    struct ly_module *prefix_mod, *start_mod;
+    /* 0 - in module, 1 - in 1st submodule, 2 - in 2nd submodule, ... */
+    uint8_t in_submod = 0;
+    /* 0 - in data, 1 - in RPCs, 2 - in notifications (relevant only with LY_NODE_AUGMENT) */
+    uint8_t in_mod_part = 0;
 
     assert(mod);
     assert(id);
@@ -299,7 +338,7 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
     pref_len = (ptr ? (unsigned)(ptr-prefix) : strlen(prefix));
 
     ptr = strnchr(prefix, ':', pref_len);
-    /* there is prefix */
+    /* there is a prefix */
     if (ptr) {
         nam_len = (pref_len-(ptr-prefix))-1;
         pref_len = ptr-prefix;
@@ -314,59 +353,22 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
 
     /* absolute-schema-nodeid */
     if (id[0] == '/') {
-        start = NULL;
-        found = 0;
-
-        /* it is not the local prefix */
-        if (prefix && ((pref_len != strlen(mod->prefix)) || strncmp(prefix, mod->prefix, pref_len))) {
-            /* check imports */
-            for (i = 0; i < mod->imp_size; i++) {
-                if ((pref_len == strlen(mod->imp[i].prefix)) && !strncmp(mod->imp[i].prefix, prefix, pref_len)) {
-                    mod = mod->imp[i].module;
-                    start = mod->data;
-                    found = 1;
-                    break;
-                }
-            }
-
-            /* no match - check include imports */
-            if (!found) {
-                for (i = 0; i < mod->inc_size; i++) {
-                    sub_mod = mod->inc[i].submodule;
-                    for (j = 0; j < sub_mod->imp_size; j++) {
-                        if ((pref_len == strlen(sub_mod->imp[j].prefix))
-                                && !strncmp(sub_mod->imp[j].prefix, prefix, pref_len)) {
-                            mod = sub_mod->imp[j].module;
-                            start = mod->data;
-                            found = 1;
-                            break;
-                        }
-                    }
-
-                    if (found) {
-                        break;
-                    }
-                }
-            }
-
-            /* no match */
-            if (!found) {
+        if (prefix) {
+            start_mod = find_import_in_module(mod, prefix, pref_len);
+            if (!start_mod) {
                 return NULL;
             }
-
-        /* it is likely the local prefix (checked later) */
+            start = start_mod->data;
         } else {
             start = mod->data;
+            start_mod = mod;
         }
-
     /* descendant-schema-nodeid */
     } else {
         assert(start);
         start = start->child;
+        start_mod = start->module;
     }
-
-    in_submod = 0;
-    in_mod_part = 0;
 
     while (1) {
         if (!strcmp(name, ".")) {
@@ -380,49 +382,20 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
         } else {
             sibling = NULL;
             LY_TREE_FOR(start, sibling) {
-                /* match */
+                /* name match */
                 if (!strncmp(name, sibling->name, nam_len)
                         && ((sibling->name[nam_len] == '/') || (sibling->name[nam_len] == '\0'))) {
-                    /* prefix check, it's not our own */
-                    if (prefix && ((pref_len != strlen(sibling->module->prefix))
-                            || strncmp(prefix, sibling->module->prefix, pref_len))) {
 
-                        /* in choice and the prefix is not ours, error for sure */
-                        if (node_type == LY_NODE_CHOICE) {
+                    /* prefix match check */
+                    if (prefix) {
+
+                        prefix_mod = find_import_in_module(mod, prefix, pref_len);
+                        if (!prefix_mod) {
                             return NULL;
                         }
 
-                        /* import prefix check */
-                        for (i = 0; i < sibling->module->imp_size; i++) {
-                            if ((pref_len == strlen(sibling->module->imp[i].prefix))
-                                    && !strncmp(sibling->module->imp[i].prefix, prefix, pref_len)
-                                    && (sibling->module->imp[i].module == sibling->module)) {
-                                break;
-                            }
-                        }
-
-                        /* import prefix check failed */
-                        if (i == sibling->module->imp_size) {
-                            /* include import prefix check */
-                            for (i = 0; i < sibling->module->inc_size; i++) {
-                                sub_mod = sibling->module->inc[i].submodule;
-                                for (j = 0; j < sub_mod->imp_size; j++) {
-                                    if ((pref_len == strlen(sub_mod->imp[j].prefix))
-                                            && !strncmp(sub_mod->imp[j].prefix, prefix, pref_len)
-                                            && (sub_mod->imp[j].module == sibling->module)) {
-                                        break;
-                                    }
-                                }
-
-                                if (j < sub_mod->imp_size) {
-                                    break;
-                                }
-                            }
-
-                            /* include import prefix check failed too - definite fail */
-                            if (i == sibling->module->inc_size) {
-                                return NULL;
-                            }
+                        if (prefix_mod != sibling->module) {
+                            continue;
                         }
                     }
 
@@ -454,9 +427,9 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
                     /* we have searched all the data nodes */
                     if (in_mod_part == 0) {
                         if (!in_submod) {
-                            start = mod->rpc;
+                            start = start_mod->rpc;
                         } else {
-                            start = mod->inc[in_submod-1].submodule->rpc;
+                            start = start_mod->inc[in_submod-1].submodule->rpc;
                         }
                         in_mod_part = 1;
                         continue;
@@ -464,9 +437,9 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
                     /* we have searched all the RPCs */
                     if (in_mod_part == 1) {
                         if (!in_submod) {
-                            start = mod->notif;
+                            start = start_mod->notif;
                         } else {
-                            start = mod->inc[in_submod-1].submodule->notif;
+                            start = start_mod->inc[in_submod-1].submodule->notif;
                         }
                         in_mod_part = 2;
                         continue;
@@ -475,26 +448,27 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
                 }
 
                 /* are we done with the included submodules as well? */
-                if (in_submod-1 == mod->inc_size) {
+                if (in_submod == start_mod->inc_size) {
                     return NULL;
                 }
 
                 /* we aren't, check the next one */
                 ++in_submod;
                 in_mod_part = 0;
-                start = mod->inc[in_submod-1].submodule->data;
+                start = start_mod->inc[in_submod-1].submodule->data;
                 continue;
             }
         }
+
+        /* once we get here, we do not need to know that start is actually from a submodule */
+        in_submod = 0;
 
         assert((*(name+nam_len) == '/') || (*(name+nam_len) == '\0'));
 
         /* make prefix point to the next node name */
         prefix = name+nam_len;
-        if (!prefix[0]) {
-            return start;
-        }
         ++prefix;
+        assert(*prefix);
 
         /* parse prefix and node name */
         ptr = strchr(prefix, '/');
