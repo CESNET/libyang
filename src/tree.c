@@ -394,7 +394,8 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
                             return NULL;
                         }
 
-                        if (prefix_mod != sibling->module) {
+                        if ((!sibling->module->type && (prefix_mod != sibling->module))
+                                || (prefix_mod != ((struct ly_submodule *)sibling->module)->belongsto)) {
                             continue;
                         }
                     }
@@ -460,8 +461,11 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
             }
         }
 
-        /* once we get here, we do not need to know that start is actually from a submodule */
-        in_submod = 0;
+        /* we found our submodule */
+        if (in_submod) {
+            start_mod = (struct ly_module *)start_mod->inc[in_submod-1].submodule;
+            in_submod = 0;
+        }
 
         assert((*(name+nam_len) == '/') || (*(name+nam_len) == '\0'));
 
