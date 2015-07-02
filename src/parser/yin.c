@@ -4357,14 +4357,10 @@ read_yin_input_output(struct ly_module *module,
             /* array counters */
         } else if (!strcmp(sub->name, "typedef")) {
             c_tpdf++;
-#if 0
+
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
             goto error;
-#else
-        } else {
-            continue;
-#endif
         }
     }
 
@@ -4806,14 +4802,10 @@ resolve_augment(struct ly_augment *aug, struct ly_mnode *parent, struct ly_modul
             mnode = read_yin_case(module, aug->target, sub, 1, NULL);
         } else if (!strcmp(sub->name, "anyxml")) {
             mnode = read_yin_anyxml(module, aug->target, sub, 1);
-#if 0
         } else {
+            /* never should be here, since it was already pre-parsed by fill_yin_augment() */
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
             return EXIT_FAILURE;
-#else
-        } else {
-            continue;
-#endif
         }
 
         if (!mnode) {
