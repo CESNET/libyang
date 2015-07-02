@@ -101,20 +101,24 @@ cmd_add(const char *arg)
         format = LY_IN_YIN;
     }
 
-    if (stat(path, &sb) == -1) {
-        fprintf(stderr, "Unable to get input file information (%s).\n", strerror(errno));
-        return 1;
-    }
-    if (!S_ISREG(sb.st_mode)) {
-        fprintf(stderr, "Input file not a file.\n");
-        return 1;
-    }
-
     fd = open(path, O_RDONLY);
     if (fd == -1) {
         fprintf(stderr, "Opening input file failed (%s).\n", strerror(errno));
         return 1;
     }
+
+    if (fstat(fd, &sb) == -1) {
+        fprintf(stderr, "Unable to get input file information (%s).\n", strerror(errno));
+        close(fd);
+        return 1;
+    }
+
+    if (!S_ISREG(sb.st_mode)) {
+        fprintf(stderr, "Input file not a file.\n");
+        close(fd);
+        return 1;
+    }
+
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 
     model = ly_module_read(ctx, addr, format);
