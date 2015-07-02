@@ -5312,14 +5312,15 @@ read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
         } else if (!strcmp(node->name, "notification")) {
             lyxml_unlink_elem(node);
             lyxml_add_child(&notifs, node);
-#if 0
+
+        } else if (!strcmp(node->name, "extension")) {
+            GETVAL(value, node, "name");
+            LOGWRN("Not supported \"%s\" extension statement found, ignoring.", value);
+            lyxml_free_elem(ctx, node);
+
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
             goto error;
-#else
-        } else {
-            continue;
-#endif
         }
     }
 
