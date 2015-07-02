@@ -4564,9 +4564,10 @@ resolve_augment(struct ly_augment *aug, struct ly_mnode *parent, struct ly_modul
 
     yin = (struct lyxml_elem *)aug->child;
 
-    if (read_yin_common(module, aug->target, (struct ly_mnode *)aug, yin, OPT_CONFIG)) {
-        return EXIT_FAILURE;
-    }
+    /* inherit config information from parent, augment does not have
+     * config property, but we need to keep the information for subelements
+     */
+    aug->flags |= aug->target->flags & LY_NODE_CONFIG_MASK;
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!strcmp(sub->name, "container")) {
