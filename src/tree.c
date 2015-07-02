@@ -394,9 +394,14 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
                             return NULL;
                         }
 
-                        if ((!sibling->module->type && (prefix_mod != sibling->module))
-                                || (prefix_mod != ((struct ly_submodule *)sibling->module)->belongsto)) {
-                            continue;
+                        if (!sibling->module->type) {
+                            if (prefix_mod != sibling->module) {
+                                continue;
+                            }
+                        } else {
+                            if (prefix_mod != ((struct ly_submodule *)sibling->module)->belongsto) {
+                                continue;
+                            }
                         }
                     }
 
