@@ -1846,6 +1846,7 @@ fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_d
              * further processed later
              */
             continue;
+
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
             goto error;
@@ -2681,6 +2682,7 @@ fill_yin_refine(struct ly_module *module, struct lyxml_elem *yin, struct ly_refi
             }
 
             c_must++;
+            continue;
 
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
@@ -3480,12 +3482,12 @@ read_yin_leaf(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
             }
 
         } else if (!strcmp(sub->name, "must")) {
-            c_must++;                 /* else false is the default value, so we can ignore it */
+            c_must++;
+            continue;
         } else if (!strcmp(sub->name, "if-feature")) {
             c_ftrs++;
-
-            /* skip element free at the end of the loop */
             continue;
+
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
             goto error;
@@ -3612,14 +3614,15 @@ read_yin_leaflist(struct ly_module *module, struct ly_mnode *parent, struct lyxm
             } else if (strcmp(value, "system")) {
                 LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
                 goto error;
-            }                   /* else system is the default value, so we can ignore it */
+            } /* else system is the default value, so we can ignore it */
+
         } else if (!strcmp(sub->name, "must")) {
             c_must++;
+            continue;
         } else if (!strcmp(sub->name, "if-feature")) {
             c_ftrs++;
-
-            /* skip element free at the end of the loop */
             continue;
+
         } else if (!strcmp(sub->name, "min-elements")) {
             if (f_min) {
                 LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
