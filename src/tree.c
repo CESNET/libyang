@@ -738,7 +738,7 @@ ly_type_dup(struct ly_ctx *ctx, struct ly_type *new, struct ly_type *old)
         break;
 
     default:
-        /* TODO - remove default to make sure that all types are covered */
+        /* nothing to do for LY_TYPE_BOOL, LY_TYPE_EMPTY */
         break;
     }
 }
@@ -783,10 +783,6 @@ ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
         free(type->info.enums.list);
         break;
 
-    case LY_TYPE_IDENT:
-        /* nothing to do */
-        break;
-
     case LY_TYPE_INT8:
     case LY_TYPE_INT16:
     case LY_TYPE_INT32:
@@ -820,7 +816,7 @@ ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
         break;
 
     default:
-        /* TODO - remove default to make sure that all types are covered */
+        /* nothing to do for LY_TYPE_IDENT, LY_TYPE_INST, LY_TYPE_BOOL, LY_TYPE_EMPTY */
         break;
     }
 }
