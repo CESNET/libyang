@@ -754,6 +754,12 @@ fill_yin_identity(struct ly_module *module, struct lyxml_elem *yin, struct ly_id
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, node) {
+        if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, node);
+            continue;
+        }
+
         if (!strcmp(node->name, "base")) {
             if (ident->base) {
                 LOGVAL(VE_TOOMANY, LOGLINE(node), "base", "identity");
@@ -780,6 +786,12 @@ read_restr_substmt(struct ly_ctx *ctx, struct ly_restr *restr, struct lyxml_elem
     const char *value;
 
     LY_TREE_FOR_SAFE(yin->child, next, child) {
+        if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(ctx, child);
+            continue;
+        }
+
         if (!strcmp(child->name, "description")) {
             if (restr->dsc) {
                 LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
@@ -881,6 +893,12 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
 
         /* get bit specifications, at least one must be present */
         LY_TREE_FOR_SAFE(yin->child, next, node) {
+            if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
+                /* garbage */
+                lyxml_free_elem(module->ctx, node);
+                continue;
+            }
+
             if (!strcmp(node->name, "bit")) {
                 type->info.bits.count++;
             } else {
@@ -918,34 +936,46 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                 }
             }
 
-            node = yin->child->child;
-            if (node && !strcmp(node->name, "position")) {
-                GETVAL(value, node, "value");
-                p_ = strtol(value, NULL, 10);
-
-                /* range check */
-                if (p_ < 0 || p_ > UINT32_MAX) {
-                    LOGVAL(VE_INARG, LOGLINE(node), value, "bit/position");
-                    type->info.bits.count = i + 1;
-                    goto error;
+            p_ = -1;
+            LY_TREE_FOR_SAFE(yin->child->child, next, node) {
+                if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
+                    /* garbage */
+                    lyxml_free_elem(module->ctx, node);
+                    continue;
                 }
-                type->info.bits.bit[i].pos = (uint32_t)p_;
 
-                /* keep the highest enum value for automatic increment */
-                if (type->info.bits.bit[i].pos > p) {
-                    p = type->info.bits.bit[i].pos;
-                    p++;
-                } else {
-                    /* check that the value is unique */
-                    for (j = 0; j < i; j++) {
-                        if (type->info.bits.bit[j].pos == type->info.bits.bit[i].pos) {
-                            LOGVAL(VE_BITS_DUPVAL, LOGLINE(node), type->info.bits.bit[i].pos, type->info.bits.bit[i].name);
-                            type->info.bits.count = i + 1;
-                            goto error;
+                if (!strcmp(node->name, "position")) {
+                    GETVAL(value, node, "value");
+                    p_ = strtol(value, NULL, 10);
+
+                    /* range check */
+                    if (p_ < 0 || p_ > UINT32_MAX) {
+                        LOGVAL(VE_INARG, LOGLINE(node), value, "bit/position");
+                        type->info.bits.count = i + 1;
+                        goto error;
+                    }
+                    type->info.bits.bit[i].pos = (uint32_t)p_;
+
+                    /* keep the highest enum value for automatic increment */
+                    if (type->info.bits.bit[i].pos > p) {
+                        p = type->info.bits.bit[i].pos;
+                        p++;
+                    } else {
+                        /* check that the value is unique */
+                        for (j = 0; j < i; j++) {
+                            if (type->info.bits.bit[j].pos == type->info.bits.bit[i].pos) {
+                                LOGVAL(VE_BITS_DUPVAL, LOGLINE(node), type->info.bits.bit[i].pos, type->info.bits.bit[i].name);
+                                type->info.bits.count = i + 1;
+                                goto error;
+                            }
                         }
                     }
+                } else {
+                    LOGVAL(VE_INSTMT, LOGLINE(yin->child), yin->child->name);
+                    goto error;
                 }
-            } else {
+            }
+            if (p_ == -1) {
                 /* assign value automatically */
                 if (p > UINT32_MAX) {
                     LOGVAL(VE_INARG, LOGLINE(yin->child), "4294967295", "bit/position");
@@ -962,6 +992,12 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
     case LY_TYPE_DEC64:
         /* RFC 6020 9.2.4 - range and 9.3.4 - fraction-digits */
         LY_TREE_FOR_SAFE(yin->child, next, node) {
+            if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
+                /* garbage */
+                lyxml_free_elem(module->ctx, node);
+                continue;
+            }
+
             if (!strcmp(node->name, "range")) {
                 if (type->info.dec64.range) {
                     LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
@@ -1013,6 +1049,12 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
 
         /* get enum specifications, at least one must be present */
         LY_TREE_FOR_SAFE(yin->child, next, node) {
+            if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
+                /* garbage */
+                lyxml_free_elem(module->ctx, node);
+                continue;
+            }
+
             if (!strcmp(node->name, "enum")) {
                 type->info.enums.count++;
             } else {
@@ -1058,34 +1100,47 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                 }
             }
 
-            node = yin->child->child;
-            if (node && !strcmp(node->name, "value")) {
-                GETVAL(value, node, "value");
-                v_ = strtol(value, NULL, 10);
-
-                /* range check */
-                if (v_ < INT32_MIN || v_ > INT32_MAX) {
-                    LOGVAL(VE_INARG, LOGLINE(node), value, "enum/value");
-                    type->info.enums.count = i + 1;
-                    goto error;
+            v_ = -1;
+            LY_TREE_FOR_SAFE(yin->child->child, next, node) {
+                if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
+                    /* garbage */
+                    lyxml_free_elem(module->ctx, node);
+                    continue;
                 }
-                type->info.enums.list[i].value = v_;
 
-                /* keep the highest enum value for automatic increment */
-                if (type->info.enums.list[i].value > v) {
-                    v = type->info.enums.list[i].value;
-                    v++;
-                } else {
-                    /* check that the value is unique */
-                    for (j = 0; j < i; j++) {
-                        if (type->info.enums.list[j].value == type->info.enums.list[i].value) {
-                            LOGVAL(VE_ENUM_DUPVAL, LOGLINE(node), type->info.enums.list[i].value, type->info.enums.list[i].name);
-                            type->info.enums.count = i + 1;
-                            goto error;
+                if (!strcmp(node->name, "value")) {
+                    GETVAL(value, node, "value");
+                    v_ = strtol(value, NULL, 10);
+
+                    /* range check */
+                    if (v_ < INT32_MIN || v_ > INT32_MAX) {
+                        LOGVAL(VE_INARG, LOGLINE(node), value, "enum/value");
+                        type->info.enums.count = i + 1;
+                        goto error;
+                    }
+                    type->info.enums.list[i].value = v_;
+
+                    /* keep the highest enum value for automatic increment */
+                    if (type->info.enums.list[i].value > v) {
+                        v = type->info.enums.list[i].value;
+                        v++;
+                    } else {
+                        /* check that the value is unique */
+                        for (j = 0; j < i; j++) {
+                            if (type->info.enums.list[j].value == type->info.enums.list[i].value) {
+                                LOGVAL(VE_ENUM_DUPVAL, LOGLINE(node), type->info.enums.list[i].value,
+                                       type->info.enums.list[i].name);
+                                type->info.enums.count = i + 1;
+                                goto error;
+                            }
                         }
                     }
+                } else {
+                    LOGVAL(VE_INSTMT, LOGLINE(yin->child), yin->child->name);
+                    goto error;
                 }
-            } else {
+            }
+            if (v_ == -1) {
                 /* assign value automatically */
                 if (v > INT32_MAX) {
                     LOGVAL(VE_INARG, LOGLINE(yin->child), "2147483648", "enum/value");
@@ -1103,6 +1158,19 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         /* RFC 6020 9.10 - base */
 
         /* get base specification, exactly one must be present */
+        LY_TREE_FOR_SAFE(yin->child, next, node) {
+            if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
+                /* garbage */
+                lyxml_free_elem(module->ctx, node);
+                continue;
+            }
+
+            if (strcmp(yin->child->name, "base")) {
+                LOGVAL(VE_INSTMT, LOGLINE(yin->child), yin->child->name);
+                goto error;
+            }
+        }
+
         if (!yin->child) {
             if (type->der->type.der) {
                 /* this is just a derived type with no base specified/required */
@@ -1111,12 +1179,8 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
             LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "base", "type");
             goto error;
         }
-        if (strcmp(yin->child->name, "base")) {
-            LOGVAL(VE_INSTMT, LOGLINE(yin->child), yin->child->name);
-            goto error;
-        }
         if (yin->child->next) {
-            LOGVAL(VE_INSTMT, LOGLINE(yin->child->next), yin->child->next->name);
+            LOGVAL(VE_TOOMANY, LOGLINE(yin->child->next), yin->child->next->name, yin->name);
             goto error;
         }
         type->info.ident.ref = find_base_ident(module, NULL, yin->child);
@@ -1128,6 +1192,12 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
     case LY_TYPE_INST:
         /* RFC 6020 9.13.2 - require-instance */
         LY_TREE_FOR_SAFE(yin->child, next, node) {
+            if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
+                /* garbage */
+                lyxml_free_elem(module->ctx, node);
+                continue;
+            }
+
             if (!strcmp(node->name, "require-instance")) {
                 if (type->info.inst.req) {
                     LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
@@ -1175,6 +1245,12 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         }
 
         LY_TREE_FOR_SAFE(yin->child, next, node) {
+            if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
+                /* garbage */
+                lyxml_free_elem(module->ctx, node);
+                continue;
+            }
+
             if (!strcmp(node->name, name)) {
                 if (*restr) {
                     LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
@@ -1211,6 +1287,12 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
             goto error;
         }
         LY_TREE_FOR_SAFE(yin->child, next, node) {
+            if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
+                /* garbage */
+                lyxml_free_elem(module->ctx, node);
+                continue;
+            }
+
             if (!strcmp(node->name, "path")) {
                 if (type->info.lref.path) {
                     LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
@@ -1236,6 +1318,12 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         /* RFC 6020 9.4.4 - length */
         /* RFC 6020 9.4.6 - pattern */
         LY_TREE_FOR_SAFE(yin->child, next, node) {
+            if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
+                /* garbage */
+                lyxml_free_elem(module->ctx, node);
+                continue;
+            }
+
             if (!strcmp(node->name, "length")) {
                 if (type->info.str.length) {
                     LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
@@ -1281,7 +1369,13 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         /* RFC 6020 7.4 - type */
         /* count number of types in union */
         i = 0;
-        LY_TREE_FOR(yin->child, node) {
+        LY_TREE_FOR_SAFE(yin->child, next, node) {
+            if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
+                /* garbage */
+                lyxml_free_elem(module->ctx, node);
+                continue;
+            }
+
             if (!strcmp(node->name, "type")) {
                 i++;
             } else {
@@ -1325,9 +1419,11 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         /* no sub-statement allowed in:
          * LY_TYPE_BOOL, LY_TYPE_EMPTY
          */
-        if (yin->child) {
-            LOGVAL(VE_INSTMT, LOGLINE(yin->child), yin->child->name);
-            goto error;
+        LY_TREE_FOR(yin->child, node) {
+            if (node->ns && !strcmp(node->ns->value, LY_NSYIN)) {
+                LOGVAL(VE_INSTMT, LOGLINE(yin->child), yin->child->name);
+                goto error;
+            }
         }
         break;
     }
@@ -1358,6 +1454,12 @@ fill_yin_typedef(struct ly_module *module, struct ly_mnode *parent, struct lyxml
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, node) {
+        if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, node);
+            continue;
+        }
+
         if (!strcmp(node->name, "type")) {
             if (tpdf->type.der) {
                 LOGVAL(VE_TOOMANY, LOGLINE(node), node->name, yin->name);
@@ -1488,6 +1590,12 @@ fill_yin_feature(struct ly_module *module, struct lyxml_elem *yin, struct ly_fea
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, child) {
+        if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, child);
+            continue;
+        }
+
         if (!strcmp(child->name, "if-feature")) {
             c++;
         } else {
@@ -1707,6 +1815,12 @@ fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_d
     dev->target->module->deviated = 1;
 
     LY_TREE_FOR_SAFE(yin->child, next, child) {
+        if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, child);
+            continue;
+        }
+
         if (!strcmp(child->name, "description")) {
             if (dev->dsc) {
                 LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
@@ -1790,6 +1904,12 @@ fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_d
 
         /* process deviation properties */
         LY_TREE_FOR_SAFE(develem->child, next, child) {
+            if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
+                /* garbage */
+                lyxml_free_elem(module->ctx, child);
+                continue;
+            }
+
             if (!strcmp(child->name, "config")) {
                 if (d->flags & LY_NODE_CONFIG_MASK) {
                     LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
@@ -1973,7 +2093,6 @@ fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_d
                 }
             } else if (!strcmp(child->name, "must")) {
                 c_must++;
-
                 /* skip lyxml_free_elem() at the end of the loop, this node will be processed later */
                 continue;
             } else if (!strcmp(child->name, "type")) {
@@ -2016,7 +2135,6 @@ fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_d
                 d->type = t;
             } else if (!strcmp(child->name, "unique")) {
                 c_uniq++;
-
                 /* skip lyxml_free_elem() at the end of the loop, this node will be processed later */
                 continue;
             } else if (!strcmp(child->name, "units")) {
@@ -2317,6 +2435,12 @@ fill_yin_augment(struct ly_module *module, struct ly_mnode *parent, struct lyxml
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, child) {
+        if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, child);
+            continue;
+        }
+
         if (!strcmp(child->name, "if-feature")) {
             c++;
         } else if (!strcmp(child->name, "when")) {
@@ -2393,6 +2517,12 @@ fill_yin_refine(struct ly_module *module, struct lyxml_elem *yin, struct ly_refi
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, sub);
+            continue;
+        }
+
         /* limited applicability */
         if (!strcmp(sub->name, "default")) {
             /* leaf or choice */
@@ -2592,6 +2722,12 @@ fill_yin_import(struct ly_module *module, struct lyxml_elem *yin, struct ly_impo
     const char *value;
 
     LY_TREE_FOR(yin->child, child) {
+        if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, child);
+            continue;
+        }
+
         if (!strcmp(child->name, "prefix")) {
             GETVAL(value, child, "value");
             if (check_identifier(value, LY_IDENT_PREFIX, LOGLINE(child), module, NULL)) {
@@ -2642,6 +2778,10 @@ fill_yin_include(struct ly_module *module, struct lyxml_elem *yin, struct ly_inc
     const char *value;
 
     LY_TREE_FOR(yin->child, child) {
+        if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
+            /* garbage */
+            continue;
+        }
         if (!strcmp(child->name, "revision-date")) {
             if (inc->rev[0]) {
                 LOGVAL(VE_TOOMANY, LOGLINE(child), "revision-date", yin->name);
@@ -2711,6 +2851,11 @@ read_yin_common(struct ly_module *module, struct ly_mnode *parent,
 
     /* process local parameters */
     LY_TREE_FOR_SAFE(xmlnode->child, next, sub) {
+        if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
+            /* garbage */
+            continue;
+        }
+
         if (!strcmp(sub->name, "description")) {
             if (mnode->dsc) {
                 LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, xmlnode->name);
@@ -2799,6 +2944,12 @@ read_yin_when(struct ly_module *module,struct lyxml_elem *yin)
     retval->cond = lydict_insert(module->ctx, value, 0);
 
     LY_TREE_FOR_SAFE(yin->child, next, child) {
+        if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, child);
+            continue;
+        }
+
         if (!strcmp(child->name, "description")) {
             if (retval->dsc) {
                 LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
@@ -2899,6 +3050,12 @@ read_yin_case(struct ly_module *module,
 
     /* process choice's specific children */
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, sub);
+            continue;
+        }
+
         if (!strcmp(sub->name, "container")) {
             mnode = read_yin_container(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "leaf-list")) {
@@ -3001,6 +3158,12 @@ read_yin_choice(struct ly_module *module,
 
     /* process choice's specific children */
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, sub);
+            continue;
+        }
+
         if (!strcmp(sub->name, "container")) {
             if (!(mnode = read_yin_container(module, retval, sub, resolve, unres))) {
                 goto error;
@@ -3147,6 +3310,12 @@ read_yin_anyxml(struct ly_module *module, struct ly_mnode *parent, struct lyxml_
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, sub);
+            continue;
+        }
+
         if (!strcmp(sub->name, "mandatory")) {
             if (f_mand) {
                 LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
@@ -3252,6 +3421,12 @@ read_yin_leaf(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, sub);
+            continue;
+        }
+
         if (!strcmp(sub->name, "type")) {
             if (leaf->type.der) {
                 LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
@@ -3392,6 +3567,12 @@ read_yin_leaflist(struct ly_module *module, struct ly_mnode *parent, struct lyxm
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, sub);
+            continue;
+        }
+
         if (!strcmp(sub->name, "type")) {
             if (llist->type.der) {
                 LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
@@ -3580,6 +3761,12 @@ read_yin_list(struct ly_module *module,
 
     /* process list's specific children */
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, sub);
+            continue;
+        }
+
         /* data statements */
         if (!strcmp(sub->name, "container") ||
                 !strcmp(sub->name, "leaf-list") ||
@@ -3871,6 +4058,12 @@ read_yin_container(struct ly_module *module,
 
     /* process container's specific children */
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, sub);
+            continue;
+        }
+
         if (!strcmp(sub->name, "presence")) {
             if (cont->presence) {
                 LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
@@ -4022,6 +4215,12 @@ read_yin_grouping(struct ly_module *module,
     }
 
     LY_TREE_FOR_SAFE(node->child, next, sub) {
+        if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, sub);
+            continue;
+        }
+
         /* data statements */
         if (!strcmp(sub->name, "container") ||
                 !strcmp(sub->name, "leaf-list") ||
@@ -4135,6 +4334,12 @@ read_yin_input_output(struct ly_module *module,
 
     /* data statements */
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, sub);
+            continue;
+        }
+
         if (!strcmp(sub->name, "container") ||
                 !strcmp(sub->name, "leaf-list") ||
                 !strcmp(sub->name, "leaf") ||
@@ -4245,6 +4450,12 @@ read_yin_notif(struct ly_module *module,
 
     /* process rpc's specific children */
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, sub);
+            continue;
+        }
+
         /* data statements */
         if (!strcmp(sub->name, "container") ||
                 !strcmp(sub->name, "leaf-list") ||
@@ -4364,6 +4575,12 @@ read_yin_rpc(struct ly_module *module,
 
     /* process rpc's specific children */
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
+        if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, sub);
+            continue;
+        }
+
         if (!strcmp(sub->name, "input")) {
             if (rpc->child
                 && (rpc->child->nodetype == LY_NODE_INPUT
@@ -4790,6 +5007,12 @@ read_yin_uses(struct ly_module *module,
 
     /* get other properties of uses */
     LY_TREE_FOR_SAFE(node->child, next, sub) {
+        if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
+            /* garbage */
+            lyxml_free_elem(module->ctx, sub);
+            continue;
+        }
+
         if (!strcmp(sub->name, "refine")) {
             c_ref++;
         } else if (!strcmp(sub->name, "augment")) {
@@ -4928,6 +5151,7 @@ read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
      */
     LY_TREE_FOR_SAFE(yin->child, next, node) {
         if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
+            /* garbage */
             lyxml_free_elem(ctx, node);
             continue;
         }
