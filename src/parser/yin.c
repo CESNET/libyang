@@ -3207,7 +3207,7 @@ read_yin_anyxml(struct ly_module *module, struct ly_mnode *parent, struct lyxml_
             if (r) {
                 goto error;
             }
-        } else if (!strcmp(sub->name, "must")) {
+        } else if (!strcmp(sub->name, "if-feature")) {
             GETVAL(value, sub, "name");
             anyxml->features[anyxml->features_size] = resolve_feature(value, module, LOGLINE(sub));
             if (!anyxml->features[anyxml->features_size]) {
@@ -4284,7 +4284,7 @@ read_yin_notif(struct ly_module *module,
             if (r) {
                 goto error;
             }
-        } else if (!strcmp(sub->name, "typedef")) {
+        } else if (!strcmp(sub->name, "if-features")) {
             GETVAL(value, sub, "name");
             notif->features[notif->features_size] = resolve_feature(value, module, LOGLINE(sub));
             if (!notif->features[notif->features_size]) {
