@@ -1618,14 +1618,14 @@ fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_d
     int c_dev = 0, c_must, c_uniq;
     int f_min = 0; /* flags */
     int i, j;
-    struct ly_deviate *d;
-    struct ly_mnode *mnode;
-    struct ly_mnode_choice *choice;
-    struct ly_mnode_leaf *leaf;
-    struct ly_mnode_list *list;
-    struct ly_type *t;
-    uint8_t *trg_must_size;
-    struct ly_restr **trg_must;
+    struct ly_deviate *d = NULL;
+    struct ly_mnode *mnode = NULL;
+    struct ly_mnode_choice *choice = NULL;
+    struct ly_mnode_leaf *leaf = NULL;
+    struct ly_mnode_list *list = NULL;
+    struct ly_type *t = NULL;
+    uint8_t *trg_must_size = 0;
+    struct ly_restr **trg_must = NULL;
 
     GETVAL(value, yin, "target-node");
     dev->target_name = lydict_insert(module->ctx, value, 0);
