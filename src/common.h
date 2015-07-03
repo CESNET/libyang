@@ -108,4 +108,6 @@ void ly_vlog(enum LY_VERR code, unsigned int line, ...);
 
 char *strnchr(const char *s, int c, unsigned int len);
 
+const char *strnodetype(LY_NODE_TYPE type);
+
 #endif /* LY_COMMON_H_ */
