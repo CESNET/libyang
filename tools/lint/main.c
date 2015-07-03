@@ -44,14 +44,13 @@ char *search_path;
 void
 usage(const char *progname)
 {
-    fprintf(stdout, "Usage: %s [[-h] [-v level] [-p dir] [-f format [-o file]] file.yin]\n\n", progname);
+    fprintf(stdout, "Usage: %s [[-h] [-v level] [-p dir] file.yin]\n\n", progname);
     fprintf(stdout, "  -h, --help             Print this text.\n");
-    fprintf(stdout, "  -f, --format yang      Print data model in given format.\n");
-    fprintf(stdout, "  -o, --output file      Print output to the specified file.\n");
-    fprintf(stdout, "  -p, --path dir         Search path for data models.\n");
     fprintf(stdout, "  -v, --verbose level    Set verbosity level (0-3).\n");
+    fprintf(stdout, "  -p, --path dir         Search path for data models.\n");
     fprintf(stdout, "  file.yin               Input file in YIN format.\n\n");
-    fprintf(stdout, "Executing without arguments starts an interactive version.\n\n");
+    fprintf(stdout, "The specified model is only loaded and validated.\n");
+    fprintf(stdout, "Executing without arguments starts the full interactive version.\n\n");
 }
 
 int
@@ -59,53 +58,24 @@ main_noninteractive(int argc, char *argv[])
 {
     int c;
     int ret = EXIT_FAILURE;
-    FILE *output = NULL;
     int fd = -1;
     struct ly_module *model;
     struct stat sb;
     char *addr = NULL;
-    LY_MOUTFORMAT out_format = LY_OUT_YANG;
 
     int opt_i;
     struct option opt[] = {
-            { "format",  required_argument, 0, 'f' },
-            { "help",    no_argument,       0, 'h' },
-            { "output",  required_argument, 0, 'o' },
-            { "path",    required_argument, 0, 'p' },
-            { "verbose", required_argument, 0, 'v' },
+            { "help",        no_argument,       0, 'h' },
+            { "path",        required_argument, 0, 'p' },
+            { "verbose",     required_argument, 0, 'v' },
             { 0, 0, 0, 0 } };
 
-    while ((c = getopt_long(argc, argv, "f:ho:p:v:", opt, &opt_i)) != -1) {
+    while ((c = getopt_long(argc, argv, "hp:v:", opt, &opt_i)) != -1) {
         switch (c) {
-        case 'f':
-            if (strcmp(optarg, "yang") && strcmp(optarg, "tree")) {
-                fprintf(stderr, "Output format \"%s\" not supported.\n", optarg);
-                goto cleanup;
-            }
-            if (strcmp(optarg, "tree") == 0) {
-                out_format = LY_OUT_TREE;
-            }
-
-            if (!output) {
-                output = stdout;
-            }
-            break;
         case 'h':
             usage(argv[0]);
             ret = EXIT_SUCCESS;
             goto cleanup;
-        case 'o':
-            if (output && output != stdout) {
-                fprintf(stderr, "Option -o cannot be used repeatedly.\n");
-                goto cleanup;
-            }
-
-            output = fopen(optarg, "w");
-            if (!output) {
-                fprintf(stderr, "Unable to use output file (%s).\n", strerror(errno));
-                goto cleanup;
-            }
-            break;
         case 'p':
             search_path = optarg;
             break;
@@ -134,19 +104,12 @@ main_noninteractive(int argc, char *argv[])
     }
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 
-
     /* libyang */
     ctx = ly_ctx_new(search_path);
     model = ly_module_read(ctx, addr, LY_IN_YIN);
     if (!model) {
         fprintf(stderr, "Parsing data model failed.\n");
         goto cleanup;
-    }
-
-    if (output) {
-        /* enable all features for printing */
-        ly_features_enable(model, "*");
-        ly_model_print(output, model, out_format);
     }
 
     ret = EXIT_SUCCESS;
@@ -158,9 +121,6 @@ cleanup:
     }
     if (fd != -1) {
         close(fd);
-    }
-    if (output && output != stdout) {
-        fclose(output);
     }
 
     return ret;
