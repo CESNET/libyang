@@ -159,8 +159,10 @@ cmd_print(const char *arg)
     }
     argv[argc] = NULL;
 
+    optind = 1;
     while (1) {
         c = getopt_long(argc, argv, "hf:o:", long_options, &option_index);
+        option_index = 0;
         if (c == -1) {
             break;
         }
