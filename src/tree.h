@@ -438,7 +438,8 @@ struct ly_mnode {
     const char *name;                /**< name argument */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
-    uint8_t flags;
+    uint8_t flags;                   /**< various flags */
+    uint8_t nacm;                    /**< NACM extension flags */
     struct ly_module *module;        /**< link to the node's data model */
 
     LY_NODE_TYPE nodetype;           /**< YANG statement */
@@ -446,6 +447,9 @@ struct ly_mnode {
     struct ly_mnode *child;
     struct ly_mnode *next;
     struct ly_mnode *prev;
+/* ly_mnode's nacm flags */
+#define LY_NACM_DENYW        0x01 /**< default-deny-write */
+#define LY_NACM_DENYA        0x02 /**< default-deny-all */
 
 /* ly_mnode's flags */
 #define LY_NODE_CONFIG_W     0x01 /**< config true; */
@@ -474,6 +478,7 @@ struct ly_mnode_grp {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     uint8_t flags;                   /**< only for LY_NODE_STATUS_ values */
+    uint8_t nacm;                    /**< NACM extension flags */
     struct ly_module *module;
 
     LY_NODE_TYPE nodetype;           /**< YANG statement */
@@ -495,6 +500,7 @@ struct ly_mnode_uses {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     uint8_t flags;                   /**< only for LY_NODE_STATUS_ values */
+    uint8_t nacm;                    /**< NACM extension flags */
     struct ly_module *module;        /**< link to the node's data model */
 
     LY_NODE_TYPE nodetype;           /**< YANG statement - LY_NODE_USES */
@@ -524,6 +530,7 @@ struct ly_mnode_container {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     uint8_t flags;
+    uint8_t nacm;                    /**< NACM extension flags */
     struct ly_module *module;        /**< link to the node's data model */
 
     LY_NODE_TYPE nodetype;           /**< YANG statement - LY_NODE_CONTAINER */
@@ -553,6 +560,7 @@ struct ly_mnode_choice {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     uint8_t flags;
+    uint8_t nacm;                    /**< NACM extension flags */
     struct ly_module *module;        /**< link to the node's data model */
 
     LY_NODE_TYPE nodetype;           /**< YANG statement - LY_NODE_CHOICE */
@@ -576,6 +584,7 @@ struct ly_mnode_case {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     uint8_t flags;
+    uint8_t nacm;                    /**< NACM extension flags */
     struct ly_module *module;        /**< link to the node's data model */
 
     LY_NODE_TYPE nodetype;           /**< YANG statement - LY_NODE_CASE */
@@ -597,6 +606,7 @@ struct ly_mnode_anyxml {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     uint8_t flags;
+    uint8_t nacm;                    /**< NACM extension flags */
     struct ly_module *module;        /**< link to the node's data model */
 
     LY_NODE_TYPE nodetype;           /**< YANG statement - LY_NODE_ANYXML */
@@ -621,6 +631,7 @@ struct ly_mnode_leaf {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     uint8_t flags;
+    uint8_t nacm;                    /**< NACM extension flags */
     struct ly_module *module;        /**< link to the node's data model */
 
     LY_NODE_TYPE nodetype;           /**< YANG statement - LY_NODE_LEAF */
@@ -649,6 +660,7 @@ struct ly_mnode_leaflist {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     uint8_t flags;
+    uint8_t nacm;                    /**< NACM extension flags */
     struct ly_module *module;        /**< link to the node's data model */
 
     LY_NODE_TYPE nodetype;           /**< YANG statement - LY_NODE_LEAFLIST */
@@ -681,6 +693,7 @@ struct ly_mnode_list {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     uint8_t flags;
+    uint8_t nacm;                    /**< NACM extension flags */
     struct ly_module *module;        /**< link to the node's data model */
 
     LY_NODE_TYPE nodetype;           /**< YANG statement - LY_NODE_LIST */
@@ -717,6 +730,7 @@ struct ly_mnode_input_output {
     void *dsc_fill;
     void *ref_fill;
     uint8_t flags;
+    uint8_t nacm;                    /**< NACM extension flags */
     struct ly_module *module;        /**< link to the node's data model */
 
     LY_NODE_TYPE nodetype;           /**< YANG statement - LY_NODE_INPUT / LY_NODE_OUTPUT */
@@ -738,6 +752,7 @@ struct ly_mnode_rpc {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     uint8_t flags;
+    uint8_t nacm;                    /**< NACM extension flags */
     struct ly_module *module;        /**< link to the node's data model */
 
     LY_NODE_TYPE nodetype;           /**< YANG statement - LY_NODE_RPC */
@@ -761,6 +776,7 @@ struct ly_mnode_notif {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     uint8_t flags;
+    uint8_t nacm;                    /**< NACM extension flags */
     struct ly_module *module;        /**< link to the node's data model */
 
     LY_NODE_TYPE nodetype;           /**< YANG statement - LY_NODE_NOTIF */

@@ -48,6 +48,7 @@ enum LY_IDENT {
 };
 
 #define LY_NSYIN "urn:ietf:params:xml:ns:yang:yin:1"
+#define LY_NSNACM "urn:ietf:params:xml:ns:yang:ietf-netconf-acm"
 
 #define GETVAL(value, node, arg)                                    \
 	value = lyxml_get_attr(node, arg, NULL);                        \
@@ -60,6 +61,7 @@ enum LY_IDENT {
 #define OPT_CONFIG  0x02
 #define OPT_MODULE  0x04
 #define OPT_INHERIT 0x08
+#define OPT_NACMEXT 0x10
 static int read_yin_common(struct ly_module *, struct ly_mnode *, struct ly_mnode *, struct lyxml_elem *, int);
 
 struct obj_list {
@@ -2848,10 +2850,33 @@ read_yin_common(struct ly_module *module, struct ly_mnode *parent,
         mnode->name = lydict_insert(ctx, value, strlen(value));
     }
 
+    /* inherit NACM flags */
+    if (parent) {
+        mnode->nacm = parent->nacm;
+    }
+
     /* process local parameters */
     LY_TREE_FOR_SAFE(xmlnode->child, next, sub) {
-        if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
+        if (!sub->ns) {
             /* garbage */
+            lyxml_free_elem(ctx, sub);
+            continue;
+        }
+        if  (strcmp(sub->ns->value, LY_NSYIN)) {
+            /* NACM extensions */
+            if (OPT_NACMEXT && !strcmp(sub->ns->value, LY_NSNACM)) {
+                if (!strcmp(sub->name, "default-deny-write")) {
+                    mnode->nacm |= LY_NACM_DENYW;
+                } else if (!strcmp(sub->name, "default-deny-all")) {
+                    mnode->nacm |= LY_NACM_DENYA;
+                } else {
+                    LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
+                    goto error;
+                }
+            }
+
+            /* else garbage */
+            lyxml_free_elem(ctx, sub);
             continue;
         }
 
@@ -4034,7 +4059,7 @@ read_yin_container(struct ly_module *module,
 
     /* process container's specific children */
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
-        if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
+        if (!sub->ns) {
             /* garbage */
             lyxml_free_elem(module->ctx, sub);
             continue;
@@ -5258,9 +5283,15 @@ read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
 
         } else if (!strcmp(node->name, "extension")) {
             GETVAL(value, node, "name");
-            LOGWRN("Not supported \"%s\" extension statement found, ignoring.", value);
-            lyxml_free_elem(ctx, node);
 
+            /* we have 2 supported (hardcoded) extensions:
+             * NACM's default-deny-write and default-deny-all
+             */
+            if (strcmp(module->ns, LY_NSNACM) ||
+                    (strcmp(value, "default-deny-write") && strcmp(value, "default-deny-all"))) {
+                LOGWRN("Not supported \"%s\" extension statement found, ignoring.", value);
+                lyxml_free_elem(ctx, node);
+            }
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(node), node->name);
             goto error;
