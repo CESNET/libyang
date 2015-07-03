@@ -207,7 +207,7 @@ cleanup:
     return result;
 }
 
-struct ly_submodule *
+API struct ly_submodule *
 ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *revision, int read)
 {
     struct ly_submodule *result;
