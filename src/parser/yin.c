@@ -642,13 +642,13 @@ find_superior_type(const char *name, struct ly_module *module, struct ly_mnode *
 static struct ly_ident *
 find_base_ident_sub(struct ly_module *module, struct ly_ident *ident, const char *basename)
 {
-    unsigned int i;
-    struct ly_ident *base_iter;
+    unsigned int i, j;
+    struct ly_ident *base_iter = NULL;
     struct ly_ident_der *der;
 
+    /* search module */
     for (i = 0; i < module->ident_size; i++) {
         if (!strcmp(basename, module->ident[i].name)) {
-            /* we are done */
 
             if (!ident) {
                 /* just search for type, so do not modify anything, just return
@@ -660,21 +660,43 @@ find_base_ident_sub(struct ly_module *module, struct ly_ident *ident, const char
             /* we are resolving identity definition, so now update structures */
             ident->base = base_iter = &module->ident[i];
 
-            while (base_iter) {
-                for (der = base_iter->der; der && der->next; der = der->next);
-                if (der) {
-                    der->next = malloc(sizeof *der);
-                    der = der->next;
-                } else {
-                    ident->base->der = der = malloc(sizeof *der);
-                }
-                der->next = NULL;
-                der->ident = ident;
-
-                base_iter = base_iter->base;
-            }
-            return ident->base;
+            break;
         }
+    }
+
+    /* search submodules */
+    if (!base_iter) {
+        for (j = 0; j < module->inc_size; j++) {
+            for (i = 0; i < module->inc[j].submodule->ident_size; i++) {
+                if (!strcmp(basename, module->inc[j].submodule->ident[i].name)) {
+
+                    if (!ident) {
+                        return &module->inc[j].submodule->ident[i];
+                    }
+
+                    ident->base = base_iter = &module->inc[j].submodule->ident[i];
+                    break;
+                }
+            }
+        }
+    }
+
+    /* we found it somewhere */
+    if (base_iter) {
+        while (base_iter) {
+            for (der = base_iter->der; der && der->next; der = der->next);
+            if (der) {
+                der->next = malloc(sizeof *der);
+                der = der->next;
+            } else {
+                ident->base->der = der = malloc(sizeof *der);
+            }
+            der->next = NULL;
+            der->ident = ident;
+
+            base_iter = base_iter->base;
+        }
+        return ident->base;
     }
 
     return NULL;
