@@ -383,8 +383,9 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
             sibling = NULL;
             LY_TREE_FOR(start, sibling) {
                 /* name match */
-                if (!strncmp(name, sibling->name, nam_len)
-                        && ((sibling->name[nam_len] == '/') || (sibling->name[nam_len] == '\0'))) {
+                if ((sibling->name && !strncmp(name, sibling->name, nam_len) && (strlen(sibling->name) == nam_len))
+                        || (!strncmp(name, "input", 5) && (nam_len == 5) && (sibling->nodetype == LY_NODE_INPUT))
+                        || (!strncmp(name, "output", 6) && (nam_len == 6) && (sibling->nodetype == LY_NODE_OUTPUT))) {
 
                     /* prefix match check */
                     if (prefix) {
