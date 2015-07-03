@@ -1594,8 +1594,9 @@ fill_yin_feature(struct ly_module *module, struct lyxml_elem *yin, struct ly_fea
         goto error;
     }
     f->name = lydict_insert(module->ctx, value, strlen(value));
+    f->module = module;
 
-    if (read_yin_common(module, NULL, (struct ly_mnode *)f, yin, OPT_MODULE)) {
+    if (read_yin_common(module, NULL, (struct ly_mnode *)f, yin, 0)) {
         goto error;
     }
 
@@ -2439,7 +2440,7 @@ fill_yin_augment(struct ly_module *module, struct ly_mnode *parent, struct lyxml
     aug->target_name = lydict_insert(module->ctx, value, 0);
     aug->parent = parent;
 
-    if (read_yin_common(module, NULL, (struct ly_mnode *)aug, yin, 0)) {
+    if (read_yin_common(module, NULL, (struct ly_mnode *)aug, yin, OPT_NACMEXT)) {
         goto error;
     }
 
@@ -2851,7 +2852,7 @@ read_yin_common(struct ly_module *module, struct ly_mnode *parent,
     }
 
     /* inherit NACM flags */
-    if (parent) {
+    if ((opt & OPT_NACMEXT) && parent) {
         mnode->nacm = parent->nacm;
     }
 
@@ -2864,7 +2865,7 @@ read_yin_common(struct ly_module *module, struct ly_mnode *parent,
         }
         if  (strcmp(sub->ns->value, LY_NSYIN)) {
             /* NACM extensions */
-            if (OPT_NACMEXT && !strcmp(sub->ns->value, LY_NSNACM)) {
+            if ((opt & OPT_NACMEXT) && !strcmp(sub->ns->value, LY_NSNACM)) {
                 if (!strcmp(sub->name, "default-deny-write")) {
                     mnode->nacm |= LY_NACM_DENYW;
                 } else if (!strcmp(sub->name, "default-deny-all")) {
@@ -3062,7 +3063,7 @@ read_yin_case(struct ly_module *module,
     mcase->prev = (struct ly_mnode *)mcase;
     retval = (struct ly_mnode *)mcase;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_INHERIT)) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_INHERIT | OPT_NACMEXT)) {
         goto error;
     }
 
@@ -3160,7 +3161,7 @@ read_yin_choice(struct ly_module *module,
     choice->prev = (struct ly_mnode *)choice;
     retval = (struct ly_mnode *)choice;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | (resolve ? OPT_INHERIT : 0))) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | OPT_NACMEXT | (resolve ? OPT_INHERIT : 0))) {
         goto error;
     }
 
@@ -3312,7 +3313,7 @@ read_yin_anyxml(struct ly_module *module, struct ly_mnode *parent, struct lyxml_
     anyxml->prev = (struct ly_mnode *)anyxml;
     retval = (struct ly_mnode *)anyxml;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | (resolve ? OPT_INHERIT : 0))) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | OPT_NACMEXT | (resolve ? OPT_INHERIT : 0))) {
         goto error;
     }
 
@@ -3421,7 +3422,7 @@ read_yin_leaf(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
     leaf->prev = (struct ly_mnode *)leaf;
     retval = (struct ly_mnode *)leaf;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | (resolve ? OPT_INHERIT : 0))) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | OPT_NACMEXT | (resolve ? OPT_INHERIT : 0))) {
         goto error;
     }
 
@@ -3565,7 +3566,7 @@ read_yin_leaflist(struct ly_module *module, struct ly_mnode *parent, struct lyxm
     llist->prev = (struct ly_mnode *)llist;
     retval = (struct ly_mnode *)llist;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | (resolve ? OPT_INHERIT : 0))) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | OPT_NACMEXT | (resolve ? OPT_INHERIT : 0))) {
         goto error;
     }
 
@@ -3757,7 +3758,7 @@ read_yin_list(struct ly_module *module,
     list->prev = (struct ly_mnode *)list;
     retval = (struct ly_mnode *)list;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | (resolve ? OPT_INHERIT : 0))) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | OPT_NACMEXT | (resolve ? OPT_INHERIT : 0))) {
         goto error;
     }
 
@@ -4053,7 +4054,7 @@ read_yin_container(struct ly_module *module,
     cont->prev = (struct ly_mnode *)cont;
     retval = (struct ly_mnode *)cont;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | (resolve ? OPT_INHERIT : 0))) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | OPT_NACMEXT | (resolve ? OPT_INHERIT : 0))) {
         goto error;
     }
 
@@ -4208,7 +4209,7 @@ read_yin_grouping(struct ly_module *module,
     grp->prev = (struct ly_mnode *)grp;
     retval = (struct ly_mnode *)grp;
 
-    if (read_yin_common(module, parent, retval, node, OPT_IDENT | OPT_MODULE)) {
+    if (read_yin_common(module, parent, retval, node, OPT_IDENT | OPT_MODULE | OPT_NACMEXT)) {
         goto error;
     }
 
@@ -4322,7 +4323,7 @@ read_yin_input_output(struct ly_module *module,
     inout->prev = (struct ly_mnode *)inout;
     retval = (struct ly_mnode *)inout;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_MODULE)) {
+    if (read_yin_common(module, parent, retval, yin, OPT_MODULE | OPT_NACMEXT)) {
         goto error;
     }
 
@@ -4430,7 +4431,7 @@ read_yin_notif(struct ly_module *module,
     notif->prev = (struct ly_mnode *)notif;
     retval = (struct ly_mnode *)notif;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE)) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_NACMEXT)) {
         goto error;
     }
 
@@ -4552,7 +4553,7 @@ read_yin_rpc(struct ly_module *module,
     rpc->prev = (struct ly_mnode *)rpc;
     retval = (struct ly_mnode *)rpc;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE)) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_NACMEXT)) {
         goto error;
     }
 
@@ -4975,7 +4976,7 @@ read_yin_uses(struct ly_module *module,
     GETVAL(value, node, "name");
     uses->name = lydict_insert(module->ctx, value, 0);
 
-    if (read_yin_common(module, parent, retval, node, OPT_MODULE | (resolve ? OPT_INHERIT : 0))) {
+    if (read_yin_common(module, parent, retval, node, OPT_MODULE |  OPT_NACMEXT | (resolve ? OPT_INHERIT : 0))) {
         goto error;
     }
 

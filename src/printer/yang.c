@@ -52,15 +52,11 @@ yang_print_text(FILE *f, int level, const char *name, const char *text)
 
 }
 
-/*
- * Covers:
- * description, reference, status
- */
 static void
-yang_print_mnode_common(FILE *f, int level, struct ly_mnode *mnode)
+yang_print_nacmext(FILE *f, int level, struct ly_mnode *mnode)
 {
     int i, j;
-    const char *prefix;
+    const char *prefix = NULL;
 
     if (mnode->nacm && (!mnode->parent || mnode->parent->nacm != mnode->nacm)) {
         /* locate ietf-netconf-acm module in imports */
@@ -94,6 +90,15 @@ yang_print_mnode_common(FILE *f, int level, struct ly_mnode *mnode)
             fprintf(f, "%*s%s:default-deny-all;\n", LEVEL, INDENT, prefix);
         }
     }
+}
+
+/*
+ * Covers:
+ * description, reference, status
+ */
+static void
+yang_print_mnode_common(FILE *f, int level, struct ly_mnode *mnode)
+{
     if (mnode->flags & LY_NODE_STATUS_CURR) {
         fprintf(f, "%*sstatus \"current\";\n", LEVEL, INDENT);
     } else if (mnode->flags & LY_NODE_STATUS_DEPRC) {
@@ -269,7 +274,19 @@ yang_print_refine(FILE *f, int level, struct ly_refine *refine)
     fprintf(f, "%*srefine \"%s\" {\n", LEVEL, INDENT, refine->target);
     level++;
 
-    yang_print_mnode_common2(f, level, (struct ly_mnode *)refine);
+    if (refine->flags & LY_NODE_CONFIG_W) {
+        fprintf(f, "%*sconfig \"true\";\n", LEVEL, INDENT);
+    } else if (refine->flags & LY_NODE_CONFIG_R) {
+        fprintf(f, "%*sconfig \"false\";\n", LEVEL, INDENT);
+    }
+
+    if (refine->flags & LY_NODE_MAND_TRUE) {
+        fprintf(f, "%*smandatory \"true\";\n", LEVEL, INDENT);
+    } else if (refine->flags & LY_NODE_MAND_FALSE) {
+        fprintf(f, "%*smandatory \"false\";\n", LEVEL, INDENT);
+    }
+
+    yang_print_mnode_common(f, level, (struct ly_mnode *)refine);
 
     for (i = 0; i < refine->must_size; ++i) {
         yang_print_must(f, level, &refine->must[i]);
@@ -345,6 +362,9 @@ yang_print_container(FILE *f, int level, struct ly_mnode *mnode)
     fprintf(f, "%*scontainer %s {\n", LEVEL, INDENT, mnode->name);
 
     level++;
+
+    yang_print_nacmext(f, level, mnode);
+
     if (cont->presence != NULL) {
         yang_print_text(f, level, "presence", cont->presence);
     }
@@ -377,6 +397,7 @@ yang_print_case(FILE *f, int level, struct ly_mnode *mnode)
 
     fprintf(f, "%*scase %s {\n", LEVEL, INDENT, cas->name);
     level++;
+    yang_print_nacmext(f, level, mnode);
     yang_print_mnode_common2(f, level, mnode);
 
     LY_TREE_FOR(mnode->child, sub) {
@@ -398,6 +419,7 @@ yang_print_choice(FILE *f, int level, struct ly_mnode *mnode)
     fprintf(f, "%*schoice %s {\n", LEVEL, INDENT, mnode->name);
 
     level++;
+    yang_print_nacmext(f, level, mnode);
     if (choice->dflt != NULL) {
         fprintf(f, "%*sdefault \"%s\";\n", LEVEL, INDENT, choice->dflt->name);
     }
@@ -420,6 +442,7 @@ yang_print_leaf(FILE *f, int level, struct ly_mnode *mnode)
     fprintf(f, "%*sleaf %s {\n", LEVEL, INDENT, mnode->name);
 
     level++;
+    yang_print_nacmext(f, level, mnode);
     yang_print_mnode_common2(f, level, mnode);
     for (i = 0; i < leaf->must_size; i++) {
         yang_print_must(f, level, &leaf->must[i]);
@@ -444,6 +467,7 @@ yang_print_anyxml(FILE *f, int level, struct ly_mnode *mnode)
 
     fprintf(f, "%*sanyxml %s {\n", LEVEL, INDENT, anyxml->name);
     level++;
+    yang_print_nacmext(f, level, mnode);
     yang_print_mnode_common2(f, level, mnode);
     for (i = 0; i < anyxml->must_size; i++) {
         yang_print_must(f, level, &anyxml->must[i]);
@@ -461,6 +485,7 @@ yang_print_leaflist(FILE *f, int level, struct ly_mnode *mnode)
     fprintf(f, "%*sleaf-list %s {\n", LEVEL, INDENT, mnode->name);
 
     level++;
+    yang_print_nacmext(f, level, mnode);
     yang_print_mnode_common2(f, level, mnode);
     if (llist->flags & LY_NODE_USERORDERED) {
         fprintf(f, "%*sordered-by user;\n", LEVEL, INDENT);
@@ -493,6 +518,7 @@ yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
 
     fprintf(f, "%*slist %s {\n", LEVEL, INDENT, mnode->name);
     level++;
+    yang_print_nacmext(f, level, mnode);
     yang_print_mnode_common2(f, level, mnode);
 
     if (list->keys_size) {
@@ -573,6 +599,7 @@ yang_print_uses(FILE *f, int level, struct ly_mnode *mnode)
     fprintf(f, "%*suses %s {\n", LEVEL, INDENT, uses->name);
     level++;
 
+    yang_print_nacmext(f, level, mnode);
     yang_print_mnode_common(f, level, mnode);
 
     for (i = 0; i < uses->refine_size; i++) {
