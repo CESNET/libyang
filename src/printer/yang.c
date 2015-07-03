@@ -59,6 +59,41 @@ yang_print_text(FILE *f, int level, const char *name, const char *text)
 static void
 yang_print_mnode_common(FILE *f, int level, struct ly_mnode *mnode)
 {
+    int i, j;
+    const char *prefix;
+
+    if (mnode->nacm && (!mnode->parent || mnode->parent->nacm != mnode->nacm)) {
+        /* locate ietf-netconf-acm module in imports */
+        if (!strcmp(mnode->module->name, "ietf-netconf-acm")) {
+            prefix = mnode->module->prefix;
+        } else {
+            /* search in imports */
+            for (i = 0; i < mnode->module->imp_size; i++) {
+                if (!strcmp(mnode->module->imp[i].module->name, "ietf-netconf-acm")) {
+                    prefix = mnode->module->imp[i].prefix;
+                    break;
+                }
+            }
+            /* and in imports of includes */
+            if (!prefix) {
+                for (j = 0; j < mnode->module->inc_size; j++) {
+                    for (i = 0; i < mnode->module->inc[j].submodule->imp_size; i++) {
+                        if (!strcmp(mnode->module->inc[j].submodule->imp[i].module->name, "ietf-netconf-acm")) {
+                            prefix = mnode->module->inc[j].submodule->imp[i].prefix;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if ((mnode->nacm & LY_NACM_DENYW) && (!mnode->parent || !(mnode->parent->nacm & LY_NACM_DENYW))) {
+            fprintf(f, "%*s%s:default-deny-write;\n", LEVEL, INDENT, prefix);
+        }
+        if ((mnode->nacm & LY_NACM_DENYA) && (!mnode->parent || !(mnode->parent->nacm & LY_NACM_DENYA))) {
+            fprintf(f, "%*s%s:default-deny-all;\n", LEVEL, INDENT, prefix);
+        }
+    }
     if (mnode->flags & LY_NODE_STATUS_CURR) {
         fprintf(f, "%*sstatus \"current\";\n", LEVEL, INDENT);
     } else if (mnode->flags & LY_NODE_STATUS_DEPRC) {
