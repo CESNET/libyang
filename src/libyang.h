@@ -91,6 +91,16 @@ struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const 
 char **ly_ctx_get_module_names(struct ly_ctx *ctx);
 
 /**
+ * @brief Get the names of the loaded submodules of a loaded module.
+ *
+ * @param[in] ctx Context with the modules.
+ * @param[in] name Name of the parent module.
+ * @return NULL-terminated array of submodule names of the parent module,
+ * NULL on error. The result must be freed by the caller.
+ */
+char **ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *name);
+
+/**
  * @brief Free all internal structures of the specified context.
  *
  * The function should be used before terminating the application to destroy

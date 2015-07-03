@@ -301,3 +301,31 @@ ly_ctx_get_module_names(struct ly_ctx *ctx)
 
     return result;
 }
+
+API char **
+ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *name)
+{
+    int i;
+    char **result = NULL;
+    struct ly_module *mod;
+
+    if (!ctx) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    mod = ly_ctx_get_module(ctx, name, NULL, 0);
+    if (!mod) {
+        LOGERR(LY_EVALID, "Data model \"%s\" not loaded", name);
+        return NULL;
+    }
+
+    result = malloc((mod->inc_size+1) * sizeof *result);
+
+    for (i = 0; i < mod->inc_size; i++) {
+        result[i] = strdup(mod->inc[i].submodule->name);
+    }
+    result[i] = NULL;
+
+    return result;
+}
