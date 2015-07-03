@@ -56,7 +56,7 @@ static void
 yang_print_nacmext(FILE *f, int level, struct ly_mnode *mnode)
 {
     int i, j;
-    const char *prefix;
+    const char *prefix = NULL;
 
     if (mnode->nacm && (!mnode->parent || mnode->parent->nacm != mnode->nacm)) {
         /* locate ietf-netconf-acm module in imports */
