@@ -229,8 +229,8 @@ cleanup:
 int
 cmd_list(const char *UNUSED(arg))
 {
-    char **names;
-    int i;
+    char **names, **sub_names;
+    int i, j;
 
     printf("List of the loaded models:\n");
 
@@ -238,6 +238,14 @@ cmd_list(const char *UNUSED(arg))
 
     for (i = 0; names[i]; ++i) {
         printf("\t%s\n", names[i]);
+
+        sub_names = ly_ctx_get_submodule_names(ctx, names[i]);
+        for (j = 0; sub_names[j]; ++j) {
+            printf("\t\t%s\n", sub_names[j]);
+            free(sub_names[j]);
+        }
+        free(sub_names);
+
         free(names[i]);
     }
     free(names);
