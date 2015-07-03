@@ -271,6 +271,7 @@ struct ly_augment {
     const char *dsc;
     const char *ref;
     uint8_t flags;
+    uint8_t nacm;
     struct ly_mnode *target;
     LY_NODE_TYPE nodetype;           /**< 0 */
     struct ly_mnode *parent;
