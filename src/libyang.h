@@ -82,6 +82,19 @@ void ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
 struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision, int read);
 
 /**
+ * @brief Get submodule from the context's search dir.
+ *
+ * @param[in] module Parent (belongs-to) module.
+ * @param[in] name Name of the YANG submodule to get.
+ * @param[in] revision Optional revision date of the YANG submodule to get. If
+ * not specified, the newest revision is returned (TODO).
+ * @param[in] read Flag for reading the submodule from a file. If set to 0, libyang
+ * searches for the submodule only in the submodules already loaded to the context.
+ * @return Pointer to the data model structure.
+ */
+struct ly_submodule *ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *revision, int read);
+
+/**
  * @brief Get the names of the loaded modules.
  *
  * @param[in] ctx Context with the modules.

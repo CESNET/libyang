@@ -208,7 +208,7 @@ cleanup:
 }
 
 struct ly_submodule *
-ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *revision)
+ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *revision, int read)
 {
     struct ly_submodule *result;
     int i;
@@ -231,6 +231,10 @@ ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *rev
         if (!revision || (result->rev_size && !strcmp(revision, result->rev[0].date))) {
             return result;
         }
+    }
+
+    if (!read) {
+        return NULL;
     }
 
     /* not found in context, try to get it from the search directory */

@@ -2801,7 +2801,7 @@ fill_yin_include(struct ly_module *module, struct lyxml_elem *yin, struct ly_inc
     }
 
     GETVAL(value, yin, "module");
-    inc->submodule = ly_ctx_get_submodule(module, value, inc->rev[0] ? inc->rev : NULL);
+    inc->submodule = ly_ctx_get_submodule(module, value, inc->rev[0] ? inc->rev : NULL, 1);
     if (!inc->submodule) {
         LOGERR(LY_EVALID, "Including \"%s\" module into \"%s\" failed.", value, module->name);
         LOGVAL(VE_INARG, LOGLINE(yin), value, yin->name);

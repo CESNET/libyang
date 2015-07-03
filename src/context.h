@@ -37,14 +37,4 @@ struct ly_ctx {
     struct ly_modules_list models;
 };
 
-/**
- * @brief Get submodule from the context's search dir.
- *
- * @param[in] module Parent (belongs-to) module.
- * @param[in] name Name of the YANG submodule to get.
- * @param[in] revision Optional revision date of the YANG submodule to get. If
- * not specified, the newest revision is returned (TODO).
- */
-struct ly_submodule *ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *revision);
-
 #endif /* LY_CONTEXT_H_ */
