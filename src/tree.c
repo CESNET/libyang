@@ -325,6 +325,11 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
     assert(mod);
     assert(id);
 
+    if (id[strlen(id)-1] == '/') {
+        LOGERR(LY_EINVAL, "%s: Path ending with '/' is not valid.", __func__);
+        return NULL;
+    }
+
     if (id[0] == '/') {
         if (node_type & (LY_NODE_USES | LY_NODE_CHOICE)) {
             return NULL;
@@ -478,7 +483,7 @@ resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *
         /* make prefix point to the next node name */
         prefix = name+nam_len;
         ++prefix;
-        assert(*prefix);
+        assert(prefix[0]);
 
         /* parse prefix and node name */
         ptr = strchr(prefix, '/');
