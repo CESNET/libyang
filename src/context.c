@@ -70,6 +70,32 @@ ly_ctx_new(const char *search_dir)
 }
 
 API void
+ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
+{
+    char *cwd;
+
+    if (!ctx) {
+        return;
+    }
+
+    if (search_dir) {
+        cwd = get_current_dir_name();
+        if (chdir(search_dir)) {
+            LOGERR(LY_ESYS, "Unable to use search directory \"%s\" (%s)",
+                   search_dir, strerror(errno));
+            free(cwd);
+            return;
+        }
+        ctx->models.search_path = get_current_dir_name();
+        chdir(cwd);
+        free(cwd);
+    } else {
+        free(ctx->models.search_path);
+        ctx->models.search_path = NULL;
+    }
+}
+
+API void
 ly_ctx_destroy(struct ly_ctx *ctx)
 {
     if (!ctx) {

@@ -58,6 +58,14 @@ struct ly_ctx;
 struct ly_ctx *ly_ctx_new(const char *search_dir);
 
 /**
+ * @brief Change the search path in libyang context
+ *
+ * @param[in] ctx Context to be modified.
+ * @param[in] search_dir New search path to replace the current one in ctx.
+ */
+void ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
+
+/**
  * @brief Get pointer to the data model structure of the specified name.
  *
  * If the module is not yet loaded in the context, libyang tries to find it in
