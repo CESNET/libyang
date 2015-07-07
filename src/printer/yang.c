@@ -142,6 +142,18 @@ yang_print_mnode_common2(FILE *f, int level, struct ly_mnode *mnode)
 }
 
 static void
+yang_print_feature(FILE *f, int level, struct ly_feature *feat)
+{
+    fprintf(f, "%*sfeature %s {\n", LEVEL, INDENT, feat->name);
+    level++;
+
+
+
+    level--;
+    fprintf(f, "%*s}\n", LEVEL, INDENT);
+}
+
+static void
 yang_print_restr(FILE *f, int level, struct ly_restr *restr)
 {
     if (restr->dsc != NULL) {
@@ -375,6 +387,10 @@ yang_print_container(FILE *f, int level, struct ly_mnode *mnode)
 
     yang_print_mnode_common2(f, level, mnode);
 
+    for (i = 0; i < cont->features_size; i++) {
+        fprintf(f, "%*sif-feature %s;\n", LEVEL, INDENT, cont->features[i]->name);
+    }
+
     for (i = 0; i < cont->tpdf_size; i++) {
         yang_print_typedef(f, level, mnode->module, &cont->tpdf[i]);
     }
@@ -392,6 +408,7 @@ yang_print_container(FILE *f, int level, struct ly_mnode *mnode)
 static void
 yang_print_case(FILE *f, int level, struct ly_mnode *mnode)
 {
+    int i;
     struct ly_mnode *sub;
     struct ly_mnode_case *cas = (struct ly_mnode_case *)mnode;
 
@@ -399,6 +416,10 @@ yang_print_case(FILE *f, int level, struct ly_mnode *mnode)
     level++;
     yang_print_nacmext(f, level, mnode);
     yang_print_mnode_common2(f, level, mnode);
+
+    for (i = 0; i < cas->features_size; i++) {
+        fprintf(f, "%*sif-feature %s;\n", LEVEL, INDENT, cas->features[i]->name);
+    }
 
     LY_TREE_FOR(mnode->child, sub) {
         yang_print_mnode(f, level, sub,
@@ -413,6 +434,7 @@ yang_print_case(FILE *f, int level, struct ly_mnode *mnode)
 static void
 yang_print_choice(FILE *f, int level, struct ly_mnode *mnode)
 {
+    int i;
     struct ly_mnode *sub;
     struct ly_mnode_choice *choice = (struct ly_mnode_choice *)mnode;
 
@@ -425,6 +447,11 @@ yang_print_choice(FILE *f, int level, struct ly_mnode *mnode)
     }
 
     yang_print_mnode_common2(f, level, mnode);
+
+    for (i = 0; i < choice->features_size; i++) {
+        fprintf(f, "%*sif-feature %s;\n", LEVEL, INDENT, choice->features[i]->name);
+    }
+
     LY_TREE_FOR(mnode->child, sub) {
         yang_print_mnode(f, level, sub,
                          LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_CASE);
@@ -444,6 +471,9 @@ yang_print_leaf(FILE *f, int level, struct ly_mnode *mnode)
     level++;
     yang_print_nacmext(f, level, mnode);
     yang_print_mnode_common2(f, level, mnode);
+    for (i = 0; i < leaf->features_size; i++) {
+        fprintf(f, "%*sif-feature %s;\n", LEVEL, INDENT, leaf->features[i]->name);
+    }
     for (i = 0; i < leaf->must_size; i++) {
         yang_print_must(f, level, &leaf->must[i]);
     }
@@ -469,6 +499,9 @@ yang_print_anyxml(FILE *f, int level, struct ly_mnode *mnode)
     level++;
     yang_print_nacmext(f, level, mnode);
     yang_print_mnode_common2(f, level, mnode);
+    for (i = 0; i < anyxml->features_size; i++) {
+        fprintf(f, "%*sif-feature %s;\n", LEVEL, INDENT, anyxml->features[i]->name);
+    }
     for (i = 0; i < anyxml->must_size; i++) {
         yang_print_must(f, level, &anyxml->must[i]);
     }
@@ -487,6 +520,9 @@ yang_print_leaflist(FILE *f, int level, struct ly_mnode *mnode)
     level++;
     yang_print_nacmext(f, level, mnode);
     yang_print_mnode_common2(f, level, mnode);
+    for (i = 0; i < llist->features_size; i++) {
+        fprintf(f, "%*sif-feature %s;\n", LEVEL, INDENT, llist->features[i]->name);
+    }
     if (llist->flags & LY_NODE_USERORDERED) {
         fprintf(f, "%*sordered-by user;\n", LEVEL, INDENT);
     }
@@ -520,6 +556,10 @@ yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
     level++;
     yang_print_nacmext(f, level, mnode);
     yang_print_mnode_common2(f, level, mnode);
+
+    for (i = 0; i < list->features_size; i++) {
+        fprintf(f, "%*sif-feature %s;\n", LEVEL, INDENT, list->features[i]->name);
+    }
 
     if (list->keys_size) {
         fprintf(f, "%*skey \"", LEVEL, INDENT);
@@ -601,6 +641,9 @@ yang_print_uses(FILE *f, int level, struct ly_mnode *mnode)
 
     yang_print_nacmext(f, level, mnode);
     yang_print_mnode_common(f, level, mnode);
+    for (i = 0; i < uses->features_size; i++) {
+        fprintf(f, "%*sif-feature %s;\n", LEVEL, INDENT, uses->features[i]->name);
+    }
 
     for (i = 0; i < uses->refine_size; i++) {
         yang_print_refine(f, level, &uses->refine[i]);
@@ -646,6 +689,10 @@ yang_print_rpc(FILE *f, int level, struct ly_mnode *mnode)
     level++;
     yang_print_mnode_common(f, level, mnode);
 
+    for (i = 0; i < rpc->features_size; i++) {
+        fprintf(f, "%*sif-feature %s;\n", LEVEL, INDENT, rpc->features[i]->name);
+    }
+
     for (i = 0; i < rpc->tpdf_size; i++) {
         yang_print_typedef(f, level, mnode->module, &rpc->tpdf[i]);
     }
@@ -670,6 +717,10 @@ yang_print_notif(FILE *f, int level, struct ly_mnode *mnode)
 
     level++;
     yang_print_mnode_common(f, level, mnode);
+
+    for (i = 0; i < notif->features_size; i++) {
+        fprintf(f, "%*sif-feature %s;\n", LEVEL, INDENT, notif->features[i]->name);
+    }
 
     for (i = 0; i < notif->tpdf_size; i++) {
         yang_print_typedef(f, level, mnode->module, &notif->tpdf[i]);
