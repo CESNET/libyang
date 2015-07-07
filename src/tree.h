@@ -854,6 +854,18 @@ int ly_features_enable(struct ly_module *module, const char *name);
  */
 int ly_features_disable(struct ly_module *module, const char *name);
 
+/**
+ * @brief Get all the features of a module and its direct submodules
+ *
+ * Optionally, also the enable state can be retrieved.
+ *
+ * @param[in] module Module with the returned features.
+ * @param[out] enable_state Array with the information about enabled state of every feature.
+ * @return NULL-terminated array of all the defined features. If enable_state was specififed,
+ * it includes NULL-terminated array of either "on" or "off" matching the features in the result.
+ */
+char **ly_get_features(struct ly_module *module, char ***enable_state);
+
 /**@} tree */
 
 #endif /* LY_TREE_H_ */

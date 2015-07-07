@@ -1649,3 +1649,61 @@ ly_features_disable(struct ly_module *module, const char *name)
 {
     return ly_features_change(module, name, 0);
 }
+
+API char **
+ly_get_features(struct ly_module *module, char ***enable_state)
+{
+    int i, j;
+    char **result = NULL;
+    unsigned int count;
+
+    if (!module) {
+        return NULL;
+    }
+
+    count = module->features_size;
+    for (i = 0; i < module->inc_size; i++) {
+        count += module->inc[i].submodule->features_size;
+    }
+    result = malloc((count+1) * sizeof *result);
+    if (enable_state) {
+        *enable_state = malloc((count+1) * sizeof **enable_state);
+    }
+
+    count = 0;
+
+    /* module itself */
+    for (i = 0; i < module->features_size; i++) {
+        result[count] = strdup(module->features[i].name);
+        if (enable_state) {
+            if (module->features[i].flags & LY_NODE_FENABLED) {
+                (*enable_state)[count] = strdup("on");
+            } else {
+                (*enable_state)[count] = strdup("off");
+            }
+        }
+        ++count;
+    }
+
+    /* submodules */
+    for (j = 0; j < module->inc_size; j++) {
+        for (i = 0; i < module->inc[j].submodule->features_size; i++) {
+            result[count] = strdup(module->inc[j].submodule->features[i].name);
+            if (enable_state) {
+                if (module->inc[j].submodule->features[i].flags & LY_NODE_FENABLED) {
+                    (*enable_state)[count] = strdup("on");
+                } else {
+                    (*enable_state)[count] = strdup("off");
+                }
+            }
+            ++count;
+        }
+    }
+
+    result[count] = NULL;
+    if (enable_state) {
+        (*enable_state)[count] = NULL;
+    }
+
+    return result;
+}
