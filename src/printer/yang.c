@@ -144,10 +144,15 @@ yang_print_mnode_common2(FILE *f, int level, struct ly_mnode *mnode)
 static void
 yang_print_feature(FILE *f, int level, struct ly_feature *feat)
 {
+    int i;
+
     fprintf(f, "%*sfeature %s {\n", LEVEL, INDENT, feat->name);
     level++;
 
-
+    yang_print_mnode_common(f, level, (struct ly_mnode *)feat);
+    for (i = 0; i < feat->features_size; ++i) {
+        fprintf(f, "%*sif-feature %s;\n", LEVEL, INDENT, feat->features[i]->name);
+    }
 
     level--;
     fprintf(f, "%*s}\n", LEVEL, INDENT);
@@ -852,6 +857,10 @@ yang_print_model(FILE *f, struct ly_module *module)
         } else {
             yang_print_text(f, level, "revision", module->rev[i].date);
         }
+    }
+
+    for (i = 0; i < module->features_size; i++) {
+        yang_print_feature(f, level, &module->features[i]);
     }
 
     for (i = 0; i < module->ident_size; i++) {
