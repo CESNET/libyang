@@ -1055,7 +1055,7 @@ store_content:
         goto error;
     }
 
-    if (!nons_flag && parent) {
+    if (!elem->ns && !nons_flag && parent) {
         elem->ns = get_ns(parent, prefix_len ? prefix : NULL);
     }
 
