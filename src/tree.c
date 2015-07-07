@@ -1647,5 +1647,5 @@ ly_features_enable(struct ly_module *module, const char *name)
 API int
 ly_features_disable(struct ly_module *module, const char *name)
 {
-    return ly_features_change(module, name, 1);
+    return ly_features_change(module, name, 0);
 }
