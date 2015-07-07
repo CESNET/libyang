@@ -990,7 +990,7 @@ yang_print_model(FILE *f, struct ly_module *module)
     for (i = 0; i < module->inc_size; i++) {
         if (module->inc[i].rev[0]) {
             fprintf(f, "%*sinclude \"%s\" {\n", LEVEL, INDENT, module->inc[i].submodule->name);
-            yang_print_text(f, level + 1, "revision-date", module->imp[i].rev);
+            yang_print_text(f, level + 1, "revision-date", module->inc[i].rev);
             fprintf(f, "%*s}\n", LEVEL, INDENT);
         } else {
             fprintf(f, "%*sinclude \"%s\";\n", LEVEL, INDENT, module->inc[i].submodule->name);
