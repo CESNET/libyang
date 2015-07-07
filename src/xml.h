@@ -68,10 +68,9 @@ struct lyxml_ns {
 struct lyxml_attr {
     LYXML_ATTR_TYPE type;            /**< type of the attribute */
     struct lyxml_attr *next;         /**< next sibling attribute */
-    struct lyxml_elem *parent;       /**< parent node of the attribute */
+    const struct lyxml_ns *ns;       /**< pointer to the namespace of the attribute if any */
     const char *value;               /**< data stored in the attribute */
     const char *name;                /**< name of the attribute (the LocalPart of the qualified name) */
-    const struct lyxml_ns *ns;       /**< pointer to the namespace of the attribute if any */
 };
 
 /**
@@ -91,12 +90,12 @@ struct lyxml_elem {
     struct lyxml_elem *next;         /**< next sibling node */
     struct lyxml_elem *prev;         /**< previous sibling node */
     struct lyxml_elem *parent;       /**< parent node */
-    const char *content;             /**< text content of the node if any */
-
     struct lyxml_elem *child;        /**< first children element */
     struct lyxml_attr *attr;         /**< first attribute declared in the element */
-    const struct lyxml_ns *ns;       /**< namespace of the element */
+
     const char *name;                /**< name of the element */
+    const struct lyxml_ns *ns;       /**< namespace of the element */
+    const char *content;             /**< text content of the node if any */
 
     char flags;                      /**< special flags */
 #define LYXML_ELEM_MIXED 0x01 /* element contains mixed content */
@@ -189,9 +188,10 @@ struct lyxml_elem *lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem,
  * is placed anywhere.
  *
  * @param[in] ctx libyang context to use
+ * @param[in] parent Parent element where the attribute is placed
  * @param[in] attr Attribute to free.
  */
-void lyxml_free_attr(struct ly_ctx *ctx, struct lyxml_attr *attr);
+void lyxml_free_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr *attr);
 
 /**
  * @brief Free (and unlink from their element) all attributes (including

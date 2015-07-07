@@ -71,47 +71,6 @@ unsigned int lineno, lws_lineno;
 	}
 
 void
-lyxml_unlink_attr(struct lyxml_attr *attr)
-{
-    struct lyxml_attr *prev;
-
-    if (!attr) {
-        return;
-    }
-
-    if (!attr->parent) {
-        /* hmm, something is probably wrong */
-        attr->next = NULL;
-        return;
-    }
-
-    prev = attr->parent->attr;
-    if (prev == attr) {
-        /* unlinking the first attribute -> update the element's pointer */
-        attr->parent->attr = attr->next;
-    } else {
-        while (prev && prev->next != attr) {
-            prev = prev->next;
-        }
-
-        if (!prev) {
-            /* something is probably broken */
-            attr->parent = NULL;
-            attr->next = NULL;
-            return;
-        }
-
-        /* fix the previous's attribute pointer to next in the list */
-        prev->next = attr->next;
-    }
-
-    attr->parent = NULL;
-    attr->next = NULL;
-
-    return;
-}
-
-void
 lyxml_unlink_elem(struct lyxml_elem *elem)
 {
     struct lyxml_elem *parent, *first;
@@ -163,13 +122,36 @@ lyxml_unlink_elem(struct lyxml_elem *elem)
 }
 
 void
-lyxml_free_attr(struct ly_ctx *ctx, struct lyxml_attr *attr)
+lyxml_free_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr *attr)
 {
+    struct lyxml_attr *aiter, *aprev;
+
     if (!attr) {
         return;
     }
 
-    lyxml_unlink_attr(attr);
+    if (parent) {
+        /* unlink attribute from the parent's list of attributes */
+        aprev = NULL;
+        for (aiter = parent->attr; aiter; aiter = aiter->next) {
+            if (aiter == attr) {
+                break;
+            }
+            aprev = aiter;
+        }
+        if (!aiter) {
+            /* attribute to remove not found */
+            return;
+        }
+
+        if (!aprev) {
+            /* attribute is first in parent's list of attributes */
+            parent->attr = attr->next;
+        } else {
+            /* reconnect previous attribute to the next */
+            aprev->next = attr->next;
+        }
+    }
     lydict_remove(ctx, attr->name);
     lydict_remove(ctx, attr->value);
     free(attr);
@@ -222,31 +204,6 @@ lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem *elem)
 
     lyxml_unlink_elem(elem);
     lyxml_free_elem_(ctx, elem);
-}
-
-int
-lyxml_add_attr(struct lyxml_elem *parent, struct lyxml_attr *attr)
-{
-    struct lyxml_attr *a;
-
-    assert(parent);
-    assert(attr);
-
-    /* (re)link attribute to parent */
-    if (attr->parent) {
-        lyxml_unlink_attr(attr);
-    }
-    attr->parent = parent;
-
-    /* link parent to attribute */
-    if (parent->attr) {
-        for (a = parent->attr; a->next; a = a->next);
-        a->next = attr;
-    } else {
-        parent->attr = attr;
-    }
-
-    return EXIT_SUCCESS;
 }
 
 const char *
@@ -657,11 +614,11 @@ get_ns(struct lyxml_elem *elem, const char *prefix)
 }
 
 struct lyxml_attr *
-lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_attr *attr)
+lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr *attr)
 {
-    struct lyxml_attr *result;
+    struct lyxml_attr *result, *a;
 
-    if (!attr) {
+    if (!attr || !parent) {
         return NULL;
     }
 
@@ -678,6 +635,27 @@ lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_attr *attr)
     result->name = lydict_insert(ctx, attr->name, 0);
     result->type = attr->type;
 
+    /* set namespace in case of standard attributes */
+    if (result->type == LYXML_ATTR_STD && attr->ns) {
+        result->ns = get_ns(parent, attr->ns->prefix);
+    }
+
+    /* set parent pointer in case of namespace attribute */
+    if (result->type == LYXML_ATTR_NS) {
+        ((struct lyxml_ns *)result)->parent = parent;
+    }
+
+    /* put attribute into the parent's attributes list */
+    if (parent->attr) {
+        /* go to the end of the list */
+        for (a = parent->attr; a->next; a = a->next);
+        /* and append new attribute */
+        a->next = result;
+    } else {
+        /* add the first attribute in the list */
+        parent->attr = result;
+    }
+
     return result;
 }
 
@@ -685,7 +663,7 @@ struct lyxml_elem *
 lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *parent, int recursive)
 {
     struct lyxml_elem *result, *child;
-    struct lyxml_attr *attr, *attr_dup;
+    struct lyxml_attr *attr;
 
     if (!elem) {
         return NULL;
@@ -709,11 +687,7 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
 
     /* duplicate attributes */
     for (attr = elem->attr; attr; attr = attr->next) {
-        attr_dup = lyxml_dup_attr(ctx, attr);
-        if (attr->type == LYXML_ATTR_STD && attr->ns) {
-            attr_dup->ns = get_ns(result, attr->ns->prefix);
-        }
-        lyxml_add_attr(result, attr_dup);
+        lyxml_dup_attr(ctx, result, attr);
     }
 
     if (!recursive) {
@@ -729,12 +703,12 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
 }
 
 static struct lyxml_attr *
-parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml_elem *elem)
+parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml_elem *parent)
 {
     const char *c = data, *start, *delim;
     char prefix[32];
     int uc;
-    struct lyxml_attr *attr = NULL;
+    struct lyxml_attr *attr = NULL, *a;
     unsigned int size;
 
     /* check if it is attribute or namespace */
@@ -742,6 +716,7 @@ parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
         /* namespace */
         attr = calloc(1, sizeof (struct lyxml_ns));
         attr->type = LYXML_ATTR_NS;
+        ((struct lyxml_ns *)attr)->parent = parent;
         c += 5;
         if (*c != ':') {
             /* default namespace, prefix will be empty */
@@ -772,7 +747,7 @@ parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
             /* look for the prefix in namespaces */
             memcpy(prefix, data, c - data);
             prefix[c - data] = '\0';
-            attr->ns = get_ns(elem, prefix);
+            attr->ns = get_ns(parent, prefix);
         }
         c += size;
         uc = getutf8(c, &size);
@@ -804,10 +779,22 @@ equal:
     }
 
     *len = c + size + 1 - data; /* +1 is delimiter size */
+
+    /* put attribute into the parent's attributes list */
+    if (parent->attr) {
+        /* go to the end of the list */
+        for (a = parent->attr; a->next; a = a->next);
+        /* and append new attribute */
+        a->next = attr;
+    } else {
+        /* add the first attribute in the list */
+        parent->attr = attr;
+    }
+
     return attr;
 
 error:
-    lyxml_free_attr(ctx, attr);
+    lyxml_free_attr(ctx, NULL, attr);
     return NULL;
 }
 
@@ -1039,7 +1026,6 @@ store_content:
         if (!attr) {
             goto error;
         }
-        lyxml_add_attr(elem, attr);
         c += size;              /* move after processed attribute */
 
         /* check namespace */
