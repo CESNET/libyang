@@ -1089,6 +1089,8 @@ ly_augment_free(struct ly_ctx *ctx, struct ly_augment *aug)
     lydict_remove(ctx, aug->dsc);
     lydict_remove(ctx, aug->ref);
 
+    free(aug->features);
+
     ly_when_free(ctx, aug->when);
 
     lyxml_free_elem(ctx, (struct lyxml_elem *)aug->child);
