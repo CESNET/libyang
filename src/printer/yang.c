@@ -206,7 +206,11 @@ yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *ty
         break;
     case LY_TYPE_DEC64:
         fprintf(f, "%*sfraction-digits %d;\n", LEVEL, INDENT, type->info.dec64.dig);
-        /* TODO range incomplete */
+        if (type->info.dec64.range != NULL) {
+            fprintf(f, "%*srange \"%s\" {\n", LEVEL, INDENT, type->info.dec64.range->expr);
+            yang_print_restr(f, level + 1, type->info.dec64.range);
+            fprintf(f, "%*s}\n", LEVEL, INDENT);
+        }
         break;
     case LY_TYPE_ENUM:
         for (i = 0; i < type->info.enums.count; i++) {
