@@ -835,7 +835,7 @@ read_restr_substmt(struct ly_ctx *ctx, struct ly_restr *restr, struct lyxml_elem
                 LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
                 return EXIT_FAILURE;
             }
-            GETVAL(value, yin, "value");
+            GETVAL(value, child, "value");
             restr->eapptag = lydict_insert(ctx, value, 0);
         } else if (!strcmp(child->name, "error-message")) {
             if (restr->emsg) {
