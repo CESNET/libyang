@@ -750,7 +750,7 @@ yang_print_model(FILE *f, struct ly_module *module)
     }
 
     if (module->version) {
-        fprintf(f, "%*syang-version \"%s\";\n", LEVEL, INDENT, module->version == 1 ? "1.0" : "1.1");
+        fprintf(f, "%*syang-version %s;\n", LEVEL, INDENT, module->version == 1 ? "1" : "1.1");
     }
 
     for (i = 0; i < module->imp_size; i++) {
