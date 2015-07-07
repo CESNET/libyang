@@ -978,7 +978,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                     type->info.bits.bit[i].pos = (uint32_t)p_;
 
                     /* keep the highest enum value for automatic increment */
-                    if (type->info.bits.bit[i].pos > p) {
+                    if (type->info.bits.bit[i].pos >= p) {
                         p = type->info.bits.bit[i].pos;
                         p++;
                     } else {
