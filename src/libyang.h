@@ -26,7 +26,7 @@
 
 #include "tree.h"
 
-int ly_model_print(FILE * f, struct ly_module *module, LY_MOUTFORMAT format);
+int ly_model_print(FILE * f, struct ly_module *module, LY_MOUTFORMAT format, const char *target_node);
 
 /**
  * @defgroup libyang libyang

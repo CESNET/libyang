@@ -30,6 +30,7 @@ set(libsrc
 	src/printer.c
 	src/printer/yang.c
 	src/printer/tree.c
+	src/printer/info.c
 	src/yang_types.c)
 
 set(lintsrc

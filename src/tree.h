@@ -64,6 +64,7 @@ typedef enum {
     LY_OUT_YANG,
     LY_OUT_YIN,
     LY_OUT_TREE,
+    LY_OUT_INFO,
 } LY_MOUTFORMAT;
 
 typedef enum {

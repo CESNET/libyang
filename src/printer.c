@@ -25,12 +25,13 @@
 #include "common.h"
 #include "tree.h"
 
-/* printer/yang.c */
+/* printer/-.c */
 int yang_print_model(FILE * f, struct ly_module *module);
 int tree_print_model(FILE * f, struct ly_module *module);
+int info_print_model(FILE * f, struct ly_module *module, const char *target_node);
 
 API int
-ly_model_print(FILE * f, struct ly_module *module, LY_MOUTFORMAT format)
+ly_model_print(FILE * f, struct ly_module *module, LY_MOUTFORMAT format, const char *target_node)
 {
     if (!f || !module) {
         ly_errno = LY_EINVAL;
@@ -45,6 +46,8 @@ ly_model_print(FILE * f, struct ly_module *module, LY_MOUTFORMAT format)
         return yang_print_model(f, module);
     case LY_OUT_TREE:
         return tree_print_model(f, module);
+    case LY_OUT_INFO:
+        return info_print_model(f, module, target_node);
     default:
         LOGERR(LY_EINVAL, "Unknown output format.");
         return EXIT_FAILURE;
