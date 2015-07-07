@@ -352,7 +352,7 @@ struct ly_module {
     uint8_t augment_size;            /**< number of elements in augment array */
     uint8_t deviation_size;          /**< number of elements in deviation array */
 
-    struct {
+    struct ly_revision {
         char date[LY_REV_SIZE];          /**< revision-date */
         const char *dsc;                 /**< revision's dsc */
         const char *ref;                 /**< revision's reference */
@@ -397,11 +397,7 @@ struct ly_submodule {
     uint8_t augment_size;            /**< number of elements in augment array */
     uint8_t deviation_size;          /**< number of elements in deviation array */
 
-    struct {
-        char date[LY_REV_SIZE];          /**< revision-date */
-        const char *dsc;                 /**< revision's dsc */
-        const char *ref;                 /**< revision's reference */
-    } *rev;                          /**< array of the module revisions,
+    struct ly_revision *rev;         /**< array of the module revisions,
 	                                  revisions[0] is the last revision of the
 	                                  module */
     struct ly_import *imp;           /**< array of imported modules */
