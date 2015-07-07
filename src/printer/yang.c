@@ -347,6 +347,81 @@ yang_print_refine(FILE *f, int level, struct ly_refine *refine)
 }
 
 static void
+yang_print_deviation(FILE *f, int level, struct ly_module *module, struct ly_deviation *deviation)
+{
+    int i, j;
+
+    fprintf(f, "%*sdeviation \"%s\" {\n", LEVEL, INDENT, deviation->target_name);
+    level++;
+
+    if (deviation->dsc) {
+        yang_print_text(f, level, "description", deviation->dsc);
+    }
+    if (deviation->ref) {
+        yang_print_text(f, level, "reference", deviation->ref);
+    }
+
+    for (i = 0; i < deviation->deviate_size; ++i) {
+        fprintf(f, "%*sdeviate ", LEVEL, INDENT);
+        if (deviation->deviate[i].mod == LY_DEVIATE_NO) {
+            fprintf(f, "not-supported {\n");
+        } else if (deviation->deviate[i].mod == LY_DEVIATE_ADD) {
+            fprintf(f, "add {\n");
+        } else if (deviation->deviate[i].mod == LY_DEVIATE_RPL) {
+            fprintf(f, "replace {\n");
+        } else if (deviation->deviate[i].mod == LY_DEVIATE_DEL) {
+            fprintf(f, "delete {\n");
+        }
+        level++;
+
+        if (deviation->deviate[i].flags & LY_NODE_CONFIG_W) {
+            fprintf(f, "%*sconfig \"true\";\n", LEVEL, INDENT);
+        } else if (deviation->deviate[i].flags & LY_NODE_CONFIG_R) {
+            fprintf(f, "%*sconfig \"false\";\n", LEVEL, INDENT);
+        }
+
+        if (deviation->deviate[i].flags & LY_NODE_MAND_TRUE) {
+            fprintf(f, "%*smandatory \"true\";\n", LEVEL, INDENT);
+        } else if (deviation->deviate[i].flags & LY_NODE_MAND_FALSE) {
+            fprintf(f, "%*smandatory \"false\";\n", LEVEL, INDENT);
+        }
+
+        if (deviation->deviate[i].dflt) {
+            fprintf(f, "%*sdefault %s;\n", LEVEL, INDENT, deviation->deviate[i].dflt);
+        }
+
+        if (deviation->deviate[i].min) {
+            fprintf(f, "%*smin-elements %u;\n", LEVEL, INDENT, deviation->deviate[i].min);
+        }
+        if (deviation->deviate[i].max) {
+            fprintf(f, "%*smax-elements %u;\n", LEVEL, INDENT, deviation->deviate[i].max);
+        }
+
+        for (j = 0; j < deviation->deviate[i].must_size; ++j) {
+            yang_print_must(f, level, &deviation->deviate[i].must[j]);
+        }
+
+        for (j = 0; j < deviation->deviate[i].unique_size; ++j) {
+            yang_print_unique(f, level, &deviation->deviate[i].unique[j]);
+        }
+
+        if (deviation->deviate[i].type) {
+            yang_print_type(f, level, module, deviation->deviate[i].type);
+        }
+
+        if (deviation->deviate[i].units) {
+            fprintf(f, "%*sunits %s;\n", LEVEL, INDENT, deviation->deviate[i].units);
+        }
+
+        level--;
+        fprintf(f, "%*s}\n", LEVEL, INDENT);
+    }
+
+    level--;
+    fprintf(f, "%*s}\n", LEVEL, INDENT);
+}
+
+static void
 yang_print_typedef(FILE *f, int level, struct ly_module *module, struct ly_tpdf *tpdf)
 {
     fprintf(f, "%*stypedef %s {\n", LEVEL, INDENT, tpdf->name);
@@ -801,7 +876,7 @@ yang_print_model(FILE *f, struct ly_module *module)
     struct ly_mnode *mnode;
 
     if (module->type) {
-        fprintf(f, "submodule %s {\n", module->name);
+        fprintf(f, "submodule %s {%s\n", module->name, (module->deviated ? " // DEVIATED" : ""));
         level++;
         fprintf(f, "%*sbelongs-to %s {\n", LEVEL, INDENT, ((struct ly_submodule *)module)->belongsto->name);
         level++;
@@ -809,7 +884,7 @@ yang_print_model(FILE *f, struct ly_module *module)
         level--;
         fprintf(f, "%*s}\n", LEVEL, INDENT);
     } else {
-        fprintf(f, "module %s {\n", module->name);
+        fprintf(f, "module %s {%s\n", module->name, (module->deviated ? " // DEVIATED" : ""));
         level++;
         fprintf(f, "%*snamespace \"%s\";\n", LEVEL, INDENT, module->ns);
         fprintf(f, "%*sprefix \"%s\";\n", LEVEL, INDENT, module->prefix);
@@ -828,6 +903,10 @@ yang_print_model(FILE *f, struct ly_module *module)
         }
         level--;
         fprintf(f, "%*s}\n", LEVEL, INDENT);
+    }
+
+    for (i = 0; i < module->deviation_size; ++i) {
+        yang_print_deviation(f, level, module, &module->deviation[i]);
     }
 
     for (i = 0; i < module->inc_size; i++) {
