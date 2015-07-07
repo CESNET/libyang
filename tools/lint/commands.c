@@ -58,6 +58,12 @@ cmd_list_help(void)
 }
 
 void
+cmd_feature_help(void)
+{
+    printf("feature -(-p)rint | (-(-e)nable | -(-d)isable (* | <feature-name>)) <model-name>\n");
+}
+
+void
 cmd_searchpath_help(void)
 {
     printf("searchpath <model-dir-path>\n");
@@ -159,7 +165,7 @@ cmd_print(const char *arg)
     }
     argv[argc] = NULL;
 
-    optind = 1;
+    optind = 0;
     while (1) {
         c = getopt_long(argc, argv, "hf:o:", long_options, &option_index);
         option_index = 0;
@@ -260,6 +266,133 @@ cmd_list(const char *UNUSED(arg))
 }
 
 int
+cmd_feature(const char *arg)
+{
+    int c, i, argc, option_index, ret = 1, task = -1;
+    char **argv = NULL, *ptr, **names, **enable_state;
+    const char *feat_name = NULL;
+    struct ly_module *model, *parent_model;
+    static struct option long_options[] = {
+        {"help", no_argument, 0, 'h'},
+        {"print", no_argument, 0, 'p'},
+        {"enable", required_argument, 0, 'e'},
+        {"disable", required_argument, 0, 'd'},
+        {NULL, 0, 0, 0}
+    };
+
+    argc = 1;
+    argv = malloc(2*sizeof *argv);
+    *argv = strdup(arg);
+    ptr = strtok(*argv, " ");
+    while ((ptr = strtok(NULL, " "))) {
+        argv = realloc(argv, (argc+2)*sizeof *argv);
+        argv[argc++] = ptr;
+    }
+    argv[argc] = NULL;
+
+    optind = 0;
+    while (1) {
+        option_index = 0;
+        c = getopt_long(argc, argv, "hpe:d:", long_options, &option_index);
+        if (c == -1) {
+            break;
+        }
+
+        switch (c) {
+        case 'h':
+            cmd_feature_help();
+            ret = 0;
+            goto cleanup;
+        case 'p':
+            if (task != -1) {
+                fprintf(stderr, "Only one of print, enable, or disable can be specified.\n");
+                goto cleanup;
+            }
+            task = 0;
+            break;
+        case 'e':
+            if (task != -1) {
+                fprintf(stderr, "Only one of print, enable, or disable can be specified.\n");
+                goto cleanup;
+            }
+            task = 1;
+            feat_name = optarg;
+            break;
+        case 'd':
+            if (task != -1) {
+                fprintf(stderr, "Only one of print, enable, or disable can be specified.\n");
+                goto cleanup;
+            }
+            task = 2;
+            feat_name = optarg;
+            break;
+        case '?':
+            fprintf(stderr, "Unknown option \"%d\".\n", (char)c);
+            goto cleanup;
+        }
+    }
+
+    /* model name */
+    if (optind == argc) {
+        fprintf(stderr, "Missing the model name.\n");
+        goto cleanup;
+    }
+    model = ly_ctx_get_module(ctx, argv[optind], NULL, 0);
+    if (model == NULL) {
+        names = ly_ctx_get_module_names(ctx);
+        for (i = 0; names[i]; i++) {
+            if (!model) {
+                parent_model = ly_ctx_get_module(ctx, names[i], NULL, 0);
+                model = (struct ly_module *)ly_ctx_get_submodule(parent_model, argv[optind], NULL, 0);
+            }
+            free(names[i]);
+        }
+        free(names);
+    }
+    if (model == NULL) {
+        fprintf(stderr, "No model \"%s\" found.\n", argv[optind]);
+        goto cleanup;
+    }
+
+    if (task == -1) {
+        fprintf(stderr, "One of print, enable, or disable must be specified.\n");
+        goto cleanup;
+    }
+
+    if (task == 0) {
+        printf("%s features:\n", model->name);
+
+        names = ly_get_features(model, &enable_state);
+        for (i = 0; names[i]; ++i) {
+            printf("\t%s %s\n", names[i], enable_state[i]);
+            free(names[i]);
+            free(enable_state[i]);
+        }
+        free(names);
+        free(enable_state);
+        if (!i) {
+            printf("\t(none)\n");
+        }
+    } else if (task == 1) {
+        if (ly_features_enable(model, feat_name)) {
+            fprintf(stderr, "Feature \"%s\" not found.\n", feat_name);
+            ret = 1;
+        }
+    } else if (task == 2) {
+        if (ly_features_disable(model, feat_name)) {
+            fprintf(stderr, "Feature \"%s\" not found.\n", feat_name);
+            ret = 1;
+        }
+    }
+
+cleanup:
+    free(*argv);
+    free(argv);
+
+    return ret;
+}
+
+int
 cmd_searchpath(const char *arg)
 {
     const char *path;
@@ -293,6 +426,11 @@ cmd_searchpath(const char *arg)
     return 0;
 }
 
+int
+cmd_clear(const char *UNUSED(arg))
+{
+    ly_ctx_destroy(ctx);
+    ctx = ly_ctx_new(search_path);
     return 0;
 }
 
@@ -315,11 +453,6 @@ cmd_verb(const char *arg)
         return 1;
     }
 
-int
-cmd_clear(const char *UNUSED(arg))
-{
-    ly_ctx_destroy(ctx);
-    ctx = ly_ctx_new(search_path);
     return 0;
 }
 
@@ -380,6 +513,7 @@ COMMAND commands[] = {
         {"add", cmd_add, cmd_add_help, "Add a new model"},
         {"print", cmd_print, cmd_print_help, "Print model"},
         {"list", cmd_list, cmd_list_help, "List all the loaded models"},
+        {"feature", cmd_feature, cmd_feature_help, "Print/enable/disable all/specific features of models"},
         {"searchpath", cmd_searchpath, cmd_searchpath_help, "Set the search path for models"},
         {"clear", cmd_clear, NULL, "Clear the context - remove all the loaded models"},
         {"verb", cmd_verb, cmd_verb_help, "Change verbosity"},

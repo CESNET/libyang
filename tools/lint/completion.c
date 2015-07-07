@@ -99,16 +99,16 @@ get_path_completion(const char *hint, char ***matches, unsigned int *match_count
 }
 
 void
-get_print_completion(const char *hint, char ***matches, unsigned int *match_count)
+get_model_completion(const char *hint, char ***matches, unsigned int *match_count)
 {
-    int i;
+    int i, j, no_arg;
     const char *ptr;
-    char **names;
+    char **names, **sub_names;
 
     *match_count = 0;
     *matches = NULL;
 
-    /* skip the print command */
+    /* skip the command */
     ptr = strchr(hint, ' ');
     while (*ptr == ' ') {
         ++ptr;
@@ -116,6 +116,13 @@ get_print_completion(const char *hint, char ***matches, unsigned int *match_coun
 
     /* options - skip them */
     while (*ptr == '-') {
+        /* -p, --print do not have an argument */
+        if (!strncmp(ptr, "-p", 2) || !strncmp(ptr, "--print", 7)) {
+            no_arg = 1;
+        } else {
+            no_arg = 0;
+        }
+
         ptr = strchr(ptr, ' ');
         /* option is last - no hint */
         if (!ptr) {
@@ -124,6 +131,11 @@ get_print_completion(const char *hint, char ***matches, unsigned int *match_coun
         while (*ptr == ' ') {
             ++ptr;
         }
+
+        if (no_arg) {
+            continue;
+        }
+
         ptr = strchr(ptr, ' ');
         /* option argument is last - no hint */
         if (!ptr) {
@@ -144,6 +156,20 @@ get_print_completion(const char *hint, char ***matches, unsigned int *match_coun
             strncpy((*matches)[*match_count-1], hint, ptr-hint);
             strcpy((*matches)[*match_count-1]+(ptr-hint), names[i]);
         }
+
+        sub_names = ly_ctx_get_submodule_names(ctx, names[i]);
+        for (j = 0; sub_names[j]; ++j) {
+            if (!strncmp(ptr, sub_names[j], strlen(ptr))) {
+                ++(*match_count);
+                *matches = realloc(*matches, *match_count * sizeof **matches);
+                (*matches)[*match_count-1] = malloc((ptr-hint)+strlen(sub_names[j])+1);
+                strncpy((*matches)[*match_count-1], hint, ptr-hint);
+                strcpy((*matches)[*match_count-1]+(ptr-hint), sub_names[j]);
+            }
+            free(sub_names[j]);
+        }
+        free(sub_names);
+
         free(names[i]);
     }
     free(names);
@@ -157,8 +183,8 @@ complete_cmd(const char *buf, linenoiseCompletions *lc)
 
     if (!strncmp(buf, "add ", 4) || !strncmp(buf, "searchpath ", 11)) {
         get_path_completion(buf, &matches, &match_count);
-    } else if (!strncmp(buf, "print ", 6)) {
-        get_print_completion(buf, &matches, &match_count);
+    } else if (!strncmp(buf, "print ", 6) || !strncmp(buf, "feature ", 8)) {
+        get_model_completion(buf, &matches, &match_count);
     } else {
         get_cmd_completion(buf, &matches, &match_count);
     }
