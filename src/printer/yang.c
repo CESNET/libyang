@@ -734,11 +734,20 @@ yang_print_model(FILE *f, struct ly_module *module)
 
     struct ly_mnode *mnode;
 
-    fprintf(f, "module %s {\n", module->name);
-    level++;
-
-    fprintf(f, "%*snamespace \"%s\";\n", LEVEL, INDENT, module->ns);
-    fprintf(f, "%*sprefix \"%s\";\n", LEVEL, INDENT, module->prefix);
+    if (module->type) {
+        fprintf(f, "submodule %s {\n", module->name);
+        level++;
+        fprintf(f, "%*sbelongs-to %s {\n", LEVEL, INDENT, ((struct ly_submodule *)module)->belongsto->name);
+        level++;
+        fprintf(f, "%*sprefix \"%s\";\n", LEVEL, INDENT, module->prefix);
+        level--;
+        fprintf(f, "%*s}\n", LEVEL, INDENT);
+    } else {
+        fprintf(f, "module %s {\n", module->name);
+        level++;
+        fprintf(f, "%*snamespace \"%s\";\n", LEVEL, INDENT, module->ns);
+        fprintf(f, "%*sprefix \"%s\";\n", LEVEL, INDENT, module->prefix);
+    }
 
     if (module->version) {
         fprintf(f, "%*syang-version \"%s\";\n", LEVEL, INDENT, module->version == 1 ? "1.0" : "1.1");
