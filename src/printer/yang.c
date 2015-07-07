@@ -469,6 +469,35 @@ yang_print_deviation(FILE *f, int level, struct ly_module *module, struct ly_dev
 }
 
 static void
+yang_print_augment(FILE *f, int level, struct ly_module *module, struct ly_augment *augment)
+{
+    int i;
+    struct ly_mnode *sub;
+
+    fprintf(f, "%*saugment \"%s\" {\n", LEVEL, INDENT, augment->target_name);
+    level++;
+
+    yang_print_mnode_common(f, level, (struct ly_mnode *)augment);
+
+    for (i = 0; i < augment->features_size; i++) {
+        yang_print_iffeature(f, level, module, augment->features[i]);
+    }
+
+    if (augment->when) {
+        yang_print_when(f, level, augment->when);
+    }
+
+    LY_TREE_FOR(augment->child, sub) {
+        yang_print_mnode(f, level, sub,
+                         LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
+                         LY_NODE_USES | LY_NODE_ANYXML | LY_NODE_CASE);
+    }
+
+    level--;
+    fprintf(f, "%*s}\n", LEVEL, INDENT);
+}
+
+static void
 yang_print_typedef(FILE *f, int level, struct ly_module *module, struct ly_tpdf *tpdf)
 {
     fprintf(f, "%*stypedef %s {\n", LEVEL, INDENT, tpdf->name);
@@ -817,6 +846,10 @@ yang_print_uses(FILE *f, int level, struct ly_mnode *mnode)
         yang_print_refine(f, level, &uses->refine[i]);
     }
 
+    for (i = 0; i < uses->augment_size; i++) {
+        yang_print_augment(f, level, mnode->module, &uses->augment[i]);
+    }
+
     level--;
     fprintf(f, "%*s}\n", LEVEL, INDENT);
 }
@@ -1042,6 +1075,10 @@ yang_print_model(FILE *f, struct ly_module *module)
         yang_print_mnode(f, level, mnode,
                          LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
                          LY_NODE_USES | LY_NODE_GROUPING | LY_NODE_ANYXML);
+    }
+
+    for (i = 0; i < module->augment_size; i++) {
+        yang_print_augment(f, level, module, &module->augment[i]);
     }
 
     LY_TREE_FOR(module->rpc, mnode) {
