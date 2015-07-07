@@ -212,7 +212,19 @@ cmd_print(const char *arg)
         fprintf(stderr, "Missing the model name.\n");
         goto cleanup;
     }
+
     model = ly_ctx_get_module(ctx, argv[optind], NULL, 0);
+    if (model == NULL) {
+        names = ly_ctx_get_module_names(ctx);
+        for (i = 0; names[i]; i++) {
+            if (!model) {
+                parent_model = ly_ctx_get_module(ctx, names[i], NULL, 0);
+                model = (struct ly_module *)ly_ctx_get_submodule(parent_model, argv[optind], NULL, 0);
+            }
+            free(names[i]);
+        }
+        free(names);
+    }
 
     if (model == NULL) {
         fprintf(stderr, "No model \"%s\" found.\n", argv[optind]);
