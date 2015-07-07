@@ -572,6 +572,10 @@ yang_print_container(FILE *f, int level, struct ly_mnode *mnode)
     }
 
     LY_TREE_FOR(mnode->child, sub) {
+        /* augment */
+        if (sub->parent != mnode) {
+            continue;
+        }
         yang_print_mnode(f, level, sub,
                          LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
                          LY_NODE_USES | LY_NODE_GROUPING | LY_NODE_ANYXML);
@@ -602,6 +606,10 @@ yang_print_case(FILE *f, int level, struct ly_mnode *mnode)
     }
 
     LY_TREE_FOR(mnode->child, sub) {
+        /* augment */
+        if (sub->parent != mnode) {
+            continue;
+        }
         yang_print_mnode(f, level, sub,
                          LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
                          LY_NODE_USES | LY_NODE_ANYXML);
@@ -637,6 +645,10 @@ yang_print_choice(FILE *f, int level, struct ly_mnode *mnode)
     }
 
     LY_TREE_FOR(mnode->child, sub) {
+        /* augment */
+        if (sub->parent != mnode) {
+            continue;
+        }
         yang_print_mnode(f, level, sub,
                          LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_CASE);
     }
@@ -786,6 +798,10 @@ yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
     }
 
     LY_TREE_FOR(mnode->child, sub) {
+        /* augment */
+        if (sub->parent != mnode) {
+            continue;
+        }
         yang_print_mnode(f, level, sub,
                          LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
                          LY_NODE_USES | LY_NODE_GROUPING | LY_NODE_ANYXML);
@@ -869,6 +885,10 @@ yang_print_input_output(FILE *f, int level, struct ly_mnode *mnode)
     }
 
     LY_TREE_FOR(mnode->child, sub) {
+        /* augment */
+        if (sub->parent != mnode) {
+            continue;
+        }
         yang_print_mnode(f, level, sub,
                          LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
                          LY_NODE_USES | LY_NODE_GROUPING | LY_NODE_ANYXML);
@@ -928,6 +948,10 @@ yang_print_notif(FILE *f, int level, struct ly_mnode *mnode)
     }
 
     LY_TREE_FOR(mnode->child, sub) {
+        /* augment */
+        if (sub->parent != mnode) {
+            continue;
+        }
         yang_print_mnode(f, level, sub,
                          LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
                          LY_NODE_USES | LY_NODE_GROUPING | LY_NODE_ANYXML);
