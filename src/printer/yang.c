@@ -176,6 +176,21 @@ yang_print_restr(FILE *f, int level, struct ly_restr *restr)
 }
 
 static void
+yang_print_when(FILE *f, int level, struct ly_when *when)
+{
+    fprintf(f, "%*swhen \"%s\" {\n", LEVEL, INDENT, when->cond);
+    level++;
+    if (when->dsc) {
+        yang_print_text(f, level, "description", when->dsc);
+    }
+    if (when->ref) {
+        yang_print_text(f, level, "reference", when->ref);
+    }
+    level--;
+    fprintf(f, "%*s}\n", LEVEL, INDENT);
+}
+
+static void
 yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *type)
 {
     int i;
@@ -491,6 +506,10 @@ yang_print_container(FILE *f, int level, struct ly_mnode *mnode)
         yang_print_typedef(f, level, mnode->module, &cont->tpdf[i]);
     }
 
+    if (cont->when) {
+        yang_print_when(f, level, cont->when);
+    }
+
     LY_TREE_FOR(mnode->child, sub) {
         yang_print_mnode(f, level, sub,
                          LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
@@ -515,6 +534,10 @@ yang_print_case(FILE *f, int level, struct ly_mnode *mnode)
 
     for (i = 0; i < cas->features_size; i++) {
         fprintf(f, "%*sif-feature %s;\n", LEVEL, INDENT, cas->features[i]->name);
+    }
+
+    if (cas->when) {
+        yang_print_when(f, level, cas->when);
     }
 
     LY_TREE_FOR(mnode->child, sub) {
@@ -548,6 +571,10 @@ yang_print_choice(FILE *f, int level, struct ly_mnode *mnode)
         fprintf(f, "%*sif-feature %s;\n", LEVEL, INDENT, choice->features[i]->name);
     }
 
+    if (choice->when) {
+        yang_print_when(f, level, choice->when);
+    }
+
     LY_TREE_FOR(mnode->child, sub) {
         yang_print_mnode(f, level, sub,
                          LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_CASE);
@@ -572,6 +599,9 @@ yang_print_leaf(FILE *f, int level, struct ly_mnode *mnode)
     }
     for (i = 0; i < leaf->must_size; i++) {
         yang_print_must(f, level, &leaf->must[i]);
+    }
+    if (leaf->when) {
+        yang_print_when(f, level, leaf->when);
     }
     yang_print_type(f, level, mnode->module, &leaf->type);
     if (leaf->units != NULL) {
@@ -600,6 +630,9 @@ yang_print_anyxml(FILE *f, int level, struct ly_mnode *mnode)
     }
     for (i = 0; i < anyxml->must_size; i++) {
         yang_print_must(f, level, &anyxml->must[i]);
+    }
+    if (anyxml->when) {
+        yang_print_when(f, level, anyxml->when);
     }
     level--;
     fprintf(f, "%*s}\n", LEVEL, INDENT);
@@ -630,6 +663,9 @@ yang_print_leaflist(FILE *f, int level, struct ly_mnode *mnode)
     }
     for (i = 0; i < llist->must_size; i++) {
         yang_print_must(f, level, &llist->must[i]);
+    }
+    if (llist->when) {
+        yang_print_when(f, level, llist->when);
     }
     yang_print_type(f, level, mnode->module, &llist->type);
     if (llist->units != NULL) {
@@ -679,6 +715,9 @@ yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
     }
     for (i = 0; i < list->must_size; i++) {
         yang_print_must(f, level, &list->must[i]);
+    }
+    if (list->when) {
+        yang_print_when(f, level, list->when);
     }
 
     for (i = 0; i < list->tpdf_size; i++) {
@@ -733,6 +772,9 @@ yang_print_uses(FILE *f, int level, struct ly_mnode *mnode)
     yang_print_mnode_common(f, level, mnode);
     for (i = 0; i < uses->features_size; i++) {
         fprintf(f, "%*sif-feature %s;\n", LEVEL, INDENT, uses->features[i]->name);
+    }
+    if (uses->when) {
+        yang_print_when(f, level, uses->when);
     }
 
     for (i = 0; i < uses->refine_size; i++) {
