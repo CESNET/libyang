@@ -26,6 +26,7 @@ set(libsrc
 	src/dict.c
 	src/xml.c
 	src/parser/yin.c
+	src/parser/xml.c
 	src/tree.c
 	src/printer.c
 	src/printer/yang.c

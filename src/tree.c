@@ -1709,3 +1709,45 @@ ly_get_features(struct ly_module *module, char ***enable_state)
 
     return result;
 }
+
+API struct lyd_node *
+ly_data_read(struct ly_ctx *ctx, const char *data, LY_DFORMAT format)
+{
+    if (!ctx || !data) {
+        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        return NULL;
+    }
+
+    switch (format) {
+    case LY_XML:
+        return xml_read_data(ctx, data);
+    case LY_JSON:
+    default:
+        /* TODO */
+        return NULL;
+    }
+
+    return NULL;
+}
+
+API void
+lyd_node_free(struct lyd_node *node)
+{
+    struct lyd_node *next, *child;
+
+    LY_TREE_FOR_SAFE(node->child, next, child) {
+        lyd_node_free(child);
+    }
+
+    if (node->prev->next) {
+        node->prev->next = node->next;
+    } else if (node->parent) {
+        /* first node */
+        node->parent->child = node->next;
+    }
+    if (node->next) {
+        node->next->prev = node->prev;
+    }
+
+    free(node);
+}
