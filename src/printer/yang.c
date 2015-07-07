@@ -288,6 +288,18 @@ yang_print_must(FILE *f, int level, struct ly_restr *must)
 }
 
 static void
+yang_print_unique(FILE *f, int level, struct ly_unique *uniq)
+{
+    int i;
+
+    fprintf(f, "%*sunique \"", LEVEL, INDENT);
+    for (i = 0; i < uniq->leafs_size; i++) {
+        fprintf(f, "%s%s", uniq->leafs[i]->name, i + 1 < uniq->leafs_size ? " " : "");
+    }
+    fprintf(f, "\";\n");
+}
+
+static void
 yang_print_refine(FILE *f, int level, struct ly_refine *refine)
 {
     int i;
@@ -556,9 +568,8 @@ yang_print_leaflist(FILE *f, int level, struct ly_mnode *mnode)
 static void
 yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
 {
-    int i, j;
+    int i;
     struct ly_mnode *sub;
-    struct ly_unique *uniq;
     struct ly_mnode_list *list = (struct ly_mnode_list *)mnode;
 
     fprintf(f, "%*slist %s {\n", LEVEL, INDENT, mnode->name);
@@ -579,12 +590,7 @@ yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
     }
 
     for (i = 0; i < list->unique_size; i++) {
-        uniq = &list->unique[i];
-        fprintf(f, "%*sunique \"", LEVEL, INDENT);
-        for (j = 0; j < uniq->leafs_size; j++) {
-            fprintf(f, "%s%s", uniq->leafs[j]->name, j + 1 < uniq->leafs_size ? " " : "");
-        }
-        fprintf(f, "\";\n");
+        yang_print_unique(f, level, &list->unique[i]);
     }
 
     if (list->flags & LY_NODE_USERORDERED) {
