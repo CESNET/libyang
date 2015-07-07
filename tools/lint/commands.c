@@ -60,7 +60,7 @@ cmd_list_help(void)
 void
 cmd_searchpath_help(void)
 {
-    printf("searchpath <model-dir-path> (on success removes all the models!)\n");
+    printf("searchpath <model-dir-path>\n");
 }
 
 void
@@ -288,10 +288,10 @@ cmd_searchpath(const char *arg)
     free(search_path);
     search_path = strdup(path);
 
-    ly_ctx_destroy(ctx);
-    ctx = ly_ctx_new(search_path);
+    ly_ctx_set_searchdir(ctx, search_path);
 
-    printf("All models have been removed.\n");
+    return 0;
+}
 
     return 0;
 }
@@ -315,6 +315,11 @@ cmd_verb(const char *arg)
         return 1;
     }
 
+int
+cmd_clear(const char *UNUSED(arg))
+{
+    ly_ctx_destroy(ctx);
+    ctx = ly_ctx_new(search_path);
     return 0;
 }
 
@@ -376,6 +381,7 @@ COMMAND commands[] = {
         {"print", cmd_print, cmd_print_help, "Print model"},
         {"list", cmd_list, cmd_list_help, "List all the loaded models"},
         {"searchpath", cmd_searchpath, cmd_searchpath_help, "Set the search path for models"},
+        {"clear", cmd_clear, NULL, "Clear the context - remove all the loaded models"},
         {"verb", cmd_verb, cmd_verb_help, "Change verbosity"},
         {"quit", cmd_quit, NULL, "Quit the program"},
         /* synonyms for previous commands */
