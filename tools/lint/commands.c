@@ -48,7 +48,7 @@ cmd_add_help(void)
 void
 cmd_print_help(void)
 {
-    printf("print [-f (yang | tree)] [-o <output-file>] <model-name>\n");
+    printf("print [-f (yang | tree | info)] [-t info-target-node] [-o <output-file>] <model-name>\n");
 }
 
 void
@@ -142,16 +142,17 @@ cmd_add(const char *arg)
 int
 cmd_print(const char *arg)
 {
-    int c, argc, option_index = 0, ret = 1;
-    char **argv = NULL, *ptr;
+    int c, i, argc, option_index, ret = 1;
+    char **argv = NULL, *ptr, *target_node = NULL, **names;
     const char *out_path = NULL;
-    struct ly_module *model;
+    struct ly_module *model, *parent_model;
     LY_MOUTFORMAT format = LY_OUT_TREE;
     FILE *output = stdout;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"format", required_argument, 0, 'f'},
         {"output", required_argument, 0, 'o'},
+        {"target-node", required_argument, 0, 't'},
         {NULL, 0, 0, 0}
     };
 
@@ -167,8 +168,8 @@ cmd_print(const char *arg)
 
     optind = 0;
     while (1) {
-        c = getopt_long(argc, argv, "hf:o:", long_options, &option_index);
         option_index = 0;
+        c = getopt_long(argc, argv, "hf:o:t:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -183,6 +184,8 @@ cmd_print(const char *arg)
                 format = LY_OUT_YANG;
             } else if (!strcmp(optarg, "tree")) {
                 format = LY_OUT_TREE;
+            } else if (!strcmp(optarg, "info")) {
+                format = LY_OUT_INFO;
             } else {
                 fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
                 goto cleanup;
@@ -194,6 +197,9 @@ cmd_print(const char *arg)
                 goto cleanup;
             }
             out_path = optarg;
+            break;
+        case 't':
+            target_node = optarg;
             break;
         case '?':
             fprintf(stderr, "Unknown option \"%d\".\n", (char)c);
@@ -221,7 +227,7 @@ cmd_print(const char *arg)
         }
     }
 
-    ret = ly_model_print(output, model, format);
+    ret = ly_model_print(output, model, format, target_node);
 
 cleanup:
     free(*argv);
