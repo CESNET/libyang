@@ -158,9 +158,11 @@ create_indent(int level, const char *old_indent, const struct ly_mnode *mnode, i
                 } else {
                     has_next = sibling_is_valid_child(mod->inc[i].submodule->data, 1);
                 }
+                if (has_next) {
+                    break;
+                }
             }
-
-            if (!found && !strcmp(submod->name, mod->inc[i].submodule->name)) {
+            if (!found && (submod == mod->inc[i].submodule)) {
                 found = 1;
             }
         }
