@@ -688,8 +688,8 @@ tree_print_model(FILE *f, struct ly_module *module)
 
         LY_TREE_FOR(module->inc[i].submodule->data, mnode) {
             tree_print_mnode(f, (struct ly_module *)module->inc[i].submodule, level, indent, max_child_len, mnode,
-                             LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_USES,
-                             0);
+                             LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST
+                             | LY_NODE_ANYXML | LY_NODE_USES, 0);
         }
     }
 
@@ -699,8 +699,8 @@ tree_print_model(FILE *f, struct ly_module *module)
 
     LY_TREE_FOR(module->data, mnode) {
         tree_print_mnode(f, module, level, indent, max_child_len, mnode,
-                         LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_USES,
-                         0);
+                         LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST
+                         | LY_NODE_ANYXML | LY_NODE_USES, 0);
     }
 
     /* rpc */
