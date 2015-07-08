@@ -124,7 +124,7 @@ struct ly_type {
 
         /* LY_TYPE_BITS */
         struct {
-            struct {
+            struct ly_type_bit {
                 const char *name;
                 const char *dsc;
                 const char *ref;
@@ -142,7 +142,7 @@ struct ly_type {
 
         /* LY_TYPE_ENUM */
         struct {
-            struct {
+            struct ly_type_enum {
                 const char *name;
                 const char *dsc;
                 const char *ref;
@@ -888,30 +888,102 @@ struct lyd_attr {
 };
 
 struct lyd_node {
+    struct lyd_attr *attr;
     struct lyd_node *next;
     struct lyd_node *prev;
     struct lyd_node *parent;
-    struct lyd_node *child;
-    struct lyd_attr *attr;
 
     struct ly_mnode *schema;
     void *callback;
+
+    struct lyd_node *child;
 };
 
 struct lyd_node_list {
+    struct lyd_attr *attr;
     struct lyd_node *next;
     struct lyd_node *prev;
     struct lyd_node *parent;
-    struct lyd_node *child;
-    struct lyd_attr *attr;
 
     struct ly_mnode *schema;
     void *callback;
 
-    /* list specific members */
+    struct lyd_node *child;
+
+    /* list's specific members */
     struct lyd_node_list* lprev;
     struct lyd_node_list* lnext;
 };
+
+struct lyd_node_leaf {
+    struct lyd_attr *attr;
+    struct lyd_node *next;
+    struct lyd_node *prev;
+    struct lyd_node *parent;
+
+    struct ly_mnode *schema;
+    void *callback;
+
+    /* struct lyd_node *child; is here replaced by the 'value' union */
+    /* leaf's specific members */
+    union {
+        const char *binary;          /**< base64 encoded, NULL terminated string */
+        struct ly_type_bit *bit;     /**< pointer to the schema definition of the bit value */
+        int8_t bool;                 /**< 0 as false, 1 as true */
+        int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
+        struct ly_type_enum *enm;    /**< pointer to the schema definition of the enumeration value */
+        struct ly_ident *ident;      /**< pointer to the schema definition of the identityref value */
+        struct lyd_node *instance;   /**< instance-identifier, pointer to the referenced data tree node */
+        int8_t int8;
+        int16_t int16;
+        int32_t int32;
+        int64_t int64;
+        struct lyd_node_leaf *leafref; /**< pointer to the referenced leaf in data tree */
+        const char *string;
+        uint8_t uint8;
+        uint16_t uint16;
+        uint32_t uint32;
+        uint64_t uint64;
+    } value;
+    LY_DATA_TYPE value_type;         /**< mainly for union types to avoid repeating of type detection */
+};
+
+struct lyd_node_leaflist {
+    struct lyd_attr *attr;
+    struct lyd_node *next;
+    struct lyd_node *prev;
+    struct lyd_node *parent;
+
+    struct ly_mnode *schema;
+    void *callback;
+
+    /* struct lyd_node *child; is here replaced by the 'value' union */
+    /* leaflist's specific members */
+    union {
+        const char *binary;          /**< base64 encoded, NULL terminated string */
+        struct ly_type_bit *bit;     /**< pointer to the schema definition of the bit value */
+        int8_t bool;                 /**< 0 as false, 1 as true */
+        int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
+        struct ly_type_enum *enm;    /**< pointer to the schema definition of the enumeration value */
+        struct ly_ident *ident;      /**< pointer to the schema definition of the identityref value */
+        struct lyd_node *instance;   /**< instance-identifier, pointer to the referenced data tree node */
+        int8_t int8;
+        int16_t int16;
+        int32_t int32;
+        int64_t int64;
+        struct lyd_node_leaf *leafref; /**< pointer to the referenced leaf in data tree */
+        const char *string;
+        uint8_t uint8;
+        uint16_t uint16;
+        uint32_t uint32;
+        uint64_t uint64;
+    } value;
+    LY_DATA_TYPE value_type;         /**< mainly for union types to avoid repeating of type detection */
+    struct lyd_node_leaflist* lprev;
+    struct lyd_node_leaflist* lnext;
+};
+
+
 
 void lyd_node_free(struct lyd_node *node);
 

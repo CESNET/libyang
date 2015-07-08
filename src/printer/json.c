@@ -89,7 +89,6 @@ json_print_list_internal(FILE *f, int level, struct lyd_node_list *list)
 
     fprintf(f, "%*s{\n", LEVEL, INDENT);
 
-    /* TODO: print list instances */
     LY_TREE_FOR(list->child, child) {
         json_print_node(f, level + 1, child);
     }
@@ -138,6 +137,7 @@ json_print_list(FILE *f, int level, struct lyd_node *node)
 static void
 json_print_leaf(FILE *f, int level, struct lyd_node *node)
 {
+    struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
     const char *schema;
 
     if (!node->parent || nscmp(node, node->parent)) {
@@ -148,10 +148,21 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node)
         } else {
             schema = node->schema->module->name;
         }
-        fprintf(f, "%*s\"%s:%s\": %s%s\n", LEVEL, INDENT, schema, node->schema->name, "\"TBD\"", node->next ? "," : "");
+        fprintf(f, "%*s\"%s:%s\": ", LEVEL, INDENT, schema, node->schema->name);
     } else {
-        fprintf(f, "%*s\"%s\": %s%s\n", LEVEL, INDENT, node->schema->name, "\"TBD\"", node->next ? "," : "");
+        fprintf(f, "%*s\"%s\": ", LEVEL, INDENT, node->schema->name);
     }
+
+    switch (((struct ly_mnode_leaf *)leaf->schema)->type.base) {
+    case LY_TYPE_BINARY:
+    case LY_TYPE_STRING:
+        fprintf(f, "\"%s\"%s\n", leaf->value.string, node->next ? "," : "");
+        break;
+    default:
+        /* TODO */
+        fprintf(f, "%s%s\n", "\"TBD\"", node->next ? "," : "");
+    }
+
 }
 
 void

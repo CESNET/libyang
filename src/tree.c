@@ -1735,8 +1735,22 @@ lyd_node_free(struct lyd_node *node)
 {
     struct lyd_node *next, *child;
 
-    LY_TREE_FOR_SAFE(node->child, next, child) {
-        lyd_node_free(child);
+    if (!(node->schema->nodetype & (LY_NODE_LEAF | LY_NODE_LEAFLIST))) {
+        /* free children */
+        LY_TREE_FOR_SAFE(node->child, next, child) {
+            lyd_node_free(child);
+        }
+    } else {
+        /* free value */
+        switch(((struct lyd_node_leaf *)node)->value_type) {
+        case LY_TYPE_BINARY:
+        case LY_TYPE_STRING:
+            lydict_remove(node->schema->module->ctx, ((struct lyd_node_leaf *)node)->value.string);
+            break;
+        default:
+            /* TODO */
+            break;
+        }
     }
 
     if (node->prev->next) {
