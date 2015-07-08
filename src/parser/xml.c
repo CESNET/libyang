@@ -70,7 +70,7 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct ly_mnode *start)
 }
 
 struct lyd_node *
-xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent)
+xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev)
 {
     struct lyd_node *result, *aux;
     struct ly_mnode *schema = NULL;
@@ -109,34 +109,54 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     }
 
     /* TODO: fit this into different types of nodes */
-    result = calloc(1, sizeof *result);
-    result->prev = result;
+    switch (schema->nodetype) {
+    case LY_NODE_LIST:
+        result = calloc(1, sizeof(struct lyd_node_list));
+        break;
+    default:
+        result = calloc(1, sizeof *result);
+    }
     result->parent = parent;
+    result->prev = prev;
     result->schema = schema;
+
+    /* type specific processing */
+    if (schema->nodetype == LY_NODE_LIST) {
+        /* pointers to next and previous instances of the same list */
+        for (aux = result->prev; aux; aux = aux->prev) {
+            if (aux->schema == result->schema) {
+                /* instances of the same list */
+                ((struct lyd_node_list *)aux)->lnext = (struct lyd_node_list *)result;
+                ((struct lyd_node_list *)result)->lprev = (struct lyd_node_list *)aux;
+                break;
+            }
+        }
+    }
 
     /* process children */
     if (xml->child) {
-        result->child = xml_parse_data(ctx, xml->child, result);
+        result->child = xml_parse_data(ctx, xml->child, result, NULL);
         if (!result->child) {
             free(result);
             return NULL;
         }
 
-        /* fix the "last" pointer */
-        for (aux = result->child; aux->next; aux = aux->next);
-        result->child->prev = aux;
     }
 
     /* process siblings */
     if (xml->next) {
-        result->next = xml_parse_data(ctx, xml->next, parent);
+        result->next = xml_parse_data(ctx, xml->next, parent, result);
         if (!result->next) {
             free(result);
             return NULL;
         }
-        result->next->prev = result;
     }
 
+    /* fix the "last" pointer */
+    if (!result->prev) {
+        for (aux = result; aux->next; aux = aux->next);
+        result->prev = aux;
+    }
     return result;
 }
 
@@ -157,7 +177,7 @@ xml_read_data(struct ly_ctx *ctx, const char *data)
         return NULL;
     }
 
-    result = xml_parse_data(ctx, xml->child, NULL);
+    result = xml_parse_data(ctx, xml->child, NULL, NULL);
     lyxml_free_elem(ctx, xml);
 
     return result;

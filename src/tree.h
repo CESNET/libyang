@@ -895,8 +895,23 @@ struct lyd_node {
     struct lyd_attr *attr;
 
     struct ly_mnode *schema;
+    void *callback;
 };
 
+struct lyd_node_list {
+    struct lyd_node *next;
+    struct lyd_node *prev;
+    struct lyd_node *parent;
+    struct lyd_node *child;
+    struct lyd_attr *attr;
+
+    struct ly_mnode *schema;
+    void *callback;
+
+    /* list specific members */
+    struct lyd_node_list* lprev;
+    struct lyd_node_list* lnext;
+};
 
 void lyd_node_free(struct lyd_node *node);
 
