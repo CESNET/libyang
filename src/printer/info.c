@@ -65,10 +65,6 @@ info_print_flags(FILE *f, uint8_t flags, uint8_t mask)
     fprintf(f, "%-*s", INDENT_LEN, "Flags: ");
 
     if (mask & LY_NODE_CONFIG_MASK) {
-        if (!first) {
-            fprintf(f, "%-*s", INDENT_LEN, " ");
-        }
-
         if (flags & LY_NODE_CONFIG_R) {
             fprintf(f, "read-only\n");
         } else {
@@ -313,12 +309,8 @@ info_print_import_all(FILE *f, struct ly_module *mod)
 
     fprintf(f, "%-*s", INDENT_LEN, "Imports: ");
     if (mod->imp_size) {
-        if (first) {
-            fprintf(f, "%s\n", mod->imp[0].module->name);
-            i = 1;
-        } else {
-            i = 0;
-        }
+        fprintf(f, "%s\n", mod->imp[0].module->name);
+        i = 1;
         first = 0;
 
         for (; i < mod->imp_size; ++i) {
@@ -354,12 +346,8 @@ info_print_include(FILE *f, struct ly_module *mod)
 
     fprintf(f, "%-*s", INDENT_LEN, "Includes: ");
     if (mod->inc_size) {
-        if (first) {
-            fprintf(f, "%s\n", mod->inc[0].submodule->name);
-            i = 1;
-        } else {
-            i = 0;
-        }
+        fprintf(f, "%s\n", mod->inc[0].submodule->name);
+        i = 1;
         first = 0;
 
         for (; i < mod->inc_size; ++i) {
@@ -379,12 +367,8 @@ info_print_ident_all(FILE *f, struct ly_module *mod)
 
     fprintf(f, "%-*s", INDENT_LEN, "Idents: ");
     if (mod->ident_size) {
-        if (first) {
-            fprintf(f, "%s\n", mod->ident[0].name);
-            i = 1;
-        } else {
-            i = 0;
-        }
+        fprintf(f, "%s\n", mod->ident[0].name);
+        i = 1;
         first = 0;
 
         for (; i < (signed)mod->ident_size; ++i) {
@@ -420,12 +404,8 @@ info_print_features_all(FILE *f, struct ly_module *mod)
 
     fprintf(f, "%-*s", INDENT_LEN, "Features: ");
     if (mod->features_size) {
-        if (first) {
-            fprintf(f, "%s\n", mod->features[0].name);
-            i = 1;
-        } else {
-            i = 0;
-        }
+        fprintf(f, "%s\n", mod->features[0].name);
+        i = 1;
         first = 0;
 
         for (; i < mod->features_size; ++i) {
@@ -463,12 +443,8 @@ info_print_rpc_all(FILE *f, struct ly_module *mod)
     fprintf(f, "%-*s", INDENT_LEN, "RPCs: ");
 
     if (mod->rpc) {
-        if (first) {
-            fprintf(f, "%s\n", mod->rpc->name);
-            mnode = mod->rpc->next;
-        } else {
-            mnode = mod->rpc;
-        }
+        fprintf(f, "%s\n", mod->rpc->name);
+        mnode = mod->rpc->next;
         first = 0;
 
         for (; mnode; mnode = mnode->next) {
@@ -506,12 +482,8 @@ info_print_notif_all(FILE *f, struct ly_module *mod)
     fprintf(f, "%-*s", INDENT_LEN, "Notifs: ");
 
     if (mod->notif) {
-        if (first) {
-            fprintf(f, "%s\n", mod->notif->name);
-            mnode = mod->notif->next;
-        } else {
-            mnode = mod->notif;
-        }
+        fprintf(f, "%s\n", mod->notif->name);
+        mnode = mod->notif->next;
         first = 0;
 
         for (; mnode; mnode = mnode->next) {
@@ -549,12 +521,8 @@ info_print_mnodes_all(FILE *f, struct ly_module *mod)
     fprintf(f, "%-*s", INDENT_LEN, "Data: ");
 
     if (mod->data) {
-        if (first) {
-            fprintf(f, "%s \"%s\"\n", strnodetype(mod->data->nodetype), mod->data->name);
-            mnode = mod->data->next;
-        } else {
-            mnode = mod->data;
-        }
+        fprintf(f, "%s \"%s\"\n", strnodetype(mod->data->nodetype), mod->data->name);
+        mnode = mod->data->next;
         first = 0;
 
         for (; mnode; mnode = mnode->next) {
