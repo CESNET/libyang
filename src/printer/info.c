@@ -65,10 +65,6 @@ info_print_flags(FILE *f, uint8_t flags, uint8_t mask)
     fprintf(f, "%-*s", INDENT_LEN, "Flags: ");
 
     if (mask & LY_NODE_CONFIG_MASK) {
-        if (!first) {
-            fprintf(f, "%-*s", INDENT_LEN, " ");
-        }
-
         if (flags & LY_NODE_CONFIG_R) {
             fprintf(f, "read-only\n");
         } else {
@@ -290,6 +286,59 @@ info_print_unique(FILE *f, struct ly_unique *unique, uint8_t unique_size)
 }
 
 static void
+info_print_text(FILE *f, const char *text, const char *label)
+{
+    const char *ptr1, *ptr2;
+    int first = 1;
+
+    fprintf(f, "%-*s", INDENT_LEN, label);
+
+    if (text) {
+        ptr1 = text;
+        while (1) {
+            ptr2 = strchr(ptr1, '\n');
+            if (!ptr2) {
+                if (first) {
+                    fprintf(f, "%s\n", ptr1);
+                    first = 0;
+                } else {
+                    fprintf(f, "%*s%s\n", INDENT_LEN, "", ptr1);
+                }
+                break;
+            }
+            ++ptr2;
+            if (first) {
+                fprintf(f, "%.*s", (int)(ptr2-ptr1), ptr1);
+                first = 0;
+            } else {
+                fprintf(f, "%*s%.*s", INDENT_LEN, "", (int)(ptr2-ptr1), ptr1);
+            }
+            ptr1 = ptr2;
+        }
+    }
+
+    if (first) {
+        fprintf(f, "\n");
+    }
+}
+
+static void
+info_print_nacmext(FILE *f, uint8_t nacm)
+{
+    fprintf(f, "%-*s", INDENT_LEN, "NACM: ");
+
+    if (nacm) {
+        if (nacm & LY_NACM_DENYW) {
+            fprintf(f, "default-deny-write\n");
+        } else if (nacm & LY_NACM_DENYA) {
+            fprintf(f, "default-deny-all\n");
+        }
+    } else {
+        fprintf(f, "\n");
+    }
+}
+
+static void
 info_print_revision(FILE *f, struct ly_revision *rev, uint8_t rev_size)
 {
     int i;
@@ -313,12 +362,8 @@ info_print_import_all(FILE *f, struct ly_module *mod)
 
     fprintf(f, "%-*s", INDENT_LEN, "Imports: ");
     if (mod->imp_size) {
-        if (first) {
-            fprintf(f, "%s\n", mod->imp[0].module->name);
-            i = 1;
-        } else {
-            i = 0;
-        }
+        fprintf(f, "%s\n", mod->imp[0].module->name);
+        i = 1;
         first = 0;
 
         for (; i < mod->imp_size; ++i) {
@@ -354,12 +399,8 @@ info_print_include(FILE *f, struct ly_module *mod)
 
     fprintf(f, "%-*s", INDENT_LEN, "Includes: ");
     if (mod->inc_size) {
-        if (first) {
-            fprintf(f, "%s\n", mod->inc[0].submodule->name);
-            i = 1;
-        } else {
-            i = 0;
-        }
+        fprintf(f, "%s\n", mod->inc[0].submodule->name);
+        i = 1;
         first = 0;
 
         for (; i < mod->inc_size; ++i) {
@@ -379,12 +420,8 @@ info_print_ident_all(FILE *f, struct ly_module *mod)
 
     fprintf(f, "%-*s", INDENT_LEN, "Idents: ");
     if (mod->ident_size) {
-        if (first) {
-            fprintf(f, "%s\n", mod->ident[0].name);
-            i = 1;
-        } else {
-            i = 0;
-        }
+        fprintf(f, "%s\n", mod->ident[0].name);
+        i = 1;
         first = 0;
 
         for (; i < (signed)mod->ident_size; ++i) {
@@ -420,12 +457,8 @@ info_print_features_all(FILE *f, struct ly_module *mod)
 
     fprintf(f, "%-*s", INDENT_LEN, "Features: ");
     if (mod->features_size) {
-        if (first) {
-            fprintf(f, "%s\n", mod->features[0].name);
-            i = 1;
-        } else {
-            i = 0;
-        }
+        fprintf(f, "%s\n", mod->features[0].name);
+        i = 1;
         first = 0;
 
         for (; i < mod->features_size; ++i) {
@@ -463,12 +496,8 @@ info_print_rpc_all(FILE *f, struct ly_module *mod)
     fprintf(f, "%-*s", INDENT_LEN, "RPCs: ");
 
     if (mod->rpc) {
-        if (first) {
-            fprintf(f, "%s\n", mod->rpc->name);
-            mnode = mod->rpc->next;
-        } else {
-            mnode = mod->rpc;
-        }
+        fprintf(f, "%s\n", mod->rpc->name);
+        mnode = mod->rpc->next;
         first = 0;
 
         for (; mnode; mnode = mnode->next) {
@@ -506,12 +535,8 @@ info_print_notif_all(FILE *f, struct ly_module *mod)
     fprintf(f, "%-*s", INDENT_LEN, "Notifs: ");
 
     if (mod->notif) {
-        if (first) {
-            fprintf(f, "%s\n", mod->notif->name);
-            mnode = mod->notif->next;
-        } else {
-            mnode = mod->notif;
-        }
+        fprintf(f, "%s\n", mod->notif->name);
+        mnode = mod->notif->next;
         first = 0;
 
         for (; mnode; mnode = mnode->next) {
@@ -549,12 +574,8 @@ info_print_mnodes_all(FILE *f, struct ly_module *mod)
     fprintf(f, "%-*s", INDENT_LEN, "Data: ");
 
     if (mod->data) {
-        if (first) {
-            fprintf(f, "%s \"%s\"\n", strnodetype(mod->data->nodetype), mod->data->name);
-            mnode = mod->data->next;
-        } else {
-            mnode = mod->data;
-        }
+        fprintf(f, "%s \"%s\"\n", strnodetype(mod->data->nodetype), mod->data->name);
+        mnode = mod->data->next;
         first = 0;
 
         for (; mnode; mnode = mnode->next) {
@@ -589,12 +610,10 @@ info_print_module(FILE *f, struct ly_module *module)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", module->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Namespace: ", module->ns);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Prefix: ", module->prefix);
-    fprintf(f, "%-*s", INDENT_LEN, "Org: ");
-    if (module->org) {
-        fprintf(f, "%s\n", module->org);
-    } else {
-        fprintf(f, "\n");
-    }
+    info_print_text(f, module->dsc, "Desc: ");
+    info_print_text(f, module->ref, "Reference: ");
+    info_print_text(f, module->org, "Org: ");
+    info_print_text(f, module->contact, "Contact: ");
     fprintf(f, "%-*s%s\n", INDENT_LEN, "YANG ver: ", (module->version == 2 ? "1.1" : "1.0"));
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Deviated: ", (module->deviated ? "yes" : "no"));
 
@@ -616,12 +635,10 @@ info_print_submodule(FILE *f, struct ly_submodule *module)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Submodule: ", module->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Parent: ", module->belongsto->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Prefix: ", module->prefix);
-    fprintf(f, "%-*s", INDENT_LEN, "Org: ");
-    if (module->org) {
-        fprintf(f, "%s\n", module->org);
-    } else {
-        fprintf(f, "\n");
-    }
+    info_print_text(f, module->dsc, "Desc: ");
+    info_print_text(f, module->ref, "Reference: ");
+    info_print_text(f, module->org, "Org: ");
+    info_print_text(f, module->contact, "Contact: ");
     fprintf(f, "%-*s%s\n", INDENT_LEN, "YANG ver: ", (module->version == 2 ? "1.1" : "1.0"));
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Deviated: ", (module->deviated ? "yes" : "no"));
 
@@ -644,17 +661,15 @@ info_print_container(FILE *f, struct ly_mnode *mnode)
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Container: ", cont->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", cont->module->name);
+    info_print_text(f, cont->dsc, "Desc: ");
+    info_print_text(f, cont->ref, "Reference: ");
     info_print_flags(f, cont->flags, LY_NODE_CONFIG_MASK | LY_NODE_STATUS_MASK | LY_NODE_MAND_MASK);
-    fprintf(f, "%-*s", INDENT_LEN, "Presence: ");
-    if (cont->presence) {
-        fprintf(f, "\"%s\"\n", cont->presence);
-    } else {
-        fprintf(f, "\n");
-    }
+    info_print_text(f, cont->presence, "Presence: ");
     info_print_if_feature(f, cont->features, cont->features_size);
     info_print_when(f, cont->when);
     info_print_must(f, cont->must, cont->must_size);
     info_print_typedef(f, cont->tpdf, cont->tpdf_size);
+    info_print_nacmext(f, cont->nacm);
 
     info_print_mnodes(f, cont->child, "Children:");
 }
@@ -666,6 +681,8 @@ info_print_choice(FILE *f, struct ly_mnode *mnode)
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Choice: ", choice->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", choice->module->name);
+    info_print_text(f, choice->dsc, "Desc: ");
+    info_print_text(f, choice->ref, "Reference: ");
     info_print_flags(f, choice->flags, LY_NODE_CONFIG_MASK | LY_NODE_STATUS_MASK | LY_NODE_MAND_MASK);
     fprintf(f, "%-*s", INDENT_LEN, "Default: ");
     if (choice->dflt) {
@@ -675,6 +692,7 @@ info_print_choice(FILE *f, struct ly_mnode *mnode)
     }
     info_print_if_feature(f, choice->features, choice->features_size);
     info_print_when(f, choice->when);
+    info_print_nacmext(f, choice->nacm);
 
     info_print_mnodes(f, choice->child, "Cases:");
 }
@@ -686,11 +704,14 @@ info_print_leaf(FILE *f, struct ly_mnode *mnode)
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Leaf: ", leaf->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", leaf->module->name);
+    info_print_text(f, leaf->dsc, "Desc: ");
+    info_print_text(f, leaf->ref, "Reference: ");
     info_print_flags(f, leaf->flags, LY_NODE_CONFIG_MASK | LY_NODE_STATUS_MASK | LY_NODE_MAND_MASK);
     info_print_type(f, &leaf->type, leaf->units, leaf->dflt);
     info_print_if_feature(f, leaf->features, leaf->features_size);
     info_print_when(f, leaf->when);
     info_print_must(f, leaf->must, leaf->must_size);
+    info_print_nacmext(f, leaf->nacm);
 }
 
 static void
@@ -700,12 +721,15 @@ info_print_leaflist(FILE *f, struct ly_mnode *mnode)
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Leaflist: ", llist->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", llist->module->name);
+    info_print_text(f, llist->dsc, "Desc: ");
+    info_print_text(f, llist->ref, "Reference: ");
     info_print_flags(f, llist->flags, LY_NODE_CONFIG_MASK | LY_NODE_STATUS_MASK | LY_NODE_MAND_MASK | LY_NODE_USERORDERED);
     info_print_type(f, &llist->type, llist->units, NULL);
     info_print_list_constr(f, llist->min, llist->max);
     info_print_if_feature(f, llist->features, llist->features_size);
     info_print_when(f, llist->when);
     info_print_must(f, llist->must, llist->must_size);
+    info_print_nacmext(f, llist->nacm);
 }
 
 static void
@@ -715,6 +739,8 @@ info_print_list(FILE *f, struct ly_mnode *mnode)
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "List: ", list->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", list->module->name);
+    info_print_text(f, list->dsc, "Desc: ");
+    info_print_text(f, list->ref, "Reference: ");
     info_print_flags(f, list->flags, LY_NODE_CONFIG_MASK | LY_NODE_STATUS_MASK | LY_NODE_MAND_MASK | LY_NODE_USERORDERED);
     info_print_list_constr(f, list->min, list->max);
     info_print_if_feature(f, list->features, list->features_size);
@@ -723,6 +749,7 @@ info_print_list(FILE *f, struct ly_mnode *mnode)
     info_print_keys(f, list->keys, list->keys_size);
     info_print_unique(f, list->unique, list->unique_size);
     info_print_typedef(f, list->tpdf, list->tpdf_size);
+    info_print_nacmext(f, list->nacm);
 
     info_print_mnodes(f, list->child, "Children:");
 }
@@ -734,10 +761,13 @@ info_print_anyxml(FILE *f, struct ly_mnode *mnode)
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Anyxml: ", axml->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", axml->module->name);
+    info_print_text(f, axml->dsc, "Desc: ");
+    info_print_text(f, axml->ref, "Reference: ");
     info_print_flags(f, axml->flags, LY_NODE_CONFIG_MASK | LY_NODE_STATUS_MASK | LY_NODE_MAND_MASK);
     info_print_if_feature(f, axml->features, axml->features_size);
     info_print_when(f, axml->when);
     info_print_must(f, axml->must, axml->must_size);
+    info_print_nacmext(f, axml->nacm);
 }
 
 static void
@@ -747,8 +777,11 @@ info_print_grouping(FILE *f, struct ly_mnode *mnode)
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Grouping: ", group->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", group->module->name);
+    info_print_text(f, group->dsc, "Desc: ");
+    info_print_text(f, group->ref, "Reference: ");
     info_print_flags(f, group->flags, LY_NODE_STATUS_MASK);
     info_print_typedef(f, group->tpdf, group->tpdf_size);
+    info_print_nacmext(f, group->nacm);
 
     info_print_mnodes(f, group->child, "Children:");
 }
@@ -760,9 +793,12 @@ info_print_case(FILE *f, struct ly_mnode *mnode)
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Case: ", cas->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", cas->module->name);
+    info_print_text(f, cas->dsc, "Desc: ");
+    info_print_text(f, cas->ref, "Reference: ");
     info_print_flags(f, cas->flags, LY_NODE_CONFIG_MASK | LY_NODE_STATUS_MASK | LY_NODE_MAND_MASK);
     info_print_if_feature(f, cas->features, cas->features_size);
     info_print_when(f, cas->when);
+    info_print_nacmext(f, cas->nacm);
 
     info_print_mnodes(f, cas->child, "Children:");
 }
@@ -800,9 +836,12 @@ info_print_notif(FILE *f, struct ly_mnode *mnode)
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Notif: ", ntf->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", ntf->module->name);
+    info_print_text(f, ntf->dsc, "Desc: ");
+    info_print_text(f, ntf->ref, "Reference: ");
     info_print_flags(f, ntf->flags, LY_NODE_STATUS_MASK);
     info_print_if_feature(f, ntf->features, ntf->features_size);
     info_print_typedef(f, ntf->tpdf, ntf->tpdf_size);
+    info_print_nacmext(f, ntf->nacm);
 
     info_print_mnodes(f, ntf->child, "Params:");
 }
@@ -814,9 +853,12 @@ info_print_rpc(FILE *f, struct ly_mnode *mnode)
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "RPC: ", rpc->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", rpc->module->name);
+    info_print_text(f, rpc->dsc, "Desc: ");
+    info_print_text(f, rpc->ref, "Reference: ");
     info_print_flags(f, rpc->flags, LY_NODE_STATUS_MASK);
     info_print_if_feature(f, rpc->features, rpc->features_size);
     info_print_typedef(f, rpc->tpdf, rpc->tpdf_size);
+    info_print_nacmext(f, rpc->nacm);
 
     info_print_mnodes(f, rpc->child, "Data:");
 }

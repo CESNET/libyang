@@ -34,6 +34,28 @@ static void tree_print_mnode(FILE *f, struct ly_module *module, int level, char 
                              int mask, int spec_config);
 
 static int
+is_enabled(struct ly_mnode *mnode)
+{
+    int i;
+
+    for (i = 0; i < mnode->features_size; i++) {
+        if (!(mnode->features[i]->flags & LY_NODE_FENABLED)) {
+            return 0;
+        }
+    }
+
+    if (mnode->parent && (mnode->parent->nodetype == LY_NODE_AUGMENT)) {
+        for (i = 0; i < mnode->parent->features_size; i++) {
+            if (!(mnode->parent->features[i]->flags & LY_NODE_FENABLED)) {
+                return 0;
+            }
+        }
+    }
+
+    return 1;
+}
+
+static int
 sibling_is_valid_child(const struct ly_mnode *mnode, int including)
 {
     struct ly_mnode *cur;
@@ -44,9 +66,9 @@ sibling_is_valid_child(const struct ly_mnode *mnode, int including)
 
     /* has a following printed child */
     LY_TREE_FOR((struct ly_mnode *)(including ? mnode : mnode->next), cur) {
-        if (cur->nodetype &
+        if (is_enabled(cur) && (cur->nodetype &
                 (LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_CHOICE |
-                 LY_NODE_RPC | LY_NODE_INPUT | LY_NODE_OUTPUT | LY_NODE_NOTIF | LY_NODE_CASE)) {
+                 LY_NODE_RPC | LY_NODE_INPUT | LY_NODE_OUTPUT | LY_NODE_NOTIF | LY_NODE_CASE))) {
             return 1;
         }
     }
@@ -311,22 +333,6 @@ tree_print_case(FILE *f, struct ly_module *module, int level, char *indent, unsi
     char *new_indent;
     struct ly_mnode_case *cas = (struct ly_mnode_case *)mnode;
     struct ly_mnode *sub;
-    int i;
-
-    /* stop if features are not enabled */
-    for (i = 0; i < cas->features_size; i++) {
-        if (!(cas->features[i]->flags & LY_NODE_FENABLED)) {
-            return;
-        }
-    }
-    /* or if the data are from augment under a not enabled feature */
-    if (cas->parent && cas->parent->nodetype == LY_NODE_AUGMENT) {
-        for (i = 0; i < cas->parent->features_size; i++) {
-            if (!(cas->parent->features[i]->flags & LY_NODE_FENABLED)) {
-                return;
-            }
-        }
-    }
 
     fprintf(f, "%s%s--:(", indent,
             (cas->flags & LY_NODE_STATUS_DEPRC ? "x" : (cas->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")));
@@ -544,13 +550,9 @@ tree_print_rpc(FILE *f, struct ly_module *module, int level, char *indent, struc
     char *new_indent;
     struct ly_mnode *node;
     struct ly_mnode_rpc *rpc = (struct ly_mnode_rpc *)mnode;
-    int i;
 
-    /* stop if features are not enabled */
-    for (i = 0; i < rpc->features_size; i++) {
-        if (!(rpc->features[i]->flags & LY_NODE_FENABLED)) {
-            return;
-        }
+    if (!is_enabled(mnode)) {
+        return;
     }
 
     fprintf(f, "%s%s---x %s", indent,
@@ -581,13 +583,9 @@ tree_print_notif(FILE *f, struct ly_module *module, int level, char *indent, str
     char *new_indent;
     struct ly_mnode *node;
     struct ly_mnode_notif *notif = (struct ly_mnode_notif *)mnode;
-    int i;
 
-    /* stop if features are not enabled */
-    for (i = 0; i < notif->features_size; i++) {
-        if (!(notif->features[i]->flags & LY_NODE_FENABLED)) {
-            return;
-        }
+    if (!is_enabled(mnode)) {
+        return;
     }
 
     fprintf(f, "%s%s---n %s", indent,
@@ -616,6 +614,10 @@ static void
 tree_print_mnode_choice(FILE *f, struct ly_module *module, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int mask,
                         int spec_config)
 {
+    if (!is_enabled(mnode)) {
+        return;
+    }
+
     if (mnode->nodetype & mask) {
         if (mnode->nodetype == LY_NODE_CASE) {
             tree_print_case(f, module, level, indent, max_name_len, mnode, 0, spec_config);
@@ -629,21 +631,8 @@ static void
 tree_print_mnode(FILE *f, struct ly_module *module, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int mask,
                  int spec_config)
 {
-    int i;
-
-    /* stop if features are not enabled */
-    for (i = 0; i < mnode->features_size; i++) {
-        if (!(mnode->features[i]->flags & LY_NODE_FENABLED)) {
-            return;
-        }
-    }
-    /* or if the data are from augment under a not enabled feature */
-    if (mnode->parent && mnode->parent->nodetype == LY_NODE_AUGMENT) {
-        for (i = 0; i < mnode->parent->features_size; i++) {
-            if (!(mnode->parent->features[i]->flags & LY_NODE_FENABLED)) {
-                return;
-            }
-        }
+    if (!is_enabled(mnode)) {
+        return;
     }
 
     switch (mnode->nodetype & mask) {
@@ -694,8 +683,8 @@ tree_print_model(FILE *f, struct ly_module *module)
 
         LY_TREE_FOR(module->inc[i].submodule->data, mnode) {
             tree_print_mnode(f, (struct ly_module *)module->inc[i].submodule, level, indent, max_child_len, mnode,
-                             LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_USES,
-                             0);
+                             LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST
+                             | LY_NODE_ANYXML | LY_NODE_USES, 0);
         }
     }
 
@@ -705,8 +694,8 @@ tree_print_model(FILE *f, struct ly_module *module)
 
     LY_TREE_FOR(module->data, mnode) {
         tree_print_mnode(f, module, level, indent, max_child_len, mnode,
-                         LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_USES,
-                         0);
+                         LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST
+                         | LY_NODE_ANYXML | LY_NODE_USES, 0);
     }
 
     /* rpc */
