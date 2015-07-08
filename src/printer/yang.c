@@ -75,29 +75,29 @@ yang_print_text(FILE *f, int level, const char *name, const char *text)
 }
 
 static void
-yang_print_nacmext(FILE *f, int level, struct ly_mnode *mnode)
+yang_print_nacmext(FILE *f, int level, struct ly_mnode *mnode, struct ly_module *module)
 {
     int i, j;
     const char *prefix = NULL;
 
     if (mnode->nacm && (!mnode->parent || mnode->parent->nacm != mnode->nacm)) {
         /* locate ietf-netconf-acm module in imports */
-        if (!strcmp(mnode->module->name, "ietf-netconf-acm")) {
-            prefix = mnode->module->prefix;
+        if (!strcmp(module->name, "ietf-netconf-acm")) {
+            prefix = module->prefix;
         } else {
             /* search in imports */
-            for (i = 0; i < mnode->module->imp_size; i++) {
-                if (!strcmp(mnode->module->imp[i].module->name, "ietf-netconf-acm")) {
-                    prefix = mnode->module->imp[i].prefix;
+            for (i = 0; i < module->imp_size; i++) {
+                if (!strcmp(module->imp[i].module->name, "ietf-netconf-acm")) {
+                    prefix = module->imp[i].prefix;
                     break;
                 }
             }
             /* and in imports of includes */
             if (!prefix) {
-                for (j = 0; j < mnode->module->inc_size; j++) {
-                    for (i = 0; i < mnode->module->inc[j].submodule->imp_size; i++) {
-                        if (!strcmp(mnode->module->inc[j].submodule->imp[i].module->name, "ietf-netconf-acm")) {
-                            prefix = mnode->module->inc[j].submodule->imp[i].prefix;
+                for (j = 0; j < module->inc_size; j++) {
+                    for (i = 0; i < module->inc[j].submodule->imp_size; i++) {
+                        if (!strcmp(module->inc[j].submodule->imp[i].module->name, "ietf-netconf-acm")) {
+                            prefix = module->inc[j].submodule->imp[i].prefix;
                             break;
                         }
                     }
@@ -477,6 +477,7 @@ yang_print_augment(FILE *f, int level, struct ly_module *module, struct ly_augme
     fprintf(f, "%*saugment \"%s\" {\n", LEVEL, INDENT, augment->target_name);
     level++;
 
+    yang_print_nacmext(f, level, (struct ly_mnode *)augment, module);
     yang_print_mnode_common(f, level, (struct ly_mnode *)augment);
 
     for (i = 0; i < augment->features_size; i++) {
@@ -547,7 +548,7 @@ yang_print_container(FILE *f, int level, struct ly_mnode *mnode)
 
     level++;
 
-    yang_print_nacmext(f, level, mnode);
+    yang_print_nacmext(f, level, mnode, mnode->module);
 
     if (cont->presence != NULL) {
         yang_print_text(f, level, "presence", cont->presence);
@@ -594,7 +595,7 @@ yang_print_case(FILE *f, int level, struct ly_mnode *mnode)
 
     fprintf(f, "%*scase %s {\n", LEVEL, INDENT, cas->name);
     level++;
-    yang_print_nacmext(f, level, mnode);
+    yang_print_nacmext(f, level, mnode, mnode->module);
     yang_print_mnode_common2(f, level, mnode);
 
     for (i = 0; i < cas->features_size; i++) {
@@ -629,7 +630,7 @@ yang_print_choice(FILE *f, int level, struct ly_mnode *mnode)
     fprintf(f, "%*schoice %s {\n", LEVEL, INDENT, mnode->name);
 
     level++;
-    yang_print_nacmext(f, level, mnode);
+    yang_print_nacmext(f, level, mnode, mnode->module);
     if (choice->dflt != NULL) {
         fprintf(f, "%*sdefault \"%s\";\n", LEVEL, INDENT, choice->dflt->name);
     }
@@ -665,7 +666,7 @@ yang_print_leaf(FILE *f, int level, struct ly_mnode *mnode)
     fprintf(f, "%*sleaf %s {\n", LEVEL, INDENT, mnode->name);
 
     level++;
-    yang_print_nacmext(f, level, mnode);
+    yang_print_nacmext(f, level, mnode, mnode->module);
     yang_print_mnode_common2(f, level, mnode);
     for (i = 0; i < leaf->features_size; i++) {
         yang_print_iffeature(f, level, mnode->module, leaf->features[i]);
@@ -696,7 +697,7 @@ yang_print_anyxml(FILE *f, int level, struct ly_mnode *mnode)
 
     fprintf(f, "%*sanyxml %s {\n", LEVEL, INDENT, anyxml->name);
     level++;
-    yang_print_nacmext(f, level, mnode);
+    yang_print_nacmext(f, level, mnode, mnode->module);
     yang_print_mnode_common2(f, level, mnode);
     for (i = 0; i < anyxml->features_size; i++) {
         yang_print_iffeature(f, level, mnode->module, anyxml->features[i]);
@@ -720,7 +721,7 @@ yang_print_leaflist(FILE *f, int level, struct ly_mnode *mnode)
     fprintf(f, "%*sleaf-list %s {\n", LEVEL, INDENT, mnode->name);
 
     level++;
-    yang_print_nacmext(f, level, mnode);
+    yang_print_nacmext(f, level, mnode, mnode->module);
     yang_print_mnode_common2(f, level, mnode);
     for (i = 0; i < llist->features_size; i++) {
         yang_print_iffeature(f, level, mnode->module, llist->features[i]);
@@ -758,7 +759,7 @@ yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
 
     fprintf(f, "%*slist %s {\n", LEVEL, INDENT, mnode->name);
     level++;
-    yang_print_nacmext(f, level, mnode);
+    yang_print_nacmext(f, level, mnode, mnode->module);
     yang_print_mnode_common2(f, level, mnode);
 
     for (i = 0; i < list->features_size; i++) {
@@ -849,7 +850,7 @@ yang_print_uses(FILE *f, int level, struct ly_mnode *mnode)
     fprintf(f, "%s {\n",uses->name);
     level++;
 
-    yang_print_nacmext(f, level, mnode);
+    yang_print_nacmext(f, level, mnode, mnode->module);
     yang_print_mnode_common(f, level, mnode);
     for (i = 0; i < uses->features_size; i++) {
         yang_print_iffeature(f, level, mnode->module, uses->features[i]);
