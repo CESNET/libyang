@@ -66,9 +66,9 @@ sibling_is_valid_child(const struct ly_mnode *mnode, int including)
 
     /* has a following printed child */
     LY_TREE_FOR((struct ly_mnode *)(including ? mnode : mnode->next), cur) {
-        if (cur->nodetype &
+        if (is_enabled(cur) && (cur->nodetype &
                 (LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_CHOICE |
-                 LY_NODE_RPC | LY_NODE_INPUT | LY_NODE_OUTPUT | LY_NODE_NOTIF | LY_NODE_CASE)) {
+                 LY_NODE_RPC | LY_NODE_INPUT | LY_NODE_OUTPUT | LY_NODE_NOTIF | LY_NODE_CASE))) {
             return 1;
         }
     }
