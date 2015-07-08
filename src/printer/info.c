@@ -286,6 +286,22 @@ info_print_unique(FILE *f, struct ly_unique *unique, uint8_t unique_size)
 }
 
 static void
+info_print_nacmext(FILE *f, uint8_t nacm)
+{
+    fprintf(f, "%-*s", INDENT_LEN, "NACM: ");
+
+    if (nacm) {
+        if (nacm & LY_NACM_DENYW) {
+            fprintf(f, "default-deny-write\n");
+        } else if (nacm & LY_NACM_DENYA) {
+            fprintf(f, "default-deny-all\n");
+        }
+    } else {
+        fprintf(f, "\n");
+    }
+}
+
+static void
 info_print_revision(FILE *f, struct ly_revision *rev, uint8_t rev_size)
 {
     int i;
@@ -623,6 +639,7 @@ info_print_container(FILE *f, struct ly_mnode *mnode)
     info_print_when(f, cont->when);
     info_print_must(f, cont->must, cont->must_size);
     info_print_typedef(f, cont->tpdf, cont->tpdf_size);
+    info_print_nacmext(f, cont->nacm);
 
     info_print_mnodes(f, cont->child, "Children:");
 }
@@ -643,6 +660,7 @@ info_print_choice(FILE *f, struct ly_mnode *mnode)
     }
     info_print_if_feature(f, choice->features, choice->features_size);
     info_print_when(f, choice->when);
+    info_print_nacmext(f, choice->nacm);
 
     info_print_mnodes(f, choice->child, "Cases:");
 }
@@ -659,6 +677,7 @@ info_print_leaf(FILE *f, struct ly_mnode *mnode)
     info_print_if_feature(f, leaf->features, leaf->features_size);
     info_print_when(f, leaf->when);
     info_print_must(f, leaf->must, leaf->must_size);
+    info_print_nacmext(f, leaf->nacm);
 }
 
 static void
@@ -674,6 +693,7 @@ info_print_leaflist(FILE *f, struct ly_mnode *mnode)
     info_print_if_feature(f, llist->features, llist->features_size);
     info_print_when(f, llist->when);
     info_print_must(f, llist->must, llist->must_size);
+    info_print_nacmext(f, llist->nacm);
 }
 
 static void
@@ -691,6 +711,7 @@ info_print_list(FILE *f, struct ly_mnode *mnode)
     info_print_keys(f, list->keys, list->keys_size);
     info_print_unique(f, list->unique, list->unique_size);
     info_print_typedef(f, list->tpdf, list->tpdf_size);
+    info_print_nacmext(f, list->nacm);
 
     info_print_mnodes(f, list->child, "Children:");
 }
@@ -706,6 +727,7 @@ info_print_anyxml(FILE *f, struct ly_mnode *mnode)
     info_print_if_feature(f, axml->features, axml->features_size);
     info_print_when(f, axml->when);
     info_print_must(f, axml->must, axml->must_size);
+    info_print_nacmext(f, axml->nacm);
 }
 
 static void
@@ -717,6 +739,7 @@ info_print_grouping(FILE *f, struct ly_mnode *mnode)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", group->module->name);
     info_print_flags(f, group->flags, LY_NODE_STATUS_MASK);
     info_print_typedef(f, group->tpdf, group->tpdf_size);
+    info_print_nacmext(f, group->nacm);
 
     info_print_mnodes(f, group->child, "Children:");
 }
@@ -731,6 +754,7 @@ info_print_case(FILE *f, struct ly_mnode *mnode)
     info_print_flags(f, cas->flags, LY_NODE_CONFIG_MASK | LY_NODE_STATUS_MASK | LY_NODE_MAND_MASK);
     info_print_if_feature(f, cas->features, cas->features_size);
     info_print_when(f, cas->when);
+    info_print_nacmext(f, cas->nacm);
 
     info_print_mnodes(f, cas->child, "Children:");
 }
@@ -771,6 +795,7 @@ info_print_notif(FILE *f, struct ly_mnode *mnode)
     info_print_flags(f, ntf->flags, LY_NODE_STATUS_MASK);
     info_print_if_feature(f, ntf->features, ntf->features_size);
     info_print_typedef(f, ntf->tpdf, ntf->tpdf_size);
+    info_print_nacmext(f, ntf->nacm);
 
     info_print_mnodes(f, ntf->child, "Params:");
 }
@@ -785,6 +810,7 @@ info_print_rpc(FILE *f, struct ly_mnode *mnode)
     info_print_flags(f, rpc->flags, LY_NODE_STATUS_MASK);
     info_print_if_feature(f, rpc->features, rpc->features_size);
     info_print_typedef(f, rpc->tpdf, rpc->tpdf_size);
+    info_print_nacmext(f, rpc->nacm);
 
     info_print_mnodes(f, rpc->child, "Data:");
 }
