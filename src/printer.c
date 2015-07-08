@@ -30,6 +30,8 @@ int yang_print_model(FILE * f, struct ly_module *module);
 int tree_print_model(FILE * f, struct ly_module *module);
 int info_print_model(FILE * f, struct ly_module *module, const char *target_node);
 
+int json_print_data(FILE *f, struct lyd_node *root);
+
 API int
 ly_model_print(FILE * f, struct ly_module *module, LY_MOUTFORMAT format, const char *target_node)
 {
@@ -48,6 +50,26 @@ ly_model_print(FILE * f, struct ly_module *module, LY_MOUTFORMAT format, const c
         return tree_print_model(f, module);
     case LY_OUT_INFO:
         return info_print_model(f, module, target_node);
+    default:
+        LOGERR(LY_EINVAL, "Unknown output format.");
+        return EXIT_FAILURE;
+    }
+}
+
+API int
+ly_data_print(FILE * f, struct lyd_node *root, LY_DFORMAT format)
+{
+    if (!f || !root) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    switch (format) {
+    case LY_XML:
+        LOGERR(LY_EINVAL, "XML output format not supported yet.");
+        return EXIT_FAILURE;
+    case LY_JSON:
+        return json_print_data(f, root);
     default:
         LOGERR(LY_EINVAL, "Unknown output format.");
         return EXIT_FAILURE;

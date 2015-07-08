@@ -28,6 +28,8 @@
 
 int ly_model_print(FILE * f, struct ly_module *module, LY_MOUTFORMAT format, const char *target_node);
 
+int ly_data_print(FILE * f, struct lyd_node *root, LY_DFORMAT format);
+
 /**
  * @defgroup libyang libyang
  * @{
