@@ -333,7 +333,6 @@ tree_print_case(FILE *f, struct ly_module *module, int level, char *indent, unsi
     char *new_indent;
     struct ly_mnode_case *cas = (struct ly_mnode_case *)mnode;
     struct ly_mnode *sub;
-    int i;
 
     fprintf(f, "%s%s--:(", indent,
             (cas->flags & LY_NODE_STATUS_DEPRC ? "x" : (cas->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")));
@@ -551,7 +550,6 @@ tree_print_rpc(FILE *f, struct ly_module *module, int level, char *indent, struc
     char *new_indent;
     struct ly_mnode *node;
     struct ly_mnode_rpc *rpc = (struct ly_mnode_rpc *)mnode;
-    int i;
 
     if (!is_enabled(mnode)) {
         return;
@@ -585,7 +583,6 @@ tree_print_notif(FILE *f, struct ly_module *module, int level, char *indent, str
     char *new_indent;
     struct ly_mnode *node;
     struct ly_mnode_notif *notif = (struct ly_mnode_notif *)mnode;
-    int i;
 
     if (!is_enabled(mnode)) {
         return;
@@ -634,8 +631,6 @@ static void
 tree_print_mnode(FILE *f, struct ly_module *module, int level, char *indent, unsigned int max_name_len, struct ly_mnode *mnode, int mask,
                  int spec_config)
 {
-    int i;
-
     if (!is_enabled(mnode)) {
         return;
     }
