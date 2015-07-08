@@ -863,6 +863,44 @@ int ly_features_disable(struct ly_module *module, const char *name);
  */
 char **ly_get_features(struct ly_module *module, char ***enable_state);
 
+
+/******************************************** Data Tree *****************************************************/
+
+typedef enum lyd_attr_type {
+    LYD_ATTR_STD = 1,
+    LYD_ATTR_NS = 2
+} LYD_ATTR_TYPE;
+
+struct lyd_ns {
+    LYD_ATTR_TYPE type;
+    struct lyd_attr *next;
+    struct lyd_node *parent;
+    const char *prefix;
+    const char *value;
+};
+
+struct lyd_attr {
+    LYD_ATTR_TYPE type;
+    struct lyd_attr *next;
+    struct lyd_ns *ns;
+    const char *name;
+    const char *value;
+};
+
+struct lyd_node {
+    struct lyd_node *next;
+    struct lyd_node *prev;
+    struct lyd_node *parent;
+    struct lyd_node *child;
+    struct lyd_attr *attr;
+
+    struct ly_mnode *schema;
+};
+
+
+void lyd_node_free(struct lyd_node *node);
+
+
 /**@} tree */
 
 #endif /* LY_TREE_H_ */

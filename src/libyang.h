@@ -130,6 +130,8 @@ void ly_ctx_destroy(struct ly_ctx *ctx);
 /**
  * @brief Load a data model into the specified context.
  *
+ * LY_IN_YANG (YANG) format is not yet supported.
+ *
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] data The string containing the dumped data model in the specified
  * format
@@ -149,6 +151,16 @@ struct ly_module *ly_module_read_fd(struct ly_ctx *ctx, int fd, LY_MINFORMAT for
  * @param[in] module Data model to free.
  */
 void ly_module_free(struct ly_module *module);
+
+/**
+ * @brief Parse (and validate according to appropriate schema from the given context) data.
+ *
+ * In case of LY_XML format, the data string is expected to contain XML data under the single
+ * \<config\> or \<data\> element in the "urn:ietf:params:xml:ns:netconf:base:1.0" namespace.
+ *
+ * LY_JSON format is not yet supported.
+ */
+struct lyd_node *ly_data_read(struct ly_ctx *ctx, const char *data, LY_DFORMAT format);
 
 /**@} libyang */
 
