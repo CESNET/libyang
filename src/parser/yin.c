@@ -925,12 +925,14 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                 goto error;
             }
         }
-        if (!type->info.bits.count) {
-            if (type->der->type.der) {
-                /* this is just a derived type with no bit specified/required */
-                break;
-            }
+        if (!type->der->type.der && !type->info.bits.count) {
+            /* type is derived directly from buit-in bits type and bit statement is required */
             LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "bit", "type");
+            goto error;
+        }
+        if (type->der->type.der && type->info.bits.count) {
+            /* type is not directly derived from buit-in bits type and bit statement is prohibited */
+            LOGVAL(VE_INSTMT, LOGLINE(yin), "bit");
             goto error;
         }
 
