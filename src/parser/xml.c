@@ -148,6 +148,12 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
 
         break;
 
+    case LY_TYPE_BOOL:
+        if (!strcmp(xml->content, "true")) {
+            leaf->value.bool = 1;
+        } /* else false, so keep it zero */
+        break;
+
     case LY_TYPE_STRING:
         leaf->value.string = xml->content;
         xml->content = NULL;
