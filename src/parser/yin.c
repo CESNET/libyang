@@ -865,6 +865,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
     struct lyxml_elem *next, *node;
     struct ly_restr **restr;
     struct obj_list *unres_new;
+    struct ly_type_bit bit;
     int i, j;
     int64_t v, v_;
     int64_t p, p_;
@@ -1005,6 +1006,16 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                 }
                 type->info.bits.bit[i].pos = (uint32_t)p;
                 p++;
+            }
+
+            /* keep them ordered by position */
+            j = i;
+            while (j && type->info.bits.bit[j - 1].pos > type->info.bits.bit[j].pos) {
+                /* switch them */
+                memcpy(&bit, &type->info.bits.bit[j], sizeof bit);
+                memcpy(&type->info.bits.bit[j], &type->info.bits.bit[j - 1], sizeof bit);
+                memcpy(&type->info.bits.bit[j - 1], &bit, sizeof bit);
+                j--;
             }
         }
         break;
