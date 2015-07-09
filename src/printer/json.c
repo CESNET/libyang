@@ -138,7 +138,10 @@ static void
 json_print_leaf(FILE *f, int level, struct lyd_node *node)
 {
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
+    struct ly_mnode_leaf *sleaf = (struct ly_mnode_leaf *)node->schema;
+    struct ly_type *type;
     const char *schema;
+    int i;
 
     if (!node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
@@ -158,6 +161,21 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node)
     case LY_TYPE_STRING:
         fprintf(f, "\"%s\"%s\n", leaf->value.string, node->next ? "," : "");
         break;
+    case LY_TYPE_BITS:
+        fprintf(f, "\"");
+
+        /* locate bits structure with the bits definitions to get the array size */
+        for (type = &sleaf->type; type->der->type.der; type = &type->der->type);
+
+        /* print set bits */
+        for (i = 0; i < type->info.bits.count; i++) {
+            if (leaf->value.bit[i]) {
+                fprintf(f, "%s%s", i ? " " : "", leaf->value.bit[i]->name);
+            }
+        }
+        fprintf(f, "\"%s\n", node->next ? "," : "");
+        break;
+
     default:
         /* TODO */
         fprintf(f, "%s%s\n", "\"TBD\"", node->next ? "," : "");

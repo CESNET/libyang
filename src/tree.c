@@ -1747,6 +1747,11 @@ lyd_node_free(struct lyd_node *node)
         case LY_TYPE_STRING:
             lydict_remove(node->schema->module->ctx, ((struct lyd_node_leaf *)node)->value.string);
             break;
+        case LY_TYPE_BITS:
+            if (((struct lyd_node_leaf *)node)->value.bit) {
+                free(((struct lyd_node_leaf *)node)->value.bit);
+            }
+            break;
         default:
             /* TODO */
             break;

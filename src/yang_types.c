@@ -195,7 +195,7 @@ struct ly_tpdf ly_type_union = {
 };
 
 struct ly_types ly_types[LY_DATA_TYPE_COUNT] = {
-    {LY_TYPE_DEF, NULL},
+    {LY_TYPE_DER, NULL},
     {LY_TYPE_BINARY, &ly_type_binary},
     {LY_TYPE_BITS, &ly_type_bits},
     {LY_TYPE_BOOL, &ly_type_bool},

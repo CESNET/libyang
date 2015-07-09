@@ -72,8 +72,10 @@ void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 
 enum LY_VERR {
     VE_SPEC = -1,
+
     VE_XML_MISS,
     VE_XML_INVAL,
+
     VE_EOF,
     VE_INSTMT,
     VE_INID,
@@ -94,7 +96,10 @@ enum LY_VERR {
     VE_KEY_TYPE,
     VE_KEY_CONFIG,
     VE_KEY_MISS,
-    VE_KEY_DUP
+    VE_KEY_DUP,
+
+    DE_INELEM,
+    DE_INVAL
 };
 void ly_vlog(enum LY_VERR code, unsigned int line, ...);
 

@@ -73,7 +73,7 @@ typedef enum {
 } LY_DFORMAT;
 
 typedef enum {
-    LY_TYPE_DEF,         /**< Derived type */
+    LY_TYPE_DER,         /**< Derived type */
     LY_TYPE_BINARY,      /**< Any binary data */
     LY_TYPE_BITS,        /**< A set of bits or flags */
     LY_TYPE_BOOL,        /**< "true" or "false" */
@@ -928,7 +928,7 @@ struct lyd_node_leaf {
     /* leaf's specific members */
     union {
         const char *binary;          /**< base64 encoded, NULL terminated string */
-        struct ly_type_bit *bit;     /**< pointer to the schema definition of the bit value */
+        struct ly_type_bit **bit;    /**< array of pointers to the schema definition of the bit value that are set */
         int8_t bool;                 /**< 0 as false, 1 as true */
         int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
         struct ly_type_enum *enm;    /**< pointer to the schema definition of the enumeration value */
@@ -961,7 +961,7 @@ struct lyd_node_leaflist {
     /* leaflist's specific members */
     union {
         const char *binary;          /**< base64 encoded, NULL terminated string */
-        struct ly_type_bit *bit;     /**< pointer to the schema definition of the bit value */
+        struct ly_type_bit **bit;    /**< array of pointers to the schema definition of the bit value that are set */
         int8_t bool;                 /**< 0 as false, 1 as true */
         int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
         struct ly_type_enum *enm;    /**< pointer to the schema definition of the enumeration value */

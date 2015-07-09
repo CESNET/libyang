@@ -58,6 +58,7 @@ ly_log(LY_LOG_LEVEL level, const char *format, ...)
 const char *verrs[] = {
 /* VE_XML_MISS */     "Missing %s \"%s\".",
 /* VE_XML_INVAL */    "Invalid %s.",
+
 /* VE_EOF */          "Unexpected end of input data.",
 /* VE_INSTMT */       "Invalid keyword \"%s\".",
 /* VE_INID */         "Invalid identifier \"%s\" (%s).",
@@ -78,7 +79,10 @@ const char *verrs[] = {
 /* VE_KEY_TYPE */     "Key \"%s\" must not be the built-in type \"empty\".",
 /* VE_KEY_CONFIG */   "The \"config\" value of the \"%s\" key differs from its list config value.",
 /* VE_KEY_MISS */     "Leaf \"%s\" defined as key in a list not found.",
-/* VE_KEY_DUP */      "Key identifier \"%s\" is not unique."
+/* VE_KEY_DUP */      "Key identifier \"%s\" is not unique.",
+
+/* DE_INELEM */       "Unknown element \"%s\".",
+/* DE_INVAL */        "Invalid value \"%s\" in \"%s\" element."
 };
 
 void

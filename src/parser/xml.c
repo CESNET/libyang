@@ -20,6 +20,7 @@
  */
 
 #include <assert.h>
+#include <ctype.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -72,27 +73,91 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct ly_mnode *start)
 static int
 xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
 {
-    switch (((struct ly_mnode_leaf *)node->schema)->type.base) {
-    case LY_TYPE_BINARY:
-        ((struct lyd_node_leaf *)node)->value.binary = xml->content;
-        xml->content = NULL;
-        ((struct lyd_node_leaf *)node)->value_type = LY_TYPE_BINARY;
+    struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
+    struct ly_mnode_leaf *sleaf = (struct ly_mnode_leaf *)node->schema;
+    struct ly_type *type;
+    int len;
+    int c, i;
+    int found;
 
-        if (((struct ly_mnode_leaf *)node->schema)->type.info.binary.length) {
+    switch (sleaf->type.base) {
+    case LY_TYPE_BINARY:
+        leaf->value.binary = xml->content;
+        xml->content = NULL;
+        leaf->value_type = LY_TYPE_BINARY;
+
+        if (sleaf->type.info.binary.length) {
             /* TODO: check length restriction */
         }
         break;
 
-    case LY_TYPE_STRING:
-        ((struct lyd_node_leaf *)node)->value.string = xml->content;
-        xml->content = NULL;
-        ((struct lyd_node_leaf *)node)->value_type = LY_TYPE_STRING;
+    case LY_TYPE_BITS:
+        leaf->value_type = LY_TYPE_BITS;
 
-        if (((struct ly_mnode_leaf *)node->schema)->type.info.str.length) {
+        /* locate bits structure with the bits definitions */
+        for (type = &sleaf->type; type->der->type.der; type = &type->der->type);
+
+        /* allocate the array of  pointers to bits definition */
+        leaf->value.bit = calloc(type->info.bits.count, sizeof *leaf->value.bit);
+
+        if (!xml->content) {
+            /* no bits set */
+            break;
+        }
+
+        c = 0;
+        i = 0;
+        while (xml->content[c]) {
+            /* skip leading whitespaces */
+            while(isspace(xml->content[c])) {
+                c++;
+            }
+
+            /* get the length of the bit identifier */
+            len = 0;
+            while(xml->content[c] && !isspace(xml->content[c])) {
+                c++;
+                len++;
+            }
+
+            /* go back to the beginning of the identifier */
+            c = c - len;
+
+            /* find bit definition, identifiers appear ordered by their posititon */
+            for (found = 0; i < type->info.bits.count; i++) {
+                if (!strncmp(type->info.bits.bit[i].name, &xml->content[c], len)
+                        && !type->info.bits.bit[i].name[len]) {
+                    /* we have match, store the pointer */
+                    leaf->value.bit[i] = &type->info.bits.bit[i];
+
+                    /* stop searching */
+                    i++;
+                    found = 1;
+                    break;
+                }
+            }
+
+            if (!found) {
+                /* referenced bit value does not exists */
+                LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+                return EXIT_FAILURE;
+            }
+
+            c = c + len;
+        }
+
+        break;
+
+    case LY_TYPE_STRING:
+        leaf->value.string = xml->content;
+        xml->content = NULL;
+        leaf->value_type = LY_TYPE_STRING;
+
+        if (sleaf->type.info.str.length) {
             /* TODO: check length restriction */
         }
 
-        if (((struct ly_mnode_leaf *)node->schema)->type.info.str.patterns) {
+        if (sleaf->type.info.str.patterns) {
             /* TODO: check pattern restriction */
         }
         break;
@@ -141,7 +206,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         schema = xml_data_search_schemanode(xml, parent->schema->child);
     }
     if (!schema) {
-        LOGVAL(VE_INSTMT, LOGLINE(xml), xml->name);
+        LOGVAL(DE_INELEM, LOGLINE(xml), xml->name);
         return NULL;
     }
 
@@ -178,10 +243,14 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         }
     } else if (schema->nodetype == LY_NODE_LEAF) {
         /* type detection and assigning the value */
-        xml_get_value(result, xml);
+        if (xml_get_value(result, xml)) {
+            goto error;
+        }
     } else if (schema->nodetype == LY_NODE_LEAFLIST) {
         /* type detection and assigning the value */
-        xml_get_value(result, xml);
+        if (xml_get_value(result, xml)) {
+            goto error;
+        }
 
         /* pointers to next and previous instances of the same leaflist */
         for (aux = result->prev; aux; aux = aux->prev) {
@@ -198,8 +267,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     if (havechildren && xml->child) {
         result->child = xml_parse_data(ctx, xml->child, result, NULL);
         if (!result->child) {
-            free(result);
-            return NULL;
+            goto error;
         }
 
     }
@@ -208,8 +276,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     if (xml->next) {
         result->next = xml_parse_data(ctx, xml->next, parent, result);
         if (!result->next) {
-            free(result);
-            return NULL;
+            goto error;
         }
     }
 
@@ -219,6 +286,16 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         result->prev = aux;
     }
     return result;
+
+error:
+
+    result->child = NULL;
+    result->next = NULL;
+    result->parent = NULL;
+    result->prev = result;
+    lyd_node_free(result);
+
+    return NULL;
 }
 
 struct lyd_node *
