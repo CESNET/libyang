@@ -227,5 +227,14 @@ void lyxml_unlink_attr(struct lyxml_attr *attr);
  */
 void lyxml_unlink_elem(struct lyxml_elem *elem);
 
+/**
+ * @brief Get namespace definition of the given prefix in context of the specified element.
+ *
+ * @param[in] elem Element where start namespace searching
+ * @param[in] prefix Prefix of the namespace to search for
+ * @return Namespace defintion or NULL if no such namespace exists
+ */
+struct lyxml_ns *lyxml_get_ns(struct lyxml_elem *elem, const char *prefix);
+
 /**@}*/
 #endif /* LY_XML_H_ */

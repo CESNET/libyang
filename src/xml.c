@@ -574,8 +574,8 @@ error:
     return NULL;
 }
 
-static struct lyxml_ns *
-get_ns(struct lyxml_elem *elem, const char *prefix)
+struct lyxml_ns *
+lyxml_get_ns(struct lyxml_elem *elem, const char *prefix)
 {
     struct lyxml_attr *attr;
     int len;
@@ -610,7 +610,7 @@ get_ns(struct lyxml_elem *elem, const char *prefix)
     }
 
     /* go recursively */
-    return get_ns(elem->parent, prefix);
+    return lyxml_get_ns(elem->parent, prefix);
 }
 
 struct lyxml_attr *
@@ -637,7 +637,7 @@ lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr 
 
     /* set namespace in case of standard attributes */
     if (result->type == LYXML_ATTR_STD && attr->ns) {
-        result->ns = get_ns(parent, attr->ns->prefix);
+        result->ns = lyxml_get_ns(parent, attr->ns->prefix);
     }
 
     /* set parent pointer in case of namespace attribute */
@@ -682,7 +682,7 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
 
     /* namespace */
     if (elem->ns) {
-        result->ns = get_ns(result, elem->ns->prefix);
+        result->ns = lyxml_get_ns(result, elem->ns->prefix);
     }
 
     /* duplicate attributes */
@@ -747,7 +747,7 @@ parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
             /* look for the prefix in namespaces */
             memcpy(prefix, data, c - data);
             prefix[c - data] = '\0';
-            attr->ns = get_ns(parent, prefix);
+            attr->ns = lyxml_get_ns(parent, prefix);
         }
         c += size;
         uc = getutf8(c, &size);
@@ -1056,7 +1056,7 @@ store_content:
     }
 
     if (!elem->ns && !nons_flag && parent) {
-        elem->ns = get_ns(parent, prefix_len ? prefix : NULL);
+        elem->ns = lyxml_get_ns(parent, prefix_len ? prefix : NULL);
     }
 
     return elem;
