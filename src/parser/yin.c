@@ -651,75 +651,8 @@ find_superior_type(const char *name, struct ly_module *module, struct ly_mnode *
 }
 
 static struct ly_ident *
-find_base_ident_sub(struct ly_module *module, struct ly_ident *ident, const char *basename)
+parse_base(struct ly_module *module, struct ly_ident *ident, struct lyxml_elem *node)
 {
-    unsigned int i, j;
-    struct ly_ident *base_iter = NULL;
-    struct ly_ident_der *der;
-
-    /* search module */
-    for (i = 0; i < module->ident_size; i++) {
-        if (!strcmp(basename, module->ident[i].name)) {
-
-            if (!ident) {
-                /* just search for type, so do not modify anything, just return
-                 * the base identity pointer
-                 */
-                return &module->ident[i];
-            }
-
-            /* we are resolving identity definition, so now update structures */
-            ident->base = base_iter = &module->ident[i];
-
-            break;
-        }
-    }
-
-    /* search submodules */
-    if (!base_iter) {
-        for (j = 0; j < module->inc_size; j++) {
-            for (i = 0; i < module->inc[j].submodule->ident_size; i++) {
-                if (!strcmp(basename, module->inc[j].submodule->ident[i].name)) {
-
-                    if (!ident) {
-                        return &module->inc[j].submodule->ident[i];
-                    }
-
-                    ident->base = base_iter = &module->inc[j].submodule->ident[i];
-                    break;
-                }
-            }
-        }
-    }
-
-    /* we found it somewhere */
-    if (base_iter) {
-        while (base_iter) {
-            for (der = base_iter->der; der && der->next; der = der->next);
-            if (der) {
-                der->next = malloc(sizeof *der);
-                der = der->next;
-            } else {
-                ident->base->der = der = malloc(sizeof *der);
-            }
-            der->next = NULL;
-            der->ident = ident;
-
-            base_iter = base_iter->base;
-        }
-        return ident->base;
-    }
-
-    return NULL;
-}
-
-static struct ly_ident *
-find_base_ident(struct ly_module *module, struct ly_ident *ident, struct lyxml_elem *node)
-{
-    const char *name;
-    int prefix_len = 0;
-    int i, found = 0;
-    struct ly_ident *result;
     const char *basename;
 
     basename = lyxml_get_attr(node, "name", NULL);
@@ -728,53 +661,7 @@ find_base_ident(struct ly_module *module, struct ly_ident *ident, struct lyxml_e
         return NULL;
     }
 
-    /* search for the base identity */
-    name = strchr(basename, ':');
-    if (name) {
-        /* set name to correct position after colon */
-        prefix_len = name - basename;
-        name++;
-
-        if (!strncmp(basename, module->prefix, prefix_len) && !module->prefix[prefix_len]) {
-            /* prefix refers to the current module, ignore it */
-            prefix_len = 0;
-        }
-    } else {
-        name = basename;
-    }
-
-    if (prefix_len) {
-        /* get module where to search */
-        for (i = 0; i < module->imp_size; i++) {
-            if (!strncmp(module->imp[i].prefix, basename, prefix_len)
-                && !module->imp[i].prefix[prefix_len]) {
-                module = module->imp[i].module;
-                found = 1;
-                break;
-            }
-        }
-        if (!found) {
-            /* identity refers unknown data model */
-            LOGVAL(VE_INPREFIX, LOGLINE(node), basename);
-            return NULL;
-        }
-    } else {
-        /* search in submodules */
-        for (i = 0; i < module->inc_size; i++) {
-            result = find_base_ident_sub((struct ly_module *)module->inc[i].submodule, ident, name);
-            if (result) {
-                return result;
-            }
-        }
-    }
-
-    /* search in the identified module */
-    result = find_base_ident_sub(module, ident, name);
-    if (!result) {
-        LOGVAL(VE_INARG, LOGLINE(node), basename, ident ? "identity" : "type");
-    }
-
-    return result;
+    return find_base_ident(module, ident, basename, LOGLINE(node), ident ? "identity" : "type");
 }
 
 static int
@@ -797,7 +684,7 @@ fill_yin_identity(struct ly_module *module, struct lyxml_elem *yin, struct ly_id
                 LOGVAL(VE_TOOMANY, LOGLINE(node), "base", "identity");
                 return EXIT_FAILURE;
             }
-            if (!find_base_ident(module, ident, node)) {
+            if (!parse_base(module, ident, node)) {
                 return EXIT_FAILURE;
             }
         } else {
@@ -1232,7 +1119,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
             LOGVAL(VE_TOOMANY, LOGLINE(yin->child->next), yin->child->next->name, yin->name);
             goto error;
         }
-        type->info.ident.ref = find_base_ident(module, NULL, yin->child);
+        type->info.ident.ref = parse_base(module, NULL, yin->child);
         if (!type->info.ident.ref) {
             return EXIT_FAILURE;
         }

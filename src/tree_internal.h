@@ -73,5 +73,7 @@ struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, 
 int resolve_uses(struct ly_mnode_uses *uses, unsigned int line);
 struct ly_mnode *resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *mod, LY_NODE_TYPE node_type);
 struct ly_mnode_leaf *find_leaf(struct ly_mnode *parent, const char *name, int len);
+struct ly_ident *find_base_ident(struct ly_module *module, struct ly_ident *ident, const char *basename, int line, const char* parent);
+struct ly_ident *find_identityref(struct ly_ident *base, const char *name, const char *ns);
 
 #endif /* LY_TREE_INTERNAL_H_ */
