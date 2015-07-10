@@ -161,7 +161,7 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node)
     switch (((struct ly_mnode_leaf *)leaf->schema)->type.base) {
     case LY_TYPE_BINARY:
     case LY_TYPE_STRING:
-        fprintf(f, "\"%s\"%s\n", leaf->value.string, node->next ? "," : "");
+        fprintf(f, "\"%s\"%s\n", leaf->value.string ? leaf->value.string : "", node->next ? "," : "");
         break;
     case LY_TYPE_BITS:
         fprintf(f, "\"");
