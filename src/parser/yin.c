@@ -474,7 +474,11 @@ upper:
                 goto error;
             }
 
+            errno = 0;
             n = strtoll(c, &tail, 10);
+            if (errno) {
+                goto error;
+            }
             c = tail;
             while (isspace(*c)) {
                 c++;
@@ -499,7 +503,12 @@ upper:
 
     } else if (isdigit(*c)) {
         /* number */
+        errno = 0;
         n = strtoll(c, &tail, 10);
+        if (errno) {
+            /* out of range value */
+            goto error;
+        }
         c = tail;
         while (isspace(*c)) {
             c++;
@@ -973,7 +982,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                     p_ = strtoll(value, NULL, 10);
 
                     /* range check */
-                    if (p_ < 0 || p_ > LONG_MAX) {
+                    if (p_ < 0 || p_ > UINT32_MAX) {
                         LOGVAL(VE_INARG, LOGLINE(node), value, "bit/position");
                         type->info.bits.count = i + 1;
                         goto error;
