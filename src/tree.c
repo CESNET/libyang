@@ -1753,7 +1753,7 @@ lyd_node_free(struct lyd_node *node)
             }
             break;
         default:
-            /* TODO */
+            /* TODO nothing needed : LY_TYPE_BOOL, LY_TYPE_DEC64*/
             break;
         }
     }

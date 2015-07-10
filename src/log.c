@@ -82,7 +82,8 @@ const char *verrs[] = {
 /* VE_KEY_DUP */      "Key identifier \"%s\" is not unique.",
 
 /* DE_INELEM */       "Unknown element \"%s\".",
-/* DE_INVAL */        "Invalid value \"%s\" in \"%s\" element."
+/* DE_INVAL */        "Invalid value \"%s\" in \"%s\" element.",
+/* DE_OORVAL */       "Value \"%s\" is out of range."
 };
 
 void

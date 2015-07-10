@@ -73,11 +73,14 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct ly_mnode *start)
 static int
 xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
 {
+#define DECSIZE 21
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
     struct ly_mnode_leaf *sleaf = (struct ly_mnode_leaf *)node->schema;
     struct ly_type *type;
+    char dec[DECSIZE];
+    char *endptr;
     int len;
-    int c, i;
+    int c, i, j, d;
     int found;
 
     switch (sleaf->type.base) {
@@ -114,11 +117,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
             }
 
             /* get the length of the bit identifier */
-            len = 0;
-            while(xml->content[c] && !isspace(xml->content[c])) {
-                c++;
-                len++;
-            }
+            for (len = 0; xml->content[c] && !isspace(xml->content[c]); c++, len++);
 
             /* go back to the beginning of the identifier */
             c = c - len;
@@ -152,6 +151,79 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
         if (!strcmp(xml->content, "true")) {
             leaf->value.bool = 1;
         } /* else false, so keep it zero */
+        break;
+
+    case LY_TYPE_DEC64:
+        /* locate dec64 structure with the fraction-digits value */
+        for (type = &sleaf->type; type->der->type.der; type = &type->der->type);
+
+        for (c = 0; isspace(xml->content[c]); c++);
+        for (len = 0; xml->content[c] && !isspace(xml->content[c]); c++, len++);
+        c = c - len;
+        if (len > DECSIZE) {
+            /* too long */
+            LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+            return EXIT_FAILURE;
+        }
+
+        /* normalize the number */
+        dec[0] = '\0';
+        for (i = j = d = found = 0; i < DECSIZE; i++) {
+            if (xml->content[c + i] == '.') {
+                found = 1;
+                j = type->info.dec64.dig;
+                i--;
+                c++;
+                continue;
+            }
+            if (xml->content[c + i] == '\0') {
+                c--;
+                if (!found) {
+                    j = type->info.dec64.dig;
+                    found = 1;
+                }
+                if (!j) {
+                    dec[i] = '\0';
+                    break;
+                }
+                d++;
+                if (d > DECSIZE - 2) {
+                    LOGVAL(DE_OORVAL, LOGLINE(xml), xml->content, xml->name);
+                    return EXIT_FAILURE;
+                }
+                dec[i] = '0';
+            } else {
+                if (!isdigit(xml->content[c + i])) {
+                    if (i || xml->content[c] != '-') {
+                        LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+                        return EXIT_FAILURE;
+                    }
+                } else {
+                    d++;
+                }
+                if (d > DECSIZE - 2 || (found && !j)) {
+                    LOGVAL(DE_OORVAL, LOGLINE(xml), xml->content, xml->name);
+                    return EXIT_FAILURE;
+                }
+                dec[i] = xml->content[c + i];
+            }
+            if (j) {
+                j--;
+            }
+        }
+
+        /* convert string into 64b integer */
+        errno = 0;
+        endptr = NULL;
+        leaf->value.dec64 = strtoll(dec, &endptr, 10);
+        if (errno) {
+            LOGVAL(DE_OORVAL, LOGLINE(xml), xml->content, xml->name);
+            return EXIT_FAILURE;
+        } else if (endptr && *endptr) {
+            LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+            return EXIT_FAILURE;
+        }
+
         break;
 
     case LY_TYPE_STRING:
@@ -295,7 +367,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
 error:
 
-    result->child = NULL;
+    if (havechildren) {
+        result->child = NULL;
+    }
     result->next = NULL;
     result->parent = NULL;
     result->prev = result;

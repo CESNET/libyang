@@ -99,7 +99,8 @@ enum LY_VERR {
     VE_KEY_DUP,
 
     DE_INELEM,
-    DE_INVAL
+    DE_INVAL,
+    DE_OORVAL
 };
 void ly_vlog(enum LY_VERR code, unsigned int line, ...);
 

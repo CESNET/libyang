@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <inttypes.h>
 
 #include "../common.h"
 #include "../tree.h"
@@ -141,7 +142,8 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node)
     struct ly_mnode_leaf *sleaf = (struct ly_mnode_leaf *)node->schema;
     struct ly_type *type;
     const char *schema;
-    int i;
+    char dec[21];
+    int i, len;
 
     if (!node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
@@ -177,6 +179,22 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node)
         break;
     case LY_TYPE_BOOL:
         fprintf(f, "\"%s\"%s\n", leaf->value.bool ? "true" : "false", node->next ? "," : "");
+        break;
+    case LY_TYPE_DEC64:
+
+        /* locate dec structure with the fraction-digits definitions to get the value */
+        for (type = &sleaf->type; type->der->type.der; type = &type->der->type);
+
+        snprintf(dec, 21, "%" PRId64, leaf->value.dec64);
+        len = strlen(dec);
+        for (i = 0; dec[i]; ) {
+            fputc(dec[i++], f);
+            if (i +  type->info.dec64.dig == len) {
+                fputc('.', f);
+            }
+        }
+        fprintf(f, "%s\n", node->next ? "," : "");
+
         break;
     default:
         /* TODO */

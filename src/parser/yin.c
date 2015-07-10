@@ -474,7 +474,7 @@ upper:
                 goto error;
             }
 
-            n = strtol(c, &tail, 10);
+            n = strtoll(c, &tail, 10);
             c = tail;
             while (isspace(*c)) {
                 c++;
@@ -499,7 +499,7 @@ upper:
 
     } else if (isdigit(*c)) {
         /* number */
-        n = strtol(c, &tail, 10);
+        n = strtoll(c, &tail, 10);
         c = tail;
         while (isspace(*c)) {
             c++;
@@ -970,10 +970,10 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
 
                 if (!strcmp(node->name, "position")) {
                     GETVAL(value, node, "value");
-                    p_ = strtol(value, NULL, 10);
+                    p_ = strtoll(value, NULL, 10);
 
                     /* range check */
-                    if (p_ < 0 || p_ > UINT32_MAX) {
+                    if (p_ < 0 || p_ > LONG_MAX) {
                         LOGVAL(VE_INARG, LOGLINE(node), value, "bit/position");
                         type->info.bits.count = i + 1;
                         goto error;
@@ -1073,6 +1073,11 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
             LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "fraction-digits", "type");
             goto error;
         }
+        if (type->info.dec64.dig && type->der->type.der) {
+            /* type is not directly derived from buit-in type and fraction-digits statement is prohibited */
+            LOGVAL(VE_INSTMT, LOGLINE(yin), "fraction-digits");
+            goto error;
+        }
         break;
 
     case LY_TYPE_ENUM:
@@ -1144,7 +1149,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
 
                 if (!strcmp(node->name, "value")) {
                     GETVAL(value, node, "value");
-                    v_ = strtol(value, NULL, 10);
+                    v_ = strtoll(value, NULL, 10);
 
                     /* range check */
                     if (v_ < INT32_MIN || v_ > INT32_MAX) {
