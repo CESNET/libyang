@@ -226,6 +226,14 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
 
         break;
 
+    case LY_TYPE_EMPTY:
+        /* just check that it is empty */
+        if (xml->content && xml->content[0]) {
+            LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+            return EXIT_FAILURE;
+        }
+        break;
+
     case LY_TYPE_STRING:
         leaf->value.string = xml->content;
         xml->content = NULL;

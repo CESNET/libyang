@@ -196,6 +196,9 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node)
         fprintf(f, "%s\n", node->next ? "," : "");
 
         break;
+    case LY_TYPE_EMPTY:
+        fprintf(f, "[null]%s\n", node->next ? "," : "");
+        break;
     default:
         /* TODO */
         fprintf(f, "%s%s\n", "\"TBD\"", node->next ? "," : "");
