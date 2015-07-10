@@ -234,6 +234,31 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
         }
         break;
 
+    case LY_TYPE_ENUM:
+        if (!xml->content) {
+            LOGVAL(DE_INVAL, LOGLINE(xml), "", xml->name);
+            return EXIT_FAILURE;
+        }
+
+        /* locate enums structure with the enumeration definitions */
+        for (type = &sleaf->type; type->der->type.der; type = &type->der->type);
+
+        /* find matching enumeration value */
+        for (i = 0; i < type->info.enums.count; i++) {
+            if (!strcmp(xml->content, type->info.enums.list[i].name)) {
+                /* we have match, store pointer to the definition */
+                leaf->value.enm = &type->info.enums.list[i];
+                break;
+            }
+        }
+
+        if (!leaf->value.enm) {
+            LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+            return EXIT_FAILURE;
+        }
+
+        break;
+
     case LY_TYPE_STRING:
         leaf->value.string = xml->content;
         xml->content = NULL;
