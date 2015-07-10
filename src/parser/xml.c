@@ -29,6 +29,7 @@
 #include "../common.h"
 #include "../context.h"
 #include "../xml.h"
+#include "../tree_internal.h"
 
 #define LY_NSNC "urn:ietf:params:xml:ns:netconf:base:1.0"
 
@@ -77,8 +78,10 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
     struct ly_mnode_leaf *sleaf = (struct ly_mnode_leaf *)node->schema;
     struct ly_type *type;
+    struct lyxml_ns *ns;
     char dec[DECSIZE];
-    char *endptr;
+    char *strptr;
+    const char *name;
     int len;
     int c, i, j, d;
     int found;
@@ -214,12 +217,12 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
 
         /* convert string into 64b integer */
         errno = 0;
-        endptr = NULL;
-        leaf->value.dec64 = strtoll(dec, &endptr, 10);
+        strptr = NULL;
+        leaf->value.dec64 = strtoll(dec, &strptr, 10);
         if (errno) {
             LOGVAL(DE_OORVAL, LOGLINE(xml), xml->content, xml->name);
             return EXIT_FAILURE;
-        } else if (endptr && *endptr) {
+        } else if (strptr && *strptr) {
             LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
             return EXIT_FAILURE;
         }
@@ -257,6 +260,34 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
             return EXIT_FAILURE;
         }
 
+        break;
+
+    case LY_TYPE_IDENT:
+        if ((strptr = strchr(xml->content, ':'))) {
+            len = strptr - xml->content;
+            if (!len) {
+                LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+                return EXIT_FAILURE;
+            }
+            strptr = strndup(xml->content, len);
+        }
+        ns = lyxml_get_ns(xml, strptr);
+        if (!ns) {
+            LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+            return EXIT_FAILURE;
+        }
+        if (strptr) {
+            free(strptr);
+            name = xml->content + len + 1;
+        } else {
+            name = xml->content;
+        }
+
+        leaf->value.ident = find_identityref(sleaf->type.info.ident.ref, name, ns->value);
+        if (!leaf->value.ident) {
+            LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+            return EXIT_FAILURE;
+        }
         break;
 
     case LY_TYPE_STRING:

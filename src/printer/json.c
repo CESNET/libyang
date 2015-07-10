@@ -202,6 +202,15 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node)
     case LY_TYPE_ENUM:
         fprintf(f, "\"%s\"%s\n", leaf->value.enm->name, node->next ? "," : "");
         break;
+    case LY_TYPE_IDENT:
+        if (sleaf->module != leaf->value.ident->module) {
+            /* namespace identifier is needed */
+            fprintf(f, "\"%s:%s\"%s\n", leaf->value.ident->module->name, leaf->value.ident->name, node->next ? "," : "");
+        } else {
+            /* no namespace is needed */
+            fprintf(f, "\"%s\"%s\n", leaf->value.ident->name, node->next ? "," : "");
+        }
+        break;
     default:
         /* TODO */
         fprintf(f, "%s%s\n", "\"TBD\"", node->next ? "," : "");
