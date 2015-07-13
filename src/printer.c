@@ -65,10 +65,10 @@ ly_data_print(FILE * f, struct lyd_node *root, LY_DFORMAT format)
     }
 
     switch (format) {
-    case LY_XML:
+    case LY_DATA_XML:
         LOGERR(LY_EINVAL, "XML output format not supported yet.");
         return EXIT_FAILURE;
-    case LY_JSON:
+    case LY_DATA_JSON:
         return json_print_data(f, root);
     default:
         LOGERR(LY_EINVAL, "Unknown output format.");

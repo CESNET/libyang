@@ -68,8 +68,9 @@ typedef enum {
 } LY_MOUTFORMAT;
 
 typedef enum {
-    LY_XML,
-    LY_JSON,
+    LY_DATA_UNKNOWN,
+    LY_DATA_XML,
+    LY_DATA_JSON,
 } LY_DFORMAT;
 
 typedef enum {

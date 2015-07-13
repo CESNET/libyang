@@ -442,7 +442,7 @@ error:
     return NULL;
 }
 
-struct lyd_node *
+API struct lyd_node *
 xml_read_data(struct ly_ctx *ctx, const char *data)
 {
     struct lyxml_elem *xml;

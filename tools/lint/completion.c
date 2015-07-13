@@ -181,7 +181,7 @@ complete_cmd(const char *buf, linenoiseCompletions *lc)
     char **matches = NULL;
     unsigned int match_count = 0, i;
 
-    if (!strncmp(buf, "add ", 4) || !strncmp(buf, "searchpath ", 11)) {
+    if (!strncmp(buf, "add ", 4) || !strncmp(buf, "searchpath ", 11) || !strncmp(buf, "data ", 5)) {
         get_path_completion(buf, &matches, &match_count);
     } else if (!strncmp(buf, "print ", 6) || !strncmp(buf, "feature ", 8)) {
         get_model_completion(buf, &matches, &match_count);

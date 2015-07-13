@@ -33,6 +33,7 @@
 #include "commands.h"
 #include "../../src/libyang.h"
 #include "../../src/tree.h"
+#include "../../src/parser.h"
 
 COMMAND commands[];
 extern int done;
@@ -49,6 +50,12 @@ void
 cmd_print_help(void)
 {
     printf("print [-f (yang | tree | info)] [-t info-target-node] [-o <output-file>] <model-name>\n");
+}
+
+void
+cmd_data_help(void)
+{
+    printf("data [-f (xml | json)] [-o <output-file>] <data-file-name>\n");
 }
 
 void
@@ -248,6 +255,124 @@ cleanup:
     if (output && (output != stdout)) {
         fclose(output);
     }
+
+    return ret;
+}
+
+int
+cmd_data(const char *arg)
+{
+    int c, argc, option_index, ret = 1, input;
+    off_t size;
+    char **argv = NULL, *ptr, *data_str;
+    const char *out_path = NULL;
+    struct lyd_node *data = NULL;
+    LY_DFORMAT format = LY_DATA_UNKNOWN;
+    FILE *output = stdout;
+    static struct option long_options[] = {
+        {"help", no_argument, 0, 'h'},
+        {"format", required_argument, 0, 'f'},
+        {"output", required_argument, 0, 'o'},
+        {NULL, 0, 0, 0}
+    };
+
+    argc = 1;
+    argv = malloc(2*sizeof *argv);
+    *argv = strdup(arg);
+    ptr = strtok(*argv, " ");
+    while ((ptr = strtok(NULL, " "))) {
+        argv = realloc(argv, (argc+2)*sizeof *argv);
+        argv[argc++] = ptr;
+    }
+    argv[argc] = NULL;
+
+    optind = 0;
+    while (1) {
+        option_index = 0;
+        c = getopt_long(argc, argv, "hf:o:", long_options, &option_index);
+        if (c == -1) {
+            break;
+        }
+
+        switch (c) {
+        case 'h':
+            cmd_data_help();
+            ret = 0;
+            goto cleanup;
+        case 'f':
+            if (!strcmp(optarg, "xml")) {
+                format = LY_DATA_XML;
+            } else if (!strcmp(optarg, "json")) {
+                format = LY_DATA_JSON;
+            } else {
+                fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
+                goto cleanup;
+            }
+            break;
+        case 'o':
+            if (out_path) {
+                fprintf(stderr, "Output specified twice.\n");
+                goto cleanup;
+            }
+            out_path = optarg;
+            break;
+        case '?':
+            fprintf(stderr, "Unknown option \"%d\".\n", (char)c);
+            goto cleanup;
+        }
+    }
+
+    /* file name */
+    if (optind == argc) {
+        fprintf(stderr, "Missing the data file name.\n");
+        goto cleanup;
+    }
+
+    input = open(argv[optind], O_RDONLY);
+    if (!input) {
+        fprintf(stderr, "The input File could not be opened (%s).\n", strerror(errno));
+        goto cleanup;
+    }
+
+    size = lseek(input, 0, SEEK_END);
+    lseek(input, 0, SEEK_SET);
+    data_str = malloc((size+1) * sizeof(char));
+    read(input, data_str, size);
+    data_str[size] = '\0';
+
+    data = xml_read_data(ctx, data_str);
+    free(data_str);
+    if (data == NULL) {
+        fprintf(stderr, "Failed to parse data.\n");
+        goto cleanup;
+    }
+
+    if (out_path) {
+        output = fopen(out_path, "w");
+        if (!output) {
+            fprintf(stderr, "Could not open the output file (%s).\n", strerror(errno));
+            goto cleanup;
+        }
+
+        if (format == LY_DATA_UNKNOWN) {
+            /* default */
+            format = LY_DATA_XML;
+        }
+    }
+
+    if (format != LY_DATA_UNKNOWN) {
+        ly_data_print(output, data, format);
+    }
+
+cleanup:
+    free(*argv);
+    free(argv);
+
+    if (output && (output != stdout)) {
+        fclose(output);
+    }
+
+    //lyd_node_free(data);
 
     return ret;
 }
@@ -530,6 +655,7 @@ COMMAND commands[] = {
         {"help", cmd_help, NULL, "Display commands description"},
         {"add", cmd_add, cmd_add_help, "Add a new model"},
         {"print", cmd_print, cmd_print_help, "Print model"},
+        {"data", cmd_data, cmd_data_help, "Load, validate and optionally print data"},
         {"list", cmd_list, cmd_list_help, "List all the loaded models"},
         {"feature", cmd_feature, cmd_feature_help, "Print/enable/disable all/specific features of models"},
         {"searchpath", cmd_searchpath, cmd_searchpath_help, "Set the search path for models"},

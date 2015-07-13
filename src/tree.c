@@ -1859,9 +1859,9 @@ ly_data_read(struct ly_ctx *ctx, const char *data, LY_DFORMAT format)
     }
 
     switch (format) {
-    case LY_XML:
+    case LY_DATA_XML:
         return xml_read_data(ctx, data);
-    case LY_JSON:
+    case LY_DATA_JSON:
     default:
         /* TODO */
         return NULL;
