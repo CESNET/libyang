@@ -97,6 +97,7 @@ enum LY_VERR {
     VE_KEY_CONFIG,
     VE_KEY_MISS,
     VE_KEY_DUP,
+    VE_INREGEX,
 
     DE_INELEM,
     DE_INVAL,

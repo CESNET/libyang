@@ -27,6 +27,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
+#include <sys/types.h>
+#include <regex.h>
 
 #include "../libyang.h"
 #include "../common.h"
@@ -757,12 +759,15 @@ error:
 static int
 fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_elem *yin, struct ly_type *type, struct obj_list **unres)
 {
+#define REGEX_ERR_LEN 128
     const char *value, *delim, *name;
+    char regex_err[REGEX_ERR_LEN];
     struct lyxml_elem *next, *node;
     struct ly_restr **restr;
     struct obj_list *unres_new;
     struct ly_type_bit bit;
-    int i, j;
+    regex_t preq;
+    int i, j, ret;
     int64_t v, v_;
     int64_t p, p_;
 
@@ -1286,10 +1291,22 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
             type->info.str.patterns = calloc(i, sizeof *type->info.str.patterns);
             LY_TREE_FOR(yin->child, node) {
                 GETVAL(value, yin->child, "value");
+
+                /* check that the regex is valid */
+                if ((ret = regcomp(&preq, value, REG_EXTENDED | REG_NOSUB)) != 0) {
+                    regerror(ret, &preq, regex_err, REGEX_ERR_LEN);
+                    regfree(&preq);
+                    LOGVAL(VE_INREGEX, LOGLINE(node), value, regex_err);
+                    free(type->info.str.patterns);
+                    goto error;
+                }
+                regfree(&preq);
+
                 type->info.str.patterns[type->info.str.pat_count].expr = lydict_insert(module->ctx, value, 0);
 
                 /* get possible sub-statements */
                 if (read_restr_substmt(module->ctx, &type->info.str.patterns[type->info.str.pat_count], yin->child)) {
+                    free(type->info.str.patterns);
                     goto error;
                 }
                 type->info.str.pat_count++;

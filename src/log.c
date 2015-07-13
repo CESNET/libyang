@@ -80,6 +80,7 @@ const char *verrs[] = {
 /* VE_KEY_CONFIG */   "The \"config\" value of the \"%s\" key differs from its list config value.",
 /* VE_KEY_MISS */     "Leaf \"%s\" defined as key in a list not found.",
 /* VE_KEY_DUP */      "Key identifier \"%s\" is not unique.",
+/* VE_INREGEX */      "Regular expression \"%s\" is not valid (%s).\n",
 
 /* DE_INELEM */       "Unknown element \"%s\".",
 /* DE_INVAL */        "Invalid value \"%s\" in \"%s\" element.",
