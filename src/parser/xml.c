@@ -24,6 +24,8 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <regex.h>
 
 #include "../libyang.h"
 #include "../common.h"
@@ -79,8 +81,9 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
     struct ly_mnode_leaf *sleaf = (struct ly_mnode_leaf *)node->schema;
     struct ly_type *type;
     struct lyxml_ns *ns;
+    regex_t preq;
     char dec[DECSIZE];
-    char *strptr;
+    char *strptr, *posix_regex;
     const char *name;
     int len;
     int c, i, j, d;
@@ -300,7 +303,35 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
         }
 
         if (sleaf->type.info.str.patterns) {
-            /* TODO: check pattern restriction */
+            for (i = 0; i < sleaf->type.info.str.pat_count; ++i) {
+                /*
+                 * adjust the expression to a POSIX.2 equivalent
+                 *
+                 * http://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs
+                 */
+                posix_regex = malloc((strlen(sleaf->type.info.str.patterns[i].expr)+3) * sizeof(char));
+                posix_regex[0] = '\0';
+
+                if (strncmp(sleaf->type.info.str.patterns[i].expr, ".*", 2)) {
+                    strcat(posix_regex, "^");
+                }
+                strcat(posix_regex, sleaf->type.info.str.patterns[i].expr);
+                if (strncmp(sleaf->type.info.str.patterns[i].expr
+                        + strlen(sleaf->type.info.str.patterns[i].expr) - 2, ".*", 2)) {
+                    strcat(posix_regex, "$");
+                }
+
+                /* must return 0, already checked during parsing */
+                regcomp(&preq, posix_regex, REG_EXTENDED | REG_NOSUB);
+                free(posix_regex);
+
+                if (regexec(&preq, leaf->value.string, 0, 0, 0) != 0) {
+                    LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value.string, xml->name);
+                    regfree(&preq);
+                    return EXIT_FAILURE;
+                }
+                regfree(&preq);
+            }
         }
         break;
 
