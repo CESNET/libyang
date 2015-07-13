@@ -330,7 +330,7 @@ cmd_data(const char *arg)
 
     input = open(argv[optind], O_RDONLY);
     if (!input) {
-        fprintf(stderr, "The input File could not be opened (%s).\n", strerror(errno));
+        fprintf(stderr, "The input file could not be opened (%s).\n", strerror(errno));
         goto cleanup;
     }
 
