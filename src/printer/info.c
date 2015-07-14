@@ -362,19 +362,20 @@ info_print_import_all(FILE *f, struct ly_module *mod)
 
     fprintf(f, "%-*s", INDENT_LEN, "Imports: ");
     if (mod->imp_size) {
-        fprintf(f, "%s\n", mod->imp[0].module->name);
+        fprintf(f, "%s:%s\n", mod->imp[0].prefix, mod->imp[0].module->name);
         i = 1;
         first = 0;
 
         for (; i < mod->imp_size; ++i) {
-            fprintf(f, "%*s%s\n", INDENT_LEN, "", mod->imp[i].module->name);
+            fprintf(f, "%*s%s:%s\n", INDENT_LEN, "", mod->imp[i].prefix, mod->imp[i].module->name);
         }
     }
 
     for (j = 0; j < mod->inc_size; ++j) {
         if (mod->inc[j].submodule->imp_size) {
             if (first) {
-                fprintf(f, "%s\n", mod->inc[j].submodule->imp[0].module->name);
+                fprintf(f, "%s:%s\n",
+                        mod->inc[j].submodule->imp[0].prefix, mod->inc[j].submodule->imp[0].module->name);
                 i = 1;
             } else {
                 i = 0;
@@ -382,7 +383,8 @@ info_print_import_all(FILE *f, struct ly_module *mod)
             first = 0;
 
             for (; i < mod->inc[j].submodule->imp_size; ++i) {
-                fprintf(f, "%*s%s\n", INDENT_LEN, "", mod->inc[j].submodule->imp[i].module->name);
+                fprintf(f, "%*s%s:%s\n", INDENT_LEN, "",
+                        mod->inc[j].submodule->imp[i].prefix, mod->inc[j].submodule->imp[i].module->name);
             }
         }
     }
