@@ -35,6 +35,51 @@
 
 #define LY_NSNC "urn:ietf:params:xml:ns:netconf:base:1.0"
 
+static int
+validate_pattern(const char *str, struct ly_type *type)
+{
+    int i;
+    regex_t preq;
+    char *posix_regex;
+
+    assert(type->base == LY_TYPE_STRING);
+
+    if (type->der && validate_pattern(str, &type->der->type)) {
+        return 1;
+    }
+
+    for (i = 0; i < type->info.str.pat_count; ++i) {
+        /*
+         * adjust the expression to a POSIX.2 equivalent
+         *
+         * http://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs
+         */
+        posix_regex = malloc((strlen(type->info.str.patterns[i].expr)+3) * sizeof(char));
+        posix_regex[0] = '\0';
+
+        if (strncmp(type->info.str.patterns[i].expr, ".*", 2)) {
+            strcat(posix_regex, "^");
+        }
+        strcat(posix_regex, type->info.str.patterns[i].expr);
+        if (strncmp(type->info.str.patterns[i].expr
+                + strlen(type->info.str.patterns[i].expr) - 2, ".*", 2)) {
+            strcat(posix_regex, "$");
+        }
+
+        /* must return 0, already checked during parsing */
+        assert(!regcomp(&preq, posix_regex, REG_EXTENDED | REG_NOSUB));
+        free(posix_regex);
+
+        if (regexec(&preq, str, 0, 0, 0)) {
+            regfree(&preq);
+            return 1;
+        }
+        regfree(&preq);
+    }
+
+    return 0;
+}
+
 static struct ly_mnode *
 xml_data_search_schemanode(struct lyxml_elem *xml, struct ly_mnode *start)
 {
@@ -81,9 +126,8 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
     struct ly_mnode_leaf *sleaf = (struct ly_mnode_leaf *)node->schema;
     struct ly_type *type;
     struct lyxml_ns *ns;
-    regex_t preq;
     char dec[DECSIZE];
-    char *strptr, *posix_regex;
+    char *strptr;
     const char *name;
     int len;
     int c, i, j, d;
@@ -303,34 +347,9 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
         }
 
         if (sleaf->type.info.str.patterns) {
-            for (i = 0; i < sleaf->type.info.str.pat_count; ++i) {
-                /*
-                 * adjust the expression to a POSIX.2 equivalent
-                 *
-                 * http://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs
-                 */
-                posix_regex = malloc((strlen(sleaf->type.info.str.patterns[i].expr)+3) * sizeof(char));
-                posix_regex[0] = '\0';
-
-                if (strncmp(sleaf->type.info.str.patterns[i].expr, ".*", 2)) {
-                    strcat(posix_regex, "^");
-                }
-                strcat(posix_regex, sleaf->type.info.str.patterns[i].expr);
-                if (strncmp(sleaf->type.info.str.patterns[i].expr
-                        + strlen(sleaf->type.info.str.patterns[i].expr) - 2, ".*", 2)) {
-                    strcat(posix_regex, "$");
-                }
-
-                /* must return 0, already checked during parsing */
-                regcomp(&preq, posix_regex, REG_EXTENDED | REG_NOSUB);
-                free(posix_regex);
-
-                if (regexec(&preq, leaf->value.string, 0, 0, 0) != 0) {
-                    LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value.string, xml->name);
-                    regfree(&preq);
-                    return EXIT_FAILURE;
-                }
-                regfree(&preq);
+            if (validate_pattern(leaf->value.string, &sleaf->type)) {
+                LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value.string, xml->name);
+                return EXIT_FAILURE;
             }
         }
         break;
