@@ -407,16 +407,13 @@ error:
 static int
 check_length(const char *expr, struct ly_type *type, unsigned int line)
 {
+    struct len_ran_intv *intv = NULL, *tmp_intv;
     const char *c = expr;
     char *tail;
     uint64_t limit = 0, n;
-    int flg = 1; /* first run flag */
+    int ret = EXIT_FAILURE, flg = 1; /* first run flag */
 
     assert(expr);
-
-    /* TODO check compatibility with the restriction defined on type from which this type is derived,
-     * it will be the same function to check that the value from instance data respect the restriction */
-    (void)type;
 
 lengthpart:
 
@@ -435,7 +432,7 @@ max:
             goto error;
         }
 
-        return EXIT_SUCCESS;
+        goto syntax_ok;
 
     } else if (!strncmp(c, "min", 3)) {
         if (!flg) {
@@ -456,7 +453,7 @@ max:
             /* process next length-parth */
             goto lengthpart;
         } else if (*c == '\0') {
-            return EXIT_SUCCESS;
+            goto syntax_ok;
         } else if (!strncmp(c, "..", 2)) {
 upper:
             c += 2;
@@ -489,7 +486,7 @@ upper:
                 goto error;
             }
             if (*c == '\0') {
-                return EXIT_SUCCESS;
+                goto syntax_ok;
             } else if (*c == '|') {
                 c++;
                 /* remember the uppre boundary for check in next part */
@@ -527,16 +524,37 @@ upper:
             /* process next length-parth */
             goto lengthpart;
         } else if (*c == '\0') {
-            return EXIT_SUCCESS;
+            goto syntax_ok;
         } else if (!strncmp(c, "..", 2)) {
             goto upper;
         }
-    } /* else error */
+
+    } else {
+        goto error;
+    }
+
+syntax_ok:
+
+    intv = get_len_ran_interval(expr, type, 1);
+    if (!intv) {
+        goto error;
+    }
+
+    ret = EXIT_SUCCESS;
 
 error:
 
-    LOGVAL(VE_INARG, line, expr, "length");
-    return EXIT_FAILURE;
+    while (intv) {
+        tmp_intv = intv->next;
+        free(intv);
+        intv = tmp_intv;
+    }
+
+    if (ret) {
+        LOGVAL(VE_INARG, line, expr, "length");
+    }
+
+    return ret;
 }
 
 static const char *

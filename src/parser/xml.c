@@ -35,6 +35,38 @@
 
 #define LY_NSNC "urn:ietf:params:xml:ns:netconf:base:1.0"
 
+/* kind == 0 - unsigned (unum used), 1 - signed (snum used), 2 - floating point (fnum used) */
+static int
+validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnum, struct ly_type *type)
+{
+    struct len_ran_intv *intv, *tmp_intv;
+    int ret = 1;
+
+    intv = get_len_ran_interval(NULL, type, 0);
+    for (tmp_intv = intv; tmp_intv; tmp_intv = tmp_intv->next) {
+        if (((kind == 0) && (unum < tmp_intv->value.uval.min))
+                || ((kind == 1) && (snum < tmp_intv->value.sval.min))
+                || ((kind == 2) && (fnum < tmp_intv->value.fval.min))) {
+            break;
+        }
+
+        if (((kind == 0) && (unum >= tmp_intv->value.uval.min) && (unum <= tmp_intv->value.uval.max))
+                || ((kind == 1) && (snum >= tmp_intv->value.sval.min) && (snum <= tmp_intv->value.sval.max))
+                || ((kind == 2) && (fnum >= tmp_intv->value.fval.min) && (fnum <= tmp_intv->value.fval.max))) {
+            ret = 0;
+            break;
+        }
+    }
+
+    while (intv) {
+        tmp_intv = intv->next;
+        free(intv);
+        intv = tmp_intv;
+    }
+
+    return ret;
+}
+
 static int
 validate_pattern(const char *str, struct ly_type *type)
 {
@@ -140,7 +172,10 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
         leaf->value_type = LY_TYPE_BINARY;
 
         if (sleaf->type.info.binary.length) {
-            /* TODO: check length restriction */
+            if (validate_length_range(0, strlen(leaf->value.binary), 0, 0, &sleaf->type)) {
+                LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value.binary, xml->name);
+                return EXIT_FAILURE;
+            }
         }
         break;
 
@@ -343,7 +378,10 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
         leaf->value_type = LY_TYPE_STRING;
 
         if (sleaf->type.info.str.length) {
-            /* TODO: check length restriction */
+            if (validate_length_range(0, strlen(leaf->value.string), 0, 0, &sleaf->type)) {
+                LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value.string, xml->name);
+                return EXIT_FAILURE;
+            }
         }
 
         if (sleaf->type.info.str.patterns) {
