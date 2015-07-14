@@ -416,6 +416,48 @@ info_print_include(FILE *f, struct ly_module *mod)
 }
 
 static void
+info_print_augment(FILE *f, struct ly_module *mod)
+{
+    int first = 1, i;
+
+    fprintf(f, "%-*s", INDENT_LEN, "Augments: ");
+    if (mod->augment_size) {
+        fprintf(f, "\"%s\"\n", mod->augment[0].target_name);
+        i = 1;
+        first = 0;
+
+        for (; i < mod->augment_size; ++i) {
+            fprintf(f, "%*s\"%s\"\n", INDENT_LEN, "", mod->augment[i].target_name);
+        }
+    }
+
+    if (first) {
+        fprintf(f, "\n");
+    }
+}
+
+static void
+info_print_deviation(FILE *f, struct ly_module *mod)
+{
+    int first = 1, i;
+
+    fprintf(f, "%-*s", INDENT_LEN, "Deviation: ");
+    if (mod->deviation_size) {
+        fprintf(f, "\"%s\"\n", mod->deviation[0].target_name);
+        i = 1;
+        first = 0;
+
+        for (; i < mod->deviation_size; ++i) {
+            fprintf(f, "%*s\"%s\"\n", INDENT_LEN, "", mod->deviation[i].target_name);
+        }
+    }
+
+    if (first) {
+        fprintf(f, "\n");
+    }
+}
+
+static void
 info_print_ident_all(FILE *f, struct ly_module *mod)
 {
     int first = 1, i, j;
@@ -625,6 +667,8 @@ info_print_module(FILE *f, struct ly_module *module)
     info_print_typedef_all(f, module);
     info_print_ident_all(f, module);
     info_print_features_all(f, module);
+    info_print_augment(f, module);
+    info_print_deviation(f, module);
 
     info_print_rpc_all(f, module);
     info_print_notif_all(f, module);
@@ -650,6 +694,8 @@ info_print_submodule(FILE *f, struct ly_submodule *module)
     info_print_typedef_all(f, (struct ly_module *)module);
     info_print_ident_all(f, (struct ly_module *)module);
     info_print_features_all(f, (struct ly_module *)module);
+    info_print_augment(f, (struct ly_module *)module);
+    info_print_deviation(f, (struct ly_module *)module);
 
     info_print_rpc_all(f, (struct ly_module *)module);
     info_print_notif_all(f, (struct ly_module *)module);
