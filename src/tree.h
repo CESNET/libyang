@@ -197,8 +197,8 @@ struct ly_tpdf {
 	                               in case of built-in type */
 
     struct ly_type type;          /**< type restrictions and reference to a superior
-	                               type definition. Empty in case of built-in
-	                               type */
+	                               type definition. In case of built-in type, only
+	                               the base is filled */
     const char *units;            /**< units of the type */
     const char *dflt;             /**< default value of the type */
 };
