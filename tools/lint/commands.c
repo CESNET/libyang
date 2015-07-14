@@ -262,9 +262,9 @@ cleanup:
 int
 cmd_data(const char *arg)
 {
-    int c, argc, option_index, ret = 1, input;
-    off_t size;
-    char **argv = NULL, *ptr, *data_str;
+    int c, argc, option_index, ret = 1, fd = -1;
+    struct stat sb;
+    char **argv = NULL, *ptr, *addr;
     const char *out_path = NULL;
     struct lyd_node *data = NULL;
     LY_DFORMAT format = LY_DATA_UNKNOWN;
@@ -328,20 +328,26 @@ cmd_data(const char *arg)
         goto cleanup;
     }
 
-    input = open(argv[optind], O_RDONLY);
-    if (!input) {
+    fd = open(argv[optind], O_RDONLY);
+    if (fd == -1) {
         fprintf(stderr, "The input file could not be opened (%s).\n", strerror(errno));
         goto cleanup;
     }
 
-    size = lseek(input, 0, SEEK_END);
-    lseek(input, 0, SEEK_SET);
-    data_str = malloc((size+1) * sizeof(char));
-    read(input, data_str, size);
-    data_str[size] = '\0';
+    if (fstat(fd, &sb) == -1) {
+        fprintf(stderr, "Unable to get input file information (%s).\n", strerror(errno));
+        goto cleanup;
+    }
 
-    data = xml_read_data(ctx, data_str);
-    free(data_str);
+    if (!S_ISREG(sb.st_mode)) {
+        fprintf(stderr, "Input file not a file.\n");
+        goto cleanup;
+    }
+
+    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    data = xml_read_data(ctx, addr);
+    munmap(addr, sb.st_size);
+
     if (data == NULL) {
         fprintf(stderr, "Failed to parse data.\n");
         goto cleanup;
@@ -370,6 +376,10 @@ cleanup:
 
     if (output && (output != stdout)) {
         fclose(output);
+    }
+
+    if (fd != -1) {
+        close(fd);
     }
 
     //lyd_node_free(data);
