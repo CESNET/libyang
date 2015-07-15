@@ -32,6 +32,43 @@
 struct ly_mnode *resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *mod, LY_NODE_TYPE node_type);
 
 static void
+info_print_text(FILE *f, const char *text, const char *label)
+{
+    const char *ptr1, *ptr2;
+    int first = 1;
+
+    fprintf(f, "%-*s", INDENT_LEN, label);
+
+    if (text) {
+        ptr1 = text;
+        while (1) {
+            ptr2 = strchr(ptr1, '\n');
+            if (!ptr2) {
+                if (first) {
+                    fprintf(f, "%s\n", ptr1);
+                    first = 0;
+                } else {
+                    fprintf(f, "%*s%s\n", INDENT_LEN, "", ptr1);
+                }
+                break;
+            }
+            ++ptr2;
+            if (first) {
+                fprintf(f, "%.*s", (int)(ptr2-ptr1), ptr1);
+                first = 0;
+            } else {
+                fprintf(f, "%*s%.*s", INDENT_LEN, "", (int)(ptr2-ptr1), ptr1);
+            }
+            ptr1 = ptr2;
+        }
+    }
+
+    if (first) {
+        fprintf(f, "\n");
+    }
+}
+
+static void
 info_print_mnodes(FILE *f, struct ly_mnode *mnode, const char *label)
 {
     assert(strlen(label) < INDENT_LEN-1);
@@ -281,43 +318,6 @@ info_print_unique(FILE *f, struct ly_unique *unique, uint8_t unique_size)
             }
         }
     } else {
-        fprintf(f, "\n");
-    }
-}
-
-static void
-info_print_text(FILE *f, const char *text, const char *label)
-{
-    const char *ptr1, *ptr2;
-    int first = 1;
-
-    fprintf(f, "%-*s", INDENT_LEN, label);
-
-    if (text) {
-        ptr1 = text;
-        while (1) {
-            ptr2 = strchr(ptr1, '\n');
-            if (!ptr2) {
-                if (first) {
-                    fprintf(f, "%s\n", ptr1);
-                    first = 0;
-                } else {
-                    fprintf(f, "%*s%s\n", INDENT_LEN, "", ptr1);
-                }
-                break;
-            }
-            ++ptr2;
-            if (first) {
-                fprintf(f, "%.*s", (int)(ptr2-ptr1), ptr1);
-                first = 0;
-            } else {
-                fprintf(f, "%*s%.*s", INDENT_LEN, "", (int)(ptr2-ptr1), ptr1);
-            }
-            ptr1 = ptr2;
-        }
-    }
-
-    if (first) {
         fprintf(f, "\n");
     }
 }
