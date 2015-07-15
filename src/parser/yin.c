@@ -535,8 +535,7 @@ upper:
 
 syntax_ok:
 
-    intv = get_len_ran_interval(expr, type, 1);
-    if (!intv) {
+    if (get_len_ran_interval(expr, type, 1, &intv)) {
         goto error;
     }
 

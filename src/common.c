@@ -79,9 +79,9 @@ strnodetype(LY_NODE_TYPE type)
     return NULL;
 }
 
-/* syntax is assumed to be correct */
-struct len_ran_intv*
-get_len_ran_interval(const char *str_restr, struct ly_type *type, int superior_restr)
+/* syntax is assumed to be correct, *local_intv MUST be NULL */
+int
+get_len_ran_interval(const char *str_restr, struct ly_type *type, int superior_restr, struct len_ran_intv** local_intv)
 {
     /* 0 - unsigned, 1 - signed, 2 - floating point */
     int kind, ret = 0;
@@ -89,7 +89,7 @@ get_len_ran_interval(const char *str_restr, struct ly_type *type, int superior_r
     uint64_t local_umin, local_umax;
     long double local_fmin, local_fmax;
     const char *seg_ptr, *ptr;
-    struct len_ran_intv *local_intv = NULL, *tmp_local_intv, *tmp_intv, *intv = NULL;
+    struct len_ran_intv *tmp_local_intv, *tmp_intv, *intv = NULL;
 
     switch (type->base) {
     case LY_TYPE_BINARY:
@@ -194,17 +194,23 @@ get_len_ran_interval(const char *str_restr, struct ly_type *type, int superior_r
         }
         break;
     default:
-        return NULL;
+        return 0;
     }
 
     /* process superior types */
-    if (superior_restr && type->der) {
-        intv = get_len_ran_interval(NULL, &type->der->type, superior_restr);
+    if (type->der && superior_restr) {
+        assert(!get_len_ran_interval(NULL, &type->der->type, superior_restr, &intv));
         assert(!intv || (intv->kind == kind));
     }
 
     if (!str_restr) {
-        return intv;
+        /* we are validating data and not have any restriction, but a superior type might have */
+        if (type->der && !superior_restr && !intv) {
+            assert(!get_len_ran_interval(NULL, &type->der->type, superior_restr, &intv));
+            assert(!intv || (intv->kind == kind));
+        }
+        *local_intv = intv;
+        return 0;
     }
 
     /* adjust local min and max */
@@ -235,11 +241,11 @@ get_len_ran_interval(const char *str_restr, struct ly_type *type, int superior_r
     /* finally parse our restriction */
     seg_ptr = str_restr;
     while (1) {
-        if (!local_intv) {
-            local_intv = malloc(sizeof *local_intv);
-            tmp_local_intv = local_intv;
+        if (!*local_intv) {
+            *local_intv = malloc(sizeof **local_intv);
+            tmp_local_intv = *local_intv;
         } else {
-            tmp_local_intv->next = malloc(sizeof *local_intv);
+            tmp_local_intv->next = malloc(sizeof **local_intv);
             tmp_local_intv = tmp_local_intv->next;
         }
 
@@ -342,7 +348,7 @@ get_len_ran_interval(const char *str_restr, struct ly_type *type, int superior_r
     /* check local restrictions against superior ones */
     if (intv) {
         tmp_intv = intv;
-        tmp_local_intv = local_intv;
+        tmp_local_intv = *local_intv;
 
         while (tmp_local_intv && tmp_intv) {
             /* reuse local variables */
@@ -409,12 +415,12 @@ cleanup:
 
     /* fail */
     if (ret) {
-        while (local_intv) {
-            tmp_local_intv = local_intv->next;
-            free(local_intv);
-            local_intv = tmp_local_intv;
+        while (*local_intv) {
+            tmp_local_intv = (*local_intv)->next;
+            free(*local_intv);
+            *local_intv = tmp_local_intv;
         }
     }
 
-    return local_intv;
+    return ret;
 }
