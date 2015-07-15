@@ -84,7 +84,7 @@ const char *verrs[] = {
 
 /* DE_INELEM */       "Unknown element \"%s\".",
 /* DE_INVAL */        "Invalid value \"%s\" in \"%s\" element.",
-/* DE_OORVAL */       "Value \"%s\" is out of range."
+/* DE_OORVAL */       "Value \"%s\" is out of range or length.",
 };
 
 void
