@@ -49,7 +49,9 @@ cmd_add_help(void)
 void
 cmd_print_help(void)
 {
-    printf("print [-f (yang | tree | info)] [-t info-target-node] [-o <output-file>] <model-name>\n");
+    printf("print [-f (yang | tree | info)] [-t <info-target-node>] [-o <output-file>] <model-name>\n\n");
+    printf("\tinfo-target-node: <absolute-schema-node> | typedef/<typedef-name> |\n");
+    printf("\t                  | identity/<identity-name> | feature/<feature-name>\n");
 }
 
 void

@@ -270,19 +270,123 @@ info_print_typedef_all(FILE *f, struct ly_module *mod)
 }
 
 static void
-info_print_type(FILE *f, struct ly_type *type, const char *units, const char *dflt)
+info_print_type_detail(FILE *f, struct ly_type *type)
 {
-    fprintf(f, "%-*s%s\n", INDENT_LEN, "Type: ", type->der->name);
-    fprintf(f, "%-*s", INDENT_LEN, "Units: ");
-    if (units) {
-        fprintf(f, "%s\n", units);
-    } else {
-        fprintf(f, "\n");
+    int i;
+
+    switch (type->base) {
+    case LY_TYPE_DER:
+        /* unused, but what the heck */
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "derived");
+        break;
+    case LY_TYPE_BINARY:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "binary");
+        info_print_text(f, (type->info.binary.length ? type->info.binary.length->expr : NULL), "Length: ");
+        break;
+    case LY_TYPE_BITS:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "bits");
+
+        assert(type->info.bits.count);
+        fprintf(f, "%-*s%u %s\n", INDENT_LEN, "Bits: ", type->info.bits.bit[0].pos, type->info.bits.bit[0].name);
+        for (i = 1; i < type->info.bits.count; ++i) {
+            fprintf(f, "%*s%u %s\n", INDENT_LEN, "", type->info.bits.bit[i].pos, type->info.bits.bit[i].name);
+        }
+
+        break;
+    case LY_TYPE_BOOL:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "bool");
+        break;
+    case LY_TYPE_DEC64:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "decimal64");
+        info_print_text(f, (type->info.dec64.range ? type->info.dec64.range->expr : NULL), "Range: ");
+        assert(type->info.dec64.dig);
+        fprintf(f, "%-*s%u\n", INDENT_LEN, "Frac dig: ", type->info.dec64.dig);
+        break;
+    case LY_TYPE_EMPTY:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "empty");
+        break;
+    case LY_TYPE_ENUM:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "enum");
+
+        assert(type->info.enums.count);
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Values: ", type->info.enums.list[0].name);
+        for (i = 1; i < type->info.enums.count; ++i) {
+            fprintf(f, "%*s%s\n", INDENT_LEN, "", type->info.enums.list[i].name);
+        }
+
+        break;
+    case LY_TYPE_IDENT:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "identityref");
+        assert(type->info.ident.ref);
+        info_print_text(f, type->info.ident.ref->name, "Identity: ");
+        break;
+    case LY_TYPE_INST:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "instance-identifier");
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Required: ", (type->info.inst.req < 1 ? "no" : "yes"));
+        break;
+    case LY_TYPE_INT8:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "int8");
+        goto int_range;
+    case LY_TYPE_INT16:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "int16");
+        goto int_range;
+    case LY_TYPE_INT32:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "int32");
+        goto int_range;
+    case LY_TYPE_INT64:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "int64");
+        goto int_range;
+    case LY_TYPE_UINT8:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "uint8");
+        goto int_range;
+    case LY_TYPE_UINT16:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "uint16");
+        goto int_range;
+    case LY_TYPE_UINT32:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "uint32");
+        goto int_range;
+    case LY_TYPE_UINT64:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "uint64");
+
+int_range:
+        info_print_text(f, (type->info.num.range ? type->info.num.range->expr : NULL), "Range: ");
+        break;
+    case LY_TYPE_LEAFREF:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "leafref");
+        info_print_text(f, type->info.lref.path, "Path: ");
+        break;
+    case LY_TYPE_STRING:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "string");
+        info_print_text(f, (type->info.str.length ? type->info.str.length->expr : NULL), "Length: ");
+
+        fprintf(f, "%-*s", INDENT_LEN, "Pattern: ");
+        if (type->info.str.pat_count) {
+            fprintf(f, "%s\n", type->info.str.patterns[0].expr);
+            for (i = 1; i < type->info.str.pat_count; ++i) {
+                fprintf(f, "%*s%s\n", INDENT_LEN, "", type->info.str.patterns[i].expr);
+            }
+        } else {
+            fprintf(f, "\n");
+        }
+
+        break;
+    case LY_TYPE_UNION:
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "union");
+
+        fprintf(f, "%s\n", "Of types start:");
+        for (i = 0; i < type->info.uni.count; ++i) {
+            info_print_type_detail(f, &type->info.uni.type[i]);
+        }
+        fprintf(f, "%s\n", "Of types end");
+        break;
     }
 
-    fprintf(f, "%-*s", INDENT_LEN, "Default: ");
-    if (dflt) {
-        fprintf(f, "%s\n", dflt);
+    fprintf(f, "%-*s", INDENT_LEN, "Superior: ");
+    if (type->der) {
+        if (type->prefix) {
+            fprintf(f, "%s:", type->prefix);
+        }
+        fprintf(f, "%s\n", type->der->name);
     } else {
         fprintf(f, "\n");
     }
@@ -662,6 +766,54 @@ info_print_mnodes_all(FILE *f, struct ly_module *mod)
 }
 
 static void
+info_print_typedef_detail(FILE *f, struct ly_tpdf *tpdf)
+{
+    fprintf(f, "%-*s%s\n", INDENT_LEN, "Typedef: ", tpdf->name);
+    fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", tpdf->module->name);
+    info_print_text(f, tpdf->dsc, "Desc: ");
+    info_print_text(f, tpdf->ref, "Reference: ");
+    info_print_flags(f, tpdf->flags, LY_NODE_STATUS_MASK, 0);
+    info_print_type_detail(f, &tpdf->type);
+    info_print_text(f, tpdf->units, "Units: ");
+    info_print_text(f, tpdf->dflt, "Default: ");
+}
+
+static void
+info_print_ident_detail(FILE *f, struct ly_ident *ident)
+{
+    struct ly_ident_der *der;
+
+    fprintf(f, "%-*s%s\n", INDENT_LEN, "Identity: ", ident->name);
+    fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", ident->module->name);
+    info_print_text(f, ident->dsc, "Desc: ");
+    info_print_text(f, ident->ref, "Reference: ");
+    info_print_flags(f, ident->flags, LY_NODE_STATUS_MASK, 0);
+    info_print_text(f, (ident->base ? ident->base->name : NULL), "Base: ");
+
+    fprintf(f, "%-*s", INDENT_LEN, "Derived: ");
+    if (ident->der) {
+        der = ident->der;
+        fprintf(f, "%s\n", der->ident->name);
+        for (der = der->next; der; der = der->next) {
+            fprintf(f, "%*s%s\n", INDENT_LEN, "", der->ident->name);
+        }
+    } else {
+        fprintf(f, "\n");
+    }
+}
+
+static void
+info_print_feature_detail(FILE *f, struct ly_feature *feat)
+{
+    fprintf(f, "%-*s%s\n", INDENT_LEN, "Feature: ", feat->name);
+    fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", feat->module->name);
+    info_print_text(f, feat->dsc, "Desc: ");
+    info_print_text(f, feat->ref, "Reference: ");
+    info_print_flags(f, feat->flags, LY_NODE_STATUS_MASK | LY_NODE_FENABLED, 0);
+    info_print_if_feature(f, feat->features, feat->features_size);
+}
+
+static void
 info_print_module(FILE *f, struct ly_module *module)
 {
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", module->name);
@@ -767,8 +919,10 @@ info_print_leaf(FILE *f, struct ly_mnode *mnode)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", leaf->module->name);
     info_print_text(f, leaf->dsc, "Desc: ");
     info_print_text(f, leaf->ref, "Reference: ");
-    info_print_type(f, &leaf->type, leaf->units, leaf->dflt);
     info_print_flags(f, leaf->flags, LY_NODE_CONFIG_MASK | LY_NODE_STATUS_MASK | LY_NODE_MAND_MASK, 0);
+    info_print_text(f, leaf->type.der->name, "Type: ");
+    info_print_text(f, leaf->units, "Units: ");
+    info_print_text(f, leaf->dflt, "Default: ");
     info_print_if_feature(f, leaf->features, leaf->features_size);
     info_print_when(f, leaf->when);
     info_print_must(f, leaf->must, leaf->must_size);
@@ -784,8 +938,9 @@ info_print_leaflist(FILE *f, struct ly_mnode *mnode)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", llist->module->name);
     info_print_text(f, llist->dsc, "Desc: ");
     info_print_text(f, llist->ref, "Reference: ");
-    info_print_type(f, &llist->type, llist->units, NULL);
     info_print_flags(f, llist->flags, LY_NODE_CONFIG_MASK | LY_NODE_STATUS_MASK | LY_NODE_MAND_MASK | LY_NODE_USERORDERED, 1);
+    info_print_text(f, llist->type.der->name, "Type: ");
+    info_print_text(f, llist->units, "Units: ");
     info_print_list_constr(f, llist->min, llist->max);
     info_print_if_feature(f, llist->features, llist->features_size);
     info_print_when(f, llist->when);
@@ -927,6 +1082,7 @@ info_print_rpc(FILE *f, struct ly_mnode *mnode)
 int
 info_print_model(FILE *f, struct ly_module *module, const char *target_node)
 {
+    int i;
     struct ly_mnode *target;
 
     if (!target_node) {
@@ -939,13 +1095,67 @@ info_print_model(FILE *f, struct ly_module *module, const char *target_node)
             info_print_submodule(f, (struct ly_submodule *)module);
         }
     } else {
-        if (target_node[0] != '/') {
-            fprintf(f, "Target node is not an absolute schema node.\n");
-            return EXIT_FAILURE;
-        }
-        target = resolve_schema_nodeid(target_node, module->data, module, LY_NODE_AUGMENT);
-        if (!target) {
-            fprintf(f, "Target %s could not be resolved.\n", target_node);
+        if (target_node[0] == '/') {
+            target = resolve_schema_nodeid(target_node, module->data, module, LY_NODE_AUGMENT);
+            if (!target) {
+                fprintf(f, "Target %s could not be resolved.\n", target_node);
+                return EXIT_FAILURE;
+            }
+        } else if (!strncmp(target_node, "typedef/", 8)) {
+            target_node += 8;
+            for (i = 0; i < module->tpdf_size; ++i) {
+                if (!strcmp(module->tpdf[i].name, target_node)) {
+                    break;
+                }
+            }
+            if (i == module->tpdf_size) {
+                fprintf(f, "Typedef %s not found.\n", target_node);
+                return EXIT_FAILURE;
+            }
+
+            if (f == stdout) {
+                fprintf(f, "\n");
+            }
+            info_print_typedef_detail(f, &module->tpdf[i]);
+            return EXIT_SUCCESS;
+
+        } else if (!strncmp(target_node, "identity/", 9)) {
+            target_node += 9;
+            for (i = 0; i < (signed)module->ident_size; ++i) {
+                if (!strcmp(module->ident[i].name, target_node)) {
+                    break;
+                }
+            }
+            if (i == (signed)module->ident_size) {
+                fprintf(f, "Identity %s not found.\n", target_node);
+                return EXIT_FAILURE;
+            }
+
+            if (f == stdout) {
+                fprintf(f, "\n");
+            }
+            info_print_ident_detail(f, &module->ident[i]);
+            return EXIT_SUCCESS;
+
+        } else if (!strncmp(target_node, "feature/", 8)) {
+            target_node += 8;
+            for (i = 0; i < module->features_size; ++i) {
+                if (!strcmp(module->features[i].name, target_node)) {
+                    break;
+                }
+            }
+            if (i == module->features_size) {
+                fprintf(f, "Feature %s not found.\n", target_node);
+                return EXIT_FAILURE;
+            }
+
+            if (f == stdout) {
+                fprintf(f, "\n");
+            }
+            info_print_feature_detail(f, &module->features[i]);
+            return EXIT_SUCCESS;
+        } else {
+            fprintf(f, "Target could not be resolved.\n");
             return EXIT_FAILURE;
         }
 
