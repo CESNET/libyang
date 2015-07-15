@@ -456,6 +456,74 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, struct leafref **un
         }
         break;
 
+    case LY_TYPE_UNION:
+        /* TODO */
+        break;
+
+    case LY_TYPE_INT8:
+        if (parse_int(leaf->value_str, xml, -128, 127, 0, &num)
+                || validate_length_range(1, 0, num, 0, &sleaf->type, xml, leaf->value_str)) {
+            return EXIT_FAILURE;
+        }
+        leaf->value.int8 = num;
+        break;
+
+    case LY_TYPE_INT16:
+        if (parse_int(leaf->value_str, xml, -32768, 32767, 0, &num)
+                || validate_length_range(1, 0, num, 0, &sleaf->type, xml, leaf->value_str)) {
+            return EXIT_FAILURE;
+        }
+        leaf->value.int16 = num;
+        break;
+
+    case LY_TYPE_INT32:
+        if (parse_int(leaf->value_str, xml, -2147483648, 2147483647, 0, &num)
+                || validate_length_range(1, 0, num, 0, &sleaf->type, xml, leaf->value_str)) {
+            return EXIT_FAILURE;
+        }
+        leaf->value.int32 = num;
+        break;
+
+    case LY_TYPE_INT64:
+        if (parse_int(leaf->value_str, xml, -9223372036854775807L - 1L, 9223372036854775807L, 0, &num)
+                || validate_length_range(1, 0, num, 0, &sleaf->type, xml, leaf->value_str)) {
+            return EXIT_FAILURE;
+        }
+        leaf->value.int64 = num;
+        break;
+
+    case LY_TYPE_UINT8:
+        if (parse_uint(leaf->value_str, xml, 255, 0, &unum)
+                || validate_length_range(0, unum, 0, 0, &sleaf->type, xml, leaf->value_str)) {
+            return EXIT_FAILURE;
+        }
+        leaf->value.uint8 = unum;
+        break;
+
+    case LY_TYPE_UINT16:
+        if (parse_uint(leaf->value_str, xml, 65535, 0, &unum)
+                || validate_length_range(0, unum, 0, 0, &sleaf->type, xml, leaf->value_str)) {
+            return EXIT_FAILURE;
+        }
+        leaf->value.uint16 = unum;
+        break;
+
+    case LY_TYPE_UINT32:
+        if (parse_uint(leaf->value_str, xml, 4294967295, 0, &unum)
+                || validate_length_range(0, unum, 0, 0, &sleaf->type, xml, leaf->value_str)) {
+            return EXIT_FAILURE;
+        }
+        leaf->value.uint32 = unum;
+        break;
+
+    case LY_TYPE_UINT64:
+        if (parse_uint(leaf->value_str, xml, 18446744073709551615UL, 0, &unum)
+                || validate_length_range(0, unum, 0, 0, &sleaf->type, xml, leaf->value_str)) {
+            return EXIT_FAILURE;
+        }
+        leaf->value.uint64 = unum;
+        break;
+
     default:
         /* TODO */
         break;
