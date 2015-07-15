@@ -159,6 +159,55 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct ly_mnode *start)
 }
 
 static int
+parse_int(const char *str_val, struct lyxml_elem *xml, int64_t min, int64_t max, int base, int64_t *ret)
+{
+    char *strptr;
+
+    /* convert to 64-bit integer, all the redundant characters are handled */
+    errno = 0;
+    strptr = NULL;
+    *ret = strtoll(str_val, &strptr, base);
+    if (errno || (*ret < min) || (*ret > max)) {
+        LOGVAL(DE_OORVAL, LOGLINE(xml), str_val, xml->name);
+        return 1;
+    } else if (strptr && *strptr) {
+        while (isspace(*strptr)) {
+            ++strptr;
+        }
+        if (*strptr) {
+            LOGVAL(DE_INVAL, LOGLINE(xml), str_val, xml->name);
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+static int
+parse_uint(const char *str_val, struct lyxml_elem *xml, uint64_t max, int base, uint64_t *ret)
+{
+    char *strptr;
+
+    errno = 0;
+    strptr = NULL;
+    *ret = strtoull(str_val, &strptr, base);
+    if (errno || (*ret > max)) {
+        LOGVAL(DE_OORVAL, LOGLINE(xml), str_val, xml->name);
+        return 1;
+    } else if (strptr && *strptr) {
+        while (isspace(*strptr)) {
+            ++strptr;
+        }
+        if (*strptr) {
+            LOGVAL(DE_INVAL, LOGLINE(xml), str_val, xml->name);
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+static int
 xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, struct leafref **unres)
 {
 #define DECSIZE 21
@@ -169,6 +218,8 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, struct leafref **un
     char dec[DECSIZE];
     char *strptr;
     const char *name;
+    int64_t num;
+    uint64_t unum;
     int len;
     int c, i, j, d;
     int found;
@@ -306,18 +357,11 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, struct leafref **un
             }
         }
 
-        /* convert string into 64b integer */
-        errno = 0;
-        strptr = NULL;
-        leaf->value.dec64 = strtoll(dec, &strptr, 10);
-        if (errno) {
-            LOGVAL(DE_OORVAL, LOGLINE(xml), leaf->value_str, xml->name);
-            return EXIT_FAILURE;
-        } else if (strptr && *strptr) {
-            LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
+        if (parse_int(dec, xml, -9223372036854775807L - 1L, 9223372036854775807L, 10, &num)
+                || validate_length_range(2, 0, 0, ((long double)num)/(1 << type->info.dec64.dig), &sleaf->type, xml, leaf->value_str)) {
             return EXIT_FAILURE;
         }
-
+        leaf->value.dec64 = num;
         break;
 
     case LY_TYPE_EMPTY:
