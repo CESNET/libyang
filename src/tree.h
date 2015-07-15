@@ -648,10 +648,13 @@ struct ly_mnode_leaf {
     struct ly_when *when;            /**< when statement */
     struct ly_type type;             /**< YANG type of the element */
     const char *units;               /**< units of the type */
-    const char *dflt;                /**< default value of the type */
 
     uint8_t must_size;               /**< number of elements in must array */
     struct ly_restr *must;           /**< array of must constraints */
+
+    /* to this point, struct ly_mnode_leaf is compatible with struct ly_mnode_leaflist */
+
+    const char *dflt;                /**< default value of the type */
 };
 
 struct ly_mnode_leaflist {
@@ -673,18 +676,19 @@ struct ly_mnode_leaflist {
                                           not the list of feature definitions itself, but list
                                           of if-feature references */
 
-    /* specific leaf's data */
+    /* specific leaflist's data */
     struct ly_when *when;            /**< when statement */
-
-    uint32_t min;                    /**< min-elements constraint */
-    uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
-
     struct ly_type type;             /**< YANG type of the element */
     const char *units;               /**< units of the type */
 
     uint8_t must_size;               /**< number of elements in must array */
-
     struct ly_restr *must;           /**< array of must constraints */
+
+    /* to this point, struct ly_mnode_leaf is compatible with struct ly_mnode_leaflist */
+
+    uint32_t min;                    /**< min-elements constraint */
+    uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
+
 };
 
 struct ly_mnode_list {
