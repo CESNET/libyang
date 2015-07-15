@@ -151,7 +151,7 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct ly_mnode *start)
 }
 
 static int
-xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
+xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, struct leafref **unres)
 {
 #define DECSIZE 21
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
@@ -164,11 +164,14 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
     int len;
     int c, i, j, d;
     int found;
+    struct leafref *new_unres;
+
+    leaf->value_str = xml->content;
+    xml->content = NULL;
 
     switch (sleaf->type.base) {
     case LY_TYPE_BINARY:
-        leaf->value.binary = xml->content;
-        xml->content = NULL;
+        leaf->value.binary = leaf->value_str;
         leaf->value_type = LY_TYPE_BINARY;
 
         if (sleaf->type.info.binary.length) {
@@ -188,28 +191,28 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
         /* allocate the array of  pointers to bits definition */
         leaf->value.bit = calloc(type->info.bits.count, sizeof *leaf->value.bit);
 
-        if (!xml->content) {
+        if (!leaf->value_str) {
             /* no bits set */
             break;
         }
 
         c = 0;
         i = 0;
-        while (xml->content[c]) {
+        while (leaf->value_str[c]) {
             /* skip leading whitespaces */
-            while(isspace(xml->content[c])) {
+            while(isspace(leaf->value_str[c])) {
                 c++;
             }
 
             /* get the length of the bit identifier */
-            for (len = 0; xml->content[c] && !isspace(xml->content[c]); c++, len++);
+            for (len = 0; leaf->value_str[c] && !isspace(leaf->value_str[c]); c++, len++);
 
             /* go back to the beginning of the identifier */
             c = c - len;
 
             /* find bit definition, identifiers appear ordered by their posititon */
             for (found = 0; i < type->info.bits.count; i++) {
-                if (!strncmp(type->info.bits.bit[i].name, &xml->content[c], len)
+                if (!strncmp(type->info.bits.bit[i].name, &leaf->value_str[c], len)
                         && !type->info.bits.bit[i].name[len]) {
                     /* we have match, store the pointer */
                     leaf->value.bit[i] = &type->info.bits.bit[i];
@@ -223,7 +226,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
 
             if (!found) {
                 /* referenced bit value does not exists */
-                LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+                LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
                 return EXIT_FAILURE;
             }
 
@@ -233,7 +236,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
         break;
 
     case LY_TYPE_BOOL:
-        if (!strcmp(xml->content, "true")) {
+        if (!strcmp(leaf->value_str, "true")) {
             leaf->value.bool = 1;
         } /* else false, so keep it zero */
         break;
@@ -242,26 +245,26 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
         /* locate dec64 structure with the fraction-digits value */
         for (type = &sleaf->type; type->der->type.der; type = &type->der->type);
 
-        for (c = 0; isspace(xml->content[c]); c++);
-        for (len = 0; xml->content[c] && !isspace(xml->content[c]); c++, len++);
+        for (c = 0; isspace(leaf->value_str[c]); c++);
+        for (len = 0; leaf->value_str[c] && !isspace(leaf->value_str[c]); c++, len++);
         c = c - len;
         if (len > DECSIZE) {
             /* too long */
-            LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+            LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
             return EXIT_FAILURE;
         }
 
         /* normalize the number */
         dec[0] = '\0';
         for (i = j = d = found = 0; i < DECSIZE; i++) {
-            if (xml->content[c + i] == '.') {
+            if (leaf->value_str[c + i] == '.') {
                 found = 1;
                 j = type->info.dec64.dig;
                 i--;
                 c++;
                 continue;
             }
-            if (xml->content[c + i] == '\0') {
+            if (leaf->value_str[c + i] == '\0') {
                 c--;
                 if (!found) {
                     j = type->info.dec64.dig;
@@ -273,24 +276,24 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
                 }
                 d++;
                 if (d > DECSIZE - 2) {
-                    LOGVAL(DE_OORVAL, LOGLINE(xml), xml->content, xml->name);
+                    LOGVAL(DE_OORVAL, LOGLINE(xml), leaf->value_str, xml->name);
                     return EXIT_FAILURE;
                 }
                 dec[i] = '0';
             } else {
-                if (!isdigit(xml->content[c + i])) {
-                    if (i || xml->content[c] != '-') {
-                        LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+                if (!isdigit(leaf->value_str[c + i])) {
+                    if (i || leaf->value_str[c] != '-') {
+                        LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
                         return EXIT_FAILURE;
                     }
                 } else {
                     d++;
                 }
                 if (d > DECSIZE - 2 || (found && !j)) {
-                    LOGVAL(DE_OORVAL, LOGLINE(xml), xml->content, xml->name);
+                    LOGVAL(DE_OORVAL, LOGLINE(xml), leaf->value_str, xml->name);
                     return EXIT_FAILURE;
                 }
-                dec[i] = xml->content[c + i];
+                dec[i] = leaf->value_str[c + i];
             }
             if (j) {
                 j--;
@@ -302,10 +305,10 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
         strptr = NULL;
         leaf->value.dec64 = strtoll(dec, &strptr, 10);
         if (errno) {
-            LOGVAL(DE_OORVAL, LOGLINE(xml), xml->content, xml->name);
+            LOGVAL(DE_OORVAL, LOGLINE(xml), leaf->value_str, xml->name);
             return EXIT_FAILURE;
         } else if (strptr && *strptr) {
-            LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+            LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
             return EXIT_FAILURE;
         }
 
@@ -313,14 +316,14 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
 
     case LY_TYPE_EMPTY:
         /* just check that it is empty */
-        if (xml->content && xml->content[0]) {
-            LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+        if (leaf->value_str && leaf->value_str[0]) {
+            LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
             return EXIT_FAILURE;
         }
         break;
 
     case LY_TYPE_ENUM:
-        if (!xml->content) {
+        if (!leaf->value_str) {
             LOGVAL(DE_INVAL, LOGLINE(xml), "", xml->name);
             return EXIT_FAILURE;
         }
@@ -338,43 +341,58 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
         }
 
         if (!leaf->value.enm) {
-            LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+            LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
             return EXIT_FAILURE;
         }
 
         break;
 
     case LY_TYPE_IDENT:
-        if ((strptr = strchr(xml->content, ':'))) {
-            len = strptr - xml->content;
+        if ((strptr = strchr(leaf->value_str, ':'))) {
+            len = strptr - leaf->value_str;
             if (!len) {
-                LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+                LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
                 return EXIT_FAILURE;
             }
-            strptr = strndup(xml->content, len);
+            strptr = strndup(leaf->value_str, len);
         }
         ns = lyxml_get_ns(xml, strptr);
         if (!ns) {
-            LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+            LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
             return EXIT_FAILURE;
         }
         if (strptr) {
             free(strptr);
-            name = xml->content + len + 1;
+            name = leaf->value_str + len + 1;
         } else {
-            name = xml->content;
+            name = leaf->value_str;
         }
 
         leaf->value.ident = find_identityref(sleaf->type.info.ident.ref, name, ns->value);
         if (!leaf->value.ident) {
-            LOGVAL(DE_INVAL, LOGLINE(xml), xml->content, xml->name);
+            LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
             return EXIT_FAILURE;
         }
         break;
 
+    case LY_TYPE_LEAFREF:
+        if (!leaf->value_str) {
+            LOGVAL(DE_INVAL, LOGLINE(xml), "", xml->name);
+            return EXIT_FAILURE;
+        }
+
+        /* validity checking is performed later, right now the data tree
+         * is not complete, so many leafrefs cannot be resolved
+         */
+        /* remember the leaf for later checking */
+        new_unres = malloc(sizeof *new_unres);
+        new_unres->leafref = node;
+        new_unres->next = *unres;
+        *unres = new_unres;
+        break;
+
     case LY_TYPE_STRING:
-        leaf->value.string = xml->content;
-        xml->content = NULL;
+        leaf->value.string = leaf->value_str;
         leaf->value_type = LY_TYPE_STRING;
 
         if (sleaf->type.info.str.length) {
@@ -401,7 +419,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml)
 }
 
 struct lyd_node *
-xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev)
+xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev, struct leafref **unres)
 {
     struct lyd_node *result, *aux;
     struct ly_mnode *schema = NULL;
@@ -473,12 +491,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         }
     } else if (schema->nodetype == LY_NODE_LEAF) {
         /* type detection and assigning the value */
-        if (xml_get_value(result, xml)) {
+        if (xml_get_value(result, xml, unres)) {
             goto error;
         }
     } else if (schema->nodetype == LY_NODE_LEAFLIST) {
         /* type detection and assigning the value */
-        if (xml_get_value(result, xml)) {
+        if (xml_get_value(result, xml, unres)) {
             goto error;
         }
 
@@ -495,7 +513,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     /* process children */
     if (havechildren && xml->child) {
-        result->child = xml_parse_data(ctx, xml->child, result, NULL);
+        result->child = xml_parse_data(ctx, xml->child, result, NULL, unres);
         if (!result->child) {
             goto error;
         }
@@ -504,7 +522,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     /* process siblings */
     if (xml->next) {
-        result->next = xml_parse_data(ctx, xml->next, parent, result);
+        result->next = xml_parse_data(ctx, xml->next, parent, result, unres);
         if (!result->next) {
             goto error;
         }
@@ -530,11 +548,62 @@ error:
     return NULL;
 }
 
+
+static int
+check_leafrefs(struct leafref **list)
+{
+    struct leafref *item;
+    struct lyd_node_leaf *leaf;
+    struct ly_mnode_leaf *sleaf;
+    struct leafref *refset, *ref;
+
+    while(*list) {
+        /* resolve path and create a set of possible leafrefs (we need their values) */
+        leaf = (struct lyd_node_leaf *)(*list)->leafref;
+        sleaf = (struct ly_mnode_leaf *)(*list)->leafref->schema;
+        refset = resolve_path((*list)->leafref, sleaf->type.info.lref.path);
+        if (!refset) {
+            goto error;
+        }
+
+        while (refset) {
+            if (leaf->value_str == ((struct lyd_node_leaf *)refset->leafref)->value_str) {
+                leaf->value.leafref = refset->leafref;
+            }
+            ref = refset->next;
+            free(refset);
+            refset = ref;
+        }
+
+        if (!leaf->value.leafref) {
+            /* reference not found */
+            goto error;
+        }
+
+        item = (*list)->next;
+        free(*list);
+        *list = item;
+    }
+
+    return EXIT_SUCCESS;
+
+error:
+
+    while (*list) {
+        item = (*list)->next;
+        free(*list);
+        *list = item;
+    }
+
+    return EXIT_FAILURE;
+}
+
 API struct lyd_node *
 xml_read_data(struct ly_ctx *ctx, const char *data)
 {
     struct lyxml_elem *xml;
     struct lyd_node *result;
+    struct leafref *unres = NULL;
 
     xml = lyxml_read(ctx, data, 0);
     if (!xml) {
@@ -547,7 +616,15 @@ xml_read_data(struct ly_ctx *ctx, const char *data)
         return NULL;
     }
 
-    result = xml_parse_data(ctx, xml->child, NULL, NULL);
+    result = xml_parse_data(ctx, xml->child, NULL, NULL, &unres);
+    /* check leafrefs if any */
+    if (check_leafrefs(&unres)) {
+        /* leafref checking failed */
+        lyd_node_free(result);
+        result = NULL;
+    }
+
+    /* free source XML tree */
     lyxml_free_elem(ctx, xml);
 
     return result;

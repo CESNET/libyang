@@ -943,13 +943,14 @@ struct lyd_node_leaf {
         int16_t int16;
         int32_t int32;
         int64_t int64;
-        struct lyd_node_leaf *leafref; /**< pointer to the referenced leaf in data tree */
+        struct lyd_node *leafref;    /**< pointer to the referenced leaf/leaflist instance in data tree */
         const char *string;
         uint8_t uint8;
         uint16_t uint16;
         uint32_t uint32;
         uint64_t uint64;
     } value;
+    const char *value_str;           /**< string representation of value (for comparison, printing,...) */
     LY_DATA_TYPE value_type;         /**< mainly for union types to avoid repeating of type detection */
 };
 
@@ -976,19 +977,23 @@ struct lyd_node_leaflist {
         int16_t int16;
         int32_t int32;
         int64_t int64;
-        struct lyd_node_leaf *leafref; /**< pointer to the referenced leaf in data tree */
+        struct lyd_node *leafref;    /**< pointer to the referenced leaf/leaflist instance in data tree */
         const char *string;
         uint8_t uint8;
         uint16_t uint16;
         uint32_t uint32;
         uint64_t uint64;
     } value;
+    const char *value_str;           /**< string representation of value (for comparison, printing,...) */
     LY_DATA_TYPE value_type;         /**< mainly for union types to avoid repeating of type detection */
     struct lyd_node_leaflist* lprev;
     struct lyd_node_leaflist* lnext;
 };
 
-
+struct leafref {
+    struct lyd_node *leafref;
+    struct leafref *next;
+};
 
 void lyd_node_free(struct lyd_node *node);
 
