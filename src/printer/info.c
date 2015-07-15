@@ -128,7 +128,7 @@ info_print_if_feature(FILE *f, struct ly_feature **features, uint8_t features_si
 
     if (features_size) {
         fprintf(f, "%s\n", features[0]->name);
-        for (i = 1; i < features_size-1; ++i) {
+        for (i = 1; i < features_size; ++i) {
             fprintf(f, "%*s%s\n", INDENT_LEN, "", features[i]->name);
         }
     } else {
@@ -173,7 +173,7 @@ info_print_typedef(FILE *f, struct ly_tpdf *tpdf, uint8_t tpdf_size)
 
     if (tpdf_size) {
         fprintf(f, "%s\n", tpdf[0].name);
-        for (i = 1; i < tpdf_size-1; ++i) {
+        for (i = 1; i < tpdf_size; ++i) {
             fprintf(f, "%*s%s", INDENT_LEN, "", tpdf[i].name);
         }
     } else {
@@ -195,7 +195,7 @@ info_print_typedef_recursive(FILE *f, struct ly_module *mod, int *first)
         }
         *first = 0;
 
-        for (; i < mod->tpdf_size-1; ++i) {
+        for (; i < mod->tpdf_size; ++i) {
             fprintf(f, "%*s%s\n", INDENT_LEN, "", mod->tpdf[i].name);
         }
     }
@@ -258,7 +258,7 @@ info_print_keys(FILE *f, struct ly_mnode_leaf **keys, uint8_t keys_size)
 
     if (keys_size) {
         fprintf(f, "%s\n", keys[0]->name);
-        for (i = 1; i < keys_size-1; ++i) {
+        for (i = 1; i < keys_size; ++i) {
             fprintf(f, "%*s%s\n", INDENT_LEN, "", keys[i]->name);
         }
     } else {
@@ -347,7 +347,7 @@ info_print_revision(FILE *f, struct ly_revision *rev, uint8_t rev_size)
 
     if (rev_size) {
         fprintf(f, "%s\n", rev[0].date);
-        for (i = 1; i < rev_size-1; ++i) {
+        for (i = 1; i < rev_size; ++i) {
             fprintf(f, "%*s%s\n", INDENT_LEN, "", rev[i].date);
         }
     } else {
