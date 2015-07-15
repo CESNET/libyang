@@ -1413,7 +1413,7 @@ fill_yin_typedef(struct ly_module *module, struct ly_mnode *parent, struct lyxml
     tpdf->name = lydict_insert(module->ctx, value, strlen(value));
 
     /* generic part - status, description, reference */
-    if (read_yin_common(module, NULL, (struct ly_mnode *)tpdf, yin, OPT_IDENT)) {
+    if (read_yin_common(module, NULL, (struct ly_mnode *)tpdf, yin, OPT_IDENT | OPT_MODULE)) {
         goto error;
     }
 
