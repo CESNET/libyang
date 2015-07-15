@@ -1875,6 +1875,10 @@ lyd_node_free(struct lyd_node *node)
 {
     struct lyd_node *next, *child;
 
+    if (!node) {
+        return;
+    }
+
     if (!(node->schema->nodetype & (LY_NODE_LEAF | LY_NODE_LEAFLIST))) {
         /* free children */
         LY_TREE_FOR_SAFE(node->child, next, child) {
