@@ -1095,10 +1095,10 @@ info_print_model(FILE *f, struct ly_module *module, const char *target_node)
             info_print_submodule(f, (struct ly_submodule *)module);
         }
     } else {
-        if (target_node[0] == '/') {
-            target = resolve_schema_nodeid(target_node, module->data, module, LY_NODE_AUGMENT);
+        if ((target_node[0] == '/') || !strncmp(target_node, "type/", 5)) {
+            target = resolve_schema_nodeid((target_node[0] == '/' ? target_node : target_node+4), module->data, module, LY_NODE_AUGMENT);
             if (!target) {
-                fprintf(f, "Target %s could not be resolved.\n", target_node);
+                fprintf(f, "Target %s could not be resolved.\n", (target_node[0] == '/' ? target_node : target_node+4));
                 return EXIT_FAILURE;
             }
         } else if (!strncmp(target_node, "typedef/", 8)) {
@@ -1157,6 +1157,18 @@ info_print_model(FILE *f, struct ly_module *module, const char *target_node)
         } else {
             fprintf(f, "Target could not be resolved.\n");
             return EXIT_FAILURE;
+        }
+
+        if (target_node[0] != '/') {
+            if (!(target->nodetype & (LY_NODE_LEAF | LY_NODE_LEAFLIST))) {
+                fprintf(f, "Target is not a leaf or a leaf-list.\n");
+                return EXIT_FAILURE;
+            }
+            if (f == stdout) {
+                fprintf(f, "\n");
+            }
+            info_print_type_detail(f, &((struct ly_mnode_leaf *)target)->type);
+            return EXIT_SUCCESS;
         }
 
         switch (target->nodetype) {
