@@ -395,7 +395,7 @@ int_range:
 static void
 info_print_list_constr(FILE *f, uint32_t min, uint32_t max)
 {
-    fprintf(f, "%-*s%u .. ", INDENT_LEN, "Elements: ", min);
+    fprintf(f, "%-*s%u..", INDENT_LEN, "Elements: ", min);
     if (max) {
         fprintf(f, "%u\n", max);
     } else {
