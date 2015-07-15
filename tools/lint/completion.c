@@ -61,8 +61,33 @@ get_path_completion(const char *hint, char ***matches, unsigned int *match_count
     *match_count = 0;
     *matches = NULL;
 
-    path = strchr(hint, ' ');
-    ++path;
+    ptr = strchr(hint, ' ');
+    while (*ptr == ' ') {
+        ++ptr;
+    }
+
+    /* options - skip them */
+    while (*ptr == '-') {
+        ptr = strchr(ptr, ' ');
+        /* option is last - no hint */
+        if (!ptr) {
+            return;
+        }
+        while (*ptr == ' ') {
+            ++ptr;
+        }
+
+        ptr = strchr(ptr, ' ');
+        /* option argument is last - no hint */
+        if (!ptr) {
+            return;
+        }
+        while (*ptr == ' ') {
+            ++ptr;
+        }
+    };
+
+    path = ptr;
     ptr = strrchr(path, '/');
 
     /* new relative path */
