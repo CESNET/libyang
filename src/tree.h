@@ -648,10 +648,13 @@ struct ly_mnode_leaf {
     struct ly_when *when;            /**< when statement */
     struct ly_type type;             /**< YANG type of the element */
     const char *units;               /**< units of the type */
-    const char *dflt;                /**< default value of the type */
 
     uint8_t must_size;               /**< number of elements in must array */
     struct ly_restr *must;           /**< array of must constraints */
+
+    /* to this point, struct ly_mnode_leaf is compatible with struct ly_mnode_leaflist */
+
+    const char *dflt;                /**< default value of the type */
 };
 
 struct ly_mnode_leaflist {
@@ -673,18 +676,19 @@ struct ly_mnode_leaflist {
                                           not the list of feature definitions itself, but list
                                           of if-feature references */
 
-    /* specific leaf's data */
+    /* specific leaflist's data */
     struct ly_when *when;            /**< when statement */
-
-    uint32_t min;                    /**< min-elements constraint */
-    uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
-
     struct ly_type type;             /**< YANG type of the element */
     const char *units;               /**< units of the type */
 
     uint8_t must_size;               /**< number of elements in must array */
-
     struct ly_restr *must;           /**< array of must constraints */
+
+    /* to this point, struct ly_mnode_leaf is compatible with struct ly_mnode_leaflist */
+
+    uint32_t min;                    /**< min-elements constraint */
+    uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
+
 };
 
 struct ly_mnode_list {
@@ -939,13 +943,14 @@ struct lyd_node_leaf {
         int16_t int16;
         int32_t int32;
         int64_t int64;
-        struct lyd_node_leaf *leafref; /**< pointer to the referenced leaf in data tree */
+        struct lyd_node *leafref;    /**< pointer to the referenced leaf/leaflist instance in data tree */
         const char *string;
         uint8_t uint8;
         uint16_t uint16;
         uint32_t uint32;
         uint64_t uint64;
     } value;
+    const char *value_str;           /**< string representation of value (for comparison, printing,...) */
     LY_DATA_TYPE value_type;         /**< mainly for union types to avoid repeating of type detection */
 };
 
@@ -972,19 +977,23 @@ struct lyd_node_leaflist {
         int16_t int16;
         int32_t int32;
         int64_t int64;
-        struct lyd_node_leaf *leafref; /**< pointer to the referenced leaf in data tree */
+        struct lyd_node *leafref;    /**< pointer to the referenced leaf/leaflist instance in data tree */
         const char *string;
         uint8_t uint8;
         uint16_t uint16;
         uint32_t uint32;
         uint64_t uint64;
     } value;
+    const char *value_str;           /**< string representation of value (for comparison, printing,...) */
     LY_DATA_TYPE value_type;         /**< mainly for union types to avoid repeating of type detection */
     struct lyd_node_leaflist* lprev;
     struct lyd_node_leaflist* lnext;
 };
 
-
+struct leafref {
+    struct lyd_node *leafref;
+    struct leafref *next;
+};
 
 void lyd_node_free(struct lyd_node *node);
 

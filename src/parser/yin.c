@@ -4857,13 +4857,20 @@ resolve_uses(struct ly_mnode_uses *uses, unsigned int line)
         }
 
         /* min/max-elements on list or leaf-list */
-        if (mnode->nodetype & (LY_NODE_LEAFLIST | LY_NODE_LIST)) {
-            /* magic - bit 3 in flags means min set, bit 4 says max set */
+        /* magic - bit 3 in flags means min set, bit 4 says max set */
+        if (mnode->nodetype == LY_NODE_LIST) {
             if (rfn->flags & 0x04) {
                 ((struct ly_mnode_list *)mnode)->min = rfn->mod.list.min;
             }
             if (rfn->flags & 0x08) {
                 ((struct ly_mnode_list *)mnode)->max = rfn->mod.list.max;
+            }
+        } else if (mnode->nodetype == LY_NODE_LEAFLIST) {
+            if (rfn->flags & 0x04) {
+                ((struct ly_mnode_leaflist *)mnode)->min = rfn->mod.list.min;
+            }
+            if (rfn->flags & 0x08) {
+                ((struct ly_mnode_leaflist *)mnode)->max = rfn->mod.list.max;
             }
         }
 

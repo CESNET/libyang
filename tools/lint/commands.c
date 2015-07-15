@@ -382,7 +382,7 @@ cleanup:
         close(fd);
     }
 
-    //lyd_node_free(data);
+    lyd_node_free(data);
 
     return ret;
 }
