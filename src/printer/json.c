@@ -141,6 +141,7 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
     struct ly_mnode_leaf *sleaf = (struct ly_mnode_leaf *)node->schema;
     struct ly_type *type;
+    LY_DATA_TYPE data_type;
     const char *schema;
     char dec[21];
     int i, len;
@@ -160,7 +161,12 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
         }
     }
 
-    switch (((struct ly_mnode_leaf *)leaf->schema)->type.base) {
+    data_type = ((struct ly_mnode_leaf *)leaf->schema)->type.base;
+    if (data_type == LY_TYPE_UNION) {
+        data_type = leaf->value_type;
+    }
+
+    switch (data_type) {
     case LY_TYPE_BINARY:
     case LY_TYPE_STRING:
         fprintf(f, "\"%s\"", leaf->value.string ? leaf->value.string : "");
