@@ -865,6 +865,7 @@ error:
 
     return NULL;
 }
+
 API struct ly_module *
 ly_module_read(struct ly_ctx *ctx, const char *data, LY_MINFORMAT format)
 {
