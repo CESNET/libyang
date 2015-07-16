@@ -218,6 +218,9 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
             fprintf(f, "\"%s\"", leaf->value.ident->name);
         }
         break;
+    case LY_TYPE_INST:
+        fprintf(f, "\"%s\"", leaf->value_str);
+        break;
     case LY_TYPE_LEAFREF:
         json_print_leaf(f, level, leaf->value.leafref, 1);
         break;
@@ -246,8 +249,8 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
         fprintf(f, "\"%lu\"", leaf->value.uint64);
         break;
     default:
-        /* TODO */
-        fprintf(f, "\"TBD\"");
+        /* error */
+        fprintf(f, "\"(!error!)\"");
     }
 
     if (!onlyvalue) {

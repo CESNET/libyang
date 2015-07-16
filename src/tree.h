@@ -990,9 +990,10 @@ struct lyd_node_leaflist {
     struct lyd_node_leaflist* lnext;
 };
 
-struct leafref {
-    struct lyd_node *leafref;
-    struct leafref *next;
+struct leafref_instid {
+    uint8_t is_leafref;
+    struct lyd_node *dnode;
+    struct leafref_instid *next;
 };
 
 void lyd_node_free(struct lyd_node *node);

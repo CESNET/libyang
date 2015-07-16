@@ -252,7 +252,7 @@ get_next_union_type(struct ly_type *uni_type, int count, struct ly_type *prev_ty
 
 static int
 _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_elem *xml,
-               struct leafref **unres, int log)
+               struct leafref_instid **unres, int log)
 {
     #define DECSIZE 21
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
@@ -266,7 +266,7 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
     int len;
     int c, i, j, d;
     int found;
-    struct leafref *new_unres;
+    struct leafref_instid *new_unres;
 
     leaf->value_str = xml->content;
     xml->content = NULL;
@@ -491,7 +491,22 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
         break;
 
     case LY_TYPE_INST:
-        /* TODO */
+        if (!leaf->value_str) {
+            if (log) {
+                LOGVAL(DE_INVAL, LOGLINE(xml), "", xml->name);
+            }
+            return EXIT_FAILURE;
+        }
+
+        /* validity checking is performed later, right now the data tree
+         * is not complete, so many instanceids cannot be resolved
+         */
+        /* remember the leaf for later checking */
+        new_unres = malloc(sizeof *new_unres);
+        new_unres->is_leafref = 0;
+        new_unres->dnode = node;
+        new_unres->next = *unres;
+        *unres = new_unres;
         break;
 
     case LY_TYPE_LEAFREF:
@@ -507,7 +522,8 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
          */
         /* remember the leaf for later checking */
         new_unres = malloc(sizeof *new_unres);
-        new_unres->leafref = node;
+        new_unres->is_leafref = 1;
+        new_unres->dnode = node;
         new_unres->next = *unres;
         *unres = new_unres;
         break;
@@ -611,21 +627,21 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
         break;
 
     default:
-        /* TODO */
-        break;
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
 }
 
 static int
-xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, struct leafref **unres)
+xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, struct leafref_instid **unres)
 {
     return _xml_get_value(node, &((struct ly_mnode_leaf *)node->schema)->type, xml, unres, 1);
 }
 
 struct lyd_node *
-xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev, struct leafref **unres)
+xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev,
+               struct leafref_instid **unres)
 {
     struct lyd_node *result, *aux;
     struct ly_mnode *schema = NULL;
@@ -755,39 +771,58 @@ error:
 }
 
 static int
-check_leafrefs(struct leafref **list)
+check_unres(struct leafref_instid **list)
 {
-    struct leafref *item;
     struct lyd_node_leaf *leaf;
     struct ly_mnode_leaf *sleaf;
-    struct leafref *refset, *ref;
+    struct leafref_instid *item, *refset, *ref;
 
-    while(*list) {
+    while (*list) {
         /* resolve path and create a set of possible leafrefs (we need their values) */
-        leaf = (struct lyd_node_leaf *)(*list)->leafref;
-        sleaf = (struct ly_mnode_leaf *)(*list)->leafref->schema;
-        refset = resolve_path((*list)->leafref, sleaf->type.info.lref.path);
-        if (!refset) {
-            goto error;
-        }
-
-        while (refset) {
-            if (leaf->value_str == ((struct lyd_node_leaf *)refset->leafref)->value_str) {
-                leaf->value.leafref = refset->leafref;
+        if ((*list)->is_leafref) {
+            leaf = (struct lyd_node_leaf *)(*list)->dnode;
+            sleaf = (struct ly_mnode_leaf *)(*list)->dnode->schema;
+            refset = resolve_path((*list)->dnode, sleaf->type.info.lref.path);
+            if (!refset) {
+                LOGERR(LY_EVALID, "Leafref validation fail.");
+                goto error;
             }
-            ref = refset->next;
+
+            while (refset) {
+                if (leaf->value_str == ((struct lyd_node_leaf *)refset->dnode)->value_str) {
+                    leaf->value.leafref = refset->dnode;
+                }
+                ref = refset->next;
+                free(refset);
+                refset = ref;
+            }
+
+            if (!leaf->value.leafref) {
+                /* reference not found */
+                LOGERR(LY_EVALID, "Leafref validation fail.");
+                goto error;
+            }
+
+            item = (*list)->next;
+            free(*list);
+            *list = item;
+
+        /* instance-identifier */
+        } else {
+            leaf = (struct lyd_node_leaf *)(*list)->dnode;
+            sleaf = (struct ly_mnode_leaf *)(*list)->dnode->schema;
+            refset = resolve_instid((*list)->dnode, ((struct lyd_node_leaf *)(*list)->dnode)->value_str);
+            if (!refset || refset->next) {
+                LOGERR(LY_EVALID, "Instance-identifier \"%s\" validation fail.", ((struct lyd_node_leaf *)(*list)->dnode)->value_str);
+                goto error;
+            }
+
             free(refset);
-            refset = ref;
-        }
 
-        if (!leaf->value.leafref) {
-            /* reference not found */
-            goto error;
+            item = (*list)->next;
+            free(*list);
+            *list = item;
         }
-
-        item = (*list)->next;
-        free(*list);
-        *list = item;
     }
 
     return EXIT_SUCCESS;
@@ -808,7 +843,7 @@ xml_read_data(struct ly_ctx *ctx, const char *data)
 {
     struct lyxml_elem *xml;
     struct lyd_node *result;
-    struct leafref *unres = NULL;
+    struct leafref_instid *unres = NULL;
 
     xml = lyxml_read(ctx, data, 0);
     if (!xml) {
@@ -822,9 +857,9 @@ xml_read_data(struct ly_ctx *ctx, const char *data)
     }
 
     result = xml_parse_data(ctx, xml->child, NULL, NULL, &unres);
-    /* check leafrefs if any */
-    if (check_leafrefs(&unres)) {
-        /* leafref checking failed */
+    /* check leafrefs and/or instids if any */
+    if (check_unres(&unres)) {
+        /* leafref & instid checking failed */
         lyd_node_free(result);
         result = NULL;
     }
