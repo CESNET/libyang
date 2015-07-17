@@ -868,8 +868,7 @@ xml_read_data(struct ly_ctx *ctx, const char *data)
     /* check leafrefs and/or instids if any */
     if (check_unres(&unres)) {
         /* leafref & instid checking failed */
-        lyd_node_free(result);
-        result = NULL;
+        lyd_node_siblings_free(result);
     }
 
     /* free source XML tree */

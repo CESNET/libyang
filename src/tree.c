@@ -2508,3 +2508,21 @@ lyd_node_free(struct lyd_node *node)
 
     free(node);
 }
+
+API void
+lyd_node_siblings_free(struct lyd_node *node)
+{
+    struct lyd_node *next, *sibling;
+
+    if (!node) {
+        return;
+    }
+
+    if (node->schema->nodetype & (LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_ANYXML)) {
+        lyd_node_free(node);
+    } else {
+        LY_TREE_FOR_SAFE(node, next, sibling) {
+            lyd_node_free(sibling);
+        }
+    }
+}
