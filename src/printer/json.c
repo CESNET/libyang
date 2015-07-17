@@ -111,7 +111,7 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
         fputc('"', f);
         break;
     case LY_TYPE_BOOL:
-        fprintf(f, "\"%s\"", leaf->value.bool ? "true" : "false");
+        fprintf(f, "%s", leaf->value.bool ? "true" : "false");
         break;
     case LY_TYPE_DEC64:
 
@@ -159,25 +159,25 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
         json_print_leaf(f, level, leaf->value.leafref, 1);
         break;
     case LY_TYPE_INT8:
-        fprintf(f, "\"%d\"", leaf->value.int8);
+        fprintf(f, "%d", leaf->value.int8);
         break;
     case LY_TYPE_INT16:
-        fprintf(f, "\"%d\"", leaf->value.int16);
+        fprintf(f, "%d", leaf->value.int16);
         break;
     case LY_TYPE_INT32:
-        fprintf(f, "\"%d\"", leaf->value.int32);
+        fprintf(f, "%d", leaf->value.int32);
         break;
     case LY_TYPE_INT64:
         fprintf(f, "\"%ld\"", leaf->value.int64);
         break;
     case LY_TYPE_UINT8:
-        fprintf(f, "\"%u\"", leaf->value.uint8);
+        fprintf(f, "%u", leaf->value.uint8);
         break;
     case LY_TYPE_UINT16:
-        fprintf(f, "\"%u\"", leaf->value.uint16);
+        fprintf(f, "%u", leaf->value.uint16);
         break;
     case LY_TYPE_UINT32:
-        fprintf(f, "\"%u\"", leaf->value.uint32);
+        fprintf(f, "%u", leaf->value.uint32);
         break;
     case LY_TYPE_UINT64:
         fprintf(f, "\"%lu\"", leaf->value.uint64);
