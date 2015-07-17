@@ -812,7 +812,7 @@ check_unres(struct leafref_instid **list)
             leaf = (struct lyd_node_leaf *)(*list)->dnode;
             sleaf = (struct ly_mnode_leaf *)(*list)->dnode->schema;
             refset = resolve_instid((*list)->dnode, ((struct lyd_node_leaf *)(*list)->dnode)->value_str);
-            if (!refset || refset->next) {
+            if (!refset && (sleaf->type.info.inst.req > -1)) {
                 LOGERR(LY_EVALID, "Instance-identifier \"%s\" validation fail.", ((struct lyd_node_leaf *)(*list)->dnode)->value_str);
                 goto error;
             }
