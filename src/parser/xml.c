@@ -645,8 +645,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 {
     struct lyd_node *result, *aux;
     struct ly_mnode *schema = NULL;
-    int i;
-    int havechildren = 1;
+    int i, havechildren;
 
     if (!xml) {
         return NULL;
@@ -680,10 +679,10 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         return NULL;
     }
 
-    /* TODO: fit this into different types of nodes */
     switch (schema->nodetype) {
-    case LY_NODE_LIST:
-        result = calloc(1, sizeof(struct lyd_node_list));
+    case LY_NODE_CONTAINER:
+        result = calloc(1, sizeof *result);
+        havechildren = 1;
         break;
     case LY_NODE_LEAF:
         result = calloc(1, sizeof(struct lyd_node_leaf));
@@ -693,8 +692,17 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         result = calloc(1, sizeof(struct lyd_node_leaflist));
         havechildren = 0;
         break;
+    case LY_NODE_LIST:
+        result = calloc(1, sizeof(struct lyd_node_list));
+        havechildren = 1;
+        break;
+    case LY_NODE_ANYXML:
+        result = calloc(1, sizeof(struct lyd_node_anyxml));
+        havechildren = 0;
+        break;
     default:
-        result = calloc(1, sizeof *result);
+        assert(0);
+        return NULL;
     }
     result->parent = parent;
     result->prev = prev;
@@ -731,6 +739,10 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                 break;
             }
         }
+    } else if (schema->nodetype == LY_NODE_ANYXML) {
+        ((struct lyd_node_anyxml *)result)->ctx = ctx;
+        ((struct lyd_node_anyxml *)result)->value = xml;
+        lyxml_unlink_elem(xml);
     }
 
     /* process children */

@@ -2471,11 +2471,13 @@ lyd_node_free(struct lyd_node *node)
         return;
     }
 
-    if (!(node->schema->nodetype & (LY_NODE_LEAF | LY_NODE_LEAFLIST))) {
+    if (!(node->schema->nodetype & (LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_ANYXML))) {
         /* free children */
         LY_TREE_FOR_SAFE(node->child, next, child) {
             lyd_node_free(child);
         }
+    } else if (node->schema->nodetype == LY_NODE_ANYXML) {
+        lyxml_free_elem(((struct lyd_node_anyxml *)node)->ctx, ((struct lyd_node_anyxml *)node)->value);
     } else {
         /* free value */
         switch(((struct lyd_node_leaf *)node)->value_type) {

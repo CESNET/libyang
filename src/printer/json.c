@@ -26,6 +26,7 @@
 #include <inttypes.h>
 
 #include "../common.h"
+#include "../xml.h"
 #include "../tree.h"
 
 #define INDENT ""
@@ -267,13 +268,18 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
     }
 }
 
+static void
+json_print_anyxml(FILE *f, int level, struct lyd_node *node)
+{
+    struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
+
+    fprintf(f, "%*s\"%s\": [null]%s\n", LEVEL, INDENT, axml->value->name, node->next ? "," : "");
+}
+
 void
 json_print_node(FILE *f, int level, struct lyd_node *node)
 {
     switch (node->schema->nodetype) {
-    case LY_NODE_LIST:
-        json_print_list(f, level, node);
-        break;
     case LY_NODE_CONTAINER:
         json_print_container(f, level, node);
         break;
@@ -281,11 +287,16 @@ json_print_node(FILE *f, int level, struct lyd_node *node)
     case LY_NODE_LEAF:
         json_print_leaf(f, level, node, 0);
         break;
+    case LY_NODE_LIST:
+        json_print_list(f, level, node);
+        break;
+    case LY_NODE_ANYXML:
+        json_print_anyxml(f, level, node);
+        break;
     default:
-        /* TODO: remove when all node types are covered */
+        assert(0);
         break;
     }
-
 }
 
 API int

@@ -990,6 +990,20 @@ struct lyd_node_leaflist {
     struct lyd_node_leaflist* lnext;
 };
 
+struct lyd_node_anyxml {
+    struct lyd_attr *attr;
+    struct lyd_node *next;
+    struct lyd_node *prev;
+    struct lyd_node *parent;
+
+    struct ly_mnode *schema;
+    void *callback;
+
+    /* struct lyd_node *child; should be here, but is not */
+    struct lyxml_elem *value;       /**< anyxml name is the root element of value! */
+    struct ly_ctx *ctx;
+};
+
 struct leafref_instid {
     uint8_t is_leafref;
     struct lyd_node *dnode;
