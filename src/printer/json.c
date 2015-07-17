@@ -142,7 +142,7 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
     struct ly_mnode_leaf *sleaf = (struct ly_mnode_leaf *)node->schema;
     struct ly_type *type;
     LY_DATA_TYPE data_type;
-    const char *schema;
+    const char *schema, *ptr, *ptr2;
     char dec[21];
     int i, len;
 
@@ -219,7 +219,16 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
         }
         break;
     case LY_TYPE_INST:
-        fprintf(f, "\"%s\"", leaf->value_str);
+        fprintf(f, "\"");
+
+        ptr = NULL;
+        ptr2 = leaf->value_str;
+        while ((ptr = strchr(ptr2, '\"'))) {
+            fprintf(f, "%.*s\\\"", (int)(ptr-ptr2), ptr2);
+            ptr2 = ptr+1;
+        }
+
+        fprintf(f, "%s\"", ptr2);
         break;
     case LY_TYPE_LEAFREF:
         json_print_leaf(f, level, leaf->value.leafref, 1);
