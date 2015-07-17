@@ -870,12 +870,12 @@ error:
 }
 
 struct leafref_instid *
-resolve_instid(struct lyd_node *data, const char *path)
+resolve_instid(struct lyd_node *data, const char *path, int path_len)
 {
     struct leafref_instid *results = NULL, *riter = NULL, *raux;
     struct lyd_node *pathnode = NULL;
     int i, j, cur_idx, idx = -1;
-    char *p = strdup(path);
+    char *p = strndup(path, path_len);
     char *name, *value = NULL;
     struct lyd_node *pred_target;
 

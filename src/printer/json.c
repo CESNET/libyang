@@ -28,6 +28,7 @@
 #include "../common.h"
 #include "../xml.h"
 #include "../tree.h"
+#include "../tree_internal.h"
 
 #define INDENT ""
 #define LEVEL (level*2)
@@ -61,13 +62,84 @@ nscmp(struct lyd_node *node1, struct lyd_node *node2)
 }
 
 static void
+json_print_text_dquote(FILE *f, const char *str, int str_len)
+{
+    const char *ptr;
+
+    while ((ptr = strnchr(str, '\"', str_len))) {
+        fprintf(f, "%.*s\\\"", (int)(ptr-str), str);
+        str_len -= (ptr-str)+1;
+        str = ptr+1;
+    }
+
+    fprintf(f, "%.*s", str_len, str);
+}
+
+static void
+json_print_instid(FILE *f, struct lyd_node_leaf *leaf)
+{
+    const char *ptr, *print_ptr;
+    int cur_id_len, print_id_len;
+    struct leafref_instid *nodes;
+    struct ly_module *prev_module = NULL, *cur_module;
+    struct ly_mnode *snode;
+
+    assert(((struct ly_mnode_leaf *)leaf->schema)->type.base == LY_TYPE_INST);
+
+    fputc('\"', f);
+    print_ptr = ptr = leaf->value_str+1;
+
+    while (print_ptr[0]) {
+        fputc('/', f);
+
+        /* check namespaces */
+        ptr = strchr(ptr, '/');
+        if (ptr) {
+            cur_id_len = ptr - leaf->value_str;
+        } else {
+            cur_id_len = strlen(leaf->value_str);
+        }
+
+        nodes = resolve_instid((struct lyd_node *)leaf, leaf->value_str, cur_id_len);
+        assert(nodes && !nodes->next);
+
+        snode = (struct ly_mnode *)nodes->dnode->schema;
+        free(nodes);
+
+        /* find current module */
+        if (snode->module->type) {
+            cur_module = ((struct ly_submodule *)snode->module)->belongsto;
+        } else {
+            cur_module = snode->module;
+        }
+
+        if (!prev_module || (cur_module != prev_module)) {
+            fprintf(f, "%s:", cur_module->ns);
+            prev_module = cur_module;
+        }
+
+        ptr = strchr(print_ptr+1, '/');
+        if (ptr) {
+            print_id_len = ptr - print_ptr;
+        } else {
+            print_id_len = strlen(print_ptr);
+        }
+
+        json_print_text_dquote(f, print_ptr, print_id_len);
+        print_ptr += print_id_len+1;
+    }
+
+    fprintf(f, "\"");
+}
+
+static void
 json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
 {
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
     struct ly_mnode_leaf *sleaf = (struct ly_mnode_leaf *)node->schema;
     struct ly_type *type;
     LY_DATA_TYPE data_type;
-    const char *schema, *ptr, *ptr2;
+    const char *schema;
     char dec[21];
     int i, len;
 
@@ -144,16 +216,7 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
         }
         break;
     case LY_TYPE_INST:
-        fprintf(f, "\"");
-
-        ptr = NULL;
-        ptr2 = leaf->value_str;
-        while ((ptr = strchr(ptr2, '\"'))) {
-            fprintf(f, "%.*s\\\"", (int)(ptr-ptr2), ptr2);
-            ptr2 = ptr+1;
-        }
-
-        fprintf(f, "%s\"", ptr2);
+        json_print_instid(f, leaf);
         break;
     case LY_TYPE_LEAFREF:
         json_print_leaf(f, level, leaf->value.leafref, 1);

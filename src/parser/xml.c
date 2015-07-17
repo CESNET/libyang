@@ -818,7 +818,7 @@ check_unres(struct leafref_instid **list)
 
         /* instance-identifier */
         } else {
-            refset = resolve_instid((*list)->dnode, leaf->value_str);
+            refset = resolve_instid((*list)->dnode, leaf->value_str, strlen(leaf->value_str));
             assert(!refset || !refset->next);
             if (!refset && (sleaf->type.info.inst.req > -1)) {
                 LOGERR(LY_EVALID, "Instance-identifier \"%s\" validation fail.", leaf->value_str);
