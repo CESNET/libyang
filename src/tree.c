@@ -874,9 +874,9 @@ resolve_instid(struct lyd_node *data, const char *path)
 {
     struct leafref_instid *results = NULL, *riter = NULL, *raux;
     struct lyd_node *pathnode = NULL;
-    int i, j;
+    int i, j, cur_idx, idx = -1;
     char *p = strdup(path);
-    char *name, *value;
+    char *name, *value = NULL;
     struct lyd_node *pred_target;
 
     i = 0;
@@ -897,7 +897,7 @@ resolve_instid(struct lyd_node *data, const char *path)
 
             i += j;
             if (p[i] == '[') {
-                /* we have predicate, so the current results must be lists */
+                /* we have predicate, so the current results must be list or leaf-list */
                 for (raux = NULL, riter = results; riter; ) {
                     if ((riter->dnode->schema->nodetype == LY_NODE_LIST &&
                             ((struct ly_mnode_list *)riter->dnode->schema)->keys)
@@ -936,11 +936,24 @@ resolve_instid(struct lyd_node *data, const char *path)
                 i++;
             }
 
-            /* *WSP "=" *WSP */
+            /* *WSP */
             while (isspace(p[i])) {
                 p[i] = '\0';
                 i++;
             }
+
+            /* name is position */
+            if (isdigit(name[0])) {
+                if (p[i] != ']') {
+                    /* error */
+                }
+                p[i] = '\0';
+                ++i;
+                idx = atoi(name);
+                goto resolve_predicate;
+            }
+
+            /* "=" *WSP */
             if (p[i] != '=') {
                 /* error */
             }
@@ -979,12 +992,14 @@ resolve_instid(struct lyd_node *data, const char *path)
             }
             i++;
 
+resolve_predicate:
+
             /* find match between target and source nodes */
-            for (raux = NULL, riter = results; riter; ) {
+            for (cur_idx = 0, raux = NULL, riter = results; riter; ++cur_idx) {
                 pathnode = riter->dnode;
 
                 /* get target */
-                if (!strcmp(name, ".")) {
+                if (!strcmp(name, ".") || !value) {
                     pred_target = pathnode;
                 } else if (!match_data_nodeid(name, data, pathnode, &pred_target)) {
                     /* error */
@@ -995,13 +1010,13 @@ resolve_instid(struct lyd_node *data, const char *path)
                     if (pathnode->schema->nodetype != LY_NODE_LEAFLIST) {
                         goto remove_leafref;
                     }
-                } else {
+                } else if (value) {
                     if (pathnode->schema->nodetype != LY_NODE_LIST) {
                         goto remove_leafref;
                     }
                 }
 
-                if (strcmp(((struct lyd_node_leaf *)pred_target)->value_str, value)) {
+                if ((value && strcmp(((struct lyd_node_leaf *)pred_target)->value_str, value)) || (!value && (idx != cur_idx))) {
                     goto remove_leafref;
                 }
 
