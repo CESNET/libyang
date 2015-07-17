@@ -640,8 +640,9 @@ resolve_data_nodeid(const char *id, struct lyd_node *data, struct leafref_instid
                     /* multiple matching, so create new leafref structure */
                     item = malloc(sizeof *item);
                     item->dnode = node;
-                    item->next = *parents;
-                    *parents = item;
+                    item->next = par_iter->next;
+                    par_iter->next = item;
+                    par_iter = par_iter->next;
                 }
             }
         }
