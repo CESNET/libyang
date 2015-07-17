@@ -929,7 +929,7 @@ struct lyd_node_leaf {
     struct ly_mnode *schema;
     void *callback;
 
-    /* struct lyd_node *child; is here replaced by the 'value' union */
+    /* struct lyd_node *child; should be here, but is not */
     /* leaf's specific members */
     union {
         const char *binary;          /**< base64 encoded, NULL terminated string */
@@ -963,7 +963,7 @@ struct lyd_node_leaflist {
     struct ly_mnode *schema;
     void *callback;
 
-    /* struct lyd_node *child; is here replaced by the 'value' union */
+    /* struct lyd_node *child; should be here, but is not */
     /* leaflist's specific members */
     union {
         const char *binary;          /**< base64 encoded, NULL terminated string */
