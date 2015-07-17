@@ -61,82 +61,6 @@ nscmp(struct lyd_node *node1, struct lyd_node *node2)
 }
 
 static void
-json_print_container(FILE *f, int level, struct lyd_node *node)
-{
-    const char *schema;
-    struct lyd_node *child;
-
-    if (!node->parent || nscmp(node, node->parent)) {
-        /* print "namespace" */
-        if (node->schema->module->type) {
-            /* submodule, get module */
-            schema = ((struct ly_submodule *)node->schema->module)->belongsto->name;
-        } else {
-            schema = node->schema->module->name;
-        }
-        fprintf(f, "%*s\"%s:%s\": {\n", LEVEL, INDENT, schema, node->schema->name);
-    } else {
-        fprintf(f, "%*s\"%s\": {\n", LEVEL, INDENT, node->schema->name);
-    }
-    LY_TREE_FOR(node->child, child) {
-        json_print_node(f, level + 1, child);
-    }
-    fprintf(f, "%*s}%s\n", LEVEL, INDENT, node->next ? "," : "");
-}
-
-static void
-json_print_list_internal(FILE *f, int level, struct lyd_node_list *list)
-{
-    struct lyd_node *child;
-
-    fprintf(f, "%*s{\n", LEVEL, INDENT);
-
-    LY_TREE_FOR(list->child, child) {
-        json_print_node(f, level + 1, child);
-    }
-
-    fprintf(f, "%*s}%s\n", LEVEL, INDENT, list->lnext ? "," : "");
-}
-
-static void
-json_print_list(FILE *f, int level, struct lyd_node *node)
-{
-    const char *schema;
-    struct lyd_node_list *list = (struct lyd_node_list *)node;
-    struct lyd_node *iter;
-    char *delim = "";
-
-    if (list->lprev) {
-        /* this list is already printed */
-        return;
-    }
-
-    if (!node->parent || nscmp(node, node->parent)) {
-        /* print "namespace" */
-        if (node->schema->module->type) {
-            /* submodule, get module */
-            schema = ((struct ly_submodule *)node->schema->module)->belongsto->name;
-        } else {
-            schema = node->schema->module->name;
-        }
-        fprintf(f, "%*s\"%s:%s\": [\n", LEVEL, INDENT, schema, node->schema->name);
-    } else {
-        fprintf(f, "%*s\"%s\": [\n", LEVEL, INDENT, node->schema->name);
-    }
-
-    for(; list; list = list->lnext) {
-        json_print_list_internal(f, level + 1, list);
-    }
-    for (iter = node->next; iter; iter = iter->next) {
-        if (iter->schema != node->schema) {
-            delim = ",";
-            break;
-        }
-    }
-    fprintf(f, "%*s]%s\n", LEVEL, INDENT, delim);
-}
-
-static void
 json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
 {
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
@@ -269,6 +193,98 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
 }
 
 static void
+json_print_container(FILE *f, int level, struct lyd_node *node)
+{
+    const char *schema;
+    struct lyd_node *child;
+
+    if (!node->parent || nscmp(node, node->parent)) {
+        /* print "namespace" */
+        if (node->schema->module->type) {
+            /* submodule, get module */
+            schema = ((struct ly_submodule *)node->schema->module)->belongsto->name;
+        } else {
+            schema = node->schema->module->name;
+        }
+        fprintf(f, "%*s\"%s:%s\": {\n", LEVEL, INDENT, schema, node->schema->name);
+    } else {
+        fprintf(f, "%*s\"%s\": {\n", LEVEL, INDENT, node->schema->name);
+    }
+    LY_TREE_FOR(node->child, child) {
+        json_print_node(f, level + 1, child);
+    }
+    fprintf(f, "%*s}%s\n", LEVEL, INDENT, node->next ? "," : "");
+}
+
+static void
+json_print_list_internal(FILE *f, int level, struct lyd_node_list *list)
+{
+    struct lyd_node *child;
+
+    fprintf(f, "%*s{\n", LEVEL, INDENT);
+
+    LY_TREE_FOR(list->child, child) {
+        json_print_node(f, level + 1, child);
+    }
+
+    fprintf(f, "%*s}%s\n", LEVEL, INDENT, (list->lnext ? "," : ""));
+}
+
+static void
+json_print_leaf_list(FILE *f, int level, struct lyd_node *node, int is_list)
+{
+    const char *schema;
+    struct lyd_node_list *list = (struct lyd_node_list *)node;
+    struct lyd_node_leaflist *llist = (struct lyd_node_leaflist *)node;
+    struct lyd_node *iter;
+    char *delim = "";
+
+    if ((is_list && list->lprev) || (!is_list && llist->lprev)) {
+        /* this list is already printed */
+        return;
+    }
+
+    if (!node->parent || nscmp(node, node->parent)) {
+        /* print "namespace" */
+        if (node->schema->module->type) {
+            /* submodule, get module */
+            schema = ((struct ly_submodule *)node->schema->module)->belongsto->name;
+        } else {
+            schema = node->schema->module->name;
+        }
+        fprintf(f, "%*s\"%s:%s\": [\n", LEVEL, INDENT, schema, node->schema->name);
+    } else {
+        fprintf(f, "%*s\"%s\": [\n", LEVEL, INDENT, node->schema->name);
+    }
+
+    if (!is_list) {
+        ++level;
+    }
+    while ((is_list && list) || (!is_list &&  llist)) {
+        if (is_list) {
+            json_print_list_internal(f, level + 1, list);
+            list = list->lnext;
+        } else {
+            fprintf(f, "%*s", LEVEL, INDENT);
+            json_print_leaf(f, level, (struct lyd_node *)llist, 1);
+            fprintf(f, "%s\n", (llist->lnext ? "," : ""));
+            llist = llist->lnext;
+        }
+    }
+    if (!is_list) {
+        --level;
+    }
+
+    for (iter = node->next; iter; iter = iter->next) {
+        if (iter->schema != node->schema) {
+            delim = ",";
+            break;
+        }
+    }
+    fprintf(f, "%*s]%s\n", LEVEL, INDENT, delim);
+}
+
+static void
 json_print_anyxml(FILE *f, int level, struct lyd_node *node)
 {
     struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
@@ -283,12 +299,14 @@ json_print_node(FILE *f, int level, struct lyd_node *node)
     case LY_NODE_CONTAINER:
         json_print_container(f, level, node);
         break;
-    case LY_NODE_LEAFLIST:
     case LY_NODE_LEAF:
         json_print_leaf(f, level, node, 0);
         break;
+    case LY_NODE_LEAFLIST:
+        json_print_leaf_list(f, level, node, 0);
+        break;
     case LY_NODE_LIST:
-        json_print_list(f, level, node);
+        json_print_leaf_list(f, level, node, 1);
         break;
     case LY_NODE_ANYXML:
         json_print_anyxml(f, level, node);
