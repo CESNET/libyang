@@ -969,6 +969,10 @@ resolve_instid(struct lyd_node *data, const char *path)
             }
 
             value = &p[i+1];
+            if (!value[0]) {
+                /* error */
+            }
+
             j = i;
             i++;
 

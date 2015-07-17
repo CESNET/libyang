@@ -778,10 +778,11 @@ check_unres(struct leafref_instid **list)
     struct leafref_instid *item, *refset, *ref;
 
     while (*list) {
+        leaf = (struct lyd_node_leaf *)(*list)->dnode;
+        sleaf = (struct ly_mnode_leaf *)(*list)->dnode->schema;
+
         /* resolve path and create a set of possible leafrefs (we need their values) */
         if ((*list)->is_leafref) {
-            leaf = (struct lyd_node_leaf *)(*list)->dnode;
-            sleaf = (struct ly_mnode_leaf *)(*list)->dnode->schema;
             refset = resolve_path((*list)->dnode, sleaf->type.info.lref.path);
             if (!refset) {
                 LOGERR(LY_EVALID, "Leafref validation fail.");
@@ -803,26 +804,21 @@ check_unres(struct leafref_instid **list)
                 goto error;
             }
 
-            item = (*list)->next;
-            free(*list);
-            *list = item;
-
         /* instance-identifier */
         } else {
-            leaf = (struct lyd_node_leaf *)(*list)->dnode;
-            sleaf = (struct ly_mnode_leaf *)(*list)->dnode->schema;
-            refset = resolve_instid((*list)->dnode, ((struct lyd_node_leaf *)(*list)->dnode)->value_str);
+            refset = resolve_instid((*list)->dnode, leaf->value_str);
+            assert(!refset || !refset->next);
             if (!refset && (sleaf->type.info.inst.req > -1)) {
-                LOGERR(LY_EVALID, "Instance-identifier \"%s\" validation fail.", ((struct lyd_node_leaf *)(*list)->dnode)->value_str);
+                LOGERR(LY_EVALID, "Instance-identifier \"%s\" validation fail.", leaf->value_str);
                 goto error;
             }
 
             free(refset);
-
-            item = (*list)->next;
-            free(*list);
-            *list = item;
         }
+
+        item = (*list)->next;
+        free(*list);
+        *list = item;
     }
 
     return EXIT_SUCCESS;
