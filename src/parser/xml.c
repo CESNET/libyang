@@ -785,7 +785,7 @@ check_unres(struct leafref_instid **list)
         if ((*list)->is_leafref) {
             refset = resolve_path((*list)->dnode, sleaf->type.info.lref.path);
             if (!refset) {
-                LOGERR(LY_EVALID, "Leafref validation fail.");
+                LOGERR(LY_EVALID, "Leafref \"%s\" could not be resolved.", sleaf->type.info.lref.path);
                 goto error;
             }
 
@@ -800,7 +800,7 @@ check_unres(struct leafref_instid **list)
 
             if (!leaf->value.leafref) {
                 /* reference not found */
-                LOGERR(LY_EVALID, "Leafref validation fail.");
+                LOGERR(LY_EVALID, "Leafref \"%s\" value \"%s\" did not match any node value.", sleaf->type.info.lref.path, leaf->value_str);
                 goto error;
             }
 
