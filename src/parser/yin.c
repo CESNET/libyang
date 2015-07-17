@@ -1161,9 +1161,9 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                     goto error;
                 }
                 GETVAL(value, node, "value");
-                if (strcmp(value, "true")) {
+                if (!strcmp(value, "true")) {
                     type->info.inst.req = 1;
-                } else if (strcmp(value, "false")) {
+                } else if (!strcmp(value, "false")) {
                     type->info.inst.req = -1;
                 } else {
                     LOGVAL(VE_INARG, LOGLINE(node), value, node->name);
