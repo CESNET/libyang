@@ -594,6 +594,10 @@ int
 cmd_verb(const char *arg)
 {
     const char *verb;
+    if (strlen(arg) < 5) {
+        cmd_verb_help();
+        return 1;
+    }
 
     verb = arg + 5;
     if (strcmp(verb, "error") == 0) {
@@ -605,7 +609,7 @@ cmd_verb(const char *arg)
     } else if (strcmp(verb, "debug") == 0) {
         ly_verb(3);
     } else {
-        fprintf(stderr, "Unknown verbosity \"%s\"", verb);
+        fprintf(stderr, "Unknown verbosity \"%s\"\n", verb);
         return 1;
     }
 
