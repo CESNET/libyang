@@ -100,7 +100,7 @@ json_print_instid(FILE *f, struct lyd_node_leaf *leaf)
             cur_id_len = strlen(leaf->value_str);
         }
 
-        nodes = resolve_instid((struct lyd_node *)leaf, leaf->value_str, cur_id_len);
+        resolve_instid((struct lyd_node *)leaf, leaf->value_str, cur_id_len, &nodes);
         assert(nodes && !nodes->next);
 
         snode = (struct ly_mnode *)nodes->dnode->schema;
