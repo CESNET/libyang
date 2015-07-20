@@ -405,12 +405,11 @@ error:
 }
 
 static int
-check_length(const char *expr, struct ly_type *type, unsigned int line)
+check_length_range(const char *expr, struct ly_type *type, unsigned int line)
 {
     struct len_ran_intv *intv = NULL, *tmp_intv;
     const char *c = expr;
     char *tail;
-    uint64_t limit = 0, n;
     int ret = EXIT_FAILURE, flg = 1; /* first run flag */
 
     assert(expr);
@@ -440,8 +439,6 @@ max:
             goto error;
         } else {
             flg = 0;
-            /* remember value/lower boundary */
-            limit = 0;
         }
         c += 3;
         while (isspace(*c)) {
@@ -469,12 +466,12 @@ upper:
                 goto max;
             }
 
-            if (!isdigit(*c)) {
+            if (!isdigit(*c) && (*c != '+') && (*c != '-')) {
                 goto error;
             }
 
             errno = 0;
-            n = strtoll(c, &tail, 10);
+            strtoll(c, &tail, 10);
             if (errno) {
                 goto error;
             }
@@ -482,15 +479,10 @@ upper:
             while (isspace(*c)) {
                 c++;
             }
-            if (n <= limit) {
-                goto error;
-            }
             if (*c == '\0') {
                 goto syntax_ok;
             } else if (*c == '|') {
                 c++;
-                /* remember the uppre boundary for check in next part */
-                limit = n;
                 /* process next length-parth */
                 goto lengthpart;
             } else {
@@ -500,10 +492,10 @@ upper:
             goto error;
         }
 
-    } else if (isdigit(*c)) {
+    } else if (isdigit(*c) || (*c == '-') || (*c == '+')) {
         /* number */
         errno = 0;
-        n = strtoll(c, &tail, 10);
+        strtoll(c, &tail, 10);
         if (errno) {
             /* out of range value */
             goto error;
@@ -512,12 +504,6 @@ upper:
         while (isspace(*c)) {
             c++;
         }
-        /* skip limit check in first length-part check */
-        if (!flg && n <= limit) {
-            goto error;
-        }
-        flg = 0;
-        limit = n;
 
         if (*c == '|') {
             c++;
@@ -955,7 +941,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                 }
 
                 GETVAL(value, node, "value");
-                if (check_length(value, type, LOGLINE(node))) {
+                if (check_length_range(value, type, LOGLINE(node))) {
                     goto error;
                 }
                 type->info.dec64.range = calloc(1, sizeof *type->info.dec64.range);
@@ -1174,6 +1160,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                 goto error;
             }
         }
+
         break;
 
     case LY_TYPE_BINARY:
@@ -1213,7 +1200,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                 }
 
                 GETVAL(value, node, "value");
-                if (check_length(value, type, LOGLINE(node))) {
+                if (check_length_range(value, type, LOGLINE(node))) {
                     goto error;
                 }
                 *restr = calloc(1, sizeof **restr);
@@ -1285,7 +1272,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                 }
 
                 GETVAL(value, node, "value");
-                if (check_length(value, type, LOGLINE(node))) {
+                if (check_length_range(value, type, LOGLINE(node))) {
                     goto error;
                 }
                 type->info.str.length = calloc(1, sizeof *type->info.str.length);
