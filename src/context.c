@@ -140,7 +140,8 @@ search_file(struct ly_ctx *ctx, struct ly_module *module, const char *name, cons
 
 search:
     while ((file = readdir(dir))) {
-        if (strncmp(name, file->d_name, len)) {
+        if (strncmp(name, file->d_name, len) ||
+                (file->d_name[len] != '.' && file->d_name[len] != '@')) {
             continue;
         }
 
