@@ -257,7 +257,7 @@ get_len_ran_interval(const char *str_restr, struct ly_type *type, int superior_r
         while (isspace(ptr[0])) {
             ++ptr;
         }
-        if (isdigit(ptr[0])) {
+        if (isdigit(ptr[0]) || (ptr[0] == '+') || (ptr[0] == '-')) {
             if (kind == 0) {
                 tmp_local_intv->value.uval.min = atoll(ptr);
             } else if (kind == 1) {
@@ -266,6 +266,9 @@ get_len_ran_interval(const char *str_restr, struct ly_type *type, int superior_r
                 tmp_local_intv->value.fval.min = atoll(ptr);
             }
 
+            if ((ptr[0] == '+') || (ptr[0] == '-')) {
+                ++ptr;
+            }
             while (isdigit(ptr[0])) {
                 ++ptr;
             }
@@ -314,7 +317,7 @@ get_len_ran_interval(const char *str_restr, struct ly_type *type, int superior_r
             }
 
             /* max */
-            if (isdigit(ptr[0])) {
+            if (isdigit(ptr[0]) || (ptr[0] == '+') || (ptr[0] == '-')) {
                 if (kind == 0) {
                     tmp_local_intv->value.uval.max = atoll(ptr);
                 } else if (kind == 1) {
