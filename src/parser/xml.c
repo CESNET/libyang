@@ -440,7 +440,7 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
 
         /* find matching enumeration value */
         for (i = 0; i < type->info.enums.count; i++) {
-            if (!strcmp(xml->content, type->info.enums.list[i].name)) {
+            if (!strcmp(leaf->value_str, type->info.enums.list[i].name)) {
                 /* we have match, store pointer to the definition */
                 leaf->value.enm = &type->info.enums.list[i];
                 break;
