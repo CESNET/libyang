@@ -1014,6 +1014,21 @@ void lyd_node_free(struct lyd_node *node);
 
 void lyd_node_siblings_free(struct lyd_node *node);
 
+/**
+ * @brief Test if the given node is last. Note, that this can be simply checked
+ * from the node's next member, but this function differs from this how a
+ * list's and leaf-list's instances are considered. If the node is followed
+ * only by instances of lists that have their first instance before the given
+ * node, this function will mark the node as last even the next is not empty.
+ * This is useful especially when you traverse all siblings and process the
+ * list's or leaf-list's instance all in once.
+ *
+ * @param[in] node The data node to be checked.
+ * @return 0 if the node has a successor, 1 if the node is last in sense as
+ * described above.
+ */
+int lyd_islast(struct lyd_node *node);
+
 /**@} tree */
 
 #endif /* LY_TREE_H_ */

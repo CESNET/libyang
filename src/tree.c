@@ -2527,3 +2527,31 @@ lyd_node_siblings_free(struct lyd_node *node)
         }
     }
 }
+
+API int
+lyd_islast(struct lyd_node *node)
+{
+    struct lyd_node *n;
+
+    if (!node->next) {
+        return 1;
+    }
+
+    for (n = node->next; n; n = n->next) {
+        switch (n->schema->nodetype) {
+        case LY_NODE_LIST:
+            if (!((struct lyd_node_list *)n)->lprev) {
+                return 0;
+            }
+            break;
+        case LY_NODE_LEAFLIST:
+            if (!((struct lyd_node_leaflist *)n)->lprev) {
+                return 0;
+            }
+            break;
+        default:
+            return 0;
+        }
+    }
+    return 1;
+}

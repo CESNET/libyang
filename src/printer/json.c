@@ -251,7 +251,7 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
     }
 
     if (!onlyvalue) {
-        fprintf(f, "%s\n", node->next ? "," : "");
+        fprintf(f, "%s\n", lyd_islast(node) ? "" : ",");
     }
 }
 
@@ -276,7 +276,7 @@ json_print_container(FILE *f, int level, struct lyd_node *node)
     LY_TREE_FOR(node->child, child) {
         json_print_node(f, level + 1, child);
     }
-    fprintf(f, "%*s}%s\n", LEVEL, INDENT, node->next ? "," : "");
+    fprintf(f, "%*s}%s\n", LEVEL, INDENT, lyd_islast(node) ? "" : ",");
 }
 
 static void
@@ -299,8 +299,6 @@ json_print_leaf_list(FILE *f, int level, struct lyd_node *node, int is_list)
     const char *schema;
     struct lyd_node_list *list = (struct lyd_node_list *)node;
     struct lyd_node_leaflist *llist = (struct lyd_node_leaflist *)node;
-    struct lyd_node *iter;
-    char *delim = "";
 
     if ((is_list && list->lprev) || (!is_list && llist->lprev)) {
         /* this list is already printed */
@@ -338,13 +336,7 @@ json_print_leaf_list(FILE *f, int level, struct lyd_node *node, int is_list)
         --level;
     }
 
-    for (iter = node->next; iter; iter = iter->next) {
-        if (iter->schema != node->schema) {
-            delim = ",";
-            break;
-        }
-    }
-    fprintf(f, "%*s]%s\n", LEVEL, INDENT, delim);
+    fprintf(f, "%*s]%s\n", LEVEL, INDENT, lyd_islast(node) ? "" : ",");
 }
 
 static void
@@ -352,7 +344,7 @@ json_print_anyxml(FILE *f, int level, struct lyd_node *node)
 {
     struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
 
-    fprintf(f, "%*s\"%s\": [null]%s\n", LEVEL, INDENT, axml->value->name, node->next ? "," : "");
+    fprintf(f, "%*s\"%s\": [null]%s\n", LEVEL, INDENT, axml->value->name, lyd_islast(node) ? "" : ",");
 }
 
 void
