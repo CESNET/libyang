@@ -565,6 +565,9 @@ loop:
     }
     if (result) {
         result[size] = '\0';
+    } else {
+        size = 0;
+        result = strdup("");
     }
 
     return result;

@@ -209,7 +209,7 @@ lydict_insert(struct ly_ctx *ctx, const char *value, size_t len)
         len = strlen(value);
     }
 
-    if (!value || !len) {
+    if (!value) {
         return NULL;
     }
     return dict_insert(ctx, (char *)value, len, 0);
@@ -218,10 +218,8 @@ lydict_insert(struct ly_ctx *ctx, const char *value, size_t len)
 const char *
 lydict_insert_zc(struct ly_ctx *ctx, char *value)
 {
-    int len;
-
-    if (!value || !(len = strlen(value))) {
+    if (!value) {
         return NULL;
     }
-    return dict_insert(ctx, value, len, 1);
+    return dict_insert(ctx, value, strlen(value), 1);
 }
