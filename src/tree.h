@@ -340,9 +340,10 @@ struct ly_module {
     const char *ref;                 /**< cross-reference for the module */
     const char *org;                 /**< party responsible for the module */
     const char *contact;             /**< contact information for the module */
-    uint8_t version:6;               /**< yang-version: 1 = 1.0, 2 = 1.1 */
+    uint8_t version:5;               /**< yang-version: 1 = 1.0, 2 = 1.1 */
     uint8_t type:1;                  /**< structure type: 0 - module, used to distinguish structure from submodule */
     uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
+    uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in rev array */
@@ -385,9 +386,10 @@ struct ly_submodule {
     const char *ref;                 /**< cross-reference for the submodule */
     const char *org;                 /**< party responsible for the submodule */
     const char *contact;             /**< contact information for the submodule */
-    uint8_t version:6;               /**< yang-version: 1 = 1.0, 2 = 1.1 */
+    uint8_t version:5;               /**< yang-version: 1 = 1.0, 2 = 1.1 */
     uint8_t type:1;                  /**< structure type: 1 - submodule, used to distinguish structure from module */
     uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
+    uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in rev array */
@@ -831,8 +833,8 @@ struct ly_ident {
 };
 
 /* public libyang functions */
-struct ly_submodule *ly_submodule_read(struct ly_module *module, const char *data, LY_MINFORMAT format);
-struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LY_MINFORMAT format);
+struct ly_submodule *ly_submodule_read(struct ly_module *module, const char *data, LY_MINFORMAT format, int implement);
+struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LY_MINFORMAT format, int implement);
 
 /**
  * @brief Enable specified feature in the module

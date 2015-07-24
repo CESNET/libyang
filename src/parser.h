@@ -47,8 +47,8 @@
  * @defgroup yin YIN format support
  * @{
  */
-struct ly_module *yin_read_module(struct ly_ctx *ctx, const char *data);
-struct ly_submodule *yin_read_submodule(struct ly_module *module, const char *data);
+struct ly_module *yin_read_module(struct ly_ctx *ctx, const char *data, int implement);
+struct ly_submodule *yin_read_submodule(struct ly_module *module, const char *data, int implement);
 
 /**@} yin */
 

@@ -116,7 +116,7 @@ ly_ctx_destroy(struct ly_ctx *ctx)
 }
 
 static struct ly_module *
-search_file(struct ly_ctx *ctx, struct ly_module *module, const char *name, const char *revision)
+search_file(struct ly_ctx *ctx, struct ly_module *module, const char *name, const char *revision, int implement)
 {
     size_t len, flen;
     int fd;
@@ -169,9 +169,9 @@ search:
         }
 
         if (module) {
-            result = (struct ly_module *)ly_submodule_read_fd(module, fd, format);
+            result = (struct ly_module *)ly_submodule_read_fd(module, fd, format, implement);
         } else {
-            result = ly_module_read_fd(ctx, fd, format);
+            result = ly_module_read_fd(ctx, fd, format, implement);
         }
         close(fd);
 
@@ -209,12 +209,12 @@ cleanup:
 }
 
 API struct ly_submodule *
-ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *revision, int read)
+ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *revision, int read, int implement)
 {
     struct ly_submodule *result;
     int i;
 
-    if (!module || !name) {
+    if (!module || !name || (read && implement == -1)) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
@@ -230,6 +230,9 @@ ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *rev
         }
 
         if (!revision || (result->rev_size && !strcmp(revision, result->rev[0].date))) {
+            if (implement == 1) {
+                result->implemented = 1;
+            }
             return result;
         }
     }
@@ -239,7 +242,7 @@ ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *rev
     }
 
     /* not found in context, try to get it from the search directory */
-    result = (struct ly_submodule *)search_file(module->ctx, module, name, revision);
+    result = (struct ly_submodule *)search_file(module->ctx, module, name, revision, implement);
     if (!result) {
         LOGERR(LY_EVALID, "Submodule \"%s\" of the \"%s\" data model not found (search path is \"%s\")",
                name, module->name, module->ctx->models.search_path);
@@ -249,12 +252,12 @@ ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *rev
 }
 
 API struct ly_module *
-ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision, int read)
+ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision, int read, int implement)
 {
     int i;
     struct ly_module *result = NULL;
 
-    if (!ctx || !name) {
+    if (!ctx || !name || (read && implement == -1)) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
@@ -266,6 +269,9 @@ ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision, in
         }
 
         if (!revision || (result->rev_size && !strcmp(revision, result->rev[0].date))) {
+            if (implement == 1) {
+                result->implemented = 1;
+            }
             return result;
         }
     }
@@ -275,7 +281,7 @@ ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision, in
     }
 
     /* not found in context, try to get it from the search directory */
-    result = search_file(ctx, NULL, name, revision);
+    result = search_file(ctx, NULL, name, revision, implement);
     if (!result) {
         LOGERR(LY_EVALID, "Data model \"%s\" not found (search path is \"%s\")", name, ctx->models.search_path);
     }
@@ -316,7 +322,7 @@ ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *name)
         return NULL;
     }
 
-    mod = ly_ctx_get_module(ctx, name, NULL, 0);
+    mod = ly_ctx_get_module(ctx, name, NULL, 0, -1);
     if (!mod) {
         LOGERR(LY_EVALID, "Data model \"%s\" not loaded", name);
         return NULL;

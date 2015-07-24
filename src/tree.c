@@ -1065,7 +1065,7 @@ error:
 }
 
 API struct ly_module *
-ly_module_read(struct ly_ctx *ctx, const char *data, LY_MINFORMAT format)
+ly_module_read(struct ly_ctx *ctx, const char *data, LY_MINFORMAT format, int implement)
 {
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -1074,7 +1074,7 @@ ly_module_read(struct ly_ctx *ctx, const char *data, LY_MINFORMAT format)
 
     switch (format) {
     case LY_IN_YIN:
-        return yin_read_module(ctx, data);
+        return yin_read_module(ctx, data, implement);
     case LY_IN_YANG:
     default:
         /* TODO */
@@ -1085,14 +1085,14 @@ ly_module_read(struct ly_ctx *ctx, const char *data, LY_MINFORMAT format)
 }
 
 struct ly_submodule *
-ly_submodule_read(struct ly_module *module, const char *data, LY_MINFORMAT format)
+ly_submodule_read(struct ly_module *module, const char *data, LY_MINFORMAT format, int implement)
 {
     assert(module);
     assert(data);
 
     switch (format) {
     case LY_IN_YIN:
-        return yin_read_submodule(module, data);
+        return yin_read_submodule(module, data, implement);
     case LY_IN_YANG:
     default:
         /* TODO */
@@ -1103,7 +1103,7 @@ ly_submodule_read(struct ly_module *module, const char *data, LY_MINFORMAT forma
 }
 
 API struct ly_module *
-ly_module_read_fd(struct ly_ctx *ctx, int fd, LY_MINFORMAT format)
+ly_module_read_fd(struct ly_ctx *ctx, int fd, LY_MINFORMAT format, int implement)
 {
     struct ly_module *module;
     struct stat sb;
@@ -1121,14 +1121,14 @@ ly_module_read_fd(struct ly_ctx *ctx, int fd, LY_MINFORMAT format)
      */
     fstat(fd, &sb);
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    module = ly_module_read(ctx, addr, format);
+    module = ly_module_read(ctx, addr, format, implement);
     munmap(addr, sb.st_size);
 
     return module;
 }
 
 struct ly_submodule *
-ly_submodule_read_fd(struct ly_module *module, int fd, LY_MINFORMAT format)
+ly_submodule_read_fd(struct ly_module *module, int fd, LY_MINFORMAT format, int implement)
 {
     struct ly_submodule *submodule;
     struct stat sb;
@@ -1145,7 +1145,7 @@ ly_submodule_read_fd(struct ly_module *module, int fd, LY_MINFORMAT format)
     fstat(fd, &sb);
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     /* TODO addr error check */
-    submodule = ly_submodule_read(module, addr, format);
+    submodule = ly_submodule_read(module, addr, format, implement);
     munmap(addr, sb.st_size);
 
     return submodule;

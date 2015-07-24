@@ -825,6 +825,7 @@ info_print_module(FILE *f, struct ly_module *module)
     info_print_text(f, module->contact, "Contact: ");
     fprintf(f, "%-*s%s\n", INDENT_LEN, "YANG ver: ", (module->version == 2 ? "1.1" : "1.0"));
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Deviated: ", (module->deviated ? "yes" : "no"));
+    fprintf(f, "%-*s%s\n", INDENT_LEN, "Implement: ", (module->implemented ? "yes" : "no"));
 
     info_print_revision(f, module->rev, module->rev_size);
     info_print_include(f, module);
@@ -852,6 +853,7 @@ info_print_submodule(FILE *f, struct ly_submodule *module)
     info_print_text(f, module->contact, "Contact: ");
     fprintf(f, "%-*s%s\n", INDENT_LEN, "YANG ver: ", (module->version == 2 ? "1.1" : "1.0"));
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Deviated: ", (module->deviated ? "yes" : "no"));
+    fprintf(f, "%-*s%s\n", INDENT_LEN, "Implement: ", (module->implemented ? "yes" : "no"));
 
     info_print_revision(f, module->rev, module->rev_size);
     info_print_include(f, (struct ly_module *)module);

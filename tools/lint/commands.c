@@ -137,7 +137,7 @@ cmd_add(const char *arg)
 
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 
-    model = ly_module_read(ctx, addr, format);
+    model = ly_module_read(ctx, addr, format, 1);
     munmap(addr, sb.st_size);
     close(fd);
 
@@ -223,13 +223,13 @@ cmd_print(const char *arg)
         goto cleanup;
     }
 
-    model = ly_ctx_get_module(ctx, argv[optind], NULL, 0);
+    model = ly_ctx_get_module(ctx, argv[optind], NULL, 0, -1);
     if (model == NULL) {
         names = ly_ctx_get_module_names(ctx);
         for (i = 0; names[i]; i++) {
             if (!model) {
-                parent_model = ly_ctx_get_module(ctx, names[i], NULL, 0);
-                model = (struct ly_module *)ly_ctx_get_submodule(parent_model, argv[optind], NULL, 0);
+                parent_model = ly_ctx_get_module(ctx, names[i], NULL, 0, -1);
+                model = (struct ly_module *)ly_ctx_get_submodule(parent_model, argv[optind], NULL, 0, -1);
             }
             free(names[i]);
         }
@@ -493,13 +493,13 @@ cmd_feature(const char *arg)
         fprintf(stderr, "Missing the model name.\n");
         goto cleanup;
     }
-    model = ly_ctx_get_module(ctx, argv[optind], NULL, 0);
+    model = ly_ctx_get_module(ctx, argv[optind], NULL, 0, -1);
     if (model == NULL) {
         names = ly_ctx_get_module_names(ctx);
         for (i = 0; names[i]; i++) {
             if (!model) {
-                parent_model = ly_ctx_get_module(ctx, names[i], NULL, 0);
-                model = (struct ly_module *)ly_ctx_get_submodule(parent_model, argv[optind], NULL, 0);
+                parent_model = ly_ctx_get_module(ctx, names[i], NULL, 0, -1);
+                model = (struct ly_module *)ly_ctx_get_submodule(parent_model, argv[optind], NULL, 0, -1);
             }
             free(names[i]);
         }

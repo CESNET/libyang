@@ -2697,7 +2697,7 @@ fill_yin_import(struct ly_module *module, struct lyxml_elem *yin, struct ly_impo
     }
 
     GETVAL(value, yin, "module");
-    imp->module = ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL, 1);
+    imp->module = ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL, 1, 0);
     if (!imp->module) {
         LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
         LOGVAL(VE_INARG, LOGLINE(yin), value, yin->name);
@@ -2739,7 +2739,7 @@ fill_yin_include(struct ly_module *module, struct lyxml_elem *yin, struct ly_inc
     }
 
     GETVAL(value, yin, "module");
-    inc->submodule = ly_ctx_get_submodule(module, value, inc->rev[0] ? inc->rev : NULL, 1);
+    inc->submodule = ly_ctx_get_submodule(module, value, inc->rev[0] ? inc->rev : NULL, 1, module->implemented);
     if (!inc->submodule) {
         LOGERR(LY_EVALID, "Including \"%s\" module into \"%s\" failed.", value, module->name);
         LOGVAL(VE_INARG, LOGLINE(yin), value, yin->name);
@@ -5599,7 +5599,7 @@ error:
 }
 
 struct ly_submodule *
-yin_read_submodule(struct ly_module *module, const char *data)
+yin_read_submodule(struct ly_module *module, const char *data, int implement)
 {
     struct lyxml_elem *yin;
     struct ly_submodule *submodule = NULL;
@@ -5633,6 +5633,7 @@ yin_read_submodule(struct ly_module *module, const char *data)
     submodule->name = lydict_insert(submodule->ctx, value, strlen(value));
     submodule->type = 1;
     submodule->belongsto = module;
+    submodule->implemented = (implement ? 1 : 0);
 
     LOGVRB("reading submodule %s", submodule->name);
     if (read_sub_module((struct ly_module *)submodule, yin)) {
@@ -5655,7 +5656,7 @@ error:
 }
 
 struct ly_module *
-yin_read_module(struct ly_ctx *ctx, const char *data)
+yin_read_module(struct ly_ctx *ctx, const char *data, int implement)
 {
     struct lyxml_elem *yin;
     struct ly_module *module = NULL, **newlist = NULL;
@@ -5687,6 +5688,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data)
     module->ctx = ctx;
     module->name = lydict_insert(ctx, value, strlen(value));
     module->type = 0;
+    module->implemented = (implement ? 1 : 0);
 
     LOGVRB("reading module %s", module->name);
     if (read_sub_module(module, yin)) {

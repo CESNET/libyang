@@ -106,7 +106,7 @@ main_noninteractive(int argc, char *argv[])
 
     /* libyang */
     ctx = ly_ctx_new(search_path);
-    model = ly_module_read(ctx, addr, LY_IN_YIN);
+    model = ly_module_read(ctx, addr, LY_IN_YIN, 1);
     if (!model) {
         fprintf(stderr, "Parsing data model failed.\n");
         goto cleanup;
