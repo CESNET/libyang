@@ -232,18 +232,20 @@ info_print_typedef(FILE *f, struct ly_tpdf *tpdf, uint8_t tpdf_size)
 }
 
 static void
-info_print_typedef_recursive(FILE *f, struct ly_module *mod, int *first)
+info_print_typedef_with_include(FILE *f, struct ly_module *mod)
 {
-    int i;
+    int i, j, first = 1;
+
+    fprintf(f, "%-*s", INDENT_LEN, "Typedefs: ");
 
     if (mod->tpdf_size) {
-        if (*first) {
+        if (first) {
             fprintf(f, "%s\n", mod->tpdf[0].name);
             i = 1;
         } else {
             i = 0;
         }
-        *first = 0;
+        first = 0;
 
         for (; i < mod->tpdf_size; ++i) {
             fprintf(f, "%*s%s\n", INDENT_LEN, "", mod->tpdf[i].name);
@@ -251,18 +253,20 @@ info_print_typedef_recursive(FILE *f, struct ly_module *mod, int *first)
     }
 
     for (i = 0; i < mod->inc_size; ++i) {
-        info_print_typedef_recursive(f, (struct ly_module *)mod->inc[i].submodule, first);
+        if (mod->inc[i].submodule->tpdf_size) {
+            if (first) {
+                fprintf(f, "%s\n", mod->inc[i].submodule->tpdf[0].name);
+                j = 1;
+            } else {
+                j = 0;
+            }
+            first = 0;
+
+            for (; j < mod->inc[i].submodule->tpdf_size; ++j) {
+                fprintf(f, "%*s%s\n", INDENT_LEN, "", mod->inc[i].submodule->tpdf[j].name);
+            }
+        }
     }
-}
-
-static void
-info_print_typedef_all(FILE *f, struct ly_module *mod)
-{
-    int first = 1;
-
-    fprintf(f, "%-*s", INDENT_LEN, "Typedefs: ");
-
-    info_print_typedef_recursive(f, mod, &first);
 
     if (first) {
         fprintf(f, "\n");
@@ -473,7 +477,7 @@ info_print_revision(FILE *f, struct ly_revision *rev, uint8_t rev_size)
 }
 
 static void
-info_print_import_all(FILE *f, struct ly_module *mod)
+info_print_import_with_include(FILE *f, struct ly_module *mod)
 {
     int first = 1, i, j;
 
@@ -575,7 +579,7 @@ info_print_deviation(FILE *f, struct ly_module *mod)
 }
 
 static void
-info_print_ident_all(FILE *f, struct ly_module *mod)
+info_print_ident_with_include(FILE *f, struct ly_module *mod)
 {
     int first = 1, i, j;
 
@@ -612,7 +616,7 @@ info_print_ident_all(FILE *f, struct ly_module *mod)
 }
 
 static void
-info_print_features_all(FILE *f, struct ly_module *mod)
+info_print_features_with_include(FILE *f, struct ly_module *mod)
 {
     int first = 1, i, j;
 
@@ -649,7 +653,7 @@ info_print_features_all(FILE *f, struct ly_module *mod)
 }
 
 static void
-info_print_rpc_all(FILE *f, struct ly_module *mod)
+info_print_rpc_with_include(FILE *f, struct ly_module *mod)
 {
     int first = 1, i;
     struct ly_mnode *mnode;
@@ -688,7 +692,7 @@ info_print_rpc_all(FILE *f, struct ly_module *mod)
 }
 
 static void
-info_print_notif_all(FILE *f, struct ly_module *mod)
+info_print_notif_with_include(FILE *f, struct ly_module *mod)
 {
     int first = 1, i;
     struct ly_mnode *mnode;
@@ -727,7 +731,7 @@ info_print_notif_all(FILE *f, struct ly_module *mod)
 }
 
 static void
-info_print_mnodes_all(FILE *f, struct ly_module *mod)
+info_print_mnodes_with_include(FILE *f, struct ly_module *mod)
 {
     int first = 1, i;
     struct ly_mnode *mnode;
@@ -829,16 +833,16 @@ info_print_module(FILE *f, struct ly_module *module)
 
     info_print_revision(f, module->rev, module->rev_size);
     info_print_include(f, module);
-    info_print_import_all(f, module);
-    info_print_typedef_all(f, module);
-    info_print_ident_all(f, module);
-    info_print_features_all(f, module);
+    info_print_import_with_include(f, module);
+    info_print_typedef_with_include(f, module);
+    info_print_ident_with_include(f, module);
+    info_print_features_with_include(f, module);
     info_print_augment(f, module);
     info_print_deviation(f, module);
 
-    info_print_rpc_all(f, module);
-    info_print_notif_all(f, module);
-    info_print_mnodes_all(f, module);
+    info_print_rpc_with_include(f, module);
+    info_print_notif_with_include(f, module);
+    info_print_mnodes_with_include(f, module);
 }
 
 static void
@@ -857,16 +861,16 @@ info_print_submodule(FILE *f, struct ly_submodule *module)
 
     info_print_revision(f, module->rev, module->rev_size);
     info_print_include(f, (struct ly_module *)module);
-    info_print_import_all(f, (struct ly_module *)module);
-    info_print_typedef_all(f, (struct ly_module *)module);
-    info_print_ident_all(f, (struct ly_module *)module);
-    info_print_features_all(f, (struct ly_module *)module);
+    info_print_import_with_include(f, (struct ly_module *)module);
+    info_print_typedef_with_include(f, (struct ly_module *)module);
+    info_print_ident_with_include(f, (struct ly_module *)module);
+    info_print_features_with_include(f, (struct ly_module *)module);
     info_print_augment(f, (struct ly_module *)module);
     info_print_deviation(f, (struct ly_module *)module);
 
-    info_print_rpc_all(f, (struct ly_module *)module);
-    info_print_notif_all(f, (struct ly_module *)module);
-    info_print_mnodes_all(f, (struct ly_module *)module);
+    info_print_rpc_with_include(f, (struct ly_module *)module);
+    info_print_notif_with_include(f, (struct ly_module *)module);
+    info_print_mnodes_with_include(f, (struct ly_module *)module);
 }
 
 static void
