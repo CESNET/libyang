@@ -10,6 +10,10 @@ if(NOT LIB_INSTALL_DIR)
 	set(LIB_INSTALL_DIR lib)
 endif()
 
+if(NOT INCLUDE_INSTALL_DIR)
+	set(INCLUDE_INSTALL_DIR include/libyang)
+endif()
+
 # set default build type if not specified by user
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE debug)
@@ -41,10 +45,15 @@ set(lintsrc
 	tools/lint/completion.c
 	linenoise/linenoise.c)
 
+set(headers
+	src/libyang.h
+	src/tree.h)
+
 add_library(yang SHARED ${libsrc})
 set_target_properties(yang PROPERTIES VERSION 0.1.0 SOVERSION 0.1)
 
 install(TARGETS yang DESTINATION ${LIB_INSTALL_DIR})
+install(FILES ${headers} DESTINATION ${INCLUDE_INSTALL_DIR})
 
 # generate doxygen documentation for libyang API
 add_custom_target(doc
