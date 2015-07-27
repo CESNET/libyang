@@ -223,31 +223,35 @@ parse_uint(const char *str_val, struct lyxml_elem *xml, uint64_t max, int base, 
 }
 
 static struct ly_type *
-get_next_union_type(struct ly_type *uni_type, int count, struct ly_type *prev_type, int *found)
+get_next_union_type(struct ly_type *type, struct ly_type *prev_type, int *found)
 {
     int i;
-    struct ly_type *type = NULL;
+    struct ly_type *ret = NULL;
 
-    for (i = 0; i < count; ++i) {
-        if (uni_type[i].base == LY_TYPE_UNION) {
-            type = get_next_union_type(uni_type[i].info.uni.type, uni_type[i].info.uni.count, prev_type, found);
-            if (type) {
+    for (i = 0; i < type->info.uni.count; ++i) {
+        if (type->info.uni.type[i].base == LY_TYPE_UNION) {
+            ret = get_next_union_type(&type->info.uni.type[i], prev_type, found);
+            if (ret) {
                 break;;
             }
             continue;
         }
 
         if (!prev_type || *found) {
-            type = &uni_type[i];
+            ret = &type->info.uni.type[i];
             break;
         }
 
-        if (&uni_type[i] == prev_type) {
+        if (&type->info.uni.type[i] == prev_type) {
             *found = 1;
         }
     }
 
-    return type;
+    if (!ret && type->der) {
+        ret = get_next_union_type(&type->der->type, prev_type, found);
+    }
+
+    return ret;
 }
 
 static int
@@ -545,8 +549,8 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
 
     case LY_TYPE_UNION:
         found = 0;
-        type = get_next_union_type(node_type->info.uni.type, node_type->info.uni.count, NULL, &found);
-        for (; type; found = 0, type = get_next_union_type(node_type->info.uni.type, node_type->info.uni.count, type, &found)) {
+        type = get_next_union_type(node_type, NULL, &found);
+        for (; type; found = 0, type = get_next_union_type(node_type, type, &found)) {
             xml->content = leaf->value_str;
             if (!_xml_get_value(node, type, xml, unres, 0)) {
                 leaf->value_type = type->base;
