@@ -58,6 +58,7 @@ ly_log(LY_LOG_LEVEL level, const char *format, ...)
 const char *verrs[] = {
 /* VE_XML_MISS */     "Missing %s \"%s\".",
 /* VE_XML_INVAL */    "Invalid %s.",
+/* VE_XML_INCHAR */   "Encountered invalid character sequence \"%.10s\".",
 
 /* VE_EOF */          "Unexpected end of input data.",
 /* VE_INSTMT */       "Invalid keyword \"%s\".",

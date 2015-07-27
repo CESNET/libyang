@@ -1091,7 +1091,7 @@ lyxml_read(struct ly_ctx *ctx, const char *data, int UNUSED(options))
             /* XMLDecl or PI - ignore it */
             c += 2;
             if (parse_ignore(c, "?>", &len)) {
-                LOGVAL(VE_XML_MISS, lineno, "close sequence", "?>");
+                LOGVAL(VE_XML_MISS, lineno, "closing sequence", "?>");
                 return NULL;
             }
             c += len;
@@ -1099,7 +1099,7 @@ lyxml_read(struct ly_ctx *ctx, const char *data, int UNUSED(options))
             /* Comment - ignore it */
             c += 2;
             if (parse_ignore(c, "-->", &len)) {
-                LOGVAL(VE_XML_MISS, lineno, "close sequence", "-->");
+                LOGVAL(VE_XML_MISS, lineno, "closing sequence", "-->");
                 return NULL;
             }
             c += len;
@@ -1113,6 +1113,9 @@ lyxml_read(struct ly_ctx *ctx, const char *data, int UNUSED(options))
              * format
              */
             break;
+        } else {
+            LOGVAL(VE_XML_INCHAR, lineno, c);
+            return NULL;
         }
     }
 

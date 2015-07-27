@@ -75,6 +75,7 @@ enum LY_VERR {
 
     VE_XML_MISS,
     VE_XML_INVAL,
+    VE_XML_INCHAR,
 
     VE_EOF,
     VE_INSTMT,
