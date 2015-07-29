@@ -33,7 +33,7 @@ int info_print_model(FILE * f, struct ly_module *module, const char *target_node
 int json_print_data(FILE *f, struct lyd_node *root);
 
 API int
-ly_model_print(FILE * f, struct ly_module *module, LY_MOUTFORMAT format, const char *target_node)
+lys_print(FILE *f, struct ly_module *module, LY_MOUTFORMAT format, const char *target_node)
 {
     if (!f || !module) {
         ly_errno = LY_EINVAL;
@@ -57,7 +57,7 @@ ly_model_print(FILE * f, struct ly_module *module, LY_MOUTFORMAT format, const c
 }
 
 API int
-ly_data_print(FILE * f, struct lyd_node *root, LY_DFORMAT format)
+lyd_print(FILE * f, struct lyd_node *root, LY_DFORMAT format)
 {
     if (!f || !root) {
         ly_errno = LY_EINVAL;

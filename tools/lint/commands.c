@@ -249,7 +249,7 @@ cmd_print(const char *arg)
         }
     }
 
-    ret = ly_model_print(output, model, format, target_node);
+    ret = lys_print(output, model, format, target_node);
 
 cleanup:
     free(*argv);
@@ -370,7 +370,7 @@ cmd_data(const char *arg)
     }
 
     if (format != LY_DATA_UNKNOWN) {
-        ly_data_print(output, data, format);
+        lyd_print(output, data, format);
     }
 
 cleanup:

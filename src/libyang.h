@@ -26,9 +26,7 @@
 
 #include "tree.h"
 
-int ly_model_print(FILE * f, struct ly_module *module, LY_MOUTFORMAT format, const char *target_node);
 
-int ly_data_print(FILE * f, struct lyd_node *root, LY_DFORMAT format);
 
 /**
  * @defgroup libyang libyang
@@ -141,14 +139,13 @@ struct ly_module *lys_parse(struct ly_ctx *ctx, const char *data, LY_MINFORMAT f
 struct ly_module *lys_read(struct ly_ctx *ctx, int fd, LY_MINFORMAT format);
 
 /**
- * @brief Free data model
+ * @brief Free (and unlink it from the context) the specified schema.
  *
- * It is up to the caller that there is no instance data using the module
- * being freed.
+ * It is up to the caller that there is no instance data using the schema being freed.
  *
  * @param[in] module Data model to free.
  */
-void ly_module_free(struct ly_module *module);
+void lys_free(struct ly_module *module);
 
 /**
  * @brief Parse (and validate according to appropriate schema from the given context) data.
@@ -158,7 +155,7 @@ void ly_module_free(struct ly_module *module);
  *
  * LY_JSON format is not yet supported.
  */
-struct lyd_node *ly_data_read(struct ly_ctx *ctx, const char *data, LY_DFORMAT format);
+struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LY_DFORMAT format);
 
 /**@} libyang */
 
@@ -182,12 +179,38 @@ struct lyd_node *ly_data_read(struct ly_ctx *ctx, const char *data, LY_DFORMAT f
  */
 
 /**
+ * @brief Print schema tree in the specified format.
+ *
+ * @param[in] module Schema tree to print.
+ * @param[in] f File stream where to print the schema.
+ * @param[in] format Schema output format.
+ * @param[in] target_node Optional parameter for ::LY_OUT_INFO format. It specifies which particular
+ * node in the module will be printed.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lys_print(FILE *f, struct ly_module *module, LY_MOUTFORMAT format, const char *target_node);
+
+/**
+ * @brief Print data tree in the specified format.
+ *
+ * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
+ * node of the data tree to print the specific subtree.
+ * @param[in] f File stream where to print the data.
+ * @param[in] format Data output format.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lyd_print(FILE *f, struct lyd_node *root, LY_DFORMAT format);
+
+/**@} printers */
+
+/**
  * @defgroup logger Logger
  * @{
  *
  * Publicly visible functions and values of the libyang logger. For more
  * information, see \ref howtologger.
  */
+void lyd_free(struct lyd_node *node);
 
 /**
  * @typedef LY_LOG_LEVEL

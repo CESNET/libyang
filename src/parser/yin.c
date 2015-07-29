@@ -5759,7 +5759,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement)
 error:
     /* cleanup */
     lyxml_free_elem(ctx, yin);
-    ly_module_free(module);
+    lys_free(module);
 
     return NULL;
 }

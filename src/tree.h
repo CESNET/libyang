@@ -1012,7 +1012,6 @@ struct leafref_instid {
     struct leafref_instid *next;
 };
 
-void lyd_node_free(struct lyd_node *node);
 
 void lyd_node_siblings_free(struct lyd_node *node);
 

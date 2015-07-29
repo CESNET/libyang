@@ -1842,7 +1842,7 @@ module_free_common(struct ly_module *module)
         l = ctx->models.used;
         for (j = 0; j < l; j++) {
             if (ctx->models.list[j] == module->imp[i].module) {
-                ly_module_free(module->imp[i].module);
+                lys_free(module->imp[i].module);
                 break;
             }
         }
@@ -2174,7 +2174,7 @@ error:
 }
 
 API void
-ly_module_free(struct ly_module *module)
+lys_free(struct ly_module *module)
 {
     struct ly_ctx *ctx;
     int i;
@@ -2479,7 +2479,7 @@ find_identityref(struct ly_ident *base, const char *name, const char *ns)
 }
 
 API struct lyd_node *
-ly_data_read(struct ly_ctx *ctx, const char *data, LY_DFORMAT format)
+lyd_parse(struct ly_ctx *ctx, const char *data, LY_DFORMAT format)
 {
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -2499,7 +2499,7 @@ ly_data_read(struct ly_ctx *ctx, const char *data, LY_DFORMAT format)
 }
 
 API void
-lyd_node_free(struct lyd_node *node)
+lyd_free(struct lyd_node *node)
 {
     struct lyd_node *next, *child;
 
@@ -2510,7 +2510,7 @@ lyd_node_free(struct lyd_node *node)
     if (!(node->schema->nodetype & (LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_ANYXML))) {
         /* free children */
         LY_TREE_FOR_SAFE(node->child, next, child) {
-            lyd_node_free(child);
+            lyd_free(child);
         }
     } else if (node->schema->nodetype == LY_NODE_ANYXML) {
         lyxml_free_elem(((struct lyd_node_anyxml *)node)->ctx, ((struct lyd_node_anyxml *)node)->value);
@@ -2555,10 +2555,10 @@ lyd_node_siblings_free(struct lyd_node *node)
     }
 
     if (node->schema->nodetype & (LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_ANYXML)) {
-        lyd_node_free(node);
+        lyd_free(node);
     } else {
         LY_TREE_FOR_SAFE(node, next, sibling) {
-            lyd_node_free(sibling);
+            lyd_free(sibling);
         }
     }
 }

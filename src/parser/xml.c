@@ -781,7 +781,7 @@ error:
     result->next = NULL;
     result->parent = NULL;
     result->prev = result;
-    lyd_node_free(result);
+    lyd_free(result);
 
     return NULL;
 }
