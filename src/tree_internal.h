@@ -77,5 +77,7 @@ int resolve_instid(struct lyd_node *data, const char *path, int path_len, struct
 struct ly_mnode_leaf *find_leaf(struct ly_mnode *parent, const char *name, int len);
 struct ly_ident *find_base_ident(struct ly_module *module, struct ly_ident *ident, const char *basename, int line, const char* parent);
 struct ly_ident *find_identityref(struct ly_ident *base, const char *name, const char *ns);
+struct ly_module *lys_read_import(struct ly_ctx *ctx, int fd, LY_MINFORMAT format);
+
 
 #endif /* LY_TREE_INTERNAL_H_ */

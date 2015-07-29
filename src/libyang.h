@@ -77,14 +77,9 @@ void ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
  * @param[in] name Name of the YANG module to get.
  * @param[in] revision Optional revision date of the YANG module to get. If not
  * specified, the newest revision is returned (TODO).
- * @param[in] read Flag for reading the module from a file. If set to 0, libyang
- * searches for the module only in the modules already loaded to the context.
- * @param[in] implement Flag set if the module is implemented, not just imported
- * from another module. Specially, -1 means do not change it (only with
- * read == 0).
  * @return Pointer to the data model structure.
  */
-struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision, int read, int implement);
+struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision);
 
 /**
  * @brief Get submodule from the context's search dir.
@@ -93,13 +88,9 @@ struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const 
  * @param[in] name Name of the YANG submodule to get.
  * @param[in] revision Optional revision date of the YANG submodule to get. If
  * not specified, the newest revision is returned (TODO).
- * @param[in] read Flag for reading the submodule from a file. If set to 0, libyang
- * searches for the submodule only in the submodules already loaded to the context.
- * @param[in] implement Flag set is the submodule is implemented, not just imported
- * from another module. Specially, -1 means do not change it (only with read == 0).
  * @return Pointer to the data model structure.
  */
-struct ly_submodule *ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *revision, int read, int implement);
+struct ly_submodule *ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *revision);
 
 /**
  * @brief Get the names of the loaded modules.
@@ -143,13 +134,11 @@ void ly_ctx_destroy(struct ly_ctx *ctx);
  * @param[in] data The string containing the dumped data model in the specified
  * format.
  * @param[in] format Format of the input data (YANG or YIN).
- * @param[in] implement Flag set if the module is implemented, not just
- * imported from another module.
  * @return Pointer to the data model structure or NULL on error.
  */
-struct ly_module *ly_module_read(struct ly_ctx *ctx, const char *data, LY_MINFORMAT format, int implement);
+struct ly_module *lys_parse(struct ly_ctx *ctx, const char *data, LY_MINFORMAT format);
 
-struct ly_module *ly_module_read_fd(struct ly_ctx *ctx, int fd, LY_MINFORMAT format, int implement);
+struct ly_module *lys_read(struct ly_ctx *ctx, int fd, LY_MINFORMAT format);
 
 /**
  * @brief Free data model

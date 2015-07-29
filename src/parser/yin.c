@@ -2697,11 +2697,15 @@ fill_yin_import(struct ly_module *module, struct lyxml_elem *yin, struct ly_impo
     }
 
     GETVAL(value, yin, "module");
-    imp->module = ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL, 1, 0);
+    imp->module = ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
     if (!imp->module) {
-        LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
-        LOGVAL(VE_INARG, LOGLINE(yin), value, yin->name);
-        goto error;
+        imp->module = lyp_search_file(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL);
+        if (!imp->module) {
+            LOGERR(LY_EVALID, "Data model \"%s\" not found (search path is \"%s\")", value, module->ctx->models.search_path);
+            LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
+            LOGVAL(VE_INARG, LOGLINE(yin), value, yin->name);
+            goto error;
+        }
     }
 
     return EXIT_SUCCESS;
@@ -2739,11 +2743,15 @@ fill_yin_include(struct ly_module *module, struct lyxml_elem *yin, struct ly_inc
     }
 
     GETVAL(value, yin, "module");
-    inc->submodule = ly_ctx_get_submodule(module, value, inc->rev[0] ? inc->rev : NULL, 1, module->implemented);
+    inc->submodule = ly_ctx_get_submodule(module, value, inc->rev[0] ? inc->rev : NULL);
     if (!inc->submodule) {
-        LOGERR(LY_EVALID, "Including \"%s\" module into \"%s\" failed.", value, module->name);
-        LOGVAL(VE_INARG, LOGLINE(yin), value, yin->name);
-        goto error;
+        inc->submodule = (struct ly_submodule *) lyp_search_file(module->ctx, module, value, inc->rev[0] ? inc->rev : NULL);
+        if (!inc->submodule) {
+            LOGERR(LY_EVALID, "Data model \"%s\" not found (search path is \"%s\")", value, module->ctx->models.search_path);
+            LOGERR(LY_EVALID, "Including \"%s\" module into \"%s\" failed.", value, module->name);
+            LOGVAL(VE_INARG, LOGLINE(yin), value, yin->name);
+            goto error;
+        }
     }
 
     /* check that belongs-to corresponds */
@@ -5711,25 +5719,27 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement)
     for (i = 0; ctx->models.list[i]; i++) {
         /* check name (name/revision) and namespace uniqueness */
         if (!strcmp(ctx->models.list[i]->name, module->name)) {
-            if (!ctx->models.list[i]->rev_size && !module->rev_size) {
-                /* both data models are same, with no revision specified */
-                LOGERR(LY_EINVAL, "Module \"%s\" (no revision in either of them specified) already in context.",
-                       module->name);
-                goto error;
-            } else if (!ctx->models.list[i]->rev_size || !module->rev_size) {
-                /* one of the models does not have a revision, so they differs */
-                continue;
-            } else {
-                /* both models have a revision statement which we have to
-                 * compare, revision at position 0 is the last revision
-                 */
-                if (!strcmp(ctx->models.list[i]->rev[0].date, module->rev[0].date)) {
-                    /* we have the same modules */
-                    LOGERR(LY_EINVAL, "Module \"%s\", revision %s already in context.", module->name,
-                           module->rev[0].date);
-                    goto error;
+            if (ctx->models.list[i]->rev_size == module->rev_size) {
+                /* both have the same number of revisions */
+                if (!module->rev_size || !strcmp(ctx->models.list[i]->rev[0].date, module->rev[0].date)) {
+                    /* both have the same revision -> we already have the same module */
+                    /* so free the new one and update the old one's implement flag if needed */
+                    lyxml_free_elem(ctx, yin);
+                    lys_free(module);
+
+                    LOGVRB("module %s already in context", ctx->models.list[i]->name);
+
+                    if (implement && !ctx->models.list[i]->implemented) {
+                        lyp_set_implemented(ctx->models.list[i]);
+                    }
+                    return ctx->models.list[i];
                 }
             }
+
+            /* caller is trying to add the same module in another revision */
+            LOGERR(LY_EINVAL, "Module \"%s\" with different revision is already in context.", module->name);
+            goto error;
+
         } else if (!strcmp(ctx->models.list[i]->ns, module->ns)) {
             LOGERR(LY_EINVAL, "Two different modules (\"%s\" and \"%s\") have the same namespace \"%s\"",
                    ctx->models.list[i]->name, module->name, module->ns);

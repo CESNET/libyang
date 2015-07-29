@@ -60,4 +60,8 @@ struct lyd_node *xml_read_data(struct ly_ctx *ctx, const char *data);
 
 /**@} xmldata */
 
+
+struct ly_module *lyp_search_file(struct ly_ctx *ctx, struct ly_module *module, const char *name, const char *revision);
+void lyp_set_implemented(struct ly_module *module);
+
 #endif /* LY_PARSER_H_ */

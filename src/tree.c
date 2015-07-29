@@ -1065,7 +1065,7 @@ error:
 }
 
 API struct ly_module *
-ly_module_read(struct ly_ctx *ctx, const char *data, LY_MINFORMAT format, int implement)
+lys_parse(struct ly_ctx *ctx, const char *data, LY_MINFORMAT format)
 {
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -1074,7 +1074,7 @@ ly_module_read(struct ly_ctx *ctx, const char *data, LY_MINFORMAT format, int im
 
     switch (format) {
     case LY_IN_YIN:
-        return yin_read_module(ctx, data, implement);
+        return yin_read_module(ctx, data, 1);
     case LY_IN_YANG:
     default:
         /* TODO */
@@ -1102,8 +1102,8 @@ ly_submodule_read(struct ly_module *module, const char *data, LY_MINFORMAT forma
     return NULL;
 }
 
-API struct ly_module *
-ly_module_read_fd(struct ly_ctx *ctx, int fd, LY_MINFORMAT format, int implement)
+struct ly_module *
+lys_read_import(struct ly_ctx *ctx, int fd, LY_MINFORMAT format)
 {
     struct ly_module *module;
     struct stat sb;
@@ -1121,7 +1121,42 @@ ly_module_read_fd(struct ly_ctx *ctx, int fd, LY_MINFORMAT format, int implement
      */
     fstat(fd, &sb);
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    module = ly_module_read(ctx, addr, format, implement);
+
+    switch (format) {
+    case LY_IN_YIN:
+        module = yin_read_module(ctx, addr, 0);
+        break;
+    case LY_IN_YANG:
+    default:
+        /* TODO */
+        munmap(addr, sb.st_size);
+        return NULL;
+    }
+    munmap(addr, sb.st_size);
+
+    return module;
+}
+
+API struct ly_module *
+lys_read(struct ly_ctx *ctx, int fd, LY_MINFORMAT format)
+{
+    struct ly_module *module;
+    struct stat sb;
+    char *addr;
+
+    if (!ctx || fd < 0) {
+        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        return NULL;
+    }
+
+    /*
+     * TODO
+     * This is just a temporary solution to make working automatic search for
+     * imported modules. This doesn't work e.g. for streams (stdin)
+     */
+    fstat(fd, &sb);
+    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    module = lys_parse(ctx, addr, format);
     munmap(addr, sb.st_size);
 
     return module;

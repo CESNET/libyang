@@ -25,6 +25,7 @@ set(libsrc
 	src/log.c
 	src/dict.c
 	src/xml.c
+        src/parser.c
 	src/parser/yin.c
 	src/parser/xml.c
 	src/tree.c
