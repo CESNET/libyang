@@ -26,13 +26,53 @@
 
 #include "tree.h"
 
+/**
+ * @page howto How To ...
+ *
+ * - @subpage howtocontext
+ * - @subpage howtologger
+ */
 
+/** @page howtocontext Context
+ *
+ * The \em context concept allows callers to work in environments with different sets of YANG schemas.
+ *
+ * The first step in libyang is to create a new context using ly_ctx_new(). It returns a handler
+ * used in the following work.
+ *
+ * When creating a new context, search dir can be specified (NULL is accepted) to provide directory
+ * where libyang will automatically search for schemas being imported or included. The search path
+ * can be later changed via ly_ctx_set_searchdir() function. Before exploring the specified search
+ * dir, libyang tries to get imported and included schemas from the current working directory first.
+ *
+ * Note that it is prohibited to have two different revisions of the same schema in a single context.
+ *
+ * API for this group of functions is available in the [context module](@ref context).
+ *
+ */
 
 /**
- * @defgroup libyang libyang
+ *
+ * @page howtologger Logger
+ *
+ * There are 4 verbosity levels defined as ::LY_LOG_LEVEL. The level can be
+ * changed by the ly_verb() function. By default, the verbosity level is
+ * set to #LY_LLERR value.
+ *
+ * In case the logger has an error message (LY_LLERR) to print, also an error
+ * code is recorded in extern ly_errno variable. Possible values are of type
+ * ::LY_ERR.
+ *
+ * API for this group of functions is available in the [logger module](@ref logger).
+ */
+
+/**
+ * @defgroup context Context
  * @{
  *
- * General libyang functions and structures.
+ * Structures and functions to manipulate with the libyang "containers". The \em context concept allows callers
+ * to work in environments with different sets of YANG schemas. More detailed information can be found at
+ * @ref howtocontext page.
  */
 
 /**
@@ -43,15 +83,13 @@ struct ly_ctx;
 /**
  * @brief Create libyang context
  *
- * Context is used to hold all information about data models. Usually, the
- * application is supposed to work with a single context in which libyang is
- * holding all data models and other internal information according to which
- * the instance data will be processed and validated. Therefore, also each
- * instance data are connected
+ * Context is used to hold all information about schemas. Usually, the application is supposed
+ * to work with a single context in which libyang is holding all data models and other internal
+ * information according to which the data will be processed and validated. Therefore, both schema
+ * and data trees are connected with a specific context.
  *
- * @param[in] search_dir Directory where libyang will search for the imported
- * or included modules and submodules. If no such directory is available, NULL
- * is accepted.
+ * @param[in] search_dir Directory where libyang will search for the imported or included modules
+ * and submodules. If no such directory is available, NULL is accepted.
  *
  * @return Pointer to the created libyang context, NULL in case of error.
  */
@@ -123,6 +161,29 @@ char **ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *name);
  */
 void ly_ctx_destroy(struct ly_ctx *ctx);
 
+/**@} context */
+
+/**
+ * @defgroup parsers Parsers
+ * @{
+ *
+ * Parsers allows to read schema and data trees from a specific format.
+ *
+ * For schemas, the following formats are supported:
+ * - YANG
+ *
+ *   Basic YANG schemas format described in [RFC 6020](http://tools.ietf.org/html/rfc6020).
+ *   Currently, only YANG 1.0 is supported.
+ *
+ *   \todo YANG input is not yet implemented
+ *
+ * - YIN
+ *
+ *   Alternative XML-based format to YANG. The details can be found in
+ *   [RFC 6020](http://tools.ietf.org/html/rfc6020#section-11).
+ *
+ */
+
 /**
  * @brief Load a data model into the specified context.
  *
@@ -154,28 +215,52 @@ void lys_free(struct ly_module *module);
  * \<config\> or \<data\> element in the "urn:ietf:params:xml:ns:netconf:base:1.0" namespace.
  *
  * LY_JSON format is not yet supported.
+ *
+ * @param[in] ctx Context to connect with the data tree being built here.
+ * @param[in] data Serialized data in the specified format.
+ * @param[in] format Format of the input data to be parsed.
+ * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
 struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LY_DFORMAT format);
 
-/**@} libyang */
-
 /**
- * @page howto How To ...
+ * @brief Free (and unlink) the specified data (sub)tree.
  *
- * - @subpage howtologger
+ * @param[in] node Root of the (sub)tree to be freed.
  */
+void lyd_free(struct lyd_node *node);
+
+/**@} parsers */
+
 
 /**
+ * @defgroup printers Printers
+ * @{
  *
- * @page howtologger Logger
+ * Printers allows to serialize schema and data trees in a specific format.
  *
- * There are 4 verbosity levels defined as ::LY_LOG_LEVEL. The level can be
- * changed by the ly_verb() function. By default, the verbosity level is
- * set to #LY_LLERR value.
+ * For schemas, the following formats are supported:
+ * - YANG
  *
- * In case the logger has an error message (LY_LLERR) to print, also an error
- * code is recorded in extern ly_errno variable. Possible values are of type
- * ::LY_ERR.
+ *   Basic YANG schemas format described in [RFC 6020](http://tools.ietf.org/html/rfc6020).
+ *   Currently, only YANG 1.0 is supported.
+ *
+ * - YIN
+ *
+ *   Alternative XML-based format to YANG. The details can be found in
+ *   [RFC 6020](http://tools.ietf.org/html/rfc6020#section-11).
+ *
+ *   \todo YIN output is not yet implemented
+ *
+ * - Tree
+ *
+ *   Simple tree structure of the module.
+ *
+ * - Info
+ *
+ *   Detailed information about the specific node in the schema tree.
+ *
+ *   \todo describe target_node syntax
  */
 
 /**
@@ -210,7 +295,6 @@ int lyd_print(FILE *f, struct lyd_node *root, LY_DFORMAT format);
  * Publicly visible functions and values of the libyang logger. For more
  * information, see \ref howtologger.
  */
-void lyd_free(struct lyd_node *node);
 
 /**
  * @typedef LY_LOG_LEVEL
@@ -231,7 +315,7 @@ void ly_verb(LY_LOG_LEVEL level);
 
 /**
  * @typedef LY_ERR
- * @brief libyang's error codes available via ly_errno extern variable
+ * @brief libyang's error codes available via ly_errno extern variable.
  * @ingroup logger
  */
 typedef enum {
@@ -241,6 +325,9 @@ typedef enum {
     LY_EINT,       /**< Internal error */
     LY_EVALID      /**< Validation failure */
 } LY_ERR;
+/**
+ * @brief libyang specific errno.
+ */
 extern LY_ERR ly_errno;
 
 /**@} logger */
