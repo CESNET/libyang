@@ -45,7 +45,7 @@
  * can be later changed via ly_ctx_set_searchdir() function. Before exploring the specified search
  * dir, libyang tries to get imported and included schemas from the current working directory first.
  *
- * Note that it is prohibited to have two different revisions of the same schema in a single context.
+ * Context can hold multiple revisons of the same schema.
  *
  * API for this group of functions is available in the [context module](@ref context).
  *
@@ -129,14 +129,12 @@ const char **ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *module_n
 /**
  * @brief Get pointer to the data model structure of the specified name.
  *
- * If the module is not yet loaded in the context, libyang tries to find it in
- * the search directory specified when the context was created by ly_ctx_new().
- *
  * @param[in] ctx Context to work in.
  * @param[in] name Name of the YANG module to get.
- * @param[in] revision Optional revision date of the YANG module to get. If not
- * specified, the newest revision is returned (TODO).
- * @return Pointer to the data model structure.
+ * @param[in] revision Optional revision date of the YANG module to get. If not specified,
+ * the schema in the newest revision is returned if any.
+ * @return Pointer to the data model structure, NULL if no schema following the name and
+ * revision is present in the context.
  */
 struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision);
 

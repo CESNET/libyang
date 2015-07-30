@@ -5735,11 +5735,9 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement)
                     return ctx->models.list[i];
                 }
             }
-
-            /* caller is trying to add the same module in another revision */
-            LOGERR(LY_EINVAL, "Module \"%s\" with different revision is already in context.", module->name);
-            goto error;
-
+            /* else (both elses) keep searching, for now the caller is just adding
+             * another revision of an already present schema
+             */
         } else if (!strcmp(ctx->models.list[i]->ns, module->ns)) {
             LOGERR(LY_EINVAL, "Two different modules (\"%s\" and \"%s\") have the same namespace \"%s\"",
                    ctx->models.list[i]->name, module->name, module->ns);

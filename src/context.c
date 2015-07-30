@@ -156,17 +156,34 @@ ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision)
     }
 
     for (i = 0; i < ctx->models.used; i++) {
-        result = ctx->models.list[i];
-        if (!result || strcmp(name, result->name)) {
+        if (!ctx->models.list[i] || strcmp(name, ctx->models.list[i]->name)) {
             continue;
         }
 
-        if (!revision || (result->rev_size && !strcmp(revision, result->rev[0].date))) {
-            return result;
+        if (!revision) {
+            /* compare revisons and remember the newest one */
+            if (result) {
+                if (!ctx->models.list[i]->rev_size) {
+                    /* the current have no revision, keep the previous with some revision */
+                    continue;
+                }
+                if (result->rev_size && strcmp(ctx->models.list[i]->rev[0].date, result->rev[0].date) < 0) {
+                    /* the previous found matching module has a newer revision */
+                    continue;
+                }
+            }
+
+            /* remember the current match and search for newer version */
+            result = ctx->models.list[i];
+        } else {
+            if (ctx->models.list[i]->rev_size && !strcmp(revision, ctx->models.list[i]->rev[0].date)) {
+                /* matching revision */
+                return result;
+            }
         }
     }
 
-    return NULL;
+    return result;
 }
 
 API const char **
