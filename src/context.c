@@ -168,11 +168,11 @@ ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision)
     return NULL;
 }
 
-API char **
+API const char **
 ly_ctx_get_module_names(struct ly_ctx *ctx)
 {
     int i;
-    char **result = NULL;
+    const char **result = NULL;
 
     if (!ctx) {
         ly_errno = LY_EINVAL;
@@ -182,18 +182,18 @@ ly_ctx_get_module_names(struct ly_ctx *ctx)
     result = malloc((ctx->models.used+1) * sizeof *result);
 
     for (i = 0; i < ctx->models.used; i++) {
-        result[i] = strdup(ctx->models.list[i]->name);
+        result[i] = ctx->models.list[i]->name;
     }
     result[i] = NULL;
 
     return result;
 }
 
-API char **
-ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *name)
+API const char **
+ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *module_name)
 {
     int i;
-    char **result = NULL;
+    const char **result = NULL;
     struct ly_module *mod;
 
     if (!ctx) {
@@ -201,16 +201,16 @@ ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *name)
         return NULL;
     }
 
-    mod = ly_ctx_get_module(ctx, name, NULL);
+    mod = ly_ctx_get_module(ctx, module_name, NULL);
     if (!mod) {
-        LOGERR(LY_EVALID, "Data model \"%s\" not loaded", name);
+        LOGERR(LY_EVALID, "Data model \"%s\" not loaded", module_name);
         return NULL;
     }
 
     result = malloc((mod->inc_size+1) * sizeof *result);
 
     for (i = 0; i < mod->inc_size; i++) {
-        result[i] = strdup(mod->inc[i].submodule->name);
+        result[i] = mod->inc[i].submodule->name;
     }
     result[i] = NULL;
 

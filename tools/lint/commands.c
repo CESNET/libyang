@@ -153,7 +153,8 @@ int
 cmd_print(const char *arg)
 {
     int c, i, argc, option_index, ret = 1;
-    char **argv = NULL, *ptr, *target_node = NULL, **names;
+    char **argv = NULL, *ptr, *target_node = NULL;
+    const char **names;
     const char *out_path = NULL;
     struct ly_module *model, *parent_model;
     LY_MOUTFORMAT format = LY_OUT_TREE;
@@ -231,7 +232,6 @@ cmd_print(const char *arg)
                 parent_model = ly_ctx_get_module(ctx, names[i], NULL);
                 model = (struct ly_module *)ly_ctx_get_submodule(parent_model, argv[optind], NULL);
             }
-            free(names[i]);
         }
         free(names);
     }
@@ -393,7 +393,7 @@ cleanup:
 int
 cmd_list(const char *UNUSED(arg))
 {
-    char **names, **sub_names;
+    const char **names, **sub_names;
     int i, j;
 
     printf("List of the loaded models:\n");
@@ -406,11 +406,8 @@ cmd_list(const char *UNUSED(arg))
         sub_names = ly_ctx_get_submodule_names(ctx, names[i]);
         for (j = 0; sub_names[j]; ++j) {
             printf("\t\t%s\n", sub_names[j]);
-            free(sub_names[j]);
         }
         free(sub_names);
-
-        free(names[i]);
     }
     free(names);
 
@@ -425,8 +422,8 @@ int
 cmd_feature(const char *arg)
 {
     int c, i, argc, option_index, ret = 1, task = -1;
-    char **argv = NULL, *ptr, **names, **enable_state;
-    const char *feat_name = NULL;
+    char **argv = NULL, *ptr, **enable_state;
+    const char *feat_name = NULL, **names;
     struct ly_module *model, *parent_model;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
@@ -501,7 +498,6 @@ cmd_feature(const char *arg)
                 parent_model = ly_ctx_get_module(ctx, names[i], NULL);
                 model = (struct ly_module *)ly_ctx_get_submodule(parent_model, argv[optind], NULL);
             }
-            free(names[i]);
         }
         free(names);
     }
@@ -521,7 +517,6 @@ cmd_feature(const char *arg)
         names = ly_get_features(model, &enable_state);
         for (i = 0; names[i]; ++i) {
             printf("\t%s %s\n", names[i], enable_state[i]);
-            free(names[i]);
             free(enable_state[i]);
         }
         free(names);

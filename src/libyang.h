@@ -104,6 +104,29 @@ struct ly_ctx *ly_ctx_new(const char *search_dir);
 void ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
 
 /**
+ * @brief Get the names of the loaded modules.
+ *
+ * @param[in] ctx Context with the modules.
+ * @return NULL-terminated array of the module names,
+ * NULL on error. The returned array must be freed by the caller, do not free
+ * names in the array. Also remember that the names will be freed with freeing
+ * the context (or a particular module).
+ */
+const char **ly_ctx_get_module_names(struct ly_ctx *ctx);
+
+/**
+ * @brief Get the names of the loaded submodules of the specified module.
+ *
+ * @param[in] ctx Context with the modules.
+ * @param[in] module_name Name of the parent module.
+ * @return NULL-terminated array of submodule names of the parent module,
+ * NULL on error. The returned array must be freed by the caller, do not free
+ * names in the array. Also remember that the names will be freed with freeing
+ * the context (or a particular module).
+ */
+const char **ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *module_name);
+
+/**
  * @brief Get pointer to the data model structure of the specified name.
  *
  * If the module is not yet loaded in the context, libyang tries to find it in
@@ -127,25 +150,6 @@ struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const 
  * @return Pointer to the data model structure.
  */
 struct ly_submodule *ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *revision);
-
-/**
- * @brief Get the names of the loaded modules.
- *
- * @param[in] ctx Context with the modules.
- * @return NULL-terminated array of the module names,
- * NULL on error. The result must be freed by the caller.
- */
-char **ly_ctx_get_module_names(struct ly_ctx *ctx);
-
-/**
- * @brief Get the names of the loaded submodules of a loaded module.
- *
- * @param[in] ctx Context with the modules.
- * @param[in] name Name of the parent module.
- * @return NULL-terminated array of submodule names of the parent module,
- * NULL on error. The result must be freed by the caller.
- */
-char **ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *name);
 
 /**
  * @brief Free all internal structures of the specified context.

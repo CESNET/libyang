@@ -2280,11 +2280,11 @@ ly_features_disable(struct ly_module *module, const char *name)
     return ly_features_change(module, name, 0);
 }
 
-API char **
+API const char **
 ly_get_features(struct ly_module *module, char ***enable_state)
 {
     int i, j;
-    char **result = NULL;
+    const char **result = NULL;
     unsigned int count;
 
     if (!module) {
@@ -2304,7 +2304,7 @@ ly_get_features(struct ly_module *module, char ***enable_state)
 
     /* module itself */
     for (i = 0; i < module->features_size; i++) {
-        result[count] = strdup(module->features[i].name);
+        result[count] = module->features[i].name;
         if (enable_state) {
             if (module->features[i].flags & LY_NODE_FENABLED) {
                 (*enable_state)[count] = strdup("on");
@@ -2318,7 +2318,7 @@ ly_get_features(struct ly_module *module, char ***enable_state)
     /* submodules */
     for (j = 0; j < module->inc_size; j++) {
         for (i = 0; i < module->inc[j].submodule->features_size; i++) {
-            result[count] = strdup(module->inc[j].submodule->features[i].name);
+            result[count] = module->inc[j].submodule->features[i].name;
             if (enable_state) {
                 if (module->inc[j].submodule->features[i].flags & LY_NODE_FENABLED) {
                     (*enable_state)[count] = strdup("on");

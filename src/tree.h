@@ -868,7 +868,7 @@ int ly_features_disable(struct ly_module *module, const char *name);
  * @return NULL-terminated array of all the defined features. If enable_state was specififed,
  * it includes NULL-terminated array of either "on" or "off" matching the features in the result.
  */
-char **ly_get_features(struct ly_module *module, char ***enable_state);
+const char **ly_get_features(struct ly_module *module, char ***enable_state);
 
 
 /******************************************** Data Tree *****************************************************/
