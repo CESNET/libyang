@@ -79,5 +79,14 @@ struct ly_ident *find_base_ident(struct ly_module *module, struct ly_ident *iden
 struct ly_ident *find_identityref(struct ly_ident *base, const char *name, const char *ns);
 struct ly_module *lys_read_import(struct ly_ctx *ctx, int fd, LY_MINFORMAT format);
 
+/**
+ * @brief Free (and unlink it from the context) the specified schema.
+ *
+ * It is dangerous to call this function on schemas already placed into the context's
+ * list of modules - there can be many references from other modules and data instances.
+ *
+ * @param[in] module Data model to free.
+ */
+void lys_free(struct ly_module *module);
 
 #endif /* LY_TREE_INTERNAL_H_ */

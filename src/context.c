@@ -31,6 +31,7 @@
 #include "common.h"
 #include "context.h"
 #include "dict.h"
+#include "tree_internal.h"
 
 API struct ly_ctx *
 ly_ctx_new(const char *search_dir)

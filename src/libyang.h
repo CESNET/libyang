@@ -204,15 +204,6 @@ struct ly_module *lys_parse(struct ly_ctx *ctx, const char *data, LY_MINFORMAT f
 struct ly_module *lys_read(struct ly_ctx *ctx, int fd, LY_MINFORMAT format);
 
 /**
- * @brief Free (and unlink it from the context) the specified schema.
- *
- * It is up to the caller that there is no instance data using the schema being freed.
- *
- * @param[in] module Data model to free.
- */
-void lys_free(struct ly_module *module);
-
-/**
  * @brief Parse (and validate according to appropriate schema from the given context) data.
  *
  * In case of LY_XML format, the data string is expected to contain XML data under the single

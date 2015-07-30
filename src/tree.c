@@ -2498,7 +2498,7 @@ lyd_parse(struct ly_ctx *ctx, const char *data, LY_DFORMAT format)
     return NULL;
 }
 
-API void
+void
 lyd_free(struct lyd_node *node)
 {
     struct lyd_node *next, *child;
