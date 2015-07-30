@@ -45,11 +45,8 @@
 #include <stdint.h>
 
 /**
- * @defgroup schematree Schema Tree
+ * @addtogroup schematree
  * @{
- *
- * Data structures and functions to manipulate and access schema tree.
- *
  */
 
 typedef enum {
@@ -831,10 +828,6 @@ struct ly_ident {
     struct ly_ident_der *der;        /**< list of pointers to the derived identities */
 };
 
-/* public libyang functions */
-struct ly_submodule *ly_submodule_read(struct ly_module *module, const char *data, LY_MINFORMAT format, int implement);
-struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LY_MINFORMAT format, int implement);
-
 /**
  * @brief Get list of all the defined features in the module and its submodules.
  *
@@ -887,11 +880,8 @@ int lys_features_state(struct ly_module *module, const char *feature);
 /**@} schematree */
 
 /**
- * @defgroup datatree Data Tree
+ * @addtogroup datatree
  * @{
- *
- * Data structures and functions to manipulate and access instance data tree.
- *
  */
 
 typedef enum lyd_attr_type {

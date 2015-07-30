@@ -58,6 +58,9 @@ void ly_type_free(struct ly_ctx *ctx, struct ly_type *type);
 void ly_deviation_free(struct ly_ctx *ctx, struct ly_deviation *dev);
 void ly_submodule_free(struct ly_submodule *submodule);
 
+struct ly_submodule *ly_submodule_read(struct ly_module *module, const char *data, LY_MINFORMAT format, int implement);
+struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LY_MINFORMAT format, int implement);
+
 /*
  * Add child model node at the end of the parent's child list.
  * If the child is connected somewhere (has a parent), it is completely

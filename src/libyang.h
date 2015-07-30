@@ -30,12 +30,14 @@
  * @page howto How To ...
  *
  * - @subpage howtocontext
+ * - @subpage howtoschemas
+ * - @subpage howtodata
  * - @subpage howtologger
  */
 
 /** @page howtocontext Context
  *
- * The \em context concept allows callers to work in environments with different sets of YANG schemas.
+ * The context concept allows callers to work in environments with different sets of YANG schemas.
  *
  * The first step in libyang is to create a new context using ly_ctx_new(). It returns a handler
  * used in the following work.
@@ -45,9 +47,58 @@
  * can be later changed via ly_ctx_set_searchdir() function. Before exploring the specified search
  * dir, libyang tries to get imported and included schemas from the current working directory first.
  *
+ * Schemas are added into the context using [parser functions](@ref parsers) - lys_parse() or lys_read().
+ * Note, that parser functions for schemas have \b lys_ prefix while instance data parser functions have
+ * \b lyd_ prefix.
+ *
  * Context can hold multiple revisons of the same schema.
  *
- * API for this group of functions is available in the [context module](@ref context).
+ * Context holds all modules and their submodules internally. The list of available module names is
+ * provided via ly_ctx_get_module_names() functions. Similarly, caller can get also a list of submodules
+ * names of a specific module using ly_ctx_get_submodule_names() function. The returned names can be
+ * subsequently used to get the (sub)module structures using ly_ctx_get_module() and ly_ctx_get_submodule().
+ *
+ * Modules held by a context cannot be removed one after one. The only way how to \em change modules in the
+ * context is to create a new context and remove the old one. To remove a context, there is ly_ctx_destroy()
+ * function.
+ *
+ * \note API for this group of functions is available in the [context module](@ref context).
+ *
+ */
+
+/**
+ * @page howtoschemas Schemas
+ *
+ * Schema is an internal libyang's representation of a YANG data model. Each schema is connected with
+ * its [context](@ref howtocontext) and loaded using [parser functions](@ref parsers). It means, that
+ * the schema cannot be created (nor changed) programatically. In libyang, schemas are used only to
+ * access data model definitions.
+ *
+ * \note There are many functions to access information from the schema trees. Details are available in
+ * the [Schema Tree module](@ref schematree).
+ *
+ * YANG Features Manipulation
+ * --------------------------
+ *
+ * The group of functions prefixed by \b lys_features_ are used to access and manipulate with the schema's
+ * features.
+ *
+ * The first two functions are used to access information about the features in the schema.
+ * lys_features_list() provides list of all features defined in the specific schema and its
+ * submodules. Optionally, it can also provides information about the state of all features.
+ * Alternatively, caller can use lys_features_state() function to get state of one specific
+ * feature.
+ *
+ * The remaining two functions, lys_features_enable() and lys_features_disable(), are used
+ * to enable and disable the specific feature. By default, when the module is loaded by libyang
+ * parser, all features are disabled.
+ *
+ * Note, that feature's state can affect some of the output formats (e.g. Tree format).
+ *
+ */
+
+/**
+ * @page howtodata Data Instances
  *
  */
 
@@ -63,7 +114,7 @@
  * code is recorded in extern ly_errno variable. Possible values are of type
  * ::LY_ERR.
  *
- * API for this group of functions is available in the [logger module](@ref logger).
+ * \note API for this group of functions is available in the [logger module](@ref logger).
  */
 
 /**
@@ -110,7 +161,7 @@ void ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
  * @return NULL-terminated array of the module names,
  * NULL on error. The returned array must be freed by the caller, do not free
  * names in the array. Also remember that the names will be freed with freeing
- * the context (or a particular module).
+ * the context.
  */
 const char **ly_ctx_get_module_names(struct ly_ctx *ctx);
 
@@ -122,7 +173,7 @@ const char **ly_ctx_get_module_names(struct ly_ctx *ctx);
  * @return NULL-terminated array of submodule names of the parent module,
  * NULL on error. The returned array must be freed by the caller, do not free
  * names in the array. Also remember that the names will be freed with freeing
- * the context (or a particular module).
+ * the context.
  */
 const char **ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *module_name);
 
@@ -184,6 +235,9 @@ void ly_ctx_destroy(struct ly_ctx *ctx);
  *   Alternative XML-based format to YANG. The details can be found in
  *   [RFC 6020](http://tools.ietf.org/html/rfc6020#section-11).
  *
+ * For data instances, the following formats are supported:
+ * - \todo TBD
+ *
  */
 
 /**
@@ -225,6 +279,23 @@ void lyd_free(struct lyd_node *node);
 
 /**@} parsers */
 
+/**
+ * @defgroup schematree Schema Tree
+ * @{
+ *
+ * Data structures and functions to manipulate and access schema tree.
+ *
+ * @}
+ */
+
+/**
+ * @defgroup datatree Data Tree
+ * @{
+ *
+ * Data structures and functions to manipulate and access instance data tree.
+ *
+ * @}
+ */
 
 /**
  * @defgroup printers Printers
@@ -254,6 +325,10 @@ void lyd_free(struct lyd_node *node);
  *   Detailed information about the specific node in the schema tree.
  *
  *   \todo describe target_node syntax
+ *
+ * For data instances, the following formats are supported:
+ * - \todo TBD
+ *
  */
 
 /**
