@@ -422,8 +422,9 @@ int
 cmd_feature(const char *arg)
 {
     int c, i, argc, option_index, ret = 1, task = -1;
-    char **argv = NULL, *ptr, **enable_state;
+    char **argv = NULL, *ptr;
     const char *feat_name = NULL, **names;
+    uint8_t *states;
     struct ly_module *model, *parent_model;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
@@ -514,23 +515,22 @@ cmd_feature(const char *arg)
     if (task == 0) {
         printf("%s features:\n", model->name);
 
-        names = ly_get_features(model, &enable_state);
+        names = lys_features_list(model, &states);
         for (i = 0; names[i]; ++i) {
-            printf("\t%s %s\n", names[i], enable_state[i]);
-            free(enable_state[i]);
+            printf("\t%s %s\n", names[i], states[i] ? "on" : "off");
         }
         free(names);
-        free(enable_state);
+        free(states);
         if (!i) {
             printf("\t(none)\n");
         }
     } else if (task == 1) {
-        if (ly_features_enable(model, feat_name)) {
+        if (lys_features_enable(model, feat_name)) {
             fprintf(stderr, "Feature \"%s\" not found.\n", feat_name);
             ret = 1;
         }
     } else if (task == 2) {
-        if (ly_features_disable(model, feat_name)) {
+        if (lys_features_disable(model, feat_name)) {
             fprintf(stderr, "Feature \"%s\" not found.\n", feat_name);
             ret = 1;
         }

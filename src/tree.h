@@ -45,11 +45,10 @@
 #include <stdint.h>
 
 /**
- * @defgroup tree Tree
+ * @defgroup schematree Schema Tree
  * @{
  *
- * Definitions of libyang data structures (for both the data models and
- * instance data trees) and functions to manipulate them.
+ * Data structures and functions to manipulate and access schema tree.
  *
  */
 
@@ -837,15 +836,30 @@ struct ly_submodule *ly_submodule_read(struct ly_module *module, const char *dat
 struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LY_MINFORMAT format, int implement);
 
 /**
+ * @brief Get list of all the defined features in the module and its submodules.
+ *
+ * @param[in] module Module to explore.
+ * @param[out] states Optional output parameter providing states of all features
+ * returned by function in the resulting array. Indexes in both arrays corresponds
+ * each other. Similarly to lys_feature_state(), possible values in the state array
+ * are 1 (enabled) and 0 (disabled). Caller is supposed to free the array when it
+ * is no more needed.
+ * @return NULL-terminated array of all the defined features. The returned array
+ * must be freed by the caller, do not free names in the array. Also remember
+ * that the names will be freed with freeing the context of the module.
+ */
+const char **lys_features_list(struct ly_module *module, uint8_t **states);
+
+/**
  * @brief Enable specified feature in the module
  *
  * By default, when the module is loaded by libyang parser, all features are disabled.
  *
  * @param[in] module Module where the feature will be enabled.
- * @param[in] name Name of the feature to enable. To enable all features at once, use asterisk character.
+ * @param[in] feature Name of the feature to enable. To enable all features at once, use asterisk character.
  * @return 0 on success, 1 when the feature is not defined in the specified module
  */
-int ly_features_enable(struct ly_module *module, const char *name);
+int lys_features_enable(struct ly_module *module, const char *feature);
 
 /**
  * @brief Disable specified feature in the module
@@ -853,25 +867,32 @@ int ly_features_enable(struct ly_module *module, const char *name);
  * By default, when the module is loaded by libyang parser, all features are disabled.
  *
  * @param[in] module Module where the feature will be disabled.
- * @param[in] name Name of the feature to disable. To disable all features at once, use asterisk character.
+ * @param[in] feature Name of the feature to disable. To disable all features at once, use asterisk character.
  * @return 0 on success, 1 when the feature is not defined in the specified module
  */
-int ly_features_disable(struct ly_module *module, const char *name);
+int lys_features_disable(struct ly_module *module, const char *feature);
 
 /**
- * @brief Get all the features of a module and its direct submodules
+ * @brief Get the current status of the specified feature in the module.
  *
- * Optionally, also the enable state can be retrieved.
- *
- * @param[in] module Module with the returned features.
- * @param[out] enable_state Array with the information about enabled state of every feature.
- * @return NULL-terminated array of all the defined features. If enable_state was specififed,
- * it includes NULL-terminated array of either "on" or "off" matching the features in the result.
+ * @param[in] module Module where the feature is defined.
+ * @param[in] feature Name of the feature to inspect.
+ * @return
+ * - 1 if feature is enabled,
+ * - 0 if feature is disabled,
+ * - -1 in case of error (e.g. feature is not defined)
  */
-const char **ly_get_features(struct ly_module *module, char ***enable_state);
+int lys_features_state(struct ly_module *module, const char *feature);
 
+/**@} schematree */
 
-/******************************************** Data Tree *****************************************************/
+/**
+ * @defgroup datatree Data Tree
+ * @{
+ *
+ * Data structures and functions to manipulate and access instance data tree.
+ *
+ */
 
 typedef enum lyd_attr_type {
     LYD_ATTR_STD = 1,
@@ -1030,6 +1051,6 @@ void lyd_node_siblings_free(struct lyd_node *node);
  */
 int lyd_islast(struct lyd_node *node);
 
-/**@} tree */
+/**@} datatree */
 
 #endif /* LY_TREE_H_ */

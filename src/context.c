@@ -126,6 +126,8 @@ ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *rev
         return NULL;
     }
 
+    /* TODO search also for submodules not directly available from the main module */
+
     /* search in modules included by the main module */
     if (module->type) {
         module = ((struct ly_submodule *)module)->belongsto;

@@ -2261,6 +2261,8 @@ ly_features_change(struct ly_module *module, const char *name, int op)
         }
     }
 
+    /* TODO submodules of submodules ... */
+
     if (all) {
         return EXIT_SUCCESS;
     } else {
@@ -2269,22 +2271,62 @@ ly_features_change(struct ly_module *module, const char *name, int op)
 }
 
 API int
-ly_features_enable(struct ly_module *module, const char *name)
+lys_features_enable(struct ly_module *module, const char *feature)
 {
-    return ly_features_change(module, name, 1);
+    return ly_features_change(module, feature, 1);
 }
 
 API int
-ly_features_disable(struct ly_module *module, const char *name)
+lys_features_disable(struct ly_module *module, const char *feature)
 {
-    return ly_features_change(module, name, 0);
+    return ly_features_change(module, feature, 0);
+}
+
+API int
+lys_features_state(struct ly_module *module, const char *feature)
+{
+    int i, j;
+
+    if (!module || !feature) {
+        return -1;
+    }
+
+    /* search for the specified feature */
+    /* module itself */
+    for (i = 0; i < module->features_size; i++) {
+        if (!strcmp(feature, module->features[i].name)) {
+            if (module->features[i].flags & LY_NODE_FENABLED) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+    }
+
+    /* submodules */
+    for (j = 0; j < module->inc_size; j++) {
+        for (i = 0; i < module->inc[j].submodule->features_size; i++) {
+            if (!strcmp(feature, module->inc[j].submodule->features[i].name)) {
+                if (module->inc[j].submodule->features[i].flags & LY_NODE_FENABLED) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+            }
+        }
+    }
+
+    /* TODO submodules of submodules ... */
+
+    /* feature definition not found */
+    return -1;
 }
 
 API const char **
-ly_get_features(struct ly_module *module, char ***enable_state)
+lys_features_list(struct ly_module *module, uint8_t **states)
 {
-    int i, j;
     const char **result = NULL;
+    int i, j;
     unsigned int count;
 
     if (!module) {
@@ -2295,45 +2337,42 @@ ly_get_features(struct ly_module *module, char ***enable_state)
     for (i = 0; i < module->inc_size; i++) {
         count += module->inc[i].submodule->features_size;
     }
-    result = malloc((count+1) * sizeof *result);
-    if (enable_state) {
-        *enable_state = malloc((count+1) * sizeof **enable_state);
+    result = malloc((count + 1) * sizeof *result);
+    if (states) {
+        *states = malloc((count + 1) * sizeof **states);
     }
-
     count = 0;
 
     /* module itself */
     for (i = 0; i < module->features_size; i++) {
         result[count] = module->features[i].name;
-        if (enable_state) {
+        if (states) {
             if (module->features[i].flags & LY_NODE_FENABLED) {
-                (*enable_state)[count] = strdup("on");
+                (*states)[count] = 1;
             } else {
-                (*enable_state)[count] = strdup("off");
+                (*states)[count] = 0;
             }
         }
-        ++count;
+        count++;
     }
 
     /* submodules */
     for (j = 0; j < module->inc_size; j++) {
         for (i = 0; i < module->inc[j].submodule->features_size; i++) {
             result[count] = module->inc[j].submodule->features[i].name;
-            if (enable_state) {
-                if (module->inc[j].submodule->features[i].flags & LY_NODE_FENABLED) {
-                    (*enable_state)[count] = strdup("on");
-                } else {
-                    (*enable_state)[count] = strdup("off");
-                }
+            if (module->inc[j].submodule->features[i].flags & LY_NODE_FENABLED) {
+                (*states)[count] = 1;
+            } else {
+                (*states)[count] = 0;
             }
-            ++count;
+            count++;
         }
     }
 
+    /* TODO submodules of submodules ... */
+
+    /* terminating NULL byte */
     result[count] = NULL;
-    if (enable_state) {
-        (*enable_state)[count] = NULL;
-    }
 
     return result;
 }
