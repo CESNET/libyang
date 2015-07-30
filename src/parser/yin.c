@@ -5422,13 +5422,14 @@ read_sub_module(struct ly_module *module, struct lyxml_elem *yin)
     /* resolve unresolved types (possible in typedef's with unions */
     while (unres) {
         node = (struct lyxml_elem *)((struct ly_type *)unres->obj)->der;
+        ((struct ly_type *)unres->obj)->der = NULL;
         if (fill_yin_type(module, NULL, node, (struct ly_type *)unres->obj, NULL)) {
+            lyxml_free_elem(ctx, node);
             goto error;
         }
 
         /* cleanup */
         lyxml_free_elem(ctx, node);
-        ((struct ly_type *)unres->obj)->der = NULL;
         unres_next = unres->next;
         free(unres);
         unres = unres_next;
