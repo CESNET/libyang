@@ -269,7 +269,7 @@ cmd_data(const char *arg)
     struct stat sb;
     char **argv = NULL, *ptr, *addr;
     const char *out_path = NULL;
-    struct lyd_node *data = NULL;
+    struct lyd_node *data = NULL, *next, *iter;
     LY_DFORMAT format = LY_DATA_UNKNOWN;
     FILE *output = stdout;
     static struct option long_options[] = {
@@ -385,7 +385,9 @@ cleanup:
         close(fd);
     }
 
-    lyd_node_siblings_free(data);
+    LY_TREE_FOR_SAFE(data, next, iter) {
+        lyd_free(iter);
+    }
 
     return ret;
 }

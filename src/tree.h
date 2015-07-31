@@ -1023,8 +1023,12 @@ struct leafref_instid {
     struct leafref_instid *next;
 };
 
-
-void lyd_node_siblings_free(struct lyd_node *node);
+/**
+ * @brief Free (and unlink) the specified data (sub)tree.
+ *
+ * @param[in] node Root of the (sub)tree to be freed.
+ */
+void lyd_free(struct lyd_node *node);
 
 /**
  * @brief Test if the given node is last. Note, that this can be simply checked

@@ -270,13 +270,6 @@ struct ly_module *lys_read(struct ly_ctx *ctx, int fd, LY_MINFORMAT format);
  */
 struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LY_DFORMAT format);
 
-/**
- * @brief Free (and unlink) the specified data (sub)tree.
- *
- * @param[in] node Root of the (sub)tree to be freed.
- */
-void lyd_free(struct lyd_node *node);
-
 /**@} parsers */
 
 /**

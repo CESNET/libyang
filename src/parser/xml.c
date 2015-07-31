@@ -862,7 +862,7 @@ API struct lyd_node *
 xml_read_data(struct ly_ctx *ctx, const char *data)
 {
     struct lyxml_elem *xml;
-    struct lyd_node *result;
+    struct lyd_node *result, *next, *iter;
     struct leafref_instid *unres = NULL;
 
     xml = lyxml_read(ctx, data, 0);
@@ -880,7 +880,10 @@ xml_read_data(struct ly_ctx *ctx, const char *data)
     /* check leafrefs and/or instids if any */
     if (check_unres(&unres)) {
         /* leafref & instid checking failed */
-        lyd_node_siblings_free(result);
+        LY_TREE_FOR_SAFE(result, next, iter) {
+            lyd_free(iter);
+        }
+        result = NULL;
     }
 
     /* free source XML tree */
