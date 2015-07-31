@@ -2552,7 +2552,7 @@ lyd_free(struct lyd_node *node)
             lyd_free(child);
         }
     } else if (node->schema->nodetype == LY_NODE_ANYXML) {
-        lyxml_free_elem(((struct lyd_node_anyxml *)node)->ctx, ((struct lyd_node_anyxml *)node)->value);
+        lyxml_free_elem(node->schema->module->ctx, ((struct lyd_node_anyxml *)node)->value);
     } else {
         /* free value */
         switch(((struct lyd_node_leaf *)node)->value_type) {
@@ -2585,7 +2585,7 @@ lyd_free(struct lyd_node *node)
 }
 
 API int
-lyd_islast(struct lyd_node *node)
+lyd_is_last(struct lyd_node *node)
 {
     struct lyd_node *n;
 

@@ -884,143 +884,218 @@ int lys_features_state(struct ly_module *module, const char *feature);
  * @{
  */
 
+/**
+ * @brief Data attribute's type to distinguish between a standard (XML) attribute and namespace definition
+ */
 typedef enum lyd_attr_type {
-    LYD_ATTR_STD = 1,
-    LYD_ATTR_NS = 2
+    LYD_ATTR_STD = 1,                /**< standard attribute, see ::lyd_attr structure */
+    LYD_ATTR_NS = 2                  /**< namespace definition, see ::lyd_ns structure */
 } LYD_ATTR_TYPE;
 
+/**
+ * @brief Namespace definition structure.
+ *
+ * Usually, the object is provided as ::lyd_attr structure. The structure is compatible with
+ * ::lyd_attr within the first two members (#type and #next) to allow passing through and type
+ * detection interchangeably.  When the type member is set to #LYD_ATTR_NS, the ::lyd_attr
+ * structure should be cast to ::lyd_ns to access the rest of members.
+ */
 struct lyd_ns {
-    LYD_ATTR_TYPE type;
-    struct lyd_attr *next;
-    struct lyd_node *parent;
-    const char *prefix;
-    const char *value;
+    LYD_ATTR_TYPE type;              /**< always #LYD_ATTR_NS, compatible with ::lyd_attr */
+    struct lyd_attr *next;           /**< pointer to the next attribute or namespace definition of an element,
+                                          compatible with ::lyd_attr */
+    struct lyd_node *parent;         /**< pointer to the element where the namespace definition is placed */
+    const char *prefix;              /**< namespace prefix value */
+    const char *value;               /**< namespace value */
 };
 
+/**
+ * @brief Attribute structure.
+ *
+ * The structure provides information about attributes of a data element and covers not only
+ * attributes but also namespace definitions. Therefore, the first two members (#type and #next)
+ * can be safely accessed to pass through the attributes list and type detection. When the #type
+ * member has #LYD_ATTR_STD value, the rest of the members can be used. Otherwise, the object
+ * should be cast to the appropriate structure according to #LYD_ATTR_TYPE enumeration.
+ */
 struct lyd_attr {
-    LYD_ATTR_TYPE type;
-    struct lyd_attr *next;
-    struct lyd_ns *ns;
-    const char *name;
-    const char *value;
+    LYD_ATTR_TYPE type;              /**< type of the attribute, to access the last three members, the value
+                                          must be ::LYD_ATTR_STD */
+    struct lyd_attr *next;           /**< pointer to the next attribute or namespace definition of an element */
+    struct lyd_ns *ns;               /**< pointer to the definition of the namespace of the attribute */
+    const char *name;                /**< attribute name */
+    const char *value;               /**< attribute value */
 };
 
+/**
+ * @brief node's value representation
+ */
+union lyd_value_u {
+    const char *binary;          /**< base64 encoded, NULL terminated string */
+    struct ly_type_bit **bit;    /**< array of pointers to the schema definition of the bit value that are set */
+    int8_t bool;                 /**< 0 as false, 1 as true */
+    int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
+    struct ly_type_enum *enm;    /**< pointer to the schema definition of the enumeration value */
+    struct ly_ident *ident;      /**< pointer to the schema definition of the identityref value */
+    struct lyd_node *instance;   /**< instance-identifier, pointer to the referenced data tree node */
+    int8_t int8;                 /**< 8-bit signed integer */
+    int16_t int16;               /**< 16-bit signed integer */
+    int32_t int32;               /**< 32-bit signed integer */
+    int64_t int64;               /**< 64-bit signed integer */
+    struct lyd_node *leafref;    /**< pointer to the referenced leaf/leaflist instance in data tree */
+    const char *string;          /**< string */
+    uint8_t uint8;               /**< 8-bit unsigned integer */
+    uint16_t uint16;             /**< 16-bit signed integer */
+    uint32_t uint32;             /**< 32-bit signed integer */
+    uint64_t uint64;             /**< 64-bit signed integer */
+};
+
+/**
+ * @brief Generic structure for a data node, directly applicable to the data nodes defined as #LY_NODE_CONTAINER
+ * and #LY_NODE_CHOICE.
+ *
+ * Completely fits to containers and choices and is compatible (can be used interchangeably except the #child member)
+ * with all other lyd_node_* structures. All data nodes are provides as ::lyd_node structure by default.
+ * According to the schema's ::ly_mnode#nodetype member, the specific object is supposed to be cast to
+ * ::lyd_node_list, ::lyd_node_leaf, ::lyd_node_leaflist or ::lyd_node_anyxml structures. This structure fits only to
+ * #LY_NODE_CONTAINER and #LY_NODE_CHOICE values.
+ *
+ * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
+ */
 struct lyd_node {
-    struct lyd_attr *attr;
-    struct lyd_node *next;
-    struct lyd_node *prev;
-    struct lyd_node *parent;
+    struct ly_mnode *schema;         /**< pointer to the schema definition of this node */
 
-    struct ly_mnode *schema;
-    void *callback;
-
-    struct lyd_node *child;
+    struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
+    struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lyd_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+    struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
+    struct lyd_node *child;          /**< pointer to the first child node \note Since other lyd_node_*
+                                          structures (except ::lyd_node_list) represent end nodes, this member
+                                          is replaced in those structures. Therefore, be careful with accessing
+                                          this member without having information about the node type from the schema's
+                                          ::ly_mnode#nodetype member. */
 };
 
+/**
+ * @brief Structure for data nodes defined as #LY_NODE_LIST.
+ *
+ * Extension for ::lyd_node structure - adds #lprev and #lnext members to simplify going through the instance nodes
+ * of a list. The first six members (#schema, #attr, #next, #prev, #parent and #child) are compatible with the
+ * ::lyd_node's members.
+ *
+ * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
+ */
 struct lyd_node_list {
-    struct lyd_attr *attr;
-    struct lyd_node *next;
-    struct lyd_node *prev;
-    struct lyd_node *parent;
+    struct ly_mnode *schema;         /**< pointer to the schema definition of this node which is ::ly_mnode_list
+                                          structure */
 
-    struct ly_mnode *schema;
-    void *callback;
-
-    struct lyd_node *child;
+    struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
+    struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lyd_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+    struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
+    struct lyd_node *child;          /**< pointer to the first child node */
 
     /* list's specific members */
-    struct lyd_node_list* lprev;
-    struct lyd_node_list* lnext;
+    struct lyd_node_list* lprev;     /**< pointer to the previous instance node of the same list,
+                                          NULL in case of the first instance of the list */
+    struct lyd_node_list* lnext;     /**< pointer to the next instance node of the same list,
+                                          NULL in case of the last instance of the list */
 };
 
+/**
+ * @brief Structure for data nodes defined as #LY_NODE_LEAF.
+ *
+ * Extension for ::lyd_node structure - replaces the ::lyd_node#child member by three new members (#value, #value_str
+ * and #value_type) to provide information about the leaf's value. The first five members (#schema, #attr, #next,
+ * #prev and #parent) are compatible with the ::lyd_node's members.
+ *
+ * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
+ */
 struct lyd_node_leaf {
-    struct lyd_attr *attr;
-    struct lyd_node *next;
-    struct lyd_node *prev;
-    struct lyd_node *parent;
+    struct ly_mnode *schema;         /**< pointer to the schema definition of this node which is ::ly_mnode_list
+                                          structure */
 
-    struct ly_mnode *schema;
-    void *callback;
+    struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
+    struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lyd_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+    struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
 
-    /* struct lyd_node *child; should be here, but is not */
+    /* struct lyd_node *child; should be here, but it is not! */
+
     /* leaf's specific members */
-    union {
-        const char *binary;          /**< base64 encoded, NULL terminated string */
-        struct ly_type_bit **bit;    /**< array of pointers to the schema definition of the bit value that are set */
-        int8_t bool;                 /**< 0 as false, 1 as true */
-        int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
-        struct ly_type_enum *enm;    /**< pointer to the schema definition of the enumeration value */
-        struct ly_ident *ident;      /**< pointer to the schema definition of the identityref value */
-        struct lyd_node *instance;   /**< instance-identifier, pointer to the referenced data tree node */
-        int8_t int8;
-        int16_t int16;
-        int32_t int32;
-        int64_t int64;
-        struct lyd_node *leafref;    /**< pointer to the referenced leaf/leaflist instance in data tree */
-        const char *string;
-        uint8_t uint8;
-        uint16_t uint16;
-        uint32_t uint32;
-        uint64_t uint64;
-    } value;
+    union lyd_value_u value;         /**< node's value representation */
     const char *value_str;           /**< string representation of value (for comparison, printing,...) */
-    LY_DATA_TYPE value_type;         /**< mainly for union types to avoid repeating of type detection */
+    LY_DATA_TYPE value_type;         /**< type of the value in the node, mainly for union to avoid repeating of type detection */
 };
 
+/**
+ * @brief Structure for data nodes defined as #LY_NODE_LEAF.
+ *
+ * Extension for ::lyd_node structure. It combines ::lyd_node_leaf and :lyd_node_list by replacing the
+ * ::lyd_node#child member by five new members (#value, #value_str, #value_type, #lprev and #lnext) to provide
+ * information about the value and other leaf-list's instances. The first five members (#schema, #attr, #next,
+ * #prev and #parent) are compatible with the ::lyd_node's members.
+ *
+ * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
+ */
 struct lyd_node_leaflist {
-    struct lyd_attr *attr;
-    struct lyd_node *next;
-    struct lyd_node *prev;
-    struct lyd_node *parent;
+    struct ly_mnode *schema;         /**< pointer to the schema definition of this node which is ::ly_mnode_list
+                                          structure */
 
-    struct ly_mnode *schema;
-    void *callback;
+    struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
+    struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lyd_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+    struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
 
     /* struct lyd_node *child; should be here, but is not */
+
     /* leaflist's specific members */
-    union {
-        const char *binary;          /**< base64 encoded, NULL terminated string */
-        struct ly_type_bit **bit;    /**< array of pointers to the schema definition of the bit value that are set */
-        int8_t bool;                 /**< 0 as false, 1 as true */
-        int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
-        struct ly_type_enum *enm;    /**< pointer to the schema definition of the enumeration value */
-        struct ly_ident *ident;      /**< pointer to the schema definition of the identityref value */
-        struct lyd_node *instance;   /**< instance-identifier, pointer to the referenced data tree node */
-        int8_t int8;
-        int16_t int16;
-        int32_t int32;
-        int64_t int64;
-        struct lyd_node *leafref;    /**< pointer to the referenced leaf/leaflist instance in data tree */
-        const char *string;
-        uint8_t uint8;
-        uint16_t uint16;
-        uint32_t uint32;
-        uint64_t uint64;
-    } value;
+    union lyd_value_u value;         /**< node's value representation */
     const char *value_str;           /**< string representation of value (for comparison, printing,...) */
-    LY_DATA_TYPE value_type;         /**< mainly for union types to avoid repeating of type detection */
-    struct lyd_node_leaflist* lprev;
-    struct lyd_node_leaflist* lnext;
+    LY_DATA_TYPE value_type;         /**< type of the value in the node, mainly for union to avoid repeating of type detection */
+
+    struct lyd_node_leaflist* lprev; /**< pointer to the previous instance node of the same leaf-list,
+                                          NULL in case of the first instance of the leaf-list */
+    struct lyd_node_leaflist* lnext; /**< pointer to the next instance node of the same leaf-list,
+                                          NULL in case of the last instance of the leaf-list */
 };
 
+/**
+ * @brief Structure for data nodes defined as #LY_NODE_ANYXML.
+ *
+ * Extension for ::lyd_node structure - replaces the ::lyd_node#child member by new #value member. The first five
+ * members (#schema, #attr, #next, #prev and #parent) are compatible with the ::lyd_node's members.
+ *
+ * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
+ */
 struct lyd_node_anyxml {
-    struct lyd_attr *attr;
-    struct lyd_node *next;
-    struct lyd_node *prev;
-    struct lyd_node *parent;
+    struct ly_mnode *schema;         /**< pointer to the schema definition of this node which is ::ly_mnode_list
+                                          structure */
 
-    struct ly_mnode *schema;
-    void *callback;
+    struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
+    struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lyd_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+    struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
 
     /* struct lyd_node *child; should be here, but is not */
-    struct lyxml_elem *value;       /**< anyxml name is the root element of value! */
-    struct ly_ctx *ctx;
-};
 
-struct leafref_instid {
-    uint8_t is_leafref;
-    struct lyd_node *dnode;
-    struct leafref_instid *next;
+    /* anyxml's specific members */
+    struct lyxml_elem *value;       /**< anyxml name is the root element of value! */
 };
 
 /**
@@ -1035,15 +1110,15 @@ void lyd_free(struct lyd_node *node);
  * from the node's next member, but this function differs from this how a
  * list's and leaf-list's instances are considered. If the node is followed
  * only by instances of lists that have their first instance before the given
- * node, this function will mark the node as last even the next is not empty.
+ * node (or the node itself), this function will mark the node as last even the node's ::lyd_node#next is not empty.
  * This is useful especially when you traverse all siblings and process the
- * list's or leaf-list's instance all in once.
+ * list's or leaf-list's instances in once.
  *
  * @param[in] node The data node to be checked.
  * @return 0 if the node has a successor, 1 if the node is last in sense as
  * described above.
  */
-int lyd_islast(struct lyd_node *node);
+int lyd_is_last(struct lyd_node *node);
 
 /**@} datatree */
 

@@ -744,7 +744,6 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             }
         }
     } else if (schema->nodetype == LY_NODE_ANYXML) {
-        ((struct lyd_node_anyxml *)result)->ctx = ctx;
         ((struct lyd_node_anyxml *)result)->value = xml;
         lyxml_unlink_elem(xml);
     }

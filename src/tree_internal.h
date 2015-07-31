@@ -43,6 +43,12 @@
 
 #include "tree.h"
 
+struct leafref_instid {
+    uint8_t is_leafref;
+    struct lyd_node *dnode;
+    struct leafref_instid *next;
+};
+
 /*
  * Unlink data model tree node from the tree.
  */
