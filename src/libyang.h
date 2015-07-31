@@ -241,6 +241,15 @@ void ly_ctx_destroy(struct ly_ctx *ctx);
  */
 
 /**
+ * @brief Get data of an internal model ietf-yang-library.
+ *
+ * @param[in] ctx Context with the modules.
+ * @return Root data node corresponding to the model,
+ * NULL on error.
+ */
+struct lyd_node *ly_ylib_get(struct ly_ctx *ctx);
+
+/**
  * @brief Load a data model into the specified context.
  *
  * LY_IN_YANG (YANG) format is not yet supported.

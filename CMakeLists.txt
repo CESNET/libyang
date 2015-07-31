@@ -32,6 +32,7 @@ set(libsrc
 	src/parser/xml.c
 	src/tree.c
 	src/printer.c
+	src/yang_library.c
 	src/printer/yang.c
 	src/printer/tree.c
 	src/printer/info.c
