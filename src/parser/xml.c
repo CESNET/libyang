@@ -30,6 +30,7 @@
 #include "../libyang.h"
 #include "../common.h"
 #include "../context.h"
+#include "../resolve.h"
 #include "../xml.h"
 #include "../tree_internal.h"
 
@@ -485,7 +486,7 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
             name = leaf->value_str;
         }
 
-        leaf->value.ident = find_identityref(node_type->info.ident.ref, name, ns->value);
+        leaf->value.ident = resolve_identityref(node_type->info.ident.ref, name, ns->value);
         if (!leaf->value.ident) {
             if (log) {
                 LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
@@ -510,6 +511,7 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
         new_unres->is_leafref = 0;
         new_unres->dnode = node;
         new_unres->next = *unres;
+        new_unres->line = LOGLINE(xml);
         *unres = new_unres;
         break;
 
@@ -529,6 +531,7 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
         new_unres->is_leafref = 1;
         new_unres->dnode = node;
         new_unres->next = *unres;
+        new_unres->line = LOGLINE(xml);
         *unres = new_unres;
         break;
 
@@ -798,7 +801,7 @@ check_unres(struct leafref_instid **list)
 
         /* resolve path and create a set of possible leafrefs (we need their values) */
         if ((*list)->is_leafref) {
-            if (resolve_path((*list)->dnode, sleaf->type.info.lref.path, &refset)) {
+            if (resolve_path_arg(*list, sleaf->type.info.lref.path, &refset)) {
                 LOGERR(LY_EVALID, "Leafref \"%s\" could not be resolved.", sleaf->type.info.lref.path);
                 goto error;
             }
@@ -820,10 +823,14 @@ check_unres(struct leafref_instid **list)
 
         /* instance-identifier */
         } else {
-            if ((resolve_instid((*list)->dnode, leaf->value_str, strlen(leaf->value_str), &refset) || refset->next)
-                    && (sleaf->type.info.inst.req > -1)) {
-                LOGERR(LY_EVALID, "Instance-identifier \"%s\" validation fail.", leaf->value_str);
-                goto error;
+            if (resolve_instid(*list, leaf->value_str, strlen(leaf->value_str), &refset)
+                    || (refset && refset->next)) {
+                if (sleaf->type.info.inst.req > -1) {
+                    LOGERR(LY_EVALID, "Instance-identifier \"%s\" validation fail.", leaf->value_str);
+                    goto error;
+                } else {
+                    LOGVRB("Instance-identifier \"%s\" validation fail.", leaf->value_str);
+                }
             }
 
             while (refset) {

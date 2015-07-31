@@ -151,7 +151,7 @@ struct ly_type {
 
         /* LY_TYPE_IDENT */
         struct {
-            struct ly_ident *ref;
+            struct ly_ident *ref;    /* pointer to the identity definition */
         } ident;
 
         /* LY_TYPE_INST */

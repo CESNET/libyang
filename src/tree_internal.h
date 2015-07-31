@@ -47,6 +47,34 @@ struct leafref_instid {
     uint8_t is_leafref;
     struct lyd_node *dnode;
     struct leafref_instid *next;
+#ifndef NDEBUG
+    int line;
+#endif
+};
+
+enum UNRES_ITEM {
+    UNRES_RESOLVED,      /* a resolved item */
+    UNRES_IDENT,         /* unresolved derived identities */
+    UNRES_TYPE_IDENTREF, /* check identityref value */
+    UNRES_TYPE_LEAFREF,  /* check leafref value */
+    UNRES_TYPE_DER,      /* unresolved derived type */
+    UNRES_AUGMENT,       /* unresolved augments */
+    UNRES_IFFEAT,        /* unresolved if-feature */
+    UNRES_USES,          /* unresolved uses grouping */
+    UNRES_TYPE_DFLT,     /* validate default type value */
+    UNRES_CHOICE_DFLT,   /* check choice default case */
+    UNRES_LIST_KEYS,     /* list keys */
+    UNRES_LIST_UNIQ,     /* list uniques */
+    UNRES_WHEN,          /* check when */
+    UNRES_MUST           /* check must */
+};
+
+struct unres_item {
+    void **item;
+    enum UNRES_ITEM *type;
+    void **str_mnode;
+    int *line;
+    uint32_t count;
 };
 
 /*
@@ -77,15 +105,6 @@ struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LY_M
  */
 int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child);
 
-struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, int recursive, unsigned int line);
-
-int resolve_uses(struct ly_mnode_uses *uses, unsigned int line);
-struct ly_mnode *resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *mod, LY_NODE_TYPE node_type);
-int resolve_path(struct lyd_node *data, const char *path, struct leafref_instid **ret);
-int resolve_instid(struct lyd_node *data, const char *path, int path_len, struct leafref_instid **ret);
-struct ly_mnode_leaf *find_leaf(struct ly_mnode *parent, const char *name, int len);
-struct ly_ident *find_base_ident(struct ly_module *module, struct ly_ident *ident, const char *basename, int line, const char* parent);
-struct ly_ident *find_identityref(struct ly_ident *base, const char *name, const char *ns);
 struct ly_module *lys_read_import(struct ly_ctx *ctx, int fd, LY_MINFORMAT format);
 
 /**
@@ -97,5 +116,8 @@ struct ly_module *lys_read_import(struct ly_ctx *ctx, int fd, LY_MINFORMAT forma
  * @param[in] module Data model to free.
  */
 void lys_free(struct ly_module *module);
+
+struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, int recursive,
+                              unsigned int line, struct unres_item *unres);
 
 #endif /* LY_TREE_INTERNAL_H_ */

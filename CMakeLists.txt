@@ -24,6 +24,8 @@ set(libsrc
 	src/context.c
 	src/log.c
 	src/dict.c
+	src/parse.c
+	src/resolve.c
 	src/xml.c
         src/parser.c
 	src/parser/yin.c

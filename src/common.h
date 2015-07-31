@@ -25,6 +25,7 @@
 #include <stdint.h>
 
 #include "libyang.h"
+#include "tree_internal.h"
 
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
@@ -145,6 +146,7 @@ char *strnchr(const char *s, int c, unsigned int len);
 
 const char *strnodetype(LY_NODE_TYPE type);
 
-int get_len_ran_interval(const char *str_restr, struct ly_type *type, int superior_restr, struct len_ran_intv **local_intv);
+int get_len_ran_interval(const char *str_restr, struct ly_type *type, int superior_restr,
+                         struct len_ran_intv **local_intv);
 
 #endif /* LY_COMMON_H_ */

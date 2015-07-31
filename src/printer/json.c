@@ -28,6 +28,7 @@
 #include "../common.h"
 #include "../xml.h"
 #include "../tree.h"
+#include "../resolve.h"
 #include "../tree_internal.h"
 
 #define INDENT ""
@@ -80,7 +81,7 @@ json_print_instid(FILE *f, struct lyd_node_leaf *leaf)
 {
     const char *ptr, *print_ptr;
     int cur_id_len, print_id_len;
-    struct leafref_instid *nodes;
+    struct leafref_instid *nodes, unres;
     struct ly_module *prev_module = NULL, *cur_module;
     struct ly_mnode *snode;
 
@@ -100,7 +101,9 @@ json_print_instid(FILE *f, struct lyd_node_leaf *leaf)
             cur_id_len = strlen(leaf->value_str);
         }
 
-        resolve_instid((struct lyd_node *)leaf, leaf->value_str, cur_id_len, &nodes);
+        memset(&unres, 0, sizeof unres);
+        unres.dnode = (struct lyd_node *)leaf;
+        resolve_instid(&unres, leaf->value_str, cur_id_len, &nodes);
         assert(nodes && !nodes->next);
 
         snode = (struct ly_mnode *)nodes->dnode->schema;
