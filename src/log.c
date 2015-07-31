@@ -81,11 +81,15 @@ const char *verrs[] = {
 /* VE_KEY_CONFIG */   "The \"config\" value of the \"%s\" key differs from its list config value.",
 /* VE_KEY_MISS */     "Leaf \"%s\" defined as key in a list not found.",
 /* VE_KEY_DUP */      "Key identifier \"%s\" is not unique.",
-/* VE_INREGEX */      "Regular expression \"%s\" is not valid (%s).\n",
+/* VE_INREGEX */      "Regular expression \"%s\" is not valid (%s).",
 
 /* DE_INELEM */       "Unknown element \"%s\".",
+/* DE_INELEMLEN */    "Unknown element \"%.*s\".",
 /* DE_INVAL */        "Invalid value \"%s\" in \"%s\" element.",
 /* DE_OORVAL */       "Value \"%s\" is out of range or length.",
+/* DE_INCHAR */       "Unexpected character '%c' (%.15s).",
+/* DE_NORESOLV */     "No matching resolvents for \"%s\".",
+/* DE_INPRED */       "Predicate resolution failed on \"%s\"."
 };
 
 void

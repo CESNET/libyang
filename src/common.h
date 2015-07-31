@@ -101,8 +101,12 @@ enum LY_VERR {
     VE_INREGEX,
 
     DE_INELEM,
+    DE_INELEMLEN,
     DE_INVAL,
-    DE_OORVAL
+    DE_OORVAL,
+    DE_INCHAR,
+    DE_NORESOLV,
+    DE_INPRED
 };
 void ly_vlog(enum LY_VERR code, unsigned int line, ...);
 
