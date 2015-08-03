@@ -418,7 +418,7 @@ ly_ylib_get(struct ly_ctx *ctx)
     if (!mod) {
         mod = lyp_search_file(ctx, NULL, "ietf-yang-library", NULL);
     }
-    if (!mod || !mod->data || strcmp(mod->data->name, "modules")) {
+    if (!mod || !mod->data || strcmp(mod->data->next->name, "modules")) {
         return NULL;
     }
 
