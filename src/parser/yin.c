@@ -3377,7 +3377,7 @@ read_yin_list(struct ly_module *module,
     struct ly_mnode *retval, *mnode;
     struct ly_mnode_list *list;
     struct lyxml_elem *sub, *next, root, uniq;
-    int r;
+    int r, key_line;
     int c_tpdf = 0, c_must = 0, c_uniq = 0, c_ftrs = 0;
     int f_ordr = 0, f_max = 0, f_min = 0;
     const char *key_str = NULL, *value;
@@ -3429,6 +3429,7 @@ read_yin_list(struct ly_module *module,
             /* count the number of keys */
             GETVAL(value, sub, "value");
             key_str = value;
+            key_line = LOGLINE(sub);
             while ((value = strpbrk(value, " \t\n"))) {
                 list->keys_size++;
                 while (isspace(*value)) {
@@ -3437,8 +3438,6 @@ read_yin_list(struct ly_module *module,
             }
             list->keys_size++;
             list->keys = calloc(list->keys_size, sizeof *list->keys);
-
-            add_unres_str(module, unres, list, UNRES_LIST_KEYS, key_str, LOGLINE(sub));
         } else if (!strcmp(sub->name, "unique")) {
             c_uniq++;
             lyxml_unlink_elem(sub);
@@ -3614,6 +3613,7 @@ read_yin_list(struct ly_module *module,
         /* config false list without a key */
         return retval;
     }
+    add_unres_str(module, unres, list, UNRES_LIST_KEYS, key_str, key_line);
 
     /* process unique statements */
     if (c_uniq) {
