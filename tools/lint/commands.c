@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <assert.h>
 #include <unistd.h>
 #include <getopt.h>
 
@@ -395,28 +396,65 @@ cleanup:
 int
 cmd_list(const char *UNUSED(arg))
 {
-    const char **names, **sub_names;
-    int i, j;
+    struct lyd_node *ylib, *module, *submodule, *node;
+    int has_modules = 0;
 
-    printf("List of the loaded models:\n");
+    ylib = ly_ylib_get(ctx);
 
-    names = ly_ctx_get_module_names(ctx);
-
-    for (i = 0; names[i]; ++i) {
-        printf("\t%s\n", names[i]);
-
-        sub_names = ly_ctx_get_submodule_names(ctx, names[i]);
-        for (j = 0; sub_names[j]; ++j) {
-            printf("\t\t%s\n", sub_names[j]);
+    LY_TREE_FOR(ylib->child, node) {
+        if (!strcmp(node->schema->name, "module-set-id")) {
+            printf("List of the loaded models (mod-set-id %s):\n", ((struct lyd_node_leaf *)node)->value_str);
+            break;
         }
-        free(sub_names);
     }
-    free(names);
+    assert(node);
 
-    if (i == 0) {
+    LY_TREE_FOR(ylib->child, module) {
+        if (!strcmp(module->schema->name, "module")) {
+            has_modules = 1;
+
+            /* module print */
+            LY_TREE_FOR(module->child, node) {
+                if (!strcmp(node->schema->name, "name")) {
+                    printf("\t%s", ((struct lyd_node_leaf *)node)->value_str);
+                } else if (!strcmp(node->schema->name, "revision")) {
+                    if (((struct lyd_node_leaf *)node)->value_str[0] == '\0') {
+                        printf("\n");
+                    } else {
+                        printf("@%s\n", ((struct lyd_node_leaf *)node)->value_str);
+                    }
+                }
+            }
+
+            /* submodules print */
+            LY_TREE_FOR(module->child, submodule) {
+                if (!strcmp(submodule->schema->name, "submodules")) {
+                    LY_TREE_FOR(submodule->child, submodule) {
+                        if (!strcmp(submodule->schema->name, "submodule")) {
+                            LY_TREE_FOR(submodule->child, node) {
+                                if (!strcmp(node->schema->name, "name")) {
+                                    printf("\t\t%s", ((struct lyd_node_leaf *)node)->value_str);
+                                } else if (!strcmp(node->schema->name, "revision")) {
+                                    if (((struct lyd_node_leaf *)node)->value_str[0] == '\0') {
+                                        printf("\n");
+                                    } else {
+                                        printf("@%s\n", ((struct lyd_node_leaf *)node)->value_str);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    if (!has_modules) {
         printf("\t(none)\n");
     }
 
+    lyd_free(ylib);
     return 0;
 }
 
