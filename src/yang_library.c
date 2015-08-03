@@ -102,7 +102,7 @@ ylib_append_llist(struct lyd_node_leaflist *sibling, struct lyd_node_leaflist *l
 }
 
 static struct lyd_node *
-ylib_name_space(struct ly_mnode *name_node, const char *name)
+ylib_name_space(struct ly_ctx *ctx, struct ly_mnode *name_node, const char *name)
 {
     struct lyd_node_leaf *dleaf;
 
@@ -110,7 +110,7 @@ ylib_name_space(struct ly_mnode *name_node, const char *name)
     dleaf->prev = (struct lyd_node *)dleaf;
     dleaf->schema = name_node;
 
-    dleaf->value_str = name;
+    dleaf->value_str = lydict_insert(ctx, name, 0);
     dleaf->value.string = dleaf->value_str;
     dleaf->value_type = LY_TYPE_STRING;
 
@@ -161,7 +161,7 @@ ylib_schema(struct ly_mnode *schema_node)
 }
 
 static struct lyd_node *
-ylib_feature(struct ly_mnode *feature_node, struct ly_module *mod)
+ylib_feature(struct ly_ctx *ctx, struct ly_mnode *feature_node, struct ly_module *mod)
 {
     int i, j;
     struct lyd_node_leaflist *dllist, *ret = NULL;
@@ -176,7 +176,7 @@ ylib_feature(struct ly_mnode *feature_node, struct ly_module *mod)
         dllist->lprev = dllist;
         dllist->schema = feature_node;
 
-        dllist->value_str = mod->features[i].name;
+        dllist->value_str = lydict_insert(ctx, mod->features[i].name, 0);
         dllist->value.string = dllist->value_str;
         dllist->value_type = LY_TYPE_STRING;
 
@@ -198,7 +198,7 @@ ylib_feature(struct ly_mnode *feature_node, struct ly_module *mod)
             dllist->prev = (struct lyd_node *)dllist;
             dllist->lprev = dllist;
 
-            dllist->value_str = mod->inc[i].submodule->features[j].name;
+            dllist->value_str = lydict_insert(ctx, mod->inc[i].submodule->features[j].name, 0);
             dllist->value.string = dllist->value_str;
             dllist->value_type = LY_TYPE_STRING;
 
@@ -242,7 +242,7 @@ ylib_deviation(struct ly_ctx *ctx, struct ly_mnode *deviation_node, struct ly_mo
                     dnode = NULL;
 
                     if (!strcmp(deviation_child->name, "name")) {
-                        dnode = ylib_name_space(deviation_child, modules[i]->name);
+                        dnode = ylib_name_space(ctx, deviation_child, modules[i]->name);
                     } else if (!strcmp(deviation_child->name, "revision")) {
                         dnode = ylib_revision(ctx, deviation_child, modules[i]->rev, modules[i]->rev_size);
                     }
@@ -281,7 +281,7 @@ ylib_deviation(struct ly_ctx *ctx, struct ly_mnode *deviation_node, struct ly_mo
                         dnode = NULL;
 
                         if (!strcmp(deviation_child->name, "name")) {
-                            dnode = ylib_name_space(deviation_child, modules[i]->inc[j].submodule->name);
+                            dnode = ylib_name_space(ctx, deviation_child, modules[i]->inc[j].submodule->name);
                         } else if (!strcmp(deviation_child->name, "revision")) {
                             dnode = ylib_revision(ctx, deviation_child, modules[i]->inc[j].submodule->rev,
                                                   modules[i]->inc[j].submodule->rev_size);
@@ -351,7 +351,7 @@ ylib_submodules(struct ly_ctx *ctx, struct ly_mnode *submodules_node, struct ly_
                     dnode = NULL;
 
                     if (!strcmp(submodule_child->name, "name")) {
-                        dnode = ylib_name_space(submodule_child, inc[i].submodule->name);
+                        dnode = ylib_name_space(ctx, submodule_child, inc[i].submodule->name);
                     } else if (!strcmp(submodule_child->name, "revision")) {
                         dnode = ylib_revision(ctx, submodule_child, inc[i].submodule->rev, inc[i].submodule->rev_size);
                     } else if (!strcmp(submodule_child->name, "schema")) {
@@ -439,15 +439,15 @@ ly_ylib_get(struct ly_ctx *ctx)
                     dnode = NULL;
 
                     if (!strcmp(module_child->name, "name")) {
-                        dnode = ylib_name_space(module_child, ctx->models.list[i]->name);
+                        dnode = ylib_name_space(ctx, module_child, ctx->models.list[i]->name);
                     } else if (!strcmp(module_child->name, "revision")) {
                         dnode = ylib_revision(ctx, module_child, ctx->models.list[i]->rev, ctx->models.list[i]->rev_size);
                     } else if (!strcmp(module_child->name, "schema")) {
                         dnode = ylib_schema(module_child);
                     } else if (!strcmp(module_child->name, "namespace")) {
-                        dnode = ylib_name_space(module_child, ctx->models.list[i]->ns);
+                        dnode = ylib_name_space(ctx, module_child, ctx->models.list[i]->ns);
                     } else if (!strcmp(module_child->name, "feature")) {
-                        dnode = ylib_feature(module_child, ctx->models.list[i]);
+                        dnode = ylib_feature(ctx, module_child, ctx->models.list[i]);
                     } else if (!strcmp(module_child->name, "deviation")) {
                         if (ctx->models.list[i]->deviated) {
                             dnode = ylib_deviation(ctx, module_child, ctx->models.list[i], ctx->models.list, ctx->models.used);
