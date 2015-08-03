@@ -424,13 +424,6 @@ ly_ylib_get(struct ly_ctx *ctx)
     while ((modules_child = ylib_get_next_sibling(mod->data->next->child, modules_child))) {
         if (!strcmp(modules_child->name, "module")) {
             for (i = 0; i < ctx->models.used; ++i) {
-                if (ctx->models.list[i]->type) {
-                    /* skip submodules, they will be a part
-                     * of their parent
-                     */
-                    continue;
-                }
-
                 dlist = calloc(1, sizeof *dlist);
                 dlist->prev = (struct lyd_node *)dlist;
                 dlist->lprev = dlist;
