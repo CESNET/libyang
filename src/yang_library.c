@@ -367,7 +367,10 @@ ly_ylib_get(struct ly_ctx *ctx)
     struct lyd_node *root, *dnode;
     struct lyd_node_list *dlist, *dmodule = NULL;
 
-    mod = ly_ctx_get_module(ctx, "ietf-yang-library", NULL, 1, 1);
+    mod = ly_ctx_get_module(ctx, "ietf-yang-library", NULL);
+    if (!mod) {
+        mod = lyp_search_file(ctx, NULL, "ietf-yang-library", NULL);
+    }
     if (!mod || !mod->data || strcmp(mod->data->name, "modules")) {
         return NULL;
     }
