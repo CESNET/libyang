@@ -1401,6 +1401,7 @@ resolve_unres_type_der(struct ly_module *mod, struct lys_type *type, const char 
 {
     type->der = resolve_superior_type(type_name, type->prefix, mod, (struct ly_mnode *)type->der);
     if (type->der) {
+        type->base = type->der->type.base;
         return 0;
     }
 
