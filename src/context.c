@@ -45,14 +45,13 @@ API struct ly_ctx *
 ly_ctx_new(const char *search_dir)
 {
     struct ly_ctx *ctx;
-    char *cwd, *cur_dir, *model_path;
+    char *cwd;
 
     ctx = calloc(1, sizeof *ctx);
     if (!ctx) {
         LOGMEM;
         return NULL;
     }
-    cur_dir = get_current_dir_name();
 
     /* dictionary */
     lydict_init(&ctx->dict);
@@ -68,7 +67,6 @@ ly_ctx_new(const char *search_dir)
                    search_dir, strerror(errno));
             free(cwd);
             ly_ctx_destroy(ctx);
-            free(cur_dir);
             return NULL;
         }
         ctx->models.search_path = get_current_dir_name();
@@ -81,36 +79,23 @@ ly_ctx_new(const char *search_dir)
     ctx->models.list[0] = lys_parse(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN);
     if (!ctx->models.list[0]) {
         ly_ctx_destroy(ctx);
-        free(cur_dir);
         return NULL;
     }
-    asprintf(&model_path, "%s/%s", cur_dir, IETF_INET_TYPES_PATH);
-    ctx->models.list[0]->uri = lydict_insert(ctx, model_path, 0);
-    free(model_path);
 
     /* load ietf-yang-types */
     ctx->models.list[1] = lys_parse(ctx, (char *)ietf_yang_types_2013_07_15_yin, LYS_IN_YIN);
     if (!ctx->models.list[1]) {
         ly_ctx_destroy(ctx);
-        free(cur_dir);
         return NULL;
     }
-    asprintf(&model_path, "%s/%s", cur_dir, IETF_YANG_TYPES_PATH);
-    ctx->models.list[1]->uri = lydict_insert(ctx, model_path, 0);
-    free(model_path);
 
     /* load ietf-yang-library */
     ctx->models.list[2] = lys_parse(ctx, (char *)ietf_yang_library_2015_07_03_yin, LYS_IN_YIN);
     if (!ctx->models.list[2]) {
         ly_ctx_destroy(ctx);
-        free(cur_dir);
         return NULL;
     }
-    asprintf(&model_path, "%s/%s", cur_dir, IETF_YANG_LIB_PATH);
-    ctx->models.list[2]->uri = lydict_insert(ctx, model_path, 0);
-    free(model_path);
 
-    free(cur_dir);
     return ctx;
 }
 
