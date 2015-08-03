@@ -30,6 +30,7 @@ struct ly_modules_list {
     int size;
     int used;
     struct ly_module **list;
+    uint16_t module_set_id;
 };
 
 struct ly_ctx {

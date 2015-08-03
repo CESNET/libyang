@@ -73,6 +73,8 @@ ly_ctx_new(const char *search_dir)
         chdir(cwd);
         free(cwd);
     }
+    ctx->models.module_set_id = 1;
+
     /* load ietf-inet-types */
     ctx->models.list[0] = lys_parse(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN);
     if (!ctx->models.list[0]) {

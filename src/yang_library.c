@@ -378,16 +378,17 @@ ylib_submodules(struct ly_ctx *ctx, struct ly_mnode *submodules_node, struct ly_
 }
 
 static struct lyd_node *
-ylib_modules_set_id(struct ly_ctx *ctx, struct ly_mnode *modules_set_id_node, struct ly_module **modules, int mod_count)
+ylib_module_set_id(struct ly_ctx *ctx, struct ly_mnode *modules_set_id_node)
 {
     struct lyd_node_leaf *dleaf;
+    char id[8];
 
     dleaf = calloc(1, sizeof *dleaf);
     dleaf->prev = (struct lyd_node *)dleaf;
     dleaf->schema = modules_set_id_node;
 
-    /* TODO */
-    dleaf->value_str = lydict_insert(ctx, NULL, 0);
+    sprintf(id, "%u", ctx->models.module_set_id);
+    dleaf->value_str = lydict_insert(ctx, id, 0);
     dleaf->value.string = dleaf->value_str;
     dleaf->value_type = LY_TYPE_STRING;
 
@@ -477,9 +478,10 @@ ly_ylib_get(struct ly_ctx *ctx)
     ylib_append_children(root, (struct lyd_node *)dmodule);
 
     dnode = NULL;
-    LY_TREE_FOR(mod->data->child, modules_child) {
-        if (!strcmp(modules_child->name, "modules-set-id")) {
-            dnode = ylib_modules_set_id(ctx, modules_child, ctx->models.list, ctx->models.used);
+    modules_child = NULL;
+    while ((modules_child = ylib_get_next_sibling(mod->data->next->child, modules_child))) {
+        if (!strcmp(modules_child->name, "module-set-id")) {
+            dnode = ylib_module_set_id(ctx, modules_child);
         }
     }
 
