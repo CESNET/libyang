@@ -144,16 +144,19 @@ ylib_revision(struct ly_ctx *ctx, struct ly_mnode *revision_node, struct ly_revi
 }
 
 static struct lyd_node *
-ylib_schema(struct ly_mnode *schema_node)
+ylib_schema(struct ly_ctx *ctx, struct ly_mnode *schema_node, const char *uri)
 {
     struct lyd_node_leaf *dleaf;
+
+    if (!uri) {
+        return NULL;
+    }
 
     dleaf = calloc(1, sizeof *dleaf);
     dleaf->prev = (struct lyd_node *)dleaf;
     dleaf->schema = schema_node;
 
-    /* TODO */
-    dleaf->value_str = NULL;
+    dleaf->value_str = lydict_insert(ctx, uri, 0);
     dleaf->value.string = dleaf->value_str;
     dleaf->value_type = LY_TYPE_STRING;
 
@@ -355,7 +358,7 @@ ylib_submodules(struct ly_ctx *ctx, struct ly_mnode *submodules_node, struct ly_
                     } else if (!strcmp(submodule_child->name, "revision")) {
                         dnode = ylib_revision(ctx, submodule_child, inc[i].submodule->rev, inc[i].submodule->rev_size);
                     } else if (!strcmp(submodule_child->name, "schema")) {
-                        dnode = ylib_schema(submodule_child);
+                        dnode = ylib_schema(ctx, submodule_child, inc[i].submodule->uri);
                     }
 
                     if (dnode) {
@@ -438,7 +441,7 @@ ly_ylib_get(struct ly_ctx *ctx)
                     } else if (!strcmp(module_child->name, "revision")) {
                         dnode = ylib_revision(ctx, module_child, ctx->models.list[i]->rev, ctx->models.list[i]->rev_size);
                     } else if (!strcmp(module_child->name, "schema")) {
-                        dnode = ylib_schema(module_child);
+                        dnode = ylib_schema(ctx, module_child, ctx->models.list[i]->uri);
                     } else if (!strcmp(module_child->name, "namespace")) {
                         dnode = ylib_name_space(ctx, module_child, ctx->models.list[i]->ns);
                     } else if (!strcmp(module_child->name, "feature")) {

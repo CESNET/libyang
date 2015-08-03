@@ -51,7 +51,7 @@ lyp_search_file(struct ly_ctx *ctx, struct ly_module *module, const char *name, 
 {
     size_t len, flen;
     int fd;
-    char *cwd;
+    char *cwd, *model_path;
     DIR *dir;
     struct dirent *file;
     LYS_INFORMAT format;
@@ -60,16 +60,18 @@ lyp_search_file(struct ly_ctx *ctx, struct ly_module *module, const char *name, 
 
     len = strlen(name);
     cwd = get_current_dir_name();
+
+opendir_search:
+    chdir(cwd);
     dir = opendir(cwd);
     LOGVRB("Searching for \"%s\" in %s.", name, cwd);
     if (!dir) {
-        LOGWRN("Unable to open local directory for searching referenced modules (%s)",
-               strerror(errno));
+        LOGWRN("Unable to open directory \"%s\" for searching referenced modules (%s)",
+               cwd, strerror(errno));
         /* try search directory */
         goto searchpath;
     }
 
-search:
     while ((file = readdir(dir))) {
         if (strncmp(name, file->d_name, len) ||
                 (file->d_name[len] != '.' && file->d_name[len] != '@')) {
@@ -107,6 +109,9 @@ search:
         close(fd);
 
         if (result) {
+            asprintf(&model_path, "%s/%s", cwd, file->d_name);
+            result->uri = lydict_insert(ctx, model_path, 0);
+            free(model_path);
             break;
         }
     }
@@ -117,18 +122,9 @@ searchpath:
     } else if (!result && localsearch) {
         /* search in local directory done, try context's search_path */
         closedir(dir);
-        dir = opendir(ctx->models.search_path);
-        if (!dir) {
-            LOGERR(LY_ESYS, "Unable to open data model search directory \"%s\" (%s).",
-                   ctx->models.search_path, strerror(errno));
-            goto cleanup;
-        }
-
-        chdir(ctx->models.search_path);
-        LOGVRB("Searching for \"%s\" in %s.", name, ctx->models.search_path);
-
+        cwd = strdup(ctx->models.search_path);
         localsearch = 0;
-        goto search;
+        goto opendir_search;
     }
 
 cleanup:

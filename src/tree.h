@@ -344,6 +344,7 @@ struct ly_module {
     uint8_t type:1;                  /**< structure type: 0 - module, used to distinguish structure from submodule */
     uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
+    const char *uri;                 /**< origin URI of the module */
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in rev array */
@@ -390,6 +391,7 @@ struct ly_submodule {
     uint8_t type:1;                  /**< structure type: 1 - submodule, used to distinguish structure from module */
     uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
+    const char *uri;                 /**< origin URI of the submodule */
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in rev array */
