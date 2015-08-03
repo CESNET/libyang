@@ -109,7 +109,7 @@ opendir_search:
         close(fd);
 
         if (result) {
-            asprintf(&model_path, "%s/%s", cwd, file->d_name);
+            asprintf(&model_path, "file://%s/%s", cwd, file->d_name);
             result->uri = lydict_insert(ctx, model_path, 0);
             free(model_path);
             break;
