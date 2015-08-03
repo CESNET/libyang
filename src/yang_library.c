@@ -5,6 +5,7 @@
 #include "libyang.h"
 #include "common.h"
 #include "context.h"
+#include "parser.h"
 
 static void
 ylib_append_children(struct lyd_node *parent, struct lyd_node *child)
