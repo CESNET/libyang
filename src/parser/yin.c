@@ -5001,7 +5001,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unre
     }
     ctx->models.list[i] = module;
     ctx->models.used++;
-    ctx->models.model_set_id++;
+    ctx->models.module_set_id++;
 
     /* cleanup */
     lyxml_free_elem(ctx, yin);
