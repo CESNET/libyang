@@ -7,6 +7,37 @@
 #include "context.h"
 #include "parser.h"
 
+static struct ly_mnode *
+ylib_get_next_sibling(struct ly_mnode *siblings, struct ly_mnode *prev)
+{
+    struct ly_mnode *sibling, *mnode;
+    int found = 0;
+
+    LY_TREE_FOR(siblings, sibling) {
+        if (sibling->nodetype == LY_NODE_GROUPING) {
+            continue;
+        }
+
+        if (sibling->nodetype == LY_NODE_USES) {
+            mnode = ylib_get_next_sibling(sibling->child, (found ? NULL : prev));
+            if (mnode) {
+                return mnode;
+            }
+            continue;
+        }
+
+        if (found || !prev) {
+            return sibling;
+        }
+
+        if (prev == sibling) {
+            found = 1;
+        }
+    }
+
+    return NULL;
+}
+
 static void
 ylib_append_children(struct lyd_node *parent, struct lyd_node *child)
 {
@@ -206,7 +237,8 @@ ylib_deviation(struct ly_ctx *ctx, struct ly_mnode *deviation_node, struct ly_mo
                 dlist->lprev = dlist;
                 dlist->schema = deviation_node;
 
-                LY_TREE_FOR(deviation_node->child, deviation_child) {
+                deviation_child = NULL;
+                while ((deviation_child = ylib_get_next_sibling(deviation_node->child, deviation_child))) {
                     dnode = NULL;
 
                     if (!strcmp(deviation_child->name, "name")) {
@@ -244,7 +276,8 @@ ylib_deviation(struct ly_ctx *ctx, struct ly_mnode *deviation_node, struct ly_mo
                     dlist->lprev = dlist;
                     dlist->schema = deviation_node;
 
-                    LY_TREE_FOR(deviation_node->child, deviation_child) {
+                    deviation_child = NULL;
+                    while ((deviation_child = ylib_get_next_sibling(deviation_node->child, deviation_child))) {
                         dnode = NULL;
 
                         if (!strcmp(deviation_child->name, "name")) {
@@ -304,7 +337,8 @@ ylib_submodules(struct ly_ctx *ctx, struct ly_mnode *submodules_node, struct ly_
     ret->prev = ret;
     ret->schema = submodules_node;
 
-    LY_TREE_FOR(submodules_node->child, submodule_node) {
+    submodule_node = NULL;
+    while ((submodule_node = ylib_get_next_sibling(submodules_node->child, submodule_node))) {
         if (!strcmp(submodule_node->name, "submodule")) {
             for (i = 0; i < inc_size; ++i) {
                 dlist = calloc(1, sizeof *dlist);
@@ -312,7 +346,8 @@ ylib_submodules(struct ly_ctx *ctx, struct ly_mnode *submodules_node, struct ly_
                 dlist->lprev = dlist;
                 dlist->schema = submodule_node;
 
-                LY_TREE_FOR(submodule_node->child, submodule_child) {
+                submodule_child = NULL;
+                while ((submodule_child = ylib_get_next_sibling(submodule_node->child, submodule_child))) {
                     dnode = NULL;
 
                     if (!strcmp(submodule_child->name, "name")) {
@@ -384,7 +419,8 @@ ly_ylib_get(struct ly_ctx *ctx)
     root->prev = root;
     root->schema = mod->data;
 
-    LY_TREE_FOR(mod->data->child, modules_child) {
+    modules_child = NULL;
+    while ((modules_child = ylib_get_next_sibling(mod->data->next->child, modules_child))) {
         if (!strcmp(modules_child->name, "module")) {
             for (i = 0; i < ctx->models.used; ++i) {
                 if (ctx->models.list[i]->type) {
@@ -397,7 +433,8 @@ ly_ylib_get(struct ly_ctx *ctx)
                 dlist = calloc(1, sizeof *dlist);
                 dlist->schema = modules_child;
 
-                LY_TREE_FOR(modules_child, module_child) {
+                module_child = NULL;
+                while ((module_child = ylib_get_next_sibling(modules_child->child, module_child))) {
                     dnode = NULL;
 
                     if (!strcmp(module_child->name, "name")) {
@@ -451,4 +488,3 @@ ly_ylib_get(struct ly_ctx *ctx)
 
     return root;
 }
-
