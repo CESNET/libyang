@@ -33,6 +33,14 @@
 #include "dict.h"
 #include "tree_internal.h"
 
+#define IETF_YANG_TYPES_PATH "../models/ietf-yang-types@2013-07-15.h"
+#define IETF_INET_TYPES_PATH "../models/ietf-inet-types@2013-07-15.h"
+#define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2015-07-03.h"
+
+#include IETF_YANG_TYPES_PATH
+#include IETF_INET_TYPES_PATH
+#include IETF_YANG_LIB_PATH
+
 API struct ly_ctx *
 ly_ctx_new(const char *search_dir)
 {
@@ -64,6 +72,26 @@ ly_ctx_new(const char *search_dir)
         ctx->models.search_path = get_current_dir_name();
         chdir(cwd);
         free(cwd);
+    }
+    /* load ietf-inet-types */
+    ctx->models.list[0] = lys_parse(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN);
+    if (!ctx->models.list[0]) {
+        ly_ctx_destroy(ctx);
+        return NULL;
+    }
+
+    /* load ietf-yang-types */
+    ctx->models.list[1] = lys_parse(ctx, (char *)ietf_yang_types_2013_07_15_yin, LYS_IN_YIN);
+    if (!ctx->models.list[1]) {
+        ly_ctx_destroy(ctx);
+        return NULL;
+    }
+
+    /* load ietf-yang-library */
+    ctx->models.list[2] = lys_parse(ctx, (char *)ietf_yang_library_2015_07_03_yin, LYS_IN_YIN);
+    if (!ctx->models.list[2]) {
+        ly_ctx_destroy(ctx);
+        return NULL;
     }
 
     return ctx;
