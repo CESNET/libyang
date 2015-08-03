@@ -178,7 +178,7 @@ ylib_feature(struct ly_ctx *ctx, struct ly_mnode *feature_node, struct ly_module
 
     /* module features */
     for (i = 0; i < mod->features_size; ++i) {
-        if (!(mod->features[i].flags & LY_NODE_FENABLED)) {
+        if (!(mod->features[i].flags & LYS_FENABLED)) {
             continue;
         }
         dllist = calloc(1, sizeof *dllist);
@@ -200,7 +200,7 @@ ylib_feature(struct ly_ctx *ctx, struct ly_mnode *feature_node, struct ly_module
     /* submodule features */
     for (i = 0; i < mod->inc_size; ++i) {
         for (j = 0; j < mod->inc[i].submodule->features_size; ++j) {
-            if (!(mod->inc[i].submodule->features[j].flags & LY_NODE_FENABLED)) {
+            if (!(mod->inc[i].submodule->features[j].flags & LYS_FENABLED)) {
                 continue;
             }
             dllist = calloc(1, sizeof *dllist);

@@ -12,11 +12,11 @@
 #include "dict.h"
 #include "tree_internal.h"
 
-struct ly_tpdf *
+struct lys_tpdf *
 resolve_superior_type(const char *name, const char *prefix, struct ly_module *module, struct ly_mnode *parent)
 {
     int i, j, found = 0;
-    struct ly_tpdf *tpdf;
+    struct lys_tpdf *tpdf;
     int tpdf_size;
 
     if (!prefix) {
@@ -115,7 +115,7 @@ resolve_superior_type(const char *name, const char *prefix, struct ly_module *mo
 }
 
 static int
-check_default(struct ly_type *type, const char *value)
+check_default(struct lys_type *type, const char *value)
 {
     /* TODO - RFC 6020, sec. 7.3.4 */
     (void)type;
@@ -163,7 +163,7 @@ check_key(struct ly_mnode_leaf *key, uint8_t flags, struct ly_mnode_leaf **list,
     }
 
     /* config attribute is the same as of the list */
-    if ((flags & LY_NODE_CONFIG_MASK) != (key->flags & LY_NODE_CONFIG_MASK)) {
+    if ((flags & LYS_CONFIG_MASK) != (key->flags & LYS_CONFIG_MASK)) {
         LOGVAL(VE_KEY_CONFIG, line, key->name);
         return EXIT_FAILURE;
     }
@@ -1042,7 +1042,7 @@ static void
 inherit_config_flag(struct ly_mnode *mnode)
 {
     LY_TREE_FOR(mnode, mnode) {
-        mnode->flags |= mnode->parent->flags & LY_NODE_CONFIG_MASK;
+        mnode->flags |= mnode->parent->flags & LYS_CONFIG_MASK;
         inherit_config_flag(mnode->child);
     }
 }
@@ -1069,7 +1069,7 @@ resolve_augment(struct ly_augment *aug, struct ly_mnode *parent, struct ly_modul
     /* inherit config information from parent, augment does not have
      * config property, but we need to keep the information for subelements
      */
-    aug->flags |= aug->target->flags & LY_NODE_CONFIG_MASK;
+    aug->flags |= aug->target->flags & LYS_CONFIG_MASK;
 
     LY_TREE_FOR(aug->child, sub) {
         sub->parent = (struct ly_mnode *)aug;
@@ -1088,7 +1088,7 @@ resolve_uses(struct ly_mnode_uses *uses, unsigned int line, struct unres_item *u
     struct ly_ctx *ctx;
     struct ly_mnode *mnode = NULL, *mnode_aux;
     struct ly_refine *rfn;
-    struct ly_restr *newmust;
+    struct lys_restr *newmust;
     int i, j;
     uint8_t size;
 
@@ -1133,9 +1133,9 @@ resolve_uses(struct ly_mnode_uses *uses, unsigned int line, struct unres_item *u
         }
 
         /* config on any nodetype */
-        if (rfn->flags & LY_NODE_CONFIG_MASK) {
-            mnode->flags &= ~LY_NODE_CONFIG_MASK;
-            mnode->flags |= (rfn->flags & LY_NODE_CONFIG_MASK);
+        if (rfn->flags & LYS_CONFIG_MASK) {
+            mnode->flags &= ~LYS_CONFIG_MASK;
+            mnode->flags |= (rfn->flags & LYS_CONFIG_MASK);
         }
 
         /* default value ... */
@@ -1155,13 +1155,13 @@ resolve_uses(struct ly_mnode_uses *uses, unsigned int line, struct unres_item *u
         }
 
         /* mandatory on leaf, anyxml or choice */
-        if (rfn->flags & LY_NODE_MAND_MASK) {
+        if (rfn->flags & LYS_MAND_MASK) {
             if (mnode->nodetype & (LY_NODE_LEAF | LY_NODE_ANYXML | LY_NODE_CHOICE)) {
                 /* remove current value */
-                mnode->flags &= ~LY_NODE_MAND_MASK;
+                mnode->flags &= ~LYS_MAND_MASK;
 
                 /* set new value */
-                mnode->flags |= (rfn->flags & LY_NODE_MAND_MASK);
+                mnode->flags |= (rfn->flags & LYS_MAND_MASK);
             }
         }
 
@@ -1376,7 +1376,7 @@ resolve_unres_ident(struct ly_module *mod, struct ly_ident *ident, const char *b
 }
 
 static int
-resolve_unres_type_identref(struct ly_module *mod, struct ly_type *type, const char *base_name, int line)
+resolve_unres_type_identref(struct ly_module *mod, struct lys_type *type, const char *base_name, int line)
 {
     type->info.ident.ref = resolve_base_ident(mod, NULL, base_name, line, "type");
     if (type->info.ident.ref) {
@@ -1387,7 +1387,7 @@ resolve_unres_type_identref(struct ly_module *mod, struct ly_type *type, const c
 }
 
 static int
-resolve_unres_type_leafref(struct ly_module *mod, struct ly_type *type, struct ly_mnode *mnode, int line)
+resolve_unres_type_leafref(struct ly_module *mod, struct lys_type *type, struct ly_mnode *mnode, int line)
 {
     if (resolve_schema_nodeid(type->info.lref.path, mnode, mod, LY_NODE_LEAF)) {
         return 0;
@@ -1397,7 +1397,7 @@ resolve_unres_type_leafref(struct ly_module *mod, struct ly_type *type, struct l
 }
 
 static int
-resolve_unres_type_der(struct ly_module *mod, struct ly_type *type, const char *type_name, int line)
+resolve_unres_type_der(struct ly_module *mod, struct lys_type *type, const char *type_name, int line)
 {
     type->der = resolve_superior_type(type_name, type->prefix, mod, (struct ly_mnode *)type->der);
     if (type->der) {
@@ -1447,7 +1447,7 @@ resolve_unres_uses(struct ly_mnode_uses *uses, int line, struct unres_item *unre
 }
 
 static int
-resolve_unres_type_dflt(struct ly_type *type, const char *dflt, int line)
+resolve_unres_type_dflt(struct lys_type *type, const char *dflt, int line)
 {
     return check_default(type, dflt);
 }
@@ -1511,7 +1511,7 @@ resolve_unres_when(struct ly_when *UNUSED(when), struct ly_mnode *UNUSED(start),
 }
 
 static int
-resolve_unres_must(struct ly_restr *UNUSED(must), struct ly_mnode *UNUSED(start), int UNUSED(line))
+resolve_unres_must(struct lys_restr *UNUSED(must), struct ly_mnode *UNUSED(start), int UNUSED(line))
 {
     /* TODO */
     return 0;

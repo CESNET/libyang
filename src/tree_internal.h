@@ -43,6 +43,15 @@
 
 #include "tree.h"
 
+/**
+ * @brief Internal list of built-in types
+ */
+struct ly_types {
+    LY_DATA_TYPE type;
+    struct lys_tpdf *def;
+};
+extern struct ly_types ly_types[LY_DATA_TYPE_COUNT];
+
 struct leafref_instid {
     uint8_t is_leafref;
     struct lyd_node *dnode;
@@ -87,8 +96,8 @@ void ly_mnode_unlink(struct ly_mnode *node);
  */
 void ly_mnode_free(struct ly_mnode *node);
 
-void ly_restr_free(struct ly_ctx *ctx, struct ly_restr *restr);
-void ly_type_free(struct ly_ctx *ctx, struct ly_type *type);
+void ly_restr_free(struct ly_ctx *ctx, struct lys_restr *restr);
+void ly_type_free(struct ly_ctx *ctx, struct lys_type *type);
 void ly_deviation_free(struct ly_ctx *ctx, struct ly_deviation *dev);
 void ly_submodule_free(struct ly_submodule *submodule);
 

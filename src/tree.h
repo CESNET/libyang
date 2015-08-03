@@ -73,134 +73,149 @@ typedef enum {
 #define LYS_YANG 1       /**< YANG schema format, used for #LYS_INFORMAT and #LYS_OUTFORMAT */
 #define LY_YIN 2         /**< YIN schema format, used for #LYS_INFORMAT and #LYS_OUTFORMAT */
 
+/**
+ * @brief YANG built-in types
+ */
 typedef enum {
     LY_TYPE_DER,         /**< Derived type */
-    LY_TYPE_BINARY,      /**< Any binary data */
-    LY_TYPE_BITS,        /**< A set of bits or flags */
-    LY_TYPE_BOOL,        /**< "true" or "false" */
-    LY_TYPE_DEC64,       /**< 64-bit signed decimal number */
-    LY_TYPE_EMPTY,       /**< A leaf that does not have any value */
-    LY_TYPE_ENUM,        /**< Enumerated strings */
-    LY_TYPE_IDENT,       /**< A reference to an abstract identity */
-    LY_TYPE_INST,        /**< References a data tree node */
-    LY_TYPE_LEAFREF,     /**< A reference to a leaf instance */
-    LY_TYPE_STRING,      /**< Human-readable string */
-    LY_TYPE_UNION,       /**< Choice of member types */
-    LY_TYPE_INT8,        /**< 8-bit signed integer */
-    LY_TYPE_INT16,       /**< 16-bit signed integer */
-    LY_TYPE_INT32,       /**< 32-bit signed integer */
-    LY_TYPE_INT64,       /**< 64-bit signed integer */
-    LY_TYPE_UINT8,       /**< 8-bit unsigned integer */
-    LY_TYPE_UINT16,      /**< 16-bit unsigned integer */
-    LY_TYPE_UINT32,      /**< 32-bit unsigned integer */
-    LY_TYPE_UINT64,      /**< 64-bit unsigned integer */
+    LY_TYPE_BINARY,      /**< Any binary data ([RFC 6020 sec 9.8](http://tools.ietf.org/html/rfc6020#section-9.8)) */
+    LY_TYPE_BITS,        /**< A set of bits or flags ([RFC 6020 sec 9.7](http://tools.ietf.org/html/rfc6020#section-9.7)) */
+    LY_TYPE_BOOL,        /**< "true" or "false" ([RFC 6020 sec 9.5](http://tools.ietf.org/html/rfc6020#section-9.5)) */
+    LY_TYPE_DEC64,       /**< 64-bit signed decimal number ([RFC 6020 sec 9.3](http://tools.ietf.org/html/rfc6020#section-9.3))*/
+    LY_TYPE_EMPTY,       /**< A leaf that does not have any value ([RFC 6020 sec 9.11](http://tools.ietf.org/html/rfc6020#section-9.11)) */
+    LY_TYPE_ENUM,        /**< Enumerated strings ([RFC 6020 sec 9.6](http://tools.ietf.org/html/rfc6020#section-9.6)) */
+    LY_TYPE_IDENT,       /**< A reference to an abstract identity ([RFC 6020 sec 9.10](http://tools.ietf.org/html/rfc6020#section-9.10)) */
+    LY_TYPE_INST,        /**< References a data tree node ([RFC 6020 sec 9.13](http://tools.ietf.org/html/rfc6020#section-9.13)) */
+    LY_TYPE_LEAFREF,     /**< A reference to a leaf instance ([RFC 6020 sec 9.9](http://tools.ietf.org/html/rfc6020#section-9.9))*/
+    LY_TYPE_STRING,      /**< Human-readable string ([RFC 6020 sec 9.4](http://tools.ietf.org/html/rfc6020#section-9.4)) */
+    LY_TYPE_UNION,       /**< Choice of member types ([RFC 6020 sec 9.12](http://tools.ietf.org/html/rfc6020#section-9.12)) */
+    LY_TYPE_INT8,        /**< 8-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+    LY_TYPE_INT16,       /**< 16-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+    LY_TYPE_INT32,       /**< 32-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+    LY_TYPE_INT64,       /**< 64-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+    LY_TYPE_UINT8,       /**< 8-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+    LY_TYPE_UINT16,      /**< 16-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+    LY_TYPE_UINT32,      /**< 32-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+    LY_TYPE_UINT64,      /**< 64-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
 } LY_DATA_TYPE;
-#define LY_DATA_TYPE_COUNT 20
+#define LY_DATA_TYPE_COUNT 20        /** number of #LY_DATA_TYPE built-in types */
 
-struct ly_types {
-    LY_DATA_TYPE type;
-    struct ly_tpdf *def;
-};
-extern struct ly_types ly_types[LY_DATA_TYPE_COUNT];
-
-struct ly_restr {
-    const char *expr;             /**< The restriction expression / value */
-    const char *dsc;              /**< description */
-    const char *ref;              /**< reference */
-    const char *eapptag;          /**< error-app-tag value */
-    const char *emsg;             /**< error-message */
+/**
+ * @brief YANG restriction (must, length, etc.) structure providing information from the schema
+ */
+struct lys_restr {
+    const char* expr;                /**< The restriction expression / value */
+    const char* dsc;                 /**< description */
+    const char* ref;                 /**< reference */
+    const char* eapptag;             /**< error-app-tag value */
+    const char* emsg;                /**< error-message */
 };
 
-struct ly_type {
-    const char *prefix;           /**< prefix for the type referenced in der pointer*/
-    LY_DATA_TYPE base;            /**< base type */
-    struct ly_tpdf *der;          /**< pointer to the superior type. If NULL,
-	                                   structure describes one of the built-in type */
+/**
+ * @brief YANG type structure providing information from the schema
+ */
+struct lys_type {
+    const char* prefix;              /**< prefix for the type referenced in der pointer*/
+    LY_DATA_TYPE base;               /**< base type */
+    struct lys_tpdf* der;             /**< pointer to the superior typedef. If NULL,
+	                                       structure provides information about one of the built-in types */
 
     union {
         /* LY_TYPE_BINARY */
         struct {
-            struct ly_restr *length;
-        } binary;
+            struct lys_restr* length;/**< length restriction (optional), see
+                                          [RFC 6020 sec. 9.4.4](http://tools.ietf.org/html/rfc6020#section-9.4.4) */
+        } binary;                    /**< part for #LY_TYPE_BINARY */
 
         /* LY_TYPE_BITS */
         struct {
-            struct ly_type_bit {
-                const char *name;
-                const char *dsc;
-                const char *ref;
-                uint8_t status;
-                uint32_t pos;
-            } *bit;
-            int count;
-        } bits;
+            struct lys_type_bit {
+                const char* name;    /**< bit's name (mandatory) */
+                const char* dsc;     /**< bit's description (optional) */
+                const char* ref;     /**< bit's reference (optional) */
+                uint8_t status;      /**< bit's status, one of LYS_NODE_STATUS_* values (or 0 for default) */
+                uint32_t pos;        /**< bit's position (mandatory) */
+            } * bit;                 /**< array of bit definitions */
+            int count;               /**< number of bit definitions in the bit array */
+        } bits;                      /**< part for #LY_TYPE_BITS */
 
         /* LY_TYPE_DEC64 */
         struct {
-            struct ly_restr *range;
-            uint8_t dig;
-        } dec64;
+            struct lys_restr* range; /**< range restriction (optional), see
+                                          [RFC 6020 sec. 9.2.4](http://tools.ietf.org/html/rfc6020#section-9.2.4) */
+            uint8_t dig;             /**< fraction-digits restriction (mandatory) */
+        } dec64;                     /**< part for #LY_TYPE_DEC64 */
 
         /* LY_TYPE_ENUM */
         struct {
-            struct ly_type_enum {
-                const char *name;
-                const char *dsc;
-                const char *ref;
-                uint8_t status;
-                int32_t value;
-            } *list;
-            int count;
-        } enums;
+            struct lys_type_enum {
+                const char* name;    /**< enum's name (mandatory) */
+                const char* dsc;     /**< enum's description (optional) */
+                const char* ref;     /**< enum's reference (optional) */
+                uint8_t status;      /**< enum's status, one of LYS_NODE_STATUS_* values (or 0 for default) */
+                int32_t value;       /**< enum's value (mandatory) */
+            } * enm;                 /**< array of enum definitions */
+            int count;               /**< number of enum definitions in the enm array */
+        } enums;                     /**< part for #LY_TYPE_ENUM */
 
         /* LY_TYPE_IDENT */
         struct {
-            struct ly_ident *ref;    /* pointer to the identity definition */
-        } ident;
+            struct ly_ident* ref;    /**< pointer (reference) to the identity definition (mandatory) */
+        } ident;                     /**< part for #LY_TYPE_IDENT */
 
         /* LY_TYPE_INST */
         struct {
-            int req;    /*  -1 = false, 0 not defined, 1 = true */
-        } inst;
+            int8_t req;              /**< require-identifier restriction, see
+                                          [RFC 6020 sec. 9.13.2](http://tools.ietf.org/html/rfc6020#section-9.13.2):
+                                          - -1 = false,
+                                          - 0 not defined,
+                                          - 1 = true */
+        } inst;                      /**< part for #LY_TYPE_INST */
 
         /* LY_TYPE_*INT* */
         struct {
-            struct ly_restr *range;
-        } num;
+            struct lys_restr* range; /**< range restriction (optional), see
+                                          [RFC 6020 sec. 9.2.4](http://tools.ietf.org/html/rfc6020#section-9.2.4) */
+        } num;                       /**< part for integer types */
 
         /* LY_TYPE_LEAFREF */
         struct {
-            const char *path;
-        } lref;
+            const char* path;        /**< path to the referred leaf or leaf-list node (mandatory), see
+                                          [RFC 6020 sec. 9.9.2](http://tools.ietf.org/html/rfc6020#section-9.9.2) */
+        } lref;                      /**< part for #LY_TYPE_LEAFREF */
 
         /* LY_TYPE_STRING */
         struct {
-            struct ly_restr *length;
-            struct ly_restr *patterns; /* array of patterns */
-            int pat_count;
-        } str;
+            struct lys_restr* length;/**< length restriction (optional), see
+                                          [RFC 6020 sec. 9.4.4](http://tools.ietf.org/html/rfc6020#section-9.4.4) */
+            struct lys_restr* patterns;   /**< array of pattern restrictions (optional), see
+                                          [RFC 6020 sec. 9.4.6](http://tools.ietf.org/html/rfc6020#section-9.4.6) */
+            int pat_count;                /**< number of pattern definitions in the patterns array */
+        } str;                       /**< part for #LY_TYPE_STRING */
 
         /* LY_TYPE_UNION */
         struct {
-            struct ly_type *type;
-            int count;
-        } uni;
-    } info;
+            struct lys_type* types;  /**< array of union's subtypes */
+            int count;               /**< number of subtype definitions in types array */
+        } uni;                       /**< part for #LY_TYPE_UNION */
+    } info;                          /**< detailed type-specific information */
 };
 
-struct ly_tpdf {
-    const char *name;             /**< name of the module */
-    const char *dsc;              /**< description */
-    const char *ref;              /**< reference */
+/**
+ * @brief YANG typedef structure providing information from the schema
+ */
+struct lys_tpdf {
+    const char* name;             /**< name of the newly defined type */
+    const char* dsc;              /**< description */
+    const char* ref;              /**< reference */
     uint8_t flags;                /**< only for LY_NODE_STATUS_ values */
-    struct ly_module *module;     /**< module where the data type is defined, NULL
-	                               in case of built-in type */
+    struct ly_module* module;     /**< pointer to the module where the data type is defined, NULL
+	                                   in case of built-in types */
 
-    struct ly_type type;          /**< type restrictions and reference to a superior
-	                               type definition. In case of built-in type, only
-	                               the base is filled */
-    const char *units;            /**< units of the type */
-    const char *dflt;             /**< default value of the type */
+    struct lys_type type;          /**< base type from which the typedef is derived. In case of a special built-in
+                                        typedef (from yang_types.c), only the base member is filled */
+    const char *units;            /**< units of the newly defined type */
+    const char *dflt;             /**< default value of the newly defined type */
 };
 
 struct ly_when {
@@ -237,7 +252,7 @@ struct ly_refine {
 	                                  there are some limitations */
 
     uint8_t must_size;               /**< number of elements in must array */
-    struct ly_restr *must;           /**< array of must constraints */
+    struct lys_restr *must;           /**< array of must constraints */
 
     union {
         const char *dflt;                /**< applicable to leaf or choice, in case of
@@ -302,9 +317,9 @@ struct ly_deviate {
     uint32_t max;                    /**< Properties: max-elements */
     uint8_t must_size;               /**< Properties: must - number of elements in must*/
     uint8_t unique_size;             /**< Properties: unique - number of elements in unique array */
-    struct ly_restr *must;           /**< Properties: must - array of must constraints */
+    struct lys_restr *must;           /**< Properties: must - array of must constraints */
     struct ly_unique *unique;        /**< Properties: unique - array of unique statement structures */
-    struct ly_type *type;            /**< Properties: type - pointer to type in target, type cannot be deleted or added */
+    struct lys_type *type;            /**< Properties: type - pointer to type in target, type cannot be deleted or added */
     const char *units;               /**< Properties: units */
 };
 
@@ -365,7 +380,7 @@ struct ly_module {
 	                                  module */
     struct ly_import *imp;           /**< array of imported modules */
     struct ly_include *inc;          /**< array of included submodules */
-    struct ly_tpdf *tpdf;            /**< array of typedefs */
+    struct lys_tpdf *tpdf;            /**< array of typedefs */
     struct ly_ident *ident;          /**< array of identities */
     struct ly_feature *features;     /**< array of feature definitions */
     struct ly_augment *augment;      /**< array of augments */
@@ -408,7 +423,7 @@ struct ly_submodule {
 	                                  module */
     struct ly_import *imp;           /**< array of imported modules */
     struct ly_include *inc;          /**< array of included submodules */
-    struct ly_tpdf *tpdf;            /**< array of typedefs */
+    struct lys_tpdf *tpdf;            /**< array of typedefs */
     struct ly_ident *ident;          /**< array if identities */
     struct ly_feature *features;     /**< array of feature definitions */
     struct ly_augment *augment;      /**< array of augments */
@@ -451,24 +466,24 @@ struct ly_mnode {
     struct ly_mnode *next;
     struct ly_mnode *prev;
 /* ly_mnode's nacm flags */
-#define LY_NACM_DENYW        0x01 /**< default-deny-write */
-#define LY_NACM_DENYA        0x02 /**< default-deny-all */
+#define LYS_NACM_DENYW   0x01        /**< default-deny-write */
+#define LYS_NACM_DENYA   0x02        /**< default-deny-all */
 
 /* ly_mnode's flags */
-#define LY_NODE_CONFIG_W     0x01 /**< config true; */
-#define LY_NODE_CONFIG_R     0x02 /**< config false; */
-#define LY_NODE_CONFIG_MASK  0x03 /**< mask for config value */
-#define LY_NODE_STATUS_CURR  0x04 /**< status current; */
-#define LY_NODE_STATUS_DEPRC 0x08 /**< status deprecated; */
-#define LY_NODE_STATUS_OBSLT 0x10 /**< status obsolete; */
-#define LY_NODE_STATUS_MASK  0x1c /**< mask for status value */
-#define LY_NODE_MAND_TRUE    0x20 /**< mandatory flag of the node, applicable only to
-                                       struct ly_mnode_choice, ly_mnode_leaf and ly_mnode_anyxml */
-#define LY_NODE_MAND_FALSE   0x40 /**< mandatory false */
-#define LY_NODE_MAND_MASK    0x60 /**< mask for mandatory values */
-#define LY_NODE_USERORDERED  0x80 /**< ordered-by user lists, applicable only to
-                                       struct ly_mnode_list and ly_mnode_leaflist */
-#define LY_NODE_FENABLED     0x80 /**< enable flag for features, applicable only to strcut ly_feature */
+#define LYS_CONFIG_W     0x01        /**< config true; */
+#define LYS_CONFIG_R     0x02        /**< config false; */
+#define LYS_CONFIG_MASK  0x03        /**< mask for config value */
+#define LYS_STATUS_CURR  0x04        /**< status current; */
+#define LYS_STATUS_DEPRC 0x08        /**< status deprecated; */
+#define LYS_STATUS_OBSLT 0x10        /**< status obsolete; */
+#define LYS_STATUS_MASK  0x1c        /**< mask for status value */
+#define LYS_MAND_TRUE    0x20        /**< mandatory flag of the node, applicable only to
+                                          struct ly_mnode_choice, ly_mnode_leaf and ly_mnode_anyxml */
+#define LYS_MAND_FALSE   0x40        /**< mandatory false */
+#define LYS_MAND_MASK    0x60        /**< mask for mandatory values */
+#define LYS_USERORDERED  0x80        /**< ordered-by user lists, applicable only to
+                                          struct ly_mnode_list and ly_mnode_leaflist */
+#define LYS_FENABLED     0x80        /**< enable flag for features, applicable only to strcut ly_feature */
 
     uint8_t features_size;           /**< number of elements in features array */
     struct ly_feature **features;    /**< array of pointers to feature definitions, this is
@@ -495,7 +510,7 @@ struct ly_mnode_grp {
 
     /* specific container's data */
     uint8_t tpdf_size;               /**< number of elements in tpdf array */
-    struct ly_tpdf *tpdf;            /**< array of typedefs */
+    struct lys_tpdf *tpdf;            /**< array of typedefs */
 };
 
 struct ly_mnode_uses {
@@ -554,8 +569,8 @@ struct ly_mnode_container {
     uint8_t must_size;               /**< number of elements in must array */
     uint8_t tpdf_size;               /**< number of elements in tpdf array */
 
-    struct ly_tpdf *tpdf;            /**< array of typedefs */
-    struct ly_restr *must;           /**< array of must constraints */
+    struct lys_tpdf *tpdf;            /**< array of typedefs */
+    struct lys_restr *must;           /**< array of must constraints */
 };
 
 struct ly_mnode_choice {
@@ -626,7 +641,7 @@ struct ly_mnode_anyxml {
     /* specific leaf's data */
     struct ly_when *when;            /**< when statement */
     uint8_t must_size;               /**< number of elements in must array */
-    struct ly_restr *must;           /**< array of must constraints */
+    struct lys_restr *must;           /**< array of must constraints */
 };
 
 struct ly_mnode_leaf {
@@ -650,11 +665,11 @@ struct ly_mnode_leaf {
 
     /* specific leaf's data */
     struct ly_when *when;            /**< when statement */
-    struct ly_type type;             /**< YANG type of the element */
+    struct lys_type type;             /**< YANG type of the element */
     const char *units;               /**< units of the type */
 
     uint8_t must_size;               /**< number of elements in must array */
-    struct ly_restr *must;           /**< array of must constraints */
+    struct lys_restr *must;           /**< array of must constraints */
 
     /* to this point, struct ly_mnode_leaf is compatible with struct ly_mnode_leaflist */
 
@@ -682,11 +697,11 @@ struct ly_mnode_leaflist {
 
     /* specific leaflist's data */
     struct ly_when *when;            /**< when statement */
-    struct ly_type type;             /**< YANG type of the element */
+    struct lys_type type;             /**< YANG type of the element */
     const char *units;               /**< units of the type */
 
     uint8_t must_size;               /**< number of elements in must array */
-    struct ly_restr *must;           /**< array of must constraints */
+    struct lys_restr *must;           /**< array of must constraints */
 
     /* to this point, struct ly_mnode_leaf is compatible with struct ly_mnode_leaflist */
 
@@ -726,8 +741,8 @@ struct ly_mnode_list {
     uint8_t unique_size;             /**< number of elements in unique array (number
 	                                  of unique statements in the list */
 
-    struct ly_restr *must;           /**< array of must constraints */
-    struct ly_tpdf *tpdf;            /**< array of typedefs */
+    struct lys_restr *must;           /**< array of must constraints */
+    struct lys_tpdf *tpdf;            /**< array of typedefs */
     struct ly_mnode_leaf **keys;     /**< array of pointers to the keys */
     struct ly_unique *unique;        /**< array of unique statement structures */
 };
@@ -750,7 +765,7 @@ struct ly_mnode_input_output {
     struct ly_feature **features;    /**< dummy memeber to follow struct ly_mnode, always NULL */
 
     /* specific list's data */
-    struct ly_tpdf *tpdf;            /**< array of typedefs */
+    struct lys_tpdf *tpdf;            /**< array of typedefs */
     uint8_t tpdf_size;               /**< number of elements in tpdf array */
 };
 
@@ -775,7 +790,7 @@ struct ly_mnode_rpc {
 
     /* specific rpc's data */
     uint8_t tpdf_size;               /**< number of elements in tpdf array */
-    struct ly_tpdf *tpdf;            /**< array of typedefs */
+    struct lys_tpdf *tpdf;            /**< array of typedefs */
 };
 
 struct ly_mnode_notif {
@@ -799,7 +814,7 @@ struct ly_mnode_notif {
 
     /* specific list's data */
     uint8_t tpdf_size;               /**< number of elements in tpdf array */
-    struct ly_tpdf *tpdf;            /**< array of typedefs */
+    struct lys_tpdf *tpdf;            /**< array of typedefs */
 };
 
 /**
@@ -947,10 +962,10 @@ struct lyd_attr {
  */
 union lyd_value_u {
     const char *binary;          /**< base64 encoded, NULL terminated string */
-    struct ly_type_bit **bit;    /**< array of pointers to the schema definition of the bit value that are set */
+    struct lys_type_bit **bit;   /**< array of pointers to the schema definition of the bit value that are set */
     int8_t bool;                 /**< 0 as false, 1 as true */
     int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
-    struct ly_type_enum *enm;    /**< pointer to the schema definition of the enumeration value */
+    struct lys_type_enum *enm;   /**< pointer to the schema definition of the enumeration value */
     struct ly_ident *ident;      /**< pointer to the schema definition of the identityref value */
     struct lyd_node *instance;   /**< instance-identifier, pointer to the referenced data tree node */
     int8_t int8;                 /**< 8-bit signed integer */

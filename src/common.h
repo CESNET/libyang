@@ -146,7 +146,7 @@ char *strnchr(const char *s, int c, unsigned int len);
 
 const char *strnodetype(LY_NODE_TYPE type);
 
-int get_len_ran_interval(const char *str_restr, struct ly_type *type, int superior_restr,
+int get_len_ran_interval(const char *str_restr, struct lys_type *type, int superior_restr,
                          struct len_ran_intv **local_intv);
 
 #endif /* LY_COMMON_H_ */

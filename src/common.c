@@ -81,7 +81,7 @@ strnodetype(LY_NODE_TYPE type)
 
 /* syntax is assumed to be correct, *local_intv MUST be NULL */
 int
-get_len_ran_interval(const char *str_restr, struct ly_type *type, int superior_restr, struct len_ran_intv** local_intv)
+get_len_ran_interval(const char *str_restr, struct lys_type *type, int superior_restr, struct len_ran_intv** local_intv)
 {
     /* 0 - unsigned, 1 - signed, 2 - floating point */
     int kind, ret = 0;

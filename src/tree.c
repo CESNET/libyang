@@ -380,10 +380,10 @@ ly_submodule_read_fd(struct ly_module *module, int fd, LYS_INFORMAT format, int 
 
 }
 
-struct ly_restr *
-ly_restr_dup(struct ly_ctx *ctx, struct ly_restr *old, int size)
+struct lys_restr *
+ly_restr_dup(struct ly_ctx *ctx, struct lys_restr *old, int size)
 {
-    struct ly_restr *result;
+    struct lys_restr *result;
     int i;
 
     if (!size) {
@@ -403,7 +403,7 @@ ly_restr_dup(struct ly_ctx *ctx, struct ly_restr *old, int size)
 }
 
 void
-ly_restr_free(struct ly_ctx *ctx, struct ly_restr *restr)
+ly_restr_free(struct ly_ctx *ctx, struct lys_restr *restr)
 {
     assert(ctx);
     if (!restr) {
@@ -418,7 +418,7 @@ ly_restr_free(struct ly_ctx *ctx, struct ly_restr *restr)
 }
 
 void
-ly_type_dup(struct ly_module *mod, struct ly_mnode *parent, struct ly_type *new, struct ly_type *old,
+ly_type_dup(struct ly_module *mod, struct ly_mnode *parent, struct lys_type *new, struct lys_type *old,
             struct unres_item *unres)
 {
     int i;
@@ -430,7 +430,7 @@ ly_type_dup(struct ly_module *mod, struct ly_mnode *parent, struct ly_type *new,
     i = find_unres(unres, old, UNRES_TYPE_DER);
     if (i != -1) {
         /* HACK for unres */
-        new->der = (struct ly_tpdf *)parent;
+        new->der = (struct lys_tpdf *)parent;
         add_unres_str(mod, unres, new, UNRES_TYPE_DER, unres->str_mnode[i], 0);
         return;
     }
@@ -466,13 +466,13 @@ ly_type_dup(struct ly_module *mod, struct ly_mnode *parent, struct ly_type *new,
     case LY_TYPE_ENUM:
         new->info.enums.count = old->info.enums.count;
         if (new->info.enums.count) {
-            new->info.enums.list = calloc(new->info.enums.count, sizeof *new->info.enums.list);
+            new->info.enums.enm = calloc(new->info.enums.count, sizeof *new->info.enums.enm);
             for (i = 0; i < new->info.enums.count; i++) {
-                new->info.enums.list[i].name = lydict_insert(mod->ctx, old->info.enums.list[i].name, 0);
-                new->info.enums.list[i].dsc = lydict_insert(mod->ctx, old->info.enums.list[i].dsc, 0);
-                new->info.enums.list[i].ref = lydict_insert(mod->ctx, old->info.enums.list[i].ref, 0);
-                new->info.enums.list[i].status = old->info.enums.list[i].status;
-                new->info.enums.list[i].value = old->info.enums.list[i].value;
+                new->info.enums.enm[i].name = lydict_insert(mod->ctx, old->info.enums.enm[i].name, 0);
+                new->info.enums.enm[i].dsc = lydict_insert(mod->ctx, old->info.enums.enm[i].dsc, 0);
+                new->info.enums.enm[i].ref = lydict_insert(mod->ctx, old->info.enums.enm[i].ref, 0);
+                new->info.enums.enm[i].status = old->info.enums.enm[i].status;
+                new->info.enums.enm[i].value = old->info.enums.enm[i].value;
             }
         }
         break;
@@ -519,9 +519,9 @@ ly_type_dup(struct ly_module *mod, struct ly_mnode *parent, struct ly_type *new,
     case LY_TYPE_UNION:
         new->info.uni.count = old->info.uni.count;
         if (new->info.uni.count) {
-            new->info.uni.type = calloc(new->info.uni.count, sizeof *new->info.uni.type);
+            new->info.uni.types = calloc(new->info.uni.count, sizeof *new->info.uni.types);
             for (i = 0; i < new->info.uni.count; i++) {
-                ly_type_dup(mod, parent, &(new->info.uni.type[i]), &(old->info.uni.type[i]), unres);
+                ly_type_dup(mod, parent, &(new->info.uni.types[i]), &(old->info.uni.types[i]), unres);
             }
         }
         break;
@@ -533,7 +533,7 @@ ly_type_dup(struct ly_module *mod, struct ly_mnode *parent, struct ly_type *new,
 }
 
 void
-ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
+ly_type_free(struct ly_ctx *ctx, struct lys_type *type)
 {
     int i;
 
@@ -565,11 +565,11 @@ ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
 
     case LY_TYPE_ENUM:
         for (i = 0; i < type->info.enums.count; i++) {
-            lydict_remove(ctx, type->info.enums.list[i].name);
-            lydict_remove(ctx, type->info.enums.list[i].dsc);
-            lydict_remove(ctx, type->info.enums.list[i].ref);
+            lydict_remove(ctx, type->info.enums.enm[i].name);
+            lydict_remove(ctx, type->info.enums.enm[i].dsc);
+            lydict_remove(ctx, type->info.enums.enm[i].ref);
         }
-        free(type->info.enums.list);
+        free(type->info.enums.enm);
         break;
 
     case LY_TYPE_INT8:
@@ -599,9 +599,9 @@ ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
 
     case LY_TYPE_UNION:
         for (i = 0; i < type->info.uni.count; i++) {
-            ly_type_free(ctx, &type->info.uni.type[i]);
+            ly_type_free(ctx, &type->info.uni.types[i]);
         }
-        free(type->info.uni.type);
+        free(type->info.uni.types);
         break;
 
     default:
@@ -610,10 +610,10 @@ ly_type_free(struct ly_ctx *ctx, struct ly_type *type)
     }
 }
 
-struct ly_tpdf *
-ly_tpdf_dup(struct ly_module *mod, struct ly_mnode *parent, struct ly_tpdf *old, int size, struct unres_item *unres)
+struct lys_tpdf *
+ly_tpdf_dup(struct ly_module *mod, struct ly_mnode *parent, struct lys_tpdf *old, int size, struct unres_item *unres)
 {
-    struct ly_tpdf *result;
+    struct lys_tpdf *result;
     int i;
 
     if (!size) {
@@ -638,7 +638,7 @@ ly_tpdf_dup(struct ly_module *mod, struct ly_mnode *parent, struct ly_tpdf *old,
 }
 
 void
-ly_tpdf_free(struct ly_ctx *ctx, struct ly_tpdf *tpdf)
+ly_tpdf_free(struct ly_ctx *ctx, struct lys_tpdf *tpdf)
 {
     assert(ctx);
     if (!tpdf) {
@@ -1311,9 +1311,9 @@ ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, in
     retval->dsc = lydict_insert(ctx, mnode->dsc, 0);
     retval->ref = lydict_insert(ctx, mnode->ref, 0);
     retval->flags = mnode->flags;
-    if (!(retval->flags & LY_NODE_CONFIG_MASK)) {
+    if (!(retval->flags & LYS_CONFIG_MASK)) {
         /* set parent's config flag */
-        retval->flags |= flags & LY_NODE_CONFIG_MASK;
+        retval->flags |= flags & LYS_CONFIG_MASK;
     }
 
     retval->module = module;
@@ -1584,14 +1584,14 @@ ly_features_change(struct ly_module *module, const char *name, int op)
     for (i = 0; i < module->features_size; i++) {
         if (all || !strcmp(module->features[i].name, name)) {
             if (op) {
-                module->features[i].flags |= LY_NODE_FENABLED;
+                module->features[i].flags |= LYS_FENABLED;
                 /* enable referenced features (recursion) */
                 for (k = 0; k < module->features[i].features_size; k++) {
                     ly_features_change(module->features[i].features[k]->module,
                                        module->features[i].features[k]->name, op);
                 }
             } else {
-                module->features[i].flags &= ~LY_NODE_FENABLED;
+                module->features[i].flags &= ~LYS_FENABLED;
             }
             if (!all) {
                 return EXIT_SUCCESS;
@@ -1604,9 +1604,9 @@ ly_features_change(struct ly_module *module, const char *name, int op)
         for (i = 0; i < module->inc[j].submodule->features_size; i++) {
             if (all || !strcmp(module->inc[j].submodule->features[i].name, name)) {
                 if (op) {
-                    module->inc[j].submodule->features[i].flags |= LY_NODE_FENABLED;
+                    module->inc[j].submodule->features[i].flags |= LYS_FENABLED;
                 } else {
-                    module->inc[j].submodule->features[i].flags &= ~LY_NODE_FENABLED;
+                    module->inc[j].submodule->features[i].flags &= ~LYS_FENABLED;
                 }
                 if (!all) {
                     return EXIT_SUCCESS;
@@ -1649,7 +1649,7 @@ lys_features_state(struct ly_module *module, const char *feature)
     /* module itself */
     for (i = 0; i < module->features_size; i++) {
         if (!strcmp(feature, module->features[i].name)) {
-            if (module->features[i].flags & LY_NODE_FENABLED) {
+            if (module->features[i].flags & LYS_FENABLED) {
                 return 1;
             } else {
                 return 0;
@@ -1661,7 +1661,7 @@ lys_features_state(struct ly_module *module, const char *feature)
     for (j = 0; j < module->inc_size; j++) {
         for (i = 0; i < module->inc[j].submodule->features_size; i++) {
             if (!strcmp(feature, module->inc[j].submodule->features[i].name)) {
-                if (module->inc[j].submodule->features[i].flags & LY_NODE_FENABLED) {
+                if (module->inc[j].submodule->features[i].flags & LYS_FENABLED) {
                     return 1;
                 } else {
                     return 0;
@@ -1701,7 +1701,7 @@ lys_features_list(struct ly_module *module, uint8_t **states)
     for (i = 0; i < module->features_size; i++) {
         result[count] = module->features[i].name;
         if (states) {
-            if (module->features[i].flags & LY_NODE_FENABLED) {
+            if (module->features[i].flags & LYS_FENABLED) {
                 (*states)[count] = 1;
             } else {
                 (*states)[count] = 0;
@@ -1714,7 +1714,7 @@ lys_features_list(struct ly_module *module, uint8_t **states)
     for (j = 0; j < module->inc_size; j++) {
         for (i = 0; i < module->inc[j].submodule->features_size; i++) {
             result[count] = module->inc[j].submodule->features[i].name;
-            if (module->inc[j].submodule->features[i].flags & LY_NODE_FENABLED) {
+            if (module->inc[j].submodule->features[i].flags & LYS_FENABLED) {
                 (*states)[count] = 1;
             } else {
                 (*states)[count] = 0;
