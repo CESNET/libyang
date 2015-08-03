@@ -502,6 +502,9 @@ fill_yin_identity(struct ly_module *module, struct lyxml_elem *yin, struct ly_id
     struct lyxml_elem *node;
     const char *value;
 
+    GETVAL(value, yin, "name");
+    ident->name = lydict_insert(module->ctx, value, 0);
+
     if (read_yin_common(module, NULL, (struct ly_mnode *)ident, yin, OPT_IDENT | OPT_MODULE)) {
         return EXIT_FAILURE;
     }
@@ -518,8 +521,7 @@ fill_yin_identity(struct ly_module *module, struct lyxml_elem *yin, struct ly_id
                 return EXIT_FAILURE;
             }
             GETVAL(value, node, "name");
-            ident->name = lydict_insert(module->ctx, value, 0);
-            add_unres_mnode(module, unres, ident, UNRES_IDENT, NULL, LOGLINE(node));
+            add_unres_str(module, unres, ident, UNRES_IDENT, value, LOGLINE(node));
         } else {
             LOGVAL(VE_INSTMT, LOGLINE(node), node->name, "identity");
             return EXIT_FAILURE;
