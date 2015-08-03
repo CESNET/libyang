@@ -442,15 +442,17 @@ tree_print_leaf(FILE *f, struct ly_module *module, char *indent, unsigned int ma
 {
     uint8_t prefix_len;
     struct ly_mnode_leaf *leaf = (struct ly_mnode_leaf *)mnode;
+    struct ly_mnode *parent;
     struct ly_mnode_list *list;
     int i, is_key = 0;
 
     assert(spec_config >= 0 && spec_config <= 2);
 
-    if (leaf->parent && leaf->parent->nodetype == LY_NODE_LIST) {
-        list = (struct ly_mnode_list *)leaf->parent;
+    for (parent = leaf->parent; parent && parent->nodetype == LY_NODE_USES; parent = parent->parent);
+    if (parent->nodetype == LY_NODE_LIST) {
+        list = (struct ly_mnode_list *)parent;
         for (i = 0; i < list->keys_size; i++) {
-            if (strcmp(list->keys[i]->name, leaf->name) == 0) {
+            if (list->keys[i] == leaf) {
                 is_key = 1;
                 break;
             }
