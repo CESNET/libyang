@@ -88,7 +88,7 @@ static struct ly_mnode *read_yin_grouping(struct ly_module *module, struct ly_mn
 static struct ly_when *read_yin_when(struct ly_module *module,struct lyxml_elem *yin);
 
 static int
-dup_typedef_check(const char *type, struct ly_tpdf *tpdf, int size)
+dup_typedef_check(const char *type, struct lys_tpdf *tpdf, int size)
 {
     int i;
 
@@ -139,7 +139,7 @@ check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
 {
     int i;
     int size;
-    struct ly_tpdf *tpdf;
+    struct lys_tpdf *tpdf;
     struct ly_mnode *mnode;
 
     assert(id);
@@ -297,7 +297,7 @@ check_mandatory(struct ly_mnode *mnode)
 
     assert(mnode);
 
-    if (mnode->flags & LY_NODE_MAND_TRUE) {
+    if (mnode->flags & LYS_MAND_TRUE) {
         return EXIT_FAILURE;
     }
 
@@ -342,7 +342,7 @@ error:
 }
 
 static int
-check_length_range(const char *expr, struct ly_type *type, unsigned int line)
+check_length_range(const char *expr, struct lys_type *type, unsigned int line)
 {
     struct len_ran_intv *intv = NULL, *tmp_intv;
     const char *c = expr;
@@ -533,7 +533,7 @@ error:
 }
 
 static int
-read_restr_substmt(struct ly_ctx *ctx, struct ly_restr *restr, struct lyxml_elem *yin)
+read_restr_substmt(struct ly_ctx *ctx, struct lys_restr *restr, struct lyxml_elem *yin)
 {
     struct lyxml_elem *child;
     const char *value;
@@ -591,15 +591,15 @@ error:
 }
 
 static int
-fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_elem *yin, struct ly_type *type,
+fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_elem *yin, struct lys_type *type,
               struct unres_item *unres)
 {
 #define REGEX_ERR_LEN 128
     const char *value, *delim, *name;
     char regex_err[REGEX_ERR_LEN];
     struct lyxml_elem *next, *node;
-    struct ly_restr **restr;
-    struct ly_type_bit bit;
+    struct lys_restr **restr;
+    struct lys_type_bit bit;
     regex_t preq;
     int i, j, ret;
     int64_t v, v_;
@@ -617,7 +617,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
     type->der = resolve_superior_type(value, type->prefix, module, parent);
     if (!type->der) {
         /* HACK for unres */
-        type->der = (struct ly_tpdf *)parent;
+        type->der = (struct lys_tpdf *)parent;
         add_unres_str(module, unres, type, UNRES_TYPE_DER, value, LOGLINE(yin));
         return EXIT_SUCCESS;
     }
@@ -826,7 +826,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
             goto error;
         }
 
-        type->info.enums.list = calloc(type->info.enums.count, sizeof *type->info.enums.list);
+        type->info.enums.enm = calloc(type->info.enums.count, sizeof *type->info.enums.enm);
         v = 0;
         i = -1;
         LY_TREE_FOR(yin->child, next) {
@@ -836,14 +836,14 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
             if (check_identifier(value, LY_IDENT_SIMPLE, LOGLINE(next), NULL, NULL)) {
                 goto error;
             }
-            type->info.enums.list[i].name = lydict_insert(module->ctx, value, strlen(value));
-            if (read_yin_common(module, NULL, (struct ly_mnode *)&type->info.enums.list[i], next, 0)) {
+            type->info.enums.enm[i].name = lydict_insert(module->ctx, value, strlen(value));
+            if (read_yin_common(module, NULL, (struct ly_mnode *)&type->info.enums.enm[i], next, 0)) {
                 type->info.enums.count = i + 1;
                 goto error;
             }
 
             /* the assigned name MUST NOT have any leading or trailing whitespace characters */
-            value = type->info.enums.list[i].name;
+            value = type->info.enums.enm[i].name;
             if (isspace(value[0]) || isspace(value[strlen(value) - 1])) {
                 LOGVAL(VE_ENUM_WS, LOGLINE(next), value);
                 type->info.enums.count = i + 1;
@@ -852,8 +852,8 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
 
             /* check the name uniqueness */
             for (j = 0; j < i; j++) {
-                if (!strcmp(type->info.enums.list[j].name, type->info.enums.list[i].name)) {
-                    LOGVAL(VE_ENUM_DUPNAME, LOGLINE(next), type->info.enums.list[i].name);
+                if (!strcmp(type->info.enums.enm[j].name, type->info.enums.enm[i].name)) {
+                    LOGVAL(VE_ENUM_DUPNAME, LOGLINE(next), type->info.enums.enm[i].name);
                     type->info.enums.count = i + 1;
                     goto error;
                 }
@@ -876,18 +876,18 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                         type->info.enums.count = i + 1;
                         goto error;
                     }
-                    type->info.enums.list[i].value = v_;
+                    type->info.enums.enm[i].value = v_;
 
                     /* keep the highest enum value for automatic increment */
-                    if (type->info.enums.list[i].value > v) {
-                        v = type->info.enums.list[i].value;
+                    if (type->info.enums.enm[i].value > v) {
+                        v = type->info.enums.enm[i].value;
                         v++;
                     } else {
                         /* check that the value is unique */
                         for (j = 0; j < i; j++) {
-                            if (type->info.enums.list[j].value == type->info.enums.list[i].value) {
-                                LOGVAL(VE_ENUM_DUPVAL, LOGLINE(node), type->info.enums.list[i].value,
-                                       type->info.enums.list[i].name);
+                            if (type->info.enums.enm[j].value == type->info.enums.enm[i].value) {
+                                LOGVAL(VE_ENUM_DUPVAL, LOGLINE(node), type->info.enums.enm[i].value,
+                                       type->info.enums.enm[i].name);
                                 type->info.enums.count = i + 1;
                                 goto error;
                             }
@@ -905,7 +905,7 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
                     type->info.enums.count = i + 1;
                     goto error;
                 }
-                type->info.enums.list[i].value = v;
+                type->info.enums.enm[i].value = v;
                 v++;
             }
         }
@@ -1155,19 +1155,19 @@ fill_yin_type(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
         }
 
         /* allocate array for union's types ... */
-        type->info.uni.type = calloc(i, sizeof *type->info.uni.type);
+        type->info.uni.types = calloc(i, sizeof *type->info.uni.types);
         /* ... and fill the structures */
         LY_TREE_FOR(yin->child, node) {
-            if (fill_yin_type(module, parent, node, &type->info.uni.type[type->info.uni.count], unres)) {
+            if (fill_yin_type(module, parent, node, &type->info.uni.types[type->info.uni.count], unres)) {
                 goto error;
             }
             type->info.uni.count++;
 
             /* union's type cannot be empty or leafref */
-            if (type->info.uni.type[type->info.uni.count - 1].base == LY_TYPE_EMPTY) {
+            if (type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_EMPTY) {
                 LOGVAL(VE_INARG, LOGLINE(node), "empty", node->name);
                 goto error;
-            } else if (type->info.uni.type[type->info.uni.count - 1].base == LY_TYPE_LEAFREF) {
+            } else if (type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_LEAFREF) {
                 LOGVAL(VE_INARG, LOGLINE(node), "leafref", node->name);
                 goto error;
             }
@@ -1195,7 +1195,7 @@ error:
 }
 
 static int
-fill_yin_typedef(struct ly_module *module, struct ly_mnode *parent, struct lyxml_elem *yin, struct ly_tpdf *tpdf, struct unres_item *unres)
+fill_yin_typedef(struct ly_module *module, struct ly_mnode *parent, struct lyxml_elem *yin, struct lys_tpdf *tpdf, struct unres_item *unres)
 {
     const char *value;
     struct lyxml_elem *node;
@@ -1315,7 +1315,7 @@ error:
 }
 
 static int
-fill_yin_must(struct ly_module *module, struct lyxml_elem *yin, struct ly_restr *must)
+fill_yin_must(struct ly_module *module, struct lyxml_elem *yin, struct lys_restr *must)
 {
     const char *value;
 
@@ -1421,9 +1421,9 @@ fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_d
     struct ly_mnode_choice *choice = NULL;
     struct ly_mnode_leaf *leaf = NULL;
     struct ly_mnode_list *list = NULL;
-    struct ly_type *t = NULL;
+    struct lys_type *t = NULL;
     uint8_t *trg_must_size = NULL;
-    struct ly_restr **trg_must = NULL;
+    struct lys_restr **trg_must = NULL;
 
     GETVAL(value, yin, "target-node");
     dev->target_name = lydict_insert(module->ctx, value, 0);
@@ -1539,7 +1539,7 @@ fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_d
             }
 
             if (!strcmp(child->name, "config")) {
-                if (d->flags & LY_NODE_CONFIG_MASK) {
+                if (d->flags & LYS_CONFIG_MASK) {
                     LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
                     goto error;
                 }
@@ -1551,9 +1551,9 @@ fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_d
                  */
                 GETVAL(value, child, "value");
                 if (!strcmp(value, "false")) {
-                    d->flags |= LY_NODE_CONFIG_R;
+                    d->flags |= LYS_CONFIG_R;
                 } else if (!strcmp(value, "true")) {
-                    d->flags |= LY_NODE_CONFIG_W;
+                    d->flags |= LYS_CONFIG_W;
                 } else {
                     LOGVAL(VE_INARG, LOGLINE(child), value, child->name);
                     goto error;
@@ -1561,27 +1561,27 @@ fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_d
 
                 if (d->mod == LY_DEVIATE_DEL) {
                     /* check values */
-                    if ((d->flags & LY_NODE_CONFIG_MASK) != (dev->target->flags & LY_NODE_CONFIG_MASK)) {
+                    if ((d->flags & LYS_CONFIG_MASK) != (dev->target->flags & LYS_CONFIG_MASK)) {
                         LOGVAL(VE_INARG, LOGLINE(child), value, child->name);
                         LOGVAL(VE_SPEC, 0, "Value differs from the target being deleted.");
                         goto error;
                     }
                     /* remove current config value of the target ... */
-                    dev->target->flags &= ~LY_NODE_CONFIG_MASK;
+                    dev->target->flags &= ~LYS_CONFIG_MASK;
 
                     /* ... and inherit config value from the target's parent */
                     if (dev->target->parent) {
-                        dev->target->flags |= dev->target->parent->flags & LY_NODE_CONFIG_MASK;
+                        dev->target->flags |= dev->target->parent->flags & LYS_CONFIG_MASK;
                     } else {
                         /* default config is true */
-                        dev->target->flags |= LY_NODE_CONFIG_W;
+                        dev->target->flags |= LYS_CONFIG_W;
                     }
                 } else { /* add and replace are the same in this case */
                     /* remove current config value of the target ... */
-                    dev->target->flags &= ~LY_NODE_CONFIG_MASK;
+                    dev->target->flags &= ~LYS_CONFIG_MASK;
 
                     /* ... and replace it with the value specified in deviation */
-                    dev->target->flags |= d->flags & LY_NODE_CONFIG_MASK;
+                    dev->target->flags |= d->flags & LYS_CONFIG_MASK;
                 }
             } else if (!strcmp(child->name, "default")) {
                 if (d->dflt) {
@@ -1653,7 +1653,7 @@ fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_d
                     goto error;
                 }
             } else if (!strcmp(child->name, "mandatory")) {
-                if (d->flags & LY_NODE_MAND_MASK) {
+                if (d->flags & LYS_MAND_MASK) {
                     LOGVAL(VE_TOOMANY, LOGLINE(child), child->name, yin->name);
                     goto error;
                 }
@@ -1667,9 +1667,9 @@ fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_d
 
                 GETVAL(value, child, "value");
                 if (!strcmp(value, "false")) {
-                    d->flags |= LY_NODE_MAND_FALSE;
+                    d->flags |= LYS_MAND_FALSE;
                 } else if (!strcmp(value, "true")) {
-                    d->flags |= LY_NODE_MAND_TRUE;
+                    d->flags |= LYS_MAND_TRUE;
                 } else {
                     LOGVAL(VE_INARG, LOGLINE(child), value, child->name);
                     goto error;
@@ -1677,7 +1677,7 @@ fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_d
 
                 if (d->mod == LY_DEVIATE_ADD) {
                     /* check that there is no current value */
-                    if (dev->target->flags & LY_NODE_MAND_MASK) {
+                    if (dev->target->flags & LYS_MAND_MASK) {
                         LOGVAL(VE_INSTMT, LOGLINE(child), child->name);
                         LOGVAL(VE_SPEC, 0, "Adding property that already exists.");
                         goto error;
@@ -1686,19 +1686,19 @@ fill_yin_deviation(struct ly_module *module, struct lyxml_elem *yin, struct ly_d
 
                 if (d->mod == LY_DEVIATE_DEL) {
                     /* check values */
-                    if ((d->flags & LY_NODE_MAND_MASK) != (dev->target->flags & LY_NODE_MAND_MASK)) {
+                    if ((d->flags & LYS_MAND_MASK) != (dev->target->flags & LYS_MAND_MASK)) {
                         LOGVAL(VE_INARG, LOGLINE(child), value, child->name);
                         LOGVAL(VE_SPEC, 0, "Value differs from the target being deleted.");
                         goto error;
                     }
                     /* remove current mandatory value of the target */
-                    dev->target->flags &= ~LY_NODE_MAND_MASK;
+                    dev->target->flags &= ~LYS_MAND_MASK;
                 } else { /* add (already checked) and replace */
                     /* remove current mandatory value of the target ... */
-                    dev->target->flags &= ~LY_NODE_MAND_MASK;
+                    dev->target->flags &= ~LYS_MAND_MASK;
 
                     /* ... and replace it with the value specified in deviation */
-                    dev->target->flags |= d->flags & LY_NODE_MAND_MASK;
+                    dev->target->flags |= d->flags & LYS_MAND_MASK;
                 }
             } else if (!strcmp(child->name, "min-elements")) {
                 if (f_min) {
@@ -2222,9 +2222,9 @@ fill_yin_refine(struct ly_module *module, struct lyxml_elem *yin, struct ly_refi
 
             GETVAL(value, sub, "value");
             if (!strcmp(value, "true")) {
-                rfn->flags |= LY_NODE_MAND_TRUE;
+                rfn->flags |= LYS_MAND_TRUE;
             } else if (!strcmp(value, "false")) {
-                rfn->flags |= LY_NODE_MAND_FALSE;
+                rfn->flags |= LYS_MAND_FALSE;
             } else {
                 LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
                 goto error;
@@ -2521,9 +2521,9 @@ read_yin_common(struct ly_module *module, struct ly_mnode *parent,
             /* NACM extensions */
             if ((opt & OPT_NACMEXT) && !strcmp(sub->ns->value, LY_NSNACM)) {
                 if (!strcmp(sub->name, "default-deny-write")) {
-                    mnode->nacm |= LY_NACM_DENYW;
+                    mnode->nacm |= LYS_NACM_DENYW;
                 } else if (!strcmp(sub->name, "default-deny-all")) {
-                    mnode->nacm |= LY_NACM_DENYA;
+                    mnode->nacm |= LYS_NACM_DENYA;
                 } else {
                     LOGVAL(VE_INSTMT, LOGLINE(sub), sub->name);
                     goto error;
@@ -2554,31 +2554,31 @@ read_yin_common(struct ly_module *module, struct ly_mnode *parent,
                 goto error;
             }
         } else if (!strcmp(sub->name, "status")) {
-            if (mnode->flags & LY_NODE_STATUS_MASK) {
+            if (mnode->flags & LYS_STATUS_MASK) {
                 LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, xmlnode->name);
                 goto error;
             }
             GETVAL(value, sub, "value");
             if (!strcmp(value, "current")) {
-                mnode->flags |= LY_NODE_STATUS_CURR;
+                mnode->flags |= LYS_STATUS_CURR;
             } else if (!strcmp(value, "deprecated")) {
-                mnode->flags |= LY_NODE_STATUS_DEPRC;
+                mnode->flags |= LYS_STATUS_DEPRC;
             } else if (!strcmp(value, "obsolete")) {
-                mnode->flags |= LY_NODE_STATUS_OBSLT;
+                mnode->flags |= LYS_STATUS_OBSLT;
             } else {
                 LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
                 goto error;
             }
         } else if ((opt & OPT_CONFIG) && !strcmp(sub->name, "config")) {
-            if (mnode->flags & LY_NODE_CONFIG_MASK) {
+            if (mnode->flags & LYS_CONFIG_MASK) {
                 LOGVAL(VE_TOOMANY, LOGLINE(sub), sub->name, xmlnode->name);
                 goto error;
             }
             GETVAL(value, sub, "value");
             if (!strcmp(value, "false")) {
-                mnode->flags |= LY_NODE_CONFIG_R;
+                mnode->flags |= LYS_CONFIG_R;
             } else if (!strcmp(value, "true")) {
-                mnode->flags |= LY_NODE_CONFIG_W;
+                mnode->flags |= LYS_CONFIG_W;
             } else {
                 LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
                 goto error;
@@ -2590,13 +2590,13 @@ read_yin_common(struct ly_module *module, struct ly_mnode *parent,
         lyxml_free_elem(ctx, sub);
     }
 
-    if ((opt & OPT_INHERIT) && !(mnode->flags & LY_NODE_CONFIG_MASK)) {
+    if ((opt & OPT_INHERIT) && !(mnode->flags & LYS_CONFIG_MASK)) {
         /* get config flag from parent */
         if (parent) {
-            mnode->flags |= parent->flags & LY_NODE_CONFIG_MASK;
+            mnode->flags |= parent->flags & LYS_CONFIG_MASK;
         } else {
             /* default config is true */
-            mnode->flags |= LY_NODE_CONFIG_W;
+            mnode->flags |= LYS_CONFIG_W;
         }
     }
 
@@ -2866,9 +2866,9 @@ read_yin_choice(struct ly_module *module,
 
             GETVAL(value, sub, "value");
             if (!strcmp(value, "true")) {
-                choice->flags |= LY_NODE_MAND_TRUE;
+                choice->flags |= LYS_MAND_TRUE;
             } else if (!strcmp(value, "false")) {
-                choice->flags |= LY_NODE_MAND_FALSE;
+                choice->flags |= LYS_MAND_FALSE;
             } else {
                 LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
                 goto error;
@@ -2911,7 +2911,7 @@ read_yin_choice(struct ly_module *module,
     }
 
     /* check - default is prohibited in combination with mandatory */
-    if (dflt_str && (choice->flags & LY_NODE_MAND_TRUE)) {
+    if (dflt_str && (choice->flags & LYS_MAND_TRUE)) {
         LOGVAL(VE_SPEC, LOGLINE(yin),
                "The \"default\" statement MUST NOT be present on choices where \"mandatory\" is true.");
         goto error;
@@ -2977,9 +2977,9 @@ read_yin_anyxml(struct ly_module *module, struct ly_mnode *parent, struct lyxml_
 
             GETVAL(value, sub, "value");
             if (!strcmp(value, "true")) {
-                anyxml->flags |= LY_NODE_MAND_TRUE;
+                anyxml->flags |= LYS_MAND_TRUE;
             } else if (!strcmp(value, "false")) {
-                anyxml->flags |= LY_NODE_MAND_FALSE;
+                anyxml->flags |= LYS_MAND_FALSE;
             } else {
                 LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
                 goto error;
@@ -3108,9 +3108,9 @@ read_yin_leaf(struct ly_module *module, struct ly_mnode *parent, struct lyxml_el
 
             GETVAL(value, sub, "value");
             if (!strcmp(value, "true")) {
-                leaf->flags |= LY_NODE_MAND_TRUE;
+                leaf->flags |= LYS_MAND_TRUE;
             } else if (!strcmp(value, "false")) {
-                leaf->flags |= LY_NODE_MAND_FALSE;
+                leaf->flags |= LYS_MAND_FALSE;
             } else {
                 LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
                 goto error;
@@ -3242,7 +3242,7 @@ read_yin_leaflist(struct ly_module *module, struct ly_mnode *parent, struct lyxm
              */
             f_ordr = 1;
 
-            if (llist->flags & LY_NODE_CONFIG_R) {
+            if (llist->flags & LYS_CONFIG_R) {
                 /* RFC 6020, 7.7.5 - ignore ordering when the list represents
                  * state data
                  */
@@ -3252,7 +3252,7 @@ read_yin_leaflist(struct ly_module *module, struct ly_mnode *parent, struct lyxm
 
             GETVAL(value, sub, "value");
             if (!strcmp(value, "user")) {
-                llist->flags |= LY_NODE_USERORDERED;
+                llist->flags |= LYS_USERORDERED;
             } else if (strcmp(value, "system")) {
                 LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
                 goto error;
@@ -3461,7 +3461,7 @@ read_yin_list(struct ly_module *module,
              */
             f_ordr = 1;
 
-            if (list->flags & LY_NODE_CONFIG_R) {
+            if (list->flags & LYS_CONFIG_R) {
                 /* RFC 6020, 7.7.5 - ignore ordering when the list represents
                  * state data
                  */
@@ -3471,7 +3471,7 @@ read_yin_list(struct ly_module *module,
 
             GETVAL(value, sub, "value");
             if (!strcmp(value, "user")) {
-                list->flags |= LY_NODE_USERORDERED;
+                list->flags |= LYS_USERORDERED;
             } else if (strcmp(value, "system")) {
                 LOGVAL(VE_INARG, LOGLINE(sub), value, sub->name);
                 goto error;
@@ -3542,7 +3542,7 @@ read_yin_list(struct ly_module *module,
     }
 
     /* check - if list is configuration, key statement is mandatory */
-    if ((list->flags & LY_NODE_CONFIG_W) && !key_str) {
+    if ((list->flags & LYS_CONFIG_W) && !key_str) {
         LOGVAL(VE_MISSSTMT2, LOGLINE(yin), "key", "list");
         goto error;
     }
@@ -4350,10 +4350,10 @@ read_yin_uses(struct ly_module *module,
     if (resolve) {
         /* inherit config flag */
         if (parent) {
-            retval->flags |= parent->flags & LY_NODE_CONFIG_MASK;
+            retval->flags |= parent->flags & LYS_CONFIG_MASK;
         } else {
             /* default config is true */
-            retval->flags |= LY_NODE_CONFIG_W;
+            retval->flags |= LYS_CONFIG_W;
         }
     }
 

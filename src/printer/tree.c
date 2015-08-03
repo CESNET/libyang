@@ -39,14 +39,14 @@ is_enabled(struct ly_mnode *mnode)
     int i;
 
     for (i = 0; i < mnode->features_size; i++) {
-        if (!(mnode->features[i]->flags & LY_NODE_FENABLED)) {
+        if (!(mnode->features[i]->flags & LYS_FENABLED)) {
             return 0;
         }
     }
 
     if (mnode->parent && (mnode->parent->nodetype == LY_NODE_AUGMENT)) {
         for (i = 0; i < mnode->parent->features_size; i++) {
-            if (!(mnode->parent->features[i]->flags & LY_NODE_FENABLED)) {
+            if (!(mnode->parent->features[i]->flags & LYS_FENABLED)) {
                 return 0;
             }
         }
@@ -215,7 +215,7 @@ get_max_name_len(struct ly_module *module, struct ly_mnode *mnode)
 }
 
 static void
-tree_print_type(FILE *f, struct ly_type *type)
+tree_print_type(FILE *f, struct lys_type *type)
 {
     if (type->base == LY_TYPE_LEAFREF) {
         fprintf(f, "-> %s", type->info.lref.path);
@@ -281,10 +281,10 @@ tree_print_container(FILE *f, struct ly_module *module, int level, char *indent,
     assert(spec_config >= 0 && spec_config <= 2);
 
     fprintf(f, "%s%s--", indent,
-            (cont->flags & LY_NODE_STATUS_DEPRC ? "x" : (cont->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")));
+            (cont->flags & LYS_STATUS_DEPRC ? "x" : (cont->flags & LYS_STATUS_OBSLT ? "o" : "+")));
 
     if (spec_config == 0) {
-        fprintf(f, "%s ", (cont->flags & LY_NODE_CONFIG_W ? "rw" : "ro"));
+        fprintf(f, "%s ", (cont->flags & LYS_CONFIG_W ? "rw" : "ro"));
     } else if (spec_config == 1) {
         fprintf(f, "-w ");
     } else if (spec_config == 2) {
@@ -326,10 +326,10 @@ tree_print_choice(FILE *f, struct ly_module *module, int level, char *indent, st
     assert(spec_config >= 0 && spec_config <= 2);
 
     fprintf(f, "%s%s--", indent,
-            (choice->flags & LY_NODE_STATUS_DEPRC ? "x" : (choice->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")));
+            (choice->flags & LYS_STATUS_DEPRC ? "x" : (choice->flags & LYS_STATUS_OBSLT ? "o" : "+")));
 
     if (spec_config == 0) {
-        fprintf(f, "%s ", (choice->flags & LY_NODE_CONFIG_W ? "rw" : "ro"));
+        fprintf(f, "%s ", (choice->flags & LYS_CONFIG_W ? "rw" : "ro"));
     } else if (spec_config == 1) {
         fprintf(f, "-w ");
     } else if (spec_config == 2) {
@@ -342,7 +342,7 @@ tree_print_choice(FILE *f, struct ly_module *module, int level, char *indent, st
         fprintf(f, "%s:", choice->module->prefix);
     }
 
-    fprintf(f, "%s)%s", choice->name, (choice->flags & LY_NODE_MAND_TRUE ? "" : "?"));
+    fprintf(f, "%s)%s", choice->name, (choice->flags & LYS_MAND_TRUE ? "" : "?"));
 
     if (choice->dflt != NULL) {
         fprintf(f, " <%s>", choice->dflt->name);
@@ -374,7 +374,7 @@ tree_print_case(FILE *f, struct ly_module *module, int level, char *indent, unsi
     struct ly_mnode *sub;
 
     fprintf(f, "%s%s--:(", indent,
-            (cas->flags & LY_NODE_STATUS_DEPRC ? "x" : (cas->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")));
+            (cas->flags & LYS_STATUS_DEPRC ? "x" : (cas->flags & LYS_STATUS_OBSLT ? "o" : "+")));
 
     if (module != cas->module) {
         fprintf(f, "%s:", cas->module->prefix);
@@ -413,10 +413,10 @@ tree_print_anyxml(FILE *f, struct ly_module *module, char *indent, unsigned int 
     assert(spec_config >= 0 && spec_config <= 2);
 
     fprintf(f, "%s%s--", indent,
-            (anyxml->flags & LY_NODE_STATUS_DEPRC ? "x" : (anyxml->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")));
+            (anyxml->flags & LYS_STATUS_DEPRC ? "x" : (anyxml->flags & LYS_STATUS_OBSLT ? "o" : "+")));
 
     if (spec_config == 0) {
-        fprintf(f, "%s ", (anyxml->flags & LY_NODE_CONFIG_W ? "rw" : "ro"));
+        fprintf(f, "%s ", (anyxml->flags & LYS_CONFIG_W ? "rw" : "ro"));
     } else if (spec_config == 1) {
         fprintf(f, "-w ");
     } else if (spec_config == 2) {
@@ -429,7 +429,7 @@ tree_print_anyxml(FILE *f, struct ly_module *module, char *indent, unsigned int 
         prefix_len = strlen(anyxml->module->prefix)+1;
     }
 
-    fprintf(f, "%s%s%*sanyxml", anyxml->name, (anyxml->flags & LY_NODE_MAND_TRUE ? " " : "?"),
+    fprintf(f, "%s%s%*sanyxml", anyxml->name, (anyxml->flags & LYS_MAND_TRUE ? " " : "?"),
             3 + (int)((max_name_len - strlen(anyxml->name)) - prefix_len), "   ");
 
     tree_print_features(f, (const struct ly_feature **)anyxml->features, anyxml->features_size);
@@ -458,10 +458,10 @@ tree_print_leaf(FILE *f, struct ly_module *module, char *indent, unsigned int ma
     }
 
     fprintf(f, "%s%s--", indent,
-            (leaf->flags & LY_NODE_STATUS_DEPRC ? "x" : (leaf->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")));
+            (leaf->flags & LYS_STATUS_DEPRC ? "x" : (leaf->flags & LYS_STATUS_OBSLT ? "o" : "+")));
 
     if (spec_config == 0) {
-        fprintf(f, "%s ", (leaf->flags & LY_NODE_CONFIG_W ? "rw" : "ro"));
+        fprintf(f, "%s ", (leaf->flags & LYS_CONFIG_W ? "rw" : "ro"));
     } else if (spec_config == 1) {
         fprintf(f, "-w ");
     } else if (spec_config == 2) {
@@ -474,7 +474,7 @@ tree_print_leaf(FILE *f, struct ly_module *module, char *indent, unsigned int ma
         prefix_len = strlen(leaf->module->prefix)+1;
     }
 
-    fprintf(f, "%s%s%*s", leaf->name, ((leaf->flags & LY_NODE_MAND_TRUE) || is_key ? " " : "?"),
+    fprintf(f, "%s%s%*s", leaf->name, ((leaf->flags & LYS_MAND_TRUE) || is_key ? " " : "?"),
             3 + (int)((max_name_len - strlen(leaf->name)) - prefix_len), "   ");
 
     tree_print_type(f, &leaf->type);
@@ -496,10 +496,10 @@ tree_print_leaflist(FILE *f, struct ly_module *module, char *indent, unsigned in
     assert(spec_config >= 0 && spec_config <= 2);
 
     fprintf(f, "%s%s--", indent,
-            (leaflist->flags & LY_NODE_STATUS_DEPRC ? "x" : (leaflist->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")));
+            (leaflist->flags & LYS_STATUS_DEPRC ? "x" : (leaflist->flags & LYS_STATUS_OBSLT ? "o" : "+")));
 
     if (spec_config == 0) {
-        fprintf(f, "%s ", (leaflist->flags & LY_NODE_CONFIG_W ? "rw" : "ro"));
+        fprintf(f, "%s ", (leaflist->flags & LYS_CONFIG_W ? "rw" : "ro"));
     } else if (spec_config == 1) {
         fprintf(f, "-w ");
     } else if (spec_config == 2) {
@@ -529,10 +529,10 @@ tree_print_list(FILE *f, struct ly_module *module, int level, char *indent, stru
     struct ly_mnode_list *list = (struct ly_mnode_list *)mnode;
 
     fprintf(f, "%s%s--", indent,
-            (list->flags & LY_NODE_STATUS_DEPRC ? "x" : (list->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")));
+            (list->flags & LYS_STATUS_DEPRC ? "x" : (list->flags & LYS_STATUS_OBSLT ? "o" : "+")));
 
     if (spec_config == 0) {
-        fprintf(f, "%s ", (list->flags & LY_NODE_CONFIG_W ? "rw" : "ro"));
+        fprintf(f, "%s ", (list->flags & LYS_CONFIG_W ? "rw" : "ro"));
     } else if (spec_config == 1) {
         fprintf(f, "-w ");
     } else if (spec_config == 2) {
@@ -595,7 +595,7 @@ tree_print_rpc(FILE *f, struct ly_module *module, int level, char *indent, struc
     }
 
     fprintf(f, "%s%s---x %s", indent,
-            (rpc->flags & LY_NODE_STATUS_DEPRC ? "x" : (rpc->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")), rpc->name);
+            (rpc->flags & LYS_STATUS_DEPRC ? "x" : (rpc->flags & LYS_STATUS_OBSLT ? "o" : "+")), rpc->name);
 
     tree_print_features(f, (const struct ly_feature **)rpc->features, rpc->features_size);
 
@@ -628,7 +628,7 @@ tree_print_notif(FILE *f, struct ly_module *module, int level, char *indent, str
     }
 
     fprintf(f, "%s%s---n %s", indent,
-            (notif->flags & LY_NODE_STATUS_DEPRC ? "x" : (notif->flags & LY_NODE_STATUS_OBSLT ? "o" : "+")),
+            (notif->flags & LYS_STATUS_DEPRC ? "x" : (notif->flags & LYS_STATUS_OBSLT ? "o" : "+")),
             notif->name);
 
     tree_print_features(f, (const struct ly_feature **)notif->features, notif->features_size);

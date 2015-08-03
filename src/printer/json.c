@@ -140,7 +140,7 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
 {
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
     struct ly_mnode_leaf *sleaf = (struct ly_mnode_leaf *)node->schema;
-    struct ly_type *type;
+    struct lys_type *type;
     LY_DATA_TYPE data_type;
     const char *schema;
     char dec[21];

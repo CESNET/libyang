@@ -17,7 +17,7 @@ int resolve_path_arg(struct leafref_instid *unres, const char *path, struct leaf
 
 int resolve_instid(struct leafref_instid *unres, const char *path, int path_len, struct leafref_instid **ret);
 
-struct ly_tpdf *resolve_superior_type(const char *name, const char *prefix, struct ly_module *module,
+struct lys_tpdf *resolve_superior_type(const char *name, const char *prefix, struct ly_module *module,
                                       struct ly_mnode *parent);
 
 int resolve_unique(struct ly_mnode *parent, const char *uniq_str, struct ly_unique *uniq_s, int line);

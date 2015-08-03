@@ -101,8 +101,8 @@ info_print_flags(FILE *f, uint8_t flags, uint8_t mask, int is_list)
 
     fprintf(f, "%-*s", INDENT_LEN, "Flags: ");
 
-    if (mask & LY_NODE_CONFIG_MASK) {
-        if (flags & LY_NODE_CONFIG_R) {
+    if (mask & LYS_CONFIG_MASK) {
+        if (flags & LYS_CONFIG_R) {
             fprintf(f, "read-only\n");
         } else {
             fprintf(f, "read-write\n");
@@ -110,14 +110,14 @@ info_print_flags(FILE *f, uint8_t flags, uint8_t mask, int is_list)
         first = 0;
     }
 
-    if (mask & LY_NODE_STATUS_MASK) {
+    if (mask & LYS_STATUS_MASK) {
         if (!first) {
             fprintf(f, "%-*s", INDENT_LEN, " ");
         }
 
-        if (flags & LY_NODE_STATUS_DEPRC) {
+        if (flags & LYS_STATUS_DEPRC) {
             fprintf(f, "deprecated\n");
-        } else if (flags & LY_NODE_STATUS_OBSLT) {
+        } else if (flags & LYS_STATUS_OBSLT) {
             fprintf(f, "obsolete\n");
         } else {
             fprintf(f, "current\n");
@@ -125,12 +125,12 @@ info_print_flags(FILE *f, uint8_t flags, uint8_t mask, int is_list)
         first = 0;
     }
 
-    if (mask & LY_NODE_MAND_MASK) {
+    if (mask & LYS_MAND_MASK) {
         if (!first) {
             fprintf(f, "%-*s", INDENT_LEN, " ");
         }
 
-        if (flags & LY_NODE_MAND_TRUE) {
+        if (flags & LYS_MAND_TRUE) {
             fprintf(f, "mandatory\n");
         } else {
             fprintf(f, "non-mandatory\n");
@@ -138,12 +138,12 @@ info_print_flags(FILE *f, uint8_t flags, uint8_t mask, int is_list)
         first = 0;
     }
 
-    if (is_list && (mask & LY_NODE_USERORDERED)) {
+    if (is_list && (mask & LYS_USERORDERED)) {
         if (!first) {
             fprintf(f, "%-*s", INDENT_LEN, " ");
         }
 
-        if (flags & LY_NODE_USERORDERED) {
+        if (flags & LYS_USERORDERED) {
             fprintf(f, "user-ordered\n");
         } else {
             fprintf(f, "system-ordered\n");
@@ -151,12 +151,12 @@ info_print_flags(FILE *f, uint8_t flags, uint8_t mask, int is_list)
         first = 0;
     }
 
-    if (!is_list && (mask & LY_NODE_FENABLED)) {
+    if (!is_list && (mask & LYS_FENABLED)) {
         if (!first) {
             fprintf(f, "%-*s", INDENT_LEN, " ");
         }
 
-        if (flags & LY_NODE_FENABLED) {
+        if (flags & LYS_FENABLED) {
             fprintf(f, "enabled\n");
         } else {
             fprintf(f, "disabled\n");
@@ -198,7 +198,7 @@ info_print_when(FILE *f, struct ly_when *when)
 }
 
 static void
-info_print_must(FILE *f, struct ly_restr *must, uint8_t must_size)
+info_print_must(FILE *f, struct lys_restr *must, uint8_t must_size)
 {
     int i;
 
@@ -215,7 +215,7 @@ info_print_must(FILE *f, struct ly_restr *must, uint8_t must_size)
 }
 
 static void
-info_print_typedef(FILE *f, struct ly_tpdf *tpdf, uint8_t tpdf_size)
+info_print_typedef(FILE *f, struct lys_tpdf *tpdf, uint8_t tpdf_size)
 {
     int i;
 
@@ -274,7 +274,7 @@ info_print_typedef_with_include(FILE *f, struct ly_module *mod)
 }
 
 static void
-info_print_type_detail(FILE *f, struct ly_type *type)
+info_print_type_detail(FILE *f, struct lys_type *type)
 {
     int i;
 
@@ -313,9 +313,9 @@ info_print_type_detail(FILE *f, struct ly_type *type)
         fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "enum");
 
         assert(type->info.enums.count);
-        fprintf(f, "%-*s%s\n", INDENT_LEN, "Values: ", type->info.enums.list[0].name);
+        fprintf(f, "%-*s%s\n", INDENT_LEN, "Values: ", type->info.enums.enm[0].name);
         for (i = 1; i < type->info.enums.count; ++i) {
-            fprintf(f, "%*s%s\n", INDENT_LEN, "", type->info.enums.list[i].name);
+            fprintf(f, "%*s%s\n", INDENT_LEN, "", type->info.enums.enm[i].name);
         }
 
         break;
@@ -379,7 +379,7 @@ int_range:
 
         fprintf(f, "%s\n", "Of types start:");
         for (i = 0; i < type->info.uni.count; ++i) {
-            info_print_type_detail(f, &type->info.uni.type[i]);
+            info_print_type_detail(f, &type->info.uni.types[i]);
         }
         fprintf(f, "%s\n", "Of types end");
         break;
@@ -449,9 +449,9 @@ info_print_nacmext(FILE *f, uint8_t nacm)
     fprintf(f, "%-*s", INDENT_LEN, "NACM: ");
 
     if (nacm) {
-        if (nacm & LY_NACM_DENYW) {
+        if (nacm & LYS_NACM_DENYW) {
             fprintf(f, "default-deny-write\n");
-        } else if (nacm & LY_NACM_DENYA) {
+        } else if (nacm & LYS_NACM_DENYA) {
             fprintf(f, "default-deny-all\n");
         }
     } else {
@@ -770,13 +770,13 @@ info_print_mnodes_with_include(FILE *f, struct ly_module *mod)
 }
 
 static void
-info_print_typedef_detail(FILE *f, struct ly_tpdf *tpdf)
+info_print_typedef_detail(FILE *f, struct lys_tpdf *tpdf)
 {
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Typedef: ", tpdf->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", tpdf->module->name);
     info_print_text(f, tpdf->dsc, "Desc: ");
     info_print_text(f, tpdf->ref, "Reference: ");
-    info_print_flags(f, tpdf->flags, LY_NODE_STATUS_MASK, 0);
+    info_print_flags(f, tpdf->flags, LYS_STATUS_MASK, 0);
     info_print_type_detail(f, &tpdf->type);
     info_print_text(f, tpdf->units, "Units: ");
     info_print_text(f, tpdf->dflt, "Default: ");
@@ -791,7 +791,7 @@ info_print_ident_detail(FILE *f, struct ly_ident *ident)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", ident->module->name);
     info_print_text(f, ident->dsc, "Desc: ");
     info_print_text(f, ident->ref, "Reference: ");
-    info_print_flags(f, ident->flags, LY_NODE_STATUS_MASK, 0);
+    info_print_flags(f, ident->flags, LYS_STATUS_MASK, 0);
     info_print_text(f, (ident->base ? ident->base->name : NULL), "Base: ");
 
     fprintf(f, "%-*s", INDENT_LEN, "Derived: ");
@@ -813,7 +813,7 @@ info_print_feature_detail(FILE *f, struct ly_feature *feat)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", feat->module->name);
     info_print_text(f, feat->dsc, "Desc: ");
     info_print_text(f, feat->ref, "Reference: ");
-    info_print_flags(f, feat->flags, LY_NODE_STATUS_MASK | LY_NODE_FENABLED, 0);
+    info_print_flags(f, feat->flags, LYS_STATUS_MASK | LYS_FENABLED, 0);
     info_print_if_feature(f, feat->features, feat->features_size);
 }
 
@@ -884,7 +884,7 @@ info_print_container(FILE *f, struct ly_mnode *mnode)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", cont->module->name);
     info_print_text(f, cont->dsc, "Desc: ");
     info_print_text(f, cont->ref, "Reference: ");
-    info_print_flags(f, cont->flags, LY_NODE_CONFIG_MASK | LY_NODE_STATUS_MASK | LY_NODE_MAND_MASK, 0);
+    info_print_flags(f, cont->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK, 0);
     info_print_text(f, cont->presence, "Presence: ");
     info_print_if_feature(f, cont->features, cont->features_size);
     info_print_when(f, cont->when);
@@ -904,7 +904,7 @@ info_print_choice(FILE *f, struct ly_mnode *mnode)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", choice->module->name);
     info_print_text(f, choice->dsc, "Desc: ");
     info_print_text(f, choice->ref, "Reference: ");
-    info_print_flags(f, choice->flags, LY_NODE_CONFIG_MASK | LY_NODE_STATUS_MASK | LY_NODE_MAND_MASK, 0);
+    info_print_flags(f, choice->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK, 0);
     fprintf(f, "%-*s", INDENT_LEN, "Default: ");
     if (choice->dflt) {
         fprintf(f, "%s\n", choice->dflt->name);
@@ -927,7 +927,7 @@ info_print_leaf(FILE *f, struct ly_mnode *mnode)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", leaf->module->name);
     info_print_text(f, leaf->dsc, "Desc: ");
     info_print_text(f, leaf->ref, "Reference: ");
-    info_print_flags(f, leaf->flags, LY_NODE_CONFIG_MASK | LY_NODE_STATUS_MASK | LY_NODE_MAND_MASK, 0);
+    info_print_flags(f, leaf->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK, 0);
     info_print_text(f, leaf->type.der->name, "Type: ");
     info_print_text(f, leaf->units, "Units: ");
     info_print_text(f, leaf->dflt, "Default: ");
@@ -946,7 +946,7 @@ info_print_leaflist(FILE *f, struct ly_mnode *mnode)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", llist->module->name);
     info_print_text(f, llist->dsc, "Desc: ");
     info_print_text(f, llist->ref, "Reference: ");
-    info_print_flags(f, llist->flags, LY_NODE_CONFIG_MASK | LY_NODE_STATUS_MASK | LY_NODE_MAND_MASK | LY_NODE_USERORDERED, 1);
+    info_print_flags(f, llist->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK | LYS_USERORDERED, 1);
     info_print_text(f, llist->type.der->name, "Type: ");
     info_print_text(f, llist->units, "Units: ");
     info_print_list_constr(f, llist->min, llist->max);
@@ -965,7 +965,7 @@ info_print_list(FILE *f, struct ly_mnode *mnode)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", list->module->name);
     info_print_text(f, list->dsc, "Desc: ");
     info_print_text(f, list->ref, "Reference: ");
-    info_print_flags(f, list->flags, LY_NODE_CONFIG_MASK | LY_NODE_STATUS_MASK | LY_NODE_MAND_MASK | LY_NODE_USERORDERED, 1);
+    info_print_flags(f, list->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK | LYS_USERORDERED, 1);
     info_print_list_constr(f, list->min, list->max);
     info_print_if_feature(f, list->features, list->features_size);
     info_print_when(f, list->when);
@@ -987,7 +987,7 @@ info_print_anyxml(FILE *f, struct ly_mnode *mnode)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", axml->module->name);
     info_print_text(f, axml->dsc, "Desc: ");
     info_print_text(f, axml->ref, "Reference: ");
-    info_print_flags(f, axml->flags, LY_NODE_CONFIG_MASK | LY_NODE_STATUS_MASK | LY_NODE_MAND_MASK, 0);
+    info_print_flags(f, axml->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK, 0);
     info_print_if_feature(f, axml->features, axml->features_size);
     info_print_when(f, axml->when);
     info_print_must(f, axml->must, axml->must_size);
@@ -1003,7 +1003,7 @@ info_print_grouping(FILE *f, struct ly_mnode *mnode)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", group->module->name);
     info_print_text(f, group->dsc, "Desc: ");
     info_print_text(f, group->ref, "Reference: ");
-    info_print_flags(f, group->flags, LY_NODE_STATUS_MASK, 0);
+    info_print_flags(f, group->flags, LYS_STATUS_MASK, 0);
     info_print_typedef(f, group->tpdf, group->tpdf_size);
     info_print_nacmext(f, group->nacm);
 
@@ -1019,7 +1019,7 @@ info_print_case(FILE *f, struct ly_mnode *mnode)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", cas->module->name);
     info_print_text(f, cas->dsc, "Desc: ");
     info_print_text(f, cas->ref, "Reference: ");
-    info_print_flags(f, cas->flags, LY_NODE_CONFIG_MASK | LY_NODE_STATUS_MASK | LY_NODE_MAND_MASK, 0);
+    info_print_flags(f, cas->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK, 0);
     info_print_if_feature(f, cas->features, cas->features_size);
     info_print_when(f, cas->when);
     info_print_nacmext(f, cas->nacm);
@@ -1062,7 +1062,7 @@ info_print_notif(FILE *f, struct ly_mnode *mnode)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", ntf->module->name);
     info_print_text(f, ntf->dsc, "Desc: ");
     info_print_text(f, ntf->ref, "Reference: ");
-    info_print_flags(f, ntf->flags, LY_NODE_STATUS_MASK, 0);
+    info_print_flags(f, ntf->flags, LYS_STATUS_MASK, 0);
     info_print_if_feature(f, ntf->features, ntf->features_size);
     info_print_typedef(f, ntf->tpdf, ntf->tpdf_size);
     info_print_nacmext(f, ntf->nacm);
@@ -1079,7 +1079,7 @@ info_print_rpc(FILE *f, struct ly_mnode *mnode)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", rpc->module->name);
     info_print_text(f, rpc->dsc, "Desc: ");
     info_print_text(f, rpc->ref, "Reference: ");
-    info_print_flags(f, rpc->flags, LY_NODE_STATUS_MASK, 0);
+    info_print_flags(f, rpc->flags, LYS_STATUS_MASK, 0);
     info_print_if_feature(f, rpc->features, rpc->features_size);
     info_print_typedef(f, rpc->tpdf, rpc->tpdf_size);
     info_print_nacmext(f, rpc->nacm);

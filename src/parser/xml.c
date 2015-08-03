@@ -38,7 +38,7 @@
 
 /* kind == 0 - unsigned (unum used), 1 - signed (snum used), 2 - floating point (fnum used) */
 static int
-validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnum, struct ly_type *type,
+validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnum, struct lys_type *type,
                       struct lyxml_elem *xml, const char *str_val, int log)
 {
     struct len_ran_intv *intv = NULL, *tmp_intv;
@@ -78,7 +78,7 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
 }
 
 static int
-validate_pattern(const char *str, struct ly_type *type, struct lyxml_elem *xml, const char *str_val, int log)
+validate_pattern(const char *str, struct lys_type *type, struct lyxml_elem *xml, const char *str_val, int log)
 {
     int i;
     regex_t preq;
@@ -223,15 +223,15 @@ parse_uint(const char *str_val, struct lyxml_elem *xml, uint64_t max, int base, 
     return 0;
 }
 
-static struct ly_type *
-get_next_union_type(struct ly_type *type, struct ly_type *prev_type, int *found)
+static struct lys_type *
+get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *found)
 {
     int i;
-    struct ly_type *ret = NULL;
+    struct lys_type *ret = NULL;
 
     for (i = 0; i < type->info.uni.count; ++i) {
-        if (type->info.uni.type[i].base == LY_TYPE_UNION) {
-            ret = get_next_union_type(&type->info.uni.type[i], prev_type, found);
+        if (type->info.uni.types[i].base == LY_TYPE_UNION) {
+            ret = get_next_union_type(&type->info.uni.types[i], prev_type, found);
             if (ret) {
                 break;;
             }
@@ -239,11 +239,11 @@ get_next_union_type(struct ly_type *type, struct ly_type *prev_type, int *found)
         }
 
         if (!prev_type || *found) {
-            ret = &type->info.uni.type[i];
+            ret = &type->info.uni.types[i];
             break;
         }
 
-        if (&type->info.uni.type[i] == prev_type) {
+        if (&type->info.uni.types[i] == prev_type) {
             *found = 1;
         }
     }
@@ -256,12 +256,12 @@ get_next_union_type(struct ly_type *type, struct ly_type *prev_type, int *found)
 }
 
 static int
-_xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_elem *xml,
+_xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_elem *xml,
                struct leafref_instid **unres, int log)
 {
     #define DECSIZE 21
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
-    struct ly_type *type;
+    struct lys_type *type;
     struct lyxml_ns *ns;
     char dec[DECSIZE];
     char *strptr;
@@ -445,9 +445,9 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
 
         /* find matching enumeration value */
         for (i = 0; i < type->info.enums.count; i++) {
-            if (!strcmp(leaf->value_str, type->info.enums.list[i].name)) {
+            if (!strcmp(leaf->value_str, type->info.enums.enm[i].name)) {
                 /* we have match, store pointer to the definition */
-                leaf->value.enm = &type->info.enums.list[i];
+                leaf->value.enm = &type->info.enums.enm[i];
                 break;
             }
         }

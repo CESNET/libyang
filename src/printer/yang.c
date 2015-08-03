@@ -105,10 +105,10 @@ yang_print_nacmext(FILE *f, int level, struct ly_mnode *mnode, struct ly_module 
             }
         }
 
-        if ((mnode->nacm & LY_NACM_DENYW) && (!mnode->parent || !(mnode->parent->nacm & LY_NACM_DENYW))) {
+        if ((mnode->nacm & LYS_NACM_DENYW) && (!mnode->parent || !(mnode->parent->nacm & LYS_NACM_DENYW))) {
             fprintf(f, "%*s%s:default-deny-write;\n", LEVEL, INDENT, prefix);
         }
-        if ((mnode->nacm & LY_NACM_DENYA) && (!mnode->parent || !(mnode->parent->nacm & LY_NACM_DENYA))) {
+        if ((mnode->nacm & LYS_NACM_DENYA) && (!mnode->parent || !(mnode->parent->nacm & LYS_NACM_DENYA))) {
             fprintf(f, "%*s%s:default-deny-all;\n", LEVEL, INDENT, prefix);
         }
     }
@@ -121,11 +121,11 @@ yang_print_nacmext(FILE *f, int level, struct ly_mnode *mnode, struct ly_module 
 static void
 yang_print_mnode_common(FILE *f, int level, struct ly_mnode *mnode)
 {
-    if (mnode->flags & LY_NODE_STATUS_CURR) {
+    if (mnode->flags & LYS_STATUS_CURR) {
         fprintf(f, "%*sstatus \"current\";\n", LEVEL, INDENT);
-    } else if (mnode->flags & LY_NODE_STATUS_DEPRC) {
+    } else if (mnode->flags & LYS_STATUS_DEPRC) {
         fprintf(f, "%*sstatus \"deprecated\";\n", LEVEL, INDENT);
-    } else if (mnode->flags & LY_NODE_STATUS_OBSLT) {
+    } else if (mnode->flags & LYS_STATUS_OBSLT) {
         fprintf(f, "%*sstatus \"obsolete\";\n", LEVEL, INDENT);
     }
 
@@ -145,18 +145,18 @@ yang_print_mnode_common(FILE *f, int level, struct ly_mnode *mnode)
 static void
 yang_print_mnode_common2(FILE *f, int level, struct ly_mnode *mnode)
 {
-    if (!mnode->parent || (mnode->parent->flags & LY_NODE_CONFIG_MASK) != (mnode->flags & LY_NODE_CONFIG_MASK)) {
+    if (!mnode->parent || (mnode->parent->flags & LYS_CONFIG_MASK) != (mnode->flags & LYS_CONFIG_MASK)) {
         /* print config only when it differs from the parent or in root */
-        if (mnode->flags & LY_NODE_CONFIG_W) {
+        if (mnode->flags & LYS_CONFIG_W) {
             fprintf(f, "%*sconfig \"true\";\n", LEVEL, INDENT);
-        } else if (mnode->flags & LY_NODE_CONFIG_R) {
+        } else if (mnode->flags & LYS_CONFIG_R) {
             fprintf(f, "%*sconfig \"false\";\n", LEVEL, INDENT);
         }
     }
 
-    if (mnode->flags & LY_NODE_MAND_TRUE) {
+    if (mnode->flags & LYS_MAND_TRUE) {
         fprintf(f, "%*smandatory \"true\";\n", LEVEL, INDENT);
-    } else if (mnode->flags & LY_NODE_MAND_FALSE) {
+    } else if (mnode->flags & LYS_MAND_FALSE) {
         fprintf(f, "%*smandatory \"false\";\n", LEVEL, INDENT);
     }
 
@@ -191,7 +191,7 @@ yang_print_feature(FILE *f, int level, struct ly_feature *feat)
 }
 
 static void
-yang_print_restr(FILE *f, int level, struct ly_restr *restr)
+yang_print_restr(FILE *f, int level, struct lys_restr *restr)
 {
     if (restr->dsc != NULL) {
         yang_print_text(f, level, "description", restr->dsc);
@@ -223,7 +223,7 @@ yang_print_when(FILE *f, int level, struct ly_when *when)
 }
 
 static void
-yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *type)
+yang_print_type(FILE *f, int level, struct ly_module *module, struct lys_type *type)
 {
     int i;
 
@@ -261,10 +261,10 @@ yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *ty
         break;
     case LY_TYPE_ENUM:
         for (i = 0; i < type->info.enums.count; i++) {
-            fprintf(f, "%*senum %s {\n", LEVEL, INDENT, type->info.enums.list[i].name);
+            fprintf(f, "%*senum %s {\n", LEVEL, INDENT, type->info.enums.enm[i].name);
             level++;
-            yang_print_mnode_common(f, level, (struct ly_mnode *)&type->info.enums.list[i]);
-            fprintf(f, "%*svalue %d;\n", LEVEL, INDENT, type->info.enums.list[i].value);
+            yang_print_mnode_common(f, level, (struct ly_mnode *)&type->info.enums.enm[i]);
+            fprintf(f, "%*svalue %d;\n", LEVEL, INDENT, type->info.enums.enm[i].value);
             level--;
             fprintf(f, "%*s}\n", LEVEL, INDENT);
         }
@@ -315,7 +315,7 @@ yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *ty
         break;
     case LY_TYPE_UNION:
         for (i = 0; i < type->info.uni.count; ++i) {
-            yang_print_type(f, level, module, &type->info.uni.type[i]);
+            yang_print_type(f, level, module, &type->info.uni.types[i]);
         }
         break;
     default:
@@ -327,7 +327,7 @@ yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *ty
 }
 
 static void
-yang_print_must(FILE *f, int level, struct ly_restr *must)
+yang_print_must(FILE *f, int level, struct lys_restr *must)
 {
     fprintf(f, "%*smust \"%s\" {\n", LEVEL, INDENT, must->expr);
     yang_print_restr(f, level + 1, must);
@@ -354,15 +354,15 @@ yang_print_refine(FILE *f, int level, struct ly_refine *refine)
     fprintf(f, "%*srefine \"%s\" {\n", LEVEL, INDENT, refine->target);
     level++;
 
-    if (refine->flags & LY_NODE_CONFIG_W) {
+    if (refine->flags & LYS_CONFIG_W) {
         fprintf(f, "%*sconfig \"true\";\n", LEVEL, INDENT);
-    } else if (refine->flags & LY_NODE_CONFIG_R) {
+    } else if (refine->flags & LYS_CONFIG_R) {
         fprintf(f, "%*sconfig \"false\";\n", LEVEL, INDENT);
     }
 
-    if (refine->flags & LY_NODE_MAND_TRUE) {
+    if (refine->flags & LYS_MAND_TRUE) {
         fprintf(f, "%*smandatory \"true\";\n", LEVEL, INDENT);
-    } else if (refine->flags & LY_NODE_MAND_FALSE) {
+    } else if (refine->flags & LYS_MAND_FALSE) {
         fprintf(f, "%*smandatory \"false\";\n", LEVEL, INDENT);
     }
 
@@ -421,15 +421,15 @@ yang_print_deviation(FILE *f, int level, struct ly_module *module, struct ly_dev
         }
         level++;
 
-        if (deviation->deviate[i].flags & LY_NODE_CONFIG_W) {
+        if (deviation->deviate[i].flags & LYS_CONFIG_W) {
             fprintf(f, "%*sconfig \"true\";\n", LEVEL, INDENT);
-        } else if (deviation->deviate[i].flags & LY_NODE_CONFIG_R) {
+        } else if (deviation->deviate[i].flags & LYS_CONFIG_R) {
             fprintf(f, "%*sconfig \"false\";\n", LEVEL, INDENT);
         }
 
-        if (deviation->deviate[i].flags & LY_NODE_MAND_TRUE) {
+        if (deviation->deviate[i].flags & LYS_MAND_TRUE) {
             fprintf(f, "%*smandatory \"true\";\n", LEVEL, INDENT);
-        } else if (deviation->deviate[i].flags & LY_NODE_MAND_FALSE) {
+        } else if (deviation->deviate[i].flags & LYS_MAND_FALSE) {
             fprintf(f, "%*smandatory \"false\";\n", LEVEL, INDENT);
         }
 
@@ -499,7 +499,7 @@ yang_print_augment(FILE *f, int level, struct ly_module *module, struct ly_augme
 }
 
 static void
-yang_print_typedef(FILE *f, int level, struct ly_module *module, struct ly_tpdf *tpdf)
+yang_print_typedef(FILE *f, int level, struct ly_module *module, struct lys_tpdf *tpdf)
 {
     fprintf(f, "%*stypedef %s {\n", LEVEL, INDENT, tpdf->name);
     level++;
@@ -726,7 +726,7 @@ yang_print_leaflist(FILE *f, int level, struct ly_mnode *mnode)
     for (i = 0; i < llist->features_size; i++) {
         yang_print_iffeature(f, level, mnode->module, llist->features[i]);
     }
-    if (llist->flags & LY_NODE_USERORDERED) {
+    if (llist->flags & LYS_USERORDERED) {
         fprintf(f, "%*sordered-by user;\n", LEVEL, INDENT);
     }
     if (llist->min > 0) {
@@ -778,7 +778,7 @@ yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
         yang_print_unique(f, level, &list->unique[i]);
     }
 
-    if (list->flags & LY_NODE_USERORDERED) {
+    if (list->flags & LYS_USERORDERED) {
         fprintf(f, "%*sordered-by user;\n", LEVEL, INDENT);
     }
     if (list->min > 0) {
