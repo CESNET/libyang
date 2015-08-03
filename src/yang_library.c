@@ -432,6 +432,8 @@ ly_ylib_get(struct ly_ctx *ctx)
                 }
 
                 dlist = calloc(1, sizeof *dlist);
+                dlist->prev = (struct lyd_node *)dlist;
+                dlist->lprev = dlist;
                 dlist->schema = modules_child;
 
                 module_child = NULL;
