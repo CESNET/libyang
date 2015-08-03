@@ -8,10 +8,9 @@
 #include "parser.h"
 
 static struct ly_mnode *
-ylib_get_next_sibling(struct ly_mnode *siblings, struct ly_mnode *prev)
+ylib_get_next_sibling_recursive(struct ly_mnode *siblings, struct ly_mnode *prev, int *found)
 {
     struct ly_mnode *sibling, *mnode;
-    int found = 0;
 
     LY_TREE_FOR(siblings, sibling) {
         if (sibling->nodetype == LY_NODE_GROUPING) {
@@ -19,23 +18,31 @@ ylib_get_next_sibling(struct ly_mnode *siblings, struct ly_mnode *prev)
         }
 
         if (sibling->nodetype == LY_NODE_USES) {
-            mnode = ylib_get_next_sibling(sibling->child, (found ? NULL : prev));
+            mnode = ylib_get_next_sibling_recursive(sibling->child, (*found ? NULL : prev), found);
             if (mnode) {
                 return mnode;
             }
             continue;
         }
 
-        if (found || !prev) {
+        if (*found || !prev) {
             return sibling;
         }
 
         if (prev == sibling) {
-            found = 1;
+            *found = 1;
         }
     }
 
     return NULL;
+}
+
+static struct ly_mnode *
+ylib_get_next_sibling(struct ly_mnode *siblings, struct ly_mnode *prev)
+{
+    int found = 0;
+
+    return ylib_get_next_sibling_recursive(siblings, prev, &found);
 }
 
 static void
