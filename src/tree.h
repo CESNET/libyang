@@ -49,25 +49,29 @@
  * @{
  */
 
+/**
+ * @brief Schema input formats accepted by libyang [parser functions](@ref parsers).
+ */
 typedef enum {
-    LY_IN_UNKNOWN,
-    LY_IN_YANG,
-    LY_IN_YIN,
-} LY_MINFORMAT;
+    LYS_IN_UNKNOWN = 0,  /**< unknown format, used as return value in case of error */
+    LYS_IN_YANG = 1,     /**< YANG schema input format, TODO not yet supported */
+    LYS_IN_YIN = 2       /**< YIN schema input format */
+} LYS_INFORMAT;
 
+/**
+ * @brief Schema output formats accepted by libyang [printer functions](@ref printers).
+ */
 typedef enum {
-    LY_OUT_UNKNOWN,
-    LY_OUT_YANG,
-    LY_OUT_YIN,
-    LY_OUT_TREE,
-    LY_OUT_INFO,
-} LY_MOUTFORMAT;
+    LYS_OUT_UNKNOWN = 0, /**< unknown format, used as return value in case of error */
+    LYS_OUT_YANG = 1,    /**< YANG schema output format */
+    LYS_OUT_YIN = 2,     /**< YIN schema output format, TODO not yet supported */
+    LYS_OUT_TREE,        /**< Tree schema output format, for more information see the [printers](@ref printers) page */
+    LYS_OUT_INFO,        /**< Info schema output format, for more information see the [printers](@ref printers) page */
+} LYS_OUTFORMAT;
 
-typedef enum {
-    LY_DATA_UNKNOWN,
-    LY_DATA_XML,
-    LY_DATA_JSON,
-} LY_DFORMAT;
+/* shortcuts for common in and out formats */
+#define LYS_YANG 1       /**< YANG schema format, used for #LYS_INFORMAT and #LYS_OUTFORMAT */
+#define LY_YIN 2         /**< YIN schema format, used for #LYS_INFORMAT and #LYS_OUTFORMAT */
 
 typedef enum {
     LY_TYPE_DER,         /**< Derived type */
@@ -883,6 +887,15 @@ int lys_features_state(struct ly_module *module, const char *feature);
  * @addtogroup datatree
  * @{
  */
+
+/**
+ * @brief Data input/output formats supported by libyang [parser](@ref parsers) and [printer](@ref printers) functions.
+ */
+typedef enum {
+    LYD_UNKNOWN,         /**< unknown format, used as return value in case of error */
+    LYD_XML,             /**< XML format of the instance data */
+    LYD_JSON,            /**< JSON format of the instance data */
+} LYD_FORMAT;
 
 /**
  * @brief Data attribute's type to distinguish between a standard (XML) attribute and namespace definition

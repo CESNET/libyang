@@ -260,9 +260,9 @@ struct lyd_node *ly_ylib_get(struct ly_ctx *ctx);
  * @param[in] format Format of the input data (YANG or YIN).
  * @return Pointer to the data model structure or NULL on error.
  */
-struct ly_module *lys_parse(struct ly_ctx *ctx, const char *data, LY_MINFORMAT format);
+struct ly_module *lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
 
-struct ly_module *lys_read(struct ly_ctx *ctx, int fd, LY_MINFORMAT format);
+struct ly_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
 
 /**
  * @brief Parse (and validate according to appropriate schema from the given context) data.
@@ -277,7 +277,7 @@ struct ly_module *lys_read(struct ly_ctx *ctx, int fd, LY_MINFORMAT format);
  * @param[in] format Format of the input data to be parsed.
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
-struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LY_DFORMAT format);
+struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format);
 
 /**@} parsers */
 
@@ -339,11 +339,11 @@ struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LY_DFORMAT form
  * @param[in] module Schema tree to print.
  * @param[in] f File stream where to print the schema.
  * @param[in] format Schema output format.
- * @param[in] target_node Optional parameter for ::LY_OUT_INFO format. It specifies which particular
+ * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
  * node in the module will be printed.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lys_print(FILE *f, struct ly_module *module, LY_MOUTFORMAT format, const char *target_node);
+int lys_print(FILE *f, struct ly_module *module, LYS_OUTFORMAT format, const char *target_node);
 
 /**
  * @brief Print data tree in the specified format.
@@ -354,7 +354,7 @@ int lys_print(FILE *f, struct ly_module *module, LY_MOUTFORMAT format, const cha
  * @param[in] format Data output format.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print(FILE *f, struct lyd_node *root, LY_DFORMAT format);
+int lyd_print(FILE *f, struct lyd_node *root, LYD_FORMAT format);
 
 /**@} printers */
 

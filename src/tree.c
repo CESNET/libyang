@@ -201,7 +201,7 @@ ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child)
 }
 
 API struct ly_module *
-lys_parse(struct ly_ctx *ctx, const char *data, LY_MINFORMAT format)
+lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
     struct unres_item *unres;
     struct ly_module *mod;
@@ -214,10 +214,10 @@ lys_parse(struct ly_ctx *ctx, const char *data, LY_MINFORMAT format)
     unres = calloc(1, sizeof *unres);
 
     switch (format) {
-    case LY_IN_YIN:
+    case LYS_IN_YIN:
         mod = yin_read_module(ctx, data, 1, unres);
         break;
-    case LY_IN_YANG:
+    case LYS_IN_YANG:
         /* TODO */
         mod = NULL;
         break;
@@ -242,7 +242,7 @@ lys_parse(struct ly_ctx *ctx, const char *data, LY_MINFORMAT format)
 }
 
 struct ly_submodule *
-ly_submodule_read(struct ly_module *module, const char *data, LY_MINFORMAT format, int implement)
+ly_submodule_read(struct ly_module *module, const char *data, LYS_INFORMAT format, int implement)
 {
     struct unres_item *unres;
     struct ly_submodule *submod;
@@ -253,10 +253,10 @@ ly_submodule_read(struct ly_module *module, const char *data, LY_MINFORMAT forma
     unres = calloc(1, sizeof *unres);
 
     switch (format) {
-    case LY_IN_YIN:
+    case LYS_IN_YIN:
         submod = yin_read_submodule(module, data, implement, unres);
         break;
-    case LY_IN_YANG:
+    case LYS_IN_YANG:
         /* TODO */
         submod = NULL;
         break;
@@ -281,7 +281,7 @@ ly_submodule_read(struct ly_module *module, const char *data, LY_MINFORMAT forma
 }
 
 struct ly_module *
-lys_read_import(struct ly_ctx *ctx, int fd, LY_MINFORMAT format)
+lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
     struct unres_item *unres;
     struct ly_module *module;
@@ -304,10 +304,10 @@ lys_read_import(struct ly_ctx *ctx, int fd, LY_MINFORMAT format)
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 
     switch (format) {
-    case LY_IN_YIN:
+    case LYS_IN_YIN:
         module = yin_read_module(ctx, addr, 0, unres);
         break;
-    case LY_IN_YANG:
+    case LYS_IN_YANG:
     default:
         /* TODO */
         munmap(addr, sb.st_size);
@@ -331,7 +331,7 @@ lys_read_import(struct ly_ctx *ctx, int fd, LY_MINFORMAT format)
 }
 
 API struct ly_module *
-lys_read(struct ly_ctx *ctx, int fd, LY_MINFORMAT format)
+lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
     struct ly_module *module;
     struct stat sb;
@@ -356,7 +356,7 @@ lys_read(struct ly_ctx *ctx, int fd, LY_MINFORMAT format)
 }
 
 struct ly_submodule *
-ly_submodule_read_fd(struct ly_module *module, int fd, LY_MINFORMAT format, int implement)
+ly_submodule_read_fd(struct ly_module *module, int fd, LYS_INFORMAT format, int implement)
 {
     struct ly_submodule *submodule;
     struct stat sb;
@@ -1732,7 +1732,7 @@ lys_features_list(struct ly_module *module, uint8_t **states)
 }
 
 API struct lyd_node *
-lyd_parse(struct ly_ctx *ctx, const char *data, LY_DFORMAT format)
+lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format)
 {
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -1740,9 +1740,9 @@ lyd_parse(struct ly_ctx *ctx, const char *data, LY_DFORMAT format)
     }
 
     switch (format) {
-    case LY_DATA_XML:
+    case LYD_XML:
         return xml_read_data(ctx, data);
-    case LY_DATA_JSON:
+    case LYD_JSON:
     default:
         /* TODO */
         return NULL;

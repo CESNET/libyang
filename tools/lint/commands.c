@@ -93,7 +93,7 @@ cmd_add(const char *arg)
     const char *path;
     struct ly_module *model;
     struct stat sb;
-    LY_MINFORMAT format;
+    LYS_INFORMAT format;
 
     if (strlen(arg) < 5) {
         cmd_add_help();
@@ -105,16 +105,16 @@ cmd_add(const char *arg)
     if ((ptr = strrchr(path, '.')) != NULL) {
         ++ptr;
         if (!strcmp(ptr, "yin")) {
-            format = LY_IN_YIN;
+            format = LYS_IN_YIN;
         } else if (!strcmp(ptr, "yang")) {
-            format = LY_IN_YANG;
+            format = LYS_IN_YANG;
         } else {
             fprintf(stderr, "Input file in an unknown format \"%s\".\n", ptr);
             return 1;
         }
     } else {
         fprintf(stdout, "Input file without extension, assuming YIN format.\n");
-        format = LY_IN_YIN;
+        format = LYS_IN_YIN;
     }
 
     fd = open(path, O_RDONLY);
@@ -157,7 +157,7 @@ cmd_print(const char *arg)
     const char **names;
     const char *out_path = NULL;
     struct ly_module *model, *parent_model;
-    LY_MOUTFORMAT format = LY_OUT_TREE;
+    LYS_OUTFORMAT format = LYS_OUT_TREE;
     FILE *output = stdout;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
@@ -192,11 +192,11 @@ cmd_print(const char *arg)
             goto cleanup;
         case 'f':
             if (!strcmp(optarg, "yang")) {
-                format = LY_OUT_YANG;
+                format = LYS_OUT_YANG;
             } else if (!strcmp(optarg, "tree")) {
-                format = LY_OUT_TREE;
+                format = LYS_OUT_TREE;
             } else if (!strcmp(optarg, "info")) {
-                format = LY_OUT_INFO;
+                format = LYS_OUT_INFO;
             } else {
                 fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
                 goto cleanup;
@@ -270,7 +270,7 @@ cmd_data(const char *arg)
     char **argv = NULL, *ptr, *addr;
     const char *out_path = NULL;
     struct lyd_node *data = NULL, *next, *iter;
-    LY_DFORMAT format = LY_DATA_UNKNOWN;
+    LYD_FORMAT format = LYD_UNKNOWN;
     FILE *output = stdout;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
@@ -304,9 +304,9 @@ cmd_data(const char *arg)
             goto cleanup;
         case 'f':
             if (!strcmp(optarg, "xml")) {
-                format = LY_DATA_XML;
+                format = LYD_XML;
             } else if (!strcmp(optarg, "json")) {
-                format = LY_DATA_JSON;
+                format = LYD_JSON;
             } else {
                 fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
                 goto cleanup;
@@ -363,13 +363,13 @@ cmd_data(const char *arg)
             goto cleanup;
         }
 
-        if (format == LY_DATA_UNKNOWN) {
+        if (format == LYD_UNKNOWN) {
             /* default */
-            format = LY_DATA_XML;
+            format = LYD_XML;
         }
     }
 
-    if (format != LY_DATA_UNKNOWN) {
+    if (format != LYD_UNKNOWN) {
         lyd_print(output, data, format);
     }
 

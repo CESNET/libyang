@@ -92,8 +92,8 @@ void ly_type_free(struct ly_ctx *ctx, struct ly_type *type);
 void ly_deviation_free(struct ly_ctx *ctx, struct ly_deviation *dev);
 void ly_submodule_free(struct ly_submodule *submodule);
 
-struct ly_submodule *ly_submodule_read(struct ly_module *module, const char *data, LY_MINFORMAT format, int implement);
-struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LY_MINFORMAT format, int implement);
+struct ly_submodule *ly_submodule_read(struct ly_module *module, const char *data, LYS_INFORMAT format, int implement);
+struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LYS_INFORMAT format, int implement);
 
 /*
  * Add child model node at the end of the parent's child list.
@@ -105,7 +105,7 @@ struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LY_M
  */
 int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child);
 
-struct ly_module *lys_read_import(struct ly_ctx *ctx, int fd, LY_MINFORMAT format);
+struct ly_module *lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
 
 /**
  * @brief Free (and unlink it from the context) the specified schema.
