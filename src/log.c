@@ -82,6 +82,7 @@ const char *verrs[] = {
 /* VE_KEY_MISS */     "Leaf \"%s\" defined as key in a list not found.",
 /* VE_KEY_DUP */      "Key identifier \"%s\" is not unique.",
 /* VE_INREGEX */      "Regular expression \"%s\" is not valid (%s).",
+/* VE_NORESOLV */     "Failed to resolve %s \"%s\".",
 
 /* DE_INELEM */       "Unknown element \"%s\".",
 /* DE_INELEMLEN */    "Unknown element \"%.*s\".",

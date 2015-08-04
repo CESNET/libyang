@@ -228,7 +228,6 @@ lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 
     if (resolve_unres(mod, unres)) {
         LOGERR(LY_EVALID, "There are unresolved items left.");
-        /* TODO print unresolved items */
         lys_free(mod);
         mod = NULL;
     }
@@ -267,7 +266,6 @@ ly_submodule_read(struct ly_module *module, const char *data, LYS_INFORMAT forma
 
    if (resolve_unres((struct ly_module *)submod, unres)) {
         LOGERR(LY_EVALID, "There are unresolved items left.");
-        /* TODO print unresolved items */
         ly_submodule_free(submod);
         submod = NULL;
     }
@@ -317,7 +315,6 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 
     if (resolve_unres(module, unres)) {
         LOGERR(LY_EVALID, "There are unresolved items left.");
-        /* TODO print unresolved items */
         lys_free(module);
         module = NULL;
     }
