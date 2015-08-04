@@ -274,9 +274,13 @@ info_print_typedef_with_include(FILE *f, struct ly_module *mod)
 }
 
 static void
-info_print_type_detail(FILE *f, struct lys_type *type)
+info_print_type_detail(FILE *f, struct lys_type *type, int uni)
 {
     int i;
+
+    if (uni) {
+        fprintf(f, "  ");
+    }
 
     switch (type->base) {
     case LY_TYPE_DER:
@@ -285,15 +289,19 @@ info_print_type_detail(FILE *f, struct lys_type *type)
         break;
     case LY_TYPE_BINARY:
         fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "binary");
-        info_print_text(f, (type->info.binary.length ? type->info.binary.length->expr : NULL), "Length: ");
+        if (!uni) {
+            info_print_text(f, (type->info.binary.length ? type->info.binary.length->expr : NULL), "Length: ");
+        }
         break;
     case LY_TYPE_BITS:
         fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "bits");
 
         assert(type->info.bits.count);
-        fprintf(f, "%-*s%u %s\n", INDENT_LEN, "Bits: ", type->info.bits.bit[0].pos, type->info.bits.bit[0].name);
-        for (i = 1; i < type->info.bits.count; ++i) {
-            fprintf(f, "%*s%u %s\n", INDENT_LEN, "", type->info.bits.bit[i].pos, type->info.bits.bit[i].name);
+        if (!uni) {
+            fprintf(f, "%-*s%u %s\n", INDENT_LEN, "Bits: ", type->info.bits.bit[0].pos, type->info.bits.bit[0].name);
+            for (i = 1; i < type->info.bits.count; ++i) {
+                fprintf(f, "%*s%u %s\n", INDENT_LEN, "", type->info.bits.bit[i].pos, type->info.bits.bit[i].name);
+            }
         }
 
         break;
@@ -302,9 +310,11 @@ info_print_type_detail(FILE *f, struct lys_type *type)
         break;
     case LY_TYPE_DEC64:
         fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "decimal64");
-        info_print_text(f, (type->info.dec64.range ? type->info.dec64.range->expr : NULL), "Range: ");
-        assert(type->info.dec64.dig);
-        fprintf(f, "%-*s%u\n", INDENT_LEN, "Frac dig: ", type->info.dec64.dig);
+        if (!uni) {
+            info_print_text(f, (type->info.dec64.range ? type->info.dec64.range->expr : NULL), "Range: ");
+            assert(type->info.dec64.dig);
+            fprintf(f, "%-*s%u\n", INDENT_LEN, "Frac dig: ", type->info.dec64.dig);
+        }
         break;
     case LY_TYPE_EMPTY:
         fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "empty");
@@ -313,20 +323,26 @@ info_print_type_detail(FILE *f, struct lys_type *type)
         fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "enum");
 
         assert(type->info.enums.count);
-        fprintf(f, "%-*s%s\n", INDENT_LEN, "Values: ", type->info.enums.enm[0].name);
-        for (i = 1; i < type->info.enums.count; ++i) {
-            fprintf(f, "%*s%s\n", INDENT_LEN, "", type->info.enums.enm[i].name);
+        if (!uni) {
+            fprintf(f, "%-*s%s\n", INDENT_LEN, "Values: ", type->info.enums.enm[0].name);
+            for (i = 1; i < type->info.enums.count; ++i) {
+                fprintf(f, "%*s%s\n", INDENT_LEN, "", type->info.enums.enm[i].name);
+            }
         }
 
         break;
     case LY_TYPE_IDENT:
         fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "identityref");
         assert(type->info.ident.ref);
-        info_print_text(f, type->info.ident.ref->name, "Identity: ");
+        if (!uni) {
+            info_print_text(f, type->info.ident.ref->name, "Identity: ");
+        }
         break;
     case LY_TYPE_INST:
         fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "instance-identifier");
-        fprintf(f, "%-*s%s\n", INDENT_LEN, "Required: ", (type->info.inst.req < 1 ? "no" : "yes"));
+        if (!uni) {
+            fprintf(f, "%-*s%s\n", INDENT_LEN, "Required: ", (type->info.inst.req < 1 ? "no" : "yes"));
+        }
         break;
     case LY_TYPE_INT8:
         fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "int8");
@@ -353,38 +369,47 @@ info_print_type_detail(FILE *f, struct lys_type *type)
         fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "uint64");
 
 int_range:
-        info_print_text(f, (type->info.num.range ? type->info.num.range->expr : NULL), "Range: ");
+        if (!uni) {
+            info_print_text(f, (type->info.num.range ? type->info.num.range->expr : NULL), "Range: ");
+        }
         break;
     case LY_TYPE_LEAFREF:
         fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "leafref");
-        info_print_text(f, type->info.lref.path, "Path: ");
+        if (!uni) {
+            info_print_text(f, type->info.lref.path, "Path: ");
+        }
         break;
     case LY_TYPE_STRING:
         fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "string");
-        info_print_text(f, (type->info.str.length ? type->info.str.length->expr : NULL), "Length: ");
+        if (!uni) {
+            info_print_text(f, (type->info.str.length ? type->info.str.length->expr : NULL), "Length: ");
 
-        fprintf(f, "%-*s", INDENT_LEN, "Pattern: ");
-        if (type->info.str.pat_count) {
-            fprintf(f, "%s\n", type->info.str.patterns[0].expr);
-            for (i = 1; i < type->info.str.pat_count; ++i) {
-                fprintf(f, "%*s%s\n", INDENT_LEN, "", type->info.str.patterns[i].expr);
+            fprintf(f, "%-*s", INDENT_LEN, "Pattern: ");
+            if (type->info.str.pat_count) {
+                fprintf(f, "%s\n", type->info.str.patterns[0].expr);
+                for (i = 1; i < type->info.str.pat_count; ++i) {
+                    fprintf(f, "%*s%s\n", INDENT_LEN, "", type->info.str.patterns[i].expr);
+                }
+            } else {
+                fprintf(f, "\n");
             }
-        } else {
-            fprintf(f, "\n");
         }
 
         break;
     case LY_TYPE_UNION:
         fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "union");
 
-        fprintf(f, "%s\n", "Of types start:");
-        for (i = 0; i < type->info.uni.count; ++i) {
-            info_print_type_detail(f, &type->info.uni.types[i]);
+        if (!uni) {
+            for (i = 0; i < type->info.uni.count; ++i) {
+                info_print_type_detail(f, &type->info.uni.types[i], 1);
+            }
         }
-        fprintf(f, "%s\n", "Of types end");
         break;
     }
 
+    if (uni) {
+        fprintf(f, "  ");
+    }
     fprintf(f, "%-*s", INDENT_LEN, "Superior: ");
     if (type->der) {
         if (type->prefix) {
@@ -777,7 +802,7 @@ info_print_typedef_detail(FILE *f, struct lys_tpdf *tpdf)
     info_print_text(f, tpdf->dsc, "Desc: ");
     info_print_text(f, tpdf->ref, "Reference: ");
     info_print_flags(f, tpdf->flags, LYS_STATUS_MASK, 0);
-    info_print_type_detail(f, &tpdf->type);
+    info_print_type_detail(f, &tpdf->type, 0);
     info_print_text(f, tpdf->units, "Units: ");
     info_print_text(f, tpdf->dflt, "Default: ");
 }
@@ -1175,7 +1200,7 @@ info_print_model(FILE *f, struct ly_module *module, const char *target_node)
             if (f == stdout) {
                 fprintf(f, "\n");
             }
-            info_print_type_detail(f, &((struct ly_mnode_leaf *)target)->type);
+            info_print_type_detail(f, &((struct ly_mnode_leaf *)target)->type, 0);
             return EXIT_SUCCESS;
         }
 
