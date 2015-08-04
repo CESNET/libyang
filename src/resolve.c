@@ -525,106 +525,96 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct ly_module *
     }
 
     while (1) {
-        if (!strncmp(name, "..", 2)) {
-            /* ".." is not allowed in refines and augments in uses, there is no need for it there */
-            if (!start || (node_type == LYS_USES)) {
+        sibling = NULL;
+        LY_TREE_FOR(start, sibling) {
+            /* name match */
+            if ((sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len])
+                    || (!strncmp(name, "input", 5) && (nam_len == 5) && (sibling->nodetype == LYS_INPUT))
+                    || (!strncmp(name, "output", 6) && (nam_len == 6) && (sibling->nodetype == LYS_OUTPUT))) {
+
+                /* prefix match check */
+                if (prefix) {
+
+                    prefix_mod = resolve_prefixed_module(mod, prefix, pref_len);
+                    if (!prefix_mod) {
+                        return NULL;
+                    }
+
+                    if (!sibling->module->type) {
+                        if (prefix_mod != sibling->module) {
+                            continue;
+                        }
+                    } else {
+                        if (prefix_mod != ((struct ly_submodule *)sibling->module)->belongsto) {
+                            continue;
+                        }
+                    }
+                }
+
+                /* skip the predicate */
+                if ((node_type == LYS_LEAF) && (id[0] == '[')) {
+                    ptr = strchr(id, ']');
+                    if (ptr) {
+                        id = ptr+1;
+                    }
+                }
+
+                /* the result node? */
+                if (!id[0]) {
+                    return sibling;
+                }
+
+                /* check for shorthand cases - then 'start' does not change */
+                if (!sibling->parent || (sibling->parent->nodetype != LYS_CHOICE)
+                        || (sibling->nodetype == LYS_CASE)) {
+                    start = sibling->child;
+                }
+                break;
+            }
+        }
+
+        /* we did not find the case in direct siblings */
+        if (node_type == LYS_CHOICE) {
+            return NULL;
+        }
+
+        /* no match */
+        if (!sibling) {
+            /* on augment search also RPCs and notifications, if we are in top-level */
+            if ((node_type == LYS_AUGMENT) && (!start || !start->parent)) {
+                /* we have searched all the data nodes */
+                if (in_mod_part == 0) {
+                    if (!in_submod) {
+                        start = start_mod->rpc;
+                    } else {
+                        start = start_mod->inc[in_submod-1].submodule->rpc;
+                    }
+                    in_mod_part = 1;
+                    continue;
+                }
+                /* we have searched all the RPCs */
+                if (in_mod_part == 1) {
+                    if (!in_submod) {
+                        start = start_mod->notif;
+                    } else {
+                        start = start_mod->inc[in_submod-1].submodule->notif;
+                    }
+                    in_mod_part = 2;
+                    continue;
+                }
+                /* we have searched all the notifications, nothing else to search in this module */
+            }
+
+            /* are we done with the included submodules as well? */
+            if (in_submod == start_mod->inc_size) {
                 return NULL;
             }
-            start = start->parent;
-        } else if (name[0] == '.') {
-            /* this node - start does not change */
-        } else {
-            sibling = NULL;
-            LY_TREE_FOR(start, sibling) {
-                /* name match */
-                if ((sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len])
-                        || (!strncmp(name, "input", 5) && (nam_len == 5) && (sibling->nodetype == LYS_INPUT))
-                        || (!strncmp(name, "output", 6) && (nam_len == 6) && (sibling->nodetype == LYS_OUTPUT))) {
 
-                    /* prefix match check */
-                    if (prefix) {
-
-                        prefix_mod = resolve_prefixed_module(mod, prefix, pref_len);
-                        if (!prefix_mod) {
-                            return NULL;
-                        }
-
-                        if (!sibling->module->type) {
-                            if (prefix_mod != sibling->module) {
-                                continue;
-                            }
-                        } else {
-                            if (prefix_mod != ((struct ly_submodule *)sibling->module)->belongsto) {
-                                continue;
-                            }
-                        }
-                    }
-
-                    /* skip the predicate */
-                    if ((node_type == LYS_LEAF) && (id[0] == '[')) {
-                        ptr = strchr(id, ']');
-                        if (ptr) {
-                            id = ptr+1;
-                        }
-                    }
-
-                    /* the result node? */
-                    if (!id[0]) {
-                        return sibling;
-                    }
-
-                    /* check for shorthand cases - then 'start' does not change */
-                    if (!sibling->parent || (sibling->parent->nodetype != LYS_CHOICE)
-                            || (sibling->nodetype == LYS_CASE)) {
-                        start = sibling->child;
-                    }
-                    break;
-                }
-            }
-
-            /* we did not find the case in direct siblings */
-            if (node_type == LYS_CHOICE) {
-                return NULL;
-            }
-
-            /* no match */
-            if (!sibling) {
-                /* on augment search also RPCs and notifications, if we are in top-level */
-                if ((node_type == LYS_AUGMENT) && (!start || !start->parent)) {
-                    /* we have searched all the data nodes */
-                    if (in_mod_part == 0) {
-                        if (!in_submod) {
-                            start = start_mod->rpc;
-                        } else {
-                            start = start_mod->inc[in_submod-1].submodule->rpc;
-                        }
-                        in_mod_part = 1;
-                        continue;
-                    }
-                    /* we have searched all the RPCs */
-                    if (in_mod_part == 1) {
-                        if (!in_submod) {
-                            start = start_mod->notif;
-                        } else {
-                            start = start_mod->inc[in_submod-1].submodule->notif;
-                        }
-                        in_mod_part = 2;
-                        continue;
-                    }
-                    /* we have searched all the notifications, nothing else to search in this module */
-                }
-
-                /* are we done with the included submodules as well? */
-                if (in_submod == start_mod->inc_size) {
-                    return NULL;
-                }
-
-                /* we aren't, check the next one */
-                ++in_submod;
-                in_mod_part = 0;
-                start = start_mod->inc[in_submod-1].submodule->data;
-                continue;
-            }
+            /* we aren't, check the next one */
+            ++in_submod;
+            in_mod_part = 0;
+            start = start_mod->inc[in_submod-1].submodule->data;
+            continue;
         }
 
         /* we found our submodule */
