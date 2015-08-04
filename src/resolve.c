@@ -1070,14 +1070,19 @@ resolve_augment(struct ly_augment *aug, struct ly_mnode *parent, struct ly_modul
      * config property, but we need to keep the information for subelements
      */
     aug->flags |= aug->target->flags & LYS_CONFIG_MASK;
-
     LY_TREE_FOR(aug->child, sub) {
-        sub->parent = (struct ly_mnode *)aug;
         inherit_config_flag(sub);
     }
 
-    ly_mnode_addchild(aug->target, aug->child);
-    aug->child = NULL;
+    /* reconnect augmenting data into the target - add them to the target child list */
+    if (aug->target->child) {
+        aux = aug->target->child->prev; /* remember current target's last node */
+        aux->next = aug->child;         /* connect augmenting data after target's last node */
+        aug->target->child->prev = aug->child->prev; /* new target's last node is last augmenting node */
+        aug->child->prev = aux;         /* finish connecting of both child lists */
+    } else {
+        aug->target->child = aug->child;
+    }
 
     return EXIT_SUCCESS;
 }
