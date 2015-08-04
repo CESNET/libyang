@@ -13,7 +13,7 @@ int resolve_uses(struct ly_mnode_uses *uses, int line, struct unres_item *unres)
 
 struct lys_node *resolve_child(struct lys_node *parent, const char *name, int len, LYS_NODE type);
 
-int resolve_path_arg(struct leafref_instid *unres, const char *path, struct leafref_instid **ret);
+int resolve_path_arg_data(struct leafref_instid *unres, const char *path, struct leafref_instid **ret);
 
 int resolve_instid(struct leafref_instid *unres, const char *path, int path_len, struct leafref_instid **ret);
 

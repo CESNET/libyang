@@ -101,6 +101,7 @@ enum LY_VERR {
     VE_KEY_DUP,
     VE_INREGEX,
     VE_NORESOLV,
+    VE_INPREF,
 
     DE_INELEM,
     DE_INELEMLEN,

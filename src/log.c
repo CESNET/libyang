@@ -83,6 +83,7 @@ const char *verrs[] = {
 /* VE_KEY_DUP */      "Key identifier \"%s\" is not unique.",
 /* VE_INREGEX */      "Regular expression \"%s\" is not valid (%s).",
 /* VE_NORESOLV */     "Failed to resolve %s \"%s\".",
+/* VE_INPREF */       "Wrong prefix \"%*.s\", can only be of this module.",
 
 /* DE_INELEM */       "Unknown element \"%s\".",
 /* DE_INELEMLEN */    "Unknown element \"%.*s\".",

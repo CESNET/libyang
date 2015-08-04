@@ -681,7 +681,7 @@ resolve_data_nodeid(const char *prefix, int pref_len, const char *name, int nam_
 
 /* ... /node[source = destination] ... */
 static int
-resolve_path_predicate(const char *pred, struct leafref_instid **node_match)
+resolve_path_predicate_data(const char *pred, struct leafref_instid **node_match)
 {
     struct leafref_instid *source_match, *dest_match, *node, *node_prev = NULL;
     const char *path_key_expr, *source, *sour_pref, *dest, *dest_pref;
@@ -723,8 +723,7 @@ resolve_path_predicate(const char *pred, struct leafref_instid **node_match)
             }
             while (1) {
                 if (resolve_data_nodeid(dest_pref, dest_pref_len, dest, dest_len, dest_match->dnode, &dest_match)
-                        || !dest_match->dnode || dest_match->next
-                        || (dest_match->dnode->schema->nodetype != LYS_LEAF)) {
+                        || !dest_match->dnode || dest_match->next) {
                     free(dest_match);
                     return -parsed;
                 }
@@ -732,7 +731,7 @@ resolve_path_predicate(const char *pred, struct leafref_instid **node_match)
                 if (pke_len == pke_parsed) {
                     break;
                 }
-                if ((i = parse_path_key_expr(path_key_expr, &dest_pref, &dest_pref_len, &dest, &dest_len,
+                if ((i = parse_path_key_expr(path_key_expr+pke_parsed, &dest_pref, &dest_pref_len, &dest, &dest_len,
                                              &dest_parent_times)) < 1) {
                     return -parsed+i;
                 }
@@ -773,15 +772,14 @@ remove_leafref:
 }
 
 int
-resolve_path_arg(struct leafref_instid *unres, const char *path, struct leafref_instid **ret)
+resolve_path_arg_data(struct leafref_instid *unres, const char *path, struct leafref_instid **ret)
 {
     struct lyd_node *data;
     struct leafref_instid *riter = NULL, *raux;
     const char *prefix, *name;
-    int pref_len, nam_len, has_predicate, parsed, parent_times, i;
+    int pref_len, nam_len, has_predicate, parent_times, i;
 
     *ret = NULL;
-    parsed = 0;
     parent_times = 0;
 
     /* searching for nodeset */
@@ -790,7 +788,6 @@ resolve_path_arg(struct leafref_instid *unres, const char *path, struct leafref_
             LOGVAL(DE_INCHAR, unres->line, path[-i], path-i);
             goto error;
         }
-        parsed += i;
         path += i;
 
         if (!*ret) {
@@ -823,7 +820,7 @@ resolve_path_arg(struct leafref_instid *unres, const char *path, struct leafref_
 
         /* node identifier */
         if (resolve_data_nodeid(prefix, pref_len, name, nam_len, data, ret)) {
-            LOGVAL(DE_INVAL, unres->line, nam_len, name);
+            LOGVAL(DE_INELEMLEN, unres->line, nam_len, name);
             goto error;
         }
 
@@ -849,11 +846,10 @@ resolve_path_arg(struct leafref_instid *unres, const char *path, struct leafref_
                     riter = *ret;
                 }
             }
-            if ((i = resolve_path_predicate(path, ret)) < 1) {
+            if ((i = resolve_path_predicate_data(path, ret)) < 1) {
                 LOGVAL(DE_INPRED, unres->line, path-i);
                 goto error;
             }
-            parsed += i;
             path += i;
 
             if (!*ret) {
@@ -874,6 +870,184 @@ error:
     }
 
     return 1;
+}
+
+static int
+resolve_path_predicate_schema(const char *pred, struct ly_module *mod, struct lys_node *source_node,
+                              struct lys_node *dest_node, int line)
+{
+    struct lys_node *src_node, *dst_node;
+    const char *path_key_expr, *source, *sour_pref, *dest, *dest_pref;
+    int pke_len, sour_len, sour_pref_len, dest_len, dest_pref_len, parsed = 0, pke_parsed = 0;
+    int has_predicate, dest_parent_times = 0, i;
+
+    do {
+        if ((i = parse_path_predicate(pred, &sour_pref, &sour_pref_len, &source, &sour_len, &path_key_expr,
+                                      &pke_len, &has_predicate)) < 1) {
+            if (line > -1) {
+                LOGVAL(VE_NORESOLV, line, "predicate from part", pred-i);
+            }
+            return -parsed+i;
+        }
+        parsed += i;
+        pred += i;
+
+        /* source (must be leaf, from the same module) */
+        if (sour_pref && (resolve_prefixed_module(mod, sour_pref, sour_pref_len) != mod)) {
+            if (line > -1) {
+                LOGVAL(VE_INPREF, line, sour_pref_len, sour_pref);
+            }
+            return -parsed;
+        }
+
+        src_node = resolve_child(source_node, source, sour_len, LYS_LEAF);
+        if (!src_node) {
+            if (line > -1) {
+                LOGVAL(VE_NORESOLV, line, "child", source);
+            }
+            return -parsed;
+        }
+
+        /* destination */
+        if ((i = parse_path_key_expr(path_key_expr, &dest_pref, &dest_pref_len, &dest, &dest_len,
+                                     &dest_parent_times)) < 1) {
+            if (line > -1) {
+                LOGVAL(VE_NORESOLV, line, "predicate from part", path_key_expr-i);
+            }
+            return -parsed;
+        }
+        pke_parsed += i;
+
+        /* dest_node is actually the parent of this leaf, so skip the first ".." */
+        dst_node = dest_node;
+        for (i = 1; i < dest_parent_times; ++i) {
+            dst_node = dst_node->parent;
+            if (!dst_node) {
+                if (line > -1) {
+                    LOGVAL(VE_NORESOLV, line, "predicate from part", path_key_expr);
+                }
+                return -parsed;
+            }
+        }
+        while (1) {
+            if (dest_pref && (resolve_prefixed_module(mod, dest_pref, dest_pref_len) != mod)) {
+                if (line > -1) {
+                    LOGVAL(VE_INPREF, line, dest_pref_len, dest_pref);
+                }
+                return -parsed;
+            }
+            dst_node = resolve_child(dst_node, dest, dest_len, LYS_CONTAINER | LYS_LIST | LYS_LEAF);
+            if (!dst_node) {
+                if (line > -1) {
+                    LOGVAL(VE_NORESOLV, line, "child", dest);
+                }
+                return -parsed;
+            }
+
+            if (pke_len == pke_parsed) {
+                break;
+            }
+
+            if ((i = parse_path_key_expr(path_key_expr+pke_parsed, &dest_pref, &dest_pref_len, &dest, &dest_len,
+                                         &dest_parent_times)) < 1) {
+                if (line > -1) {
+                    LOGVAL(VE_NORESOLV, line, "predicate from part", path_key_expr+pke_parsed-i);
+                }
+                return -parsed;
+            }
+            pke_parsed += i;
+        }
+
+        /* check source - dest match */
+        if ((dst_node->nodetype != LYS_LEAF) || ((struct ly_mnode_leaf *)dst_node)->type.base
+                != ((struct ly_mnode_leaf *)src_node)->type.base) {
+            if (line > -1) {
+                LOGVAL(VE_NORESOLV, line, "predicate", pred-parsed);
+            }
+            return -parsed;
+        }
+    } while (has_predicate);
+
+    return parsed;
+}
+
+static int
+resolve_path_arg_schema(struct ly_module *mod, const char *path, struct lys_node *parent_node, int line)
+{
+    struct lys_node *child, *node;
+    const char *id, *prefix, *name;
+    int pref_len, nam_len, parent_times, has_predicate;
+    int i, first;
+
+    first = 1;
+    parent_times = 0;
+    id = path;
+
+    do {
+        if ((i = parse_path_arg(id, &prefix, &pref_len, &name, &nam_len, &parent_times, &has_predicate)) < 1) {
+            if (line > -1) {
+                LOGVAL(DE_INCHAR, line, id[-i], id-i);
+            }
+            return EXIT_FAILURE;
+        }
+        id += i;
+
+        if (first) {
+            if (parent_times == -1) {
+                node = mod->data;
+            } else if (parent_times > 0) {
+                node = parent_node;
+                for (i = 0; i < parent_times; ++i) {
+                    node = node->parent;
+                    if (!node) {
+                        if (line > -1) {
+                            LOGVAL(VE_NORESOLV, line, "leafref", path);
+                        }
+                        return EXIT_FAILURE;
+                    }
+                }
+                node = node->child;
+            }
+            first = 0;
+        } else {
+            node = node->child;
+        }
+
+        /* node identifier */
+        LY_TREE_FOR(node, child) {
+            if (child->nodetype == LYS_GROUPING) {
+                continue;
+            }
+
+            if (!strncmp(child->name, name, nam_len) && !child->name[nam_len]) {
+                break;
+            }
+        }
+        if (!child) {
+            if (line > -1) {
+                LOGVAL(VE_NORESOLV, line, "leafref", path);
+            }
+            return EXIT_FAILURE;
+        }
+        node = child;
+
+        if (has_predicate) {
+            /* we have predicate, so the current result must be list */
+            if (node->nodetype != LYS_LIST) {
+                if (line > -1) {
+                    LOGVAL(VE_NORESOLV, line, "leafref", path);
+                }
+                return EXIT_FAILURE;
+            }
+
+            if ((i = resolve_path_predicate_schema(id, mod, node, parent_node, line)) < 1) {
+                return EXIT_FAILURE;
+            }
+            id += i;
+        }
+    } while (id[0]);
+
+    return EXIT_SUCCESS;
 }
 
 /* ... /node[target = value] ... */
@@ -1384,7 +1558,7 @@ resolve_identityref(struct ly_ident *base, const char *name, const char *ns)
 static int
 resolve_unres_ident(struct ly_module *mod, struct ly_ident *ident, const char *base_name, int line)
 {
-    if (resolve_base_ident(mod, ident, base_name, line, "ident")) {
+    if (resolve_base_ident(mod, ident, base_name, (line == -1 ? -1 : 0), "ident")) {
         return 0;
     }
 
@@ -1397,7 +1571,7 @@ resolve_unres_ident(struct ly_module *mod, struct ly_ident *ident, const char *b
 static int
 resolve_unres_type_identref(struct ly_module *mod, struct lys_type *type, const char *base_name, int line)
 {
-    type->info.ident.ref = resolve_base_ident(mod, NULL, base_name, line, "type");
+    type->info.ident.ref = resolve_base_ident(mod, NULL, base_name, (line == -1 ? -1 : 0), "type");
     if (type->info.ident.ref) {
         return 0;
     }
@@ -1409,9 +1583,9 @@ resolve_unres_type_identref(struct ly_module *mod, struct lys_type *type, const 
 }
 
 static int
-resolve_unres_type_leafref(struct ly_module *mod, struct lys_type *type, struct lys_node *mnode, int line)
+resolve_unres_type_leafref(struct ly_module *mod, struct lys_type *type, struct lys_node *node, int line)
 {
-    if (resolve_schema_nodeid(type->info.lref.path, mnode, mod, LYS_LEAF)) {
+    if (!resolve_path_arg_schema(mod, type->info.lref.path, node, (line == -1 ? -1 : 0))) {
         return 0;
     }
 
@@ -1460,7 +1634,7 @@ resolve_unres_augment(struct ly_module *mod, struct lys_node_augment *aug, int l
 static int
 resolve_unres_iffeature(struct ly_module *mod, struct ly_feature **feat_ptr, const char *feat_name, int line)
 {
-    *feat_ptr = resolve_feature(feat_name, mod, line);
+    *feat_ptr = resolve_feature(feat_name, mod, (line == -1 ? -1 : 0));
     if (*feat_ptr) {
         return 0;
     }
@@ -1474,8 +1648,8 @@ resolve_unres_iffeature(struct ly_module *mod, struct ly_feature **feat_ptr, con
 static int
 resolve_unres_uses(struct ly_mnode_uses *uses, int line, struct unres_item *unres)
 {
-    if (uses->grp || !resolve_grouping(uses->parent, uses, line)) {
-        if (!resolve_uses(uses, line, unres)) {
+    if (uses->grp || !resolve_grouping(uses->parent, uses, (line == -1 ? -1 : 0))) {
+        if (!resolve_uses(uses, (line == -1 ? -1 : 0), unres)) {
             return 0;
         }
     }
@@ -1502,7 +1676,7 @@ resolve_unres_type_dflt(struct lys_type *type, const char *dflt, int line)
 static int
 resolve_unres_choice_dflt(struct ly_mnode_choice *choice, const char *dflt, int line)
 {
-    choice->dflt = resolve_child((struct lys_node *)choice, dflt, 0, LYS_ANYXML | LYS_CASE
+    choice->dflt = resolve_child((struct lys_node *)choice, dflt, strlen(dflt), LYS_ANYXML | LYS_CASE
                                   | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST);
     if (choice->dflt) {
         return 0;
@@ -1533,7 +1707,7 @@ resolve_unres_list_keys(struct ly_mnode_list *list, const char *keys_str, int li
 
         list->keys[i] = (struct ly_mnode_leaf *)resolve_child((struct lys_node *)list, keys_str, len, LYS_LEAF);
 
-        if (check_key(list->keys[i], list->flags, list->keys, i, line, keys_str, len)) {
+        if (check_key(list->keys[i], list->flags, list->keys, i, (line == -1 ? -1 : 0), keys_str, len)) {
             if (line > -1) {
                 LOGVAL(VE_NORESOLV, line, "list keys", keys_str);
             }
@@ -1553,7 +1727,7 @@ resolve_unres_list_keys(struct ly_mnode_list *list, const char *keys_str, int li
 static int
 resolve_unres_list_uniq(struct lys_unique *uniq, const char *uniq_str, int line)
 {
-    if (!resolve_unique((struct lys_node *)uniq->leafs, uniq_str, uniq, line)) {
+    if (!resolve_unique((struct lys_node *)uniq->leafs, uniq_str, uniq, (line == -1 ? -1 : 0))) {
         return 0;
     }
 

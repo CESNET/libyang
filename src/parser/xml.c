@@ -801,7 +801,7 @@ check_unres(struct leafref_instid **list)
 
         /* resolve path and create a set of possible leafrefs (we need their values) */
         if ((*list)->is_leafref) {
-            if (resolve_path_arg(*list, sleaf->type.info.lref.path, &refset)) {
+            if (resolve_path_arg_data(*list, sleaf->type.info.lref.path, &refset)) {
                 LOGERR(LY_EVALID, "Leafref \"%s\" could not be resolved.", sleaf->type.info.lref.path);
                 goto error;
             }
