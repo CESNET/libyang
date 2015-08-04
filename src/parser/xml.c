@@ -126,19 +126,19 @@ validate_pattern(const char *str, struct lys_type *type, struct lyxml_elem *xml,
     return 0;
 }
 
-static struct ly_mnode *
-xml_data_search_schemanode(struct lyxml_elem *xml, struct ly_mnode *start)
+static struct lys_node *
+xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start)
 {
-    struct ly_mnode *result, *aux;
+    struct lys_node *result, *aux;
 
     LY_TREE_FOR(start, result) {
         /* skip groupings */
-        if (result->nodetype == LY_NODE_GROUPING) {
+        if (result->nodetype == LYS_GROUPING) {
             continue;
         }
 
         /* go into cases, choices, uses */
-        if (result->nodetype & (LY_NODE_CHOICE | LY_NODE_CASE | LY_NODE_USES)) {
+        if (result->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES)) {
             aux = xml_data_search_schemanode(xml, result->child);
             if (aux) {
                 /* we have matching result */
@@ -651,7 +651,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                struct leafref_instid **unres)
 {
     struct lyd_node *result, *aux;
-    struct ly_mnode *schema = NULL;
+    struct lys_node *schema = NULL;
     int i, havechildren;
 
     if (!xml) {
@@ -687,23 +687,23 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     }
 
     switch (schema->nodetype) {
-    case LY_NODE_CONTAINER:
+    case LYS_CONTAINER:
         result = calloc(1, sizeof *result);
         havechildren = 1;
         break;
-    case LY_NODE_LEAF:
+    case LYS_LEAF:
         result = calloc(1, sizeof(struct lyd_node_leaf));
         havechildren = 0;
         break;
-    case LY_NODE_LEAFLIST:
+    case LYS_LEAFLIST:
         result = calloc(1, sizeof(struct lyd_node_leaflist));
         havechildren = 0;
         break;
-    case LY_NODE_LIST:
+    case LYS_LIST:
         result = calloc(1, sizeof(struct lyd_node_list));
         havechildren = 1;
         break;
-    case LY_NODE_ANYXML:
+    case LYS_ANYXML:
         result = calloc(1, sizeof(struct lyd_node_anyxml));
         havechildren = 0;
         break;
@@ -716,7 +716,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     result->schema = schema;
 
     /* type specific processing */
-    if (schema->nodetype == LY_NODE_LIST) {
+    if (schema->nodetype == LYS_LIST) {
         /* pointers to next and previous instances of the same list */
         for (aux = result->prev; aux; aux = aux->prev) {
             if (aux->schema == result->schema) {
@@ -726,12 +726,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                 break;
             }
         }
-    } else if (schema->nodetype == LY_NODE_LEAF) {
+    } else if (schema->nodetype == LYS_LEAF) {
         /* type detection and assigning the value */
         if (xml_get_value(result, xml, unres)) {
             goto error;
         }
-    } else if (schema->nodetype == LY_NODE_LEAFLIST) {
+    } else if (schema->nodetype == LYS_LEAFLIST) {
         /* type detection and assigning the value */
         if (xml_get_value(result, xml, unres)) {
             goto error;
@@ -746,7 +746,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                 break;
             }
         }
-    } else if (schema->nodetype == LY_NODE_ANYXML) {
+    } else if (schema->nodetype == LYS_ANYXML) {
         ((struct lyd_node_anyxml *)result)->value = xml;
         lyxml_unlink_elem(xml);
     }

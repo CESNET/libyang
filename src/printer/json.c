@@ -83,7 +83,7 @@ json_print_instid(FILE *f, struct lyd_node_leaf *leaf)
     int cur_id_len, print_id_len;
     struct leafref_instid *nodes, unres;
     struct ly_module *prev_module = NULL, *cur_module;
-    struct ly_mnode *snode;
+    struct lys_node *snode;
 
     assert(((struct ly_mnode_leaf *)leaf->schema)->type.base == LY_TYPE_INST);
 
@@ -106,7 +106,7 @@ json_print_instid(FILE *f, struct lyd_node_leaf *leaf)
         resolve_instid(&unres, leaf->value_str, cur_id_len, &nodes);
         assert(nodes && !nodes->next);
 
-        snode = (struct ly_mnode *)nodes->dnode->schema;
+        snode = (struct lys_node *)nodes->dnode->schema;
         free(nodes);
 
         /* find current module */
@@ -354,19 +354,19 @@ void
 json_print_node(FILE *f, int level, struct lyd_node *node)
 {
     switch (node->schema->nodetype) {
-    case LY_NODE_CONTAINER:
+    case LYS_CONTAINER:
         json_print_container(f, level, node);
         break;
-    case LY_NODE_LEAF:
+    case LYS_LEAF:
         json_print_leaf(f, level, node, 0);
         break;
-    case LY_NODE_LEAFLIST:
+    case LYS_LEAFLIST:
         json_print_leaf_list(f, level, node, 0);
         break;
-    case LY_NODE_LIST:
+    case LYS_LIST:
         json_print_leaf_list(f, level, node, 1);
         break;
-    case LY_NODE_ANYXML:
+    case LYS_ANYXML:
         json_print_anyxml(f, level, node);
         break;
     default:

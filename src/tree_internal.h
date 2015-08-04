@@ -89,12 +89,12 @@ struct unres_item {
 /*
  * Unlink data model tree node from the tree.
  */
-void ly_mnode_unlink(struct ly_mnode *node);
+void ly_mnode_unlink(struct lys_node *node);
 
 /*
  * Free data model tree node structure, includes unlinking from the tree
  */
-void ly_mnode_free(struct ly_mnode *node);
+void ly_mnode_free(struct lys_node *node);
 
 void ly_restr_free(struct ly_ctx *ctx, struct lys_restr *restr);
 void ly_type_free(struct ly_ctx *ctx, struct lys_type *type);
@@ -112,7 +112,7 @@ struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LYS_
  * end of the child list).
  * If the child has next sibling(s), all of them are connected with the parent.
  */
-int ly_mnode_addchild(struct ly_mnode *parent, struct ly_mnode *child);
+int ly_mnode_addchild(struct lys_node *parent, struct lys_node *child);
 
 struct ly_module *lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
 
@@ -126,7 +126,7 @@ struct ly_module *lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT forma
  */
 void lys_free(struct ly_module *module);
 
-struct ly_mnode *ly_mnode_dup(struct ly_module *module, struct ly_mnode *mnode, uint8_t flags, int recursive,
+struct lys_node *ly_mnode_dup(struct ly_module *module, struct lys_node *mnode, uint8_t flags, int recursive,
                               unsigned int line, struct unres_item *unres);
 
 #endif /* LY_TREE_INTERNAL_H_ */

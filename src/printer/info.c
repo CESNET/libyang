@@ -29,7 +29,7 @@
 
 #define INDENT_LEN 11
 
-struct ly_mnode *resolve_schema_nodeid(const char *id, struct ly_mnode *start, struct ly_module *mod, LY_NODE_TYPE node_type);
+struct lys_node *resolve_schema_nodeid(const char *id, struct lys_node *start, struct ly_module *mod, LYS_NODE node_type);
 
 static void
 info_print_text(FILE *f, const char *text, const char *label)
@@ -69,7 +69,7 @@ info_print_text(FILE *f, const char *text, const char *label)
 }
 
 static void
-info_print_mnodes(FILE *f, struct ly_mnode *mnode, const char *label)
+info_print_mnodes(FILE *f, struct lys_node *mnode, const char *label)
 {
     assert(strlen(label) < INDENT_LEN-1);
 
@@ -79,14 +79,14 @@ info_print_mnodes(FILE *f, struct ly_mnode *mnode, const char *label)
         if (mnode->name) {
             fprintf(f, "%s \"%s\"\n", strnodetype(mnode->nodetype), mnode->name);
         } else {
-            fprintf(f, "%s\n", (mnode->nodetype == LY_NODE_INPUT ? "input" : "output"));
+            fprintf(f, "%s\n", (mnode->nodetype == LYS_INPUT ? "input" : "output"));
         }
         mnode = mnode->next;
         for (; mnode; mnode = mnode->next) {
             if (mnode->name) {
                 fprintf(f, "%*s%s \"%s\"\n", INDENT_LEN, "", strnodetype(mnode->nodetype), mnode->name);
             } else {
-                fprintf(f, "%*s%s\n", INDENT_LEN, "", (mnode->nodetype == LY_NODE_INPUT ? "input" : "output"));
+                fprintf(f, "%*s%s\n", INDENT_LEN, "", (mnode->nodetype == LYS_INPUT ? "input" : "output"));
             }
         }
     } else {
@@ -167,7 +167,7 @@ info_print_if_feature(FILE *f, struct ly_feature **features, uint8_t features_si
 }
 
 static void
-info_print_when(FILE *f, struct ly_when *when)
+info_print_when(FILE *f, struct lys_when *when)
 {
     fprintf(f, "%-*s", INDENT_LEN, "When: ");
     if (when) {
@@ -430,7 +430,7 @@ info_print_keys(FILE *f, struct ly_mnode_leaf **keys, uint8_t keys_size)
 }
 
 static void
-info_print_unique(FILE *f, struct ly_unique *unique, uint8_t unique_size)
+info_print_unique(FILE *f, struct lys_unique *unique, uint8_t unique_size)
 {
     int i, j;
 
@@ -661,7 +661,7 @@ static void
 info_print_rpc_with_include(FILE *f, struct ly_module *mod)
 {
     int first = 1, i;
-    struct ly_mnode *mnode;
+    struct lys_node *mnode;
 
     fprintf(f, "%-*s", INDENT_LEN, "RPCs: ");
 
@@ -700,7 +700,7 @@ static void
 info_print_notif_with_include(FILE *f, struct ly_module *mod)
 {
     int first = 1, i;
-    struct ly_mnode *mnode;
+    struct lys_node *mnode;
 
     fprintf(f, "%-*s", INDENT_LEN, "Notifs: ");
 
@@ -739,7 +739,7 @@ static void
 info_print_mnodes_with_include(FILE *f, struct ly_module *mod)
 {
     int first = 1, i;
-    struct ly_mnode *mnode;
+    struct lys_node *mnode;
 
     fprintf(f, "%-*s", INDENT_LEN, "Data: ");
 
@@ -881,7 +881,7 @@ info_print_submodule(FILE *f, struct ly_submodule *module)
 }
 
 static void
-info_print_container(FILE *f, struct ly_mnode *mnode)
+info_print_container(FILE *f, struct lys_node *mnode)
 {
     struct ly_mnode_container *cont = (struct ly_mnode_container *)mnode;
 
@@ -901,7 +901,7 @@ info_print_container(FILE *f, struct ly_mnode *mnode)
 }
 
 static void
-info_print_choice(FILE *f, struct ly_mnode *mnode)
+info_print_choice(FILE *f, struct lys_node *mnode)
 {
     struct ly_mnode_choice *choice = (struct ly_mnode_choice *)mnode;
 
@@ -924,7 +924,7 @@ info_print_choice(FILE *f, struct ly_mnode *mnode)
 }
 
 static void
-info_print_leaf(FILE *f, struct ly_mnode *mnode)
+info_print_leaf(FILE *f, struct lys_node *mnode)
 {
     struct ly_mnode_leaf *leaf = (struct ly_mnode_leaf *)mnode;
 
@@ -943,7 +943,7 @@ info_print_leaf(FILE *f, struct ly_mnode *mnode)
 }
 
 static void
-info_print_leaflist(FILE *f, struct ly_mnode *mnode)
+info_print_leaflist(FILE *f, struct lys_node *mnode)
 {
     struct ly_mnode_leaflist *llist = (struct ly_mnode_leaflist *)mnode;
 
@@ -962,7 +962,7 @@ info_print_leaflist(FILE *f, struct ly_mnode *mnode)
 }
 
 static void
-info_print_list(FILE *f, struct ly_mnode *mnode)
+info_print_list(FILE *f, struct lys_node *mnode)
 {
     struct ly_mnode_list *list = (struct ly_mnode_list *)mnode;
 
@@ -984,7 +984,7 @@ info_print_list(FILE *f, struct ly_mnode *mnode)
 }
 
 static void
-info_print_anyxml(FILE *f, struct ly_mnode *mnode)
+info_print_anyxml(FILE *f, struct lys_node *mnode)
 {
     struct ly_mnode_anyxml *axml = (struct ly_mnode_anyxml *)mnode;
 
@@ -1000,7 +1000,7 @@ info_print_anyxml(FILE *f, struct ly_mnode *mnode)
 }
 
 static void
-info_print_grouping(FILE *f, struct ly_mnode *mnode)
+info_print_grouping(FILE *f, struct lys_node *mnode)
 {
     struct ly_mnode_grp *group = (struct ly_mnode_grp *)mnode;
 
@@ -1016,7 +1016,7 @@ info_print_grouping(FILE *f, struct ly_mnode *mnode)
 }
 
 static void
-info_print_case(FILE *f, struct ly_mnode *mnode)
+info_print_case(FILE *f, struct lys_node *mnode)
 {
     struct ly_mnode_case *cas = (struct ly_mnode_case *)mnode;
 
@@ -1033,11 +1033,11 @@ info_print_case(FILE *f, struct ly_mnode *mnode)
 }
 
 static void
-info_print_input(FILE *f, struct ly_mnode *mnode)
+info_print_input(FILE *f, struct lys_node *mnode)
 {
     struct ly_mnode_input_output *input = (struct ly_mnode_input_output *)mnode;
 
-    assert(input->parent && input->parent->nodetype == LY_NODE_RPC);
+    assert(input->parent && input->parent->nodetype == LYS_RPC);
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Input of: ", input->parent->name);
     info_print_typedef(f, input->tpdf, input->tpdf_size);
@@ -1046,11 +1046,11 @@ info_print_input(FILE *f, struct ly_mnode *mnode)
 }
 
 static void
-info_print_output(FILE *f, struct ly_mnode *mnode)
+info_print_output(FILE *f, struct lys_node *mnode)
 {
     struct ly_mnode_input_output *output = (struct ly_mnode_input_output *)mnode;
 
-    assert(output->parent && output->parent->nodetype == LY_NODE_RPC);
+    assert(output->parent && output->parent->nodetype == LYS_RPC);
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Output of: ", output->parent->name);
     info_print_typedef(f, output->tpdf, output->tpdf_size);
@@ -1059,7 +1059,7 @@ info_print_output(FILE *f, struct ly_mnode *mnode)
 }
 
 static void
-info_print_notif(FILE *f, struct ly_mnode *mnode)
+info_print_notif(FILE *f, struct lys_node *mnode)
 {
     struct ly_mnode_notif *ntf = (struct ly_mnode_notif *)mnode;
 
@@ -1076,7 +1076,7 @@ info_print_notif(FILE *f, struct ly_mnode *mnode)
 }
 
 static void
-info_print_rpc(FILE *f, struct ly_mnode *mnode)
+info_print_rpc(FILE *f, struct lys_node *mnode)
 {
     struct ly_mnode_rpc *rpc = (struct ly_mnode_rpc *)mnode;
 
@@ -1096,7 +1096,7 @@ int
 info_print_model(FILE *f, struct ly_module *module, const char *target_node)
 {
     int i;
-    struct ly_mnode *target;
+    struct lys_node *target;
 
     if (!target_node) {
         if (f == stdout) {
@@ -1109,7 +1109,7 @@ info_print_model(FILE *f, struct ly_module *module, const char *target_node)
         }
     } else {
         if ((target_node[0] == '/') || !strncmp(target_node, "type/", 5)) {
-            target = resolve_schema_nodeid((target_node[0] == '/' ? target_node : target_node+4), module->data, module, LY_NODE_AUGMENT);
+            target = resolve_schema_nodeid((target_node[0] == '/' ? target_node : target_node+4), module->data, module, LYS_AUGMENT);
             if (!target) {
                 fprintf(f, "Target %s could not be resolved.\n", (target_node[0] == '/' ? target_node : target_node+4));
                 return EXIT_FAILURE;
@@ -1173,7 +1173,7 @@ info_print_model(FILE *f, struct ly_module *module, const char *target_node)
         }
 
         if (target_node[0] != '/') {
-            if (!(target->nodetype & (LY_NODE_LEAF | LY_NODE_LEAFLIST))) {
+            if (!(target->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 fprintf(f, "Target is not a leaf or a leaf-list.\n");
                 return EXIT_FAILURE;
             }
@@ -1185,73 +1185,73 @@ info_print_model(FILE *f, struct ly_module *module, const char *target_node)
         }
 
         switch (target->nodetype) {
-        case LY_NODE_CONTAINER:
+        case LYS_CONTAINER:
             if (f == stdout) {
                 fprintf(f, "\n");
             }
             info_print_container(f, target);
             break;
-        case LY_NODE_CHOICE:
+        case LYS_CHOICE:
             if (f == stdout) {
                 fprintf(f, "\n");
             }
             info_print_choice(f, target);
             break;
-        case LY_NODE_LEAF:
+        case LYS_LEAF:
             if (f == stdout) {
                 fprintf(f, "\n");
             }
             info_print_leaf(f, target);
             break;
-        case LY_NODE_LEAFLIST:
+        case LYS_LEAFLIST:
             if (f == stdout) {
                 fprintf(f, "\n");
             }
             info_print_leaflist(f, target);
             break;
-        case LY_NODE_LIST:
+        case LYS_LIST:
             if (f == stdout) {
                 fprintf(f, "\n");
             }
             info_print_list(f, target);
             break;
-        case LY_NODE_ANYXML:
+        case LYS_ANYXML:
             if (f == stdout) {
                 fprintf(f, "\n");
             }
             info_print_anyxml(f, target);
             break;
-        case LY_NODE_GROUPING:
+        case LYS_GROUPING:
             if (f == stdout) {
                 fprintf(f, "\n");
             }
             info_print_grouping(f, target);
             break;
-        case LY_NODE_CASE:
+        case LYS_CASE:
             if (f == stdout) {
                 fprintf(f, "\n");
             }
             info_print_case(f, target);
             break;
-        case LY_NODE_NOTIF:
+        case LYS_NOTIF:
             if (f == stdout) {
                 fprintf(f, "\n");
             }
             info_print_notif(f, target);
             break;
-        case LY_NODE_RPC:
+        case LYS_RPC:
             if (f == stdout) {
                 fprintf(f, "\n");
             }
             info_print_rpc(f, target);
             break;
-        case LY_NODE_INPUT:
+        case LYS_INPUT:
             if (f == stdout) {
                 fprintf(f, "\n");
             }
             info_print_input(f, target);
             break;
-        case LY_NODE_OUTPUT:
+        case LYS_OUTPUT:
             if (f == stdout) {
                 fprintf(f, "\n");
             }

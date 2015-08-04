@@ -7,17 +7,17 @@
 #include "context.h"
 #include "parser.h"
 
-static struct ly_mnode *
-ylib_get_next_sibling_recursive(struct ly_mnode *siblings, struct ly_mnode *prev, int *found)
+static struct lys_node *
+ylib_get_next_sibling_recursive(struct lys_node *siblings, struct lys_node *prev, int *found)
 {
-    struct ly_mnode *sibling, *mnode;
+    struct lys_node *sibling, *mnode;
 
     LY_TREE_FOR(siblings, sibling) {
-        if (sibling->nodetype == LY_NODE_GROUPING) {
+        if (sibling->nodetype == LYS_GROUPING) {
             continue;
         }
 
-        if (sibling->nodetype == LY_NODE_USES) {
+        if (sibling->nodetype == LYS_USES) {
             mnode = ylib_get_next_sibling_recursive(sibling->child, (*found ? NULL : prev), found);
             if (mnode) {
                 return mnode;
@@ -37,8 +37,8 @@ ylib_get_next_sibling_recursive(struct ly_mnode *siblings, struct ly_mnode *prev
     return NULL;
 }
 
-static struct ly_mnode *
-ylib_get_next_sibling(struct ly_mnode *siblings, struct ly_mnode *prev)
+static struct lys_node *
+ylib_get_next_sibling(struct lys_node *siblings, struct lys_node *prev)
 {
     int found = 0;
 
@@ -109,7 +109,7 @@ ylib_append_llist(struct lyd_node_leaflist *sibling, struct lyd_node_leaflist *l
 }
 
 static struct lyd_node *
-ylib_name_space(struct ly_ctx *ctx, struct ly_mnode *name_node, const char *name)
+ylib_name_space(struct ly_ctx *ctx, struct lys_node *name_node, const char *name)
 {
     struct lyd_node_leaf *dleaf;
 
@@ -125,7 +125,7 @@ ylib_name_space(struct ly_ctx *ctx, struct ly_mnode *name_node, const char *name
 }
 
 static struct lyd_node *
-ylib_revision(struct ly_ctx *ctx, struct ly_mnode *revision_node, struct ly_revision *rev, uint8_t rev_size)
+ylib_revision(struct ly_ctx *ctx, struct lys_node *revision_node, struct ly_revision *rev, uint8_t rev_size)
 {
     int i, max = 0;
     struct lyd_node_leaf *dleaf;
@@ -151,7 +151,7 @@ ylib_revision(struct ly_ctx *ctx, struct ly_mnode *revision_node, struct ly_revi
 }
 
 static struct lyd_node *
-ylib_schema(struct ly_ctx *ctx, struct ly_mnode *schema_node, const char *uri)
+ylib_schema(struct ly_ctx *ctx, struct lys_node *schema_node, const char *uri)
 {
     struct lyd_node_leaf *dleaf;
 
@@ -171,7 +171,7 @@ ylib_schema(struct ly_ctx *ctx, struct ly_mnode *schema_node, const char *uri)
 }
 
 static struct lyd_node *
-ylib_feature(struct ly_ctx *ctx, struct ly_mnode *feature_node, struct ly_module *mod)
+ylib_feature(struct ly_ctx *ctx, struct lys_node *feature_node, struct ly_module *mod)
 {
     int i, j;
     struct lyd_node_leaflist *dllist, *ret = NULL;
@@ -224,13 +224,13 @@ ylib_feature(struct ly_ctx *ctx, struct ly_mnode *feature_node, struct ly_module
 }
 
 static struct lyd_node *
-ylib_deviation(struct ly_ctx *ctx, struct ly_mnode *deviation_node, struct ly_module *mod, struct ly_module **modules, int mod_count)
+ylib_deviation(struct ly_ctx *ctx, struct lys_node *deviation_node, struct ly_module *mod, struct ly_module **modules, int mod_count)
 {
     int i, j, k;
     struct ly_module *target_module;
     struct lyd_node *dnode;
     struct lyd_node_list *ret = NULL, *dlist;
-    struct ly_mnode *deviation_child;
+    struct lys_node *deviation_child;
 
     for (i = 0; i < mod_count; ++i) {
         for (k = 0; k < modules[i]->deviation_size; ++k) {
@@ -316,7 +316,7 @@ ylib_deviation(struct ly_ctx *ctx, struct ly_mnode *deviation_node, struct ly_mo
 }
 
 static struct lyd_node *
-ylib_conformance(struct ly_ctx *ctx, struct ly_mnode *conformance_node, int implemented)
+ylib_conformance(struct ly_ctx *ctx, struct lys_node *conformance_node, int implemented)
 {
     struct lyd_node_leaf *dleaf;
 
@@ -336,10 +336,10 @@ ylib_conformance(struct ly_ctx *ctx, struct ly_mnode *conformance_node, int impl
 }
 
 static struct lyd_node *
-ylib_submodules(struct ly_ctx *ctx, struct ly_mnode *submodules_node, struct ly_include *inc, uint8_t inc_size)
+ylib_submodules(struct ly_ctx *ctx, struct lys_node *submodules_node, struct lys_include *inc, uint8_t inc_size)
 {
     int i;
-    struct ly_mnode *submodule_node, *submodule_child;
+    struct lys_node *submodule_node, *submodule_child;
     struct lyd_node *ret = NULL, *dnode;
     struct lyd_node_list *dsubmodule = NULL, *dlist;
 
@@ -388,7 +388,7 @@ ylib_submodules(struct ly_ctx *ctx, struct ly_mnode *submodules_node, struct ly_
 }
 
 static struct lyd_node *
-ylib_module_set_id(struct ly_ctx *ctx, struct ly_mnode *modules_set_id_node)
+ylib_module_set_id(struct ly_ctx *ctx, struct lys_node *modules_set_id_node)
 {
     struct lyd_node_leaf *dleaf;
     char id[8];
@@ -410,7 +410,7 @@ ly_ylib_get(struct ly_ctx *ctx)
 {
     int i;
     struct ly_module *mod;
-    struct ly_mnode *modules_child, *module_child;
+    struct lys_node *modules_child, *module_child;
     struct lyd_node *root, *dnode;
     struct lyd_node_list *dlist, *dmodule = NULL;
 

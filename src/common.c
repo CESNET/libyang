@@ -43,36 +43,36 @@ strnchr(const char *s, int c, unsigned int len)
 }
 
 const char *
-strnodetype(LY_NODE_TYPE type)
+strnodetype(LYS_NODE type)
 {
     switch (type) {
-    case LY_NODE_AUGMENT:
+    case LYS_AUGMENT:
         return "augment";
-    case LY_NODE_CONTAINER:
+    case LYS_CONTAINER:
         return "container";
-    case LY_NODE_CHOICE:
+    case LYS_CHOICE:
         return "choice";
-    case LY_NODE_LEAF:
+    case LYS_LEAF:
         return "leaf";
-    case LY_NODE_LEAFLIST:
+    case LYS_LEAFLIST:
         return "leaf-list";
-    case LY_NODE_LIST:
+    case LYS_LIST:
         return "list";
-    case LY_NODE_ANYXML:
+    case LYS_ANYXML:
         return "anyxml";
-    case LY_NODE_USES:
+    case LYS_USES:
         return "uses";
-    case LY_NODE_GROUPING:
+    case LYS_GROUPING:
         return "grouping";
-    case LY_NODE_CASE:
+    case LYS_CASE:
         return "case";
-    case LY_NODE_INPUT:
+    case LYS_INPUT:
         return "input";
-    case LY_NODE_OUTPUT:
+    case LYS_OUTPUT:
         return "output";
-    case LY_NODE_NOTIF:
+    case LYS_NOTIF:
         return "notification";
-    case LY_NODE_RPC:
+    case LYS_RPC:
         return "rpc";
     }
 
