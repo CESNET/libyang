@@ -97,23 +97,17 @@ info_print_mnodes(FILE *f, struct ly_mnode *mnode, const char *label)
 static void
 info_print_flags(FILE *f, uint8_t flags, uint8_t mask, int is_list)
 {
-    int first = 1;
-
-    fprintf(f, "%-*s", INDENT_LEN, "Flags: ");
-
     if (mask & LYS_CONFIG_MASK) {
+        fprintf(f, "%-*s", INDENT_LEN, "Config: ");
         if (flags & LYS_CONFIG_R) {
             fprintf(f, "read-only\n");
         } else {
             fprintf(f, "read-write\n");
         }
-        first = 0;
     }
 
     if (mask & LYS_STATUS_MASK) {
-        if (!first) {
-            fprintf(f, "%-*s", INDENT_LEN, " ");
-        }
+        fprintf(f, "%-*s", INDENT_LEN, "Status: ");
 
         if (flags & LYS_STATUS_DEPRC) {
             fprintf(f, "deprecated\n");
@@ -122,50 +116,36 @@ info_print_flags(FILE *f, uint8_t flags, uint8_t mask, int is_list)
         } else {
             fprintf(f, "current\n");
         }
-        first = 0;
     }
 
     if (mask & LYS_MAND_MASK) {
-        if (!first) {
-            fprintf(f, "%-*s", INDENT_LEN, " ");
-        }
+        fprintf(f, "%-*s", INDENT_LEN, "Mandatory: ");
 
         if (flags & LYS_MAND_TRUE) {
-            fprintf(f, "mandatory\n");
+            fprintf(f, "yes\n");
         } else {
-            fprintf(f, "non-mandatory\n");
+            fprintf(f, "no\n");
         }
-        first = 0;
     }
 
     if (is_list && (mask & LYS_USERORDERED)) {
-        if (!first) {
-            fprintf(f, "%-*s", INDENT_LEN, " ");
-        }
+        fprintf(f, "%-*s", INDENT_LEN, "Order: ");
 
         if (flags & LYS_USERORDERED) {
             fprintf(f, "user-ordered\n");
         } else {
             fprintf(f, "system-ordered\n");
         }
-        first = 0;
     }
 
     if (!is_list && (mask & LYS_FENABLED)) {
-        if (!first) {
-            fprintf(f, "%-*s", INDENT_LEN, " ");
-        }
+        fprintf(f, "%-*s", INDENT_LEN, "Enabled: ");
 
         if (flags & LYS_FENABLED) {
-            fprintf(f, "enabled\n");
+            fprintf(f, "yes\n");
         } else {
-            fprintf(f, "disabled\n");
+            fprintf(f, "no\n");
         }
-        first = 0;
-    }
-
-    if (first) {
-        fprintf(f, "\n");
     }
 }
 
