@@ -476,21 +476,20 @@ resolve_child(struct lys_node *parent, const char *name, int len, LYS_NODE type)
 /*
  * id - schema-nodeid
  *
- * node_type - LY_NODE_AUGMENT (searches also RPCs and notifications)
- *           - LY_NODE_USES    (only descendant-schema-nodeid allowed, ".." not allowed)
- *           - LY_NODE_CHOICE  (search only start->child, only descendant-schema-nodeid allowed)
- *           - LY_NODE_LEAF    (resolves path of a leafref - predicates allowed and skipped)
+ * node_type - LYS_AUGMENT (searches also RPCs and notifications)
+ *           - LYS_USES    (only descendant-schema-nodeid allowed, ".." not allowed)
+ *           - LYS_CHOICE  (search only start->child, only descendant-schema-nodeid allowed)
  */
 struct lys_node *
 resolve_schema_nodeid(const char *id, struct lys_node *start, struct ly_module *mod, LYS_NODE node_type)
 {
-    const char *name, *prefix, *ptr;
+    const char *name, *prefix;
     struct lys_node *sibling;
     int ret, nam_len, pref_len, is_relative = -1;
     struct ly_module *prefix_mod, *start_mod;
     /* 0 - in module, 1 - in 1st submodule, 2 - in 2nd submodule, ... */
     uint8_t in_submod = 0;
-    /* 0 - in data, 1 - in RPCs, 2 - in notifications (relevant only with LY_NODE_AUGMENT) */
+    /* 0 - in data, 1 - in RPCs, 2 - in notifications (relevant only with LYS_AUGMENT) */
     uint8_t in_mod_part = 0;
 
     assert(mod);
@@ -548,14 +547,6 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct ly_module *
                         if (prefix_mod != ((struct ly_submodule *)sibling->module)->belongsto) {
                             continue;
                         }
-                    }
-                }
-
-                /* skip the predicate */
-                if ((node_type == LYS_LEAF) && (id[0] == '[')) {
-                    ptr = strchr(id, ']');
-                    if (ptr) {
-                        id = ptr+1;
                     }
                 }
 
