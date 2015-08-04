@@ -134,7 +134,7 @@ parse_path_predicate(const char *id, const char **prefix, int *pref_len, const c
     }
 
     if (id[0] != '[') {
-        /* error */
+        return -parsed;
     }
 
     ++parsed;
