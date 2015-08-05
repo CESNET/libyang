@@ -1760,7 +1760,8 @@ resolve_unres_item(struct ly_module *mod, void *item, enum UNRES_ITEM type, void
 
     switch (type) {
     case UNRES_RESOLVED:
-        assert(0);
+        LOGERR(LY_EINT, "Internal error (%s:%d).", __FILE__, __func__);
+        break;
     case UNRES_IDENT:
         ret = resolve_unres_ident(mod, item, str_mnode, line);
         has_str = 1;
