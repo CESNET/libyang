@@ -166,7 +166,7 @@ ly_mnode_addchild(struct lys_node *parent, struct lys_node *child)
         if (!(child->nodetype &
                 (LYS_ANYXML | LYS_CHOICE | LYS_CONTAINER | LYS_GROUPING | LYS_LEAF |
                  LYS_LEAFLIST | LYS_LIST | LYS_USES))) {
-            LOGVAL(VE_SPEC, 0, "Unexpected substatement \"%s\" in \"%s\" (%s).",
+            LOGVAL(LYE_SPEC, 0, "Unexpected substatement \"%s\" in \"%s\" (%s).",
                    strnodetype(child->nodetype), strnodetype(parent->nodetype), parent->name);
             return EXIT_FAILURE;
         }
@@ -174,7 +174,7 @@ ly_mnode_addchild(struct lys_node *parent, struct lys_node *child)
     case LYS_CHOICE:
         if (!(child->nodetype &
                 (LYS_ANYXML | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST))) {
-            LOGVAL(VE_SPEC, 0, "Unexpected substatement \"%s\" in \"choice\" %s.",
+            LOGVAL(LYE_SPEC, 0, "Unexpected substatement \"%s\" in \"choice\" %s.",
                    strnodetype(child->nodetype), parent->name);
             return EXIT_FAILURE;
         }
@@ -182,14 +182,14 @@ ly_mnode_addchild(struct lys_node *parent, struct lys_node *child)
     case LYS_CASE:
         if (!(child->nodetype &
                 (LYS_ANYXML | LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_USES))) {
-            LOGVAL(VE_SPEC, 0, "Unexpected substatement \"%s\" in \"case\" %s.",
+            LOGVAL(LYE_SPEC, 0, "Unexpected substatement \"%s\" in \"case\" %s.",
                    strnodetype(child->nodetype), parent->name);
             return EXIT_FAILURE;
         }
         break;
     case LYS_RPC:
         if (!(child->nodetype & (LYS_INPUT | LYS_OUTPUT | LYS_GROUPING))) {
-            LOGVAL(VE_SPEC, 0, "Unexpected substatement \"%s\" in \"rpc\" %s.",
+            LOGVAL(LYE_SPEC, 0, "Unexpected substatement \"%s\" in \"rpc\" %s.",
                    strnodetype(child->nodetype), parent->name);
             return EXIT_FAILURE;
         }
@@ -197,14 +197,14 @@ ly_mnode_addchild(struct lys_node *parent, struct lys_node *child)
     case LYS_LEAF:
     case LYS_LEAFLIST:
     case LYS_ANYXML:
-        LOGVAL(VE_SPEC, 0, "The \"%s\" statement (%s) cannot have any substatement.",
+        LOGVAL(LYE_SPEC, 0, "The \"%s\" statement (%s) cannot have any substatement.",
                strnodetype(parent->nodetype), parent->name);
         return EXIT_FAILURE;
     case LYS_AUGMENT:
         if (!(child->nodetype &
                 (LYS_ANYXML | LYS_CASE | LYS_CHOICE | LYS_CONTAINER | LYS_LEAF
                 | LYS_LEAFLIST | LYS_LIST | LYS_USES))) {
-            LOGVAL(VE_SPEC, 0, "Unexpected substatement \"%s\" in \"%s\" (%s).",
+            LOGVAL(LYE_SPEC, 0, "Unexpected substatement \"%s\" in \"%s\" (%s).",
                    strnodetype(child->nodetype), strnodetype(parent->nodetype), parent->name);
             return EXIT_FAILURE;
         }

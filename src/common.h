@@ -69,49 +69,51 @@ void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 	}
 #endif
 
-#define LOGMEM LOGERR(LY_EMEM, "Memory allocation failed (%s())", __func__)
+#define LOGMEM LOGERR(LY_EMEM, "Memory allocation failed (%s()).", __func__)
 
-enum LY_VERR {
-    VE_SPEC = -1,
+#define LOGINT LOGERR(LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 
-    VE_XML_MISS,
-    VE_XML_INVAL,
-    VE_XML_INCHAR,
+enum LY_ERR {
+    LYE_SPEC = -2,
+    LYE_LINE = -1,
 
-    VE_EOF,
-    VE_INSTMT,
-    VE_INID,
-    VE_INDATE,
-    VE_INARG,
-    VE_MISSSTMT1,
-    VE_MISSSTMT2,
-    VE_MISSARG,
-    VE_TOOMANY,
-    VE_DUPID,
-    VE_ENUM_DUPVAL,
-    VE_ENUM_DUPNAME,
-    VE_ENUM_WS,
-    VE_BITS_DUPVAL,
-    VE_BITS_DUPNAME,
-    VE_INPREFIX,
-    VE_KEY_NLEAF,
-    VE_KEY_TYPE,
-    VE_KEY_CONFIG,
-    VE_KEY_MISS,
-    VE_KEY_DUP,
-    VE_INREGEX,
-    VE_NORESOLV,
-    VE_INPREF,
+    LYE_XML_MISS,
+    LYE_XML_INVAL,
+    LYE_XML_INCHAR,
 
-    DE_INELEM,
-    DE_INELEMLEN,
-    DE_INVAL,
-    DE_OORVAL,
-    DE_INCHAR,
-    DE_NORESOLV,
-    DE_INPRED
+    LYE_EOF,
+    LYE_INSTMT,
+    LYE_INID,
+    LYE_INDATE,
+    LYE_INARG,
+    LYE_MISSSTMT1,
+    LYE_MISSSTMT2,
+    LYE_MISSARG,
+    LYE_TOOMANY,
+    LYE_DUPID,
+    LYE_ENUM_DUPVAL,
+    LYE_ENUM_DUPNAME,
+    LYE_ENUM_WS,
+    LYE_BITS_DUPVAL,
+    LYE_BITS_DUPNAME,
+    LYE_INPREF,
+    LYE_INPREF_LEN,
+    LYE_KEY_NLEAF,
+    LYE_KEY_TYPE,
+    LYE_KEY_CONFIG,
+    LYE_KEY_MISS,
+    LYE_KEY_DUP,
+    LYE_INREGEX,
+    LYE_INRESOLV,
+
+    LYE_INELEM,
+    LYE_INELEM_LEN,
+    LYE_INVAL,
+    LYE_OORVAL,
+    LYE_INCHAR,
+    LYE_INPRED
 };
-void ly_vlog(enum LY_VERR code, unsigned int line, ...);
+void ly_vlog(enum LY_ERR code, unsigned int line, ...);
 
 #define LOGVAL(code, line, args...) ly_vlog(code, line, ##args)
 
