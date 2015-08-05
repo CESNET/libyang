@@ -40,16 +40,16 @@ void json_print_node(FILE *f, int level, struct lyd_node *node);
 static int
 nscmp(struct lyd_node *node1, struct lyd_node *node2)
 {
-    struct ly_module *m1, *m2;
+    struct lys_module *m1, *m2;
 
     /* we have to cover submodules belonging to the same module */
     if (node1->schema->module->type) {
-        m1 = ((struct ly_submodule *)node1->schema->module)->belongsto;
+        m1 = ((struct lys_submodule *)node1->schema->module)->belongsto;
     } else {
         m1 = node1->schema->module;
     }
     if (node2->schema->module->type) {
-        m2 = ((struct ly_submodule *)node2->schema->module)->belongsto;
+        m2 = ((struct lys_submodule *)node2->schema->module)->belongsto;
     } else {
         m2 = node2->schema->module;
     }
@@ -82,10 +82,10 @@ json_print_instid(FILE *f, struct lyd_node_leaf *leaf)
     const char *ptr, *print_ptr;
     int cur_id_len, print_id_len;
     struct leafref_instid *nodes, unres;
-    struct ly_module *prev_module = NULL, *cur_module;
+    struct lys_module *prev_module = NULL, *cur_module;
     struct lys_node *snode;
 
-    assert(((struct ly_mnode_leaf *)leaf->schema)->type.base == LY_TYPE_INST);
+    assert(((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_INST);
 
     fputc('\"', f);
     print_ptr = ptr = leaf->value_str+1;
@@ -111,7 +111,7 @@ json_print_instid(FILE *f, struct lyd_node_leaf *leaf)
 
         /* find current module */
         if (snode->module->type) {
-            cur_module = ((struct ly_submodule *)snode->module)->belongsto;
+            cur_module = ((struct lys_submodule *)snode->module)->belongsto;
         } else {
             cur_module = snode->module;
         }
@@ -139,7 +139,7 @@ static void
 json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
 {
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
-    struct ly_mnode_leaf *sleaf = (struct ly_mnode_leaf *)node->schema;
+    struct lys_node_leaf *sleaf = (struct lys_node_leaf *)node->schema;
     struct lys_type *type;
     LY_DATA_TYPE data_type;
     const char *schema;
@@ -151,7 +151,7 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
             /* print "namespace" */
             if (node->schema->module->type) {
                 /* submodule, get module */
-                schema = ((struct ly_submodule *)node->schema->module)->belongsto->name;
+                schema = ((struct lys_submodule *)node->schema->module)->belongsto->name;
             } else {
                 schema = node->schema->module->name;
             }
@@ -161,7 +161,7 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
         }
     }
 
-    data_type = ((struct ly_mnode_leaf *)leaf->schema)->type.base;
+    data_type = ((struct lys_node_leaf *)leaf->schema)->type.base;
     if (data_type == LY_TYPE_UNION) {
         data_type = leaf->value_type;
     }
@@ -268,7 +268,7 @@ json_print_container(FILE *f, int level, struct lyd_node *node)
         /* print "namespace" */
         if (node->schema->module->type) {
             /* submodule, get module */
-            schema = ((struct ly_submodule *)node->schema->module)->belongsto->name;
+            schema = ((struct lys_submodule *)node->schema->module)->belongsto->name;
         } else {
             schema = node->schema->module->name;
         }
@@ -312,7 +312,7 @@ json_print_leaf_list(FILE *f, int level, struct lyd_node *node, int is_list)
         /* print "namespace" */
         if (node->schema->module->type) {
             /* submodule, get module */
-            schema = ((struct ly_submodule *)node->schema->module)->belongsto->name;
+            schema = ((struct lys_submodule *)node->schema->module)->belongsto->name;
         } else {
             schema = node->schema->module->name;
         }

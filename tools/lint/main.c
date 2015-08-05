@@ -59,7 +59,7 @@ main_noninteractive(int argc, char *argv[])
     int c;
     int ret = EXIT_FAILURE;
     int fd = -1;
-    struct ly_module *model;
+    struct lys_module *model;
     struct stat sb;
     char *addr = NULL;
 

@@ -187,7 +187,7 @@ const char **ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *module_n
  * @return Pointer to the data model structure, NULL if no schema following the name and
  * revision is present in the context.
  */
-struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision);
+struct lys_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision);
 
 /**
  * @brief Get submodule from the context's search dir.
@@ -198,7 +198,7 @@ struct ly_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const 
  * not specified, the newest revision is returned (TODO).
  * @return Pointer to the data model structure.
  */
-struct ly_submodule *ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *revision);
+struct lys_submodule *ly_ctx_get_submodule(struct lys_module *module, const char *name, const char *revision);
 
 /**
  * @brief Free all internal structures of the specified context.
@@ -260,9 +260,9 @@ struct lyd_node *ly_ylib_get(struct ly_ctx *ctx);
  * @param[in] format Format of the input data (YANG or YIN).
  * @return Pointer to the data model structure or NULL on error.
  */
-struct ly_module *lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
+struct lys_module *lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
 
-struct ly_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
+struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
 
 /**
  * @brief Parse (and validate according to appropriate schema from the given context) data.
@@ -343,7 +343,7 @@ struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT form
  * node in the module will be printed.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lys_print(FILE *f, struct ly_module *module, LYS_OUTFORMAT format, const char *target_node);
+int lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
 
 /**
  * @brief Print data tree in the specified format.

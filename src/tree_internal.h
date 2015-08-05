@@ -99,10 +99,10 @@ void ly_mnode_free(struct lys_node *node);
 void ly_restr_free(struct ly_ctx *ctx, struct lys_restr *restr);
 void ly_type_free(struct ly_ctx *ctx, struct lys_type *type);
 void ly_deviation_free(struct ly_ctx *ctx, struct ly_deviation *dev);
-void ly_submodule_free(struct ly_submodule *submodule);
+void ly_submodule_free(struct lys_submodule *submodule);
 
-struct ly_submodule *ly_submodule_read(struct ly_module *module, const char *data, LYS_INFORMAT format, int implement);
-struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LYS_INFORMAT format, int implement);
+struct lys_submodule *ly_submodule_read(struct lys_module *module, const char *data, LYS_INFORMAT format, int implement);
+struct lys_submodule *ly_submodule_read_fd(struct lys_module *module, int fd, LYS_INFORMAT format, int implement);
 
 /*
  * Add child model node at the end of the parent's child list.
@@ -114,7 +114,7 @@ struct ly_submodule *ly_submodule_read_fd(struct ly_module *module, int fd, LYS_
  */
 int ly_mnode_addchild(struct lys_node *parent, struct lys_node *child);
 
-struct ly_module *lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
+struct lys_module *lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
 
 /**
  * @brief Free (and unlink it from the context) the specified schema.
@@ -124,9 +124,9 @@ struct ly_module *lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT forma
  *
  * @param[in] module Data model to free.
  */
-void lys_free(struct ly_module *module);
+void lys_free(struct lys_module *module);
 
-struct lys_node *ly_mnode_dup(struct ly_module *module, struct lys_node *mnode, uint8_t flags, int recursive,
+struct lys_node *ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, int recursive,
                               unsigned int line, struct unres_item *unres);
 
 #endif /* LY_TREE_INTERNAL_H_ */

@@ -29,7 +29,7 @@
 
 #define INDENT_LEN 11
 
-struct lys_node *resolve_schema_nodeid(const char *id, struct lys_node *start, struct ly_module *mod, LYS_NODE node_type);
+struct lys_node *resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module *mod, LYS_NODE node_type);
 
 static void
 info_print_text(FILE *f, const char *text, const char *label)
@@ -150,7 +150,7 @@ info_print_flags(FILE *f, uint8_t flags, uint8_t mask, int is_list)
 }
 
 static void
-info_print_if_feature(FILE *f, struct ly_feature **features, uint8_t features_size)
+info_print_if_feature(FILE *f, struct lys_feature **features, uint8_t features_size)
 {
     int i;
 
@@ -212,7 +212,7 @@ info_print_typedef(FILE *f, struct lys_tpdf *tpdf, uint8_t tpdf_size)
 }
 
 static void
-info_print_typedef_with_include(FILE *f, struct ly_module *mod)
+info_print_typedef_with_include(FILE *f, struct lys_module *mod)
 {
     int i, j, first = 1;
 
@@ -413,7 +413,7 @@ info_print_list_constr(FILE *f, uint32_t min, uint32_t max)
 }
 
 static void
-info_print_keys(FILE *f, struct ly_mnode_leaf **keys, uint8_t keys_size)
+info_print_keys(FILE *f, struct lys_node_leaf **keys, uint8_t keys_size)
 {
     int i;
 
@@ -482,7 +482,7 @@ info_print_revision(FILE *f, struct ly_revision *rev, uint8_t rev_size)
 }
 
 static void
-info_print_import_with_include(FILE *f, struct ly_module *mod)
+info_print_import_with_include(FILE *f, struct lys_module *mod)
 {
     int first = 1, i, j;
 
@@ -521,7 +521,7 @@ info_print_import_with_include(FILE *f, struct ly_module *mod)
 }
 
 static void
-info_print_include(FILE *f, struct ly_module *mod)
+info_print_include(FILE *f, struct lys_module *mod)
 {
     int first = 1, i;
 
@@ -542,7 +542,7 @@ info_print_include(FILE *f, struct ly_module *mod)
 }
 
 static void
-info_print_augment(FILE *f, struct ly_module *mod)
+info_print_augment(FILE *f, struct lys_module *mod)
 {
     int first = 1, i;
 
@@ -563,7 +563,7 @@ info_print_augment(FILE *f, struct ly_module *mod)
 }
 
 static void
-info_print_deviation(FILE *f, struct ly_module *mod)
+info_print_deviation(FILE *f, struct lys_module *mod)
 {
     int first = 1, i;
 
@@ -584,7 +584,7 @@ info_print_deviation(FILE *f, struct ly_module *mod)
 }
 
 static void
-info_print_ident_with_include(FILE *f, struct ly_module *mod)
+info_print_ident_with_include(FILE *f, struct lys_module *mod)
 {
     int first = 1, i, j;
 
@@ -621,7 +621,7 @@ info_print_ident_with_include(FILE *f, struct ly_module *mod)
 }
 
 static void
-info_print_features_with_include(FILE *f, struct ly_module *mod)
+info_print_features_with_include(FILE *f, struct lys_module *mod)
 {
     int first = 1, i, j;
 
@@ -658,7 +658,7 @@ info_print_features_with_include(FILE *f, struct ly_module *mod)
 }
 
 static void
-info_print_rpc_with_include(FILE *f, struct ly_module *mod)
+info_print_rpc_with_include(FILE *f, struct lys_module *mod)
 {
     int first = 1, i;
     struct lys_node *mnode;
@@ -697,7 +697,7 @@ info_print_rpc_with_include(FILE *f, struct ly_module *mod)
 }
 
 static void
-info_print_notif_with_include(FILE *f, struct ly_module *mod)
+info_print_notif_with_include(FILE *f, struct lys_module *mod)
 {
     int first = 1, i;
     struct lys_node *mnode;
@@ -736,7 +736,7 @@ info_print_notif_with_include(FILE *f, struct ly_module *mod)
 }
 
 static void
-info_print_mnodes_with_include(FILE *f, struct ly_module *mod)
+info_print_mnodes_with_include(FILE *f, struct lys_module *mod)
 {
     int first = 1, i;
     struct lys_node *mnode;
@@ -812,7 +812,7 @@ info_print_ident_detail(FILE *f, struct ly_ident *ident)
 }
 
 static void
-info_print_feature_detail(FILE *f, struct ly_feature *feat)
+info_print_feature_detail(FILE *f, struct lys_feature *feat)
 {
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Feature: ", feat->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", feat->module->name);
@@ -823,7 +823,7 @@ info_print_feature_detail(FILE *f, struct ly_feature *feat)
 }
 
 static void
-info_print_module(FILE *f, struct ly_module *module)
+info_print_module(FILE *f, struct lys_module *module)
 {
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", module->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Namespace: ", module->ns);
@@ -852,7 +852,7 @@ info_print_module(FILE *f, struct ly_module *module)
 }
 
 static void
-info_print_submodule(FILE *f, struct ly_submodule *module)
+info_print_submodule(FILE *f, struct lys_submodule *module)
 {
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Submodule: ", module->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Parent: ", module->belongsto->name);
@@ -867,23 +867,23 @@ info_print_submodule(FILE *f, struct ly_submodule *module)
     info_print_text(f, module->uri, "URI: ");
 
     info_print_revision(f, module->rev, module->rev_size);
-    info_print_include(f, (struct ly_module *)module);
-    info_print_import_with_include(f, (struct ly_module *)module);
-    info_print_typedef_with_include(f, (struct ly_module *)module);
-    info_print_ident_with_include(f, (struct ly_module *)module);
-    info_print_features_with_include(f, (struct ly_module *)module);
-    info_print_augment(f, (struct ly_module *)module);
-    info_print_deviation(f, (struct ly_module *)module);
+    info_print_include(f, (struct lys_module *)module);
+    info_print_import_with_include(f, (struct lys_module *)module);
+    info_print_typedef_with_include(f, (struct lys_module *)module);
+    info_print_ident_with_include(f, (struct lys_module *)module);
+    info_print_features_with_include(f, (struct lys_module *)module);
+    info_print_augment(f, (struct lys_module *)module);
+    info_print_deviation(f, (struct lys_module *)module);
 
-    info_print_rpc_with_include(f, (struct ly_module *)module);
-    info_print_notif_with_include(f, (struct ly_module *)module);
-    info_print_mnodes_with_include(f, (struct ly_module *)module);
+    info_print_rpc_with_include(f, (struct lys_module *)module);
+    info_print_notif_with_include(f, (struct lys_module *)module);
+    info_print_mnodes_with_include(f, (struct lys_module *)module);
 }
 
 static void
 info_print_container(FILE *f, struct lys_node *mnode)
 {
-    struct ly_mnode_container *cont = (struct ly_mnode_container *)mnode;
+    struct lys_node_container *cont = (struct lys_node_container *)mnode;
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Container: ", cont->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", cont->module->name);
@@ -903,7 +903,7 @@ info_print_container(FILE *f, struct lys_node *mnode)
 static void
 info_print_choice(FILE *f, struct lys_node *mnode)
 {
-    struct ly_mnode_choice *choice = (struct ly_mnode_choice *)mnode;
+    struct lys_node_choice *choice = (struct lys_node_choice *)mnode;
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Choice: ", choice->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", choice->module->name);
@@ -926,7 +926,7 @@ info_print_choice(FILE *f, struct lys_node *mnode)
 static void
 info_print_leaf(FILE *f, struct lys_node *mnode)
 {
-    struct ly_mnode_leaf *leaf = (struct ly_mnode_leaf *)mnode;
+    struct lys_node_leaf *leaf = (struct lys_node_leaf *)mnode;
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Leaf: ", leaf->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", leaf->module->name);
@@ -945,7 +945,7 @@ info_print_leaf(FILE *f, struct lys_node *mnode)
 static void
 info_print_leaflist(FILE *f, struct lys_node *mnode)
 {
-    struct ly_mnode_leaflist *llist = (struct ly_mnode_leaflist *)mnode;
+    struct lys_node_leaflist *llist = (struct lys_node_leaflist *)mnode;
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Leaflist: ", llist->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", llist->module->name);
@@ -964,7 +964,7 @@ info_print_leaflist(FILE *f, struct lys_node *mnode)
 static void
 info_print_list(FILE *f, struct lys_node *mnode)
 {
-    struct ly_mnode_list *list = (struct ly_mnode_list *)mnode;
+    struct lys_node_list *list = (struct lys_node_list *)mnode;
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "List: ", list->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", list->module->name);
@@ -986,7 +986,7 @@ info_print_list(FILE *f, struct lys_node *mnode)
 static void
 info_print_anyxml(FILE *f, struct lys_node *mnode)
 {
-    struct ly_mnode_anyxml *axml = (struct ly_mnode_anyxml *)mnode;
+    struct lys_node_anyxml *axml = (struct lys_node_anyxml *)mnode;
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Anyxml: ", axml->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", axml->module->name);
@@ -1002,7 +1002,7 @@ info_print_anyxml(FILE *f, struct lys_node *mnode)
 static void
 info_print_grouping(FILE *f, struct lys_node *mnode)
 {
-    struct ly_mnode_grp *group = (struct ly_mnode_grp *)mnode;
+    struct lys_node_grp *group = (struct lys_node_grp *)mnode;
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Grouping: ", group->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", group->module->name);
@@ -1018,7 +1018,7 @@ info_print_grouping(FILE *f, struct lys_node *mnode)
 static void
 info_print_case(FILE *f, struct lys_node *mnode)
 {
-    struct ly_mnode_case *cas = (struct ly_mnode_case *)mnode;
+    struct lys_node_case *cas = (struct lys_node_case *)mnode;
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Case: ", cas->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", cas->module->name);
@@ -1061,7 +1061,7 @@ info_print_output(FILE *f, struct lys_node *mnode)
 static void
 info_print_notif(FILE *f, struct lys_node *mnode)
 {
-    struct ly_mnode_notif *ntf = (struct ly_mnode_notif *)mnode;
+    struct lys_node_notif *ntf = (struct lys_node_notif *)mnode;
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Notif: ", ntf->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", ntf->module->name);
@@ -1078,7 +1078,7 @@ info_print_notif(FILE *f, struct lys_node *mnode)
 static void
 info_print_rpc(FILE *f, struct lys_node *mnode)
 {
-    struct ly_mnode_rpc *rpc = (struct ly_mnode_rpc *)mnode;
+    struct lys_node_rpc *rpc = (struct lys_node_rpc *)mnode;
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "RPC: ", rpc->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", rpc->module->name);
@@ -1093,7 +1093,7 @@ info_print_rpc(FILE *f, struct lys_node *mnode)
 }
 
 int
-info_print_model(FILE *f, struct ly_module *module, const char *target_node)
+info_print_model(FILE *f, struct lys_module *module, const char *target_node)
 {
     int i;
     struct lys_node *target;
@@ -1105,7 +1105,7 @@ info_print_model(FILE *f, struct ly_module *module, const char *target_node)
         if (module->type == 0) {
             info_print_module(f, module);
         } else {
-            info_print_submodule(f, (struct ly_submodule *)module);
+            info_print_submodule(f, (struct lys_submodule *)module);
         }
     } else {
         if ((target_node[0] == '/') || !strncmp(target_node, "type/", 5)) {
@@ -1180,7 +1180,7 @@ info_print_model(FILE *f, struct ly_module *module, const char *target_node)
             if (f == stdout) {
                 fprintf(f, "\n");
             }
-            info_print_type_detail(f, &((struct ly_mnode_leaf *)target)->type, 0);
+            info_print_type_detail(f, &((struct lys_node_leaf *)target)->type, 0);
             return EXIT_SUCCESS;
         }
 

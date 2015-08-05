@@ -26,14 +26,14 @@
 #include "tree.h"
 
 /* printer/-.c */
-int yang_print_model(FILE * f, struct ly_module *module);
-int tree_print_model(FILE * f, struct ly_module *module);
-int info_print_model(FILE * f, struct ly_module *module, const char *target_node);
+int yang_print_model(FILE * f, struct lys_module *module);
+int tree_print_model(FILE * f, struct lys_module *module);
+int info_print_model(FILE * f, struct lys_module *module, const char *target_node);
 
 int json_print_data(FILE *f, struct lyd_node *root);
 
 API int
-lys_print(FILE *f, struct ly_module *module, LYS_OUTFORMAT format, const char *target_node)
+lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
 {
     if (!f || !module) {
         ly_errno = LY_EINVAL;

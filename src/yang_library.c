@@ -171,7 +171,7 @@ ylib_schema(struct ly_ctx *ctx, struct lys_node *schema_node, const char *uri)
 }
 
 static struct lyd_node *
-ylib_feature(struct ly_ctx *ctx, struct lys_node *feature_node, struct ly_module *mod)
+ylib_feature(struct ly_ctx *ctx, struct lys_node *feature_node, struct lys_module *mod)
 {
     int i, j;
     struct lyd_node_leaflist *dllist, *ret = NULL;
@@ -224,10 +224,10 @@ ylib_feature(struct ly_ctx *ctx, struct lys_node *feature_node, struct ly_module
 }
 
 static struct lyd_node *
-ylib_deviation(struct ly_ctx *ctx, struct lys_node *deviation_node, struct ly_module *mod, struct ly_module **modules, int mod_count)
+ylib_deviation(struct ly_ctx *ctx, struct lys_node *deviation_node, struct lys_module *mod, struct lys_module **modules, int mod_count)
 {
     int i, j, k;
-    struct ly_module *target_module;
+    struct lys_module *target_module;
     struct lyd_node *dnode;
     struct lyd_node_list *ret = NULL, *dlist;
     struct lys_node *deviation_child;
@@ -235,7 +235,7 @@ ylib_deviation(struct ly_ctx *ctx, struct lys_node *deviation_node, struct ly_mo
     for (i = 0; i < mod_count; ++i) {
         for (k = 0; k < modules[i]->deviation_size; ++k) {
             if (modules[i]->deviation[k].target->module->type) {
-                target_module = ((struct ly_submodule *)modules[i]->deviation[k].target->module)->belongsto;
+                target_module = ((struct lys_submodule *)modules[i]->deviation[k].target->module)->belongsto;
             } else {
                 target_module = modules[i]->deviation[k].target->module;
             }
@@ -273,7 +273,7 @@ ylib_deviation(struct ly_ctx *ctx, struct lys_node *deviation_node, struct ly_mo
         for (j = 0; j < modules[i]->inc_size; ++j) {
             for (k = 0; k < modules[i]->inc[j].submodule->deviation_size; ++k) {
                 if (modules[i]->inc[j].submodule->deviation[k].target->module->type) {
-                    target_module = ((struct ly_submodule *)
+                    target_module = ((struct lys_submodule *)
                                     modules[i]->inc[j].submodule->deviation[k].target->module)->belongsto;
                 } else {
                     target_module = modules[i]->inc[j].submodule->deviation[k].target->module;
@@ -409,7 +409,7 @@ API struct lyd_node *
 ly_ylib_get(struct ly_ctx *ctx)
 {
     int i;
-    struct ly_module *mod;
+    struct lys_module *mod;
     struct lys_node *modules_child, *module_child;
     struct lyd_node *root, *dnode;
     struct lyd_node_list *dlist, *dmodule = NULL;

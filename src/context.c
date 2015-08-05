@@ -145,10 +145,10 @@ ly_ctx_destroy(struct ly_ctx *ctx)
     free(ctx);
 }
 
-API struct ly_submodule *
-ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *revision)
+API struct lys_submodule *
+ly_ctx_get_submodule(struct lys_module *module, const char *name, const char *revision)
 {
-    struct ly_submodule *result;
+    struct lys_submodule *result;
     int i;
 
     if (!module || !name) {
@@ -160,7 +160,7 @@ ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *rev
 
     /* search in modules included by the main module */
     if (module->type) {
-        module = ((struct ly_submodule *)module)->belongsto;
+        module = ((struct lys_submodule *)module)->belongsto;
     }
     for (i = 0; i < module->inc_size; i++) {
         result = module->inc[i].submodule;
@@ -176,11 +176,11 @@ ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *rev
     return NULL;
 }
 
-API struct ly_module *
+API struct lys_module *
 ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision)
 {
     int i;
-    struct ly_module *result = NULL;
+    struct lys_module *result = NULL;
 
     if (!ctx || !name) {
         ly_errno = LY_EINVAL;
@@ -244,7 +244,7 @@ ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *module_name)
 {
     int i;
     const char **result = NULL;
-    struct ly_module *mod;
+    struct lys_module *mod;
 
     if (!ctx) {
         ly_errno = LY_EINVAL;

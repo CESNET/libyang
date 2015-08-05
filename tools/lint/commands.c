@@ -92,7 +92,7 @@ cmd_add(const char *arg)
     int fd;
     char *addr, *ptr;
     const char *path;
-    struct ly_module *model;
+    struct lys_module *model;
     struct stat sb;
     LYS_INFORMAT format;
 
@@ -157,7 +157,7 @@ cmd_print(const char *arg)
     char **argv = NULL, *ptr, *target_node = NULL;
     const char **names;
     const char *out_path = NULL;
-    struct ly_module *model, *parent_model;
+    struct lys_module *model, *parent_model;
     LYS_OUTFORMAT format = LYS_OUT_TREE;
     FILE *output = stdout;
     static struct option long_options[] = {
@@ -231,7 +231,7 @@ cmd_print(const char *arg)
         for (i = 0; names[i]; i++) {
             if (!model) {
                 parent_model = ly_ctx_get_module(ctx, names[i], NULL);
-                model = (struct ly_module *)ly_ctx_get_submodule(parent_model, argv[optind], NULL);
+                model = (struct lys_module *)ly_ctx_get_submodule(parent_model, argv[optind], NULL);
             }
         }
         free(names);
@@ -465,7 +465,7 @@ cmd_feature(const char *arg)
     char **argv = NULL, *ptr;
     const char *feat_name = NULL, **names;
     uint8_t *states;
-    struct ly_module *model, *parent_model;
+    struct lys_module *model, *parent_model;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"print", no_argument, 0, 'p'},
@@ -537,7 +537,7 @@ cmd_feature(const char *arg)
         for (i = 0; names[i]; i++) {
             if (!model) {
                 parent_model = ly_ctx_get_module(ctx, names[i], NULL);
-                model = (struct ly_module *)ly_ctx_get_submodule(parent_model, argv[optind], NULL);
+                model = (struct lys_module *)ly_ctx_get_submodule(parent_model, argv[optind], NULL);
             }
         }
         free(names);

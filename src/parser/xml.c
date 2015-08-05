@@ -646,7 +646,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
 static int
 xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, struct leafref_instid **unres)
 {
-    return _xml_get_value(node, &((struct ly_mnode_leaf *)node->schema)->type, xml, unres, 1);
+    return _xml_get_value(node, &((struct lys_node_leaf *)node->schema)->type, xml, unres, 1);
 }
 
 struct lyd_node *
@@ -795,12 +795,12 @@ static int
 check_unres(struct leafref_instid **list)
 {
     struct lyd_node_leaf *leaf;
-    struct ly_mnode_leaf *sleaf;
+    struct lys_node_leaf *sleaf;
     struct leafref_instid *item, *refset = NULL, *ref;
 
     while (*list) {
         leaf = (struct lyd_node_leaf *)(*list)->dnode;
-        sleaf = (struct ly_mnode_leaf *)(*list)->dnode->schema;
+        sleaf = (struct lys_node_leaf *)(*list)->dnode->schema;
 
         /* resolve path and create a set of possible leafrefs (we need their values) */
         if ((*list)->is_leafref) {

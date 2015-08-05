@@ -35,7 +35,7 @@
 #include "xml.h"
 #include "tree_internal.h"
 
-void ly_submodule_free(struct ly_submodule *submodule);
+void ly_submodule_free(struct lys_submodule *submodule);
 
 void
 ly_mnode_unlink(struct lys_node *node)
@@ -200,11 +200,11 @@ ly_mnode_addchild(struct lys_node *parent, struct lys_node *child)
     return EXIT_SUCCESS;
 }
 
-API struct ly_module *
+API struct lys_module *
 lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
     struct unres_item *unres;
-    struct ly_module *mod;
+    struct lys_module *mod;
 
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -240,11 +240,11 @@ lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
     return mod;
 }
 
-struct ly_submodule *
-ly_submodule_read(struct ly_module *module, const char *data, LYS_INFORMAT format, int implement)
+struct lys_submodule *
+ly_submodule_read(struct lys_module *module, const char *data, LYS_INFORMAT format, int implement)
 {
     struct unres_item *unres;
-    struct ly_submodule *submod;
+    struct lys_submodule *submod;
 
     assert(module);
     assert(data);
@@ -264,7 +264,7 @@ ly_submodule_read(struct ly_module *module, const char *data, LYS_INFORMAT forma
         break;
     }
 
-   if (resolve_unres((struct ly_module *)submod, unres)) {
+   if (resolve_unres((struct lys_module *)submod, unres)) {
         LOGERR(LY_EVALID, "There are unresolved items left.");
         ly_submodule_free(submod);
         submod = NULL;
@@ -278,11 +278,11 @@ ly_submodule_read(struct ly_module *module, const char *data, LYS_INFORMAT forma
     return submod;
 }
 
-struct ly_module *
+struct lys_module *
 lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
     struct unres_item *unres;
-    struct ly_module *module;
+    struct lys_module *module;
     struct stat sb;
     char *addr;
 
@@ -327,10 +327,10 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     return module;
 }
 
-API struct ly_module *
+API struct lys_module *
 lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
-    struct ly_module *module;
+    struct lys_module *module;
     struct stat sb;
     char *addr;
 
@@ -352,10 +352,10 @@ lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     return module;
 }
 
-struct ly_submodule *
-ly_submodule_read_fd(struct ly_module *module, int fd, LYS_INFORMAT format, int implement)
+struct lys_submodule *
+ly_submodule_read_fd(struct lys_module *module, int fd, LYS_INFORMAT format, int implement)
 {
-    struct ly_submodule *submodule;
+    struct lys_submodule *submodule;
     struct stat sb;
     char *addr;
 
@@ -415,7 +415,7 @@ ly_restr_free(struct ly_ctx *ctx, struct lys_restr *restr)
 }
 
 void
-ly_type_dup(struct ly_module *mod, struct lys_node *parent, struct lys_type *new, struct lys_type *old,
+ly_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, struct lys_type *old,
             struct unres_item *unres)
 {
     int i;
@@ -608,7 +608,7 @@ ly_type_free(struct ly_ctx *ctx, struct lys_type *type)
 }
 
 struct lys_tpdf *
-ly_tpdf_dup(struct ly_module *mod, struct lys_node *parent, struct lys_tpdf *old, int size, struct unres_item *unres)
+ly_tpdf_dup(struct lys_module *mod, struct lys_node *parent, struct lys_tpdf *old, int size, struct unres_item *unres)
 {
     struct lys_tpdf *result;
     int i;
@@ -684,7 +684,7 @@ ly_when_free(struct ly_ctx *ctx, struct lys_when *w)
 }
 
 static struct lys_node_augment *
-ly_augment_dup(struct ly_module *module, struct lys_node *parent, struct lys_node_augment *old, int size)
+ly_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_node_augment *old, int size)
 {
     struct lys_node_augment *new = NULL;
     int i = -1;
@@ -713,7 +713,7 @@ ly_augment_dup(struct ly_module *module, struct lys_node *parent, struct lys_nod
 }
 
 static struct lys_refine *
-ly_refine_dup(struct ly_module *mod, struct lys_refine *old, int size, struct ly_mnode_uses *uses,
+ly_refine_dup(struct lys_module *mod, struct lys_refine *old, int size, struct lys_node_uses *uses,
               struct unres_item *unres)
 {
     struct lys_refine *result;
@@ -781,7 +781,7 @@ ly_ident_free(struct ly_ctx *ctx, struct ly_ident *ident)
 }
 
 void
-ly_grp_free(struct ly_ctx *ctx, struct ly_mnode_grp *grp)
+ly_grp_free(struct ly_ctx *ctx, struct lys_node_grp *grp)
 {
     int i;
 
@@ -793,7 +793,7 @@ ly_grp_free(struct ly_ctx *ctx, struct ly_mnode_grp *grp)
 }
 
 void
-ly_anyxml_free(struct ly_ctx *ctx, struct ly_mnode_anyxml *anyxml)
+ly_anyxml_free(struct ly_ctx *ctx, struct lys_node_anyxml *anyxml)
 {
     int i;
 
@@ -806,7 +806,7 @@ ly_anyxml_free(struct ly_ctx *ctx, struct ly_mnode_anyxml *anyxml)
 }
 
 void
-ly_leaf_free(struct ly_ctx *ctx, struct ly_mnode_leaf *leaf)
+ly_leaf_free(struct ly_ctx *ctx, struct lys_node_leaf *leaf)
 {
     int i;
 
@@ -823,7 +823,7 @@ ly_leaf_free(struct ly_ctx *ctx, struct ly_mnode_leaf *leaf)
 }
 
 void
-ly_leaflist_free(struct ly_ctx *ctx, struct ly_mnode_leaflist *llist)
+ly_leaflist_free(struct ly_ctx *ctx, struct lys_node_leaflist *llist)
 {
     int i;
 
@@ -839,7 +839,7 @@ ly_leaflist_free(struct ly_ctx *ctx, struct ly_mnode_leaflist *llist)
 }
 
 void
-ly_list_free(struct ly_ctx *ctx, struct ly_mnode_list *list)
+ly_list_free(struct ly_ctx *ctx, struct lys_node_list *list)
 {
     int i;
 
@@ -865,7 +865,7 @@ ly_list_free(struct ly_ctx *ctx, struct ly_mnode_list *list)
 }
 
 void
-ly_container_free(struct ly_ctx *ctx, struct ly_mnode_container *cont)
+ly_container_free(struct ly_ctx *ctx, struct lys_node_container *cont)
 {
     int i;
 
@@ -886,7 +886,7 @@ ly_container_free(struct ly_ctx *ctx, struct ly_mnode_container *cont)
 }
 
 void
-ly_feature_free(struct ly_ctx *ctx, struct ly_feature *f)
+ly_feature_free(struct ly_ctx *ctx, struct lys_feature *f)
 {
     lydict_remove(ctx, f->name);
     lydict_remove(ctx, f->dsc);
@@ -937,7 +937,7 @@ ly_augment_free(struct ly_ctx *ctx, struct lys_node_augment *aug)
 }
 
 void
-ly_uses_free(struct ly_ctx *ctx, struct ly_mnode_uses *uses)
+ly_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses)
 {
     int i, j;
 
@@ -995,28 +995,28 @@ ly_mnode_free(struct lys_node *node)
     /* specific part */
     switch (node->nodetype) {
     case LYS_CONTAINER:
-        ly_container_free(ctx, (struct ly_mnode_container *)node);
+        ly_container_free(ctx, (struct lys_node_container *)node);
         break;
     case LYS_CHOICE:
-        ly_when_free(ctx, ((struct ly_mnode_choice *)node)->when);
+        ly_when_free(ctx, ((struct lys_node_choice *)node)->when);
         break;
     case LYS_LEAF:
-        ly_leaf_free(ctx, (struct ly_mnode_leaf *)node);
+        ly_leaf_free(ctx, (struct lys_node_leaf *)node);
         break;
     case LYS_LEAFLIST:
-        ly_leaflist_free(ctx, (struct ly_mnode_leaflist *)node);
+        ly_leaflist_free(ctx, (struct lys_node_leaflist *)node);
         break;
     case LYS_LIST:
-        ly_list_free(ctx, (struct ly_mnode_list *)node);
+        ly_list_free(ctx, (struct lys_node_list *)node);
         break;
     case LYS_ANYXML:
-        ly_anyxml_free(ctx, (struct ly_mnode_anyxml *)node);
+        ly_anyxml_free(ctx, (struct lys_node_anyxml *)node);
         break;
     case LYS_USES:
-        ly_uses_free(ctx, (struct ly_mnode_uses *)node);
+        ly_uses_free(ctx, (struct lys_node_uses *)node);
         break;
     case LYS_CASE:
-        ly_when_free(ctx, ((struct ly_mnode_case *)node)->when);
+        ly_when_free(ctx, ((struct lys_node_case *)node)->when);
         break;
     case LYS_AUGMENT:
         /* do nothing */
@@ -1026,7 +1026,7 @@ ly_mnode_free(struct lys_node *node)
     case LYS_INPUT:
     case LYS_OUTPUT:
     case LYS_NOTIF:
-        ly_grp_free(ctx, (struct ly_mnode_grp *)node);
+        ly_grp_free(ctx, (struct lys_node_grp *)node);
         break;
     }
 
@@ -1036,7 +1036,7 @@ ly_mnode_free(struct lys_node *node)
 }
 
 static void
-module_free_common(struct ly_module *module)
+module_free_common(struct lys_module *module)
 {
     struct ly_ctx *ctx;
     unsigned int i;
@@ -1124,7 +1124,7 @@ module_free_common(struct ly_module *module)
 }
 
 void
-ly_submodule_free(struct ly_submodule *submodule)
+ly_submodule_free(struct lys_submodule *submodule)
 {
     if (!submodule) {
         return;
@@ -1135,15 +1135,15 @@ ly_submodule_free(struct ly_submodule *submodule)
     submodule->inc = NULL;
 
     /* common part with struct ly_module */
-    module_free_common((struct ly_module *)submodule);
+    module_free_common((struct lys_module *)submodule);
 
     /* no specific items to free */
 
     free(submodule);
 }
 
-static struct ly_mnode_leaf *
-ly_uniq_find(struct ly_mnode_list *list, struct ly_mnode_leaf *orig_leaf)
+static struct lys_node_leaf *
+ly_uniq_find(struct lys_node_list *list, struct lys_node_leaf *orig_leaf)
 {
     struct lys_node *mnode, *mnode2, *ret = NULL, *parent1, *parent2;
     int depth = 1, i;
@@ -1197,7 +1197,7 @@ ly_uniq_find(struct ly_mnode_list *list, struct ly_mnode_leaf *orig_leaf)
             if (ret->nodetype != LYS_LEAF) {
                 return NULL;
             }
-            return (struct ly_mnode_leaf *)ret;
+            return (struct lys_node_leaf *)ret;
         }
         mnode = (struct lys_node *)orig_leaf;
         for (i = 0; i < depth-1; ++i) {
@@ -1216,31 +1216,31 @@ ly_uniq_find(struct ly_mnode_list *list, struct ly_mnode_leaf *orig_leaf)
 }
 
 struct lys_node *
-ly_mnode_dup(struct ly_module *module, struct lys_node *mnode, uint8_t flags, int recursive, unsigned int line,
+ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, int recursive, unsigned int line,
              struct unres_item *unres)
 {
     struct lys_node *retval = NULL, *aux, *child;
     struct ly_ctx *ctx = module->ctx;
     int i, j;
 
-    struct ly_mnode_container *cont;
-    struct ly_mnode_container *cont_orig = (struct ly_mnode_container *)mnode;
-    struct ly_mnode_choice *choice;
-    struct ly_mnode_choice *choice_orig = (struct ly_mnode_choice *)mnode;
-    struct ly_mnode_leaf *leaf;
-    struct ly_mnode_leaf *leaf_orig = (struct ly_mnode_leaf *)mnode;
-    struct ly_mnode_leaflist *llist;
-    struct ly_mnode_leaflist *llist_orig = (struct ly_mnode_leaflist *)mnode;
-    struct ly_mnode_list *list;
-    struct ly_mnode_list *list_orig = (struct ly_mnode_list *)mnode;
-    struct ly_mnode_anyxml *anyxml;
-    struct ly_mnode_anyxml *anyxml_orig = (struct ly_mnode_anyxml *)mnode;
-    struct ly_mnode_uses *uses;
-    struct ly_mnode_uses *uses_orig = (struct ly_mnode_uses *)mnode;
-    struct ly_mnode_grp *mix;
-    struct ly_mnode_grp *mix_orig = (struct ly_mnode_grp *)mnode;
-    struct ly_mnode_case *cs;
-    struct ly_mnode_case *cs_orig = (struct ly_mnode_case *)mnode;
+    struct lys_node_container *cont;
+    struct lys_node_container *cont_orig = (struct lys_node_container *)mnode;
+    struct lys_node_choice *choice;
+    struct lys_node_choice *choice_orig = (struct lys_node_choice *)mnode;
+    struct lys_node_leaf *leaf;
+    struct lys_node_leaf *leaf_orig = (struct lys_node_leaf *)mnode;
+    struct lys_node_leaflist *llist;
+    struct lys_node_leaflist *llist_orig = (struct lys_node_leaflist *)mnode;
+    struct lys_node_list *list;
+    struct lys_node_list *list_orig = (struct lys_node_list *)mnode;
+    struct lys_node_anyxml *anyxml;
+    struct lys_node_anyxml *anyxml_orig = (struct lys_node_anyxml *)mnode;
+    struct lys_node_uses *uses;
+    struct lys_node_uses *uses_orig = (struct lys_node_uses *)mnode;
+    struct lys_node_grp *mix;
+    struct lys_node_grp *mix_orig = (struct lys_node_grp *)mnode;
+    struct lys_node_case *cs;
+    struct lys_node_case *cs_orig = (struct lys_node_case *)mnode;
 
     /* we cannot just duplicate memory since the strings are stored in
      * dictionary and we need to update dictionary counters.
@@ -1434,7 +1434,7 @@ ly_mnode_dup(struct ly_module *module, struct lys_node *mnode, uint8_t flags, in
             /* we managed to resolve it before, resolve it again manually */
             if (list_orig->keys[0]) {
                 for (i = 0; i < list->keys_size; ++i) {
-                    list->keys[i] = (struct ly_mnode_leaf *)resolve_child((struct lys_node *)list,
+                    list->keys[i] = (struct lys_node_leaf *)resolve_child((struct lys_node *)list,
                                                                           list_orig->keys[i]->name, 0, LYS_LEAF);
                     assert(list->keys[i]);
                 }
@@ -1455,7 +1455,7 @@ ly_mnode_dup(struct ly_module *module, struct lys_node *mnode, uint8_t flags, in
         } else {
             for (i = 0; i < list->unique_size; ++i) {
                 /* HACK for unres */
-                list->unique[i].leafs = (struct ly_mnode_leaf **)list;
+                list->unique[i].leafs = (struct lys_node_leaf **)list;
                 dup_unres(module, unres, &list_orig->unique[i], UNRES_LIST_UNIQ, &list->unique[i]);
             }
         }
@@ -1525,7 +1525,7 @@ error:
 }
 
 API void
-lys_free(struct ly_module *module)
+lys_free(struct lys_module *module)
 {
     struct ly_ctx *ctx;
     int i;
@@ -1563,7 +1563,7 @@ lys_free(struct ly_module *module)
  * op: 1 - enable, 0 - disable
  */
 static int
-ly_features_change(struct ly_module *module, const char *name, int op)
+ly_features_change(struct lys_module *module, const char *name, int op)
 {
     int all = 0;
     int i, j, k;
@@ -1622,19 +1622,19 @@ ly_features_change(struct ly_module *module, const char *name, int op)
 }
 
 API int
-lys_features_enable(struct ly_module *module, const char *feature)
+lys_features_enable(struct lys_module *module, const char *feature)
 {
     return ly_features_change(module, feature, 1);
 }
 
 API int
-lys_features_disable(struct ly_module *module, const char *feature)
+lys_features_disable(struct lys_module *module, const char *feature)
 {
     return ly_features_change(module, feature, 0);
 }
 
 API int
-lys_features_state(struct ly_module *module, const char *feature)
+lys_features_state(struct lys_module *module, const char *feature)
 {
     int i, j;
 
@@ -1674,7 +1674,7 @@ lys_features_state(struct ly_module *module, const char *feature)
 }
 
 API const char **
-lys_features_list(struct ly_module *module, uint8_t **states)
+lys_features_list(struct lys_module *module, uint8_t **states)
 {
     const char **result = NULL;
     int i, j;

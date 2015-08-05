@@ -29,7 +29,7 @@ struct ly_modules_list {
     char *search_path;
     int size;
     int used;
-    struct ly_module **list;
+    struct lys_module **list;
     uint16_t module_set_id;
 };
 

@@ -45,6 +45,35 @@
 #include <stdint.h>
 
 /**
+ * @ingroup datatree
+ * @brief Macros to iterate via all sibling elements without affecting the list itself
+ *
+ * Works for all types of nodes despite it is data or schema tree.
+ *
+ * @param START Starting element.
+ * @param ELEM Iterator.
+ */
+#define LY_TREE_FOR(START, ELEM) \
+    for ((ELEM) = (START); \
+         (ELEM); \
+         (ELEM) = (ELEM)->next)
+
+/**
+ * @ingroup datatree
+ * @brief Macros to iterate via all sibling elements allowing to modify the list itself (e.g. removing elements)
+ *
+ * Works for all types of nodes despite it is data or schema tree.
+ *
+ * @param START Starting element.
+ * @param NEXT Temporary storage to allow removing of the current iterator content.
+ * @param ELEM Iterator.
+ */
+#define LY_TREE_FOR_SAFE(START, NEXT, ELEM) \
+    for ((ELEM) = (START); \
+         (ELEM) ? (NEXT = (ELEM)->next, 1) : 0; \
+         (ELEM)= (NEXT))
+
+/**
  * @addtogroup schematree
  * @{
  */
@@ -78,24 +107,132 @@ typedef enum {
 /**
  * @brief YANG schema node types
  *
- * Values are defined as separated bit values to allow checking using bitwise operands for multiple nodes.
+ * Values are defined as separated bit values to allow checking using bitwise operations for multiple nodes.
  */
 typedef enum lys_nodetype {
-    LYS_AUGMENT = 0,             /**< augment statement node */
-    LYS_CONTAINER = 0x01,        /**< container statement node */
-    LYS_CHOICE = 0x02,           /**< choice statement node */
-    LYS_LEAF = 0x04,             /**< leaf statement node */
-    LYS_LEAFLIST = 0x08,         /**< leaf-list statement node */
-    LYS_LIST = 0x10,             /**< list statement node */
-    LYS_ANYXML = 0x20,           /**< anyxml statement node */
-    LYS_USES = 0x40,             /**< uses statement node */
-    LYS_GROUPING = 0x80,         /**< grouping statement node */
-    LYS_CASE = 0x100,            /**< case statement node */
-    LYS_INPUT = 0x200,           /**< input statement node */
-    LYS_OUTPUT = 0x400,          /**< output statement node */
-    LYS_NOTIF = 0x800,           /**< notification statement node */
+    LYS_AUGMENT = 0x0000,        /**< augment statement node */
+    LYS_CONTAINER = 0x0001,      /**< container statement node */
+    LYS_CHOICE = 0x0002,         /**< choice statement node */
+    LYS_LEAF = 0x0004,           /**< leaf statement node */
+    LYS_LEAFLIST = 0x0008,       /**< leaf-list statement node */
+    LYS_LIST = 0x0010,           /**< list statement node */
+    LYS_ANYXML = 0x0020,         /**< anyxml statement node */
+    LYS_USES = 0x0040,           /**< uses statement node */
+    LYS_GROUPING = 0x0080,       /**< grouping statement node */
+    LYS_CASE = 0x0100,           /**< case statement node */
+    LYS_INPUT = 0x0200,          /**< input statement node */
+    LYS_OUTPUT = 0x0400,         /**< output statement node */
+    LYS_NOTIF = 0x0800,          /**< notification statement node */
     LYS_RPC = 0x1000             /**< rpc statement node */
 } LYS_NODE;
+
+/**
+ * @brief Main schema node structure representing YANG module.
+ *
+ * Compatible with ::lys_submodule structure with exception of the last, #ns member, which is replaced by
+ * ::lys_submodule#belongsto member. Sometimes, ::lys_submodule can be provided casted to ::lys_module. Such a thing
+ * can be determined via the #type member value.
+ *
+ *
+ */
+struct lys_module {
+    struct ly_ctx *ctx;              /**< libyang context of the module (mandatory) */
+    const char* name;                /**< name of the module (mandatory) */
+    const char* prefix;              /**< prefix of the module (mandatory) */
+    const char* dsc;                 /**< description of the module */
+    const char* ref;                 /**< cross-reference for the module */
+    const char* org;                 /**< party/company responsible for the module */
+    const char* contact;             /**< contact information for the module */
+    uint8_t version:5;               /**< yang-version:
+                                          - 0 = not specified, YANG 1.0 as default,
+                                          - 1 = YANG 1.0,
+                                          - 2 = YANG 1.1 not yet supported */
+    uint8_t type:1;                  /**< 0 - structure type used to distinguish structure from ::lys_submodule */
+    uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
+    uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
+    const char* uri;                 /**< origin URI of the module */
+
+    /* array sizes */
+    uint8_t rev_size;                /**< number of elements in #rev array */
+    uint8_t imp_size;                /**< number of elements in #imp array */
+    uint8_t inc_size;                /**< number of elements in #inc array */
+    uint8_t tpdf_size;               /**< number of elements in #tpdf array */
+    uint32_t ident_size;             /**< number of elements in #ident array */
+    uint8_t features_size;           /**< number of elements in #features array */
+    uint8_t augment_size;            /**< number of elements in #augment array */
+    uint8_t deviation_size;          /**< number of elements in #deviation array */
+
+    struct ly_revision* rev;         /**< array of the module revisions, revisions[0] is always the last (newest)
+                                          revision of the module */
+    struct lys_import* imp;          /**< array of imported modules */
+    struct lys_include* inc;         /**< array of included submodules */
+    struct lys_tpdf* tpdf;           /**< array of typedefs */
+    struct ly_ident* ident;          /**< array of identities */
+    struct lys_feature* features;    /**< array of feature definitions */
+    struct lys_node_augment* augment;/**< array of augments */
+    struct ly_deviation* deviation;  /**< array of specified deviations */
+
+    struct lys_node* data;           /**< first data statement */
+    struct lys_node* rpc;            /**< first rpc statement */
+    struct lys_node* notif;          /**< first notification statement */
+
+    /* specific module's items in comparison to submodules */
+    const char* ns;                  /**< namespace of the module (mandatory) */
+};
+
+/**
+ * @brief Submodule schema node structure that can be included into a YANG module.
+ *
+ * Compatible with ::lys_module structure with exception of the last, #belongsto member, which is replaced by
+ * ::lys_module#ns member. Sometimes, ::lys_submodule can be provided casted to ::lys_module. Such a thing can
+ * be determined via the #type member value.
+ *
+ *
+ */
+struct lys_submodule {
+    struct ly_ctx* ctx;              /**< libyang context of the submodule (mandatory) */
+    const char* name;                /**< name of the submodule (mandatory) */
+    const char* prefix;              /**< prefix of the belongs-to module */
+    const char* dsc;                 /**< description of the submodule */
+    const char* ref;                 /**< cross-reference for the submodule */
+    const char* org;                 /**< party responsible for the submodule */
+    const char* contact;             /**< contact information for the submodule */
+    uint8_t version:5;               /**< yang-version:
+                                          - 0 = not specified, YANG 1.0 as default,
+                                          - 1 = YANG 1.0,
+                                          - 2 = YANG 1.1 not yet supported */
+    uint8_t type:1;                  /**< 1 - structure type used to distinguish structure from ::lys_module */
+    uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
+    uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
+    const char* uri;                 /**< origin URI of the submodule */
+
+    /* array sizes */
+    uint8_t rev_size;                /**< number of elements in #rev array */
+    uint8_t imp_size;                /**< number of elements in #imp array */
+    uint8_t inc_size;                /**< number of elements in #inc array */
+    uint8_t tpdf_size;               /**< number of elements in #tpdf array */
+    uint32_t ident_size;             /**< number of elements in #ident array */
+    uint8_t features_size;           /**< number of elements in #features array */
+    uint8_t augment_size;            /**< number of elements in #augment array */
+    uint8_t deviation_size;          /**< number of elements in #deviation array */
+
+    struct ly_revision* rev;         /**< array of the module revisions, revisions[0] is always the last (newest)
+                                          revision of the submodule */
+    struct lys_import* imp;          /**< array of imported modules */
+    struct lys_include* inc;         /**< array of included submodules */
+    struct lys_tpdf* tpdf;           /**< array of typedefs */
+    struct ly_ident* ident;          /**< array if identities */
+    struct lys_feature* features;    /**< array of feature definitions */
+    struct lys_node_augment* augment;/**< array of augments */
+    struct ly_deviation* deviation;  /**< array of specified deviations */
+
+    struct lys_node* data;           /**< first data statement */
+    struct lys_node* rpc;            /**< first rpc statement */
+    struct lys_node* notif;          /**< first notification statement */
+
+    /* specific submodule's items in comparison to modules */
+    struct lys_module* belongsto;    /**< belongs-to (parent module) */
+};
 
 /**
  * @brief YANG built-in types
@@ -125,33 +262,13 @@ typedef enum {
 #define LY_DATA_TYPE_COUNT 20        /** number of #LY_DATA_TYPE built-in types */
 
 /**
- * @brief YANG validity restriction (must, length, etc.) structure providing information from the schema
- */
-struct lys_restr {
-    const char* expr;                /**< The restriction expression/value (mandatory) */
-    const char* dsc;                 /**< description (optional) */
-    const char* ref;                 /**< reference (optional) */
-    const char* eapptag;             /**< error-app-tag value (optional) */
-    const char* emsg;                /**< error-message (optional) */
-};
-
-/**
- * @brief YANG when restriction, see [RFC 6020 sec. 7.19.5](http://tools.ietf.org/html/rfc6020#section-7.19.5)
- */
-struct lys_when {
-    const char* cond;                /**< specified condition (mandatory) */
-    const char* dsc;                 /**< description (optional) */
-    const char* ref;                 /**< reference (optional) */
-};
-
-/**
  * @brief YANG type structure providing information from the schema
  */
 struct lys_type {
     const char* prefix;              /**< prefix for the type referenced in der pointer*/
     LY_DATA_TYPE base;               /**< base type */
     struct lys_tpdf* der;            /**< pointer to the superior typedef. If NULL,
-	                                      structure provides information about one of the built-in types */
+                                          structure provides information about one of the built-in types */
 
     union {
         /* LY_TYPE_BINARY */
@@ -235,72 +352,535 @@ struct lys_type {
 };
 
 /**
- * @brief YANG typedef structure providing information from the schema
+ * @defgroup nacmflags NACM flags
+ * @ingroup schematree
+ *
+ * Flags to support NACM YANG extensions following the [RFC 6536](https://tools.ietf.org/html/rfc6536)
+ *
+ * @{
  */
-struct lys_tpdf {
-    const char* name;                /**< name of the newly defined type (mandatory) */
-    const char* dsc;                 /**< description (optional) */
-    const char* ref;                 /**< reference (optional) */
-    uint8_t flags;                   /**< only for LY_NODE_STATUS_ values (or 0) */
-    struct ly_module* module;        /**< pointer to the module where the data type is defined (mandatory),
-	                                      NULL in case of built-in typedefs */
+#define LYS_NACM_DENYW   0x01        /**< default-deny-write extension used */
+#define LYS_NACM_DENYA   0x02        /**< default-deny-all extension used */
+/**
+ * @}
+ */
 
-    struct lys_type type;            /**< base type from which the typedef is derived (mandatory). In case of a special
-                                          built-in typedef (from yang_types.c), only the base member is filled */
-    const char* units;               /**< units of the newly defined type (optional) */
-    const char* dflt;                /**< default value of the newly defined type (optional) */
+/**
+ * @defgroup snodeflags Schema nodes flags
+ * @ingroup schematree
+ *
+ * Various flags for schema nodes.
+ *
+ * @{
+ */
+#define LYS_CONFIG_W     0x01        /**< config true; */
+#define LYS_CONFIG_R     0x02        /**< config false; */
+#define LYS_CONFIG_MASK  0x03        /**< mask for config value */
+#define LYS_STATUS_CURR  0x04        /**< status current; */
+#define LYS_STATUS_DEPRC 0x08        /**< status deprecated; */
+#define LYS_STATUS_OBSLT 0x10        /**< status obsolete; */
+#define LYS_STATUS_MASK  0x1c        /**< mask for status value */
+#define LYS_MAND_TRUE    0x20        /**< mandatory true; applicable only to
+                                          ::lys_node_choice, ::lys_node_leaf and ::lys_node_anyxml */
+#define LYS_MAND_FALSE   0x40        /**< mandatory false; applicable only to
+                                          ::lys_node_choice, ::lys_node_leaf and ::lys_node_anyxml */
+#define LYS_MAND_MASK    0x60        /**< mask for mandatory values */
+#define LYS_USERORDERED  0x80        /**< ordered-by user lists, applicable only to
+                                          ::lys_node_list and ::lys_node_leaflist */
+#define LYS_FENABLED     0x80        /**< feature enabled flag, applicable only to ::lys_feature */
+/**
+ * @}
+ */
+
+/**
+ * @brief Common structure representing single YANG data statement describing.
+ *
+ * This is a common structure to allow having a homogeneous tree of nodes despite the nodes are actually
+ * heterogeneous. It allow one to go through the tree in a simple way. However, if you want to work with
+ * the node in some way or get more appropriate information, you are supposed to cast it to the appropriate
+ * lys_node_* structure according to the #nodetype value.
+ *
+ * To traverse through all the child elements, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
+ *
+ * To cover all possible schema nodes, the ::lys_node type is used in ::lyd_node#schema for referencing schema
+ * definition for a specific data node instance.
+ */
+struct lys_node {
+    const char* name;                /**< node name (mandatory) */
+    const char* dsc;                 /**< description statement (optional) */
+    const char* ref;                 /**< reference statement (optional) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
+    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    struct lys_module* module;       /**< pointer to the node's module (mandatory) */
+
+    LYS_NODE nodetype;               /**< type of the node (mandatory) */
+    struct lys_node* parent;         /**< pointer to the parent node, NULL in case of a top level node */
+    struct lys_node* child;          /**< pointer to the first child node */
+    struct lys_node* next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lys_node* prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+
+    uint8_t features_size;           /**< number of elements in the #features array */
+    struct lys_feature** features;   /**< array of pointers to feature definitions, this is not the array of feature
+                                          definitions themselves, but the array of if-feature references */
 };
 
 /**
- * @brief YANG import structure used to reference other schemas (modules).
+ * @brief Schema container node structure.
+ *
+ * Beginning of the structure is completely compatible with ::lys_node structure extending it by the #when,
+ * #presence, #must_size, #tpdf_size, #must and #tpdf members.
+ *
+ * The container schema node can be instantiated in the data tree, so the ::lys_node_container can be directly
+ * referenced from ::lyd_node#schema.
  */
-struct lys_import {
-    struct ly_module* module;        /**< link to the imported module (mandatory) */
-    const char* prefix;              /**< prefix for the data from the imported schema (mandatory) */
-    char rev[LY_REV_SIZE];           /**< revision-date of the imported module (optional) */
+struct lys_node_container {
+    const char* name;                /**< node name (mandatory) */
+    const char* dsc;                 /**< description statement (optional) */
+    const char* ref;                 /**< reference statement (optional) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
+    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    struct lys_module* module;       /**< pointer to the node's module (mandatory) */
+
+    LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_CONTAINER */
+    struct lys_node* parent;         /**< pointer to the parent node, NULL in case of a top level node */
+    struct lys_node* child;          /**< pointer to the first child node */
+    struct lys_node* next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lys_node* prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+
+    uint8_t features_size;           /**< number of elements in the #features array */
+    struct lys_feature** features;   /**< array of pointers to feature definitions, this is not the array of feature
+                                          definitions themselves, but the array of if-feature references */
+
+    /* specific container's data */
+    struct lys_when* when;           /**< when statement (optional) */
+    const char* presence;            /**< presence description, used also as a presence flag (optional) */
+
+    uint8_t must_size;               /**< number of elements in the #must array */
+    uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
+
+    struct lys_restr* must;           /**< array of must constraints */
+    struct lys_tpdf* tpdf;            /**< array of typedefs */
 };
 
 /**
- * @brief YANG include structure used to reference submodules.
+ * @brief Schema choice node structure.
+ *
+ * Beginning of the structure is completely compatible with ::lys_node structure extending it by the #when and
+ * #dflt members.
+ *
+ * The choice schema node has no instance in the data tree, so the ::lys_node_choice cannot be directly referenced from
+ * ::lyd_node#schema.
  */
-struct lys_include {
-    struct ly_submodule* submodule;  /**< link to the included submodule (mandatory) */
-    char rev[LY_REV_SIZE];           /**< revision-date of the included submodule (optional) */
+struct lys_node_choice {
+    const char* name;                /**< node name (mandatory) */
+    const char* dsc;                 /**< description statement (optional) */
+    const char* ref;                 /**< reference statement (optional) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
+    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    struct lys_module* module;       /**< pointer to the node's module (mandatory) */
+
+    LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_CHOICE */
+    struct lys_node* parent;         /**< pointer to the parent node, NULL in case of a top level node */
+    struct lys_node* child;          /**< pointer to the first child node */
+    struct lys_node* next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lys_node* prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+
+    uint8_t features_size;           /**< number of elements in the #features array */
+    struct lys_feature** features;   /**< array of pointers to feature definitions, this is not the array of feature
+                                          definitions themselves, but the array of if-feature references */
+
+    /* specific choice's data */
+    struct lys_when* when;           /**< when statement (optional) */
+    struct lys_node* dflt;           /**< default case of the choice (optional) */
 };
 
 /**
- * @brief YANG list's unique statement structure, see [RFC 6020 sec. 7.8.3](http://tools.ietf.org/html/rfc6020#section-7.8.3)
+ * @brief Schema leaf node structure.
+ *
+ * Beginning of the structure is completely compatible with ::lys_node structure extending it by the #when, #type,
+ * #units, #must_size, #must and #dflt members. In addition, the structure is compatible with the ::lys_node_leaflist
+ * structure except the last #dflt member, which is replaced by ::lys_node_leaflist#min and ::lys_node_leaflist#max
+ * members.
+ *
+ * ::lys_node_leaf is terminating node in the schema tree, so the #child member value is always NULL.
+ *
+ * The leaf schema node can be instantiated in the data tree, so the ::lys_node_leaf can be directly referenced from
+ * ::lyd_node#schema.
  */
-struct lys_unique {
-    struct ly_mnode_leaf** leafs;    /**< array of pointers to the leafs for the unique value */
-    uint8_t leafs_size;              /**< size of the leafs array */
+struct lys_node_leaf {
+    const char* name;                /**< node name (mandatory) */
+    const char* dsc;                 /**< description statement (optional) */
+    const char* ref;                 /**< reference statement (optional) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
+    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    struct lys_module* module;       /**< pointer to the node's module (mandatory) */
+
+    LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_LEAF */
+    struct lys_node* parent;         /**< pointer to the parent node, NULL in case of a top level node */
+    struct lys_node* child;          /**< always NULL */
+    struct lys_node* next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lys_node* prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+
+    uint8_t features_size;           /**< number of elements in the #features array */
+    struct lys_feature** features;   /**< array of pointers to feature definitions, this is not the array of feature
+                                          definitions themselves, but the array of if-feature references */
+
+    /* specific leaf's data */
+    struct lys_when* when;           /**< when statement (optional) */
+    struct lys_type type;            /**< YANG data type definition of the leaf (mandatory) */
+    const char* units;               /**< units of the data type (optional) */
+
+    uint8_t must_size;               /**< number of elements in the #must array */
+    struct lys_restr* must;          /**< array of must constraints */
+
+    /* to this point, struct ly_mnode_leaf is compatible with struct ly_mnode_leaflist */
+    const char* dflt;                /**< default value of the type */
 };
 
 /**
- * @brief YANG uses's refine substatement structure, see [RFC 6020 sec. 7.12.2](http://tools.ietf.org/html/rfc6020#section-7.12.2)
+ * @brief Schema leaf-list node structure.
+ *
+ * Beginning of the structure is completely compatible with ::lys_node structure extending it by the #when, #type,
+ * #units, #must_size, #must, #min and #max members. In addition, the structure is compatible with the ::lys_node_leaf
+ * structure except the last #min and #max members, which are replaced by ::lys_node_leaf#dflt member.
+ *
+ * ::lys_node_leaflist is terminating node in the schema tree, so the #child member value is always NULL.
+ *
+ * The leaf-list schema node can be instantiated in the data tree, so the ::lys_node_leaflist can be directly
+ * referenced from ::lyd_node#schema.
  */
-struct lys_refine {
-    const char* target_name;         /**< descendant schema node identifier of the target node to be refined (mandatory) */
-    const char* dsc;                 /**< description (optional) */
-    const char* ref;                 /**< reference (optional) */
-    uint8_t flags;                   /**< various flags to be refined on the target */
+struct lys_node_leaflist {
+    const char* name;                /**< node name (mandatory) */
+    const char* dsc;                 /**< description statement (optional) */
+    const char* ref;                 /**< reference statement (optional) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
+    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    struct lys_module* module;       /**< pointer to the node's module (mandatory) */
 
-    uint16_t target_type;            /**< limitations (get from specified refinements) for target node type:
-                                          - 0 = no limitations,
-                                          - ORed #LYS_NODE values if there are some limitations */
+    LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_LEAFLIST */
+    struct lys_node* parent;         /**< pointer to the parent node, NULL in case of a top level node */
+    struct lys_node* child;          /**< always NULL */
+    struct lys_node* next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lys_node* prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
 
-    uint8_t must_size;               /**< number of elements in must array */
-    struct lys_restr *must;          /**< array of additional must restrictions to be added to the target */
+    uint8_t features_size;           /**< number of elements in the #features array */
+    struct lys_feature** features;   /**< array of pointers to feature definitions, this is not the array of feature
+                                          definitions themselves, but the array of if-feature references */
 
-    union {
-        const char* dflt;            /**< new default value. Applicable to #LYS_LEAF and #LYS_CHOICE target nodes. In case of
-		                                  #LYS_CHOICE, it must be possible to resolve the value to the default branch node */
-        const char* presence;        /**< presence description. Applicable to #LYS_CONTAINER target node */
-        struct {
-            uint32_t min;            /**< new min-elements value. Applicable to #LYS_LIST and #LYS_LEAFLIST target nodes */
-            uint32_t max;            /**< new max-elements value. Applicable to #LYS_LIST and #LYS_LEAFLIST target nodes */
-        } list;                      /**< container for list's attributes - applicable to #LYS_LIST and #LYS_LEAFLIST target nodes */
-    } mod;                           /**< mutually exclusive target modifications according to the possible target_type */
+    /* specific leaf-list's data */
+    struct lys_when* when;           /**< when statement (optional) */
+    struct lys_type type;            /**< YANG data type definition of the leaf (mandatory) */
+    const char* units;               /**< units of the data type (optional) */
+
+    uint8_t must_size;               /**< number of elements in the #must array */
+    struct lys_restr* must;          /**< array of must constraints */
+
+    /* to this point, struct ly_mnode_leaflist is compatible with struct ly_mnode_leaf */
+    uint32_t min;                    /**< min-elements constraint (optional) */
+    uint32_t max;                    /**< max-elements constraint, 0 means unbounded (optional) */
+};
+
+/**
+ * @brief Schema list node structure.
+ *
+ * Beginning of the structure is completely compatible with ::lys_node structure extending it by the #when, #min,
+ * #max, #must_size, #tpdf_size, #keys_size, #unique_size, #must, #tpdf, #keys and #unique members.
+ *
+ * The list schema node can be instantiated in the data tree, so the ::lys_node_list can be directly referenced from
+ * ::lyd_node#schema.
+ */
+struct lys_node_list {
+    const char* name;                /**< node name (mandatory) */
+    const char* dsc;                 /**< description statement (optional) */
+    const char* ref;                 /**< reference statement (optional) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
+    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    struct lys_module* module;       /**< pointer to the node's module (mandatory) */
+
+    LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_LIST */
+    struct lys_node* parent;         /**< pointer to the parent node, NULL in case of a top level node */
+    struct lys_node* child;          /**< pointer to the first child node */
+    struct lys_node* next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lys_node* prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+
+    uint8_t features_size;           /**< number of elements in the #features array */
+    struct lys_feature** features;   /**< array of pointers to feature definitions, this is not the array of feature
+                                          definitions themselves, but the array of if-feature references */
+
+    /* specific list's data */
+    struct lys_when* when;           /**< when statement (optional) */
+
+    uint32_t min;                    /**< min-elements constraint */
+    uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
+
+    uint8_t must_size;               /**< number of elements in the #must array */
+    uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
+    uint8_t keys_size;               /**< number of elements in the #keys array */
+    uint8_t unique_size;             /**< number of elements in the #unique array (number of unique statements) */
+
+    struct lys_restr* must;          /**< array of must constraints */
+    struct lys_tpdf* tpdf;           /**< array of typedefs */
+    struct lys_node_leaf** keys;     /**< array of pointers to the key nodes */
+    struct lys_unique* unique;       /**< array of unique statement structures */
+};
+
+/**
+ * @brief Schema anyxml node structure.
+ *
+ * Beginning of the structure is completely compatible with ::lys_node structure extending it by the #when, #must_size
+ * and #must members.
+ *
+ * ::lys_node_anyxml is terminating node in the schema tree, so the #child member value is always NULL.
+ *
+ * The anyxml schema node can be instantiated in the data tree, so the ::lys_node_anyxml can be directly referenced from
+ * ::lyd_node#schema.
+ */
+struct lys_node_anyxml {
+    const char* name;                /**< node name (mandatory) */
+    const char* dsc;                 /**< description statement (optional) */
+    const char* ref;                 /**< reference statement (optional) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
+    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    struct lys_module* module;       /**< pointer to the node's module (mandatory) */
+
+    LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_ANYXML */
+    struct lys_node* parent;         /**< pointer to the parent node, NULL in case of a top level node */
+    struct lys_node* child;          /**< always NULL */
+    struct lys_node* next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lys_node* prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+
+    uint8_t features_size;           /**< number of elements in the #features array */
+    struct lys_feature** features;   /**< array of pointers to feature definitions, this is not the array of feature
+                                          definitions themselves, but the array of if-feature references */
+
+    /* specific anyxml's data */
+    struct lys_when* when;           /**< when statement (optional) */
+    uint8_t must_size;               /**< number of elements in the #must array */
+    struct lys_restr* must;          /**< array of must constraints */
+};
+
+/**
+ * @brief Schema uses node structure.
+ *
+ * Beginning of the structure is completely compatible with ::lys_node structure extending it by the #when, #grp,
+ * #refine_size, #augment_size, #refine and #augment members.
+ *
+ * ::lys_node_uses is terminating node in the schema tree. However, it references data from a specific grouping so the
+ * #child pointer points to the copy of grouping data applying specified refine and augment statements.
+ *
+ * The uses schema node has no instance in the data tree, so the ::lys_node_uses cannot be directly referenced from
+ * ::lyd_node#schema.
+ */
+struct lys_node_uses {
+    const char* name;                /**< node name (mandatory) */
+    const char* dsc;                 /**< description statement (optional) */
+    const char* ref;                 /**< reference statement (optional) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
+    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    struct lys_module* module;       /**< pointer to the node's module (mandatory) */
+
+    LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_USES */
+    struct lys_node* parent;         /**< pointer to the parent node, NULL in case of a top level node */
+    struct lys_node* child;          /**< pointer to the first child node imported from the referenced grouping */
+    struct lys_node* next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lys_node* prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+
+    uint8_t features_size;           /**< number of elements in the #features array */
+    struct lys_feature** features;   /**< array of pointers to feature definitions, this is not the array of feature
+                                          definitions themselves, but the array of if-feature references */
+
+    /* specific uses's data */
+    struct lys_when* when;           /**< when statement (optional) */
+    struct lys_node_grp* grp;        /**< referred grouping definition (mandatory) */
+
+    uint16_t refine_size;            /**< number of elements in the #refine array */
+    uint16_t augment_size;           /**< number of elements in the #augment array */
+
+    struct lys_refine* refine;       /**< array of refine changes to the referred grouping */
+    struct lys_node_augment* augment;/**< array of local augments to the referred grouping */
+};
+
+/**
+ * @brief Schema grouping node structure.
+ *
+ * Beginning of the structure is completely compatible with ::lys_node structure extending it by the #tpdf_size and
+ * #tpdf members.
+ *
+ * ::lys_node_grp contains data specifications in the schema tree. However, the data does not directly form the schema
+ * data tree. Instead, they are referenced via uses (::lys_node_uses) statement and copies of the grouping data are
+ * actually placed into the uses nodes. Therefore, the nodes you can find under the ::lys_node_grp are not referenced
+ * from ::lyd_node#schema.
+ */
+struct lys_node_grp {
+    const char* name;                /**< node name (mandatory) */
+    const char* dsc;                 /**< description statement (optional) */
+    const char* ref;                 /**< reference statement (optional) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
+    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    struct lys_module* module;       /**< pointer to the node's module (mandatory) */
+
+    LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_GROUPING */
+    struct lys_node* parent;         /**< pointer to the parent node, NULL in case of a top level node */
+    struct lys_node* child;          /**< pointer to the first child node */
+    struct lys_node* next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lys_node* prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+
+    uint8_t features_size;           /**< number of elements in the #features array */
+    struct lys_feature** features;   /**< array of pointers to feature definitions, this is not the array of feature
+                                          definitions themselves, but the array of if-feature references */
+
+    /* specific grouping's data */
+    uint8_t tpdf_size;               /**< number of elements in #tpdf array */
+    struct lys_tpdf* tpdf;           /**< array of typedefs */
+};
+
+/**
+ * @brief Schema case node structure.
+ *
+ * Beginning of the structure is completely compatible with ::lys_node structure extending it by the #when member.
+ *
+ * The case schema node has no instance in the data tree, so the ::lys_node_case cannot be directly referenced from
+ * ::lyd_node#schema.
+ */
+struct lys_node_case {
+    const char* name;                /**< node name (mandatory) */
+    const char* dsc;                 /**< description statement (optional) */
+    const char* ref;                 /**< reference statement (optional) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
+    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    struct lys_module* module;       /**< pointer to the node's module (mandatory) */
+
+    LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_CASE */
+    struct lys_node* parent;         /**< pointer to the parent node, NULL in case of a top level node */
+    struct lys_node* child;          /**< pointer to the first child node */
+    struct lys_node* next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lys_node* prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+
+    uint8_t features_size;           /**< number of elements in the #features array */
+    struct lys_feature** features;   /**< array of pointers to feature definitions, this is not the array of feature
+                                          definitions themselves, but the array of if-feature references */
+
+    /* specific case's data */
+    struct lys_when* when;           /**< when statement (optional) */
+};
+
+/**
+ * @brief TODO remove this structure and integrate it directly into ::lys_node_rpc
+ */
+struct ly_mnode_input_output {
+    void *name_fill;                 /**< just compatibility */
+    void *dsc_fill;
+    void *ref_fill;
+    uint8_t flags;
+    uint8_t nacm;                    /**< NACM extension flags */
+    struct lys_module *module;        /**< link to the node's data model */
+
+    LYS_NODE nodetype;           /**< YANG statement - LY_NODE_INPUT / LY_NODE_OUTPUT */
+    struct lys_node *parent;
+    struct lys_node *child;
+    struct lys_node *next;
+    struct lys_node *prev;
+
+    uint8_t features_size;           /**< dummy memeber to follow struct ly_mnode, always 0 */
+    struct lys_feature **features;    /**< dummy memeber to follow struct ly_mnode, always NULL */
+
+    /* specific list's data */
+    uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
+    struct lys_tpdf *tpdf;            /**< array of typedefs */
+};
+
+/**
+ * @brief Schema notification node structure.
+ *
+ * Beginning of the structure is completely compatible with ::lys_node structure extending it by the #tpdf_size and
+ * #tpdf members.
+ */
+struct lys_node_notif {
+    const char* name;                /**< node name (mandatory) */
+    const char* dsc;                 /**< description statement (optional) */
+    const char* ref;                 /**< reference statement (optional) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
+    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    struct lys_module* module;       /**< pointer to the node's module (mandatory) */
+
+    LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_NOTIF */
+    struct lys_node* parent;         /**< pointer to the parent node, NULL in case of a top level node */
+    struct lys_node* child;          /**< pointer to the first child node */
+    struct lys_node* next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lys_node* prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+
+    uint8_t features_size;           /**< number of elements in the #features array */
+    struct lys_feature** features;   /**< array of pointers to feature definitions, this is not the array of feature
+                                          definitions themselves, but the array of if-feature references */
+
+    /* specific rpc's data */
+    uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
+    struct lys_tpdf* tpdf;           /**< array of typedefs */
+};
+
+/**
+ * @brief Schema rpc node structure.
+ *
+ * Beginning of the structure is completely compatible with ::lys_node structure extending it by the #tpdf_size and
+ * #tpdf members.
+ */
+struct lys_node_rpc {
+    const char* name;                /**< node name (mandatory) */
+    const char* dsc;                 /**< description statement (optional) */
+    const char* ref;                 /**< reference statement (optional) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
+    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    struct lys_module* module;       /**< pointer to the node's module (mandatory) */
+
+    LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_RPC */
+    struct lys_node* parent;         /**< pointer to the parent node, NULL in case of a top level node */
+    struct lys_node* child;          /**< pointer to the first child node */
+    struct lys_node* next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lys_node* prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+
+    uint8_t features_size;           /**< number of elements in the #features array */
+    struct lys_feature** features;   /**< array of pointers to feature definitions, this is not the array of feature
+                                          definitions themselves, but the array of if-feature references */
+
+    /* specific rpc's data */
+    uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
+    struct lys_tpdf* tpdf;           /**< array of typedefs */
 };
 
 /**
@@ -310,29 +890,62 @@ struct lys_refine {
  * - ::lys_node#name member is replaced by ::lys_node_augment#target_name member
  * - ::lys_node#module member is replaced by ::lys_node_augment#target member
  * - ::lys_node_augment structure is extended by the #when member
+ *
+ * ::lys_node_augment is not placed between all other nodes defining data node. However, it must be compatible with
+ * ::lys_node structure since its children actually keeps the parent pointer to point to the original augment node
+ * instead of the target node they augments (the target node is accessible via the ::lys_node_augment#target pointer).
+ * The fact that a schema node comes from augment can be get via testing the #nodetype of its parent - the value in
+ * ::lys_node_augment is always 0 (#LYS_AUGMENT).
  */
 struct lys_node_augment {
-    const char *target_name;         /**< schema node identifier of the node where the augment content is supposed to be
+    const char* target_name;         /**< schema node identifier of the node where the augment content is supposed to be
                                           placed (mandatory). */
-    const char* dsc;                 /**< description (optional) */
-    const char* ref;                 /**< reference (optional) */
-    uint8_t flags;                   /**< various flags to be refined on the target */
-
-    uint8_t nacm;                    /**< NACM extension flag, combination of #LYS_NACM_DENYW and #LYS_NACM_DENYA (or 0) */
-    struct lys_node *target;         /**< pointer to the target node TODO refer to augmentation description */
-    LYS_NODE nodetype;               /**< #LYS_AUGMENT */
-    struct lys_node *parent;         /**< uses node or NULL in case of module's top level augment */
-    struct lys_node *child;          /**< augmenting data \note The child here points to the data which are also
+    const char* dsc;                 /**< description statement (optional) */
+    const char* ref;                 /**< reference statement (optional) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
+    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    struct lys_node* target;         /**< pointer to the target node TODO refer to augmentation description */
+    LYS_NODE nodetype;               /**< #LYS_AUGMENT (0) */
+    struct lys_node* parent;         /**< uses node or NULL in case of module's top level augment */
+    struct lys_node* child;          /**< augmenting data \note The child here points to the data which are also
                                           placed as children in the target node. Children are connected within the
                                           child list of the target, but their parent member still points to the augment
                                           node (this way they can be distinguished from the original target's children).
                                           It is necessary to check this carefully. */
 
-    uint8_t features_size;           /**< number of elements in features array */
-    struct ly_feature **features;    /**< array of pointers to feature definitions, this is not the array of feature
+    uint8_t features_size;           /**< number of elements in the #features array */
+    struct lys_feature** features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
-    struct lys_when *when;           /**< when statement (optional) */
+    struct lys_when* when;           /**< when statement (optional) */
 };
+
+/**
+ * @brief YANG uses's refine substatement structure, see [RFC 6020 sec. 7.12.2](http://tools.ietf.org/html/rfc6020#section-7.12.2)
+ */
+struct lys_refine {
+    const char* target_name;         /**< descendant schema node identifier of the target node to be refined (mandatory) */
+    const char* dsc;                 /**< description statement (optional) */
+    const char* ref;                 /**< reference statement (optional) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
+
+    uint16_t target_type;            /**< limitations (get from specified refinements) for target node type:
+                                          - 0 = no limitations,
+                                          - ORed #LYS_NODE values if there are some limitations */
+
+    uint8_t must_size;               /**< number of elements in the #must array */
+    struct lys_restr* must;          /**< array of additional must restrictions to be added to the target */
+
+    union {
+        const char* dflt;            /**< new default value. Applicable to #LYS_LEAF and #LYS_CHOICE target nodes. In case of
+                                          #LYS_CHOICE, it must be possible to resolve the value to the default branch node */
+        const char* presence;        /**< presence description. Applicable to #LYS_CONTAINER target node */
+        struct {
+            uint32_t min;            /**< new min-elements value. Applicable to #LYS_LIST and #LYS_LEAFLIST target nodes */
+            uint32_t max;            /**< new max-elements value. Applicable to #LYS_LIST and #LYS_LEAFLIST target nodes */
+        } list;                      /**< container for list's attributes - applicable to #LYS_LIST and #LYS_LEAFLIST target nodes */
+    } mod;                           /**< mutually exclusive target modifications according to the possible target_type */
+};
+
 
 /**
  * @brief Possible deviation modifications, see [RFC 6020 sec. 7.18.3.2](http://tools.ietf.org/html/rfc6020#section-7.18.3.2)
@@ -351,544 +964,147 @@ struct ly_deviate {
     LY_DEVIATE_TYPE mod;             /**< type of deviation modification */
 
     uint8_t flags;                   /**< Properties: config, mandatory */
-    const char *dflt;                /**< Properties: default (both type and choice represented as string value */
+    const char* dflt;                /**< Properties: default (both type and choice represented as string value */
     uint32_t min;                    /**< Properties: min-elements */
     uint32_t max;                    /**< Properties: max-elements */
-    uint8_t must_size;               /**< Properties: must - number of elements in must*/
-    uint8_t unique_size;             /**< Properties: unique - number of elements in unique array */
-    struct lys_restr *must;          /**< Properties: must - array of must constraints */
-    struct lys_unique *unique;       /**< Properties: unique - array of unique statement structures */
-    struct lys_type *type;           /**< Properties: type - pointer to type in target, type cannot be deleted or added */
-    const char *units;               /**< Properties: units */
+    uint8_t must_size;               /**< Properties: must - number of elements in the #must array */
+    uint8_t unique_size;             /**< Properties: unique - number of elements in the #unique array */
+    struct lys_restr* must;          /**< Properties: must - array of must constraints */
+    struct lys_unique* unique;       /**< Properties: unique - array of unique statement structures */
+    struct lys_type* type;           /**< Properties: type - pointer to type in target, type cannot be deleted or added */
+    const char* units;               /**< Properties: units */
 };
 
 /**
  * @brief YANG deviation statement structure, see [RFC 6020 sec. 7.18.3](http://tools.ietf.org/html/rfc6020#section-7.18.3)
  */
 struct ly_deviation {
-    const char *target_name;         /**< schema node identifier of the node where the deviation is supposed to be
+    const char* target_name;         /**< schema node identifier of the node where the deviation is supposed to be
                                           applied (mandatory). */
     const char* dsc;                 /**< description (optional) */
     const char* ref;                 /**< reference (optional) */
-    struct lys_node *target;         /**< pointer to the target node TODO refer to deviation description */
+    struct lys_node* target;         /**< pointer to the target node TODO refer to deviation description */
 
-    uint8_t deviate_size;            /**< number of elements in deviate array */
-    struct ly_deviate *deviate;      /**< deviate information */
+    uint8_t deviate_size;            /**< number of elements in the #deviate array */
+    struct ly_deviate* deviate;      /**< deviate information */
 };
-
-struct ly_feature {
-    const char *name;
-    const char *dsc;
-    const char *ref;
-    uint8_t flags;                   /**< LY_NODE_STATUS_* values and LY_NODE_FENABLED */
-    struct ly_module *module;        /**< link to the features's data model */
-
-    uint8_t features_size;           /**< number of elements in features array */
-    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
-                                          not the list of feature definitions itself, but list
-                                          of if-feature references */
-};
-
-struct ly_module {
-    struct ly_ctx *ctx;              /**< libyang context of the module */
-    const char *name;                /**< name of the module */
-    const char *prefix;              /**< prefix of the module */
-    const char *dsc;                 /**< description of the module */
-    const char *ref;                 /**< cross-reference for the module */
-    const char *org;                 /**< party responsible for the module */
-    const char *contact;             /**< contact information for the module */
-    uint8_t version:5;               /**< yang-version: 1 = 1.0, 2 = 1.1 */
-    uint8_t type:1;                  /**< structure type: 0 - module, used to distinguish structure from submodule */
-    uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
-    uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
-    const char *uri;                 /**< origin URI of the module */
-
-    /* array sizes */
-    uint8_t rev_size;                /**< number of elements in rev array */
-    uint8_t imp_size;                /**< number of elements in imp array */
-    uint8_t inc_size;                /**< number of elements in inc array */
-    uint8_t tpdf_size;               /**< number of elements in tpdf array */
-    uint32_t ident_size;             /**< number of elements in ident array */
-    uint8_t features_size;           /**< number of elements in features array */
-    uint8_t augment_size;            /**< number of elements in augment array */
-    uint8_t deviation_size;          /**< number of elements in deviation array */
-
-    struct ly_revision {
-        char date[LY_REV_SIZE];          /**< revision-date */
-        const char *dsc;                 /**< revision's dsc */
-        const char *ref;                 /**< revision's reference */
-    } *rev;                          /**< array of the module revisions,
-	                                  revisions[0] is the last revision of the
-	                                  module */
-    struct lys_import *imp;           /**< array of imported modules */
-    struct lys_include *inc;          /**< array of included submodules */
-    struct lys_tpdf *tpdf;            /**< array of typedefs */
-    struct ly_ident *ident;          /**< array of identities */
-    struct ly_feature *features;     /**< array of feature definitions */
-    struct lys_node_augment *augment;      /**< array of augments */
-    struct ly_deviation *deviation;  /**< array of specified deviations */
-
-    struct lys_node *data;           /**< first data statement */
-    struct lys_node *rpc;            /**< first rpc statement */
-    struct lys_node *notif;          /**< first notification statement */
-
-    /* specific module's items in comparison to submodules */
-    const char *ns;                  /**< namespace of the module */
-};
-
-struct ly_submodule {
-    struct ly_ctx *ctx;              /**< libyang context of the module */
-    const char *name;                /**< name of the submodule */
-    const char *prefix;              /**< prefix of the belongs-to module */
-    const char *dsc;                 /**< description of the submodule */
-    const char *ref;                 /**< cross-reference for the submodule */
-    const char *org;                 /**< party responsible for the submodule */
-    const char *contact;             /**< contact information for the submodule */
-    uint8_t version:5;               /**< yang-version: 1 = 1.0, 2 = 1.1 */
-    uint8_t type:1;                  /**< structure type: 1 - submodule, used to distinguish structure from module */
-    uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
-    uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
-    const char *uri;                 /**< origin URI of the submodule */
-
-    /* array sizes */
-    uint8_t rev_size;                /**< number of elements in rev array */
-    uint8_t imp_size;                /**< number of elements in imp array */
-    uint8_t inc_size;                /**< number of elements in inc array */
-    uint8_t tpdf_size;               /**< number of elements in tpdf array */
-    uint32_t ident_size;             /**< number of elements in ident array */
-    uint8_t features_size;           /**< number of elements in features array */
-    uint8_t augment_size;            /**< number of elements in augment array */
-    uint8_t deviation_size;          /**< number of elements in deviation array */
-
-    struct ly_revision *rev;         /**< array of the module revisions,
-	                                  revisions[0] is the last revision of the
-	                                  module */
-    struct lys_import *imp;           /**< array of imported modules */
-    struct lys_include *inc;          /**< array of included submodules */
-    struct lys_tpdf *tpdf;            /**< array of typedefs */
-    struct ly_ident *ident;          /**< array if identities */
-    struct ly_feature *features;     /**< array of feature definitions */
-    struct lys_node_augment *augment;      /**< array of augments */
-    struct ly_deviation *deviation;  /**< array of specified deviations */
-
-    struct lys_node *data;           /**< first data statement */
-    struct lys_node *rpc;            /**< first rpc statement */
-    struct lys_node *notif;          /**< first notification statement */
-
-    /* specific submodule's items in comparison to modules */
-    struct ly_module *belongsto;     /**< belongs-to (parent module) */
-};
-
-/* Macros to iterate via all trees elements */
-#define LY_TREE_FOR(START, ELEM) \
-    for ((ELEM) = (START); (ELEM); (ELEM) = (ELEM)->next)
-#define LY_TREE_FOR_SAFE(START, NEXT, ELEM) \
-	for ((ELEM) = (START); \
-	     (ELEM) ? (NEXT = (ELEM)->next, 1) : 0; \
-	     (ELEM)= (NEXT))
 
 /**
- * @brief Common structure representing single YANG model statement describing
- * data.
- *
- * Covers:
- * choice, container, leaf, leaf-list and list
+ * @brief YANG import structure used to reference other schemas (modules).
  */
-struct lys_node {
-    const char *name;                /**< name argument */
-    const char *dsc;                 /**< description statement */
-    const char *ref;                 /**< reference statement */
-    uint8_t flags;                   /**< various flags */
-    uint8_t nacm;                    /**< NACM extension flags */
-    struct ly_module *module;        /**< link to the node's data model */
-
-    LYS_NODE nodetype;           /**< YANG statement */
-    struct lys_node *parent;
-    struct lys_node *child;
-    struct lys_node *next;
-    struct lys_node *prev;
-/* ly_mnode's nacm flags */
-#define LYS_NACM_DENYW   0x01        /**< default-deny-write */
-#define LYS_NACM_DENYA   0x02        /**< default-deny-all */
-
-/* ly_mnode's flags */
-#define LYS_CONFIG_W     0x01        /**< config true; */
-#define LYS_CONFIG_R     0x02        /**< config false; */
-#define LYS_CONFIG_MASK  0x03        /**< mask for config value */
-#define LYS_STATUS_CURR  0x04        /**< status current; */
-#define LYS_STATUS_DEPRC 0x08        /**< status deprecated; */
-#define LYS_STATUS_OBSLT 0x10        /**< status obsolete; */
-#define LYS_STATUS_MASK  0x1c        /**< mask for status value */
-#define LYS_MAND_TRUE    0x20        /**< mandatory flag of the node, applicable only to
-                                          struct ly_mnode_choice, ly_mnode_leaf and ly_mnode_anyxml */
-#define LYS_MAND_FALSE   0x40        /**< mandatory false */
-#define LYS_MAND_MASK    0x60        /**< mask for mandatory values */
-#define LYS_USERORDERED  0x80        /**< ordered-by user lists, applicable only to
-                                          struct ly_mnode_list and ly_mnode_leaflist */
-#define LYS_FENABLED     0x80        /**< enable flag for features, applicable only to strcut ly_feature */
-
-    uint8_t features_size;           /**< number of elements in features array */
-    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
-                                          not the list of feature definitions itself, but list
-                                          of if-feature references */
-};
-
-struct ly_mnode_grp {
-    const char *name;                /**< name argument */
-    const char *dsc;                 /**< description */
-    const char *ref;                 /**< reference */
-    uint8_t flags;                   /**< only for LY_NODE_STATUS_ values */
-    uint8_t nacm;                    /**< NACM extension flags */
-    struct ly_module *module;
-
-    LYS_NODE nodetype;           /**< YANG statement */
-    struct lys_node *parent;
-    struct lys_node *child;
-    struct lys_node *next;
-    struct lys_node *prev;
-
-    uint8_t features_size;           /**< dummy memeber to follow struct ly_mnode, always 0 */
-    struct ly_feature **features;    /**< dummy memeber to follow struct ly_mnode, always NULL */
-
-    /* specific container's data */
-    uint8_t tpdf_size;               /**< number of elements in tpdf array */
-    struct lys_tpdf *tpdf;            /**< array of typedefs */
-};
-
-struct ly_mnode_uses {
-    const char *name;                /**< name argument */
-    const char *dsc;                 /**< description statement */
-    const char *ref;                 /**< reference statement */
-    uint8_t flags;                   /**< only for LY_NODE_STATUS_ values */
-    uint8_t nacm;                    /**< NACM extension flags */
-    struct ly_module *module;        /**< link to the node's data model */
-
-    LYS_NODE nodetype;           /**< YANG statement - LY_NODE_USES */
-    struct lys_node *parent;
-    struct lys_node *child;
-    struct lys_node *next;
-    struct lys_node *prev;
-
-    uint8_t features_size;           /**< number of elements in features array */
-    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
-                                          not the list of feature definitions itself, but list
-                                          of if-feature references */
-
-    /* specific uses's data */
-    struct lys_when *when;            /**< when statement */
-    struct ly_mnode_grp *grp;        /**< referred grouping definition */
-
-    uint16_t refine_size;
-    uint16_t augment_size;
-
-    struct lys_refine *refine;
-    struct lys_node_augment *augment;
-};
-
-struct ly_mnode_container {
-    const char *name;                /**< name argument */
-    const char *dsc;                 /**< description statement */
-    const char *ref;                 /**< reference statement */
-    uint8_t flags;
-    uint8_t nacm;                    /**< NACM extension flags */
-    struct ly_module *module;        /**< link to the node's data model */
-
-    LYS_NODE nodetype;           /**< YANG statement - LY_NODE_CONTAINER */
-    struct lys_node *parent;
-    struct lys_node *child;
-    struct lys_node *next;
-    struct lys_node *prev;
-
-    uint8_t features_size;           /**< number of elements in features array */
-    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
-                                          not the list of feature definitions itself, but list
-                                          of if-feature references */
-
-    /* specific container's data */
-    struct lys_when *when;            /**< when statement */
-    const char *presence;            /**< presence description, used also as a presence flag */
-
-    uint8_t must_size;               /**< number of elements in must array */
-    uint8_t tpdf_size;               /**< number of elements in tpdf array */
-
-    struct lys_tpdf *tpdf;            /**< array of typedefs */
-    struct lys_restr *must;           /**< array of must constraints */
-};
-
-struct ly_mnode_choice {
-    const char *name;                /**< name argument */
-    const char *dsc;                 /**< description statement */
-    const char *ref;                 /**< reference statement */
-    uint8_t flags;
-    uint8_t nacm;                    /**< NACM extension flags */
-    struct ly_module *module;        /**< link to the node's data model */
-
-    LYS_NODE nodetype;           /**< YANG statement - LY_NODE_CHOICE */
-    struct lys_node *parent;
-    struct lys_node *child;
-    struct lys_node *next;
-    struct lys_node *prev;
-
-    uint8_t features_size;           /**< number of elements in features array */
-    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
-                                          not the list of feature definitions itself, but list
-                                          of if-feature references */
-
-    /* specific choice's data */
-    struct lys_when *when;            /**< when statement */
-    struct lys_node *dflt;           /**< default case of the choice */
-};
-
-struct ly_mnode_case {
-    const char *name;                /**< name argument */
-    const char *dsc;                 /**< description statement */
-    const char *ref;                 /**< reference statement */
-    uint8_t flags;
-    uint8_t nacm;                    /**< NACM extension flags */
-    struct ly_module *module;        /**< link to the node's data model */
-
-    LYS_NODE nodetype;           /**< YANG statement - LY_NODE_CASE */
-    struct lys_node *parent;
-    struct lys_node *child;
-    struct lys_node *next;
-    struct lys_node *prev;
-
-    uint8_t features_size;           /**< number of elements in features array */
-    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
-                                          not the list of feature definitions itself, but list
-                                          of if-feature references */
-
-    struct lys_when *when;            /**< when statement */
-};
-
-struct ly_mnode_anyxml {
-    const char *name;                /**< name argument */
-    const char *dsc;                 /**< description statement */
-    const char *ref;                 /**< reference statement */
-    uint8_t flags;
-    uint8_t nacm;                    /**< NACM extension flags */
-    struct ly_module *module;        /**< link to the node's data model */
-
-    LYS_NODE nodetype;           /**< YANG statement - LY_NODE_ANYXML */
-    struct lys_node *parent;
-    struct lys_node *child;
-    struct lys_node *next;
-    struct lys_node *prev;
-
-    uint8_t features_size;           /**< number of elements in features array */
-    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
-                                          not the list of feature definitions itself, but list
-                                          of if-feature references */
-
-    /* specific leaf's data */
-    struct lys_when *when;            /**< when statement */
-    uint8_t must_size;               /**< number of elements in must array */
-    struct lys_restr *must;           /**< array of must constraints */
-};
-
-struct ly_mnode_leaf {
-    const char *name;                /**< name argument */
-    const char *dsc;                 /**< description statement */
-    const char *ref;                 /**< reference statement */
-    uint8_t flags;
-    uint8_t nacm;                    /**< NACM extension flags */
-    struct ly_module *module;        /**< link to the node's data model */
-
-    LYS_NODE nodetype;           /**< YANG statement - LY_NODE_LEAF */
-    struct lys_node *parent;
-    struct lys_node *child;
-    struct lys_node *next;
-    struct lys_node *prev;
-
-    uint8_t features_size;           /**< number of elements in features array */
-    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
-                                          not the list of feature definitions itself, but list
-                                          of if-feature references */
-
-    /* specific leaf's data */
-    struct lys_when *when;            /**< when statement */
-    struct lys_type type;             /**< YANG type of the element */
-    const char *units;               /**< units of the type */
-
-    uint8_t must_size;               /**< number of elements in must array */
-    struct lys_restr *must;           /**< array of must constraints */
-
-    /* to this point, struct ly_mnode_leaf is compatible with struct ly_mnode_leaflist */
-
-    const char *dflt;                /**< default value of the type */
-};
-
-struct ly_mnode_leaflist {
-    const char *name;                /**< name argument */
-    const char *dsc;                 /**< description statement */
-    const char *ref;                 /**< reference statement */
-    uint8_t flags;
-    uint8_t nacm;                    /**< NACM extension flags */
-    struct ly_module *module;        /**< link to the node's data model */
-
-    LYS_NODE nodetype;           /**< YANG statement - LY_NODE_LEAFLIST */
-    struct lys_node *parent;
-    struct lys_node *child;
-    struct lys_node *next;
-    struct lys_node *prev;
-
-    uint8_t features_size;           /**< number of elements in features array */
-    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
-                                          not the list of feature definitions itself, but list
-                                          of if-feature references */
-
-    /* specific leaflist's data */
-    struct lys_when *when;            /**< when statement */
-    struct lys_type type;             /**< YANG type of the element */
-    const char *units;               /**< units of the type */
-
-    uint8_t must_size;               /**< number of elements in must array */
-    struct lys_restr *must;           /**< array of must constraints */
-
-    /* to this point, struct ly_mnode_leaf is compatible with struct ly_mnode_leaflist */
-
-    uint32_t min;                    /**< min-elements constraint */
-    uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
-
-};
-
-struct ly_mnode_list {
-    const char *name;                /**< name argument */
-    const char *dsc;                 /**< description statement */
-    const char *ref;                 /**< reference statement */
-    uint8_t flags;
-    uint8_t nacm;                    /**< NACM extension flags */
-    struct ly_module *module;        /**< link to the node's data model */
-
-    LYS_NODE nodetype;           /**< YANG statement - LY_NODE_LIST */
-    struct lys_node *parent;
-    struct lys_node *child;
-    struct lys_node *next;
-    struct lys_node *prev;
-
-    uint8_t features_size;           /**< number of elements in features array */
-    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
-                                          not the list of feature definitions itself, but list
-                                          of if-feature references */
-
-    /* specific list's data */
-    struct lys_when *when;            /**< when statement */
-
-    uint32_t min;                    /**< min-elements constraint */
-    uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
-
-    uint8_t must_size;               /**< number of elements in must array */
-    uint8_t tpdf_size;               /**< number of elements in tpdf array */
-    uint8_t keys_size;               /**< number of elements in keys array */
-    uint8_t unique_size;             /**< number of elements in unique array (number
-	                                  of unique statements in the list */
-
-    struct lys_restr *must;           /**< array of must constraints */
-    struct lys_tpdf *tpdf;            /**< array of typedefs */
-    struct ly_mnode_leaf **keys;     /**< array of pointers to the keys */
-    struct lys_unique *unique;        /**< array of unique statement structures */
-};
-
-struct ly_mnode_input_output {
-    void *name_fill;                 /**< just compatibility */
-    void *dsc_fill;
-    void *ref_fill;
-    uint8_t flags;
-    uint8_t nacm;                    /**< NACM extension flags */
-    struct ly_module *module;        /**< link to the node's data model */
-
-    LYS_NODE nodetype;           /**< YANG statement - LY_NODE_INPUT / LY_NODE_OUTPUT */
-    struct lys_node *parent;
-    struct lys_node *child;
-    struct lys_node *next;
-    struct lys_node *prev;
-
-    uint8_t features_size;           /**< dummy memeber to follow struct ly_mnode, always 0 */
-    struct ly_feature **features;    /**< dummy memeber to follow struct ly_mnode, always NULL */
-
-    /* specific list's data */
-    struct lys_tpdf *tpdf;            /**< array of typedefs */
-    uint8_t tpdf_size;               /**< number of elements in tpdf array */
-};
-
-struct ly_mnode_rpc {
-    const char *name;                /**< name argument */
-    const char *dsc;                 /**< description statement */
-    const char *ref;                 /**< reference statement */
-    uint8_t flags;
-    uint8_t nacm;                    /**< NACM extension flags */
-    struct ly_module *module;        /**< link to the node's data model */
-
-    LYS_NODE nodetype;           /**< YANG statement - LY_NODE_RPC */
-    struct lys_node *parent;
-    struct lys_node *child;
-    struct lys_node *next;
-    struct lys_node *prev;
-
-    uint8_t features_size;           /**< number of elements in features array */
-    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
-                                          not the list of feature definitions itself, but list
-                                          of if-feature references */
-
-    /* specific rpc's data */
-    uint8_t tpdf_size;               /**< number of elements in tpdf array */
-    struct lys_tpdf *tpdf;            /**< array of typedefs */
-};
-
-struct ly_mnode_notif {
-    const char *name;                /**< name argument */
-    const char *dsc;                 /**< description statement */
-    const char *ref;                 /**< reference statement */
-    uint8_t flags;
-    uint8_t nacm;                    /**< NACM extension flags */
-    struct ly_module *module;        /**< link to the node's data model */
-
-    LYS_NODE nodetype;           /**< YANG statement - LY_NODE_NOTIF */
-    struct lys_node *parent;
-    struct lys_node *child;
-    struct lys_node *next;
-    struct lys_node *prev;
-
-    uint8_t features_size;           /**< number of elements in features array */
-    struct ly_feature **features;    /**< array of pointers to feature definitions, this is
-                                          not the list of feature definitions itself, but list
-                                          of if-feature references */
-
-    /* specific list's data */
-    uint8_t tpdf_size;               /**< number of elements in tpdf array */
-    struct lys_tpdf *tpdf;            /**< array of typedefs */
+struct lys_import {
+    struct lys_module* module;       /**< link to the imported module (mandatory) */
+    const char* prefix;              /**< prefix for the data from the imported schema (mandatory) */
+    char rev[LY_REV_SIZE];           /**< revision-date of the imported module (optional) */
 };
 
 /**
- * @brief Item to serialize pointers to the identities.
+ * @brief YANG include structure used to reference submodules.
+ */
+struct lys_include {
+    struct lys_submodule* submodule; /**< link to the included submodule (mandatory) */
+    char rev[LY_REV_SIZE];           /**< revision-date of the included submodule (optional) */
+};
+
+/**
+ * @brief YANG revision statement for (sub)modules
+ */
+struct ly_revision {
+    char date[LY_REV_SIZE];          /**< revision-date (mandatory) */
+    const char* dsc;                 /**< revision's dsc (optional) */
+    const char* ref;                 /**< revision's reference (optional) */
+};
+
+/**
+ * @brief YANG typedef structure providing information from the schema
+ */
+struct lys_tpdf {
+    const char* name;                /**< name of the newly defined type (mandatory) */
+    const char* dsc;                 /**< description statement (optional) */
+    const char* ref;                 /**< reference statement (optional) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values (or 0) are allowed */
+    struct lys_module* module;       /**< pointer to the module where the data type is defined (mandatory),
+                                          NULL in case of built-in typedefs */
+
+    struct lys_type type;            /**< base type from which the typedef is derived (mandatory). In case of a special
+                                          built-in typedef (from yang_types.c), only the base member is filled */
+    const char* units;               /**< units of the newly defined type (optional) */
+    const char* dflt;                /**< default value of the newly defined type (optional) */
+};
+
+/**
+ * @brief YANG list's unique statement structure, see [RFC 6020 sec. 7.8.3](http://tools.ietf.org/html/rfc6020#section-7.8.3)
+ */
+struct lys_unique {
+    struct lys_node_leaf** leafs;    /**< array of pointers to the leafs for the unique value */
+    uint8_t leafs_size;              /**< size of the #leafs array */
+};
+
+/**
+ * @brief YANG feature definition structure
+ */
+struct lys_feature {
+    const char* name;                /**< feature name (mandatory) */
+    const char* dsc;                 /**< description statement (optional) */
+    const char* ref;                 /**< reference statement (optional) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values and
+                                          #LYS_FENABLED value are allowed */
+    struct lys_module* module;       /**< link to the features's data model (mandatory) */
+
+    uint8_t features_size;           /**< number of elements in the #features array */
+    struct lys_feature** features;   /**< array of pointers to feature definitions, this is not the array of feature
+                                          definitions themselves, but the array of if-feature references */
+};
+
+/**
+ * @brief YANG validity restriction (must, length, etc.) structure providing information from the schema
+ */
+struct lys_restr {
+    const char* expr;                /**< The restriction expression/value (mandatory) */
+    const char* dsc;                 /**< description (optional) */
+    const char* ref;                 /**< reference (optional) */
+    const char* eapptag;             /**< error-app-tag value (optional) */
+    const char* emsg;                /**< error-message (optional) */
+};
+
+/**
+ * @brief YANG when restriction, see [RFC 6020 sec. 7.19.5](http://tools.ietf.org/html/rfc6020#section-7.19.5)
+ */
+struct lys_when {
+    const char* cond;                /**< specified condition (mandatory) */
+    const char* dsc;                 /**< description (optional) */
+    const char* ref;                 /**< reference (optional) */
+};
+
+/**
+ * @brief Structure to hold information about identity, see  [RFC 6020 sec. 7.16](http://tools.ietf.org/html/rfc6020#section-7.16)
+ *
+ * First 5 members maps to ::lys_node.
+ */
+struct ly_ident {
+    const char *name;                /**< identity name (mandatory) */
+    const char *dsc;                 /**< description statement (optional) */
+    const char *ref;                 /**< reference statement (optional) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values are allowed */
+    struct lys_module* module;       /**< pointer to the module where the identity is defined */
+
+    struct ly_ident* base;           /**< pointer to the base identity */
+    struct ly_ident_der* der;        /**< list of pointers to the derived identities */
+};
+/**
+ * @brief Structure to serialize pointers to the identities.
  *
  * The list of derived identities cannot be static since any new schema can
  * extend the current set of derived identities.
  *
- * TODO: the list could be just an array and we can reallocate it whenever it
+ * TODO: the list actually could be just a static array and we could reallocate it whenever it
  * is needed. Since we are not going to allow removing a particular schema from
  * the context, we don't need to remove a subset of pointers to derived
  * identities.
  */
 struct ly_ident_der {
-    struct ly_ident *ident;
-    struct ly_ident_der *next;
-};
-
-/**
- * @brief Structure to hold information about identity (RFC 6020, 7.16)
- *
- * First 5 members maps to struct ly_mnode.
- */
-struct ly_ident {
-    const char *name;                /**< name argument */
-    const char *dsc;                 /**< description */
-    const char *ref;                 /**< reference */
-    uint8_t flags;                   /**< only for LY_NODE_STATUS_ values */
-    struct ly_module *module;        /**< link to the module of the identity */
-
-    struct ly_ident *base;           /**< pointer to the base identity */
-    struct ly_ident_der *der;        /**< list of pointers to the derived identities */
+    struct ly_ident* ident;
+    struct ly_ident_der* next;
 };
 
 /**
@@ -904,7 +1120,7 @@ struct ly_ident {
  * must be freed by the caller, do not free names in the array. Also remember
  * that the names will be freed with freeing the context of the module.
  */
-const char **lys_features_list(struct ly_module *module, uint8_t **states);
+const char **lys_features_list(struct lys_module *module, uint8_t **states);
 
 /**
  * @brief Enable specified feature in the module
@@ -915,7 +1131,7 @@ const char **lys_features_list(struct ly_module *module, uint8_t **states);
  * @param[in] feature Name of the feature to enable. To enable all features at once, use asterisk character.
  * @return 0 on success, 1 when the feature is not defined in the specified module
  */
-int lys_features_enable(struct ly_module *module, const char *feature);
+int lys_features_enable(struct lys_module *module, const char *feature);
 
 /**
  * @brief Disable specified feature in the module
@@ -926,7 +1142,7 @@ int lys_features_enable(struct ly_module *module, const char *feature);
  * @param[in] feature Name of the feature to disable. To disable all features at once, use asterisk character.
  * @return 0 on success, 1 when the feature is not defined in the specified module
  */
-int lys_features_disable(struct ly_module *module, const char *feature);
+int lys_features_disable(struct lys_module *module, const char *feature);
 
 /**
  * @brief Get the current status of the specified feature in the module.
@@ -938,9 +1154,9 @@ int lys_features_disable(struct ly_module *module, const char *feature);
  * - 0 if feature is disabled,
  * - -1 in case of error (e.g. feature is not defined)
  */
-int lys_features_state(struct ly_module *module, const char *feature);
+int lys_features_state(struct lys_module *module, const char *feature);
 
-/**@} schematree */
+/**@} */
 
 /**
  * @addtogroup datatree
@@ -1061,7 +1277,7 @@ struct lyd_node {
  * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
  */
 struct lyd_node_list {
-    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::ly_mnode_list
+    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_list
                                           structure */
 
     struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
@@ -1090,7 +1306,7 @@ struct lyd_node_list {
  * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
  */
 struct lyd_node_leaf {
-    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::ly_mnode_list
+    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_leaf
                                           structure */
 
     struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
@@ -1120,7 +1336,7 @@ struct lyd_node_leaf {
  * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
  */
 struct lyd_node_leaflist {
-    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::ly_mnode_list
+    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_leaflist
                                           structure */
 
     struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
@@ -1153,7 +1369,7 @@ struct lyd_node_leaflist {
  * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
  */
 struct lyd_node_anyxml {
-    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::ly_mnode_list
+    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_anyxml
                                           structure */
 
     struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
@@ -1192,6 +1408,6 @@ void lyd_free(struct lyd_node *node);
  */
 int lyd_is_last(struct lyd_node *node);
 
-/**@} datatree */
+/**@} */
 
 #endif /* LY_TREE_H_ */

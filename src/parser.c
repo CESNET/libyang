@@ -35,19 +35,19 @@
 #include "tree_internal.h"
 
 void
-lyp_set_implemented(struct ly_module *module)
+lyp_set_implemented(struct lys_module *module)
 {
     int i;
 
     module->implemented = 1;
 
     for (i = 0; i < module->inc_size; i++) {
-        lyp_set_implemented((struct ly_module *)module->inc[i].submodule);
+        lyp_set_implemented((struct lys_module *)module->inc[i].submodule);
     }
 }
 
-struct ly_module *
-lyp_search_file(struct ly_ctx *ctx, struct ly_module *module, const char *name, const char *revision)
+struct lys_module *
+lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision)
 {
     size_t len, flen;
     int fd;
@@ -55,7 +55,7 @@ lyp_search_file(struct ly_ctx *ctx, struct ly_module *module, const char *name, 
     DIR *dir;
     struct dirent *file;
     LYS_INFORMAT format;
-    struct ly_module *result = NULL;
+    struct lys_module *result = NULL;
     int localsearch = 1;
 
     len = strlen(name);
@@ -102,7 +102,7 @@ opendir_search:
         }
 
         if (module) {
-            result = (struct ly_module *)ly_submodule_read_fd(module, fd, format, module->implemented);
+            result = (struct lys_module *)ly_submodule_read_fd(module, fd, format, module->implemented);
         } else {
             result = lys_read_import(ctx, fd, format);
         }
