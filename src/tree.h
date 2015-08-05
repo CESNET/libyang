@@ -1156,6 +1156,17 @@ int lys_features_disable(struct lys_module *module, const char *feature);
  */
 int lys_features_state(struct lys_module *module, const char *feature);
 
+/**
+ * @brief Check if the schema node is enabled in the schema tree, i.e. there is no disabled if-feature statement
+ * affecting the node.
+ *
+ * @param[in] node Schema node to check.
+ * @param[in] resursive 1 to check all ascendant nodes
+ * @return - NULL if enabled,
+ * - pointer to the disabling feature if disabled.
+ */
+struct lys_feature *lys_is_disabled(struct lys_node *node, int recursive);
+
 /**@} */
 
 /**

@@ -34,28 +34,6 @@ static void tree_print_mnode(FILE *f, struct lys_module *module, int level, char
                              int mask, int spec_config, struct lys_submodule *main_submod);
 
 static int
-is_enabled(struct lys_node *mnode)
-{
-    int i;
-
-    for (i = 0; i < mnode->features_size; i++) {
-        if (!(mnode->features[i]->flags & LYS_FENABLED)) {
-            return 0;
-        }
-    }
-
-    if (mnode->parent && (mnode->parent->nodetype == LYS_AUGMENT)) {
-        for (i = 0; i < mnode->parent->features_size; i++) {
-            if (!(mnode->parent->features[i]->flags & LYS_FENABLED)) {
-                return 0;
-            }
-        }
-    }
-
-    return 1;
-}
-
-static int
 sibling_is_valid_child(const struct lys_node *mnode, int including)
 {
     struct lys_node *cur;
@@ -66,7 +44,7 @@ sibling_is_valid_child(const struct lys_node *mnode, int including)
 
     /* has a following printed child */
     LY_TREE_FOR((struct lys_node *)(including ? mnode : mnode->next), cur) {
-        if (is_enabled(cur) && (cur->nodetype &
+        if (!lys_is_disabled(cur, 0) && (cur->nodetype &
                 (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_CHOICE |
                  LYS_RPC | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF | LYS_CASE))) {
             return 1;
@@ -592,7 +570,7 @@ tree_print_rpc(FILE *f, struct lys_module *module, int level, char *indent, stru
     struct lys_node *node;
     struct lys_node_rpc *rpc = (struct lys_node_rpc *)mnode;
 
-    if (!is_enabled(mnode)) {
+    if (lys_is_disabled(mnode, 0)) {
         return;
     }
 
@@ -625,7 +603,7 @@ tree_print_notif(FILE *f, struct lys_module *module, int level, char *indent, st
     struct lys_node *node;
     struct lys_node_notif *notif = (struct lys_node_notif *)mnode;
 
-    if (!is_enabled(mnode)) {
+    if (lys_is_disabled(mnode, 0)) {
         return;
     }
 
@@ -655,7 +633,7 @@ static void
 tree_print_mnode_choice(FILE *f, struct lys_module *module, int level, char *indent, unsigned int max_name_len, struct lys_node *mnode, int mask,
                         int spec_config, struct lys_submodule *main_submod)
 {
-    if (!is_enabled(mnode)) {
+    if (lys_is_disabled(mnode, 0)) {
         return;
     }
 
@@ -672,7 +650,7 @@ static void
 tree_print_mnode(FILE *f, struct lys_module *module, int level, char *indent, unsigned int max_name_len, struct lys_node *mnode, int mask,
                  int spec_config, struct lys_submodule *main_submod)
 {
-    if (!is_enabled(mnode)) {
+    if (lys_is_disabled(mnode, 0)) {
         return;
     }
 

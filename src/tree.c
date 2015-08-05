@@ -35,6 +35,40 @@
 #include "xml.h"
 #include "tree_internal.h"
 
+API struct lys_feature *
+lys_is_disabled(struct lys_node *node, int recursive)
+{
+    int i;
+
+check:
+    if (node->nodetype != LYS_INPUT && node->nodetype != LYS_OUTPUT) {
+        /* input/output does not have if-feature, so skip them */
+
+        /* check local if-features */
+        for (i = 0; i < node->features_size; i++) {
+            if (!(node->features[i]->flags & LYS_FENABLED)) {
+                return node->features[i];
+            }
+        }
+    }
+
+    if (!recursive) {
+        return NULL;
+    }
+
+    /* go through parents */
+    if (node->nodetype == LYS_AUGMENT) {
+        /* go to parent actually means go to the target node */
+        node = ((struct lys_node_augment *)node)->target;
+        goto check;
+    } else if (node->parent) {
+        node = node->parent;
+        goto check;
+    }
+
+    return NULL;
+}
+
 void ly_submodule_free(struct lys_submodule *submodule);
 
 void
