@@ -121,34 +121,8 @@ void ly_vlog(enum LY_VERR code, unsigned int line, ...);
 #    define LOGLINE(node) node->line
 #endif
 
-struct len_ran_intv {
-    /* 0 - unsigned, 1 - signed, 2 - floating point */
-    uint8_t kind;
-    union {
-        struct {
-            uint64_t min;
-            uint64_t max;
-        } uval;
-
-        struct {
-            int64_t min;
-            int64_t max;
-        } sval;
-
-        struct {
-            long double min;
-            long double max;
-        } fval;
-    } value;
-
-    struct len_ran_intv *next;
-};
-
 char *strnchr(const char *s, int c, unsigned int len);
 
 const char *strnodetype(LYS_NODE type);
-
-int get_len_ran_interval(const char *str_restr, struct lys_type *type, int superior_restr,
-                         struct len_ran_intv **local_intv);
 
 #endif /* LY_COMMON_H_ */
