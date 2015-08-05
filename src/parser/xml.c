@@ -44,7 +44,9 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
     struct len_ran_intv *intv = NULL, *tmp_intv;
     int ret = 1;
 
-    assert(!get_len_ran_interval(NULL, type, 0, &intv));
+    if (resolve_len_ran_interval(NULL, type, 0, &intv)) {
+        return EXIT_FAILURE;
+    }
     if (!intv) {
         return 0;
     }
