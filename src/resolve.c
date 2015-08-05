@@ -64,8 +64,8 @@ resolve_superior_type(const char *name, const char *prefix, struct lys_module *m
 
             case LYS_INPUT:
             case LYS_OUTPUT:
-                tpdf_size = ((struct ly_mnode_input_output *)parent)->tpdf_size;
-                tpdf = ((struct ly_mnode_input_output *)parent)->tpdf;
+                tpdf_size = ((struct lys_node_rpc_inout *)parent)->tpdf_size;
+                tpdf = ((struct lys_node_rpc_inout *)parent)->tpdf;
                 break;
 
             default:

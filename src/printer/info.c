@@ -1035,7 +1035,7 @@ info_print_case(FILE *f, struct lys_node *mnode)
 static void
 info_print_input(FILE *f, struct lys_node *mnode)
 {
-    struct ly_mnode_input_output *input = (struct ly_mnode_input_output *)mnode;
+    struct lys_node_rpc_inout *input = (struct lys_node_rpc_inout *)mnode;
 
     assert(input->parent && input->parent->nodetype == LYS_RPC);
 
@@ -1048,7 +1048,7 @@ info_print_input(FILE *f, struct lys_node *mnode)
 static void
 info_print_output(FILE *f, struct lys_node *mnode)
 {
-    struct ly_mnode_input_output *output = (struct ly_mnode_input_output *)mnode;
+    struct lys_node_rpc_inout *output = (struct lys_node_rpc_inout *)mnode;
 
     assert(output->parent && output->parent->nodetype == LYS_RPC);
 

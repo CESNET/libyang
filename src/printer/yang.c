@@ -876,7 +876,7 @@ yang_print_input_output(FILE *f, int level, struct lys_node *mnode)
 {
     int i;
     struct lys_node *sub;
-    struct ly_mnode_input_output *inout = (struct ly_mnode_input_output *)mnode;
+    struct lys_node_rpc_inout *inout = (struct lys_node_rpc_inout *)mnode;
 
     fprintf(f, "%*s%s {\n", LEVEL, INDENT, (inout->nodetype == LYS_INPUT ? "input" : "output"));
 

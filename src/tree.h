@@ -795,27 +795,32 @@ struct lys_node_case {
 };
 
 /**
- * @brief TODO remove this structure and integrate it directly into ::lys_node_rpc
+ * @brief RPC input and output node structure.
+ *
+ * The structure is compatible with ::lys_node, but the most parts are not usable. Therefore the ::lys_node#name,
+ * ::lys_node#dsc, ::lys_node#ref, ::lys_node#flags and ::lys_node#nacm were replaced by empty bytes in fill arrays.
+ * The reason to keep these useless bytes in the structure is to keep the #nodetype, #parent, #child, #next and #prev
+ * members accessible when functions are using the object via a generic ::lyd_node structure. But note that the
+ * ::lys_node#features_size is replaced by the #tpdf_size member and ::lys_node#features is replaced by the #tpdf
+ * member.
+ *
  */
-struct ly_mnode_input_output {
-    void *name_fill;                 /**< just compatibility */
-    void *dsc_fill;
-    void *ref_fill;
-    uint8_t flags;
-    uint8_t nacm;                    /**< NACM extension flags */
-    struct lys_module *module;        /**< link to the node's data model */
+struct lys_node_rpc_inout {
+    void *fill1[3];                  /**< padding for compatibility with ::lys_node - name, dsc and ref */
+    uint8_t fill2[2];                /**< padding for compatibility with ::lys_node - flags and nacm */
+    struct lys_module *module;       /**< link to the node's data model */
 
-    LYS_NODE nodetype;           /**< YANG statement - LY_NODE_INPUT / LY_NODE_OUTPUT */
-    struct lys_node *parent;
-    struct lys_node *child;
-    struct lys_node *next;
-    struct lys_node *prev;
-
-    uint8_t features_size;           /**< dummy memeber to follow struct ly_mnode, always 0 */
-    struct lys_feature **features;    /**< dummy memeber to follow struct ly_mnode, always NULL */
+    LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_INPUT or #LYS_OUTPUT */
+    struct lys_node* parent;         /**< pointer to the parent rpc node  */
+    struct lys_node* child;          /**< pointer to the first child node */
+    struct lys_node* next;           /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lys_node* prev;           /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
 
     /* specific list's data */
-    uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
+    uint8_t tpdf_size;                /**< number of elements in the #tpdf array */
     struct lys_tpdf *tpdf;            /**< array of typedefs */
 };
 
