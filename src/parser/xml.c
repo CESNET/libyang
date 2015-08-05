@@ -42,13 +42,13 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
                       struct lyxml_elem *xml, const char *str_val, int log)
 {
     struct len_ran_intv *intv = NULL, *tmp_intv;
-    int ret = 1;
+    int ret = EXIT_FAILURE;
 
     if (resolve_len_ran_interval(NULL, type, 0, &intv)) {
         return EXIT_FAILURE;
     }
     if (!intv) {
-        return 0;
+        return EXIT_SUCCESS;
     }
 
     for (tmp_intv = intv; tmp_intv; tmp_intv = tmp_intv->next) {
@@ -61,7 +61,7 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
         if (((kind == 0) && (unum >= tmp_intv->value.uval.min) && (unum <= tmp_intv->value.uval.max))
                 || ((kind == 1) && (snum >= tmp_intv->value.sval.min) && (snum <= tmp_intv->value.sval.max))
                 || ((kind == 2) && (fnum >= tmp_intv->value.fval.min) && (fnum <= tmp_intv->value.fval.max))) {
-            ret = 0;
+            ret = EXIT_SUCCESS;
             break;
         }
     }
@@ -88,7 +88,7 @@ validate_pattern(const char *str, struct lys_type *type, struct lyxml_elem *xml,
     assert(type->base == LY_TYPE_STRING);
 
     if (type->der && validate_pattern(str, &type->der->type, xml, str_val, log)) {
-        return 1;
+        return EXIT_FAILURE;
     }
 
     for (i = 0; i < type->info.str.pat_count; ++i) {
@@ -121,12 +121,12 @@ validate_pattern(const char *str, struct lys_type *type, struct lyxml_elem *xml,
             if (log) {
                 LOGVAL(LYE_INVAL, LOGLINE(xml), str_val, xml->name);
             }
-            return 1;
+            return EXIT_FAILURE;
         }
         regfree(&preq);
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 static struct lys_node *
@@ -180,7 +180,7 @@ parse_int(const char *str_val, struct lyxml_elem *xml, int64_t min, int64_t max,
         if (log) {
             LOGVAL(LYE_OORVAL, LOGLINE(xml), str_val, xml->name);
         }
-        return 1;
+        return EXIT_FAILURE;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
             ++strptr;
@@ -189,11 +189,11 @@ parse_int(const char *str_val, struct lyxml_elem *xml, int64_t min, int64_t max,
             if (log) {
                 LOGVAL(LYE_INVAL, LOGLINE(xml), str_val, xml->name);
             }
-            return 1;
+            return EXIT_FAILURE;
         }
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 static int
@@ -208,7 +208,7 @@ parse_uint(const char *str_val, struct lyxml_elem *xml, uint64_t max, int base, 
         if (log) {
             LOGVAL(LYE_OORVAL, LOGLINE(xml), str_val, xml->name);
         }
-        return 1;
+        return EXIT_FAILURE;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
             ++strptr;
@@ -217,11 +217,11 @@ parse_uint(const char *str_val, struct lyxml_elem *xml, uint64_t max, int base, 
             if (log) {
                 LOGVAL(LYE_INVAL, LOGLINE(xml), str_val, xml->name);
             }
-            return 1;
+            return EXIT_FAILURE;
         }
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 static struct lys_type *
@@ -258,7 +258,7 @@ get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *foun
 
 static int
 _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_elem *xml,
-               struct leafref_instid **unres, int log)
+               struct unres_data **unres, int log)
 {
     #define DECSIZE 21
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
@@ -272,7 +272,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
     int len;
     int c, i, j, d;
     int found;
-    struct leafref_instid *new_unres;
+    struct unres_data *new_unres;
 
     leaf->value_str = xml->content;
     xml->content = NULL;
@@ -642,14 +642,14 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
 }
 
 static int
-xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, struct leafref_instid **unres)
+xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, struct unres_data **unres)
 {
     return _xml_get_value(node, &((struct lys_node_leaf *)node->schema)->type, xml, unres, 1);
 }
 
 struct lyd_node *
 xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev,
-               struct leafref_instid **unres)
+               struct unres_data **unres)
 {
     struct lyd_node *result, *aux;
     struct lys_node *schema = NULL;
@@ -790,11 +790,11 @@ error:
 }
 
 static int
-check_unres(struct leafref_instid **list)
+check_unres(struct unres_data **list)
 {
     struct lyd_node_leaf *leaf;
     struct lys_node_leaf *sleaf;
-    struct leafref_instid *item, *refset = NULL, *ref;
+    struct unres_data *item, *refset = NULL, *ref;
 
     while (*list) {
         leaf = (struct lyd_node_leaf *)(*list)->dnode;
@@ -870,7 +870,7 @@ xml_read_data(struct ly_ctx *ctx, const char *data)
 {
     struct lyxml_elem *xml;
     struct lyd_node *result, *next, *iter;
-    struct leafref_instid *unres = NULL;
+    struct unres_data *unres = NULL;
 
     xml = lyxml_read(ctx, data, 0);
     if (!xml) {

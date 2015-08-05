@@ -237,7 +237,7 @@ ly_mnode_addchild(struct lys_node *parent, struct lys_node *child)
 API struct lys_module *
 lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
-    struct unres_item *unres;
+    struct unres_schema *unres;
     struct lys_module *mod;
 
     if (!ctx || !data) {
@@ -277,7 +277,7 @@ lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 struct lys_submodule *
 ly_submodule_read(struct lys_module *module, const char *data, LYS_INFORMAT format, int implement)
 {
-    struct unres_item *unres;
+    struct unres_schema *unres;
     struct lys_submodule *submod;
 
     assert(module);
@@ -315,7 +315,7 @@ ly_submodule_read(struct lys_module *module, const char *data, LYS_INFORMAT form
 struct lys_module *
 lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
-    struct unres_item *unres;
+    struct unres_schema *unres;
     struct lys_module *module;
     struct stat sb;
     char *addr;
@@ -450,7 +450,7 @@ ly_restr_free(struct ly_ctx *ctx, struct lys_restr *restr)
 
 void
 ly_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, struct lys_type *old,
-            struct unres_item *unres)
+            struct unres_schema *unres)
 {
     int i;
 
@@ -642,7 +642,7 @@ ly_type_free(struct ly_ctx *ctx, struct lys_type *type)
 }
 
 struct lys_tpdf *
-ly_tpdf_dup(struct lys_module *mod, struct lys_node *parent, struct lys_tpdf *old, int size, struct unres_item *unres)
+ly_tpdf_dup(struct lys_module *mod, struct lys_node *parent, struct lys_tpdf *old, int size, struct unres_schema *unres)
 {
     struct lys_tpdf *result;
     int i;
@@ -748,7 +748,7 @@ ly_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_no
 
 static struct lys_refine *
 ly_refine_dup(struct lys_module *mod, struct lys_refine *old, int size, struct lys_node_uses *uses,
-              struct unres_item *unres)
+              struct unres_schema *unres)
 {
     struct lys_refine *result;
     int i, j;
@@ -1250,8 +1250,8 @@ ly_uniq_find(struct lys_node_list *list, struct lys_node_leaf *orig_leaf)
 }
 
 struct lys_node *
-ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, int recursive, unsigned int line,
-             struct unres_item *unres)
+ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, int recursive,
+             struct unres_schema *unres)
 {
     struct lys_node *retval = NULL, *aux, *child;
     struct ly_ctx *ctx = module->ctx;
@@ -1361,7 +1361,7 @@ ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, i
     if (recursive) {
         /* go recursively */
         LY_TREE_FOR(mnode->child, child) {
-            aux = ly_mnode_dup(module, child, retval->flags, 1, line, unres);
+            aux = ly_mnode_dup(module, child, retval->flags, 1, unres);
             if (!aux || ly_mnode_addchild(retval, aux)) {
                 goto error;
             }
@@ -1525,7 +1525,7 @@ ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, i
         uses->refine = ly_refine_dup(module, uses_orig->refine, uses_orig->refine_size, uses, unres);
         uses->augment_size = uses_orig->augment_size;
         uses->augment = ly_augment_dup(module, (struct lys_node *)uses, uses_orig->augment, uses_orig->augment_size);
-        add_unres_mnode(module, unres, uses, UNRES_USES, NULL, line);
+        add_unres_mnode(module, unres, uses, UNRES_USES, NULL, 0);
         break;
 
     case LYS_CASE:

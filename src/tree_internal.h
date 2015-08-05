@@ -52,15 +52,21 @@ struct ly_types {
 };
 extern struct ly_types ly_types[LY_DATA_TYPE_COUNT];
 
-struct leafref_instid {
+/**
+ * @brief Unresolved leafref or instance-identifier in DATA
+ */
+struct unres_data {
     uint8_t is_leafref;
     struct lyd_node *dnode;
-    struct leafref_instid *next;
+    struct unres_data *next;
 #ifndef NDEBUG
-    int line;
+    uint32_t line;
 #endif
 };
 
+/**
+ * @brief Type of an unresolved item in a SCHEMA
+ */
 enum UNRES_ITEM {
     UNRES_RESOLVED,      /* a resolved item */
     UNRES_IDENT,         /* unresolved derived identities */
@@ -78,11 +84,16 @@ enum UNRES_ITEM {
     UNRES_MUST           /* check must */
 };
 
-struct unres_item {
+/**
+ * @brief Unresolved items in a SCHEMA
+ */
+struct unres_schema {
     void **item;
     enum UNRES_ITEM *type;
     void **str_mnode;
-    int *line;
+#ifndef NDEBUG
+    uint32_t *line;
+#endif
     uint32_t count;
 };
 
@@ -127,6 +138,6 @@ struct lys_module *lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT form
 void lys_free(struct lys_module *module);
 
 struct lys_node *ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, int recursive,
-                              unsigned int line, struct unres_item *unres);
+                              struct unres_schema *unres);
 
 #endif /* LY_TREE_INTERNAL_H_ */

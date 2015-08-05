@@ -68,24 +68,24 @@ enum LY_IDENT {
 static int read_yin_common(struct lys_module *, struct lys_node *, struct lys_node *, struct lyxml_elem *, int);
 
 static struct lys_node *read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
-                                        int resolve, struct unres_item *unres);
+                                        int resolve, struct unres_schema *unres);
 static struct lys_node *read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
-                                      int resolve, struct unres_item *unres);
+                                      int resolve, struct unres_schema *unres);
 static struct lys_node *read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
-                                        int resolve, struct unres_item *unres);
+                                        int resolve, struct unres_schema *unres);
 static struct lys_node *read_yin_container(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
-                                           int resolve, struct unres_item *unres);
+                                           int resolve, struct unres_schema *unres);
 static struct lys_node *read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
-                                      int resolve, struct unres_item *unres);
+                                      int resolve, struct unres_schema *unres);
 static struct lys_node *read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
-                                          int resolve, struct unres_item *unres);
+                                          int resolve, struct unres_schema *unres);
 static struct lys_node *read_yin_list(struct lys_module *module,struct lys_node *parent, struct lyxml_elem *yin,
-                                      int resolve, struct unres_item *unres);
+                                      int resolve, struct unres_schema *unres);
 static struct lys_node *read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *node,
-                                      int resolve, struct unres_item *unres);
+                                      int resolve, struct unres_schema *unres);
 static struct lys_node *read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *node,
-                                          int resolve, struct unres_item *unres);
-static struct lys_when *read_yin_when(struct lys_module *module,struct lyxml_elem *yin);
+                                          int resolve, struct unres_schema *unres);
+static struct lys_when *read_yin_when(struct lys_module *module, struct lyxml_elem *yin);
 
 static int
 dup_typedef_check(const char *type, struct lys_tpdf *tpdf, int size)
@@ -359,7 +359,7 @@ read_yin_subnode(struct ly_ctx *ctx, struct lyxml_elem *node, const char *name)
 }
 
 static int
-fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_ident *ident, struct unres_item *unres)
+fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_ident *ident, struct unres_schema *unres)
 {
     struct lyxml_elem *node;
     const char *value;
@@ -454,7 +454,7 @@ error:
 
 static int
 fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_type *type,
-              struct unres_item *unres)
+              struct unres_schema *unres)
 {
 #define REGEX_ERR_LEN 128
     const char *value, *delim, *name;
@@ -1060,7 +1060,7 @@ error:
 }
 
 static int
-fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_tpdf *tpdf, struct unres_item *unres)
+fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_tpdf *tpdf, struct unres_schema *unres)
 {
     const char *value;
     struct lyxml_elem *node;
@@ -1132,7 +1132,7 @@ error:
 }
 
 static int
-fill_yin_feature(struct lys_module *module, struct lyxml_elem *yin, struct lys_feature *f, struct unres_item *unres)
+fill_yin_feature(struct lys_module *module, struct lyxml_elem *yin, struct lys_feature *f, struct unres_schema *unres)
 {
     const char *value;
     struct lyxml_elem *child, *next;
@@ -1915,7 +1915,7 @@ error:
 
 static int
 fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_node_augment *aug,
-                 struct unres_item *unres)
+                 struct unres_schema *unres)
 {
     const char *value;
     struct lyxml_elem *child, *next;
@@ -2018,7 +2018,7 @@ error:
 
 static int
 fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_refine *rfn, struct lys_node_uses *uses,
-                struct unres_item *unres)
+                struct unres_schema *unres)
 {
     struct lyxml_elem *sub, *next;
     const char *value;
@@ -2568,8 +2568,8 @@ check_branch_id(struct lys_node *parent, struct lys_node *new, struct lys_node *
 }
 
 static struct lys_node *
-read_yin_case(struct lys_module *module,
-              struct lys_node *parent, struct lyxml_elem *yin, int resolve, struct unres_item *unres)
+read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
+              struct unres_schema *unres)
 {
     struct lyxml_elem *sub, *next;
     struct lys_node_case *mcase;
@@ -2662,7 +2662,7 @@ error:
 
 static struct lys_node *
 read_yin_choice(struct lys_module *module,
-                struct lys_node *parent, struct lyxml_elem *yin, int resolve, struct unres_item *unres)
+                struct lys_node *parent, struct lyxml_elem *yin, int resolve, struct unres_schema *unres)
 {
     struct lyxml_elem *sub, *next;
     struct ly_ctx *const ctx = module->ctx;
@@ -2803,7 +2803,7 @@ error:
 
 static struct lys_node *
 read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
-                struct unres_item *unres)
+                struct unres_schema *unres)
 {
     struct lys_node *retval;
     struct lys_node_leaf *anyxml;
@@ -2911,7 +2911,7 @@ error:
 
 static struct lys_node *
 read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
-              struct unres_item *unres)
+              struct unres_schema *unres)
 {
     struct lys_node *retval;
     struct lys_node_leaf *leaf;
@@ -3052,7 +3052,7 @@ error:
 
 static struct lys_node *
 read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
-                  struct unres_item *unres)
+                  struct unres_schema *unres)
 {
     struct lys_node *retval;
     struct lys_node_leaflist *llist;
@@ -3236,8 +3236,8 @@ error:
 }
 
 static struct lys_node *
-read_yin_list(struct lys_module *module,
-              struct lys_node *parent, struct lyxml_elem *yin, int resolve, struct unres_item *unres)
+read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
+              struct unres_schema *unres)
 {
     struct lys_node *retval, *mnode;
     struct lys_node_list *list;
@@ -3509,8 +3509,8 @@ error:
 }
 
 static struct lys_node *
-read_yin_container(struct lys_module *module,
-                   struct lys_node *parent, struct lyxml_elem *yin, int resolve, struct unres_item *unres)
+read_yin_container(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
+                   struct unres_schema *unres)
 {
     struct lyxml_elem *sub, *next, root;
     struct lys_node *mnode = NULL;
@@ -3661,8 +3661,8 @@ error:
 }
 
 static struct lys_node *
-read_yin_grouping(struct lys_module *module,
-                  struct lys_node *parent, struct lyxml_elem *node, int resolve, struct unres_item *unres)
+read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *node, int resolve,
+                  struct unres_schema *unres)
 {
     struct lyxml_elem *sub, *next, root;
     struct lys_node *mnode = NULL;
@@ -3766,8 +3766,8 @@ error:
 }
 
 static struct lys_node *
-read_yin_input_output(struct lys_module *module,
-                      struct lys_node *parent, struct lyxml_elem *yin, int resolve, struct unres_item *unres)
+read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
+                      struct unres_schema *unres)
 {
     struct lyxml_elem *sub, *next, root;
     struct lys_node *mnode = NULL;
@@ -3881,8 +3881,8 @@ error:
 }
 
 static struct lys_node *
-read_yin_notif(struct lys_module *module,
-               struct lys_node *parent, struct lyxml_elem *yin, int resolve, struct unres_item *unres)
+read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
+               struct unres_schema *unres)
 {
     struct lyxml_elem *sub, *next, root;
     struct lys_node *mnode = NULL;
@@ -3998,8 +3998,8 @@ error:
 }
 
 static struct lys_node *
-read_yin_rpc(struct lys_module *module,
-             struct lys_node *parent, struct lyxml_elem *yin, int resolve, struct unres_item *unres)
+read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
+             struct unres_schema *unres)
 {
     struct lyxml_elem *sub, *next, root;
     struct lys_node *mnode = NULL;
@@ -4123,8 +4123,8 @@ error:
  * we just get information but we do not apply augment or refine to it.
  */
 static struct lys_node *
-read_yin_uses(struct lys_module *module,
-              struct lys_node *parent, struct lyxml_elem *node, int resolve, struct unres_item *unres)
+read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *node, int resolve,
+              struct unres_schema *unres)
 {
     struct lyxml_elem *sub, *next;
     struct lys_node *retval;
@@ -4233,7 +4233,7 @@ error:
 
 /* common code for yin_read_module() and yin_read_submodule() */
 static int
-read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_item *unres)
+read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_schema *unres)
 {
     struct ly_ctx *ctx = module->ctx;
     struct lys_submodule *submodule = (struct lys_submodule *)module;
@@ -4729,7 +4729,7 @@ error:
 }
 
 struct lys_submodule *
-yin_read_submodule(struct lys_module *module, const char *data, int implement, struct unres_item *unres)
+yin_read_submodule(struct lys_module *module, const char *data, int implement, struct unres_schema *unres)
 {
     struct lyxml_elem *yin;
     struct lys_submodule *submodule = NULL;
@@ -4786,7 +4786,7 @@ error:
 }
 
 struct lys_module *
-yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unres_item *unres)
+yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unres_schema *unres)
 {
     struct lyxml_elem *yin;
     struct lys_module *module = NULL, **newlist = NULL;

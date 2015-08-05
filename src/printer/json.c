@@ -81,7 +81,7 @@ json_print_instid(FILE *f, struct lyd_node_leaf *leaf)
 {
     const char *ptr, *print_ptr;
     int cur_id_len, print_id_len;
-    struct leafref_instid *nodes, unres;
+    struct unres_data *nodes, unres;
     struct lys_module *prev_module = NULL, *cur_module;
     struct lys_node *snode;
 
