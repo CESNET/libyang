@@ -109,7 +109,10 @@ validate_pattern(const char *str, struct lys_type *type, struct lyxml_elem *xml,
         }
 
         /* must return 0, already checked during parsing */
-        assert(!regcomp(&preq, posix_regex, REG_EXTENDED | REG_NOSUB));
+        if (regcomp(&preq, posix_regex, REG_EXTENDED | REG_NOSUB)) {
+            LOGERR(LY_EINT, "Internal error (%s:%d).", __FILE__, __func__);
+            return 1;
+        }
         free(posix_regex);
 
         if (regexec(&preq, str, 0, 0, 0)) {
