@@ -7,7 +7,7 @@
 struct lys_node *resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module *mod,
                                        LYS_NODE node_type);
 
-struct ly_ident *resolve_identityref(struct ly_ident *base, const char *name, const char *ns);
+struct lys_ident *resolve_identityref(struct lys_ident *base, const char *name, const char *ns);
 
 int resolve_uses(struct lys_node_uses *uses, int line, struct unres_item *unres);
 

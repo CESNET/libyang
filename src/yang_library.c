@@ -125,7 +125,7 @@ ylib_name_space(struct ly_ctx *ctx, struct lys_node *name_node, const char *name
 }
 
 static struct lyd_node *
-ylib_revision(struct ly_ctx *ctx, struct lys_node *revision_node, struct ly_revision *rev, uint8_t rev_size)
+ylib_revision(struct ly_ctx *ctx, struct lys_node *revision_node, struct lys_revision *rev, uint8_t rev_size)
 {
     int i, max = 0;
     struct lyd_node_leaf *dleaf;

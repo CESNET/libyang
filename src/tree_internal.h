@@ -98,7 +98,7 @@ void ly_mnode_free(struct lys_node *node);
 
 void ly_restr_free(struct ly_ctx *ctx, struct lys_restr *restr);
 void ly_type_free(struct ly_ctx *ctx, struct lys_type *type);
-void ly_deviation_free(struct ly_ctx *ctx, struct ly_deviation *dev);
+void ly_deviation_free(struct ly_ctx *ctx, struct lys_deviation *dev);
 void ly_submodule_free(struct lys_submodule *submodule);
 
 struct lys_submodule *ly_submodule_read(struct lys_module *module, const char *data, LYS_INFORMAT format, int implement);

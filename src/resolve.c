@@ -1412,12 +1412,12 @@ error:
     return EXIT_FAILURE;
 }
 
-static struct ly_ident *
-resolve_base_ident_sub(struct lys_module *module, struct ly_ident *ident, const char *basename)
+static struct lys_ident *
+resolve_base_ident_sub(struct lys_module *module, struct lys_ident *ident, const char *basename)
 {
     unsigned int i, j;
-    struct ly_ident *base_iter = NULL;
-    struct ly_ident_der *der;
+    struct lys_ident *base_iter = NULL;
+    struct lys_ident_der *der;
 
     /* search module */
     for (i = 0; i < module->ident_size; i++) {
@@ -1475,14 +1475,14 @@ resolve_base_ident_sub(struct lys_module *module, struct ly_ident *ident, const 
     return NULL;
 }
 
-static struct ly_ident *
-resolve_base_ident(struct lys_module *module, struct ly_ident *ident, const char *basename, int line,
+static struct lys_ident *
+resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const char *basename, int line,
                    const char* parent)
 {
     const char *name;
     int prefix_len = 0;
     int i, found = 0;
-    struct ly_ident *result;
+    struct lys_ident *result;
 
     /* search for the base identity */
     name = strchr(basename, ':');
@@ -1535,10 +1535,10 @@ resolve_base_ident(struct lys_module *module, struct ly_ident *ident, const char
     return result;
 }
 
-struct ly_ident *
-resolve_identityref(struct ly_ident *base, const char *name, const char *ns)
+struct lys_ident *
+resolve_identityref(struct lys_ident *base, const char *name, const char *ns)
 {
-    struct ly_ident_der *der;
+    struct lys_ident_der *der;
 
     if (!base || !name || !ns) {
         return NULL;
@@ -1556,7 +1556,7 @@ resolve_identityref(struct ly_ident *base, const char *name, const char *ns)
 }
 
 static int
-resolve_unres_ident(struct lys_module *mod, struct ly_ident *ident, const char *base_name, int line)
+resolve_unres_ident(struct lys_module *mod, struct lys_ident *ident, const char *base_name, int line)
 {
     if (resolve_base_ident(mod, ident, base_name, (line == -1 ? -1 : 0), "ident")) {
         return 0;

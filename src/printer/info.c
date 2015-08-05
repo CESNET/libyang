@@ -465,7 +465,7 @@ info_print_nacmext(FILE *f, uint8_t nacm)
 }
 
 static void
-info_print_revision(FILE *f, struct ly_revision *rev, uint8_t rev_size)
+info_print_revision(FILE *f, struct lys_revision *rev, uint8_t rev_size)
 {
     int i;
 
@@ -788,9 +788,9 @@ info_print_typedef_detail(FILE *f, struct lys_tpdf *tpdf)
 }
 
 static void
-info_print_ident_detail(FILE *f, struct ly_ident *ident)
+info_print_ident_detail(FILE *f, struct lys_ident *ident)
 {
-    struct ly_ident_der *der;
+    struct lys_ident_der *der;
 
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Identity: ", ident->name);
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Module: ", ident->module->name);

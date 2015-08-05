@@ -394,7 +394,7 @@ yang_print_refine(FILE *f, int level, struct lys_refine *refine)
 }
 
 static void
-yang_print_deviation(FILE *f, int level, struct lys_module *module, struct ly_deviation *deviation)
+yang_print_deviation(FILE *f, int level, struct lys_module *module, struct lys_deviation *deviation)
 {
     int i, j;
 
@@ -518,7 +518,7 @@ yang_print_typedef(FILE *f, int level, struct lys_module *module, struct lys_tpd
 }
 
 static void
-yang_print_identity(FILE *f, int level, struct ly_ident *ident)
+yang_print_identity(FILE *f, int level, struct lys_ident *ident)
 {
     fprintf(f, "%*sidentity %s {\n", LEVEL, INDENT, ident->name);
     level++;

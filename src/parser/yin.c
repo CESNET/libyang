@@ -497,7 +497,7 @@ read_yin_subnode(struct ly_ctx *ctx, struct lyxml_elem *node, const char *name)
 }
 
 static int
-fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct ly_ident *ident, struct unres_item *unres)
+fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_ident *ident, struct unres_item *unres)
 {
     struct lyxml_elem *node;
     const char *value;
@@ -1333,7 +1333,7 @@ error: /* GETVAL requires this label */
  * type: 0 - min, 1 - max
  */
 static int
-deviate_minmax(struct lys_node *target, struct lyxml_elem *node, struct ly_deviate *d, int type)
+deviate_minmax(struct lys_node *target, struct lyxml_elem *node, struct lys_deviate *d, int type)
 {
     const char *value;
     char *endptr;
@@ -1409,14 +1409,14 @@ error:
 }
 
 static int
-fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct ly_deviation *dev)
+fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys_deviation *dev)
 {
     const char *value, **stritem;
     struct lyxml_elem *next, *child, *develem;
     int c_dev = 0, c_must, c_uniq;
     int f_min = 0; /* flags */
     int i, j;
-    struct ly_deviate *d = NULL;
+    struct lys_deviate *d = NULL;
     struct lys_node *mnode = NULL;
     struct lys_node_choice *choice = NULL;
     struct lys_node_leaf *leaf = NULL;

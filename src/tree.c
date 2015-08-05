@@ -750,9 +750,9 @@ ly_refine_dup(struct lys_module *mod, struct lys_refine *old, int size, struct l
 }
 
 void
-ly_ident_free(struct ly_ctx *ctx, struct ly_ident *ident)
+ly_ident_free(struct ly_ctx *ctx, struct lys_ident *ident)
 {
-    struct ly_ident_der *der;
+    struct lys_ident_der *der;
 
     assert(ctx);
     if (!ident) {
@@ -895,7 +895,7 @@ ly_feature_free(struct ly_ctx *ctx, struct lys_feature *f)
 }
 
 void
-ly_deviation_free(struct ly_ctx *ctx, struct ly_deviation *dev)
+ly_deviation_free(struct ly_ctx *ctx, struct lys_deviation *dev)
 {
     int i, j;
 

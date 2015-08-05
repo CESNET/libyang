@@ -162,15 +162,15 @@ struct lys_module {
     uint8_t augment_size;            /**< number of elements in #augment array */
     uint8_t deviation_size;          /**< number of elements in #deviation array */
 
-    struct ly_revision* rev;         /**< array of the module revisions, revisions[0] is always the last (newest)
+    struct lys_revision* rev;        /**< array of the module revisions, revisions[0] is always the last (newest)
                                           revision of the module */
     struct lys_import* imp;          /**< array of imported modules */
     struct lys_include* inc;         /**< array of included submodules */
     struct lys_tpdf* tpdf;           /**< array of typedefs */
-    struct ly_ident* ident;          /**< array of identities */
+    struct lys_ident* ident;         /**< array of identities */
     struct lys_feature* features;    /**< array of feature definitions */
     struct lys_node_augment* augment;/**< array of augments */
-    struct ly_deviation* deviation;  /**< array of specified deviations */
+    struct lys_deviation* deviation; /**< array of specified deviations */
 
     struct lys_node* data;           /**< first data statement */
     struct lys_node* rpc;            /**< first rpc statement */
@@ -216,15 +216,15 @@ struct lys_submodule {
     uint8_t augment_size;            /**< number of elements in #augment array */
     uint8_t deviation_size;          /**< number of elements in #deviation array */
 
-    struct ly_revision* rev;         /**< array of the module revisions, revisions[0] is always the last (newest)
+    struct lys_revision* rev;        /**< array of the module revisions, revisions[0] is always the last (newest)
                                           revision of the submodule */
     struct lys_import* imp;          /**< array of imported modules */
     struct lys_include* inc;         /**< array of included submodules */
     struct lys_tpdf* tpdf;           /**< array of typedefs */
-    struct ly_ident* ident;          /**< array if identities */
+    struct lys_ident* ident;         /**< array if identities */
     struct lys_feature* features;    /**< array of feature definitions */
     struct lys_node_augment* augment;/**< array of augments */
-    struct ly_deviation* deviation;  /**< array of specified deviations */
+    struct lys_deviation* deviation; /**< array of specified deviations */
 
     struct lys_node* data;           /**< first data statement */
     struct lys_node* rpc;            /**< first rpc statement */
@@ -310,7 +310,7 @@ struct lys_type {
 
         /* LY_TYPE_IDENT */
         struct {
-            struct ly_ident* ref;    /**< pointer (reference) to the identity definition (mandatory) */
+            struct lys_ident* ref;   /**< pointer (reference) to the identity definition (mandatory) */
         } ident;                     /**< part for #LY_TYPE_IDENT */
 
         /* LY_TYPE_INST */
@@ -464,8 +464,8 @@ struct lys_node_container {
     uint8_t must_size;               /**< number of elements in the #must array */
     uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
 
-    struct lys_restr* must;           /**< array of must constraints */
-    struct lys_tpdf* tpdf;            /**< array of typedefs */
+    struct lys_restr* must;          /**< array of must constraints */
+    struct lys_tpdf* tpdf;           /**< array of typedefs */
 };
 
 /**
@@ -950,18 +950,18 @@ struct lys_refine {
 /**
  * @brief Possible deviation modifications, see [RFC 6020 sec. 7.18.3.2](http://tools.ietf.org/html/rfc6020#section-7.18.3.2)
  */
-typedef enum ly_deviate_type {
+typedef enum lys_deviate_type {
     LY_DEVIATE_NO,                   /**< not-supported */
     LY_DEVIATE_ADD,                  /**< add */
     LY_DEVIATE_RPL,                  /**< replace */
     LY_DEVIATE_DEL                   /**< delete */
-} LY_DEVIATE_TYPE;
+} LYS_DEVIATE_TYPE;
 
 /**
  * @brief YANG deviate statement structure, see [RFC 6020 sec. 7.18.3.2](http://tools.ietf.org/html/rfc6020#section-7.18.3.2)
  */
-struct ly_deviate {
-    LY_DEVIATE_TYPE mod;             /**< type of deviation modification */
+struct lys_deviate {
+    LYS_DEVIATE_TYPE mod;            /**< type of deviation modification */
 
     uint8_t flags;                   /**< Properties: config, mandatory */
     const char* dflt;                /**< Properties: default (both type and choice represented as string value */
@@ -978,7 +978,7 @@ struct ly_deviate {
 /**
  * @brief YANG deviation statement structure, see [RFC 6020 sec. 7.18.3](http://tools.ietf.org/html/rfc6020#section-7.18.3)
  */
-struct ly_deviation {
+struct lys_deviation {
     const char* target_name;         /**< schema node identifier of the node where the deviation is supposed to be
                                           applied (mandatory). */
     const char* dsc;                 /**< description (optional) */
@@ -986,7 +986,7 @@ struct ly_deviation {
     struct lys_node* target;         /**< pointer to the target node TODO refer to deviation description */
 
     uint8_t deviate_size;            /**< number of elements in the #deviate array */
-    struct ly_deviate* deviate;      /**< deviate information */
+    struct lys_deviate* deviate;     /**< deviate information */
 };
 
 /**
@@ -1009,7 +1009,7 @@ struct lys_include {
 /**
  * @brief YANG revision statement for (sub)modules
  */
-struct ly_revision {
+struct lys_revision {
     char date[LY_REV_SIZE];          /**< revision-date (mandatory) */
     const char* dsc;                 /**< revision's dsc (optional) */
     const char* ref;                 /**< revision's reference (optional) */
@@ -1081,15 +1081,15 @@ struct lys_when {
  *
  * First 5 members maps to ::lys_node.
  */
-struct ly_ident {
+struct lys_ident {
     const char *name;                /**< identity name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values are allowed */
     struct lys_module* module;       /**< pointer to the module where the identity is defined */
 
-    struct ly_ident* base;           /**< pointer to the base identity */
-    struct ly_ident_der* der;        /**< list of pointers to the derived identities */
+    struct lys_ident* base;          /**< pointer to the base identity */
+    struct lys_ident_der* der;       /**< list of pointers to the derived identities */
 };
 /**
  * @brief Structure to serialize pointers to the identities.
@@ -1102,9 +1102,9 @@ struct ly_ident {
  * the context, we don't need to remove a subset of pointers to derived
  * identities.
  */
-struct ly_ident_der {
-    struct ly_ident* ident;
-    struct ly_ident_der* next;
+struct lys_ident_der {
+    struct lys_ident* ident;         /**< pointer to the identity */
+    struct lys_ident_der* next;      /**< next record, NULL in case of the last record in the list */
 };
 
 /**
@@ -1224,7 +1224,7 @@ union lyd_value_u {
     int8_t bool;                 /**< 0 as false, 1 as true */
     int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
     struct lys_type_enum *enm;   /**< pointer to the schema definition of the enumeration value */
-    struct ly_ident *ident;      /**< pointer to the schema definition of the identityref value */
+    struct lys_ident *ident;      /**< pointer to the schema definition of the identityref value */
     struct lyd_node *instance;   /**< instance-identifier, pointer to the referenced data tree node */
     int8_t int8;                 /**< 8-bit signed integer */
     int16_t int16;               /**< 16-bit signed integer */
