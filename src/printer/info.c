@@ -69,7 +69,7 @@ info_print_text(FILE *f, const char *text, const char *label)
 }
 
 static void
-info_print_mnodes(FILE *f, struct lys_node *mnode, const char *label)
+info_print_mnodes(FILE *f, struct lys_node *parent, struct lys_node *mnode, const char *label)
 {
     assert(strlen(label) < INDENT_LEN-1);
 
@@ -77,14 +77,22 @@ info_print_mnodes(FILE *f, struct lys_node *mnode, const char *label)
 
     if (mnode) {
         if (mnode->name) {
-            fprintf(f, "%s \"%s\"\n", strnodetype(mnode->nodetype), mnode->name);
+            fprintf(f, "%s \"", strnodetype(mnode->nodetype));
+            if (parent != mnode->parent) {
+                fprintf(f, "%s:", mnode->module->prefix);
+            }
+            fprintf(f, "%s\"\n", mnode->name);
         } else {
             fprintf(f, "%s\n", (mnode->nodetype == LYS_INPUT ? "input" : "output"));
         }
         mnode = mnode->next;
         for (; mnode; mnode = mnode->next) {
             if (mnode->name) {
-                fprintf(f, "%*s%s \"%s\"\n", INDENT_LEN, "", strnodetype(mnode->nodetype), mnode->name);
+                fprintf(f, "%*s%s \"", INDENT_LEN, "", strnodetype(mnode->nodetype));
+                if (parent != mnode->parent) {
+                    fprintf(f, "%s:", mnode->module->prefix);
+                }
+                fprintf(f, "%s\"\n", mnode->name);
             } else {
                 fprintf(f, "%*s%s\n", INDENT_LEN, "", (mnode->nodetype == LYS_INPUT ? "input" : "output"));
             }
@@ -897,7 +905,7 @@ info_print_container(FILE *f, struct lys_node *mnode)
     info_print_typedef(f, cont->tpdf, cont->tpdf_size);
     info_print_nacmext(f, cont->nacm);
 
-    info_print_mnodes(f, cont->child, "Children:");
+    info_print_mnodes(f, (struct lys_node *)cont, cont->child, "Children:");
 }
 
 static void
@@ -920,7 +928,7 @@ info_print_choice(FILE *f, struct lys_node *mnode)
     info_print_when(f, choice->when);
     info_print_nacmext(f, choice->nacm);
 
-    info_print_mnodes(f, choice->child, "Cases:");
+    info_print_mnodes(f, (struct lys_node *)choice, choice->child, "Cases:");
 }
 
 static void
@@ -980,7 +988,7 @@ info_print_list(FILE *f, struct lys_node *mnode)
     info_print_typedef(f, list->tpdf, list->tpdf_size);
     info_print_nacmext(f, list->nacm);
 
-    info_print_mnodes(f, list->child, "Children:");
+    info_print_mnodes(f, (struct lys_node *)list, list->child, "Children:");
 }
 
 static void
@@ -1012,7 +1020,7 @@ info_print_grouping(FILE *f, struct lys_node *mnode)
     info_print_typedef(f, group->tpdf, group->tpdf_size);
     info_print_nacmext(f, group->nacm);
 
-    info_print_mnodes(f, group->child, "Children:");
+    info_print_mnodes(f, (struct lys_node *)group, group->child, "Children:");
 }
 
 static void
@@ -1029,7 +1037,7 @@ info_print_case(FILE *f, struct lys_node *mnode)
     info_print_when(f, cas->when);
     info_print_nacmext(f, cas->nacm);
 
-    info_print_mnodes(f, cas->child, "Children:");
+    info_print_mnodes(f, (struct lys_node *)cas, cas->child, "Children:");
 }
 
 static void
@@ -1042,7 +1050,7 @@ info_print_input(FILE *f, struct lys_node *mnode)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Input of: ", input->parent->name);
     info_print_typedef(f, input->tpdf, input->tpdf_size);
 
-    info_print_mnodes(f, input->child, "Children:");
+    info_print_mnodes(f, (struct lys_node *)input, input->child, "Children:");
 }
 
 static void
@@ -1055,7 +1063,7 @@ info_print_output(FILE *f, struct lys_node *mnode)
     fprintf(f, "%-*s%s\n", INDENT_LEN, "Output of: ", output->parent->name);
     info_print_typedef(f, output->tpdf, output->tpdf_size);
 
-    info_print_mnodes(f, output->child, "Children:");
+    info_print_mnodes(f, (struct lys_node *)output, output->child, "Children:");
 }
 
 static void
@@ -1072,7 +1080,7 @@ info_print_notif(FILE *f, struct lys_node *mnode)
     info_print_typedef(f, ntf->tpdf, ntf->tpdf_size);
     info_print_nacmext(f, ntf->nacm);
 
-    info_print_mnodes(f, ntf->child, "Params:");
+    info_print_mnodes(f, (struct lys_node *)ntf, ntf->child, "Params:");
 }
 
 static void
@@ -1089,7 +1097,7 @@ info_print_rpc(FILE *f, struct lys_node *mnode)
     info_print_typedef(f, rpc->tpdf, rpc->tpdf_size);
     info_print_nacmext(f, rpc->nacm);
 
-    info_print_mnodes(f, rpc->child, "Data:");
+    info_print_mnodes(f, (struct lys_node *)rpc, rpc->child, "Data:");
 }
 
 int
