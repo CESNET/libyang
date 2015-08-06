@@ -606,8 +606,8 @@ resolve_unique(struct lys_node *parent, const char *uniq_str, struct lys_unique 
             }
         } /* else only one nodeid present/left already NULL byte terminated */
 
-        uniq_s->leafs[i] = (struct lys_node_leaf *)resolve_schema_nodeid(start, parent, parent->module, LYS_USES);
-        if (!uniq_s->leafs[i] || uniq_s->leafs[i]->nodetype != LYS_LEAF) {
+        uniq_s->leafs[i] = (struct lys_node_leaf *)resolve_schema_nodeid(start, parent->child, parent->module, LYS_LEAF);
+        if (!uniq_s->leafs[i] || (uniq_s->leafs[i]->nodetype != LYS_LEAF)) {
             LOGVAL(LYE_INARG, line, start, "unique");
             if (!uniq_s->leafs[i]) {
                 LOGVAL(LYE_SPEC, 0, "Target leaf not found.");
@@ -814,8 +814,12 @@ resolve_child(struct lys_node *parent, const char *name, int len, LYS_NODE type)
 /* does not log
  *
  * node_type - LYS_AUGMENT (searches also RPCs and notifications)
- *           - LYS_USES    (only descendant-schema-nodeid allowed, ".." not allowed, always returns a grouping)
+ *           - LYS_USES    (only descendant-schema-nodeid allowed, ".." not allowed, always return a grouping)
  *           - LYS_CHOICE  (search only start->child, only descendant-schema-nodeid allowed)
+ *           - LYS_LEAF    (like LYS_USES, but always returns a data node)
+ *
+ * If id is absolute, start is ignored. If id is relative, start must be the first child to be searched
+ * continuing with its siblings.
  */
 struct lys_node *
 resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module *mod, LYS_NODE node_type)
@@ -837,7 +841,7 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
     }
     id += ret;
 
-    if (!is_relative && (node_type & (LYS_USES | LYS_CHOICE))) {
+    if (!is_relative && (node_type & (LYS_USES | LYS_CHOICE | LYS_LEAF))) {
         return NULL;
     }
 
@@ -855,41 +859,52 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
         }
     /* descendant-schema-nodeid */
     } else {
-        assert(start);
-        start = start->child;
-        start_mod = start->module;
+        if (start) {
+            start_mod = start->module;
+        } else {
+            start_mod = mod;
+        }
     }
 
     while (1) {
         sibling = NULL;
         LY_TREE_FOR(start, sibling) {
             /* name match */
-            if (((sibling->nodetype != LYS_GROUPING) || (node_type == LYS_USES)) &&
-                    ((sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len])
+            if (((sibling->nodetype != LYS_GROUPING) || (node_type == LYS_USES))
+                    && ((sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len])
                     || (!strncmp(name, "input", 5) && (nam_len == 5) && (sibling->nodetype == LYS_INPUT))
                     || (!strncmp(name, "output", 6) && (nam_len == 6) && (sibling->nodetype == LYS_OUTPUT)))) {
 
                 /* prefix match check */
                 if (prefix) {
-
                     prefix_mod = resolve_prefixed_module(mod, prefix, pref_len);
                     if (!prefix_mod) {
                         return NULL;
                     }
+                } else {
+                    prefix_mod = mod;
+                    if (prefix_mod->type) {
+                        prefix_mod = ((struct lys_submodule *)prefix_mod)->belongsto;
+                    }
+                }
 
-                    if (!sibling->module->type) {
-                        if (prefix_mod != sibling->module) {
-                            continue;
-                        }
-                    } else {
-                        if (prefix_mod != ((struct lys_submodule *)sibling->module)->belongsto) {
-                            continue;
-                        }
+                /* modules need to always be checked, we want to skip augments */
+                if (!sibling->module->type) {
+                    if (prefix_mod != sibling->module) {
+                        continue;
+                    }
+                } else {
+                    if (prefix_mod != ((struct lys_submodule *)sibling->module)->belongsto) {
+                        continue;
                     }
                 }
 
                 /* the result node? */
                 if (!id[0]) {
+                    /* we're looking only for groupings, this is a data node */
+                    if ((node_type == LYS_USES) && (sibling->nodetype != LYS_GROUPING)) {
+                        continue;
+                    }
                     return sibling;
                 }
 
@@ -1568,14 +1583,14 @@ inherit_config_flag(struct lys_node *mnode)
 
 /* does not log */
 static int
-resolve_augment(struct lys_node_augment *aug, struct lys_node *parent, struct lys_module *module)
+resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct lys_module *module)
 {
     struct lys_node *sub, *aux;
 
     assert(module);
 
     /* resolve target node */
-    aug->target = resolve_schema_nodeid(aug->target_name, parent, module, LYS_AUGMENT);
+    aug->target = resolve_schema_nodeid(aug->target_name, siblings, module, LYS_AUGMENT);
     if (!aug->target) {
         return EXIT_FAILURE;
     }
@@ -1635,7 +1650,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
     /* apply refines */
     for (i = 0; i < uses->refine_size; i++) {
         rfn = &uses->refine[i];
-        mnode = resolve_schema_nodeid(rfn->target_name, (struct lys_node *)uses, uses->module, LYS_USES);
+        mnode = resolve_schema_nodeid(rfn->target_name, uses->child, uses->module, LYS_LEAF);
         if (!mnode) {
             LOGVAL(LYE_INARG, line, rfn->target_name, "refine");
             return EXIT_FAILURE;
@@ -1672,7 +1687,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
                 ((struct lys_node_leaf *)mnode)->dflt = lydict_insert(ctx, rfn->mod.dflt, 0);
             } else if (mnode->nodetype == LYS_CHOICE) {
                 /* choice */
-                ((struct lys_node_choice *)mnode)->dflt = resolve_schema_nodeid(rfn->mod.dflt, mnode, mnode->module, LYS_CHOICE);
+                ((struct lys_node_choice *)mnode)->dflt = resolve_schema_nodeid(rfn->mod.dflt, mnode->child, mnode->module, LYS_CHOICE);
                 if (!((struct lys_node_choice *)mnode)->dflt) {
                     LOGVAL(LYE_INARG, line, rfn->mod.dflt, "default");
                     return EXIT_FAILURE;
@@ -1738,7 +1753,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
 
     /* apply augments */
     for (i = 0; i < uses->augment_size; i++) {
-        if (resolve_augment(&uses->augment[i], (struct lys_node *)uses, uses->module)) {
+        if (resolve_augment(&uses->augment[i], uses->child, uses->module)) {
             LOGVAL(LYE_INRESOLV, line, "augment", uses->augment[i].target_name);
             return EXIT_FAILURE;
         }

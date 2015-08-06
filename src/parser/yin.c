@@ -1468,7 +1468,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         }
                     }
 
-                    mnode = resolve_schema_nodeid(d->dflt, (struct lys_node *)choice, choice->module, LYS_CHOICE);
+                    mnode = resolve_schema_nodeid(d->dflt, choice->child, choice->module, LYS_CHOICE);
                     if (d->mod == LY_DEVIATE_DEL) {
                         if (!choice->dflt || choice->dflt != mnode) {
                             LOGVAL(LYE_INARG, LOGLINE(child), value, child->name);
