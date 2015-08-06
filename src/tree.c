@@ -1410,6 +1410,10 @@ ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, i
                                          | LYS_LIST);
             assert(choice->dflt);
         } else {
+            /* useless to check return value, we don't know whether
+             * there really wasn't any default defined or it just hasn't
+             * been resolved, we just hope for the best :)
+             */
             dup_unres(module, unres, choice_orig, UNRES_CHOICE_DFLT, choice);
         }
         break;
