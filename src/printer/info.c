@@ -1103,6 +1103,7 @@ int
 info_print_model(FILE *f, struct lys_module *module, const char *target_node)
 {
     int i;
+    char *grouping_target = NULL;
     struct lys_node *target;
 
     if (!target_node) {
@@ -1119,6 +1120,18 @@ info_print_model(FILE *f, struct lys_module *module, const char *target_node)
             target = resolve_schema_nodeid((target_node[0] == '/' ? target_node : target_node+4), module->data, module, LYS_AUGMENT);
             if (!target) {
                 fprintf(f, "Target %s could not be resolved.\n", (target_node[0] == '/' ? target_node : target_node+4));
+                return EXIT_FAILURE;
+            }
+        } else if (!strncmp(target_node, "grouping/", 9)) {
+            /* cut the data part off */
+            if (strchr(target_node+9, '/')) {
+                /* HACK only temporary */
+                *strchr(target_node+9, '/') = '\0';
+                grouping_target = (char *)(target_node+strlen(target_node)+1);
+            }
+            target = resolve_schema_nodeid(target_node+9, module->data, module, LYS_USES);
+            if (!target) {
+                fprintf(f, "Grouping %s not found.\n", target_node+9);
                 return EXIT_FAILURE;
             }
         } else if (!strncmp(target_node, "typedef/", 8)) {
@@ -1179,7 +1192,7 @@ info_print_model(FILE *f, struct lys_module *module, const char *target_node)
             return EXIT_FAILURE;
         }
 
-        if (target_node[0] != '/') {
+        if (!strncmp(target_node, "type/", 5)) {
             if (!(target->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 fprintf(f, "Target is not a leaf or a leaf-list.\n");
                 return EXIT_FAILURE;
@@ -1189,6 +1202,24 @@ info_print_model(FILE *f, struct lys_module *module, const char *target_node)
             }
             info_print_type_detail(f, &((struct lys_node_leaf *)target)->type, 0);
             return EXIT_SUCCESS;
+        } else if (!strncmp(target_node, "grouping/", 9) && !grouping_target) {
+            if (f == stdout) {
+                fprintf(f, "\n");
+            }
+            info_print_grouping(f, target);
+            return EXIT_SUCCESS;
+        }
+
+        /* find the node in the grouping */
+        if (grouping_target) {
+            target = resolve_schema_nodeid(grouping_target, target->child, module, LYS_LEAF);
+            if (!target) {
+                fprintf(f, "Grouping %s child \"%s\" not found.\n", target_node+9, grouping_target);
+                return EXIT_FAILURE;
+            }
+            /* HACK return previous hack */
+            --grouping_target;
+            grouping_target[0] = '/';
         }
 
         switch (target->nodetype) {
@@ -1227,12 +1258,6 @@ info_print_model(FILE *f, struct lys_module *module, const char *target_node)
                 fprintf(f, "\n");
             }
             info_print_anyxml(f, target);
-            break;
-        case LYS_GROUPING:
-            if (f == stdout) {
-                fprintf(f, "\n");
-            }
-            info_print_grouping(f, target);
             break;
         case LYS_CASE:
             if (f == stdout) {
