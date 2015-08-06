@@ -462,6 +462,7 @@ int
 cmd_feature(const char *arg)
 {
     int c, i, argc, option_index, ret = 1, task = -1;
+    unsigned int max_len;
     char **argv = NULL, *ptr;
     const char *feat_name = NULL, **names;
     uint8_t *states;
@@ -556,8 +557,16 @@ cmd_feature(const char *arg)
         printf("%s features:\n", model->name);
 
         names = lys_features_list(model, &states);
+
+        /* get the max len */
+        max_len = 0;
         for (i = 0; names[i]; ++i) {
-            printf("\t%s %s\n", names[i], states[i] ? "on" : "off");
+            if (strlen(names[i]) > max_len) {
+                max_len = strlen(names[i]);
+            }
+        }
+        for (i = 0; names[i]; ++i) {
+            printf("\t%-*s (%s)\n", max_len, names[i], states[i] ? "on" : "off");
         }
         free(names);
         free(states);
