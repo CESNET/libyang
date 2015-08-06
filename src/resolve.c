@@ -814,7 +814,7 @@ resolve_child(struct lys_node *parent, const char *name, int len, LYS_NODE type)
 /* does not log
  *
  * node_type - LYS_AUGMENT (searches also RPCs and notifications)
- *           - LYS_USES    (only descendant-schema-nodeid allowed, ".." not allowed)
+ *           - LYS_USES    (only descendant-schema-nodeid allowed, ".." not allowed, always returns a grouping)
  *           - LYS_CHOICE  (search only start->child, only descendant-schema-nodeid allowed)
  */
 struct lys_node *
@@ -864,9 +864,10 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
         sibling = NULL;
         LY_TREE_FOR(start, sibling) {
             /* name match */
-            if ((sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len])
+            if (((sibling->nodetype != LYS_GROUPING) || (node_type == LYS_USES)) &&
+                    ((sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len])
                     || (!strncmp(name, "input", 5) && (nam_len == 5) && (sibling->nodetype == LYS_INPUT))
-                    || (!strncmp(name, "output", 6) && (nam_len == 6) && (sibling->nodetype == LYS_OUTPUT))) {
+                    || (!strncmp(name, "output", 6) && (nam_len == 6) && (sibling->nodetype == LYS_OUTPUT)))) {
 
                 /* prefix match check */
                 if (prefix) {
@@ -890,6 +891,13 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
                 /* the result node? */
                 if (!id[0]) {
                     return sibling;
+                }
+
+                /* we're looking for a grouping (node_type == LYS_USES),
+                 * but this isn't it, we cannot search inside
+                 */
+                if (sibling->nodetype == LYS_GROUPING) {
+                    continue;
                 }
 
                 /* check for shorthand cases - then 'start' does not change */
