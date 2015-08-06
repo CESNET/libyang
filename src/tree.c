@@ -822,11 +822,23 @@ ly_grp_free(struct ly_ctx *ctx, struct lys_node_grp *grp)
 {
     int i;
 
-    /* handle only specific parts for LY_NODE_GROUPING */
+    /* handle only specific parts for LYS_GROUPING */
     for (i = 0; i < grp->tpdf_size; i++) {
         ly_tpdf_free(ctx, &grp->tpdf[i]);
     }
     free(grp->tpdf);
+}
+
+void
+lys_rpc_inout_free(struct ly_ctx *ctx, struct lys_node_rpc_inout *io)
+{
+    int i;
+
+    /* handle only specific parts for LYS_INPUT and LYS_OUTPUT */
+    for (i = 0; i < io->tpdf_size; i++) {
+        ly_tpdf_free(ctx, &io->tpdf[i]);
+    }
+    free(io->tpdf);
 }
 
 void
@@ -1023,11 +1035,13 @@ ly_mnode_free(struct lys_node *node)
     LY_TREE_FOR_SAFE(node->child, next, sub) {
         ly_mnode_free(sub);
     }
-    free(node->features);
 
-    lydict_remove(ctx, node->name);
-    lydict_remove(ctx, node->dsc);
-    lydict_remove(ctx, node->ref);
+    if (!(node->nodetype & (LYS_INPUT | LYS_OUTPUT))) {
+        free(node->features);
+        lydict_remove(ctx, node->name);
+        lydict_remove(ctx, node->dsc);
+        lydict_remove(ctx, node->ref);
+    }
 
     /* specific part */
     switch (node->nodetype) {
@@ -1060,10 +1074,13 @@ ly_mnode_free(struct lys_node *node)
         break;
     case LYS_GROUPING:
     case LYS_RPC:
-    case LYS_INPUT:
-    case LYS_OUTPUT:
     case LYS_NOTIF:
         ly_grp_free(ctx, (struct lys_node_grp *)node);
+        break;
+
+    case LYS_INPUT:
+    case LYS_OUTPUT:
+        lys_rpc_inout_free(ctx, (struct lys_node_rpc_inout *)node);
         break;
     }
 
@@ -1274,8 +1291,14 @@ ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, i
     struct lys_node_anyxml *anyxml_orig = (struct lys_node_anyxml *)mnode;
     struct lys_node_uses *uses;
     struct lys_node_uses *uses_orig = (struct lys_node_uses *)mnode;
-    struct lys_node_grp *mix;
-    struct lys_node_grp *mix_orig = (struct lys_node_grp *)mnode;
+    struct lys_node_grp *grp;
+    struct lys_node_grp *grp_orig = (struct lys_node_grp *)mnode;
+    struct lys_node_rpc *rpc;
+    struct lys_node_rpc *rpc_orig = (struct lys_node_rpc *)mnode;
+    struct lys_node_rpc_inout *io;
+    struct lys_node_rpc_inout *io_orig = (struct lys_node_rpc_inout *)mnode;
+    struct lys_node_rpc *ntf;
+    struct lys_node_rpc *ntf_orig = (struct lys_node_rpc *)mnode;
     struct lys_node_case *cs;
     struct lys_node_case *cs_orig = (struct lys_node_case *)mnode;
 
@@ -1324,14 +1347,25 @@ ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, i
         retval = (struct lys_node *)cs;
         break;
 
-        /* exact same structure */
     case LYS_GROUPING:
+        grp = calloc(1, sizeof *grp);
+        retval = (struct lys_node *)grp;
+        break;
+
     case LYS_RPC:
+        rpc = calloc(1, sizeof *rpc);
+        retval = (struct lys_node *)rpc;
+        break;
+
     case LYS_INPUT:
     case LYS_OUTPUT:
+        io = calloc(1, sizeof *io);
+        retval = (struct lys_node *)io;
+        break;
+
     case LYS_NOTIF:
-        mix = calloc(1, sizeof *mix);
-        retval = (struct lys_node *)mix;
+        ntf = calloc(1, sizeof *ntf);
+        retval = (struct lys_node *)ntf;
         break;
 
     default:
@@ -1552,12 +1586,24 @@ ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, i
         break;
 
     case LYS_GROUPING:
+        grp->tpdf_size = grp_orig->tpdf_size;
+        grp->tpdf = ly_tpdf_dup(module, mnode->parent, grp_orig->tpdf, grp->tpdf_size, unres);
+        break;
+
     case LYS_RPC:
+        rpc->tpdf_size = rpc_orig->tpdf_size;
+        rpc->tpdf = ly_tpdf_dup(module, mnode->parent, rpc_orig->tpdf, rpc->tpdf_size, unres);
+        break;
+
     case LYS_INPUT:
     case LYS_OUTPUT:
+        io->tpdf_size = io_orig->tpdf_size;
+        io->tpdf = ly_tpdf_dup(module, mnode->parent, io_orig->tpdf, io->tpdf_size, unres);
+        break;
+
     case LYS_NOTIF:
-        mix->tpdf_size = mix_orig->tpdf_size;
-        mix->tpdf = ly_tpdf_dup(module, mnode->parent, mix_orig->tpdf, mix->tpdf_size, unres);
+        ntf->tpdf_size = ntf_orig->tpdf_size;
+        ntf->tpdf = ly_tpdf_dup(module, mnode->parent, ntf_orig->tpdf, ntf->tpdf_size, unres);
         break;
 
     default:
