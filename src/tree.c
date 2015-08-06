@@ -1575,7 +1575,9 @@ ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, i
         uses->refine = ly_refine_dup(module, uses_orig->refine, uses_orig->refine_size, uses, unres);
         uses->augment_size = uses_orig->augment_size;
         uses->augment = ly_augment_dup(module, (struct lys_node *)uses, uses_orig->augment, uses_orig->augment_size, unres);
-        add_unres_mnode(module, unres, uses, UNRES_USES, NULL, 0);
+        if (!uses->child) {
+            add_unres_mnode(module, unres, uses, UNRES_USES, NULL, 0);
+        }
         break;
 
     case LYS_CASE:
