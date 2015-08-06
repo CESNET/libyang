@@ -2267,19 +2267,20 @@ add_unres_mnode(struct lys_module *mod, struct unres_schema *unres, void *item, 
 }
 
 /* logs indirectly */
-void
+int
 dup_unres(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, void *new_item)
 {
     int i;
 
     if (!item || !new_item) {
-        return;
+        LOGINT;
+        return EXIT_FAILURE;
     }
 
     i = find_unres(unres, item, type);
 
     if (i == -1) {
-        return;
+        return EXIT_FAILURE;
     }
 
     if ((type == UNRES_TYPE_LEAFREF) || (type == UNRES_AUGMENT) || (type == UNRES_USES) || (type == UNRES_TYPE_DFLT)
@@ -2288,6 +2289,8 @@ dup_unres(struct lys_module *mod, struct unres_schema *unres, void *item, enum U
     } else {
         add_unres_str(mod, unres, new_item, type, unres->str_mnode[i], 0);
     }
+
+    return EXIT_SUCCESS;
 }
 
 /* does not log */

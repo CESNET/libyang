@@ -56,7 +56,7 @@ void add_unres_str(struct lys_module *mod, struct unres_schema *unres, void *ite
 void add_unres_mnode(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
                      struct lys_node *mnode, uint32_t line);
 
-void dup_unres(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, void *new_item);
+int dup_unres(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, void *new_item);
 
 int find_unres(struct unres_schema *unres, void *item, enum UNRES_ITEM type);
 
