@@ -2006,8 +2006,14 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
     }
 
     /* aug->child points to the parsed nodes, they must now be
-     * connected to the tree and adjusted (if possible right now) */
-    add_unres_mnode(module, unres, aug, UNRES_AUGMENT, NULL, LOGLINE(yin));
+     * connected to the tree and adjusted (if possible right now).
+     * However, if this is augment in a uses, it gets resolved
+     * when the uses does and cannot be resolved now for sure
+     * (the grouping was not yet copied into uses).
+     */
+    if (!parent || (parent->nodetype != LYS_USES)) {
+        add_unres_mnode(module, unres, aug, UNRES_AUGMENT, NULL, LOGLINE(yin));
+    }
 
     return EXIT_SUCCESS;
 
