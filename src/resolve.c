@@ -1929,7 +1929,7 @@ resolve_unres_type_der(struct lys_module *mod, struct lys_type *type, const char
 static int
 resolve_unres_augment(struct lys_module *mod, struct lys_node_augment *aug, uint32_t line)
 {
-    assert(aug->parent->nodetype != LYS_USES);
+    assert(!aug->parent || (aug->parent->nodetype != LYS_USES));
 
     if (!resolve_augment(aug, aug->parent, mod)) {
         return EXIT_SUCCESS;

@@ -1984,7 +1984,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
         /* check for mandatory nodes - if the target node is in another module
          * the added nodes cannot be mandatory
          */
-        if ((parent->nodetype != LYS_USES) && check_mandatory(mnode)) {
+        if ((!parent || (parent->nodetype != LYS_USES)) && check_mandatory(mnode)) {
             LOGVAL(LYE_SPEC, LOGLINE(child), "When augmenting data in another module, mandatory statement is not allowed.");
             goto error;
         }
