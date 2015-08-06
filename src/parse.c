@@ -487,18 +487,18 @@ parse_path_arg(const char *id, const char **prefix, int *pref_len, const char **
         *has_predicate = 0;
     }
 
-    while (!*parent_times && !strncmp(id, "..", 2)) {
+    if (!*parent_times && !strncmp(id, "..", 2)) {
         ++par_times;
 
         parsed += 2;
         id += 2;
 
-        if (id[0] != '/') {
-            return -parsed;
-        }
+        while (!strncmp(id, "/..", 3)) {
+            ++par_times;
 
-        ++parsed;
-        ++id;
+            parsed += 3;
+            id += 3;
+        }
     }
 
     if (!*parent_times) {

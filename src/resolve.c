@@ -1332,7 +1332,8 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
                 node = mod->data;
             } else if (parent_times > 0) {
                 node = parent_node;
-                for (i = 0; i < parent_times; ++i) {
+                /* node is the parent already, skip one ".." */
+                for (i = 1; i < parent_times; ++i) {
                     node = node->parent;
                     if (!node) {
                         LOGVAL(LYE_LINE, line);
