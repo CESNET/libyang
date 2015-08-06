@@ -1335,7 +1335,8 @@ ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, i
         break;
 
     default:
-        goto error;
+        LOGINT;
+        return NULL;
     }
 
     /*
@@ -1358,7 +1359,9 @@ ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, i
     retval->features_size = mnode->features_size;
     retval->features = calloc(retval->features_size, sizeof *retval->features);
     for (i = 0; i < mnode->features_size; ++i) {
-        dup_unres(module, unres, &mnode->features[i], UNRES_IFFEAT, &retval->features[i]);
+        if (dup_unres(module, unres, &mnode->features[i], UNRES_IFFEAT, &retval->features[i])) {
+            retval->features[i] = mnode->features[i];
+        }
     }
 
     if (recursive) {
@@ -1366,7 +1369,9 @@ ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, i
         LY_TREE_FOR(mnode->child, child) {
             aux = ly_mnode_dup(module, child, retval->flags, 1, unres);
             if (!aux || ly_mnode_addchild(retval, aux)) {
-                goto error;
+                LOGINT;
+                ly_mnode_free(retval);
+                return NULL;
             }
         }
     }
@@ -1477,7 +1482,11 @@ ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, i
                 }
             /* it was not resolved yet, add unres copy */
             } else {
-                dup_unres(module, unres, list_orig, UNRES_LIST_KEYS, list);
+                if (dup_unres(module, unres, list_orig, UNRES_LIST_KEYS, list)) {
+                    LOGINT;
+                    ly_mnode_free(retval);
+                    return NULL;
+                }
             }
         }
 
@@ -1527,7 +1536,7 @@ ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, i
         uses->refine_size = uses_orig->refine_size;
         uses->refine = ly_refine_dup(module, uses_orig->refine, uses_orig->refine_size, uses, unres);
         uses->augment_size = uses_orig->augment_size;
-        uses->augment = ly_augment_dup(module, (struct lys_node *)uses, uses_orig->augment, uses_orig->augment_size);
+        uses->augment = ly_augment_dup(module, (struct lys_node *)uses, uses_orig->augment, uses_orig->augment_size, unres);
         add_unres_mnode(module, unres, uses, UNRES_USES, NULL, 0);
         break;
 
@@ -1549,16 +1558,12 @@ ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, i
 
     default:
         /* LY_NODE_AUGMENT */
-        goto error;
+        LOGINT;
+        ly_mnode_free(retval);
+        return NULL;
     }
 
     return retval;
-
-error:
-    LOGDBG("error: %s:%d", __FILE__, __LINE__);
-
-    ly_mnode_free(retval);
-    return NULL;
 }
 
 API void
