@@ -718,9 +718,11 @@ ly_when_free(struct ly_ctx *ctx, struct lys_when *w)
 }
 
 static struct lys_node_augment *
-ly_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_node_augment *old, int size)
+ly_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_node_augment *old, int size,
+               struct unres_schema *unres)
 {
     struct lys_node_augment *new = NULL;
+    struct lys_node *snode;
     int i = -1;
 
     if (!size) {
@@ -737,9 +739,10 @@ ly_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_no
 
         new[i].parent = parent;
 
-        /* copy the definition of augment nodes */
-        if (old[i].child) {
-            new[i].child = (struct lys_node *)lyxml_dup_elem(module->ctx, (struct lyxml_elem *)old[i].child, NULL, 1);
+        /* copy the augment nodes */
+        assert(old[i].child);
+        LY_TREE_FOR(old[i].child, snode) {
+            ly_mnode_addchild((struct lys_node *)&new[i], ly_mnode_dup(module, snode, snode->flags, 1, unres));
         }
     }
 
