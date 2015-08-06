@@ -26,10 +26,9 @@
 
 #include "../common.h"
 #include "../tree.h"
+#include "../resolve.h"
 
 #define INDENT_LEN 11
-
-struct lys_node *resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module *mod, LYS_NODE node_type);
 
 static void
 info_print_text(FILE *f, const char *text, const char *label)
