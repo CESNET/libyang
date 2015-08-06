@@ -740,7 +740,7 @@ struct lys_node_grp {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
-    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) - always 0 in ::lys_node_grp */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_GROUPING */
