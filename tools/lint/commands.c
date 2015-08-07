@@ -402,7 +402,7 @@ cmd_list(const char *UNUSED(arg))
     struct lyd_node *ylib, *module, *submodule, *node;
     int has_modules = 0;
 
-    ylib = ly_ylib_get(ctx);
+    ylib = ly_ctx_info(ctx);
 
     LY_TREE_FOR(ylib->child, node) {
         if (!strcmp(node->schema->name, "module-set-id")) {

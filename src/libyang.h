@@ -155,6 +155,15 @@ struct ly_ctx *ly_ctx_new(const char *search_dir);
 void ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
 
 /**
+ * @brief Get data of an internal ietf-yang-library module.
+ *
+ * @param[in] ctx Context with the modules.
+ * @return Root data node corresponding to the model, NULL on error.
+ * Caller is responsible for freeing the returned data tree using lyd_free().
+ */
+struct lyd_node *ly_ctx_info(struct ly_ctx *ctx);
+
+/**
  * @brief Get the names of the loaded modules.
  *
  * @param[in] ctx Context with the modules.
@@ -255,15 +264,6 @@ void ly_ctx_destroy(struct ly_ctx *ctx);
  * - \todo TBD
  *
  */
-
-/**
- * @brief Get data of an internal model ietf-yang-library.
- *
- * @param[in] ctx Context with the modules.
- * @return Root data node corresponding to the model,
- * NULL on error.
- */
-struct lyd_node *ly_ylib_get(struct ly_ctx *ctx);
 
 /**
  * @brief Load a schema into the specified context.

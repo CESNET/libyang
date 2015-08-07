@@ -406,7 +406,7 @@ ylib_module_set_id(struct ly_ctx *ctx, struct lys_node *modules_set_id_node)
 }
 
 API struct lyd_node *
-ly_ylib_get(struct ly_ctx *ctx)
+ly_ctx_info(struct ly_ctx *ctx)
 {
     int i;
     struct lys_module *mod;
