@@ -50,14 +50,14 @@ int resolve_unique(struct lys_node *parent, const char *uniq_str, struct lys_uni
 
 int resolve_unres(struct lys_module *mod, struct unres_schema *unres);
 
-void add_unres_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, const char *str,
+void unres_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, const char *str,
                    uint32_t line);
 
-void add_unres_mnode(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
-                     struct lys_node *mnode, uint32_t line);
+void unres_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
+                     struct lys_node *node, uint32_t line);
 
-int dup_unres(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, void *new_item);
+int unres_dup(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, void *new_item);
 
-int find_unres(struct unres_schema *unres, void *item, enum UNRES_ITEM type);
+int unres_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type);
 
 #endif /* _RESOLVE_H */

@@ -90,42 +90,107 @@ enum UNRES_ITEM {
 struct unres_schema {
     void **item;
     enum UNRES_ITEM *type;
-    void **str_mnode;
+    void **str_snode;
 #ifndef NDEBUG
     uint32_t *line;
 #endif
     uint32_t count;
 };
 
-/*
- * Unlink data model tree node from the tree.
+/**
+ * @brief Create submodule structure by reading data from memory.
+ *
+ * @param[in] module Schema tree where to connect the submodule, belongs-to value must match.
+ * @param[in] data String containing the submodule specification in the given \p format.
+ * @param[in] format Format of the data to read.
+ * @param[in] implement Flag to distinguish implemented and just imported (sub)modules.
+ * @return Created submodule structure or NULL in case of error.
  */
-void ly_mnode_unlink(struct lys_node *node);
+struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT format, int implement);
 
-/*
- * Free data model tree node structure, includes unlinking from the tree
+/**
+ * @brief Create submodule structure by reading data from file descriptor.
+ *
+ * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
+ *
+ * @param[in] module Schema tree where to connect the submodule, belongs-to value must match.
+ * @param[in] fd Standard file descriptor of the file containing the submodule specification in the given \p format.
+ * @param[in] format Format of the data to read.
+ * @param[in] implement Flag to distinguish implemented and just imported (sub)modules.
+ * @return Created submodule structure or NULL in case of error.
  */
-void ly_mnode_free(struct lys_node *node);
+struct lys_submodule *lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format, int implement);
 
-void ly_restr_free(struct ly_ctx *ctx, struct lys_restr *restr);
-void ly_type_free(struct ly_ctx *ctx, struct lys_type *type);
-void ly_deviation_free(struct ly_ctx *ctx, struct lys_deviation *dev);
-void ly_submodule_free(struct lys_submodule *submodule);
+/**
+ * @brief Free the submodule structure
+ *
+ * @param[in] submodule The structure to free. Do not use the pointer after calling this function.
+ */
+void lys_submodule_free(struct lys_submodule *submodule);
 
-struct lys_submodule *ly_submodule_read(struct lys_module *module, const char *data, LYS_INFORMAT format, int implement);
-struct lys_submodule *ly_submodule_read_fd(struct lys_module *module, int fd, LYS_INFORMAT format, int implement);
-
-/*
- * Add child model node at the end of the parent's child list.
+/**
+ * @brief Add child schema tree node at the end of the parent's child list.
+ *
  * If the child is connected somewhere (has a parent), it is completely
  * unlinked and none of the following conditions applies.
  * If the child has prev sibling(s), they are ignored (child is added at the
  * end of the child list).
  * If the child has next sibling(s), all of them are connected with the parent.
+ *
+ * @param[in] parent Parent node where the \p child will be added.
+ * @param[in] child The schema tree node to be added.
+ * @return 0 on success, nonzero else
  */
-int ly_mnode_addchild(struct lys_node *parent, struct lys_node *child);
+int lys_node_addchild(struct lys_node *parent, struct lys_node *child);
 
-struct lys_module *lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
+/**
+ * @brief Create a copy of the specified schema tree \p node
+ *
+ * @param[in] module Target module for the duplicated node.
+ * @param[in] node Schema tree node to be duplicated.
+ * @param[in] flags Config flag to be inherited in case the origin node does not specify config flag
+ * @param[in] recursive 1 if all children are supposed to be also duplicated.
+ * @param[in] unres TODO provide description
+ * @return Created copy of the provided schema \p node.
+ */
+struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, int recursive,
+                              struct unres_schema *unres);
+
+/**
+ * @brief Free the schema tree restriction (must, ...) structure content
+ *
+ * @param[in] ctx libyang context where the schema of the restriction is used.
+ * @param[in] restr The restriction structure to free. The function actually frees only
+ * the content of the structure, so after using this function, caller is supposed to
+ * use free(restr). It is done to free the content of structures being allocated as
+ * part of array, in that case the free() is used on the whole array.
+ */
+void lys_restr_free(struct ly_ctx *ctx, struct lys_restr *restr);
+
+/**
+ * @brief Free the schema tree type structure content
+ *
+ * @param[in] ctx libyang context where the schema of the type is used.
+ * @param[in] restr The type structure to free. The function actually frees only
+ * the content of the structure, so after using this function, caller is supposed to
+ * use free(type). It is done to free the content of structures being allocated as
+ * part of array, in that case the free() is used on the whole array.
+ */
+void lys_type_free(struct ly_ctx *ctx, struct lys_type *type);
+
+/**
+ * @brief Unlink the schema node from the tree.
+ *
+ * @param[in] node Schema tree node to unlink.
+ */
+void lys_node_unlink(struct lys_node *node);
+
+/**
+ * @brief Free the schema node structure, includes unlinking it from the tree
+ *
+ * @param[in] node Schema tree node to free. Do not use the pointer after calling this function.
+ */
+void lys_node_free(struct lys_node *node);
 
 /**
  * @brief Free (and unlink it from the context) the specified schema.
@@ -136,8 +201,5 @@ struct lys_module *lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT form
  * @param[in] module Data model to free.
  */
 void lys_free(struct lys_module *module);
-
-struct lys_node *ly_mnode_dup(struct lys_module *module, struct lys_node *mnode, uint8_t flags, int recursive,
-                              struct unres_schema *unres);
 
 #endif /* LY_TREE_INTERNAL_H_ */

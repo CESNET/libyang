@@ -545,7 +545,7 @@ struct lys_node_leaf {
     uint8_t must_size;               /**< number of elements in the #must array */
     struct lys_restr *must;          /**< array of must constraints */
 
-    /* to this point, struct ly_mnode_leaf is compatible with struct ly_mnode_leaflist */
+    /* to this point, struct lys_node_leaf is compatible with struct lys_node_leaflist */
     const char *dflt;                /**< default value of the type */
 };
 
@@ -590,7 +590,7 @@ struct lys_node_leaflist {
     uint8_t must_size;               /**< number of elements in the #must array */
     struct lys_restr *must;          /**< array of must constraints */
 
-    /* to this point, struct ly_mnode_leaflist is compatible with struct ly_mnode_leaf */
+    /* to this point, struct lys_node_leaflist is compatible with struct lys_node_leaf */
     uint32_t min;                    /**< min-elements constraint (optional) */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded (optional) */
 };
@@ -1431,6 +1431,17 @@ struct lyd_node_anyxml {
  */
 struct lyd_node *lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name, LY_DATA_TYPE type,
                          lyd_val *value);
+
+/**
+ * @brief Create a copy of the specified data tree \p node
+ *
+ * TODO not implemented
+ *
+ * @param[in] node Data tree node to be duplicated.
+ * @param[in] recursive 1 if all children are supposed to be also duplicated.
+ * @return Created copy of the provided data \p node.
+ */
+struct lyd_node *lyd_dup(struct lyd_node *node, int recursive);
 
 /**
  * @brief Insert the \p node element as child to the \p parent element. The \p node is inserted as a last child of the

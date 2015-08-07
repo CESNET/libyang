@@ -10,7 +10,7 @@
 static struct lys_node *
 ylib_get_next_sibling_recursive(struct lys_node *siblings, struct lys_node *prev, int *found)
 {
-    struct lys_node *sibling, *mnode;
+    struct lys_node *sibling, *node;
 
     LY_TREE_FOR(siblings, sibling) {
         if (sibling->nodetype == LYS_GROUPING) {
@@ -18,9 +18,9 @@ ylib_get_next_sibling_recursive(struct lys_node *siblings, struct lys_node *prev
         }
 
         if (sibling->nodetype == LYS_USES) {
-            mnode = ylib_get_next_sibling_recursive(sibling->child, (*found ? NULL : prev), found);
-            if (mnode) {
-                return mnode;
+            node = ylib_get_next_sibling_recursive(sibling->child, (*found ? NULL : prev), found);
+            if (node) {
+                return node;
             }
             continue;
         }
