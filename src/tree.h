@@ -1166,11 +1166,25 @@ int lys_features_state(struct lys_module *module, const char *feature);
  * affecting the node.
  *
  * @param[in] node Schema node to check.
- * @param[in] resursive 1 to check all ascendant nodes
+ * @param[in] recursive 1 to check all ascendant nodes
  * @return - NULL if enabled,
  * - pointer to the disabling feature if disabled.
  */
 struct lys_feature *lys_is_disabled(struct lys_node *node, int recursive);
+
+/**
+ * @brief Return parent node in the schema tree.
+ *
+ * In case of augmenting node, it returns the target tree node where the augmenting
+ * node was placed, not the augment definition node. Function just wraps usage of the
+ * ::lys_node#parent pointer in this special case.
+ *
+ * TODO not implemented
+ *
+ * @param[in] node Child node to the returned parent node.
+ * @return The parent node from the schema tree, NULL in case of top level nodes.
+ */
+struct lys_node *lys_parent(struct lys_node *node);
 
 /**@} */
 
@@ -1234,7 +1248,7 @@ struct lyd_attr {
 /**
  * @brief node's value representation
  */
-union lyd_value_u {
+typedef union lyd_value_u {
     const char *binary;          /**< base64 encoded, NULL terminated string */
     struct lys_type_bit **bit;   /**< array of pointers to the schema definition of the bit value that are set */
     int8_t bool;                 /**< 0 as false, 1 as true */
@@ -1252,7 +1266,7 @@ union lyd_value_u {
     uint16_t uint16;             /**< 16-bit signed integer */
     uint32_t uint32;             /**< 32-bit signed integer */
     uint64_t uint64;             /**< 64-bit signed integer */
-};
+} lyd_val;
 
 /**
  * @brief Generic structure for a data node, directly applicable to the data nodes defined as #LYS_CONTAINER
@@ -1336,7 +1350,7 @@ struct lyd_node_leaf {
     /* struct lyd_node *child; should be here, but it is not! */
 
     /* leaf's specific members */
-    union lyd_value_u value;         /**< node's value representation */
+    lyd_val value;                   /**< node's value representation */
     const char *value_str;           /**< string representation of value (for comparison, printing,...) */
     LY_DATA_TYPE value_type;         /**< type of the value in the node, mainly for union to avoid repeating of type detection */
 };
@@ -1366,7 +1380,7 @@ struct lyd_node_leaflist {
     /* struct lyd_node *child; should be here, but is not */
 
     /* leaflist's specific members */
-    union lyd_value_u value;         /**< node's value representation */
+    lyd_val value;                   /**< node's value representation */
     const char *value_str;           /**< string representation of value (for comparison, printing,...) */
     LY_DATA_TYPE value_type;         /**< type of the value in the node, mainly for union to avoid repeating of type detection */
 
@@ -1403,11 +1417,83 @@ struct lyd_node_anyxml {
 };
 
 /**
- * @brief Free (and unlink) the specified data (sub)tree.
+ * @brief Create a new node in a data tree.
  *
- * @param[in] node Root of the (sub)tree to be freed.
+ * TODO not implemented
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
+ * @param[in] module Module of the node being created. Can be NULL in case the new node belongs to the same
+ * module as its parent. Therefore, the module parameter must be specified for top level and augmenting elements.
+ * @param[in] name Name of the node being created.
+ * @param[in] type Type of the value provided in the \p value parameter. Accepted only in case of creating
+ * #LYS_LEAF or #LYS_LEAFLIST.
+ * @param[in] value Value of the node being created. Accepted only in case of creating #LYS_LEAF or #LYS_LEAFLIST.
  */
-void lyd_free(struct lyd_node *node);
+struct lyd_node *lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name, LY_DATA_TYPE type,
+                         lyd_val *value);
+
+/**
+ * @brief Insert the \p node element as child to the \p parent element. The \p node is inserted as a last child of the
+ * \p parent.
+ *
+ * TODO not implemented
+ *
+ * @param[in] parent Parent node for the \p node being inserted.
+ * @param[in] node The node being inserted.
+ * @return 0 fo success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
+ * in the data tree.
+ */
+int lyd_insert(struct lyd_node *parent, struct lyd_node *node);
+
+/**
+ * @brief Insert the \p node element after the \p sibling element.
+ *
+ * TODO not implemented
+ *
+ * @param[in] sibling The data tree node before which the \p node will be inserted.
+ * @param[in] node The data tree node to be inserted.
+ * @return 0 fo success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
+ * in the data tree.
+ */
+int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
+
+/**
+ * @brief Insert the \p node element after the \p sibling element.
+ *
+ * TODO not implemented
+ *
+ * @param[in] sibling The data tree node before which the \p node will be inserted.
+ * @param[in] node The data tree node to be inserted.
+ * @return 0 fo success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
+ * in the data tree.
+ */
+int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
+
+/**
+ * @brief Move the data tree \p node before the specified \p sibling node
+ *
+ * Both the data nodes must be in the same children list, i.e. they have the same parent.
+ *
+ * TODO not implemented
+ *
+ * @param[in] sibling The data tree node before which the \p node will be moved.
+ * @param[in] node The data tree node to be moved.
+ * @return 0 for success, nonzero in case of error
+ */
+int lyd_move_before(struct lyd_node *sibling, struct lyd_node *node);
+
+/**
+ * @brief Move the data tree \p node after the specified \p sibling node
+ *
+ * Both the data nodes must be in the same children list, i.e. they have the same parent.
+ *
+ * TODO not implemented
+ *
+ * @param[in] sibling The data tree node after which the \p node will be moved.
+ * @param[in] node The data tree node to be moved.
+ * @return 0 for success, nonzero in case of error
+ */
+int lyd_move_after(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
  * @brief Test if the given node is last. Note, that this can be simply checked
@@ -1424,6 +1510,34 @@ void lyd_free(struct lyd_node *node);
  */
 int lyd_is_last(struct lyd_node *node);
 
+/**
+ * @brief Unlink the specified data subtree.
+ *
+ * Note, that the node's connection with the schema tree is kept. Therefore, in case of
+ * reconnecting the node to a data tree using lyd_paste() it is necessary to paste it
+ * to the appropriate place in the data tree following the schema.
+ *
+ * TODO not implemented
+ *
+ * @param[in] node Data tree node to be unlinked (together with all children).
+ * @return 0 for success, nonzero for error
+ */
+int lyd_unlink(struct lyd_node *node);
+
+/**
+ * @brief Free (and unlink) the specified data (sub)tree.
+ *
+ * @param[in] node Root of the (sub)tree to be freed.
+ */
+void lyd_free(struct lyd_node *node);
+
+
+
+/*
+lyd_node_read
+int lyd_node_update
+int lyd_node_delete
+*/
 /**@} */
 
 #endif /* LY_TREE_H_ */

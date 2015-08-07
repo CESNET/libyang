@@ -201,6 +201,22 @@ struct lys_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const
 struct lys_submodule *ly_ctx_get_submodule(struct lys_module *module, const char *name, const char *revision);
 
 /**
+ * @brief Get schema node according to the given absolute schema node identifier.
+ *
+ * TODO not implemented
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] nodeid Absolute schema node identifier with module names used as
+ * prefixes. Prefix (module name) must be used whenever the child node is from
+ * other module (augments the parent node). The first node in the path must be
+ * always specified with the prefix. Here are some examples:
+ *
+ * - /ietf-netconf-monitoring:get-schema/input/identifier
+ * - /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/ip
+ */
+struct lys_node *lys_ctx_get_node(struct ly_ctx *ctx, const char *nodeid);
+
+/**
  * @brief Free all internal structures of the specified context.
  *
  * The function should be used before terminating the application to destroy
@@ -250,7 +266,7 @@ void ly_ctx_destroy(struct ly_ctx *ctx);
 struct lyd_node *ly_ylib_get(struct ly_ctx *ctx);
 
 /**
- * @brief Load a data model into the specified context.
+ * @brief Load a schema into the specified context.
  *
  * LY_IN_YANG (YANG) format is not yet supported.
  *
@@ -262,6 +278,18 @@ struct lyd_node *ly_ylib_get(struct ly_ctx *ctx);
  */
 struct lys_module *lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
 
+/**
+ * @brief Read a schema from file into the specified context.
+ *
+ * LY_IN_YANG (YANG) format is not yet supported.
+ *
+ * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
+ *
+ * @param[in] ctx libyang context where to process the data model.
+ * @param[in] fd The standard file descriptor of the file containing the schema in the specified format.
+ * @param[in] format Format of the input data (YANG or YIN).
+ * @return Pointer to the data model structure or NULL on error.
+ */
 struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
 
 /**
@@ -278,6 +306,18 @@ struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
 struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format);
+
+/**
+ * @brief Read data from the given file
+ *
+ * TODO not implemented
+ *
+ * @param[in] ctx Context to connect with the data tree being built here.
+ * @param[in] fd The standard file descriptor of the file containing the data tree in the specified format.
+ * @param[in] format Format of the input data to be parsed.
+ * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
+ */
+struct lyd_node *lyd_read(struct ly_ctx *ctx, int fd, LYD_FORMAT format);
 
 /**@} parsers */
 
