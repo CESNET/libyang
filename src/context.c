@@ -20,6 +20,7 @@
  */
 
 #define _GNU_SOURCE
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -176,19 +177,23 @@ ly_ctx_get_submodule(struct lys_module *module, const char *name, const char *re
     return NULL;
 }
 
-API struct lys_module *
-ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision)
+static struct lys_module *
+ly_ctx_get_module_by(struct ly_ctx *ctx, const char *key, int offset, const char *revision)
 {
     int i;
     struct lys_module *result = NULL;
 
-    if (!ctx || !name) {
+    if (!ctx || !key) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
 
     for (i = 0; i < ctx->models.used; i++) {
-        if (!ctx->models.list[i] || strcmp(name, ctx->models.list[i]->name)) {
+        /* use offset to get address of the pointer to string (char**), remember that offset is in
+         * bytes, so we have to cast the pointer to the module to (char*), finally, we want to have
+         * string not the pointer to string
+         */
+        if (!ctx->models.list[i] || strcmp(key, *(char**)(((char*)ctx->models.list[i]) + offset))) {
             continue;
         }
 
@@ -216,6 +221,19 @@ ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision)
     }
 
     return result;
+
+}
+
+API struct lys_module *
+ly_ctx_get_module_by_ns(struct ly_ctx *ctx, const char *ns, const char *revision)
+{
+    return ly_ctx_get_module_by(ctx, ns, offsetof(struct lys_module, ns), revision);
+}
+
+API struct lys_module *
+ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision)
+{
+    return ly_ctx_get_module_by(ctx, name, offsetof(struct lys_module, name), revision);
 }
 
 API const char **

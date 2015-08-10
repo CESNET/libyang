@@ -187,16 +187,28 @@ const char **ly_ctx_get_module_names(struct ly_ctx *ctx);
 const char **ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *module_name);
 
 /**
- * @brief Get pointer to the data model structure of the specified name.
+ * @brief Get pointer to the schema tree of the module of the specified name.
  *
  * @param[in] ctx Context to work in.
  * @param[in] name Name of the YANG module to get.
  * @param[in] revision Optional revision date of the YANG module to get. If not specified,
  * the schema in the newest revision is returned if any.
  * @return Pointer to the data model structure, NULL if no schema following the name and
- * revision is present in the context.
+ * revision requirements is present in the context.
  */
 struct lys_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision);
+
+/**
+ * @brief Get pointer to the schema tree of the module of the specified namespace
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] ns Namespace of the YANG module to get.
+ * @param[in] revision Optional revision date of the YANG module to get. If not specified,
+ * the schema in the newest revision is returned if any.
+ * @return Pointer to the data model structure, NULL if no schema following the namespace and
+ * revision requirements is present in the context.
+ */
+struct lys_module *ly_ctx_get_module_by_ns(struct ly_ctx *ctx, const char *ns, const char *revision);
 
 /**
  * @brief Get submodule from the context's search dir.
