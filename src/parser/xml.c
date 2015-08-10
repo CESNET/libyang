@@ -277,10 +277,12 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
     leaf->value_str = xml->content;
     xml->content = NULL;
 
+    /* will be change in case of union */
+    leaf->value_type = node_type->base;
+
     switch (node_type->base) {
     case LY_TYPE_BINARY:
         leaf->value.binary = leaf->value_str;
-        leaf->value_type = LY_TYPE_BINARY;
 
         if (node_type->info.binary.length
                 && validate_length_range(0, strlen(leaf->value.binary), 0, 0, node_type, xml, leaf->value_str, log)) {
@@ -289,8 +291,6 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
         break;
 
     case LY_TYPE_BITS:
-        leaf->value_type = LY_TYPE_BITS;
-
         /* locate bits structure with the bits definitions */
         for (type = node_type; type->der->type.der; type = &type->der->type);
 
@@ -538,7 +538,6 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
 
     case LY_TYPE_STRING:
         leaf->value.string = leaf->value_str;
-        leaf->value_type = LY_TYPE_STRING;
 
         if (node_type->info.str.length
                 && validate_length_range(0, strlen(leaf->value.string), 0, 0, node_type, xml, leaf->value_str, log)) {
