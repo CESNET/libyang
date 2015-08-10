@@ -716,6 +716,16 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     result->prev = prev;
     result->schema = schema;
 
+    /* check number of instances for non-list nodes */
+    if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML)) {
+        for (aux = result->prev; aux; aux = aux->prev) {
+            if (aux->schema == schema) {
+                LOGVAL(LYE_TOOMANY, LOGLINE(xml), xml->name, xml->parent ? xml->parent->name : "data tree");
+                goto error;
+            }
+        }
+    }
+
     /* type specific processing */
     if (schema->nodetype == LYS_LIST) {
         /* pointers to next and previous instances of the same list */
