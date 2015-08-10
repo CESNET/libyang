@@ -1146,7 +1146,7 @@ remove_leafref:
 int
 resolve_path_arg_data(struct unres_data *unres, const char *path, struct unres_data **ret)
 {
-    struct lyd_node *data;
+    struct lyd_node *data = NULL;
     struct unres_data *riter = NULL, *raux;
     const char *prefix, *name;
     int pref_len, nam_len, has_predicate, parent_times, i;
@@ -1172,14 +1172,14 @@ resolve_path_arg_data(struct unres_data *unres, const char *path, struct unres_d
                     goto error;
                 } else if (!(*ret)->dnode) {
                     /* first .. */
-                    (*ret)->dnode = unres->dnode->parent;
+                    data = (*ret)->dnode = unres->dnode->parent;
                 } else if (!(*ret)->dnode->parent) {
                     /* we are in root */
                     free(*ret);
                     *ret = NULL;
                 } else {
                     /* multiple .. */
-                    (*ret)->dnode = (*ret)->dnode->parent;
+                    data = (*ret)->dnode = (*ret)->dnode->parent;
                 }
             }
 
