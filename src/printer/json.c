@@ -161,10 +161,7 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
         }
     }
 
-    data_type = ((struct lys_node_leaf *)leaf->schema)->type.base;
-    if (data_type == LY_TYPE_UNION) {
-        data_type = leaf->value_type;
-    }
+    data_type = leaf->value_type;
 
     switch (data_type) {
     case LY_TYPE_BINARY:

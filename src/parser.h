@@ -57,7 +57,7 @@ struct lys_submodule *yin_read_submodule(struct lys_module *module, const char *
  * @defgroup xmldata XML data format support
  * @{
  */
-struct lyd_node *xml_read_data(struct ly_ctx *ctx, const char *data);
+struct lyd_node *xml_read_data(struct ly_ctx *ctx, const char *data, int options);
 
 /**@} xmldata */
 

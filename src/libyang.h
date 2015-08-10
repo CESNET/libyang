@@ -305,6 +305,39 @@ struct lys_module *lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT 
 struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
 
 /**
+ * @defgroup parseroptions Data parser options
+ * @ingroup parsers
+ *
+ * Various options to change the data tree parsers behavior.
+ *
+ * By default, parser silently ignores the data without a matching node in schema trees. If the caller want to stop
+ * parsing in case of presence of unknown data, the #LYD_OPT_STRICT can be used. The strict mode is useful for
+ * NETCONF servers, since NETCONF clients should always send data according to the capabilities announced by the server.
+ * On the other hand, the default non-strict mode is useful for clients receiving data from NETCONF server since
+ * clients are not required to understand everything the server does. Of course, the optimal strategy is to use
+ * filtering to get only the required data.
+ *
+ * Parser also expects that the provided data are complete and performs data validation according to all
+ * implemented YANG rules. This can be problem in case of representing NETCONF's subtree filter data or
+ * edit-config's data which do not represent a complete data set. Therefore there are two options to make parser to
+ * accept such a data: #LYD_OPT_FILTER and #LYD_OPT_EDIT.
+ *
+ * @{
+ */
+#define LYD_OPT_STRICT   0x01  /**< instead of silent ignoring data without schema definition, rise error.
+                                    Having an unknown element of the known namespace is always an error. */
+#define LYD_OPT_FILTER   0x02  /**< make validation to accept NETCONF subtree filter data:
+                                    - leafs/leaf-lists with no data are allowed (even not allowed e.g. by length restriction)
+                                    - multiple instances of container/leaf/.. are allowed
+                                    - list's keys are not required
+                                    - leafrefs and identityref are not resolved */
+#define LYD_OPT_EDIT     0x04  /**< make validation to accept NETCONF edit-config's content:
+                                    - leafrefs and identityref are not resolved */
+/**
+ * @}
+ */
+
+/**
  * @brief Parse (and validate according to appropriate schema from the given context) data.
  *
  * In case of LY_XML format, the data string is expected to contain XML data under the single
@@ -315,9 +348,10 @@ struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] data Serialized data in the specified format.
  * @param[in] format Format of the input data to be parsed.
+ * @param[in] options Parser options, see @ref parseroptions.
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
-struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format);
+struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options);
 
 /**
  * @brief Read data from the given file
@@ -327,9 +361,10 @@ struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT form
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] fd The standard file descriptor of the file containing the data tree in the specified format.
  * @param[in] format Format of the input data to be parsed.
+ * @param[in] options Parser options, see @ref parseroptions.
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
-struct lyd_node *lyd_read(struct ly_ctx *ctx, int fd, LYD_FORMAT format);
+struct lyd_node *lyd_read(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options);
 
 /**@} parsers */
 

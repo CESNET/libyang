@@ -259,7 +259,7 @@ typedef enum {
     LY_TYPE_UINT32,      /**< 32-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
     LY_TYPE_UINT64,      /**< 64-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
 } LY_DATA_TYPE;
-#define LY_DATA_TYPE_COUNT 20        /** number of #LY_DATA_TYPE built-in types */
+#define LY_DATA_TYPE_COUNT 20        /**< number of #LY_DATA_TYPE built-in types */
 
 /**
  * @brief YANG type structure providing information from the schema

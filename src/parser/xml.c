@@ -258,7 +258,7 @@ get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *foun
 
 static int
 _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_elem *xml,
-               struct unres_data **unres, int log)
+               int options, struct unres_data **unres, int log)
 {
     #define DECSIZE 21
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
@@ -555,7 +555,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
         type = get_next_union_type(node_type, NULL, &found);
         for (; type; found = 0, type = get_next_union_type(node_type, type, &found)) {
             xml->content = leaf->value_str;
-            if (!_xml_get_value(node, type, xml, unres, 0)) {
+            if (!_xml_get_value(node, type, xml, options, unres, 0)) {
                 leaf->value_type = type->base;
                 break;
             }
@@ -641,16 +641,16 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
 }
 
 static int
-xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, struct unres_data **unres)
+xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct unres_data **unres)
 {
-    return _xml_get_value(node, &((struct lys_node_leaf *)node->schema)->type, xml, unres, 1);
+    return _xml_get_value(node, &((struct lys_node_leaf *)node->schema)->type, xml, options, unres, 1);
 }
 
 struct lyd_node *
 xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev,
-               struct unres_data **unres)
+               int options, struct unres_data **unres)
 {
-    struct lyd_node *result, *aux;
+    struct lyd_node *result = NULL, *aux;
     struct lys_node *schema = NULL;
     int i, havechildren;
 
@@ -682,8 +682,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         schema = xml_data_search_schemanode(xml, parent->schema->child);
     }
     if (!schema) {
-        LOGVAL(LYE_INELEM, LOGLINE(xml), xml->name);
-        return NULL;
+        if ((options & LYD_OPT_STRICT) || ly_ctx_get_module_by_ns(ctx, xml->ns->value, NULL)) {
+            LOGVAL(LYE_INELEM, LOGLINE(xml), xml->name);
+            return NULL;
+        } else {
+            goto siblings;
+        }
     }
 
     switch (schema->nodetype) {
@@ -738,12 +742,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         }
     } else if (schema->nodetype == LYS_LEAF) {
         /* type detection and assigning the value */
-        if (xml_get_value(result, xml, unres)) {
+        if (xml_get_value(result, xml, options, unres)) {
             goto error;
         }
     } else if (schema->nodetype == LYS_LEAFLIST) {
         /* type detection and assigning the value */
-        if (xml_get_value(result, xml, unres)) {
+        if (xml_get_value(result, xml, options, unres)) {
             goto error;
         }
 
@@ -763,23 +767,28 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     /* process children */
     if (havechildren && xml->child) {
-        result->child = xml_parse_data(ctx, xml->child, result, NULL, unres);
-        if (!result->child) {
+        result->child = xml_parse_data(ctx, xml->child, result, NULL, options, unres);
+        if (ly_errno) {
             goto error;
         }
 
     }
 
+siblings:
     /* process siblings */
     if (xml->next) {
-        result->next = xml_parse_data(ctx, xml->next, parent, result, unres);
-        if (!result->next) {
+        if (result) {
+            result->next = xml_parse_data(ctx, xml->next, parent, result, options, unres);
+        } else {
+            result = xml_parse_data(ctx, xml->next, parent, prev, options, unres);
+        }
+        if (ly_errno) {
             goto error;
         }
     }
 
     /* fix the "last" pointer */
-    if (!result->prev) {
+    if (result && !result->prev) {
         for (aux = result; aux->next; aux = aux->next);
         result->prev = aux;
     }
@@ -787,13 +796,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
 error:
 
-    if (havechildren) {
-        result->child = NULL;
+    if (result) {
+        result->next = NULL;
+        result->parent = NULL;
+        result->prev = result;
+        lyd_free(result);
     }
-    result->next = NULL;
-    result->parent = NULL;
-    result->prev = result;
-    lyd_free(result);
 
     return NULL;
 }
@@ -874,8 +882,8 @@ error:
     return EXIT_FAILURE;
 }
 
-API struct lyd_node *
-xml_read_data(struct ly_ctx *ctx, const char *data)
+struct lyd_node *
+xml_read_data(struct ly_ctx *ctx, const char *data, int options)
 {
     struct lyxml_elem *xml;
     struct lyd_node *result, *next, *iter;
@@ -892,7 +900,8 @@ xml_read_data(struct ly_ctx *ctx, const char *data)
         return NULL;
     }
 
-    result = xml_parse_data(ctx, xml->child, NULL, NULL, &unres);
+    ly_errno = 0;
+    result = xml_parse_data(ctx, xml->child, NULL, NULL, options, &unres);
     /* check leafrefs and/or instids if any */
     if (check_unres(&unres)) {
         /* leafref & instid checking failed */

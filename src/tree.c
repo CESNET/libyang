@@ -1764,7 +1764,7 @@ lys_features_list(struct lys_module *module, uint8_t **states)
 }
 
 API struct lyd_node *
-lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format)
+lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
 {
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -1773,7 +1773,7 @@ lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format)
 
     switch (format) {
     case LYD_XML:
-        return xml_read_data(ctx, data);
+        return xml_read_data(ctx, data, options);
     case LYD_JSON:
     default:
         /* TODO */

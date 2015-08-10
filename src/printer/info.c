@@ -271,7 +271,7 @@ info_print_type_detail(FILE *f, struct lys_type *type, int uni)
 
     switch (type->base) {
     case LY_TYPE_DER:
-        /* unused, but what the heck */
+        /* unused, but what the hack */
         fprintf(f, "%-*s%s\n", INDENT_LEN, "Base type: ", "derived");
         break;
     case LY_TYPE_BINARY:

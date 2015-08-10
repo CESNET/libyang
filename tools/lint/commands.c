@@ -352,7 +352,7 @@ cmd_data(const char *arg)
     }
 
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    data = xml_read_data(ctx, addr);
+    data = lyd_parse(ctx, addr, LYD_XML, 0);
     munmap(addr, sb.st_size);
 
     if (data == NULL) {
