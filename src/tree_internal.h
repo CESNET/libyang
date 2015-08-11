@@ -73,7 +73,6 @@ enum UNRES_ITEM {
     UNRES_TYPE_IDENTREF, /* check identityref value */
     UNRES_TYPE_LEAFREF,  /* check leafref value */
     UNRES_TYPE_DER,      /* unresolved derived type */
-    UNRES_AUGMENT,       /* unresolved augments (standalone only) */
     UNRES_IFFEAT,        /* unresolved if-feature */
     UNRES_USES,          /* unresolved uses grouping (refines and augments in it are resolved as well) */
     UNRES_TYPE_DFLT,     /* validate default type value */

@@ -2012,7 +2012,10 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
      * (the grouping was not yet copied into uses).
      */
     if (!parent || (parent->nodetype != LYS_USES)) {
-        unres_add_node(module, unres, aug, UNRES_AUGMENT, NULL, LOGLINE(yin));
+        if (resolve_augment(aug, aug->child, module)) {
+            LOGVAL(LYE_INRESOLV, LOGLINE(yin), "augment", aug->target_name);
+            goto error;
+        }
     }
 
     return EXIT_SUCCESS;

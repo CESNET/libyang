@@ -67,6 +67,8 @@ int resolve_instid(struct unres_data *unres, const char *path, int path_len, str
 struct lys_tpdf *resolve_superior_type(const char *name, const char *prefix, struct lys_module *module,
                                       struct lys_node *parent);
 
+int resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct lys_module *module);
+
 int resolve_unique(struct lys_node *parent, const char *uniq_str, struct lys_unique *uniq_s, uint32_t line);
 
 int resolve_unres(struct lys_module *mod, struct unres_schema *unres);

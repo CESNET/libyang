@@ -1782,7 +1782,7 @@ inherit_config_flag(struct lys_node *node)
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
  */
-static int
+int
 resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct lys_module *module)
 {
     struct lys_node *sub, *aux;
@@ -2221,28 +2221,6 @@ resolve_unres_type_der(struct lys_module *mod, struct lys_type *type, const char
 }
 
 /**
- * @brief Resolve unres identity. Logs directly.
- *
- * @param[in] mod Main module.
- * @param[in] augment Augment in question.
- * @param[in] line Line in the input file.
- *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
- */
-static int
-resolve_unres_augment(struct lys_module *mod, struct lys_node_augment *aug, uint32_t line)
-{
-    assert(!aug->parent || (aug->parent->nodetype != LYS_USES));
-
-    if (!resolve_augment(aug, aug->parent, mod)) {
-        return EXIT_SUCCESS;
-    }
-
-    LOGVAL(LYE_INRESOLV, line, "augment", aug->target_name);
-    return EXIT_FAILURE;
-}
-
-/**
  * @brief Resolve unres if-feature. Logs directly.
  *
  * @param[in] mod Main module.
@@ -2433,10 +2411,6 @@ resolve_unres_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, voi
         ret = resolve_unres_type_der(mod, item, str_node, line);
         has_str = 1;
         break;
-    case UNRES_AUGMENT:
-        ret = resolve_unres_augment(mod, item, line);
-        has_str = 0;
-        break;
     case UNRES_IFFEAT:
         ret = resolve_unres_iffeature(mod, item, str_node, line);
         has_str = 1;
@@ -2507,9 +2481,6 @@ print_unres_item_fail(void *item, enum UNRES_ITEM type, void *str_node, uint32_t
     case UNRES_TYPE_DER:
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later%s.", "derived type", (char *)str_node, line_str);
         break;
-    case UNRES_AUGMENT:
-        LOGVRB("Resolving %s \"%s\" failed, it will be attempted later%s.", "augment target", ((struct lys_node_augment *)item)->target_name, line_str);
-        break;
     case UNRES_IFFEAT:
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later%s.", "if-feature", (char *)str_node, line_str);
         break;
@@ -2548,17 +2519,6 @@ resolve_unres(struct lys_module *mod, struct unres_schema *unres)
     /* uses */
     for (i = 0; i < unres->count; ++i) {
         if (unres->type[i] != UNRES_USES) {
-            continue;
-        }
-        if (!resolve_unres_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, unres->line[i])) {
-            unres->type[i] = UNRES_RESOLVED;
-            ++resolved;
-        }
-    }
-
-    /* augment */
-    for (i = 0; i < unres->count; ++i) {
-        if (unres->type[i] != UNRES_AUGMENT) {
             continue;
         }
         if (!resolve_unres_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, unres->line[i])) {
@@ -2635,7 +2595,7 @@ unres_dup(struct lys_module *mod, struct unres_schema *unres, void *item, enum U
         return EXIT_FAILURE;
     }
 
-    if ((type == UNRES_TYPE_LEAFREF) || (type == UNRES_AUGMENT) || (type == UNRES_USES) || (type == UNRES_TYPE_DFLT)
+    if ((type == UNRES_TYPE_LEAFREF) || (type == UNRES_USES) || (type == UNRES_TYPE_DFLT)
             || (type == UNRES_WHEN) || (type == UNRES_MUST)) {
         unres_add_node(mod, unres, new_item, type, unres->str_snode[i], 0);
     } else {
