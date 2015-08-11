@@ -316,7 +316,7 @@ json_print_node(FILE *f, int level, struct lyd_node *node)
         json_print_anyxml(f, level, node);
         break;
     default:
-        assert(0);
+        LOGINT;
         break;
     }
 }

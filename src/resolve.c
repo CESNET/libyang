@@ -166,14 +166,20 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
 
     /* process superior types */
     if (type->der && superior_restr) {
-        assert(!resolve_len_ran_interval(NULL, &type->der->type, superior_restr, &intv));
+        if (resolve_len_ran_interval(NULL, &type->der->type, superior_restr, &intv)) {
+            LOGINT;
+            return EXIT_FAILURE;
+        }
         assert(!intv || (intv->kind == kind));
     }
 
     if (!str_restr) {
         /* we are validating data and not have any restriction, but a superior type might have */
         if (type->der && !superior_restr && !intv) {
-            assert(!resolve_len_ran_interval(NULL, &type->der->type, superior_restr, &intv));
+            if (resolve_len_ran_interval(NULL, &type->der->type, superior_restr, &intv)) {
+                LOGINT;
+                return EXIT_FAILURE;
+            }
             assert(!intv || (intv->kind == kind));
         }
         *local_intv = intv;
@@ -260,7 +266,9 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
 
             ptr += 3;
         } else {
-            assert(0);
+            LOGINT;
+            ret = EXIT_FAILURE;
+            goto cleanup;
         }
 
         while (isspace(ptr[0])) {
@@ -301,10 +309,14 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
                     tmp_local_intv->value.fval.max = local_fmax;
                 }
             } else {
-                assert(0);
+                LOGINT;
+                ret = EXIT_FAILURE;
+                goto cleanup;
             }
         } else {
-            assert(0);
+            LOGINT;
+            ret = EXIT_FAILURE;
+            goto cleanup;
         }
 
         /* next segment (next OR) */

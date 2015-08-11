@@ -724,7 +724,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         havechildren = 0;
         break;
     default:
-        assert(0);
+        LOGINT;
         return NULL;
     }
     result->parent = parent;

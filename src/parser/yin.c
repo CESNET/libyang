@@ -3795,7 +3795,8 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
     } else if (!strcmp(yin->name, "output")) {
         inout->nodetype = LYS_OUTPUT;
     } else {
-        assert(0);
+        LOGINT;
+        goto error;
     }
 
     inout->prev = (struct lys_node *)inout;
