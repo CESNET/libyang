@@ -33,6 +33,7 @@
 #include "../resolve.h"
 #include "../xml.h"
 #include "../tree_internal.h"
+#include "../validation.h"
 
 #define LY_NSNC "urn:ietf:params:xml:ns:netconf:base:1.0"
 
@@ -504,16 +505,20 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
             return EXIT_FAILURE;
         }
 
-        /* validity checking is performed later, right now the data tree
-         * is not complete, so many instanceids cannot be resolved
-         */
-        /* remember the leaf for later checking */
-        new_unres = malloc(sizeof *new_unres);
-        new_unres->is_leafref = 0;
-        new_unres->dnode = node;
-        new_unres->next = *unres;
-        new_unres->line = LOGLINE(xml);
-        *unres = new_unres;
+        if (options & (LYD_OPT_EDIT | LYD_OPT_FILTER)) {
+            leaf->value_type |= LY_TYPE_INST_UNRES;
+        } else {
+            /* validity checking is performed later, right now the data tree
+             * is not complete, so many instanceids cannot be resolved
+             */
+            /* remember the leaf for later checking */
+            new_unres = malloc(sizeof *new_unres);
+            new_unres->is_leafref = 0;
+            new_unres->dnode = node;
+            new_unres->next = *unres;
+            new_unres->line = LOGLINE(xml);
+            *unres = new_unres;
+        }
         break;
 
     case LY_TYPE_LEAFREF:
@@ -524,16 +529,23 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
             return EXIT_FAILURE;
         }
 
-        /* validity checking is performed later, right now the data tree
-         * is not complete, so many leafrefs cannot be resolved
-         */
-        /* remember the leaf for later checking */
-        new_unres = malloc(sizeof *new_unres);
-        new_unres->is_leafref = 1;
-        new_unres->dnode = node;
-        new_unres->next = *unres;
-        new_unres->line = LOGLINE(xml);
-        *unres = new_unres;
+        if (options & (LYD_OPT_EDIT | LYD_OPT_FILTER)) {
+            do {
+                type = &((struct lys_node_leaf *)leaf->schema)->type.info.lref.target->type;
+            } while (type->base == LY_TYPE_LEAFREF);
+            leaf->value_type = type->base | LY_TYPE_LEAFREF_UNRES;
+        } else {
+            /* validity checking is performed later, right now the data tree
+             * is not complete, so many leafrefs cannot be resolved
+             */
+            /* remember the leaf for later checking */
+            new_unres = malloc(sizeof *new_unres);
+            new_unres->is_leafref = 1;
+            new_unres->dnode = node;
+            new_unres->next = *unres;
+            new_unres->line = LOGLINE(xml);
+            *unres = new_unres;
+        }
         break;
 
     case LY_TYPE_STRING:
@@ -771,8 +783,18 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         if (ly_errno) {
             goto error;
         }
-
     }
+
+    /* various validation checks */
+    if (schema->nodetype == LYS_LIST && !(options & LYD_OPT_FILTER)) {
+        /* check presence of all keys in case of list */
+        if (lyv_keys_present((struct lyd_node_list *)result)) {
+            /* key not found in the data */
+            LOGVAL(LYE_MISSELEM, LOGLINE(xml), ((struct lys_node_list * )schema)->keys[i]->name, schema->name);
+            goto error;
+        }
+    }
+
 
 siblings:
     /* process siblings */

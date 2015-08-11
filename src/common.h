@@ -108,6 +108,7 @@ enum LY_ERR {
 
     LYE_INELEM,
     LYE_INELEM_LEN,
+    LYE_MISSELEM,
     LYE_INVAL,
     LYE_OORVAL,
     LYE_INCHAR,

@@ -1331,7 +1331,7 @@ resolve_path_predicate_schema(const char *pred, struct lys_module *mod, struct l
 }
 
 /* logs indirectly */
-static int
+static struct lys_node *
 resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_node *parent_node, uint32_t line)
 {
     struct lys_node *child, *node;
@@ -1346,7 +1346,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
     do {
         if ((i = parse_path_arg(id, &prefix, &pref_len, &name, &nam_len, &parent_times, &has_predicate)) < 1) {
             LOGVAL(LYE_INCHAR, line, id[-i], id-i);
-            return EXIT_FAILURE;
+            return NULL;
         }
         id += i;
 
@@ -1361,7 +1361,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
                     if (!node) {
                         LOGVAL(LYE_LINE, line);
                         /* general error, the one written later will suffice */
-                        return EXIT_FAILURE;
+                        return NULL;
                     }
                 }
                 node = node->child;
@@ -1384,7 +1384,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
         if (!child) {
             LOGVAL(LYE_LINE, line);
             /* general error, the one written later will suffice */
-            return EXIT_FAILURE;
+            return NULL;
         }
         node = child;
 
@@ -1393,17 +1393,24 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
             if (node->nodetype != LYS_LIST) {
                 LOGVAL(LYE_LINE, line);
                 /* general error, the one written later will suffice */
-                return EXIT_FAILURE;
+                return NULL;
             }
 
             if ((i = resolve_path_predicate_schema(id, mod, node, parent_node, line)) < 1) {
-                return EXIT_FAILURE;
+                return NULL;
             }
             id += i;
         }
     } while (id[0]);
 
-    return EXIT_SUCCESS;
+    /* the target must be leaf or leaf-list */
+    if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+        LOGVAL(LYE_LINE, line);
+        /* general error, the one written later will suffice */
+        return NULL;
+    }
+
+    return node;
 }
 
 /* does not log
@@ -1927,7 +1934,8 @@ resolve_unres_type_identref(struct lys_module *mod, struct lys_type *type, const
 static int
 resolve_unres_type_leafref(struct lys_module *mod, struct lys_type *type, struct lys_node *node, uint32_t line)
 {
-    if (!resolve_path_arg_schema(mod, type->info.lref.path, node, line)) {
+    type->info.lref.target = (struct lys_node_leaf *)resolve_path_arg_schema(mod, type->info.lref.path, node, line);
+    if (type->info.lref.target) {
         return EXIT_SUCCESS;
     }
 

@@ -260,6 +260,11 @@ typedef enum {
     LY_TYPE_UINT64,      /**< 64-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
 } LY_DATA_TYPE;
 #define LY_DATA_TYPE_COUNT 20        /**< number of #LY_DATA_TYPE built-in types */
+#define LY_DATA_TYPE_MASK 0x3f       /**< mask for valid type values, 2 bits are reserver for #LY_TYPE_LEAFREF_UNRES and
+                                          #LY_TYPE_INST_UNRES in case of parsing with #LYD_OPT_FILTER or #LYD_OPT_EDIT
+                                          options. */
+#define LY_TYPE_LEAFREF_UNRES 0x40   /**< flag for unresolved leafref, the rest of bits store the target node's type */
+#define LY_TYPE_INST_UNRES 0x80      /**< flag for unresolved instance-identifier, always use in conjunction with LY_TYPE_INST */
 
 /**
  * @brief YANG type structure providing information from the schema
@@ -332,6 +337,7 @@ struct lys_type {
         struct {
             const char *path;        /**< path to the referred leaf or leaf-list node (mandatory), see
                                           [RFC 6020 sec. 9.9.2](http://tools.ietf.org/html/rfc6020#section-9.9.2) */
+            struct lys_node_leaf* target; /**< target schema node according to path */
         } lref;                      /**< part for #LY_TYPE_LEAFREF */
 
         /* LY_TYPE_STRING */

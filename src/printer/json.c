@@ -139,12 +139,8 @@ static void
 json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
 {
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
-    struct lys_node_leaf *sleaf = (struct lys_node_leaf *)node->schema;
-    struct lys_type *type;
     LY_DATA_TYPE data_type;
     const char *schema;
-    char dec[21];
-    int i, len;
 
     if (!onlyvalue) {
         if (!node->parent || nscmp(node, node->parent)) {
@@ -163,88 +159,40 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
 
     data_type = leaf->value_type;
 
-    switch (data_type) {
+    switch (data_type & LY_DATA_TYPE_MASK) {
     case LY_TYPE_BINARY:
     case LY_TYPE_STRING:
-        fprintf(f, "\"%s\"", leaf->value.string ? leaf->value.string : "");
-        break;
     case LY_TYPE_BITS:
-        fputc('"', f);
-
-        /* locate bits structure with the bits definitions to get the array size */
-        for (type = &sleaf->type; type->der->type.der; type = &type->der->type);
-
-        /* print set bits */
-        for (i = 0; i < type->info.bits.count; i++) {
-            if (leaf->value.bit[i]) {
-                fprintf(f, "%s%s", i ? " " : "", leaf->value.bit[i]->name);
-            }
-        }
-        fputc('"', f);
-        break;
-    case LY_TYPE_BOOL:
-        fprintf(f, "%s", leaf->value.bool ? "true" : "false");
-        break;
-    case LY_TYPE_DEC64:
-
-        /* locate dec structure with the fraction-digits definitions to get the value */
-        for (type = &sleaf->type; type->der->type.der; type = &type->der->type);
-
-        snprintf(dec, 21, "%" PRId64, leaf->value.dec64);
-        len = strlen(dec);
-        for (i = 0; dec[i]; ) {
-            fputc(dec[i++], f);
-            if (i +  type->info.dec64.dig == len) {
-                fputc('.', f);
-            }
-        }
-
-        break;
-    case LY_TYPE_EMPTY:
-        fprintf(f, "[null]");
-        break;
     case LY_TYPE_ENUM:
-        fprintf(f, "\"%s\"", leaf->value.enm->name);
-        break;
     case LY_TYPE_IDENT:
-        if (sleaf->module != leaf->value.ident->module) {
-            /* namespace identifier is needed */
-            fprintf(f, "\"%s:%s\"", leaf->value.ident->module->name, leaf->value.ident->name);
-        } else {
-            /* no namespace is needed */
-            fprintf(f, "\"%s\"", leaf->value.ident->name);
-        }
+        fprintf(f, "\"%s\"", leaf->value_str ? leaf->value_str : "");
         break;
+
+    case LY_TYPE_BOOL:
+    case LY_TYPE_DEC64:
+    case LY_TYPE_INT8:
+    case LY_TYPE_INT16:
+    case LY_TYPE_INT32:
+    case LY_TYPE_INT64:
+    case LY_TYPE_UINT8:
+    case LY_TYPE_UINT16:
+    case LY_TYPE_UINT32:
+    case LY_TYPE_UINT64:
+        fprintf(f, "%s", leaf->value_str ? leaf->value_str : "");
+        break;
+
     case LY_TYPE_INST:
         json_print_instid(f, leaf);
         break;
+
     case LY_TYPE_LEAFREF:
         json_print_leaf(f, level, leaf->value.leafref, 1);
         break;
-    case LY_TYPE_INT8:
-        fprintf(f, "%d", leaf->value.int8);
+
+    case LY_TYPE_EMPTY:
+        fprintf(f, "[null]");
         break;
-    case LY_TYPE_INT16:
-        fprintf(f, "%d", leaf->value.int16);
-        break;
-    case LY_TYPE_INT32:
-        fprintf(f, "%d", leaf->value.int32);
-        break;
-    case LY_TYPE_INT64:
-        fprintf(f, "\"%ld\"", leaf->value.int64);
-        break;
-    case LY_TYPE_UINT8:
-        fprintf(f, "%u", leaf->value.uint8);
-        break;
-    case LY_TYPE_UINT16:
-        fprintf(f, "%u", leaf->value.uint16);
-        break;
-    case LY_TYPE_UINT32:
-        fprintf(f, "%u", leaf->value.uint32);
-        break;
-    case LY_TYPE_UINT64:
-        fprintf(f, "\"%lu\"", leaf->value.uint64);
-        break;
+
     default:
         /* error */
         fprintf(f, "\"(!error!)\"");
@@ -253,6 +201,7 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
     if (!onlyvalue) {
         fprintf(f, "%s\n", lyd_is_last(node) ? "" : ",");
     }
+    return;
 }
 
 static void

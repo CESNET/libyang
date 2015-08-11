@@ -26,8 +26,9 @@ set(libsrc
 	src/dict.c
 	src/parse.c
 	src/resolve.c
+	src/validation.c
 	src/xml.c
-        src/parser.c
+	src/parser.c
 	src/parser/yin.c
 	src/parser/xml.c
 	src/tree.c

@@ -88,6 +88,7 @@ const char *ly_errs[] = {
 
 /* LYE_INELEM */       "Unknown element \"%s\".",
 /* LYE_INELEM_LEN */   "Unknown element \"%*s\".",
+/* LYE_MISSELEM */     "Missing required element \"%s\" in \"%s\".",
 /* LYE_INVAL */        "Invalid value \"%s\" in \"%s\" element.",
 /* LYE_OORVAL */       "Value \"%s\" is out of range or length.",
 /* LYE_INCHAR */       "Unexpected character(s) '%c' (%.15s).",

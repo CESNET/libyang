@@ -326,13 +326,15 @@ struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
  */
 #define LYD_OPT_STRICT   0x01  /**< instead of silent ignoring data without schema definition, rise error.
                                     Having an unknown element of the known namespace is always an error. */
-#define LYD_OPT_FILTER   0x02  /**< make validation to accept NETCONF subtree filter data:
+#define LYD_OPT_EDIT     0x02  /**< make validation to accept NETCONF edit-config's content:
+                                    - mandatory nodes can be omitted
+                                    - leafrefs and instance-identifier are not resolved */
+#define LYD_OPT_FILTER   0x04  /**< make validation to accept NETCONF subtree filter data:
                                     - leafs/leaf-lists with no data are allowed (even not allowed e.g. by length restriction)
                                     - multiple instances of container/leaf/.. are allowed
                                     - list's keys are not required
-                                    - leafrefs and identityref are not resolved */
-#define LYD_OPT_EDIT     0x04  /**< make validation to accept NETCONF edit-config's content:
-                                    - leafrefs and identityref are not resolved */
+                                    - mandatory nodes can be omitted
+                                    - leafrefs and instance-identifier are not resolved */
 /**
  * @}
  */
