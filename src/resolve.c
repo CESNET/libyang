@@ -1494,7 +1494,7 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
  */
-static struct lys_node
+static struct lys_node*
 resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_node *parent_node, uint32_t line)
 {
     struct lys_node *child, *node;
