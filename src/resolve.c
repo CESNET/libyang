@@ -1,3 +1,24 @@
+/**
+ * @file resolve.c
+ * @author Michal Vasko <mvasko@cesnet.cz>
+ * @brief libyang resolve functions
+ *
+ * Copyright (c) 2015 CESNET, z.s.p.o.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of the Company nor the names of its contributors
+ *    may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ */
+
 #define _GNU_SOURCE
 
 #include <stdlib.h>
@@ -13,8 +34,18 @@
 #include "dict.h"
 #include "tree_internal.h"
 
-/* does not log
- * syntax is assumed to be correct, *local_intv MUST be NULL */
+/**
+ * @brief Resolves length or range intervals. Does not log.
+ * Syntax is assumed to be correct, *local_intv MUST be NULL.
+ *
+ * @param[in] str_restr The restriction as a string.
+ * @param[in] type The type of the restriction.
+ * @param[in] superior_restr Flag whether to check superior
+ * types.
+ * @param[out] local_intv The final interval structure.
+ *
+ * @return EXIT_SUCCESS on succes, EXIT_FAILURE otherwise.
+ */
 int
 resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int superior_restr, struct len_ran_intv** local_intv)
 {
@@ -364,7 +395,16 @@ cleanup:
     return ret;
 }
 
-/* does not log */
+/**
+ * @brief Resolve a typedef. Does not log.
+ *
+ * @param[in] name Typedef name.
+ * @param[in] prefix Typedef name prefix.
+ * @param[in] module The main module.
+ * @param[in] parent The parent of the resolved type definition.
+ *
+ * @return Typedef pointer on succes, NULL otherwise.
+ */
 struct lys_tpdf *
 resolve_superior_type(const char *name, const char *prefix, struct lys_module *module, struct lys_node *parent)
 {
@@ -476,7 +516,19 @@ check_default(struct lys_type *type, const char *value)
     return EXIT_SUCCESS;
 }
 
-/* logs directly */
+/**
+ * @brief Check a key for mandatory attributes. Logs directly.
+ *
+ * @param[in] key The key to check.
+ * @param[in] flags What flags to check.
+ * @param[in] list The list of all the keys.
+ * @param[in] index Index of the key in the key list.
+ * @param[in] name The name of the keys.
+ * @param[in] len The name length.
+ * @param[in] line The line in the input file.
+ *
+ * @return EXIT_SUCCESS on succes, EXIT_FAILURE otherwise.
+ */
 static int
 check_key(struct lys_node_leaf *key, uint8_t flags, struct lys_node_leaf **list, int index, const char *name, int len,
           uint32_t line)
@@ -525,7 +577,15 @@ check_key(struct lys_node_leaf *key, uint8_t flags, struct lys_node_leaf **list,
     return EXIT_SUCCESS;
 }
 
-/* does not log */
+/**
+ * @brief Resolve (find) a prefix in a module include import. Does not log.
+ *
+ * @param[in] mod The module with the import.
+ * @param[in] prefix The prefix to find.
+ * @param[in] pref_len The prefix length.
+ *
+ * @return The matching module on success, NULL on error.
+ */
 static struct lys_module *
 resolve_import_in_includes_recursive(struct lys_module *mod, const char *prefix, uint32_t pref_len)
 {
@@ -553,7 +613,15 @@ resolve_import_in_includes_recursive(struct lys_module *mod, const char *prefix,
     return NULL;
 }
 
-/* does not log */
+/**
+ * @brief Resolve (find) a prefix in a module import. Does not log.
+ *
+ * @param[in] mod The module with the import.
+ * @param[in] prefix The prefix to find.
+ * @param[in] pref_len The prefix length.
+ *
+ * @return The matching module on success, NULL on error.
+ */
 static struct lys_module *
 resolve_prefixed_module(struct lys_module *mod, const char *prefix, uint32_t pref_len)
 {
@@ -575,7 +643,16 @@ resolve_prefixed_module(struct lys_module *mod, const char *prefix, uint32_t pre
     return resolve_import_in_includes_recursive(mod, prefix, pref_len);
 }
 
-/* logs directly */
+/**
+ * @brief Resolve (fill) a unique. Logs directly.
+ *
+ * @param[in] parent The parent node of the unique structure.
+ * @param[in] uniq_str The value of the unique node.
+ * @param[in] uniq_s The unique structure in question.
+ * @param[in] line The line in the input file.
+ *
+ * @return EXIT_SUCCESS on succes, EXIT_FAILURE otherwise.
+ */
 int
 resolve_unique(struct lys_node *parent, const char *uniq_str, struct lys_unique *uniq_s, uint32_t line)
 {
@@ -637,7 +714,15 @@ error:
     return EXIT_FAILURE;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve (fill) a grouping in an uses. Logs directly.
+ *
+ * @param[in] parent The parent node of the uses.
+ * @param[in] uses The uses in question.
+ * @param[in] line The line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
+ */
 static int
 resolve_grouping(struct lys_node *parent, struct lys_node_uses *uses, uint32_t line)
 {
@@ -721,7 +806,15 @@ resolve_grouping(struct lys_node *parent, struct lys_node_uses *uses, uint32_t l
     return EXIT_FAILURE;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve (find) a feature definition. Logs directly.
+ *
+ * @param[in] name Feature name.
+ * @param[in] module Module to search in.
+ * @param[in] line The line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
+ */
 static struct lys_feature *
 resolve_feature(const char *name, struct lys_module *module, uint32_t line)
 {
@@ -781,7 +874,19 @@ resolve_feature(const char *name, struct lys_module *module, uint32_t line)
     return NULL;
 }
 
-/* does not log */
+/**
+ * @brief Resolve (find) a valid child of a parent. Does not log.
+ *
+ * Valid child means a chema pointer to a node that is part of
+ * the data meaning uses are skipped.
+ *
+ * @param[in] parent Parent to search in.
+ * @param[in] name Child name.
+ * @param[in] len Child name length.
+ * @param[in] type ORed desired type of the node.
+ *
+ * @return Node of the desired type, NULL if no matching node was found.
+ */
 struct lys_node *
 resolve_child(struct lys_node *parent, const char *name, int len, LYS_NODE type)
 {
@@ -811,7 +916,8 @@ resolve_child(struct lys_node *parent, const char *name, int len, LYS_NODE type)
     return NULL;
 }
 
-/* does not log
+/**
+ * @brief Resolve (find) a schema node based on a schema-nodeid. Does not log.
  *
  * node_type - LYS_AUGMENT (searches also RPCs and notifications)
  *           - LYS_USES    (only descendant-schema-nodeid allowed, ".." not allowed, always return a grouping)
@@ -820,6 +926,13 @@ resolve_child(struct lys_node *parent, const char *name, int len, LYS_NODE type)
  *
  * If id is absolute, start is ignored. If id is relative, start must be the first child to be searched
  * continuing with its siblings.
+ *
+ * @param[in] id Schema-nodeid string.
+ * @param[in] start Start of the relative search.
+ * @param[in] mod Module in question.
+ * @param[in] node_type Decides how to modify the search.
+ *
+ * @return Matching node, NULL on fail.
  */
 struct lys_node *
 resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module *mod, LYS_NODE node_type)
@@ -984,7 +1097,20 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
     return NULL;
 }
 
-/* does not log */
+/**
+ * @brief Resolve (find) a data node. Does not log.
+ *
+ * @param[in] prefix Prefix of the data node.
+ * @param[in] pref_len Length of the prefix.
+ * @param[in] name Name of the data node.
+ * @param[in] nam_len Length of the name.
+ * @param[in] data_source Data node that defines the prefix and the name,
+ *                        to find the correct module.
+ * @param[in,out] parents Resolved nodes. If there are some parents,
+ *                        they are replaced (!!) with the resolvents.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
+ */
 static int
 resolve_data_nodeid(const char *prefix, int pref_len, const char *name, int nam_len, struct lyd_node *data_source,
                     struct unres_data **parents)
@@ -1040,11 +1166,21 @@ resolve_data_nodeid(const char *prefix, int pref_len, const char *name, int nam_
     return !flag;
 }
 
-/* logs directly
- * ... /node[source = destination] ... */
+/**
+ * @brief Resolve a path predicate (leafref) in data context. Logs directly.
+ *
+ * @param[in] pred Predicate in question.
+ * @param[in,out] node_match Nodes satisfying the restriction
+ *                           without the predicate. Nodes not
+ *                           satisfying the predicate are removed.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
+ */
 static int
 resolve_path_predicate_data(const char *pred, struct unres_data **node_match, uint32_t line)
 {
+    /* ... /node[source = destination] ... */
     struct unres_data *source_match, *dest_match, *node, *node_prev = NULL;
     const char *path_key_expr, *source, *sour_pref, *dest, *dest_pref;
     int pke_len, sour_len, sour_pref_len, dest_len, dest_pref_len, parsed = 0, pke_parsed = 0;
@@ -1142,7 +1278,15 @@ remove_leafref:
     return parsed;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve a path (leafref) in data context. Logs directly.
+ *
+ * @param[in] unres Nodes matching the schema path.
+ * @param[in] path Path in question.
+ * @param[in,out] ret Matching nodes.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
+ */
 int
 resolve_path_arg_data(struct unres_data *unres, const char *path, struct unres_data **ret)
 {
@@ -1244,9 +1388,19 @@ error:
     return EXIT_FAILURE;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve a path (leafref) predicate in schema context. Logs directly.
+ *
+ * @param[in] path Path in question.
+ * @param[in] mod Schema module.
+ * @param[in] source_node Left operand node.
+ * @param[in] dest_node Right ooperand node.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
+ */
 static int
-resolve_path_predicate_schema(const char *pred, struct lys_module *mod, struct lys_node *source_node,
+resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct lys_node *source_node,
                               struct lys_node *dest_node, uint32_t line)
 {
     struct lys_node *src_node, *dst_node;
@@ -1255,13 +1409,13 @@ resolve_path_predicate_schema(const char *pred, struct lys_module *mod, struct l
     int has_predicate, dest_parent_times = 0, i;
 
     do {
-        if ((i = parse_path_predicate(pred, &sour_pref, &sour_pref_len, &source, &sour_len, &path_key_expr,
+        if ((i = parse_path_predicate(path, &sour_pref, &sour_pref_len, &source, &sour_len, &path_key_expr,
                                       &pke_len, &has_predicate)) < 1) {
-            LOGVAL(LYE_INCHAR, line, pred[-i], pred-i);
+            LOGVAL(LYE_INCHAR, line, path[-i], path-i);
             return -parsed+i;
         }
         parsed += i;
-        pred += i;
+        path += i;
 
         /* source (must be leaf, from the same module) */
         if (sour_pref && (resolve_prefixed_module(mod, sour_pref, sour_pref_len) != mod)) {
@@ -1330,8 +1484,17 @@ resolve_path_predicate_schema(const char *pred, struct lys_module *mod, struct l
     return parsed;
 }
 
-/* logs indirectly */
-static struct lys_node *
+/**
+ * @brief Resolve a path (leafref) in schema context. Logs indirectly.
+ *
+ * @param[in] mod Module in question.
+ * @param[in] path Path in question.
+ * @param[in] parent_node Parent of the leafref.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
+ */
+static struct lys_node
 resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_node *parent_node, uint32_t line)
 {
     struct lys_node *child, *node;
@@ -1413,11 +1576,20 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
     return node;
 }
 
-/* does not log
- * ... /node[target = value] ... */
+/**
+ * @brief Resolve instance-identifier predicate. Does not log.
+ *
+ * @param[in] pred Predicate in question.
+ * @param[in,out] node_match Nodes matching the restriction without
+ *                           the predicate. Nodes not satisfying
+ *                           the predicate are removed.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
+ */
 static int
 resolve_predicate(const char *pred, struct unres_data **node_match)
 {
+    /* ... /node[target = value] ... */
     struct unres_data *target_match, *node, *node_prev = NULL, *tmp;
     const char *prefix, *name, *value;
     int pref_len, nam_len, val_len, i, has_predicate, cur_idx, idx, parsed;
@@ -1497,7 +1669,16 @@ remove_instid:
     return parsed;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve instance-identifier. Logs directly.
+ *
+ * @param[in] unres Node of the instance-id type.
+ * @param[in] path Instance-identifier node value.
+ * @param[in] path_len Path length.
+ * @param[in,out] ret Matching nodes.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
+ */
 int
 resolve_instid(struct unres_data *unres, const char *path, int path_len, struct unres_data **ret)
 {
@@ -1578,7 +1759,11 @@ error:
     return EXIT_FAILURE;
 }
 
-/* does not log */
+/**
+ * @brief Passes config flag down to children. Does not log.
+ *
+ * @param[in] node Parent node.
+ */
 static void
 inherit_config_flag(struct lys_node *node)
 {
@@ -1588,7 +1773,15 @@ inherit_config_flag(struct lys_node *node)
     }
 }
 
-/* does not log */
+/**
+ * @brief Resolve augment target, Does not log.
+ *
+ * @param[in] aug Augment in question.
+ * @param[in] siblings Nodes where to start the search in.
+ * @param[in] module Main module.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
+ */
 static int
 resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct lys_module *module)
 {
@@ -1628,7 +1821,15 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
     return EXIT_SUCCESS;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve uses, apply augments, refines. Logs directly.
+ *
+ * @param[in] uses Uses in question.
+ * @param[in,out] unres List of unresolved items.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURER otherwise.
+ */
 int
 resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t line)
 {
@@ -1769,7 +1970,15 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
     return EXIT_SUCCESS;
 }
 
-/* does not log */
+/**
+ * @brief Resolve base identity recursively. Does not log.
+ *
+ * @param[in] module Main module.
+ * @param[in] ident Identity in question.
+ * @param[in] basename Base name of the identity.
+ *
+ * @return Pointer to the identity, NULL on error.
+ */
 static struct lys_ident *
 resolve_base_ident_sub(struct lys_module *module, struct lys_ident *ident, const char *basename)
 {
@@ -1833,7 +2042,17 @@ resolve_base_ident_sub(struct lys_module *module, struct lys_ident *ident, const
     return NULL;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve base identity. Logs directly.
+ *
+ * @param[in] module Main module.
+ * @param[in] ident Identity in question.
+ * @param[in] basename Base name of the identity.
+ * @param[in] parent Either "type" or "ident".
+ * @param[in] line Line in the input file.
+ *
+ * @return Pointer to the base identity, NULL on error.
+ */
 static struct lys_ident *
 resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const char *basename, const char* parent,
                    uint32_t line)
@@ -1884,7 +2103,15 @@ resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const cha
     return result;
 }
 
-/* does not log */
+/**
+ * @brief Resolve identityref. Does not log.
+ *
+ * @param[in] base Base identity.
+ * @param[in] name Identityref name.
+ * @param[in] ns Namespace of the identityref.
+ *
+ * @return Pointer to the identity resolvent, NULL on error.
+ */
 struct lys_ident *
 resolve_identityref(struct lys_ident *base, const char *name, const char *ns)
 {
@@ -1905,7 +2132,16 @@ resolve_identityref(struct lys_ident *base, const char *name, const char *ns)
     return NULL;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve unres identity. Logs directly.
+ *
+ * @param[in] mod Main module.
+ * @param[in] ident Identity in question.
+ * @param[in] base_name Base name of the identity.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
 static int
 resolve_unres_ident(struct lys_module *mod, struct lys_ident *ident, const char *base_name, uint32_t line)
 {
@@ -1917,7 +2153,16 @@ resolve_unres_ident(struct lys_module *mod, struct lys_ident *ident, const char 
     return EXIT_FAILURE;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve unres identityref. Logs directly.
+ *
+ * @param[in] mod Main module.
+ * @param[in] type Type in question.
+ * @param[in] base_name Base name of the identity.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
 static int
 resolve_unres_type_identref(struct lys_module *mod, struct lys_type *type, const char *base_name, uint32_t line)
 {
@@ -1930,7 +2175,16 @@ resolve_unres_type_identref(struct lys_module *mod, struct lys_type *type, const
     return EXIT_FAILURE;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve unres leafref. Logs directly.
+ *
+ * @param[in] mod Main module.
+ * @param[in] type Type in question.
+ * @param[in] node Leafref schema node.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
 static int
 resolve_unres_type_leafref(struct lys_module *mod, struct lys_type *type, struct lys_node *node, uint32_t line)
 {
@@ -1943,7 +2197,16 @@ resolve_unres_type_leafref(struct lys_module *mod, struct lys_type *type, struct
     return EXIT_FAILURE;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve unres derived type. Logs directly.
+ *
+ * @param[in] mod Main module.
+ * @param[in] type Type in question.
+ * @param[in] type_name Derived type name,
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
 static int
 resolve_unres_type_der(struct lys_module *mod, struct lys_type *type, const char *type_name, uint32_t line)
 {
@@ -1957,7 +2220,15 @@ resolve_unres_type_der(struct lys_module *mod, struct lys_type *type, const char
     return EXIT_FAILURE;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve unres identity. Logs directly.
+ *
+ * @param[in] mod Main module.
+ * @param[in] augment Augment in question.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
 static int
 resolve_unres_augment(struct lys_module *mod, struct lys_node_augment *aug, uint32_t line)
 {
@@ -1971,7 +2242,16 @@ resolve_unres_augment(struct lys_module *mod, struct lys_node_augment *aug, uint
     return EXIT_FAILURE;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve unres if-feature. Logs directly.
+ *
+ * @param[in] mod Main module.
+ * @param[in,out] feat_ptr Pointer to the resolved feature.
+ * @param[in] feat_name Name of the feature.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
 static int
 resolve_unres_iffeature(struct lys_module *mod, struct lys_feature **feat_ptr, const char *feat_name, uint32_t line)
 {
@@ -1984,7 +2264,15 @@ resolve_unres_iffeature(struct lys_module *mod, struct lys_feature **feat_ptr, c
     return EXIT_FAILURE;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve unres uses. Logs directly.
+ *
+ * @param[in] uses Uses in question.
+ * @param[in] unres Specific unres item.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
 static int
 resolve_unres_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t line)
 {
@@ -1998,7 +2286,15 @@ resolve_unres_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint3
     return EXIT_FAILURE;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve unres identity. Logs directly.
+ *
+ * @param[in] type Type in question.
+ * @param[in] dflt Default value.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
 static int
 resolve_unres_type_dflt(struct lys_type *type, const char *dflt, uint32_t line)
 {
@@ -2010,7 +2306,15 @@ resolve_unres_type_dflt(struct lys_type *type, const char *dflt, uint32_t line)
     return EXIT_FAILURE;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve choice default. Logs directly.
+ *
+ * @param[in] choice Main module.
+ * @param[in] dflt Default case name.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
 static int
 resolve_unres_choice_dflt(struct lys_node_choice *choice, const char *dflt, uint32_t line)
 {
@@ -2024,7 +2328,15 @@ resolve_unres_choice_dflt(struct lys_node_choice *choice, const char *dflt, uint
     return EXIT_FAILURE;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve unres identity. Logs directly.
+ *
+ * @param[in] list List in question.
+ * @param[in] keys_str Keys node value.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
 static int
 resolve_unres_list_keys(struct lys_node_list *list, const char *keys_str, uint32_t line)
 {
@@ -2059,7 +2371,15 @@ resolve_unres_list_keys(struct lys_node_list *list, const char *keys_str, uint32
     return EXIT_SUCCESS;
 }
 
-/* logs directly */
+/**
+ * @brief Resolve unres unique. Logs directly.
+ *
+ * @param[in] uniq Unique in question.
+ * @param[in] uniq_str Unique node value.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
 static int
 resolve_unres_list_uniq(struct lys_unique *uniq, const char *uniq_str, uint32_t line)
 {
