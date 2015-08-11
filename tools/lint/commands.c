@@ -86,7 +86,7 @@ cmd_searchpath_help(void)
 void
 cmd_verb_help(void)
 {
-    printf("verb (error | warning | verbose | debug)\n");
+    printf("verb (error/0 | warning/1 | verbose/2 | debug/3)\n");
 }
 
 int
@@ -647,13 +647,13 @@ cmd_verb(const char *arg)
     }
 
     verb = arg + 5;
-    if (strcmp(verb, "error") == 0) {
+    if (!strcmp(verb, "error") || !strcmp(verb, "0")) {
         ly_verb(0);
-    } else if (strcmp(verb, "warning") == 0) {
+    } else if (!strcmp(verb, "warning") || !strcmp(verb, "1")) {
         ly_verb(1);
-    } else if (strcmp(verb, "verbose") == 0) {
+    } else if (!strcmp(verb, "verbose")  || !strcmp(verb, "2")) {
         ly_verb(2);
-    } else if (strcmp(verb, "debug") == 0) {
+    } else if (!strcmp(verb, "debug")  || !strcmp(verb, "3")) {
         ly_verb(3);
     } else {
         fprintf(stderr, "Unknown verbosity \"%s\"\n", verb);
