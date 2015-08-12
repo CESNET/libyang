@@ -342,8 +342,9 @@ struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
 /**
  * @brief Parse (and validate according to appropriate schema from the given context) data.
  *
- * In case of LY_XML format, the data string is expected to contain XML data under the single
- * \<config\> or \<data\> element in the "urn:ietf:params:xml:ns:netconf:base:1.0" namespace.
+ * In case of LY_XML format, the data string is expected to contain XML data under a single
+ * XML element. The element is not parsed, but it is expected to keep XML data well formed in all
+ * cases. There are no restrictions for the element name or its namespace.
  *
  * LY_JSON format is not yet supported.
  *

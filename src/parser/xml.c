@@ -1082,12 +1082,6 @@ xml_read_data(struct ly_ctx *ctx, const char *data, int options)
         return NULL;
     }
 
-    /* check the returned data - the root must be config or data in NETCONF namespace */
-    if (!xml->ns || strcmp(xml->ns->value, LY_NSNC) || (strcmp(xml->name, "data") && strcmp(xml->name, "config"))) {
-        LOGERR(LY_EINVAL, "XML data parser expect <data> or <config> root in \"%s\" namespace.", LY_NSNC);
-        return NULL;
-    }
-
     ly_errno = 0;
     result = xml_parse_data(ctx, xml->child, NULL, NULL, options, &unres);
     /* check leafrefs and/or instids if any */
