@@ -23,7 +23,7 @@
 
 #include "libyang.h"
 
-int
+struct lys_node_leaf *
 lyv_keys_present(struct lyd_node_list *list)
 {
     struct lyd_node *aux;
@@ -40,7 +40,7 @@ lyv_keys_present(struct lyd_node_list *list)
         }
         if (!aux) {
             /* key not found in the data */
-            return EXIT_FAILURE;
+            return schema->keys[i];
         }
     }
 

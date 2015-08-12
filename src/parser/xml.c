@@ -955,11 +955,13 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     }
 
     /* various validation checks */
+
+    /* check presence of all keys in case of list */
     if (schema->nodetype == LYS_LIST && !(options & LYD_OPT_FILTER)) {
-        /* check presence of all keys in case of list */
-        if (lyv_keys_present((struct lyd_node_list *)result)) {
+        siter = (struct lys_node *)lyv_keys_present((struct lyd_node_list *)result);
+        if (siter) {
             /* key not found in the data */
-            LOGVAL(LYE_MISSELEM, LOGLINE(xml), ((struct lys_node_list * )schema)->keys[i]->name, schema->name);
+            LOGVAL(LYE_MISSELEM, LOGLINE(xml), siter->name, schema->name);
             goto error;
         }
     }

@@ -32,8 +32,8 @@
  * Does not log.
  *
  * @param[in] list The list data node to check
- * @return EXIT_SUCCESS or EXIT_FAILURE
+ * @return NULL on success or pointer to the first missing key schema node
  */
-int lyv_keys_present(struct lyd_node_list *list);
+struct lys_node_leaf * lyv_keys_present(struct lyd_node_list *list);
 
 #endif /* LY_VALIDATION_H_ */
