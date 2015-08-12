@@ -434,6 +434,11 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
     /* will be change in case of union */
     leaf->value_type = node_type->base;
 
+    if ((options & LYD_OPT_FILTER) && !leaf->value_str) {
+        /* no value in filter (selection) node -> nothing more is needed */
+        return EXIT_SUCCESS;
+    }
+
     switch (node_type->base) {
     case LY_TYPE_BINARY:
         leaf->value.binary = leaf->value_str;
