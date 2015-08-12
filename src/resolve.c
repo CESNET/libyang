@@ -1696,7 +1696,6 @@ resolve_instid(struct unres_data *unres, const char *path, int path_len, struct 
 {
     struct lyd_node *data;
     struct unres_data *riter = NULL, *raux;
-    const char *apath = strndupa(path, path_len);
     const char *prefix, *name;
     int i, parsed, pref_len, nam_len, has_predicate;
 
@@ -1708,12 +1707,17 @@ resolve_instid(struct unres_data *unres, const char *path, int path_len, struct 
 
     /* searching for nodeset */
     do {
-        if ((i = parse_instance_identifier(apath, &prefix, &pref_len, &name, &nam_len, &has_predicate)) < 1) {
-            LOGVAL(LYE_INCHAR, unres->line, apath[-i], apath-i);
+        if ((i = parse_instance_identifier(path, &prefix, &pref_len, &name, &nam_len, &has_predicate)) < 1) {
+            LOGVAL(LYE_INCHAR, unres->line, path[-i], &path[-i]);
             goto error;
         }
         parsed += i;
-        apath += i;
+        path += i;
+
+        if (parsed > path_len) {
+            LOGVAL(LYE_INCHAR, unres->line, path[path_len-parsed], &path[path_len-parsed]);
+            goto error;
+        }
 
         if (resolve_data_nodeid(prefix, pref_len, name, nam_len, data, ret)) {
             LOGVAL(LYE_LINE, unres->line);
@@ -1744,12 +1748,17 @@ resolve_instid(struct unres_data *unres, const char *path, int path_len, struct 
                     riter = *ret;
                 }
             }
-            if ((i = resolve_predicate(apath, ret)) < 1) {
-                LOGVAL(LYE_INPRED, unres->line, apath-i);
+            if ((i = resolve_predicate(path, ret)) < 1) {
+                LOGVAL(LYE_INPRED, unres->line, &path[-i]);
                 goto error;
             }
             parsed += i;
-            apath += i;
+            path += i;
+
+            if (parsed > path_len) {
+                LOGVAL(LYE_INCHAR, unres->line, path[path_len-parsed], &path[path_len-parsed]);
+                goto error;
+            }
 
             if (!*ret) {
                 LOGVAL(LYE_LINE, unres->line);
@@ -1757,7 +1766,7 @@ resolve_instid(struct unres_data *unres, const char *path, int path_len, struct 
                 goto error;
             }
         }
-    } while (apath[0] != '\0');
+    } while (parsed < path_len);
 
     return EXIT_SUCCESS;
 
