@@ -42,15 +42,19 @@
 #ifndef LY_TREE_H_
 #define LY_TREE_H_
 
+#include <stddef.h>
 #include <stdint.h>
 
 /**
  * @ingroup datatree
- * @brief Macros to iterate via all sibling elements without affecting the list itself
+ * @brief Macro to iterate via all sibling elements without affecting the list itself
  *
- * Works for all types of nodes despite it is data or schema tree.
+ * Works for all types of nodes despite it is data or schema tree, but all the
+ * parameters must be pointers to the same type.
  *
- * @param START Starting element.
+ * Use with opening curly bracket '{'. All parameters must be of the same type.
+ *
+ * @param START Pointer to the starting element.
  * @param ELEM Iterator.
  */
 #define LY_TREE_FOR(START, ELEM) \
@@ -60,18 +64,92 @@
 
 /**
  * @ingroup datatree
- * @brief Macros to iterate via all sibling elements allowing to modify the list itself (e.g. removing elements)
+ * @brief Macro to iterate via all sibling elements allowing to modify the list itself (e.g. removing elements)
  *
- * Works for all types of nodes despite it is data or schema tree.
+ * Works for all types of nodes despite it is data or schema tree, but all the
+ * parameters must be pointers to the same type.
  *
- * @param START Starting element.
+ * Use with opening curly bracket '{'. All parameters must be of the same type.
+ *
+ * @param START Pointer to the starting element.
  * @param NEXT Temporary storage to allow removing of the current iterator content.
  * @param ELEM Iterator.
  */
 #define LY_TREE_FOR_SAFE(START, NEXT, ELEM) \
     for ((ELEM) = (START); \
          (ELEM) ? (NEXT = (ELEM)->next, 1) : 0; \
-         (ELEM)= (NEXT))
+         (ELEM) = (NEXT))
+
+/**
+ * @ingroup datatree
+ * @brief Macro to iterate via all elements in a tree. This is the opening part
+ * to the #LY_TREE_DFS_END - they always have to be used together.
+ *
+ * The function follows deep-first search algorithm:
+ * <pre>
+ *     1
+ *    / \
+ *   2   4
+ *  /   / \
+ * 3   5   6
+ * </pre>
+ *
+ * Works for all types of nodes despite it is data or schema tree, but all the
+ * parameters must be pointers to the same type. Use the same parameters for
+ * #LY_TREE_DFS_BEGIN and #LY_TREE_DFS_END.
+ *
+ * Since the next node is selected as part of #LY_TREE_DFS_END, do not use
+ * continue statement between the #LY_TREE_DFS_BEGIN and #LY_TREE_DFS_BEGIN.
+ *
+ * Use with opening curly bracket '{' after the macro.
+ *
+ * @param START Pointer to the starting element processed first.
+ * @param NEXT Temporary storage, do not use.
+ * @param ELEM Iterator intended for use in the block.
+ */
+#define LY_TREE_DFS_BEGIN(START, NEXT, ELEM)                                  \
+    for ((ELEM) = (NEXT) = (START);                                           \
+         (ELEM);                                                              \
+         (ELEM) = (NEXT))
+
+/**
+ * @ingroup datatree
+ * @brief Macro to iterate via all elements in a tree. This is the closing part
+ * to the #LY_TREE_DFS_BEGIN - they always have to be used together.
+ *
+ * Works for all types of nodes despite it is data or schema tree, but all the
+ * parameters must be pointers to the same type. Use the same parameters for
+ * #LY_TREE_DFS_BEGIN and #LY_TREE_DFS_END.
+ *
+ * Use with closing curly bracket '}' after the macro.
+ *
+ * @param START Pointer to the starting element processed first.
+ * @param NEXT Temporary storage, do not use.
+ * @param ELEM Iterator intended for use in the block.
+ */
+#define LY_TREE_DFS_END(START, NEXT, ELEM)                                    \
+    /* select element for the next run - children first */                    \
+    (NEXT) = (ELEM)->child;                                                   \
+    if (offsetof(typeof(*(START)), next) < offsetof(typeof(*(START)), child)) {          \
+        /* child exception for lyd_node_leaf and lyd_node_leaflist */         \
+        if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) { \
+            (NEXT) = NULL;                                                    \
+        }                                                                     \
+    }                                                                         \
+    if (!(NEXT)) {                                                            \
+        /* no children, so try siblings */                                    \
+        (NEXT) = (ELEM)->next;                                                \
+    }                                                                         \
+    while (!(NEXT)) {                                                         \
+        /* no siblings, go back through parents */                            \
+        if ((ELEM)->parent == (START)->parent) {                              \
+            /* we are done, no next element to process */                     \
+            break;                                                            \
+        }                                                                     \
+        /* parent is already processed, go to its sibling */                  \
+        (ELEM) = (ELEM)->parent;                                              \
+        (NEXT) = (ELEM)->next;                                                \
+    }
 
 /**
  * @addtogroup schematree
