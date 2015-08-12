@@ -896,7 +896,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     result->schema = schema;
 
     /* check number of instances for non-list nodes */
-    if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML)) {
+    if (!(options & LYD_OPT_FILTER) && (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML))) {
         for (aux = result->prev; aux; aux = aux->prev) {
             if (aux->schema == schema) {
                 LOGVAL(LYE_TOOMANY, LOGLINE(xml), xml->name, xml->parent ? xml->parent->name : "data tree");
