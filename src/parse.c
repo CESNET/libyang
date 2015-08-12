@@ -29,12 +29,15 @@
 #include "resolve.h"
 #include "common.h"
 
-/*
- * The "parse_" functions do not log, they return
- * number of characters parsed, positive on success,
- * negative on error.
+/**
+ * @brief Checks the syntax of length or range statement,
+ *        on success checks the semantics as well.
+ *
+ * @param[in] expr Length or range expression.
+ * @param[in] type Type with the restriction.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
  */
-
 int
 check_length_range(const char *expr, struct lys_type *type)
 {
@@ -169,6 +172,17 @@ error:
     return ret;
 }
 
+/**
+ * @brief Parse an identifier.
+ *
+ * ;; An identifier MUST NOT start with (('X'|'x') ('M'|'m') ('L'|'l'))
+ * identifier          = (ALPHA / "_")
+ *                       *(ALPHA / DIGIT / "_" / "-" / ".")
+ *
+ * @param[in] id Identifier in question.
+ *
+ * @return Number of characters successfully parsed.
+ */
 static int
 parse_identifier(const char *id)
 {
@@ -195,6 +209,20 @@ parse_identifier(const char *id)
     return parsed;
 }
 
+/**
+ * @brief Parse a node-identifier.
+ *
+ * node-identifier     = [prefix ":"] identifier
+ *
+ * @param[in] id Identifier in question.
+ * @param[out] prefix Points to the prefix, NULL if there is not any.
+ * @param[out] pref_len Length of the prefix, 0 if there is not any.
+ * @param[out] name Points to the node name.
+ * @param[out] nam_len Length of the node name.
+ *
+ * @return Number of characters successfully parsed,
+ *         positive on success, negative on failure.
+ */
 int
 parse_node_identifier(const char *id, const char **prefix, int *pref_len, const char **name, int *nam_len)
 {
@@ -267,6 +295,24 @@ parse_node_identifier(const char *id, const char **prefix, int *pref_len, const 
     return parsed+ret;
 }
 
+/**
+ * @brief Parse a path-predicate (leafref).
+ *
+ * path-predicate      = "[" *WSP path-equality-expr *WSP "]"
+ * path-equality-expr  = node-identifier *WSP "=" *WSP path-key-expr
+ *
+ * @param[in] id Identifier in question.
+ * @param[out] prefix Points to the prefix, NULL if there is not any.
+ * @param[out] pref_len Length of the prefix, 0 if there is not any.
+ * @param[out] name Points to the node name.
+ * @param[out] nam_len Length of the node name.
+ * @param[out] path_key_expr Points to the path-key-expr.
+ * @param[out] pke_len Length of the path-key-expr.
+ * @param[out] has_predicate Flag to mark whether there is another predicate following.
+ *
+ * @return Number of characters successfully parsed,
+ *         positive on success, negative on failure.
+ */
 int
 parse_path_predicate(const char *id, const char **prefix, int *pref_len, const char **name, int *nam_len, const char **path_key_expr, int *pke_len, int *has_predicate)
 {
@@ -367,7 +413,27 @@ parse_path_predicate(const char *id, const char **prefix, int *pref_len, const c
     return parsed+1;
 }
 
-/* parent_times must be 0 on the first call, musn't be changed between consecutive calls */
+/**
+ * @brief Parse a path-key-expr (leafref). First call parses "current()", all
+ *        the ".." and the first node-identifier, other calls parse a single
+ *        node-identifier each.
+ *
+ * path-key-expr       = current-function-invocation *WSP "/" *WSP
+ *                       rel-path-keyexpr
+ * rel-path-keyexpr    = 1*(".." *WSP "/" *WSP)
+ *                       *(node-identifier *WSP "/" *WSP)
+ *                       node-identifier
+ *
+ * @param[in] id Identifier in question.
+ * @param[out] prefix Points to the prefix, NULL if there is not any.
+ * @param[out] pref_len Length of the prefix, 0 if there is not any.
+ * @param[out] name Points to the node name.
+ * @param[out] nam_len Length of the node name.
+ * @param[out] parent_times Number of ".." in the path. Must be 0 on the first call,
+ *                          must not be changed between consecutive calls.
+ * @return Number of characters successfully parsed,
+ *         positive on success, negative on failure.
+ */
 int
 parse_path_key_expr(const char *id, const char **prefix, int *pref_len, const char **name, int *nam_len, int *parent_times)
 {
@@ -484,7 +550,26 @@ parse_path_key_expr(const char *id, const char **prefix, int *pref_len, const ch
     return parsed;
 }
 
-/* parent_times must be 0 on the first call, musn't be changed between consecutive calls */
+/**
+ * @brief Parse path-arg (leafref).
+ *
+ * path-arg            = absolute-path / relative-path
+ * absolute-path       = 1*("/" (node-identifier *path-predicate))
+ * relative-path       = 1*(".." "/") descendant-path
+ *
+ * @param[in] id Identifier in question.
+ * @param[out] prefix Points to the prefix, NULL if there is not any.
+ * @param[out] pref_len Length of the prefix, 0 if there is not any.
+ * @param[out] name Points to the node name.
+ * @param[out] nam_len Length of the node name.
+ * @param[out] parent_times Number of ".." in the path. Must be 0 on the first call,
+ *                          must not be changed between consecutive calls. -1 if the
+ *                          path is relative.
+ * @param[out] has_predicate Flag to mark whether there is a predicate specified.
+ *
+ * @return Number of characters successfully parsed,
+ *         positive on success, negative on failure.
+ */
 int
 parse_path_arg(const char *id, const char **prefix, int *pref_len, const char **name, int *nam_len, int *parent_times, int *has_predicate)
 {
@@ -560,6 +645,21 @@ parse_path_arg(const char *id, const char **prefix, int *pref_len, const char **
     return parsed;
 }
 
+/**
+ * @brief Parse instance-identifier (instance-identifier).
+ *
+ * instance-identifier = 1*("/" (node-identifier *predicate))
+ *
+ * @param[in] id Identifier in question.
+ * @param[out] prefix Points to the prefix, NULL if there is not any.
+ * @param[out] pref_len Length of the prefix, 0 if there is not any.
+ * @param[out] name Points to the node name.
+ * @param[out] nam_len Length of the node name.
+ * @param[out] has_predicate Flag to mark whether there is a predicate specified.
+ *
+ * @return Number of characters successfully parsed,
+ *         positive on success, negative on failure.
+ */
 int
 parse_instance_identifier(const char *id, const char **prefix, int *pref_len, const char **name, int *nam_len, int *has_predicate)
 {
@@ -603,6 +703,28 @@ parse_instance_identifier(const char *id, const char **prefix, int *pref_len, co
     return parsed;
 }
 
+/**
+ * @brief Parse predicate (instance-identifier).
+ *
+ * predicate           = "[" *WSP (predicate-expr / pos) *WSP "]"
+ * predicate-expr      = (node-identifier / ".") *WSP "=" *WSP
+ *                       ((DQUOTE string DQUOTE) /
+ *                        (SQUOTE string SQUOTE))
+ * pos                 = non-negative-integer-value
+ *
+ * @param[in] id Identifier in question.
+ * @param[out] prefix Points to the prefix, NULL if there is not any.
+ * @param[out] pref_len Length of the prefix, 0 if there is not any.
+ * @param[out] name Points to the node name. Can be identifier (from node-identifier), "." or pos.
+ * @param[out] nam_len Length of the node name.
+ * @param[out] value Value the node-identifier must have (string from the grammar),
+ *                   NULL if there is not any.
+ * @param[out] val_len Length of the value, 0 if there is not any.
+ * @param[out] has_predicate Flag to mark whether there is a predicate specified.
+ *
+ * @return Number of characters successfully parsed,
+ *         positive on success, negative on failure.
+ */
 int
 parse_predicate(const char *id, const char **prefix, int *pref_len, const char **name, int *nam_len, const char **value, int *val_len, int *has_predicate)
 {
@@ -749,7 +871,27 @@ parse_predicate(const char *id, const char **prefix, int *pref_len, const char *
     return parsed;
 }
 
-/* is_relative must be -1 on the first call, musn't be changed between consecutive calls */
+/**
+ * @brief Parse schema-nodeid.
+ *
+ * schema-nodeid       = absolute-schema-nodeid /
+ *                       descendant-schema-nodeid
+ * absolute-schema-nodeid = 1*("/" node-identifier)
+ * descendant-schema-nodeid =
+ *                       node-identifier
+ *                       absolute-schema-nodeid
+ *
+ * @param[in] id Identifier in question.
+ * @param[out] prefix Points to the prefix, NULL if there is not any.
+ * @param[out] pref_len Length of the prefix, 0 if there is not any.
+ * @param[out] name Points to the node name. Can be identifier (from node-identifier), "." or pos.
+ * @param[out] nam_len Length of the node name.
+ * @param[out] is_relative Flag to mark whether the nodeid is absolute or descendant. Must be -1
+ *                         on the first call, must not be changed between consecutive calls.
+ *
+ * @return Number of characters successfully parsed,
+ *         positive on success, negative on failure.
+ */
 int
 parse_schema_nodeid(const char *id, const char **prefix, int *pref_len, const char **name, int *nam_len, int *is_relative)
 {
