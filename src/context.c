@@ -215,7 +215,8 @@ ly_ctx_get_module_by(struct ly_ctx *ctx, const char *key, int offset, const char
         } else {
             if (ctx->models.list[i]->rev_size && !strcmp(revision, ctx->models.list[i]->rev[0].date)) {
                 /* matching revision */
-                return result;
+                result = ctx->models.list[i];
+                break;
             }
         }
     }
