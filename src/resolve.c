@@ -1124,38 +1124,24 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
  * @return EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
  */
 static int
-resolve_data_nodeid(const char *prefix, int pref_len, const char *name, int nam_len, struct lyd_node *data_source,
-                    struct unres_data **parents)
+resolve_data(struct lys_module *mod, const char *name, int nam_len, struct lyd_node *start, struct unres_data **parents)
 {
-    int flag;
-    struct lys_module *mod;
-    struct unres_data *item, *par_iter;
+    struct unres_data *item, *par_iter, *prev = NULL;
     struct lyd_node *node;
-
-    if (prefix) {
-        /* we have prefix, find appropriate module */
-        mod = resolve_prefixed_module(data_source->schema->module, prefix, pref_len);
-        if (!mod) {
-            /* invalid prefix */
-            return EXIT_FAILURE;
-        }
-    } else {
-        /* no prefix, module is the same as of current node */
-        mod = data_source->schema->module;
-    }
+    int flag;
 
     if (!*parents) {
         *parents = malloc(sizeof **parents);
         (*parents)->dnode = NULL;
         (*parents)->next = NULL;
     }
-    for (par_iter = *parents; par_iter; par_iter = par_iter->next) {
+    for (par_iter = *parents; par_iter; ) {
         if (par_iter->dnode && (par_iter->dnode->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
             /* skip */
             continue;
         }
         flag = 0;
-        LY_TREE_FOR(par_iter->dnode ? par_iter->dnode->child : data_source, node) {
+        LY_TREE_FOR(par_iter->dnode ? par_iter->dnode->child : start, node) {
             if (node->schema->module == mod && !strncmp(node->schema->name, name, nam_len)
                     && node->schema->name[nam_len] == '\0') {
                 /* matching target */
@@ -1173,9 +1159,47 @@ resolve_data_nodeid(const char *prefix, int pref_len, const char *name, int nam_
                 }
             }
         }
+
+        if (!flag) {
+            /* remove item from the parents list */
+            if (prev) {
+                prev->next = par_iter->next;
+                free(par_iter);
+                par_iter = prev->next;
+            } else {
+                item = par_iter->next;
+                free(par_iter);
+                par_iter = *parents = item;
+            }
+        } else {
+            prev = par_iter;
+            par_iter = par_iter->next;
+        }
     }
 
-    return !flag;
+    return *parents ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+/* does not log */
+static int
+resolve_data_nodeid(const char *prefix, int pref_len, const char *name, int name_len, struct lyd_node *start,
+                    struct unres_data **parents)
+{
+    struct lys_module *mod;
+
+    if (prefix) {
+        /* we have prefix, find appropriate module */
+        mod = resolve_prefixed_module(start->schema->module, prefix, pref_len);
+        if (!mod) {
+            /* invalid prefix */
+            return EXIT_FAILURE;
+        }
+    } else {
+        /* no prefix, module is the same as of current node */
+        mod = start->schema->module;
+    }
+
+    return resolve_data(mod, name, name_len, start, parents);
 }
 
 /**
@@ -1627,7 +1651,7 @@ resolve_predicate(const char *pred, struct unres_data **node_match)
                 target_match = calloc(1, sizeof *target_match);
                 target_match->dnode = node->dnode;
             } else if (resolve_data_nodeid(prefix, pref_len, name, nam_len, node->dnode, &target_match)) {
-                return -parsed;
+                goto remove_instid;
             }
 
             /* check that we have the correct type */
@@ -1684,50 +1708,58 @@ remove_instid:
 /**
  * @brief Resolve instance-identifier. Logs directly.
  *
- * @param[in] unres Node of the instance-id type.
+ * @param[in] data Any node in the data tree, used to get a data tree root and context
  * @param[in] path Instance-identifier node value.
- * @param[in] path_len Path length.
- * @param[in,out] ret Matching nodes.
+ * @param[in] line Source line for error messages.
  *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
+ * @return Matching node or NULL if no such a node exists. If error occurs, NULL is returned and ly_errno is set.
  */
-int
-resolve_instid(struct unres_data *unres, const char *path, int path_len, struct unres_data **ret)
+struct lyd_node *
+resolve_instid(struct lyd_node *data, const char *path, int line)
+
 {
-    struct lyd_node *data;
-    struct unres_data *riter = NULL, *raux;
+    int i = 0, j;
+    struct lyd_node *result = NULL;
+    struct lys_module *mod = NULL;
+    struct ly_ctx *ctx = data->schema->module->ctx;
     const char *prefix, *name;
-    int i, parsed, pref_len, nam_len, has_predicate;
+    char *str;
+    int pref_len, name_len, has_predicate;
+    struct unres_data *workingnodes = NULL;
+    struct unres_data *riter = NULL, *raux;
 
-    parsed = 0;
-
-    /* we need root, absolute path */
-    for (data = unres->dnode; data->parent; data = data->parent);
+    /* we need root to resolve absolute path */
+    for (; data->parent; data = data->parent);
     for (; data->prev->next; data = data->prev);
 
-    /* searching for nodeset */
-    do {
-        if ((i = parse_instance_identifier(path, &prefix, &pref_len, &name, &nam_len, &has_predicate)) < 1) {
-            LOGVAL(LYE_INCHAR, unres->line, path[-i], &path[-i]);
+    /* search for the instance node */
+    while (path[i]) {
+        j = parse_instance_identifier(&path[i], &prefix, &pref_len, &name, &name_len, &has_predicate);
+        if (j <= 0) {
+            LOGVAL(LYE_INCHAR, line, path[i-j], &path[i-j]);
             goto error;
         }
-        parsed += i;
-        path += i;
+        i += j;
 
-        if (parsed > path_len) {
-            LOGVAL(LYE_INCHAR, unres->line, path[path_len-parsed], &path[path_len-parsed]);
-            goto error;
+        if (prefix) {
+            str = strndup(prefix, pref_len);
+            mod = ly_ctx_get_module(ctx, str, NULL);
+            free(str);
         }
 
-        if (resolve_data_nodeid(prefix, pref_len, name, nam_len, data, ret)) {
-            LOGVAL(LYE_LINE, unres->line);
-            /* general error, the one written later will suffice */
-            goto error;
+        if (!mod) {
+            /* no instance exists */
+            return NULL;
+        }
+
+        if (resolve_data(mod, name, name_len, data, &workingnodes)) {
+            /* no instance exists */
+            return NULL;
         }
 
         if (has_predicate) {
             /* we have predicate, so the current results must be list or leaf-list */
-            for (raux = NULL, riter = *ret; riter; ) {
+            for (raux = NULL, riter = workingnodes; riter; ) {
                 if ((riter->dnode->schema->nodetype == LYS_LIST &&
                         ((struct lys_node_list *)riter->dnode->schema)->keys)
                         || (riter->dnode->schema->nodetype == LYS_LEAFLIST)) {
@@ -1743,41 +1775,59 @@ resolve_instid(struct unres_data *unres, const char *path, int path_len, struct 
                     free(riter);
                     riter = raux->next;
                 } else {
-                    *ret = riter->next;
+                    workingnodes = riter->next;
                     free(riter);
-                    riter = *ret;
+                    riter = workingnodes;
                 }
             }
-            if ((i = resolve_predicate(path, ret)) < 1) {
-                LOGVAL(LYE_INPRED, unres->line, &path[-i]);
+
+            j = resolve_predicate(&path[i], &workingnodes);
+            if (j < 1) {
+                LOGVAL(LYE_INPRED, line, &path[i-j]);
                 goto error;
             }
-            parsed += i;
-            path += i;
+            i += j;;
 
-            if (parsed > path_len) {
-                LOGVAL(LYE_INCHAR, unres->line, path[path_len-parsed], &path[path_len-parsed]);
-                goto error;
-            }
-
-            if (!*ret) {
-                LOGVAL(LYE_LINE, unres->line);
-                /* general error, the one written later will suffice */
-                goto error;
+            if (!workingnodes) {
+                /* no instance exists */
+                return NULL;
             }
         }
-    } while (parsed < path_len);
-
-    return EXIT_SUCCESS;
-
-error:
-    while (*ret) {
-        raux = (*ret)->next;
-        free(*ret);
-        *ret = raux;
     }
 
-    return EXIT_FAILURE;
+    if (!workingnodes) {
+        /* no instance exists */
+        return NULL;
+    } else if (workingnodes->next) {
+        /* instance identifier must resolve to a single node */
+        LOGVAL(LYE_TOOMANY, line, path, "data tree");
+
+        /* cleanup */
+        while (workingnodes) {
+            raux = workingnodes->next;
+            free(workingnodes);
+            workingnodes = raux;
+        }
+
+        return NULL;
+    } else {
+        /* we have required result, remember it and cleanup */
+        result = workingnodes->dnode;
+        free(workingnodes);
+
+        return result;
+    }
+
+error:
+
+    /* cleanup */
+    while (workingnodes) {
+        raux = workingnodes->next;
+        free(workingnodes);
+        workingnodes = raux;
+    }
+
+    return NULL;
 }
 
 /**

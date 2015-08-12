@@ -257,6 +257,159 @@ get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *foun
     return ret;
 }
 
+static const char *
+instid_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml)
+{
+    const char *in = xml->content;
+    char *out, *aux, *prefix;
+    size_t out_size, len, size, i = 0, o = 0;
+    int start = 1, interior = 1;
+    struct lys_module *mod, *mod_prev = NULL;
+    struct lyxml_ns *ns;
+
+    out_size = strlen(in);
+    out = malloc((out_size + 1) * sizeof *out);
+
+    while (in[i]) {
+
+        /* skip whitespaces */
+        while (isspace(in[i])) {
+            i++;
+        }
+
+        if (start) {
+            /* leading '/' character */
+            if (start == 1 && in[i] != '/') {
+                LOGVAL(LYE_INCHAR, LOGLINE(xml), in[i], &in[i]);
+                return NULL;
+            }
+
+            /* check the output buffer size */
+            if (out_size == o) {
+                out_size += 16; /* just add some size */
+                aux = realloc(out, out_size + 1);
+                if (!aux) {
+                    free(out);
+                    LOGMEM;
+                    return NULL;
+                }
+                out = aux;
+            }
+
+            out[o++] = in[i++];
+            start = 0;
+            continue;
+        } else {
+            /* translate the node identifier */
+            /* prefix */
+            aux = strchr(&in[i], ':');
+            if (aux) {
+                /* interior segment */
+                len = aux - &in[i];
+                prefix = strndup(&in[i], len);
+                i += len + 1; /* move after ':' */
+            } else {
+                /* missing prefix -> invalid instance-identifier */
+                LOGVAL(LYE_INVAL, LOGLINE(xml), xml->content, xml->name);
+                free(out);
+                return NULL;
+            }
+            ns = lyxml_get_ns(xml, prefix);
+            free(prefix);
+            mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
+
+            /* node name */
+            aux = strpbrk(&in[i], "/[=");
+            if (aux) {
+                /* interior segment */
+                len = aux - &in[i];
+            } else {
+                /* end segment */
+                interior = 0;
+                len = strlen(&in[i]);
+            }
+
+            /* check the output buffer size */
+            if (!mod_prev || (mod != mod_prev)) {
+                /* prefix + ':' + name to print + '/' */
+                size = o + len + 1 + strlen(mod->name) + interior;
+            } else {
+                /* name to print + '/' */
+                size = o + len + interior;
+            }
+            if (out_size <= size) {
+                /* extend to fit the needed size */
+                out_size = size;
+                aux = realloc(out, out_size + 1);
+                if (!aux) {
+                    free(out);
+                    LOGMEM;
+                    return NULL;
+                }
+                out = aux;
+            }
+
+            if (!mod_prev || (mod != mod_prev)) {
+                mod_prev = mod;
+                size = strlen(mod->name);
+                memcpy(&out[o], mod->name, size);
+                o += size;
+                out[o++] = ':';
+            }
+            memcpy(&out[o], &in[i], len);
+            o += len;
+            i += len;
+
+            if (in[i] == '=') {
+                /* we are in the predicate on the value, so just copy data */
+                aux = strchr(&in[i], ']');
+                if (aux) {
+                    len = aux - &in[i] + 1; /* include ] */
+
+                    /* check the output buffer size */
+                    size = o + len + 1;
+                    if (out_size <= size) {
+                        out_size = size; /* just add some size */
+                        aux = realloc(out, out_size + 1);
+                        if (!aux) {
+                            free(out);
+                            LOGMEM;
+                            return NULL;
+                        }
+                        out = aux;
+                    }
+
+                    memcpy(&out[o], &in[i], len);
+                    o += len;
+                    i += len;
+                } else {
+                    /* missing closing ] of predicate -> invalid instance-identifier */
+                    LOGVAL(LYE_INVAL, LOGLINE(xml), xml->content, xml->name);
+                    free(out);
+                    return NULL;
+                }
+            }
+            start = 2;
+        }
+    }
+
+    /* terminating NULL byte */
+    /* check the output buffer size */
+    if (out_size < o) {
+        out_size += 1; /* just add some size */
+        aux = realloc(out, out_size + 1);
+        if (!aux) {
+            free(out);
+            LOGMEM;
+            return NULL;
+        }
+        out = aux;
+    }
+    out[o] = '\0';
+
+    return lydict_insert_zc(ctx, out);
+}
+
 static int
 _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_elem *xml,
                int options, struct unres_data **unres, int log)
@@ -502,6 +655,17 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
             if (log) {
                 LOGVAL(LYE_INVAL, LOGLINE(xml), "", xml->name);
             }
+            return EXIT_FAILURE;
+        }
+
+        /* convert the path from the XML form using XML namespaces into the JSON format
+         * using module names as namespaces
+         */
+        xml->content = leaf->value_str;
+        leaf->value_str = instid_xml2json(node->schema->module->ctx, xml);
+        lydict_remove(node->schema->module->ctx, xml->content);
+        xml->content = NULL;
+        if (!leaf->value_str) {
             return EXIT_FAILURE;
         }
 
@@ -863,13 +1027,15 @@ check_unres(struct unres_data **list)
 
         /* instance-identifier */
         } else {
-            if (resolve_instid(*list, leaf->value_str, strlen(leaf->value_str), &refset)
-                    || (refset && refset->next)) {
-                if (sleaf->type.info.inst.req > -1) {
-                    LOGERR(LY_EVALID, "Instance-identifier \"%s\" validation fail.", leaf->value_str);
+            ly_errno = 0;
+            if (!resolve_instid((*list)->dnode, leaf->value_str, (*list)->line)) {
+                if (ly_errno) {
+                    goto error;
+                } else if (sleaf->type.info.inst.req > -1) {
+                    LOGERR(LY_EVALID, "Instance for the \"%s\" does not exist.", leaf->value_str);
                     goto error;
                 } else {
-                    LOGVRB("Instance-identifier \"%s\" validation fail.", leaf->value_str);
+                    LOGVRB("Instance for the \"%s\" does not exist.", leaf->value_str);
                 }
             }
 

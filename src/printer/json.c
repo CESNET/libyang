@@ -63,79 +63,6 @@ nscmp(struct lyd_node *node1, struct lyd_node *node2)
 }
 
 static void
-json_print_text_dquote(FILE *f, const char *str, int str_len)
-{
-    const char *ptr;
-
-    while ((ptr = strnchr(str, '\"', str_len))) {
-        fprintf(f, "%.*s\\\"", (int)(ptr-str), str);
-        str_len -= (ptr-str)+1;
-        str = ptr+1;
-    }
-
-    fprintf(f, "%.*s", str_len, str);
-}
-
-static void
-json_print_instid(FILE *f, struct lyd_node_leaf *leaf)
-{
-    const char *ptr, *print_ptr;
-    int cur_id_len, print_id_len;
-    struct unres_data *nodes, unres;
-    struct lys_module *prev_module = NULL, *cur_module;
-    struct lys_node *snode;
-
-    assert(((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_INST);
-
-    fputc('\"', f);
-    print_ptr = ptr = leaf->value_str+1;
-
-    while (print_ptr[0]) {
-        fputc('/', f);
-
-        /* check namespaces */
-        ptr = strchr(ptr, '/');
-        if (ptr) {
-            cur_id_len = ptr - leaf->value_str;
-        } else {
-            cur_id_len = strlen(leaf->value_str);
-        }
-
-        memset(&unres, 0, sizeof unres);
-        unres.dnode = (struct lyd_node *)leaf;
-        resolve_instid(&unres, leaf->value_str, cur_id_len, &nodes);
-        assert(nodes && !nodes->next);
-
-        snode = (struct lys_node *)nodes->dnode->schema;
-        free(nodes);
-
-        /* find current module */
-        if (snode->module->type) {
-            cur_module = ((struct lys_submodule *)snode->module)->belongsto;
-        } else {
-            cur_module = snode->module;
-        }
-
-        if (!prev_module || (cur_module != prev_module)) {
-            fprintf(f, "%s:", cur_module->ns);
-            prev_module = cur_module;
-        }
-
-        ptr = strchr(print_ptr+1, '/');
-        if (ptr) {
-            print_id_len = ptr - print_ptr;
-        } else {
-            print_id_len = strlen(print_ptr);
-        }
-
-        json_print_text_dquote(f, print_ptr, print_id_len);
-        print_ptr += print_id_len+1;
-    }
-
-    fprintf(f, "\"");
-}
-
-static void
 json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
 {
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
@@ -165,6 +92,7 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
     case LY_TYPE_BITS:
     case LY_TYPE_ENUM:
     case LY_TYPE_IDENT:
+    case LY_TYPE_INST:
         fprintf(f, "\"%s\"", leaf->value_str ? leaf->value_str : "");
         break;
 
@@ -179,10 +107,6 @@ json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
     case LY_TYPE_UINT32:
     case LY_TYPE_UINT64:
         fprintf(f, "%s", leaf->value_str ? leaf->value_str : "");
-        break;
-
-    case LY_TYPE_INST:
-        json_print_instid(f, leaf);
         break;
 
     case LY_TYPE_LEAFREF:

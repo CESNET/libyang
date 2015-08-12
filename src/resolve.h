@@ -62,7 +62,7 @@ struct lys_node *resolve_child(struct lys_node *parent, const char *name, int le
 
 int resolve_path_arg_data(struct unres_data *unres, const char *path, struct unres_data **ret);
 
-int resolve_instid(struct unres_data *unres, const char *path, int path_len, struct unres_data **ret);
+struct lyd_node *resolve_instid(struct lyd_node *data, const char *path, int line);
 
 struct lys_tpdf *resolve_superior_type(const char *name, const char *prefix, struct lys_module *module,
                                       struct lys_node *parent);
