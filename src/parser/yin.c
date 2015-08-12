@@ -2595,6 +2595,11 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         goto error;
     }
 
+    /* insert the node into the schema tree */
+    if (lys_node_addchild(parent, retval)) {
+        goto error;
+    }
+
     /* process choice's specific children */
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
@@ -2655,11 +2660,6 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         unres_add_str(module, unres, &cs->features[cs->features_size++], UNRES_IFFEAT, value, LOGLINE(sub));
     }
 
-    /* insert the node into the schema tree */
-    if (lys_node_addchild(parent, retval)) {
-        goto error;
-    }
-
     return retval;
 
 error:
@@ -2687,6 +2687,11 @@ read_yin_choice(struct lys_module *module,
 
     if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | OPT_NACMEXT
                         | (resolve ? OPT_INHERIT : 0))) {
+        goto error;
+    }
+
+    /* insert the node into the schema tree */
+    if (parent && lys_node_addchild(parent, retval)) {
         goto error;
     }
 
@@ -2796,11 +2801,6 @@ read_yin_choice(struct lys_module *module,
         unres_add_str(module, unres, choice, UNRES_CHOICE_DFLT, dflt_str, LOGLINE(yin));
     }
 
-    /* insert the node into the schema tree */
-    if (parent && lys_node_addchild(parent, retval)) {
-        goto error;
-    }
-
     return retval;
 
 error:
@@ -2829,6 +2829,10 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
 
     if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | OPT_NACMEXT
                         | (resolve ? OPT_INHERIT : 0))) {
+        goto error;
+    }
+
+    if (parent && lys_node_addchild(parent, retval)) {
         goto error;
     }
 
@@ -2905,10 +2909,6 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
         }
     }
 
-    if (parent && lys_node_addchild(parent, retval)) {
-        goto error;
-    }
-
     return retval;
 
 error:
@@ -2936,6 +2936,10 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | OPT_NACMEXT
                         | (resolve ? OPT_INHERIT : 0))) {
+        goto error;
+    }
+
+    if (parent && lys_node_addchild(parent, retval)) {
         goto error;
     }
 
@@ -3046,10 +3050,6 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
     }
 
-    if (parent && lys_node_addchild(parent, retval)) {
-        goto error;
-    }
-
     return retval;
 
 error:
@@ -3080,6 +3080,10 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
 
     if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | OPT_NACMEXT
                         | (resolve ? OPT_INHERIT : 0))) {
+        goto error;
+    }
+
+    if (parent && lys_node_addchild(parent, retval)) {
         goto error;
     }
 
@@ -3229,10 +3233,6 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             GETVAL(value, sub, "name");
             unres_add_str(module, unres, &llist->features[llist->features_size++], UNRES_IFFEAT, value, LOGLINE(sub));
         }
-    }
-
-    if (parent && lys_node_addchild(parent, retval)) {
-        goto error;
     }
 
     return retval;
@@ -3453,6 +3453,10 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
     }
 
+    if (parent && lys_node_addchild(parent, retval)) {
+        goto error;
+    }
+
     /* last part - process data nodes */
     LY_TREE_FOR_SAFE(root.child, next, sub) {
         if (!strcmp(sub->name, "container")) {
@@ -3477,10 +3481,6 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
 
         lyxml_free_elem(module->ctx, sub);
-    }
-
-    if (parent && lys_node_addchild(parent, retval)) {
-        goto error;
     }
 
     if (!key_str) {
@@ -3627,6 +3627,10 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
         }
     }
 
+    if (parent && lys_node_addchild(parent, retval)) {
+        goto error;
+    }
+
     /* last part - process data nodes */
     LY_TREE_FOR_SAFE(root.child, next, sub) {
         if (!strcmp(sub->name, "container")) {
@@ -3651,10 +3655,6 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
         }
 
         lyxml_free_elem(module->ctx, sub);
-    }
-
-    if (parent && lys_node_addchild(parent, retval)) {
-        goto error;
     }
 
     return retval;
@@ -3732,6 +3732,10 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
         }
     }
 
+    if (parent && lys_node_addchild(parent, retval)) {
+        goto error;
+    }
+
     /* last part - process data nodes */
     LY_TREE_FOR_SAFE(root.child, next, sub) {
         if (!strcmp(sub->name, "container")) {
@@ -3756,10 +3760,6 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
         }
 
         lyxml_free_elem(module->ctx, sub);
-    }
-
-    if (parent && lys_node_addchild(parent, retval)) {
-        goto error;
     }
 
     return retval;
@@ -3848,6 +3848,10 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
         }
     }
 
+    if (parent && lys_node_addchild(parent, retval)) {
+        goto error;
+    }
+
     /* last part - process data nodes */
     LY_TREE_FOR_SAFE(root.child, next, sub) {
         if (!strcmp(sub->name, "container")) {
@@ -3872,10 +3876,6 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
         }
 
         lyxml_free_elem(module->ctx, sub);
-    }
-
-    if (parent && lys_node_addchild(parent, retval)) {
-        goto error;
     }
 
     return retval;
@@ -3965,6 +3965,10 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
         }
     }
 
+    if (parent && lys_node_addchild(parent, retval)) {
+        goto error;
+    }
+
     /* last part - process data nodes */
     LY_TREE_FOR_SAFE(root.child, next, sub) {
         if (!strcmp(sub->name, "container")) {
@@ -3989,10 +3993,6 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
         }
 
         lyxml_free_elem(module->ctx, sub);
-    }
-
-    if (parent && lys_node_addchild(parent, retval)) {
-        goto error;
     }
 
     return retval;
@@ -4095,6 +4095,10 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
         }
     }
 
+    if (parent && lys_node_addchild(parent, retval)) {
+        goto error;
+    }
+
     /* last part - process data nodes */
     LY_TREE_FOR_SAFE(root.child, next, sub) {
         if (!strcmp(sub->name, "grouping")) {
@@ -4109,10 +4113,6 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
         }
 
         lyxml_free_elem(module->ctx, sub);
-    }
-
-    if (parent && lys_node_addchild(parent, retval)) {
-        goto error;
     }
 
     return retval;
@@ -4199,6 +4199,10 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         uses->features = calloc(c_ftrs, sizeof *uses->features);
     }
 
+    if (parent && lys_node_addchild(parent, retval)) {
+        goto error;
+    }
+
     LY_TREE_FOR(node->child, sub) {
         if (!strcmp(sub->name, "refine")) {
             r = fill_yin_refine(module, sub, &uses->refine[uses->refine_size++], uses, unres);
@@ -4217,10 +4221,6 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     }
 
     unres_add_node(module, unres, uses, UNRES_USES, NULL, LOGLINE(node));
-
-    if (parent && lys_node_addchild(parent, retval)) {
-        goto error;
-    }
 
     if (resolve) {
         /* inherit config flag */
