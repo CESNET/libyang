@@ -50,7 +50,7 @@ cmd_add_help(void)
 void
 cmd_print_help(void)
 {
-    printf("print [-f (yang | tree | info)] [-t <info-target-node>] [-o <output-file>] <model-name>\n\n");
+    printf("print [-f (yang | tree | info)] [-t <info-target-node>] [-o <output-file>] <model-name>(@<revision>)\n\n");
     printf("\tinfo-target-node: <absolute-schema-node> | typedef/<typedef-name> |\n");
     printf("\t                  | identity/<identity-name> | feature/<feature-name> |\n");
     printf("\t                  | grouping/<grouping-name>(<absolute-schema-nodeid>) |\n");
@@ -175,9 +175,8 @@ int
 cmd_print(const char *arg)
 {
     int c, i, argc, option_index, ret = 1;
-    char **argv = NULL, *ptr, *target_node = NULL;
-    const char **names;
-    const char *out_path = NULL;
+    char **argv = NULL, *ptr, *target_node = NULL, *model_name, *revision;
+    const char **names, *out_path = NULL;
     struct lys_module *model, *parent_model;
     LYS_OUTFORMAT format = LYS_OUT_TREE;
     FILE *output = stdout;
@@ -246,20 +245,33 @@ cmd_print(const char *arg)
         goto cleanup;
     }
 
-    model = ly_ctx_get_module(ctx, argv[optind], NULL);
+    /* model, revision */
+    model_name = argv[optind];
+    revision = NULL;
+    if (strchr(model_name, '@')) {
+        revision = strchr(model_name, '@');
+        revision[0] = '\0';
+        ++revision;
+    }
+
+    model = ly_ctx_get_module(ctx, model_name, revision);
     if (model == NULL) {
         names = ly_ctx_get_module_names(ctx);
         for (i = 0; names[i]; i++) {
             if (!model) {
                 parent_model = ly_ctx_get_module(ctx, names[i], NULL);
-                model = (struct lys_module *)ly_ctx_get_submodule(parent_model, argv[optind], NULL);
+                model = (struct lys_module *)ly_ctx_get_submodule(parent_model, model_name, revision);
             }
         }
         free(names);
     }
 
     if (model == NULL) {
-        fprintf(stderr, "No model \"%s\" found.\n", argv[optind]);
+        if (revision) {
+            fprintf(stderr, "No model \"%s\" in revision %s found.\n", model_name, revision);
+        } else {
+            fprintf(stderr, "No model \"%s\" found.\n", model_name);
+        }
         goto cleanup;
     }
 
