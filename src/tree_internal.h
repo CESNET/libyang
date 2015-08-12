@@ -148,12 +148,13 @@ int lys_node_addchild(struct lys_node *parent, struct lys_node *child);
  * @param[in] module Target module for the duplicated node.
  * @param[in] node Schema tree node to be duplicated.
  * @param[in] flags Config flag to be inherited in case the origin node does not specify config flag
+ * @param[in] nacm NACM flags to be inherited from the parent
  * @param[in] recursive 1 if all children are supposed to be also duplicated.
  * @param[in] unres TODO provide description
  * @return Created copy of the provided schema \p node.
  */
-struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, int recursive,
-                              struct unres_schema *unres);
+struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, uint8_t nacm,
+                              int recursive, struct unres_schema *unres);
 
 /**
  * @brief Free the schema tree restriction (must, ...) structure content

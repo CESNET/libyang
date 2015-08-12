@@ -3688,7 +3688,7 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
     grp->prev = (struct lys_node *)grp;
     retval = (struct lys_node *)grp;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_NACMEXT)) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE)) {
         goto error;
     }
 

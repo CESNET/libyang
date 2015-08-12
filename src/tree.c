@@ -683,7 +683,7 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
         /* copy the augment nodes */
         assert(old[i].child);
         LY_TREE_FOR(old[i].child, snode) {
-            lys_node_addchild((struct lys_node *)&new[i], lys_node_dup(module, snode, snode->flags, 1, unres));
+            lys_node_addchild((struct lys_node *)&new[i], lys_node_dup(module, snode, snode->flags, snode->nacm, 1, unres));
         }
     }
 
@@ -1211,7 +1211,7 @@ lys_uniq_find(struct lys_node_list *list, struct lys_node_leaf *orig_leaf)
 }
 
 struct lys_node *
-lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, int recursive,
+lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, uint8_t nacm, int recursive,
              struct unres_schema *unres)
 {
     struct lys_node *retval = NULL, *aux, *child;
@@ -1320,6 +1320,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, in
     retval->name = lydict_insert(ctx, node->name, 0);
     retval->dsc = lydict_insert(ctx, node->dsc, 0);
     retval->ref = lydict_insert(ctx, node->ref, 0);
+    retval->nacm = nacm;
     retval->flags = node->flags;
     if (!(retval->flags & LYS_CONFIG_MASK)) {
         /* set parent's config flag */
@@ -1342,7 +1343,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, in
     if (recursive) {
         /* go recursively */
         LY_TREE_FOR(node->child, child) {
-            aux = lys_node_dup(module, child, retval->flags, 1, unres);
+            aux = lys_node_dup(module, child, retval->flags, retval->nacm, 1, unres);
             if (!aux || lys_node_addchild(retval, aux)) {
                 LOGINT;
                 lys_node_free(retval);

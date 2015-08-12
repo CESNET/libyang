@@ -1911,9 +1911,11 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
     int i, j;
     uint8_t size;
 
+    assert(uses->grp);
+
     /* copy the data nodes from grouping into the uses context */
     LY_TREE_FOR(uses->grp->child, node) {
-        node_aux = lys_node_dup(uses->module, node, uses->flags, 1, unres);
+        node_aux = lys_node_dup(uses->module, node, uses->flags, uses->nacm, 1, unres);
         if (!node_aux) {
             LOGVAL(LYE_SPEC, line, "Copying data from grouping failed.");
             return EXIT_FAILURE;
