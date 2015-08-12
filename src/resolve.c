@@ -2327,12 +2327,31 @@ resolve_unres_iffeature(struct lys_module *mod, struct lys_feature **feat_ptr, c
 static int
 resolve_unres_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t line)
 {
+    struct lys_node *parent;
+
+    /* HACK change unres uses count if it's in a grouping (nacm field used for it) */
+    for (parent = uses->parent; parent && (parent->nodetype != LYS_GROUPING); parent = parent->parent);
+
     if (uses->grp || !resolve_grouping(uses->parent, uses, line)) {
-        if (!resolve_uses(uses, unres, line)) {
+        if (uses->grp->nacm) {
+            LOGVRB("Cannot copy the grouping, it is not fully resolved yet.");
+            return EXIT_FAILURE;
+        } else if (!resolve_uses(uses, unres, line)) {
+            /* decrease unres count only if not first try */
+            if ((line < UINT_MAX) && parent) {
+                if (!parent->nacm) {
+                    LOGINT;
+                    return EXIT_FAILURE;
+                }
+                --parent->nacm;
+            }
             return EXIT_SUCCESS;
         }
     }
 
+    if (parent) {
+        ++parent->nacm;
+    }
     LOGVAL(LYE_INRESOLV, (line == UINT_MAX ? line : 0), "uses", uses->name);
     return EXIT_FAILURE;
 }
