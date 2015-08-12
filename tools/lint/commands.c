@@ -92,7 +92,7 @@ cmd_list_help(void)
 void
 cmd_feature_help(void)
 {
-    printf("feature -(-p)rint | (-(-e)nable | -(-d)isable (* | <feature-name>)) <model-name>\n");
+    printf("feature -(-p)rint | (-(-e)nable | -(-d)isable (* | <feature-name>)) <model-name>(@<revision>)\n");
 }
 
 void
@@ -518,7 +518,7 @@ cmd_feature(const char *arg)
 {
     int c, i, argc, option_index, ret = 1, task = -1;
     unsigned int max_len;
-    char **argv = NULL, *ptr;
+    char **argv = NULL, *ptr, *model_name, *revision;
     const char *feat_name = NULL, **names;
     uint8_t *states;
     struct lys_module *model, *parent_model;
@@ -587,19 +587,32 @@ cmd_feature(const char *arg)
         fprintf(stderr, "Missing the model name.\n");
         goto cleanup;
     }
-    model = ly_ctx_get_module(ctx, argv[optind], NULL);
+
+    revision = NULL;
+    model_name = argv[optind];
+    if (strchr(model_name, '@')) {
+        revision = strchr(model_name, '@');
+        revision[0] = '\0';
+        ++revision;
+    }
+
+    model = ly_ctx_get_module(ctx, model_name, revision);
     if (model == NULL) {
         names = ly_ctx_get_module_names(ctx);
         for (i = 0; names[i]; i++) {
             if (!model) {
                 parent_model = ly_ctx_get_module(ctx, names[i], NULL);
-                model = (struct lys_module *)ly_ctx_get_submodule(parent_model, argv[optind], NULL);
+                model = (struct lys_module *)ly_ctx_get_submodule(parent_model, model_name, revision);
             }
         }
         free(names);
     }
     if (model == NULL) {
-        fprintf(stderr, "No model \"%s\" found.\n", argv[optind]);
+        if (revision) {
+            fprintf(stderr, "No model \"%s\" in revision %s found.\n", model_name, revision);
+        } else {
+            fprintf(stderr, "No model \"%s\" found.\n", model_name);
+        }
         goto cleanup;
     }
 
