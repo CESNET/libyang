@@ -831,8 +831,8 @@ struct lyd_node *
 xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev,
                int options, struct unres_data **unres)
 {
-    struct lyd_node *result = NULL, *aux;
-    struct lys_node *schema = NULL;
+    struct lyd_node *result = NULL, *diter;
+    struct lys_node *schema = NULL, *siter;
     int i, havechildren;
 
     if (!xml) {
@@ -902,8 +902,8 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     /* check number of instances for non-list nodes */
     if (!(options & LYD_OPT_FILTER) && (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML))) {
-        for (aux = result->prev; aux; aux = aux->prev) {
-            if (aux->schema == schema) {
+        for (diter = result->prev; diter; diter = diter->prev) {
+            if (diter->schema == schema) {
                 LOGVAL(LYE_TOOMANY, LOGLINE(xml), xml->name, xml->parent ? xml->parent->name : "data tree");
                 goto error;
             }
@@ -913,11 +913,11 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     /* type specific processing */
     if (schema->nodetype == LYS_LIST) {
         /* pointers to next and previous instances of the same list */
-        for (aux = result->prev; aux; aux = aux->prev) {
-            if (aux->schema == result->schema) {
+        for (diter = result->prev; diter; diter = diter->prev) {
+            if (diter->schema == result->schema) {
                 /* instances of the same list */
-                ((struct lyd_node_list *)aux)->lnext = (struct lyd_node_list *)result;
-                ((struct lyd_node_list *)result)->lprev = (struct lyd_node_list *)aux;
+                ((struct lyd_node_list *)diter)->lnext = (struct lyd_node_list *)result;
+                ((struct lyd_node_list *)result)->lprev = (struct lyd_node_list *)diter;
                 break;
             }
         }
@@ -933,11 +933,11 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         }
 
         /* pointers to next and previous instances of the same leaflist */
-        for (aux = result->prev; aux; aux = aux->prev) {
-            if (aux->schema == result->schema) {
+        for (diter = result->prev; diter; diter = diter->prev) {
+            if (diter->schema == result->schema) {
                 /* instances of the same list */
-                ((struct lyd_node_leaflist *)aux)->lnext = (struct lyd_node_leaflist *)result;
-                ((struct lyd_node_leaflist *)result)->lprev = (struct lyd_node_leaflist *)aux;
+                ((struct lyd_node_leaflist *)diter)->lnext = (struct lyd_node_leaflist *)result;
+                ((struct lyd_node_leaflist *)result)->lprev = (struct lyd_node_leaflist *)diter;
                 break;
             }
         }
@@ -966,6 +966,14 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         }
     }
 
+    /* mandatory children */
+    if (havechildren && !(options & (LYD_OPT_FILTER | LYD_OPT_EDIT))) {
+        siter = ly_check_mandatory(result);
+        if (siter) {
+            LOGVAL(LYE_MISSELEM, LOGLINE(xml), siter->name, siter->parent->name);
+            goto error;
+        }
+    }
 
 siblings:
     /* process siblings */
@@ -982,8 +990,8 @@ siblings:
 
     /* fix the "last" pointer */
     if (result && !result->prev) {
-        for (aux = result; aux->next; aux = aux->next);
-        result->prev = aux;
+        for (diter = result; diter->next; diter = diter->next);
+        result->prev = diter;
     }
     return result;
 

@@ -2539,6 +2539,7 @@ check_branch_id(struct lys_node *parent, struct lys_node *new, struct lys_node *
 {
     struct lys_node *node, *subnode;
 
+    /* TODO improve checking in case of multiple choices, uses, ... inside */
     if (new->nodetype == LYS_CHOICE) {
         /* we have nested choice in case, so we need recursion */
         LY_TREE_FOR(new->child, node) {
@@ -2564,6 +2565,10 @@ check_branch_id(struct lys_node *parent, struct lys_node *new, struct lys_node *
             }
             if (node->nodetype == LYS_CASE) {
                 LY_TREE_FOR(node->child, subnode) {
+                    if (subnode == excl) {
+                        continue;
+                    }
+
                     if (!strcmp(new->name, subnode->name)) {
                         LOGVAL(LYE_INID, line, new->name, "duplicated identifier within a choice's cases");
                         return EXIT_FAILURE;

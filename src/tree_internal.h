@@ -202,4 +202,15 @@ void lys_node_free(struct lys_node *node);
  */
 void lys_free(struct lys_module *module);
 
+/**
+ * @brief Search for a mandatory element in the given schema tree subtree
+ *
+ * @param[in] start Root node for the searching subtree. Expecting that in a data tree
+ * instance, the start is the first node that does not have its instance (the start's
+ * parent has its instance in the data tree).
+ * @return The first mandatory element definition, NULL if there is no mandatory element
+ * in the subtree. TODO
+ */
+struct lys_node *ly_check_mandatory(struct lyd_node *start);
+
 #endif /* LY_TREE_INTERNAL_H_ */
