@@ -251,7 +251,6 @@ lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
     }
 
     if (resolve_unres(mod, unres)) {
-        LOGERR(LY_EVALID, "There are unresolved items left.");
         lys_free(mod);
         mod = NULL;
     }
@@ -289,7 +288,6 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
     }
 
    if (resolve_unres((struct lys_module *)submod, unres)) {
-        LOGERR(LY_EVALID, "There are unresolved items left.");
         lys_submodule_free(submod);
         submod = NULL;
     }

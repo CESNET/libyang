@@ -88,7 +88,6 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     munmap(addr, sb.st_size);
 
     if (resolve_unres(module, unres)) {
-        LOGERR(LY_EVALID, "There are unresolved items left.");
         lys_free(module);
         module = NULL;
     }

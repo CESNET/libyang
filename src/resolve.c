@@ -2581,23 +2581,40 @@ print_unres_item_fail(void *item, enum UNRES_ITEM type, void *str_node, uint32_t
     }
 }
 
-/* logs indirectly */
+/* logs directly */
 int
 resolve_unres(struct lys_module *mod, struct unres_schema *unres)
 {
-    uint32_t i, resolved = 0;
+    uint32_t i, resolved, unres_uses, res_uses;
 
     assert(unres);
 
+    resolved = 0;
+
     /* uses */
-    for (i = 0; i < unres->count; ++i) {
-        if (unres->type[i] != UNRES_USES) {
-            continue;
+    do {
+        unres_uses = 0;
+        res_uses = 0;
+
+        for (i = 0; i < unres->count; ++i) {
+            if (unres->type[i] != UNRES_USES) {
+                continue;
+            }
+
+            ++unres_uses;
+            if (!resolve_unres_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, unres->line[i])) {
+                unres->type[i] = UNRES_RESOLVED;
+                ++resolved;
+                ++res_uses;
+            } else {
+                print_unres_item_fail(unres->item[i], unres->type[i], unres->str_snode[i], unres->line[i]);
+            }
         }
-        if (!resolve_unres_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, unres->line[i])) {
-            unres->type[i] = UNRES_RESOLVED;
-            ++resolved;
-        }
+    } while (res_uses && (res_uses < unres_uses));
+
+    if (res_uses < unres_uses) {
+        LOGVAL(LYE_SPEC, 0, "There are unresolved uses left.");
+        return EXIT_FAILURE;
     }
 
     /* the rest */
@@ -2612,6 +2629,7 @@ resolve_unres(struct lys_module *mod, struct unres_schema *unres)
     }
 
     if (resolved < unres->count) {
+        LOGVAL(LYE_SPEC, 0, "There are unresolved items left.");
         return EXIT_FAILURE;
     }
 
