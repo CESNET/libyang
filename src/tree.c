@@ -913,6 +913,8 @@ lys_deviation_free(struct ly_ctx *ctx, struct lys_deviation *dev)
 static void
 lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment *aug)
 {
+    struct lys_node *child, *sub;
+
     lydict_remove(ctx, aug->target_name);
     lydict_remove(ctx, aug->dsc);
     lydict_remove(ctx, aug->ref);
@@ -921,7 +923,9 @@ lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment *aug)
 
     lys_when_free(ctx, aug->when);
 
-    lyxml_free_elem(ctx, (struct lyxml_elem *)aug->child);
+    LY_TREE_FOR_SAFE(aug->child, child, sub) {
+        lys_node_free(sub);
+    }
 }
 
 static void
