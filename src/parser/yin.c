@@ -1922,6 +1922,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
     struct lys_node *node;
     int c = 0;
 
+    aug->nodetype = LYS_AUGMENT;
     GETVAL(value, yin, "target-node");
     aug->target_name = lydict_insert(module->ctx, value, 0);
     aug->parent = parent;
@@ -4864,6 +4865,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unre
                     /* so free the new one and update the old one's implement flag if needed */
                     lyxml_free_elem(ctx, yin);
                     lys_free(module);
+                    unres->count = 0;
 
                     LOGVRB("module %s already in context", ctx->models.list[i]->name);
 

@@ -188,21 +188,24 @@ typedef enum {
  * Values are defined as separated bit values to allow checking using bitwise operations for multiple nodes.
  */
 typedef enum lys_nodetype {
-    LYS_AUGMENT = 0x0000,        /**< augment statement node */
-    LYS_CONTAINER = 0x0001,      /**< container statement node */
-    LYS_CHOICE = 0x0002,         /**< choice statement node */
-    LYS_LEAF = 0x0004,           /**< leaf statement node */
-    LYS_LEAFLIST = 0x0008,       /**< leaf-list statement node */
-    LYS_LIST = 0x0010,           /**< list statement node */
-    LYS_ANYXML = 0x0020,         /**< anyxml statement node */
-    LYS_USES = 0x0040,           /**< uses statement node */
+    LYS_UNKNOWN = 0x0000,        /**< uninitalized unknown statement node */
+    LYS_AUGMENT = 0x0001,        /**< augment statement node */
+    LYS_CONTAINER = 0x0002,      /**< container statement node */
+    LYS_CHOICE = 0x0004,         /**< choice statement node */
+    LYS_LEAF = 0x0008,           /**< leaf statement node */
+    LYS_LEAFLIST = 0x0010,       /**< leaf-list statement node */
+    LYS_LIST = 0x0020,           /**< list statement node */
+    LYS_ANYXML = 0x0040,         /**< anyxml statement node */
     LYS_GROUPING = 0x0080,       /**< grouping statement node */
     LYS_CASE = 0x0100,           /**< case statement node */
     LYS_INPUT = 0x0200,          /**< input statement node */
     LYS_OUTPUT = 0x0400,         /**< output statement node */
     LYS_NOTIF = 0x0800,          /**< notification statement node */
-    LYS_RPC = 0x1000             /**< rpc statement node */
+    LYS_RPC = 0x1000,            /**< rpc statement node */
+    LYS_USES = 0x2000            /**< uses statement node */
 } LYS_NODE;
+
+#define LYS_ANY 0x2FFF
 
 /**
  * @brief Main schema node structure representing YANG module.
@@ -994,7 +997,7 @@ struct lys_node_augment {
     uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
     uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
     struct lys_node *target;         /**< pointer to the target node TODO refer to augmentation description */
-    LYS_NODE nodetype;               /**< #LYS_AUGMENT (0) */
+    LYS_NODE nodetype;               /**< #LYS_AUGMENT */
     struct lys_node *parent;         /**< uses node or NULL in case of module's top level augment */
     struct lys_node *child;          /**< augmenting data \note The child here points to the data which are also
                                           placed as children in the target node. Children are connected within the

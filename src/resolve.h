@@ -58,7 +58,8 @@ struct lys_ident *resolve_identityref(struct lys_ident *base, const char *name, 
 
 int resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t line);
 
-struct lys_node *resolve_child(struct lys_node *parent, const char *name, int len, LYS_NODE type);
+struct lys_node *resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *prefix, int pref_len,
+                                 const char *name, int nam_len, LYS_NODE type);
 
 int resolve_path_arg_data(struct unres_data *unres, const char *path, struct unres_data **ret);
 

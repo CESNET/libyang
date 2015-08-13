@@ -738,80 +738,34 @@ error:
 static int
 resolve_grouping(struct lys_node *parent, struct lys_node_uses *uses, uint32_t line)
 {
-    struct lys_module *searchmod = NULL, *module = uses->module;
-    struct lys_node *node, *node_aux;
-    const char *name;
-    int prefix_len = 0;
-    int i;
+    struct lys_module *module = uses->module;
+    const char *prefix, *name;
+    int i, pref_len, nam_len;
 
-    /* get referenced grouping */
-    name = strchr(uses->name, ':');
-    if (!name) {
-        /* no prefix, search in local tree */
-        name = uses->name;
-    } else {
-        /* there is some prefix, check if it refer the same data model */
+    /* parse the identifier, it must be parsed on one call */
+    if ((i = parse_node_identifier(uses->name, &prefix, &pref_len, &name, &nam_len)) < 1) {
+        LOGVAL(LYE_INCHAR, line, uses->name[-i], &uses->name[-i]);
+        return EXIT_FAILURE;
+    } else if (uses->name[i]) {
+        LOGVAL(LYE_INCHAR, line, uses->name[i], &uses->name[i]);
+        return EXIT_FAILURE;
+    }
 
-        /* set name to correct position after colon */
-        prefix_len = name - uses->name;
-        name++;
-
-        if (!strncmp(uses->name, module->prefix, prefix_len) && !module->prefix[prefix_len]) {
-            /* prefix refers to the current module, ignore it */
-            prefix_len = 0;
+    if (!prefix) {
+        /* search in local tree hierarchy */
+        while (parent->parent) {
+            parent = parent->parent;
+            uses->grp = (struct lys_node_grp *)resolve_sibling(module, parent->child, prefix, pref_len, name, nam_len, LYS_GROUPING);
+            if (uses->grp) {
+                return EXIT_SUCCESS;
+            }
         }
     }
 
-    /* search */
-    if (prefix_len) {
-        /* in top-level groupings of some other module */
-        for (i = 0; i < module->imp_size; i++) {
-            if (!strncmp(module->imp[i].prefix, uses->name, prefix_len)
-                && !module->imp[i].prefix[prefix_len]) {
-                searchmod = module->imp[i].module;
-                break;
-            }
-        }
-        if (!searchmod) {
-            /* uses refers unknown data model */
-            LOGVAL(LYE_INPREF, line, name);
-            return EXIT_FAILURE;
-        }
-
-        LY_TREE_FOR(searchmod->data, node) {
-            if (node->nodetype == LYS_GROUPING && !strcmp(node->name, name)) {
-                uses->grp = (struct lys_node_grp *)node;
-                return EXIT_SUCCESS;
-            }
-        }
-    } else {
-        /* in local tree hierarchy */
-        for (node_aux = parent; node_aux; node_aux = node_aux->parent) {
-            LY_TREE_FOR(node_aux->child, node) {
-                if (node->nodetype == LYS_GROUPING && !strcmp(node->name, name)) {
-                    uses->grp = (struct lys_node_grp *)node;
-                    return EXIT_SUCCESS;
-                }
-            }
-        }
-
-        /* search in top level of the current module */
-        LY_TREE_FOR(module->data, node) {
-            if (node->nodetype == LYS_GROUPING && !strcmp(node->name, name)) {
-                uses->grp = (struct lys_node_grp *)node;
-                return EXIT_SUCCESS;
-            }
-        }
-
-        /* search in top-level of included modules */
-        for (i = 0; i < module->inc_size; i++) {
-            LY_TREE_FOR(module->inc[i].submodule->data, node) {
-                if (node->nodetype == LYS_GROUPING && !strcmp(node->name, name)) {
-                    uses->grp = (struct lys_node_grp *)node;
-                    return EXIT_SUCCESS;
-                }
-            }
-        }
+    /* search in top-level module or its import, in its includes as well */
+    uses->grp = (struct lys_node_grp *)resolve_sibling(module, parent, prefix, pref_len, name, nam_len, LYS_GROUPING);
+    if (uses->grp) {
+        return EXIT_SUCCESS;
     }
 
     LOGVAL(LYE_INRESOLV, line, "grouping", uses->name);
@@ -887,42 +841,125 @@ resolve_feature(const char *name, struct lys_module *module, uint32_t line)
 }
 
 /**
- * @brief Resolve (find) a valid child of a parent. Does not log.
+ * @brief Resolve (find) a valid sibling. Does not log.
  *
- * Valid child means a chema pointer to a node that is part of
- * the data meaning uses are skipped.
+ * Valid child means a schema pointer to a node that is part of
+ * the data meaning uses are skipped. Includes module comparison
+ * (can handle augments). Includes are also searched if siblings
+ * are top-level nodes.
  *
- * @param[in] parent Parent to search in.
- * @param[in] name Child name.
- * @param[in] len Child name length.
- * @param[in] type ORed desired type of the node.
+ * @param[in] mod Main module. Prefix is considered to be from this module.
+ * @param[in] siblings Siblings to consider. They are first adjusted to
+ *                     point to the first sibling.
+ * @param[in] prefix Node prefix.
+ * @param[in] pref_len Node prefix length.
+ * @param[in] name Node name.
+ * @param[in] nam_len Node name length.
+ * @param[in] type ORed desired type of the node. 0 means any type.
  *
  * @return Node of the desired type, NULL if no matching node was found.
  */
 struct lys_node *
-resolve_child(struct lys_node *parent, const char *name, int len, LYS_NODE type)
+resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *prefix, int pref_len, const char *name,
+                int nam_len, LYS_NODE type)
 {
-    struct lys_node *child, *result;
+    struct lys_node *node, *result, *old_siblings = NULL;
+    struct lys_module *prefix_mod, *cur_mod;
+    int in_submod;
 
-    if (!len) {
-        len = strlen(name);
+    assert(mod && siblings && name);
+    assert(!(type & LYS_USES));
+
+    /* find the beginning */
+    while (siblings->prev->next) {
+        siblings = siblings->prev;
     }
 
-    LY_TREE_FOR(parent->child, child) {
-        if (child->nodetype == LYS_USES) {
-            /* search recursively */
-            result = resolve_child(child, name, len, type);
-            if (result) {
-                return result;
+    /* fill the name length in case the caller is so indifferent */
+    if (!nam_len) {
+        nam_len = strlen(name);
+    }
+
+    /* we start with the module itself, submodules come later */
+    in_submod = 0;
+
+    /* set prefix_mod correctly */
+    if (prefix) {
+        prefix_mod = resolve_prefixed_module(mod, prefix, pref_len);
+        if (!prefix_mod) {
+            return NULL;
+        }
+        cur_mod = prefix_mod;
+        /* it is our module */
+        if (cur_mod != mod) {
+            old_siblings = siblings;
+            siblings = cur_mod->data;
+        }
+    } else {
+        prefix_mod = mod;
+        if (prefix_mod->type) {
+            prefix_mod = ((struct lys_submodule *)prefix_mod)->belongsto;
+        }
+        cur_mod = prefix_mod;
+    }
+
+    while (1) {
+        /* try to find the node */
+        LY_TREE_FOR(siblings, node) {
+            if (node->nodetype == LYS_USES) {
+                /* an unresolved uses, we can still find it elsewhere */
+                if (!node->child) {
+                    continue;
+                }
+
+                /* search recursively */
+                result = resolve_sibling(mod, node->child, prefix, pref_len, name, nam_len, type);
+                if (result) {
+                    return result;
+                }
+            }
+
+            if (!type || (node->nodetype & type)) {
+                /* module check */
+                if (!node->module->type) {
+                    if (cur_mod != node->module) {
+                        continue;
+                    }
+                } else {
+                    if (cur_mod != ((struct lys_submodule *)node->module)->belongsto) {
+                        continue;
+                    }
+                }
+
+                /* direct name check */
+                if (node->name == name || (!strncmp(node->name, name, nam_len) && !node->name[nam_len])) {
+                    return node;
+                }
             }
         }
 
-        if (child->nodetype & type) {
-            /* direct check */
-            if (child->name == name || (!strncmp(child->name, name, len) && !child->name[len])) {
-                return child;
-            }
+        /* The original siblings may be valid,
+         * it's a special case when we're looking
+         * for a node from augment.
+         */
+        if (old_siblings) {
+            siblings = old_siblings;
+            old_siblings = NULL;
+            continue;
         }
+
+        /* we're not top-level, search ended */
+        if (siblings->parent) {
+            break;
+        }
+
+        /* let's try the submodules */
+        if (in_submod == prefix_mod->inc_size) {
+            break;
+        }
+        cur_mod = (struct lys_module *)prefix_mod->inc[in_submod].submodule;
+        siblings = cur_mod->data;
+        ++in_submod;
     }
 
     return NULL;
@@ -1453,13 +1490,8 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
         parsed += i;
         path += i;
 
-        /* source (must be leaf, from the same module) */
-        if (sour_pref && (resolve_prefixed_module(mod, sour_pref, sour_pref_len) != mod)) {
-            LOGVAL(LYE_INPREF_LEN, line, sour_pref_len, sour_pref);
-            return -parsed;
-        }
-
-        src_node = resolve_child(source_node, source, sour_len, LYS_LEAF);
+        /* source (must be leaf) */
+        src_node = resolve_sibling(mod, source_node->child, sour_pref, sour_pref_len, source, sour_len, LYS_LEAF);
         if (!src_node) {
             LOGVAL(LYE_LINE, line);
             /* general error, the one written later will suffice */
@@ -1485,11 +1517,8 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
             }
         }
         while (1) {
-            if (dest_pref && (resolve_prefixed_module(mod, dest_pref, dest_pref_len) != mod)) {
-                LOGVAL(LYE_INPREF_LEN, line, dest_pref_len, dest_pref);
-                return -parsed;
-            }
-            dst_node = resolve_child(dst_node, dest, dest_len, LYS_CONTAINER | LYS_LIST | LYS_LEAF);
+            dst_node = resolve_sibling(mod, dst_node->child, dest_pref, dest_pref_len, dest, dest_len,
+                                       LYS_CONTAINER | LYS_LIST | LYS_LEAF);
             if (!dst_node) {
                 LOGVAL(LYE_LINE, line);
                 /* general error, the one written later will suffice */
@@ -1533,7 +1562,7 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
 static struct lys_node*
 resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_node *parent_node, uint32_t line)
 {
-    struct lys_node *child, *node;
+    struct lys_node *node;
     const char *id, *prefix, *name;
     int pref_len, nam_len, parent_times, has_predicate;
     int i, first;
@@ -1544,7 +1573,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
 
     do {
         if ((i = parse_path_arg(id, &prefix, &pref_len, &name, &nam_len, &parent_times, &has_predicate)) < 1) {
-            LOGVAL(LYE_INCHAR, line, id[-i], id-i);
+            LOGVAL(LYE_INCHAR, line, id[-i], &id[-i]);
             return NULL;
         }
         id += i;
@@ -1552,16 +1581,35 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
         if (first) {
             if (parent_times == -1) {
                 node = mod->data;
+                if (!node) {
+                    LOGVAL(LYE_LINE, line);
+                    /* general error, the one written later will suffice */
+                    return NULL;
+                }
             } else if (parent_times > 0) {
-                node = parent_node;
                 /* node is the parent already, skip one ".." */
-                for (i = 1; i < parent_times; ++i) {
-                    node = node->parent;
+                node = parent_node;
+                i = 0;
+                while (1) {
                     if (!node) {
                         LOGVAL(LYE_LINE, line);
                         /* general error, the one written later will suffice */
                         return NULL;
                     }
+
+                    /* this node is a wrong node, we actually need the augment target */
+                    if (node->nodetype == LYS_AUGMENT) {
+                        node = ((struct lys_node_augment *)node)->target;
+                        if (!node) {
+                            continue;
+                        }
+                    }
+
+                    ++i;
+                    if (i == parent_times) {
+                        break;
+                    }
+                    node = node->parent;
                 }
                 node = node->child;
             }
@@ -1570,22 +1618,12 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
             node = node->child;
         }
 
-        /* node identifier */
-        LY_TREE_FOR(node, child) {
-            if (child->nodetype == LYS_GROUPING) {
-                continue;
-            }
-
-            if (!strncmp(child->name, name, nam_len) && !child->name[nam_len]) {
-                break;
-            }
-        }
-        if (!child) {
+        node = resolve_sibling(mod, node, prefix, pref_len, name, nam_len, LYS_ANY & ~(LYS_GROUPING | LYS_USES));
+        if (!node) {
             LOGVAL(LYE_LINE, line);
             /* general error, the one written later will suffice */
             return NULL;
         }
-        node = child;
 
         if (has_predicate) {
             /* we have predicate, so the current result must be list */
@@ -2386,10 +2424,10 @@ resolve_unres_type_dflt(struct lys_type *type, const char *dflt, uint32_t line)
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
  */
 static int
-resolve_unres_choice_dflt(struct lys_node_choice *choice, const char *dflt, uint32_t line)
+resolve_unres_choice_dflt(struct lys_module *mod, struct lys_node_choice *choice, const char *dflt, uint32_t line)
 {
-    choice->dflt = resolve_child((struct lys_node *)choice, dflt, strlen(dflt), LYS_ANYXML | LYS_CASE
-                                  | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST);
+    choice->dflt = resolve_sibling(mod, choice->child, NULL, 0, dflt, 0, LYS_ANYXML | LYS_CASE
+                                   | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST);
     if (choice->dflt) {
         return EXIT_SUCCESS;
     }
@@ -2408,7 +2446,7 @@ resolve_unres_choice_dflt(struct lys_node_choice *choice, const char *dflt, uint
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
  */
 static int
-resolve_unres_list_keys(struct lys_node_list *list, const char *keys_str, uint32_t line)
+resolve_unres_list_keys(struct lys_module *mod, struct lys_node_list *list, const char *keys_str, uint32_t line)
 {
     int i, len;
     const char *value;
@@ -2424,7 +2462,7 @@ resolve_unres_list_keys(struct lys_node_list *list, const char *keys_str, uint32
             len = strlen(keys_str);
         }
 
-        list->keys[i] = (struct lys_node_leaf *)resolve_child((struct lys_node *)list, keys_str, len, LYS_LEAF);
+        list->keys[i] = (struct lys_node_leaf *)resolve_sibling(mod, list->child, NULL, 0, keys_str, len, LYS_LEAF);
 
         if (check_key(list->keys[i], list->flags, list->keys, i, keys_str, len, line)) {
             LOGVAL(LYE_INRESOLV, (line == UINT_MAX ? line : 0), "list keys", keys_str);
@@ -2517,11 +2555,11 @@ resolve_unres_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, voi
         has_str = 0;
         break;
     case UNRES_CHOICE_DFLT:
-        ret = resolve_unres_choice_dflt(item, str_node, line);
+        ret = resolve_unres_choice_dflt(mod, item, str_node, line);
         has_str = 1;
         break;
     case UNRES_LIST_KEYS:
-        ret = resolve_unres_list_keys(item, str_node, line);
+        ret = resolve_unres_list_keys(mod, item, str_node, line);
         has_str = 1;
         break;
     case UNRES_LIST_UNIQ:
