@@ -46,6 +46,8 @@ const char *
 strnodetype(LYS_NODE type)
 {
     switch (type) {
+    case LYS_UNKNOWN:
+        return NULL;
     case LYS_AUGMENT:
         return "augment";
     case LYS_CONTAINER:
@@ -60,8 +62,6 @@ strnodetype(LYS_NODE type)
         return "list";
     case LYS_ANYXML:
         return "anyxml";
-    case LYS_USES:
-        return "uses";
     case LYS_GROUPING:
         return "grouping";
     case LYS_CASE:
@@ -74,6 +74,8 @@ strnodetype(LYS_NODE type)
         return "notification";
     case LYS_RPC:
         return "rpc";
+    case LYS_USES:
+        return "uses";
     }
 
     return NULL;

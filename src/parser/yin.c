@@ -1922,6 +1922,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
     struct lys_node *node;
     int c = 0;
 
+    aug->nodetype = LYS_AUGMENT;
     GETVAL(value, yin, "target-node");
     aug->target_name = lydict_insert(module->ctx, value, 0);
     aug->parent = parent;

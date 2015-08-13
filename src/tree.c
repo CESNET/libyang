@@ -81,7 +81,7 @@ check_mand_getnext(struct lys_node *cur, struct lys_node *parent)
     }
 
 repeat:
-    while (next && (next->nodetype == LYS_AUGMENT || (next->nodetype & (LYS_AUGMENT | LYS_GROUPING | LYS_LEAFLIST)))) {
+    while (next && (next->nodetype & (LYS_AUGMENT | LYS_GROUPING | LYS_LEAFLIST))) {
         next = cur = next->next;
     }
 
@@ -444,6 +444,10 @@ lys_node_addchild(struct lys_node *parent, struct lys_node *child)
                    strnodetype(child->nodetype), strnodetype(parent->nodetype), parent->name);
             return EXIT_FAILURE;
         }
+        break;
+    case LYS_UNKNOWN:
+        LOGINT;
+        return EXIT_FAILURE;
     }
 
     if (child->parent) {
@@ -920,7 +924,8 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
         new[i].dsc = lydict_insert(module->ctx, old[i].dsc, 0);
         new[i].ref = lydict_insert(module->ctx, old[i].ref, 0);
         new[i].flags = old[i].flags;
-        /* .target = NULL; .nodetype = 0 */
+        new[i].nodetype = old[i].nodetype;
+        /* .target = NULL */
 
         new[i].parent = parent;
 
@@ -1270,6 +1275,9 @@ lys_node_free(struct lys_node *node)
     case LYS_INPUT:
     case LYS_OUTPUT:
         lys_rpc_inout_free(ctx, (struct lys_node_rpc_inout *)node);
+        break;
+    case LYS_UNKNOWN:
+        LOGINT;
         break;
     }
 
