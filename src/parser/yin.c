@@ -4864,6 +4864,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unre
                     /* so free the new one and update the old one's implement flag if needed */
                     lyxml_free_elem(ctx, yin);
                     lys_free(module);
+                    unres->count = 0;
 
                     LOGVRB("module %s already in context", ctx->models.list[i]->name);
 
