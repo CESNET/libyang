@@ -71,12 +71,13 @@ install(FILES ${headers} DESTINATION ${INCLUDE_INSTALL_DIR})
 add_custom_target(doc
                   COMMAND doxygen Doxyfile
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+configure_file(Doxyfile.in Doxyfile)
 
 # clean cmake cache
 add_custom_target(cclean
                   COMMAND make clean
                   COMMAND find . -iname '*cmake*' -not -name CMakeLists.txt -exec rm -rf {} +
-                  COMMAND rm -rf Makefile
+                  COMMAND rm -rf Makefile Doxyfile
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(yanglint ${lintsrc})
