@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 2.6)
 project(libyang C)
 
+# set version
+set(LIBYANG_MAJOR_VERSION 0)
+set(LIBYANG_MINOR_VERSION 1)
+set(LIBYANG_MICRO_VERSION 0)
+set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
+set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
+
 # check the supported platform
 if(NOT UNIX)
 	message(FATAL_ERROR "Only *nix like systems are supported.")
@@ -42,7 +49,7 @@ set(lintsrc
 	linenoise/linenoise.c)
 
 add_library(yang SHARED ${libsrc})
-set_target_properties(yang PROPERTIES VERSION 0.1.0 SOVERSION 0.1)
+set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})
 
 install(TARGETS yang DESTINATION ${LIB_INSTALL_DIR})
 
