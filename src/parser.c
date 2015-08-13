@@ -175,7 +175,6 @@ searchpath:
     } else if (!result && localsearch) {
         /* search in local directory done, try context's search_path */
         closedir(dir);
-        free(wd);
         wd = strdup(ctx->models.search_path);
         localsearch = 0;
         goto opendir_search;
