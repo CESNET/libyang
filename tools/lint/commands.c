@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <assert.h>
 #include <unistd.h>
 #include <getopt.h>
 
@@ -49,16 +50,37 @@ cmd_add_help(void)
 void
 cmd_print_help(void)
 {
-    printf("print [-f (yang | tree | info)] [-t <info-target-node>] [-o <output-file>] <model-name>\n\n");
+    printf("print [-f (yang | tree | info)] [-t <info-target-node>] [-o <output-file>] <model-name>(@<revision>)\n\n");
     printf("\tinfo-target-node: <absolute-schema-node> | typedef/<typedef-name> |\n");
     printf("\t                  | identity/<identity-name> | feature/<feature-name> |\n");
+    printf("\t                  | grouping/<grouping-name>(<absolute-schema-nodeid>) |\n");
     printf("\t                  | type/<absolute-schema-node-leaf-or-leaflist>\n");
+    printf("\n");
+    printf("\tabsolute-schema-nodeid: ( /(<import-prefix>:)<node-identifier> )+\n");
+}
+
+static void
+cmd_parse_help(const char *name)
+{
+    printf("%s [-f (xml | json)] [-o <output-file>] <%s-file-name>\n", name, name);
 }
 
 void
 cmd_data_help(void)
 {
-    printf("data [-f (xml | json)] [-o <output-file>] <data-file-name>\n");
+    cmd_parse_help("data");
+}
+
+void
+cmd_config_help(void)
+{
+    cmd_parse_help("config");
+}
+
+void
+cmd_filter_help(void)
+{
+    cmd_parse_help("filter");
 }
 
 void
@@ -70,7 +92,7 @@ cmd_list_help(void)
 void
 cmd_feature_help(void)
 {
-    printf("feature -(-p)rint | (-(-e)nable | -(-d)isable (* | <feature-name>)) <model-name>\n");
+    printf("feature -(-p)rint | (-(-e)nable | -(-d)isable (* | <feature-name>)) <model-name>(@<revision>)\n");
 }
 
 void
@@ -82,7 +104,7 @@ cmd_searchpath_help(void)
 void
 cmd_verb_help(void)
 {
-    printf("verb (error | warning | verbose | debug)\n");
+    printf("verb (error/0 | warning/1 | verbose/2 | debug/3)\n");
 }
 
 int
@@ -91,9 +113,9 @@ cmd_add(const char *arg)
     int fd;
     char *addr, *ptr;
     const char *path;
-    struct ly_module *model;
+    struct lys_module *model;
     struct stat sb;
-    LY_MINFORMAT format;
+    LYS_INFORMAT format;
 
     if (strlen(arg) < 5) {
         cmd_add_help();
@@ -105,16 +127,16 @@ cmd_add(const char *arg)
     if ((ptr = strrchr(path, '.')) != NULL) {
         ++ptr;
         if (!strcmp(ptr, "yin")) {
-            format = LY_IN_YIN;
+            format = LYS_IN_YIN;
         } else if (!strcmp(ptr, "yang")) {
-            format = LY_IN_YANG;
+            format = LYS_IN_YANG;
         } else {
             fprintf(stderr, "Input file in an unknown format \"%s\".\n", ptr);
             return 1;
         }
     } else {
         fprintf(stdout, "Input file without extension, assuming YIN format.\n");
-        format = LY_IN_YIN;
+        format = LYS_IN_YIN;
     }
 
     fd = open(path, O_RDONLY);
@@ -137,7 +159,7 @@ cmd_add(const char *arg)
 
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 
-    model = ly_module_read(ctx, addr, format, 1);
+    model = lys_parse(ctx, addr, format);
     munmap(addr, sb.st_size);
     close(fd);
 
@@ -153,10 +175,10 @@ int
 cmd_print(const char *arg)
 {
     int c, i, argc, option_index, ret = 1;
-    char **argv = NULL, *ptr, *target_node = NULL, **names;
-    const char *out_path = NULL;
-    struct ly_module *model, *parent_model;
-    LY_MOUTFORMAT format = LY_OUT_TREE;
+    char **argv = NULL, *ptr, *target_node = NULL, *model_name, *revision;
+    const char **names, *out_path = NULL;
+    struct lys_module *model, *parent_model;
+    LYS_OUTFORMAT format = LYS_OUT_TREE;
     FILE *output = stdout;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
@@ -191,11 +213,11 @@ cmd_print(const char *arg)
             goto cleanup;
         case 'f':
             if (!strcmp(optarg, "yang")) {
-                format = LY_OUT_YANG;
+                format = LYS_OUT_YANG;
             } else if (!strcmp(optarg, "tree")) {
-                format = LY_OUT_TREE;
+                format = LYS_OUT_TREE;
             } else if (!strcmp(optarg, "info")) {
-                format = LY_OUT_INFO;
+                format = LYS_OUT_INFO;
             } else {
                 fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
                 goto cleanup;
@@ -223,21 +245,33 @@ cmd_print(const char *arg)
         goto cleanup;
     }
 
-    model = ly_ctx_get_module(ctx, argv[optind], NULL, 0, -1);
+    /* model, revision */
+    model_name = argv[optind];
+    revision = NULL;
+    if (strchr(model_name, '@')) {
+        revision = strchr(model_name, '@');
+        revision[0] = '\0';
+        ++revision;
+    }
+
+    model = ly_ctx_get_module(ctx, model_name, revision);
     if (model == NULL) {
         names = ly_ctx_get_module_names(ctx);
         for (i = 0; names[i]; i++) {
             if (!model) {
-                parent_model = ly_ctx_get_module(ctx, names[i], NULL, 0, -1);
-                model = (struct ly_module *)ly_ctx_get_submodule(parent_model, argv[optind], NULL, 0, -1);
+                parent_model = ly_ctx_get_module(ctx, names[i], NULL);
+                model = (struct lys_module *)ly_ctx_get_submodule(parent_model, model_name, revision);
             }
-            free(names[i]);
         }
         free(names);
     }
 
     if (model == NULL) {
-        fprintf(stderr, "No model \"%s\" found.\n", argv[optind]);
+        if (revision) {
+            fprintf(stderr, "No model \"%s\" in revision %s found.\n", model_name, revision);
+        } else {
+            fprintf(stderr, "No model \"%s\" found.\n", model_name);
+        }
         goto cleanup;
     }
 
@@ -249,7 +283,7 @@ cmd_print(const char *arg)
         }
     }
 
-    ret = ly_model_print(output, model, format, target_node);
+    ret = lys_print(output, model, format, target_node);
 
 cleanup:
     free(*argv);
@@ -262,20 +296,21 @@ cleanup:
     return ret;
 }
 
-int
-cmd_data(const char *arg)
+static int
+cmd_parse(const char *arg, int options)
 {
     int c, argc, option_index, ret = 1, fd = -1;
     struct stat sb;
     char **argv = NULL, *ptr, *addr;
     const char *out_path = NULL;
-    struct lyd_node *data = NULL;
-    LY_DFORMAT format = LY_DATA_UNKNOWN;
+    struct lyd_node *data = NULL, *next, *iter;
+    LYD_FORMAT format = LYD_UNKNOWN;
     FILE *output = stdout;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"format", required_argument, 0, 'f'},
         {"output", required_argument, 0, 'o'},
+        {"strict", no_argument, 0, 's'},
         {NULL, 0, 0, 0}
     };
 
@@ -292,7 +327,7 @@ cmd_data(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "hf:o:", long_options, &option_index);
+        c = getopt_long(argc, argv, "hf:o:xyz", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -304,9 +339,9 @@ cmd_data(const char *arg)
             goto cleanup;
         case 'f':
             if (!strcmp(optarg, "xml")) {
-                format = LY_DATA_XML;
+                format = LYD_XML;
             } else if (!strcmp(optarg, "json")) {
-                format = LY_DATA_JSON;
+                format = LYD_JSON;
             } else {
                 fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
                 goto cleanup;
@@ -318,6 +353,9 @@ cmd_data(const char *arg)
                 goto cleanup;
             }
             out_path = optarg;
+            break;
+        case 's':
+            options |= LYD_OPT_STRICT;
             break;
         case '?':
             fprintf(stderr, "Unknown option \"%d\".\n", (char)c);
@@ -348,7 +386,7 @@ cmd_data(const char *arg)
     }
 
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    data = xml_read_data(ctx, addr);
+    data = lyd_parse(ctx, addr, LYD_XML, options);
     munmap(addr, sb.st_size);
 
     if (data == NULL) {
@@ -363,14 +401,14 @@ cmd_data(const char *arg)
             goto cleanup;
         }
 
-        if (format == LY_DATA_UNKNOWN) {
+        if (format == LYD_UNKNOWN) {
             /* default */
-            format = LY_DATA_XML;
+            format = LYD_XML;
         }
     }
 
-    if (format != LY_DATA_UNKNOWN) {
-        ly_data_print(output, data, format);
+    if (format != LYD_UNKNOWN) {
+        lyd_print(output, data, format);
     }
 
 cleanup:
@@ -385,39 +423,93 @@ cleanup:
         close(fd);
     }
 
-    lyd_node_siblings_free(data);
+    LY_TREE_FOR_SAFE(data, next, iter) {
+        lyd_free(iter);
+    }
 
     return ret;
 }
 
 int
+cmd_data(const char *arg)
+{
+    return cmd_parse(arg, 0);
+}
+
+int
+cmd_config(const char *arg)
+{
+    return cmd_parse(arg, LYD_OPT_EDIT);
+}
+
+int
+cmd_filter(const char *arg)
+{
+    return cmd_parse(arg, LYD_OPT_FILTER);
+}
+
+int
 cmd_list(const char *UNUSED(arg))
 {
-    char **names, **sub_names;
-    int i, j;
+    struct lyd_node *ylib, *module, *submodule, *node;
+    int has_modules = 0;
 
-    printf("List of the loaded models:\n");
+    ylib = ly_ctx_info(ctx);
 
-    names = ly_ctx_get_module_names(ctx);
-
-    for (i = 0; names[i]; ++i) {
-        printf("\t%s\n", names[i]);
-
-        sub_names = ly_ctx_get_submodule_names(ctx, names[i]);
-        for (j = 0; sub_names[j]; ++j) {
-            printf("\t\t%s\n", sub_names[j]);
-            free(sub_names[j]);
+    LY_TREE_FOR(ylib->child, node) {
+        if (!strcmp(node->schema->name, "module-set-id")) {
+            printf("List of the loaded models (mod-set-id %s):\n", ((struct lyd_node_leaf *)node)->value_str);
+            break;
         }
-        free(sub_names);
-
-        free(names[i]);
     }
-    free(names);
+    assert(node);
 
-    if (i == 0) {
+    LY_TREE_FOR(ylib->child, module) {
+        if (!strcmp(module->schema->name, "module")) {
+            has_modules = 1;
+
+            /* module print */
+            LY_TREE_FOR(module->child, node) {
+                if (!strcmp(node->schema->name, "name")) {
+                    printf("\t%s", ((struct lyd_node_leaf *)node)->value_str);
+                } else if (!strcmp(node->schema->name, "revision")) {
+                    if (((struct lyd_node_leaf *)node)->value_str[0] == '\0') {
+                        printf("\n");
+                    } else {
+                        printf("@%s\n", ((struct lyd_node_leaf *)node)->value_str);
+                    }
+                }
+            }
+
+            /* submodules print */
+            LY_TREE_FOR(module->child, submodule) {
+                if (!strcmp(submodule->schema->name, "submodules")) {
+                    LY_TREE_FOR(submodule->child, submodule) {
+                        if (!strcmp(submodule->schema->name, "submodule")) {
+                            LY_TREE_FOR(submodule->child, node) {
+                                if (!strcmp(node->schema->name, "name")) {
+                                    printf("\t\t%s", ((struct lyd_node_leaf *)node)->value_str);
+                                } else if (!strcmp(node->schema->name, "revision")) {
+                                    if (((struct lyd_node_leaf *)node)->value_str[0] == '\0') {
+                                        printf("\n");
+                                    } else {
+                                        printf("@%s\n", ((struct lyd_node_leaf *)node)->value_str);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    if (!has_modules) {
         printf("\t(none)\n");
     }
 
+    lyd_free(ylib);
     return 0;
 }
 
@@ -425,9 +517,11 @@ int
 cmd_feature(const char *arg)
 {
     int c, i, argc, option_index, ret = 1, task = -1;
-    char **argv = NULL, *ptr, **names, **enable_state;
-    const char *feat_name = NULL;
-    struct ly_module *model, *parent_model;
+    unsigned int max_len;
+    char **argv = NULL, *ptr, *model_name, *revision;
+    const char *feat_name = NULL, **names;
+    uint8_t *states;
+    struct lys_module *model, *parent_model;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"print", no_argument, 0, 'p'},
@@ -493,20 +587,32 @@ cmd_feature(const char *arg)
         fprintf(stderr, "Missing the model name.\n");
         goto cleanup;
     }
-    model = ly_ctx_get_module(ctx, argv[optind], NULL, 0, -1);
+
+    revision = NULL;
+    model_name = argv[optind];
+    if (strchr(model_name, '@')) {
+        revision = strchr(model_name, '@');
+        revision[0] = '\0';
+        ++revision;
+    }
+
+    model = ly_ctx_get_module(ctx, model_name, revision);
     if (model == NULL) {
         names = ly_ctx_get_module_names(ctx);
         for (i = 0; names[i]; i++) {
             if (!model) {
-                parent_model = ly_ctx_get_module(ctx, names[i], NULL, 0, -1);
-                model = (struct ly_module *)ly_ctx_get_submodule(parent_model, argv[optind], NULL, 0, -1);
+                parent_model = ly_ctx_get_module(ctx, names[i], NULL);
+                model = (struct lys_module *)ly_ctx_get_submodule(parent_model, model_name, revision);
             }
-            free(names[i]);
         }
         free(names);
     }
     if (model == NULL) {
-        fprintf(stderr, "No model \"%s\" found.\n", argv[optind]);
+        if (revision) {
+            fprintf(stderr, "No model \"%s\" in revision %s found.\n", model_name, revision);
+        } else {
+            fprintf(stderr, "No model \"%s\" found.\n", model_name);
+        }
         goto cleanup;
     }
 
@@ -518,24 +624,30 @@ cmd_feature(const char *arg)
     if (task == 0) {
         printf("%s features:\n", model->name);
 
-        names = ly_get_features(model, &enable_state);
+        names = lys_features_list(model, &states);
+
+        /* get the max len */
+        max_len = 0;
         for (i = 0; names[i]; ++i) {
-            printf("\t%s %s\n", names[i], enable_state[i]);
-            free(names[i]);
-            free(enable_state[i]);
+            if (strlen(names[i]) > max_len) {
+                max_len = strlen(names[i]);
+            }
+        }
+        for (i = 0; names[i]; ++i) {
+            printf("\t%-*s (%s)\n", max_len, names[i], states[i] ? "on" : "off");
         }
         free(names);
-        free(enable_state);
+        free(states);
         if (!i) {
             printf("\t(none)\n");
         }
     } else if (task == 1) {
-        if (ly_features_enable(model, feat_name)) {
+        if (lys_features_enable(model, feat_name)) {
             fprintf(stderr, "Feature \"%s\" not found.\n", feat_name);
             ret = 1;
         }
     } else if (task == 2) {
-        if (ly_features_disable(model, feat_name)) {
+        if (lys_features_disable(model, feat_name)) {
             fprintf(stderr, "Feature \"%s\" not found.\n", feat_name);
             ret = 1;
         }
@@ -600,13 +712,13 @@ cmd_verb(const char *arg)
     }
 
     verb = arg + 5;
-    if (strcmp(verb, "error") == 0) {
+    if (!strcmp(verb, "error") || !strcmp(verb, "0")) {
         ly_verb(0);
-    } else if (strcmp(verb, "warning") == 0) {
+    } else if (!strcmp(verb, "warning") || !strcmp(verb, "1")) {
         ly_verb(1);
-    } else if (strcmp(verb, "verbose") == 0) {
+    } else if (!strcmp(verb, "verbose")  || !strcmp(verb, "2")) {
         ly_verb(2);
-    } else if (strcmp(verb, "debug") == 0) {
+    } else if (!strcmp(verb, "debug")  || !strcmp(verb, "3")) {
         ly_verb(3);
     } else {
         fprintf(stderr, "Unknown verbosity \"%s\"\n", verb);
@@ -672,7 +784,9 @@ COMMAND commands[] = {
         {"help", cmd_help, NULL, "Display commands description"},
         {"add", cmd_add, cmd_add_help, "Add a new model"},
         {"print", cmd_print, cmd_print_help, "Print model"},
-        {"data", cmd_data, cmd_data_help, "Load, validate and optionally print data"},
+        {"data", cmd_data, cmd_data_help, "Load, validate and optionally print complete datastore data"},
+        {"config", cmd_config, cmd_config_help, "Load, validate and optionally print edit-config's data"},
+        {"filter", cmd_filter, cmd_filter_help, "Load, validate and optionally print subtree filter data"},
         {"list", cmd_list, cmd_list_help, "List all the loaded models"},
         {"feature", cmd_feature, cmd_feature_help, "Print/enable/disable all/specific features of models"},
         {"searchpath", cmd_searchpath, cmd_searchpath_help, "Set the search path for models"},

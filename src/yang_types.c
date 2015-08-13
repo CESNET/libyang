@@ -21,9 +21,9 @@
 
 #include <stdlib.h>
 
-#include "tree.h"
+#include "tree_internal.h"
 
-struct ly_tpdf ly_type_binary = {
+struct lys_tpdf ly_type_binary = {
     .name = "binary",
     .module = NULL,
     .dsc = "Any binary data",
@@ -32,7 +32,7 @@ struct ly_tpdf ly_type_binary = {
     .type = {.base = LY_TYPE_BINARY}
 };
 
-struct ly_tpdf ly_type_bits = {
+struct lys_tpdf ly_type_bits = {
     .name = "bits",
     .module = NULL,
     .dsc = "A set of bits or flags",
@@ -41,7 +41,7 @@ struct ly_tpdf ly_type_bits = {
     .type = {.base = LY_TYPE_BITS}
 };
 
-struct ly_tpdf ly_type_bool = {
+struct lys_tpdf ly_type_bool = {
     .name = "boolean",
     .module = NULL,
     .dsc = "true or false",
@@ -50,7 +50,7 @@ struct ly_tpdf ly_type_bool = {
     .type = {.base = LY_TYPE_BOOL}
 };
 
-struct ly_tpdf ly_type_dec64 = {
+struct lys_tpdf ly_type_dec64 = {
     .name = "decimal64",
     .module = NULL,
     .dsc = "64-bit signed decimal number",
@@ -59,7 +59,7 @@ struct ly_tpdf ly_type_dec64 = {
     .type = {.base = LY_TYPE_DEC64}
 };
 
-struct ly_tpdf ly_type_empty = {
+struct lys_tpdf ly_type_empty = {
     .name = "empty",
     .module = NULL,
     .dsc = "A leaf that does not have any value",
@@ -68,7 +68,7 @@ struct ly_tpdf ly_type_empty = {
     .type = {.base = LY_TYPE_EMPTY}
 };
 
-struct ly_tpdf ly_type_enum = {
+struct lys_tpdf ly_type_enum = {
     .name = "enumeration",
     .module = NULL,
     .dsc = "Enumerated strings",
@@ -77,7 +77,7 @@ struct ly_tpdf ly_type_enum = {
     .type = {.base = LY_TYPE_ENUM}
 };
 
-struct ly_tpdf ly_type_ident = {
+struct lys_tpdf ly_type_ident = {
     .name = "identityref",
     .module = NULL,
     .dsc = "A reference to an abstract identity",
@@ -86,7 +86,7 @@ struct ly_tpdf ly_type_ident = {
     .type = {.base = LY_TYPE_IDENT}
 };
 
-struct ly_tpdf ly_type_inst = {
+struct lys_tpdf ly_type_inst = {
     .name = "instance-identifier",
     .module = NULL,
     .dsc = "References a data tree node",
@@ -95,7 +95,7 @@ struct ly_tpdf ly_type_inst = {
     .type = {.base = LY_TYPE_INST}
 };
 
-struct ly_tpdf ly_type_int8 = {
+struct lys_tpdf ly_type_int8 = {
     .name = "int8",
     .module = NULL,
     .dsc = "8-bit signed integer",
@@ -104,7 +104,7 @@ struct ly_tpdf ly_type_int8 = {
     .type = {.base = LY_TYPE_INT8}
 };
 
-struct ly_tpdf ly_type_int16 = {
+struct lys_tpdf ly_type_int16 = {
     .name = "int16",
     .module = NULL,
     .dsc = "16-bit signed integer",
@@ -113,7 +113,7 @@ struct ly_tpdf ly_type_int16 = {
     .type = {.base = LY_TYPE_INT16}
 };
 
-struct ly_tpdf ly_type_int32 = {
+struct lys_tpdf ly_type_int32 = {
     .name = "int32",
     .module = NULL,
     .dsc = "32-bit signed integer",
@@ -122,7 +122,7 @@ struct ly_tpdf ly_type_int32 = {
     .type = {.base = LY_TYPE_INT32}
 };
 
-struct ly_tpdf ly_type_int64 = {
+struct lys_tpdf ly_type_int64 = {
     .name = "int64",
     .module = NULL,
     .dsc = "64-bit signed integer",
@@ -131,7 +131,7 @@ struct ly_tpdf ly_type_int64 = {
     .type = {.base = LY_TYPE_INT64}
 };
 
-struct ly_tpdf ly_type_leafref = {
+struct lys_tpdf ly_type_leafref = {
     .name = "leafref",
     .module = NULL,
     .dsc = "A reference to a leaf instance",
@@ -140,7 +140,7 @@ struct ly_tpdf ly_type_leafref = {
     .type = {.base = LY_TYPE_LEAFREF}
 };
 
-struct ly_tpdf ly_type_string = {
+struct lys_tpdf ly_type_string = {
     .name = "string",
     .module = NULL,
     .dsc = "Human-readable string",
@@ -149,7 +149,7 @@ struct ly_tpdf ly_type_string = {
     .type = {.base = LY_TYPE_STRING}
 };
 
-struct ly_tpdf ly_type_uint8 = {
+struct lys_tpdf ly_type_uint8 = {
     .name = "uint8",
     .module = NULL,
     .dsc = "8-bit unsigned integer",
@@ -158,7 +158,7 @@ struct ly_tpdf ly_type_uint8 = {
     .type = {.base = LY_TYPE_UINT8}
 };
 
-struct ly_tpdf ly_type_uint16 = {
+struct lys_tpdf ly_type_uint16 = {
     .name = "uint16",
     .module = NULL,
     .dsc = "16-bit unsigned integer",
@@ -167,7 +167,7 @@ struct ly_tpdf ly_type_uint16 = {
     .type = {.base = LY_TYPE_UINT16}
 };
 
-struct ly_tpdf ly_type_uint32 = {
+struct lys_tpdf ly_type_uint32 = {
     .name = "uint32",
     .module = NULL,
     .dsc = "32-bit unsigned integer",
@@ -176,7 +176,7 @@ struct ly_tpdf ly_type_uint32 = {
     .type = {.base = LY_TYPE_UINT32}
 };
 
-struct ly_tpdf ly_type_uint64 = {
+struct lys_tpdf ly_type_uint64 = {
     .name = "uint64",
     .module = NULL,
     .dsc = "64-bit unsigned integer",
@@ -185,7 +185,7 @@ struct ly_tpdf ly_type_uint64 = {
     .type = {.base = LY_TYPE_UINT64}
 };
 
-struct ly_tpdf ly_type_union = {
+struct lys_tpdf ly_type_union = {
     .name = "union",
     .module = NULL,
     .dsc = "Choice of member types",

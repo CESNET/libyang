@@ -128,7 +128,7 @@ get_model_completion(const char *hint, char ***matches, unsigned int *match_coun
 {
     int i, j, no_arg;
     const char *ptr;
-    char **names, **sub_names;
+    const char **names, **sub_names;
 
     *match_count = 0;
     *matches = NULL;
@@ -191,11 +191,8 @@ get_model_completion(const char *hint, char ***matches, unsigned int *match_coun
                 strncpy((*matches)[*match_count-1], hint, ptr-hint);
                 strcpy((*matches)[*match_count-1]+(ptr-hint), sub_names[j]);
             }
-            free(sub_names[j]);
         }
         free(sub_names);
-
-        free(names[i]);
     }
     free(names);
 }

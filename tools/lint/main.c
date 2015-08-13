@@ -59,7 +59,7 @@ main_noninteractive(int argc, char *argv[])
     int c;
     int ret = EXIT_FAILURE;
     int fd = -1;
-    struct ly_module *model;
+    struct lys_module *model;
     struct stat sb;
     char *addr = NULL;
 
@@ -106,7 +106,7 @@ main_noninteractive(int argc, char *argv[])
 
     /* libyang */
     ctx = ly_ctx_new(search_path);
-    model = ly_module_read(ctx, addr, LY_IN_YIN, 1);
+    model = lys_parse(ctx, addr, LYS_IN_YIN);
     if (!model) {
         fprintf(stderr, "Parsing data model failed.\n");
         goto cleanup;

@@ -42,13 +42,14 @@
 
 #include "libyang.h"
 #include "tree.h"
+#include "tree_internal.h"
 
 /**
  * @defgroup yin YIN format support
  * @{
  */
-struct ly_module *yin_read_module(struct ly_ctx *ctx, const char *data, int implement);
-struct ly_submodule *yin_read_submodule(struct ly_module *module, const char *data, int implement);
+struct lys_module *yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unres_schema *unres);
+struct lys_submodule *yin_read_submodule(struct lys_module *module, const char *data, int implement, struct unres_schema *unres);
 
 /**@} yin */
 
@@ -56,8 +57,12 @@ struct ly_submodule *yin_read_submodule(struct ly_module *module, const char *da
  * @defgroup xmldata XML data format support
  * @{
  */
-struct lyd_node *xml_read_data(struct ly_ctx *ctx, const char *data);
+struct lyd_node *xml_read_data(struct ly_ctx *ctx, const char *data, int options);
 
 /**@} xmldata */
+
+
+struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision);
+void lyp_set_implemented(struct lys_module *module);
 
 #endif /* LY_PARSER_H_ */

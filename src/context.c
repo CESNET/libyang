@@ -20,7 +20,7 @@
  */
 
 #define _GNU_SOURCE
-#include <dirent.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -32,6 +32,15 @@
 #include "common.h"
 #include "context.h"
 #include "dict.h"
+#include "tree_internal.h"
+
+#define IETF_INET_TYPES_PATH "../models/ietf-inet-types@2013-07-15.h"
+#define IETF_YANG_TYPES_PATH "../models/ietf-yang-types@2013-07-15.h"
+#define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2015-07-03.h"
+
+#include IETF_INET_TYPES_PATH
+#include IETF_YANG_TYPES_PATH
+#include IETF_YANG_LIB_PATH
 
 API struct ly_ctx *
 ly_ctx_new(const char *search_dir)
@@ -64,6 +73,28 @@ ly_ctx_new(const char *search_dir)
         ctx->models.search_path = get_current_dir_name();
         chdir(cwd);
         free(cwd);
+    }
+    ctx->models.module_set_id = 1;
+
+    /* load ietf-inet-types */
+    ctx->models.list[0] = lys_parse(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN);
+    if (!ctx->models.list[0]) {
+        ly_ctx_destroy(ctx);
+        return NULL;
+    }
+
+    /* load ietf-yang-types */
+    ctx->models.list[1] = lys_parse(ctx, (char *)ietf_yang_types_2013_07_15_yin, LYS_IN_YIN);
+    if (!ctx->models.list[1]) {
+        ly_ctx_destroy(ctx);
+        return NULL;
+    }
+
+    /* load ietf-yang-library */
+    ctx->models.list[2] = lys_parse(ctx, (char *)ietf_yang_library_2015_07_03_yin, LYS_IN_YIN);
+    if (!ctx->models.list[2]) {
+        ly_ctx_destroy(ctx);
+        return NULL;
     }
 
     return ctx;
@@ -104,7 +135,7 @@ ly_ctx_destroy(struct ly_ctx *ctx)
 
     /* models list */
     while (ctx->models.used) {
-        ly_module_free(ctx->models.list[0]);
+        lys_free(ctx->models.list[0]);
     }
     free(ctx->models.search_path);
     free(ctx->models.list);
@@ -115,113 +146,22 @@ ly_ctx_destroy(struct ly_ctx *ctx)
     free(ctx);
 }
 
-static struct ly_module *
-search_file(struct ly_ctx *ctx, struct ly_module *module, const char *name, const char *revision, int implement)
+API struct lys_submodule *
+ly_ctx_get_submodule(struct lys_module *module, const char *name, const char *revision)
 {
-    size_t len, flen;
-    int fd;
-    char *cwd;
-    DIR *dir;
-    struct dirent *file;
-    LY_MINFORMAT format;
-    struct ly_module *result = NULL;
-    int localsearch = 1;
-
-    len = strlen(name);
-    cwd = get_current_dir_name();
-    dir = opendir(cwd);
-    LOGVRB("Searching for \"%s\" in %s.", name, cwd);
-    if (!dir) {
-        LOGWRN("Unable to open local directory for searching referenced modules (%s)",
-               strerror(errno));
-        /* try search directory */
-        goto searchpath;
-    }
-
-search:
-    while ((file = readdir(dir))) {
-        if (strncmp(name, file->d_name, len) ||
-                (file->d_name[len] != '.' && file->d_name[len] != '@')) {
-            continue;
-        }
-
-        flen = strlen(file->d_name);
-        if (revision && flen > len + 5) {
-            /* check revision from the filename */
-            /* TODO */
-        }
-
-        /* get type according to filename suffix */
-        if (!strcmp(&file->d_name[flen - 4], ".yin")) {
-            format = LY_IN_YIN;
-        } else if (!strcmp(&file->d_name[flen - 5], ".yang")) {
-            format = LY_IN_YANG;
-        } else {
-            continue;
-        }
-
-        /* open the file */
-        fd = open(file->d_name, O_RDONLY);
-        if (fd < 0) {
-            LOGERR(LY_ESYS, "Unable to open data model file \"%s\" (%s).",
-                   file->d_name, strerror(errno));
-            goto cleanup;
-        }
-
-        if (module) {
-            result = (struct ly_module *)ly_submodule_read_fd(module, fd, format, implement);
-        } else {
-            result = ly_module_read_fd(ctx, fd, format, implement);
-        }
-        close(fd);
-
-        if (result) {
-            break;
-        }
-    }
-
-searchpath:
-    if (!ctx->models.search_path) {
-        LOGWRN("No search path defined for the current context.");
-    } else if (!result && localsearch) {
-        /* search in local directory done, try context's search_path */
-        closedir(dir);
-        dir = opendir(ctx->models.search_path);
-        if (!dir) {
-            LOGERR(LY_ESYS, "Unable to open data model search directory \"%s\" (%s).",
-                   ctx->models.search_path, strerror(errno));
-            goto cleanup;
-        }
-
-        chdir(ctx->models.search_path);
-        LOGVRB("Searching for \"%s\" in %s.", name, ctx->models.search_path);
-
-        localsearch = 0;
-        goto search;
-    }
-
-cleanup:
-    chdir(cwd);
-    free(cwd);
-    closedir(dir);
-
-    return result;
-}
-
-API struct ly_submodule *
-ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *revision, int read, int implement)
-{
-    struct ly_submodule *result;
+    struct lys_submodule *result;
     int i;
 
-    if (!module || !name || (read && implement == -1)) {
+    if (!module || !name) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
 
+    /* TODO search also for submodules not directly available from the main module */
+
     /* search in modules included by the main module */
     if (module->type) {
-        module = ((struct ly_submodule *)module)->belongsto;
+        module = ((struct lys_submodule *)module)->belongsto;
     }
     for (i = 0; i < module->inc_size; i++) {
         result = module->inc[i].submodule;
@@ -230,70 +170,78 @@ ly_ctx_get_submodule(struct ly_module *module, const char *name, const char *rev
         }
 
         if (!revision || (result->rev_size && !strcmp(revision, result->rev[0].date))) {
-            if (implement == 1) {
-                result->implemented = 1;
-            }
             return result;
         }
     }
 
-    if (!read) {
-        return NULL;
-    }
-
-    /* not found in context, try to get it from the search directory */
-    result = (struct ly_submodule *)search_file(module->ctx, module, name, revision, implement);
-    if (!result) {
-        LOGERR(LY_EVALID, "Submodule \"%s\" of the \"%s\" data model not found (search path is \"%s\")",
-               name, module->name, module->ctx->models.search_path);
-    }
-
-    return result;
+    return NULL;
 }
 
-API struct ly_module *
-ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision, int read, int implement)
+static struct lys_module *
+ly_ctx_get_module_by(struct ly_ctx *ctx, const char *key, int offset, const char *revision)
 {
     int i;
-    struct ly_module *result = NULL;
+    struct lys_module *result = NULL;
 
-    if (!ctx || !name || (read && implement == -1)) {
+    if (!ctx || !key) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
 
     for (i = 0; i < ctx->models.used; i++) {
-        result = ctx->models.list[i];
-        if (!result || strcmp(name, result->name)) {
+        /* use offset to get address of the pointer to string (char**), remember that offset is in
+         * bytes, so we have to cast the pointer to the module to (char*), finally, we want to have
+         * string not the pointer to string
+         */
+        if (!ctx->models.list[i] || strcmp(key, *(char**)(((char*)ctx->models.list[i]) + offset))) {
             continue;
         }
 
-        if (!revision || (result->rev_size && !strcmp(revision, result->rev[0].date))) {
-            if (implement == 1) {
-                result->implemented = 1;
+        if (!revision) {
+            /* compare revisons and remember the newest one */
+            if (result) {
+                if (!ctx->models.list[i]->rev_size) {
+                    /* the current have no revision, keep the previous with some revision */
+                    continue;
+                }
+                if (result->rev_size && strcmp(ctx->models.list[i]->rev[0].date, result->rev[0].date) < 0) {
+                    /* the previous found matching module has a newer revision */
+                    continue;
+                }
             }
-            return result;
+
+            /* remember the current match and search for newer version */
+            result = ctx->models.list[i];
+        } else {
+            if (ctx->models.list[i]->rev_size && !strcmp(revision, ctx->models.list[i]->rev[0].date)) {
+                /* matching revision */
+                result = ctx->models.list[i];
+                break;
+            }
         }
     }
 
-    if (!read) {
-        return NULL;
-    }
-
-    /* not found in context, try to get it from the search directory */
-    result = search_file(ctx, NULL, name, revision, implement);
-    if (!result) {
-        LOGERR(LY_EVALID, "Data model \"%s\" not found (search path is \"%s\")", name, ctx->models.search_path);
-    }
-
     return result;
+
 }
 
-API char **
+API struct lys_module *
+ly_ctx_get_module_by_ns(struct ly_ctx *ctx, const char *ns, const char *revision)
+{
+    return ly_ctx_get_module_by(ctx, ns, offsetof(struct lys_module, ns), revision);
+}
+
+API struct lys_module *
+ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision)
+{
+    return ly_ctx_get_module_by(ctx, name, offsetof(struct lys_module, name), revision);
+}
+
+API const char **
 ly_ctx_get_module_names(struct ly_ctx *ctx)
 {
     int i;
-    char **result = NULL;
+    const char **result = NULL;
 
     if (!ctx) {
         ly_errno = LY_EINVAL;
@@ -303,35 +251,35 @@ ly_ctx_get_module_names(struct ly_ctx *ctx)
     result = malloc((ctx->models.used+1) * sizeof *result);
 
     for (i = 0; i < ctx->models.used; i++) {
-        result[i] = strdup(ctx->models.list[i]->name);
+        result[i] = ctx->models.list[i]->name;
     }
     result[i] = NULL;
 
     return result;
 }
 
-API char **
-ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *name)
+API const char **
+ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *module_name)
 {
     int i;
-    char **result = NULL;
-    struct ly_module *mod;
+    const char **result = NULL;
+    struct lys_module *mod;
 
     if (!ctx) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
 
-    mod = ly_ctx_get_module(ctx, name, NULL, 0, -1);
+    mod = ly_ctx_get_module(ctx, module_name, NULL);
     if (!mod) {
-        LOGERR(LY_EVALID, "Data model \"%s\" not loaded", name);
+        LOGERR(LY_EVALID, "Data model \"%s\" not loaded", module_name);
         return NULL;
     }
 
     result = malloc((mod->inc_size+1) * sizeof *result);
 
     for (i = 0; i < mod->inc_size; i++) {
-        result[i] = strdup(mod->inc[i].submodule->name);
+        result[i] = mod->inc[i].submodule->name;
     }
     result[i] = NULL;
 
