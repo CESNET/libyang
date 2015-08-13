@@ -113,6 +113,7 @@ validate_pattern(const char *str, struct lys_type *type, struct lyxml_elem *xml,
         /* must return 0, already checked during parsing */
         if (regcomp(&preq, posix_regex, REG_EXTENDED | REG_NOSUB)) {
             LOGINT;
+            free(posix_regex);
             return EXIT_FAILURE;
         }
         free(posix_regex);
@@ -281,6 +282,7 @@ instid_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml)
             /* leading '/' character */
             if (start == 1 && in[i] != '/') {
                 LOGVAL(LYE_INCHAR, LOGLINE(xml), in[i], &in[i]);
+                free(out);
                 return NULL;
             }
 
