@@ -1989,10 +1989,12 @@ lys_features_list(struct lys_module *module, uint8_t **states)
     for (j = 0; j < module->inc_size; j++) {
         for (i = 0; i < module->inc[j].submodule->features_size; i++) {
             result[count] = module->inc[j].submodule->features[i].name;
-            if (module->inc[j].submodule->features[i].flags & LYS_FENABLED) {
-                (*states)[count] = 1;
-            } else {
-                (*states)[count] = 0;
+            if (states) {
+                if (module->inc[j].submodule->features[i].flags & LYS_FENABLED) {
+                    (*states)[count] = 1;
+                } else {
+                    (*states)[count] = 0;
+                }
             }
             count++;
         }
