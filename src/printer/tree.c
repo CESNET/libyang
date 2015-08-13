@@ -430,8 +430,10 @@ tree_print_leaf(FILE *f, struct lys_module *module, char *indent, unsigned int m
 
     assert(spec_config >= 0 && spec_config <= 2);
 
+    /* get know if the leaf is a key in a list, in that case it is
+     * mandatory by default */
     for (parent = leaf->parent; parent && parent->nodetype == LYS_USES; parent = parent->parent);
-    if (parent->nodetype == LYS_LIST) {
+    if (parent && parent->nodetype == LYS_LIST) {
         list = (struct lys_node_list *)parent;
         for (i = 0; i < list->keys_size; i++) {
             if (list->keys[i] == leaf) {
