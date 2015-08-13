@@ -56,7 +56,7 @@ struct lys_module *
 lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
     struct unres_schema *unres;
-    struct lys_module *module;
+    struct lys_module *module = NULL;
     struct stat sb;
     char *addr;
 
@@ -82,12 +82,11 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     case LYS_IN_YANG:
     default:
         /* TODO */
-        munmap(addr, sb.st_size);
-        return NULL;
+        break;
     }
     munmap(addr, sb.st_size);
 
-    if (resolve_unres(module, unres)) {
+    if (module && unres->count && resolve_unres(module, unres)) {
         lys_free(module);
         module = NULL;
     }
@@ -105,7 +104,7 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
 {
     size_t len, flen;
     int fd;
-    char *cwd, *model_path;
+    char *wd, *cwd, *model_path;
     DIR *dir;
     struct dirent *file;
     LYS_INFORMAT format;
@@ -113,15 +112,15 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     int localsearch = 1;
 
     len = strlen(name);
-    cwd = get_current_dir_name();
+    cwd = wd = get_current_dir_name();
 
 opendir_search:
-    chdir(cwd);
-    dir = opendir(cwd);
-    LOGVRB("Searching for \"%s\" in %s.", name, cwd);
+    chdir(wd);
+    dir = opendir(wd);
+    LOGVRB("Searching for \"%s\" in %s.", name, wd);
     if (!dir) {
         LOGWRN("Unable to open directory \"%s\" for searching referenced modules (%s)",
-               cwd, strerror(errno));
+               wd, strerror(errno));
         /* try search directory */
         goto searchpath;
     }
@@ -163,7 +162,7 @@ opendir_search:
         close(fd);
 
         if (result) {
-            asprintf(&model_path, "file://%s/%s", cwd, file->d_name);
+            asprintf(&model_path, "file://%s/%s", wd, file->d_name);
             result->uri = lydict_insert(ctx, model_path, 0);
             free(model_path);
             break;
@@ -176,13 +175,17 @@ searchpath:
     } else if (!result && localsearch) {
         /* search in local directory done, try context's search_path */
         closedir(dir);
-        cwd = strdup(ctx->models.search_path);
+        free(wd);
+        wd = strdup(ctx->models.search_path);
         localsearch = 0;
         goto opendir_search;
     }
 
 cleanup:
     chdir(cwd);
+    if (cwd != wd) {
+        free(wd);
+    }
     free(cwd);
     closedir(dir);
 

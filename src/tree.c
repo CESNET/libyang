@@ -474,7 +474,7 @@ API struct lys_module *
 lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
     struct unres_schema *unres;
-    struct lys_module *mod;
+    struct lys_module *mod = NULL;
 
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -488,15 +488,12 @@ lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
         mod = yin_read_module(ctx, data, 1, unres);
         break;
     case LYS_IN_YANG:
-        /* TODO */
-        mod = NULL;
-        break;
     default:
-        mod = NULL;
+        /* TODO */
         break;
     }
 
-    if (resolve_unres(mod, unres)) {
+    if (mod && unres->count && resolve_unres(mod, unres)) {
         lys_free(mod);
         mod = NULL;
     }
@@ -513,7 +510,7 @@ struct lys_submodule *
 lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT format, int implement)
 {
     struct unres_schema *unres;
-    struct lys_submodule *submod;
+    struct lys_submodule *submod = NULL;
 
     assert(module);
     assert(data);
@@ -525,15 +522,12 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
         submod = yin_read_submodule(module, data, implement, unres);
         break;
     case LYS_IN_YANG:
-        /* TODO */
-        submod = NULL;
-        break;
     default:
-        submod = NULL;
+        /* TODO */
         break;
     }
 
-   if (resolve_unres((struct lys_module *)submod, unres)) {
+   if (submod && unres->count && resolve_unres((struct lys_module *)submod, unres)) {
         lys_submodule_free(submod);
         submod = NULL;
     }
