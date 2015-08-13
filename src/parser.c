@@ -83,6 +83,7 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     default:
         /* TODO */
         munmap(addr, sb.st_size);
+        free(unres);
         return NULL;
     }
     munmap(addr, sb.st_size);
