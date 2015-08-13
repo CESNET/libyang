@@ -30,22 +30,26 @@
 #include "../libyang.h"
 #include "../common.h"
 #include "../context.h"
+#include "../resolve.h"
 #include "../xml.h"
 #include "../tree_internal.h"
+#include "../validation.h"
 
 #define LY_NSNC "urn:ietf:params:xml:ns:netconf:base:1.0"
 
 /* kind == 0 - unsigned (unum used), 1 - signed (snum used), 2 - floating point (fnum used) */
 static int
-validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnum, struct ly_type *type,
+validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnum, struct lys_type *type,
                       struct lyxml_elem *xml, const char *str_val, int log)
 {
     struct len_ran_intv *intv = NULL, *tmp_intv;
-    int ret = 1;
+    int ret = EXIT_FAILURE;
 
-    assert(!get_len_ran_interval(NULL, type, 0, &intv));
+    if (resolve_len_ran_interval(NULL, type, 0, &intv)) {
+        return EXIT_FAILURE;
+    }
     if (!intv) {
-        return 0;
+        return EXIT_SUCCESS;
     }
 
     for (tmp_intv = intv; tmp_intv; tmp_intv = tmp_intv->next) {
@@ -58,7 +62,7 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
         if (((kind == 0) && (unum >= tmp_intv->value.uval.min) && (unum <= tmp_intv->value.uval.max))
                 || ((kind == 1) && (snum >= tmp_intv->value.sval.min) && (snum <= tmp_intv->value.sval.max))
                 || ((kind == 2) && (fnum >= tmp_intv->value.fval.min) && (fnum <= tmp_intv->value.fval.max))) {
-            ret = 0;
+            ret = EXIT_SUCCESS;
             break;
         }
     }
@@ -70,14 +74,13 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
     }
 
     if (ret && log) {
-        ly_errno = LY_EVALID;
-        LOGVAL(DE_OORVAL, LOGLINE(xml), str_val);
+        LOGVAL(LYE_OORVAL, LOGLINE(xml), str_val);
     }
     return ret;
 }
 
 static int
-validate_pattern(const char *str, struct ly_type *type, struct lyxml_elem *xml, const char *str_val, int log)
+validate_pattern(const char *str, struct lys_type *type, struct lyxml_elem *xml, const char *str_val, int log)
 {
     int i;
     regex_t preq;
@@ -86,7 +89,7 @@ validate_pattern(const char *str, struct ly_type *type, struct lyxml_elem *xml, 
     assert(type->base == LY_TYPE_STRING);
 
     if (type->der && validate_pattern(str, &type->der->type, xml, str_val, log)) {
-        return 1;
+        return EXIT_FAILURE;
     }
 
     for (i = 0; i < type->info.str.pat_count; ++i) {
@@ -108,36 +111,39 @@ validate_pattern(const char *str, struct ly_type *type, struct lyxml_elem *xml, 
         }
 
         /* must return 0, already checked during parsing */
-        assert(!regcomp(&preq, posix_regex, REG_EXTENDED | REG_NOSUB));
+        if (regcomp(&preq, posix_regex, REG_EXTENDED | REG_NOSUB)) {
+            LOGINT;
+            free(posix_regex);
+            return EXIT_FAILURE;
+        }
         free(posix_regex);
 
         if (regexec(&preq, str, 0, 0, 0)) {
             regfree(&preq);
-            ly_errno = LY_EVALID;
             if (log) {
-                LOGVAL(DE_INVAL, LOGLINE(xml), str_val, xml->name);
+                LOGVAL(LYE_INVAL, LOGLINE(xml), str_val, xml->name);
             }
-            return 1;
+            return EXIT_FAILURE;
         }
         regfree(&preq);
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
-static struct ly_mnode *
-xml_data_search_schemanode(struct lyxml_elem *xml, struct ly_mnode *start)
+static struct lys_node *
+xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start)
 {
-    struct ly_mnode *result, *aux;
+    struct lys_node *result, *aux;
 
     LY_TREE_FOR(start, result) {
         /* skip groupings */
-        if (result->nodetype == LY_NODE_GROUPING) {
+        if (result->nodetype == LYS_GROUPING) {
             continue;
         }
 
         /* go into cases, choices, uses */
-        if (result->nodetype & (LY_NODE_CHOICE | LY_NODE_CASE | LY_NODE_USES)) {
+        if (result->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES)) {
             aux = xml_data_search_schemanode(xml, result->child);
             if (aux) {
                 /* we have matching result */
@@ -174,23 +180,22 @@ parse_int(const char *str_val, struct lyxml_elem *xml, int64_t min, int64_t max,
     *ret = strtoll(str_val, &strptr, base);
     if (errno || (*ret < min) || (*ret > max)) {
         if (log) {
-            LOGVAL(DE_OORVAL, LOGLINE(xml), str_val, xml->name);
+            LOGVAL(LYE_OORVAL, LOGLINE(xml), str_val, xml->name);
         }
-        return 1;
+        return EXIT_FAILURE;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
             ++strptr;
         }
         if (*strptr) {
-            ly_errno = LY_EVALID;
             if (log) {
-                LOGVAL(DE_INVAL, LOGLINE(xml), str_val, xml->name);
+                LOGVAL(LYE_INVAL, LOGLINE(xml), str_val, xml->name);
             }
-            return 1;
+            return EXIT_FAILURE;
         }
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 static int
@@ -203,34 +208,33 @@ parse_uint(const char *str_val, struct lyxml_elem *xml, uint64_t max, int base, 
     *ret = strtoull(str_val, &strptr, base);
     if (errno || (*ret > max)) {
         if (log) {
-            LOGVAL(DE_OORVAL, LOGLINE(xml), str_val, xml->name);
+            LOGVAL(LYE_OORVAL, LOGLINE(xml), str_val, xml->name);
         }
-        return 1;
+        return EXIT_FAILURE;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
             ++strptr;
         }
         if (*strptr) {
-            ly_errno = LY_EVALID;
             if (log) {
-                LOGVAL(DE_INVAL, LOGLINE(xml), str_val, xml->name);
+                LOGVAL(LYE_INVAL, LOGLINE(xml), str_val, xml->name);
             }
-            return 1;
+            return EXIT_FAILURE;
         }
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
-static struct ly_type *
-get_next_union_type(struct ly_type *type, struct ly_type *prev_type, int *found)
+static struct lys_type *
+get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *found)
 {
     int i;
-    struct ly_type *ret = NULL;
+    struct lys_type *ret = NULL;
 
     for (i = 0; i < type->info.uni.count; ++i) {
-        if (type->info.uni.type[i].base == LY_TYPE_UNION) {
-            ret = get_next_union_type(&type->info.uni.type[i], prev_type, found);
+        if (type->info.uni.types[i].base == LY_TYPE_UNION) {
+            ret = get_next_union_type(&type->info.uni.types[i], prev_type, found);
             if (ret) {
                 break;;
             }
@@ -238,11 +242,11 @@ get_next_union_type(struct ly_type *type, struct ly_type *prev_type, int *found)
         }
 
         if (!prev_type || *found) {
-            ret = &type->info.uni.type[i];
+            ret = &type->info.uni.types[i];
             break;
         }
 
-        if (&type->info.uni.type[i] == prev_type) {
+        if (&type->info.uni.types[i] == prev_type) {
             *found = 1;
         }
     }
@@ -254,13 +258,167 @@ get_next_union_type(struct ly_type *type, struct ly_type *prev_type, int *found)
     return ret;
 }
 
+static const char *
+instid_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml)
+{
+    const char *in = xml->content;
+    char *out, *aux, *prefix;
+    size_t out_size, len, size, i = 0, o = 0;
+    int start = 1, interior = 1;
+    struct lys_module *mod, *mod_prev = NULL;
+    struct lyxml_ns *ns;
+
+    out_size = strlen(in);
+    out = malloc((out_size + 1) * sizeof *out);
+
+    while (in[i]) {
+
+        /* skip whitespaces */
+        while (isspace(in[i])) {
+            i++;
+        }
+
+        if (start) {
+            /* leading '/' character */
+            if (start == 1 && in[i] != '/') {
+                LOGVAL(LYE_INCHAR, LOGLINE(xml), in[i], &in[i]);
+                free(out);
+                return NULL;
+            }
+
+            /* check the output buffer size */
+            if (out_size == o) {
+                out_size += 16; /* just add some size */
+                aux = realloc(out, out_size + 1);
+                if (!aux) {
+                    free(out);
+                    LOGMEM;
+                    return NULL;
+                }
+                out = aux;
+            }
+
+            out[o++] = in[i++];
+            start = 0;
+            continue;
+        } else {
+            /* translate the node identifier */
+            /* prefix */
+            aux = strchr(&in[i], ':');
+            if (aux) {
+                /* interior segment */
+                len = aux - &in[i];
+                prefix = strndup(&in[i], len);
+                i += len + 1; /* move after ':' */
+            } else {
+                /* missing prefix -> invalid instance-identifier */
+                LOGVAL(LYE_INVAL, LOGLINE(xml), xml->content, xml->name);
+                free(out);
+                return NULL;
+            }
+            ns = lyxml_get_ns(xml, prefix);
+            free(prefix);
+            mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
+
+            /* node name */
+            aux = strpbrk(&in[i], "/[=");
+            if (aux) {
+                /* interior segment */
+                len = aux - &in[i];
+            } else {
+                /* end segment */
+                interior = 0;
+                len = strlen(&in[i]);
+            }
+
+            /* check the output buffer size */
+            if (!mod_prev || (mod != mod_prev)) {
+                /* prefix + ':' + name to print + '/' */
+                size = o + len + 1 + strlen(mod->name) + interior;
+            } else {
+                /* name to print + '/' */
+                size = o + len + interior;
+            }
+            if (out_size <= size) {
+                /* extend to fit the needed size */
+                out_size = size;
+                aux = realloc(out, out_size + 1);
+                if (!aux) {
+                    free(out);
+                    LOGMEM;
+                    return NULL;
+                }
+                out = aux;
+            }
+
+            if (!mod_prev || (mod != mod_prev)) {
+                mod_prev = mod;
+                size = strlen(mod->name);
+                memcpy(&out[o], mod->name, size);
+                o += size;
+                out[o++] = ':';
+            }
+            memcpy(&out[o], &in[i], len);
+            o += len;
+            i += len;
+
+            if (in[i] == '=') {
+                /* we are in the predicate on the value, so just copy data */
+                aux = strchr(&in[i], ']');
+                if (aux) {
+                    len = aux - &in[i] + 1; /* include ] */
+
+                    /* check the output buffer size */
+                    size = o + len + 1;
+                    if (out_size <= size) {
+                        out_size = size; /* just add some size */
+                        aux = realloc(out, out_size + 1);
+                        if (!aux) {
+                            free(out);
+                            LOGMEM;
+                            return NULL;
+                        }
+                        out = aux;
+                    }
+
+                    memcpy(&out[o], &in[i], len);
+                    o += len;
+                    i += len;
+                } else {
+                    /* missing closing ] of predicate -> invalid instance-identifier */
+                    LOGVAL(LYE_INVAL, LOGLINE(xml), xml->content, xml->name);
+                    free(out);
+                    return NULL;
+                }
+            }
+            start = 2;
+        }
+    }
+
+    /* terminating NULL byte */
+    /* check the output buffer size */
+    if (out_size < o) {
+        out_size += 1; /* just add some size */
+        aux = realloc(out, out_size + 1);
+        if (!aux) {
+            free(out);
+            LOGMEM;
+            return NULL;
+        }
+        out = aux;
+    }
+    out[o] = '\0';
+
+    return lydict_insert_zc(ctx, out);
+}
+
 static int
-_xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_elem *xml,
-               struct leafref_instid **unres, int log)
+_xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_elem *xml,
+               int options, struct unres_data **unres, int log)
 {
     #define DECSIZE 21
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
-    struct ly_type *type;
+    struct lys_type *type;
     struct lyxml_ns *ns;
     char dec[DECSIZE];
     char *strptr;
@@ -270,15 +428,22 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
     int len;
     int c, i, j, d;
     int found;
-    struct leafref_instid *new_unres;
+    struct unres_data *new_unres;
 
     leaf->value_str = xml->content;
     xml->content = NULL;
 
+    /* will be change in case of union */
+    leaf->value_type = node_type->base;
+
+    if ((options & LYD_OPT_FILTER) && !leaf->value_str) {
+        /* no value in filter (selection) node -> nothing more is needed */
+        return EXIT_SUCCESS;
+    }
+
     switch (node_type->base) {
     case LY_TYPE_BINARY:
         leaf->value.binary = leaf->value_str;
-        leaf->value_type = LY_TYPE_BINARY;
 
         if (node_type->info.binary.length
                 && validate_length_range(0, strlen(leaf->value.binary), 0, 0, node_type, xml, leaf->value_str, log)) {
@@ -287,8 +452,6 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
         break;
 
     case LY_TYPE_BITS:
-        leaf->value_type = LY_TYPE_BITS;
-
         /* locate bits structure with the bits definitions */
         for (type = node_type; type->der->type.der; type = &type->der->type);
 
@@ -331,7 +494,7 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
             if (!found) {
                 /* referenced bit value does not exists */
                 if (log) {
-                    LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
+                    LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
                 }
                 return EXIT_FAILURE;
             }
@@ -357,7 +520,7 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
         if (len > DECSIZE) {
             /* too long */
             if (log) {
-                LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
+                LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
             }
             return EXIT_FAILURE;
         }
@@ -385,7 +548,7 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
                 d++;
                 if (d > DECSIZE - 2) {
                     if (log) {
-                        LOGVAL(DE_OORVAL, LOGLINE(xml), leaf->value_str, xml->name);
+                        LOGVAL(LYE_OORVAL, LOGLINE(xml), leaf->value_str, xml->name);
                     }
                     return EXIT_FAILURE;
                 }
@@ -394,7 +557,7 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
                 if (!isdigit(leaf->value_str[c + i])) {
                     if (i || leaf->value_str[c] != '-') {
                         if (log) {
-                            LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
+                            LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
                         }
                         return EXIT_FAILURE;
                     }
@@ -403,7 +566,7 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
                 }
                 if (d > DECSIZE - 2 || (found && !j)) {
                     if (log) {
-                        LOGVAL(DE_OORVAL, LOGLINE(xml), leaf->value_str, xml->name);
+                        LOGVAL(LYE_OORVAL, LOGLINE(xml), leaf->value_str, xml->name);
                     }
                     return EXIT_FAILURE;
                 }
@@ -425,7 +588,7 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
         /* just check that it is empty */
         if (leaf->value_str && leaf->value_str[0]) {
             if (log) {
-                LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
+                LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
             }
             return EXIT_FAILURE;
         }
@@ -434,7 +597,7 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
     case LY_TYPE_ENUM:
         if (!leaf->value_str) {
             if (log) {
-                LOGVAL(DE_INVAL, LOGLINE(xml), "", xml->name);
+                LOGVAL(LYE_INVAL, LOGLINE(xml), "", xml->name);
             }
             return EXIT_FAILURE;
         }
@@ -444,16 +607,16 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
 
         /* find matching enumeration value */
         for (i = 0; i < type->info.enums.count; i++) {
-            if (!strcmp(leaf->value_str, type->info.enums.list[i].name)) {
+            if (!strcmp(leaf->value_str, type->info.enums.enm[i].name)) {
                 /* we have match, store pointer to the definition */
-                leaf->value.enm = &type->info.enums.list[i];
+                leaf->value.enm = &type->info.enums.enm[i];
                 break;
             }
         }
 
         if (!leaf->value.enm) {
             if (log) {
-                LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
+                LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
             }
             return EXIT_FAILURE;
         }
@@ -465,7 +628,7 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
             len = strptr - leaf->value_str;
             if (!len) {
                 if (log) {
-                    LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
+                    LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
                 }
                 return EXIT_FAILURE;
             }
@@ -474,7 +637,7 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
         ns = lyxml_get_ns(xml, strptr);
         if (!ns) {
             if (log) {
-                LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
+                LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
             }
             return EXIT_FAILURE;
         }
@@ -485,10 +648,10 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
             name = leaf->value_str;
         }
 
-        leaf->value.ident = find_identityref(node_type->info.ident.ref, name, ns->value);
+        leaf->value.ident = resolve_identityref(node_type->info.ident.ref, name, ns->value);
         if (!leaf->value.ident) {
             if (log) {
-                LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
+                LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
             }
             return EXIT_FAILURE;
         }
@@ -497,44 +660,67 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
     case LY_TYPE_INST:
         if (!leaf->value_str) {
             if (log) {
-                LOGVAL(DE_INVAL, LOGLINE(xml), "", xml->name);
+                LOGVAL(LYE_INVAL, LOGLINE(xml), "", xml->name);
             }
             return EXIT_FAILURE;
         }
 
-        /* validity checking is performed later, right now the data tree
-         * is not complete, so many instanceids cannot be resolved
+        /* convert the path from the XML form using XML namespaces into the JSON format
+         * using module names as namespaces
          */
-        /* remember the leaf for later checking */
-        new_unres = malloc(sizeof *new_unres);
-        new_unres->is_leafref = 0;
-        new_unres->dnode = node;
-        new_unres->next = *unres;
-        *unres = new_unres;
+        xml->content = leaf->value_str;
+        leaf->value_str = instid_xml2json(node->schema->module->ctx, xml);
+        lydict_remove(node->schema->module->ctx, xml->content);
+        xml->content = NULL;
+        if (!leaf->value_str) {
+            return EXIT_FAILURE;
+        }
+
+        if (options & (LYD_OPT_EDIT | LYD_OPT_FILTER)) {
+            leaf->value_type |= LY_TYPE_INST_UNRES;
+        } else {
+            /* validity checking is performed later, right now the data tree
+             * is not complete, so many instanceids cannot be resolved
+             */
+            /* remember the leaf for later checking */
+            new_unres = malloc(sizeof *new_unres);
+            new_unres->is_leafref = 0;
+            new_unres->dnode = node;
+            new_unres->next = *unres;
+            new_unres->line = LOGLINE(xml);
+            *unres = new_unres;
+        }
         break;
 
     case LY_TYPE_LEAFREF:
         if (!leaf->value_str) {
             if (log) {
-                LOGVAL(DE_INVAL, LOGLINE(xml), "", xml->name);
+                LOGVAL(LYE_INVAL, LOGLINE(xml), "", xml->name);
             }
             return EXIT_FAILURE;
         }
 
-        /* validity checking is performed later, right now the data tree
-         * is not complete, so many leafrefs cannot be resolved
-         */
-        /* remember the leaf for later checking */
-        new_unres = malloc(sizeof *new_unres);
-        new_unres->is_leafref = 1;
-        new_unres->dnode = node;
-        new_unres->next = *unres;
-        *unres = new_unres;
+        if (options & (LYD_OPT_EDIT | LYD_OPT_FILTER)) {
+            do {
+                type = &((struct lys_node_leaf *)leaf->schema)->type.info.lref.target->type;
+            } while (type->base == LY_TYPE_LEAFREF);
+            leaf->value_type = type->base | LY_TYPE_LEAFREF_UNRES;
+        } else {
+            /* validity checking is performed later, right now the data tree
+             * is not complete, so many leafrefs cannot be resolved
+             */
+            /* remember the leaf for later checking */
+            new_unres = malloc(sizeof *new_unres);
+            new_unres->is_leafref = 1;
+            new_unres->dnode = node;
+            new_unres->next = *unres;
+            new_unres->line = LOGLINE(xml);
+            *unres = new_unres;
+        }
         break;
 
     case LY_TYPE_STRING:
         leaf->value.string = leaf->value_str;
-        leaf->value_type = LY_TYPE_STRING;
 
         if (node_type->info.str.length
                 && validate_length_range(0, strlen(leaf->value.string), 0, 0, node_type, xml, leaf->value_str, log)) {
@@ -552,7 +738,7 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
         type = get_next_union_type(node_type, NULL, &found);
         for (; type; found = 0, type = get_next_union_type(node_type, type, &found)) {
             xml->content = leaf->value_str;
-            if (!_xml_get_value(node, type, xml, unres, 0)) {
+            if (!_xml_get_value(node, type, xml, options, unres, 0)) {
                 leaf->value_type = type->base;
                 break;
             }
@@ -560,7 +746,7 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
 
         if (!type) {
             if (log) {
-                LOGVAL(DE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
+                LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
             }
             return EXIT_FAILURE;
         }
@@ -638,24 +824,24 @@ _xml_get_value(struct lyd_node *node, struct ly_type *node_type, struct lyxml_el
 }
 
 static int
-xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, struct leafref_instid **unres)
+xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct unres_data **unres)
 {
-    return _xml_get_value(node, &((struct ly_mnode_leaf *)node->schema)->type, xml, unres, 1);
+    return _xml_get_value(node, &((struct lys_node_leaf *)node->schema)->type, xml, options, unres, 1);
 }
 
 struct lyd_node *
 xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev,
-               struct leafref_instid **unres)
+               int options, struct unres_data **unres)
 {
-    struct lyd_node *result, *aux;
-    struct ly_mnode *schema = NULL;
+    struct lyd_node *result = NULL, *diter;
+    struct lys_node *schema = NULL, *siter;
     int i, havechildren;
 
     if (!xml) {
         return NULL;
     }
     if (!xml->ns || !xml->ns->value) {
-        LOGVAL(VE_XML_MISS, LOGLINE(xml), "element's", "namespace");
+        LOGVAL(LYE_XML_MISS, LOGLINE(xml), "element's", "namespace");
         return NULL;
     }
 
@@ -679,127 +865,164 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         schema = xml_data_search_schemanode(xml, parent->schema->child);
     }
     if (!schema) {
-        LOGVAL(DE_INELEM, LOGLINE(xml), xml->name);
-        return NULL;
+        if ((options & LYD_OPT_STRICT) || ly_ctx_get_module_by_ns(ctx, xml->ns->value, NULL)) {
+            LOGVAL(LYE_INELEM, LOGLINE(xml), xml->name);
+            return NULL;
+        } else {
+            goto siblings;
+        }
     }
 
     switch (schema->nodetype) {
-    case LY_NODE_CONTAINER:
+    case LYS_CONTAINER:
         result = calloc(1, sizeof *result);
         havechildren = 1;
         break;
-    case LY_NODE_LEAF:
+    case LYS_LEAF:
         result = calloc(1, sizeof(struct lyd_node_leaf));
         havechildren = 0;
         break;
-    case LY_NODE_LEAFLIST:
+    case LYS_LEAFLIST:
         result = calloc(1, sizeof(struct lyd_node_leaflist));
         havechildren = 0;
         break;
-    case LY_NODE_LIST:
+    case LYS_LIST:
         result = calloc(1, sizeof(struct lyd_node_list));
         havechildren = 1;
         break;
-    case LY_NODE_ANYXML:
+    case LYS_ANYXML:
         result = calloc(1, sizeof(struct lyd_node_anyxml));
         havechildren = 0;
         break;
     default:
-        assert(0);
+        LOGINT;
         return NULL;
     }
     result->parent = parent;
     result->prev = prev;
     result->schema = schema;
 
+    /* check number of instances for non-list nodes */
+    if (!(options & LYD_OPT_FILTER) && (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML))) {
+        for (diter = result->prev; diter; diter = diter->prev) {
+            if (diter->schema == schema) {
+                LOGVAL(LYE_TOOMANY, LOGLINE(xml), xml->name, xml->parent ? xml->parent->name : "data tree");
+                goto error;
+            }
+        }
+    }
+
     /* type specific processing */
-    if (schema->nodetype == LY_NODE_LIST) {
+    if (schema->nodetype == LYS_LIST) {
         /* pointers to next and previous instances of the same list */
-        for (aux = result->prev; aux; aux = aux->prev) {
-            if (aux->schema == result->schema) {
+        for (diter = result->prev; diter; diter = diter->prev) {
+            if (diter->schema == result->schema) {
                 /* instances of the same list */
-                ((struct lyd_node_list *)aux)->lnext = (struct lyd_node_list *)result;
-                ((struct lyd_node_list *)result)->lprev = (struct lyd_node_list *)aux;
+                ((struct lyd_node_list *)diter)->lnext = (struct lyd_node_list *)result;
+                ((struct lyd_node_list *)result)->lprev = (struct lyd_node_list *)diter;
                 break;
             }
         }
-    } else if (schema->nodetype == LY_NODE_LEAF) {
+    } else if (schema->nodetype == LYS_LEAF) {
         /* type detection and assigning the value */
-        if (xml_get_value(result, xml, unres)) {
+        if (xml_get_value(result, xml, options, unres)) {
             goto error;
         }
-    } else if (schema->nodetype == LY_NODE_LEAFLIST) {
+    } else if (schema->nodetype == LYS_LEAFLIST) {
         /* type detection and assigning the value */
-        if (xml_get_value(result, xml, unres)) {
+        if (xml_get_value(result, xml, options, unres)) {
             goto error;
         }
 
         /* pointers to next and previous instances of the same leaflist */
-        for (aux = result->prev; aux; aux = aux->prev) {
-            if (aux->schema == result->schema) {
+        for (diter = result->prev; diter; diter = diter->prev) {
+            if (diter->schema == result->schema) {
                 /* instances of the same list */
-                ((struct lyd_node_leaflist *)aux)->lnext = (struct lyd_node_leaflist *)result;
-                ((struct lyd_node_leaflist *)result)->lprev = (struct lyd_node_leaflist *)aux;
+                ((struct lyd_node_leaflist *)diter)->lnext = (struct lyd_node_leaflist *)result;
+                ((struct lyd_node_leaflist *)result)->lprev = (struct lyd_node_leaflist *)diter;
                 break;
             }
         }
-    } else if (schema->nodetype == LY_NODE_ANYXML) {
-        ((struct lyd_node_anyxml *)result)->ctx = ctx;
+    } else if (schema->nodetype == LYS_ANYXML) {
         ((struct lyd_node_anyxml *)result)->value = xml;
         lyxml_unlink_elem(xml);
     }
 
     /* process children */
     if (havechildren && xml->child) {
-        result->child = xml_parse_data(ctx, xml->child, result, NULL, unres);
-        if (!result->child) {
+        result->child = xml_parse_data(ctx, xml->child, result, NULL, options, unres);
+        if (ly_errno) {
             goto error;
         }
-
     }
 
+    /* various validation checks */
+
+    /* check presence of all keys in case of list */
+    if (schema->nodetype == LYS_LIST && !(options & LYD_OPT_FILTER)) {
+        siter = (struct lys_node *)lyv_keys_present((struct lyd_node_list *)result);
+        if (siter) {
+            /* key not found in the data */
+            LOGVAL(LYE_MISSELEM, LOGLINE(xml), siter->name, schema->name);
+            goto error;
+        }
+    }
+
+    /* mandatory children */
+    if (havechildren && !(options & (LYD_OPT_FILTER | LYD_OPT_EDIT))) {
+        siter = ly_check_mandatory(result);
+        if (siter) {
+            LOGVAL(LYE_MISSELEM, LOGLINE(xml), siter->name, siter->parent->name);
+            goto error;
+        }
+    }
+
+siblings:
     /* process siblings */
     if (xml->next) {
-        result->next = xml_parse_data(ctx, xml->next, parent, result, unres);
-        if (!result->next) {
+        if (result) {
+            result->next = xml_parse_data(ctx, xml->next, parent, result, options, unres);
+        } else {
+            result = xml_parse_data(ctx, xml->next, parent, prev, options, unres);
+        }
+        if (ly_errno) {
             goto error;
         }
     }
 
     /* fix the "last" pointer */
-    if (!result->prev) {
-        for (aux = result; aux->next; aux = aux->next);
-        result->prev = aux;
+    if (result && !result->prev) {
+        for (diter = result; diter->next; diter = diter->next);
+        result->prev = diter;
     }
     return result;
 
 error:
 
-    if (havechildren) {
-        result->child = NULL;
+    if (result) {
+        result->next = NULL;
+        result->parent = NULL;
+        result->prev = result;
+        lyd_free(result);
     }
-    result->next = NULL;
-    result->parent = NULL;
-    result->prev = result;
-    lyd_node_free(result);
 
     return NULL;
 }
 
 static int
-check_unres(struct leafref_instid **list)
+check_unres(struct unres_data **list)
 {
     struct lyd_node_leaf *leaf;
-    struct ly_mnode_leaf *sleaf;
-    struct leafref_instid *item, *refset = NULL, *ref;
+    struct lys_node_leaf *sleaf;
+    struct unres_data *item, *refset = NULL, *ref;
 
     while (*list) {
         leaf = (struct lyd_node_leaf *)(*list)->dnode;
-        sleaf = (struct ly_mnode_leaf *)(*list)->dnode->schema;
+        sleaf = (struct lys_node_leaf *)(*list)->dnode->schema;
 
         /* resolve path and create a set of possible leafrefs (we need their values) */
         if ((*list)->is_leafref) {
-            if (resolve_path((*list)->dnode, sleaf->type.info.lref.path, &refset)) {
+            if (resolve_path_arg_data(*list, sleaf->type.info.lref.path, &refset)) {
                 LOGERR(LY_EVALID, "Leafref \"%s\" could not be resolved.", sleaf->type.info.lref.path);
                 goto error;
             }
@@ -821,16 +1044,16 @@ check_unres(struct leafref_instid **list)
 
         /* instance-identifier */
         } else {
-            if ((resolve_instid((*list)->dnode, leaf->value_str, strlen(leaf->value_str), &refset) || refset->next)
-                    && (sleaf->type.info.inst.req > -1)) {
-                LOGERR(LY_EVALID, "Instance-identifier \"%s\" validation fail.", leaf->value_str);
-                goto error;
-            }
-
-            while (refset) {
-                ref = refset->next;
-                free(refset);
-                refset = ref;
+            ly_errno = 0;
+            if (!resolve_instid((*list)->dnode, leaf->value_str, (*list)->line)) {
+                if (ly_errno) {
+                    goto error;
+                } else if (sleaf->type.info.inst.req > -1) {
+                    LOGERR(LY_EVALID, "Instance for the \"%s\" does not exist.", leaf->value_str);
+                    goto error;
+                } else {
+                    LOGVRB("Instance for the \"%s\" does not exist.", leaf->value_str);
+                }
             }
         }
 
@@ -849,38 +1072,30 @@ error:
         *list = item;
     }
 
-    while (refset) {
-        ref = refset->next;
-        free(refset);
-        refset = ref;
-    }
-
     return EXIT_FAILURE;
 }
 
-API struct lyd_node *
-xml_read_data(struct ly_ctx *ctx, const char *data)
+struct lyd_node *
+xml_read_data(struct ly_ctx *ctx, const char *data, int options)
 {
     struct lyxml_elem *xml;
-    struct lyd_node *result;
-    struct leafref_instid *unres = NULL;
+    struct lyd_node *result, *next, *iter;
+    struct unres_data *unres = NULL;
 
     xml = lyxml_read(ctx, data, 0);
     if (!xml) {
         return NULL;
     }
 
-    /* check the returned data - the root must be config or data in NETCONF namespace */
-    if (!xml->ns || strcmp(xml->ns->value, LY_NSNC) || (strcmp(xml->name, "data") && strcmp(xml->name, "config"))) {
-        LOGERR(LY_EINVAL, "XML data parser expect <data> or <config> root in \"%s\" namespace.", LY_NSNC);
-        return NULL;
-    }
-
-    result = xml_parse_data(ctx, xml->child, NULL, NULL, &unres);
+    ly_errno = 0;
+    result = xml_parse_data(ctx, xml->child, NULL, NULL, options, &unres);
     /* check leafrefs and/or instids if any */
     if (check_unres(&unres)) {
         /* leafref & instid checking failed */
-        lyd_node_siblings_free(result);
+        LY_TREE_FOR_SAFE(result, next, iter) {
+            lyd_free(iter);
+        }
+        result = NULL;
     }
 
     /* free source XML tree */

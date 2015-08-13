@@ -1,7 +1,7 @@
 /**
- * @file context.h
+ * @file validation.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief internal context structures and functions
+ * @brief Data tree validation functions
  *
  * Copyright (c) 2015 CESNET, z.s.p.o.
  *
@@ -19,23 +19,30 @@
  *    software without specific prior written permission.
  */
 
-#ifndef LY_CONTEXT_H_
-#define LY_CONTEXT_H_
+#include <stdlib.h>
 
-#include "dict.h"
-#include "tree.h"
+#include "libyang.h"
 
-struct ly_modules_list {
-    char *search_path;
-    int size;
-    int used;
-    struct lys_module **list;
-    uint16_t module_set_id;
-};
+struct lys_node_leaf *
+lyv_keys_present(struct lyd_node_list *list)
+{
+    struct lyd_node *aux;
+    struct lys_node_list *schema;
+    int i;
 
-struct ly_ctx {
-    struct dict_table dict;
-    struct ly_modules_list models;
-};
+    schema = (struct lys_node_list *)list->schema;
 
-#endif /* LY_CONTEXT_H_ */
+    for (i = 0; i < schema->keys_size; i++) {
+        for (aux = list->child; aux; aux = aux->next) {
+            if (aux->schema == (struct lys_node *)schema->keys[i]) {
+                break;
+            }
+        }
+        if (!aux) {
+            /* key not found in the data */
+            return schema->keys[i];
+        }
+    }
+
+    return EXIT_SUCCESS;
+}

@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 2.6)
 project(libyang C)
 
+# set version
+set(LIBYANG_MAJOR_VERSION 0)
+set(LIBYANG_MINOR_VERSION 1)
+set(LIBYANG_MICRO_VERSION 3)
+set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
+set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
+
 # check the supported platform
 if(NOT UNIX)
 	message(FATAL_ERROR "Only *nix like systems are supported.")
@@ -8,6 +15,10 @@ endif()
 
 if(NOT LIB_INSTALL_DIR)
 	set(LIB_INSTALL_DIR lib)
+endif()
+
+if(NOT INCLUDE_INSTALL_DIR)
+	set(INCLUDE_INSTALL_DIR include/libyang)
 endif()
 
 # set default build type if not specified by user
@@ -24,11 +35,16 @@ set(libsrc
 	src/context.c
 	src/log.c
 	src/dict.c
+	src/parse.c
+	src/resolve.c
+	src/validation.c
 	src/xml.c
+	src/parser.c
 	src/parser/yin.c
 	src/parser/xml.c
 	src/tree.c
 	src/printer.c
+	src/yang_library.c
 	src/printer/yang.c
 	src/printer/tree.c
 	src/printer/info.c
@@ -41,21 +57,27 @@ set(lintsrc
 	tools/lint/completion.c
 	linenoise/linenoise.c)
 
+set(headers
+	src/libyang.h
+	src/tree.h)
+
 add_library(yang SHARED ${libsrc})
-set_target_properties(yang PROPERTIES VERSION 0.1.0 SOVERSION 0.1)
+set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})
 
 install(TARGETS yang DESTINATION ${LIB_INSTALL_DIR})
+install(FILES ${headers} DESTINATION ${INCLUDE_INSTALL_DIR})
 
 # generate doxygen documentation for libyang API
 add_custom_target(doc
-                  COMMAND doxygen Doxyfile
+                  COMMAND doxygen  ${CMAKE_BINARY_DIR}/Doxyfile
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+configure_file(Doxyfile.in Doxyfile)
 
 # clean cmake cache
 add_custom_target(cclean
                   COMMAND make clean
                   COMMAND find . -iname '*cmake*' -not -name CMakeLists.txt -exec rm -rf {} +
-                  COMMAND rm -rf Makefile
+                  COMMAND rm -rf Makefile Doxyfile
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(yanglint ${lintsrc})

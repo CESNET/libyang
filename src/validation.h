@@ -1,7 +1,7 @@
 /**
- * @file context.h
+ * @file validation.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief internal context structures and functions
+ * @brief Data tree validation for libyang
  *
  * Copyright (c) 2015 CESNET, z.s.p.o.
  *
@@ -17,25 +17,23 @@
  * 3. Neither the name of the Company nor the names of its contributors
  *    may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
+ *
  */
 
-#ifndef LY_CONTEXT_H_
-#define LY_CONTEXT_H_
+#ifndef LY_VALIDATION_H_
+#define LY_VALIDATION_H_
 
-#include "dict.h"
+#include "libyang.h"
 #include "tree.h"
 
-struct ly_modules_list {
-    char *search_path;
-    int size;
-    int used;
-    struct lys_module **list;
-    uint16_t module_set_id;
-};
+/**
+ * @brief Check that the list data node contains all defined keys.
+ *
+ * Does not log.
+ *
+ * @param[in] list The list data node to check
+ * @return NULL on success or pointer to the first missing key schema node
+ */
+struct lys_node_leaf * lyv_keys_present(struct lyd_node_list *list);
 
-struct ly_ctx {
-    struct dict_table dict;
-    struct ly_modules_list models;
-};
-
-#endif /* LY_CONTEXT_H_ */
+#endif /* LY_VALIDATION_H_ */

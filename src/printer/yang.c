@@ -29,10 +29,10 @@
 #define INDENT ""
 #define LEVEL (level*2)
 
-static void yang_print_mnode(FILE *f, int level, struct ly_mnode *mnode, int mask);
+static void yang_print_snode(FILE *f, int level, struct lys_node *node, int mask);
 
 static const char*
-get_module_import_prefix(struct ly_module *main_mod, struct ly_module *imp_mod)
+get_module_import_prefix(struct lys_module *main_mod, struct lys_module *imp_mod)
 {
     int i, j;
 
@@ -75,12 +75,12 @@ yang_print_text(FILE *f, int level, const char *name, const char *text)
 }
 
 static void
-yang_print_nacmext(FILE *f, int level, struct ly_mnode *mnode, struct ly_module *module)
+yang_print_nacmext(FILE *f, int level, struct lys_node *node, struct lys_module *module)
 {
     int i, j;
     const char *prefix = NULL;
 
-    if (mnode->nacm && (!mnode->parent || mnode->parent->nacm != mnode->nacm)) {
+    if (node->nacm && (!node->parent || node->parent->nacm != node->nacm)) {
         /* locate ietf-netconf-acm module in imports */
         if (!strcmp(module->name, "ietf-netconf-acm")) {
             prefix = module->prefix;
@@ -105,10 +105,10 @@ yang_print_nacmext(FILE *f, int level, struct ly_mnode *mnode, struct ly_module 
             }
         }
 
-        if ((mnode->nacm & LY_NACM_DENYW) && (!mnode->parent || !(mnode->parent->nacm & LY_NACM_DENYW))) {
+        if ((node->nacm & LYS_NACM_DENYW) && (!node->parent || !(node->parent->nacm & LYS_NACM_DENYW))) {
             fprintf(f, "%*s%s:default-deny-write;\n", LEVEL, INDENT, prefix);
         }
-        if ((mnode->nacm & LY_NACM_DENYA) && (!mnode->parent || !(mnode->parent->nacm & LY_NACM_DENYA))) {
+        if ((node->nacm & LYS_NACM_DENYA) && (!node->parent || !(node->parent->nacm & LYS_NACM_DENYA))) {
             fprintf(f, "%*s%s:default-deny-all;\n", LEVEL, INDENT, prefix);
         }
     }
@@ -119,21 +119,21 @@ yang_print_nacmext(FILE *f, int level, struct ly_mnode *mnode, struct ly_module 
  * description, reference, status
  */
 static void
-yang_print_mnode_common(FILE *f, int level, struct ly_mnode *mnode)
+yang_print_snode_common(FILE *f, int level, struct lys_node *node)
 {
-    if (mnode->flags & LY_NODE_STATUS_CURR) {
+    if (node->flags & LYS_STATUS_CURR) {
         fprintf(f, "%*sstatus \"current\";\n", LEVEL, INDENT);
-    } else if (mnode->flags & LY_NODE_STATUS_DEPRC) {
+    } else if (node->flags & LYS_STATUS_DEPRC) {
         fprintf(f, "%*sstatus \"deprecated\";\n", LEVEL, INDENT);
-    } else if (mnode->flags & LY_NODE_STATUS_OBSLT) {
+    } else if (node->flags & LYS_STATUS_OBSLT) {
         fprintf(f, "%*sstatus \"obsolete\";\n", LEVEL, INDENT);
     }
 
-    if (mnode->dsc) {
-        yang_print_text(f, level, "description", mnode->dsc);
+    if (node->dsc) {
+        yang_print_text(f, level, "description", node->dsc);
     }
-    if (mnode->ref) {
-        yang_print_text(f, level, "reference", mnode->ref);
+    if (node->ref) {
+        yang_print_text(f, level, "reference", node->ref);
     }
 }
 
@@ -143,28 +143,28 @@ yang_print_mnode_common(FILE *f, int level, struct ly_mnode *mnode)
  * description, reference, status
  */
 static void
-yang_print_mnode_common2(FILE *f, int level, struct ly_mnode *mnode)
+yang_print_snode_common2(FILE *f, int level, struct lys_node *node)
 {
-    if (!mnode->parent || (mnode->parent->flags & LY_NODE_CONFIG_MASK) != (mnode->flags & LY_NODE_CONFIG_MASK)) {
+    if (!node->parent || (node->parent->flags & LYS_CONFIG_MASK) != (node->flags & LYS_CONFIG_MASK)) {
         /* print config only when it differs from the parent or in root */
-        if (mnode->flags & LY_NODE_CONFIG_W) {
+        if (node->flags & LYS_CONFIG_W) {
             fprintf(f, "%*sconfig \"true\";\n", LEVEL, INDENT);
-        } else if (mnode->flags & LY_NODE_CONFIG_R) {
+        } else if (node->flags & LYS_CONFIG_R) {
             fprintf(f, "%*sconfig \"false\";\n", LEVEL, INDENT);
         }
     }
 
-    if (mnode->flags & LY_NODE_MAND_TRUE) {
+    if (node->flags & LYS_MAND_TRUE) {
         fprintf(f, "%*smandatory \"true\";\n", LEVEL, INDENT);
-    } else if (mnode->flags & LY_NODE_MAND_FALSE) {
+    } else if (node->flags & LYS_MAND_FALSE) {
         fprintf(f, "%*smandatory \"false\";\n", LEVEL, INDENT);
     }
 
-    yang_print_mnode_common(f, level, mnode);
+    yang_print_snode_common(f, level, node);
 }
 
 static void
-yang_print_iffeature(FILE *f, int level, struct ly_module *module, struct ly_feature *feat)
+yang_print_iffeature(FILE *f, int level, struct lys_module *module, struct lys_feature *feat)
 {
     fprintf(f, "%*sif-feature ", LEVEL, INDENT);
     if ((feat->module != module) && !feat->module->type) {
@@ -174,14 +174,14 @@ yang_print_iffeature(FILE *f, int level, struct ly_module *module, struct ly_fea
 }
 
 static void
-yang_print_feature(FILE *f, int level, struct ly_feature *feat)
+yang_print_feature(FILE *f, int level, struct lys_feature *feat)
 {
     int i;
 
     fprintf(f, "%*sfeature %s {\n", LEVEL, INDENT, feat->name);
     level++;
 
-    yang_print_mnode_common(f, level, (struct ly_mnode *)feat);
+    yang_print_snode_common(f, level, (struct lys_node *)feat);
     for (i = 0; i < feat->features_size; ++i) {
         yang_print_iffeature(f, level, feat->module, feat->features[i]);
     }
@@ -191,7 +191,7 @@ yang_print_feature(FILE *f, int level, struct ly_feature *feat)
 }
 
 static void
-yang_print_restr(FILE *f, int level, struct ly_restr *restr)
+yang_print_restr(FILE *f, int level, struct lys_restr *restr)
 {
     if (restr->dsc != NULL) {
         yang_print_text(f, level, "description", restr->dsc);
@@ -208,7 +208,7 @@ yang_print_restr(FILE *f, int level, struct ly_restr *restr)
 }
 
 static void
-yang_print_when(FILE *f, int level, struct ly_when *when)
+yang_print_when(FILE *f, int level, struct lys_when *when)
 {
     fprintf(f, "%*swhen \"%s\" {\n", LEVEL, INDENT, when->cond);
     level++;
@@ -223,7 +223,7 @@ yang_print_when(FILE *f, int level, struct ly_when *when)
 }
 
 static void
-yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *type)
+yang_print_type(FILE *f, int level, struct lys_module *module, struct lys_type *type)
 {
     int i;
 
@@ -245,7 +245,7 @@ yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *ty
         for (i = 0; i < type->info.bits.count; ++i) {
             fprintf(f, "%*sbit %s {\n", LEVEL, INDENT, type->info.bits.bit[i].name);
             level++;
-            yang_print_mnode_common(f, level, (struct ly_mnode *)&type->info.bits.bit[i]);
+            yang_print_snode_common(f, level, (struct lys_node *)&type->info.bits.bit[i]);
             fprintf(f, "%*sposition %u;\n", LEVEL, INDENT, type->info.bits.bit[i].pos);
             level--;
             fprintf(f, "%*s}\n", LEVEL, INDENT);
@@ -261,10 +261,10 @@ yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *ty
         break;
     case LY_TYPE_ENUM:
         for (i = 0; i < type->info.enums.count; i++) {
-            fprintf(f, "%*senum %s {\n", LEVEL, INDENT, type->info.enums.list[i].name);
+            fprintf(f, "%*senum %s {\n", LEVEL, INDENT, type->info.enums.enm[i].name);
             level++;
-            yang_print_mnode_common(f, level, (struct ly_mnode *)&type->info.enums.list[i]);
-            fprintf(f, "%*svalue %d;\n", LEVEL, INDENT, type->info.enums.list[i].value);
+            yang_print_snode_common(f, level, (struct lys_node *)&type->info.enums.enm[i]);
+            fprintf(f, "%*svalue %d;\n", LEVEL, INDENT, type->info.enums.enm[i].value);
             level--;
             fprintf(f, "%*s}\n", LEVEL, INDENT);
         }
@@ -315,7 +315,7 @@ yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *ty
         break;
     case LY_TYPE_UNION:
         for (i = 0; i < type->info.uni.count; ++i) {
-            yang_print_type(f, level, module, &type->info.uni.type[i]);
+            yang_print_type(f, level, module, &type->info.uni.types[i]);
         }
         break;
     default:
@@ -327,7 +327,7 @@ yang_print_type(FILE *f, int level, struct ly_module *module, struct ly_type *ty
 }
 
 static void
-yang_print_must(FILE *f, int level, struct ly_restr *must)
+yang_print_must(FILE *f, int level, struct lys_restr *must)
 {
     fprintf(f, "%*smust \"%s\" {\n", LEVEL, INDENT, must->expr);
     yang_print_restr(f, level + 1, must);
@@ -335,7 +335,7 @@ yang_print_must(FILE *f, int level, struct ly_restr *must)
 }
 
 static void
-yang_print_unique(FILE *f, int level, struct ly_unique *uniq)
+yang_print_unique(FILE *f, int level, struct lys_unique *uniq)
 {
     int i;
 
@@ -347,40 +347,40 @@ yang_print_unique(FILE *f, int level, struct ly_unique *uniq)
 }
 
 static void
-yang_print_refine(FILE *f, int level, struct ly_refine *refine)
+yang_print_refine(FILE *f, int level, struct lys_refine *refine)
 {
     int i;
 
-    fprintf(f, "%*srefine \"%s\" {\n", LEVEL, INDENT, refine->target);
+    fprintf(f, "%*srefine \"%s\" {\n", LEVEL, INDENT, refine->target_name);
     level++;
 
-    if (refine->flags & LY_NODE_CONFIG_W) {
+    if (refine->flags & LYS_CONFIG_W) {
         fprintf(f, "%*sconfig \"true\";\n", LEVEL, INDENT);
-    } else if (refine->flags & LY_NODE_CONFIG_R) {
+    } else if (refine->flags & LYS_CONFIG_R) {
         fprintf(f, "%*sconfig \"false\";\n", LEVEL, INDENT);
     }
 
-    if (refine->flags & LY_NODE_MAND_TRUE) {
+    if (refine->flags & LYS_MAND_TRUE) {
         fprintf(f, "%*smandatory \"true\";\n", LEVEL, INDENT);
-    } else if (refine->flags & LY_NODE_MAND_FALSE) {
+    } else if (refine->flags & LYS_MAND_FALSE) {
         fprintf(f, "%*smandatory \"false\";\n", LEVEL, INDENT);
     }
 
-    yang_print_mnode_common(f, level, (struct ly_mnode *)refine);
+    yang_print_snode_common(f, level, (struct lys_node *)refine);
 
     for (i = 0; i < refine->must_size; ++i) {
         yang_print_must(f, level, &refine->must[i]);
     }
 
-    if (refine->target_type & (LY_NODE_LEAF | LY_NODE_CHOICE)) {
+    if (refine->target_type & (LYS_LEAF | LYS_CHOICE)) {
         if (refine->mod.dflt != NULL) {
             fprintf(f, "%*sdefault \"%s\";\n", LEVEL, INDENT, refine->mod.dflt);
         }
-    } else if (refine->target_type == LY_NODE_CONTAINER) {
+    } else if (refine->target_type == LYS_CONTAINER) {
         if (refine->mod.presence != NULL) {
             yang_print_text(f, level, "presence", refine->mod.presence);
         }
-    } else if (refine->target_type & (LY_NODE_LIST | LY_NODE_LEAFLIST)) {
+    } else if (refine->target_type & (LYS_LIST | LYS_LEAFLIST)) {
         if (refine->mod.list.min > 0) {
             fprintf(f, "%*smin-elements %u;\n", LEVEL, INDENT, refine->mod.list.min);
         }
@@ -394,7 +394,7 @@ yang_print_refine(FILE *f, int level, struct ly_refine *refine)
 }
 
 static void
-yang_print_deviation(FILE *f, int level, struct ly_module *module, struct ly_deviation *deviation)
+yang_print_deviation(FILE *f, int level, struct lys_module *module, struct lys_deviation *deviation)
 {
     int i, j;
 
@@ -421,15 +421,15 @@ yang_print_deviation(FILE *f, int level, struct ly_module *module, struct ly_dev
         }
         level++;
 
-        if (deviation->deviate[i].flags & LY_NODE_CONFIG_W) {
+        if (deviation->deviate[i].flags & LYS_CONFIG_W) {
             fprintf(f, "%*sconfig \"true\";\n", LEVEL, INDENT);
-        } else if (deviation->deviate[i].flags & LY_NODE_CONFIG_R) {
+        } else if (deviation->deviate[i].flags & LYS_CONFIG_R) {
             fprintf(f, "%*sconfig \"false\";\n", LEVEL, INDENT);
         }
 
-        if (deviation->deviate[i].flags & LY_NODE_MAND_TRUE) {
+        if (deviation->deviate[i].flags & LYS_MAND_TRUE) {
             fprintf(f, "%*smandatory \"true\";\n", LEVEL, INDENT);
-        } else if (deviation->deviate[i].flags & LY_NODE_MAND_FALSE) {
+        } else if (deviation->deviate[i].flags & LYS_MAND_FALSE) {
             fprintf(f, "%*smandatory \"false\";\n", LEVEL, INDENT);
         }
 
@@ -469,16 +469,16 @@ yang_print_deviation(FILE *f, int level, struct ly_module *module, struct ly_dev
 }
 
 static void
-yang_print_augment(FILE *f, int level, struct ly_module *module, struct ly_augment *augment)
+yang_print_augment(FILE *f, int level, struct lys_module *module, struct lys_node_augment *augment)
 {
     int i;
-    struct ly_mnode *sub;
+    struct lys_node *sub;
 
     fprintf(f, "%*saugment \"%s\" {\n", LEVEL, INDENT, augment->target_name);
     level++;
 
-    yang_print_nacmext(f, level, (struct ly_mnode *)augment, module);
-    yang_print_mnode_common(f, level, (struct ly_mnode *)augment);
+    yang_print_nacmext(f, level, (struct lys_node *)augment, module);
+    yang_print_snode_common(f, level, (struct lys_node *)augment);
 
     for (i = 0; i < augment->features_size; i++) {
         yang_print_iffeature(f, level, module, augment->features[i]);
@@ -489,9 +489,9 @@ yang_print_augment(FILE *f, int level, struct ly_module *module, struct ly_augme
     }
 
     LY_TREE_FOR(augment->child, sub) {
-        yang_print_mnode(f, level, sub,
-                         LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
-                         LY_NODE_USES | LY_NODE_ANYXML | LY_NODE_CASE);
+        yang_print_snode(f, level, sub,
+                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
+                         LYS_USES | LYS_ANYXML | LYS_CASE);
     }
 
     level--;
@@ -499,12 +499,12 @@ yang_print_augment(FILE *f, int level, struct ly_module *module, struct ly_augme
 }
 
 static void
-yang_print_typedef(FILE *f, int level, struct ly_module *module, struct ly_tpdf *tpdf)
+yang_print_typedef(FILE *f, int level, struct lys_module *module, struct lys_tpdf *tpdf)
 {
     fprintf(f, "%*stypedef %s {\n", LEVEL, INDENT, tpdf->name);
     level++;
 
-    yang_print_mnode_common(f, level, (struct ly_mnode *)tpdf);
+    yang_print_snode_common(f, level, (struct lys_node *)tpdf);
     yang_print_type(f, level, module, &tpdf->type);
     if (tpdf->units != NULL) {
         fprintf(f, "%*sunits \"%s\";\n", LEVEL, INDENT, tpdf->units);
@@ -518,12 +518,12 @@ yang_print_typedef(FILE *f, int level, struct ly_module *module, struct ly_tpdf 
 }
 
 static void
-yang_print_identity(FILE *f, int level, struct ly_ident *ident)
+yang_print_identity(FILE *f, int level, struct lys_ident *ident)
 {
     fprintf(f, "%*sidentity %s {\n", LEVEL, INDENT, ident->name);
     level++;
 
-    yang_print_mnode_common(f, level, (struct ly_mnode *)ident);
+    yang_print_snode_common(f, level, (struct lys_node *)ident);
     if (ident->base) {
         fprintf(f, "%*sbase ", LEVEL, INDENT);
         if ((ident->module != ident->base->module) && !ident->base->module->type) {
@@ -538,17 +538,17 @@ yang_print_identity(FILE *f, int level, struct ly_ident *ident)
 }
 
 static void
-yang_print_container(FILE *f, int level, struct ly_mnode *mnode)
+yang_print_container(FILE *f, int level, struct lys_node *node)
 {
     int i;
-    struct ly_mnode *sub;
-    struct ly_mnode_container *cont = (struct ly_mnode_container *)mnode;
+    struct lys_node *sub;
+    struct lys_node_container *cont = (struct lys_node_container *)node;
 
-    fprintf(f, "%*scontainer %s {\n", LEVEL, INDENT, mnode->name);
+    fprintf(f, "%*scontainer %s {\n", LEVEL, INDENT, node->name);
 
     level++;
 
-    yang_print_nacmext(f, level, mnode, mnode->module);
+    yang_print_nacmext(f, level, node, node->module);
 
     if (cont->presence != NULL) {
         yang_print_text(f, level, "presence", cont->presence);
@@ -558,28 +558,28 @@ yang_print_container(FILE *f, int level, struct ly_mnode *mnode)
         yang_print_must(f, level, &cont->must[i]);
     }
 
-    yang_print_mnode_common2(f, level, mnode);
+    yang_print_snode_common2(f, level, node);
 
     for (i = 0; i < cont->features_size; i++) {
-        yang_print_iffeature(f, level, mnode->module, cont->features[i]);
+        yang_print_iffeature(f, level, node->module, cont->features[i]);
     }
 
     for (i = 0; i < cont->tpdf_size; i++) {
-        yang_print_typedef(f, level, mnode->module, &cont->tpdf[i]);
+        yang_print_typedef(f, level, node->module, &cont->tpdf[i]);
     }
 
     if (cont->when) {
         yang_print_when(f, level, cont->when);
     }
 
-    LY_TREE_FOR(mnode->child, sub) {
+    LY_TREE_FOR(node->child, sub) {
         /* augment */
-        if (sub->parent != mnode) {
+        if (sub->parent != node) {
             continue;
         }
-        yang_print_mnode(f, level, sub,
-                         LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
-                         LY_NODE_USES | LY_NODE_GROUPING | LY_NODE_ANYXML);
+        yang_print_snode(f, level, sub,
+                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
+                         LYS_USES | LYS_GROUPING | LYS_ANYXML);
     }
 
     level--;
@@ -587,33 +587,33 @@ yang_print_container(FILE *f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_case(FILE *f, int level, struct ly_mnode *mnode)
+yang_print_case(FILE *f, int level, struct lys_node *node)
 {
     int i;
-    struct ly_mnode *sub;
-    struct ly_mnode_case *cas = (struct ly_mnode_case *)mnode;
+    struct lys_node *sub;
+    struct lys_node_case *cas = (struct lys_node_case *)node;
 
     fprintf(f, "%*scase %s {\n", LEVEL, INDENT, cas->name);
     level++;
-    yang_print_nacmext(f, level, mnode, mnode->module);
-    yang_print_mnode_common2(f, level, mnode);
+    yang_print_nacmext(f, level, node, node->module);
+    yang_print_snode_common2(f, level, node);
 
     for (i = 0; i < cas->features_size; i++) {
-        yang_print_iffeature(f, level, mnode->module, cas->features[i]);
+        yang_print_iffeature(f, level, node->module, cas->features[i]);
     }
 
     if (cas->when) {
         yang_print_when(f, level, cas->when);
     }
 
-    LY_TREE_FOR(mnode->child, sub) {
+    LY_TREE_FOR(node->child, sub) {
         /* augment */
-        if (sub->parent != mnode) {
+        if (sub->parent != node) {
             continue;
         }
-        yang_print_mnode(f, level, sub,
-                         LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
-                         LY_NODE_USES | LY_NODE_ANYXML);
+        yang_print_snode(f, level, sub,
+                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
+                         LYS_USES | LYS_ANYXML);
     }
 
     level--;
@@ -621,55 +621,55 @@ yang_print_case(FILE *f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_choice(FILE *f, int level, struct ly_mnode *mnode)
+yang_print_choice(FILE *f, int level, struct lys_node *node)
 {
     int i;
-    struct ly_mnode *sub;
-    struct ly_mnode_choice *choice = (struct ly_mnode_choice *)mnode;
+    struct lys_node *sub;
+    struct lys_node_choice *choice = (struct lys_node_choice *)node;
 
-    fprintf(f, "%*schoice %s {\n", LEVEL, INDENT, mnode->name);
+    fprintf(f, "%*schoice %s {\n", LEVEL, INDENT, node->name);
 
     level++;
-    yang_print_nacmext(f, level, mnode, mnode->module);
+    yang_print_nacmext(f, level, node, node->module);
     if (choice->dflt != NULL) {
         fprintf(f, "%*sdefault \"%s\";\n", LEVEL, INDENT, choice->dflt->name);
     }
 
-    yang_print_mnode_common2(f, level, mnode);
+    yang_print_snode_common2(f, level, node);
 
     for (i = 0; i < choice->features_size; i++) {
-        yang_print_iffeature(f, level, mnode->module, choice->features[i]);
+        yang_print_iffeature(f, level, node->module, choice->features[i]);
     }
 
     if (choice->when) {
         yang_print_when(f, level, choice->when);
     }
 
-    LY_TREE_FOR(mnode->child, sub) {
+    LY_TREE_FOR(node->child, sub) {
         /* augment */
-        if (sub->parent != mnode) {
+        if (sub->parent != node) {
             continue;
         }
-        yang_print_mnode(f, level, sub,
-                         LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST | LY_NODE_ANYXML | LY_NODE_CASE);
+        yang_print_snode(f, level, sub,
+                         LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_CASE);
     }
     level--;
     fprintf(f, "%*s}\n", LEVEL, INDENT);
 }
 
 static void
-yang_print_leaf(FILE *f, int level, struct ly_mnode *mnode)
+yang_print_leaf(FILE *f, int level, struct lys_node *node)
 {
     int i;
-    struct ly_mnode_leaf *leaf = (struct ly_mnode_leaf *)mnode;
+    struct lys_node_leaf *leaf = (struct lys_node_leaf *)node;
 
-    fprintf(f, "%*sleaf %s {\n", LEVEL, INDENT, mnode->name);
+    fprintf(f, "%*sleaf %s {\n", LEVEL, INDENT, node->name);
 
     level++;
-    yang_print_nacmext(f, level, mnode, mnode->module);
-    yang_print_mnode_common2(f, level, mnode);
+    yang_print_nacmext(f, level, node, node->module);
+    yang_print_snode_common2(f, level, node);
     for (i = 0; i < leaf->features_size; i++) {
-        yang_print_iffeature(f, level, mnode->module, leaf->features[i]);
+        yang_print_iffeature(f, level, node->module, leaf->features[i]);
     }
     for (i = 0; i < leaf->must_size; i++) {
         yang_print_must(f, level, &leaf->must[i]);
@@ -677,7 +677,7 @@ yang_print_leaf(FILE *f, int level, struct ly_mnode *mnode)
     if (leaf->when) {
         yang_print_when(f, level, leaf->when);
     }
-    yang_print_type(f, level, mnode->module, &leaf->type);
+    yang_print_type(f, level, node->module, &leaf->type);
     if (leaf->units != NULL) {
         fprintf(f, "%*sunits \"%s\";\n", LEVEL, INDENT, leaf->units);
     }
@@ -690,17 +690,17 @@ yang_print_leaf(FILE *f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_anyxml(FILE *f, int level, struct ly_mnode *mnode)
+yang_print_anyxml(FILE *f, int level, struct lys_node *node)
 {
     int i;
-    struct ly_mnode_anyxml *anyxml = (struct ly_mnode_anyxml *)mnode;
+    struct lys_node_anyxml *anyxml = (struct lys_node_anyxml *)node;
 
     fprintf(f, "%*sanyxml %s {\n", LEVEL, INDENT, anyxml->name);
     level++;
-    yang_print_nacmext(f, level, mnode, mnode->module);
-    yang_print_mnode_common2(f, level, mnode);
+    yang_print_nacmext(f, level, node, node->module);
+    yang_print_snode_common2(f, level, node);
     for (i = 0; i < anyxml->features_size; i++) {
-        yang_print_iffeature(f, level, mnode->module, anyxml->features[i]);
+        yang_print_iffeature(f, level, node->module, anyxml->features[i]);
     }
     for (i = 0; i < anyxml->must_size; i++) {
         yang_print_must(f, level, &anyxml->must[i]);
@@ -713,20 +713,20 @@ yang_print_anyxml(FILE *f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_leaflist(FILE *f, int level, struct ly_mnode *mnode)
+yang_print_leaflist(FILE *f, int level, struct lys_node *node)
 {
     int i;
-    struct ly_mnode_leaflist *llist = (struct ly_mnode_leaflist *)mnode;
+    struct lys_node_leaflist *llist = (struct lys_node_leaflist *)node;
 
-    fprintf(f, "%*sleaf-list %s {\n", LEVEL, INDENT, mnode->name);
+    fprintf(f, "%*sleaf-list %s {\n", LEVEL, INDENT, node->name);
 
     level++;
-    yang_print_nacmext(f, level, mnode, mnode->module);
-    yang_print_mnode_common2(f, level, mnode);
+    yang_print_nacmext(f, level, node, node->module);
+    yang_print_snode_common2(f, level, node);
     for (i = 0; i < llist->features_size; i++) {
-        yang_print_iffeature(f, level, mnode->module, llist->features[i]);
+        yang_print_iffeature(f, level, node->module, llist->features[i]);
     }
-    if (llist->flags & LY_NODE_USERORDERED) {
+    if (llist->flags & LYS_USERORDERED) {
         fprintf(f, "%*sordered-by user;\n", LEVEL, INDENT);
     }
     if (llist->min > 0) {
@@ -741,7 +741,7 @@ yang_print_leaflist(FILE *f, int level, struct ly_mnode *mnode)
     if (llist->when) {
         yang_print_when(f, level, llist->when);
     }
-    yang_print_type(f, level, mnode->module, &llist->type);
+    yang_print_type(f, level, node->module, &llist->type);
     if (llist->units != NULL) {
         fprintf(f, "%*sunits \"%s\";\n", LEVEL, INDENT, llist->units);
     }
@@ -751,19 +751,19 @@ yang_print_leaflist(FILE *f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
+yang_print_list(FILE *f, int level, struct lys_node *node)
 {
     int i;
-    struct ly_mnode *sub;
-    struct ly_mnode_list *list = (struct ly_mnode_list *)mnode;
+    struct lys_node *sub;
+    struct lys_node_list *list = (struct lys_node_list *)node;
 
-    fprintf(f, "%*slist %s {\n", LEVEL, INDENT, mnode->name);
+    fprintf(f, "%*slist %s {\n", LEVEL, INDENT, node->name);
     level++;
-    yang_print_nacmext(f, level, mnode, mnode->module);
-    yang_print_mnode_common2(f, level, mnode);
+    yang_print_nacmext(f, level, node, node->module);
+    yang_print_snode_common2(f, level, node);
 
     for (i = 0; i < list->features_size; i++) {
-        yang_print_iffeature(f, level, mnode->module, list->features[i]);
+        yang_print_iffeature(f, level, node->module, list->features[i]);
     }
 
     if (list->keys_size) {
@@ -778,7 +778,7 @@ yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
         yang_print_unique(f, level, &list->unique[i]);
     }
 
-    if (list->flags & LY_NODE_USERORDERED) {
+    if (list->flags & LYS_USERORDERED) {
         fprintf(f, "%*sordered-by user;\n", LEVEL, INDENT);
     }
     if (list->min > 0) {
@@ -798,39 +798,39 @@ yang_print_list(FILE *f, int level, struct ly_mnode *mnode)
         yang_print_typedef(f, level, list->module, &list->tpdf[i]);
     }
 
-    LY_TREE_FOR(mnode->child, sub) {
+    LY_TREE_FOR(node->child, sub) {
         /* augment */
-        if (sub->parent != mnode) {
+        if (sub->parent != node) {
             continue;
         }
-        yang_print_mnode(f, level, sub,
-                         LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
-                         LY_NODE_USES | LY_NODE_GROUPING | LY_NODE_ANYXML);
+        yang_print_snode(f, level, sub,
+                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
+                         LYS_USES | LYS_GROUPING | LYS_ANYXML);
     }
     level--;
     fprintf(f, "%*s}\n", LEVEL, INDENT);
 }
 
 static void
-yang_print_grouping(FILE *f, int level, struct ly_mnode *mnode)
+yang_print_grouping(FILE *f, int level, struct lys_node *node)
 {
     int i;
-    struct ly_mnode *node;
-    struct ly_mnode_grp *grp = (struct ly_mnode_grp *)mnode;
+    struct lys_node *child;
+    struct lys_node_grp *grp = (struct lys_node_grp *)node;
 
-    fprintf(f, "%*sgrouping %s {\n", LEVEL, INDENT, mnode->name);
+    fprintf(f, "%*sgrouping %s {\n", LEVEL, INDENT, node->name);
     level++;
 
-    yang_print_mnode_common(f, level, mnode);
+    yang_print_snode_common(f, level, node);
 
     for (i = 0; i < grp->tpdf_size; i++) {
-        yang_print_typedef(f, level, mnode->module, &grp->tpdf[i]);
+        yang_print_typedef(f, level, node->module, &grp->tpdf[i]);
     }
 
-    LY_TREE_FOR(mnode->child, node) {
-        yang_print_mnode(f, level, node,
-                         LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
-                         LY_NODE_USES | LY_NODE_GROUPING | LY_NODE_ANYXML);
+    LY_TREE_FOR(node->child, child) {
+        yang_print_snode(f, level, child,
+                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
+                         LYS_USES | LYS_GROUPING | LYS_ANYXML);
     }
 
     level--;
@@ -838,22 +838,22 @@ yang_print_grouping(FILE *f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_uses(FILE *f, int level, struct ly_mnode *mnode)
+yang_print_uses(FILE *f, int level, struct lys_node *node)
 {
     int i;
-    struct ly_mnode_uses *uses = (struct ly_mnode_uses *)mnode;
+    struct lys_node_uses *uses = (struct lys_node_uses *)node;
 
     fprintf(f, "%*suses ", LEVEL, INDENT);
-    if (mnode->child && (mnode->module != mnode->child->module) && !mnode->child->module->type) {
-        fprintf(f, "%s:", get_module_import_prefix(mnode->module, mnode->child->module));
+    if (node->child && (node->module != node->child->module) && !node->child->module->type) {
+        fprintf(f, "%s:", get_module_import_prefix(node->module, node->child->module));
     }
     fprintf(f, "%s {\n",uses->name);
     level++;
 
-    yang_print_nacmext(f, level, mnode, mnode->module);
-    yang_print_mnode_common(f, level, mnode);
+    yang_print_nacmext(f, level, node, node->module);
+    yang_print_snode_common(f, level, node);
     for (i = 0; i < uses->features_size; i++) {
-        yang_print_iffeature(f, level, mnode->module, uses->features[i]);
+        yang_print_iffeature(f, level, node->module, uses->features[i]);
     }
     if (uses->when) {
         yang_print_when(f, level, uses->when);
@@ -864,7 +864,7 @@ yang_print_uses(FILE *f, int level, struct ly_mnode *mnode)
     }
 
     for (i = 0; i < uses->augment_size; i++) {
-        yang_print_augment(f, level, mnode->module, &uses->augment[i]);
+        yang_print_augment(f, level, node->module, &uses->augment[i]);
     }
 
     level--;
@@ -872,27 +872,27 @@ yang_print_uses(FILE *f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_input_output(FILE *f, int level, struct ly_mnode *mnode)
+yang_print_input_output(FILE *f, int level, struct lys_node *node)
 {
     int i;
-    struct ly_mnode *sub;
-    struct ly_mnode_input_output *inout = (struct ly_mnode_input_output *)mnode;
+    struct lys_node *sub;
+    struct lys_node_rpc_inout *inout = (struct lys_node_rpc_inout *)node;
 
-    fprintf(f, "%*s%s {\n", LEVEL, INDENT, (inout->nodetype == LY_NODE_INPUT ? "input" : "output"));
+    fprintf(f, "%*s%s {\n", LEVEL, INDENT, (inout->nodetype == LYS_INPUT ? "input" : "output"));
 
     level++;
     for (i = 0; i < inout->tpdf_size; i++) {
-        yang_print_typedef(f, level, mnode->module, &inout->tpdf[i]);
+        yang_print_typedef(f, level, node->module, &inout->tpdf[i]);
     }
 
-    LY_TREE_FOR(mnode->child, sub) {
+    LY_TREE_FOR(node->child, sub) {
         /* augment */
-        if (sub->parent != mnode) {
+        if (sub->parent != node) {
             continue;
         }
-        yang_print_mnode(f, level, sub,
-                         LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
-                         LY_NODE_USES | LY_NODE_GROUPING | LY_NODE_ANYXML);
+        yang_print_snode(f, level, sub,
+                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
+                         LYS_USES | LYS_GROUPING | LYS_ANYXML);
     }
 
     level--;
@@ -900,28 +900,28 @@ yang_print_input_output(FILE *f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_rpc(FILE *f, int level, struct ly_mnode *mnode)
+yang_print_rpc(FILE *f, int level, struct lys_node *node)
 {
     int i;
-    struct ly_mnode *sub;
-    struct ly_mnode_rpc *rpc = (struct ly_mnode_rpc *)mnode;
+    struct lys_node *sub;
+    struct lys_node_rpc *rpc = (struct lys_node_rpc *)node;
 
-    fprintf(f, "%*srpc %s {\n", LEVEL, INDENT, mnode->name);
+    fprintf(f, "%*srpc %s {\n", LEVEL, INDENT, node->name);
 
     level++;
-    yang_print_mnode_common(f, level, mnode);
+    yang_print_snode_common(f, level, node);
 
     for (i = 0; i < rpc->features_size; i++) {
-        yang_print_iffeature(f, level, mnode->module, rpc->features[i]);
+        yang_print_iffeature(f, level, node->module, rpc->features[i]);
     }
 
     for (i = 0; i < rpc->tpdf_size; i++) {
-        yang_print_typedef(f, level, mnode->module, &rpc->tpdf[i]);
+        yang_print_typedef(f, level, node->module, &rpc->tpdf[i]);
     }
 
-    LY_TREE_FOR(mnode->child, sub) {
-        yang_print_mnode(f, level, sub,
-                         LY_NODE_GROUPING | LY_NODE_INPUT | LY_NODE_OUTPUT);
+    LY_TREE_FOR(node->child, sub) {
+        yang_print_snode(f, level, sub,
+                         LYS_GROUPING | LYS_INPUT | LYS_OUTPUT);
     }
 
     level--;
@@ -929,33 +929,33 @@ yang_print_rpc(FILE *f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_notif(FILE *f, int level, struct ly_mnode *mnode)
+yang_print_notif(FILE *f, int level, struct lys_node *node)
 {
     int i;
-    struct ly_mnode *sub;
-    struct ly_mnode_notif *notif = (struct ly_mnode_notif *)mnode;
+    struct lys_node *sub;
+    struct lys_node_notif *notif = (struct lys_node_notif *)node;
 
-    fprintf(f, "%*snotification %s {\n", LEVEL, INDENT, mnode->name);
+    fprintf(f, "%*snotification %s {\n", LEVEL, INDENT, node->name);
 
     level++;
-    yang_print_mnode_common(f, level, mnode);
+    yang_print_snode_common(f, level, node);
 
     for (i = 0; i < notif->features_size; i++) {
-        yang_print_iffeature(f, level, mnode->module, notif->features[i]);
+        yang_print_iffeature(f, level, node->module, notif->features[i]);
     }
 
     for (i = 0; i < notif->tpdf_size; i++) {
-        yang_print_typedef(f, level, mnode->module, &notif->tpdf[i]);
+        yang_print_typedef(f, level, node->module, &notif->tpdf[i]);
     }
 
-    LY_TREE_FOR(mnode->child, sub) {
+    LY_TREE_FOR(node->child, sub) {
         /* augment */
-        if (sub->parent != mnode) {
+        if (sub->parent != node) {
             continue;
         }
-        yang_print_mnode(f, level, sub,
-                         LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
-                         LY_NODE_USES | LY_NODE_GROUPING | LY_NODE_ANYXML);
+        yang_print_snode(f, level, sub,
+                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
+                         LYS_USES | LYS_GROUPING | LYS_ANYXML);
     }
 
     level--;
@@ -963,39 +963,39 @@ yang_print_notif(FILE *f, int level, struct ly_mnode *mnode)
 }
 
 static void
-yang_print_mnode(FILE *f, int level, struct ly_mnode *mnode, int mask)
+yang_print_snode(FILE *f, int level, struct lys_node *node, int mask)
 {
-    switch (mnode->nodetype & mask) {
-    case LY_NODE_CONTAINER:
-        yang_print_container(f, level, mnode);
+    switch (node->nodetype & mask) {
+    case LYS_CONTAINER:
+        yang_print_container(f, level, node);
         break;
-    case LY_NODE_CHOICE:
-        yang_print_choice(f, level, mnode);
+    case LYS_CHOICE:
+        yang_print_choice(f, level, node);
         break;
-    case LY_NODE_LEAF:
-        yang_print_leaf(f, level, mnode);
+    case LYS_LEAF:
+        yang_print_leaf(f, level, node);
         break;
-    case LY_NODE_LEAFLIST:
-        yang_print_leaflist(f, level, mnode);
+    case LYS_LEAFLIST:
+        yang_print_leaflist(f, level, node);
         break;
-    case LY_NODE_LIST:
-        yang_print_list(f, level, mnode);
+    case LYS_LIST:
+        yang_print_list(f, level, node);
         break;
-    case LY_NODE_USES:
-        yang_print_uses(f, level, mnode);
+    case LYS_USES:
+        yang_print_uses(f, level, node);
         break;
-    case LY_NODE_GROUPING:
-        yang_print_grouping(f, level, mnode);
+    case LYS_GROUPING:
+        yang_print_grouping(f, level, node);
         break;
-    case LY_NODE_ANYXML:
-        yang_print_anyxml(f, level, mnode);
+    case LYS_ANYXML:
+        yang_print_anyxml(f, level, node);
         break;
-    case LY_NODE_CASE:
-        yang_print_case(f, level, mnode);
+    case LYS_CASE:
+        yang_print_case(f, level, node);
         break;
-    case LY_NODE_INPUT:
-    case LY_NODE_OUTPUT:
-        yang_print_input_output(f, level, mnode);
+    case LYS_INPUT:
+    case LYS_OUTPUT:
+        yang_print_input_output(f, level, node);
         break;
     default:
         break;
@@ -1003,18 +1003,18 @@ yang_print_mnode(FILE *f, int level, struct ly_mnode *mnode, int mask)
 }
 
 int
-yang_print_model(FILE *f, struct ly_module *module)
+yang_print_model(FILE *f, struct lys_module *module)
 {
     unsigned int i;
     int level = 0;
 #define LEVEL (level*2)
 
-    struct ly_mnode *mnode;
+    struct lys_node *node;
 
     if (module->type) {
         fprintf(f, "submodule %s {%s\n", module->name, (module->deviated ? " // DEVIATED" : ""));
         level++;
-        fprintf(f, "%*sbelongs-to %s {\n", LEVEL, INDENT, ((struct ly_submodule *)module)->belongsto->name);
+        fprintf(f, "%*sbelongs-to %s {\n", LEVEL, INDENT, ((struct lys_submodule *)module)->belongsto->name);
         level++;
         fprintf(f, "%*sprefix \"%s\";\n", LEVEL, INDENT, module->prefix);
         level--;
@@ -1096,22 +1096,22 @@ yang_print_model(FILE *f, struct ly_module *module)
         yang_print_typedef(f, level, module, &module->tpdf[i]);
     }
 
-    LY_TREE_FOR(module->data, mnode) {
-        yang_print_mnode(f, level, mnode,
-                         LY_NODE_CHOICE | LY_NODE_CONTAINER | LY_NODE_LEAF | LY_NODE_LEAFLIST | LY_NODE_LIST |
-                         LY_NODE_USES | LY_NODE_GROUPING | LY_NODE_ANYXML);
+    LY_TREE_FOR(module->data, node) {
+        yang_print_snode(f, level, node,
+                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
+                         LYS_USES | LYS_GROUPING | LYS_ANYXML);
     }
 
     for (i = 0; i < module->augment_size; i++) {
         yang_print_augment(f, level, module, &module->augment[i]);
     }
 
-    LY_TREE_FOR(module->rpc, mnode) {
-        yang_print_rpc(f, level, mnode);
+    LY_TREE_FOR(module->rpc, node) {
+        yang_print_rpc(f, level, node);
     }
 
-    LY_TREE_FOR(module->notif, mnode) {
-        yang_print_notif(f, level, mnode);
+    LY_TREE_FOR(module->notif, node) {
+        yang_print_notif(f, level, node);
     }
 
     fprintf(f, "}\n");

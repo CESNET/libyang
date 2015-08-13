@@ -76,10 +76,6 @@ struct lyxml_attr {
 /**
  * @brief Structure describing an element in an XML tree.
  *
- * The structure extends the basic lyxml_node structure with attributes
- * specific to XML elements and not applicable to XML comments and PIs
- * (Processing instructions).
- *
  * If the name item is NULL, then the content is part of the mixed content.
  *
  * Children elements are connected in a half ring doubly linked list:
@@ -87,10 +83,10 @@ struct lyxml_attr {
  * - last's next pointer is NULL
  */
 struct lyxml_elem {
-    struct lyxml_elem *next;         /**< next sibling node */
-    struct lyxml_elem *prev;         /**< previous sibling node */
     struct lyxml_elem *parent;       /**< parent node */
     struct lyxml_elem *child;        /**< first children element */
+    struct lyxml_elem *next;         /**< next sibling node */
+    struct lyxml_elem *prev;         /**< previous sibling node */
     struct lyxml_attr *attr;         /**< first attribute declared in the element */
 
     const char *name;                /**< name of the element */
