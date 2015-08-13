@@ -3785,7 +3785,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
 {
     struct lyxml_elem *sub, *next, root;
     struct lys_node *node = NULL;
-    struct lys_node *retval;
+    struct lys_node *retval = NULL;
     struct lys_node_rpc_inout *inout;
     int r;
     int c_tpdf = 0;
