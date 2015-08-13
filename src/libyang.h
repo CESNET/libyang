@@ -415,8 +415,14 @@ struct lyd_node *lyd_read(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int opt
  * - Info
  *
  *   Detailed information about the specific node in the schema tree.
+ *   The target can be more specific than the module itself:
  *
- *   \todo describe target_node syntax
+ *   - absolute-schema-nodeid&nbsp;&nbsp;&nbsp;&nbsp;\a /modules/module-set-id in \a ietf-yang-library
+ *   - <b>typedef/</b>typedef-name&nbsp;&nbsp;&nbsp;&nbsp;\a typedef/revision-identifier in \a ietf-yang-library
+ *   - <b>feature/</b>feature-name&nbsp;&nbsp;&nbsp;&nbsp;\a feature/ssh in \a ietf-netconf-server
+ *   - <b>grouping/</b>grouping-name/descendant-schema-nodeid&nbsp;&nbsp;&nbsp;&nbsp;\a grouping/module or \a grouping/module/module/submodules
+ *     in \a ietf-yang-library
+ *   - <b>type/</b>leaf-or-leaflist&nbsp;&nbsp;&nbsp;&nbsp;\a type/modules/module-set-id in \a ietf-yang-library
  *
  * For data instances, the following formats are supported:
  * - \todo TBD
