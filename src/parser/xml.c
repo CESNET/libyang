@@ -1055,12 +1055,6 @@ check_unres(struct unres_data **list)
                     LOGVRB("Instance for the \"%s\" does not exist.", leaf->value_str);
                 }
             }
-
-            while (refset) {
-                ref = refset->next;
-                free(refset);
-                refset = ref;
-            }
         }
 
         item = (*list)->next;
@@ -1076,12 +1070,6 @@ error:
         item = (*list)->next;
         free(*list);
         *list = item;
-    }
-
-    while (refset) {
-        ref = refset->next;
-        free(refset);
-        refset = ref;
     }
 
     return EXIT_FAILURE;

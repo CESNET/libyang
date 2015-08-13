@@ -226,15 +226,10 @@ info_print_typedef_with_include(FILE *f, struct lys_module *mod)
     fprintf(f, "%-*s", INDENT_LEN, "Typedefs: ");
 
     if (mod->tpdf_size) {
-        if (first) {
-            fprintf(f, "%s\n", mod->tpdf[0].name);
-            i = 1;
-        } else {
-            i = 0;
-        }
+        fprintf(f, "%s\n", mod->tpdf[0].name);
         first = 0;
 
-        for (; i < mod->tpdf_size; ++i) {
+        for (i = 1; i < mod->tpdf_size; ++i) {
             fprintf(f, "%*s%s\n", INDENT_LEN, "", mod->tpdf[i].name);
         }
     }
