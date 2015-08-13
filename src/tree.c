@@ -1637,7 +1637,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
         }
 
         if (choice_orig->dflt) {
-            choice->dflt = resolve_child((struct lys_node *)choice, choice_orig->dflt->name, 0, LYS_ANYXML
+            choice->dflt = resolve_sibling(choice->module, choice->child, NULL, 0, choice_orig->dflt->name, 0, LYS_ANYXML
                                          | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST
                                          | LYS_LIST);
             assert(choice->dflt);
@@ -1712,7 +1712,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
             /* we managed to resolve it before, resolve it again manually */
             if (list_orig->keys[0]) {
                 for (i = 0; i < list->keys_size; ++i) {
-                    list->keys[i] = (struct lys_node_leaf *)resolve_child((struct lys_node *)list,
+                    list->keys[i] = (struct lys_node_leaf *)resolve_sibling(list->module, list->child, NULL, 0,
                                                                           list_orig->keys[i]->name, 0, LYS_LEAF);
                     assert(list->keys[i]);
                 }

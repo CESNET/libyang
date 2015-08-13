@@ -26,6 +26,8 @@
 
 int check_length_range(const char *expr, struct lys_type *type);
 
+int parse_node_identifier(const char *id, const char **prefix, int *pref_len, const char **name, int *nam_len);
+
 int parse_path_predicate(const char *id, const char **prefix, int *pref_len, const char **name, int *nam_len,
                          const char **path_key_expr, int *pke_len, int *has_predicate);
 
