@@ -69,7 +69,7 @@ install(FILES ${headers} DESTINATION ${INCLUDE_INSTALL_DIR})
 
 # generate doxygen documentation for libyang API
 add_custom_target(doc
-                  COMMAND doxygen Doxyfile
+                  COMMAND doxygen  ${CMAKE_BINARY_DIR}/Doxyfile
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 configure_file(Doxyfile.in Doxyfile)
 
