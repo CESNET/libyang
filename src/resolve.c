@@ -55,7 +55,7 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
     uint64_t local_umin, local_umax;
     long double local_fmin, local_fmax;
     const char *seg_ptr, *ptr;
-    struct len_ran_intv *tmp_local_intv, *tmp_intv, *intv = NULL;
+    struct len_ran_intv *tmp_local_intv = NULL, *tmp_intv, *intv = NULL;
 
     switch (type->base) {
     case LY_TYPE_BINARY:
@@ -214,7 +214,7 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
     /* finally parse our restriction */
     seg_ptr = str_restr;
     while (1) {
-        if (!*local_intv) {
+        if (!*local_intv && !tmp_local_intv) {
             *local_intv = malloc(sizeof **local_intv);
             tmp_local_intv = *local_intv;
         } else {
@@ -1612,6 +1612,9 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
                     node = node->parent;
                 }
                 node = node->child;
+            } else {
+                LOGINT;
+                return NULL;
             }
             first = 0;
         } else {
