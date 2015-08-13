@@ -3794,6 +3794,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
     memset(&root, 0, sizeof root);
 
     inout = calloc(1, sizeof *inout);
+    inout->prev = (struct lys_node *)inout;
 
     if (!strcmp(yin->name, "input")) {
         inout->nodetype = LYS_INPUT;
@@ -3801,10 +3802,10 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
         inout->nodetype = LYS_OUTPUT;
     } else {
         LOGINT;
+        free(inout);
         goto error;
     }
 
-    inout->prev = (struct lys_node *)inout;
     retval = (struct lys_node *)inout;
 
     if (read_yin_common(module, parent, retval, yin, OPT_MODULE | OPT_NACMEXT)) {
