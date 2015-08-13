@@ -74,6 +74,8 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
     }
 
     if (ret && log) {
+        /* so that it's used even in RELEASE target */
+        (void)xml;
         LOGVAL(LYE_OORVAL, LOGLINE(xml), str_val);
     }
     return ret;
@@ -687,7 +689,9 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
             new_unres->is_leafref = 0;
             new_unres->dnode = node;
             new_unres->next = *unres;
+#ifndef NDEBUG
             new_unres->line = LOGLINE(xml);
+#endif
             *unres = new_unres;
         }
         break;
@@ -714,7 +718,9 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
             new_unres->is_leafref = 1;
             new_unres->dnode = node;
             new_unres->next = *unres;
+#ifndef NDEBUG
             new_unres->line = LOGLINE(xml);
+#endif
             *unres = new_unres;
         }
         break;
@@ -1045,7 +1051,7 @@ check_unres(struct unres_data **list)
         /* instance-identifier */
         } else {
             ly_errno = 0;
-            if (!resolve_instid((*list)->dnode, leaf->value_str, (*list)->line)) {
+            if (!resolve_instid((*list)->dnode, leaf->value_str, LOGLINE(*list))) {
                 if (ly_errno) {
                     goto error;
                 } else if (sleaf->type.info.inst.req > -1) {

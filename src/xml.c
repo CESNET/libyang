@@ -676,7 +676,9 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
     result->content = lydict_insert(ctx, elem->content, 0);
     result->name = lydict_insert(ctx, elem->name, 0);
     result->flags = elem->flags;
+#ifndef NDEBUG
     result->line = elem->line;
+#endif
     result->prev = result;
 
     if (parent) {

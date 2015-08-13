@@ -504,7 +504,9 @@ lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
     free(unres->item);
     free(unres->type);
     free(unres->str_snode);
+#ifndef NDEBUG
     free(unres->line);
+#endif
     free(unres);
 
     return mod;
@@ -538,7 +540,9 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
     free(unres->item);
     free(unres->type);
     free(unres->str_snode);
+#ifndef NDEBUG
     free(unres->line);
+#endif
     free(unres);
 
     return submod;
@@ -1474,29 +1478,29 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
     struct ly_ctx *ctx = module->ctx;
     int i, j;
 
-    struct lys_node_container *cont;
+    struct lys_node_container *cont = NULL;
     struct lys_node_container *cont_orig = (struct lys_node_container *)node;
-    struct lys_node_choice *choice;
+    struct lys_node_choice *choice = NULL;
     struct lys_node_choice *choice_orig = (struct lys_node_choice *)node;
-    struct lys_node_leaf *leaf;
+    struct lys_node_leaf *leaf = NULL;
     struct lys_node_leaf *leaf_orig = (struct lys_node_leaf *)node;
-    struct lys_node_leaflist *llist;
+    struct lys_node_leaflist *llist = NULL;
     struct lys_node_leaflist *llist_orig = (struct lys_node_leaflist *)node;
-    struct lys_node_list *list;
+    struct lys_node_list *list = NULL;
     struct lys_node_list *list_orig = (struct lys_node_list *)node;
-    struct lys_node_anyxml *anyxml;
+    struct lys_node_anyxml *anyxml = NULL;
     struct lys_node_anyxml *anyxml_orig = (struct lys_node_anyxml *)node;
-    struct lys_node_uses *uses;
+    struct lys_node_uses *uses = NULL;
     struct lys_node_uses *uses_orig = (struct lys_node_uses *)node;
-    struct lys_node_grp *grp;
+    struct lys_node_grp *grp = NULL;
     struct lys_node_grp *grp_orig = (struct lys_node_grp *)node;
-    struct lys_node_rpc *rpc;
+    struct lys_node_rpc *rpc = NULL;
     struct lys_node_rpc *rpc_orig = (struct lys_node_rpc *)node;
-    struct lys_node_rpc_inout *io;
+    struct lys_node_rpc_inout *io = NULL;
     struct lys_node_rpc_inout *io_orig = (struct lys_node_rpc_inout *)node;
-    struct lys_node_rpc *ntf;
+    struct lys_node_rpc *ntf = NULL;
     struct lys_node_rpc *ntf_orig = (struct lys_node_rpc *)node;
-    struct lys_node_case *cs;
+    struct lys_node_case *cs = NULL;
     struct lys_node_case *cs_orig = (struct lys_node_case *)node;
 
     /* we cannot just duplicate memory since the strings are stored in

@@ -3481,6 +3481,9 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             node = read_yin_grouping(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
             node = read_yin_anyxml(module, retval, sub, resolve, unres);
+        } else {
+            LOGINT;
+            goto error;
         }
         if (!node) {
             goto error;
@@ -4738,8 +4741,10 @@ error:
     unres->type = NULL;
     free(unres->str_snode);
     unres->str_snode = NULL;
+#ifndef NDEBUG
     free(unres->line);
     unres->line = NULL;
+#endif
     unres->count = 0;
 
     return EXIT_FAILURE;

@@ -121,7 +121,7 @@ void ly_vlog(enum LY_ERR code, unsigned int line, ...);
 #ifdef NDEBUG
 #    define LOGLINE(node) 0
 #else
-#    define LOGLINE(node) node->line
+#    define LOGLINE(node) (node)->line
 #endif
 
 char *strnchr(const char *s, int c, unsigned int len);

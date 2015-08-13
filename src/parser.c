@@ -93,7 +93,9 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     free(unres->item);
     free(unres->type);
     free(unres->str_snode);
+#ifndef NDEBUG
     free(unres->line);
+#endif
     free(unres);
 
     return module;

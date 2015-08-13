@@ -1374,7 +1374,7 @@ resolve_path_arg_data(struct unres_data *unres, const char *path, struct unres_d
     /* searching for nodeset */
     do {
         if ((i = parse_path_arg(path, &prefix, &pref_len, &name, &nam_len, &parent_times, &has_predicate)) < 1) {
-            LOGVAL(LYE_INCHAR, unres->line, path[-i], path-i);
+            LOGVAL(LYE_INCHAR, LOGLINE(unres), path[-i], path-i);
             goto error;
         }
         path += i;
@@ -1385,7 +1385,7 @@ resolve_path_arg_data(struct unres_data *unres, const char *path, struct unres_d
                 /* relative path */
                 if (!*ret) {
                     /* error, too many .. */
-                    LOGVAL(LYE_INVAL, unres->line, path, unres->dnode->schema->name);
+                    LOGVAL(LYE_INVAL, LOGLINE(unres), path, unres->dnode->schema->name);
                     goto error;
                 } else if (!(*ret)->dnode) {
                     /* first .. */
@@ -1409,7 +1409,7 @@ resolve_path_arg_data(struct unres_data *unres, const char *path, struct unres_d
 
         /* node identifier */
         if (resolve_data_nodeid(prefix, pref_len, name, nam_len, data, ret)) {
-            LOGVAL(LYE_INELEM_LEN, unres->line, nam_len, name);
+            LOGVAL(LYE_INELEM_LEN, LOGLINE(unres), nam_len, name);
             goto error;
         }
 
@@ -1435,13 +1435,13 @@ resolve_path_arg_data(struct unres_data *unres, const char *path, struct unres_d
                     riter = *ret;
                 }
             }
-            if ((i = resolve_path_predicate_data(path, ret, unres->line)) < 1) {
+            if ((i = resolve_path_predicate_data(path, ret, LOGLINE(unres))) < 1) {
                 goto error;
             }
             path += i;
 
             if (!*ret) {
-                LOGVAL(LYE_LINE, unres->line);
+                LOGVAL(LYE_LINE, LOGLINE(unres));
                 /* general error, the one written later will suffice */
                 goto error;
             }
@@ -2645,10 +2645,11 @@ print_unres_item_fail(void *item, enum UNRES_ITEM type, void *str_node, uint32_t
 int
 resolve_unres(struct lys_module *mod, struct unres_schema *unres)
 {
-    uint32_t i, resolved, unres_uses, res_uses;
+    uint32_t i, resolved, unres_uses, res_uses, line;
 
     assert(unres);
 
+    line = 0;
     resolved = 0;
 
     /* uses */
@@ -2661,13 +2662,17 @@ resolve_unres(struct lys_module *mod, struct unres_schema *unres)
                 continue;
             }
 
+#ifndef NDEBUG
+            line = unres->line[i];
+#endif
+
             ++unres_uses;
-            if (!resolve_unres_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, unres->line[i])) {
+            if (!resolve_unres_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, line)) {
                 unres->type[i] = UNRES_RESOLVED;
                 ++resolved;
                 ++res_uses;
             } else {
-                print_unres_item_fail(unres->item[i], unres->type[i], unres->str_snode[i], unres->line[i]);
+                print_unres_item_fail(unres->item[i], unres->type[i], unres->str_snode[i], line);
             }
         }
     } while (res_uses && (res_uses < unres_uses));
@@ -2682,7 +2687,12 @@ resolve_unres(struct lys_module *mod, struct unres_schema *unres)
         if (unres->type[i] == UNRES_RESOLVED) {
             continue;
         }
-        if (!resolve_unres_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, unres->line[i])) {
+
+#ifndef NDEBUG
+            line = unres->line[i];
+#endif
+
+        if (!resolve_unres_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, line)) {
             unres->type[i] = UNRES_RESOLVED;
             ++resolved;
         }
@@ -2725,8 +2735,10 @@ unres_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, e
     unres->type[unres->count-1] = type;
     unres->str_snode = realloc(unres->str_snode, unres->count*sizeof *unres->str_snode);
     unres->str_snode[unres->count-1] = node;
+#ifndef NDEBUG
     unres->line = realloc(unres->line, unres->count*sizeof *unres->line);
     unres->line[unres->count-1] = line;
+#endif
 }
 
 /* logs indirectly */
