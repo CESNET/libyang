@@ -896,6 +896,24 @@ lys_when_free(struct ly_ctx *ctx, struct lys_when *w)
     free(w);
 }
 
+static void
+lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment aug)
+{
+    struct lys_node *child, *sub;
+
+    lydict_remove(ctx, aug.target_name);
+    lydict_remove(ctx, aug.dsc);
+    lydict_remove(ctx, aug.ref);
+
+    free(aug.features);
+
+    lys_when_free(ctx, aug.when);
+
+    LY_TREE_FOR_SAFE(aug.child, child, sub) {
+        lys_node_free(sub);
+    }
+}
+
 static struct lys_node_augment *
 lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_node_augment *old, int size,
                struct unres_schema *unres)
@@ -921,7 +939,13 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
         /* copy the augment nodes */
         assert(old[i].child);
         LY_TREE_FOR(old[i].child, snode) {
-            lys_node_addchild((struct lys_node *)&new[i], lys_node_dup(module, snode, snode->flags, snode->nacm, 1, unres));
+            if (lys_node_addchild((struct lys_node *)&new[i], lys_node_dup(module, snode, snode->flags, snode->nacm, 1, unres))) {
+                for ( ; i >= 0; i--) {
+                    lys_augment_free(module->ctx, new[i]);
+                }
+                free(new);
+                return NULL;
+            }
         }
     }
 
@@ -1151,24 +1175,6 @@ lys_deviation_free(struct ly_ctx *ctx, struct lys_deviation *dev)
 }
 
 static void
-lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment *aug)
-{
-    struct lys_node *child, *sub;
-
-    lydict_remove(ctx, aug->target_name);
-    lydict_remove(ctx, aug->dsc);
-    lydict_remove(ctx, aug->ref);
-
-    free(aug->features);
-
-    lys_when_free(ctx, aug->when);
-
-    LY_TREE_FOR_SAFE(aug->child, child, sub) {
-        lys_node_free(sub);
-    }
-}
-
-static void
 lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses)
 {
     int i, j;
@@ -1192,7 +1198,7 @@ lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses)
     free(uses->refine);
 
     for (i = 0; i < uses->augment_size; i++) {
-        lys_augment_free(ctx, &uses->augment[i]);
+        lys_augment_free(ctx, uses->augment[i]);
     }
     free(uses->augment);
 
@@ -1341,7 +1347,7 @@ module_free_common(struct lys_module *module)
 
     /* augment */
     for (i = 0; i < module->augment_size; i++) {
-        lys_augment_free(ctx, &module->augment[i]);
+        lys_augment_free(ctx, module->augment[i]);
     }
     free(module->augment);
 
