@@ -670,8 +670,8 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
         if (!(child->nodetype &
                 (LYS_ANYXML | LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_GROUPING
                 | LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_RPC | LYS_NOTIF | LYS_AUGMENT))) {
-            LOGVAL(LYE_SPEC, 0, "Unexpected substatement \"%s\" in (sub)module",
-                   strnodetype(child->nodetype), strnodetype(parent->nodetype));
+            LOGVAL(LYE_SPEC, 0, "Unexpected substatement \"%s\" in (sub)module \"%s\"",
+                   strnodetype(child->nodetype), module->name);
             return EXIT_FAILURE;
         }
 
