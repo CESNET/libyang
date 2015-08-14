@@ -2532,56 +2532,6 @@ error:
     return NULL;
 }
 
-/* additional check in case statement - the child must be unique across
- * all other case names and its data children
- */
-static int
-check_branch_id(struct lys_node *parent, struct lys_node *new, struct lys_node *excl, int line)
-{
-    struct lys_node *node, *subnode;
-
-    /* TODO improve checking in case of multiple choices, uses, ... inside */
-    if (new->nodetype == LYS_CHOICE) {
-        /* we have nested choice in case, so we need recursion */
-        LY_TREE_FOR(new->child, node) {
-            if (node->nodetype == LYS_CASE) {
-                LY_TREE_FOR(node->child, subnode) {
-                    if (check_branch_id(parent, subnode, new, line)) {
-                        return EXIT_FAILURE;
-                    }
-                }
-            } else if (check_branch_id(parent, node, new, line)) {
-                return EXIT_FAILURE;
-            }
-        }
-    } else {
-        LY_TREE_FOR(parent->child, node) {
-            if (node == excl) {
-                continue;
-            }
-
-            if (!strcmp(new->name, node->name)) {
-                LOGVAL(LYE_INID, line, new->name, "duplicated identifier within a choice's cases");
-                return EXIT_FAILURE;
-            }
-            if (node->nodetype == LYS_CASE) {
-                LY_TREE_FOR(node->child, subnode) {
-                    if (subnode == excl) {
-                        continue;
-                    }
-
-                    if (!strcmp(new->name, subnode->name)) {
-                        LOGVAL(LYE_INID, line, new->name, "duplicated identifier within a choice's cases");
-                        return EXIT_FAILURE;
-                    }
-                }
-            }
-        }
-    }
-
-    return EXIT_SUCCESS;
-}
-
 static struct lys_node *
 read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
               struct unres_schema *unres)
@@ -2604,7 +2554,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
-    if (lys_node_addchild(parent, retval)) {
+    if (lys_node_addchild(parent, module, retval)) {
         goto error;
     }
 
@@ -2652,8 +2602,6 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
         if (!node) {
             goto error;
-        } else if (check_branch_id(parent, node, node, LOGLINE(sub))) {
-            goto error;
         }
 
         node = NULL;
@@ -2678,8 +2626,7 @@ error:
 }
 
 static struct lys_node *
-read_yin_choice(struct lys_module *module,
-                struct lys_node *parent, struct lyxml_elem *yin, int resolve, struct unres_schema *unres)
+read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve, struct unres_schema *unres)
 {
     struct lyxml_elem *sub, *next;
     struct ly_ctx *const ctx = module->ctx;
@@ -2701,7 +2648,7 @@ read_yin_choice(struct lys_module *module,
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
-    if (parent && lys_node_addchild(parent, retval)) {
+    if (lys_node_addchild(parent, module, retval)) {
         goto error;
     }
 
@@ -2783,9 +2730,6 @@ read_yin_choice(struct lys_module *module,
             goto error;
         }
 
-        if (node && check_branch_id(retval, node, node, LOGLINE(sub))) {
-            goto error;
-        }
         node = NULL;
         lyxml_free_elem(ctx, sub);
     }
@@ -2843,7 +2787,8 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
     }
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
-    if (parent && lys_node_addchild(parent, retval)) {
+
+    if (lys_node_addchild(parent, module, retval)) {
         goto error;
     }
 
@@ -2951,7 +2896,8 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     }
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
-    if (parent && lys_node_addchild(parent, retval)) {
+
+    if (lys_node_addchild(parent, module, retval)) {
         goto error;
     }
 
@@ -3096,7 +3042,8 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
     }
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
-    if (parent && lys_node_addchild(parent, retval)) {
+
+    if (lys_node_addchild(parent, module, retval)) {
         goto error;
     }
 
@@ -3468,7 +3415,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
     }
 
-    if (parent && lys_node_addchild(parent, retval)) {
+    if (lys_node_addchild(parent, module, retval)) {
         goto error;
     }
 
@@ -3647,7 +3594,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
         }
     }
 
-    if (parent && lys_node_addchild(parent, retval)) {
+    if (lys_node_addchild(parent, module, retval)) {
         goto error;
     }
 
@@ -3754,7 +3701,7 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
         }
     }
 
-    if (parent && lys_node_addchild(parent, retval)) {
+    if (lys_node_addchild(parent, module, retval)) {
         goto error;
     }
 
@@ -3873,7 +3820,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
         }
     }
 
-    if (parent && lys_node_addchild(parent, retval)) {
+    if (lys_node_addchild(parent, module, retval)) {
         goto error;
     }
 
@@ -3992,7 +3939,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
         }
     }
 
-    if (parent && lys_node_addchild(parent, retval)) {
+    if (lys_node_addchild(parent, module, retval)) {
         goto error;
     }
 
@@ -4124,7 +4071,7 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
         }
     }
 
-    if (parent && lys_node_addchild(parent, retval)) {
+    if (lys_node_addchild(parent, module, retval)) {
         goto error;
     }
 
@@ -4230,7 +4177,7 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         uses->features = calloc(c_ftrs, sizeof *uses->features);
     }
 
-    if (parent && lys_node_addchild(parent, retval)) {
+    if (lys_node_addchild(parent, module, retval)) {
         goto error;
     }
 
@@ -4659,15 +4606,6 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
         }
 
         lyxml_free_elem(ctx, child);
-
-        /* include data element */
-        if (module->data) {
-            module->data->prev->next = node;
-            node->prev = module->data->prev;
-            module->data->prev = node;
-        } else {
-            module->data = node;
-        }
     }
 
     /* parse data nodes, ... */
@@ -4693,15 +4631,6 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
         }
 
         lyxml_free_elem(ctx, child);
-
-        /* include data element */
-        if (module->data) {
-            module->data->prev->next = node;
-            node->prev = module->data->prev;
-            module->data->prev = node;
-        } else {
-            module->data = node;
-        }
     }
 
     /* ... rpcs ... */
@@ -4712,15 +4641,6 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
         }
 
         lyxml_free_elem(ctx, child);
-
-        /* include rpc element */
-        if (module->rpc) {
-            module->rpc->prev->next = node;
-            node->prev = module->rpc->prev;
-            module->rpc->prev = node;
-        } else {
-            module->rpc = node;
-        }
     }
 
     /* ... and notifications */
@@ -4731,15 +4651,6 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
         }
 
         lyxml_free_elem(ctx, child);
-
-        /* include notification element */
-        if (module->notif) {
-            module->notif->prev->next = node;
-            node->prev = module->notif->prev;
-            module->notif->prev = node;
-        } else {
-            module->notif = node;
-        }
     }
 
     return EXIT_SUCCESS;

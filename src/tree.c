@@ -367,7 +367,7 @@ lys_node_unlink(struct lys_node *node)
             first = parent->child;
         } else {
             first = node;
-            while (node->prev->next) {
+            while (first->prev->next) {
                 first = node->prev;
             }
         }
@@ -382,16 +382,75 @@ lys_node_unlink(struct lys_node *node)
     node->prev = node;
 }
 
-int
-lys_node_addchild(struct lys_node *parent, struct lys_node *child)
+/*
+ * get next grouping in the root's subtree, in the
+ * first call, tha last is NULL
+ */
+static struct lys_node_grp *
+lys_get_next_grouping(struct lys_node_grp* lastgrp, struct lys_node *root)
 {
-    struct lys_node *last;
+    struct lys_node *last = (struct lys_node *)lastgrp;
+    struct lys_node *next;
 
-    assert(parent);
+    assert(root);
+
+    if (!last) {
+        last = root;
+    }
+
+    while (1) {
+        if ((last->nodetype & (LYS_CONTAINER | LYS_CHOICE | LYS_LIST | LYS_GROUPING | LYS_INPUT | LYS_OUTPUT))) {
+            next = last->child;
+        } else {
+            next = NULL;
+        }
+        if (!next) {
+            if (last == root) {
+                /* we are done */
+                return NULL;
+            }
+
+            /* no children, go to siblings */
+            next = last->next;
+        }
+        while (!next) {
+            /* go back through parents */
+            if (last->parent == root) {
+                /* we are done */
+                return NULL;
+            }
+            last = last->parent;
+            next = last->next;
+        }
+
+        if (next->nodetype == LYS_GROUPING) {
+            return (struct lys_node_grp *)next;
+        }
+
+        last = next;
+    }
+}
+
+int
+lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child)
+{
+    struct lys_node *iter, *par_iter, *stop, *start, **trg = NULL;
+    int type, down;
+    struct lys_node_grp *grp;
+
     assert(child);
 
+    if (parent) {
+        type = parent->nodetype;
+        module = parent->module;
+    } else {
+        assert(module);
+        type = 0;
+        trg = &module->data;
+    }
+
     /* checks */
-    switch (parent->nodetype) {
+    switch (type) {
     case LYS_CONTAINER:
     case LYS_LIST:
     case LYS_GROUPING:
@@ -405,6 +464,10 @@ lys_node_addchild(struct lys_node *parent, struct lys_node *child)
             LOGVAL(LYE_SPEC, 0, "Unexpected substatement \"%s\" in \"%s\" (%s).",
                    strnodetype(child->nodetype), strnodetype(parent->nodetype), parent->name);
             return EXIT_FAILURE;
+        }
+
+        if (type == LYS_NOTIF) {
+            trg = &module->notif;
         }
         break;
     case LYS_CHOICE:
@@ -429,11 +492,12 @@ lys_node_addchild(struct lys_node *parent, struct lys_node *child)
                    strnodetype(child->nodetype), parent->name);
             return EXIT_FAILURE;
         }
+        trg = &module->rpc;
         break;
     case LYS_LEAF:
     case LYS_LEAFLIST:
     case LYS_ANYXML:
-        LOGVAL(LYE_SPEC, 0, "The \"%s\" statement (%s) cannot have any substatement.",
+        LOGVAL(LYE_SPEC, 0, "The \"%s\" statement (%s) cannot have any data substatement.",
                strnodetype(parent->nodetype), parent->name);
         return EXIT_FAILURE;
     case LYS_AUGMENT:
@@ -446,30 +510,189 @@ lys_node_addchild(struct lys_node *parent, struct lys_node *child)
         }
         break;
     case LYS_UNKNOWN:
-        LOGINT;
-        return EXIT_FAILURE;
+        /* top level */
+        if (!(child->nodetype &
+                (LYS_ANYXML | LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_GROUPING
+                | LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_RPC | LYS_NOTIF | LYS_AUGMENT))) {
+            LOGVAL(LYE_SPEC, 0, "Unexpected substatement \"%s\" in (sub)module",
+                   strnodetype(child->nodetype), strnodetype(parent->nodetype));
+            return EXIT_FAILURE;
+        }
+
+        break;;
+    }
+
+    /* check identifier uniqueness */
+    switch (child->nodetype) {
+    case LYS_GROUPING:
+        /* 6.2.1, rule 6 */
+        if (parent) {
+            if (parent->child) {
+                down = 1;
+                start = parent->child;
+            } else {
+                down = 0;
+                start = parent;
+            }
+        } else {
+            down = 1;
+            start = module->data;
+        }
+        /* go up */
+        for (par_iter = start ; par_iter; par_iter = par_iter->parent) {
+            if (par_iter->nodetype & (LYS_CHOICE | LYS_CASE | LYS_AUGMENT | LYS_USES)) {
+                continue;
+            }
+
+            for(iter = par_iter, stop = NULL; iter; iter = iter->prev) {
+                if (!stop) {
+                    stop = par_iter;
+                } else if (iter == stop) {
+                    break;
+                }
+                if (iter->nodetype != LYS_GROUPING) {
+                    continue;
+                }
+
+                if (child->name == iter->name) {
+                    LOGVAL(LYE_DUPID, 0, "grouping", child->name);
+                    return EXIT_FAILURE;
+                }
+            }
+        }
+        /* go down, because grouping can be defined after e.g. container in which is collision */
+        if (down) {
+            for(iter = start, stop = NULL; iter; iter = iter->prev) {
+                if (!stop) {
+                    stop = start;
+                } else if (iter == stop) {
+                    break;
+                }
+                if (!(iter->nodetype & (LYS_CONTAINER | LYS_CHOICE | LYS_LIST | LYS_GROUPING | LYS_INPUT | LYS_OUTPUT))) {
+                    continue;
+                }
+
+                grp = NULL;
+                while ((grp = lys_get_next_grouping(grp, iter))) {
+                    if (child->name == grp->name) {
+                        LOGVAL(LYE_DUPID, 0, "grouping", child->name);
+                        return EXIT_FAILURE;
+                    }
+                }
+            }
+        }
+        break;
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
+    case LYS_LIST:
+    case LYS_CONTAINER:
+    case LYS_CHOICE:
+    case LYS_ANYXML:
+        /* 6.2.1, rule 7 */
+        if (parent) {
+            iter = parent;
+            while (iter && (iter->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE))) {
+                iter = iter->parent;
+            }
+            if (!iter) {
+                stop = NULL;
+                iter = module->data;
+            } else {
+                stop = iter;
+                iter = iter->child;
+            }
+        } else {
+            stop = NULL;
+            iter = module->data;
+        }
+        while (iter) {
+            if (iter->nodetype & (LYS_USES | LYS_CASE )) {
+                iter = iter->child;
+                continue;
+            }
+
+            if (iter->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CONTAINER | LYS_CHOICE | LYS_ANYXML)) {
+                if (iter->module == module && iter->name == child->name) {
+                    LOGVAL(LYE_SPEC, 0, "Duplicated child identifier \"%s\" in \"%s\".",
+                           child->name, stop ? stop->name : "(sub)module");
+                    return EXIT_FAILURE;
+                }
+            }
+
+            /* special case for choice - we must check the choice's name as
+             * well as the names of nodes under the choice
+             */
+            if (iter->nodetype == LYS_CHOICE) {
+                iter = iter->child;
+                continue;
+            }
+
+            /* go to siblings */
+            if (!iter->next) {
+                /* no sibling, go to parent's sibling */
+                do {
+                    iter = iter->parent;
+                    if (iter && iter->next) {
+                        break;
+                    }
+                } while (iter != stop);
+
+                if (iter == stop) {
+                    break;
+                }
+            }
+            iter = iter->next;
+        }
+        break;
+    case LYS_CASE:
+        /* 6.2.1, rule 8 */
+        LY_TREE_FOR(parent->child, iter) {
+            if (!(iter->nodetype & (LYS_ANYXML | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST))) {
+                continue;
+            }
+
+            if (iter->module == module && iter->name == child->name) {
+                LOGVAL(LYE_DUPID, 0, "case", child->name);
+                return EXIT_FAILURE;
+            }
+        }
+        break;
+    default:
+        /* no check needed */
+        break;
     }
 
     if (child->parent) {
         lys_node_unlink(child);
     }
+    child->module = module;
 
-    if (!parent->child) {
-        /* the only/first child of the parent */
-        parent->child = child;
-        child->parent = parent;
-        last = child;
+    if (!parent) {
+        if (*trg) {
+            (*trg)->prev->next = child;
+            child->prev = (*trg)->prev;
+            (*trg)->prev = child;
+        } else {
+            (*trg) = child;
+        }
     } else {
-        /* add a new child at the end of parent's child list */
-        last = parent->child->prev;
-        last->next = child;
-        child->prev = last;
+        if (!parent->child) {
+            /* the only/first child of the parent */
+            parent->child = child;
+            child->parent = parent;
+            iter = child;
+        } else {
+            /* add a new child at the end of parent's child list */
+            iter = parent->child->prev;
+            iter->next = child;
+            child->prev = iter;
+        }
+        while (iter->next) {
+            iter = iter->next;
+            iter->parent = parent;
+        }
+        parent->child->prev = iter;
     }
-    while (last->next) {
-        last = last->next;
-        last->parent = parent;
-    }
-    parent->child->prev = last;
 
     return EXIT_SUCCESS;
 }
@@ -948,7 +1171,7 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
         /* copy the augment nodes */
         assert(old[i].child);
         LY_TREE_FOR(old[i].child, snode) {
-            if (lys_node_addchild((struct lys_node *)&new[i], lys_node_dup(module, snode, snode->flags, snode->nacm, 1, unres))) {
+            if (lys_node_addchild((struct lys_node *)&new[i], NULL, lys_node_dup(module, snode, snode->flags, snode->nacm, 1, unres))) {
                 for ( ; i >= 0; i--) {
                     lys_augment_free(module->ctx, new[i]);
                 }
@@ -1604,7 +1827,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
         /* go recursively */
         LY_TREE_FOR(node->child, child) {
             aux = lys_node_dup(module, child, retval->flags, retval->nacm, 1, unres);
-            if (!aux || lys_node_addchild(retval, aux)) {
+            if (!aux || lys_node_addchild(retval, NULL, aux)) {
                 LOGINT;
                 lys_node_free(retval);
                 return NULL;

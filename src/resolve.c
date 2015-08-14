@@ -729,18 +729,18 @@ error:
 /**
  * @brief Resolve (fill) a grouping in an uses. Logs directly.
  *
- * @param[in] parent The parent node of the uses.
  * @param[in] uses The uses in question.
  * @param[in] line The line in the input file.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
  */
 static int
-resolve_grouping(struct lys_node *parent, struct lys_node_uses *uses, uint32_t line)
+resolve_grouping(struct lys_node_uses *uses, uint32_t line)
 {
     struct lys_module *module = uses->module;
     const char *prefix, *name;
     int i, pref_len, nam_len;
+    struct lys_node *start;
 
     /* parse the identifier, it must be parsed on one call */
     if ((i = parse_node_identifier(uses->name, &prefix, &pref_len, &name, &nam_len)) < 1) {
@@ -753,19 +753,21 @@ resolve_grouping(struct lys_node *parent, struct lys_node_uses *uses, uint32_t l
 
     if (!prefix) {
         /* search in local tree hierarchy */
-        while (parent->parent) {
-            parent = parent->parent;
-            uses->grp = (struct lys_node_grp *)resolve_sibling(module, parent->child, prefix, pref_len, name, nam_len, LYS_GROUPING);
+        if (!uses->parent) {
+            start = (struct lys_node *)uses;
+            while (start->prev->next) {
+                start = start->prev;
+            }
+        } else {
+            start = uses->parent->child;
+        }
+        while (start) {
+            uses->grp = (struct lys_node_grp *)resolve_sibling(module, start, prefix, pref_len, name, nam_len, LYS_GROUPING);
             if (uses->grp) {
                 return EXIT_SUCCESS;
             }
+            start = start->parent;
         }
-    }
-
-    /* search in top-level module or its import, in its includes as well */
-    uses->grp = (struct lys_node_grp *)resolve_sibling(module, parent, prefix, pref_len, name, nam_len, LYS_GROUPING);
-    if (uses->grp) {
-        return EXIT_SUCCESS;
     }
 
     LOGVAL(LYE_INRESOLV, line, "grouping", uses->name);
@@ -1920,6 +1922,7 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
         inherit_config_flag(sub);
     }
 
+    /* TODO check identifier uniquness as in lys_node_addchild() */
     /* reconnect augmenting data into the target - add them to the target child list */
     if (aug->target->child) {
         aux = aug->target->child->prev; /* remember current target's last node */
@@ -1961,7 +1964,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
             LOGVAL(LYE_SPEC, line, "Copying data from grouping failed.");
             return EXIT_FAILURE;
         }
-        if (lys_node_addchild((struct lys_node *)uses, node_aux)) {
+        if (lys_node_addchild((struct lys_node *)uses, NULL, node_aux)) {
             /* error logged */
             lys_node_free(node_aux);
             return EXIT_FAILURE;
@@ -2373,7 +2376,7 @@ resolve_unres_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint3
     /* HACK change unres uses count if it's in a grouping (nacm field used for it) */
     for (parent = uses->parent; parent && (parent->nodetype != LYS_GROUPING); parent = parent->parent);
 
-    if (uses->grp || !resolve_grouping(uses->parent, uses, line)) {
+    if (uses->grp || !resolve_grouping(uses, line)) {
         if (uses->grp->nacm) {
             LOGVRB("Cannot copy the grouping, it is not fully resolved yet.");
             return EXIT_FAILURE;

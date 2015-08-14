@@ -137,10 +137,14 @@ void lys_submodule_free(struct lys_submodule *submodule);
  * If the child has next sibling(s), all of them are connected with the parent.
  *
  * @param[in] parent Parent node where the \p child will be added.
+ * @param[in] module Module where the \p child will be added. Parameter is used
+ * only when the \p parent is NULL which means that the \p child is going to be
+ * a top level element in the module. If the \p parent parameter is present, the
+ * target module is taken from it and the \p module parameter is ignored.
  * @param[in] child The schema tree node to be added.
  * @return 0 on success, nonzero else
  */
-int lys_node_addchild(struct lys_node *parent, struct lys_node *child);
+int lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child);
 
 /**
  * @brief Create a copy of the specified schema tree \p node
