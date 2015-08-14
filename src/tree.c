@@ -432,11 +432,167 @@ lys_get_next_grouping(struct lys_node_grp* lastgrp, struct lys_node *root)
 }
 
 int
+lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *module)
+{
+    struct lys_node *start, *stop, *par_iter, *iter;
+    struct lys_node_grp *grp;
+    int down;
+
+    assert(node);
+
+    if (!parent) {
+        assert(module);
+    } else {
+        module = parent->module;
+    }
+
+    switch (node->nodetype) {
+    case LYS_GROUPING:
+        /* 6.2.1, rule 6 */
+        if (parent) {
+            if (parent->child) {
+                down = 1;
+                start = parent->child;
+            } else {
+                down = 0;
+                start = parent;
+            }
+        } else {
+            down = 1;
+            start = module->data;
+        }
+        /* go up */
+        for (par_iter = start; par_iter; par_iter = par_iter->parent) {
+            if (par_iter->nodetype & (LYS_CHOICE | LYS_CASE | LYS_AUGMENT | LYS_USES)) {
+                continue;
+            }
+
+            for (iter = par_iter, stop = NULL; iter; iter = iter->prev) {
+                if (!stop) {
+                    stop = par_iter;
+                } else if (iter == stop) {
+                    break;
+                }
+                if (iter->nodetype != LYS_GROUPING) {
+                    continue;
+                }
+
+                if (node->name == iter->name) {
+                    LOGVAL(LYE_DUPID, 0, "grouping", node->name);
+                    return EXIT_FAILURE;
+                }
+            }
+        }
+        /* go down, because grouping can be defined after e.g. container in which is collision */
+        if (down) {
+            for (iter = start, stop = NULL; iter; iter = iter->prev) {
+                if (!stop) {
+                    stop = start;
+                } else if (iter == stop) {
+                    break;
+                }
+                if (!(iter->nodetype & (LYS_CONTAINER | LYS_CHOICE | LYS_LIST | LYS_GROUPING | LYS_INPUT | LYS_OUTPUT))) {
+                    continue;
+                }
+
+                grp = NULL;
+                while ((grp = lys_get_next_grouping(grp, iter))) {
+                    if (node->name == grp->name) {
+                        LOGVAL(LYE_DUPID, 0, "grouping", node->name);
+                        return EXIT_FAILURE;
+                    }
+                }
+            }
+        }
+        break;
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
+    case LYS_LIST:
+    case LYS_CONTAINER:
+    case LYS_CHOICE:
+    case LYS_ANYXML:
+        /* 6.2.1, rule 7 */
+        if (parent) {
+            iter = parent;
+            while (iter && (iter->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE))) {
+                iter = iter->parent;
+            }
+            if (!iter) {
+                stop = NULL;
+                iter = module->data;
+            } else {
+                stop = iter;
+                iter = iter->child;
+            }
+        } else {
+            stop = NULL;
+            iter = module->data;
+        }
+        while (iter) {
+            if (iter->nodetype & (LYS_USES | LYS_CASE)) {
+                iter = iter->child;
+                continue;
+            }
+
+            if (iter->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CONTAINER | LYS_CHOICE | LYS_ANYXML)) {
+                if (iter->module == node->module && iter->name == node->name) {
+                    LOGVAL(LYE_SPEC, 0, "Duplicated child identifier \"%s\" in \"%s\".", node->name,
+                           stop ? stop->name : "(sub)module");
+                    return EXIT_FAILURE;
+                }
+            }
+
+            /* special case for choice - we must check the choice's name as
+             * well as the names of nodes under the choice
+             */
+            if (iter->nodetype == LYS_CHOICE) {
+                iter = iter->child;
+                continue;
+            }
+
+            /* go to siblings */
+            if (!iter->next) {
+                /* no sibling, go to parent's sibling */
+                do {
+                    iter = iter->parent;
+                    if (iter && iter->next) {
+                        break;
+                    }
+                } while (iter != stop);
+
+                if (iter == stop) {
+                    break;
+                }
+            }
+            iter = iter->next;
+        }
+        break;
+    case LYS_CASE:
+        /* 6.2.1, rule 8 */
+        LY_TREE_FOR(parent->child, iter) {
+            if (!(iter->nodetype & (LYS_ANYXML | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST))) {
+                continue;
+            }
+
+            if (iter->module == node->module && iter->name == node->name) {
+                LOGVAL(LYE_DUPID, 0, "case", node->name);
+                return EXIT_FAILURE;
+            }
+        }
+        break;
+    default:
+        /* no check needed */
+        break;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int
 lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child)
 {
-    struct lys_node *iter, *par_iter, *stop, *start, **trg = NULL;
-    int type, down;
-    struct lys_node_grp *grp;
+    struct lys_node *iter, **trg = NULL;
+    int type;
 
     assert(child);
 
@@ -523,149 +679,13 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     }
 
     /* check identifier uniqueness */
-    switch (child->nodetype) {
-    case LYS_GROUPING:
-        /* 6.2.1, rule 6 */
-        if (parent) {
-            if (parent->child) {
-                down = 1;
-                start = parent->child;
-            } else {
-                down = 0;
-                start = parent;
-            }
-        } else {
-            down = 1;
-            start = module->data;
-        }
-        /* go up */
-        for (par_iter = start ; par_iter; par_iter = par_iter->parent) {
-            if (par_iter->nodetype & (LYS_CHOICE | LYS_CASE | LYS_AUGMENT | LYS_USES)) {
-                continue;
-            }
-
-            for(iter = par_iter, stop = NULL; iter; iter = iter->prev) {
-                if (!stop) {
-                    stop = par_iter;
-                } else if (iter == stop) {
-                    break;
-                }
-                if (iter->nodetype != LYS_GROUPING) {
-                    continue;
-                }
-
-                if (child->name == iter->name) {
-                    LOGVAL(LYE_DUPID, 0, "grouping", child->name);
-                    return EXIT_FAILURE;
-                }
-            }
-        }
-        /* go down, because grouping can be defined after e.g. container in which is collision */
-        if (down) {
-            for(iter = start, stop = NULL; iter; iter = iter->prev) {
-                if (!stop) {
-                    stop = start;
-                } else if (iter == stop) {
-                    break;
-                }
-                if (!(iter->nodetype & (LYS_CONTAINER | LYS_CHOICE | LYS_LIST | LYS_GROUPING | LYS_INPUT | LYS_OUTPUT))) {
-                    continue;
-                }
-
-                grp = NULL;
-                while ((grp = lys_get_next_grouping(grp, iter))) {
-                    if (child->name == grp->name) {
-                        LOGVAL(LYE_DUPID, 0, "grouping", child->name);
-                        return EXIT_FAILURE;
-                    }
-                }
-            }
-        }
-        break;
-    case LYS_LEAF:
-    case LYS_LEAFLIST:
-    case LYS_LIST:
-    case LYS_CONTAINER:
-    case LYS_CHOICE:
-    case LYS_ANYXML:
-        /* 6.2.1, rule 7 */
-        if (parent) {
-            iter = parent;
-            while (iter && (iter->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE))) {
-                iter = iter->parent;
-            }
-            if (!iter) {
-                stop = NULL;
-                iter = module->data;
-            } else {
-                stop = iter;
-                iter = iter->child;
-            }
-        } else {
-            stop = NULL;
-            iter = module->data;
-        }
-        while (iter) {
-            if (iter->nodetype & (LYS_USES | LYS_CASE )) {
-                iter = iter->child;
-                continue;
-            }
-
-            if (iter->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CONTAINER | LYS_CHOICE | LYS_ANYXML)) {
-                if (iter->module == module && iter->name == child->name) {
-                    LOGVAL(LYE_SPEC, 0, "Duplicated child identifier \"%s\" in \"%s\".",
-                           child->name, stop ? stop->name : "(sub)module");
-                    return EXIT_FAILURE;
-                }
-            }
-
-            /* special case for choice - we must check the choice's name as
-             * well as the names of nodes under the choice
-             */
-            if (iter->nodetype == LYS_CHOICE) {
-                iter = iter->child;
-                continue;
-            }
-
-            /* go to siblings */
-            if (!iter->next) {
-                /* no sibling, go to parent's sibling */
-                do {
-                    iter = iter->parent;
-                    if (iter && iter->next) {
-                        break;
-                    }
-                } while (iter != stop);
-
-                if (iter == stop) {
-                    break;
-                }
-            }
-            iter = iter->next;
-        }
-        break;
-    case LYS_CASE:
-        /* 6.2.1, rule 8 */
-        LY_TREE_FOR(parent->child, iter) {
-            if (!(iter->nodetype & (LYS_ANYXML | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST))) {
-                continue;
-            }
-
-            if (iter->module == module && iter->name == child->name) {
-                LOGVAL(LYE_DUPID, 0, "case", child->name);
-                return EXIT_FAILURE;
-            }
-        }
-        break;
-    default:
-        /* no check needed */
-        break;
+    if (lys_check_id(child, parent, module)) {
+        return EXIT_FAILURE;
     }
 
     if (child->parent) {
         lys_node_unlink(child);
     }
-    child->module = module;
 
     if (!parent) {
         if (*trg) {

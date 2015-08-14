@@ -1922,7 +1922,12 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
         inherit_config_flag(sub);
     }
 
-    /* TODO check identifier uniquness as in lys_node_addchild() */
+    /* check identifier uniquness as in lys_node_addchild() */
+    LY_TREE_FOR(aug->child, aux) {
+        if (lys_check_id(aux, aug->parent, NULL)) {
+            return EXIT_FAILURE;
+        }
+    }
     /* reconnect augmenting data into the target - add them to the target child list */
     if (aug->target->child) {
         aux = aug->target->child->prev; /* remember current target's last node */
