@@ -51,33 +51,33 @@ struct len_ran_intv {
 int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int superior_restr,
                              struct len_ran_intv **local_intv);
 
-struct lys_node *resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module *mod,
-                                       LYS_NODE node_type);
+int resolve_superior_type(const char *name, const char *prefix, struct lys_module *module,
+                          struct lys_node *parent, struct lys_tpdf **ret);
 
-struct lys_ident *resolve_identityref(struct lys_ident *base, const char *name, const char *ns);
+int resolve_unique(struct lys_node *parent, const char *uniq_str, struct lys_unique *uniq_s, uint32_t line);
 
-int resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t line);
+int resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *prefix, int pref_len,
+                    const char *name, int nam_len, LYS_NODE type, struct lys_node **ret);
 
-struct lys_node *resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *prefix, int pref_len,
-                                 const char *name, int nam_len, LYS_NODE type);
+int resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module *mod,
+                          LYS_NODE node_type, struct lys_node **ret);
 
 int resolve_path_arg_data(struct unres_data *unres, const char *path, struct unres_data **ret);
 
 struct lyd_node *resolve_instid(struct lyd_node *data, const char *path, int line);
 
-struct lys_tpdf *resolve_superior_type(const char *name, const char *prefix, struct lys_module *module,
-                                      struct lys_node *parent);
-
 int resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct lys_module *module);
 
-int resolve_unique(struct lys_node *parent, const char *uniq_str, struct lys_unique *uniq_s, uint32_t line);
+int resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t line);
+
+struct lys_ident *resolve_identityref(struct lys_ident *base, const char *name, const char *ns);
 
 int resolve_unres(struct lys_module *mod, struct unres_schema *unres);
 
-void unres_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, const char *str,
+int unres_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, const char *str,
                    uint32_t line);
 
-void unres_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
+int unres_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
                      struct lys_node *node, uint32_t line);
 
 int unres_dup(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, void *new_item);

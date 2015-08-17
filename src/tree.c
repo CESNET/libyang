@@ -1720,7 +1720,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
 {
     struct lys_node *retval = NULL, *aux, *child;
     struct ly_ctx *ctx = module->ctx;
-    int i, j;
+    int i, j, rc;
 
     struct lys_node_container *cont = NULL;
     struct lys_node_container *cont_orig = (struct lys_node_container *)node;
@@ -1885,10 +1885,10 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
         }
 
         if (choice_orig->dflt) {
-            choice->dflt = resolve_sibling(choice->module, choice->child, NULL, 0, choice_orig->dflt->name, 0, LYS_ANYXML
+            rc = resolve_sibling(choice->module, choice->child, NULL, 0, choice_orig->dflt->name, 0, LYS_ANYXML
                                          | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST
-                                         | LYS_LIST);
-            assert(choice->dflt);
+                                         | LYS_LIST, &choice->dflt);
+            assert(!rc);
         } else {
             /* useless to check return value, we don't know whether
              * there really wasn't any default defined or it just hasn't
@@ -1960,9 +1960,9 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
             /* we managed to resolve it before, resolve it again manually */
             if (list_orig->keys[0]) {
                 for (i = 0; i < list->keys_size; ++i) {
-                    list->keys[i] = (struct lys_node_leaf *)resolve_sibling(list->module, list->child, NULL, 0,
-                                                                          list_orig->keys[i]->name, 0, LYS_LEAF);
-                    assert(list->keys[i]);
+                    rc = resolve_sibling(list->module, list->child, NULL, 0, list_orig->keys[i]->name, 0, LYS_LEAF,
+                                         (struct lys_node **)&list->keys[i]);
+                    assert(!rc);
                 }
             /* it was not resolved yet, add unres copy */
             } else {

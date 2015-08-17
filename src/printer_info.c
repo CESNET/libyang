@@ -1097,7 +1097,7 @@ info_print_rpc(FILE *f, struct lys_node *node)
 int
 info_print_model(FILE *f, struct lys_module *module, const char *target_node)
 {
-    int i;
+    int i, rc;
     char *grouping_target = NULL;
     struct lys_node *target;
 
@@ -1112,8 +1112,8 @@ info_print_model(FILE *f, struct lys_module *module, const char *target_node)
         }
     } else {
         if ((target_node[0] == '/') || !strncmp(target_node, "type/", 5)) {
-            target = resolve_schema_nodeid((target_node[0] == '/' ? target_node : target_node+4), module->data, module, LYS_AUGMENT);
-            if (!target) {
+            rc = resolve_schema_nodeid((target_node[0] == '/' ? target_node : target_node+4), module->data, module, LYS_AUGMENT, &target);
+            if (rc) {
                 fprintf(f, "Target %s could not be resolved.\n", (target_node[0] == '/' ? target_node : target_node+4));
                 return EXIT_FAILURE;
             }
@@ -1124,8 +1124,8 @@ info_print_model(FILE *f, struct lys_module *module, const char *target_node)
                 *strchr(target_node+9, '/') = '\0';
                 grouping_target = (char *)(target_node+strlen(target_node)+1);
             }
-            target = resolve_schema_nodeid(target_node+9, module->data, module, LYS_USES);
-            if (!target) {
+            rc = resolve_schema_nodeid(target_node+9, module->data, module, LYS_USES, &target);
+            if (rc) {
                 fprintf(f, "Grouping %s not found.\n", target_node+9);
                 return EXIT_FAILURE;
             }
@@ -1207,8 +1207,8 @@ info_print_model(FILE *f, struct lys_module *module, const char *target_node)
 
         /* find the node in the grouping */
         if (grouping_target) {
-            target = resolve_schema_nodeid(grouping_target, target->child, module, LYS_LEAF);
-            if (!target) {
+            rc = resolve_schema_nodeid(grouping_target, target->child, module, LYS_LEAF, &target);
+            if (rc) {
                 fprintf(f, "Grouping %s child \"%s\" not found.\n", target_node+9, grouping_target);
                 return EXIT_FAILURE;
             }
