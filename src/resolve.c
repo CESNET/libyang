@@ -1538,6 +1538,9 @@ resolve_grouping(struct lys_node_uses *uses, uint32_t line)
         while (start) {
             rc = resolve_sibling(module, start, prefix, pref_len, name, nam_len, LYS_GROUPING, (struct lys_node **)&uses->grp);
             if (rc != EXIT_FAILURE) {
+                if (rc == -1) {
+                    LOGVAL(LYE_INPREF_LEN, line, pref_len, prefix);
+                }
                 return rc;
             }
             start = start->parent;
@@ -1578,7 +1581,7 @@ resolve_feature(const char *id, struct lys_module *module, uint32_t line, struct
         module = resolve_prefixed_module(module, prefix, pref_len);
         if (!module) {
             /* identity refers unknown data model */
-            LOGVAL(LYE_INPREF, line, prefix);
+            LOGVAL(LYE_INPREF_LEN, line, pref_len, prefix);
             return -1;
         }
     } else {
@@ -2019,7 +2022,9 @@ resolve_data_nodeid(const char *prefix, int pref_len, const char *name, int name
 }
 
 /**
- * @brief Resolve a path predicate (leafref) in data context. Logs directly.
+ * @brief Resolve a path predicate (leafref) in data context. Logs directly
+ *        only specific errors, general no-resolvent error is left to the caller,
+ *        but line fail is always displayed.
  *
  * @param[in] pred Predicate in question.
  * @param[in,out] node_match Nodes satisfying the restriction
@@ -2146,10 +2151,11 @@ resolve_path_arg_data(struct unres_data *unres, const char *path, struct unres_d
     struct lyd_node *data = NULL;
     struct unres_data *riter = NULL, *raux;
     const char *prefix, *name;
-    int pref_len, nam_len, has_predicate, parent_times, i;
+    int pref_len, nam_len, has_predicate, parent_times, i, parsed;
 
     *ret = NULL;
     parent_times = 0;
+    parsed = 0;
 
     /* searching for nodeset */
     do {
@@ -2158,6 +2164,7 @@ resolve_path_arg_data(struct unres_data *unres, const char *path, struct unres_d
             goto error;
         }
         path += i;
+        parsed += i;
 
         if (!*ret) {
             *ret = calloc(1, sizeof **ret);
@@ -2216,13 +2223,15 @@ resolve_path_arg_data(struct unres_data *unres, const char *path, struct unres_d
                 }
             }
             if ((i = resolve_path_predicate_data(path, ret, LOGLINE(unres))) < 1) {
+                /* line was already displayed */
+                LOGVAL(LYE_NORESOLV, 0, path);
                 goto error;
             }
             path += i;
+            parsed += i;
 
             if (!*ret) {
-                LOGVAL(LYE_LINE, LOGLINE(unres));
-                /* general error, the one written later will suffice */
+                LOGVAL(LYE_NORESOLV, LOGLINE(unres), path-parsed);
                 goto error;
             }
         }
@@ -2274,8 +2283,7 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
         /* source (must be leaf) */
         rc = resolve_sibling(mod, source_node->child, sour_pref, sour_pref_len, source, sour_len, LYS_LEAF, &src_node);
         if (rc) {
-            LOGVAL(LYE_LINE, line);
-            /* general error, the one written later will suffice */
+            LOGVAL(LYE_NORESOLV, line, path-parsed);
             return -parsed;
         }
 
@@ -2292,8 +2300,7 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
         for (i = 1; i < dest_parent_times; ++i) {
             dst_node = dst_node->parent;
             if (!dst_node) {
-                LOGVAL(LYE_LINE, line);
-                /* general error, the one written later will suffice */
+                LOGVAL(LYE_NORESOLV, line, path_key_expr);
                 return -parsed;
             }
         }
@@ -2301,8 +2308,7 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
             rc = resolve_sibling(mod, dst_node->child, dest_pref, dest_pref_len, dest, dest_len,
                                  LYS_CONTAINER | LYS_LIST | LYS_LEAF, &dst_node);
             if (rc) {
-                LOGVAL(LYE_LINE, line);
-                /* general error, the one written later will suffice */
+                LOGVAL(LYE_NORESOLV, line, path_key_expr);
                 return -parsed;
             }
 
@@ -2321,8 +2327,7 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
         /* check source - dest match */
         if ((dst_node->nodetype != LYS_LEAF) || ((struct lys_node_leaf *)dst_node)->type.base
                 != ((struct lys_node_leaf *)src_node)->type.base) {
-            LOGVAL(LYE_LINE, line);
-            /* general error, the one written later will suffice */
+            LOGVAL(LYE_NORESOLV, line, path-parsed);
             return -parsed;
         }
     } while (has_predicate);
@@ -2331,7 +2336,7 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
 }
 
 /**
- * @brief Resolve a path (leafref) in schema context. Logs indirectly.
+ * @brief Resolve a path (leafref) in schema context. Logs directly.
  *
  * @param[in] mod Module in question.
  * @param[in] path Path in question.
@@ -2365,7 +2370,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
             if (parent_times == -1) {
                 node = mod->data;
                 if (!node) {
-                    LOGVAL(LYE_LINE, line);
+                    LOGVAL(LYE_NORESOLV, line, path);
                     return EXIT_FAILURE;
                 }
             } else if (parent_times > 0) {
@@ -2374,7 +2379,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
                 i = 0;
                 while (1) {
                     if (!node) {
-                        LOGVAL(LYE_LINE, line);
+                        LOGVAL(LYE_NORESOLV, line, path);
                         return EXIT_FAILURE;
                     }
 
@@ -2404,16 +2409,14 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
 
         rc = resolve_sibling(mod, node, prefix, pref_len, name, nam_len, LYS_ANY & ~(LYS_GROUPING | LYS_USES), &node);
         if (rc) {
-            if (rc == -1) {
-                LOGVAL(LYE_LINE, line);
-            }
+            LOGVAL(LYE_NORESOLV, line, path);
             return rc;
         }
 
         if (has_predicate) {
             /* we have predicate, so the current result must be list */
             if (node->nodetype != LYS_LIST) {
-                LOGVAL(LYE_LINE, line);
+                LOGVAL(LYE_NORESOLV, line, path);
                 return -1;
             }
 
@@ -2426,7 +2429,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
 
     /* the target must be leaf or leaf-list */
     if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-        LOGVAL(LYE_LINE, line);
+        LOGVAL(LYE_NORESOLV, line, path);
         return -1;
     }
 
@@ -2669,7 +2672,7 @@ inherit_config_flag(struct lys_node *node)
 }
 
 /**
- * @brief Resolve augment target, Does not log.
+ * @brief Resolve augment target. Does not log.
  *
  * @param[in] aug Augment in question.
  * @param[in] siblings Nodes where to start the search in.
@@ -2764,7 +2767,11 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
         rfn = &uses->refine[i];
         rc = resolve_schema_nodeid(rfn->target_name, uses->child, uses->module, LYS_LEAF, &node);
         if (rc) {
-            LOGVAL(LYE_INARG, line, rfn->target_name, "refine");
+            if (rc == -1) {
+                LOGVAL(LYE_INARG, line, rfn->target_name, "refine");
+            } else {
+                LOGVAL(LYE_NORESOLV, line, rfn->target_name);
+            }
             return rc;
         }
 
@@ -2801,7 +2808,11 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
                 /* choice */
                 rc = resolve_schema_nodeid(rfn->mod.dflt, node->child, node->module, LYS_CHOICE, &((struct lys_node_choice *)node)->dflt);
                 if (rc) {
-                    LOGVAL(LYE_INARG, line, rfn->mod.dflt, "default");
+                    if (rc == -1) {
+                        LOGVAL(LYE_INARG, line, rfn->mod.dflt, "default");
+                    } else {
+                        LOGVAL(LYE_NORESOLV, line, rfn->mod.dflt);
+                    }
                     return rc;
                 }
             }
