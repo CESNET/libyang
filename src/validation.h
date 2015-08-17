@@ -17,7 +17,6 @@
  * 3. Neither the name of the Company nor the names of its contributors
  *    may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
- *
  */
 
 #ifndef LY_VALIDATION_H_
