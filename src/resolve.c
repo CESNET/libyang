@@ -2684,8 +2684,8 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
 
     /* check identifier uniquness as in lys_node_addchild() */
     LY_TREE_FOR(aug->child, aux) {
-        if (lys_check_id(aux, aug->parent, NULL)) {
-            return EXIT_FAILURE;
+        if (lys_check_id(aux, aug->parent, module)) {
+            return -1;
         }
     }
     /* reconnect augmenting data into the target - add them to the target child list */
