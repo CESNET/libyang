@@ -978,7 +978,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     if (havechildren && !(options & (LYD_OPT_FILTER | LYD_OPT_EDIT))) {
         siter = ly_check_mandatory(result);
         if (siter) {
-            LOGVAL(LYE_MISSELEM, LOGLINE(xml), siter->name, siter->parent->name);
+            if (siter->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+                LOGVAL(LYE_SPEC, LOGLINE(xml), "Number of \"%s\" instances in \"%s\" does not follow min/max constraints.",
+                       siter->name, siter->parent->name);
+            } else {
+                LOGVAL(LYE_MISSELEM, LOGLINE(xml), siter->name, siter->parent->name);
+            }
             goto error;
         }
     }

@@ -75,13 +75,14 @@ check_mand_getnext(struct lys_node *cur, struct lys_node *parent)
 
     if (!cur) {
         next = parent->child;
+        cur = next;
     } else {
         next = cur->next;
     }
 
 repeat:
-    while (next && (next->nodetype & (LYS_AUGMENT | LYS_GROUPING | LYS_LEAFLIST))) {
-        next = cur = next->next;
+    while (next && (next->nodetype & (LYS_AUGMENT | LYS_GROUPING))) {
+        next = next->next;
     }
 
     while (!next) {
@@ -103,7 +104,6 @@ repeat:
             goto repeat;
         }
         /* no break */
-    case LYS_LIST:
     case LYS_USES:
     case LYS_CASE:
         /* go into */
@@ -112,6 +112,8 @@ repeat:
     case LYS_LEAF:
     case LYS_CHOICE:
     case LYS_ANYXML:
+    case LYS_LIST:
+    case LYS_LEAFLIST:
         return next;
     default:
         /* we should not be here */
@@ -124,6 +126,7 @@ check_mand_check(struct lys_node *node, struct lys_node *stop, struct lyd_node *
 {
     struct lys_node *siter = NULL, *parent;
     struct lyd_node *diter = NULL;
+    uint32_t minmax;
 
     if (node->flags & LYS_MAND_TRUE) {
        switch (node->nodetype) {
@@ -165,6 +168,14 @@ check_mand_check(struct lys_node *node, struct lys_node *stop, struct lyd_node *
                    }
                }
            }
+
+           /* search for instance */
+           LY_TREE_FOR(data->child, diter) {
+               if (diter->schema == node) {
+                   return NULL;
+               }
+           }
+           /* instance not found */
            /* 7.6.5, rule 3 (or 2) */
            /* 7.9.4, rule 2 */
            return node;
@@ -172,6 +183,33 @@ check_mand_check(struct lys_node *node, struct lys_node *stop, struct lyd_node *
            /* error */
            break;
        }
+    } else if (node->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+        /* search for number of instances */
+        minmax = 0;
+        LY_TREE_FOR(data->child, diter) {
+            if (diter->schema == node) {
+                minmax++;
+            }
+        }
+
+        /* check the specified constraints */
+        if (node->nodetype == LYS_LIST) {
+            if (((struct lys_node_list *)node)->min && minmax < ((struct lys_node_list *)node)->min) {
+                return node;
+            }
+
+            if (((struct lys_node_list *)node)->max && minmax > ((struct lys_node_list *)node)->max) {
+                return node;
+            }
+        } else if (node->nodetype == LYS_LEAFLIST) {
+            if (((struct lys_node_leaflist *)node)->min && minmax < ((struct lys_node_leaflist *)node)->min) {
+                return node;
+            }
+
+            if (((struct lys_node_leaflist *)node)->max && minmax > ((struct lys_node_leaflist *)node)->max) {
+                return node;
+            }
+        }
     }
 
     return NULL;
@@ -180,7 +218,7 @@ check_mand_check(struct lys_node *node, struct lys_node *stop, struct lyd_node *
 struct lys_node *
 ly_check_mandatory(struct lyd_node *data)
 {
-    struct lys_node *siter, *saux = NULL, *result, *parent = NULL;
+    struct lys_node *siter, *saux, *saux2, *result, *parent = NULL, *parent2;
     struct lyd_node *diter;
     int found;
 
@@ -192,26 +230,16 @@ repeat:
         case LYS_CONTAINER:
         case LYS_LEAF:
         case LYS_ANYXML:
-            /* search for instance */
-            LY_TREE_FOR(data->child, diter) {
-                if (diter->schema == siter) {
-                    break;
-                }
-            }
-            if (diter) {
-                /* result has a child defined by siter, check another siter */
-                siter = siter->next;
-                break;
-            }
-
-            /* the siter has no instance under the result, check if there is
-             * some mandatory node; first the siter itself ... */
+        case LYS_LIST:
+        case LYS_LEAFLIST:
+            /* check if there is some mandatory node; first test the siter itself ... */
             result = check_mand_check(siter, siter->parent, data);
             if (result) {
                 return result;
             }
             /* ... and then the subtree */
-            if (siter->nodetype == LYS_CONTAINER && !((struct lys_node_container *)siter)->presence) {
+            if (parent && siter->nodetype == LYS_CONTAINER && !((struct lys_node_container *)siter)->presence) {
+                saux = NULL;
                 while ((saux = check_mand_getnext(saux, siter))) {
                     result = check_mand_check(saux, siter, data);
                     if (result) {
@@ -222,71 +250,77 @@ repeat:
             siter = siter->next;
             break;
         case LYS_CHOICE:
-            if (siter->flags & LYS_MAND_TRUE) {
-                /* search for instance */
-                saux = siter;
-                parent = NULL;
-                siter = siter->child;
-                found = 0;
+            /* search for instance */
+            saux = siter;
+            siter = siter->child;
+            found = 0;
+            parent2 = NULL;
 repeat_choice:
                 while (siter) {
-                    switch(siter->nodetype) {
-                    case LYS_CONTAINER:
-                    case LYS_LEAF:
-                    case LYS_LEAFLIST:
-                    case LYS_LIST:
-                    case LYS_ANYXML:
-                        LY_TREE_FOR(data->child, diter) {
-                            if (diter->schema == siter) {
-                                break;
-                            }
-                        }
-                        if (diter) {
-                            /* got instance, done */
-                            siter = parent = NULL;
-                            found = 1;
+                switch (siter->nodetype) {
+                case LYS_CONTAINER:
+                case LYS_LEAF:
+                case LYS_LEAFLIST:
+                case LYS_LIST:
+                case LYS_ANYXML:
+                    LY_TREE_FOR(data->child, diter) {
+                        if (diter->schema == siter) {
                             break;
                         }
-                        siter = siter->next;
-                        break;
-                    case LYS_CASE:
-                    case LYS_CHOICE:
-                    case LYS_USES:
-                        /* go into */
-                        parent = siter;
-                        siter = siter->child;
-                        break;
-                    case LYS_AUGMENT:
-                    case LYS_GROUPING:
-                        /* skip */
-                        siter = siter->next;
-                        break;
-                    default:
-                        /* error */
+                    }
+                    if (diter) {
+                        /* got instance */
+                        /* check presence of mandatory siblings */
+                        if (siter->parent->nodetype == LYS_CASE) {
+                            saux2 = NULL;
+                            while ((saux2 = check_mand_getnext(saux2, siter->parent))) {
+                                result = check_mand_check(saux2, siter->parent, data);
+                                if (result) {
+                                    return result;
+                                }
+                            }
+                        }
+                        siter = parent2 = NULL;
+                        found = 1;
                         break;
                     }
+                    siter = siter->next;
+                    break;
+                case LYS_CASE:
+                case LYS_CHOICE:
+                case LYS_USES:
+                    /* go into */
+                    parent2 = siter;
+                    siter = siter->child;
+                    break;
+                case LYS_AUGMENT:
+                case LYS_GROUPING:
+                    /* skip */
+                    siter = siter->next;
+                    break;
+                default:
+                    /* error */
+                    break;
                 }
-
-                if (parent) {
-                    siter = parent->next;
-                    if (parent->parent == saux) {
-                        parent = NULL;
-                    } else {
-                        parent = parent->parent;
-                    }
-                    goto repeat_choice;
-                }
-
-                if (!found) {
-                    return saux;
-                }
-
-                siter = saux;
             }
 
-            /* go into */
-            parent = siter;
-            siter = siter->child;
+            if (parent2) {
+                siter = parent2->next;
+                if (parent2->parent == saux) {
+                    parent2 = NULL;
+                } else {
+                    parent2 = parent2->parent;
+                }
+                goto repeat_choice;
+            }
+
+            if (!found && saux->flags & LYS_MAND_TRUE) {
+                return saux;
+            }
+
+            /* go to next */
+            siter = saux->next;
+
             break;
         case LYS_USES:
         case LYS_CASE:

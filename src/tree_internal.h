@@ -207,11 +207,14 @@ void lys_free(struct lys_module *module);
 /**
  * @brief Search for a mandatory element in the given schema tree subtree
  *
- * @param[in] start Root node for the searching subtree. Expecting that in a data tree
- * instance, the start is the first node that does not have its instance (the start's
- * parent has its instance in the data tree).
- * @return The first mandatory element definition, NULL if there is no mandatory element
- * in the subtree. TODO
+ * Besides the mandatory statements, also min-elements and max-elements constraints in
+ * lists and leaf-list are checked.
+ *
+ * @param[in] start Root node for the searching subtree. Expecting that the root elementa
+ * exists and has already all child instances resolved. Note that the root itself is not
+ * checked since it must be present.
+ * @return The first mandatory element definition not present in the data, NULL if
+ * there is no such element in the root's subtree.
  */
 struct lys_node *ly_check_mandatory(struct lyd_node *start);
 
