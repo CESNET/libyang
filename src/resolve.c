@@ -3109,7 +3109,7 @@ resolve_unres_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint3
 }
 
 /**
- * @brief Resolve unres identity. Logs directly.
+ * @brief Resolve list keys. Logs directly.
  *
  * @param[in] list List in question.
  * @param[in] keys_str Keys node value.
@@ -3118,7 +3118,7 @@ resolve_unres_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint3
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-resolve_unres_list_keys(struct lys_module *mod, struct lys_node_list *list, const char *keys_str, uint32_t line)
+resolve_list_keys(struct lys_module *mod, struct lys_node_list *list, const char *keys_str, uint32_t line)
 {
     int i, len, rc;
     const char *value;
@@ -3269,7 +3269,7 @@ resolve_unres_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, voi
         has_str = 1;
         break;
     case UNRES_LIST_KEYS:
-        rc = resolve_unres_list_keys(mod, item, str_snode, line);
+        rc = resolve_list_keys(mod, item, str_snode, line);
         has_str = 1;
         break;
     case UNRES_LIST_UNIQ:
