@@ -1353,6 +1353,7 @@ resolve_superior_type(const char *name, const char *prefix, struct lys_module *m
     return EXIT_FAILURE;
 }
 
+/* logs directly */
 static int
 check_default(struct lys_type *type, const char *value)
 {
@@ -3059,125 +3060,6 @@ resolve_identityref(struct lys_ident *base, const char *name, const char *ns)
 }
 
 /**
- * @brief Resolve unres identity. Logs directly.
- *
- * @param[in] mod Main module.
- * @param[in] ident Identity in question.
- * @param[in] base_name Base name of the identity.
- * @param[in] line Line in the input file.
- *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
- */
-static int
-resolve_unres_ident(struct lys_module *mod, struct lys_ident *ident, const char *base_name, uint32_t line)
-{
-    int rc;
-
-    rc = resolve_base_ident(mod, ident, base_name, "ident", line, NULL);
-    if (rc == EXIT_FAILURE) {
-        LOGVAL(LYE_INRESOLV, (line == UINT_MAX ? line : 0), "identity", base_name);
-    }
-
-    return rc;
-}
-
-/**
- * @brief Resolve unres identityref. Logs directly.
- *
- * @param[in] mod Main module.
- * @param[in] type Type in question.
- * @param[in] base_name Base name of the identity.
- * @param[in] line Line in the input file.
- *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
- */
-static int
-resolve_unres_type_identref(struct lys_module *mod, struct lys_type *type, const char *base_name, uint32_t line)
-{
-    int rc;
-
-    rc = resolve_base_ident(mod, NULL, base_name, "type", line, &type->info.ident.ref);
-    if (rc == EXIT_FAILURE) {
-        LOGVAL(LYE_INRESOLV, (line == UINT_MAX ? line : 0), "identityref", base_name);
-    }
-
-    return rc;
-}
-
-/**
- * @brief Resolve unres leafref. Logs directly.
- *
- * @param[in] mod Main module.
- * @param[in] type Type in question.
- * @param[in] node Leafref schema node.
- * @param[in] line Line in the input file.
- *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
- */
-static int
-resolve_unres_type_leafref(struct lys_module *mod, struct lys_type *type, struct lys_node *node, uint32_t line)
-{
-    int rc;
-
-    rc = resolve_path_arg_schema(mod, type->info.lref.path, node, line, (struct lys_node **)&type->info.lref.target);
-    if (rc == EXIT_FAILURE) {
-        LOGVAL(LYE_INRESOLV, (line == UINT_MAX ? line : 0), "leafref", type->info.lref.path);
-    }
-
-    return rc;
-}
-
-/**
- * @brief Resolve unres derived type. Logs directly.
- *
- * @param[in] mod Main module.
- * @param[in] type Type in question.
- * @param[in] type_name Derived type name,
- * @param[in] line Line in the input file.
- *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
- */
-static int
-resolve_unres_type_der(struct lys_module *mod, struct lys_type *type, const char *type_name, uint32_t line)
-{
-    int rc;
-
-    /* HACK type->der is temporarily its parent */
-    rc = resolve_superior_type(type_name, type->prefix, mod, (struct lys_node *)type->der, &type->der);
-    if (!rc) {
-        type->base = type->der->type.base;
-    }
-    if (rc == EXIT_FAILURE) {
-        LOGVAL(LYE_INRESOLV, line, "type", type_name);
-    }
-
-    return rc;
-}
-
-/**
- * @brief Resolve unres if-feature. Logs directly.
- *
- * @param[in] mod Main module.
- * @param[in,out] feat_ptr Pointer to the resolved feature.
- * @param[in] feat_name Name of the feature.
- * @param[in] line Line in the input file.
- *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
- */
-static int
-resolve_unres_iffeature(struct lys_module *mod, struct lys_feature **feat_ptr, const char *feat_name, uint32_t line)
-{
-    int rc;
-
-    rc = resolve_feature(feat_name, mod, line, feat_ptr);
-    if (rc == EXIT_FAILURE) {
-        LOGVAL(LYE_INRESOLV, (line == UINT_MAX ? line : 0), "if-feature", feat_name);
-    }
-
-    return rc;
-}
-
-/**
  * @brief Resolve unres uses. Logs directly.
  *
  * @param[in] uses Uses in question.
@@ -3222,52 +3104,6 @@ resolve_unres_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint3
 
     if ((rc == EXIT_FAILURE) && parent) {
         ++parent->nacm;
-    }
-    LOGVAL(LYE_INRESOLV, (line == UINT_MAX ? line : 0), "uses", uses->name);
-    return rc;
-}
-
-/**
- * @brief Resolve unres identity. Logs directly.
- *
- * @param[in] type Type in question.
- * @param[in] dflt Default value.
- * @param[in] line Line in the input file.
- *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
- */
-static int
-resolve_unres_type_dflt(struct lys_type *type, const char *dflt, uint32_t line)
-{
-    int rc;
-
-    rc = check_default(type, dflt);
-
-    if (rc) {
-        LOGVAL(LYE_INRESOLV, line, "type default", dflt);
-    }
-    return rc;
-}
-
-/**
- * @brief Resolve choice default. Logs directly.
- *
- * @param[in] choice Main module.
- * @param[in] dflt Default case name.
- * @param[in] line Line in the input file.
- *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
- */
-static int
-resolve_unres_choice_dflt(struct lys_module *mod, struct lys_node_choice *choice, const char *dflt, uint32_t line)
-{
-    int rc;
-
-    rc = resolve_sibling(mod, choice->child, NULL, 0, dflt, 0, LYS_ANYXML | LYS_CASE
-                         | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST, &choice->dflt);
-
-    if (rc) {
-        LOGVAL(LYE_INRESOLV, line, "choice default", dflt);
     }
     return rc;
 }
@@ -3321,28 +3157,7 @@ resolve_unres_list_keys(struct lys_module *mod, struct lys_node_list *list, cons
     return EXIT_SUCCESS;
 }
 
-/**
- * @brief Resolve unres unique. Logs directly.
- *
- * @param[in] uniq Unique in question.
- * @param[in] uniq_str Unique node value.
- * @param[in] line Line in the input file.
- *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
- */
-static int
-resolve_unres_list_uniq(struct lys_unique *uniq, const char *uniq_str, uint32_t line)
-{
-    int rc;
-
-    rc = resolve_unique((struct lys_node *)uniq->leafs, uniq_str, uniq, line);
-
-    if (rc) {
-        LOGVAL(LYE_INRESOLV, (line == UINT_MAX ? line : 0), "list unique", uniq_str);
-    }
-    return rc;
-}
-
+/* logs directly */
 static int
 resolve_unres_when(struct lys_when *UNUSED(when), struct lys_node *UNUSED(start), uint32_t UNUSED(line))
 {
@@ -3350,6 +3165,7 @@ resolve_unres_when(struct lys_when *UNUSED(when), struct lys_node *UNUSED(start)
     return EXIT_SUCCESS;
 }
 
+/* logs directly */
 static int
 resolve_unres_must(struct lys_restr *UNUSED(must), struct lys_node *UNUSED(start), uint32_t UNUSED(line))
 {
@@ -3374,29 +3190,57 @@ resolve_unres_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, voi
                    uint32_t line)
 {
     int rc = -1, has_str = 0;
+    struct lys_node *snode;
+    const char *base_name;
+
+    struct lys_ident *ident;
+    struct lys_type *stype;
+    struct lys_feature **feat_ptr;
+    struct lys_node_choice *choic;
+    struct lys_unique *uniq;
 
     switch (type) {
     case UNRES_RESOLVED:
         LOGINT;
         break;
     case UNRES_IDENT:
-        rc = resolve_unres_ident(mod, item, str_snode, line);
+        base_name = str_snode;
+        ident = item;
+
+        rc = resolve_base_ident(mod, ident, base_name, "ident", line, NULL);
         has_str = 1;
         break;
     case UNRES_TYPE_IDENTREF:
-        rc = resolve_unres_type_identref(mod, item, str_snode, line);
+        base_name = str_snode;
+        stype = item;
+
+        rc = resolve_base_ident(mod, NULL, base_name, "type", line, &stype->info.ident.ref);
         has_str = 1;
         break;
     case UNRES_TYPE_LEAFREF:
-        rc = resolve_unres_type_leafref(mod, item, str_snode, line);
+        snode = str_snode;
+        stype = item;
+
+        rc = resolve_path_arg_schema(mod, stype->info.lref.path, snode, line,
+                                     (struct lys_node **)&stype->info.lref.target);
         has_str = 0;
         break;
     case UNRES_TYPE_DER:
-        rc = resolve_unres_type_der(mod, item, str_snode, line);
+        base_name = str_snode;
+        stype = item;
+
+        /* HACK type->der is temporarily its parent */
+        rc = resolve_superior_type(base_name, stype->prefix, mod, (struct lys_node *)stype->der, &stype->der);
+        if (!rc) {
+            stype->base = stype->der->type.base;
+        }
         has_str = 1;
         break;
     case UNRES_IFFEAT:
-        rc = resolve_unres_iffeature(mod, item, str_snode, line);
+        base_name = str_snode;
+        feat_ptr = item;
+
+        rc = resolve_feature(base_name, mod, line, feat_ptr);
         has_str = 1;
         break;
     case UNRES_USES:
@@ -3404,12 +3248,24 @@ resolve_unres_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, voi
         has_str = 0;
         break;
     case UNRES_TYPE_DFLT:
-        rc = resolve_unres_type_dflt(item, str_snode, line);
-        /* do not remove str_node (dflt), it's in a typedef */
+        base_name = str_snode;
+        stype = item;
+
+        rc = check_default(stype, base_name);
+        /* do not remove base_name (dflt), it's in a typedef */
         has_str = 0;
         break;
     case UNRES_CHOICE_DFLT:
-        rc = resolve_unres_choice_dflt(mod, item, str_snode, line);
+        base_name = str_snode;
+        choic = item;
+
+        rc = resolve_sibling(mod, choic->child, NULL, 0, base_name, 0, LYS_ANYXML | LYS_CASE
+                             | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST, &choic->dflt);
+        /* there is no prefix, that is the only error */
+        assert(rc != -1);
+        if (rc == EXIT_FAILURE) {
+            LOGVAL(LYE_INRESOLV, line, "choice default", base_name);
+        }
         has_str = 1;
         break;
     case UNRES_LIST_KEYS:
@@ -3417,7 +3273,11 @@ resolve_unres_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, voi
         has_str = 1;
         break;
     case UNRES_LIST_UNIQ:
-        rc = resolve_unres_list_uniq(item, str_snode, line);
+        /* actually the unique string */
+        base_name = str_snode;
+        uniq = item;
+
+        rc = resolve_unique((struct lys_node *)uniq->leafs, base_name, uniq, line);
         has_str = 1;
         break;
     case UNRES_WHEN:
