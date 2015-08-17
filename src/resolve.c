@@ -1619,8 +1619,8 @@ resolve_feature(const char *id, struct lys_module *module, uint32_t line, struct
  *
  * Valid child means a schema pointer to a node that is part of
  * the data meaning uses are skipped. Includes module comparison
- * (can handle augments). Includes are also searched if siblings
- * are top-level nodes.
+ * (can handle augments). Module is adjusted based on the prefix.
+ * Includes are also searched if siblings are top-level nodes.
  *
  * @param[in] mod Main module. Prefix is considered to be from this module.
  * @param[in] siblings Siblings to consider. They are first adjusted to
