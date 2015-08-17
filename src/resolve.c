@@ -3391,9 +3391,7 @@ resolve_unres(struct lys_module *mod, struct unres_schema *unres)
                 unres->type[i] = UNRES_RESOLVED;
                 ++resolved;
                 ++res_uses;
-            } else if (rc == EXIT_FAILURE) {
-                print_unres_item_fail(unres->item[i], unres->type[i], unres->str_snode[i], line);
-            } else {
+            } else if (rc == -1) {
                 return -1;
             }
         }
