@@ -25,6 +25,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @ingroup datatree
  * @brief Macro to iterate via all sibling elements without affecting the list itself
@@ -1617,5 +1621,9 @@ int lyd_node_update
 int lyd_node_delete
 */
 /**@} */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LY_TREE_H_ */

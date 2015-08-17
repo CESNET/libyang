@@ -26,6 +26,10 @@
 
 #include "tree.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @page howto How To ...
  *
@@ -498,5 +502,9 @@ typedef enum {
 extern LY_ERR ly_errno;
 
 /**@} logger */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LY_LIBYANG_H_ */
