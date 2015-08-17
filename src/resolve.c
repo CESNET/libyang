@@ -1526,7 +1526,11 @@ resolve_grouping(struct lys_node_uses *uses, uint32_t line)
         return -1;
     }
 
-    if (!prefix) {
+    if (prefix) {
+        /* cannot be NULL, since there must at least be this uses */
+        assert(module->data);
+        start = module->data;
+    } else {
         /* search in local tree hierarchy */
         if (!uses->parent) {
             start = (struct lys_node *)uses;
@@ -1536,16 +1540,17 @@ resolve_grouping(struct lys_node_uses *uses, uint32_t line)
         } else {
             start = uses->parent->child;
         }
-        while (start) {
-            rc = resolve_sibling(module, start, prefix, pref_len, name, nam_len, LYS_GROUPING, (struct lys_node **)&uses->grp);
-            if (rc != EXIT_FAILURE) {
-                if (rc == -1) {
-                    LOGVAL(LYE_INPREF_LEN, line, pref_len, prefix);
-                }
-                return rc;
+    }
+
+    while (start) {
+        rc = resolve_sibling(module, start, prefix, pref_len, name, nam_len, LYS_GROUPING, (struct lys_node **)&uses->grp);
+        if (rc != EXIT_FAILURE) {
+            if (rc == -1) {
+                LOGVAL(LYE_INPREF_LEN, line, pref_len, prefix);
             }
-            start = start->parent;
+            return rc;
         }
+        start = start->parent;
     }
 
     LOGVAL(LYE_INRESOLV, line, "grouping", uses->name);
