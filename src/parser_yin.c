@@ -30,15 +30,15 @@
 #include <sys/types.h>
 #include <regex.h>
 
-#include "../libyang.h"
-#include "../common.h"
-#include "../context.h"
-#include "../dict.h"
-#include "../parser.h"
-#include "../parse.h"
-#include "../resolve.h"
-#include "../tree_internal.h"
-#include "../xml.h"
+#include "libyang.h"
+#include "common.h"
+#include "context.h"
+#include "dict.h"
+#include "parser.h"
+#include "parse.h"
+#include "resolve.h"
+#include "tree_internal.h"
+#include "xml.h"
 
 enum LY_IDENT {
     LY_IDENT_SIMPLE,   /* only syntax rules */

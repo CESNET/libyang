@@ -27,13 +27,13 @@
 #include <sys/types.h>
 #include <regex.h>
 
-#include "../libyang.h"
-#include "../common.h"
-#include "../context.h"
-#include "../resolve.h"
-#include "../xml.h"
-#include "../tree_internal.h"
-#include "../validation.h"
+#include "libyang.h"
+#include "common.h"
+#include "context.h"
+#include "resolve.h"
+#include "xml.h"
+#include "tree_internal.h"
+#include "validation.h"
 
 #define LY_NSNC "urn:ietf:params:xml:ns:netconf:base:1.0"
 

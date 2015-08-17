@@ -25,11 +25,11 @@
 #include <assert.h>
 #include <inttypes.h>
 
-#include "../common.h"
-#include "../xml.h"
-#include "../tree.h"
-#include "../resolve.h"
-#include "../tree_internal.h"
+#include "common.h"
+#include "xml.h"
+#include "tree.h"
+#include "resolve.h"
+#include "tree_internal.h"
 
 #define INDENT ""
 #define LEVEL (level*2)

@@ -40,15 +40,15 @@ set(libsrc
 	src/validation.c
 	src/xml.c
 	src/parser.c
-	src/parser/yin.c
-	src/parser/xml.c
+	src/parser_yin.c
+	src/parser_xml.c
 	src/tree.c
 	src/printer.c
 	src/yang_library.c
-	src/printer/yang.c
-	src/printer/tree.c
-	src/printer/info.c
-	src/printer/json.c
+	src/printer_yang.c
+	src/printer_tree.c
+	src/printer_info.c
+	src/printer_json.c
 	src/yang_types.c)
 
 set(lintsrc

@@ -24,9 +24,9 @@
 #include <string.h>
 #include <assert.h>
 
-#include "../common.h"
-#include "../tree.h"
-#include "../resolve.h"
+#include "common.h"
+#include "tree.h"
+#include "resolve.h"
 
 #define INDENT_LEN 11
 

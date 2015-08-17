@@ -23,8 +23,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../common.h"
-#include "../tree.h"
+#include "common.h"
+#include "tree.h"
 
 #define INDENT ""
 #define LEVEL (level*2)
