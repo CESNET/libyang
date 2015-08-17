@@ -795,6 +795,72 @@ parse_schema_nodeid(const char *id, const char **prefix, int *pref_len, const ch
 }
 
 /**
+ * @brief Resolve (find) a prefix in a module include import. Does not log.
+ *
+ * @param[in] mod The module with the import.
+ * @param[in] prefix The prefix to find.
+ * @param[in] pref_len The prefix length.
+ *
+ * @return The matching module on success, NULL on error.
+ */
+static struct lys_module *
+resolve_import_in_includes_recursive(struct lys_module *mod, const char *prefix, uint32_t pref_len)
+{
+    int i, j;
+    struct lys_submodule *sub_mod;
+    struct lys_module *ret;
+
+    for (i = 0; i < mod->inc_size; i++) {
+        sub_mod = mod->inc[i].submodule;
+        for (j = 0; j < sub_mod->imp_size; j++) {
+            if ((pref_len == strlen(sub_mod->imp[j].prefix))
+                    && !strncmp(sub_mod->imp[j].prefix, prefix, pref_len)) {
+                return sub_mod->imp[j].module;
+            }
+        }
+    }
+
+    for (i = 0; i < mod->inc_size; i++) {
+        ret = resolve_import_in_includes_recursive((struct lys_module *)mod->inc[i].submodule, prefix, pref_len);
+        if (ret) {
+            return ret;
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * @brief Resolve (find) a prefix in a module import. Does not log.
+ *
+ * @param[in] mod The module with the import.
+ * @param[in] prefix The prefix to find.
+ * @param[in] pref_len The prefix length.
+ *
+ * @return The matching module on success, NULL on error.
+ */
+static struct lys_module *
+resolve_prefixed_module(struct lys_module *mod, const char *prefix, uint32_t pref_len)
+{
+    int i;
+
+    /* module itself */
+    if (!strncmp(mod->prefix, prefix, pref_len) && mod->prefix[pref_len] == '\0') {
+        return mod;
+    }
+
+    /* imported modules */
+    for (i = 0; i < mod->imp_size; i++) {
+        if (!strncmp(mod->imp[i].prefix, prefix, pref_len) && mod->imp[i].prefix[pref_len] == '\0') {
+            return mod->imp[i].module;
+        }
+    }
+
+    /* imports in includes */
+    return resolve_import_in_includes_recursive(mod, prefix, pref_len);
+}
+
+/**
  * @brief Resolves length or range intervals. Does not log.
  * Syntax is assumed to be correct, *local_intv MUST be NULL.
  *
@@ -1248,15 +1314,9 @@ resolve_superior_type(const char *name, const char *prefix, struct lys_module *m
         }
     } else if (prefix) {
         /* get module where to search */
-        for (i = 0; i < module->imp_size; i++) {
-            if (!strcmp(module->imp[i].prefix, prefix)) {
-                module = module->imp[i].module;
-                found = 1;
-                break;
-            }
-        }
-        if (!found) {
-            return NULL;
+        module = resolve_prefixed_module(module, prefix, strlen(prefix));
+        if (!module) {
+            return -1;
         }
     }
 
