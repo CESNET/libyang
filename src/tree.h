@@ -19,8 +19,6 @@
  *    software without specific prior written permission.
  */
 
-#include <netinet/ip.h>
-
 #ifndef LY_TREE_H_
 #define LY_TREE_H_
 
