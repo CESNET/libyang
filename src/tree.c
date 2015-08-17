@@ -29,7 +29,6 @@
 
 #include "common.h"
 #include "context.h"
-#include "parse.h"
 #include "parser.h"
 #include "resolve.h"
 #include "xml.h"

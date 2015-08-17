@@ -35,7 +35,6 @@ set(libsrc
 	src/context.c
 	src/log.c
 	src/dict.c
-	src/parse.c
 	src/resolve.c
 	src/validation.c
 	src/xml.c

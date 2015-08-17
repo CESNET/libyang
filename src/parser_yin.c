@@ -35,7 +35,6 @@
 #include "context.h"
 #include "dict.h"
 #include "parser.h"
-#include "parse.h"
 #include "resolve.h"
 #include "tree_internal.h"
 #include "xml.h"
@@ -616,7 +615,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 }
 
                 GETVAL(value, node, "value");
-                if (check_length_range(value, type)) {
+                if (lyp_check_length_range(value, type)) {
                     LOGVAL(LYE_INARG, LOGLINE(node), value, "range");
                     goto error;
                 }
@@ -874,7 +873,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 }
 
                 GETVAL(value, node, "value");
-                if (check_length_range(value, type)) {
+                if (lyp_check_length_range(value, type)) {
                     LOGVAL(LYE_INARG, LOGLINE(node), value, name);
                     goto error;
                 }
@@ -944,7 +943,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 }
 
                 GETVAL(value, node, "value");
-                if (check_length_range(value, type)) {
+                if (lyp_check_length_range(value, type)) {
                     LOGVAL(LYE_INARG, LOGLINE(node), value, "length");
                     goto error;
                 }
