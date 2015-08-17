@@ -902,7 +902,9 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
     if (i != -1) {
         /* HACK for unres */
         new->der = (struct lys_tpdf *)parent;
-        unres_add_str(mod, unres, new, UNRES_TYPE_DER, unres->str_snode[i], 0);
+        if (unres_add_str(mod, unres, new, UNRES_TYPE_DER, unres->str_snode[i], 0) == -1) {
+            LOGINT;
+        }
         return;
     }
 
@@ -954,7 +956,9 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
         } else {
             i = unres_find(unres, old, UNRES_TYPE_IDENTREF);
             assert(i != -1);
-            unres_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i], 0);
+            if (unres_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i], 0) == -1) {
+                LOGINT;
+            }
         }
         break;
 
@@ -977,7 +981,9 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
 
     case LY_TYPE_LEAFREF:
         new->info.lref.path = lydict_insert(mod->ctx, old->info.lref.path, 0);
-        unres_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent, 0);
+        if (unres_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent, 0) == -1) {
+            LOGINT;
+        }
         break;
 
     case LY_TYPE_STRING:
@@ -1236,7 +1242,10 @@ lys_refine_dup(struct lys_module *mod, struct lys_refine *old, int size, struct 
         result[i].must_size = old[i].must_size;
         result[i].must = lys_restr_dup(mod->ctx, old[i].must, old[i].must_size);
         for (j = 0; j < result[i].must_size; ++j) {
-            unres_add_node(mod, unres, &result[i].must[j], UNRES_MUST, (struct lys_node *)uses, 0);
+            if (unres_add_node(mod, unres, &result[i].must[j], UNRES_MUST, (struct lys_node *)uses, 0) == -1) {
+                free(result);
+                return NULL;
+            }
         }
 
         if (result[i].target_type & (LYS_LEAF | LYS_CHOICE)) {
@@ -1836,7 +1845,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
 
     default:
         LOGINT;
-        return NULL;
+        goto error;
     }
 
     /*
@@ -1871,8 +1880,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
             aux = lys_node_dup(module, child, retval->flags, retval->nacm, 1, unres);
             if (!aux || lys_node_addchild(retval, NULL, aux)) {
                 LOGINT;
-                lys_node_free(retval);
-                return NULL;
+                goto error;
             }
         }
     }
@@ -1884,7 +1892,9 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
     case LYS_CONTAINER:
         if (cont_orig->when) {
             cont->when = lys_when_dup(ctx, cont_orig->when);
-            unres_add_node(module, unres, cont->when, UNRES_WHEN, retval, 0);
+            if (unres_add_node(module, unres, cont->when, UNRES_WHEN, retval, 0) == -1) {
+                goto error;
+            }
         }
         cont->presence = lydict_insert(ctx, cont_orig->presence, 0);
 
@@ -1893,7 +1903,9 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
 
         cont->must = lys_restr_dup(ctx, cont_orig->must, cont->must_size);
         for (i = 0; i < cont->must_size; ++i) {
-            unres_add_node(module, unres, &cont->must[i], UNRES_MUST, retval, 0);
+            if (unres_add_node(module, unres, &cont->must[i], UNRES_MUST, retval, 0) == -1) {
+                goto error;
+            }
         }
 
         cont->tpdf = lys_tpdf_dup(module, node->parent, cont_orig->tpdf, cont->tpdf_size, unres);
@@ -1902,14 +1914,21 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
     case LYS_CHOICE:
         if (choice_orig->when) {
             choice->when = lys_when_dup(ctx, choice_orig->when);
-            unres_add_node(module, unres, choice->when, UNRES_WHEN, retval, 0);
+            if (unres_add_node(module, unres, choice->when, UNRES_WHEN, retval, 0) == -1) {
+                goto error;
+            }
         }
 
         if (choice_orig->dflt) {
             rc = resolve_sibling(choice->module, choice->child, NULL, 0, choice_orig->dflt->name, 0, LYS_ANYXML
                                          | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST
                                          | LYS_LIST, &choice->dflt);
-            assert(!rc);
+            if (rc) {
+                if (rc == EXIT_FAILURE) {
+                    LOGINT;
+                }
+                goto error;
+            }
         } else {
             /* useless to check return value, we don't know whether
              * there really wasn't any default defined or it just hasn't
@@ -1925,18 +1944,24 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
 
         if (leaf_orig->dflt) {
             leaf->dflt = lydict_insert(ctx, leaf_orig->dflt, 0);
-            unres_add_str(module, unres, &leaf->type, UNRES_TYPE_DFLT, leaf->dflt, 0);
+            if (unres_add_str(module, unres, &leaf->type, UNRES_TYPE_DFLT, leaf->dflt, 0) == -1) {
+                goto error;
+            }
         }
 
         leaf->must_size = leaf_orig->must_size;
         leaf->must = lys_restr_dup(ctx, leaf_orig->must, leaf->must_size);
         for (i = 0; i < leaf->must_size; ++i) {
-            unres_add_node(module, unres, &leaf->must[i], UNRES_MUST, retval, 0);
+            if (unres_add_node(module, unres, &leaf->must[i], UNRES_MUST, retval, 0) == -1) {
+                goto error;
+            }
         }
 
         if (leaf_orig->when) {
             leaf->when = lys_when_dup(ctx, leaf_orig->when);
-            unres_add_node(module, unres, leaf->when, UNRES_WHEN, retval, 0);
+            if (unres_add_node(module, unres, leaf->when, UNRES_WHEN, retval, 0) == -1) {
+                goto error;
+            }
         }
         break;
 
@@ -1950,12 +1975,16 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
         llist->must_size = llist_orig->must_size;
         llist->must = lys_restr_dup(ctx, llist_orig->must, llist->must_size);
         for (i = 0; i < llist->must_size; ++i) {
-            unres_add_node(module, unres, &llist->must[i], UNRES_MUST, retval, 0);
+            if (unres_add_node(module, unres, &llist->must[i], UNRES_MUST, retval, 0) == -1) {
+                goto error;
+            }
         }
 
         if (llist_orig->when) {
             llist->when = lys_when_dup(ctx, llist_orig->when);
-            unres_add_node(module, unres, llist->when, UNRES_WHEN, retval, 0);
+            if (unres_add_node(module, unres, llist->when, UNRES_WHEN, retval, 0) == -1) {
+                goto error;
+            }
         }
         break;
 
@@ -1970,7 +1999,9 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
 
         list->must = lys_restr_dup(ctx, list_orig->must, list->must_size);
         for (i = 0; i < list->must_size; ++i) {
-            unres_add_node(module, unres, &list->must[i], UNRES_MUST, retval, 0);
+            if (unres_add_node(module, unres, &list->must[i], UNRES_MUST, retval, 0) == -1) {
+                goto error;
+            }
         }
 
         list->tpdf = lys_tpdf_dup(module, node->parent, list_orig->tpdf, list->tpdf_size, unres);
@@ -1983,14 +2014,18 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
                 for (i = 0; i < list->keys_size; ++i) {
                     rc = resolve_sibling(list->module, list->child, NULL, 0, list_orig->keys[i]->name, 0, LYS_LEAF,
                                          (struct lys_node **)&list->keys[i]);
-                    assert(!rc);
+                    if (rc) {
+                        if (rc == EXIT_FAILURE) {
+                            LOGINT;
+                        }
+                        goto error;
+                    }
                 }
             /* it was not resolved yet, add unres copy */
             } else {
                 if (unres_dup(module, unres, list_orig, UNRES_LIST_KEYS, list)) {
                     LOGINT;
-                    lys_node_free(retval);
-                    return NULL;
+                    goto error;
                 }
             }
         }
@@ -2013,7 +2048,9 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
 
         if (list_orig->when) {
             list->when = lys_when_dup(ctx, list_orig->when);
-            unres_add_node(module, unres, list->when, UNRES_WHEN, retval, 0);
+            if (unres_add_node(module, unres, list->when, UNRES_WHEN, retval, 0) == -1) {
+                goto error;
+            }
         }
         break;
 
@@ -2021,12 +2058,16 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
         anyxml->must_size = anyxml_orig->must_size;
         anyxml->must = lys_restr_dup(ctx, anyxml_orig->must, anyxml->must_size);
         for (i = 0; i < anyxml->must_size; ++i) {
-            unres_add_node(module, unres, &anyxml->must[i], UNRES_MUST, retval, 0);
+            if (unres_add_node(module, unres, &anyxml->must[i], UNRES_MUST, retval, 0) == -1) {
+                goto error;
+            }
         }
 
         if (anyxml_orig->when) {
             anyxml->when = lys_when_dup(ctx, anyxml_orig->when);
-            unres_add_node(module, unres, anyxml->when, UNRES_WHEN, retval, 0);
+            if (unres_add_node(module, unres, anyxml->when, UNRES_WHEN, retval, 0) == -1) {
+                goto error;
+            }
         }
         break;
 
@@ -2035,7 +2076,9 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
 
         if (uses_orig->when) {
             uses->when = lys_when_dup(ctx, uses_orig->when);
-            unres_add_node(module, unres, uses->when, UNRES_WHEN, (struct lys_node *)uses, 0);
+            if (unres_add_node(module, unres, uses->when, UNRES_WHEN, (struct lys_node *)uses, 0) == -1) {
+                goto error;
+            }
         }
 
         uses->refine_size = uses_orig->refine_size;
@@ -2043,14 +2086,18 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
         uses->augment_size = uses_orig->augment_size;
         uses->augment = lys_augment_dup(module, (struct lys_node *)uses, uses_orig->augment, uses_orig->augment_size, unres);
         if (!uses->child) {
-            unres_add_node(module, unres, uses, UNRES_USES, NULL, 0);
+            if (unres_add_node(module, unres, uses, UNRES_USES, NULL, 0) == -1) {
+                goto error;
+            }
         }
         break;
 
     case LYS_CASE:
         if (cs_orig->when) {
             cs->when = lys_when_dup(ctx, cs_orig->when);
-            unres_add_node(module, unres, cs->when, UNRES_WHEN, retval, 0);
+            if (unres_add_node(module, unres, cs->when, UNRES_WHEN, retval, 0) == -1) {
+                goto error;
+            }
         }
         break;
 
@@ -2078,11 +2125,15 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
     default:
         /* LY_NODE_AUGMENT */
         LOGINT;
-        lys_node_free(retval);
-        return NULL;
+        goto error;
     }
 
     return retval;
+
+error:
+
+    lys_node_free(retval);
+    return NULL;
 }
 
 API void
