@@ -602,7 +602,13 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     } else {
         assert(module);
         type = 0;
-        trg = &module->data;
+        if (child->nodetype == LYS_NOTIF) {
+            trg = &module->notif;
+        } else if (child->nodetype == LYS_RPC) {
+            trg = &module->rpc;
+        } else {
+            trg = &module->data;
+        }
     }
 
     /* checks */
@@ -622,9 +628,6 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
             return EXIT_FAILURE;
         }
 
-        if (type == LYS_NOTIF) {
-            trg = &module->notif;
-        }
         break;
     case LYS_CHOICE:
         if (!(child->nodetype &
@@ -648,7 +651,6 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
                    strnodetype(child->nodetype), parent->name);
             return EXIT_FAILURE;
         }
-        trg = &module->rpc;
         break;
     case LYS_LEAF:
     case LYS_LEAFLIST:
