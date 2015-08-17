@@ -87,13 +87,13 @@ enum UNRES_ITEM {
  * @brief Unresolved items in a SCHEMA
  */
 struct unres_schema {
-    void **item;
-    enum UNRES_ITEM *type;
-    void **str_snode;
+    void **item;            /* array of pointers, each is determined by the type (one of lys_* structures) */
+    enum UNRES_ITEM *type;  /* array of unres types */
+    void **str_snode;       /* array of pointers, each is determined by the type (a string, a lys_node *, or NULL) */
 #ifndef NDEBUG
-    uint32_t *line;
+    uint32_t *line;         /* array of lines for each unres item */
 #endif
-    uint32_t count;
+    uint32_t count;         /* count of unres items */
 };
 
 /**
