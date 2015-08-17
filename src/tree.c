@@ -34,6 +34,15 @@
 #include "xml.h"
 #include "tree_internal.h"
 
+static const struct internal_modules int_mods = {
+    .modules = {
+        {"ietf-yang-types", "2013-07-15"},
+        {"ietf-inet-types", "2013-07-15"},
+        {"ietf-yang-library", "2015-07-03"}
+    },
+    .count = LY_INTERNAL_MODULE_COUNT
+};
+
 API struct lys_feature *
 lys_is_disabled(struct lys_node *node, int recursive)
 {
@@ -1546,6 +1555,18 @@ module_free_common(struct lys_module *module)
 
     /* as first step, free the imported modules */
     for (i = 0; i < module->imp_size; i++) {
+        /* do not free internal modules */
+        for (j = 0; j < int_mods.count; ++j) {
+            if (!strcmp(int_mods.modules[j].name, module->imp[i].module->name)
+                    && module->imp[i].module->rev
+                    && !strcmp(int_mods.modules[j].revision, module->imp[i].module->rev[0].date)) {
+                break;
+            }
+        }
+        if (j < int_mods.count) {
+            continue;
+        }
+
         /* get the imported module from the context and then free,
          * this check is necessary because the imported module can
          * be already removed

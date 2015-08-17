@@ -25,6 +25,21 @@
 
 #include "tree.h"
 
+#define LY_INTERNAL_MODULE_COUNT 3
+
+/**
+ * @brief Internal list of internal modules that are a part
+ *        of every context and must never be freed. Structure
+ *        instance defined in "tree.c".
+ */
+struct internal_modules {
+    const struct {
+        const char *name;
+        const char *revision;
+    } modules[LY_INTERNAL_MODULE_COUNT];
+    const uint8_t count;
+};
+
 /**
  * @brief Internal list of built-in types
  */
