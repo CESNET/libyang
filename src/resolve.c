@@ -3386,12 +3386,8 @@ resolve_unres(struct lys_module *mod, struct unres_schema *unres)
                 continue;
             }
 
-#ifndef NDEBUG
-            line = unres->line[i];
-#endif
-
             ++unres_uses;
-            rc = resolve_unres_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, line);
+            rc = resolve_unres_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, LOGLINE_IDX(unres, i));
             if (!rc) {
                 unres->type[i] = UNRES_RESOLVED;
                 ++resolved;
@@ -3413,11 +3409,7 @@ resolve_unres(struct lys_module *mod, struct unres_schema *unres)
             continue;
         }
 
-#ifndef NDEBUG
-            line = unres->line[i];
-#endif
-
-        rc = resolve_unres_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, line);
+        rc = resolve_unres_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, LOGLINE_IDX(unres, i));
         if (!rc) {
             unres->type[i] = UNRES_RESOLVED;
             ++resolved;

@@ -121,8 +121,10 @@ void ly_vlog(enum LY_ERR code, unsigned int line, ...);
 
 #ifdef NDEBUG
 #    define LOGLINE(node) 0
+#    define LOGLINE_IDX(node, idx) 0
 #else
 #    define LOGLINE(node) (node)->line
+#    define LOGLINE_IDX(node, idx) (node)->line[idx]
 #endif
 
 /**
