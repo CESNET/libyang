@@ -32,6 +32,20 @@
  */
 LY_ERR ly_errno = 0;
 
+const char *
+strpbrk_backwards(const char *s, const char *accept, unsigned int s_len)
+{
+    const char *sc;
+
+    for (; *s != '\0' && s_len; --s, --s_len) {
+        for (sc = accept; *sc != '\0'; ++sc) {
+            if (*s == *sc)
+                return sc;
+        }
+    }
+    return s;
+}
+
 char *
 strnchr(const char *s, int c, unsigned int len)
 {
