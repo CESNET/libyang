@@ -71,6 +71,8 @@ const char *ly_errs[] = {
 /* LYE_MISSARG */      "Missing argument \"%s\" to keyword \"%s\".",
 /* LYE_TOOMANY */      "Too many instances of \"%s\" in \"%s\".",
 /* LYE_DUPID */        "Duplicated %s identifier \"%s\".",
+/* LYE_DUPLEAFLIST */  "Duplicated instance of \"%s\" leaf-list with \"%s\" value.",
+/* LYE_DUPLIST */      "Duplicated instance of \"%s\" list with \"%s\" key(s).",
 /* LYE_ENUM_DUPVAL */  "The value \"%d\" of \"%s\" enum has already been assigned to another enum value.",
 /* LYE_ENUM_DUPNAME */ "The enum name \"%s\" has already been assigned to another enum.",
 /* LYE_ENUM_WS */      "The enum name \"%s\" includes invalid leading or trailing whitespaces.",
