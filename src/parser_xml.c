@@ -926,9 +926,6 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                 /* instances of the same list */
                 ((struct lyd_node_list *)diter)->lnext = (struct lyd_node_list *)result;
                 ((struct lyd_node_list *)result)->lprev = (struct lyd_node_list *)diter;
-
-                /* TODO check uniqueness of the list instances (compare keys and unique combinations) */
-
                 break;
             }
         }
@@ -949,17 +946,6 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                 /* instances of the same list */
                 ((struct lyd_node_leaflist *)diter)->lnext = (struct lyd_node_leaflist *)result;
                 ((struct lyd_node_leaflist *)result)->lprev = (struct lyd_node_leaflist *)diter;
-
-                /* check uniqueness of the leaf-list instances (compare values) */
-                for (diter = (struct lyd_node *)((struct lyd_node_leaflist *)result)->lprev;
-                         diter;
-                         diter = (struct lyd_node *)((struct lyd_node_leaflist *)diter)->lprev) {
-                    if (((struct lyd_node_leaflist *)diter)->value_str == ((struct lyd_node_leaflist *)result)->value_str) {
-                        LOGVAL(LYE_DUPLEAFLIST, LOGLINE(xml), schema->name, ((struct lyd_node_leaflist *)result)->value_str);
-                        goto error;
-                    }
-                }
-
                 break;
             }
         }
@@ -999,6 +985,29 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                 LOGVAL(LYE_MISSELEM, LOGLINE(xml), siter->name, siter->parent->name);
             }
             goto error;
+        }
+    }
+
+    /* uniqueness of (leaf-)list instances */
+    if (schema->nodetype == LYS_LEAFLIST) {
+        /* check uniqueness of the leaf-list instances (compare values) */
+        for (diter = (struct lyd_node *)((struct lyd_node_leaflist *)result)->lprev;
+                 diter;
+                 diter = (struct lyd_node *)((struct lyd_node_leaflist *)diter)->lprev) {
+            if (!lyd_compare(diter, result, 0)) {
+                LOGVAL(LYE_DUPLEAFLIST, LOGLINE(xml), schema->name, ((struct lyd_node_leaflist *)result)->value_str);
+                goto error;
+            }
+        }
+    } else if (schema->nodetype == LYS_LIST) {
+        /* check uniqueness of the list instances (compare keys and unique combinations) */
+        for (diter = (struct lyd_node *)((struct lyd_node_list *)result)->lprev;
+                 diter;
+                 diter = (struct lyd_node *)((struct lyd_node_list *)diter)->lprev) {
+            if (!lyd_compare(diter, result, 1)) {
+                LOGVAL(LYE_DUPLIST, LOGLINE(xml), schema->name);
+                goto error;
+            }
         }
     }
 

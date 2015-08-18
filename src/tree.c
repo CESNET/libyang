@@ -2371,6 +2371,92 @@ lyd_free(struct lyd_node *node)
     free(node);
 }
 
+int
+lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
+{
+    struct lys_node_list *slist;
+    struct lys_node *snode;
+    struct lyd_node *diter;
+    const char *val1, *val2;
+    int i, j;
+
+    if (!first || !second) {
+        ly_errno = LY_EINVAL;
+        return -1;
+    }
+
+    if (first->schema != second->schema) {
+        return 1;
+    }
+
+    switch (first->schema->nodetype) {
+    case LYS_LEAFLIST:
+        /* compare values */
+        if (((struct lyd_node_leaflist *)first)->value_str == ((struct lyd_node_leaflist *)second)->value_str) {
+            return 0;
+        }
+        return 1;
+    case LYS_LIST:
+        slist = (struct lys_node_list*)first->schema;
+
+        if (unique) {
+            /* compare unique leafs */
+            for (i = 0; i < slist->unique_size; i++) {
+                for (j = 0; j < slist->unique[i].leafs_size; j++) {
+                    snode = (struct lys_node *)slist->unique[i].leafs[j];
+                    /* use default values if the instances of unique leafs are not present */
+                    val1 = val2 = ((struct lys_node_leaf *)snode)->dflt;
+                    LY_TREE_FOR(first->child, diter) {
+                        if (diter->schema == snode) {
+                            val1 = ((struct lyd_node_leaf *)diter)->value_str;
+                            break;
+                        }
+                    }
+                    LY_TREE_FOR(second->child, diter) {
+                        if (diter->schema == snode) {
+                            val2 = ((struct lyd_node_leaf *)diter)->value_str;
+                            break;
+                        }
+                    }
+                    if (val1 != val2) {
+                        break;
+                    }
+                }
+                if (j && j == slist->unique[i].leafs_size) {
+                    /* all unique leafs are the same in this set */
+                    return 0;
+                }
+            }
+        }
+
+        /* compare keys */
+        for (i = 0; i < slist->keys_size; i++) {
+            snode = (struct lys_node *)slist->keys[i];
+            val1 = val2 = NULL;
+            LY_TREE_FOR(first->child, diter) {
+                if (diter->schema == snode) {
+                    val1 = ((struct lyd_node_leaf *)diter)->value_str;
+                    break;
+                }
+            }
+            LY_TREE_FOR(second->child, diter) {
+                if (diter->schema == snode) {
+                    val2 = ((struct lyd_node_leaf *)diter)->value_str;
+                    break;
+                }
+            }
+            if (val1 != val2) {
+                return 1;
+            }
+        }
+
+        return 0;
+    default:
+        /* no additional check is needed */
+        return 0;
+    }
+}
+
 API int
 lyd_is_last(struct lyd_node *node)
 {

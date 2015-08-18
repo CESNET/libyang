@@ -218,4 +218,22 @@ void lys_free(struct lys_module *module);
  */
 struct lys_node *ly_check_mandatory(struct lyd_node *start);
 
+/**
+ * @brief Compare 2 data nodes if they are the same from the YANG point of view.
+ *
+ * - containers are the same if they are defined by the same schema tree node
+ * - anyxmls are the same if they are defined by the same schema tree node
+ * - leafs are the same if they are defined by the same schema tree node
+ * - leaf-lists are the same if they are defined by the same schema tree node and they have the same value
+ * - lists are the same if they are defined by the same schema tree node and all their keys have identical values
+ *
+ * @param[in] first The first data node to compare
+ * @param[in] second The second node to compare
+ * @param[in] unique If the given nodes are lists, value 1 here forces to check their leafs defined as unique.
+ * If they are the same, the return value is 0 despite the values of the key. For all other node type, this
+ * parameter is ignored.
+ * @return 0 if both the nodes are the same from the YANG point of view.
+ */
+int lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique);
+
 #endif /* LY_TREE_INTERNAL_H_ */
