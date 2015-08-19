@@ -332,13 +332,15 @@ struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
                                     Having an unknown element of the known namespace is always an error. */
 #define LYD_OPT_EDIT     0x02  /**< make validation to accept NETCONF edit-config's content:
                                     - mandatory nodes can be omitted
-                                    - leafrefs and instance-identifier are not resolved */
+                                    - leafrefs and instance-identifier are not resolved
+                                    - status data are not allowed */
 #define LYD_OPT_FILTER   0x04  /**< make validation to accept NETCONF subtree filter data:
                                     - leafs/leaf-lists with no data are allowed (even not allowed e.g. by length restriction)
                                     - multiple instances of container/leaf/.. are allowed
                                     - list's keys are not required
                                     - mandatory nodes can be omitted
-                                    - leafrefs and instance-identifier are not resolved */
+                                    - leafrefs and instance-identifier are not resolved
+                                    - data from different choice's branches are allowed */
 /**
  * @}
  */
