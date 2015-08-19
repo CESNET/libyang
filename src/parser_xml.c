@@ -601,7 +601,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
          * using module names as namespaces
          */
         xml->content = leaf->value_str;
-        leaf->value_str = instid_xml2json(node->schema->module->ctx, xml);
+        leaf->value_str = transform_instid_xml2json(node->schema->module->ctx, xml);
         lydict_remove(node->schema->module->ctx, xml->content);
         xml->content = NULL;
         if (!leaf->value_str) {
