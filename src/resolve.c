@@ -3377,12 +3377,11 @@ print_unres_item_fail(void *item, enum UNRES_ITEM type, void *str_node, uint32_t
 int
 resolve_unres(struct lys_module *mod, struct unres_schema *unres)
 {
-    uint32_t i, resolved, unres_uses, res_uses, line;
+    uint32_t i, resolved, unres_uses, res_uses;
     int rc;
 
     assert(unres);
 
-    line = 0;
     resolved = 0;
 
     /* uses */
