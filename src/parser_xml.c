@@ -909,6 +909,11 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     result->prev = prev;
     result->schema = schema;
 
+    /* check for (non-)presence of status data in edit-config data */
+    if ((options & LYD_OPT_EDIT) && (schema->flags & LYS_CONFIG_R)) {
+        LOGVAL(LYE_INELEM, LOGLINE(xml), schema->name);
+        goto error;
+    }
     /* check number of instances for non-list nodes */
     if (!(options & LYD_OPT_FILTER) && (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML))) {
         for (diter = result->prev; diter; diter = diter->prev) {
