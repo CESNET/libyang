@@ -39,8 +39,9 @@ strpbrk_backwards(const char *s, const char *accept, unsigned int s_len)
 
     for (; *s != '\0' && s_len; --s, --s_len) {
         for (sc = accept; *sc != '\0'; ++sc) {
-            if (*s == *sc)
-                return sc;
+            if (*s == *sc) {
+                return s;
+            }
         }
     }
     return s;
