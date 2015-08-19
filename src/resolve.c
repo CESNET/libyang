@@ -2138,7 +2138,6 @@ resolve_path_predicate_data(const char *pred, uint32_t line, struct unres_data *
                 }
                 if ((i = parse_path_key_expr(path_key_expr+pke_parsed, &dest_pref, &dest_pref_len, &dest, &dest_len,
                                              &dest_parent_times)) < 1) {
-                    free(dest_match.dnode);
                     LOGVAL(LYE_INCHAR, line, path_key_expr[-i], &path_key_expr[-i]);
                     goto error;
                 }
