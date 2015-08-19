@@ -906,16 +906,6 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     result->prev = prev;
     result->schema = schema;
 
-    /* check number of instances for non-list nodes */
-    if (!(options & LYD_OPT_FILTER) && (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML))) {
-        for (diter = result->prev; diter; diter = diter->prev) {
-            if (diter->schema == schema) {
-                LOGVAL(LYE_TOOMANY, LOGLINE(xml), xml->name, xml->parent ? xml->parent->name : "data tree");
-                goto error;
-            }
-        }
-    }
-
     /* type specific processing */
     if (schema->nodetype == LYS_LIST) {
         /* pointers to next and previous instances of the same list */
@@ -947,7 +937,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                 break;
             }
         }
-    } else if (schema->nodetype == LYS_ANYXML) {
+    } else if (schema->nodetype == LYS_ANYXML && !(options & LYD_OPT_FILTER)) {
         ((struct lyd_node_anyxml *)result)->value = xml;
         lyxml_unlink_elem(xml);
     }
@@ -986,6 +976,57 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         }
     }
 
+    /* check number of instances for non-list nodes */
+    if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML)) {
+        if (options & LYD_OPT_FILTER) {
+            /* normalize the filter */
+            for (diter = result->prev; diter; diter = diter->prev) {
+                if (diter->schema == schema) {
+                    switch (schema->nodetype) {
+                    case LYS_CONTAINER:
+                        if (!diter->child) {
+                            /* previous instance is a selection node, so keep it
+                             * and ignore the current instance */
+                            goto cleargotosiblings;
+                        }
+                        if (!result->child) {
+                            /* current instance is a selection node, so make the
+                             * previous instance a a selection node (remove its
+                             * children) and ignore the current instance */
+                            while(diter->child) {
+                                lyd_free(diter->child);
+                            }
+                            goto cleargotosiblings;
+                        }
+                        /* TODO merging container used as a containment node */
+                        break;
+                    case LYS_LEAF:
+                        if (((struct lyd_node_leaf *)diter)->value_str == ((struct lyd_node_leaf *)result)->value_str) {
+                            goto cleargotosiblings;
+                        }
+                        break;
+                    case LYS_ANYXML:
+                        /* filtering according to the anyxml content is not allowed,
+                         * so anyxml is always a selection node with no content.
+                         * Therefore multiple instances of anyxml does not make sense
+                         */
+                        goto cleargotosiblings;
+                    default:
+                        /* not possible, but necessary to silence compiler warnings */
+                        break;
+                    }
+                }
+            }
+        } else {
+            for (diter = result->prev; diter; diter = diter->prev) {
+                if (diter->schema == schema) {
+                    LOGVAL(LYE_TOOMANY, LOGLINE(xml), xml->name, xml->parent ? xml->parent->name : "data tree");
+                    goto error;
+                }
+            }
+        }
+    }
+
     /* uniqueness of (leaf-)list instances */
     if (schema->nodetype == LYS_LEAFLIST) {
         /* check uniqueness of the leaf-list instances (compare values) */
@@ -997,12 +1038,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                     /* optimize filter and do not duplicate the same selection node,
                      * so this is not actually error, but the data are silently removed */
                     ((struct lyd_node_leaflist *)result)->lprev->lnext = NULL;
-                    result->next = NULL;
-                    result->parent = NULL;
-                    result->prev = result;
-                    lyd_free(result);
-                    result = NULL;
-                    break;
+                    goto cleargotosiblings;
                 } else {
                     LOGVAL(LYE_DUPLEAFLIST, LOGLINE(xml), schema->name, ((struct lyd_node_leaflist *)result)->value_str);
                     goto error;
@@ -1025,12 +1061,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
                     /* not the error, just return no data */
                     ((struct lyd_node_list *)result)->lprev->lnext = NULL;
-                    result->next = NULL;
-                    result->parent = NULL;
-                    result->prev = result;
-                    lyd_free(result);
-                    result = NULL;
-                    break;
+                    goto cleargotosiblings;
                 }
             } else {
                 /* compare keys and unique combinations */
@@ -1040,7 +1071,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                 }
             }
         }
-    } else if (!(options & LYD_OPT_FILTER) && schema->parent && (schema->parent->nodetype & (LYS_CASE | LYS_CHOICE))) {
+    }
+
+    if (!(options & LYD_OPT_FILTER) && schema->parent && (schema->parent->nodetype & (LYS_CASE | LYS_CHOICE))) {
         /* check that there are no data from different choice case */
         if (schema->parent->nodetype == LYS_CHOICE) {
             cs = NULL;
@@ -1093,6 +1126,18 @@ error:
     }
 
     return NULL;
+
+cleargotosiblings:
+
+    /* cleanup the result variable ... */
+    result->next = NULL;
+    result->parent = NULL;
+    result->prev = result;
+    lyd_free(result);
+    result = NULL;
+
+    /* ... and then go to siblings label */
+    goto siblings;
 }
 
 static int
