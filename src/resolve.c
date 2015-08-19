@@ -3376,7 +3376,7 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node, u
  * @param[in] mod Main module.
  * @param[in] unres Unres schema structure to use.
  *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
+ * @return EXIT_SUCCESS on success, -1 on error.
  */
 int
 resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
@@ -3412,7 +3412,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
 
     if (res_uses < unres_uses) {
         LOGVAL(LYE_SPEC, 0, "There are unresolved uses left.");
-        return EXIT_FAILURE;
+        return -1;
     }
 
     /* the rest */
@@ -3431,8 +3431,8 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
     }
 
     if (resolved < unres->count) {
-        LOGVAL(LYE_SPEC, 0, "There are unresolved items left.");
-        return EXIT_FAILURE;
+        LOGVAL(LYE_SPEC, 0, "There are unresolved schema items left.");
+        return -1;
     }
 
     return EXIT_SUCCESS;
