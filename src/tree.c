@@ -1566,15 +1566,17 @@ module_free_common(struct lys_module *module, int free_int_mods)
     /* as first step, free the imported modules */
     for (i = 0; i < module->imp_size; i++) {
         /* do not free internal modules */
-        for (j = 0; !free_int_mods && (j < int_mods.count); ++j) {
-            if (!strcmp(int_mods.modules[j].name, module->imp[i].module->name)
-                    && module->imp[i].module->rev
-                    && !strcmp(int_mods.modules[j].revision, module->imp[i].module->rev[0].date)) {
-                break;
+        if (!free_int_mods) {
+            for (j = 0; j < int_mods.count; ++j) {
+                if (!strcmp(int_mods.modules[j].name, module->imp[i].module->name)
+                        && module->imp[i].module->rev
+                        && !strcmp(int_mods.modules[j].revision, module->imp[i].module->rev[0].date)) {
+                    break;
+                }
             }
-        }
-        if (j < int_mods.count) {
-            continue;
+            if (j < int_mods.count) {
+                continue;
+            }
         }
 
         /* get the imported module from the context and then free,
