@@ -48,6 +48,8 @@ struct len_ran_intv {
     struct len_ran_intv *next;
 };
 
+int parse_identifier(const char *id);
+
 int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int superior_restr,
                              struct len_ran_intv **local_intv);
 

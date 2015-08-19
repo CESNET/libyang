@@ -44,7 +44,7 @@
  *
  * @return Number of characters successfully parsed.
  */
-static int
+int
 parse_identifier(const char *id)
 {
     int parsed = 0;
