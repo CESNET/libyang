@@ -1970,7 +1970,18 @@ unres_data_del(struct unres_data *unres, uint32_t i)
     --unres->count;
 }
 
-/* does not log */
+/**
+ * @brief Resolve (find) a data node from a specific module. Does not log.
+ *
+ * @param[in] mod Module to search in.
+ * @param[in] name Name of the data node.
+ * @param[in] nam_len Length of the name.
+ * @param[in] start Data node to start the search from.
+ * @param[in,out] parents Resolved nodes. If there are some parents,
+ *                        they are replaced (!!) with the resolvents.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference.
+ */
 static int
 resolve_data(struct lys_module *mod, const char *name, int nam_len, struct lyd_node *start, struct unres_data *parents)
 {
@@ -2016,7 +2027,7 @@ resolve_data(struct lys_module *mod, const char *name, int nam_len, struct lyd_n
         }
     }
 
-    return parents->count ? EXIT_SUCCESS : -1;
+    return parents->count ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 /**
@@ -2030,7 +2041,7 @@ resolve_data(struct lys_module *mod, const char *name, int nam_len, struct lyd_n
  * @param[in,out] parents Resolved nodes. If there are some parents,
  *                        they are replaced (!!) with the resolvents.
  *
- * @return EXIT_SUCCESS on success, -1 otherwise.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 otherwise.
  */
 static int
 resolve_data_nodeid(const char *prefix, int pref_len, const char *name, int name_len, struct lyd_node *start,
@@ -2061,22 +2072,22 @@ resolve_data_nodeid(const char *prefix, int pref_len, const char *name, int name
  *        but line fail is always displayed.
  *
  * @param[in] pred Predicate to use.
+ * @param[in] line Line in the input file.
  * @param[in,out] node_match Nodes satisfying the restriction
  *                           without the predicate. Nodes not
  *                           satisfying the predicate are removed.
- * @param[in] line Line in the input file.
+ * @param[out] parsed Number of characters parsed, negative on error.
  *
- * @return Number of characters successfully parsed,
- *         positive on success, negative on failure.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-resolve_path_predicate_data(const char *pred, uint32_t line, struct unres_data *node_match)
+resolve_path_predicate_data(const char *pred, uint32_t line, struct unres_data *node_match, int *parsed)
 {
     /* ... /node[source = destination] ... */
     struct unres_data source_match, dest_match;
     const char *path_key_expr, *source, *sour_pref, *dest, *dest_pref;
-    int pke_len, sour_len, sour_pref_len, dest_len, dest_pref_len, parsed = 0, pke_parsed = 0;
-    int has_predicate, dest_parent_times, i;
+    int pke_len, sour_len, sour_pref_len, dest_len, dest_pref_len, parsed_loc = 0, pke_parsed = 0;
+    int has_predicate, dest_parent_times, i, rc;
     uint32_t j;
 
     source_match.count = 1;
@@ -2088,9 +2099,10 @@ resolve_path_predicate_data(const char *pred, uint32_t line, struct unres_data *
         if ((i = parse_path_predicate(pred, &sour_pref, &sour_pref_len, &source, &sour_len, &path_key_expr,
                                       &pke_len, &has_predicate)) < 1) {
             LOGVAL(LYE_INCHAR, line, pred[-i], &pred[-i]);
+            rc = -1;
             goto error;
         }
-        parsed += i;
+        parsed_loc += i;
         pred += i;
 
         for (j = 0; j < node_match->count;) {
@@ -2098,8 +2110,8 @@ resolve_path_predicate_data(const char *pred, uint32_t line, struct unres_data *
             source_match.dnode[0] = node_match->dnode[j];
 
             /* must be leaf (key of a list) */
-            if (resolve_data_nodeid(sour_pref, sour_pref_len, source, sour_len, node_match->dnode[j], &source_match)
-                    || (source_match.count != 1) || (source_match.dnode[0]->schema->nodetype != LYS_LEAF)) {
+            if ((rc = resolve_data_nodeid(sour_pref, sour_pref_len, source, sour_len, node_match->dnode[j],
+                    &source_match)) || (source_match.count != 1) || (source_match.dnode[0]->schema->nodetype != LYS_LEAF)) {
                 /* general error, the one written later will suffice */
                 LOGVAL(LYE_LINE, line);
                 i = 0;
@@ -2112,7 +2124,8 @@ resolve_path_predicate_data(const char *pred, uint32_t line, struct unres_data *
             if ((i = parse_path_key_expr(path_key_expr, &dest_pref, &dest_pref_len, &dest, &dest_len,
                                             &dest_parent_times)) < 1) {
                 LOGVAL(LYE_INCHAR, line, path_key_expr[-i], &path_key_expr[-i]);
-                return -parsed+i;
+                rc = -1;
+                goto error;
             }
             pke_parsed = i;
             for (i = 0; i < dest_parent_times; ++i) {
@@ -2121,12 +2134,13 @@ resolve_path_predicate_data(const char *pred, uint32_t line, struct unres_data *
                     /* general error, the one written later will suffice */
                     LOGVAL(LYE_LINE, line);
                     i = 0;
+                    rc = EXIT_FAILURE;
                     goto error;
                 }
             }
             while (1) {
-                if (resolve_data_nodeid(dest_pref, dest_pref_len, dest, dest_len, dest_match.dnode[0], &dest_match)
-                        || (dest_match.count != 1)) {
+                if ((rc = resolve_data_nodeid(dest_pref, dest_pref_len, dest, dest_len, dest_match.dnode[0],
+                        &dest_match)) || (dest_match.count != 1)) {
                     /* general error, the one written later will suffice */
                     LOGVAL(LYE_LINE, line);
                     i = 0;
@@ -2139,6 +2153,7 @@ resolve_path_predicate_data(const char *pred, uint32_t line, struct unres_data *
                 if ((i = parse_path_key_expr(path_key_expr+pke_parsed, &dest_pref, &dest_pref_len, &dest, &dest_len,
                                              &dest_parent_times)) < 1) {
                     LOGVAL(LYE_INCHAR, line, path_key_expr[-i], &path_key_expr[-i]);
+                    rc = -1;
                     goto error;
                 }
                 pke_parsed += i;
@@ -2167,7 +2182,10 @@ remove_leafref:
 
     free(source_match.dnode);
     free(dest_match.dnode);
-    return parsed;
+    if (parsed) {
+        *parsed = parsed_loc;
+    }
+    return EXIT_SUCCESS;
 
 error:
 
@@ -2177,7 +2195,10 @@ error:
     if (dest_match.count) {
         free(dest_match.dnode);
     }
-    return -parsed+i;
+    if (parsed) {
+        *parsed = -parsed_loc+i;
+    }
+    return rc;
 }
 
 /**
@@ -2188,14 +2209,14 @@ error:
  * @param[in] line Line in the input file.
  * @param[out] ret Matching nodes. Expects an empty, but allocated structure. Lines left untouched.
  *
- * @return EXIT_SUCCESS on success, -1 otherwise.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 otherwise.
  */
 int
 resolve_path_arg_data(struct lyd_node *dnode, const char *path, uint32_t line, struct unres_data *ret)
 {
     struct lyd_node *data = NULL;
     const char *prefix, *name;
-    int pref_len, nam_len, has_predicate, parent_times, i, parsed;
+    int pref_len, nam_len, has_predicate, parent_times, i, parsed, rc;
     uint32_t j;
 
     assert(dnode && path && ret && !ret->count);
@@ -2207,6 +2228,7 @@ resolve_path_arg_data(struct lyd_node *dnode, const char *path, uint32_t line, s
     do {
         if ((i = parse_path_arg(path, &prefix, &pref_len, &name, &nam_len, &parent_times, &has_predicate)) < 1) {
             LOGVAL(LYE_INCHAR, line, path[-i], &path[-i]);
+            rc = -1;
             goto error;
         }
         path += i;
@@ -2222,6 +2244,7 @@ resolve_path_arg_data(struct lyd_node *dnode, const char *path, uint32_t line, s
                 if (!ret->count) {
                     /* error, too many .. */
                     LOGVAL(LYE_INVAL, line, path, dnode->schema->name);
+                    rc = -1;
                     goto error;
                 } else if (!ret->dnode[0]) {
                     /* first .. */
@@ -2248,7 +2271,7 @@ resolve_path_arg_data(struct lyd_node *dnode, const char *path, uint32_t line, s
         }
 
         /* node identifier */
-        if (resolve_data_nodeid(prefix, pref_len, name, nam_len, data, ret)) {
+        if ((rc = resolve_data_nodeid(prefix, pref_len, name, nam_len, data, ret))) {
             LOGVAL(LYE_INELEM_LEN, line, nam_len, name);
             goto error;
         }
@@ -2266,7 +2289,7 @@ resolve_path_arg_data(struct lyd_node *dnode, const char *path, uint32_t line, s
                 /* does not fulfill conditions, remove leafref record */
                 unres_data_del(ret, j);
             }
-            if ((i = resolve_path_predicate_data(path, line, ret)) < 1) {
+            if ((rc = resolve_path_predicate_data(path, line, ret, &i))) {
                 /* line was already displayed */
                 LOGVAL(LYE_NORESOLV, 0, path);
                 goto error;
@@ -2276,6 +2299,7 @@ resolve_path_arg_data(struct lyd_node *dnode, const char *path, uint32_t line, s
 
             if (!ret->count) {
                 LOGVAL(LYE_NORESOLV, line, path-parsed);
+                rc = EXIT_FAILURE;
                 goto error;
             }
         }
@@ -2289,7 +2313,7 @@ error:
     ret->dnode = NULL;
     ret->count = 0;
 
-    return -1;
+    return rc;
 }
 
 /**
@@ -2599,7 +2623,10 @@ resolve_instid_json(struct lyd_node *data, const char *path, int line)
 
     /* we need root to resolve absolute path */
     for (; data->parent; data = data->parent);
-    for (; data->prev->next; data = data->prev);
+    /* TODO (may change!) we're still parsing it and the pointer is not correct yet */
+    if (data->prev) {
+        for (; data->prev->next; data = data->prev);
+    }
 
     /* search for the instance node */
     while (path[i]) {
@@ -3600,6 +3627,7 @@ static int
 resolve_unres_data_item(struct lyd_node *dnode, uint32_t line)
 {
     uint32_t i;
+    int rc;
     struct lyd_node_leaf *dleaf;
     struct lys_node_leaf *sleaf;
     struct unres_data matches;
@@ -3610,8 +3638,8 @@ resolve_unres_data_item(struct lyd_node *dnode, uint32_t line)
 
     /* leafref */
     if (sleaf->type.base == LY_TYPE_LEAFREF) {
-        if (resolve_path_arg_data((struct lyd_node *)dleaf, sleaf->type.info.lref.path, line, &matches)) {
-            return -1;
+        if ((rc = resolve_path_arg_data((struct lyd_node *)dleaf, sleaf->type.info.lref.path, line, &matches))) {
+            return rc;
         }
 
         /* check that value matches */
