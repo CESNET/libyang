@@ -3087,7 +3087,7 @@ resolve_identityref(struct lys_ident *base, const char *name, const char *ns)
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-resolve_unres_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t line)
+resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t line)
 {
     int rc;
     struct lys_node *parent;
@@ -3177,7 +3177,7 @@ resolve_list_keys(struct lys_module *mod, struct lys_node_list *list, const char
 
 /* logs directly */
 static int
-resolve_unres_when(struct lys_when *UNUSED(when), struct lys_node *UNUSED(start), uint32_t UNUSED(line))
+resolve_unres_schema_when(struct lys_when *UNUSED(when), struct lys_node *UNUSED(start), uint32_t UNUSED(line))
 {
     /* TODO */
     return EXIT_SUCCESS;
@@ -3185,7 +3185,7 @@ resolve_unres_when(struct lys_when *UNUSED(when), struct lys_node *UNUSED(start)
 
 /* logs directly */
 static int
-resolve_unres_must(struct lys_restr *UNUSED(must), struct lys_node *UNUSED(start), uint32_t UNUSED(line))
+resolve_unres_schema_must(struct lys_restr *UNUSED(must), struct lys_node *UNUSED(start), uint32_t UNUSED(line))
 {
     /* TODO */
     return EXIT_SUCCESS;
@@ -3204,7 +3204,7 @@ resolve_unres_must(struct lys_restr *UNUSED(must), struct lys_node *UNUSED(start
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-resolve_unres_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, void *str_snode,
+resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, void *str_snode,
                    struct unres_schema *unres, uint32_t line)
 {
     int rc = -1, has_str = 0;
@@ -3262,7 +3262,7 @@ resolve_unres_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, voi
         has_str = 1;
         break;
     case UNRES_USES:
-        rc = resolve_unres_uses(item, unres, line);
+        rc = resolve_unres_schema_uses(item, unres, line);
         has_str = 0;
         break;
     case UNRES_TYPE_DFLT:
@@ -3299,11 +3299,11 @@ resolve_unres_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, voi
         has_str = 1;
         break;
     case UNRES_WHEN:
-        rc = resolve_unres_when(item, str_snode, line);
+        rc = resolve_unres_schema_when(item, str_snode, line);
         has_str = 0;
         break;
     case UNRES_MUST:
-        rc = resolve_unres_must(item, str_snode, line);
+        rc = resolve_unres_schema_must(item, str_snode, line);
         has_str = 0;
         break;
     }
@@ -3317,7 +3317,7 @@ resolve_unres_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, voi
 
 /* logs directly */
 static void
-print_unres_item_fail(void *item, enum UNRES_ITEM type, void *str_node, uint32_t line)
+print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node, uint32_t line)
 {
     char line_str[18];
 
@@ -3379,7 +3379,7 @@ print_unres_item_fail(void *item, enum UNRES_ITEM type, void *str_node, uint32_t
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 int
-resolve_unres(struct lys_module *mod, struct unres_schema *unres)
+resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
 {
     uint32_t i, resolved, unres_uses, res_uses;
     int rc;
@@ -3399,7 +3399,7 @@ resolve_unres(struct lys_module *mod, struct unres_schema *unres)
             }
 
             ++unres_uses;
-            rc = resolve_unres_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, LOGLINE_IDX(unres, i));
+            rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, LOGLINE_IDX(unres, i));
             if (!rc) {
                 unres->type[i] = UNRES_RESOLVED;
                 ++resolved;
@@ -3421,7 +3421,7 @@ resolve_unres(struct lys_module *mod, struct unres_schema *unres)
             continue;
         }
 
-        rc = resolve_unres_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, LOGLINE_IDX(unres, i));
+        rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, LOGLINE_IDX(unres, i));
         if (!rc) {
             unres->type[i] = UNRES_RESOLVED;
             ++resolved;
@@ -3451,11 +3451,11 @@ resolve_unres(struct lys_module *mod, struct unres_schema *unres)
  * @return EXIT_SUCCESS on success or storing the item in unres, -1 on error.
  */
 int
-unres_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, const char *str,
+unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, const char *str,
               uint32_t line)
 {
     str = lydict_insert(mod->ctx, str, 0);
-    return unres_add_node(mod, unres, item, type, (struct lys_node *)str, line);
+    return unres_schema_add_node(mod, unres, item, type, (struct lys_node *)str, line);
 }
 
 /**
@@ -3471,19 +3471,19 @@ unres_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, en
  * @return EXIT_SUCCESS on success or storing the item in unres, -1 on error.
  */
 int
-unres_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
+unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
                 struct lys_node *snode, uint32_t line)
 {
     int rc;
 
     assert(unres && item);
 
-    rc = resolve_unres_item(mod, item, type, snode, unres, UINT_MAX);
+    rc = resolve_unres_schema_item(mod, item, type, snode, unres, UINT_MAX);
     if (rc != EXIT_FAILURE) {
         return rc;
     }
 
-    print_unres_item_fail(item, type, snode, line);
+    print_unres_schema_item_fail(item, type, snode, line);
 
     unres->count++;
     unres->item = realloc(unres->item, unres->count*sizeof *unres->item);
@@ -3512,7 +3512,7 @@ unres_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, e
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 int
-unres_dup(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, void *new_item)
+unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, void *new_item)
 {
     int i;
 
@@ -3521,7 +3521,7 @@ unres_dup(struct lys_module *mod, struct unres_schema *unres, void *item, enum U
         return -1;
     }
 
-    i = unres_find(unres, item, type);
+    i = unres_schema_find(unres, item, type);
 
     if (i == -1) {
         return -1;
@@ -3529,12 +3529,12 @@ unres_dup(struct lys_module *mod, struct unres_schema *unres, void *item, enum U
 
     if ((type == UNRES_TYPE_LEAFREF) || (type == UNRES_USES) || (type == UNRES_TYPE_DFLT)
             || (type == UNRES_WHEN) || (type == UNRES_MUST)) {
-        if (unres_add_node(mod, unres, new_item, type, unres->str_snode[i], 0) == -1) {
+        if (unres_schema_add_node(mod, unres, new_item, type, unres->str_snode[i], 0) == -1) {
             LOGINT;
             return -1;
         }
     } else {
-        if (unres_add_str(mod, unres, new_item, type, unres->str_snode[i], 0) == -1) {
+        if (unres_schema_add_str(mod, unres, new_item, type, unres->str_snode[i], 0) == -1) {
             LOGINT;
             return -1;
         }
@@ -3545,7 +3545,7 @@ unres_dup(struct lys_module *mod, struct unres_schema *unres, void *item, enum U
 
 /* does not log */
 int
-unres_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type)
+unres_schema_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type)
 {
     uint32_t ret = -1, i;
 

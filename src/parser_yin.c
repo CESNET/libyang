@@ -382,7 +382,7 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
                 return EXIT_FAILURE;
             }
             GETVAL(value, node, "name");
-            if (unres_add_str(module, unres, ident, UNRES_IDENT, value, LOGLINE(node)) == -1) {
+            if (unres_schema_add_str(module, unres, ident, UNRES_IDENT, value, LOGLINE(node)) == -1) {
                 return EXIT_FAILURE;
             }
         } else {
@@ -482,7 +482,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         if (rc == EXIT_FAILURE) {
             /* HACK for unres */
             type->der = (struct lys_tpdf *)parent;
-            rc = unres_add_str(module, unres, type, UNRES_TYPE_DER, value, LOGLINE(yin));
+            rc = unres_schema_add_str(module, unres, type, UNRES_TYPE_DER, value, LOGLINE(yin));
         }
         if (rc == -1) {
             goto error;
@@ -811,7 +811,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             goto error;
         }
         GETVAL(value, yin->child, "name");
-        if (unres_add_str(module, unres, type, UNRES_TYPE_IDENTREF, value, LOGLINE(yin->child)) == -1) {
+        if (unres_schema_add_str(module, unres, type, UNRES_TYPE_IDENTREF, value, LOGLINE(yin->child)) == -1) {
             goto error;
         }
         break;
@@ -917,7 +917,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
                 GETVAL(value, node, "value");
                 type->info.lref.path = lydict_insert(module->ctx, value, 0);
-                if (unres_add_node(module, unres, type, UNRES_TYPE_LEAFREF, parent, LOGLINE(yin)) == -1) {
+                if (unres_schema_add_node(module, unres, type, UNRES_TYPE_LEAFREF, parent, LOGLINE(yin)) == -1) {
                     goto error;
                 }
 
@@ -1132,7 +1132,7 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
 
     /* check default value */
     if (tpdf->dflt) {
-        if (unres_add_str(module, unres, &tpdf->type, UNRES_TYPE_DFLT, tpdf->dflt, dflt_line) == -1) {
+        if (unres_schema_add_str(module, unres, &tpdf->type, UNRES_TYPE_DFLT, tpdf->dflt, dflt_line) == -1) {
             goto error;
         }
     }
@@ -1182,7 +1182,7 @@ fill_yin_feature(struct lys_module *module, struct lyxml_elem *yin, struct lys_f
     }
     LY_TREE_FOR(yin->child, child) {
         GETVAL(value, child, "name");
-        if (unres_add_str(module, unres, &f->features[f->features_size++], UNRES_IFFEAT, value, LOGLINE(child)) == -1) {
+        if (unres_schema_add_str(module, unres, &f->features[f->features_size++], UNRES_IFFEAT, value, LOGLINE(child)) == -1) {
             goto error;
         }
     }
@@ -1971,7 +1971,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
                 lyxml_free_elem(module->ctx, child);
                 goto error;
             }
-            if (unres_add_node(module, unres, aug->when, UNRES_WHEN, (struct lys_node *)aug, LOGLINE(child)) == -1) {
+            if (unres_schema_add_node(module, unres, aug->when, UNRES_WHEN, (struct lys_node *)aug, LOGLINE(child)) == -1) {
                 goto error;
             }
             lyxml_free_elem(module->ctx, child);
@@ -2022,7 +2022,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
     LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!strcmp(child->name, "if-feature")) {
             GETVAL(value, child, "name");
-            if (unres_add_str(module, unres, &aug->features[aug->features_size++], UNRES_IFFEAT, value, LOGLINE(child)) == -1) {
+            if (unres_schema_add_str(module, unres, &aug->features[aug->features_size++], UNRES_IFFEAT, value, LOGLINE(child)) == -1) {
                 goto error;
             }
             lyxml_free_elem(module->ctx, child);
@@ -2252,7 +2252,7 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
         if (r) {
             goto error;
         }
-        if (unres_add_node(module, unres, &rfn->must[rfn->must_size-1], UNRES_MUST, (struct lys_node *)uses,
+        if (unres_schema_add_node(module, unres, &rfn->must[rfn->must_size-1], UNRES_MUST, (struct lys_node *)uses,
                         LOGLINE(sub)) == -1) {
             goto error;
         }
@@ -2619,7 +2619,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             if (!cs->when) {
                 goto error;
             }
-            if (unres_add_node(module, unres, cs->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
+            if (unres_schema_add_node(module, unres, cs->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
                 goto error;
             }
         } else {
@@ -2640,7 +2640,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     }
     LY_TREE_FOR(yin->child, sub) {
         GETVAL(value, sub, "name");
-        if (unres_add_str(module, unres, &cs->features[cs->features_size++], UNRES_IFFEAT, value, LOGLINE(sub)) == -1) {
+        if (unres_schema_add_str(module, unres, &cs->features[cs->features_size++], UNRES_IFFEAT, value, LOGLINE(sub)) == -1) {
             goto error;
         }
     }
@@ -2748,7 +2748,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
             if (!choice->when) {
                 goto error;
             }
-            if (unres_add_node(module, unres, choice->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
+            if (unres_schema_add_node(module, unres, choice->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
@@ -2771,7 +2771,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
 
     LY_TREE_FOR(yin->child, sub) {
         GETVAL(value, sub, "name");
-        if (unres_add_str(module, unres, &choice->features[choice->features_size++], UNRES_IFFEAT, value, LOGLINE(sub)) == -1) {
+        if (unres_schema_add_str(module, unres, &choice->features[choice->features_size++], UNRES_IFFEAT, value, LOGLINE(sub)) == -1) {
             goto error;
         }
     }
@@ -2785,7 +2785,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
 
     /* link default with the case */
     if (dflt_str) {
-        if (unres_add_str(module, unres, choice, UNRES_CHOICE_DFLT, dflt_str, LOGLINE(yin)) == -1) {
+        if (unres_schema_add_str(module, unres, choice, UNRES_CHOICE_DFLT, dflt_str, LOGLINE(yin)) == -1) {
             goto error;
         }
     }
@@ -2866,7 +2866,7 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
                 lyxml_free_elem(module->ctx, sub);
                 goto error;
             }
-            if (unres_add_node(module, unres, anyxml->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
+            if (unres_schema_add_node(module, unres, anyxml->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
                 goto error;
             }
             lyxml_free_elem(module->ctx, sub);
@@ -2895,12 +2895,12 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
             if (r) {
                 goto error;
             }
-            if (unres_add_node(module, unres, &anyxml->must[anyxml->must_size-1], UNRES_MUST, retval, LOGLINE(sub)) == -1) {
+            if (unres_schema_add_node(module, unres, &anyxml->must[anyxml->must_size-1], UNRES_MUST, retval, LOGLINE(sub)) == -1) {
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
             GETVAL(value, sub, "name");
-            if (unres_add_str(module, unres, &anyxml->features[anyxml->features_size++], UNRES_IFFEAT, value, LOGLINE(sub)) == -1) {
+            if (unres_schema_add_str(module, unres, &anyxml->features[anyxml->features_size++], UNRES_IFFEAT, value, LOGLINE(sub)) == -1) {
                 goto error;
             }
         }
@@ -3002,7 +3002,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             if (!leaf->when) {
                 goto error;
             }
-            if (unres_add_node(module, unres, leaf->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
+            if (unres_schema_add_node(module, unres, leaf->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
                 goto error;
             }
 
@@ -3027,7 +3027,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         goto error;
     }
     if (leaf->dflt) {
-        if (unres_add_str(module, unres, &leaf->type, UNRES_TYPE_DFLT, leaf->dflt, dflt_line) == -1) {
+        if (unres_schema_add_str(module, unres, &leaf->type, UNRES_TYPE_DFLT, leaf->dflt, dflt_line) == -1) {
             goto error;
         }
     }
@@ -3046,12 +3046,12 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             if (r) {
                 goto error;
             }
-            if (unres_add_node(module, unres, &leaf->must[leaf->must_size-1], UNRES_MUST, retval, LOGLINE(sub)) == -1) {
+            if (unres_schema_add_node(module, unres, &leaf->must[leaf->must_size-1], UNRES_MUST, retval, LOGLINE(sub)) == -1) {
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
             GETVAL(value, sub, "name");
-            if (unres_add_str(module, unres, &leaf->features[leaf->features_size++], UNRES_IFFEAT, value, LOGLINE(sub)) == -1) {
+            if (unres_schema_add_str(module, unres, &leaf->features[leaf->features_size++], UNRES_IFFEAT, value, LOGLINE(sub)) == -1) {
                 goto error;
             }
         }
@@ -3204,7 +3204,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             if (!llist->when) {
                 goto error;
             }
-            if (unres_add_node(module, unres, llist->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
+            if (unres_schema_add_node(module, unres, llist->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
                 goto error;
             }
         } else {
@@ -3239,12 +3239,12 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             if (r) {
                 goto error;
             }
-            if (unres_add_node(module, unres, &llist->must[llist->must_size-1], UNRES_MUST, retval, LOGLINE(sub)) == -1) {
+            if (unres_schema_add_node(module, unres, &llist->must[llist->must_size-1], UNRES_MUST, retval, LOGLINE(sub)) == -1) {
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
             GETVAL(value, sub, "name");
-            if (unres_add_str(module, unres, &llist->features[llist->features_size++], UNRES_IFFEAT, value,
+            if (unres_schema_add_str(module, unres, &llist->features[llist->features_size++], UNRES_IFFEAT, value,
                               LOGLINE(sub)) == -1) {
                 goto error;
             }
@@ -3424,7 +3424,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 lyxml_free_elem(module->ctx, sub);
                 goto error;
             }
-            if (unres_add_node(module, unres, list->when, UNRES_WHEN, NULL, LOGLINE(sub)) == -1) {
+            if (unres_schema_add_node(module, unres, list->when, UNRES_WHEN, NULL, LOGLINE(sub)) == -1) {
                 goto error;
             }
             lyxml_free_elem(module->ctx, sub);
@@ -3463,7 +3463,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
         } else if (!strcmp(sub->name, "if-feature")) {
             GETVAL(value, sub, "name");
-            if (unres_add_str(module, unres, &list->features[list->features_size++], UNRES_IFFEAT, value, LOGLINE(sub)) == -1) {
+            if (unres_schema_add_str(module, unres, &list->features[list->features_size++], UNRES_IFFEAT, value, LOGLINE(sub)) == -1) {
                 goto error;
             }
         } else if (!strcmp(sub->name, "must")) {
@@ -3471,7 +3471,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             if (r) {
                 goto error;
             }
-            if (unres_add_node(module, unres, &list->must[list->must_size-1], UNRES_MUST, retval, LOGLINE(sub)) == -1) {
+            if (unres_schema_add_node(module, unres, &list->must[list->must_size-1], UNRES_MUST, retval, LOGLINE(sub)) == -1) {
                 goto error;
             }
         }
@@ -3514,7 +3514,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         /* config false list without a key */
         return retval;
     }
-    if (unres_add_str(module, unres, list, UNRES_LIST_KEYS, key_str, key_line) == -1) {
+    if (unres_schema_add_str(module, unres, list, UNRES_LIST_KEYS, key_str, key_line) == -1) {
         goto error;
     }
 
@@ -3526,7 +3526,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         /* HACK for unres */
         list->unique[list->unique_size++].leafs = (struct lys_node_leaf **)list;
         GETVAL(value, sub, "tag");
-        if (unres_add_str(module, unres, &list->unique[list->unique_size-1], UNRES_LIST_UNIQ, value,
+        if (unres_schema_add_str(module, unres, &list->unique[list->unique_size-1], UNRES_LIST_UNIQ, value,
                           LOGLINE(sub)) == -1) {
             goto error;
         }
@@ -3604,7 +3604,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
                 lyxml_free_elem(module->ctx, sub);
                 goto error;
             }
-            if (unres_add_node(module, unres, cont->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
+            if (unres_schema_add_node(module, unres, cont->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
                 goto error;
             }
             lyxml_free_elem(module->ctx, sub);
@@ -3656,13 +3656,13 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
             if (r) {
                 goto error;
             }
-            if (unres_add_node(module, unres, &cont->must[cont->must_size-1], UNRES_MUST, retval,
+            if (unres_schema_add_node(module, unres, &cont->must[cont->must_size-1], UNRES_MUST, retval,
                                LOGLINE(sub)) == -1) {
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
             GETVAL(value, sub, "name");
-            if (unres_add_str(module, unres, &cont->features[cont->features_size++], UNRES_IFFEAT, value,
+            if (unres_schema_add_str(module, unres, &cont->features[cont->features_size++], UNRES_IFFEAT, value,
                               LOGLINE(sub)) == -1) {
                 goto error;
             }
@@ -4010,7 +4010,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
             }
         } else if (!strcmp(sub->name, "if-features")) {
             GETVAL(value, sub, "name");
-            if (unres_add_str(module, unres, &notif->features[notif->features_size++], UNRES_IFFEAT, value,
+            if (unres_schema_add_str(module, unres, &notif->features[notif->features_size++], UNRES_IFFEAT, value,
                               LOGLINE(sub)) == -1) {
                 goto error;
             }
@@ -4145,7 +4145,7 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
             }
         } else if (!strcmp(sub->name, "if-feature")) {
             GETVAL(value, sub, "name");
-            if (unres_add_str(module, unres, &rpc->features[rpc->features_size++], UNRES_IFFEAT, value,
+            if (unres_schema_add_str(module, unres, &rpc->features[rpc->features_size++], UNRES_IFFEAT, value,
                               LOGLINE(sub)) == -1) {
                 goto error;
             }
@@ -4239,7 +4239,7 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 lyxml_free_elem(module->ctx, sub);
                 goto error;
             }
-            if (unres_add_node(module, unres, uses->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
+            if (unres_schema_add_node(module, unres, uses->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
                 goto error;
             }
             lyxml_free_elem(module->ctx, sub);
@@ -4277,14 +4277,14 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
         } else if (!strcmp(sub->name, "if-feature")) {
             GETVAL(value, sub, "name");
-            if (unres_add_str(module, unres, &uses->features[uses->features_size++], UNRES_IFFEAT, value,
+            if (unres_schema_add_str(module, unres, &uses->features[uses->features_size++], UNRES_IFFEAT, value,
                               LOGLINE(sub)) == -1) {
                 goto error;
             }
         }
     }
 
-    if (unres_add_node(module, unres, uses, UNRES_USES, NULL, LOGLINE(yin)) == -1) {
+    if (unres_schema_add_node(module, unres, uses, UNRES_USES, NULL, LOGLINE(yin)) == -1) {
         goto error;
     }
 

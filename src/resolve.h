@@ -74,16 +74,16 @@ int resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_
 
 struct lys_ident *resolve_identityref(struct lys_ident *base, const char *name, const char *ns);
 
-int resolve_unres(struct lys_module *mod, struct unres_schema *unres);
+int resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres);
 
-int unres_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, const char *str,
+int unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, const char *str,
                    uint32_t line);
 
-int unres_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
+int unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
                      struct lys_node *node, uint32_t line);
 
-int unres_dup(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, void *new_item);
+int unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, void *new_item);
 
-int unres_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type);
+int unres_schema_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type);
 
 #endif /* _RESOLVE_H */

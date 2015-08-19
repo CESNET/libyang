@@ -88,7 +88,7 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     }
     munmap(addr, sb.st_size);
 
-    if (module && unres->count && resolve_unres(module, unres)) {
+    if (module && unres->count && resolve_unres_schema(module, unres)) {
         lys_free(module, 0);
         module = NULL;
     }
