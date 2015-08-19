@@ -4822,7 +4822,7 @@ yin_read_submodule(struct lys_module *module, const char *data, int implement, s
 error:
     /* cleanup */
     lyxml_free_elem(module->ctx, yin);
-    lys_submodule_free(submodule);
+    lys_submodule_free(submodule, 0);
 
     return NULL;
 }
@@ -4889,7 +4889,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unre
                     /* both have the same revision -> we already have the same module */
                     /* so free the new one and update the old one's implement flag if needed */
                     lyxml_free_elem(ctx, yin);
-                    lys_free(module);
+                    lys_free(module, 0);
                     unres->count = 0;
 
                     LOGVRB("module %s already in context", ctx->models.list[i]->name);
@@ -4923,7 +4923,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unre
 error:
     /* cleanup */
     lyxml_free_elem(ctx, yin);
-    lys_free(module);
+    lys_free(module, 0);
 
     return NULL;
 }

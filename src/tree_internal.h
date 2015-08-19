@@ -121,8 +121,9 @@ struct lys_submodule *lys_submodule_read(struct lys_module *module, int fd, LYS_
  * @brief Free the submodule structure
  *
  * @param[in] submodule The structure to free. Do not use the pointer after calling this function.
+ * @param[in] free_int_mods Whether to remove internal modules or not.
  */
-void lys_submodule_free(struct lys_submodule *submodule);
+void lys_submodule_free(struct lys_submodule *submodule, int free_int_mods);
 
 /**
  * @brief Add child schema tree node at the end of the parent's child list.
@@ -216,8 +217,9 @@ void lys_node_free(struct lys_node *node);
  * list of modules - there can be many references from other modules and data instances.
  *
  * @param[in] module Data model to free.
+ * @param[in] free_int_mods Whether to remove internal modules or not.
  */
-void lys_free(struct lys_module *module);
+void lys_free(struct lys_module *module, int free_int_mods);
 
 /**
  * @brief Search for a mandatory element in the given schema tree subtree
