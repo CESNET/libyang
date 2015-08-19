@@ -2324,6 +2324,107 @@ lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
     return NULL;
 }
 
+API int
+lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options)
+{
+    struct lys_node *sparent;
+    struct lyd_node *iter;
+
+    if (!node || !parent) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    if (node->parent || node->prev->next) {
+        lyd_unlink(node);
+    }
+
+    /* check placing the node to the appropriate place according to the schema */
+    sparent = node->schema->parent;
+    while (!(sparent->nodetype & (LYS_CONTAINER | LYS_LIST))) {
+        sparent = sparent->parent;
+    }
+    if (sparent != parent->schema) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    /* TODO all other checks for new node in the data tree (uniqueness, ...) */
+
+    if (!parent->child) {
+        /* add as the only child of the parent */
+        parent->child = node;
+    } else {
+        /* add as the last child of the parent */
+        parent->child->prev->next = node;
+        node->prev = parent->child->prev;
+        for (iter = node; iter->next; iter = iter->next);
+        parent->child->prev = iter;
+    }
+    LY_TREE_FOR(node, iter) {
+        iter->parent = parent;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+API int
+lyd_unlink(struct lyd_node *node)
+{
+    struct lyd_node *iter;
+
+    if (!node) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    /* unlink from the lists list */
+    if (node->schema->nodetype == LYS_LIST) {
+        if (((struct lyd_node_list *)node)->lprev) {
+            ((struct lyd_node_list *)node)->lprev->lnext = ((struct lyd_node_list *)node)->lnext;
+        }
+        if (((struct lyd_node_list *)node)->lnext) {
+            ((struct lyd_node_list *)node)->lnext->lprev = ((struct lyd_node_list *)node)->lprev;
+        }
+    } else if (node->schema->nodetype == LYS_LEAFLIST) {
+        if (((struct lyd_node_leaflist *)node)->lprev) {
+            ((struct lyd_node_leaflist *)node)->lprev->lnext = ((struct lyd_node_leaflist *)node)->lnext;
+        }
+        if (((struct lyd_node_leaflist *)node)->lnext) {
+            ((struct lyd_node_leaflist *)node)->lnext->lprev = ((struct lyd_node_leaflist *)node)->lprev;
+        }
+    }
+
+    /* unlink from siblings */
+    if (node->prev->next) {
+        node->prev->next = node->next;
+    }
+    if (node->next) {
+        node->next->prev = node->prev;
+    } else {
+        /* unlinking the last node */
+        iter = node->prev;
+        while (iter->prev != node) {
+            iter = iter->prev;
+        }
+        /* update the "last" pointer from the first node */
+        iter->prev = node->prev;
+    }
+    node->next = NULL;
+    node->prev = node;
+
+    /* unlink from parent */
+    if (node->parent) {
+        if (node->parent->child == node) {
+            /* the node is the first child */
+            node->parent->child = node->next;
+        }
+        node->parent = NULL;
+    }
+
+    return EXIT_SUCCESS;
+}
+
 API void
 lyd_free(struct lyd_node *node)
 {

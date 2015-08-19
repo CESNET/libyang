@@ -1518,14 +1518,17 @@ struct lyd_node *lyd_dup(struct lyd_node *node, int recursive);
  * @brief Insert the \p node element as child to the \p parent element. The \p node is inserted as a last child of the
  * \p parent.
  *
- * TODO not implemented
+ * If the node is part of some other tree, it is automatically unlinked.
+ * If the node is the first node of a node list (with no parent), all
+ * the subsequent nodes are also inserted.
  *
  * @param[in] parent Parent node for the \p node being inserted.
  * @param[in] node The node being inserted.
+ * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
  * @return 0 fo success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
  * in the data tree.
  */
-int lyd_insert(struct lyd_node *parent, struct lyd_node *node);
+int lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options);
 
 /**
  * @brief Insert the \p node element after the \p sibling element.
@@ -1598,8 +1601,6 @@ int lyd_is_last(struct lyd_node *node);
  * Note, that the node's connection with the schema tree is kept. Therefore, in case of
  * reconnecting the node to a data tree using lyd_paste() it is necessary to paste it
  * to the appropriate place in the data tree following the schema.
- *
- * TODO not implemented
  *
  * @param[in] node Data tree node to be unlinked (together with all children).
  * @return 0 for success, nonzero for error
