@@ -114,7 +114,8 @@ enum LY_ERR {
     LYE_INVAL,
     LYE_OORVAL,
     LYE_INCHAR,
-    LYE_INPRED
+    LYE_INPRED,
+    LYE_MCASEDATA
 };
 void ly_vlog(enum LY_ERR code, unsigned int line, ...);
 

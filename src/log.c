@@ -94,7 +94,8 @@ const char *ly_errs[] = {
 /* LYE_INVAL */        "Invalid value \"%s\" in \"%s\" element.",
 /* LYE_OORVAL */       "Value \"%s\" is out of range or length.",
 /* LYE_INCHAR */       "Unexpected character(s) '%c' (%.15s).",
-/* LYE_INPRED */       "Predicate resolution failed on \"%s\"."
+/* LYE_INPRED */       "Predicate resolution failed on \"%s\".",
+/* LYE_MCASEDATA */    "Data for more than one case branch of \"%s\" choice present."
 };
 
 void

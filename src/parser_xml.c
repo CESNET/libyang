@@ -841,6 +841,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 {
     struct lyd_node *result = NULL, *diter;
     struct lys_node *schema = NULL, *siter;
+    struct lys_node *cs, *ch;
     int i, havechildren;
 
     if (!xml) {
@@ -1040,6 +1041,27 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                     LOGVAL(LYE_DUPLIST, LOGLINE(xml), schema->name);
                     goto error;
                 }
+            }
+        }
+    } else if (!(options & LYD_OPT_FILTER) && schema->parent && (schema->parent->nodetype & (LYS_CASE | LYS_CHOICE))) {
+        /* check that there are no data from different choice case */
+        if (schema->parent->nodetype == LYS_CHOICE) {
+            cs = NULL;
+            ch = schema->parent;
+        } else { /* schema->parent->nodetype == LYS_CASE */
+            cs = schema->parent;
+            ch = schema->parent->parent;
+        }
+        if (ch->parent && ch->parent->nodetype == LYS_CASE) {
+            /* TODO check schemas with a choice inside a case */
+            LOGWRN("Not checking parent branches of nested choice");
+        }
+        for (diter = result->prev; diter; diter = diter->prev) {
+            if ((diter->schema->parent->nodetype == LYS_CHOICE && diter->schema->parent == ch) ||
+                    (diter->schema->parent->nodetype == LYS_CASE && !cs) ||
+                    (diter->schema->parent->nodetype == LYS_CASE && cs && diter->schema->parent != cs && diter->schema->parent->parent == ch)) {
+                LOGVAL(LYE_MCASEDATA, LOGLINE(xml), ch->name);
+                goto error;
             }
         }
     }
