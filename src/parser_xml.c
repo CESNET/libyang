@@ -346,7 +346,7 @@ get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *foun
 
 static int
 _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_elem *xml,
-               int options, struct unres_data **unres, int log)
+               int options, struct unres_data *unres, int log)
 {
     #define DECSIZE 21
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
@@ -360,7 +360,8 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
     int len;
     int c, i, j, d;
     int found;
-    struct unres_data *new_unres;
+
+    assert(node && node_type && xml && unres);
 
     leaf->value_str = xml->content;
     xml->content = NULL;
@@ -615,14 +616,13 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
              * is not complete, so many instanceids cannot be resolved
              */
             /* remember the leaf for later checking */
-            new_unres = malloc(sizeof *new_unres);
-            new_unres->is_leafref = 0;
-            new_unres->dnode = node;
-            new_unres->next = *unres;
+            ++unres->count;
+            unres->dnode = realloc(unres->dnode, unres->count * sizeof *unres->dnode);
+            unres->dnode[unres->count-1] = node;
 #ifndef NDEBUG
-            new_unres->line = LOGLINE(xml);
+            unres->line = realloc(unres->line, unres->count * sizeof *unres->line);
+            unres->line[unres->count-1] = LOGLINE(xml);
 #endif
-            *unres = new_unres;
         }
         break;
 
@@ -644,14 +644,13 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
              * is not complete, so many leafrefs cannot be resolved
              */
             /* remember the leaf for later checking */
-            new_unres = malloc(sizeof *new_unres);
-            new_unres->is_leafref = 1;
-            new_unres->dnode = node;
-            new_unres->next = *unres;
+            ++unres->count;
+            unres->dnode = realloc(unres->dnode, unres->count * sizeof *unres->dnode);
+            unres->dnode[unres->count-1] = node;
 #ifndef NDEBUG
-            new_unres->line = LOGLINE(xml);
+            unres->line = realloc(unres->line, unres->count * sizeof *unres->line);
+            unres->line[unres->count-1] = LOGLINE(xml);
 #endif
-            *unres = new_unres;
         }
         break;
 
@@ -760,14 +759,14 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
 }
 
 static int
-xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct unres_data **unres)
+xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct unres_data *unres)
 {
     return _xml_get_value(node, &((struct lys_node_leaf *)node->schema)->type, xml, options, unres, 1);
 }
 
 struct lyd_node *
 xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev,
-               int options, struct unres_data **unres)
+               int options, struct unres_data *unres)
 {
     struct lyd_node *result = NULL, *diter;
     struct lys_node *schema = NULL, *siter;
@@ -946,67 +945,69 @@ error:
 }
 
 static int
-check_unres(struct unres_data **list)
+check_unres_data(struct unres_data *unres)
 {
-    struct lyd_node_leaf *leaf;
+    uint32_t i, j;
+    struct lyd_node_leaf *dleaf;
     struct lys_node_leaf *sleaf;
-    struct unres_data *item, *refset = NULL, *ref;
+    struct unres_data matches;
 
-    while (*list) {
-        leaf = (struct lyd_node_leaf *)(*list)->dnode;
-        sleaf = (struct lys_node_leaf *)(*list)->dnode->schema;
+    memset(&matches, 0, sizeof matches);
+
+    for (i = 0; i < unres->count; ++i) {
+        dleaf = (struct lyd_node_leaf *)unres->dnode[i];
+        sleaf = (struct lys_node_leaf *)dleaf->schema;
 
         /* resolve path and create a set of possible leafrefs (we need their values) */
-        if ((*list)->is_leafref) {
-            if (resolve_path_arg_data(*list, sleaf->type.info.lref.path, &refset)) {
+        if (sleaf->type.base == LY_TYPE_LEAFREF) {
+            if (resolve_path_arg_data((struct lyd_node *)dleaf, sleaf->type.info.lref.path, LOGLINE_IDX(unres, i), &matches)) {
                 LOGERR(LY_EVALID, "Leafref \"%s\" could not be resolved.", sleaf->type.info.lref.path);
                 goto error;
             }
 
-            while (refset) {
-                if (leaf->value_str == ((struct lyd_node_leaf *)refset->dnode)->value_str) {
-                    leaf->value.leafref = refset->dnode;
+            /* check that value matches */
+            for (j = 0; j < matches.count; ++j) {
+                if (dleaf->value_str == ((struct lyd_node_leaf *)matches.dnode[j])->value_str) {
+                    dleaf->value.leafref = matches.dnode[j];
+                    break;
                 }
-                ref = refset->next;
-                free(refset);
-                refset = ref;
             }
 
-            if (!leaf->value.leafref) {
+            free(matches.dnode);
+#ifndef NDEBUG
+            free(matches.line);
+#endif
+            memset(&matches, 0, sizeof matches);
+
+            if (!dleaf->value.leafref) {
                 /* reference not found */
-                LOGERR(LY_EVALID, "Leafref \"%s\" value \"%s\" did not match any node value.", sleaf->type.info.lref.path, leaf->value_str);
+                LOGERR(LY_EVALID, "Leafref \"%s\" value \"%s\" did not match any node value.", sleaf->type.info.lref.path, dleaf->value_str);
                 goto error;
             }
 
         /* instance-identifier */
-        } else {
+        } else if (sleaf->type.base == LY_TYPE_INST) {
             ly_errno = 0;
-            if (!resolve_instid((*list)->dnode, leaf->value_str, LOGLINE(*list))) {
+            if (!resolve_instid_json((struct lyd_node *)dleaf, dleaf->value_str, LOGLINE_IDX(unres, i))) {
                 if (ly_errno) {
+                    LOGERR(LY_EVALID, "Instance-identifier \"%s\" could not be resolved.", dleaf->value_str);
                     goto error;
                 } else if (sleaf->type.info.inst.req > -1) {
-                    LOGERR(LY_EVALID, "Instance for the \"%s\" does not exist.", leaf->value_str);
+                    LOGERR(LY_EVALID, "Instance for the \"%s\" does not exist.", dleaf->value_str);
                     goto error;
                 } else {
-                    LOGVRB("Instance for the \"%s\" does not exist.", leaf->value_str);
+                    LOGVRB("Instance for the \"%s\" does not exist.", dleaf->value_str);
                 }
             }
+        } else {
+            LOGINT;
+            goto error;
         }
-
-        item = (*list)->next;
-        free(*list);
-        *list = item;
     }
 
     return EXIT_SUCCESS;
 
 error:
-
-    while (*list) {
-        item = (*list)->next;
-        free(*list);
-        *list = item;
-    }
 
     return EXIT_FAILURE;
 }
@@ -1023,16 +1024,24 @@ xml_read_data(struct ly_ctx *ctx, const char *data, int options)
         return NULL;
     }
 
+    unres = calloc(1, sizeof *unres);
+
     ly_errno = 0;
-    result = xml_parse_data(ctx, xml->child, NULL, NULL, options, &unres);
+    result = xml_parse_data(ctx, xml->child, NULL, NULL, options, unres);
     /* check leafrefs and/or instids if any */
-    if (check_unres(&unres)) {
+    if (check_unres_data(unres)) {
         /* leafref & instid checking failed */
         LY_TREE_FOR_SAFE(result, next, iter) {
             lyd_free(iter);
         }
         result = NULL;
     }
+
+    free(unres->dnode);
+#ifndef NDEBUG
+    free(unres->line);
+#endif
+    free(unres);
 
     /* free source XML tree */
     lyxml_free_elem(ctx, xml);

@@ -50,15 +50,14 @@ struct ly_types {
 extern struct ly_types ly_types[LY_DATA_TYPE_COUNT];
 
 /**
- * @brief Unresolved leafref or instance-identifier in DATA
+ * @brief Unresolved leafrefs or instance-identifiers in DATA
  */
 struct unres_data {
-    uint8_t is_leafref;
-    struct lyd_node *dnode;
-    struct unres_data *next;
+    struct lyd_node **dnode;
 #ifndef NDEBUG
-    uint32_t line;
+    uint32_t *line;
 #endif
+    uint32_t count;
 };
 
 /**
