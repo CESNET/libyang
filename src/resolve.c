@@ -40,7 +40,7 @@
  * identifier          = (ALPHA / "_")
  *                       *(ALPHA / DIGIT / "_" / "-" / ".")
  *
- * @param[in] id Identifier in question.
+ * @param[in] id Identifier to use.
  *
  * @return Number of characters successfully parsed.
  */
@@ -75,7 +75,7 @@ parse_identifier(const char *id)
  *
  * node-identifier     = [prefix ":"] identifier
  *
- * @param[in] id Identifier in question.
+ * @param[in] id Identifier to use.
  * @param[out] prefix Points to the prefix, NULL if there is not any.
  * @param[out] pref_len Length of the prefix, 0 if there is not any.
  * @param[out] name Points to the node name.
@@ -162,7 +162,7 @@ parse_node_identifier(const char *id, const char **prefix, int *pref_len, const 
  * path-predicate      = "[" *WSP path-equality-expr *WSP "]"
  * path-equality-expr  = node-identifier *WSP "=" *WSP path-key-expr
  *
- * @param[in] id Identifier in question.
+ * @param[in] id Identifier to use.
  * @param[out] prefix Points to the prefix, NULL if there is not any.
  * @param[out] pref_len Length of the prefix, 0 if there is not any.
  * @param[out] name Points to the node name.
@@ -286,7 +286,7 @@ parse_path_predicate(const char *id, const char **prefix, int *pref_len, const c
  *                       *(node-identifier *WSP "/" *WSP)
  *                       node-identifier
  *
- * @param[in] id Identifier in question.
+ * @param[in] id Identifier to use.
  * @param[out] prefix Points to the prefix, NULL if there is not any.
  * @param[out] pref_len Length of the prefix, 0 if there is not any.
  * @param[out] name Points to the node name.
@@ -420,7 +420,7 @@ parse_path_key_expr(const char *id, const char **prefix, int *pref_len, const ch
  * absolute-path       = 1*("/" (node-identifier *path-predicate))
  * relative-path       = 1*(".." "/") descendant-path
  *
- * @param[in] id Identifier in question.
+ * @param[in] id Identifier to use.
  * @param[out] prefix Points to the prefix, NULL if there is not any.
  * @param[out] pref_len Length of the prefix, 0 if there is not any.
  * @param[out] name Points to the node name.
@@ -515,7 +515,7 @@ parse_path_arg(const char *id, const char **prefix, int *pref_len, const char **
  *
  * instance-identifier = 1*("/" (node-identifier *predicate))
  *
- * @param[in] id Identifier in question.
+ * @param[in] id Identifier to use.
  * @param[out] model Points to the model name.
  * @param[out] mod_len Length of the model name.
  * @param[out] name Points to the node name.
@@ -581,7 +581,7 @@ parse_instance_identifier_json(const char *id, const char **model, int *mod_len,
  *                        (SQUOTE string SQUOTE))
  * pos                 = non-negative-integer-value
  *
- * @param[in] id Identifier in question.
+ * @param[in] id Identifier to use.
  * @param[out] model Points to the model name.
  * @param[out] mod_len Length of the model name.
  * @param[out] name Points to the node name. Can be identifier (from node-identifier), "." or pos.
@@ -756,7 +756,7 @@ parse_predicate_json(const char *id, const char **model, int *mod_len, const cha
  *                       node-identifier
  *                       absolute-schema-nodeid
  *
- * @param[in] id Identifier in question.
+ * @param[in] id Identifier to use.
  * @param[out] prefix Points to the prefix, NULL if there is not any.
  * @param[out] pref_len Length of the prefix, 0 if there is not any.
  * @param[out] name Points to the node name. Can be identifier (from node-identifier), "." or pos.
@@ -1445,7 +1445,7 @@ check_key(struct lys_node_leaf *key, uint8_t flags, struct lys_node_leaf **list,
  *
  * @param[in] parent The parent node of the unique structure.
  * @param[in] uniq_str The value of the unique node.
- * @param[in] uniq_s The unique structure in question.
+ * @param[in] uniq_s The unique structure to use.
  * @param[in] line The line in the input file.
  *
  * @return EXIT_SUCCESS on succes, EXIT_FAILURE on forward reference, -1 on error.
@@ -1520,7 +1520,7 @@ error:
 /**
  * @brief Resolve (fill) a grouping in an uses. Logs directly.
  *
- * @param[in] uses The uses in question.
+ * @param[in] uses The uses to use.
  * @param[in] line The line in the input file.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
@@ -1777,7 +1777,7 @@ resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *p
  *
  * @param[in] id Schema-nodeid string.
  * @param[in] start Start of the relative search.
- * @param[in] mod Module in question.
+ * @param[in] mod Module to use.
  * @param[in] node_type Decides how to modify the search.
  * @param[out] ret Pointer to the matching node. Can be NULL.
  *
@@ -2060,7 +2060,7 @@ resolve_data_nodeid(const char *prefix, int pref_len, const char *name, int name
  *        only specific errors, general no-resolvent error is left to the caller,
  *        but line fail is always displayed.
  *
- * @param[in] pred Predicate in question.
+ * @param[in] pred Predicate to use.
  * @param[in,out] node_match Nodes satisfying the restriction
  *                           without the predicate. Nodes not
  *                           satisfying the predicate are removed.
@@ -2187,7 +2187,7 @@ error:
  * @param[in] dnode Leafref data node.
  * @param[in] path Path of the leafref.
  * @param[in] line Line in the input file.
- * @param[out] ret Matching nodes. Expects an empty, but allocated structure.
+ * @param[out] ret Matching nodes. Expects an empty, but allocated structure. Lines left untouched.
  *
  * @return EXIT_SUCCESS on success, -1 otherwise.
  */
@@ -2291,7 +2291,7 @@ error:
 /**
  * @brief Resolve a path (leafref) predicate in schema context. Logs directly.
  *
- * @param[in] path Path in question.
+ * @param[in] path Path to use.
  * @param[in] mod Schema module.
  * @param[in] source_node Left operand node.
  * @param[in] dest_node Right ooperand node.
@@ -2376,8 +2376,8 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
 /**
  * @brief Resolve a path (leafref) in schema context. Logs directly.
  *
- * @param[in] mod Module in question.
- * @param[in] path Path in question.
+ * @param[in] mod Module to use.
+ * @param[in] path Path to use.
  * @param[in] parent_node Parent of the leafref.
  * @param[in] line Line in the input file.
  * @param[out] ret Pointer to the resolved schema node. Can be NULL.
@@ -2480,7 +2480,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
 /**
  * @brief Resolve instance-identifier predicate. Does not log.
  *
- * @param[in] pred Predicate in question.
+ * @param[in] pred Predicate to use.
  * @param[in,out] node_match Nodes matching the restriction without
  *                           the predicate. Nodes not satisfying
  *                           the predicate are removed.
@@ -2693,7 +2693,7 @@ inherit_config_flag(struct lys_node *node)
 /**
  * @brief Resolve augment target. Does not log.
  *
- * @param[in] aug Augment in question.
+ * @param[in] aug Augment to use.
  * @param[in] siblings Nodes where to start the search in.
  * @param[in] module Main module.
  *
@@ -2748,7 +2748,7 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
 /**
  * @brief Resolve uses, apply augments, refines. Logs directly.
  *
- * @param[in] uses Uses in question.
+ * @param[in] uses Uses to use.
  * @param[in,out] unres List of unresolved items.
  * @param[in] line Line in the input file.
  *
@@ -2909,7 +2909,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
  * @brief Resolve base identity recursively. Does not log.
  *
  * @param[in] module Main module.
- * @param[in] ident Identity in question.
+ * @param[in] ident Identity to use.
  * @param[in] basename Base name of the identity.
  * @param[out] ret Pointer to the resolved identity. Can be NULL.
  *
@@ -2992,7 +2992,7 @@ resolve_base_ident_sub(struct lys_module *module, struct lys_ident *ident, const
  * @brief Resolve base identity. Logs directly.
  *
  * @param[in] module Main module.
- * @param[in] ident Identity in question.
+ * @param[in] ident Identity to use.
  * @param[in] basename Base name of the identity.
  * @param[in] parent Either "type" or "ident".
  * @param[in] line Line in the input file.
@@ -3078,9 +3078,9 @@ resolve_identityref(struct lys_ident *base, const char *name, const char *ns)
 }
 
 /**
- * @brief Resolve unres uses. Logs directly.
+ * @brief Resolve unresolved uses. Logs directly.
  *
- * @param[in] uses Uses in question.
+ * @param[in] uses Uses to use.
  * @param[in] unres Specific unres item.
  * @param[in] line Line in the input file.
  *
@@ -3129,7 +3129,7 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
 /**
  * @brief Resolve list keys. Logs directly.
  *
- * @param[in] list List in question.
+ * @param[in] list List to use.
  * @param[in] keys_str Keys node value.
  * @param[in] line Line in the input file.
  *
@@ -3192,14 +3192,14 @@ resolve_unres_schema_must(struct lys_restr *UNUSED(must), struct lys_node *UNUSE
 }
 
 /**
- * @brief Resolve a single unres item. Logs indirectly.
+ * @brief Resolve a single unres schema item. Logs indirectly.
  *
  * @param[in] mod Main module.
  * @param[in] item Item to resolve. Type determined by \p type.
  * @param[in] type Type of the unresolved item.
  * @param[in] str_snode String, a schema node, or NULL.
- * @param[in] unres Unres structure in question.
- * @param[in] line Line in the input file. -1 turns logging off, 0 skips line print.
+ * @param[in] unres Unres schema structure to use.
+ * @param[in] line Line in the input file. UINT_MAX turns logging off, 0 skips line print.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
@@ -3371,10 +3371,10 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node, u
 }
 
 /**
- * @brief Resolve every unres item in the structure. Logs directly.
+ * @brief Resolve every unres schema item in the structure. Logs directly.
  *
  * @param[in] mod Main module.
- * @param[in] unres Unres structure in question.
+ * @param[in] unres Unres schema structure to use.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
@@ -3439,10 +3439,10 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
 }
 
 /**
- * @brief Try to resolve an unres item with a string argument. Logs indirectly.
+ * @brief Try to resolve an unres schema item with a string argument. Logs indirectly.
  *
  * @param[in] mod Main module.
- * @param[in] unres Unres structure to use.
+ * @param[in] unres Unres schema structure to use.
  * @param[in] item Item to resolve. Type determined by \p type.
  * @param[in] type Type of the unresolved item.
  * @param[in] str String argument.
@@ -3459,10 +3459,10 @@ unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *i
 }
 
 /**
- * @brief Try to resolve an unres item with a schema node argument. Logs indirectly.
+ * @brief Try to resolve an unres schema item with a schema node argument. Logs indirectly.
  *
  * @param[in] mod Main module.
- * @param[in] unres Unres structure to use.
+ * @param[in] unres Unres schema structure to use.
  * @param[in] item Item to resolve. Type determined by \p type.
  * @param[in] type Type of the unresolved item.
  * @param[in] snode Schema node argument.
@@ -3501,10 +3501,10 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
 }
 
 /**
- * @brief Duplicate an unres item. Logs indirectly.
+ * @brief Duplicate an unres schema item. Logs indirectly.
  *
  * @param[in] mod Main module.
- * @param[in] unres Unres structure to use.
+ * @param[in] unres Unres schema structure to use.
  * @param[in] item Old item to be resolved.
  * @param[in] type Type of the old unresolved item.
  * @param[in] new_item New item to use in the duplicate.
