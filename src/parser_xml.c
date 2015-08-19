@@ -995,18 +995,51 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                  diter;
                  diter = (struct lyd_node *)((struct lyd_node_leaflist *)diter)->lprev) {
             if (!lyd_compare(diter, result, 0)) {
-                LOGVAL(LYE_DUPLEAFLIST, LOGLINE(xml), schema->name, ((struct lyd_node_leaflist *)result)->value_str);
-                goto error;
+                if (options & LYD_OPT_FILTER) {
+                    /* optimize filter and do not duplicate the same selection node,
+                     * so this is not actually error, but the data are silently removed */
+                    ((struct lyd_node_leaflist *)result)->lprev->lnext = NULL;
+                    result->next = NULL;
+                    result->parent = NULL;
+                    result->prev = result;
+                    lyd_free(result);
+                    result = NULL;
+                    break;
+                } else {
+                    LOGVAL(LYE_DUPLEAFLIST, LOGLINE(xml), schema->name, ((struct lyd_node_leaflist *)result)->value_str);
+                    goto error;
+                }
             }
         }
     } else if (schema->nodetype == LYS_LIST) {
-        /* check uniqueness of the list instances (compare keys and unique combinations) */
+        /* check uniqueness of the list instances */
         for (diter = (struct lyd_node *)((struct lyd_node_list *)result)->lprev;
                  diter;
                  diter = (struct lyd_node *)((struct lyd_node_list *)diter)->lprev) {
-            if (!lyd_compare(diter, result, 1)) {
-                LOGVAL(LYE_DUPLIST, LOGLINE(xml), schema->name);
-                goto error;
+            if (options & LYD_OPT_FILTER) {
+                /* compare content match nodes */
+                if (!lyd_filter_compare(diter, result)) {
+                    /* merge both nodes */
+                    /* add selection and containment nodes from result into the diter,
+                     * but only in case the diter already contains some selection nodes,
+                     * otherwise it already will return all the data */
+                    lyd_filter_merge(diter, result);
+
+                    /* not the error, just return no data */
+                    ((struct lyd_node_list *)result)->lprev->lnext = NULL;
+                    result->next = NULL;
+                    result->parent = NULL;
+                    result->prev = result;
+                    lyd_free(result);
+                    result = NULL;
+                    break;
+                }
+            } else {
+                /* compare keys and unique combinations */
+                if (!lyd_compare(diter, result, 1)) {
+                    LOGVAL(LYE_DUPLIST, LOGLINE(xml), schema->name);
+                    goto error;
+                }
             }
         }
     }
