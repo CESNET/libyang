@@ -59,13 +59,19 @@ check:
     if (node->nodetype == LYS_AUGMENT) {
         /* go to parent actually means go to the target node */
         node = ((struct lys_node_augment *)node)->target;
-        goto check;
     } else if (node->parent) {
         node = node->parent;
-        goto check;
+    } else {
+        return NULL;
     }
 
-    return NULL;
+    if (recursive == 2) {
+        /* continue only if the node cannot have a data instance */
+        if (node->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST)) {
+            return NULL;
+        }
+    }
+    goto check;
 }
 
 static struct lys_node *
@@ -226,6 +232,11 @@ ly_check_mandatory(struct lyd_node *data)
 
 repeat:
     while (siter) {
+        if (lys_is_disabled(siter, 2)) {
+            siter = siter->next;
+            continue;
+        }
+
         switch (siter->nodetype) {
         case LYS_CONTAINER:
         case LYS_LEAF:
@@ -256,7 +267,12 @@ repeat:
             found = 0;
             parent2 = NULL;
 repeat_choice:
-                while (siter) {
+            while (siter) {
+                if (lys_is_disabled(siter, 2)) {
+                    siter = siter->next;
+                    continue;
+                }
+
                 switch (siter->nodetype) {
                 case LYS_CONTAINER:
                 case LYS_LEAF:
@@ -314,7 +330,7 @@ repeat_choice:
                 goto repeat_choice;
             }
 
-            if (!found && saux->flags & LYS_MAND_TRUE) {
+            if (!found && (saux->flags & LYS_MAND_TRUE)) {
                 return saux;
             }
 

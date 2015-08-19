@@ -1237,7 +1237,9 @@ int lys_features_state(struct lys_module *module, const char *feature);
  * affecting the node.
  *
  * @param[in] node Schema node to check.
- * @param[in] recursive 1 to check all ascendant nodes
+ * @param[in] recursive - 0 to check if-feature only in the \p node schema node,
+ * - 1 to check if-feature in all ascendant schema nodes
+ * - 2 to check if-feature in all ascendant schema nodes that cannot have an instance in a data tree
  * @return - NULL if enabled,
  * - pointer to the disabling feature if disabled.
  */
