@@ -2214,8 +2214,10 @@ resolve_path_arg_data(struct lyd_node *dnode, const char *path, uint32_t line, s
         parsed += i;
 
         if (!ret->count) {
-            ret->count = 1;
-            ret->dnode = calloc(1, sizeof *ret->dnode);
+            if (parent_times != -1) {
+                ret->count = 1;
+                ret->dnode = calloc(1, sizeof *ret->dnode);
+            }
             for (i = 0; i < parent_times; ++i) {
                 /* relative path */
                 if (!ret->count) {
@@ -2239,7 +2241,10 @@ resolve_path_arg_data(struct lyd_node *dnode, const char *path, uint32_t line, s
             /* absolute path */
             if (parent_times == -1) {
                 for (data = dnode; data->parent; data = data->parent);
-                for (; data->prev->next; data = data->prev);
+                /* TODO (may change!) we're still parsing it and the pointer is not correct yet */
+                if (data->prev) {
+                    for (; data->prev->next; data = data->prev);
+                }
             }
         }
 
@@ -3557,4 +3562,152 @@ unres_schema_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type)
     }
 
     return ret;
+}
+
+/* logs directly */
+static void
+print_unres_data_item_fail(struct lyd_node *dnode, uint32_t line)
+{
+    struct lys_node_leaf *sleaf;
+    char line_str[18];
+
+    if (line) {
+        sprintf(line_str, " (line %u)", line);
+    } else {
+        line_str[0] = '\0';
+    }
+
+    sleaf = (struct lys_node_leaf *)dnode->schema;
+    assert(sleaf->nodetype == LYS_LEAF);
+
+    if (sleaf->type.base == LY_TYPE_LEAFREF) {
+        LOGVRB("Leafref \"%s\" could not be resolved, it will be attempted later%s.",
+               sleaf->type.info.lref.path, line_str);
+    } else if (sleaf->type.base == LY_TYPE_INST) {
+        LOGVRB("Instance-identifier \"%s\" could not be resolved, it will be attempted later%s.",
+               ((struct lyd_node_leaf *)dnode)->value_str, line_str);
+    }
+}
+
+/**
+ * @brief Resolve a single unres data item. Logs directly.
+ *
+ * @param[in] dnode Data node to resolve.
+ * @param[in] line Line in the input file. UINT_MAX turns logging off, 0 skips line print.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
+ */
+static int
+resolve_unres_data_item(struct lyd_node *dnode, uint32_t line)
+{
+    uint32_t i;
+    struct lyd_node_leaf *dleaf;
+    struct lys_node_leaf *sleaf;
+    struct unres_data matches;
+
+    memset(&matches, 0, sizeof matches);
+    dleaf = (struct lyd_node_leaf *)dnode;
+    sleaf = (struct lys_node_leaf *)dleaf->schema;
+
+    /* leafref */
+    if (sleaf->type.base == LY_TYPE_LEAFREF) {
+        if (resolve_path_arg_data((struct lyd_node *)dleaf, sleaf->type.info.lref.path, line, &matches)) {
+            return -1;
+        }
+
+        /* check that value matches */
+        for (i = 0; i < matches.count; ++i) {
+            if (dleaf->value_str == ((struct lyd_node_leaf *)matches.dnode[i])->value_str) {
+                dleaf->value.leafref = matches.dnode[i];
+                break;
+            }
+        }
+
+        free(matches.dnode);
+        memset(&matches, 0, sizeof matches);
+
+        if (!dleaf->value.leafref) {
+            /* reference not found */
+            LOGVAL(LYE_SPEC, line, "Leafref \"%s\" value \"%s\" did not match any node value.",
+                   sleaf->type.info.lref.path, dleaf->value_str);
+            return EXIT_FAILURE;
+        }
+
+    /* instance-identifier */
+    } else if (sleaf->type.base == LY_TYPE_INST) {
+        ly_errno = 0;
+        if (!resolve_instid_json((struct lyd_node *)dleaf, dleaf->value_str, line)) {
+            if (ly_errno) {
+                return -1;
+            } else if (sleaf->type.info.inst.req > -1) {
+                LOGVAL(LYE_SPEC, line, "There is no instance of \"%s\".", dleaf->value_str);
+                return EXIT_FAILURE;
+            } else {
+                LOGVRB("There is no instance of \"%s\", but is not required.", dleaf->value_str);
+            }
+        }
+    } else {
+        LOGINT;
+        return -1;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/**
+ * @brief Try to resolve an unres data item. Logs indirectly.
+ *
+ * @param[in] unres Unres data structure to use.
+ * @param[in] dnode Data node to use.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success or storing the item in unres, -1 on error.
+ */
+int
+unres_data_add(struct unres_data *unres, struct lyd_node *dnode, uint32_t line)
+{
+    int rc;
+
+    assert(unres && dnode);
+
+    rc = resolve_unres_data_item(dnode, UINT_MAX);
+    if (rc != EXIT_FAILURE) {
+        return rc;
+    }
+
+    print_unres_data_item_fail(dnode, line);
+
+    ++unres->count;
+    unres->dnode = realloc(unres->dnode, unres->count*sizeof *unres->dnode);
+    unres->dnode[unres->count-1] = dnode;
+#ifndef NDEBUG
+    unres->line = realloc(unres->line, unres->count*sizeof *unres->line);
+    unres->line[unres->count-1] = line;
+#endif
+
+    return EXIT_SUCCESS;
+}
+
+/**
+ * @brief Resolve every unres data item in the structure. Logs directly.
+ *
+ * @param[in] unres Unres data structure to use.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
+int
+resolve_unres_data(struct unres_data *unres)
+{
+    uint32_t i;
+    int rc;
+
+    for (i = 0; i < unres->count; ++i) {
+        rc = resolve_unres_data_item(unres->dnode[i], LOGLINE_IDX(unres, i));
+        if (rc) {
+            LOGVAL(LYE_SPEC, 0, "There are unresolved data items left.");
+            return -1;
+        }
+    }
+
+    return EXIT_SUCCESS;
 }

@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <regex.h>
 
@@ -616,13 +617,9 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
              * is not complete, so many instanceids cannot be resolved
              */
             /* remember the leaf for later checking */
-            ++unres->count;
-            unres->dnode = realloc(unres->dnode, unres->count * sizeof *unres->dnode);
-            unres->dnode[unres->count-1] = node;
-#ifndef NDEBUG
-            unres->line = realloc(unres->line, unres->count * sizeof *unres->line);
-            unres->line[unres->count-1] = LOGLINE(xml);
-#endif
+            if (unres_data_add(unres, node, (log ? LOGLINE(xml) : UINT_MAX))) {
+                return EXIT_FAILURE;
+            }
         }
         break;
 
@@ -644,13 +641,9 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
              * is not complete, so many leafrefs cannot be resolved
              */
             /* remember the leaf for later checking */
-            ++unres->count;
-            unres->dnode = realloc(unres->dnode, unres->count * sizeof *unres->dnode);
-            unres->dnode[unres->count-1] = node;
-#ifndef NDEBUG
-            unres->line = realloc(unres->line, unres->count * sizeof *unres->line);
-            unres->line[unres->count-1] = LOGLINE(xml);
-#endif
+            if (unres_data_add(unres, node, (log ? LOGLINE(xml) : UINT_MAX))) {
+                return EXIT_FAILURE;
+            }
         }
         break;
 
@@ -944,74 +937,6 @@ error:
     return NULL;
 }
 
-static int
-check_unres_data(struct unres_data *unres)
-{
-    uint32_t i, j;
-    struct lyd_node_leaf *dleaf;
-    struct lys_node_leaf *sleaf;
-    struct unres_data matches;
-
-    memset(&matches, 0, sizeof matches);
-
-    for (i = 0; i < unres->count; ++i) {
-        dleaf = (struct lyd_node_leaf *)unres->dnode[i];
-        sleaf = (struct lys_node_leaf *)dleaf->schema;
-
-        /* resolve path and create a set of possible leafrefs (we need their values) */
-        if (sleaf->type.base == LY_TYPE_LEAFREF) {
-            if (resolve_path_arg_data((struct lyd_node *)dleaf, sleaf->type.info.lref.path, LOGLINE_IDX(unres, i), &matches)) {
-                LOGERR(LY_EVALID, "Leafref \"%s\" could not be resolved.", sleaf->type.info.lref.path);
-                goto error;
-            }
-
-            /* check that value matches */
-            for (j = 0; j < matches.count; ++j) {
-                if (dleaf->value_str == ((struct lyd_node_leaf *)matches.dnode[j])->value_str) {
-                    dleaf->value.leafref = matches.dnode[j];
-                    break;
-                }
-            }
-
-            free(matches.dnode);
-#ifndef NDEBUG
-            free(matches.line);
-#endif
-            memset(&matches, 0, sizeof matches);
-
-            if (!dleaf->value.leafref) {
-                /* reference not found */
-                LOGERR(LY_EVALID, "Leafref \"%s\" value \"%s\" did not match any node value.", sleaf->type.info.lref.path, dleaf->value_str);
-                goto error;
-            }
-
-        /* instance-identifier */
-        } else if (sleaf->type.base == LY_TYPE_INST) {
-            ly_errno = 0;
-            if (!resolve_instid_json((struct lyd_node *)dleaf, dleaf->value_str, LOGLINE_IDX(unres, i))) {
-                if (ly_errno) {
-                    LOGERR(LY_EVALID, "Instance-identifier \"%s\" could not be resolved.", dleaf->value_str);
-                    goto error;
-                } else if (sleaf->type.info.inst.req > -1) {
-                    LOGERR(LY_EVALID, "Instance for the \"%s\" does not exist.", dleaf->value_str);
-                    goto error;
-                } else {
-                    LOGVRB("Instance for the \"%s\" does not exist.", dleaf->value_str);
-                }
-            }
-        } else {
-            LOGINT;
-            goto error;
-        }
-    }
-
-    return EXIT_SUCCESS;
-
-error:
-
-    return EXIT_FAILURE;
-}
-
 struct lyd_node *
 xml_read_data(struct ly_ctx *ctx, const char *data, int options)
 {
@@ -1029,7 +954,7 @@ xml_read_data(struct ly_ctx *ctx, const char *data, int options)
     ly_errno = 0;
     result = xml_parse_data(ctx, xml->child, NULL, NULL, options, unres);
     /* check leafrefs and/or instids if any */
-    if (check_unres_data(unres)) {
+    if (resolve_unres_data(unres)) {
         /* leafref & instid checking failed */
         LY_TREE_FOR_SAFE(result, next, iter) {
             lyd_free(iter);
