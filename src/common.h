@@ -121,9 +121,24 @@ void ly_vlog(enum LY_ERR code, unsigned int line, ...);
 
 #ifdef NDEBUG
 #    define LOGLINE(node) 0
+#    define LOGLINE_IDX(node, idx) 0
 #else
 #    define LOGLINE(node) (node)->line
+#    define LOGLINE_IDX(node, idx) (node)->line[idx]
 #endif
+
+/**
+ * @brief Basic functionality like strpbrk(3). However, it searches string \p s
+ *        backwards up to most \p s_len characters.
+ *
+ * @param[in] s String to search backwards.
+ * @param[in] accept String of characters that are searched for.
+ * @param[in] s_len Backward length of \p s.
+ *
+ * @return Pointer to the first backward occurence of a character from
+ *         \p accept or \p s - \p s_len if not found.
+ */
+const char *strpbrk_backwards(const char *s, const char *accept, unsigned int s_len);
 
 char *strnchr(const char *s, int c, unsigned int len);
 

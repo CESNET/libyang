@@ -48,6 +48,8 @@ struct len_ran_intv {
     struct len_ran_intv *next;
 };
 
+int parse_identifier(const char *id);
+
 int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int superior_restr,
                              struct len_ran_intv **local_intv);
 
@@ -62,9 +64,9 @@ int resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const cha
 int resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module *mod,
                           LYS_NODE node_type, struct lys_node **ret);
 
-int resolve_path_arg_data(struct unres_data *unres, const char *path, struct unres_data **ret);
+int resolve_path_arg_data(struct lyd_node *dnode, const char *path, uint32_t line, struct unres_data *ret);
 
-struct lyd_node *resolve_instid(struct lyd_node *data, const char *path, int line);
+struct lyd_node *resolve_instid_json(struct lyd_node *data, const char *path, int line);
 
 int resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct lys_module *module);
 

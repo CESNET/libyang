@@ -751,7 +751,7 @@ lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
     }
 
     if (mod && unres->count && resolve_unres(mod, unres)) {
-        lys_free(mod);
+        lys_free(mod, 0);
         mod = NULL;
     }
     free(unres->item);
@@ -787,7 +787,7 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
     }
 
    if (submod && unres->count && resolve_unres((struct lys_module *)submod, unres)) {
-        lys_submodule_free(submod);
+        lys_submodule_free(submod, 0);
         submod = NULL;
     }
     free(unres->item);
@@ -1552,8 +1552,9 @@ lys_node_free(struct lys_node *node)
     free(node);
 }
 
+/* free_int_mods - flag whether to free the internal modules as well */
 static void
-module_free_common(struct lys_module *module)
+module_free_common(struct lys_module *module, int free_int_mods)
 {
     struct ly_ctx *ctx;
     unsigned int i;
@@ -1565,7 +1566,7 @@ module_free_common(struct lys_module *module)
     /* as first step, free the imported modules */
     for (i = 0; i < module->imp_size; i++) {
         /* do not free internal modules */
-        for (j = 0; j < int_mods.count; ++j) {
+        for (j = 0; !free_int_mods && (j < int_mods.count); ++j) {
             if (!strcmp(int_mods.modules[j].name, module->imp[i].module->name)
                     && module->imp[i].module->rev
                     && !strcmp(int_mods.modules[j].revision, module->imp[i].module->rev[0].date)) {
@@ -1583,7 +1584,7 @@ module_free_common(struct lys_module *module)
         l = ctx->models.used;
         for (j = 0; j < l; j++) {
             if (ctx->models.list[j] == module->imp[i].module) {
-                lys_free(module->imp[i].module);
+                lys_free(module->imp[i].module, free_int_mods);
                 break;
             }
         }
@@ -1627,7 +1628,7 @@ module_free_common(struct lys_module *module)
 
     /* include */
     for (i = 0; i < module->inc_size; i++) {
-        lys_submodule_free(module->inc[i].submodule);
+        lys_submodule_free(module->inc[i].submodule, free_int_mods);
     }
     free(module->inc);
 
@@ -1653,7 +1654,7 @@ module_free_common(struct lys_module *module)
 }
 
 void
-lys_submodule_free(struct lys_submodule *submodule)
+lys_submodule_free(struct lys_submodule *submodule, int free_int_mods)
 {
     if (!submodule) {
         return;
@@ -1664,7 +1665,7 @@ lys_submodule_free(struct lys_submodule *submodule)
     submodule->inc = NULL;
 
     /* common part with struct ly_module */
-    module_free_common((struct lys_module *)submodule);
+    module_free_common((struct lys_module *)submodule, free_int_mods);
 
     /* no specific items to free */
 
@@ -2136,8 +2137,8 @@ error:
     return NULL;
 }
 
-API void
-lys_free(struct lys_module *module)
+void
+lys_free(struct lys_module *module, int free_int_mods)
 {
     struct ly_ctx *ctx;
     int i;
@@ -2162,7 +2163,7 @@ lys_free(struct lys_module *module)
     }
 
     /* common part with struct ly_submodule */
-    module_free_common(module);
+    module_free_common(module, free_int_mods);
 
     /* specific items to free */
     lydict_remove(module->ctx, module->ns);

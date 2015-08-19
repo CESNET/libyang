@@ -135,7 +135,7 @@ ly_ctx_destroy(struct ly_ctx *ctx)
 
     /* models list */
     while (ctx->models.used) {
-        lys_free(ctx->models.list[0]);
+        lys_free(ctx->models.list[0], 1);
     }
     free(ctx->models.search_path);
     free(ctx->models.list);
