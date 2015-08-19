@@ -41,6 +41,11 @@ struct internal_modules {
 };
 
 /**
+ * @brief YANG namespace
+ */
+#define LY_NSYANG "urn:ietf:params:xml:ns:yang:1"
+
+/**
  * @brief Internal list of built-in types
  */
 struct ly_types {
@@ -223,12 +228,44 @@ void lys_free(struct lys_module *module, int free_int_mods);
 /**
  * @brief Search for a mandatory element in the given schema tree subtree
  *
- * @param[in] start Root node for the searching subtree. Expecting that in a data tree
- * instance, the start is the first node that does not have its instance (the start's
- * parent has its instance in the data tree).
- * @return The first mandatory element definition, NULL if there is no mandatory element
- * in the subtree. TODO
+ * Besides the mandatory statements, also min-elements and max-elements constraints in
+ * lists and leaf-list are checked.
+ *
+ * @param[in] start Root node for the searching subtree. Expecting that the root elementa
+ * exists and has already all child instances resolved. Note that the root itself is not
+ * checked since it must be present.
+ * @return The first mandatory element definition not present in the data, NULL if
+ * there is no such element in the root's subtree.
  */
 struct lys_node *ly_check_mandatory(struct lyd_node *start);
+
+/**
+ * @brief Compare 2 data nodes if they are the same from the YANG point of view.
+ *
+ * - containers are the same if they are defined by the same schema tree node
+ * - anyxmls are the same if they are defined by the same schema tree node
+ * - leafs are the same if they are defined by the same schema tree node
+ * - leaf-lists are the same if they are defined by the same schema tree node and they have the same value
+ * - lists are the same if they are defined by the same schema tree node and all their keys have identical values
+ *
+ * @param[in] first The first data node to compare
+ * @param[in] second The second node to compare
+ * @param[in] unique If the given nodes are lists, value 1 here forces to check their leafs defined as unique.
+ * If they are the same, the return value is 0 despite the values of the key. For all other node type, this
+ * parameter is ignored.
+ * @return 0 if both the nodes are the same from the YANG point of view.
+ */
+int lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique);
+
+/**
+ * @brief Compare filter nodes
+ *
+ * @param[in] first The first data node to compare
+ * @param[in] second The second node to compare
+ * @return 0 if both filter nodes selects the same data.
+ */
+int lyd_filter_compare(struct lyd_node *first, struct lyd_node *second);
+
+int lyd_filter_merge(struct lyd_node *to, struct lyd_node *from);
 
 #endif /* LY_TREE_INTERNAL_H_ */

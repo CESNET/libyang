@@ -71,6 +71,8 @@ const char *ly_errs[] = {
 /* LYE_MISSARG */      "Missing argument \"%s\" to keyword \"%s\".",
 /* LYE_TOOMANY */      "Too many instances of \"%s\" in \"%s\".",
 /* LYE_DUPID */        "Duplicated %s identifier \"%s\".",
+/* LYE_DUPLEAFLIST */  "Instances of \"%s\" leaf-list are not unique (\"%s\").",
+/* LYE_DUPLIST */      "Instances of \"%s\" list are not unique.",
 /* LYE_ENUM_DUPVAL */  "The value \"%d\" of \"%s\" enum has already been assigned to another enum value.",
 /* LYE_ENUM_DUPNAME */ "The enum name \"%s\" has already been assigned to another enum.",
 /* LYE_ENUM_WS */      "The enum name \"%s\" includes invalid leading or trailing whitespaces.",
@@ -91,9 +93,12 @@ const char *ly_errs[] = {
 /* LYE_INELEM_LEN */   "Unknown element \"%.*s\".",
 /* LYE_MISSELEM */     "Missing required element \"%s\" in \"%s\".",
 /* LYE_INVAL */        "Invalid value \"%s\" in \"%s\" element.",
+/* LYE_INATTR */       "Invalid attribute \"%s\" in \"%s\" element.",
+/* LYE_MISSATTR */     "Missing attribute \"%s\" in \"%s\" element.",
 /* LYE_OORVAL */       "Value \"%s\" is out of range or length.",
 /* LYE_INCHAR */       "Unexpected character(s) '%c' (%.15s).",
-/* LYE_INPRED */       "Predicate resolution failed on \"%s\"."
+/* LYE_INPRED */       "Predicate resolution failed on \"%s\".",
+/* LYE_MCASEDATA */    "Data for more than one case branch of \"%s\" choice present."
 };
 
 void

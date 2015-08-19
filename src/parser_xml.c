@@ -770,6 +770,8 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 {
     struct lyd_node *result = NULL, *diter;
     struct lys_node *schema = NULL, *siter;
+    struct lys_node *cs, *ch;
+    struct lyxml_attr *attr;
     int i, havechildren;
 
     if (!xml) {
@@ -805,6 +807,73 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             return NULL;
         } else {
             goto siblings;
+        }
+    }
+
+    /* check if the node instance is enabled by if-feature */
+    if (lys_is_disabled(schema, 2)) {
+        LOGVAL(LYE_INELEM, LOGLINE(xml), schema->name);
+        return NULL;
+    }
+
+    /* check for (non-)presence of status data in edit-config data */
+    if ((options & LYD_OPT_EDIT) && (schema->flags & LYS_CONFIG_R)) {
+        LOGVAL(LYE_INELEM, LOGLINE(xml), schema->name);
+        return NULL;
+    }
+
+    /* check insert attribute and its values */
+    if (options & LYD_OPT_EDIT) {
+        i = 0;
+        for (attr = xml->attr; attr; attr = attr->next) {
+            if (attr->type != LYXML_ATTR_STD || !attr->ns ||
+                    strcmp(attr->name, "insert") || strcmp(attr->ns->value, LY_NSYANG)) {
+                continue;
+            }
+
+            /* insert attribute present */
+            if (!(schema->flags & LYS_USERORDERED)) {
+                /* ... but it is not expected */
+                LOGVAL(LYE_INATTR, LOGLINE(xml), "insert", schema->name);
+                return NULL;
+            }
+
+            if (i) {
+                LOGVAL(LYE_TOOMANY, LOGLINE(xml), "insert attributes", xml->name);
+                return NULL;
+            }
+            if (!strcmp(attr->value, "first") || !strcmp(attr->value, "last")) {
+                i = 1;
+            } else if (!strcmp(attr->value, "before") || !strcmp(attr->value, "after")) {
+                i = 2;
+            } else {
+                LOGVAL(LYE_INARG, LOGLINE(xml), attr->value, attr->name);
+                return NULL;
+            }
+        }
+
+        for (attr = xml->attr; attr; attr = attr->next) {
+            if (attr->type != LYXML_ATTR_STD || !attr->ns ||
+                    strcmp(attr->name, "value") || strcmp(attr->ns->value, LY_NSYANG)) {
+                continue;
+            }
+
+            /* the value attribute is present */
+            if (i < 2) {
+                /* but it shouldn't */
+                LOGVAL(LYE_INATTR, LOGLINE(xml), "value", schema->name);
+                return NULL;
+            }
+            i++;
+        }
+        if (i == 2) {
+            /* missing value attribute for "before" or "after" */
+            LOGVAL(LYE_MISSATTR, LOGLINE(xml), "value", xml->name);
+            return NULL;
+        } else if (i > 3) {
+            /* more than one instance of the value attribute */
+            LOGVAL(LYE_TOOMANY, LOGLINE(xml), "value attributes", xml->name);
+            return NULL;
         }
     }
 
@@ -907,8 +976,90 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     if (havechildren && !(options & (LYD_OPT_FILTER | LYD_OPT_EDIT))) {
         siter = ly_check_mandatory(result);
         if (siter) {
-            LOGVAL(LYE_MISSELEM, LOGLINE(xml), siter->name, siter->parent->name);
+            if (siter->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+                LOGVAL(LYE_SPEC, LOGLINE(xml), "Number of \"%s\" instances in \"%s\" does not follow min/max constraints.",
+                       siter->name, siter->parent->name);
+            } else {
+                LOGVAL(LYE_MISSELEM, LOGLINE(xml), siter->name, siter->parent->name);
+            }
             goto error;
+        }
+    }
+
+    /* uniqueness of (leaf-)list instances */
+    if (schema->nodetype == LYS_LEAFLIST) {
+        /* check uniqueness of the leaf-list instances (compare values) */
+        for (diter = (struct lyd_node *)((struct lyd_node_leaflist *)result)->lprev;
+                 diter;
+                 diter = (struct lyd_node *)((struct lyd_node_leaflist *)diter)->lprev) {
+            if (!lyd_compare(diter, result, 0)) {
+                if (options & LYD_OPT_FILTER) {
+                    /* optimize filter and do not duplicate the same selection node,
+                     * so this is not actually error, but the data are silently removed */
+                    ((struct lyd_node_leaflist *)result)->lprev->lnext = NULL;
+                    result->next = NULL;
+                    result->parent = NULL;
+                    result->prev = result;
+                    lyd_free(result);
+                    result = NULL;
+                    break;
+                } else {
+                    LOGVAL(LYE_DUPLEAFLIST, LOGLINE(xml), schema->name, ((struct lyd_node_leaflist *)result)->value_str);
+                    goto error;
+                }
+            }
+        }
+    } else if (schema->nodetype == LYS_LIST) {
+        /* check uniqueness of the list instances */
+        for (diter = (struct lyd_node *)((struct lyd_node_list *)result)->lprev;
+                 diter;
+                 diter = (struct lyd_node *)((struct lyd_node_list *)diter)->lprev) {
+            if (options & LYD_OPT_FILTER) {
+                /* compare content match nodes */
+                if (!lyd_filter_compare(diter, result)) {
+                    /* merge both nodes */
+                    /* add selection and containment nodes from result into the diter,
+                     * but only in case the diter already contains some selection nodes,
+                     * otherwise it already will return all the data */
+                    lyd_filter_merge(diter, result);
+
+                    /* not the error, just return no data */
+                    ((struct lyd_node_list *)result)->lprev->lnext = NULL;
+                    result->next = NULL;
+                    result->parent = NULL;
+                    result->prev = result;
+                    lyd_free(result);
+                    result = NULL;
+                    break;
+                }
+            } else {
+                /* compare keys and unique combinations */
+                if (!lyd_compare(diter, result, 1)) {
+                    LOGVAL(LYE_DUPLIST, LOGLINE(xml), schema->name);
+                    goto error;
+                }
+            }
+        }
+    } else if (!(options & LYD_OPT_FILTER) && schema->parent && (schema->parent->nodetype & (LYS_CASE | LYS_CHOICE))) {
+        /* check that there are no data from different choice case */
+        if (schema->parent->nodetype == LYS_CHOICE) {
+            cs = NULL;
+            ch = schema->parent;
+        } else { /* schema->parent->nodetype == LYS_CASE */
+            cs = schema->parent;
+            ch = schema->parent->parent;
+        }
+        if (ch->parent && ch->parent->nodetype == LYS_CASE) {
+            /* TODO check schemas with a choice inside a case */
+            LOGWRN("Not checking parent branches of nested choice");
+        }
+        for (diter = result->prev; diter; diter = diter->prev) {
+            if ((diter->schema->parent->nodetype == LYS_CHOICE && diter->schema->parent == ch) ||
+                    (diter->schema->parent->nodetype == LYS_CASE && !cs) ||
+                    (diter->schema->parent->nodetype == LYS_CASE && cs && diter->schema->parent != cs && diter->schema->parent->parent == ch)) {
+                LOGVAL(LYE_MCASEDATA, LOGLINE(xml), ch->name);
+                goto error;
+            }
         }
     }
 
