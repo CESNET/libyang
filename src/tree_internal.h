@@ -26,6 +26,11 @@
 #include "tree.h"
 
 /**
+ * @brief YANG namespace
+ */
+#define LY_NSYANG "urn:ietf:params:xml:ns:yang:1"
+
+/**
  * @brief Internal list of built-in types
  */
 struct ly_types {

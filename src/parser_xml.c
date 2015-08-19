@@ -842,6 +842,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     struct lyd_node *result = NULL, *diter;
     struct lys_node *schema = NULL, *siter;
     struct lys_node *cs, *ch;
+    struct lyxml_attr *attr;
     int i, havechildren;
 
     if (!xml) {
@@ -880,15 +881,71 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         }
     }
 
+    /* check if the node instance is enabled by if-feature */
+    if (lys_is_disabled(schema, 2)) {
+        LOGVAL(LYE_INELEM, LOGLINE(xml), schema->name);
+        return NULL;
+    }
+
     /* check for (non-)presence of status data in edit-config data */
     if ((options & LYD_OPT_EDIT) && (schema->flags & LYS_CONFIG_R)) {
         LOGVAL(LYE_INELEM, LOGLINE(xml), schema->name);
         return NULL;
     }
-    /* check if the node instance is enabled by if-feature */
-    if (lys_is_disabled(schema, 2)) {
-        LOGVAL(LYE_INELEM, LOGLINE(xml), schema->name);
-        return NULL;
+
+    /* check insert attribute and its values */
+    if (options & LYD_OPT_EDIT) {
+        i = 0;
+        for (attr = xml->attr; attr; attr = attr->next) {
+            if (attr->type != LYXML_ATTR_STD || !attr->ns ||
+                    strcmp(attr->name, "insert") || strcmp(attr->ns->value, LY_NSYANG)) {
+                continue;
+            }
+
+            /* insert attribute present */
+            if (!(schema->flags & LYS_USERORDERED)) {
+                /* ... but it is not expected */
+                LOGVAL(LYE_INATTR, LOGLINE(xml), "insert", schema->name);
+                return NULL;
+            }
+
+            if (i) {
+                LOGVAL(LYE_TOOMANY, LOGLINE(xml), "insert attributes", xml->name);
+                return NULL;
+            }
+            if (!strcmp(attr->value, "first") || !strcmp(attr->value, "last")) {
+                i = 1;
+            } else if (!strcmp(attr->value, "before") || !strcmp(attr->value, "after")) {
+                i = 2;
+            } else {
+                LOGVAL(LYE_INARG, LOGLINE(xml), attr->value, attr->name);
+                return NULL;
+            }
+        }
+
+        for (attr = xml->attr; attr; attr = attr->next) {
+            if (attr->type != LYXML_ATTR_STD || !attr->ns ||
+                    strcmp(attr->name, "value") || strcmp(attr->ns->value, LY_NSYANG)) {
+                continue;
+            }
+
+            /* the value attribute is present */
+            if (i < 2) {
+                /* but it shouldn't */
+                LOGVAL(LYE_INATTR, LOGLINE(xml), "value", schema->name);
+                return NULL;
+            }
+            i++;
+        }
+        if (i == 2) {
+            /* missing value attribute for "before" or "after" */
+            LOGVAL(LYE_MISSATTR, LOGLINE(xml), "value", xml->name);
+            return NULL;
+        } else if (i > 3) {
+            /* more than one instance of the value attribute */
+            LOGVAL(LYE_TOOMANY, LOGLINE(xml), "value attributes", xml->name);
+            return NULL;
+        }
     }
 
     switch (schema->nodetype) {
