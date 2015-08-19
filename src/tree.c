@@ -1166,8 +1166,6 @@ lys_when_free(struct ly_ctx *ctx, struct lys_when *w)
 static void
 lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment aug)
 {
-    struct lys_node *child, *sub;
-
     lydict_remove(ctx, aug.target_name);
     lydict_remove(ctx, aug.dsc);
     lydict_remove(ctx, aug.ref);
@@ -1176,9 +1174,9 @@ lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment aug)
 
     lys_when_free(ctx, aug.when);
 
-    LY_TREE_FOR_SAFE(aug.child, child, sub) {
-        lys_node_free(sub);
-    }
+    /* Do not free the children, they were appended somewhere and their
+     * new parent will take care of them.
+     */
 }
 
 static struct lys_node_augment *
