@@ -2484,3 +2484,45 @@ lyd_is_last(struct lyd_node *node)
     }
     return 1;
 }
+
+API struct lyd_set *
+lyd_set_new(void)
+{
+    return calloc(1, sizeof(struct lyd_set));
+}
+
+API void
+lyd_set_free(struct lyd_set *set)
+{
+    if (!set) {
+        return;
+    }
+
+    free(set->set);
+    free(set);
+}
+
+API int
+lyd_set_add(struct lyd_set *set, struct lyd_node *node)
+{
+    struct lyd_node **new;
+
+    if (!set) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    if (set->size == set->number) {
+        new = realloc(set->set, (set->size + 8) * sizeof *(set->set));
+        if (!new) {
+            LOGMEM;
+            return EXIT_FAILURE;
+        }
+        set->size += 8;
+        set->set = new;
+    }
+
+    set->set[set->number++] = node;
+
+    return EXIT_SUCCESS;
+}
