@@ -50,7 +50,7 @@ cmd_add_help(void)
 void
 cmd_print_help(void)
 {
-    printf("print [-f (yang | tree | info)] [-t <info-target-node>] [-o <output-file>] <model-name>(@<revision>)\n\n");
+    printf("print [-f (yang | tree | info)] [-t <info-target-node>] [-o <output-file>] <model-name>[@<revision>]\n\n");
     printf("\tinfo-target-node: <absolute-schema-node> | typedef/<typedef-name> |\n");
     printf("\t                  | identity/<identity-name> | feature/<feature-name> |\n");
     printf("\t                  | grouping/<grouping-name>(<absolute-schema-nodeid>) |\n");
@@ -68,19 +68,19 @@ cmd_parse_help(const char *name)
 void
 cmd_data_help(void)
 {
-    cmd_parse_help("data");
+    cmd_parse_help("data\n");
 }
 
 void
 cmd_config_help(void)
 {
-    cmd_parse_help("config");
+    cmd_parse_help("config\n");
 }
 
 void
 cmd_filter_help(void)
 {
-    cmd_parse_help("filter");
+    cmd_parse_help("filter\n");
 }
 
 void
@@ -92,7 +92,7 @@ cmd_list_help(void)
 void
 cmd_feature_help(void)
 {
-    printf("feature -(-p)rint | (-(-e)nable | -(-d)isable (* | <feature-name>)) <model-name>(@<revision>)\n");
+    printf("feature [ -(-e)nable | -(-d)isable (* | <feature-name>[,<feature-name> ...]) ] <model-name>[@<revision>]\n");
 }
 
 void
@@ -547,15 +547,14 @@ cmd_list(const char *UNUSED(arg))
 int
 cmd_feature(const char *arg)
 {
-    int c, i, argc, option_index, ret = 1, task = -1;
+    int c, i, argc, option_index, ret = 1, task = 0;
     unsigned int max_len;
-    char **argv = NULL, *ptr, *model_name, *revision;
-    const char *feat_name = NULL, **names;
+    char **argv = NULL, *ptr, *model_name, *revision, *feat_names = NULL;
+    const char **names;
     uint8_t *states;
     struct lys_module *model, *parent_model;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
-        {"print", no_argument, 0, 'p'},
         {"enable", required_argument, 0, 'e'},
         {"disable", required_argument, 0, 'd'},
         {NULL, 0, 0, 0}
@@ -574,7 +573,7 @@ cmd_feature(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "hpe:d:", long_options, &option_index);
+        c = getopt_long(argc, argv, "he:d:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -584,28 +583,21 @@ cmd_feature(const char *arg)
             cmd_feature_help();
             ret = 0;
             goto cleanup;
-        case 'p':
-            if (task != -1) {
-                fprintf(stderr, "Only one of print, enable, or disable can be specified.\n");
-                goto cleanup;
-            }
-            task = 0;
-            break;
         case 'e':
-            if (task != -1) {
-                fprintf(stderr, "Only one of print, enable, or disable can be specified.\n");
+            if (task) {
+                fprintf(stderr, "Only one of enable or disable can be specified.\n");
                 goto cleanup;
             }
             task = 1;
-            feat_name = optarg;
+            feat_names = optarg;
             break;
         case 'd':
-            if (task != -1) {
-                fprintf(stderr, "Only one of print, enable, or disable can be specified.\n");
+            if (task) {
+                fprintf(stderr, "Only one of enable, or disable can be specified.\n");
                 goto cleanup;
             }
             task = 2;
-            feat_name = optarg;
+            feat_names = optarg;
             break;
         case '?':
             fprintf(stderr, "Unknown option \"%d\".\n", (char)c);
@@ -647,12 +639,7 @@ cmd_feature(const char *arg)
         goto cleanup;
     }
 
-    if (task == -1) {
-        fprintf(stderr, "One of print, enable, or disable must be specified.\n");
-        goto cleanup;
-    }
-
-    if (task == 0) {
+    if (!task) {
         printf("%s features:\n", model->name);
 
         names = lys_features_list(model, &states);
@@ -672,15 +659,15 @@ cmd_feature(const char *arg)
         if (!i) {
             printf("\t(none)\n");
         }
-    } else if (task == 1) {
-        if (lys_features_enable(model, feat_name)) {
-            fprintf(stderr, "Feature \"%s\" not found.\n", feat_name);
-            ret = 1;
-        }
-    } else if (task == 2) {
-        if (lys_features_disable(model, feat_name)) {
-            fprintf(stderr, "Feature \"%s\" not found.\n", feat_name);
-            ret = 1;
+    } else {
+        feat_names = strtok(feat_names, ",");
+        while (feat_names) {
+            if (((task == 1) && lys_features_enable(model, feat_names))
+                    || ((task == 2) && lys_features_disable(model, feat_names))) {
+                fprintf(stderr, "Feature \"%s\" not found.\n", feat_names);
+                ret = 1;
+            }
+            feat_names = strtok(NULL, ",");
         }
     }
 
