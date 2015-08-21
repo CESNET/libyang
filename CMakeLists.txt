@@ -45,6 +45,7 @@ set(libsrc
 	src/printer.c
 	src/yang_library.c
 	src/printer_yang.c
+	src/printer_xml.c
 	src/printer_tree.c
 	src/printer_info.c
 	src/printer_json.c

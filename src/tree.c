@@ -1616,7 +1616,7 @@ module_free_common(struct lys_module *module, int free_int_mods)
         /* do not free internal modules */
         if (!free_int_mods) {
             for (j = 0; j < int_mods.count; ++j) {
-                if (!strcmp(int_mods.modules[j].name, module->imp[i].module->name)
+                if (module->imp[i].module && !strcmp(int_mods.modules[j].name, module->imp[i].module->name)
                         && module->imp[i].module->rev
                         && !strcmp(int_mods.modules[j].revision, module->imp[i].module->rev[0].date)) {
                     break;
@@ -2515,6 +2515,21 @@ lyd_unlink(struct lyd_node *node)
     return EXIT_SUCCESS;
 }
 
+static void
+lyd_attr_free(struct ly_ctx *ctx, struct lyd_attr *attr)
+{
+    if (!attr) {
+        return;
+    }
+
+    if (attr->next) {
+        lyd_attr_free(ctx, attr->next);
+    }
+    lydict_remove(ctx, attr->name);
+    lydict_remove(ctx, attr->value);
+    free(attr);
+}
+
 API void
 lyd_free(struct lyd_node *node)
 {
@@ -2550,6 +2565,7 @@ lyd_free(struct lyd_node *node)
     }
 
     lyd_unlink(node);
+    lyd_attr_free(node->schema->module->ctx, node->attr);
     free(node);
 }
 

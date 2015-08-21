@@ -3307,8 +3307,8 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
                 !strcmp(sub->name, "anyxml")) {
-            lyxml_unlink_elem(sub);
-            lyxml_add_child(&root, sub);
+            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_add_child(module->ctx, &root, sub);
 
             /* array counters */
         } else if (!strcmp(sub->name, "key")) {
@@ -3332,8 +3332,8 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             list->keys = calloc(list->keys_size, sizeof *list->keys);
         } else if (!strcmp(sub->name, "unique")) {
             c_uniq++;
-            lyxml_unlink_elem(sub);
-            lyxml_add_child(&uniq, sub);
+            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_add_child(module->ctx, &uniq, sub);
         } else if (!strcmp(sub->name, "typedef")) {
             c_tpdf++;
         } else if (!strcmp(sub->name, "must")) {
@@ -3618,8 +3618,8 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
                 !strcmp(sub->name, "anyxml")) {
-            lyxml_unlink_elem(sub);
-            lyxml_add_child(&root, sub);
+            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_add_child(module->ctx, &root, sub);
 
             /* array counters */
         } else if (!strcmp(sub->name, "typedef")) {
@@ -3752,8 +3752,8 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
                 !strcmp(sub->name, "anyxml")) {
-            lyxml_unlink_elem(sub);
-            lyxml_add_child(&root, sub);
+            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_add_child(module->ctx, &root, sub);
 
             /* array counters */
         } else if (!strcmp(sub->name, "typedef")) {
@@ -3869,8 +3869,8 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
                 !strcmp(sub->name, "anyxml")) {
-            lyxml_unlink_elem(sub);
-            lyxml_add_child(&root, sub);
+            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_add_child(module->ctx, &root, sub);
 
             /* array counters */
         } else if (!strcmp(sub->name, "typedef")) {
@@ -3979,8 +3979,8 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
                 !strcmp(sub->name, "anyxml")) {
-            lyxml_unlink_elem(sub);
-            lyxml_add_child(&root, sub);
+            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_add_child(module->ctx, &root, sub);
 
             /* array counters */
         } else if (!strcmp(sub->name, "typedef")) {
@@ -4100,8 +4100,8 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
                 LOGVAL(LYE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
                 goto error;
             }
-            lyxml_unlink_elem(sub);
-            lyxml_add_child(&root, sub);
+            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_add_child(module->ctx, &root, sub);
         } else if (!strcmp(sub->name, "output")) {
             if (rpc->child
                 && (rpc->child->nodetype == LYS_INPUT
@@ -4109,13 +4109,13 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
                 LOGVAL(LYE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
                 goto error;
             }
-            lyxml_unlink_elem(sub);
-            lyxml_add_child(&root, sub);
+            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_add_child(module->ctx, &root, sub);
 
             /* data statements */
         } else if (!strcmp(sub->name, "grouping")) {
-            lyxml_unlink_elem(sub);
-            lyxml_add_child(&root, sub);
+            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_add_child(module->ctx, &root, sub);
 
             /* array counters */
         } else if (!strcmp(sub->name, "typedef")) {
@@ -4426,12 +4426,12 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
                 !strcmp(child->name, "choice") ||
                 !strcmp(child->name, "uses") ||
                 !strcmp(child->name, "anyxml")) {
-            lyxml_unlink_elem(child);
-            lyxml_add_child(&root, child);
+            lyxml_unlink_elem(module->ctx, child, 1);
+            lyxml_add_child(module->ctx, &root, child);
         } else if (!strcmp(child->name, "grouping")) {
             /* keep groupings separated and process them before other data statements */
-            lyxml_unlink_elem(child);
-            lyxml_add_child(&grps, child);
+            lyxml_unlink_elem(module->ctx, child, 1);
+            lyxml_add_child(module->ctx, &grps, child);
 
             /* optional statements */
         } else if (!strcmp(child->name, "description")) {
@@ -4490,11 +4490,11 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
 
             /* rpcs & notifications */
         } else if (!strcmp(child->name, "rpc")) {
-            lyxml_unlink_elem(child);
-            lyxml_add_child(&rpcs, child);
+            lyxml_unlink_elem(module->ctx, child, 1);
+            lyxml_add_child(module->ctx, &rpcs, child);
         } else if (!strcmp(child->name, "notification")) {
-            lyxml_unlink_elem(child);
-            lyxml_add_child(&notifs, child);
+            lyxml_unlink_elem(module->ctx, child, 1);
+            lyxml_add_child(module->ctx, &notifs, child);
 
         } else if (!strcmp(child->name, "extension")) {
             GETVAL(value, child, "name");
