@@ -3101,7 +3101,6 @@ resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const cha
 /**
  * @brief Resolve JSON format identityref. Logs directly.
  *
- * @param[in] module Main module to use for resolution.
  * @param[in] base Base identity.
  * @param[in] ident_name Identityref name.
  * @param[in] line Line from the input file.
@@ -3109,49 +3108,40 @@ resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const cha
  * @return Pointer to the identity resolvent, NULL on error.
  */
 struct lys_ident *
-resolve_identref_json(struct lys_module *module, struct lys_ident *base, const char *ident_name, uint32_t line)
+resolve_identref_json(struct lys_ident *base, const char *ident_name, uint32_t line)
 {
-    const char *prefix, *name;
-    int pref_len, nam_len, rc;
+    const char *mod_name, *name;
+    int mod_name_len, rc;
     struct lys_ident_der *der;
-    struct lys_module *der_mod;
 
     if (!base || !ident_name) {
         return NULL;
     }
 
-    rc = parse_node_identifier(ident_name, &prefix, &pref_len, &name, &nam_len);
+    rc = parse_node_identifier(ident_name, &mod_name, &mod_name_len, &name, NULL);
     if (rc < (signed)strlen(ident_name)) {
         LOGVAL(LYE_INCHAR, line, ident_name[-rc], &ident_name[-rc]);
         return NULL;
     }
 
-    assert(prefix || module);
-
-    if (prefix) {
+    /*if (prefix) {
         module = resolve_prefixed_module(module, prefix, pref_len, 0);
         if (!module) {
             LOGVAL(LYE_SPEC, line, "Module \"%.*s\" could not be found.", pref_len, prefix);
             return NULL;
         }
-    }
+    }*/
 
     /* TODO is this a valid (just silly) case? */
-    der_mod = base->module;
-    if (der_mod->type) {
-        der_mod = ((struct lys_submodule *)der_mod)->belongsto;
-    }
-    if (!strcmp(base->name, name) && (module == der_mod)) {
+    if (!strcmp(base->name, name) && (!mod_name
+            || (!strncmp(base->module->name, mod_name, mod_name_len) && !base->module->name[mod_name_len]))) {
         return base;
     }
 
     for (der = base->der; der; der = der->next) {
-        der_mod = der->ident->module;
-        if (der_mod->type) {
-            der_mod = ((struct lys_submodule *)der_mod)->belongsto;
-        }
-
-        if (!strcmp(der->ident->name, name) && (module == der_mod)) {
+        if (!strcmp(der->ident->name, name) && (!mod_name
+                || (!strncmp(der->ident->module->name, mod_name, mod_name_len)
+                && !der->ident->module->name[mod_name_len]))) {
             /* we have match */
             return der->ident;
         }

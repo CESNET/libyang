@@ -579,7 +579,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
             return EXIT_FAILURE;
         }
 
-        leaf->value.ident = resolve_identref_json(node->schema->module, node_type->info.ident.ref, leaf->value_str,
+        leaf->value.ident = resolve_identref_json(node_type->info.ident.ref, leaf->value_str,
                                                   log ? LOGLINE(xml) : UINT_MAX);
         if (!leaf->value.ident) {
             return EXIT_FAILURE;
