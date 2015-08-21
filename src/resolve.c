@@ -1732,8 +1732,15 @@ resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *p
                         continue;
                     }
                 } else {
-                    if (cur_mod != ((struct lys_submodule *)node->module)->belongsto) {
-                        continue;
+                    /* both are submodules */
+                    if (cur_mod->type) {
+                        if (cur_mod != node->module) {
+                            continue;
+                        }
+                    } else {
+                        if (cur_mod != ((struct lys_submodule *)node->module)->belongsto) {
+                            continue;
+                        }
                     }
                 }
 
