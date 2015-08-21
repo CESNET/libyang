@@ -52,8 +52,8 @@ struct lyxml_ns {
     LYXML_ATTR_TYPE type;            /**< type of the attribute = LYXML_ATTR_NS */
     struct lyxml_ns *next;           /**< next sibling attribute */
     struct lyxml_elem *parent;       /**< parent node of the attribute */
-    const char *value;               /**< the namespace value */
     const char *prefix;              /**< the namespace prefix if defined, NULL for default namespace */
+    const char *value;               /**< the namespace value */
 };
 
 /**
@@ -69,8 +69,8 @@ struct lyxml_attr {
     LYXML_ATTR_TYPE type;            /**< type of the attribute */
     struct lyxml_attr *next;         /**< next sibling attribute */
     const struct lyxml_ns *ns;       /**< pointer to the namespace of the attribute if any */
-    const char *value;               /**< data stored in the attribute */
     const char *name;                /**< name of the attribute (the LocalPart of the qualified name) */
+    const char *value;               /**< data stored in the attribute */
 };
 
 /**
