@@ -645,13 +645,11 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
     case LY_TYPE_STRING:
         leaf->value.string = leaf->value_str;
 
-        if (node_type->info.str.length
-                && validate_length_range(0, strlen(leaf->value.string), 0, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
+        if (validate_length_range(0, strlen(leaf->value.string), 0, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
             return EXIT_FAILURE;
         }
 
-        if (node_type->info.str.patterns
-                &&  validate_pattern(leaf->value.string, node_type, leaf->value_str, xml, log)) {
+        if (validate_pattern(leaf->value.string, node_type, leaf->value_str, xml, log)) {
             return EXIT_FAILURE;
         }
         break;
