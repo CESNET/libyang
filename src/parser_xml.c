@@ -766,6 +766,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 {
     struct lyd_node *result = NULL, *diter;
     struct lys_node *schema = NULL, *siter;
+    struct lyxml_elem *prev_xml;
     int i, havechildren;
 
     if (!xml) {
@@ -875,8 +876,13 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             }
         }
     } else if (schema->nodetype == LYS_ANYXML) {
+        prev_xml = xml->prev;
         ((struct lyd_node_anyxml *)result)->value = xml;
-        lyxml_unlink_elem(xml);
+        lyxml_unlink_elem(ctx, xml, 1);
+        /* pretend we're processing previous element,
+         * so that next is correct (after unlinking xml)
+         */
+        xml = prev_xml;
     }
 
     /* process children */
