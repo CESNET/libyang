@@ -868,8 +868,10 @@ resolve_prefixed_module(struct lys_module *mod, const char *prefix, uint32_t pre
 
     assert(prefix && pref_len);
 
-    /* module itself (in this case prefix only in JSON format) */
-    if (!xml_format && !strncmp(mod->name, prefix, pref_len) && (mod->name[pref_len] == '\0')) {
+    prefix_name = (xml_format ? mod->prefix : mod->name);
+
+    /* module itself */
+    if (!strncmp(prefix_name, prefix, pref_len) && (prefix_name[pref_len] == '\0')) {
         return mod;
     }
 
