@@ -893,6 +893,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         }
     }
 
+    result->attr = (struct lyd_attr *)xml->attr;
+    xml->attr = NULL;
+
     /* various validation checks */
 
     /* check presence of all keys in case of list */
