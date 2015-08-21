@@ -133,7 +133,7 @@ transform_data_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml, int log)
 /* kind == 0 - unsigned (unum used), 1 - signed (snum used), 2 - floating point (fnum used) */
 static int
 validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnum, struct lys_type *type,
-                      struct lyxml_elem *xml, const char *str_val, int log)
+                      const char *str_val, uint32_t line)
 {
     struct len_ran_intv *intv = NULL, *tmp_intv;
     int ret = EXIT_FAILURE;
@@ -166,16 +166,14 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
         intv = tmp_intv;
     }
 
-    if (ret && log) {
-        /* so that it's used even in RELEASE target */
-        (void)xml;
-        LOGVAL(LYE_OORVAL, LOGLINE(xml), str_val);
+    if (ret) {
+        LOGVAL(LYE_OORVAL, line, str_val);
     }
     return ret;
 }
 
 static int
-validate_pattern(const char *str, struct lys_type *type, struct lyxml_elem *xml, const char *str_val, int log)
+validate_pattern(const char *str, struct lys_type *type, const char *str_val, struct lyxml_elem *xml, int log)
 {
     int i;
     regex_t preq;
@@ -183,7 +181,7 @@ validate_pattern(const char *str, struct lys_type *type, struct lyxml_elem *xml,
 
     assert(type->base == LY_TYPE_STRING);
 
-    if (type->der && validate_pattern(str, &type->der->type, xml, str_val, log)) {
+    if (type->der && validate_pattern(str, &type->der->type, str_val, xml, log)) {
         return EXIT_FAILURE;
     }
 
@@ -385,7 +383,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
         leaf->value.binary = leaf->value_str;
 
         if (node_type->info.binary.length
-                && validate_length_range(0, strlen(leaf->value.binary), 0, 0, node_type, xml, leaf->value_str, log)) {
+                && validate_length_range(0, strlen(leaf->value.binary), 0, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
             return EXIT_FAILURE;
         }
         break;
@@ -517,7 +515,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
         }
 
         if (parse_int(dec, xml, -9223372036854775807L - 1L, 9223372036854775807L, 10, &num, log)
-                || validate_length_range(2, 0, 0, ((long double)num)/(1 << type->info.dec64.dig), node_type, xml, leaf->value_str, log)) {
+                || validate_length_range(2, 0, 0, ((long double)num)/(1 << type->info.dec64.dig), node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
             return EXIT_FAILURE;
         }
         leaf->value.dec64 = num;
@@ -581,11 +579,9 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
             return EXIT_FAILURE;
         }
 
-        leaf->value.ident = resolve_identityref(node_type->info.ident.ref, name, ns->value);
+        leaf->value.ident = resolve_identref_json(node->schema->module, node_type->info.ident.ref, leaf->value_str,
+                                                  log ? LOGLINE(xml) : UINT_MAX);
         if (!leaf->value.ident) {
-            if (log) {
-                LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
-            }
             return EXIT_FAILURE;
         }
         break;
@@ -658,12 +654,12 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
         leaf->value.string = leaf->value_str;
 
         if (node_type->info.str.length
-                && validate_length_range(0, strlen(leaf->value.string), 0, 0, node_type, xml, leaf->value_str, log)) {
+                && validate_length_range(0, strlen(leaf->value.string), 0, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
             return EXIT_FAILURE;
         }
 
         if (node_type->info.str.patterns
-                &&  validate_pattern(leaf->value.string, node_type, xml, leaf->value_str, log)) {
+                &&  validate_pattern(leaf->value.string, node_type, leaf->value_str, xml, log)) {
             return EXIT_FAILURE;
         }
         break;
@@ -689,7 +685,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
 
     case LY_TYPE_INT8:
         if (parse_int(leaf->value_str, xml, -128, 127, 0, &num, log)
-                || validate_length_range(1, 0, num, 0, node_type, xml, leaf->value_str, log)) {
+                || validate_length_range(1, 0, num, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
             return EXIT_FAILURE;
         }
         leaf->value.int8 = num;
@@ -697,7 +693,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
 
     case LY_TYPE_INT16:
         if (parse_int(leaf->value_str, xml, -32768, 32767, 0, &num, log)
-                || validate_length_range(1, 0, num, 0, node_type, xml, leaf->value_str, log)) {
+                || validate_length_range(1, 0, num, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
             return EXIT_FAILURE;
         }
         leaf->value.int16 = num;
@@ -705,7 +701,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
 
     case LY_TYPE_INT32:
         if (parse_int(leaf->value_str, xml, -2147483648, 2147483647, 0, &num, log)
-                || validate_length_range(1, 0, num, 0, node_type, xml, leaf->value_str, log)) {
+                || validate_length_range(1, 0, num, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
             return EXIT_FAILURE;
         }
         leaf->value.int32 = num;
@@ -713,7 +709,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
 
     case LY_TYPE_INT64:
         if (parse_int(leaf->value_str, xml, -9223372036854775807L - 1L, 9223372036854775807L, 0, &num, log)
-                || validate_length_range(1, 0, num, 0, node_type, xml, leaf->value_str, log)) {
+                || validate_length_range(1, 0, num, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
             return EXIT_FAILURE;
         }
         leaf->value.int64 = num;
@@ -721,7 +717,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
 
     case LY_TYPE_UINT8:
         if (parse_uint(leaf->value_str, xml, 255, 0, &unum, log)
-                || validate_length_range(0, unum, 0, 0, node_type, xml, leaf->value_str, log)) {
+                || validate_length_range(0, unum, 0, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
             return EXIT_FAILURE;
         }
         leaf->value.uint8 = unum;
@@ -729,7 +725,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
 
     case LY_TYPE_UINT16:
         if (parse_uint(leaf->value_str, xml, 65535, 0, &unum, log)
-                || validate_length_range(0, unum, 0, 0, node_type, xml, leaf->value_str, log)) {
+                || validate_length_range(0, unum, 0, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
             return EXIT_FAILURE;
         }
         leaf->value.uint16 = unum;
@@ -737,7 +733,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
 
     case LY_TYPE_UINT32:
         if (parse_uint(leaf->value_str, xml, 4294967295, 0, &unum, log)
-                || validate_length_range(0, unum, 0, 0, node_type, xml, leaf->value_str, log)) {
+                || validate_length_range(0, unum, 0, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
             return EXIT_FAILURE;
         }
         leaf->value.uint32 = unum;
@@ -745,7 +741,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
 
     case LY_TYPE_UINT64:
         if (parse_uint(leaf->value_str, xml, 18446744073709551615UL, 0, &unum, log)
-                || validate_length_range(0, unum, 0, 0, node_type, xml, leaf->value_str, log)) {
+                || validate_length_range(0, unum, 0, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
             return EXIT_FAILURE;
         }
         leaf->value.uint64 = unum;
