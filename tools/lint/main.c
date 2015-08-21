@@ -106,6 +106,10 @@ main_noninteractive(int argc, char *argv[])
 
     /* libyang */
     ctx = ly_ctx_new(search_path);
+    if (!ctx) {
+        fprintf(stderr, "Failed to create context.\n");
+        goto cleanup;
+    }
     model = lys_parse(ctx, addr, LYS_IN_YIN);
     if (!model) {
         fprintf(stderr, "Parsing data model failed.\n");
@@ -138,6 +142,10 @@ main(int argc, char **argv)
 
     linenoiseSetCompletionCallback(complete_cmd);
     ctx = ly_ctx_new(search_path);
+    if (!ctx) {
+        fprintf(stderr, "Failed to create context.\n");
+        return 1;
+    }
 
     while (!done) {
         /* get the command from user */

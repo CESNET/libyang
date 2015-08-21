@@ -730,6 +730,10 @@ cmd_clear(const char *UNUSED(arg))
 {
     ly_ctx_destroy(ctx);
     ctx = ly_ctx_new(search_path);
+    if (!ctx) {
+        fprintf(stderr, "Failed to create context.\n");
+        return 1;
+    }
     return 0;
 }
 
