@@ -815,32 +815,27 @@ parse_schema_nodeid(const char *id, const char **prefix, int *pref_len, const ch
  * @param[in] mod The module with the import.
  * @param[in] prefix The prefix to find.
  * @param[in] pref_len The prefix length.
- * @param[in] format Flag to interpret \p prefix as module prefix (true - XML)
- *                   or as module name (false - JSON).
  *
  * @return The matching module on success, NULL on error.
  */
 static struct lys_module *
-resolve_import_in_includes_recursive(struct lys_module *mod, const char *prefix, uint32_t pref_len, int xml_format)
+resolve_import_in_includes_recursive(struct lys_module *mod, const char *prefix, uint32_t pref_len)
 {
     int i, j;
     struct lys_submodule *sub_mod;
     struct lys_module *ret;
-    const char *prefix_name;
 
     for (i = 0; i < mod->inc_size; i++) {
         sub_mod = mod->inc[i].submodule;
         for (j = 0; j < sub_mod->imp_size; j++) {
-            prefix_name = (xml_format ? sub_mod->imp[j].prefix : sub_mod->imp[j].module->name);
-            if (!strncmp(prefix_name, prefix, pref_len) && (prefix_name[pref_len] == '\0')) {
+            if (!strncmp(sub_mod->imp[j].prefix, prefix, pref_len) && !sub_mod->imp[j].prefix[pref_len]) {
                 return sub_mod->imp[j].module;
             }
         }
     }
 
     for (i = 0; i < mod->inc_size; i++) {
-        ret = resolve_import_in_includes_recursive((struct lys_module *)mod->inc[i].submodule, prefix, pref_len,
-                                                   xml_format);
+        ret = resolve_import_in_includes_recursive((struct lys_module *)mod->inc[i].submodule, prefix, pref_len);
         if (ret) {
             return ret;
         }
@@ -855,36 +850,30 @@ resolve_import_in_includes_recursive(struct lys_module *mod, const char *prefix,
  * @param[in] mod The module with the import.
  * @param[in] prefix The prefix to find.
  * @param[in] pref_len The prefix length.
- * @param[in] format Flag to interpret \p prefix as module prefix (true - XML)
- *                   or as module name (false - JSON).
  *
  * @return The matching module on success, NULL on error.
  */
 static struct lys_module *
-resolve_prefixed_module(struct lys_module *mod, const char *prefix, uint32_t pref_len, int xml_format)
+resolve_prefixed_module(struct lys_module *mod, const char *prefix, uint32_t pref_len)
 {
     int i;
-    const char *prefix_name;
 
     assert(prefix && pref_len);
 
-    prefix_name = (xml_format ? mod->prefix : mod->name);
-
     /* module itself */
-    if (!strncmp(prefix_name, prefix, pref_len) && (prefix_name[pref_len] == '\0')) {
+    if (!strncmp(mod->prefix, prefix, pref_len) && (mod->prefix[pref_len] == '\0')) {
         return mod;
     }
 
     /* imported modules */
     for (i = 0; i < mod->imp_size; i++) {
-        prefix_name = (xml_format ? mod->imp[i].prefix : mod->imp[i].module->name);
-        if (!strncmp(prefix_name, prefix, pref_len) && (prefix_name[pref_len] == '\0')) {
+        if (!strncmp(mod->imp[i].module->prefix, prefix, pref_len) && (mod->imp[i].module->prefix[pref_len] == '\0')) {
             return mod->imp[i].module;
         }
     }
 
     /* imports in includes */
-    return resolve_import_in_includes_recursive(mod, prefix, pref_len, xml_format);
+    return resolve_import_in_includes_recursive(mod, prefix, pref_len);
 }
 
 /**
@@ -1350,7 +1339,7 @@ resolve_superior_type(const char *name, const char *prefix, struct lys_module *m
         }
     } else if (prefix) {
         /* get module where to search */
-        module = resolve_prefixed_module(module, prefix, strlen(prefix), 1);
+        module = resolve_prefixed_module(module, prefix, strlen(prefix));
         if (!module) {
             return -1;
         }
@@ -1612,7 +1601,7 @@ resolve_feature(const char *id, struct lys_module *module, uint32_t line, struct
 
     if (prefix) {
         /* search in imported modules */
-        module = resolve_prefixed_module(module, prefix, pref_len, 1);
+        module = resolve_prefixed_module(module, prefix, pref_len);
         if (!module) {
             /* identity refers unknown data model */
             LOGVAL(LYE_INPREF_LEN, line, pref_len, prefix);
@@ -1693,7 +1682,7 @@ resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *p
 
     /* set prefix_mod correctly */
     if (prefix) {
-        prefix_mod = resolve_prefixed_module(mod, prefix, pref_len, 1);
+        prefix_mod = resolve_prefixed_module(mod, prefix, pref_len);
         if (!prefix_mod) {
             return -1;
         }
@@ -1830,7 +1819,7 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
     /* absolute-schema-nodeid */
     if (!is_relative) {
         if (prefix) {
-            start_mod = resolve_prefixed_module(mod, prefix, pref_len, 1);
+            start_mod = resolve_prefixed_module(mod, prefix, pref_len);
             if (!start_mod) {
                 return -1;
             }
@@ -1859,7 +1848,7 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
 
                 /* prefix match check */
                 if (prefix) {
-                    prefix_mod = resolve_prefixed_module(mod, prefix, pref_len, 1);
+                    prefix_mod = resolve_prefixed_module(mod, prefix, pref_len);
                     if (!prefix_mod) {
                         return -1;
                     }
@@ -2072,7 +2061,7 @@ resolve_data_nodeid(const char *prefix, int pref_len, const char *name, int name
 
     if (prefix) {
         /* we have prefix, find appropriate module */
-        mod = resolve_prefixed_module(start->schema->module, prefix, pref_len, 1);
+        mod = resolve_prefixed_module(start->schema->module, prefix, pref_len);
         if (!mod) {
             /* invalid prefix */
             return -1;
@@ -3074,7 +3063,7 @@ resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const cha
 
     if (prefix_len) {
         /* get module where to search */
-        module = resolve_prefixed_module(module, basename, prefix_len, 1);
+        module = resolve_prefixed_module(module, basename, prefix_len);
         if (!module) {
             /* identity refers unknown data model */
             LOGVAL(LYE_INPREF, line, basename);
