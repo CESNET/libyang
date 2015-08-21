@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <regex.h>
 
@@ -38,17 +39,17 @@
 #define LY_NSNC "urn:ietf:params:xml:ns:netconf:base:1.0"
 
 /**
- * @brief Transform instance-identifier from XML data format to
- *        JSON data format (replace prefixes with module names).
+ * @brief Transform data from XML format (prefixes and separate NS definitions) to
+ *        JSON format (prefixes are module names instead).
  *        Logs directly.
  *
  * @param[in] ctx Main context with the dictionary.
- * @param[in] xml Instance-identifier XML element.
+ * @param[in] xml XML data value.
  *
- * @return Transformed instance-identifier or NULL on error.
+ * @return Transformed data or NULL on error.
  */
 static const char *
-transform_instid_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml)
+transform_data_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml, int log)
 {
     const char *in, *id;
     char *out, *col, *prefix;
@@ -71,11 +72,15 @@ transform_instid_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml)
             return lydict_insert_zc(ctx, out);
         }
         id = strpbrk_backwards(col-1, "/ [", (col-in)-1);
-        ++id;
+        if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[')) {
+            ++id;
+        }
         id_len = col-id;
         rc = parse_identifier(id);
         if (rc < id_len) {
-            LOGVAL(LYE_INCHAR, LOGLINE(xml), id[rc], &id[rc]);
+            if (log) {
+                LOGVAL(LYE_INCHAR, LOGLINE(xml), id[rc], &id[rc]);
+            }
             free(out);
             return NULL;
         }
@@ -85,13 +90,17 @@ transform_instid_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml)
         ns = lyxml_get_ns(xml, prefix);
         free(prefix);
         if (!ns) {
-            LOGVAL(LYE_SPEC, LOGLINE(xml), "XML namespace with prefix \"%.*s\" not defined.", id_len, id);
+            if (log) {
+                LOGVAL(LYE_SPEC, LOGLINE(xml), "XML namespace with prefix \"%.*s\" not defined.", id_len, id);
+            }
             free(out);
             return NULL;
         }
         mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
         if (!mod) {
-            LOGVAL(LYE_SPEC, LOGLINE(xml), "Module with the namespace \"%s\" could not be found.", ns->value);
+            if (log) {
+                LOGVAL(LYE_SPEC, LOGLINE(xml), "Module with the namespace \"%s\" could not be found.", ns->value);
+            }
             free(out);
             return NULL;
         }
@@ -351,10 +360,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
     #define DECSIZE 21
     struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
     struct lys_type *type;
-    struct lyxml_ns *ns;
     char dec[DECSIZE];
-    char *strptr;
-    const char *name;
     int64_t num;
     uint64_t unum;
     int len;
@@ -557,28 +563,22 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
         break;
 
     case LY_TYPE_IDENT:
-        if ((strptr = strchr(leaf->value_str, ':'))) {
-            len = strptr - leaf->value_str;
-            if (!len) {
-                if (log) {
-                    LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
-                }
-                return EXIT_FAILURE;
-            }
-            strptr = strndup(leaf->value_str, len);
-        }
-        ns = lyxml_get_ns(xml, strptr);
-        if (!ns) {
+        if (!leaf->value_str) {
             if (log) {
-                LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
+                LOGVAL(LYE_INVAL, LOGLINE(xml), "", xml->name);
             }
             return EXIT_FAILURE;
         }
-        if (strptr) {
-            free(strptr);
-            name = leaf->value_str + len + 1;
-        } else {
-            name = leaf->value_str;
+
+        /* convert the path from the XML form using XML namespaces into the JSON format
+         * using module names as namespaces
+         */
+        xml->content = leaf->value_str;
+        leaf->value_str = transform_data_xml2json(node->schema->module->ctx, xml, log);
+        lydict_remove(node->schema->module->ctx, xml->content);
+        xml->content = NULL;
+        if (!leaf->value_str) {
+            return EXIT_FAILURE;
         }
 
         leaf->value.ident = resolve_identityref(node_type->info.ident.ref, name, ns->value);
@@ -602,7 +602,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
          * using module names as namespaces
          */
         xml->content = leaf->value_str;
-        leaf->value_str = transform_instid_xml2json(node->schema->module->ctx, xml);
+        leaf->value_str = transform_data_xml2json(node->schema->module->ctx, xml, log);
         lydict_remove(node->schema->module->ctx, xml->content);
         xml->content = NULL;
         if (!leaf->value_str) {
