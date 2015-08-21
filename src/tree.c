@@ -1230,12 +1230,11 @@ lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment aug)
 }
 
 static struct lys_node_augment *
-lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_node_augment *old, int size,
-               struct unres_schema *unres)
+lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_node_augment *old, int size)
 {
     struct lys_node_augment *new = NULL;
-    struct lys_node *snode;
-    int i = -1;
+    struct lys_node *old_child, *new_child;
+    int i;
 
     if (!size) {
         return NULL;
@@ -1247,21 +1246,40 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
         new[i].dsc = lydict_insert(module->ctx, old[i].dsc, 0);
         new[i].ref = lydict_insert(module->ctx, old[i].ref, 0);
         new[i].flags = old[i].flags;
+        new[i].module = old[i].module;
         new[i].nodetype = old[i].nodetype;
-        /* .target = NULL */
-
+        /* this must succeed, it was already resolved once */
+        if (resolve_schema_nodeid(new[i].target_name, parent->child, new[i].module, LYS_AUGMENT, &new[i].target)) {
+            LOGINT;
+            free(new);
+            return NULL;
+        }
         new[i].parent = parent;
 
-        /* copy the augment nodes */
-        assert(old[i].child);
-        LY_TREE_FOR(old[i].child, snode) {
-            if (lys_node_addchild((struct lys_node *)&new[i], NULL, lys_node_dup(module, snode, snode->flags, snode->nacm, 1, unres))) {
-                for ( ; i >= 0; i--) {
-                    lys_augment_free(module->ctx, new[i]);
-                }
-                free(new);
-                return NULL;
+        /* Correct the augment nodes.
+         * This function can only be called from lys_node_dup() with uses
+         * being the node duplicated, so we must have a case of grouping
+         * with a uses with augments. The augmented nodes have already been
+         * copied and everything is almost fine except their parent is wrong
+         * (it was set to their actual data parent, not an augment), so
+         * we just correct it.
+         */
+        LY_TREE_FOR(new[i].target->child, new_child) {
+            if (new_child->name == old[i].child->name) {
+                break;
             }
+        }
+        assert(new_child);
+        LY_TREE_FOR(old[i].child, old_child) {
+            /* all augment nodes were connected as siblings, there can be no more after this */
+            if (old_child->parent != (struct lys_node *)&old[i]) {
+                break;
+            }
+
+            assert(old_child->name == new_child->name);
+
+            new_child->parent = (struct lys_node *)&new[i];
+            new_child = new_child->next;
         }
     }
 
@@ -2135,7 +2153,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
         uses->refine_size = uses_orig->refine_size;
         uses->refine = lys_refine_dup(module, uses_orig->refine, uses_orig->refine_size, uses, unres);
         uses->augment_size = uses_orig->augment_size;
-        uses->augment = lys_augment_dup(module, (struct lys_node *)uses, uses_orig->augment, uses_orig->augment_size, unres);
+        uses->augment = lys_augment_dup(module, (struct lys_node *)uses, uses_orig->augment, uses_orig->augment_size);
         if (!uses->child) {
             if (unres_schema_add_node(module, unres, uses, UNRES_USES, NULL, 0) == -1) {
                 goto error;
