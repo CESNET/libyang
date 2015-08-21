@@ -2363,6 +2363,21 @@ lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
     return NULL;
 }
 
+static void
+lyd_attr_free(struct ly_ctx *ctx, struct lyd_attr *attr)
+{
+    if (!attr) {
+        return;
+    }
+
+    if (attr->next) {
+        lyd_attr_free(ctx, attr->next);
+    }
+    lydict_remove(ctx, attr->name);
+    lydict_remove(ctx, attr->value);
+    free(attr);
+}
+
 API void
 lyd_free(struct lyd_node *node)
 {
@@ -2406,6 +2421,8 @@ lyd_free(struct lyd_node *node)
     if (node->next) {
         node->next->prev = node->prev;
     }
+
+    lyd_attr_free(node->schema->module->ctx, node->attr);
 
     free(node);
 }
