@@ -44,7 +44,7 @@ extern char *search_path;
 void
 cmd_add_help(void)
 {
-    printf("add <path-to-model>\n");
+    printf("add <path-to-model> [<other-models> ...]\n");
 }
 
 void
@@ -110,9 +110,9 @@ cmd_verb_help(void)
 int
 cmd_add(const char *arg)
 {
-    int fd;
-    char *addr, *ptr;
-    const char *path;
+    int fd, path_len;
+    char *addr, *ptr, *path;
+    const char *arg_ptr;
     struct lys_module *model;
     struct stat sb;
     LYS_INFORMAT format;
@@ -122,50 +122,81 @@ cmd_add(const char *arg)
         return 1;
     }
 
-    path = (arg + strlen("add "));
+    arg_ptr = arg + strlen("add ");
+    while (arg_ptr[0] == ' ') {
+        ++arg_ptr;
+    }
+    if (strchr(arg_ptr, ' ')) {
+        path_len = strchr(arg_ptr, ' ') - arg_ptr;
+    } else {
+        path_len = strlen(arg_ptr);
+    }
 
-    if ((ptr = strrchr(path, '.')) != NULL) {
-        ++ptr;
-        if (!strcmp(ptr, "yin")) {
-            format = LYS_IN_YIN;
-        } else if (!strcmp(ptr, "yang")) {
-            format = LYS_IN_YANG;
+    path = strndup(arg_ptr, path_len);
+
+    while (path) {
+        if ((ptr = strrchr(path, '.')) != NULL) {
+            ++ptr;
+            if (!strcmp(ptr, "yin")) {
+                format = LYS_IN_YIN;
+            } else if (!strcmp(ptr, "yang")) {
+                format = LYS_IN_YANG;
+            } else {
+                fprintf(stderr, "Input file in an unknown format \"%s\".\n", ptr);
+                free(path);
+                return 1;
+            }
         } else {
-            fprintf(stderr, "Input file in an unknown format \"%s\".\n", ptr);
+            fprintf(stdout, "Input file \"%.*s\" without extension, assuming YIN format.\n", path_len, arg_ptr);
+            format = LYS_IN_YIN;
+        }
+
+        fd = open(path, O_RDONLY);
+        free(path);
+        if (fd == -1) {
+            fprintf(stderr, "Opening input file \"%.*s\" failed (%s).\n", path_len, arg_ptr, strerror(errno));
             return 1;
         }
-    } else {
-        fprintf(stdout, "Input file without extension, assuming YIN format.\n");
-        format = LYS_IN_YIN;
-    }
 
-    fd = open(path, O_RDONLY);
-    if (fd == -1) {
-        fprintf(stderr, "Opening input file failed (%s).\n", strerror(errno));
-        return 1;
-    }
+        if (fstat(fd, &sb) == -1) {
+            fprintf(stderr, "Unable to get input file \"%.*s\" information (%s).\n", path_len, arg_ptr, strerror(errno));
+            close(fd);
+            return 1;
+        }
 
-    if (fstat(fd, &sb) == -1) {
-        fprintf(stderr, "Unable to get input file information (%s).\n", strerror(errno));
+        if (!S_ISREG(sb.st_mode)) {
+            fprintf(stderr, "Input file \"%.*s\" not a file.\n", path_len, arg_ptr);
+            close(fd);
+            return 1;
+        }
+
+        addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+
+        model = lys_parse(ctx, addr, format);
+        munmap(addr, sb.st_size);
         close(fd);
-        return 1;
-    }
 
-    if (!S_ISREG(sb.st_mode)) {
-        fprintf(stderr, "Input file not a file.\n");
-        close(fd);
-        return 1;
-    }
+        if (!model) {
+            /* libyang printed the error messages */
+            return 1;
+        }
 
-    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        /* next model */
+        arg_ptr += path_len;
+        while (arg_ptr[0] == ' ') {
+            ++arg_ptr;
+        }
+        if (strchr(arg_ptr, ' ')) {
+            path_len = strchr(arg_ptr, ' ') - arg_ptr;
+        } else {
+            path_len = strlen(arg_ptr);
+        }
 
-    model = lys_parse(ctx, addr, format);
-    munmap(addr, sb.st_size);
-    close(fd);
-
-    if (!model) {
-        /* libyang printed the error messages */
-        return 1;
+        if (path_len) {
+            path = strndup(arg_ptr, path_len);
+        } else {
+            path = NULL;
+        }
     }
 
     return 0;

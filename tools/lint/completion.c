@@ -34,7 +34,7 @@
 
 extern struct ly_ctx *ctx;
 
-void
+static void
 get_cmd_completion(const char *hint, char ***matches, unsigned int *match_count)
 {
     int i;
@@ -51,8 +51,59 @@ get_cmd_completion(const char *hint, char ***matches, unsigned int *match_count)
     }
 }
 
-void
-get_path_completion(const char *hint, char ***matches, unsigned int *match_count)
+static void
+get_path_multiple_completion(const char *hint, char ***matches, unsigned int *match_count)
+{
+    const char *ptr, *path;
+    DIR *dir;
+    struct dirent *ent;
+
+    *match_count = 0;
+    *matches = NULL;
+
+    ptr = strrchr(hint, ' ');
+    while (*ptr == ' ') {
+        ++ptr;
+    }
+
+    path = ptr;
+    ptr = strrchr(path, '/');
+
+    /* new relative path */
+    if (ptr == NULL) {
+        ptr = path;
+        dir = opendir(".");
+    } else {
+        ++ptr;
+        dir = opendir(strndupa(path, ptr-path));
+    }
+
+    if (dir == NULL) {
+        fprintf(stderr, "opendir failed (%s)\n", strerror(errno));
+        return;
+    }
+
+    while ((ent = readdir(dir))) {
+        if (ent->d_name[0] == '.') {
+            continue;
+        }
+
+        /* some serious pointer fun */
+        if (!strncmp(ptr, ent->d_name, strlen(ptr))) {
+            ++(*match_count);
+            *matches = realloc(*matches, *match_count * sizeof **matches);
+            //asprintf(&(*matches)[*match_count-1], "%.*s%s", (int)(ptr-hint), hint, ent->d_name);
+            (*matches)[*match_count-1] = malloc((ptr-hint)+strlen(ent->d_name)+1);
+            strncpy((*matches)[*match_count-1], hint, ptr-hint);
+            strcpy((*matches)[*match_count-1]+(ptr-hint), ent->d_name);
+        }
+    }
+
+    closedir(dir);
+}
+
+static void
+get_path_skip_opts_completion(const char *hint, char ***matches, unsigned int *match_count)
 {
     const char *ptr, *path;
     DIR *dir;
@@ -123,7 +174,7 @@ get_path_completion(const char *hint, char ***matches, unsigned int *match_count
     closedir(dir);
 }
 
-void
+static void
 get_model_completion(const char *hint, char ***matches, unsigned int *match_count)
 {
     int i, j, no_arg;
@@ -203,9 +254,11 @@ complete_cmd(const char *buf, linenoiseCompletions *lc)
     char **matches = NULL;
     unsigned int match_count = 0, i;
 
-    if (!strncmp(buf, "add ", 4) || !strncmp(buf, "searchpath ", 11) || !strncmp(buf, "data ", 5)
+    if (!strncmp(buf, "add ", 4)) {
+        get_path_multiple_completion(buf, &matches, &match_count);
+    } else if (!strncmp(buf, "searchpath ", 11) || !strncmp(buf, "data ", 5)
             || !strncmp(buf, "config ", 7) || !strncmp(buf, "filter ", 7)) {
-        get_path_completion(buf, &matches, &match_count);
+        get_path_skip_opts_completion(buf, &matches, &match_count);
     } else if (!strncmp(buf, "print ", 6) || !strncmp(buf, "feature ", 8)) {
         get_model_completion(buf, &matches, &match_count);
     } else {
