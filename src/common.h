@@ -91,6 +91,8 @@ enum LY_ERR {
     LYE_MISSARG,
     LYE_TOOMANY,
     LYE_DUPID,
+    LYE_DUPLEAFLIST,
+    LYE_DUPLIST,
     LYE_ENUM_DUPVAL,
     LYE_ENUM_DUPNAME,
     LYE_ENUM_WS,
@@ -111,9 +113,12 @@ enum LY_ERR {
     LYE_INELEM_LEN,
     LYE_MISSELEM,
     LYE_INVAL,
+    LYE_INATTR,
+    LYE_MISSATTR,
     LYE_OORVAL,
     LYE_INCHAR,
-    LYE_INPRED
+    LYE_INPRED,
+    LYE_MCASEDATA
 };
 void ly_vlog(enum LY_ERR code, unsigned int line, ...);
 

@@ -1237,7 +1237,9 @@ int lys_features_state(struct lys_module *module, const char *feature);
  * affecting the node.
  *
  * @param[in] node Schema node to check.
- * @param[in] recursive 1 to check all ascendant nodes
+ * @param[in] recursive - 0 to check if-feature only in the \p node schema node,
+ * - 1 to check if-feature in all ascendant schema nodes
+ * - 2 to check if-feature in all ascendant schema nodes that cannot have an instance in a data tree
  * @return - NULL if enabled,
  * - pointer to the disabling feature if disabled.
  */
@@ -1518,14 +1520,17 @@ struct lyd_node *lyd_dup(struct lyd_node *node, int recursive);
  * @brief Insert the \p node element as child to the \p parent element. The \p node is inserted as a last child of the
  * \p parent.
  *
- * TODO not implemented
+ * If the node is part of some other tree, it is automatically unlinked.
+ * If the node is the first node of a node list (with no parent), all
+ * the subsequent nodes are also inserted.
  *
  * @param[in] parent Parent node for the \p node being inserted.
  * @param[in] node The node being inserted.
+ * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
  * @return 0 fo success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
  * in the data tree.
  */
-int lyd_insert(struct lyd_node *parent, struct lyd_node *node);
+int lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options);
 
 /**
  * @brief Insert the \p node element after the \p sibling element.
@@ -1599,8 +1604,6 @@ int lyd_is_last(struct lyd_node *node);
  * reconnecting the node to a data tree using lyd_paste() it is necessary to paste it
  * to the appropriate place in the data tree following the schema.
  *
- * TODO not implemented
- *
  * @param[in] node Data tree node to be unlinked (together with all children).
  * @return 0 for success, nonzero for error
  */
@@ -1613,6 +1616,40 @@ int lyd_unlink(struct lyd_node *node);
  */
 void lyd_free(struct lyd_node *node);
 
+/**
+ * @brief Structure to hold a set of (not necessary somehow connected) ::lyd_node objects.
+ *
+ * To free the structure, use lyd_set_free() function, to manipulate with the structure, use other
+ * lyd_set_* functions.
+ */
+struct lyd_set {
+    unsigned int size;               /**< allocated size of the set array */
+    unsigned int number;             /**< number of elements in (used size of) the set array */
+    struct lyd_node **set;           /**< array of pointers to a ::lyd_node objects */
+};
+
+/**
+ * @brief Create and initiate new ::lyd_set structure.
+ *
+ * @return Created ::lyd_set structure or NULL in case of error.
+ */
+struct lyd_set *lyd_set_new(void);
+
+/**
+ * @brief Add a ::lyd_node object into the set
+ *
+ * @param[in] set Set where the \p node will be added.
+ * @param[in] node The ::lyd_node object to be added into the \p set;
+ * @return 0 on success
+ */
+int lyd_set_add(struct lyd_set *set, struct lyd_node *node);
+
+/**
+ * @brief Free the ::lyd_set data. Frees only the set structure content, not the referred data.
+ *
+ * @param[in] set The set to be freed.
+ */
+void lyd_set_free(struct lyd_set *set);
 
 
 /*

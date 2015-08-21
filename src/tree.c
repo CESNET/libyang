@@ -68,13 +68,19 @@ check:
     if (node->nodetype == LYS_AUGMENT) {
         /* go to parent actually means go to the target node */
         node = ((struct lys_node_augment *)node)->target;
-        goto check;
     } else if (node->parent) {
         node = node->parent;
-        goto check;
+    } else {
+        return NULL;
     }
 
-    return NULL;
+    if (recursive == 2) {
+        /* continue only if the node cannot have a data instance */
+        if (node->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST)) {
+            return NULL;
+        }
+    }
+    goto check;
 }
 
 static struct lys_node *
@@ -84,13 +90,14 @@ check_mand_getnext(struct lys_node *cur, struct lys_node *parent)
 
     if (!cur) {
         next = parent->child;
+        cur = next;
     } else {
         next = cur->next;
     }
 
 repeat:
-    while (next && (next->nodetype & (LYS_AUGMENT | LYS_GROUPING | LYS_LEAFLIST))) {
-        next = cur = next->next;
+    while (next && (next->nodetype & (LYS_AUGMENT | LYS_GROUPING))) {
+        next = next->next;
     }
 
     while (!next) {
@@ -112,7 +119,6 @@ repeat:
             goto repeat;
         }
         /* no break */
-    case LYS_LIST:
     case LYS_USES:
     case LYS_CASE:
         /* go into */
@@ -121,6 +127,8 @@ repeat:
     case LYS_LEAF:
     case LYS_CHOICE:
     case LYS_ANYXML:
+    case LYS_LIST:
+    case LYS_LEAFLIST:
         return next;
     default:
         /* we should not be here */
@@ -133,6 +141,7 @@ check_mand_check(struct lys_node *node, struct lys_node *stop, struct lyd_node *
 {
     struct lys_node *siter = NULL, *parent;
     struct lyd_node *diter = NULL;
+    uint32_t minmax;
 
     if (node->flags & LYS_MAND_TRUE) {
        switch (node->nodetype) {
@@ -174,6 +183,14 @@ check_mand_check(struct lys_node *node, struct lys_node *stop, struct lyd_node *
                    }
                }
            }
+
+           /* search for instance */
+           LY_TREE_FOR(data->child, diter) {
+               if (diter->schema == node) {
+                   return NULL;
+               }
+           }
+           /* instance not found */
            /* 7.6.5, rule 3 (or 2) */
            /* 7.9.4, rule 2 */
            return node;
@@ -181,6 +198,33 @@ check_mand_check(struct lys_node *node, struct lys_node *stop, struct lyd_node *
            /* error */
            break;
        }
+    } else if (node->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+        /* search for number of instances */
+        minmax = 0;
+        LY_TREE_FOR(data->child, diter) {
+            if (diter->schema == node) {
+                minmax++;
+            }
+        }
+
+        /* check the specified constraints */
+        if (node->nodetype == LYS_LIST) {
+            if (((struct lys_node_list *)node)->min && minmax < ((struct lys_node_list *)node)->min) {
+                return node;
+            }
+
+            if (((struct lys_node_list *)node)->max && minmax > ((struct lys_node_list *)node)->max) {
+                return node;
+            }
+        } else if (node->nodetype == LYS_LEAFLIST) {
+            if (((struct lys_node_leaflist *)node)->min && minmax < ((struct lys_node_leaflist *)node)->min) {
+                return node;
+            }
+
+            if (((struct lys_node_leaflist *)node)->max && minmax > ((struct lys_node_leaflist *)node)->max) {
+                return node;
+            }
+        }
     }
 
     return NULL;
@@ -189,7 +233,7 @@ check_mand_check(struct lys_node *node, struct lys_node *stop, struct lyd_node *
 struct lys_node *
 ly_check_mandatory(struct lyd_node *data)
 {
-    struct lys_node *siter, *saux = NULL, *result, *parent = NULL;
+    struct lys_node *siter, *saux, *saux2, *result, *parent = NULL, *parent2;
     struct lyd_node *diter;
     int found;
 
@@ -197,30 +241,25 @@ ly_check_mandatory(struct lyd_node *data)
 
 repeat:
     while (siter) {
+        if (lys_is_disabled(siter, 2)) {
+            siter = siter->next;
+            continue;
+        }
+
         switch (siter->nodetype) {
         case LYS_CONTAINER:
         case LYS_LEAF:
         case LYS_ANYXML:
-            /* search for instance */
-            LY_TREE_FOR(data->child, diter) {
-                if (diter->schema == siter) {
-                    break;
-                }
-            }
-            if (diter) {
-                /* result has a child defined by siter, check another siter */
-                siter = siter->next;
-                break;
-            }
-
-            /* the siter has no instance under the result, check if there is
-             * some mandatory node; first the siter itself ... */
+        case LYS_LIST:
+        case LYS_LEAFLIST:
+            /* check if there is some mandatory node; first test the siter itself ... */
             result = check_mand_check(siter, siter->parent, data);
             if (result) {
                 return result;
             }
             /* ... and then the subtree */
-            if (siter->nodetype == LYS_CONTAINER && !((struct lys_node_container *)siter)->presence) {
+            if (parent && siter->nodetype == LYS_CONTAINER && !((struct lys_node_container *)siter)->presence) {
+                saux = NULL;
                 while ((saux = check_mand_getnext(saux, siter))) {
                     result = check_mand_check(saux, siter, data);
                     if (result) {
@@ -231,71 +270,82 @@ repeat:
             siter = siter->next;
             break;
         case LYS_CHOICE:
-            if (siter->flags & LYS_MAND_TRUE) {
-                /* search for instance */
-                saux = siter;
-                parent = NULL;
-                siter = siter->child;
-                found = 0;
+            /* search for instance */
+            saux = siter;
+            siter = siter->child;
+            found = 0;
+            parent2 = NULL;
 repeat_choice:
-                while (siter) {
-                    switch(siter->nodetype) {
-                    case LYS_CONTAINER:
-                    case LYS_LEAF:
-                    case LYS_LEAFLIST:
-                    case LYS_LIST:
-                    case LYS_ANYXML:
-                        LY_TREE_FOR(data->child, diter) {
-                            if (diter->schema == siter) {
-                                break;
-                            }
-                        }
-                        if (diter) {
-                            /* got instance, done */
-                            siter = parent = NULL;
-                            found = 1;
+            while (siter) {
+                if (lys_is_disabled(siter, 2)) {
+                    siter = siter->next;
+                    continue;
+                }
+
+                switch (siter->nodetype) {
+                case LYS_CONTAINER:
+                case LYS_LEAF:
+                case LYS_LEAFLIST:
+                case LYS_LIST:
+                case LYS_ANYXML:
+                    LY_TREE_FOR(data->child, diter) {
+                        if (diter->schema == siter) {
                             break;
                         }
-                        siter = siter->next;
-                        break;
-                    case LYS_CASE:
-                    case LYS_CHOICE:
-                    case LYS_USES:
-                        /* go into */
-                        parent = siter;
-                        siter = siter->child;
-                        break;
-                    case LYS_AUGMENT:
-                    case LYS_GROUPING:
-                        /* skip */
-                        siter = siter->next;
-                        break;
-                    default:
-                        /* error */
+                    }
+                    if (diter) {
+                        /* got instance */
+                        /* check presence of mandatory siblings */
+                        if (siter->parent->nodetype == LYS_CASE) {
+                            saux2 = NULL;
+                            while ((saux2 = check_mand_getnext(saux2, siter->parent))) {
+                                result = check_mand_check(saux2, siter->parent, data);
+                                if (result) {
+                                    return result;
+                                }
+                            }
+                        }
+                        siter = parent2 = NULL;
+                        found = 1;
                         break;
                     }
+                    siter = siter->next;
+                    break;
+                case LYS_CASE:
+                case LYS_CHOICE:
+                case LYS_USES:
+                    /* go into */
+                    parent2 = siter;
+                    siter = siter->child;
+                    break;
+                case LYS_AUGMENT:
+                case LYS_GROUPING:
+                    /* skip */
+                    siter = siter->next;
+                    break;
+                default:
+                    /* error */
+                    break;
                 }
-
-                if (parent) {
-                    siter = parent->next;
-                    if (parent->parent == saux) {
-                        parent = NULL;
-                    } else {
-                        parent = parent->parent;
-                    }
-                    goto repeat_choice;
-                }
-
-                if (!found) {
-                    return saux;
-                }
-
-                siter = saux;
             }
 
-            /* go into */
-            parent = siter;
-            siter = siter->child;
+            if (parent2) {
+                siter = parent2->next;
+                if (parent2->parent == saux) {
+                    parent2 = NULL;
+                } else {
+                    parent2 = parent2->parent;
+                }
+                goto repeat_choice;
+            }
+
+            if (!found && (saux->flags & LYS_MAND_TRUE)) {
+                return saux;
+            }
+
+            /* go to next */
+            siter = saux->next;
+
             break;
         case LYS_USES:
         case LYS_CASE:
@@ -1566,7 +1616,7 @@ module_free_common(struct lys_module *module, int free_int_mods)
         /* do not free internal modules */
         if (!free_int_mods) {
             for (j = 0; j < int_mods.count; ++j) {
-                if (!strcmp(int_mods.modules[j].name, module->imp[i].module->name)
+                if (module->imp[i].module && !strcmp(int_mods.modules[j].name, module->imp[i].module->name)
                         && module->imp[i].module->rev
                         && !strcmp(int_mods.modules[j].revision, module->imp[i].module->rev[0].date)) {
                     break;
@@ -2363,6 +2413,123 @@ lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
     return NULL;
 }
 
+API int
+lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options)
+{
+    struct lys_node *sparent;
+    struct lyd_node *iter;
+
+    if (!node || !parent) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    if (node->parent || node->prev->next) {
+        lyd_unlink(node);
+    }
+
+    /* check placing the node to the appropriate place according to the schema */
+    sparent = node->schema->parent;
+    while (!(sparent->nodetype & (LYS_CONTAINER | LYS_LIST))) {
+        sparent = sparent->parent;
+    }
+    if (sparent != parent->schema) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    /* TODO all other checks for new node in the data tree (uniqueness, ...) */
+
+    if (!parent->child) {
+        /* add as the only child of the parent */
+        parent->child = node;
+    } else {
+        /* add as the last child of the parent */
+        parent->child->prev->next = node;
+        node->prev = parent->child->prev;
+        for (iter = node; iter->next; iter = iter->next);
+        parent->child->prev = iter;
+    }
+    LY_TREE_FOR(node, iter) {
+        iter->parent = parent;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+API int
+lyd_unlink(struct lyd_node *node)
+{
+    struct lyd_node *iter;
+
+    if (!node) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    /* unlink from the lists list */
+    if (node->schema->nodetype == LYS_LIST) {
+        if (((struct lyd_node_list *)node)->lprev) {
+            ((struct lyd_node_list *)node)->lprev->lnext = ((struct lyd_node_list *)node)->lnext;
+        }
+        if (((struct lyd_node_list *)node)->lnext) {
+            ((struct lyd_node_list *)node)->lnext->lprev = ((struct lyd_node_list *)node)->lprev;
+        }
+    } else if (node->schema->nodetype == LYS_LEAFLIST) {
+        if (((struct lyd_node_leaflist *)node)->lprev) {
+            ((struct lyd_node_leaflist *)node)->lprev->lnext = ((struct lyd_node_leaflist *)node)->lnext;
+        }
+        if (((struct lyd_node_leaflist *)node)->lnext) {
+            ((struct lyd_node_leaflist *)node)->lnext->lprev = ((struct lyd_node_leaflist *)node)->lprev;
+        }
+    }
+
+    /* unlink from siblings */
+    if (node->prev->next) {
+        node->prev->next = node->next;
+    }
+    if (node->next) {
+        node->next->prev = node->prev;
+    } else {
+        /* unlinking the last node */
+        iter = node->prev;
+        while (iter->prev != node) {
+            iter = iter->prev;
+        }
+        /* update the "last" pointer from the first node */
+        iter->prev = node->prev;
+    }
+
+    /* unlink from parent */
+    if (node->parent) {
+        if (node->parent->child == node) {
+            /* the node is the first child */
+            node->parent->child = node->next;
+        }
+        node->parent = NULL;
+    }
+
+    node->next = NULL;
+    node->prev = node;
+
+    return EXIT_SUCCESS;
+}
+
+static void
+lyd_attr_free(struct ly_ctx *ctx, struct lyd_attr *attr)
+{
+    if (!attr) {
+        return;
+    }
+
+    if (attr->next) {
+        lyd_attr_free(ctx, attr->next);
+    }
+    lydict_remove(ctx, attr->name);
+    lydict_remove(ctx, attr->value);
+    free(attr);
+}
+
 API void
 lyd_free(struct lyd_node *node)
 {
@@ -2397,17 +2564,246 @@ lyd_free(struct lyd_node *node)
         }
     }
 
-    if (node->prev->next) {
-        node->prev->next = node->next;
-    } else if (node->parent) {
-        /* first node */
-        node->parent->child = node->next;
-    }
-    if (node->next) {
-        node->next->prev = node->prev;
+    lyd_unlink(node);
+    lyd_attr_free(node->schema->module->ctx, node->attr);
+    free(node);
+}
+
+int
+lyd_filter_compare(struct lyd_node *first, struct lyd_node *second)
+{
+    struct lyd_node *diter1, *diter2;
+    int match, c1, c2;
+
+    assert(first);
+    assert(second);
+
+    if (first->schema != second->schema) {
+        return 1;
     }
 
-    free(node);
+
+    switch (first->schema->nodetype) {
+    case LYS_LIST:
+        /* check if all the content match nodes are the same */
+        c1 = 0;
+        LY_TREE_FOR(first->child, diter1) {
+            if (!(diter1->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+                continue;
+            } else if (!((struct lyd_node_leaf *)diter1)->value_str) {
+                /* selection node */
+                continue;
+            }
+
+            match = 0;
+            LY_TREE_FOR(second->child, diter2) {
+                if (diter2->schema != diter1->schema) {
+                    continue;
+                } else if (((struct lyd_node_leaf *)diter1)->value_str != ((struct lyd_node_leaf *)diter2)->value_str) {
+                    continue;
+                }
+                match = 1;
+                c1++;
+            }
+            if (!match) {
+                return 1;
+            }
+        }
+        /* get number of content match nodes in the second to get know if there are some
+         * that are not present in first
+         */
+        c2 = 0;
+        LY_TREE_FOR(second->child, diter2) {
+            if (!(diter2->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+                continue;
+            } else if (!((struct lyd_node_leaf *)diter2)->value_str) {
+                /* selection node */
+                continue;
+            }
+            c2++;
+        }
+        if (c1 != c2) {
+            return 1;
+        }
+        break;
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
+        if (((struct lyd_node_leaf *)first)->value_str != ((struct lyd_node_leaf *)second)->value_str) {
+            return 1;
+        }
+        break;
+    default:
+        /* no more tests are needed */
+        break;
+    }
+    return 0;
+}
+
+int
+lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
+{
+    struct lys_node_list *slist;
+    struct lys_node *snode;
+    struct lyd_node *diter;
+    const char *val1, *val2;
+    int i, j;
+
+    assert(first);
+    assert(second);
+
+    if (first->schema != second->schema) {
+        return 1;
+    }
+
+    switch (first->schema->nodetype) {
+    case LYS_LEAFLIST:
+        /* compare values */
+        if (((struct lyd_node_leaflist *)first)->value_str == ((struct lyd_node_leaflist *)second)->value_str) {
+            return 0;
+        }
+        return 1;
+    case LYS_LIST:
+        slist = (struct lys_node_list*)first->schema;
+
+        if (unique) {
+            /* compare unique leafs */
+            for (i = 0; i < slist->unique_size; i++) {
+                for (j = 0; j < slist->unique[i].leafs_size; j++) {
+                    snode = (struct lys_node *)slist->unique[i].leafs[j];
+                    /* use default values if the instances of unique leafs are not present */
+                    val1 = val2 = ((struct lys_node_leaf *)snode)->dflt;
+                    LY_TREE_FOR(first->child, diter) {
+                        if (diter->schema == snode) {
+                            val1 = ((struct lyd_node_leaf *)diter)->value_str;
+                            break;
+                        }
+                    }
+                    LY_TREE_FOR(second->child, diter) {
+                        if (diter->schema == snode) {
+                            val2 = ((struct lyd_node_leaf *)diter)->value_str;
+                            break;
+                        }
+                    }
+                    if (val1 != val2) {
+                        break;
+                    }
+                }
+                if (j && j == slist->unique[i].leafs_size) {
+                    /* all unique leafs are the same in this set */
+                    return 0;
+                }
+            }
+        }
+
+        /* compare keys */
+        for (i = 0; i < slist->keys_size; i++) {
+            snode = (struct lys_node *)slist->keys[i];
+            val1 = val2 = NULL;
+            LY_TREE_FOR(first->child, diter) {
+                if (diter->schema == snode) {
+                    val1 = ((struct lyd_node_leaf *)diter)->value_str;
+                    break;
+                }
+            }
+            LY_TREE_FOR(second->child, diter) {
+                if (diter->schema == snode) {
+                    val2 = ((struct lyd_node_leaf *)diter)->value_str;
+                    break;
+                }
+            }
+            if (val1 != val2) {
+                return 1;
+            }
+        }
+
+        return 0;
+    default:
+        /* no additional check is needed */
+        return 0;
+    }
+}
+
+int
+lyd_filter_merge(struct lyd_node *to, struct lyd_node *from)
+{
+    struct lyd_node *diter1, *diter2;
+    unsigned int i, j;
+    struct lyd_set *s1 = NULL, *s2 = NULL;
+
+    if (!to || !from || to->schema != from->schema) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    switch(to->schema->nodetype) {
+    case LYS_LIST:
+        s1 = lyd_set_new();
+        s2 = lyd_set_new();
+        /* get know about the selection and containment node in to and from nodes */
+        LY_TREE_FOR(to->child, diter1) {
+            /* is selection node */
+            if ((diter1->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && !((struct lyd_node_leaf *)diter1)->value_str) {
+                lyd_set_add(s1, diter1);
+            } else if ((diter1->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter1)->value->child) {
+                lyd_set_add(s1, diter1);
+            } else if (diter1->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) {
+                /* or containment node */
+                lyd_set_add(s1, diter1);
+            }
+        }
+
+        LY_TREE_FOR(from->child, diter2) {
+            /* is selection node */
+            if ((diter2->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && !((struct lyd_node_leaf *)diter2)->value_str) {
+                lyd_set_add(s2, diter2);
+            } else if ((diter2->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter2)->value->child) {
+                lyd_set_add(s2, diter2);
+            } else if (diter2->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) {
+                /* or containment node */
+                lyd_set_add(s2, diter2);
+            }
+        }
+
+        if (!s1->number) {
+            /* to already selects all content, so nothing is needed */
+            break;;
+        }
+        if (!s2->number) {
+            /* from selects all content, so make to select it too by
+             * removing all selection and containment nodes
+             */
+            for (i = 0; i < s1->number; i++) {
+                lyd_free(s1->set[i]);
+            }
+            break;
+        }
+
+        /* target contain some selection or containment node, so merge
+         * the selection/containment nodes from source to target
+         */
+        for (j = 0; j < s2->number; j++) {
+            for (i = 0; i < s1->number; i++) {
+                /* TODO cover non-empty containment nodes */
+                if (!lyd_filter_compare(s1->set[i], s2->set[j])) {
+                    break;
+                }
+            }
+            if (i == s1->number) {
+                /* node in from is not present in to,
+                 * so insert it there */
+                lyd_insert(to, s2->set[j], LYD_OPT_FILTER);
+            }
+        }
+        break;
+    default:
+        /* TODO cover other types of data nodes */
+        break;
+    }
+
+    lyd_set_free(s1);
+    lyd_set_free(s2);
+
+    return EXIT_SUCCESS;
 }
 
 API int
@@ -2436,4 +2832,46 @@ lyd_is_last(struct lyd_node *node)
         }
     }
     return 1;
+}
+
+API struct lyd_set *
+lyd_set_new(void)
+{
+    return calloc(1, sizeof(struct lyd_set));
+}
+
+API void
+lyd_set_free(struct lyd_set *set)
+{
+    if (!set) {
+        return;
+    }
+
+    free(set->set);
+    free(set);
+}
+
+API int
+lyd_set_add(struct lyd_set *set, struct lyd_node *node)
+{
+    struct lyd_node **new;
+
+    if (!set) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    if (set->size == set->number) {
+        new = realloc(set->set, (set->size + 8) * sizeof *(set->set));
+        if (!new) {
+            LOGMEM;
+            return EXIT_FAILURE;
+        }
+        set->size += 8;
+        set->set = new;
+    }
+
+    set->set[set->number++] = node;
+
+    return EXIT_SUCCESS;
 }

@@ -72,7 +72,7 @@ int resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, str
 
 int resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t line);
 
-struct lys_ident *resolve_identityref(struct lys_ident *base, const char *name, const char *ns);
+struct lys_ident *resolve_identref_json(struct lys_module *module, struct lys_ident *base, const char *ident_name, uint32_t line);
 
 int resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres);
 

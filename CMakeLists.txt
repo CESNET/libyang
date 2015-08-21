@@ -4,7 +4,7 @@ project(libyang C)
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
 set(LIBYANG_MINOR_VERSION 2)
-set(LIBYANG_MICRO_VERSION 4)
+set(LIBYANG_MICRO_VERSION 9)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 
@@ -45,6 +45,7 @@ set(libsrc
 	src/printer.c
 	src/yang_library.c
 	src/printer_yang.c
+	src/printer_xml.c
 	src/printer_tree.c
 	src/printer_info.c
 	src/printer_json.c

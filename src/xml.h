@@ -52,8 +52,8 @@ struct lyxml_ns {
     LYXML_ATTR_TYPE type;            /**< type of the attribute = LYXML_ATTR_NS */
     struct lyxml_ns *next;           /**< next sibling attribute */
     struct lyxml_elem *parent;       /**< parent node of the attribute */
-    const char *value;               /**< the namespace value */
     const char *prefix;              /**< the namespace prefix if defined, NULL for default namespace */
+    const char *value;               /**< the namespace value */
 };
 
 /**
@@ -69,8 +69,8 @@ struct lyxml_attr {
     LYXML_ATTR_TYPE type;            /**< type of the attribute */
     struct lyxml_attr *next;         /**< next sibling attribute */
     const struct lyxml_ns *ns;       /**< pointer to the namespace of the attribute if any */
-    const char *value;               /**< data stored in the attribute */
     const char *name;                /**< name of the attribute (the LocalPart of the qualified name) */
+    const char *value;               /**< data stored in the attribute */
 };
 
 /**
@@ -170,11 +170,12 @@ const char *lyxml_get_attr(struct lyxml_elem *elem, const char *name, const char
  *
  * The child is added as a last child.
  *
+ * @param[in] ctx libyang context to use.
  * @param[in] parent Element where to add the child.
  * @param[in] child Element to be added as a last child of the parent.
  * @return EXIT_SUCCESS or EXIT_FAILURE
  */
-int lyxml_add_child(struct lyxml_elem *parent, struct lyxml_elem *child);
+int lyxml_add_child(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_elem *child);
 
 struct lyxml_elem *lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem,
                                   struct lyxml_elem *parent, int recursive);
@@ -219,9 +220,14 @@ void lyxml_unlink_attr(struct lyxml_attr *attr);
  * @brief Unlink the element from its parent. In contrast to lyxml_free_elem(),
  * after return the caller can still manipulate with the elem.
  *
+ * @param[in] ctx libyang context to use.
  * @param[in] elem Element to unlink from its parent (if any).
+ * @param[in] copy_ns Flag true corrects NS of \p elem and children that are
+ *                    defined outside \p elem subtree (copy NS and update pointer).
+ *                    Flag false sets NS of \p elem and children that are defined
+ *                    outside \p elem subtree to NULL.
  */
-void lyxml_unlink_elem(struct lyxml_elem *elem);
+void lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns);
 
 /**
  * @brief Get namespace definition of the given prefix in context of the specified element.

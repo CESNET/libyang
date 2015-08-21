@@ -31,6 +31,7 @@ int tree_print_model(FILE * f, struct lys_module *module);
 int info_print_model(FILE * f, struct lys_module *module, const char *target_node);
 
 int json_print_data(FILE *f, struct lyd_node *root);
+int xml_print_data(FILE *f, struct lyd_node *root);
 
 API int
 lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
@@ -66,8 +67,7 @@ lyd_print(FILE * f, struct lyd_node *root, LYD_FORMAT format)
 
     switch (format) {
     case LYD_XML:
-        LOGERR(LY_EINVAL, "XML output format not supported yet.");
-        return EXIT_FAILURE;
+        return xml_print_data(f, root);
     case LYD_JSON:
         return json_print_data(f, root);
     default:
