@@ -2745,26 +2745,26 @@ inherit_config_flag(struct lys_node *node)
  *
  * @param[in] aug Augment to use.
  * @param[in] siblings Nodes where to start the search in.
- * @param[in] module Main module.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 int
-resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct lys_module *module)
+resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
 {
     int rc;
-    struct lys_node *sub, *aux;
+    struct lys_node *sub;
 
-    assert(module);
+    assert(aug);
 
     /* resolve target node */
-    rc = resolve_schema_nodeid(aug->target_name, siblings, module, LYS_AUGMENT, &aug->target);
+    rc = resolve_schema_nodeid(aug->target_name, siblings, aug->module, LYS_AUGMENT, &aug->target);
     if (rc) {
         return rc;
     }
 
     if (!aug->child) {
         /* nothing to do */
+        LOGWRN("Augment \"%s\" without children.", aug->target_name);
         return EXIT_SUCCESS;
     }
 
@@ -2777,17 +2777,17 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
     }
 
     /* check identifier uniquness as in lys_node_addchild() */
-    LY_TREE_FOR(aug->child, aux) {
-        if (lys_check_id(aux, aug->parent, module)) {
+    LY_TREE_FOR(aug->child, sub) {
+        if (lys_check_id(sub, aug->parent, aug->module)) {
             return -1;
         }
     }
     /* reconnect augmenting data into the target - add them to the target child list */
     if (aug->target->child) {
-        aux = aug->target->child->prev; /* remember current target's last node */
-        aux->next = aug->child;         /* connect augmenting data after target's last node */
+        sub = aug->target->child->prev; /* remember current target's last node */
+        sub->next = aug->child;         /* connect augmenting data after target's last node */
         aug->target->child->prev = aug->child->prev; /* new target's last node is last augmenting node */
-        aug->child->prev = aux;         /* finish connecting of both child lists */
+        aug->child->prev = sub;         /* finish connecting of both child lists */
     } else {
         aug->target->child = aug->child;
     }
@@ -2945,7 +2945,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
 
     /* apply augments */
     for (i = 0; i < uses->augment_size; i++) {
-        rc = resolve_augment(&uses->augment[i], uses->child, uses->module);
+        rc = resolve_augment(&uses->augment[i], uses->child);
         if (rc) {
             LOGVAL(LYE_INRESOLV, line, "augment", uses->augment[i].target_name);
             return rc;

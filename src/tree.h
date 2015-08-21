@@ -964,8 +964,7 @@ struct lys_node_rpc {
  *
  * This structure is partially interchangeable with ::lys_node structure with the following exceptions:
  * - ::lys_node#name member is replaced by ::lys_node_augment#target_name member
- * - ::lys_node#module member is replaced by ::lys_node_augment#target member
- * - ::lys_node_augment structure is extended by the #when member
+ * - ::lys_node_augment structure is extended by the #when and #target member
  *
  * ::lys_node_augment is not placed between all other nodes defining data node. However, it must be compatible with
  * ::lys_node structure since its children actually keeps the parent pointer to point to the original augment node
@@ -980,7 +979,8 @@ struct lys_node_augment {
     const char *ref;                 /**< reference statement (optional) */
     uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
     uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
-    struct lys_node *target;         /**< pointer to the target node TODO refer to augmentation description */
+    struct lys_module *module;       /**< pointer to the node's module (mandatory) */
+
     LYS_NODE nodetype;               /**< #LYS_AUGMENT */
     struct lys_node *parent;         /**< uses node or NULL in case of module's top level augment */
     struct lys_node *child;          /**< augmenting data \note The child here points to the data which are also
@@ -993,6 +993,7 @@ struct lys_node_augment {
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
     struct lys_when *when;           /**< when statement (optional) */
+    struct lys_node *target;         /**< pointer to the target node TODO refer to augmentation description */
 };
 
 /**

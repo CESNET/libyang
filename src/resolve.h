@@ -68,7 +68,7 @@ int resolve_path_arg_data(struct lyd_node *dnode, const char *path, uint32_t lin
 
 struct lyd_node *resolve_instid_json(struct lyd_node *data, const char *path, int line);
 
-int resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct lys_module *module);
+int resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings);
 
 int resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t line);
 

@@ -1946,7 +1946,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
     aug->target_name = lydict_insert(module->ctx, value, 0);
     aug->parent = parent;
 
-    if (read_yin_common(module, NULL, (struct lys_node *)aug, yin, OPT_NACMEXT)) {
+    if (read_yin_common(module, NULL, (struct lys_node *)aug, yin, OPT_MODULE | OPT_NACMEXT)) {
         goto error;
     }
 
@@ -2036,7 +2036,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
      * (the grouping was not yet copied into uses).
      */
     if (!parent || (parent->nodetype != LYS_USES)) {
-        if (resolve_augment(aug, aug->child, module)) {
+        if (resolve_augment(aug, aug->child)) {
             LOGVAL(LYE_INRESOLV, LOGLINE(yin), "augment", aug->target_name);
             goto error;
         }
