@@ -892,13 +892,25 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         return NULL;
     }
     result->parent = parent;
-    result->prev = prev;
+    if (parent && !parent->child) {
+        parent->child = result;
+    }
+    if (prev) {
+        result->prev = prev;
+        prev->next = result;
+
+        /* fix the "last" pointer */
+        for (diter = prev; diter->prev != prev; diter = diter->prev);
+        diter->prev = result;
+    } else {
+        result->prev = result;
+    }
     result->schema = schema;
 
     /* type specific processing */
     if (schema->nodetype == LYS_LIST) {
         /* pointers to next and previous instances of the same list */
-        for (diter = result->prev; diter; diter = diter->prev) {
+        for (diter = result->prev; diter != result; diter = diter->prev) {
             if (diter->schema == result->schema) {
                 /* instances of the same list */
                 ((struct lyd_node_list *)diter)->lnext = (struct lyd_node_list *)result;
@@ -918,7 +930,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         }
 
         /* pointers to next and previous instances of the same leaflist */
-        for (diter = result->prev; diter; diter = diter->prev) {
+        for (diter = result->prev; diter != result; diter = diter->prev) {
             if (diter->schema == result->schema) {
                 /* instances of the same list */
                 ((struct lyd_node_leaflist *)diter)->lnext = (struct lyd_node_leaflist *)result;
@@ -938,7 +950,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     /* process children */
     if (havechildren && xml->child) {
-        result->child = xml_parse_data(ctx, xml->child, result, NULL, options, unres);
+        xml_parse_data(ctx, xml->child, result, NULL, options, unres);
         if (ly_errno) {
             goto error;
         }
@@ -977,7 +989,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML)) {
         if (options & LYD_OPT_FILTER) {
             /* normalize the filter */
-            for (diter = result->prev; diter; diter = diter->prev) {
+            for (diter = result->prev; diter != result; diter = diter->prev) {
                 if (diter->schema == schema) {
                     switch (schema->nodetype) {
                     case LYS_CONTAINER:
@@ -1015,7 +1027,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                 }
             }
         } else {
-            for (diter = result->prev; diter; diter = diter->prev) {
+            for (diter = result->prev; diter != result; diter = diter->prev) {
                 if (diter->schema == schema) {
                     LOGVAL(LYE_TOOMANY, LOGLINE(xml), xml->name, xml->parent ? xml->parent->name : "data tree");
                     goto error;
@@ -1083,7 +1095,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             /* TODO check schemas with a choice inside a case */
             LOGWRN("Not checking parent branches of nested choice");
         }
-        for (diter = result->prev; diter; diter = diter->prev) {
+        for (diter = result->prev; diter != result; diter = diter->prev) {
             if ((diter->schema->parent->nodetype == LYS_CHOICE && diter->schema->parent == ch) ||
                     (diter->schema->parent->nodetype == LYS_CASE && !cs) ||
                     (diter->schema->parent->nodetype == LYS_CASE && cs && diter->schema->parent != cs && diter->schema->parent->parent == ch)) {
@@ -1097,26 +1109,33 @@ siblings:
     /* process siblings */
     if (xml->next) {
         if (result) {
-            result->next = xml_parse_data(ctx, xml->next, parent, result, options, unres);
+            xml_parse_data(ctx, xml->next, parent, result, options, unres);
         } else {
-            result = xml_parse_data(ctx, xml->next, parent, prev, options, unres);
+            xml_parse_data(ctx, xml->next, parent, prev, options, unres);
         }
         if (ly_errno) {
             goto error;
         }
     }
 
-    /* fix the "last" pointer */
-    if (result && !result->prev) {
-        for (diter = result; diter->next; diter = diter->next);
-        result->prev = diter;
-    }
     return result;
 
 error:
 
     if (result) {
-        result->next = NULL;
+        /* unlink the result */
+        if (parent && parent->child == result) {
+            parent->child = NULL;
+        }
+        if (prev) {
+            prev->next = NULL;
+            result->prev = result;
+
+            /* fix the "last" pointer */
+            for (diter = prev; diter->prev != result; diter = diter->prev);
+            diter->prev = prev;
+        }
+
         result->parent = NULL;
         result->prev = result;
         lyd_free(result);
@@ -1126,10 +1145,22 @@ error:
 
 cleargotosiblings:
 
+    /* unlink the result */
+    if (parent && parent->child == result) {
+        parent->child = NULL;
+    }
+    if (prev) {
+        prev->next = NULL;
+        result->prev = result;
+
+        /* fix the "last" pointer */
+        for (diter = prev; diter->prev != result; diter = diter->prev);
+        diter->prev = prev;
+    }
+
     /* cleanup the result variable ... */
     result->next = NULL;
     result->parent = NULL;
-    result->prev = result;
     lyd_free(result);
     result = NULL;
 
