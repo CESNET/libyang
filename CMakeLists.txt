@@ -8,6 +8,9 @@ set(LIBYANG_MICRO_VERSION 15)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 
+# include custom Modules
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+
 # check the supported platform
 if(NOT UNIX)
 	message(FATAL_ERROR "Only *nix like systems are supported.")
@@ -63,6 +66,12 @@ set(headers
 
 add_library(yang SHARED ${libsrc})
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})
+set(LIBS ${LIBS} yang)
+
+# find PCRE library
+find_package(PCRE REQUIRED)
+include_directories(${PCRE_INCLUDE_DIRS})
+set(LIBS ${LIBS} ${PCRE_LIBRARIES})
 
 install(TARGETS yang DESTINATION ${LIB_INSTALL_DIR})
 install(FILES ${headers} DESTINATION ${INCLUDE_INSTALL_DIR})
@@ -81,5 +90,5 @@ add_custom_target(cclean
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(yanglint ${lintsrc})
-target_link_libraries(yanglint yang)
+target_link_libraries(yanglint ${LIBS})
 

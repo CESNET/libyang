@@ -28,7 +28,7 @@
 #include <string.h>
 #include <stddef.h>
 #include <sys/types.h>
-#include <regex.h>
+#include <pcre.h>
 
 #include "libyang.h"
 #include "common.h"
@@ -453,18 +453,18 @@ error:
     return EXIT_FAILURE;
 }
 
+/* logs directly */
 static int
 fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_type *type,
               struct unres_schema *unres)
 {
 #define REGEX_ERR_LEN 128
-    const char *value, *delim, *name;
-    char regex_err[REGEX_ERR_LEN];
+    const char *value, *delim, *name, *err_ptr;
     struct lyxml_elem *next, *node;
     struct lys_restr **restr;
     struct lys_type_bit bit;
-    regex_t preq;
-    int i, j, rc;
+    pcre *precomp;
+    int i, j, rc, err_offset;
     int64_t v, v_;
     int64_t p, p_;
 
@@ -981,14 +981,13 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 GETVAL(value, yin->child, "value");
 
                 /* check that the regex is valid */
-                if ((rc = regcomp(&preq, value, REG_EXTENDED | REG_NOSUB)) != 0) {
-                    regerror(rc, &preq, regex_err, REGEX_ERR_LEN);
-                    regfree(&preq);
-                    LOGVAL(LYE_INREGEX, LOGLINE(node), value, regex_err);
+                precomp = pcre_compile(value, PCRE_NO_AUTO_CAPTURE, &err_ptr, &err_offset, NULL);
+                if (!precomp) {
+                    LOGVAL(LYE_INREGEX, LOGLINE(node), value, err_ptr);
                     free(type->info.str.patterns);
                     goto error;
                 }
-                regfree(&preq);
+                free(precomp);
 
                 type->info.str.patterns[type->info.str.pat_count].expr = lydict_insert(module->ctx, value, 0);
 

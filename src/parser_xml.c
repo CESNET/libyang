@@ -26,7 +26,7 @@
 #include <string.h>
 #include <limits.h>
 #include <sys/types.h>
-#include <regex.h>
+#include <pcre.h>
 
 #include "libyang.h"
 #include "common.h"
@@ -175,9 +175,10 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
 static int
 validate_pattern(const char *str, struct lys_type *type, const char *str_val, struct lyxml_elem *xml, int log)
 {
-    int i;
-    regex_t preq;
-    char *posix_regex;
+    int i, err_offset;
+    pcre *precomp;
+    char *perl_regex;
+    const char *err_ptr;
 
     assert(type->base == LY_TYPE_STRING);
 
@@ -187,38 +188,36 @@ validate_pattern(const char *str, struct lys_type *type, const char *str_val, st
 
     for (i = 0; i < type->info.str.pat_count; ++i) {
         /*
-         * adjust the expression to a POSIX.2 equivalent
+         * adjust the expression to a Perl equivalent
          *
          * http://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs
          */
-        posix_regex = malloc((strlen(type->info.str.patterns[i].expr)+3) * sizeof(char));
-        posix_regex[0] = '\0';
-
-        if (strncmp(type->info.str.patterns[i].expr, ".*", 2)) {
-            strcat(posix_regex, "^");
-        }
-        strcat(posix_regex, type->info.str.patterns[i].expr);
+        perl_regex = malloc((strlen(type->info.str.patterns[i].expr)+2) * sizeof(char));
+        perl_regex[0] = '\0';
+        strcat(perl_regex, type->info.str.patterns[i].expr);
         if (strncmp(type->info.str.patterns[i].expr
                 + strlen(type->info.str.patterns[i].expr) - 2, ".*", 2)) {
-            strcat(posix_regex, "$");
+            strcat(perl_regex, "$");
         }
 
         /* must return 0, already checked during parsing */
-        if (regcomp(&preq, posix_regex, REG_EXTENDED | REG_NOSUB)) {
+        precomp = pcre_compile(perl_regex, PCRE_ANCHORED | PCRE_DOLLAR_ENDONLY | PCRE_NO_AUTO_CAPTURE,
+                               &err_ptr, &err_offset, NULL);
+        if (!precomp) {
             LOGINT;
-            free(posix_regex);
+            free(perl_regex);
             return EXIT_FAILURE;
         }
-        free(posix_regex);
+        free(perl_regex);
 
-        if (regexec(&preq, str, 0, 0, 0)) {
-            regfree(&preq);
+        if (pcre_exec(precomp, NULL, str_val, strlen(str_val), 0, 0, NULL, 0)) {
+            free(precomp);
             if (log) {
                 LOGVAL(LYE_INVAL, LOGLINE(xml), str_val, xml->name);
             }
             return EXIT_FAILURE;
         }
-        regfree(&preq);
+        free(precomp);
     }
 
     return EXIT_SUCCESS;
