@@ -543,7 +543,8 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
         }
 
         if (parse_int(dec, xml, -9223372036854775807L - 1L, 9223372036854775807L, 10, &num, log)
-                || validate_length_range(2, 0, 0, ((long double)num)/(1 << type->info.dec64.dig), node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
+                || validate_length_range(2, 0, 0, ((long double)num)/(1 << type->info.dec64.dig), node_type,
+                                         leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
             return EXIT_FAILURE;
         }
         leaf->value.dec64 = num;

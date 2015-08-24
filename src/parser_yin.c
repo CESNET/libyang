@@ -2581,7 +2581,7 @@ static struct lys_node *
 read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
               struct unres_schema *unres)
 {
-    struct lyxml_elem *sub, *next;
+    struct lyxml_elem *sub, *next, root;
     struct lys_node_case *cs;
     struct lys_node *retval, *node = NULL;
     int c_ftrs = 0;
@@ -2611,24 +2611,20 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             continue;
         }
 
-        if (!strcmp(sub->name, "container")) {
-            node = read_yin_container(module, retval, sub, resolve, unres);
-        } else if (!strcmp(sub->name, "leaf-list")) {
-            node = read_yin_leaflist(module, retval, sub, resolve, unres);
-        } else if (!strcmp(sub->name, "leaf")) {
-            node = read_yin_leaf(module, retval, sub, resolve, unres);
-        } else if (!strcmp(sub->name, "list")) {
-            node = read_yin_list(module, retval, sub, resolve, unres);
-        } else if (!strcmp(sub->name, "uses")) {
-            node = read_yin_uses(module, retval, sub, resolve, unres);
-        } else if (!strcmp(sub->name, "choice")) {
-            node = read_yin_choice(module, retval, sub, resolve, unres);
-        } else if (!strcmp(sub->name, "anyxml")) {
-            node = read_yin_anyxml(module, retval, sub, resolve, unres);
+        if (!strcmp(sub->name, "container") ||
+                !strcmp(sub->name, "leaf-list") ||
+                !strcmp(sub->name, "leaf") ||
+                !strcmp(sub->name, "list") ||
+                !strcmp(sub->name, "uses") ||
+                !strcmp(sub->name, "choice") ||
+                !strcmp(sub->name, "anyxml")) {
+
+            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_add_child(module->ctx, &root, sub);
         } else if (!strcmp(sub->name, "if-feature")) {
-                c_ftrs++;
-                /* skip lyxml_free_elem() at the end of the loop, sub is processed later */
-                continue;
+            c_ftrs++;
+            /* skip lyxml_free_elem() at the end of the loop, sub is processed later */
+            continue;
         } else if (!strcmp(sub->name, "when")) {
             if (cs->when) {
                 LOGVAL(LYE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
@@ -2642,17 +2638,12 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             if (unres_schema_add_node(module, unres, cs->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
                 goto error;
             }
+
+            lyxml_free_elem(module->ctx, sub);
         } else {
             LOGVAL(LYE_INSTMT, LOGLINE(sub), sub->name);
             goto error;
         }
-
-        if (!node) {
-            goto error;
-        }
-
-        node = NULL;
-        lyxml_free_elem(module->ctx, sub);
     }
 
     if (c_ftrs) {
@@ -2665,10 +2656,37 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
     }
 
+    /* last part - process data nodes */
+    LY_TREE_FOR_SAFE(root.child, next, sub) {
+        if (!strcmp(sub->name, "container")) {
+            node = read_yin_container(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "leaf-list")) {
+            node = read_yin_leaflist(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "leaf")) {
+            node = read_yin_leaf(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "list")) {
+            node = read_yin_list(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "choice")) {
+            node = read_yin_choice(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "uses")) {
+            node = read_yin_uses(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "anyxml")) {
+            node = read_yin_anyxml(module, retval, sub, resolve, unres);
+        }
+        if (!node) {
+            goto error;
+        }
+
+        lyxml_free_elem(module->ctx, sub);
+    }
+
     return retval;
 
 error:
 
+    while (root.child) {
+        lyxml_free_elem(module->ctx, root.child);
+    }
     lys_node_free(retval);
 
     return NULL;
