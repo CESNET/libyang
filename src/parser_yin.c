@@ -487,17 +487,18 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     }
 
     rc = resolve_superior_type(value, type->prefix, module, parent, &type->der);
-    if (rc) {
-        if (rc == EXIT_FAILURE) {
-            /* HACK for unres */
-            type->der = (struct lys_tpdf *)parent;
-            rc = unres_schema_add_str(module, unres, type, UNRES_TYPE_DER, value, LOGLINE(yin));
-        }
+    if (rc == -1) {
+        LOGVAL(LYE_INPREF, LOGLINE(yin), type->prefix);
+        goto error;
+    } else if (rc == EXIT_FAILURE) {
+        /* HACK for unres */
+        type->der = (struct lys_tpdf *)parent;
+        rc = unres_schema_add_str(module, unres, type, UNRES_TYPE_DER, value, LOGLINE(yin));
         if (rc == -1) {
             goto error;
+        } else {
+            return EXIT_SUCCESS;
         }
-
-        return EXIT_SUCCESS;
     }
     type->base = type->der->type.base;
 
