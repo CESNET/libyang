@@ -410,8 +410,8 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
     case LY_TYPE_BINARY:
         leaf->value.binary = leaf->value_str;
 
-        if (node_type->info.binary.length
-                && validate_length_range(0, strlen(leaf->value.binary), 0, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
+        if (validate_length_range(0, (leaf->value.binary ? strlen(leaf->value.binary) : 0), 0, 0, node_type,
+                                  leaf->value.binary, log ? LOGLINE(xml) : UINT_MAX)) {
             return EXIT_FAILURE;
         }
         break;
