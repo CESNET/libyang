@@ -2495,7 +2495,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
             }
 
             if ((i = resolve_path_predicate_schema(id, mod, node, parent_node, line)) < 1) {
-                return -1;
+                return EXIT_FAILURE;
             }
             id += i;
         }
