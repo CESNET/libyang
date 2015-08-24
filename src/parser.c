@@ -197,7 +197,7 @@ cleanup:
 
 /**
  * @brief Checks the syntax of length or range statement,
- *        on success checks the semantics as well.
+ *        on success checks the semantics as well. Does not log.
  *
  * @param[in] expr Length or range expression.
  * @param[in] type Type with the restriction.

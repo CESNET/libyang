@@ -3312,7 +3312,9 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
 
         /* HACK type->der is temporarily its parent */
         rc = resolve_superior_type(base_name, stype->prefix, mod, (struct lys_node *)stype->der, &stype->der);
-        if (!rc) {
+        if (rc == -1) {
+            LOGVAL(LYE_INPREF, line, stype->prefix);
+        } else if (!rc) {
             stype->base = stype->der->type.base;
         }
         has_str = 1;

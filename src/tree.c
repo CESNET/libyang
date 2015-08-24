@@ -516,6 +516,7 @@ lys_get_next_grouping(struct lys_node_grp* lastgrp, struct lys_node *root)
     }
 }
 
+/* logs directly */
 int
 lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *module)
 {
@@ -673,6 +674,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
     return EXIT_SUCCESS;
 }
 
+/* logs directly */
 int
 lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child)
 {

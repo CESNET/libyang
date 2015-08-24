@@ -86,6 +86,7 @@ static struct lys_node *read_yin_grouping(struct lys_module *module, struct lys_
                                           int resolve, struct unres_schema *unres);
 static struct lys_when *read_yin_when(struct lys_module *module, struct lyxml_elem *yin);
 
+/* does not log */
 static int
 dup_typedef_check(const char *type, struct lys_tpdf *tpdf, int size)
 {
@@ -101,6 +102,7 @@ dup_typedef_check(const char *type, struct lys_tpdf *tpdf, int size)
     return EXIT_SUCCESS;
 }
 
+/* does not log */
 static int
 dup_feature_check(const char *id, struct lys_module *module)
 {
@@ -115,6 +117,7 @@ dup_feature_check(const char *id, struct lys_module *module)
     return EXIT_SUCCESS;
 }
 
+/* does not log */
 static int
 dup_prefix_check(const char *prefix, struct lys_module *module)
 {
@@ -132,6 +135,7 @@ dup_prefix_check(const char *prefix, struct lys_module *module)
     return EXIT_SUCCESS;
 }
 
+/* logs directly */
 static int
 check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
                  struct lys_module *module, struct lys_node *parent)
@@ -289,6 +293,7 @@ check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
     return EXIT_SUCCESS;
 }
 
+/* does not log */
 static int
 check_mandatory(struct lys_node *node)
 {
@@ -311,6 +316,7 @@ check_mandatory(struct lys_node *node)
     return EXIT_SUCCESS;
 }
 
+/* logs directly */
 static int
 check_date(const char *date, unsigned int line)
 {
@@ -340,6 +346,7 @@ error:
     return EXIT_FAILURE;
 }
 
+/* logs directly */
 static const char *
 read_yin_subnode(struct ly_ctx *ctx, struct lyxml_elem *node, const char *name)
 {
@@ -357,6 +364,7 @@ read_yin_subnode(struct ly_ctx *ctx, struct lyxml_elem *node, const char *name)
     return NULL;
 }
 
+/* logs directly */
 static int
 fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_ident *ident, struct unres_schema *unres)
 {
@@ -395,6 +403,7 @@ error:
     return EXIT_SUCCESS;
 }
 
+/* logs directly */
 static int
 read_restr_substmt(struct ly_ctx *ctx, struct lys_restr *restr, struct lyxml_elem *yin)
 {
@@ -1069,6 +1078,7 @@ error:
     return EXIT_FAILURE;
 }
 
+/* logs directly */
 static int
 fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_tpdf *tpdf, struct unres_schema *unres)
 {
@@ -1143,6 +1153,7 @@ error:
     return EXIT_FAILURE;
 }
 
+/* logs directly */
 static int
 fill_yin_feature(struct lys_module *module, struct lyxml_elem *yin, struct lys_feature *f, struct unres_schema *unres)
 {
@@ -1193,6 +1204,7 @@ error:
     return EXIT_FAILURE;
 }
 
+/* logs directly */
 static int
 fill_yin_must(struct lys_module *module, struct lyxml_elem *yin, struct lys_restr *must)
 {
@@ -1208,7 +1220,8 @@ error: /* GETVAL requires this label */
     return EXIT_FAILURE;
 }
 
-/*
+/* logs directly
+ *
  * type: 0 - min, 1 - max
  */
 static int
@@ -1287,6 +1300,7 @@ error:
     return EXIT_FAILURE;
 }
 
+/* logs directly */
 static int
 fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys_deviation *dev)
 {
@@ -1931,6 +1945,7 @@ error:
     return EXIT_FAILURE;
 }
 
+/* logs directly */
 static int
 fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_node_augment *aug,
                  struct unres_schema *unres)
@@ -2048,6 +2063,7 @@ error:
     return EXIT_FAILURE;
 }
 
+/* logs directly */
 static int
 fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_refine *rfn, struct lys_node_uses *uses,
                 struct unres_schema *unres)
@@ -2264,6 +2280,7 @@ error:
     return EXIT_FAILURE;
 }
 
+/* logs directly */
 static int
 fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_import *imp)
 {
@@ -2323,6 +2340,7 @@ error:
     return EXIT_FAILURE;
 }
 
+/* logs directly */
 static int
 fill_yin_include(struct lys_module *module, struct lyxml_elem *yin, struct lys_include *inc)
 {
@@ -2379,7 +2397,8 @@ error:
     return EXIT_FAILURE;
 }
 
-/*
+/* logs directly
+ *
  * Covers:
  * description, reference, status, optionaly config
  *
@@ -2506,6 +2525,7 @@ error:
     return EXIT_FAILURE;
 }
 
+/* logs directly */
 static struct lys_when *
 read_yin_when(struct lys_module *module, struct lyxml_elem *yin)
 {
@@ -2556,6 +2576,7 @@ error:
     return NULL;
 }
 
+/* logs directly */
 static struct lys_node *
 read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
               struct unres_schema *unres)
@@ -2653,6 +2674,7 @@ error:
     return NULL;
 }
 
+/* logs directly */
 static struct lys_node *
 read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve, struct unres_schema *unres)
 {
@@ -2798,6 +2820,7 @@ error:
     return NULL;
 }
 
+/* logs directly */
 static struct lys_node *
 read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
                 struct unres_schema *unres)
@@ -2914,6 +2937,7 @@ error:
     return NULL;
 }
 
+/* logs directly */
 static struct lys_node *
 read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
               struct unres_schema *unres)
@@ -3065,6 +3089,7 @@ error:
     return NULL;
 }
 
+/* logs directly */
 static struct lys_node *
 read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
                   struct unres_schema *unres)
@@ -3259,6 +3284,7 @@ error:
     return NULL;
 }
 
+/* logs directly */
 static struct lys_node *
 read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
               struct unres_schema *unres)
@@ -3548,6 +3574,7 @@ error:
     return NULL;
 }
 
+/* logs directly */
 static struct lys_node *
 read_yin_container(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
                    struct unres_schema *unres)
@@ -3710,6 +3737,7 @@ error:
     return NULL;
 }
 
+/* logs directly */
 static struct lys_node *
 read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
                   struct unres_schema *unres)
@@ -3817,6 +3845,7 @@ error:
     return NULL;
 }
 
+/* logs directly */
 static struct lys_node *
 read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
                       struct unres_schema *unres)
@@ -3936,6 +3965,7 @@ error:
     return NULL;
 }
 
+/* logs directly */
 static struct lys_node *
 read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
                struct unres_schema *unres)
@@ -4058,6 +4088,7 @@ error:
     return NULL;
 }
 
+/* logs directly */
 static struct lys_node *
 read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
              struct unres_schema *unres)
@@ -4183,7 +4214,8 @@ error:
     return NULL;
 }
 
-/*
+/* logs directly
+ *
  * resolve - referenced grouping should be bounded to the namespace (resolved)
  * only when uses does not appear in grouping. In a case of grouping's uses,
  * we just get information but we do not apply augment or refine to it.
@@ -4306,7 +4338,10 @@ error:
     return NULL;
 }
 
-/* common code for yin_read_module() and yin_read_submodule() */
+/* logs directly
+ *
+ * common code for yin_read_module() and yin_read_submodule()
+ */
 static int
 read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_schema *unres)
 {
@@ -4769,6 +4804,7 @@ error:
     return EXIT_FAILURE;
 }
 
+/* logs directly */
 struct lys_submodule *
 yin_read_submodule(struct lys_module *module, const char *data, int implement, struct unres_schema *unres)
 {
@@ -4826,6 +4862,7 @@ error:
     return NULL;
 }
 
+/* logs directly */
 struct lys_module *
 yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unres_schema *unres)
 {

@@ -615,6 +615,7 @@ pututf8(char *dst, int32_t value)
     }
 }
 
+/* logs directly */
 static int
 parse_ignore(const char *data, const char *endstr, unsigned int *len)
 {
@@ -637,6 +638,7 @@ parse_ignore(const char *data, const char *endstr, unsigned int *len)
     return EXIT_SUCCESS;
 }
 
+/* logs directly */
 static char *
 parse_text(const char *data, char delim, unsigned int *len)
 {
@@ -783,6 +785,7 @@ error:
     return NULL;
 }
 
+/* logs directly */
 static struct lyxml_attr *
 parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml_elem *parent)
 {
@@ -879,6 +882,7 @@ error:
     return NULL;
 }
 
+/* logs directly */
 static struct lyxml_elem *
 parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml_elem *parent)
 {
@@ -1148,6 +1152,7 @@ error:
     return NULL;
 }
 
+/* logs directly */
 struct lyxml_elem *
 lyxml_read(struct ly_ctx *ctx, const char *data, int UNUSED(options))
 {

@@ -130,7 +130,10 @@ transform_data_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml, int log)
     return NULL;
 }
 
-/* kind == 0 - unsigned (unum used), 1 - signed (snum used), 2 - floating point (fnum used) */
+/* logs directly
+ *
+ * kind == 0 - unsigned (unum used), 1 - signed (snum used), 2 - floating point (fnum used)
+ */
 static int
 validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnum, struct lys_type *type,
                       const char *str_val, uint32_t line)
@@ -139,6 +142,8 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
     int ret = EXIT_FAILURE;
 
     if (resolve_len_ran_interval(NULL, type, 0, &intv)) {
+        /* already done during schema parsing */
+        LOGINT;
         return EXIT_FAILURE;
     }
     if (!intv) {
@@ -172,6 +177,7 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
     return ret;
 }
 
+/* logs directly */
 static int
 validate_pattern(const char *str, struct lys_type *type, const char *str_val, struct lyxml_elem *xml, int log)
 {
@@ -223,6 +229,7 @@ validate_pattern(const char *str, struct lys_type *type, const char *str_val, st
     return EXIT_SUCCESS;
 }
 
+/* does not log */
 static struct lys_node *
 xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start)
 {
@@ -261,6 +268,7 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start)
     return NULL;
 }
 
+/* logs directly */
 static int
 parse_int(const char *str_val, struct lyxml_elem *xml, int64_t min, int64_t max, int base, int64_t *ret, int log)
 {
@@ -290,6 +298,7 @@ parse_int(const char *str_val, struct lyxml_elem *xml, int64_t min, int64_t max,
     return EXIT_SUCCESS;
 }
 
+/* logs directly */
 static int
 parse_uint(const char *str_val, struct lyxml_elem *xml, uint64_t max, int base, uint64_t *ret, int log)
 {
@@ -318,6 +327,7 @@ parse_uint(const char *str_val, struct lyxml_elem *xml, uint64_t max, int base, 
     return EXIT_SUCCESS;
 }
 
+/* does not log, cannot fail */
 static struct lys_type *
 get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *found)
 {
@@ -350,6 +360,7 @@ get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *foun
     return ret;
 }
 
+/* logs directly */
 static int
 _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_elem *xml,
                int options, struct unres_data *unres, int log)
@@ -743,12 +754,14 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
     return EXIT_SUCCESS;
 }
 
+/* logs indirectly */
 static int
 xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct unres_data *unres)
 {
     return _xml_get_value(node, &((struct lys_node_leaf *)node->schema)->type, xml, options, unres, 1);
 }
 
+/* logs directly */
 struct lyd_node *
 xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev,
                int options, struct unres_data *unres)
@@ -761,6 +774,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     int i, havechildren;
 
     if (!xml) {
+        LOGINT;
         return NULL;
     }
     if (!xml->ns || !xml->ns->value) {
@@ -1165,6 +1179,7 @@ cleargotosiblings:
     goto siblings;
 }
 
+/* logs indirectly */
 struct lyd_node *
 xml_read_data(struct ly_ctx *ctx, const char *data, int options)
 {
