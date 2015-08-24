@@ -172,7 +172,7 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
     }
 
     if (ret) {
-        LOGVAL(LYE_OORVAL, line, str_val);
+        LOGVAL(LYE_OORVAL, line, (str_val ? str_val : ""));
     }
     return ret;
 }
@@ -187,6 +187,10 @@ validate_pattern(const char *str_val, struct lys_type *type, struct lyxml_elem *
     const char *err_ptr;
 
     assert(type->base == LY_TYPE_STRING);
+
+    if (!str_val) {
+        str_val = "";
+    }
 
     if (type->der && validate_pattern(str_val, &type->der->type, xml, log)) {
         return EXIT_FAILURE;
@@ -274,6 +278,13 @@ parse_int(const char *str_val, struct lyxml_elem *xml, int64_t min, int64_t max,
 {
     char *strptr;
 
+    if (!str_val) {
+        if (log) {
+            LOGVAL(LYE_INVAL, LOGLINE(xml), "", xml->name);
+        }
+        return EXIT_FAILURE;
+    }
+
     /* convert to 64-bit integer, all the redundant characters are handled */
     errno = 0;
     strptr = NULL;
@@ -303,6 +314,13 @@ static int
 parse_uint(const char *str_val, struct lyxml_elem *xml, uint64_t max, int base, uint64_t *ret, int log)
 {
     char *strptr;
+
+    if (!str_val) {
+        if (log) {
+            LOGVAL(LYE_INVAL, LOGLINE(xml), "", xml->name);
+        }
+        return EXIT_FAILURE;
+    }
 
     errno = 0;
     strptr = NULL;
@@ -655,7 +673,8 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
     case LY_TYPE_STRING:
         leaf->value.string = leaf->value_str;
 
-        if (validate_length_range(0, strlen(leaf->value.string), 0, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
+        if (validate_length_range(0, (leaf->value.string ? strlen(leaf->value.string) : 0), 0, 0, node_type,
+                leaf->value.string, log ? LOGLINE(xml) : UINT_MAX)) {
             return EXIT_FAILURE;
         }
 
@@ -677,7 +696,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
 
         if (!type) {
             if (log) {
-                LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
+                LOGVAL(LYE_INVAL, LOGLINE(xml), (leaf->value_str ? leaf->value_str : ""), xml->name);
             }
             return EXIT_FAILURE;
         }
