@@ -179,7 +179,7 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
 
 /* logs directly */
 static int
-validate_pattern(const char *str, struct lys_type *type, const char *str_val, struct lyxml_elem *xml, int log)
+validate_pattern(const char *str_val, struct lys_type *type, struct lyxml_elem *xml, int log)
 {
     int i, err_offset;
     pcre *precomp;
@@ -188,7 +188,7 @@ validate_pattern(const char *str, struct lys_type *type, const char *str_val, st
 
     assert(type->base == LY_TYPE_STRING);
 
-    if (type->der && validate_pattern(str, &type->der->type, str_val, xml, log)) {
+    if (type->der && validate_pattern(str_val, &type->der->type, xml, log)) {
         return EXIT_FAILURE;
     }
 
@@ -659,7 +659,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
             return EXIT_FAILURE;
         }
 
-        if (validate_pattern(leaf->value.string, node_type, leaf->value_str, xml, log)) {
+        if (validate_pattern(leaf->value.string, node_type, xml, log)) {
             return EXIT_FAILURE;
         }
         break;
