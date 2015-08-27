@@ -33,6 +33,7 @@
 #include "resolve.h"
 #include "xml.h"
 #include "tree_internal.h"
+#include "validation.h"
 
 static const struct internal_modules int_mods = {
     .modules = {
@@ -2464,7 +2465,7 @@ API int
 lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options)
 {
     struct lys_node *sparent;
-    struct lyd_node *iter;
+    struct lyd_node *iter, *next, *last;
 
     if (!node || !parent) {
         ly_errno = LY_EINVAL;
@@ -2485,7 +2486,6 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options)
         return EXIT_FAILURE;
     }
 
-    /* TODO all other checks for new node in the data tree (uniqueness, ...) */
 
     if (!parent->child) {
         /* add as the only child of the parent */
@@ -2499,6 +2499,24 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options)
     }
     LY_TREE_FOR(node, iter) {
         iter->parent = parent;
+        last = iter;
+    }
+
+    ly_errno = 0;
+    LY_TREE_FOR_SAFE(node, next, iter) {
+        /* various validation checks */
+        if (lyv_data_content(iter, 0, options)) {
+            if (ly_errno) {
+                return EXIT_FAILURE;
+            } else {
+                lyd_free(iter);
+            }
+        }
+
+        if (iter == last) {
+            /* we are done - checking only the inserted nodes */
+            break;
+        }
     }
 
     return EXIT_SUCCESS;
