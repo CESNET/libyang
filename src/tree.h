@@ -475,6 +475,9 @@ struct lys_type {
  *
  * To cover all possible schema nodes, the ::lys_node type is used in ::lyd_node#schema for referencing schema
  * definition for a specific data node instance.
+ *
+ * The #private member is completely out of libyang control. It is just a pointer to allow libyang
+ * caller to store some proprietary data (e.g. callbacks) connected with the specific schema tree node.
  */
 struct lys_node {
     const char *name;                /**< node name (mandatory) */
@@ -496,6 +499,7 @@ struct lys_node {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 };
 
 /**
@@ -527,6 +531,7 @@ struct lys_node_container {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific container's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -568,6 +573,7 @@ struct lys_node_choice {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific choice's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -607,6 +613,7 @@ struct lys_node_leaf {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific leaf's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -652,6 +659,7 @@ struct lys_node_leaflist {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific leaf-list's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -695,6 +703,7 @@ struct lys_node_list {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific list's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -744,6 +753,7 @@ struct lys_node_anyxml {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific anyxml's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -783,6 +793,7 @@ struct lys_node_uses {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific uses's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -826,6 +837,7 @@ struct lys_node_grp {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific grouping's data */
     uint8_t tpdf_size;               /**< number of elements in #tpdf array */
@@ -860,6 +872,7 @@ struct lys_node_case {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific case's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -893,6 +906,9 @@ struct lys_node_rpc_inout {
     /* specific list's data */
     uint8_t tpdf_size;                /**< number of elements in the #tpdf array */
     struct lys_tpdf *tpdf;            /**< array of typedefs */
+
+    /* again ::lys_node compatible data */
+    void *private;                   /**< private caller's data, not used by libyang */
 };
 
 /**
@@ -921,6 +937,7 @@ struct lys_node_notif {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific rpc's data */
     uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
@@ -953,6 +970,7 @@ struct lys_node_rpc {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific rpc's data */
     uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
@@ -970,7 +988,7 @@ struct lys_node_rpc {
  * ::lys_node structure since its children actually keeps the parent pointer to point to the original augment node
  * instead of the target node they augments (the target node is accessible via the ::lys_node_augment#target pointer).
  * The fact that a schema node comes from augment can be get via testing the #nodetype of its parent - the value in
- * ::lys_node_augment is always 0 (#LYS_AUGMENT).
+ * ::lys_node_augment is #LYS_AUGMENT.
  */
 struct lys_node_augment {
     const char *target_name;         /**< schema node identifier of the node where the augment content is supposed to be
@@ -989,11 +1007,16 @@ struct lys_node_augment {
                                           node (this way they can be distinguished from the original target's children).
                                           It is necessary to check this carefully. */
 
+    /* replaces #next and #prev members of ::lys_node */
+    struct lys_when *when;           /**< when statement (optional) */
+    struct lys_node *target;         /**< pointer to the target node TODO refer to augmentation description */
+
+    /* again compatible members with ::lys_node */
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
-    struct lys_when *when;           /**< when statement (optional) */
-    struct lys_node *target;         /**< pointer to the target node TODO refer to augmentation description */
+    void *private;                   /**< private caller's data, not used by libyang */
+
 };
 
 /**
