@@ -256,15 +256,4 @@ struct lys_node *ly_check_mandatory(struct lyd_node *start);
  */
 int lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique);
 
-/**
- * @brief Compare filter nodes
- *
- * @param[in] first The first data node to compare
- * @param[in] second The second node to compare
- * @return 0 if both filter nodes selects the same data.
- */
-int lyd_filter_compare(struct lyd_node *first, struct lyd_node *second);
-
-int lyd_filter_merge(struct lyd_node *to, struct lyd_node *from);
-
 #endif /* LY_TREE_INTERNAL_H_ */

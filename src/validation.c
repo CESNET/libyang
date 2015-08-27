@@ -23,6 +23,7 @@
 #include <stdlib.h>
 
 #include "libyang.h"
+#include "xml.h"
 #include "common.h"
 
 static struct lys_node_leaf *
@@ -45,6 +46,231 @@ lyv_keys_present(struct lyd_node_list *list)
             return schema->keys[i];
         }
     }
+
+    return EXIT_SUCCESS;
+}
+
+/**
+ * @brief Compare filter nodes
+ *
+ * @param[in] first The first data node to compare
+ * @param[in] second The second node to compare
+ * @return 0 if both filter nodes selects the same data.
+ */
+static int
+filter_compare(struct lyd_node *first, struct lyd_node *second)
+{
+    struct lyd_node *diter1, *diter2;
+    int match, c1, c2;
+
+    assert(first);
+    assert(second);
+
+    if (first->schema != second->schema) {
+        return 1;
+    }
+
+
+    switch (first->schema->nodetype) {
+    case LYS_CONTAINER:
+    case LYS_LIST:
+        /* check if all the content match nodes are the same */
+        c1 = 0;
+        LY_TREE_FOR(first->child, diter1) {
+            if (!(diter1->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+                continue;
+            } else if (!((struct lyd_node_leaf *)diter1)->value_str) {
+                /* selection node */
+                continue;
+            }
+
+            match = 0;
+            LY_TREE_FOR(second->child, diter2) {
+                if (diter2->schema != diter1->schema) {
+                    continue;
+                } else if (((struct lyd_node_leaf *)diter1)->value_str != ((struct lyd_node_leaf *)diter2)->value_str) {
+                    continue;
+                }
+                match = 1;
+                c1++;
+            }
+            if (!match) {
+                return 1;
+            }
+        }
+        /* get number of content match nodes in the second to get know if there are some
+         * that are not present in first
+         */
+        c2 = 0;
+        LY_TREE_FOR(second->child, diter2) {
+            if (!(diter2->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+                continue;
+            } else if (!((struct lyd_node_leaf *)diter2)->value_str) {
+                /* selection node */
+                continue;
+            }
+            c2++;
+        }
+        if (c1 != c2) {
+            return 1;
+        }
+        break;
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
+        if (((struct lyd_node_leaf *)first)->value_str != ((struct lyd_node_leaf *)second)->value_str) {
+            return 1;
+        }
+        break;
+    default:
+        /* no more tests are needed */
+        break;
+    }
+    return 0;
+}
+
+static int
+filter_merge(struct lyd_node *to, struct lyd_node *from)
+{
+    struct lyd_node *diter1, *diter2;
+    unsigned int i, j;
+    struct lyd_set *s1 = NULL, *s2 = NULL;
+    int copy;
+
+    if (!to || !from || to->schema != from->schema) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    switch(to->schema->nodetype) {
+    case LYS_LIST:
+    case LYS_CONTAINER:
+        if (!from->child) {
+            /* from is selection node, so we want to make the to selection node now */
+            while (to->child) {
+                lyd_free(to->child);
+            }
+        } else if (to->child) {
+            /* both to and from are containment nodes and it was already checked
+             * (by calling filter_compare()) that they selects the same target.
+             * Therefore we can skip the content match nodes (they are the same in
+             * both of them) and merge only the selection and containment nodes */
+
+            /* first, get know if to and from contain some selection or containment
+             * nodes. Because if one of them does not contain any such a node it
+             * selects all the data so it does not make sense to limit it by any
+             * selection/containment node.
+             */
+            s1 = lyd_set_new();
+            s2 = lyd_set_new();
+            LY_TREE_FOR(to->child, diter1) {
+                /* is selection node */
+                if ((diter1->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && !((struct lyd_node_leaf *)diter1)->value_str) {
+                    lyd_set_add(s1, diter1);
+                } else if ((diter1->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter1)->value->child) {
+                    lyd_set_add(s1, diter1);
+                } else if (diter1->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) {
+                    /* or containment node */
+                    lyd_set_add(s1, diter1);
+                }
+            }
+
+            LY_TREE_FOR(from->child, diter2) {
+                /* is selection node */
+                if ((diter2->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && !((struct lyd_node_leaf *)diter2)->value_str) {
+                    lyd_set_add(s2, diter2);
+                } else if ((diter2->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter2)->value->child) {
+                    lyd_set_add(s2, diter2);
+                } else if (diter2->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) {
+                    /* or containment node */
+                    lyd_set_add(s2, diter2);
+                }
+            }
+
+            if (!s1->number) {
+                /* to already selects all content, so nothing is needed */
+                break;
+            } else if (!s2->number) {
+                /* from selects all content, so make to select it too by
+                 * removing all selection and containment nodes
+                 */
+                for (i = 0; i < s1->number; i++) {
+                    lyd_free(s1->set[i]);
+                }
+                break;
+            } else {
+                /* both contain some selection or containment node(s), so merge them */
+                for (j = 0; j < s2->number; j++) { /* from */
+                    copy = 0;
+                    for (i = 0; i < s1->number; i++) { /* to */
+                        if (s1->set[i]->schema != s2->set[j]->schema) {
+                            continue;
+                        }
+
+                        /* we have something similar to diter1, explore it more */
+                        switch (s2->set[j]->schema->nodetype) {
+                        case LYS_LIST:
+                        case LYS_CONTAINER:
+                            if (!filter_compare(s2->set[j], s1->set[i])) {
+                                /* merge the two containers into the to */
+                                filter_merge(s1->set[i], s2->set[j]);
+                            } else {
+                                /* check that some of them is not a selection node */
+                                if (!s2->set[j]->child) {
+                                    /* from is selection node, so keep only it because to selects subset */
+                                    lyd_free(s1->set[i]);
+                                    /* set the flag to copy the from child at the end */
+                                    copy = 1;
+                                    continue;
+                                } else if (!s1->set[i]->child) {
+                                    /* to is already selection node, so ignore the from child */
+                                } else {
+                                    /* they are different so keep trying to search for some other matching instance */
+                                    continue;
+                                }
+                            }
+
+                            break;
+                        case LYS_ANYXML:
+                        case LYS_LEAFLIST:
+                        case LYS_LEAF:
+                            /* here it can be only a selection node, so do not duplicate it (keep i < s1->number) */
+                            break;
+                        default:
+                            /* keep compiler silent */
+                            break;
+                        }
+
+                        /* we have a match, so do not duplicate the current from child and go to check next from child */
+                        /* i < s1->number */
+                        break;
+                    }
+
+                    if (copy || i == s1->number) {
+                        /* the node is not yet present in to, so move it there */
+                        lyd_unlink(s2->set[j]);
+                        if (to->child) {
+                            to->child->prev->next = s2->set[j];
+                            s2->set[j]->prev = to->child->prev;
+                            to->child->prev = s2->set[j];
+                        } else {
+                            to->child = s2->set[j];
+                        }
+                        s2->set[j]->parent = to;
+                    }
+                }
+            }
+        } /* else from is empty, so nothing to do */
+
+        break;
+
+    default:
+        /* no other type needed to cover,
+         * keep the default branch to make compiler silent */
+        break;
+    }
+
+    lyd_set_free(s1);
+    lyd_set_free(s2);
 
     return EXIT_SUCCESS;
 }
@@ -111,60 +337,6 @@ lyv_data_content(struct lyd_node *node, unsigned int line, int options)
         for (start = node; start->prev->next; start = start->prev);
     }
 
-    /* check number of instances for non-list nodes */
-    if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML)) {
-        /* find duplicity */
-        for (diter = start; diter; diter = diter->next) {
-            if (diter->schema == schema && diter != node) {
-                if (options & LYD_OPT_FILTER) {
-                    /* normalize the filter if needed */
-                    switch (schema->nodetype) {
-                    case LYS_CONTAINER:
-                        if (!diter->child) {
-                            /* previous instance is a selection node, so keep it
-                             * and ignore the current instance - failure is returned
-                             * but no ly_errno is set */
-                            return EXIT_FAILURE;
-                        }
-                        if (!node->child) {
-                            /* current instance is a selection node, so make the
-                             * previous instance a a selection node (remove its
-                             * children) and ignore the current instance */
-                            while(diter->child) {
-                                lyd_free(diter->child);
-                            }
-                            /* failure is returned but no ly_errno is set */
-                            return EXIT_FAILURE;
-                        }
-                        /* TODO merging container used as a containment node */
-                        break;
-                    case LYS_LEAF:
-                        if (((struct lyd_node_leaf *)diter)->value_str == ((struct lyd_node_leaf *)node)->value_str) {
-                            /* failure is returned but no ly_errno is set */
-                            return EXIT_FAILURE;
-                        }
-                        break;
-                    case LYS_ANYXML:
-                        /* filtering according to the anyxml content is not allowed,
-                         * so anyxml is always a selection node with no content.
-                         * Therefore multiple instances of anyxml does not make sense
-                         */
-                        /* failure is returned but no ly_errno is set */
-                        return EXIT_FAILURE;
-                    default:
-                        /* not possible, but necessary to silence compiler warnings */
-                        break;
-                    }
-                    /* we are done */
-                    break;
-                } else {
-                    LOGVAL(LYE_TOOMANY, line, schema->name, schema->parent ? schema->parent->name : "data tree");
-                    return EXIT_FAILURE;
-                }
-            }
-        }
-    }
-
     /* check that there are no data from different choice case */
     if (!(options & LYD_OPT_FILTER)) {
         /* init loop condition */
@@ -211,8 +383,73 @@ lyv_data_content(struct lyd_node *node, unsigned int line, int options)
         }
     }
 
-    /* uniqueness of (leaf-)list instances */
-    if (schema->nodetype == LYS_LEAFLIST) {
+    /* keep this check the last since in case of filter it affects the data and can modify the tree */
+    /* check number of instances (similar to list uniqueness) for non-list nodes */
+    if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML)) {
+        /* find duplicity */
+        for (diter = start; diter; diter = diter->next) {
+            if (diter->schema == schema && diter != node) {
+                if (options & LYD_OPT_FILTER) {
+                    /* normalize the filter if needed */
+                    switch (schema->nodetype) {
+                    case LYS_CONTAINER:
+                        if (!filter_compare(diter, node)) {
+                            /* merge the two containers, diter will be kept ... */
+                            filter_merge(diter, node);
+                            /* ... and node will be removed (ly_errno is not set) */
+                            return EXIT_FAILURE;
+                        } else {
+                            /* check that some of them is not a selection node */
+                            if (!diter->child) {
+                                /* keep diter since it selects all such containers
+                                 * and let remove the node since it selects just a subset */
+                                return EXIT_FAILURE;
+                            } else if (!node->child) {
+                                /* keep the node and remove diter since it selects subset
+                                 * of what is selected by node */
+                                lyd_free(diter);
+                            }
+                            /* keep them as they are */
+                            return EXIT_SUCCESS;
+                        }
+                        break;
+                    case LYS_LEAF:
+                        if (!((struct lyd_node_leaf *)diter)->value_str && ((struct lyd_node_leaf *)node)->value_str) {
+                            /* the first instance is selection node but the new instance is content match node ->
+                             * since content match node also works as selection node. keep only the new instance
+                             */
+                            lyd_free(diter);
+                            /* return success to keep the node in the tree */
+                            return EXIT_SUCCESS;
+                        } else if (!((struct lyd_node_leaf *)node)->value_str ||
+                                ((struct lyd_node_leaf *)diter)->value_str == ((struct lyd_node_leaf *)node)->value_str) {
+                            /* keep the previous instance and remove the current one ->
+                             * return failure but do not set ly_errno */
+                            return EXIT_FAILURE;
+                        }
+                        break;
+                    case LYS_ANYXML:
+                        /* filtering according to the anyxml content is not allowed,
+                         * so anyxml is always a selection node with no content.
+                         * Therefore multiple instances of anyxml does not make sense
+                         */
+                        /* failure is returned but no ly_errno is set */
+                        return EXIT_FAILURE;
+                    default:
+                        /* not possible, but necessary to silence compiler warnings */
+                        break;
+                    }
+                    /* we are done */
+                    break;
+                } else {
+                    LOGVAL(LYE_TOOMANY, line, schema->name, schema->parent ? schema->parent->name : "data tree");
+                    return EXIT_FAILURE;
+                }
+            }
+        }
+    } else if (schema->nodetype == LYS_LEAFLIST) {
+        /* uniqueness of leaf-list instances */
+
         /* get the first leaf-list instance sibling */
         for (start = node;
                 ((struct lyd_node_leaflist *)start)->lprev;
@@ -228,16 +465,31 @@ lyv_data_content(struct lyd_node *node, unsigned int line, int options)
                 if (options & LYD_OPT_FILTER) {
                     /* optimize filter and do not duplicate the same selection node,
                      * so this is not actually error, but the data are silently removed */
-                    ((struct lyd_node_leaflist *)node)->lprev->lnext = NULL;
                     /* failure is returned but no ly_errno is set */
                     return EXIT_FAILURE;
                 } else {
                     LOGVAL(LYE_DUPLEAFLIST, line, schema->name, ((struct lyd_node_leaflist *)node)->value_str);
                     return EXIT_FAILURE;
                 }
+            } else if (options & LYD_OPT_FILTER) {
+                /* optimize filter if needed: if one of them is a selection node and the other is
+                 * content match node, keep only the content match node since it also works as
+                 * selection node */
+                if (!((struct lyd_node_leaflist *)diter)->value_str) {
+                    /* the other instance is selection node, keep the new one whatever it is */
+                    lyd_free(diter);
+                    break;
+                } else if (!((struct lyd_node_leaflist *)node)->value_str) {
+                    /* the new instance is selection node, keep the previous instance which is
+                     * content match node */
+                    /* failure is returned but no ly_errno is set */
+                    return EXIT_FAILURE;
+                }
             }
         }
     } else if (schema->nodetype == LYS_LIST) {
+        /* uniqueness of list instances */
+
         /* get the first list instance sibling */
         for (start = node;
                 ((struct lyd_node_list *)start)->lprev;
@@ -251,15 +503,14 @@ lyv_data_content(struct lyd_node *node, unsigned int line, int options)
 
             if (options & LYD_OPT_FILTER) {
                 /* compare content match nodes */
-                if (!lyd_filter_compare(diter, node)) {
+                if (!filter_compare(diter, node)) {
                     /* merge both nodes */
                     /* add selection and containment nodes from result into the diter,
                      * but only in case the diter already contains some selection nodes,
                      * otherwise it already will return all the data */
-                    lyd_filter_merge(diter, node);
+                    filter_merge(diter, node);
 
                     /* not the error, just return no data */
-                    ((struct lyd_node_list *)node)->lprev->lnext = NULL;
                     /* failure is returned but no ly_errno is set */
                     return EXIT_FAILURE;
                 }
