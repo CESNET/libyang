@@ -166,28 +166,47 @@ lyv_data_content(struct lyd_node *node, unsigned int line, int options)
     }
 
     /* check that there are no data from different choice case */
-    if (!(options & LYD_OPT_FILTER) && schema->parent && (schema->parent->nodetype & (LYS_CASE | LYS_CHOICE))) {
-        if (schema->parent->nodetype == LYS_CHOICE) {
-            cs = NULL;
-            ch = schema->parent;
-        } else { /* schema->parent->nodetype == LYS_CASE */
-            cs = schema->parent;
-            ch = schema->parent->parent;
-        }
-        if (ch->parent && ch->parent->nodetype == LYS_CASE) {
-            /* TODO check schemas with a choice inside a case */
-            LOGWRN("Not checking parent branches of nested choice");
-        }
-        for (diter = start; diter; diter = diter->next) {
-            if (diter == node) {
-                continue;
+    if (!(options & LYD_OPT_FILTER)) {
+        /* init loop condition */
+        ch = schema;
+
+        while (ch->parent && (ch->parent->nodetype & (LYS_CASE | LYS_CHOICE))) {
+            if (ch->parent->nodetype == LYS_CHOICE) {
+                cs = NULL;
+                ch = ch->parent;
+            } else { /* ch->parent->nodetype == LYS_CASE */
+                cs = ch->parent;
+                ch = ch->parent->parent;
             }
 
-            if ((diter->schema->parent->nodetype == LYS_CHOICE && diter->schema->parent == ch) ||
-                    (diter->schema->parent->nodetype == LYS_CASE && !cs) ||
-                    (diter->schema->parent->nodetype == LYS_CASE && cs && diter->schema->parent != cs && diter->schema->parent->parent == ch)) {
-                LOGVAL(LYE_MCASEDATA, line, ch->name);
-                return EXIT_FAILURE;
+            for (diter = start; diter; diter = diter->next) {
+                if (diter == node) {
+                    continue;
+                }
+
+                /* find correct level to compare */
+                for (siter = diter->schema->parent; siter; siter = siter->parent) {
+                    if (siter->nodetype == LYS_CHOICE) {
+                        if (siter == ch) {
+                            LOGVAL(LYE_MCASEDATA, line, ch->name);
+                            return EXIT_FAILURE;
+                        } else {
+                            continue;
+                        }
+                    }
+
+                    if (siter->nodetype == LYS_CASE) {
+                        if (siter->parent != ch) {
+                            continue;
+                        } else if (!cs || cs != siter) {
+                            LOGVAL(LYE_MCASEDATA, line, ch->name);
+                            return EXIT_FAILURE;
+                        }
+                    }
+
+                    /* diter is from something else choice (subtree) */
+                    break;
+                }
             }
         }
     }

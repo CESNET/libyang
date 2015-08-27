@@ -324,10 +324,10 @@ repeat_choice:
                     if (diter) {
                         /* got instance */
                         /* check presence of mandatory siblings */
-                        if (siter->parent->nodetype == LYS_CASE) {
+                        if (parent2->nodetype == LYS_CASE) {
                             saux2 = NULL;
-                            while ((saux2 = check_mand_getnext(saux2, siter->parent))) {
-                                result = check_mand_check(saux2, siter->parent, data);
+                            while ((saux2 = check_mand_getnext(saux2, parent2))) {
+                                result = check_mand_check(saux2, parent2, data);
                                 if (result) {
                                     return result;
                                 }
@@ -343,7 +343,9 @@ repeat_choice:
                 case LYS_CHOICE:
                 case LYS_USES:
                     /* go into */
-                    parent2 = siter;
+                    if (!parent2) {
+                        parent2 = siter;
+                    }
                     siter = siter->child;
                     break;
                 case LYS_AUGMENT:
