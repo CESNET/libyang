@@ -2588,6 +2588,9 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     int c_ftrs = 0;
     const char *value;
 
+    /* init */
+    memset(&root, 0, sizeof root);
+
     cs = calloc(1, sizeof *cs);
     cs->nodetype = LYS_CASE;
     cs->prev = (struct lys_node *)cs;
