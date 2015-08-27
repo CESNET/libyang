@@ -1618,6 +1618,21 @@ int lyd_unlink(struct lyd_node *node);
 void lyd_free(struct lyd_node *node);
 
 /**
+ * @brief Opaque internal structure, do not access it from outside.
+ */
+struct lyxml_elem;
+
+/**
+ * @brief Serialize anyxml content for further processing.
+ *
+ * TODO not implemented
+ *
+ * @param[in] anyxml Anyxml content from ::lyd_node_anyxml#value to serialize ax XML string
+ * @return Serialized content of the anyxml or NULL in case of error
+ */
+char *lyxml_serialize(struct lyxml_elem *anyxml);
+
+/**
  * @brief Structure to hold a set of (not necessary somehow connected) ::lyd_node objects.
  *
  * To free the structure, use lyd_set_free() function, to manipulate with the structure, use other
@@ -1652,12 +1667,6 @@ int lyd_set_add(struct lyd_set *set, struct lyd_node *node);
  */
 void lyd_set_free(struct lyd_set *set);
 
-
-/*
-lyd_node_read
-int lyd_node_update
-int lyd_node_delete
-*/
 /**@} */
 
 #ifdef __cplusplus
