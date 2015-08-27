@@ -26,13 +26,32 @@
 #include "tree.h"
 
 /**
- * @brief Check that the list data node contains all defined keys.
+ * @brief Check, that the data node of the given schema node can even appear in a data tree.
  *
- * Does not log.
+ * Checks included:
+ * - data node is not disabled via if-features
+ * - data node is not status in case of edit-config content (options includes LYD_OPT_EDIT)
  *
- * @param[in] list The list data node to check
- * @return NULL on success or pointer to the first missing key schema node
+ * @param[in] schema Corresponding schema tree node of the checked  data tree node
+ * @param[in] line optional line of the input to be printed in case of error.
+ * @param[in] options Parser options, see @ref parseroptions.
+ * @return EXIT_SUCCESS or EXIT_FAILURE with ly_errno set.
  */
-struct lys_node_leaf * lyv_keys_present(struct lyd_node_list *list);
+int lyv_data_context(struct lys_node *schema, unsigned int line, int options);
+
+/**
+ * @brief Validate if the node's content is valid in the context it is placed.
+ *
+ * Expects that the node is already interconnected to the target tree and all its children
+ * are already resolved. All currently connected siblings are included to the tests.
+ *
+ * @param[in] node Data tree node to be checked.
+ * @param[in] line optional line of the input to be printed in case of error.
+ * @param[in] options Parser options, see @ref parseroptions.
+ * @return EXIT_SUCCESS or EXIT_FAILURE with set ly_errno. If EXIT_FAILURE is returned
+ * but ly_errno is not set, the issue was internally resolved and caller is supposed to
+ * unlink and free the node and continue;
+ */
+int lyv_data_content(struct lyd_node *node, unsigned int line, int options);
 
 #endif /* LY_VALIDATION_H_ */

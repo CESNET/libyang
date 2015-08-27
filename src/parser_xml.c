@@ -787,8 +787,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                int options, struct unres_data *unres)
 {
     struct lyd_node *result = NULL, *diter;
-    struct lys_node *schema = NULL, *siter;
-    struct lys_node *cs, *ch;
+    struct lys_node *schema = NULL;
     struct lyxml_attr *attr;
     struct lyxml_elem *prev_xml;
     int i, havechildren;
@@ -830,15 +829,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         }
     }
 
-    /* check if the node instance is enabled by if-feature */
-    if (lys_is_disabled(schema, 2)) {
-        LOGVAL(LYE_INELEM, LOGLINE(xml), schema->name);
-        return NULL;
-    }
-
-    /* check for (non-)presence of status data in edit-config data */
-    if ((options & LYD_OPT_EDIT) && (schema->flags & LYS_CONFIG_R)) {
-        LOGVAL(LYE_INELEM, LOGLINE(xml), schema->name);
+    if (lyv_data_context(schema, LOGLINE(xml), options)) {
         return NULL;
     }
 
@@ -991,148 +982,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     xml->attr = NULL;
 
     /* various validation checks */
-
-    /* check presence of all keys in case of list */
-    if (schema->nodetype == LYS_LIST && !(options & LYD_OPT_FILTER)) {
-        siter = (struct lys_node *)lyv_keys_present((struct lyd_node_list *)result);
-        if (siter) {
-            /* key not found in the data */
-            LOGVAL(LYE_MISSELEM, LOGLINE(xml), siter->name, schema->name);
+    ly_errno = 0;
+    if (lyv_data_content(result, LOGLINE(xml), options)) {
+        if (ly_errno) {
             goto error;
-        }
-    }
-
-    /* mandatory children */
-    if (havechildren && !(options & (LYD_OPT_FILTER | LYD_OPT_EDIT))) {
-        siter = ly_check_mandatory(result);
-        if (siter) {
-            if (siter->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-                LOGVAL(LYE_SPEC, LOGLINE(xml), "Number of \"%s\" instances in \"%s\" does not follow min/max constraints.",
-                       siter->name, siter->parent->name);
-            } else {
-                LOGVAL(LYE_MISSELEM, LOGLINE(xml), siter->name, siter->parent->name);
-            }
-            goto error;
-        }
-    }
-
-    /* check number of instances for non-list nodes */
-    if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML)) {
-        if (options & LYD_OPT_FILTER) {
-            /* normalize the filter */
-            for (diter = result->prev; diter != result; diter = diter->prev) {
-                if (diter->schema == schema) {
-                    switch (schema->nodetype) {
-                    case LYS_CONTAINER:
-                        if (!diter->child) {
-                            /* previous instance is a selection node, so keep it
-                             * and ignore the current instance */
-                            goto cleargotosiblings;
-                        }
-                        if (!result->child) {
-                            /* current instance is a selection node, so make the
-                             * previous instance a a selection node (remove its
-                             * children) and ignore the current instance */
-                            while(diter->child) {
-                                lyd_free(diter->child);
-                            }
-                            goto cleargotosiblings;
-                        }
-                        /* TODO merging container used as a containment node */
-                        break;
-                    case LYS_LEAF:
-                        if (((struct lyd_node_leaf *)diter)->value_str == ((struct lyd_node_leaf *)result)->value_str) {
-                            goto cleargotosiblings;
-                        }
-                        break;
-                    case LYS_ANYXML:
-                        /* filtering according to the anyxml content is not allowed,
-                         * so anyxml is always a selection node with no content.
-                         * Therefore multiple instances of anyxml does not make sense
-                         */
-                        goto cleargotosiblings;
-                    default:
-                        /* not possible, but necessary to silence compiler warnings */
-                        break;
-                    }
-                }
-            }
         } else {
-            for (diter = result->prev; diter != result; diter = diter->prev) {
-                if (diter->schema == schema) {
-                    LOGVAL(LYE_TOOMANY, LOGLINE(xml), xml->name, xml->parent ? xml->parent->name : "data tree");
-                    goto error;
-                }
-            }
-        }
-    }
-
-    /* uniqueness of (leaf-)list instances */
-    if (schema->nodetype == LYS_LEAFLIST) {
-        /* check uniqueness of the leaf-list instances (compare values) */
-        for (diter = (struct lyd_node *)((struct lyd_node_leaflist *)result)->lprev;
-                 diter;
-                 diter = (struct lyd_node *)((struct lyd_node_leaflist *)diter)->lprev) {
-            if (!lyd_compare(diter, result, 0)) {
-                if (options & LYD_OPT_FILTER) {
-                    /* optimize filter and do not duplicate the same selection node,
-                     * so this is not actually error, but the data are silently removed */
-                    ((struct lyd_node_leaflist *)result)->lprev->lnext = NULL;
-                    goto cleargotosiblings;
-                } else {
-                    LOGVAL(LYE_DUPLEAFLIST, LOGLINE(xml), schema->name, ((struct lyd_node_leaflist *)result)->value_str);
-                    goto error;
-                }
-            }
-        }
-    } else if (schema->nodetype == LYS_LIST) {
-        /* check uniqueness of the list instances */
-        for (diter = (struct lyd_node *)((struct lyd_node_list *)result)->lprev;
-                 diter;
-                 diter = (struct lyd_node *)((struct lyd_node_list *)diter)->lprev) {
-            if (options & LYD_OPT_FILTER) {
-                /* compare content match nodes */
-                if (!lyd_filter_compare(diter, result)) {
-                    /* merge both nodes */
-                    /* add selection and containment nodes from result into the diter,
-                     * but only in case the diter already contains some selection nodes,
-                     * otherwise it already will return all the data */
-                    lyd_filter_merge(diter, result);
-
-                    /* not the error, just return no data */
-                    ((struct lyd_node_list *)result)->lprev->lnext = NULL;
-                    goto cleargotosiblings;
-                }
-            } else {
-                /* compare keys and unique combinations */
-                if (!lyd_compare(diter, result, 1)) {
-                    LOGVAL(LYE_DUPLIST, LOGLINE(xml), schema->name);
-                    goto error;
-                }
-            }
-        }
-    }
-
-    if (!(options & LYD_OPT_FILTER) && schema->parent && (schema->parent->nodetype & (LYS_CASE | LYS_CHOICE))) {
-        /* check that there are no data from different choice case */
-        if (schema->parent->nodetype == LYS_CHOICE) {
-            cs = NULL;
-            ch = schema->parent;
-        } else { /* schema->parent->nodetype == LYS_CASE */
-            cs = schema->parent;
-            ch = schema->parent->parent;
-        }
-        if (ch->parent && ch->parent->nodetype == LYS_CASE) {
-            /* TODO check schemas with a choice inside a case */
-            LOGWRN("Not checking parent branches of nested choice");
-        }
-        for (diter = result->prev; diter != result; diter = diter->prev) {
-            if ((diter->schema->parent->nodetype == LYS_CHOICE && diter->schema->parent == ch) ||
-                    (diter->schema->parent->nodetype == LYS_CASE && !cs) ||
-                    (diter->schema->parent->nodetype == LYS_CASE && cs && diter->schema->parent != cs && diter->schema->parent->parent == ch)) {
-                LOGVAL(LYE_MCASEDATA, LOGLINE(xml), ch->name);
-                goto error;
-            }
+            goto cleargotosiblings;
         }
     }
 
@@ -1153,45 +1008,14 @@ siblings:
 
 error:
 
-    if (result) {
-        /* unlink the result */
-        if (parent && parent->child == result) {
-            parent->child = NULL;
-        }
-        if (prev) {
-            prev->next = NULL;
-            result->prev = result;
-
-            /* fix the "last" pointer */
-            for (diter = prev; diter->prev != result; diter = diter->prev);
-            diter->prev = prev;
-        }
-
-        result->parent = NULL;
-        result->prev = result;
-        lyd_free(result);
-    }
+    /* cleanup */
+    lyd_free(result);
 
     return NULL;
 
 cleargotosiblings:
 
-    /* unlink the result */
-    if (parent && parent->child == result) {
-        parent->child = NULL;
-    }
-    if (prev) {
-        prev->next = NULL;
-        result->prev = result;
-
-        /* fix the "last" pointer */
-        for (diter = prev; diter->prev != result; diter = diter->prev);
-        diter->prev = prev;
-    }
-
-    /* cleanup the result variable ... */
-    result->next = NULL;
-    result->parent = NULL;
+    /* remove the result ... */
     lyd_free(result);
     result = NULL;
 
