@@ -441,25 +441,8 @@ lyxml_add_child(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_elem
     return EXIT_SUCCESS;
 }
 
-/**
- * @brief Get the first UTF-8 character value (4bytes) from buffer
- * @param[in] buf pointr to the current position in input buffer
- * @param[out] read Number of processed bytes in buf (length of UTF-8
- * character).
- * @return UTF-8 value as 4 byte number. 0 means error, only UTF-8 characters
- * valid for XML are returned, so:
- * #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
- * = any Unicode character, excluding the surrogate blocks, FFFE, and FFFF.
- *
- * UTF-8 mapping:
- * 00000000 -- 0000007F: 	0xxxxxxx
- * 00000080 -- 000007FF: 	110xxxxx 10xxxxxx
- * 00000800 -- 0000FFFF: 	1110xxxx 10xxxxxx 10xxxxxx
- * 00010000 -- 001FFFFF: 	11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
- *
- */
-static int
-getutf8(const char *buf, unsigned int *read)
+int
+lyxml_getutf8(const char *buf, unsigned int *read)
 {
     int c, aux;
     int i;
@@ -791,14 +774,14 @@ parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
 
     /* process name part of the attribute */
     start = c;
-    uc = getutf8(c, &size);
+    uc = lyxml_getutf8(c, &size);
     if (!is_xmlnamestartchar(uc)) {
         LOGVAL(LYE_XML_INVAL, lineno, "NameStartChar of the attribute");
         free(attr);
         return NULL;
     }
     c += size;
-    uc = getutf8(c, &size);
+    uc = lyxml_getutf8(c, &size);
     while (is_xmlnamechar(uc)) {
         if (attr->type == LYXML_ATTR_STD && *c == ':') {
             /* attribute in a namespace */
@@ -810,7 +793,7 @@ parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
             attr->ns = lyxml_get_ns(parent, prefix);
         }
         c += size;
-        uc = getutf8(c, &size);
+        uc = lyxml_getutf8(c, &size);
     }
 
     /* store the name */
@@ -883,13 +866,13 @@ parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
     c++;
     e = c;
 
-    uc = getutf8(e, &size);
+    uc = lyxml_getutf8(e, &size);
     if (!is_xmlnamestartchar(uc)) {
         LOGVAL(LYE_XML_INVAL, lineno, "NameStartChar of the element");
         return NULL;
     }
     e += size;
-    uc = getutf8(e, &size);
+    uc = lyxml_getutf8(e, &size);
     while (is_xmlnamechar(uc)) {
         if (*e == ':') {
             if (prefix_len) {
@@ -905,7 +888,7 @@ parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
             c = start;
         }
         e += size;
-        uc = getutf8(e, &size);
+        uc = lyxml_getutf8(e, &size);
     }
     if (!*e) {
         LOGVAL(LYE_EOF, lineno);
@@ -950,13 +933,13 @@ process:
                 c += 2;
                 /* get name and check it */
                 e = c;
-                uc = getutf8(e, &size);
+                uc = lyxml_getutf8(e, &size);
                 if (!is_xmlnamestartchar(uc)) {
                     LOGVAL(LYE_XML_INVAL, lineno, "NameStartChar of the attribute");
                     goto error;
                 }
                 e += size;
-                uc = getutf8(e, &size);
+                uc = lyxml_getutf8(e, &size);
                 while (is_xmlnamechar(uc)) {
                     if (*e == ':') {
                         /* element in a namespace */
@@ -971,7 +954,7 @@ process:
                         c = start;
                     }
                     e += size;
-                    uc = getutf8(e, &size);
+                    uc = lyxml_getutf8(e, &size);
                 }
                 if (!*e) {
                     LOGVAL(LYE_EOF, lineno);
