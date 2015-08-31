@@ -121,7 +121,9 @@ enum LY_ERR {
     LYE_MCASEDATA,
 
     LYE_XPATH_INTOK,
-    LYE_XPATH_EOF
+    LYE_XPATH_EOF,
+    LYE_XPATH_INOP_1,
+    LYE_XPATH_INOP_2
 };
 void ly_vlog(enum LY_ERR code, unsigned int line, ...);
 

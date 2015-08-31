@@ -101,7 +101,9 @@ const char *ly_errs[] = {
 /* LYE_MCASEDATA */    "Data for more than one case branch of \"%s\" choice present.",
 
 /* LYE_XPATH_INTOK */  "Unexpected XPath token %s (%.15s).",
-/* LYE_XPATH_EOF */    "Unexpected XPath expression end."
+/* LYE_XPATH_EOF */    "Unexpected XPath expression end.",
+/* LYE_XPATH_INOP_1 */ "Cannot apply XPath operation %s on %s.",
+/* LYE_XPATH_INOP_2 */ "cannot apply XPath operation %s on %s and %s."
 };
 
 void
