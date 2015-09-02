@@ -2597,6 +2597,24 @@ lyd_attr_free(struct ly_ctx *ctx, struct lyd_attr *attr)
     free(attr);
 }
 
+struct lyd_node *
+lyd_attr_parent(struct lyd_node *root, struct lyd_attr *attr)
+{
+    struct lyd_node *next, *elem;
+    struct lyd_attr *node_attr;
+
+    LY_TREE_DFS_BEGIN(root, next, elem) {
+        for (node_attr = elem->attr; node_attr; node_attr = node_attr->next) {
+            if (node_attr == attr) {
+                return elem;
+            }
+        }
+        LY_TREE_DFS_END(root, next, elem)
+    }
+
+    return NULL;
+}
+
 API void
 lyd_free(struct lyd_node *node)
 {
