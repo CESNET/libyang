@@ -441,7 +441,7 @@ ly_ctx_info(struct ly_ctx *ctx)
     }
 
     root->prev = root;
-    root->schema = mod->data;
+    root->schema = mod->data->next;
 
     modules_child = NULL;
     while ((modules_child = ylib_get_next_sibling(mod->data->next->child, modules_child))) {
