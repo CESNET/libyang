@@ -2488,7 +2488,6 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options)
         return EXIT_FAILURE;
     }
 
-
     if (!parent->child) {
         /* add as the only child of the parent */
         parent->child = node;
@@ -2501,8 +2500,72 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options)
     }
     LY_TREE_FOR(node, iter) {
         iter->parent = parent;
-        last = iter;
+        last = iter; /* remember the last of the inserted nodes */
     }
+
+    ly_errno = 0;
+    LY_TREE_FOR_SAFE(node, next, iter) {
+        /* various validation checks */
+        if (lyv_data_content(iter, 0, options)) {
+            if (ly_errno) {
+                return EXIT_FAILURE;
+            } else {
+                lyd_free(iter);
+            }
+        }
+
+        if (iter == last) {
+            /* we are done - checking only the inserted nodes */
+            break;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+API int
+lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node, int options)
+{
+    struct lys_node *par1, *par2;
+    struct lyd_node *iter, *next, *last;
+
+    if (!node || !sibling) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    if (node->parent || node->prev->next) {
+        lyd_unlink(node);
+    }
+
+    /* check placing the node to the appropriate place according to the schema */
+    for (par1 = sibling->schema->parent; par1 && (par1->nodetype & (LYS_CONTAINER | LYS_LIST)); par1 = par1->parent);
+    for (par2 = node->schema->parent; par2 && (par2->nodetype & (LYS_CONTAINER | LYS_LIST)); par2 = par2->parent);
+    if (par1 != par2) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    LY_TREE_FOR(node, iter) {
+        iter->parent = sibling->parent;
+        last = iter; /* remember the last of the inserted nodes */
+    }
+
+    if (sibling->next) {
+        /* adding into a middle - fix the prev pointer of the node after inserted nodes */
+        last->next = sibling->next;
+        sibling->next->prev = last;
+    } else {
+        /* at the end - fix the prev pointer of the first node */
+        if (sibling->parent) {
+            sibling->parent->child->prev = last;
+        } else {
+            for (iter = sibling; iter->prev->next; iter = iter->prev);
+            iter->prev = last;
+        }
+    }
+    sibling->next = node;
+    node->prev = sibling;
 
     ly_errno = 0;
     LY_TREE_FOR_SAFE(node, next, iter) {

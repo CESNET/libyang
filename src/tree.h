@@ -1571,14 +1571,13 @@ int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
 /**
  * @brief Insert the \p node element after the \p sibling element.
  *
- * TODO not implemented
- *
  * @param[in] sibling The data tree node before which the \p node will be inserted.
  * @param[in] node The data tree node to be inserted.
+ * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
  * @return 0 fo success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
  * in the data tree.
  */
-int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
+int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node, int options);
 
 /**
  * @brief Move the data tree \p node before the specified \p sibling node
