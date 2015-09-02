@@ -84,16 +84,26 @@ check:
     goto check;
 }
 
-static struct lys_node *
-check_mand_getnext(struct lys_node *cur, struct lys_node *parent)
+struct lys_node *
+lys_getnext(struct lys_node *last, struct lys_node *parent, struct lys_module *module, int options)
 {
     struct lys_node *next;
 
-    if (!cur) {
-        next = parent->child;
-        cur = next;
+    if (!last) {
+        /* first call */
+
+        /* get know where to start */
+        if (parent) {
+            /* schema subtree */
+            next = last = parent->child;
+        } else {
+            /* top level data */
+            assert(module);
+            next = last = module->data;
+        }
     } else {
-        next = cur->next;
+        /* continue after the last returned value */
+        next = last->next;
     }
 
 repeat:
@@ -102,39 +112,68 @@ repeat:
     }
 
     while (!next) {
-        if (cur->parent == parent) {
+        if (last->parent == parent) {
             /* no next element */
             return NULL;
         }
-        cur = cur->parent;
-        next = cur->next;
+        last = last->parent;
+        next = last->next;
         goto repeat;
     }
 
     switch (next->nodetype) {
-    case LYS_CONTAINER:
-        if (((struct lys_node_container *)next)->presence) {
-            /* mandatory elements under the non-existing presence
-             * container are not mandatory - 7.6.5, rule 1 */
-            next = next->next;
-            goto repeat;
-        }
-        /* no break */
     case LYS_USES:
     case LYS_CASE:
         /* go into */
         next = next->child;
         goto repeat;
+
+    case LYS_CONTAINER:
     case LYS_LEAF:
-    case LYS_CHOICE:
     case LYS_ANYXML:
     case LYS_LIST:
     case LYS_LEAFLIST:
         return next;
+
+    case LYS_CHOICE:
+        if (options & LYS_GETNEXT_WITHCHOICE) {
+            return next;
+        } else {
+            /* go into */
+            next = next->child;
+            goto repeat;
+        }
+        break;
+
     default:
         /* we should not be here */
         return NULL;
     }
+
+
+}
+
+static struct lys_node *
+check_mand_getnext(struct lys_node *last, struct lys_node *parent)
+{
+    struct lys_node *next;
+
+repeat:
+    next = lys_getnext(last, parent, NULL, LYS_GETNEXT_WITHCHOICE);
+
+    if (next && next->nodetype == LYS_CONTAINER) {
+        if (((struct lys_node_container *)next)->presence) {
+            /* mandatory elements under the non-existing presence
+             * container are not mandatory - 7.6.5, rule 1 */
+            next = next->next;
+        } else {
+            /* go into */
+            next = next->child;
+        }
+        goto repeat;
+    }
+
+    return next;
 }
 
 static struct lys_node *
