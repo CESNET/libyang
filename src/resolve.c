@@ -867,7 +867,7 @@ resolve_prefixed_module(struct lys_module *mod, const char *prefix, uint32_t pre
 
     /* imported modules */
     for (i = 0; i < mod->imp_size; i++) {
-        if (!strncmp(mod->imp[i].module->prefix, prefix, pref_len) && (mod->imp[i].module->prefix[pref_len] == '\0')) {
+        if (!strncmp(mod->imp[i].prefix, prefix, pref_len) && (mod->imp[i].prefix[pref_len] == '\0')) {
             return mod->imp[i].module;
         }
     }
