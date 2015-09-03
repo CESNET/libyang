@@ -789,7 +789,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     struct lyd_node *result = NULL, *diter;
     struct lys_node *schema = NULL;
     struct lyxml_attr *attr;
-    struct lyxml_elem *prev_xml;
+    struct lyxml_elem *tmp_xml, *child;
     int i, havechildren;
 
     if (!xml) {
@@ -933,13 +933,28 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             goto error;
         }
     } else if (schema->nodetype == LYS_ANYXML && !(options & LYD_OPT_FILTER)) {
-        prev_xml = xml->prev;
-        ((struct lyd_node_anyxml *)result)->value = xml;
-        lyxml_unlink_elem(ctx, xml, 1);
-        /* pretend we're processing previous element,
-         * so that next is correct (after unlinking xml)
-         */
-        xml = prev_xml;
+        /* HACK unlink xml children and link them to a separate copy of xml */
+        tmp_xml = calloc(1, sizeof *tmp_xml);
+        memcpy(tmp_xml, xml, sizeof *tmp_xml);
+        /* keep attributes in the original */
+        tmp_xml->attr = NULL;
+        /* increase reference counters on strings */
+        tmp_xml->name = lydict_insert(ctx, tmp_xml->name, 0);
+        tmp_xml->content = lydict_insert(ctx, tmp_xml->content, 0);
+        xml->child = NULL;
+        /* xml is correct now */
+
+        tmp_xml->parent = NULL;
+        lyxml_unlink_elem(ctx, tmp_xml, 1);
+        /* tmp_xml is correct now */
+
+        LY_TREE_FOR(tmp_xml->child, child) {
+            child->parent = tmp_xml;
+        }
+        /* children are correct now */
+
+        ((struct lyd_node_anyxml *)result)->value = tmp_xml;
+        /* we can safely continue with xml, it's like it was, only without children */
     }
 
     /* process children */
