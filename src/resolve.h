@@ -76,13 +76,14 @@ struct lys_ident *resolve_identref_json(struct lys_ident *base, const char *iden
 
 int resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres);
 
-int unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, const char *str,
-                   uint32_t line);
+int unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
+                         const char *str, uint32_t line);
 
 int unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
-                     struct lys_node *node, uint32_t line);
+                          struct lys_node *node, uint32_t line);
 
-int unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, void *new_item);
+int unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
+                     void *new_item);
 
 int unres_schema_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type);
 
