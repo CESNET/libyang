@@ -2003,7 +2003,7 @@ resolve_data(struct lys_module *mod, const char *name, int nam_len, struct lyd_n
         parents->dnode[0] = NULL;
     }
     for (i = 0; i < parents->count;) {
-        if (parents->dnode[i] && (parents->dnode[i]->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+        if (parents->dnode[i] && (parents->dnode[i]->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
             /* skip */
             ++i;
             continue;
