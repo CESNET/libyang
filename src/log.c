@@ -79,7 +79,7 @@ const char *ly_errs[] = {
 /* LYE_BITS_DUPVAL */  "The position \"%d\" of \"%s\" bits has already been used to another named bit.",
 /* LYE_BITS_DUPNAME */ "The bit name \"%s\" has already been assigned to another bit.",
 /* LYE_INPREF */       "Prefix in \"%s\" refers to an unknown module.",
-/* LYE_INPREF_LEN */   "Prefix in \"%.*s\" refers to an unknown module.",
+/* LYE_INPREF_LEN */   "Prefix \"%.*s\" refers to an unknown module.",
 /* LYE_KEY_NLEAF */    "Key \"%s\" is not a leaf.",
 /* LYE_KEY_TYPE */     "Key \"%s\" must not be the built-in type \"empty\".",
 /* LYE_KEY_CONFIG */   "The \"config\" value of the \"%s\" key differs from its list config value.",
