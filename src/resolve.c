@@ -1652,6 +1652,7 @@ resolve_feature(const char *id, struct lys_module *module, uint32_t line, struct
  * @param[in] name Node name.
  * @param[in] nam_len Node name length.
  * @param[in] type ORed desired type of the node. 0 means any type.
+ *                 Returns only schema data nodes (no uses, grouping, augment, choice, case).
  * @param[out] ret Pointer to the node of the desired type. Can be NULL.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
@@ -1662,7 +1663,7 @@ resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *p
 {
     struct lys_node *node, *old_siblings = NULL;
     struct lys_module *prefix_mod, *cur_mod;
-    int in_submod, rc;
+    int in_submod;
 
     assert(mod && siblings && name);
     assert(!(type & LYS_USES));
@@ -1687,7 +1688,7 @@ resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *p
             return -1;
         }
         cur_mod = prefix_mod;
-        /* it is our module */
+        /* it is not our module */
         if (cur_mod != mod) {
             old_siblings = siblings;
             siblings = cur_mod->data;
@@ -1702,20 +1703,8 @@ resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *p
 
     while (1) {
         /* try to find the node */
-        LY_TREE_FOR(siblings, node) {
-            if (node->nodetype == LYS_USES) {
-                /* an unresolved uses, we can still find it elsewhere */
-                if (!node->child) {
-                    continue;
-                }
-
-                /* search recursively */
-                rc = resolve_sibling(mod, node->child, prefix, pref_len, name, nam_len, type, ret);
-                if (rc != EXIT_FAILURE) {
-                    return rc;
-                }
-            }
-
+        node = NULL;
+        while ((node = lys_getnext(node, siblings->parent, cur_mod, 0))) {
             if (!type || (node->nodetype & type)) {
                 /* module check */
                 if (!node->module->type) {
@@ -2481,7 +2470,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
             node = node->child;
         }
 
-        rc = resolve_sibling(mod, node, prefix, pref_len, name, nam_len, LYS_ANY & ~(LYS_GROUPING | LYS_USES), &node);
+        rc = resolve_sibling(mod, node, prefix, pref_len, name, nam_len, LYS_ANY, &node);
         if (rc) {
             LOGVAL(LYE_NORESOLV, line, path);
             return rc;
