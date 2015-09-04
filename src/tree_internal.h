@@ -149,6 +149,29 @@ void lys_submodule_free(struct lys_submodule *submodule, int free_int_mods);
 int lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child);
 
 /**
+ * @brief Get next schema tree (sibling) node element that can be instanciated in a data tree.
+ *
+ * lys_getnext() is supposed to be called sequentially. In the first call, the \p last parameter is usually NULL
+ * and function starts returning i) the first \p parent child or ii) the first top level element of the \p module.
+ * Consequent calls suppose to provide the previously returned node as the \p last parameter and still the same
+ * \p parent and \p module parameters.
+ *
+ * The function does not traverse via RPCs and Notifications.
+ *
+ * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
+ * @param[in] parent Parent of the subtree where the function starts processing
+ * @param[in] module In case of iterating on top level elements, the \p parent is NULL and module must be specified.
+ * @param[in] option 1 to include the choice schema nodes into the result set.
+ * @return Next schema tree node that can be instanciated in a data tree, NULL in case there is no such element
+ */
+struct lys_node *lys_getnext(struct lys_node *last, struct lys_node *parent, struct lys_module *module, int options);
+
+/**
+ * @brief option for lys_getnext() to allow returning the choice nodes.
+ */
+#define LYS_GETNEXT_WITHCHOICE  0x01
+
+/**
  * @brief Check that the \p node being connected into the \p parent has a unique name (identifier).
  *
  * Function is performed also as part of lys_node_addchild().
@@ -161,8 +184,7 @@ int lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct
  * the \p module parameter is ignored.
  * @return 0 on success, nonzero else
  */
-int
-lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *module);
+int lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *module);
 
 /**
  * @brief Create a copy of the specified schema tree \p node
