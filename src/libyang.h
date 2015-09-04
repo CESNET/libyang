@@ -139,9 +139,16 @@ struct ly_ctx;
  * @brief Create libyang context
  *
  * Context is used to hold all information about schemas. Usually, the application is supposed
- * to work with a single context in which libyang is holding all data models and other internal
- * information according to which the data will be processed and validated. Therefore, both schema
- * and data trees are connected with a specific context.
+ * to work with a single context in which libyang is holding all schemas (and other internal
+ * information) according to which the data trees will be processed and validated. So, the schema
+ * trees are tightly connected with the specific context and they are held by the context internally
+ * - caller does not need to keep pointers to the schemas returned by lys_parse(), context knows
+ * about them. The data trees created with lyd_parse() are still connected with the specific context,
+ * but they are not internally held by the context. The data tree just points and lean on some data
+ * held by the context (schema tree, string dictionary, etc.). Therefore, in case of data trees, caller
+ * is supposed to keep pointers returned by the lyd_parse() and manage the data tree on its own. This
+ * also affects the number of instances of both tree types. While you can have only one instance of
+ * specific schema connected with a single context, number of data tree instances is not connected.
  *
  * @param[in] search_dir Directory where libyang will search for the imported or included modules
  * and submodules. If no such directory is available, NULL is accepted.
