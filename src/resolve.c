@@ -1529,9 +1529,9 @@ error:
 static int
 resolve_grouping(struct lys_node_uses *uses, uint32_t line)
 {
-    struct lys_module *module = uses->module;
+    struct lys_module *module;
     const char *prefix, *name;
-    int i, pref_len, nam_len, rc;
+    int i, pref_len, nam_len;
     struct lys_node *start;
 
     /* parse the identifier, it must be parsed on one call */
@@ -1544,33 +1544,26 @@ resolve_grouping(struct lys_node_uses *uses, uint32_t line)
     }
 
     if (prefix) {
-        /* cannot be NULL, since there must at least be this uses */
-        assert(module->data);
+        module = resolve_prefixed_module(uses->module, prefix, pref_len);
+        if (!module) {
+            LOGVAL(LYE_INPREF_LEN, line, pref_len, prefix);
+            return -1;
+        }
         start = module->data;
     } else {
-        /* search in local tree hierarchy */
-        if (!uses->parent) {
-            start = (struct lys_node *)uses;
-            while (start->prev->next) {
-                start = start->prev;
-            }
-        } else {
-            start = uses->parent->child;
-        }
+        start = (struct lys_node *)uses;
     }
 
-    while (start) {
-        rc = resolve_sibling(module, start, prefix, pref_len, name, nam_len, LYS_GROUPING, (struct lys_node **)&uses->grp);
-        if (rc != EXIT_FAILURE) {
-            if (rc == -1) {
-                LOGVAL(LYE_INPREF_LEN, line, pref_len, prefix);
-            }
-            return rc;
-        }
-        start = start->parent;
+    uses->grp = lys_find_grouping_up(name, start, 1);
+    if (uses->grp) {
+        return EXIT_SUCCESS;
     }
 
     LOGVAL(LYE_INRESOLV, line, "grouping", uses->name);
+    /* import must now be fully resolved */
+    if (prefix) {
+        return -1;
+    }
     return EXIT_FAILURE;
 }
 
@@ -1652,6 +1645,7 @@ resolve_feature(const char *id, struct lys_module *module, uint32_t line, struct
  * @param[in] name Node name.
  * @param[in] nam_len Node name length.
  * @param[in] type ORed desired type of the node. 0 means any type.
+ *                 Returns only schema data nodes (no uses, grouping, augment, choice, case).
  * @param[out] ret Pointer to the node of the desired type. Can be NULL.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
@@ -1662,7 +1656,7 @@ resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *p
 {
     struct lys_node *node, *old_siblings = NULL;
     struct lys_module *prefix_mod, *cur_mod;
-    int in_submod, rc;
+    int in_submod;
 
     assert(mod && siblings && name);
     assert(!(type & LYS_USES));
@@ -1687,7 +1681,7 @@ resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *p
             return -1;
         }
         cur_mod = prefix_mod;
-        /* it is our module */
+        /* it is not our module */
         if (cur_mod != mod) {
             old_siblings = siblings;
             siblings = cur_mod->data;
@@ -1702,20 +1696,8 @@ resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *p
 
     while (1) {
         /* try to find the node */
-        LY_TREE_FOR(siblings, node) {
-            if (node->nodetype == LYS_USES) {
-                /* an unresolved uses, we can still find it elsewhere */
-                if (!node->child) {
-                    continue;
-                }
-
-                /* search recursively */
-                rc = resolve_sibling(mod, node->child, prefix, pref_len, name, nam_len, type, ret);
-                if (rc != EXIT_FAILURE) {
-                    return rc;
-                }
-            }
-
+        node = NULL;
+        while ((node = lys_getnext(node, siblings->parent, cur_mod, 0))) {
             if (!type || (node->nodetype & type)) {
                 /* module check */
                 if (!node->module->type) {
@@ -2481,7 +2463,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
             node = node->child;
         }
 
-        rc = resolve_sibling(mod, node, prefix, pref_len, name, nam_len, LYS_ANY & ~(LYS_GROUPING | LYS_USES), &node);
+        rc = resolve_sibling(mod, node, prefix, pref_len, name, nam_len, LYS_ANY, &node);
         if (rc) {
             LOGVAL(LYE_NORESOLV, line, path);
             return rc;
@@ -3141,6 +3123,36 @@ resolve_identref_json(struct lys_ident *base, const char *ident_name, uint32_t l
 }
 
 /**
+ * @brief Resolve (find) choice default case. Does not log.
+ *
+ * @param[in] choic Choice to use.
+ * @param[in] dflt Name of the default case.
+ *
+ * @return Pointer to the default node or NULL.
+ */
+static struct lys_node *
+resolve_choice_dflt(struct lys_node_choice *choic, const char *dflt)
+{
+    struct lys_node *child, *ret;
+
+    LY_TREE_FOR(choic->child, child) {
+        if (child->nodetype == LYS_USES) {
+            ret = resolve_choice_dflt((struct lys_node_choice *)child, dflt);
+            if (ret) {
+                return ret;
+            }
+        }
+
+        if ((child->name == dflt) && (child->nodetype & (LYS_ANYXML | LYS_CASE
+                | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST))) {
+            return child;
+        }
+    }
+
+    return NULL;
+}
+
+/**
  * @brief Resolve unresolved uses. Logs directly.
  *
  * @param[in] uses Uses to use.
@@ -3268,10 +3280,10 @@ resolve_unres_schema_must(struct lys_restr *UNUSED(must), struct lys_node *UNUSE
  */
 static int
 resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, void *str_snode,
-                   struct unres_schema *unres, uint32_t line)
+                          struct unres_schema *unres, uint32_t line)
 {
     int rc = -1, has_str = 0;
-    struct lys_node *snode;
+    struct lys_node *node;
     const char *base_name;
 
     struct lys_ident *ident;
@@ -3299,10 +3311,10 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         has_str = 1;
         break;
     case UNRES_TYPE_LEAFREF:
-        snode = str_snode;
+        node = str_snode;
         stype = item;
 
-        rc = resolve_path_arg_schema(mod, stype->info.lref.path, snode, line,
+        rc = resolve_path_arg_schema(mod, stype->info.lref.path, node, line,
                                      (struct lys_node **)&stype->info.lref.target);
         has_str = 0;
         break;
@@ -3342,12 +3354,11 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         base_name = str_snode;
         choic = item;
 
-        rc = resolve_sibling(mod, choic->child, NULL, 0, base_name, 0, LYS_ANYXML | LYS_CASE
-                             | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST, &choic->dflt);
-        /* there is no prefix, that is the only error */
-        assert(rc != -1);
-        if (rc == EXIT_FAILURE) {
-            LOGVAL(LYE_INRESOLV, line, "choice default", base_name);
+        choic->dflt = resolve_choice_dflt(choic, base_name);
+        if (choic->dflt) {
+            rc = EXIT_SUCCESS;
+        } else {
+            rc = EXIT_FAILURE;
         }
         has_str = 1;
         break;
@@ -3517,7 +3528,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
  */
 int
 unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, const char *str,
-              uint32_t line)
+                     uint32_t line)
 {
     str = lydict_insert(mod->ctx, str, 0);
     return unres_schema_add_node(mod, unres, item, type, (struct lys_node *)str, line);
@@ -3537,7 +3548,7 @@ unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *i
  */
 int
 unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
-                struct lys_node *snode, uint32_t line)
+                      struct lys_node *snode, uint32_t line)
 {
     int rc;
 

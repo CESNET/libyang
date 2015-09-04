@@ -84,16 +84,26 @@ check:
     goto check;
 }
 
-static struct lys_node *
-check_mand_getnext(struct lys_node *cur, struct lys_node *parent)
+struct lys_node *
+lys_getnext(struct lys_node *last, struct lys_node *parent, struct lys_module *module, int options)
 {
     struct lys_node *next;
 
-    if (!cur) {
-        next = parent->child;
-        cur = next;
+    if (!last) {
+        /* first call */
+
+        /* get know where to start */
+        if (parent) {
+            /* schema subtree */
+            next = last = parent->child;
+        } else {
+            /* top level data */
+            assert(module);
+            next = last = module->data;
+        }
     } else {
-        next = cur->next;
+        /* continue after the last returned value */
+        next = last->next;
     }
 
 repeat:
@@ -102,39 +112,68 @@ repeat:
     }
 
     while (!next) {
-        if (cur->parent == parent) {
+        if (last->parent == parent) {
             /* no next element */
             return NULL;
         }
-        cur = cur->parent;
-        next = cur->next;
+        last = last->parent;
+        next = last->next;
         goto repeat;
     }
 
     switch (next->nodetype) {
-    case LYS_CONTAINER:
-        if (((struct lys_node_container *)next)->presence) {
-            /* mandatory elements under the non-existing presence
-             * container are not mandatory - 7.6.5, rule 1 */
-            next = next->next;
-            goto repeat;
-        }
-        /* no break */
     case LYS_USES:
     case LYS_CASE:
         /* go into */
         next = next->child;
         goto repeat;
+
+    case LYS_CONTAINER:
     case LYS_LEAF:
-    case LYS_CHOICE:
     case LYS_ANYXML:
     case LYS_LIST:
     case LYS_LEAFLIST:
         return next;
+
+    case LYS_CHOICE:
+        if (options & LYS_GETNEXT_WITHCHOICE) {
+            return next;
+        } else {
+            /* go into */
+            next = next->child;
+            goto repeat;
+        }
+        break;
+
     default:
         /* we should not be here */
         return NULL;
     }
+
+
+}
+
+static struct lys_node *
+check_mand_getnext(struct lys_node *last, struct lys_node *parent)
+{
+    struct lys_node *next;
+
+repeat:
+    next = lys_getnext(last, parent, NULL, LYS_GETNEXT_WITHCHOICE);
+
+    if (next && next->nodetype == LYS_CONTAINER) {
+        if (((struct lys_node_container *)next)->presence) {
+            /* mandatory elements under the non-existing presence
+             * container are not mandatory - 7.6.5, rule 1 */
+            next = next->next;
+        } else {
+            /* go into */
+            next = next->child;
+        }
+        goto repeat;
+    }
+
+    return next;
 }
 
 static struct lys_node *
@@ -470,12 +509,56 @@ lys_node_unlink(struct lys_node *node)
     node->prev = node;
 }
 
+struct lys_node_grp *
+lys_find_grouping_up(const char *name, struct lys_node *start, int in_submodules)
+{
+    struct lys_node *par_iter, *iter, *stop;
+    int i;
+
+    for (par_iter = start; par_iter; par_iter = par_iter->parent) {
+        if (par_iter->nodetype & (LYS_CHOICE | LYS_CASE | LYS_AUGMENT | LYS_USES)) {
+            continue;
+        }
+
+        for (iter = par_iter, stop = NULL; iter; iter = iter->prev) {
+            if (!stop) {
+                stop = par_iter;
+            } else if (iter == stop) {
+                break;
+            }
+            if (iter->nodetype != LYS_GROUPING) {
+                continue;
+            }
+
+            if (name == iter->name) {
+                return (struct lys_node_grp *)iter;
+            }
+        }
+    }
+
+    if (in_submodules) {
+        for (i = 0; i < start->module->inc_size; ++i) {
+            for (iter = start->module->inc[i].submodule->data; iter; iter = iter->next) {
+                if (iter->nodetype != LYS_GROUPING) {
+                    continue;
+                }
+
+                if (name == iter->name) {
+                    return (struct lys_node_grp *)iter;
+                }
+            }
+        }
+    }
+
+    return NULL;
+}
+
 /*
  * get next grouping in the root's subtree, in the
  * first call, tha last is NULL
  */
 static struct lys_node_grp *
-lys_get_next_grouping(struct lys_node_grp* lastgrp, struct lys_node *root)
+lys_get_next_grouping(struct lys_node_grp *lastgrp, struct lys_node *root)
 {
     struct lys_node *last = (struct lys_node *)lastgrp;
     struct lys_node *next;
@@ -523,7 +606,7 @@ lys_get_next_grouping(struct lys_node_grp* lastgrp, struct lys_node *root)
 int
 lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *module)
 {
-    struct lys_node *start, *stop, *par_iter, *iter;
+    struct lys_node *start, *stop, *iter;
     struct lys_node_grp *grp;
     int down;
 
@@ -551,26 +634,9 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
             start = module->data;
         }
         /* go up */
-        for (par_iter = start; par_iter; par_iter = par_iter->parent) {
-            if (par_iter->nodetype & (LYS_CHOICE | LYS_CASE | LYS_AUGMENT | LYS_USES)) {
-                continue;
-            }
-
-            for (iter = par_iter, stop = NULL; iter; iter = iter->prev) {
-                if (!stop) {
-                    stop = par_iter;
-                } else if (iter == stop) {
-                    break;
-                }
-                if (iter->nodetype != LYS_GROUPING) {
-                    continue;
-                }
-
-                if (node->name == iter->name) {
-                    LOGVAL(LYE_DUPID, 0, "grouping", node->name);
-                    return EXIT_FAILURE;
-                }
-            }
+        if (lys_find_grouping_up(node->name, start, 0)) {
+            LOGVAL(LYE_DUPID, 0, "grouping", node->name);
+            return EXIT_FAILURE;
         }
         /* go down, because grouping can be defined after e.g. container in which is collision */
         if (down) {
@@ -2488,7 +2554,6 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options)
         return EXIT_FAILURE;
     }
 
-
     if (!parent->child) {
         /* add as the only child of the parent */
         parent->child = node;
@@ -2501,8 +2566,72 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options)
     }
     LY_TREE_FOR(node, iter) {
         iter->parent = parent;
-        last = iter;
+        last = iter; /* remember the last of the inserted nodes */
     }
+
+    ly_errno = 0;
+    LY_TREE_FOR_SAFE(node, next, iter) {
+        /* various validation checks */
+        if (lyv_data_content(iter, 0, options)) {
+            if (ly_errno) {
+                return EXIT_FAILURE;
+            } else {
+                lyd_free(iter);
+            }
+        }
+
+        if (iter == last) {
+            /* we are done - checking only the inserted nodes */
+            break;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+API int
+lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node, int options)
+{
+    struct lys_node *par1, *par2;
+    struct lyd_node *iter, *next, *last;
+
+    if (!node || !sibling) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    if (node->parent || node->prev->next) {
+        lyd_unlink(node);
+    }
+
+    /* check placing the node to the appropriate place according to the schema */
+    for (par1 = sibling->schema->parent; par1 && (par1->nodetype & (LYS_CONTAINER | LYS_LIST)); par1 = par1->parent);
+    for (par2 = node->schema->parent; par2 && (par2->nodetype & (LYS_CONTAINER | LYS_LIST)); par2 = par2->parent);
+    if (par1 != par2) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    LY_TREE_FOR(node, iter) {
+        iter->parent = sibling->parent;
+        last = iter; /* remember the last of the inserted nodes */
+    }
+
+    if (sibling->next) {
+        /* adding into a middle - fix the prev pointer of the node after inserted nodes */
+        last->next = sibling->next;
+        sibling->next->prev = last;
+    } else {
+        /* at the end - fix the prev pointer of the first node */
+        if (sibling->parent) {
+            sibling->parent->child->prev = last;
+        } else {
+            for (iter = sibling; iter->prev->next; iter = iter->prev);
+            iter->prev = last;
+        }
+    }
+    sibling->next = node;
+    node->prev = sibling;
 
     ly_errno = 0;
     LY_TREE_FOR_SAFE(node, next, iter) {
