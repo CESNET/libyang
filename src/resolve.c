@@ -1529,9 +1529,9 @@ error:
 static int
 resolve_grouping(struct lys_node_uses *uses, uint32_t line)
 {
-    struct lys_module *module = uses->module;
+    struct lys_module *module;
     const char *prefix, *name;
-    int i, pref_len, nam_len, rc;
+    int i, pref_len, nam_len;
     struct lys_node *start;
 
     /* parse the identifier, it must be parsed on one call */
@@ -1544,33 +1544,26 @@ resolve_grouping(struct lys_node_uses *uses, uint32_t line)
     }
 
     if (prefix) {
-        /* cannot be NULL, since there must at least be this uses */
-        assert(module->data);
+        module = resolve_prefixed_module(uses->module, prefix, pref_len);
+        if (!module) {
+            LOGVAL(LYE_INPREF_LEN, line, pref_len, prefix);
+            return -1;
+        }
         start = module->data;
     } else {
-        /* search in local tree hierarchy */
-        if (!uses->parent) {
-            start = (struct lys_node *)uses;
-            while (start->prev->next) {
-                start = start->prev;
-            }
-        } else {
-            start = uses->parent->child;
-        }
+        start = (struct lys_node *)uses;
     }
 
-    while (start) {
-        rc = resolve_sibling(module, start, prefix, pref_len, name, nam_len, LYS_GROUPING, (struct lys_node **)&uses->grp);
-        if (rc != EXIT_FAILURE) {
-            if (rc == -1) {
-                LOGVAL(LYE_INPREF_LEN, line, pref_len, prefix);
-            }
-            return rc;
-        }
-        start = start->parent;
+    uses->grp = lys_find_grouping_up(name, start, 1);
+    if (uses->grp) {
+        return EXIT_SUCCESS;
     }
 
     LOGVAL(LYE_INRESOLV, line, "grouping", uses->name);
+    /* import must now be fully resolved */
+    if (prefix) {
+        return -1;
+    }
     return EXIT_FAILURE;
 }
 
@@ -3260,7 +3253,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
                    struct unres_schema *unres, uint32_t line)
 {
     int rc = -1, has_str = 0;
-    struct lys_node *snode;
+    struct lys_node *node;
     const char *base_name;
 
     struct lys_ident *ident;
@@ -3288,10 +3281,10 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         has_str = 1;
         break;
     case UNRES_TYPE_LEAFREF:
-        snode = str_snode;
+        node = str_snode;
         stype = item;
 
-        rc = resolve_path_arg_schema(mod, stype->info.lref.path, snode, line,
+        rc = resolve_path_arg_schema(mod, stype->info.lref.path, node, line,
                                      (struct lys_node **)&stype->info.lref.target);
         has_str = 0;
         break;

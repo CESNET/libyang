@@ -172,6 +172,18 @@ struct lys_node *lys_getnext(struct lys_node *last, struct lys_node *parent, str
 #define LYS_GETNEXT_WITHCHOICE  0x01
 
 /**
+ * @brief Find a valid grouping definition relative to a node.
+ *
+ * Valid definition means a sibling of \p start or a sibling of any of \p start 's parents.
+ *
+ * @param[in] name Name of the searched grouping.
+ * @param[in] start Definition must be valid (visible) for this node.
+ * @param[in] in_submodules Whether search the submodules as well or not.
+ * @return Matching valid grouping or NULL.
+ */
+struct lys_node_grp *lys_find_grouping_up(const char *name, struct lys_node *start, int in_submodules);
+
+/**
  * @brief Check that the \p node being connected into the \p parent has a unique name (identifier).
  *
  * Function is performed also as part of lys_node_addchild().
