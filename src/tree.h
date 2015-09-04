@@ -1366,7 +1366,7 @@ typedef union lyd_value_u {
 } lyd_val;
 
 /**
- * @brief Generic structure for a data node, directly applicable to the data nodes defined as #LYS_CONTAINER
+ * @brief Generic structure for a data node, directly applicable to the data nodes defined as #LYS_CONTAINER, #LYS_LIST
  * and #LYS_CHOICE.
  *
  * Completely fits to containers and choices and is compatible (can be used interchangeably except the #child member)
@@ -1392,35 +1392,6 @@ struct lyd_node {
                                           is replaced in those structures. Therefore, be careful with accessing
                                           this member without having information about the node type from the schema's
                                           ::lys_node#nodetype member. */
-};
-
-/**
- * @brief Structure for data nodes defined as #LYS_LIST.
- *
- * Extension for ::lyd_node structure - adds #lprev and #lnext members to simplify going through the instance nodes
- * of a list. The first six members (#schema, #attr, #next, #prev, #parent and #child) are compatible with the
- * ::lyd_node's members.
- *
- * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
- */
-struct lyd_node_list {
-    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_list
-                                          structure */
-
-    struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
-    struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
-    struct lyd_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
-                                          never NULL. If there is no sibling node, pointer points to the node
-                                          itself. In case of the first node, this pointer points to the last
-                                          node in the list. */
-    struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
-    struct lyd_node *child;          /**< pointer to the first child node */
-
-    /* list's specific members */
-    struct lyd_node_list* lprev;     /**< pointer to the previous instance node of the same list,
-                                          NULL in case of the first instance of the list */
-    struct lyd_node_list* lnext;     /**< pointer to the next instance node of the same list,
-                                          NULL in case of the last instance of the list */
 };
 
 /**
@@ -1456,7 +1427,7 @@ struct lyd_node_leaf {
  * @brief Structure for data nodes defined as #LYS_LEAF.
  *
  * Extension for ::lyd_node structure. It combines ::lyd_node_leaf and :lyd_node_list by replacing the
- * ::lyd_node#child member by five new members (#value, #value_str, #value_type, #lprev and #lnext) to provide
+ * ::lyd_node#child member by five new members (#value, #value_str and #value_type) to provide
  * information about the value and other leaf-list's instances. The first five members (#schema, #attr, #next,
  * #prev and #parent) are compatible with the ::lyd_node's members.
  *
@@ -1480,11 +1451,6 @@ struct lyd_node_leaflist {
     lyd_val value;                   /**< node's value representation */
     const char *value_str;           /**< string representation of value (for comparison, printing,...) */
     LY_DATA_TYPE value_type;         /**< type of the value in the node, mainly for union to avoid repeating of type detection */
-
-    struct lyd_node_leaflist* lprev; /**< pointer to the previous instance node of the same leaf-list,
-                                          NULL in case of the first instance of the leaf-list */
-    struct lyd_node_leaflist* lnext; /**< pointer to the next instance node of the same leaf-list,
-                                          NULL in case of the last instance of the leaf-list */
 };
 
 /**
@@ -1604,21 +1570,6 @@ int lyd_move_before(struct lyd_node *sibling, struct lyd_node *node);
  * @return 0 for success, nonzero in case of error
  */
 int lyd_move_after(struct lyd_node *sibling, struct lyd_node *node);
-
-/**
- * @brief Test if the given node is last. Note, that this can be simply checked
- * from the node's next member, but this function differs from this how a
- * list's and leaf-list's instances are considered. If the node is followed
- * only by instances of lists that have their first instance before the given
- * node (or the node itself), this function will mark the node as last even the node's ::lyd_node#next is not empty.
- * This is useful especially when you traverse all siblings and process the
- * list's or leaf-list's instances in once.
- *
- * @param[in] node The data node to be checked.
- * @return 0 if the node has a successor, 1 if the node is last in sense as
- * described above.
- */
-int lyd_is_last(struct lyd_node *node);
 
 /**
  * @brief Unlink the specified data subtree.

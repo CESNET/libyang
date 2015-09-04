@@ -229,39 +229,25 @@ xml_print_container(FILE *f, int level, struct lyd_node *node)
 }
 
 static void
-xml_print_leaf_list(FILE *f, int level, struct lyd_node *node, int is_list)
+xml_print_list(FILE *f, int level, struct lyd_node *node, int is_list)
 {
     struct lyd_node *child;
-    struct lyd_node_list *list = (struct lyd_node_list *)node;
-    struct lyd_node_leaflist *llist = (struct lyd_node_leaflist *)node;
 
-    if ((is_list && list->lprev) || (!is_list && llist->lprev)) {
-        /* this list is already printed */
-        return;
-    }
-
-    /* leaf-list print */
-    if (!is_list) {
-        while (llist) {
-            xml_print_leaf(f, level, (struct lyd_node *)llist);
-            llist = llist->lnext;
-        }
-        return;
-    }
-
-    /* list print */
-    while (list) {
+    if (is_list) {
+        /* list print */
         fprintf(f, "%*s<%s", LEVEL, INDENT, node->schema->name);
 
         xml_print_attrs(f, node);
         fprintf(f, ">\n");
 
-        LY_TREE_FOR(list->child, child) {
+        LY_TREE_FOR(node->child, child) {
             xml_print_node(f, level + 1, child);
         }
 
         fprintf(f, "%*s</%s>\n", LEVEL, INDENT, node->schema->name);
-        list = list->lnext;
+    } else {
+        /* leaf-list print */
+        xml_print_leaf(f, level, node);
     }
 }
 
@@ -301,10 +287,10 @@ xml_print_node(FILE *f, int level, struct lyd_node *node)
         xml_print_leaf(f, level, node);
         break;
     case LYS_LEAFLIST:
-        xml_print_leaf_list(f, level, node, 0);
+        xml_print_list(f, level, node, 0);
         break;
     case LYS_LIST:
-        xml_print_leaf_list(f, level, node, 1);
+        xml_print_list(f, level, node, 1);
         break;
     case LYS_ANYXML:
         xml_print_anyxml(f, level, node);

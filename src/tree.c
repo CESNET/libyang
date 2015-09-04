@@ -2636,23 +2636,6 @@ lyd_unlink(struct lyd_node *node)
         return EXIT_FAILURE;
     }
 
-    /* unlink from the lists list */
-    if (node->schema->nodetype == LYS_LIST) {
-        if (((struct lyd_node_list *)node)->lprev) {
-            ((struct lyd_node_list *)node)->lprev->lnext = ((struct lyd_node_list *)node)->lnext;
-        }
-        if (((struct lyd_node_list *)node)->lnext) {
-            ((struct lyd_node_list *)node)->lnext->lprev = ((struct lyd_node_list *)node)->lprev;
-        }
-    } else if (node->schema->nodetype == LYS_LEAFLIST) {
-        if (((struct lyd_node_leaflist *)node)->lprev) {
-            ((struct lyd_node_leaflist *)node)->lprev->lnext = ((struct lyd_node_leaflist *)node)->lnext;
-        }
-        if (((struct lyd_node_leaflist *)node)->lnext) {
-            ((struct lyd_node_leaflist *)node)->lnext->lprev = ((struct lyd_node_leaflist *)node)->lprev;
-        }
-    }
-
     /* unlink from siblings */
     if (node->prev->next) {
         node->prev->next = node->next;
@@ -2820,34 +2803,6 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
         /* no additional check is needed */
         return 0;
     }
-}
-
-API int
-lyd_is_last(struct lyd_node *node)
-{
-    struct lyd_node *n;
-
-    if (!node->next) {
-        return 1;
-    }
-
-    for (n = node->next; n; n = n->next) {
-        switch (n->schema->nodetype) {
-        case LYS_LIST:
-            if (!((struct lyd_node_list *)n)->lprev) {
-                return 0;
-            }
-            break;
-        case LYS_LEAFLIST:
-            if (!((struct lyd_node_leaflist *)n)->lprev) {
-                return 0;
-            }
-            break;
-        default:
-            return 0;
-        }
-    }
-    return 1;
 }
 
 API struct lyd_set *
