@@ -853,7 +853,7 @@ resolve_import_in_includes_recursive(struct lys_module *mod, const char *prefix,
  *
  * @return The matching module on success, NULL on error.
  */
-static struct lys_module *
+struct lys_module *
 resolve_prefixed_module(struct lys_module *mod, const char *prefix, uint32_t pref_len)
 {
     int i;
