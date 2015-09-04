@@ -3123,6 +3123,36 @@ resolve_identref_json(struct lys_ident *base, const char *ident_name, uint32_t l
 }
 
 /**
+ * @brief Resolve (find) choice default case. Does not log.
+ *
+ * @param[in] choic Choice to use.
+ * @param[in] dflt Name of the default case.
+ *
+ * @return Pointer to the default node or NULL.
+ */
+static struct lys_node *
+resolve_choice_dflt(struct lys_node_choice *choic, const char *dflt)
+{
+    struct lys_node *child, *ret;
+
+    LY_TREE_FOR(choic->child, child) {
+        if (child->nodetype == LYS_USES) {
+            ret = resolve_choice_dflt((struct lys_node_choice *)child, dflt);
+            if (ret) {
+                return ret;
+            }
+        }
+
+        if ((child->name == dflt) && (child->nodetype & (LYS_ANYXML | LYS_CASE
+                | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST))) {
+            return child;
+        }
+    }
+
+    return NULL;
+}
+
+/**
  * @brief Resolve unresolved uses. Logs directly.
  *
  * @param[in] uses Uses to use.
@@ -3250,7 +3280,7 @@ resolve_unres_schema_must(struct lys_restr *UNUSED(must), struct lys_node *UNUSE
  */
 static int
 resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, void *str_snode,
-                   struct unres_schema *unres, uint32_t line)
+                          struct unres_schema *unres, uint32_t line)
 {
     int rc = -1, has_str = 0;
     struct lys_node *node;
@@ -3324,12 +3354,11 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         base_name = str_snode;
         choic = item;
 
-        rc = resolve_sibling(mod, choic->child, NULL, 0, base_name, 0, LYS_ANYXML | LYS_CASE
-                             | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST, &choic->dflt);
-        /* there is no prefix, that is the only error */
-        assert(rc != -1);
-        if (rc == EXIT_FAILURE) {
-            LOGVAL(LYE_INRESOLV, line, "choice default", base_name);
+        choic->dflt = resolve_choice_dflt(choic, base_name);
+        if (choic->dflt) {
+            rc = EXIT_SUCCESS;
+        } else {
+            rc = EXIT_FAILURE;
         }
         has_str = 1;
         break;
@@ -3499,7 +3528,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
  */
 int
 unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, const char *str,
-              uint32_t line)
+                     uint32_t line)
 {
     str = lydict_insert(mod->ctx, str, 0);
     return unres_schema_add_node(mod, unres, item, type, (struct lys_node *)str, line);
@@ -3519,7 +3548,7 @@ unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *i
  */
 int
 unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
-                struct lys_node *snode, uint32_t line)
+                      struct lys_node *snode, uint32_t line)
 {
     int rc;
 
