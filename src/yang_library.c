@@ -148,7 +148,7 @@ ylib_deviation(struct ly_ctx *ctx, struct lys_node *deviation_node, struct lys_m
     int i, j, k;
     struct lys_module *target_module;
     struct lyd_node *dnode;
-    struct lyd_node_list *ret = NULL, *dlist, *dlast;
+    struct lyd_node *ret = NULL, *dlist, *dlast;
     struct lys_node *deviation_child;
 
     for (i = 0; i < mod_count; ++i) {
@@ -260,7 +260,7 @@ ylib_submodules(struct ly_ctx *ctx, struct lys_node *submodules_node, struct lys
     int i;
     struct lys_node *submodule_node, *submodule_child;
     struct lyd_node *ret = NULL, *dnode;
-    struct lyd_node_list *dlist = NULL;
+    struct lyd_node *dlist = NULL;
 
     ret = calloc(1, sizeof *ret);
     ret->prev = ret;
@@ -324,7 +324,7 @@ ly_ctx_info(struct ly_ctx *ctx)
     struct lys_module *mod;
     struct lys_node *modules_child, *module_child;
     struct lyd_node *root, *dnode;
-    struct lyd_node_list *dlist = NULL;
+    struct lyd_node *dlist = NULL;
 
     mod = ly_ctx_get_module(ctx, "ietf-yang-library", NULL);
     if (!mod) {

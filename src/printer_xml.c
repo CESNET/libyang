@@ -74,16 +74,21 @@ transform_data_json2xml(struct ly_ctx *ctx, const char *json_data, char ***prefi
     struct lys_module *mod;
     uint32_t i;
 
-    assert(json_data && prefixes && namespaces && ns_count);
+    assert(prefixes && namespaces && ns_count);
+
+    *ns_count = 0;
+    *prefixes = NULL;
+    *namespaces = NULL;
+
+    if (!json_data) {
+        /* empty value */
+        return strdup("");
+    }
 
     in = json_data;
     out_size = strlen(in)+1;
     out = malloc(out_size);
     out_used = 0;
-
-    *ns_count = 0;
-    *prefixes = NULL;
-    *namespaces = NULL;
 
     while (1) {
         col = strchr(in, ':');
@@ -104,11 +109,6 @@ transform_data_json2xml(struct ly_ctx *ctx, const char *json_data, char ***prefi
         mod_name = strndup(id, id_len);
         mod = ly_ctx_get_module(ctx, mod_name, NULL);
         free(mod_name);
-        if (!mod) {
-            LOGINT;
-            free(out);
-            return NULL;
-        }
 
         /* remember the new namespace definition */
         for (i = 0; i < *ns_count; ++i) {
@@ -188,7 +188,11 @@ xml_print_leaf(FILE *f, int level, struct lyd_node *node)
         free(prefs);
         free(nss);
 
-        fprintf(f, ">%s</%s>\n", xml_data, node->schema->name);
+        if (xml_data[0]) {
+            fprintf(f, ">%s</%s>\n", xml_data, node->schema->name);
+        } else {
+            fprintf(f, "/>\n");
+        }
         free(xml_data);
         break;
 
@@ -225,39 +229,25 @@ xml_print_container(FILE *f, int level, struct lyd_node *node)
 }
 
 static void
-xml_print_leaf_list(FILE *f, int level, struct lyd_node *node, int is_list)
+xml_print_list(FILE *f, int level, struct lyd_node *node, int is_list)
 {
     struct lyd_node *child;
-    struct lyd_node_list *list = (struct lyd_node_list *)node;
-    struct lyd_node_leaflist *llist = (struct lyd_node_leaflist *)node;
 
-    if ((is_list && list->lprev) || (!is_list && llist->lprev)) {
-        /* this list is already printed */
-        return;
-    }
-
-    /* leaf-list print */
-    if (!is_list) {
-        while (llist) {
-            xml_print_leaf(f, level, (struct lyd_node *)llist);
-            llist = llist->lnext;
-        }
-        return;
-    }
-
-    /* list print */
-    while (list) {
+    if (is_list) {
+        /* list print */
         fprintf(f, "%*s<%s", LEVEL, INDENT, node->schema->name);
 
         xml_print_attrs(f, node);
         fprintf(f, ">\n");
 
-        LY_TREE_FOR(list->child, child) {
+        LY_TREE_FOR(node->child, child) {
             xml_print_node(f, level + 1, child);
         }
 
         fprintf(f, "%*s</%s>\n", LEVEL, INDENT, node->schema->name);
-        list = list->lnext;
+    } else {
+        /* leaf-list print */
+        xml_print_leaf(f, level, node);
     }
 }
 
@@ -269,17 +259,21 @@ xml_print_anyxml(FILE *f, int level, struct lyd_node *node)
     size_t buf_size;
     struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
 
-    /* dump the anyxml into a buffer */
-    stream = open_memstream(&buf, &buf_size);
-    lyxml_dump(stream, axml->value, 0);
-    fclose(stream);
+    if (axml->value) {
+        /* dump the anyxml into a buffer */
+        stream = open_memstream(&buf, &buf_size);
+        lyxml_dump(stream, axml->value, 0);
+        fclose(stream);
 
-    line = strtok_r(buf, "\n", &ptr);
-    do {
-        fprintf(f, "%*s%s\n", LEVEL, INDENT, line);
-    } while ((line = strtok_r(NULL, "\n", &ptr)));
+        line = strtok_r(buf, "\n", &ptr);
+        do {
+            fprintf(f, "%*s%s\n", LEVEL, INDENT, line);
+        } while ((line = strtok_r(NULL, "\n", &ptr)));
 
-    free(buf);
+        free(buf);
+    } else {
+        fprintf(f, "%*s<%s/>\n", LEVEL, INDENT, node->schema->name);
+    }
 }
 
 void
@@ -293,10 +287,10 @@ xml_print_node(FILE *f, int level, struct lyd_node *node)
         xml_print_leaf(f, level, node);
         break;
     case LYS_LEAFLIST:
-        xml_print_leaf_list(f, level, node, 0);
+        xml_print_list(f, level, node, 0);
         break;
     case LYS_LIST:
-        xml_print_leaf_list(f, level, node, 1);
+        xml_print_list(f, level, node, 1);
         break;
     case LYS_ANYXML:
         xml_print_anyxml(f, level, node);
