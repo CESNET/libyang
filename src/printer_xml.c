@@ -74,16 +74,21 @@ transform_data_json2xml(struct ly_ctx *ctx, const char *json_data, char ***prefi
     struct lys_module *mod;
     uint32_t i;
 
-    assert(json_data && prefixes && namespaces && ns_count);
+    assert(prefixes && namespaces && ns_count);
+
+    *ns_count = 0;
+    *prefixes = NULL;
+    *namespaces = NULL;
+
+    if (!json_data) {
+        /* empty value */
+        return strdup("");
+    }
 
     in = json_data;
     out_size = strlen(in)+1;
     out = malloc(out_size);
     out_used = 0;
-
-    *ns_count = 0;
-    *prefixes = NULL;
-    *namespaces = NULL;
 
     while (1) {
         col = strchr(in, ':');
@@ -104,11 +109,6 @@ transform_data_json2xml(struct ly_ctx *ctx, const char *json_data, char ***prefi
         mod_name = strndup(id, id_len);
         mod = ly_ctx_get_module(ctx, mod_name, NULL);
         free(mod_name);
-        if (!mod) {
-            LOGINT;
-            free(out);
-            return NULL;
-        }
 
         /* remember the new namespace definition */
         for (i = 0; i < *ns_count; ++i) {
@@ -188,7 +188,11 @@ xml_print_leaf(FILE *f, int level, struct lyd_node *node)
         free(prefs);
         free(nss);
 
-        fprintf(f, ">%s</%s>\n", xml_data, node->schema->name);
+        if (xml_data[0]) {
+            fprintf(f, ">%s</%s>\n", xml_data, node->schema->name);
+        } else {
+            fprintf(f, "/>\n");
+        }
         free(xml_data);
         break;
 
