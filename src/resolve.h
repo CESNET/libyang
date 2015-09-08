@@ -50,8 +50,6 @@ struct len_ran_intv {
 
 int parse_identifier(const char *id);
 
-struct lys_module *resolve_prefixed_module(struct lys_module *mod, const char *prefix, uint32_t pref_len);
-
 int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int superior_restr,
                              struct len_ran_intv **local_intv);
 
