@@ -116,7 +116,7 @@ extern "C" {
     (NEXT) = (ELEM)->child;                                                   \
     if (offsetof(typeof(*(START)), next) < offsetof(typeof(*(START)), child)) {          \
         /* child exception for lyd_node_leaf and lyd_node_leaflist */         \
-        if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) { \
+        if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) { \
             (NEXT) = NULL;                                                    \
         }                                                                     \
     }                                                                         \
