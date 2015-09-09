@@ -2075,10 +2075,12 @@ moveto_parent(struct lyxp_set *set, int all_desc, struct lyd_node *any_node, uin
     return EXIT_SUCCESS;
 }
 
-/* 'or', 'and', '=', '!=', '<=', '<', '>=', '>' TODO */
+/* '=', '!=', '<=', '<', '>=', '>' TODO */
 static int
-moveto_op_log_comp(const char *op, struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *any_node, uint32_t line)
+moveto_op_comp(const char *op, struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *any_node, uint32_t line)
 {
+
+
     set_free(set2, any_node->schema->module->ctx);
     return EXIT_SUCCESS;
 }
@@ -3220,7 +3222,7 @@ eval_relational_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *
             }
 
             /* eval */
-            if ((rc = moveto_op_log_comp(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node, line))) {
+            if ((rc = moveto_op_comp(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node, line))) {
                 set_free(orig_set, cur_node->schema->module->ctx);
                 if (set2 != orig_set) {
                     set_free(set2, cur_node->schema->module->ctx);
@@ -3305,7 +3307,7 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cu
             }
 
             /* eval */
-            if ((rc = moveto_op_log_comp(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node, line))) {
+            if ((rc = moveto_op_comp(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node, line))) {
                 set_free(orig_set, cur_node->schema->module->ctx);
                 if (set2 != orig_set) {
                     set_free(set2, cur_node->schema->module->ctx);
@@ -3334,7 +3336,7 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cu
 static int
 eval_and_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
 {
-    int rc, prev_op;
+    int rc;
     uint16_t prev_exp;
     struct lyxp_set *orig_set = NULL, *set2;
 
@@ -3362,8 +3364,6 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_nod
 
     /* ('and' EqualityExpr)* */
     while (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_LOG, UINT_MAX) && (exp->tok_len[*cur_exp] == 3)) {
-        prev_op = *cur_exp;
-
         LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
 
@@ -3374,7 +3374,7 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_nod
         }
 
         /* lazy evaluation */
-        if (set && !set->value.bool) {
+        if (set && set->value.bool) {
             if (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_LOG, UINT_MAX) && (exp->tok_len[*cur_exp] == 3)) {
                 /* there is another operator */
                 set2 = set_copy(orig_set, cur_node->schema->module->ctx);
@@ -3391,14 +3391,12 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_nod
                 return rc;
             }
 
-            /* eval */
-            if ((rc = moveto_op_log_comp(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node, line))) {
-                set_free(orig_set, cur_node->schema->module->ctx);
-                if (set2 != orig_set) {
-                    set_free(set2, cur_node->schema->module->ctx);
-                }
-                return rc;
+            /* eval - just get boolean value actually */
+            set_cast(set2, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
+            if (!set2->value.bool) {
+                set->value.bool = 0;
             }
+            set_free(set2, cur_node->schema->module->ctx);
         }
     }
 
@@ -3421,7 +3419,7 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_nod
 static int
 eval_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
 {
-    int rc, prev_op;
+    int rc;
     uint16_t prev_exp;
     struct lyxp_set *orig_set = NULL, *set2;
 
@@ -3449,8 +3447,6 @@ eval_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_node, s
 
     /* ('or' AndExpr)* */
     while (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_LOG, UINT_MAX) && (exp->tok_len[*cur_exp] == 2)) {
-        prev_op = *cur_exp;
-
         LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
 
@@ -3478,14 +3474,12 @@ eval_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_node, s
                 return rc;
             }
 
-            /* eval */
-            if ((rc = moveto_op_log_comp(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node, line))) {
-                set_free(orig_set, cur_node->schema->module->ctx);
-                if (set2 != orig_set) {
-                    set_free(set2, cur_node->schema->module->ctx);
-                }
-                return rc;
+            /* eval - just get boolean value actually */
+            set_cast(set2, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
+            if (set2->value.bool) {
+                set->value.bool = 1;
             }
+            set_free(set2, cur_node->schema->module->ctx);
         }
     }
 
