@@ -90,7 +90,7 @@ transform_data_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml, int log)
         ns = lyxml_get_ns(xml, prefix);
         free(prefix);
         if (!ns) {
-            /* TODO a valid case if replacing an XPath in an augment part from a different model */
+            /* TODO a valid case if replacing an XPath in an augment part from a different model (won't happen if namespaces used in the augment get copied over as well) */
             if (log) {
                 LOGVAL(LYE_SPEC, LOGLINE(xml), "XML namespace with prefix \"%.*s\" not defined.", id_len, id);
             }
