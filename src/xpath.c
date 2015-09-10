@@ -1293,10 +1293,35 @@ xpath_contains(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_n
     return EXIT_SUCCESS;
 }
 
+/**
+ * @brief Executes the XPath count(node-set) function. Returns LYXP_SET_NUMBER
+ *        with the size of the node-set from the argument.
+ *
+ * @param[in] args Array of arguments.
+ * @param[in] arg_count Count of elements in \p args.
+ * @param[in] cur_node Original context node.
+ * @param[in,out] set Context and result set at the same time.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
 static int
 xpath_count(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
 {
-    LOGDBG("XPATH: %s call", __func__);
+    if (arg_count != 1) {
+        LOGVAL(LYE_XPATH_INARGCOUNT, line, arg_count, "count(node-set)");
+        return -1;
+    }
+    if (args->type == LYXP_SET_EMPTY) {
+        set_fill_number(set, 0, cur_node->schema->module->ctx);
+        return EXIT_SUCCESS;
+    }
+
+    if (args->type != LYXP_SET_NODE_SET) {
+        LOGVAL(LYE_XPATH_INARGTYPE, line, 1, print_set_type(args), "count(node-set)");
+    }
+
+    set_fill_number(set, args->used, cur_node->schema->module->ctx);
     return EXIT_SUCCESS;
 }
 
@@ -1329,10 +1354,35 @@ xpath_lang(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node,
     return EXIT_SUCCESS;
 }
 
+/**
+ * @brief Executes the XPath last() function. Returns LYXP_SET_NUMBER
+ *        with the context size.
+ *
+ * @param[in] args Array of arguments.
+ * @param[in] arg_count Count of elements in \p args.
+ * @param[in] cur_node Original context node.
+ * @param[in,out] set Context and result set at the same time.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
 static int
 xpath_last(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
 {
-    LOGDBG("XPATH: %s call", __func__);
+    if (arg_count || args) {
+        LOGVAL(LYE_XPATH_INARGCOUNT, line, arg_count, "last()");
+        return -1;
+    }
+    if (set->type == LYXP_SET_EMPTY) {
+        set_fill_number(set, 0, cur_node->schema->module->ctx);
+        return EXIT_SUCCESS;
+    }
+    if (set->type != LYXP_SET_NODE_SET) {
+        LOGVAL(LYE_XPATH_INCTX, line, print_set_type(set), "last()");
+        return -1;
+    }
+
+    set_fill_number(set, set->used, cur_node->schema->module->ctx);
     return EXIT_SUCCESS;
 }
 
@@ -1388,11 +1438,36 @@ xpath_number(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_nod
     return EXIT_SUCCESS;
 }
 
+/**
+ * @brief Executes the XPath position() function. Returns LYXP_SET_NUMBER
+ *        with the context position.
+ *
+ * @param[in] args Array of arguments.
+ * @param[in] arg_count Count of elements in \p args.
+ * @param[in] cur_node Original context node.
+ * @param[in,out] set Context and result set at the same time.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
 static int
 xpath_position(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
                uint32_t line)
 {
-    LOGDBG("XPATH: %s call", __func__);
+    if (arg_count || args) {
+        LOGVAL(LYE_XPATH_INARGCOUNT, line, arg_count, "position()");
+        return -1;
+    }
+    if (set->type == LYXP_SET_EMPTY) {
+        set_fill_number(set, 0, cur_node->schema->module->ctx);
+        return EXIT_SUCCESS;
+    }
+    if (set->type != LYXP_SET_NODE_SET) {
+        LOGVAL(LYE_XPATH_INCTX, line, print_set_type(set), "position()");
+        return -1;
+    }
+
+    set_fill_number(set, set->pos, cur_node->schema->module->ctx);
     return EXIT_SUCCESS;
 }
 
