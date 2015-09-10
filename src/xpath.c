@@ -2207,14 +2207,15 @@ moveto_op_comp(const char *op, struct lyxp_set *set1, struct lyxp_set *set2, str
 }
 
 /* '+', '-', unary '-', '*', 'div', 'mod' */
-static int
-moveto_op_math(const char *op, struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *any_node, uint32_t line)
+static void
+moveto_op_math(const char *op, struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *any_node)
 {
     /* unary '-' */
     if (!set2 && (op[0] == '-')) {
         set_cast(set1, LYXP_SET_NUMBER, any_node->schema->module->ctx);
         set1->value.num *= -1;
-        return EXIT_SUCCESS;
+        set_free(set2, any_node->schema->module->ctx);
+        return;
     }
 
     assert(set1 && set2);
@@ -2254,7 +2255,6 @@ moveto_op_math(const char *op, struct lyxp_set *set1, struct lyxp_set *set2, str
     }
 
     set_free(set2, any_node->schema->module->ctx);
-    return EXIT_SUCCESS;
 }
 
 /*
