@@ -2095,14 +2095,115 @@ moveto_parent(struct lyxp_set *set, int all_desc, struct lyd_node *any_node, uin
     return EXIT_SUCCESS;
 }
 
-/* '=', '!=', '<=', '<', '>=', '>' TODO */
-static int
-moveto_op_comp(const char *op, struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *any_node, uint32_t line)
+/* '=', '!=', '<=', '<', '>=', '>' */
+static void
+moveto_op_comp(const char *op, struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *any_node)
 {
+    /*
+     * NODE SET + NODE SET = STRING + STRING  /1 STRING, 2 STRING
+     * NODE SET + STRING = STRING + STRING    /1 STRING (2 STRING)
+     * NODE SET + NUMBER = NUMBER + NUMBER    /1 NUMBER (2 NUMBER)
+     * NODE SET + BOOLEAN = BOOLEAN + BOOLEAN /1 BOOLEAN (2 BOOLEAN)
+     * STRING + NODE SET = STRING + STRING    /(1 STRING) 2 STRING
+     * NUMBER + NODE SET = NUMBER + NUMBER    /(1 NUMBER) 2 NUMBER
+     * BOOLEAN + NODE SET = BOOLEAN + BOOLEAN /(1 BOOLEAN) 2 BOOLEAN
+     *
+     * '=' or '!='
+     * BOOLEAN + BOOLEAN
+     * BOOLEAN + STRING = BOOLEAN + BOOLEAN   /(1 BOOLEAN) 2 BOOLEAN
+     * BOOLEAN + NUMBER = BOOLEAN + BOOLEAN   /(1 BOOLEAN) 2 BOOLEAN
+     * STRING + BOOLEAN = BOOLEAN + BOOLEAN   /1 BOOLEAN (2 BOOLEAN)
+     * NUMBER + BOOLEAN = BOOLEAN + BOOLEAN   /1 BOOLEAN (2 BOOLEAN)
+     * NUMBER + NUMBER
+     * NUMBER + STRING = NUMBER + NUMBER      /(1 NUMBER) 2 NUMBER
+     * STRING + NUMBER = NUMBER + NUMBER      /1 NUMBER (2 NUMBER)
+     * STRING + STRING
+     *
+     * '<=', '<', '>=', '>'
+     * NUMBER + NUMBER
+     * BOOLEAN + BOOLEAN = NUMBER + NUMBER    /1 NUMBER, 2 NUMBER
+     * BOOLEAN + NUMBER = NUMBER + NUMBER     /1 NUMBER (2 NUMBER)
+     * BOOLEAN + STRING = NUMBER + NUMBER     /1 NUMBER, 2 NUMBER
+     * NUMBER + STRING = NUMBER + NUMBER      /(1 NUMBER) 2 NUMBER
+     * STRING + STRING = NUMBER + NUMBER      /1 NUMBER, 2 NUMBER
+     * STRING + NUMBER = NUMBER + NUMBER      /1 NUMBER (2 NUMBER)
+     * NUMBER + BOOLEAN = NUMBER + NUMBER     /(1 NUMBER) 2 NUMBER
+     * STRING + BOOLEAN = NUMBER + NUMBER     /(1 NUMBER) 2 NUMBER
+     */
+    int result;
 
+    /* we can evaluate it immediately */
+    if ((set1->type == set2->type) && (set1->type != LYXP_SET_EMPTY) && (set1->type != LYXP_SET_NODE_SET)
+            && (((op[0] == '=') || (op[0] == '!')) || ((set1->type != LYXP_SET_BOOLEAN) && (set1->type != LYXP_SET_STRING)))) {
 
-    set_free(set2, any_node->schema->module->ctx);
-    return EXIT_SUCCESS;
+        /* compute result */
+        if (op[0] == '=') {
+            if (set1->type == LYXP_SET_BOOLEAN) {
+                result = (set1->value.bool == set2->value.bool);
+            } else if (set1->type == LYXP_SET_NUMBER) {
+                result = (set1->value.num == set2->value.num);
+            } else {
+                result = (set1->value.str == set2->value.str);
+            }
+        } else if (op[0] == '!') {
+            if (set1->type == LYXP_SET_BOOLEAN) {
+                result = (set1->value.bool != set2->value.bool);
+            } else if (set1->type == LYXP_SET_NUMBER) {
+                result = (set1->value.num != set2->value.num);
+            } else {
+                result = (set1->value.str != set2->value.str);
+            }
+        } else {
+            if (set1->type != LYXP_SET_NUMBER) {
+                LOGINT;
+                return;
+            }
+
+            if (op[0] == '<') {
+                if (op[1] == '=') {
+                    result = (set1->value.num <= set2->value.num);
+                } else {
+                    result = (set1->value.num < set2->value.num);
+                }
+            } else {
+                if (op[1] == '=') {
+                    result = (set1->value.num >= set2->value.num);
+                } else {
+                    result = (set1->value.num > set2->value.num);
+                }
+            }
+        }
+
+        /* assign result */
+        if (result) {
+            set_fill_boolean(set1, 1, any_node->schema->module->ctx);
+        } else {
+            set_fill_boolean(set1, 0, any_node->schema->module->ctx);
+        }
+
+        set_free(set2, any_node->schema->module->ctx);
+        return;
+    }
+
+    /* convert first */
+    if (((set1->type == LYXP_SET_NODE_SET) || (set1->type == LYXP_SET_EMPTY) || (set1->type == LYXP_SET_STRING))
+            && ((set2->type == LYXP_SET_NODE_SET) || (set2->type == LYXP_SET_EMPTY) || (set2->type == LYXP_SET_STRING))) {
+        set_cast(set1, LYXP_SET_STRING, any_node->schema->module->ctx);
+        set_cast(set2, LYXP_SET_STRING, any_node->schema->module->ctx);
+
+    } else if ((((set1->type == LYXP_SET_NODE_SET) || (set1->type == LYXP_SET_EMPTY) || (set1->type == LYXP_SET_BOOLEAN))
+            && ((set2->type == LYXP_SET_NODE_SET) || (set2->type == LYXP_SET_EMPTY) || (set2->type == LYXP_SET_BOOLEAN)))
+            || (((op[0] == '=') || (op[0] == '!')) && ((set1->type == LYXP_SET_BOOLEAN) || (set2->type == LYXP_SET_BOOLEAN)))) {
+        set_cast(set1, LYXP_SET_BOOLEAN, any_node->schema->module->ctx);
+        set_cast(set2, LYXP_SET_BOOLEAN, any_node->schema->module->ctx);
+
+    } else {
+        set_cast(set1, LYXP_SET_NUMBER, any_node->schema->module->ctx);
+        set_cast(set2, LYXP_SET_NUMBER, any_node->schema->module->ctx);
+    }
+
+    /* now we can evaluate */
+    moveto_op_comp(op, set1, set2, any_node);
 }
 
 /* '+', '-', unary '-', '*', 'div', 'mod' */
