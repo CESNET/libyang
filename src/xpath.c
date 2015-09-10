@@ -3094,9 +3094,8 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_n
 
     /* now we have all the unions in set and no other memory allocated */
 
-    if ((unary_minus > -1)
-            && (rc = moveto_op_math(&exp->expr[exp->expr_pos[unary_minus]], set, NULL, cur_node, line))) {
-        return rc;
+    if (set && (unary_minus > -1)) {
+        moveto_op_math(&exp->expr[exp->expr_pos[unary_minus]], set, NULL, cur_node);
     }
 
     return EXIT_SUCCESS;
@@ -3176,13 +3175,7 @@ eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_no
             }
 
             /* eval */
-            if ((rc = moveto_op_math(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node, line))) {
-                set_free(orig_set, cur_node->schema->module->ctx);
-                if (set2 != orig_set) {
-                    set_free(set2, cur_node->schema->module->ctx);
-                }
-                return rc;
-            }
+            moveto_op_math(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node);
         }
     }
 
@@ -3262,13 +3255,7 @@ eval_additive_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cu
             }
 
             /* eval */
-            if ((rc = moveto_op_math(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node, line))) {
-                set_free(orig_set, cur_node->schema->module->ctx);
-                if (set2 != orig_set) {
-                    set_free(set2, cur_node->schema->module->ctx);
-                }
-                return rc;
-            }
+            moveto_op_math(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node);
         }
     }
 
@@ -3350,13 +3337,7 @@ eval_relational_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *
             }
 
             /* eval */
-            if ((rc = moveto_op_comp(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node, line))) {
-                set_free(orig_set, cur_node->schema->module->ctx);
-                if (set2 != orig_set) {
-                    set_free(set2, cur_node->schema->module->ctx);
-                }
-                return rc;
-            }
+            moveto_op_comp(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node);
         }
     }
 
@@ -3435,13 +3416,7 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cu
             }
 
             /* eval */
-            if ((rc = moveto_op_comp(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node, line))) {
-                set_free(orig_set, cur_node->schema->module->ctx);
-                if (set2 != orig_set) {
-                    set_free(set2, cur_node->schema->module->ctx);
-                }
-                return rc;
-            }
+            moveto_op_comp(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node);
         }
     }
 
