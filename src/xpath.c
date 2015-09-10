@@ -2824,6 +2824,8 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cu
     if (set) {
         /* evaluate function */
         rc = xpath_func(args, arg_count, cur_node, set, line);
+    } else {
+        rc = EXIT_SUCCESS;
     }
 
 cleanup:
