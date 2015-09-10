@@ -719,7 +719,16 @@ debug_print_set(struct lyxp_set *set, struct lyd_node *any_node)
                 LOGDBG("XPATH:\t%d: ROOT", i + 1);
                 break;
             case LYXP_NODE_ELEM:
-                LOGDBG("XPATH:\t%d: ELEM %s", i + 1, set->value.nodes[i]->schema->name);
+                if ((set->value.nodes[i]->schema->nodetype == LYS_LIST)
+                        && (set->value.nodes[i]->child->schema->nodetype == LYS_LEAF)) {
+                    LOGDBG("XPATH:\t%d: ELEM %s (1st child val: %s)", i + 1, set->value.nodes[i]->schema->name,
+                           ((struct lyd_node_leaf *)set->value.nodes[i]->child)->value_str);
+                } else if (set->value.nodes[i]->schema->nodetype == LYS_LEAFLIST) {
+                    LOGDBG("XPATH:\t%d: ELEM %s (val: %s)", i + 1, set->value.nodes[i]->schema->name,
+                           ((struct lyd_node_leaflist *)set->value.nodes[i])->value_str);
+                } else {
+                    LOGDBG("XPATH:\t%d: ELEM %s", i + 1, set->value.nodes[i]->schema->name);
+                }
                 break;
             case LYXP_NODE_TEXT:
                 if (set->value.nodes[i]->schema->nodetype == LYS_ANYXML) {
