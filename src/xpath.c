@@ -152,6 +152,7 @@ struct lyxp_set {
     enum lyxp_node_type *node_type;  /* item with this index is of this node type */
     uint16_t used;
     uint16_t size;
+    uint16_t pos;                    /* current context position, indexed from 1, relevant only for predicates */
 };
 
 enum lyxp_node_type {
@@ -2408,9 +2409,9 @@ static int
 eval_predicate(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_node, struct lyxp_set *set,
                uint32_t line)
 {
-    uint16_t i, orig_exp, ctx_pos;
+    uint16_t i, orig_i, orig_exp;
     int rc;
-    struct lyxp_set set_item;
+    struct lyxp_set *set2, *orig_set;
 
     if (check_token(exp, *cur_exp, LYXP_TOKEN_BRACK1, line)) {
         return -1;
@@ -2421,47 +2422,51 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_no
     if (!set) {
         eval_expr(exp, cur_exp, cur_node, NULL, line);
     } else if (set->type == LYXP_SET_NODE_SET) {
+        orig_set = set_copy(set, cur_node->schema->module->ctx);
         orig_exp = *cur_exp;
 
-        for (ctx_pos = 1, i = 0; i < set->used; ++ctx_pos) {
-            memset(&set_item, 0, sizeof set_item);
-            set_item.type = LYXP_SET_NODE_SET;
-            set_add_node(&set_item, set->value.nodes[i], set->node_type[i], 0);
+        i = 0;
+        for (orig_i = 0; orig_i < orig_set->used; ++orig_i) {
+            set2 = set_copy(orig_set, cur_node->schema->module->ctx);
+            set2->pos = orig_i + 1;
             *cur_exp = orig_exp;
 
-            if ((rc = eval_expr(exp, cur_exp, cur_node, &set_item, line))) {
+            if ((rc = eval_expr(exp, cur_exp, cur_node, set2, line))) {
                 return rc;
             }
 
             /* number is a position */
-            if (set_item.type == LYXP_SET_NUMBER) {
-                if (((long long)set_item.value.num == set_item.value.num) == ctx_pos) {
-                    set_item.value.num = 1;
+            if (set2->type == LYXP_SET_NUMBER) {
+                if ((long long)set2->value.num == orig_i + 1) {
+                    set2->value.num = 1;
                 } else {
-                    set_item.value.num = 0;
+                    set2->value.num = 0;
                 }
             }
-            set_cast(&set_item, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
+            set_cast(set2, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
 
             /* predicate satisfied or not? */
-            if (set_item.value.bool) {
+            if (set2->value.bool) {
                 ++i;
             } else {
                 set_remove_node(set, i);
             }
+            set_free(set2, cur_node->schema->module->ctx);
         }
-    } else {
-        set_item = *set_copy(set, cur_node->schema->module->ctx);
 
-        if ((rc = eval_expr(exp, cur_exp, cur_node, &set_item, line))) {
+        set_free(orig_set, cur_node->schema->module->ctx);
+    } else {
+        set2 = set_copy(set, cur_node->schema->module->ctx);
+
+        if ((rc = eval_expr(exp, cur_exp, cur_node, set2, line))) {
             return rc;
         }
 
-        set_cast(&set_item, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
-        if (!set_item.value.bool) {
+        set_cast(set2, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
+        if (!set2->value.bool) {
             set_cast(set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
         }
-        set_free(&set_item, cur_node->schema->module->ctx);
+        set_free(set2, cur_node->schema->module->ctx);
     }
 
     if (check_token(exp, *cur_exp, LYXP_TOKEN_BRACK2, line)) {
