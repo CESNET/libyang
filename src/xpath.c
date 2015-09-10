@@ -2432,6 +2432,8 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_no
             *cur_exp = orig_exp;
 
             if ((rc = eval_expr(exp, cur_exp, cur_node, set2, line))) {
+                set_free(set2, cur_node->schema->module->ctx);
+                set_free(orig_set, cur_node->schema->module->ctx);
                 return rc;
             }
 
@@ -2459,6 +2461,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_no
         set2 = set_copy(set, cur_node->schema->module->ctx);
 
         if ((rc = eval_expr(exp, cur_exp, cur_node, set2, line))) {
+            set_free(set2, cur_node->schema->module->ctx);
             return rc;
         }
 
