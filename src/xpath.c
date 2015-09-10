@@ -3462,6 +3462,10 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_nod
         /* cast to boolean, we know that will be the final result */
         if (orig_set) {
             set_cast(set, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
+            /* we are finished with evaluating, we're just gonna parse the rest */
+            if (set->value.bool) {
+                set_free(orig_set, cur_node->schema->module->ctx);
+            }
         }
     }
 
@@ -3498,6 +3502,9 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_nod
             set_cast(set2, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
             if (!set2->value.bool) {
                 set->value.bool = 0;
+                if (orig_set != set2) {
+                    set_free(orig_set, cur_node->schema->module->ctx);
+                }
             }
             set_free(set2, cur_node->schema->module->ctx);
         }
@@ -3545,6 +3552,10 @@ eval_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_node, s
         /* cast to boolean, we know that will be the final result */
         if (orig_set) {
             set_cast(set, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
+            /* we are finished with evaluating, we're just gonna parse the rest */
+            if (!set->value.bool) {
+                set_free(orig_set, cur_node->schema->module->ctx);
+            }
         }
     }
 
@@ -3581,6 +3592,9 @@ eval_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_node, s
             set_cast(set2, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
             if (set2->value.bool) {
                 set->value.bool = 1;
+                if (orig_set != set2) {
+                    set_free(orig_set, cur_node->schema->module->ctx);
+                }
             }
             set_free(set2, cur_node->schema->module->ctx);
         }
