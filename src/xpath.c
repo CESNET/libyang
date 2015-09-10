@@ -2675,92 +2675,92 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cu
         switch (exp->tok_len[*cur_exp]) {
         case 3:
             if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "not", 3)) {
-                xpath_func = xpath_not;
+                xpath_func = &xpath_not;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "sum", 3)) {
-                xpath_func = xpath_sum;
+                xpath_func = &xpath_sum;
             }
             break;
         case 4:
             if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "lang", 4)) {
-                xpath_func = xpath_lang;
+                xpath_func = &xpath_lang;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "last", 4)) {
-                xpath_func = xpath_last;
+                xpath_func = &xpath_last;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "name", 4)) {
-                xpath_func = xpath_name;
+                xpath_func = &xpath_name;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "true", 4)) {
-                xpath_func = xpath_true;
+                xpath_func = &xpath_true;
             }
             break;
         case 5:
             if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "count", 5)) {
-                xpath_func = xpath_count;
+                xpath_func = &xpath_count;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "false", 5)) {
-                xpath_func = xpath_false;
+                xpath_func = &xpath_false;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "floor", 5)) {
-                xpath_func = xpath_floor;
+                xpath_func = &xpath_floor;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "round", 5)) {
-                xpath_func = xpath_round;
+                xpath_func = &xpath_round;
             }
             break;
         case 6:
             if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "concat", 6)) {
-                xpath_func = xpath_concat;
+                xpath_func = &xpath_concat;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "number", 6)) {
-                xpath_func = xpath_number;
+                xpath_func = &xpath_number;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "string", 6)) {
-                xpath_func = xpath_string;
+                xpath_func = &xpath_string;
             }
             break;
         case 7:
             if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "boolean", 7)) {
-                xpath_func = xpath_boolean;
+                xpath_func = &xpath_boolean;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "ceiling", 7)) {
-                xpath_func = xpath_ceiling;
+                xpath_func = &xpath_ceiling;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "current", 7)) {
-                xpath_func = xpath_current;
+                xpath_func = &xpath_current;
             }
             break;
         case 8:
             if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "contains", 8)) {
-                xpath_func = xpath_contains;
+                xpath_func = &xpath_contains;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "position", 8)) {
-                xpath_func = xpath_position;
+                xpath_func = &xpath_position;
             }
             break;
         case 9:
             if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "substring", 9)) {
-                xpath_func = xpath_substring;
+                xpath_func = &xpath_substring;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "translate", 9)) {
-                xpath_func = xpath_translate;
+                xpath_func = &xpath_translate;
             }
             break;
         case 10:
             if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "local-name", 10)) {
-                xpath_func = xpath_local_name;
+                xpath_func = &xpath_local_name;
             }
             break;
         case 11:
             if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "starts-with", 11)) {
-                xpath_func = xpath_starts_with;
+                xpath_func = &xpath_starts_with;
             }
             break;
         case 13:
             if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "namespace-uri", 13)) {
-                xpath_func = xpath_namespace_uri;
+                xpath_func = &xpath_namespace_uri;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "string-length", 13)) {
-                xpath_func = xpath_string_length;
+                xpath_func = &xpath_string_length;
             }
             break;
         case 15:
             if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "normalize-space", 15)) {
-                xpath_func = xpath_normalize_space;
+                xpath_func = &xpath_normalize_space;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "substring-after", 15)) {
-                xpath_func = xpath_substring_after;
+                xpath_func = &xpath_substring_after;
             }
             break;
         case 16:
             if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "substring-before", 16)) {
-                xpath_func = xpath_substring_before;
+                xpath_func = &xpath_substring_before;
             }
             break;
         }
