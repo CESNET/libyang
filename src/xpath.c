@@ -3020,11 +3020,6 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_n
     uint16_t prev_exp;
     struct lyxp_set *orig_set = NULL, *set2;
 
-    if (set && (set->type != LYXP_SET_NODE_SET)) {
-        LOGVAL(LYE_XPATH_INCTX, line, print_set_type(set), "UnaryExpr");
-        return -1;
-    }
-
     /* ('-')* */
     unary_minus = -1;
     while (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_MATH, UINT_MAX)
