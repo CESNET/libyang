@@ -296,8 +296,13 @@ string_cast_recursive(struct lyd_node *node, uint16_t indent, char **str, uint16
         *used += indent * 2;
 
         /* print value */
-        sprintf(*str + (*used - 1), "%s\n", value_str);
-        *used += strlen(value_str) + 1;
+        if (*used == 1) {
+            sprintf(*str + (*used - 1), "%s", value_str);
+            *used += strlen(value_str);
+        } else {
+            sprintf(*str + (*used - 1), "%s\n", value_str);
+            *used += strlen(value_str) + 1;
+        }
 
         break;
 
