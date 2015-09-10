@@ -104,7 +104,9 @@ const char *ly_errs[] = {
 /* LYE_XPATH_EOF */    "Unexpected XPath expression end.",
 /* LYE_XPATH_INOP_1 */ "Cannot apply XPath operation %s on %s.",
 /* LYE_XPATH_INOP_2 */ "Cannot apply XPath operation %s on %s and %s.",
-/* LYE_XPATH_INCTX */  "Invalid context type %s in %s expression."
+/* LYE_XPATH_INCTX */  "Invalid context type %s in %s.",
+/* LYE_XPATH_INARGCOUNT */ "Invalid number of arguments (%d) for the XPath function %s().",
+/* LYE_XPATH_INARGTYPE */ "Wrong type of argument #%d (%s) for the XPath function %s()."
 };
 
 void
