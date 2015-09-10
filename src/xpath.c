@@ -2835,7 +2835,6 @@ cleanup:
     for (i = 0; i < arg_count; ++i) {
         set_free(&args[i], cur_node->schema->module->ctx);
     }
-    free(args);
 
     return rc;
 }
