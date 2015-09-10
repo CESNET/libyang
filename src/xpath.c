@@ -3463,7 +3463,7 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_nod
         if (orig_set) {
             set_cast(set, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
             /* we are finished with evaluating, we're just gonna parse the rest */
-            if (set->value.bool) {
+            if (!set->value.bool) {
                 set_free(orig_set, cur_node->schema->module->ctx);
             }
         }
@@ -3553,7 +3553,7 @@ eval_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_node, s
         if (orig_set) {
             set_cast(set, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
             /* we are finished with evaluating, we're just gonna parse the rest */
-            if (!set->value.bool) {
+            if (set->value.bool) {
                 set_free(orig_set, cur_node->schema->module->ctx);
             }
         }
