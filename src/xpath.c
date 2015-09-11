@@ -595,6 +595,7 @@ static void
 set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct ly_ctx *ctx)
 {
     char *ptr;
+    uint16_t pos;
     long double num;
     struct lyd_node *node;
     const char *attr_val;
@@ -639,16 +640,22 @@ set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct ly_ctx *ctx)
             break;
         case LYXP_SET_NODE_SET:
             assert(set->used);
-            switch (set->node_type[0]) {
+
+            if (set->pos) {
+                pos = set->pos - 1;
+            } else {
+                pos = 0;
+            }
+            switch (set->node_type[pos]) {
             case LYXP_NODE_ROOT:
             case LYXP_NODE_ELEM:
             case LYXP_NODE_TEXT:
-                node = set->value.nodes[0];
+                node = set->value.nodes[pos];
                 free(set->value.nodes);
                 set->value.str = string_cast_elem(node, ctx);
                 break;
             case LYXP_NODE_ATTR:
-                attr_val = set->value.attrs[0]->value;
+                attr_val = set->value.attrs[pos]->value;
                 free(set->value.nodes);
                 set->value.str = lydict_insert(ctx, attr_val, 0);
                 break;
