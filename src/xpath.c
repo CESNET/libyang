@@ -442,6 +442,44 @@ set_fill_boolean(struct lyxp_set *set, int boolean, struct ly_ctx *ctx)
 }
 
 static void
+set_fill_set(struct lyxp_set *set, struct lyxp_set *src, struct ly_ctx *ctx)
+{
+    if (src->type == LYXP_SET_BOOLEAN) {
+        set_fill_boolean(set, src->value.bool, ctx);
+    } else if (src->type ==  LYXP_SET_NUMBER) {
+        set_fill_number(set, src->value.num, ctx);
+    } else if (src->type == LYXP_SET_STRING) {
+        set_fill_string(set, src->value.str, 0, ctx);
+    } else {
+        if (set->type == LYXP_SET_NODE_SET) {
+            free(set->value.nodes);
+            free(set->node_type);
+        } else if (set->type == LYXP_SET_STRING) {
+            lydict_remove(ctx, set->value.str);
+        }
+
+        if (src->type == LYXP_SET_EMPTY) {
+            set->type = LYXP_SET_EMPTY;
+        } else {
+            assert(src->type == LYXP_SET_NODE_SET);
+
+            set->type = LYXP_SET_NODE_SET;
+            set->used = src->used;
+            set->size = src->size;
+            set->pos = src->pos;
+
+            set->value.nodes = malloc(set->used * sizeof *set->value.nodes);
+            set->node_type = malloc(set->used * sizeof *set->node_type);
+
+            memcpy(set->value.nodes, src->value.nodes, src->used * sizeof *src->value.nodes);
+            memcpy(set->node_type, src->node_type, src->used * sizeof *src->node_type);
+        }
+    }
+
+
+}
+
+static void
 set_remove_node(struct lyxp_set *set, uint16_t idx)
 {
     assert(set && (set->type == LYXP_SET_NODE_SET));
