@@ -257,7 +257,7 @@ static void
 string_cast_recursive(struct lyd_node *node, uint16_t indent, char **str, uint16_t *used, uint16_t *size)
 {
     FILE *stream;
-    char *buf;
+    char *buf, *line, *ptr;
     const char *value_str;
     struct lyd_node *child;
     size_t buf_size;
@@ -315,10 +315,19 @@ string_cast_recursive(struct lyd_node *node, uint16_t indent, char **str, uint16
         lyxml_dump(stream, ((struct lyd_node_anyxml *)node)->value->child, 0);
         fclose(stream);
 
-        string_cast_realloc(buf_size, str, used, size);
+        line = strtok_r(buf, "\n", &ptr);
+        do {
+            string_cast_realloc(indent * 2 + strlen(line) + 1, str, used, size);
+            memset(*str + (*used - 1), ' ', indent * 2);
+            *used += indent * 2;
 
-        strcpy(*str + (*used - 1), buf);
-        *used += buf_size;
+            strcpy(*str + (*used - 1), line);
+            *used += strlen(line);
+
+            strcpy(*str + (*used - 1), "\n");
+            *used += 1;
+        } while ((line = strtok_r(NULL, "\n", &ptr)));
+
         free(buf);
         break;
 
