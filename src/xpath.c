@@ -290,6 +290,9 @@ string_cast_recursive(struct lyd_node *node, uint16_t indent, char **str, uint16
         } else {
             value_str = ((struct lyd_node_leaflist *)node)->value_str;
         }
+        if (!value_str) {
+            value_str = "";
+        }
 
         /* print indent */
         string_cast_realloc(indent * 2 + strlen(value_str) + 1, str, used, size);
