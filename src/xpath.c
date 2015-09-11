@@ -3102,7 +3102,11 @@ eval_literal(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyxp_set *set, str
     }
 
     if (set) {
-        set_fill_string(set, &exp->expr[exp->expr_pos[*cur_exp] + 1], exp->tok_len[*cur_exp] - 2, ctx);
+        if (exp->tok_len[*cur_exp] == 2) {
+            set_fill_string(set, "", 0, ctx);
+        } else {
+            set_fill_string(set, &exp->expr[exp->expr_pos[*cur_exp] + 1], exp->tok_len[*cur_exp] - 2, ctx);
+        }
     }
     LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
     ++(*cur_exp);
