@@ -2954,8 +2954,9 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cu
 
 cleanup:
     for (i = 0; i < arg_count; ++i) {
-        set_free(&args[i], cur_node->schema->module->ctx);
+        set_cast(&args[i], LYXP_SET_EMPTY, cur_node->schema->module->ctx);
     }
+    free(args);
 
     return rc;
 }
