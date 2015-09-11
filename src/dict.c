@@ -198,7 +198,7 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
 
     record->next = new;
 
-    LOGDBG("DICT: inserting \"%s\" with collision ", record->value);
+    LOGDBG("DICT: inserting \"%s\" with collision ", new->value);
     return new->value;
 }
 
