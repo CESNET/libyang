@@ -641,10 +641,6 @@ set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct ly_ctx *ctx)
             assert(set->used);
             switch (set->node_type[0]) {
             case LYXP_NODE_ROOT:
-                node = set->value.nodes[0]->child;
-                free(set->value.nodes);
-                set->value.str = string_cast_elem(node, ctx);
-                break;
             case LYXP_NODE_ELEM:
             case LYXP_NODE_TEXT:
                 node = set->value.nodes[0];
@@ -3750,6 +3746,7 @@ lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, ui
         /* TODO only for TREE_DFS, um? */
         root->schema = calloc(1, sizeof *root->schema);
         root->schema->nodetype = LYS_CONTAINER;
+        root->schema->name = lydict_insert(cur_node->schema->module->ctx, "xpath-root", 0);
         LY_TREE_FOR(node, node) {
             node->parent = root;
         }
@@ -3764,6 +3761,7 @@ lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, ui
             node->parent = NULL;
         }
         /* TODO it may be in the results, we cannot free it */
+        lydict_remove(cur_node->schema->module->ctx, root->schema->name);
         free(root->schema);
         free(root);
 
