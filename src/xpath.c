@@ -243,7 +243,7 @@ debug_print_expr_struct(struct lyxp_expr *exp)
 }
 
 static void
-string_cast_realloc(uint16_t needed, char **str, uint16_t *used, uint16_t *size)
+cast_string_realloc(uint16_t needed, char **str, uint16_t *used, uint16_t *size)
 {
     if (*size - *used < needed) {
         do {
@@ -254,7 +254,7 @@ string_cast_realloc(uint16_t needed, char **str, uint16_t *used, uint16_t *size)
 }
 
 static void
-string_cast_recursive(struct lyd_node *node, uint16_t indent, char **str, uint16_t *used, uint16_t *size)
+cast_string_recursive(struct lyd_node *node, uint16_t indent, char **str, uint16_t *used, uint16_t *size)
 {
     FILE *stream;
     char *buf, *line, *ptr;
@@ -268,15 +268,15 @@ string_cast_recursive(struct lyd_node *node, uint16_t indent, char **str, uint16
     case LYS_LIST:
     case LYS_INPUT:
     case LYS_OUTPUT:
-        string_cast_realloc(1, str, used, size);
+        cast_string_realloc(1, str, used, size);
         strcpy(*str + (*used - 1), "\n");
         ++(*used);
 
         LY_TREE_FOR(node->child, child) {
-            string_cast_recursive(child, indent + 1, str, used, size);
+            cast_string_recursive(child, indent + 1, str, used, size);
         }
 
-        string_cast_realloc(1, str, used, size);
+        cast_string_realloc(1, str, used, size);
         strcpy(*str + (*used - 1), "\n");
         ++(*used);
         break;
@@ -295,7 +295,7 @@ string_cast_recursive(struct lyd_node *node, uint16_t indent, char **str, uint16
         }
 
         /* print indent */
-        string_cast_realloc(indent * 2 + strlen(value_str) + 1, str, used, size);
+        cast_string_realloc(indent * 2 + strlen(value_str) + 1, str, used, size);
         memset(*str + (*used - 1), ' ', indent * 2);
         *used += indent * 2;
 
@@ -317,7 +317,7 @@ string_cast_recursive(struct lyd_node *node, uint16_t indent, char **str, uint16
 
         line = strtok_r(buf, "\n", &ptr);
         do {
-            string_cast_realloc(indent * 2 + strlen(line) + 1, str, used, size);
+            cast_string_realloc(indent * 2 + strlen(line) + 1, str, used, size);
             memset(*str + (*used - 1), ' ', indent * 2);
             *used += indent * 2;
 
@@ -339,7 +339,7 @@ string_cast_recursive(struct lyd_node *node, uint16_t indent, char **str, uint16
 
 /* returns a string in the dictionary */
 static const char *
-string_cast_elem(struct lyd_node *node, struct ly_ctx *ctx)
+cast_string_elem(struct lyd_node *node, struct ly_ctx *ctx)
 {
     char *str;
     uint16_t used, size;
@@ -349,12 +349,50 @@ string_cast_elem(struct lyd_node *node, struct ly_ctx *ctx)
     used = 1;
     size = LYXP_STRING_CAST_SIZE_START;
 
-    string_cast_recursive(node, 0, &str, &used, &size);
+    cast_string_recursive(node, 0, &str, &used, &size);
 
     if (size > used) {
         str = realloc(str, used * sizeof(char));
     }
     return lydict_insert_zc(ctx, str);
+}
+
+/* returns a string in the dictionary */
+static const char *
+cast_node_set_to_string(struct lyxp_set *set, struct ly_ctx *ctx)
+{
+    uint16_t pos;
+
+    if (set->pos) {
+        pos = set->pos - 1;
+    } else {
+        pos = 0;
+    }
+    switch (set->node_type[pos]) {
+    case LYXP_NODE_ROOT:
+    case LYXP_NODE_ELEM:
+    case LYXP_NODE_TEXT:
+        return cast_string_elem(set->value.nodes[pos], ctx);
+    case LYXP_NODE_ATTR:
+        return lydict_insert(ctx, set->value.attrs[pos]->value, 0);
+    }
+
+    LOGINT;
+    return NULL;
+}
+
+static long double
+cast_string_to_number(const char *str)
+{
+    long double num;
+    char *ptr;
+
+    errno = 0;
+    num = strtold(str, &ptr);
+    if (errno || *ptr) {
+        num = NAN;
+    }
+    return num;
 }
 
 /*
@@ -594,11 +632,9 @@ set_add_node(struct lyxp_set *set, void *node, enum lyxp_node_type node_type, ui
 static void
 set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct ly_ctx *ctx)
 {
-    char *ptr;
-    uint16_t pos;
+    char *str_num;
     long double num;
-    struct lyd_node *node;
-    const char *attr_val;
+    const char *str;
 
     if (set->type == target) {
         return;
@@ -624,11 +660,11 @@ set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct ly_ctx *ctx)
             } else if (set->value.num == -INFINITY) {
                 set->value.str = lydict_insert(ctx, "-Infinity", 0);
             } else if ((long long)set->value.num == set->value.num) {
-                asprintf(&ptr, "%lld", (long long)set->value.num);
-                set->value.str = lydict_insert_zc(ctx, ptr);
+                asprintf(&str_num, "%lld", (long long)set->value.num);
+                set->value.str = lydict_insert_zc(ctx, str_num);
             } else {
-                asprintf(&ptr, "%03.1Lf", set->value.num);
-                set->value.str = lydict_insert_zc(ctx, ptr);
+                asprintf(&str_num, "%03.1Lf", set->value.num);
+                set->value.str = lydict_insert_zc(ctx, str_num);
             }
             break;
         case LYXP_SET_BOOLEAN:
@@ -641,27 +677,10 @@ set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct ly_ctx *ctx)
         case LYXP_SET_NODE_SET:
             assert(set->used);
 
-            if (set->pos) {
-                pos = set->pos - 1;
-            } else {
-                pos = 0;
-            }
-            switch (set->node_type[pos]) {
-            case LYXP_NODE_ROOT:
-            case LYXP_NODE_ELEM:
-            case LYXP_NODE_TEXT:
-                node = set->value.nodes[pos];
-                free(set->value.nodes);
-                set->value.str = string_cast_elem(node, ctx);
-                break;
-            case LYXP_NODE_ATTR:
-                attr_val = set->value.attrs[pos]->value;
-                free(set->value.nodes);
-                set->value.str = lydict_insert(ctx, attr_val, 0);
-                break;
-            }
-
+            str = cast_node_set_to_string(set, ctx);
+            free(set->value.nodes);
             free(set->node_type);
+            set->value.str = str;
             break;
         case LYXP_SET_EMPTY:
             set->value.str = lydict_insert(ctx, "", 0);
@@ -677,11 +696,7 @@ set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct ly_ctx *ctx)
     if (target == LYXP_SET_NUMBER) {
         switch (set->type) {
         case LYXP_SET_STRING:
-            errno = 0;
-            num = strtold(set->value.str, &ptr);
-            if (errno || *ptr) {
-                num = NAN;
-            }
+            num = cast_string_to_number(set->value.str);
             lydict_remove(ctx, set->value.str);
             set->value.num = num;
             break;
