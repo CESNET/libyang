@@ -1489,18 +1489,36 @@ xpath_count(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node
 
     if (args->type != LYXP_SET_NODE_SET) {
         LOGVAL(LYE_XPATH_INARGTYPE, line, 1, print_set_type(args), "count(node-set)");
+        return -1;
     }
 
     set_fill_number(set, args->used, cur_node->schema->module->ctx);
     return EXIT_SUCCESS;
 }
 
-/* TODO */
+/**
+ * @brief Executes the XPath current() function. Returns LYXP_SET_NODE_SET
+ *        with the context with the intial node.
+ *
+ * @param[in] args Array of arguments.
+ * @param[in] arg_count Count of elements in \p args.
+ * @param[in] cur_node Original context node.
+ * @param[in,out] set Context and result set at the same time.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
 static int
 xpath_current(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
               uint32_t line)
 {
-    LOGDBG("XPATH: %s call", __func__);
+    if (arg_count) {
+        LOGVAL(LYE_XPATH_INARGCOUNT, line, arg_count, "current()");
+        return -1;
+    }
+
+    set_cast(set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+    set_add_node(set, cur_node, LYXP_NODE_ELEM, 0);
     return EXIT_SUCCESS;
 }
 
@@ -1554,11 +1572,81 @@ xpath_floor(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node
     return EXIT_SUCCESS;
 }
 
-/* TODO */
+/**
+ * @brief Executes the XPath lang(string) function. Returns LYXP_SET_BOOLEAN
+ *        whether the language of the text matches the one from the argument.
+ *
+ * @param[in] args Array of arguments.
+ * @param[in] arg_count Count of elements in \p args.
+ * @param[in] cur_node Original context node.
+ * @param[in,out] set Context and result set at the same time.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
 static int
 xpath_lang(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
 {
-    LOGDBG("XPATH: %s call", __func__);
+    struct lyd_node *node;
+    struct lyd_attr *attr;
+    int i;
+
+    if (arg_count != 1) {
+        LOGVAL(LYE_XPATH_INARGCOUNT, line, arg_count, "lang(string)");
+        return -1;
+    }
+
+    set_cast(&args[0], LYXP_SET_STRING, cur_node->schema->module->ctx);
+
+    if (set->type == LYXP_SET_EMPTY) {
+        set_fill_boolean(set, 0, cur_node->schema->module->ctx);
+        return EXIT_SUCCESS;
+    }
+    if (set->type != LYXP_SET_NODE_SET) {
+        LOGVAL(LYE_XPATH_INCTX, line, print_set_type(set), "lang(string)");
+        return -1;
+    }
+
+    /* assign the context node */
+    if (set->pos) {
+        node = set->value.nodes[set->pos - 1];
+    } else {
+        node = set->value.nodes[0];
+    }
+
+    /* find lang sttribute */
+    for (; node; node = node->parent) {
+        for (attr = node->attr; attr; attr = attr->next) {
+            if (attr->name && !strcmp(attr->name, "lang")
+                    && attr->ns && attr->ns->prefix && !strcmp(attr->ns->prefix, "xml")) {
+                break;
+            }
+        }
+
+        if (attr) {
+            break;
+        }
+    }
+
+    /* compare languages */
+    if (!attr) {
+        set_fill_boolean(set, 0, cur_node->schema->module->ctx);
+    } else {
+        for (i = 0; args->value.str[i]; ++i) {
+            if (tolower(args->value.str[i]) != tolower(attr->value[i])) {
+                set_fill_boolean(set, 0, cur_node->schema->module->ctx);
+                break;
+            }
+        }
+        if (!args->value.str[i]) {
+            if (!attr->value[i] || (attr->value[i] == '-')) {
+                set_fill_boolean(set, 1, cur_node->schema->module->ctx);
+            } else {
+                set_fill_boolean(set, 0, cur_node->schema->module->ctx);
+            }
+        }
+    }
+
     return EXIT_SUCCESS;
 }
 
@@ -1753,11 +1841,30 @@ xpath_namespace_uri(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *
     return EXIT_SUCCESS;
 }
 
-/* TODO */
+/**
+ * @brief Executes the XPath node() function (node type). Returns LYXP_SET_NODE_SET
+ *        with only nodes from the context. In practice it either leaves the context
+ *        as it is or returns an empty node set.
+ *
+ * @param[in] args Array of arguments.
+ * @param[in] arg_count Count of elements in \p args.
+ * @param[in] cur_node Original context node.
+ * @param[in,out] set Context and result set at the same time.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
 static int
 xpath_node(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
 {
-    LOGDBG("XPATH: %s call", __func__);
+    if (arg_count || args) {
+        LOGVAL(LYE_XPATH_INARGCOUNT, line, arg_count, "node()");
+        return -1;
+    }
+
+    if (set->type != LYXP_SET_NODE_SET) {
+        set_cast(set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+    }
     return EXIT_SUCCESS;
 }
 
@@ -1873,11 +1980,33 @@ xpath_not(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, 
     return EXIT_SUCCESS;
 }
 
-/* TODO */
+/**
+ * @brief Executes the XPath bumber(object?) function. Returns LYXP_SET_NUMBER
+ *        with the number representation of either the argument or the context.
+ *
+ * @param[in] args Array of arguments.
+ * @param[in] arg_count Count of elements in \p args.
+ * @param[in] cur_node Original context node.
+ * @param[in,out] set Context and result set at the same time.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
 static int
 xpath_number(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
 {
-    LOGDBG("XPATH: %s call", __func__);
+    if (arg_count > 1) {
+        LOGVAL(LYE_XPATH_INARGCOUNT, line, arg_count, "number(object?)");
+        return -1;
+    }
+
+    if (arg_count) {
+        set_cast(args, LYXP_SET_NUMBER, cur_node->schema->module->ctx);
+        set_fill_set(set, args, cur_node->schema->module->ctx);
+    } else {
+        set_cast(set, LYXP_SET_NUMBER, cur_node->schema->module->ctx);
+    }
+
     return EXIT_SUCCESS;
 }
 
@@ -1987,7 +2116,7 @@ xpath_starts_with(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cu
 
 /**
  * @brief Executes the XPath string(object?) function. Returns LYXP_SET_STRING
- *        with the string representation either the argument or the context.
+ *        with the string representation of either the argument or the context.
  *
  * @param[in] args Array of arguments.
  * @param[in] arg_count Count of elements in \p args.
@@ -2003,11 +2132,6 @@ xpath_string(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_nod
     if (arg_count > 1) {
         LOGVAL(LYE_XPATH_INARGCOUNT, line, arg_count, "string(object?)");
         return -1;
-    }
-
-    if ((arg_count && (args->type == LYXP_SET_EMPTY)) || (!arg_count && (set->type == LYXP_SET_EMPTY))) {
-        set_fill_string(set, "", 0, cur_node->schema->module->ctx);
-        return EXIT_SUCCESS;
     }
 
     if (arg_count) {
@@ -2186,19 +2310,111 @@ xpath_substring_before(struct lyxp_set *args, uint16_t arg_count, struct lyd_nod
     return EXIT_SUCCESS;
 }
 
-/* TODO */
+/**
+ * @brief Executes the XPath sum(node-set) function. Returns LYXP_SET_NUMBER
+ *        with the sum of all the nodes in the context.
+ *
+ * @param[in] args Array of arguments.
+ * @param[in] arg_count Count of elements in \p args.
+ * @param[in] cur_node Original context node.
+ * @param[in,out] set Context and result set at the same time.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
 static int
 xpath_sum(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
 {
-    LOGDBG("XPATH: %s call", __func__);
+    long double num;
+    const char *str;
+    uint16_t i;
+    struct lyxp_set set_item;
+
+    if (arg_count != 1) {
+        LOGVAL(LYE_XPATH_INARGCOUNT, line, arg_count, "sum(node-set)");
+        return -1;
+    }
+
+    set_fill_number(set, 0, cur_node->schema->module->ctx);
+    if (args->type == LYXP_SET_EMPTY) {
+        return EXIT_SUCCESS;
+    }
+
+    if (args->type != LYXP_SET_NODE_SET) {
+        LOGVAL(LYE_XPATH_INARGTYPE, line, 1, print_set_type(args), "sum(node-set)");
+        return -1;
+    }
+
+    set_item.type = LYXP_SET_NODE_SET;
+    set_item.value.nodes = malloc(sizeof *set_item.value.nodes);
+    set_item.node_type = malloc(sizeof *set_item.node_type);
+    set_item.used = 1;
+    set_item.size = 1;
+    set_item.pos = 0;
+
+    for (i = 0; i < args->used; ++i) {
+        set_item.value.nodes[0] = args->value.nodes[i];
+        set_item.node_type[0] = args->node_type[i];
+
+        str = cast_node_set_to_string(&set_item, cur_node->schema->module->ctx);
+        num = cast_string_to_number(str);
+        lydict_remove(cur_node->schema->module->ctx, str);
+        set->value.num += num;
+    }
+
+    free(set_item.value.nodes);
+    free(set_item.node_type);
+
     return EXIT_SUCCESS;
 }
 
-/* TODO */
+/**
+ * @brief Executes the XPath text() function (node type). Returns LYXP_SET_NODE_SET
+ *        with the text content of the nodes in the context.
+ *
+ * @param[in] args Array of arguments.
+ * @param[in] arg_count Count of elements in \p args.
+ * @param[in] cur_node Original context node.
+ * @param[in,out] set Context and result set at the same time.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
 static int
 xpath_text(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
 {
-    LOGDBG("XPATH: %s call", __func__);
+    uint16_t i;
+
+    if (arg_count || args) {
+        LOGVAL(LYE_XPATH_INARGCOUNT, line, arg_count, "text()");
+        return -1;
+    }
+    if (set->type == LYXP_SET_EMPTY) {
+        return EXIT_SUCCESS;
+    }
+    if (set->type != LYXP_SET_NODE_SET) {
+        LOGVAL(LYE_XPATH_INCTX, line, print_set_type(set), "text()");
+        return -1;
+    }
+
+    for (i = 0; i < set->used;) {
+        switch (set->node_type[i]) {
+        case LYXP_NODE_ROOT:
+        case LYXP_NODE_ELEM:
+            if ((set->value.nodes[i]->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
+                    && (((struct lyd_node_leaf *)set->value.nodes[i])->value_str)) {
+                set->node_type[i] = LYXP_NODE_TEXT;
+                ++i;
+                break;
+            }
+            /* fall through */
+        case LYXP_NODE_TEXT:
+        case LYXP_NODE_ATTR:
+            set_remove_node(set, i);
+            break;
+        }
+    }
+
     return EXIT_SUCCESS;
 }
 
