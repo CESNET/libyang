@@ -1149,8 +1149,37 @@ exp_check_token(struct lyxp_expr *exp, uint16_t cur_exp, enum lyxp_token want_to
     return EXIT_SUCCESS;
 }
 
+static uint16_t
+exp_repeat_peek(struct lyxp_expr *exp, uint16_t exp_idx)
+{
+    uint16_t i;
+
+    if (!exp->repeat[exp_idx]) {
+        return 0;
+    }
+
+    for (i = 0; exp->repeat[exp_idx][i + 1]; ++i);
+
+    return exp->repeat[exp_idx][i];
+}
+
 static void
-add_exp_repeat(struct lyxp_expr *exp, uint16_t exp_idx, uint16_t repeat_exp_idx)
+exp_repeat_pop(struct lyxp_expr *exp, uint16_t exp_idx)
+{
+    uint16_t i;
+
+    if (!exp->repeat[exp_idx]) {
+        LOGINT;
+        return;
+    }
+
+    for (i = 0; exp->repeat[exp_idx][i + 1]; ++i);
+
+    exp->repeat[exp_idx][i] = 0;
+}
+
+static void
+exp_repeat_push(struct lyxp_expr *exp, uint16_t exp_idx, uint16_t repeat_exp_idx)
 {
     uint16_t i;
 
@@ -1517,7 +1546,7 @@ reparse_unary_expr(struct lyxp_expr *exp, uint16_t *cur_exp, uint32_t line)
 
     /* ('|' PathExpr)* */
     while (!exp_check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_UNI, UINT_MAX)) {
-        add_exp_repeat(exp, prev_exp, *cur_exp);
+        exp_repeat_push(exp, prev_exp, *cur_exp);
         ++(*cur_exp);
 
         prev_exp = *cur_exp;
@@ -1557,7 +1586,7 @@ reparse_additive_expr(struct lyxp_expr *exp, uint16_t *cur_exp, uint32_t line)
     /* ('+' / '-' MultiplicativeExpr)* */
     while (!exp_check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_MATH, UINT_MAX)
             && ((exp->expr[exp->expr_pos[*cur_exp]] == '+') || (exp->expr[exp->expr_pos[*cur_exp]] == '-'))) {
-        add_exp_repeat(exp, prev_add_exp, *cur_exp);
+        exp_repeat_push(exp, prev_add_exp, *cur_exp);
         ++(*cur_exp);
 
 reparse_multiplicative_expr:
@@ -1572,7 +1601,7 @@ reparse_multiplicative_expr:
         /* ('*' / 'div' / 'mod' UnaryExpr)* */
         while (!exp_check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_MATH, UINT_MAX)
                 && ((exp->expr[exp->expr_pos[*cur_exp]] == '*') || (exp->tok_len[*cur_exp] == 3))) {
-            add_exp_repeat(exp, prev_mul_exp, *cur_exp);
+            exp_repeat_push(exp, prev_mul_exp, *cur_exp);
             ++(*cur_exp);
 
             prev_mul_exp = *cur_exp;
@@ -1612,7 +1641,7 @@ reparse_equality_expr(struct lyxp_expr *exp, uint16_t *cur_exp, uint32_t line)
     /* ('=' / '!=' RelationalExpr)* */
     while (!exp_check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_COMP, UINT_MAX)
             && ((exp->expr[exp->expr_pos[*cur_exp]] == '=') || (exp->expr[exp->expr_pos[*cur_exp]] == '!'))) {
-        add_exp_repeat(exp, prev_eq_exp, *cur_exp);
+        exp_repeat_push(exp, prev_eq_exp, *cur_exp);
         ++(*cur_exp);
 
 reparse_additive_expr:
@@ -1627,7 +1656,7 @@ reparse_additive_expr:
         /* ('<' / '>' / '<=' / '>=' AdditiveExpr)* */
         while (!exp_check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_COMP, UINT_MAX)
                 && ((exp->expr[exp->expr_pos[*cur_exp]] == '<') || (exp->expr[exp->expr_pos[*cur_exp]] == '>'))) {
-            add_exp_repeat(exp, prev_rel_exp, *cur_exp);
+            exp_repeat_push(exp, prev_rel_exp, *cur_exp);
             ++(*cur_exp);
 
             prev_rel_exp = *cur_exp;
@@ -1661,7 +1690,7 @@ reparse_expr(struct lyxp_expr *exp, uint16_t *cur_exp, uint32_t line)
 
     /* ('or' AndExpr)* */
     while (!exp_check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_LOG, UINT_MAX) && (exp->tok_len[*cur_exp] == 2)) {
-        add_exp_repeat(exp, prev_or_exp, *cur_exp);
+        exp_repeat_push(exp, prev_or_exp, *cur_exp);
         ++(*cur_exp);
 
 reparse_equality_expr:
@@ -1675,7 +1704,7 @@ reparse_equality_expr:
 
         /* ('and' EqualityExpr)* */
         while (!exp_check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_LOG, UINT_MAX) && (exp->tok_len[*cur_exp] == 3)) {
-            add_exp_repeat(exp, prev_and_exp, *cur_exp);
+            exp_repeat_push(exp, prev_and_exp, *cur_exp);
             ++(*cur_exp);
 
             prev_and_exp = *cur_exp;
