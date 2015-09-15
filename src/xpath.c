@@ -471,6 +471,10 @@ set_copy(struct lyxp_set *set, struct ly_ctx *ctx)
 {
     struct lyxp_set *ret;
 
+    if (!set) {
+        return NULL;
+    }
+
     ret = malloc(sizeof *ret);
     if (set->type == LYXP_SET_NODE_SET) {
         ret->type = set->type;
@@ -534,6 +538,10 @@ set_fill_boolean(struct lyxp_set *set, int boolean, struct ly_ctx *ctx)
 static void
 set_fill_set(struct lyxp_set *set, struct lyxp_set *src, struct ly_ctx *ctx)
 {
+    if (!set || !src) {
+        return;
+    }
+
     if (src->type == LYXP_SET_BOOLEAN) {
         set_fill_boolean(set, src->value.bool, ctx);
     } else if (src->type ==  LYXP_SET_NUMBER) {
@@ -688,7 +696,7 @@ set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct ly_ctx *ctx)
     long double num;
     const char *str;
 
-    if (set->type == target) {
+    if (!set || (set->type == target)) {
         return;
     }
 
