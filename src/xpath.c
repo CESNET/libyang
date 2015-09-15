@@ -3205,34 +3205,24 @@ moveto_resolve_model(const char *mod_name_ns, uint16_t mod_nam_ns_len, struct ly
 
 /* absolute path */
 static int
-moveto_root(struct lyxp_set *set, struct lyd_node *any_node, uint32_t line)
+moveto_root(struct lyxp_set *set, struct lyd_node *any_node)
 {
-    uint16_t i;
-
     if (!set) {
         return EXIT_SUCCESS;
     }
 
-    if ((set->type != LYXP_SET_NODE_SET) && (set->type != LYXP_SET_EMPTY)) {
-        LOGVAL(LYE_XPATH_INOP_1, line, "path operator", print_set_type(set));
+    if (!any_node) {
+        LOGINT;
         return -1;
     }
+
+    set_cast(set, LYXP_SET_EMPTY, any_node->schema->module->ctx);
 
     /* move the node to the root */
     for (; any_node->parent; any_node = any_node->parent);
     assert(any_node->prev = any_node);
 
-    if (set->type == LYXP_SET_NODE_SET) {
-        set->value.nodes[0] = any_node;
-        set->node_type[0] = LYXP_NODE_ROOT;
-
-        /* delete the rest */
-        for (i = set->used - 1; i > 0 ; --i) {
-            set_remove_node(set, i);
-        }
-    } else {
-        set_add_node(set, any_node, LYXP_NODE_ROOT, 0);
-    }
+    set_add_node(set, any_node, LYXP_NODE_ROOT, 0);
 
     return EXIT_SUCCESS;
 }
@@ -4292,7 +4282,7 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd
 
     if (set) {
         /* no matter what tokens follow, we need to be at the root */
-        if ((rc = moveto_root(set, cur_node, line))) {
+        if ((rc = moveto_root(set, cur_node))) {
             return rc;
         }
     }
