@@ -2171,7 +2171,7 @@ static int
 xpath_current(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
               uint32_t line)
 {
-    if (arg_count) {
+    if (arg_count || args) {
         LOGVAL(LYE_XPATH_INARGCOUNT, line, arg_count, "current()");
         return -1;
     }
@@ -2196,7 +2196,7 @@ xpath_current(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_no
 static int
 xpath_false(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
 {
-    if (arg_count) {
+    if (arg_count || args) {
         LOGVAL(LYE_XPATH_INARGCOUNT, line, arg_count, "false()");
         return -1;
     }
@@ -2416,6 +2416,9 @@ xpath_local_name(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur
 static int
 xpath_name(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
 {
+    (void)args;
+    (void)arg_count;
+    (void)line;
     set_fill_string(set, "", 0, cur_node->schema->module->ctx);
     return EXIT_SUCCESS;
 }
@@ -2871,7 +2874,7 @@ xpath_substring(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_
     if (start < 0) {
         start = 0;
     }
-    if (start > strlen(args[0].value.str)) {
+    if (start > (signed)strlen(args[0].value.str)) {
         start = strlen(args[0].value.str);
     }
 
@@ -2884,7 +2887,7 @@ xpath_substring(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_
         if (len < 0) {
             len = 0;
         }
-        if (len > strlen(args[0].value.str + start)) {
+        if (len > (signed)strlen(args[0].value.str + start)) {
             len = strlen(args[0].value.str + start);
         }
     } else {
@@ -3040,7 +3043,8 @@ xpath_sum(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, 
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-xpath_text(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
+xpath_text(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *UNUSED(cur_node), struct lyxp_set *set,
+           uint32_t line)
 {
     uint16_t i;
 
@@ -3165,7 +3169,7 @@ xpath_translate(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_
 static int
 xpath_true(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
 {
-    if (arg_count) {
+    if (arg_count || args) {
         LOGVAL(LYE_XPATH_INARGCOUNT, line, arg_count, "true()");
         return -1;
     }
