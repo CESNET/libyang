@@ -331,9 +331,6 @@ cast_string_recursive(struct lyd_node *node, uint16_t indent, char **str, uint16
             cast_string_recursive(child, indent + 1, str, used, size);
         }
 
-        cast_string_realloc(1, str, used, size);
-        strcpy(*str + (*used - 1), "\n");
-        ++(*used);
         break;
 
     case LYS_LEAF:
