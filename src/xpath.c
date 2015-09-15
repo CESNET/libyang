@@ -4660,8 +4660,8 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_n
                 uint32_t line)
 {
     int rc, unary_minus;
-    uint16_t prev_exp;
-    struct lyxp_set *orig_set = NULL, *set2;
+    uint16_t op_exp;
+    struct lyxp_set orig_set, set2;
 
     /* ('-')* */
     unary_minus = -1;
@@ -4678,62 +4678,61 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_n
         ++(*cur_exp);
     }
 
-    /* PathExpr */
-    prev_exp = *cur_exp;
-    if ((rc = eval_path_expr(exp, cur_exp, cur_node, NULL, line))) {
-        return rc;
+    orig_set.type = LYXP_SET_EMPTY;
+    set2.type = LYXP_SET_EMPTY;
+
+    op_exp = exp_repeat_peek(exp, *cur_exp);
+    if (op_exp && (exp->tokens[op_exp] == LYXP_TOKEN_OPERATOR_UNI)) {
+        /* there is an operator */
+        exp_repeat_pop(exp, *cur_exp);
+        set_fill_set(&orig_set, set, cur_node->schema->module->ctx);
+    } else {
+        op_exp = 0;
     }
-    if (set) {
-        if (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_UNI, UINT_MAX)) {
-            /* there is a union, we need to store the context */
-            orig_set = set_copy(set, cur_node->schema->module->ctx);
-        }
-        *cur_exp = prev_exp;
-        if ((rc = eval_path_expr(exp, cur_exp, cur_node, set, line))) {
-            set_free(orig_set, cur_node->schema->module->ctx);
-            return rc;
-        }
+
+    /* PathExpr */
+    if ((rc = eval_path_expr(exp, cur_exp, cur_node, set, line))) {
+        set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+        return rc;
     }
 
     /* ('|' PathExpr)* */
-    while (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_UNI, UINT_MAX)) {
+    while (op_exp) {
         LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
 
-        prev_exp = *cur_exp;
-        if ((rc = eval_path_expr(exp, cur_exp, cur_node, NULL, line))) {
-            set_free(orig_set, cur_node->schema->module->ctx);
+        op_exp = exp_repeat_peek(exp, *cur_exp);
+        if (op_exp && (exp->tokens[op_exp] == LYXP_TOKEN_OPERATOR_UNI)) {
+            /* there is another operator */
+            exp_repeat_pop(exp, *cur_exp);
+        } else {
+            op_exp = 0;
+        }
+
+        if (!set) {
+            if ((rc = eval_path_expr(exp, cur_exp, cur_node, NULL, line))) {
+                return rc;
+            }
+            continue;
+        }
+
+        set_fill_set(&set2, &orig_set, cur_node->schema->module->ctx);
+        if ((rc = eval_path_expr(exp, cur_exp, cur_node, &set2, line))) {
+            set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+            set_cast(&set2, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
             return rc;
         }
-        if (set) {
-            if (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_UNI, UINT_MAX)) {
-                /* there is another union */
-                set2 = set_copy(orig_set, cur_node->schema->module->ctx);
-            } else {
-                /* there is no other union, we can modify the original context */
-                set2 = orig_set;
-            }
-            *cur_exp = prev_exp;
-            if ((rc = eval_path_expr(exp, cur_exp, cur_node, set2, line))) {
-                set_free(orig_set, cur_node->schema->module->ctx);
-                if (set2 != orig_set) {
-                    set_free(set2, cur_node->schema->module->ctx);
-                }
-                return rc;
-            }
 
-            /* eval */
-            if ((rc = moveto_union(set, set2, cur_node, line))) {
-                set_free(orig_set, cur_node->schema->module->ctx);
-                if (set2 != orig_set) {
-                    set_free(set2, cur_node->schema->module->ctx);
-                }
-                return rc;
-            }
+        /* eval */
+        if ((rc = moveto_union(set, &set2, cur_node, line))) {
+            set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+            set_cast(&set2, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+            return rc;
         }
     }
 
+    set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
     /* now we have all the unions in set and no other memory allocated */
 
     if (set && (unary_minus > -1)) {
@@ -4763,64 +4762,66 @@ static int
 eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_node, struct lyxp_set *set,
                          uint32_t line)
 {
-    int rc, prev_op;
-    uint16_t prev_exp;
-    struct lyxp_set *orig_set = NULL, *set2;
+    int rc;
+    uint16_t this_op, op_exp;
+    struct lyxp_set orig_set, set2;
+
+    orig_set.type = LYXP_SET_EMPTY;
+    set2.type = LYXP_SET_EMPTY;
+
+    op_exp = exp_repeat_peek(exp, *cur_exp);
+    if (op_exp && (exp->tokens[op_exp] == LYXP_TOKEN_OPERATOR_MATH)
+            && ((exp->expr[exp->expr_pos[op_exp]] == '*') || (exp->tok_len[op_exp] == 3))) {
+        /* there is an operator */
+        exp_repeat_pop(exp, *cur_exp);
+        set_fill_set(&orig_set, set, cur_node->schema->module->ctx);
+    } else {
+        op_exp = 0;
+    }
 
     /* UnaryExpr */
-    prev_exp = *cur_exp;
-    if ((rc = eval_unary_expr(exp, cur_exp, cur_node, NULL, line))) {
+    if ((rc = eval_unary_expr(exp, cur_exp, cur_node, set, line))) {
+        set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
         return rc;
-    }
-    if (set) {
-        if (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_MATH, UINT_MAX)
-                && ((exp->expr[exp->expr_pos[*cur_exp]] == '*') || (exp->tok_len[*cur_exp] == 3))) {
-            /* there is an operator, we need to store the context */
-            orig_set = set_copy(set, cur_node->schema->module->ctx);
-        }
-        *cur_exp = prev_exp;
-        if ((rc = eval_unary_expr(exp, cur_exp, cur_node, set, line))) {
-            set_free(orig_set, cur_node->schema->module->ctx);
-            return rc;
-        }
     }
 
     /* ('*' / 'div' / 'mod' UnaryExpr)* */
-    while (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_MATH, UINT_MAX)
-            && ((exp->expr[exp->expr_pos[*cur_exp]] == '*') || (exp->tok_len[*cur_exp] == 3))) {
-        prev_op = *cur_exp;
+    while (op_exp) {
+        this_op = *cur_exp;
 
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
 
-        prev_exp = *cur_exp;
-        if ((rc = eval_unary_expr(exp, cur_exp, cur_node, NULL, line))) {
-            set_free(orig_set, cur_node->schema->module->ctx);
-            return rc;
+        op_exp = exp_repeat_peek(exp, *cur_exp);
+        if (op_exp && (exp->tokens[op_exp] == LYXP_TOKEN_OPERATOR_MATH)
+                && ((exp->expr[exp->expr_pos[op_exp]] == '*') || (exp->tok_len[op_exp] == 3))) {
+            /* there is another operator */
+            exp_repeat_pop(exp, *cur_exp);
+        } else {
+            op_exp = 0;
         }
-        if (set) {
-            if (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_MATH, UINT_MAX)
-                    && ((exp->expr[exp->expr_pos[*cur_exp]] == '*') || (exp->tok_len[*cur_exp] == 3))) {
-                /* there is another operator */
-                set2 = set_copy(orig_set, cur_node->schema->module->ctx);
-            } else {
-                /* there is no other '*', 'div', or 'mod', we can modify the original context */
-                set2 = orig_set;
-            }
-            *cur_exp = prev_exp;
-            if ((rc = eval_unary_expr(exp, cur_exp, cur_node, set2, line))) {
-                set_free(orig_set, cur_node->schema->module->ctx);
-                if (set2 != orig_set) {
-                    set_free(set2, cur_node->schema->module->ctx);
-                }
+
+        if (!set) {
+            if ((rc = eval_unary_expr(exp, cur_exp, cur_node, NULL, line))) {
                 return rc;
             }
-
-            /* eval */
-            moveto_op_math(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node);
+            continue;
         }
+
+        set_fill_set(&set2, &orig_set, cur_node->schema->module->ctx);
+        if ((rc = eval_unary_expr(exp, cur_exp, cur_node, &set2, line))) {
+            set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+            set_cast(&set2, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+            return rc;
+        }
+
+        /* eval */
+        moveto_op_math(&exp->expr[exp->expr_pos[this_op]], set, &set2, cur_node);
     }
 
+    set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+    set_cast(&set2, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
     return EXIT_SUCCESS;
 }
 
@@ -4843,64 +4844,66 @@ static int
 eval_additive_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_node, struct lyxp_set *set,
                    uint32_t line)
 {
-    int rc, prev_op;
-    uint16_t prev_exp;
-    struct lyxp_set *orig_set = NULL, *set2;
+    int rc;
+    uint16_t this_op, op_exp;
+    struct lyxp_set orig_set, set2;
+
+    orig_set.type = LYXP_SET_EMPTY;
+    set2.type = LYXP_SET_EMPTY;
+
+    op_exp = exp_repeat_peek(exp, *cur_exp);
+    if (op_exp && (exp->tokens[op_exp] == LYXP_TOKEN_OPERATOR_MATH)
+            && ((exp->expr[exp->expr_pos[op_exp]] == '+') || (exp->expr[exp->expr_pos[op_exp]] == '-'))) {
+        /* there is an operator */
+        exp_repeat_pop(exp, *cur_exp);
+        set_fill_set(&orig_set, set, cur_node->schema->module->ctx);
+    } else {
+        op_exp = 0;
+    }
 
     /* MultiplicativeExpr */
-    prev_exp = *cur_exp;
-    if ((rc = eval_multiplicative_expr(exp, cur_exp, cur_node, NULL, line))) {
+    if ((rc = eval_multiplicative_expr(exp, cur_exp, cur_node, set, line))) {
+        set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
         return rc;
-    }
-    if (set) {
-        if (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_MATH, UINT_MAX)
-                && ((exp->expr[exp->expr_pos[*cur_exp]] == '+') || (exp->expr[exp->expr_pos[*cur_exp]] == '-'))) {
-            /* there is an operator, we need to store the context */
-            orig_set = set_copy(set, cur_node->schema->module->ctx);
-        }
-        *cur_exp = prev_exp;
-        if ((rc = eval_multiplicative_expr(exp, cur_exp, cur_node, set, line))) {
-            set_free(orig_set, cur_node->schema->module->ctx);
-            return rc;
-        }
     }
 
     /* ('+' / '-' MultiplicativeExpr)* */
-    while (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_MATH, UINT_MAX)
-            && ((exp->expr[exp->expr_pos[*cur_exp]] == '+') || (exp->expr[exp->expr_pos[*cur_exp]] == '-'))) {
-        prev_op = *cur_exp;
+    while (op_exp) {
+        this_op = *cur_exp;
 
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
 
-        prev_exp = *cur_exp;
-        if ((rc = eval_multiplicative_expr(exp, cur_exp, cur_node, NULL, line))) {
-            set_free(orig_set, cur_node->schema->module->ctx);
-            return rc;
+        op_exp = exp_repeat_peek(exp, *cur_exp);
+        if (op_exp && (exp->tokens[op_exp] == LYXP_TOKEN_OPERATOR_MATH)
+                && ((exp->expr[exp->expr_pos[op_exp]] == '+') || (exp->expr[exp->expr_pos[op_exp]] == '-'))) {
+            /* there is another operator */
+            exp_repeat_pop(exp, *cur_exp);
+        } else {
+            op_exp = 0;
         }
-        if (set) {
-            if (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_MATH, UINT_MAX)
-                    && ((exp->expr[exp->expr_pos[*cur_exp]] == '+') || (exp->expr[exp->expr_pos[*cur_exp]] == '-'))) {
-                /* there is another operator */
-                set2 = set_copy(orig_set, cur_node->schema->module->ctx);
-            } else {
-                /* there is no other '+', '-', we can modify the original context */
-                set2 = orig_set;
-            }
-            *cur_exp = prev_exp;
-            if ((rc = eval_multiplicative_expr(exp, cur_exp, cur_node, set2, line))) {
-                set_free(orig_set, cur_node->schema->module->ctx);
-                if (set2 != orig_set) {
-                    set_free(set2, cur_node->schema->module->ctx);
-                }
+
+        if (!set) {
+            if ((rc = eval_multiplicative_expr(exp, cur_exp, cur_node, NULL, line))) {
                 return rc;
             }
-
-            /* eval */
-            moveto_op_math(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node);
+            continue;
         }
+
+        set_fill_set(&set2, &orig_set, cur_node->schema->module->ctx);
+        if ((rc = eval_multiplicative_expr(exp, cur_exp, cur_node, &set2, line))) {
+            set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+            set_cast(&set2, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+            return rc;
+        }
+
+        /* eval */
+        moveto_op_math(&exp->expr[exp->expr_pos[this_op]], set, &set2, cur_node);
     }
 
+    set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+    set_cast(&set2, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
     return EXIT_SUCCESS;
 }
 
@@ -4925,64 +4928,66 @@ static int
 eval_relational_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_node, struct lyxp_set *set,
                      uint32_t line)
 {
-    int rc, prev_op;
-    uint16_t prev_exp;
-    struct lyxp_set *orig_set = NULL, *set2;
+    int rc;
+    uint16_t this_op, op_exp;
+    struct lyxp_set orig_set, set2;
+
+    orig_set.type = LYXP_SET_EMPTY;
+    set2.type = LYXP_SET_EMPTY;
+
+    op_exp = exp_repeat_peek(exp, *cur_exp);
+    if (op_exp && (exp->tokens[op_exp] == LYXP_TOKEN_OPERATOR_COMP)
+            && ((exp->expr[exp->expr_pos[op_exp]] == '<') || (exp->expr[exp->expr_pos[op_exp]] == '>'))) {
+        /* there is an operator */
+        exp_repeat_pop(exp, *cur_exp);
+        set_fill_set(&orig_set, set, cur_node->schema->module->ctx);
+    } else {
+        op_exp = 0;
+    }
 
     /* AdditiveExpr */
-    prev_exp = *cur_exp;
-    if ((rc = eval_additive_expr(exp, cur_exp, cur_node, NULL, line))) {
+    if ((rc = eval_additive_expr(exp, cur_exp, cur_node, set, line))) {
+        set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
         return rc;
-    }
-    if (set) {
-        if (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_COMP, UINT_MAX)
-                && ((exp->expr[exp->expr_pos[*cur_exp]] == '<') || (exp->expr[exp->expr_pos[*cur_exp]] == '>'))) {
-            /* there is an operator, we need to store the context */
-            orig_set = set_copy(set, cur_node->schema->module->ctx);
-        }
-        *cur_exp = prev_exp;
-        if ((rc = eval_additive_expr(exp, cur_exp, cur_node, set, line))) {
-            set_free(orig_set, cur_node->schema->module->ctx);
-            return rc;
-        }
     }
 
     /* ('<' / '>' / '<=' / '>=' AdditiveExpr)* */
-    while (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_COMP, UINT_MAX)
-            && ((exp->expr[exp->expr_pos[*cur_exp]] == '<') || (exp->expr[exp->expr_pos[*cur_exp]] == '>'))) {
-        prev_op = *cur_exp;
+    while (op_exp) {
+        this_op = *cur_exp;
 
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
 
-        prev_exp = *cur_exp;
-        if ((rc = eval_additive_expr(exp, cur_exp, cur_node, NULL, line))) {
-            set_free(orig_set, cur_node->schema->module->ctx);
-            return rc;
+        op_exp = exp_repeat_peek(exp, *cur_exp);
+        if (op_exp && (exp->tokens[op_exp] == LYXP_TOKEN_OPERATOR_COMP)
+                && ((exp->expr[exp->expr_pos[op_exp]] == '<') || (exp->expr[exp->expr_pos[op_exp]] == '>'))) {
+            /* there is another operator */
+            exp_repeat_pop(exp, *cur_exp);
+        } else {
+            op_exp = 0;
         }
-        if (set) {
-            if (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_COMP, UINT_MAX)
-                    && ((exp->expr[exp->expr_pos[*cur_exp]] == '<') || (exp->expr[exp->expr_pos[*cur_exp]] == '>'))) {
-                /* there is another operator */
-                set2 = set_copy(orig_set, cur_node->schema->module->ctx);
-            } else {
-                /* there is no other comp op, we can modify the original context */
-                set2 = orig_set;
-            }
-            *cur_exp = prev_exp;
-            if ((rc = eval_additive_expr(exp, cur_exp, cur_node, set2, line))) {
-                set_free(orig_set, cur_node->schema->module->ctx);
-                if (set2 != orig_set) {
-                    set_free(set2, cur_node->schema->module->ctx);
-                }
+
+        if (!set) {
+            if ((rc = eval_relational_expr(exp, cur_exp, cur_node, NULL, line))) {
                 return rc;
             }
-
-            /* eval */
-            moveto_op_comp(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node);
+            continue;
         }
+
+        set_fill_set(&set2, &orig_set, cur_node->schema->module->ctx);
+        if ((rc = eval_additive_expr(exp, cur_exp, cur_node, &set2, line))) {
+            set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+            set_cast(&set2, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+            return rc;
+        }
+
+        /* eval */
+        moveto_op_comp(&exp->expr[exp->expr_pos[this_op]], set, &set2, cur_node);
     }
 
+    set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+    set_cast(&set2, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
     return EXIT_SUCCESS;
 }
 
@@ -5004,64 +5009,66 @@ static int
 eval_equality_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_node, struct lyxp_set *set,
                    uint32_t line)
 {
-    int rc, prev_op;
-    uint16_t prev_exp;
-    struct lyxp_set *orig_set = NULL, *set2;
+    int rc;
+    uint16_t this_op, op_exp;
+    struct lyxp_set orig_set, set2;
+
+    orig_set.type = LYXP_SET_EMPTY;
+    set2.type = LYXP_SET_EMPTY;
+
+    op_exp = exp_repeat_peek(exp, *cur_exp);
+    if (op_exp && (exp->tokens[op_exp] == LYXP_TOKEN_OPERATOR_COMP)
+            && ((exp->expr[exp->expr_pos[op_exp]] == '=') || (exp->expr[exp->expr_pos[op_exp]] == '!'))) {
+        /* there is an operator */
+        exp_repeat_pop(exp, *cur_exp);
+        set_fill_set(&orig_set, set, cur_node->schema->module->ctx);
+    } else {
+        op_exp = 0;
+    }
 
     /* RelationalExpr */
-    prev_exp = *cur_exp;
-    if ((rc = eval_relational_expr(exp, cur_exp, cur_node, NULL, line))) {
+    if ((rc = eval_relational_expr(exp, cur_exp, cur_node, set, line))) {
+        set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
         return rc;
-    }
-    if (set) {
-        if (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_COMP, UINT_MAX)
-                && ((exp->expr[exp->expr_pos[*cur_exp]] == '=') || (exp->expr[exp->expr_pos[*cur_exp]] == '!'))) {
-            /* there is an operator, we need to store the context */
-            orig_set = set_copy(set, cur_node->schema->module->ctx);
-        }
-        *cur_exp = prev_exp;
-        if ((rc = eval_relational_expr(exp, cur_exp, cur_node, set, line))) {
-            set_free(orig_set, cur_node->schema->module->ctx);
-            return rc;
-        }
     }
 
     /* ('=' / '!=' RelationalExpr)* */
-    while (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_COMP, UINT_MAX)
-            && ((exp->expr[exp->expr_pos[*cur_exp]] == '=') || (exp->expr[exp->expr_pos[*cur_exp]] == '!'))) {
-        prev_op = *cur_exp;
+    while (op_exp) {
+        this_op = *cur_exp;
 
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
 
-        prev_exp = *cur_exp;
-        if ((rc = eval_relational_expr(exp, cur_exp, cur_node, NULL, line))) {
-            set_free(orig_set, cur_node->schema->module->ctx);
-            return rc;
+        op_exp = exp_repeat_peek(exp, *cur_exp);
+        if (op_exp && (exp->tokens[op_exp] == LYXP_TOKEN_OPERATOR_COMP)
+                && ((exp->expr[exp->expr_pos[op_exp]] == '=') || (exp->expr[exp->expr_pos[op_exp]] == '!'))) {
+            /* there is another operator */
+            exp_repeat_pop(exp, *cur_exp);
+        } else {
+            op_exp = 0;
         }
-        if (set) {
-            if (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_COMP, UINT_MAX)
-                    && ((exp->expr[exp->expr_pos[*cur_exp]] == '=') || (exp->expr[exp->expr_pos[*cur_exp]] == '!'))) {
-                /* there is another operator */
-                set2 = set_copy(orig_set, cur_node->schema->module->ctx);
-            } else {
-                /* there is no other comp op, we can modify the original context */
-                set2 = orig_set;
-            }
-            *cur_exp = prev_exp;
-            if ((rc = eval_relational_expr(exp, cur_exp, cur_node, set2, line))) {
-                set_free(orig_set, cur_node->schema->module->ctx);
-                if (set2 != orig_set) {
-                    set_free(set2, cur_node->schema->module->ctx);
-                }
+
+        if (!set) {
+            if ((rc = eval_relational_expr(exp, cur_exp, cur_node, NULL, line))) {
                 return rc;
             }
-
-            /* eval */
-            moveto_op_comp(&exp->expr[exp->expr_pos[prev_op]], set, set2, cur_node);
+            continue;
         }
+
+        set_fill_set(&set2, &orig_set, cur_node->schema->module->ctx);
+        if ((rc = eval_relational_expr(exp, cur_exp, cur_node, &set2, line))) {
+            set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+            set_cast(&set2, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+            return rc;
+        }
+
+        /* eval */
+        moveto_op_comp(&exp->expr[exp->expr_pos[this_op]], set, &set2, cur_node);
     }
 
+    set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+    set_cast(&set2, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
     return EXIT_SUCCESS;
 }
 
@@ -5081,77 +5088,68 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cu
 static int
 eval_and_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
 {
-    int rc;
-    uint16_t prev_exp;
-    struct lyxp_set *orig_set = NULL, *set2;
+    int rc, is_false = 0;
+    uint16_t op_exp;
+    struct lyxp_set orig_set;
+
+    orig_set.type = LYXP_SET_EMPTY;
+
+    op_exp = exp_repeat_peek(exp, *cur_exp);
+    if (op_exp && (exp->tokens[op_exp] == LYXP_TOKEN_OPERATOR_LOG) && (exp->tok_len[op_exp] == 3)) {
+        /* there is an operator */
+        exp_repeat_pop(exp, *cur_exp);
+        set_fill_set(&orig_set, set, cur_node->schema->module->ctx);
+    } else {
+        op_exp = 0;
+    }
 
     /* EqualityExpr */
-    prev_exp = *cur_exp;
-    if ((rc = eval_equality_expr(exp, cur_exp, cur_node, NULL, line))) {
+    if ((rc = eval_equality_expr(exp, cur_exp, cur_node, set, line))) {
+        set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
         return rc;
     }
-    if (set) {
-        if (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_LOG, UINT_MAX) && (exp->tok_len[*cur_exp] == 3)) {
-            /* there is an operator, we need to store the context */
-            orig_set = set_copy(set, cur_node->schema->module->ctx);
-        }
-        *cur_exp = prev_exp;
-        if ((rc = eval_equality_expr(exp, cur_exp, cur_node, set, line))) {
-            set_free(orig_set, cur_node->schema->module->ctx);
-            return rc;
-        }
 
-        /* cast to boolean, we know that will be the final result */
-        if (orig_set) {
-            set_cast(set, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
-            /* we are finished with evaluating, we're just gonna parse the rest */
-            if (!set->value.bool) {
-                set_free(orig_set, cur_node->schema->module->ctx);
-            }
+    /* cast to boolean, we know that will be the final result */
+    if (op_exp) {
+        set_cast(set, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
+        if (!set->value.bool) {
+            is_false = 1;
         }
     }
 
     /* ('and' EqualityExpr)* */
-    while (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_LOG, UINT_MAX) && (exp->tok_len[*cur_exp] == 3)) {
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+    while (op_exp) {
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (!set || !set->value.bool ? "skipped" : "parsed"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
 
-        prev_exp = *cur_exp;
-        if ((rc = eval_equality_expr(exp, cur_exp, cur_node, NULL, line))) {
-            set_free(orig_set, cur_node->schema->module->ctx);
-            return rc;
+        op_exp = exp_repeat_peek(exp, *cur_exp);
+        if (op_exp && (exp->tokens[op_exp] == LYXP_TOKEN_OPERATOR_LOG) && (exp->tok_len[op_exp] == 3)) {
+            /* there is another operator */
+            exp_repeat_pop(exp, *cur_exp);
+        } else {
+            op_exp = 0;
         }
 
         /* lazy evaluation */
-        if (set && set->value.bool) {
-            if (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_LOG, UINT_MAX) && (exp->tok_len[*cur_exp] == 3)) {
-                /* there is another operator */
-                set2 = set_copy(orig_set, cur_node->schema->module->ctx);
-            } else {
-                /* there is no other comp op, we can modify the original context */
-                set2 = orig_set;
-            }
-            *cur_exp = prev_exp;
-            if ((rc = eval_equality_expr(exp, cur_exp, cur_node, set2, line))) {
-                set_free(orig_set, cur_node->schema->module->ctx);
-                if (set2 != orig_set) {
-                    set_free(set2, cur_node->schema->module->ctx);
-                }
-                return rc;
-            }
+        if (is_false) {
+            continue;
+        }
 
-            /* eval - just get boolean value actually */
-            set_cast(set2, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
-            if (!set2->value.bool) {
-                set->value.bool = 0;
-                if (orig_set != set2) {
-                    set_free(orig_set, cur_node->schema->module->ctx);
-                }
-            }
-            set_free(set2, cur_node->schema->module->ctx);
+        set_fill_set(set, &orig_set, cur_node->schema->module->ctx);
+        if ((rc = eval_equality_expr(exp, cur_exp, cur_node, set, line))) {
+            set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+            return rc;
+        }
+
+        /* eval - just get boolean value actually */
+        set_cast(set, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
+        if (!set->value.bool) {
+            is_false = 1;
         }
     }
 
+    set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
     return EXIT_SUCCESS;
 }
 
@@ -5171,77 +5169,68 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_nod
 static int
 eval_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
 {
-    int rc;
-    uint16_t prev_exp;
-    struct lyxp_set *orig_set = NULL, *set2;
+    int rc, is_true = 0;
+    uint16_t op_exp;
+    struct lyxp_set orig_set;
+
+    orig_set.type = LYXP_SET_EMPTY;
+
+    op_exp = exp_repeat_peek(exp, *cur_exp);
+    if (op_exp && (exp->tokens[op_exp] == LYXP_TOKEN_OPERATOR_LOG) && (exp->tok_len[op_exp] == 2)) {
+        /* there is an operator */
+        exp_repeat_pop(exp, *cur_exp);
+        set_fill_set(&orig_set, set, cur_node->schema->module->ctx);
+    } else {
+        op_exp = 0;
+    }
 
     /* AndExpr */
-    prev_exp = *cur_exp;
-    if ((rc = eval_and_expr(exp, cur_exp, cur_node, NULL, line))) {
+    if ((rc = eval_and_expr(exp, cur_exp, cur_node, set, line))) {
+        set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
         return rc;
     }
-    if (set) {
-        if (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_LOG, UINT_MAX) && (exp->tok_len[*cur_exp] == 2)) {
-            /* there is an operator, we need to store the context */
-            orig_set = set_copy(set, cur_node->schema->module->ctx);
-        }
-        *cur_exp = prev_exp;
-        if ((rc = eval_and_expr(exp, cur_exp, cur_node, set, line))) {
-            set_free(orig_set, cur_node->schema->module->ctx);
-            return rc;
-        }
 
-        /* cast to boolean, we know that will be the final result */
-        if (orig_set) {
-            set_cast(set, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
-            /* we are finished with evaluating, we're just gonna parse the rest */
-            if (set->value.bool) {
-                set_free(orig_set, cur_node->schema->module->ctx);
-            }
+    /* cast to boolean, we know that will be the final result */
+    if (op_exp) {
+        set_cast(set, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
+        if (set->value.bool) {
+            is_true = 1;
         }
     }
 
     /* ('or' AndExpr)* */
-    while (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_LOG, UINT_MAX) && (exp->tok_len[*cur_exp] == 2)) {
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+    while (op_exp) {
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (!set || set->value.bool ? "skipped" : "parsed"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
 
-        prev_exp = *cur_exp;
-        if ((rc = eval_and_expr(exp, cur_exp, cur_node, NULL, line))) {
-            set_free(orig_set, cur_node->schema->module->ctx);
-            return rc;
+        op_exp = exp_repeat_peek(exp, *cur_exp);
+        if (op_exp && (exp->tokens[op_exp] == LYXP_TOKEN_OPERATOR_LOG) && (exp->tok_len[op_exp] == 2)) {
+            /* there is another operator */
+            exp_repeat_pop(exp, *cur_exp);
+        } else {
+            op_exp = 0;
         }
 
         /* lazy evaluation */
-        if (set && !set->value.bool) {
-            if (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_LOG, UINT_MAX) && (exp->tok_len[*cur_exp] == 2)) {
-                /* there is another operator */
-                set2 = set_copy(orig_set, cur_node->schema->module->ctx);
-            } else {
-                /* there is no other 'or' op, we can modify the original context */
-                set2 = orig_set;
-            }
-            *cur_exp = prev_exp;
-            if ((rc = eval_and_expr(exp, cur_exp, cur_node, set2, line))) {
-                set_free(orig_set, cur_node->schema->module->ctx);
-                if (set2 != orig_set) {
-                    set_free(set2, cur_node->schema->module->ctx);
-                }
-                return rc;
-            }
+        if (is_true) {
+            continue;
+        }
 
-            /* eval - just get boolean value actually */
-            set_cast(set2, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
-            if (set2->value.bool) {
-                set->value.bool = 1;
-                if (orig_set != set2) {
-                    set_free(orig_set, cur_node->schema->module->ctx);
-                }
-            }
-            set_free(set2, cur_node->schema->module->ctx);
+        set_fill_set(set, &orig_set, cur_node->schema->module->ctx);
+        if ((rc = eval_and_expr(exp, cur_exp, cur_node, set, line))) {
+            set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+            return rc;
+        }
+
+        /* eval - just get boolean value actually */
+        set_cast(set, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
+        if (set->value.bool) {
+            is_true = 1;
         }
     }
 
+    set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
     return EXIT_SUCCESS;
 }
 
