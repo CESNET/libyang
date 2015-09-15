@@ -3964,13 +3964,9 @@ static int eval_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
-static int
-eval_literal(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyxp_set *set, struct ly_ctx *ctx, uint32_t line)
+static void
+eval_literal(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyxp_set *set, struct ly_ctx *ctx)
 {
-    if (check_token(exp, *cur_exp, LYXP_TOKEN_LITERAL, line)) {
-        return -1;
-    }
-
     if (set) {
         if (exp->tok_len[*cur_exp] == 2) {
             set_fill_string(set, "", 0, ctx);
@@ -3978,9 +3974,9 @@ eval_literal(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyxp_set *set, str
             set_fill_string(set, &exp->expr[exp->expr_pos[*cur_exp] + 1], exp->tok_len[*cur_exp] - 2, ctx);
         }
     }
-    LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+    LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
     ++(*cur_exp);
-    return EXIT_SUCCESS;
 }
 
 /**
@@ -4002,12 +3998,7 @@ static int
 eval_node_test(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_node, int attr_axis, int all_desc,
                struct lyxp_set *set, uint32_t line)
 {
-    int nodetype_exp, rc;
-    struct lyxp_set *set_literal = NULL;
-
-    if (check_token(exp, *cur_exp, LYXP_TOKEN_NONE, line)) {
-        return -1;
-    }
+    int rc;
 
     switch (exp->tokens[*cur_exp]) {
     case LYXP_TOKEN_NAMETEST:
@@ -4028,47 +4019,42 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_no
             return rc;
         }
 
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
         break;
+
     case LYXP_TOKEN_NODETYPE:
-        nodetype_exp = (signed)*cur_exp;
-
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
-        ++(*cur_exp);
-
-        /* '(' */
-        if (check_token(exp, *cur_exp, LYXP_TOKEN_PAR1, line)) {
-            return -1;
-        }
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
-        ++(*cur_exp);
-
-        /* ')' */
-        if (check_token(exp, *cur_exp, LYXP_TOKEN_PAR2, line)) {
-            set_free(set_literal, cur_node->schema->module->ctx);
-            return -1;
-        }
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
-        ++(*cur_exp);
-
         if (set) {
-            assert(exp->tok_len[nodetype_exp] == 4);
-            if (!strncmp(&exp->expr[exp->expr_pos[nodetype_exp]], "node", 4)) {
+            assert(exp->tok_len[*cur_exp] == 4);
+            if (!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "node", 4)) {
                 if (xpath_node(NULL, 0, NULL, set, line)) {
                     return -1;
                 }
             } else {
-                assert(!strncmp(&exp->expr[exp->expr_pos[nodetype_exp]], "text", 4));
+                assert(!strncmp(&exp->expr[exp->expr_pos[*cur_exp]], "text", 4));
                 if (xpath_text(NULL, 0, NULL, set, line)) {
                     return -1;
                 }
             }
         }
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+        ++(*cur_exp);
 
+        /* '(' */
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+        ++(*cur_exp);
+
+        /* ')' */
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+        ++(*cur_exp);
         break;
+
     default:
-        LOGVAL(LYE_XPATH_INTOK, line, print_token(exp->tokens[*cur_exp]), &exp->expr[exp->expr_pos[*cur_exp]]);
+        LOGINT;
         return -1;
     }
 
@@ -4086,14 +4072,14 @@ static int
 eval_predicate(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_node, struct lyxp_set *set,
                uint32_t line)
 {
-    uint16_t i, orig_i, orig_exp;
+    uint16_t i, orig_i, orig_exp, brack2_exp;
+    uint8_t **pred_repeat, rep_size;
     int rc;
     struct lyxp_set *set2, *orig_set;
 
-    if (check_token(exp, *cur_exp, LYXP_TOKEN_BRACK1, line)) {
-        return -1;
-    }
-    LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+    /* '[' */
+    LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
     ++(*cur_exp);
 
     if (!set) {
@@ -4149,10 +4135,9 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_no
         set_free(set2, cur_node->schema->module->ctx);
     }
 
-    if (check_token(exp, *cur_exp, LYXP_TOKEN_BRACK2, line)) {
-        return -1;
-    }
-    LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+    /* ']' */
+    LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
     ++(*cur_exp);
 
     return EXIT_SUCCESS;
@@ -4179,10 +4164,6 @@ eval_relative_location_path(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd
 {
     int attr_axis, rc;
 
-    if (check_token(exp, *cur_exp, LYXP_TOKEN_NONE, line)) {
-        return -1;
-    }
-
     goto step;
     do {
         /* evaluate '/' or '//' */
@@ -4192,12 +4173,10 @@ eval_relative_location_path(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd
             assert(exp->tok_len[*cur_exp] == 2);
             all_desc = 1;
         }
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
 
-        if (check_token(exp, *cur_exp, LYXP_TOKEN_NONE, line)) {
-            return -1;
-        }
 step:
         /* Step */
         attr_axis = 0;
@@ -4207,7 +4186,8 @@ step:
             if ((rc = moveto_self(set, all_desc, cur_node, line))) {
                 return rc;
             }
-            LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+            LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
             ++(*cur_exp);
             break;
         case LYXP_TOKEN_DDOT:
@@ -4215,23 +4195,17 @@ step:
             if ((rc = moveto_parent(set, all_desc, cur_node, line))) {
                 return rc;
             }
-            LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+            LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
             ++(*cur_exp);
             break;
 
         case LYXP_TOKEN_AT:
             /* evaluate '@' */
             attr_axis = 1;
-            LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+            LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
             ++(*cur_exp);
-
-            if (check_token(exp, *cur_exp, LYXP_TOKEN_NONE, line)) {
-                return -1;
-            }
-            if ((exp->tokens[*cur_exp] != LYXP_TOKEN_NAMETEST) && (exp->tokens[*cur_exp] != LYXP_TOKEN_NODETYPE)) {
-                LOGVAL(LYE_XPATH_INTOK, line, print_token(exp->tokens[*cur_exp]), &exp->expr[exp->expr_pos[*cur_exp]]);
-                return -1;
-            }
 
             /* fall through */
         case LYXP_TOKEN_NAMETEST:
@@ -4246,7 +4220,7 @@ step:
             }
             break;
         default:
-            LOGVAL(LYE_XPATH_INTOK, line, print_token(exp->tokens[*cur_exp]), &exp->expr[exp->expr_pos[*cur_exp]]);
+            LOGINT;
             return -1;
         }
     } while ((exp->used > *cur_exp) && (exp->tokens[*cur_exp] == LYXP_TOKEN_OPERATOR_PATH));
@@ -4273,10 +4247,6 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd
 {
     int rc, all_desc;
 
-    if (check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_PATH, line)) {
-        return -1;
-    }
-
     if (set) {
         /* no matter what tokens follow, we need to be at the root */
         if ((rc = moveto_root(set, cur_node))) {
@@ -4288,11 +4258,11 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd
     if (exp->tok_len[*cur_exp] == 1) {
         /* evaluate '/' - deferred */
         all_desc = 0;
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
 
-        if (check_token(exp, *cur_exp, LYXP_TOKEN_NONE, UINT_MAX)) {
-            /* TODO this should be a kind of a new root or something weird */
+        if (exp_check_token(exp, *cur_exp, LYXP_TOKEN_NONE, UINT_MAX)) {
             return EXIT_SUCCESS;
         }
         switch (exp->tokens[*cur_exp]) {
@@ -4305,7 +4275,6 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd
                 return rc;
             }
         default:
-            /* TODO weird root again */
             break;
         }
 
@@ -4313,7 +4282,8 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd
     } else {
         /* evaluate '//' - deferred so as not to waste memory by remembering all the nodes */
         all_desc = 1;
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
 
         if ((rc = eval_relative_location_path(exp, cur_exp, cur_node, all_desc, set, line))) {
@@ -4345,10 +4315,6 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cu
     int (*xpath_func)(struct lyxp_set *, uint16_t, struct lyd_node *, struct lyxp_set *, uint32_t) = NULL;
     uint16_t arg_count = 0, i;
     struct lyxp_set *args = NULL;
-
-    if (check_token(exp, *cur_exp, LYXP_TOKEN_FUNCNAME, line)) {
-        return -1;
-    }
 
     if (set) {
         /* FunctionName */
@@ -4451,20 +4417,16 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cu
         }
     }
 
-    LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+    LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
     ++(*cur_exp);
 
     /* '(' */
-    if (check_token(exp, *cur_exp, LYXP_TOKEN_PAR1, line)) {
-        return -1;
-    }
-    LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+    LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
     ++(*cur_exp);
 
     /* ( Expr ( ',' Expr )* )? */
-    if (check_token(exp, *cur_exp, LYXP_TOKEN_NONE, line)) {
-        return -1;
-    }
     if (exp->tokens[*cur_exp] != LYXP_TOKEN_PAR2) {
         if (set) {
             arg_count = 1;
@@ -4475,7 +4437,8 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cu
         }
     }
     while ((exp->used > *cur_exp) && (exp->tokens[*cur_exp] == LYXP_TOKEN_COMMA)) {
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
 
         if (set) {
@@ -4494,11 +4457,8 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cu
     }
 
     /* ')' */
-    if (check_token(exp, *cur_exp, LYXP_TOKEN_PAR2, line)) {
-        rc = -1;
-        goto cleanup;
-    }
-    LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+    LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
     ++(*cur_exp);
 
     if (set) {
@@ -4533,10 +4493,6 @@ eval_number(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *any_node,
     long double num;
     char *endptr;
 
-    if (check_token(exp, *cur_exp, LYXP_TOKEN_NUMBER, line)) {
-        return -1;
-    }
-
     if (set) {
         errno = 0;
         num = strtold(&exp->expr[exp->expr_pos[*cur_exp]], &endptr);
@@ -4553,7 +4509,8 @@ eval_number(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *any_node,
         set_fill_number(set, num, any_node->schema->module->ctx);
     }
 
-    LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+    LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
     ++(*cur_exp);
     return EXIT_SUCCESS;
 }
@@ -4581,27 +4538,28 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_no
 {
     int rc, all_desc;
 
-    if (check_token(exp, *cur_exp, LYXP_TOKEN_NONE, line)) {
-        return -1;
-    }
-
     switch (exp->tokens[*cur_exp]) {
     case LYXP_TOKEN_PAR1:
-        /* '(' Expr ')' Predicate* */
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+        /* '(' Expr ')' */
+
+        /* '(' */
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
 
+        /* Expr */
         if ((rc = eval_expr(exp, cur_exp, cur_node, set, line))) {
             return rc;
         }
 
-        if (check_token(exp, *cur_exp, LYXP_TOKEN_PAR2, line)) {
-            return -1;
-        }
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+        /* ')' */
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
+
         goto predicate;
         break;
+
     case LYXP_TOKEN_DOT:
     case LYXP_TOKEN_DDOT:
     case LYXP_TOKEN_AT:
@@ -4612,33 +4570,39 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_no
             return rc;
         }
         break;
+
     case LYXP_TOKEN_FUNCNAME:
         /* FunctionCall */
         if ((rc = eval_function_call(exp, cur_exp, cur_node, set, line))) {
             return rc;
         }
+
         goto predicate;
         break;
+
     case LYXP_TOKEN_OPERATOR_PATH:
         /* AbsoluteLocationPath */
         if ((rc = eval_absolute_location_path(exp, cur_exp, cur_node, set, line))) {
             return rc;
         }
         break;
+
     case LYXP_TOKEN_LITERAL:
         /* Literal */
-        if ((rc = eval_literal(exp, cur_exp, set, cur_node->schema->module->ctx, line))) {
-            return rc;
-        }
+        eval_literal(exp, cur_exp, set, cur_node->schema->module->ctx);
+
         goto predicate;
         break;
+
     case LYXP_TOKEN_NUMBER:
         /* Number */
         if ((rc = eval_number(exp, cur_exp, cur_node, set, line))) {
             return rc;
         }
+
         goto predicate;
         break;
+
     default:
         LOGVAL(LYE_XPATH_INTOK, line, print_token(exp->tokens[*cur_exp]), &exp->expr[exp->expr_pos[*cur_exp]]);
         return -1;
@@ -4665,7 +4629,8 @@ predicate:
             all_desc = 1;
         }
 
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
 
         if ((rc = eval_relative_location_path(exp, cur_exp, cur_node, all_desc, set, line))) {
@@ -4700,7 +4665,7 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_n
 
     /* ('-')* */
     unary_minus = -1;
-    while (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_MATH, UINT_MAX)
+    while (!exp_check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_MATH, UINT_MAX)
             && (exp->expr[exp->expr_pos[*cur_exp]] == '-')) {
         if (unary_minus == -1) {
             unary_minus = *cur_exp;
@@ -4708,7 +4673,8 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_n
             /* double '-' makes '+', ignore */
             unary_minus = -1;
         }
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
     }
 
@@ -4731,7 +4697,8 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_n
 
     /* ('|' PathExpr)* */
     while (!check_token(exp, *cur_exp, LYXP_TOKEN_OPERATOR_UNI, UINT_MAX)) {
-        LOGDBG("XPATH: %s %sparsed %s[%u]", __func__, (set ? "" : "pre"), print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
         ++(*cur_exp);
 
         prev_exp = *cur_exp;
