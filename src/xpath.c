@@ -3524,7 +3524,7 @@ moveto_attr(const char *qname, uint16_t qname_len, struct lyd_node *any_node, st
     return EXIT_SUCCESS;
 }
 
-/* '|', result is in set1, set2 is freed */
+/* '|' result is in set1, set2 is emptied */
 static int
 moveto_union(struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *any_node, uint32_t line)
 {
@@ -3541,7 +3541,7 @@ moveto_union(struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *any_
 
     if (set1->type == LYXP_SET_EMPTY) {
         memcpy(set1, set2, sizeof *set1);
-        free(set2);
+        set2->type = LYXP_SET_EMPTY;
         return EXIT_SUCCESS;
     }
 
@@ -3556,7 +3556,7 @@ moveto_union(struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *any_
     memcpy(&set1->value.nodes[set1->used], set2->value.nodes, set2->used * sizeof *set2->value.nodes);
     memcpy(&set1->node_type[set1->used], set2->node_type, set2->used * sizeof *set2->node_type);
     set1->used += set2->used;
-    set_free(set2, any_node->schema->module->ctx);
+    set2->type = LYXP_SET_EMPTY;
 
     /* sort, remove duplicates */
     set_sort(set1, any_node);
@@ -3871,7 +3871,6 @@ moveto_op_comp(const char *op, struct lyxp_set *set1, struct lyxp_set *set2, str
             set_fill_boolean(set1, 0, any_node->schema->module->ctx);
         }
 
-        set_free(set2, any_node->schema->module->ctx);
         return;
     }
 
@@ -3944,8 +3943,6 @@ moveto_op_math(const char *op, struct lyxp_set *set1, struct lyxp_set *set2, str
         LOGINT;
         break;
     }
-
-    set_free(set2, any_node->schema->module->ctx);
 }
 
 /*
