@@ -54,6 +54,7 @@
 /* TODO
  *
  * handle special XPath numbers
+ * boolean set for predicates
  */
 
 /*
