@@ -971,12 +971,69 @@ get_attr_pos(struct lyd_attr *attr, struct lyd_node *parent)
     return pos;
 }
 
-/* TODO select sort -> bubble sort */
+static int
+set_sort_compare(uint16_t first_node_pos, uint16_t first_attr_pos, uint16_t second_node_pos, uint16_t second_attr_pos,
+                 uint16_t first_idx, uint16_t second_idx, struct lyxp_set *set)
+{
+    if (first_node_pos < second_node_pos) {
+        return -1;
+    }
+
+    if (first_node_pos > second_node_pos) {
+        return 1;
+    }
+
+    /* node positions are equal, the fun case */
+
+    /* 1st ELEM - == - 2nd TEXT, 1st TEXT - == - 2nd ELEM */
+    /* special case since text nodes are actually saved as their parents */
+    if ((set->value.nodes[first_idx] == set->value.nodes[second_idx])
+            && (set->node_type[first_idx] != set->node_type[second_idx])) {
+        if (set->node_type[first_idx] == LYXP_NODE_ELEM) {
+            assert(set->node_type[second_idx] == LYXP_NODE_TEXT);
+            return -1;
+        } else {
+            assert((set->node_type[first_idx] == LYXP_NODE_TEXT) && (set->node_type[second_idx] == LYXP_NODE_ELEM));
+            return 1;
+        }
+    }
+
+    /* 1st ROOT - 2nd ROOT, 1st ELEM - 2nd ELEM, 1st TEXT - 2nd TEXT, 1st ATTR - =pos= - 2nd ATTR */
+    /* check for duplicates */
+    if (set->value.nodes[first_idx] == set->value.nodes[second_idx]) {
+        assert((set->node_type[first_idx] == set->node_type[second_idx])
+                && ((set->node_type[first_idx] != LYXP_NODE_ATTR) || (first_attr_pos == second_attr_pos)));
+        return 0;
+    }
+
+    /* 1st ELEM - 2nd TEXT, 1st ELEM - any pos - 2nd ATTR */
+    /* elem is always first, 2nd node is after it */
+    if (set->node_type[first_idx] == LYXP_NODE_ELEM) {
+        assert(set->node_type[second_idx] != LYXP_NODE_ELEM);
+        return -1;
+    }
+
+    /* 1st TEXT - 2nd ELEM, 1st TEXT - any pos - 2nd ATTR, 1st ATTR - any pos - 2nd ELEM, 1st ATTR - >pos> - 2nd ATTR */
+    /* 2nd is before 1st */
+    if (((set->node_type[first_idx] == LYXP_NODE_TEXT)
+            && ((set->node_type[second_idx] == LYXP_NODE_ELEM) || (set->node_type[second_idx] == LYXP_NODE_ATTR)))
+            || ((set->node_type[first_idx] == LYXP_NODE_ATTR) && (set->node_type[second_idx] == LYXP_NODE_ELEM))
+            || (((set->node_type[first_idx] == set->node_type[second_idx]) == LYXP_NODE_ATTR)
+            && (first_attr_pos > second_attr_pos))) {
+        return 1;
+    }
+
+    /* 1st ATTR - any pos - 2nd TEXT, 1st ATTR <pos< - 2nd ATTR */
+    /* 2nd is after 1st */
+    return -1;
+}
+
+/* ctx pos aware TODO optimizations */
 static int
 set_sort(struct lyxp_set *set, struct lyd_node *any_node)
 {
-    uint16_t min, i, j, min_node_pos, node_pos, min_attr_pos, attr_pos;
-    int ret = EXIT_SUCCESS;
+    uint16_t i, j, node_pos1, node_pos2, attr_pos1, attr_pos2;
+    int ret = EXIT_SUCCESS, cmp, inverted;
     struct lyd_node *tmp_node;
     enum lyxp_node_type tmp_type;
 
@@ -987,122 +1044,79 @@ set_sort(struct lyxp_set *set, struct lyd_node *any_node)
     LOGDBG("XPATH: SORT BEGIN");
     debug_print_set(set, any_node);
 
-    /* make cur_node into root */
+    /* make any_node into root */
     for (; any_node->parent; any_node = any_node->parent);
     assert(any_node->prev == any_node);
 
-    for (i = 0; i < set->used - 1; ++i) {
+    for (i = 0; i < set->used; ++i) {
+        inverted = 0;
 
-        /* set the first node as the min at the beginning */
-        if (set->node_type[i] == LYXP_NODE_ATTR) {
-            tmp_node = lyd_attr_parent(any_node, set->value.attrs[i]);
+        /* first node position */
+        if (set->node_type[0] == LYXP_NODE_ATTR) {
+            tmp_node = lyd_attr_parent(any_node, set->value.attrs[0]);
             if (!tmp_node) {
                 LOGINT;
                 return -1;
             }
-            min_node_pos = get_node_pos(tmp_node);
-            min_attr_pos = get_attr_pos(set->value.attrs[i], tmp_node);
+            node_pos1 = get_node_pos(tmp_node);
+            attr_pos1 = get_attr_pos(set->value.attrs[0], tmp_node);
         } else {
-            min_node_pos = get_node_pos(set->value.nodes[i]);
+            node_pos1 = get_node_pos(set->value.nodes[0]);
         }
-        min = i;
 
-        for (j = i + 1; j < set->used; ++j) {
-            /* get position */
+        for (j = 1; j < set->used; ++j) {
+            /* another node position */
             if (set->node_type[j] == LYXP_NODE_ATTR) {
                 tmp_node = lyd_attr_parent(any_node, set->value.attrs[j]);
                 if (!tmp_node) {
                     LOGINT;
                     return -1;
                 }
-                node_pos = get_node_pos(tmp_node);
-                attr_pos = get_attr_pos(set->value.attrs[j], tmp_node);
-            } else {
-                node_pos = get_node_pos(set->value.nodes[j]);
-            }
 
-            /*
-             * compare with the current min
-             */
-            if (min_node_pos < node_pos) {
-                continue;
-            }
-
-            if (min_node_pos > node_pos) {
-                min_node_pos = node_pos;
-                if (set->node_type[j] == LYXP_NODE_ATTR) {
-                    min_attr_pos = attr_pos;
-                }
-                min = j;
-                continue;
-            }
-
-            /* node positions are equal, the fun case */
-
-            /* min ELEM - == - cur TEXT, min TEXT - == - cur ELEM */
-            /* special case since text nodes are actually saved as their parents */
-            if ((set->value.nodes[min] == set->value.nodes[j])
-                    && (set->node_type[min] != set->node_type[j])) {
-                if (set->node_type[min] == LYXP_NODE_ELEM) {
-                    assert(set->node_type[j] == LYXP_NODE_TEXT);
-                    continue;
+                if (inverted) {
+                    node_pos1 = get_node_pos(tmp_node);
+                    attr_pos1 = get_attr_pos(set->value.attrs[j], tmp_node);
                 } else {
-                    assert((set->node_type[min] == LYXP_NODE_TEXT) && (set->node_type[j] == LYXP_NODE_ELEM));
-                    min_node_pos = node_pos;
-                    if (set->node_type[j] == LYXP_NODE_ATTR) {
-                        min_attr_pos = attr_pos;
-                    }
-                    min = j;
-                    continue;
+                    node_pos2 = get_node_pos(tmp_node);
+                    attr_pos2 = get_attr_pos(set->value.attrs[j], tmp_node);
+                }
+            } else {
+                if (inverted) {
+                    node_pos1 = get_node_pos(set->value.nodes[j]);
+                } else {
+                    node_pos2 = get_node_pos(set->value.nodes[j]);
                 }
             }
 
-            /* min ROOT - cur ROOT, min ELEM - cur ELEM, min TEXT - cur TEXT, min ATTR - =pos= - cur ATTR */
-            /* check for duplicates */
-            if (set->value.nodes[min] == set->value.nodes[j]) {
-                assert((set->node_type[min] == set->node_type[j])
-                       && ((set->node_type[min] != LYXP_NODE_ATTR) || (min_attr_pos == attr_pos)));
-                /* removing it now would screw up loops, duplicate removal should be performed after sotring */
-                continue;
+            /* compare node positions */
+            if (inverted) {
+                cmp = set_sort_compare(node_pos1, attr_pos1, node_pos2, attr_pos2, j, j - 1, set);
+            } else {
+                cmp = set_sort_compare(node_pos1, attr_pos1, node_pos2, attr_pos2, j - 1, j, set);
             }
 
-            /* min ELEM - cur TEXT, min ELEM - any pos - cur ATTR */
-            /* elem is always first, cur node is after it */
-            if (set->node_type[min] == LYXP_NODE_ELEM) {
-                assert(set->node_type[j] != LYXP_NODE_ELEM);
-                continue;
-            }
+            /* swap if needed */
+            if ((inverted && (cmp < 0)) || (!inverted && (cmp > 0))) {
+                ret = EXIT_FAILURE;
 
-            /* min TEXT - cur ELEM, min TEXT - any pos - cur ATTR, min ATTR - any pos - cur ELEM, min ATTR - >pos> - cur ATTR */
-            /* cur is before min */
-            if (((set->node_type[min] == LYXP_NODE_TEXT)
-                    && ((set->node_type[j] == LYXP_NODE_ELEM) || (set->node_type[j] == LYXP_NODE_ATTR)))
-                    || ((set->node_type[min] == LYXP_NODE_ATTR) && (set->node_type[j] == LYXP_NODE_ELEM))
-                    || (((set->node_type[min] == set->node_type[j]) == LYXP_NODE_ATTR)
-                    && (min_attr_pos > attr_pos))) {
-                min_node_pos = node_pos;
-                if (set->node_type[j] == LYXP_NODE_ATTR) {
-                    min_attr_pos = attr_pos;
+                tmp_node = set->value.nodes[j - 1];
+                tmp_type = set->node_type[j - 1];
+
+                set->value.nodes[j - 1] = set->value.nodes[j];
+                set->node_type[j - 1] = set->node_type[j];
+
+                set->value.nodes[j] = tmp_node;
+                set->node_type[j] = tmp_type;
+
+                if (set->pos == j) {
+                    set->pos = j - 1;
+                } else if (set->pos == j - 1) {
+                    set->pos = j;
                 }
-                min = j;
             }
 
-            /* min ATTR - any pos - cur TEXT, min ATTR <pos< - cur ATTR */
-            /* cur is after min */
-        }
-
-        /* on i-th position is not the min, swap */
-        if (min > i) {
-            ret = EXIT_FAILURE;
-
-            tmp_node = set->value.nodes[i];
-            tmp_type = set->node_type[i];
-
-            set->value.nodes[i] = set->value.nodes[min];
-            set->node_type[i] = set->node_type[min];
-
-            set->value.nodes[min] = tmp_node;
-            set->node_type[min] = tmp_type;
+            /* whether node_pos1 should be smaller than node_pos2 or the other way around */
+            inverted = !inverted;
         }
     }
 
