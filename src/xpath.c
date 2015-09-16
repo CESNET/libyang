@@ -805,14 +805,11 @@ set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct ly_ctx *ctx)
             free(set->value.nodes);
             free(set->node_type);
 
-            if (set->used) {
-                set->value.bool = 1;
-            } else {
-                set->value.bool = 0;
-            }
+            assert(set->used);
+            set->value.bool = 1;
             break;
         case LYXP_SET_EMPTY:
-            /* all we need is to change the type */
+            set->value.bool = 0;
             break;
         default:
             LOGINT;
