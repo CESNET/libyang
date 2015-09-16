@@ -1459,7 +1459,7 @@ exp_repeat_push(struct lyxp_expr *exp, uint16_t exp_idx, uint16_t repeat_op_idx)
 }
 
 /**
- * @brief Reparses Predicate. Logs directly on error.
+ * @brief Reparse Predicate. Logs directly on error.
  *
  * [6] Predicate ::= '[' Expr ']'
  *
@@ -1490,7 +1490,7 @@ reparse_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
 }
 
 /**
- * @brief Reparses RelativeLocationPath. Logs directly on error.
+ * @brief Reparse RelativeLocationPath. Logs directly on error.
  *
  * [3] RelativeLocationPath ::= Step | RelativeLocationPath '/' Step | RelativeLocationPath '//' Step
  * [4] Step ::= '@'? NodeTest Predicate* | '.' | '..'
@@ -1578,7 +1578,7 @@ reparse_predicate:
 }
 
 /**
- * @brief Reparses AbsoluteLocationPath. Logs directly on error.
+ * @brief Reparse AbsoluteLocationPath. Logs directly on error.
  *
  * [2] AbsoluteLocationPath ::= '/' RelativeLocationPath? | '//' RelativeLocationPath
  *
@@ -1630,7 +1630,7 @@ reparse_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_
 }
 
 /**
- * @brief Reparses FunctionCall. Logs directly on error.
+ * @brief Reparse FunctionCall. Logs directly on error.
  *
  * [8] FunctionCall ::= FunctionName '(' ( Expr ( ',' Expr )* )? ')'
  *
@@ -1681,7 +1681,7 @@ reparse_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
 }
 
 /**
- * @brief Reparses PathExpr. Logs directly on error.
+ * @brief Reparse PathExpr. Logs directly on error.
  *
  * [9] PathExpr ::= LocationPath | PrimaryExpr Predicate*
  *                 | PrimaryExpr Predicate* '/' RelativeLocationPath
@@ -1780,7 +1780,7 @@ predicate:
 }
 
 /**
- * @brief Reparses UnaryExpr. Logs directly on error.
+ * @brief Reparse UnaryExpr. Logs directly on error.
  *
  * [16] UnaryExpr ::= UnionExpr | '-' UnaryExpr
  * [17] UnionExpr ::= PathExpr | UnionExpr '|' PathExpr
@@ -1823,7 +1823,7 @@ reparse_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
 }
 
 /**
- * @brief Reparses AdditiveExpr. Logs directly on error.
+ * @brief Reparse AdditiveExpr. Logs directly on error.
  *
  * [14] AdditiveExpr ::= MultiplicativeExpr
  *                     | AdditiveExpr '+' MultiplicativeExpr
@@ -1879,7 +1879,7 @@ reparse_multiplicative_expr:
 }
 
 /**
- * @brief Reparses EqualityExpr. Logs directly on error.
+ * @brief Reparse EqualityExpr. Logs directly on error.
  *
  * [12] EqualityExpr ::= RelationalExpr | EqualityExpr '=' RelationalExpr
  *                     | EqualityExpr '!=' RelationalExpr
@@ -1934,7 +1934,7 @@ reparse_additive_expr:
 }
 
 /**
- * @brief Reparses Expr. Logs directly on error.
+ * @brief Reparse Expr. Logs directly on error.
  *
  * [10] Expr ::= AndExpr | Expr 'or' AndExpr
  * [11] AndExpr ::= EqualityExpr | AndExpr 'and' EqualityExpr
@@ -1982,7 +1982,7 @@ reparse_equality_expr:
 }
 
 /**
- * @brief Parses NCName.
+ * @brief Parse NCName.
  *
  * @param[in] ncname Name to parse.
  *
@@ -2012,7 +2012,7 @@ parse_ncname(const char *ncname)
 }
 
 /**
- * @brief Parses an XPath expression into a structure of tokens.
+ * @brief Parse an XPath expression into a structure of tokens.
  *        Logs directly.
  *
  * http://www.w3.org/TR/1999/REC-xpath-19991116/ section 3.7
