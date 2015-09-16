@@ -4119,14 +4119,14 @@ static int
 eval_predicate(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_node, struct lyxp_set *set,
                uint32_t line)
 {
-    uint16_t i, orig_i, orig_exp, brack2_exp;
+    uint16_t i, j, orig_i, orig_exp, brack2_exp;
     uint8_t **pred_repeat, rep_size;
     int rc;
     struct lyxp_set *set2, *orig_set;
 
     /* '[' */
     LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+           print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
     ++(*cur_exp);
 
     if (!set) {
@@ -4135,13 +4135,40 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_no
         orig_set = set_copy(set, cur_node->schema->module->ctx);
         orig_exp = *cur_exp;
 
+        /* find the predicate end */
+        for (brack2_exp = orig_exp; exp->tokens[brack2_exp] != LYXP_TOKEN_BRACK2; ++brack2_exp);
+
+        /* copy predicate repeats, since they get deleted each time */
+        pred_repeat = calloc(brack2_exp - orig_exp, sizeof *pred_repeat);
+        for (j = 0; j < brack2_exp - orig_exp; ++j) {
+            if (exp->repeat[orig_exp + j]) {
+                for (rep_size = 0; exp->repeat[orig_exp + j][rep_size]; ++rep_size);
+                ++rep_size;
+                pred_repeat[j] = malloc(rep_size * sizeof **pred_repeat);
+                memcpy(pred_repeat[j], exp->repeat[orig_exp + j], rep_size * sizeof **pred_repeat);
+            }
+        }
+
         i = 0;
         for (orig_i = 0; orig_i < orig_set->used; ++orig_i) {
             set2 = set_copy(orig_set, cur_node->schema->module->ctx);
             set2->pos = orig_i + 1;
             *cur_exp = orig_exp;
 
+            /* replace repeats */
+            for (j = 0; j < brack2_exp - orig_exp; ++j) {
+                if (pred_repeat[j]) {
+                    for (rep_size = 0; pred_repeat[j][rep_size]; ++rep_size);
+                    ++rep_size;
+                    memcpy(exp->repeat[orig_exp + j], pred_repeat[j], rep_size * sizeof **pred_repeat);
+                }
+            }
+
             if ((rc = eval_expr(exp, cur_exp, cur_node, set2, line))) {
+                for (j = 0; j < brack2_exp - orig_exp; ++j) {
+                    free(pred_repeat[j]);
+                }
+                free(pred_repeat);
                 set_free(set2, cur_node->schema->module->ctx);
                 set_free(orig_set, cur_node->schema->module->ctx);
                 return rc;
@@ -4166,6 +4193,12 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_no
             set_free(set2, cur_node->schema->module->ctx);
         }
 
+        /* free predicate repeats */
+        for (j = 0; j < brack2_exp - orig_exp; ++j) {
+            free(pred_repeat[j]);
+        }
+        free(pred_repeat);
+
         set_free(orig_set, cur_node->schema->module->ctx);
     } else {
         set2 = set_copy(set, cur_node->schema->module->ctx);
@@ -4184,7 +4217,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *cur_exp, struct lyd_node *cur_no
 
     /* ']' */
     LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
+           print_token(exp->tokens[*cur_exp]), exp->expr_pos[*cur_exp]);
     ++(*cur_exp);
 
     return EXIT_SUCCESS;
