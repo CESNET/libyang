@@ -1222,7 +1222,7 @@ set_sort_compare(uint16_t first_node_pos, uint16_t first_attr_pos, uint16_t seco
     return -1;
 }
 
-/** TODO optimizations
+/**
  * @brief Bubble sort \p set into XPath document order.
  *        Context position aware.
  *
@@ -1267,7 +1267,7 @@ set_sort(struct lyxp_set *set, struct lyd_node *any_node)
             node_pos1 = get_node_pos(set->value.nodes[0]);
         }
 
-        for (j = 1; j < set->used; ++j) {
+        for (j = 1; j < set->used - i; ++j) {
             /* another node position */
             if (set->node_type[j] == LYXP_NODE_ATTR) {
                 tmp_node = lyd_attr_parent(any_node, set->value.attrs[j]);
