@@ -4488,7 +4488,6 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
 {
     uint16_t i, j, orig_i, orig_exp, brack2_exp;
     uint8_t **pred_repeat, rep_size;
-    int rc;
     struct lyxp_set *set2, *orig_set;
 
     /* '[' */
@@ -4531,14 +4530,14 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
                 }
             }
 
-            if ((rc = eval_expr(exp, exp_idx, cur_node, set2, line))) {
+            if (eval_expr(exp, exp_idx, cur_node, set2, line)) {
                 for (j = 0; j < brack2_exp - orig_exp; ++j) {
                     free(pred_repeat[j]);
                 }
                 free(pred_repeat);
                 set_free(set2, cur_node->schema->module->ctx);
                 set_free(orig_set, cur_node->schema->module->ctx);
-                return rc;
+                return -1;
             }
 
             /* number is a position */
@@ -4570,9 +4569,9 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
     } else {
         set2 = set_copy(set, cur_node->schema->module->ctx);
 
-        if ((rc = eval_expr(exp, exp_idx, cur_node, set2, line))) {
+        if (eval_expr(exp, exp_idx, cur_node, set2, line)) {
             set_free(set2, cur_node->schema->module->ctx);
-            return rc;
+            return -1;
         }
 
         set_cast(set2, LYXP_SET_BOOLEAN, cur_node->schema->module->ctx);
@@ -4609,7 +4608,7 @@ static int
 eval_relative_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, int all_desc,
                             struct lyxp_set *set, uint32_t line)
 {
-    int attr_axis, rc;
+    int attr_axis;
 
     goto step;
     do {
@@ -4630,8 +4629,8 @@ step:
         switch (exp->tokens[*exp_idx]) {
         case LYXP_TOKEN_DOT:
             /* evaluate '.' */
-            if ((rc = moveto_self(set, all_desc, cur_node, line))) {
-                return rc;
+            if (moveto_self(set, all_desc, cur_node, line)) {
+                return -1;
             }
             LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
@@ -4639,8 +4638,8 @@ step:
             break;
         case LYXP_TOKEN_DDOT:
             /* evaluate '..' */
-            if ((rc = moveto_parent(set, all_desc, cur_node, line))) {
-                return rc;
+            if (moveto_parent(set, all_desc, cur_node, line)) {
+                return -1;
             }
             LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
@@ -4657,12 +4656,12 @@ step:
             /* fall through */
         case LYXP_TOKEN_NAMETEST:
         case LYXP_TOKEN_NODETYPE:
-            if ((rc = eval_node_test(exp, exp_idx, cur_node, attr_axis, all_desc, set, line))) {
-                return rc;
+            if (eval_node_test(exp, exp_idx, cur_node, attr_axis, all_desc, set, line)) {
+                return -1;
             }
             while ((exp->used > *exp_idx) && (exp->tokens[*exp_idx] == LYXP_TOKEN_BRACK1)) {
-                if ((rc = eval_predicate(exp, exp_idx, cur_node, set, line))) {
-                    return rc;
+                if (eval_predicate(exp, exp_idx, cur_node, set, line)) {
+                    return -1;
                 }
             }
             break;
@@ -4692,7 +4691,7 @@ static int
 eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node,
                             struct lyxp_set *set, uint32_t line)
 {
-    int rc, all_desc;
+    int all_desc;
 
     if (set) {
         /* no matter what tokens follow, we need to be at the root */
@@ -4716,8 +4715,8 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd
         case LYXP_TOKEN_AT:
         case LYXP_TOKEN_NAMETEST:
         case LYXP_TOKEN_NODETYPE:
-            if ((rc = eval_relative_location_path(exp, exp_idx, cur_node, all_desc, set, line))) {
-                return rc;
+            if (eval_relative_location_path(exp, exp_idx, cur_node, all_desc, set, line)) {
+                return -1;
             }
         default:
             break;
@@ -4731,8 +4730,8 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
-        if ((rc = eval_relative_location_path(exp, exp_idx, cur_node, all_desc, set, line))) {
-            return rc;
+        if (eval_relative_location_path(exp, exp_idx, cur_node, all_desc, set, line)) {
+            return -1;
         }
     }
 
@@ -4982,7 +4981,7 @@ static int
 eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
                uint32_t line)
 {
-    int rc, all_desc;
+    int all_desc;
 
     switch (exp->tokens[*exp_idx]) {
     case LYXP_TOKEN_PAR1:
@@ -4994,8 +4993,8 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         ++(*exp_idx);
 
         /* Expr */
-        if ((rc = eval_expr(exp, exp_idx, cur_node, set, line))) {
-            return rc;
+        if (eval_expr(exp, exp_idx, cur_node, set, line)) {
+            return -1;
         }
 
         /* ')' */
@@ -5012,15 +5011,15 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
     case LYXP_TOKEN_NAMETEST:
     case LYXP_TOKEN_NODETYPE:
         /* RelativeLocationPath */
-        if ((rc = eval_relative_location_path(exp, exp_idx, cur_node, 0, set, line))) {
-            return rc;
+        if (eval_relative_location_path(exp, exp_idx, cur_node, 0, set, line)) {
+            return -1;
         }
         break;
 
     case LYXP_TOKEN_FUNCNAME:
         /* FunctionCall */
-        if ((rc = eval_function_call(exp, exp_idx, cur_node, set, line))) {
-            return rc;
+        if (eval_function_call(exp, exp_idx, cur_node, set, line)) {
+            return -1;
         }
 
         goto predicate;
@@ -5028,8 +5027,8 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
 
     case LYXP_TOKEN_OPERATOR_PATH:
         /* AbsoluteLocationPath */
-        if ((rc = eval_absolute_location_path(exp, exp_idx, cur_node, set, line))) {
-            return rc;
+        if (eval_absolute_location_path(exp, exp_idx, cur_node, set, line)) {
+            return -1;
         }
         break;
 
@@ -5042,8 +5041,8 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
 
     case LYXP_TOKEN_NUMBER:
         /* Number */
-        if ((rc = eval_number(exp, exp_idx, cur_node, set, line))) {
-            return rc;
+        if (eval_number(exp, exp_idx, cur_node, set, line)) {
+            return -1;
         }
 
         goto predicate;
@@ -5059,8 +5058,8 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
 predicate:
     /* Predicate* */
     while ((exp->used > *exp_idx) && (exp->tokens[*exp_idx] == LYXP_TOKEN_BRACK1)) {
-        if ((rc = eval_predicate(exp, exp_idx, cur_node, set, line))) {
-            return rc;
+        if (eval_predicate(exp, exp_idx, cur_node, set, line)) {
+            return -1;
         }
     }
 
@@ -5079,8 +5078,8 @@ predicate:
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
-        if ((rc = eval_relative_location_path(exp, exp_idx, cur_node, all_desc, set, line))) {
-            return rc;
+        if (eval_relative_location_path(exp, exp_idx, cur_node, all_desc, set, line)) {
+            return -1;
         }
     }
 
@@ -5105,7 +5104,7 @@ static int
 eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
                 uint32_t line)
 {
-    int rc, unary_minus;
+    int unary_minus;
     uint16_t op_exp;
     struct lyxp_set orig_set, set2;
 
@@ -5137,9 +5136,9 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_n
     }
 
     /* PathExpr */
-    if ((rc = eval_path_expr(exp, exp_idx, cur_node, set, line))) {
+    if (eval_path_expr(exp, exp_idx, cur_node, set, line)) {
         set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
-        return rc;
+        return -1;
     }
 
     /* ('|' PathExpr)* */
@@ -5157,24 +5156,24 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_n
         }
 
         if (!set) {
-            if ((rc = eval_path_expr(exp, exp_idx, cur_node, NULL, line))) {
-                return rc;
+            if (eval_path_expr(exp, exp_idx, cur_node, NULL, line)) {
+                return -1;
             }
             continue;
         }
 
         set_fill_set(&set2, &orig_set, cur_node->schema->module->ctx);
-        if ((rc = eval_path_expr(exp, exp_idx, cur_node, &set2, line))) {
+        if (eval_path_expr(exp, exp_idx, cur_node, &set2, line)) {
             set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
             set_cast(&set2, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
-            return rc;
+            return -1;
         }
 
         /* eval */
-        if ((rc = moveto_union(set, &set2, cur_node, line))) {
+        if (moveto_union(set, &set2, cur_node, line)) {
             set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
             set_cast(&set2, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
-            return rc;
+            return -1;
         }
     }
 
@@ -5208,7 +5207,6 @@ static int
 eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
                          uint32_t line)
 {
-    int rc;
     uint16_t this_op, op_exp;
     struct lyxp_set orig_set, set2;
 
@@ -5226,9 +5224,9 @@ eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_no
     }
 
     /* UnaryExpr */
-    if ((rc = eval_unary_expr(exp, exp_idx, cur_node, set, line))) {
+    if (eval_unary_expr(exp, exp_idx, cur_node, set, line)) {
         set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
-        return rc;
+        return -1;
     }
 
     /* ('*' / 'div' / 'mod' UnaryExpr)* */
@@ -5249,17 +5247,17 @@ eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_no
         }
 
         if (!set) {
-            if ((rc = eval_unary_expr(exp, exp_idx, cur_node, NULL, line))) {
-                return rc;
+            if (eval_unary_expr(exp, exp_idx, cur_node, NULL, line)) {
+                return -1;
             }
             continue;
         }
 
         set_fill_set(&set2, &orig_set, cur_node->schema->module->ctx);
-        if ((rc = eval_unary_expr(exp, exp_idx, cur_node, &set2, line))) {
+        if (eval_unary_expr(exp, exp_idx, cur_node, &set2, line)) {
             set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
             set_cast(&set2, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
-            return rc;
+            return -1;
         }
 
         /* eval */
@@ -5290,7 +5288,6 @@ static int
 eval_additive_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
                    uint32_t line)
 {
-    int rc;
     uint16_t this_op, op_exp;
     struct lyxp_set orig_set, set2;
 
@@ -5308,9 +5305,9 @@ eval_additive_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
     }
 
     /* MultiplicativeExpr */
-    if ((rc = eval_multiplicative_expr(exp, exp_idx, cur_node, set, line))) {
+    if (eval_multiplicative_expr(exp, exp_idx, cur_node, set, line)) {
         set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
-        return rc;
+        return -1;
     }
 
     /* ('+' / '-' MultiplicativeExpr)* */
@@ -5331,17 +5328,17 @@ eval_additive_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
         }
 
         if (!set) {
-            if ((rc = eval_multiplicative_expr(exp, exp_idx, cur_node, NULL, line))) {
-                return rc;
+            if (eval_multiplicative_expr(exp, exp_idx, cur_node, NULL, line)) {
+                return -1;
             }
             continue;
         }
 
         set_fill_set(&set2, &orig_set, cur_node->schema->module->ctx);
-        if ((rc = eval_multiplicative_expr(exp, exp_idx, cur_node, &set2, line))) {
+        if (eval_multiplicative_expr(exp, exp_idx, cur_node, &set2, line)) {
             set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
             set_cast(&set2, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
-            return rc;
+            return -1;
         }
 
         /* eval */
@@ -5374,7 +5371,6 @@ static int
 eval_relational_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
                      uint32_t line)
 {
-    int rc;
     uint16_t this_op, op_exp;
     struct lyxp_set orig_set, set2;
 
@@ -5392,9 +5388,9 @@ eval_relational_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *
     }
 
     /* AdditiveExpr */
-    if ((rc = eval_additive_expr(exp, exp_idx, cur_node, set, line))) {
+    if (eval_additive_expr(exp, exp_idx, cur_node, set, line)) {
         set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
-        return rc;
+        return -1;
     }
 
     /* ('<' / '>' / '<=' / '>=' AdditiveExpr)* */
@@ -5415,17 +5411,17 @@ eval_relational_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *
         }
 
         if (!set) {
-            if ((rc = eval_relational_expr(exp, exp_idx, cur_node, NULL, line))) {
-                return rc;
+            if (eval_relational_expr(exp, exp_idx, cur_node, NULL, line)) {
+                return -1;
             }
             continue;
         }
 
         set_fill_set(&set2, &orig_set, cur_node->schema->module->ctx);
-        if ((rc = eval_additive_expr(exp, exp_idx, cur_node, &set2, line))) {
+        if (eval_additive_expr(exp, exp_idx, cur_node, &set2, line)) {
             set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
             set_cast(&set2, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
-            return rc;
+            return -1;
         }
 
         /* eval */
@@ -5455,7 +5451,6 @@ static int
 eval_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
                    uint32_t line)
 {
-    int rc;
     uint16_t this_op, op_exp;
     struct lyxp_set orig_set, set2;
 
@@ -5473,9 +5468,9 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
     }
 
     /* RelationalExpr */
-    if ((rc = eval_relational_expr(exp, exp_idx, cur_node, set, line))) {
+    if (eval_relational_expr(exp, exp_idx, cur_node, set, line)) {
         set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
-        return rc;
+        return -1;
     }
 
     /* ('=' / '!=' RelationalExpr)* */
@@ -5496,17 +5491,17 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
         }
 
         if (!set) {
-            if ((rc = eval_relational_expr(exp, exp_idx, cur_node, NULL, line))) {
-                return rc;
+            if (eval_relational_expr(exp, exp_idx, cur_node, NULL, line)) {
+                return -1;
             }
             continue;
         }
 
         set_fill_set(&set2, &orig_set, cur_node->schema->module->ctx);
-        if ((rc = eval_relational_expr(exp, exp_idx, cur_node, &set2, line))) {
+        if (eval_relational_expr(exp, exp_idx, cur_node, &set2, line)) {
             set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
             set_cast(&set2, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
-            return rc;
+            return -1;
         }
 
         /* eval */
@@ -5534,7 +5529,7 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
 static int
 eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
 {
-    int rc, is_false = 0;
+    int is_false = 0;
     uint16_t op_exp;
     struct lyxp_set orig_set;
 
@@ -5550,9 +5545,9 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_nod
     }
 
     /* EqualityExpr */
-    if ((rc = eval_equality_expr(exp, exp_idx, cur_node, set, line))) {
+    if (eval_equality_expr(exp, exp_idx, cur_node, set, line)) {
         set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
-        return rc;
+        return -1;
     }
 
     /* cast to boolean, we know that will be the final result */
@@ -5583,9 +5578,9 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_nod
         }
 
         set_fill_set(set, &orig_set, cur_node->schema->module->ctx);
-        if ((rc = eval_equality_expr(exp, exp_idx, cur_node, set, line))) {
+        if (eval_equality_expr(exp, exp_idx, cur_node, set, line)) {
             set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
-            return rc;
+            return -1;
         }
 
         /* eval - just get boolean value actually */
@@ -5615,7 +5610,7 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_nod
 static int
 eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
 {
-    int rc, is_true = 0;
+    int is_true = 0;
     uint16_t op_exp;
     struct lyxp_set orig_set;
 
@@ -5631,9 +5626,9 @@ eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, s
     }
 
     /* AndExpr */
-    if ((rc = eval_and_expr(exp, exp_idx, cur_node, set, line))) {
+    if (eval_and_expr(exp, exp_idx, cur_node, set, line)) {
         set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
-        return rc;
+        return -1;
     }
 
     /* cast to boolean, we know that will be the final result */
@@ -5664,9 +5659,9 @@ eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, s
         }
 
         set_fill_set(set, &orig_set, cur_node->schema->module->ctx);
-        if ((rc = eval_and_expr(exp, exp_idx, cur_node, set, line))) {
+        if (eval_and_expr(exp, exp_idx, cur_node, set, line)) {
             set_cast(&orig_set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
-            return rc;
+            return -1;
         }
 
         /* eval - just get boolean value actually */
