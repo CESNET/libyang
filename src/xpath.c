@@ -591,7 +591,7 @@ set_copy(struct lyxp_set *set, struct ly_ctx *ctx)
  *
  * @param[in] set Set to fill.
  * @param[in] string String to fill into \p set.
- * @param[in] str_len Length of \p string.
+ * @param[in] str_len Length of \p string. 0 is a valid value!
  * @param[in] ctx libyang context to use.
  */
 static void
@@ -605,6 +605,9 @@ set_fill_string(struct lyxp_set *set, const char *string, uint16_t str_len, stru
     }
 
     set->type = LYXP_SET_STRING;
+    if ((str_len == 0) && (string[0] != '\0')) {
+        string = "";
+    }
     set->value.str = lydict_insert(ctx, string, str_len);
 }
 
@@ -670,7 +673,7 @@ set_fill_set(struct lyxp_set *set, struct lyxp_set *src, struct ly_ctx *ctx)
     } else if (src->type ==  LYXP_SET_NUMBER) {
         set_fill_number(set, src->value.num, ctx);
     } else if (src->type == LYXP_SET_STRING) {
-        set_fill_string(set, src->value.str, 0, ctx);
+        set_fill_string(set, src->value.str, strlen(src->value.str), ctx);
     } else {
         if (set->type == LYXP_SET_NODE_SET) {
             free(set->value.nodes);
@@ -2673,10 +2676,11 @@ xpath_local_name(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur
         break;
     case LYXP_NODE_ROOT:
     case LYXP_NODE_ELEM:
-        set_fill_string(set, node->schema->name, 0, cur_node->schema->module->ctx);
+        set_fill_string(set, node->schema->name, strlen(node->schema->name), cur_node->schema->module->ctx);
         break;
     case LYXP_NODE_ATTR:
-        set_fill_string(set, ((struct lyd_attr *)node)->name, 0, cur_node->schema->module->ctx);
+        set_fill_string(set, ((struct lyd_attr *)node)->name, strlen(((struct lyd_attr *)node)->name),
+                        cur_node->schema->module->ctx);
         break;
     }
 
@@ -2767,15 +2771,18 @@ xpath_namespace_uri(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *
         break;
     case LYXP_NODE_ELEM:
         if (node->schema->module->type) {
-            set_fill_string(set, ((struct lys_submodule *)node->schema->module)->belongsto->ns, 0,
+            set_fill_string(set, ((struct lys_submodule *)node->schema->module)->belongsto->ns,
+                            strlen(((struct lys_submodule *)node->schema->module)->belongsto->ns),
                             cur_node->schema->module->ctx);
         } else {
-            set_fill_string(set, node->schema->module->ns, 0, cur_node->schema->module->ctx);
+            set_fill_string(set, node->schema->module->ns, strlen(node->schema->module->ns),
+                            cur_node->schema->module->ctx);
         }
         break;
     case LYXP_NODE_ATTR:
         if (((struct lyd_attr *)node)->ns) {
-            set_fill_string(set, ((struct lyd_attr *)node)->ns->value, 0, cur_node->schema->module->ctx);
+            set_fill_string(set, ((struct lyd_attr *)node)->ns->value, strlen(((struct lyd_attr *)node)->ns->value),
+                            cur_node->schema->module->ctx);
         } else {
             set_fill_string(set, "", 0, cur_node->schema->module->ctx);
         }
@@ -3209,7 +3216,8 @@ xpath_substring_after(struct lyxp_set *args, uint16_t arg_count, struct lyd_node
 
     ptr = strstr(args[0].value.str, args[1].value.str);
     if (ptr) {
-        set_fill_string(set, ptr + strlen(args[1].value.str), 0, cur_node->schema->module->ctx);
+        set_fill_string(set, ptr + strlen(args[1].value.str), strlen(ptr + strlen(args[1].value.str)),
+                        cur_node->schema->module->ctx);
     } else {
         set_fill_string(set, "", 0, cur_node->schema->module->ctx);
     }
