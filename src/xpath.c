@@ -5739,6 +5739,28 @@ lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, ui
     return rc;
 }
 
+int
+lyxp_parse_only(const char *expr, uint32_t line)
+{
+    int rc = -1;
+    struct lyxp_expr *exp;
+    uint16_t exp_idx;
+
+    exp = parse_expr(expr, line);
+    if (exp) {
+        exp_idx = 0;
+        rc = reparse_expr(exp, &exp_idx, line);
+        if (!rc && (exp->used > exp_idx)) {
+            LOGVAL(LYE_SPEC, line, "Unparsed characters \"%s\" left at the end of an XPath expression.",
+                   &exp->expr[exp->expr_pos[exp_idx]]);
+            rc = -1;
+        }
+        exp_free(exp);
+    }
+
+    return rc;
+}
+
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
