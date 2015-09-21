@@ -1316,10 +1316,10 @@ set_sort(struct lyxp_set *set, struct lyd_node *any_node)
                 } else if (set->pos == j - 1) {
                     set->pos = j;
                 }
+            } else {
+                /* whether node_pos1 should be smaller than node_pos2 or the other way around */
+                inverted = !inverted;
             }
-
-            /* whether node_pos1 should be smaller than node_pos2 or the other way around */
-            inverted = !inverted;
         }
     }
 
