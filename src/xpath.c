@@ -1084,7 +1084,7 @@ get_node_pos(struct lyd_node *node)
     uint16_t pos = 1;
 
     /* TODO fake root */
-    if (!node->schema) {
+    if (!node->schema->module) {
         return 0;
     }
 
