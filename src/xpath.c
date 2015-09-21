@@ -884,13 +884,13 @@ set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct ly_ctx *ctx)
             && ((set->type == LYXP_SET_NODE_SET) || (set->type == LYXP_SET_EMPTY)))) {
         switch (set->type) {
         case LYXP_SET_NUMBER:
-            if (set->value.num == NAN) {
+            if (isnan(set->value.num)) {
                 set->value.str = lydict_insert(ctx, "NaN", 0);
             } else if ((set->value.num == 0) || (set->value.num == -0)) {
                 set->value.str = lydict_insert(ctx, "0", 0);
-            } else if (set->value.num == INFINITY) {
+            } else if (isinf(set->value.num) && !signbit(set->value.num)) {
                 set->value.str = lydict_insert(ctx, "Infinity", 0);
-            } else if (set->value.num == -INFINITY) {
+            } else if (isinf(set->value.num) && signbit(set->value.num)) {
                 set->value.str = lydict_insert(ctx, "-Infinity", 0);
             } else if ((long long)set->value.num == set->value.num) {
                 asprintf(&str_num, "%lld", (long long)set->value.num);
@@ -951,7 +951,7 @@ set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct ly_ctx *ctx)
     if (target == LYXP_SET_BOOLEAN) {
         switch (set->type) {
         case LYXP_SET_NUMBER:
-            if ((set->value.num == 0) || (set->value.num == -0) || (set->value.num == NAN)) {
+            if ((set->value.num == 0) || (set->value.num == -0) || isnan(set->value.num)) {
                 set->value.bool = 0;
             } else {
                 set->value.bool = 1;
@@ -2500,7 +2500,9 @@ xpath_floor(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node
     }
 
     set_cast(args, LYXP_SET_NUMBER, cur_node->schema->module->ctx);
-    set_fill_number(set, (long long)args->value.num, cur_node->schema->module->ctx);
+    if (isfinite(args->value.num)) {
+        set_fill_number(set, (long long)args->value.num, cur_node->schema->module->ctx);
+    }
 
     return EXIT_SUCCESS;
 }
@@ -3127,7 +3129,7 @@ xpath_string_length(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *
     return EXIT_SUCCESS;
 }
 
-/** TODO http://www.w3.org/TR/1999/REC-xpath-19991116/#function-substring weird cases
+/**
  * @brief Execute the XPath substring(string, number, number?) function.
  *        Returns LYXP_SET_STRING substring of the first argument starting
  *        on the second argument index ending on the third argument index,
@@ -3147,6 +3149,7 @@ xpath_substring(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_
                 uint32_t line)
 {
     int start, len;
+    uint16_t str_start, str_len, pos;
 
     if ((arg_count < 2) || (arg_count > 3)) {
         LOGVAL(LYE_XPATH_INARGCOUNT, line, arg_count, "substring(string, number, number?)");
@@ -3159,12 +3162,12 @@ xpath_substring(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_
     if (xpath_round(&args[1], 1, cur_node, &args[1], line)) {
         return -1;
     }
-    start = args[1].value.num - 1;
-    if (start < 0) {
-        start = 0;
-    }
-    if (start > (signed)strlen(args[0].value.str)) {
-        start = strlen(args[0].value.str);
+    if (isfinite(args[1].value.num)) {
+        start = args[1].value.num - 1;
+    } else if (isinf(args[1].value.num) && signbit(args[1].value.num)) {
+        start = INT_MIN;
+    } else {
+        start = INT_MAX;
     }
 
     /* len */
@@ -3172,18 +3175,31 @@ xpath_substring(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_
         if (xpath_round(&args[2], 1, cur_node, &args[2], line)) {
             return -1;
         }
-        len = args[2].value.num;
-        if (len < 0) {
+        if (isfinite(args[2].value.num)) {
+            len = args[2].value.num;
+        } else if (isnan(args[2].value.num) || signbit(args[2].value.num)) {
             len = 0;
-        }
-        if (len > (signed)strlen(args[0].value.str + start)) {
-            len = strlen(args[0].value.str + start);
+        } else {
+            len = INT_MAX;
         }
     } else {
-        len = 0;
+        len = INT_MAX;
     }
 
-    set_fill_string(set, args[0].value.str + start, len, cur_node->schema->module->ctx);
+    /* find matching character positions */
+    str_start = 0;
+    str_len = 0;
+    for (pos = 0; args[0].value.str[pos]; ++pos) {
+        if (pos < start) {
+            ++str_start;
+        } else if (pos < start + len) {
+            ++str_len;
+        } else {
+            break;
+        }
+    }
+
+    set_fill_string(set, args[0].value.str + str_start, str_len, cur_node->schema->module->ctx);
     return EXIT_SUCCESS;
 }
 
