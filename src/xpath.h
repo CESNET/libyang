@@ -189,7 +189,7 @@ enum lyxp_node_type {
 };
 
 /**
- * @brief Evaluate the XPath expression \p expr.
+ * @brief Evaluate the XPath expression \p expr on data.
  *
  * @param[in] expr XPath expression to use.
  * @param[in] cur_node Current (context) data node.
@@ -201,13 +201,15 @@ enum lyxp_node_type {
 int lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, uint32_t line);
 
 /**
- * @brief Parse the XPath expression \p expr.
+ * @brief Evaluate the XPath expression \p expr on schema.
  *
  * @param[in] expr XPath expression to use.
+ * @param[in] cur_snode Current (context) schema node.
+ * @param[out] set Result set.
  * @param[in] line Line on the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
-int lyxp_parse_only(const char *expr, uint32_t line);
+int lyxp_eval_schema(const char *expr, struct lys_node *cur_snode, struct lyxp_set **set, uint32_t line);
 
 #endif /* _XPATH_H */
