@@ -1314,6 +1314,13 @@ lys_when_free(struct ly_ctx *ctx, struct lys_when *w)
 static void
 lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment aug)
 {
+    struct lys_node *next, *sub;
+
+    /* children from a resolved uses */
+    LY_TREE_FOR_SAFE(aug.child, next, sub) {
+        lys_node_free(sub);
+    }
+
     lydict_remove(ctx, aug.target_name);
     lydict_remove(ctx, aug.dsc);
     lydict_remove(ctx, aug.ref);
