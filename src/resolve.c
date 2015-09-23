@@ -3157,12 +3157,13 @@ resolve_choice_dflt(struct lys_node_choice *choic, const char *dflt)
  *
  * @param[in] uses Uses to use.
  * @param[in] unres Specific unres item.
+ * @param[in] first Whether this is the first resolution try.
  * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t line)
+resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres, int first, uint32_t line)
 {
     int rc;
     struct lys_node *parent;
@@ -3173,19 +3174,24 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
     if (!uses->grp) {
         rc = resolve_grouping(uses, line);
         if (rc) {
+            if (parent && first && (rc == EXIT_FAILURE)) {
+                ++parent->nacm;
+            }
             return rc;
         }
     }
 
     if (uses->grp->nacm) {
-        LOGVRB("Cannot copy the grouping, it is not fully resolved yet.");
+        if (parent && first) {
+            ++parent->nacm;
+        }
         return EXIT_FAILURE;
     }
 
     rc = resolve_uses(uses, unres, line);
     if (!rc) {
         /* decrease unres count only if not first try */
-        if ((line < UINT_MAX) && parent) {
+        if (parent && !first) {
             if (!parent->nacm) {
                 LOGINT;
                 return -1;
@@ -3195,7 +3201,7 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
         return EXIT_SUCCESS;
     }
 
-    if ((rc == EXIT_FAILURE) && parent) {
+    if (parent && first && (rc == EXIT_FAILURE)) {
         ++parent->nacm;
     }
     return rc;
@@ -3274,13 +3280,14 @@ resolve_unres_schema_must(struct lys_restr *UNUSED(must), struct lys_node *UNUSE
  * @param[in] type Type of the unresolved item.
  * @param[in] str_snode String, a schema node, or NULL.
  * @param[in] unres Unres schema structure to use.
+ * @param[in] first Whether this is the first resolution try.
  * @param[in] line Line in the input file. UINT_MAX turns logging off, 0 skips line print.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
 resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, void *str_snode,
-                          struct unres_schema *unres, uint32_t line)
+                          struct unres_schema *unres, int first, uint32_t line)
 {
     int rc = -1, has_str = 0;
     struct lys_node *node;
@@ -3339,7 +3346,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         has_str = 1;
         break;
     case UNRES_USES:
-        rc = resolve_unres_schema_uses(item, unres, line);
+        rc = resolve_unres_schema_uses(item, unres, first, line);
         has_str = 0;
         break;
     case UNRES_TYPE_DFLT:
@@ -3475,7 +3482,8 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
             }
 
             ++unres_uses;
-            rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, LOGLINE_IDX(unres, i));
+            rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 0,
+                                           LOGLINE_IDX(unres, i));
             if (!rc) {
                 unres->type[i] = UNRES_RESOLVED;
                 ++resolved;
@@ -3497,7 +3505,8 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
             continue;
         }
 
-        rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, LOGLINE_IDX(unres, i));
+        rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 0,
+                                       LOGLINE_IDX(unres, i));
         if (!rc) {
             unres->type[i] = UNRES_RESOLVED;
             ++resolved;
@@ -3554,7 +3563,7 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
 
     assert(unres && item);
 
-    rc = resolve_unres_schema_item(mod, item, type, snode, unres, UINT_MAX);
+    rc = resolve_unres_schema_item(mod, item, type, snode, unres, 1, UINT_MAX);
     if (rc != EXIT_FAILURE) {
         return rc;
     }
