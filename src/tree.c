@@ -495,7 +495,7 @@ lys_node_unlink(struct lys_node *node)
         } else {
             first = node;
             while (first->prev->next) {
-                first = node->prev;
+                first = first->prev;
             }
         }
         first->prev = node->prev;
