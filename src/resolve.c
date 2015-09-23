@@ -2463,7 +2463,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
             node = node->child;
         }
 
-        rc = resolve_sibling(mod, node, prefix, pref_len, name, nam_len, LYS_ANY, &node);
+        rc = resolve_sibling(mod, node, prefix, pref_len, name, nam_len, LYS_ANY & (~LYS_USES), &node);
         if (rc) {
             LOGVAL(LYE_NORESOLV, line, path);
             return rc;
