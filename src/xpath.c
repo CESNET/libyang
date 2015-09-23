@@ -42,6 +42,7 @@
 
 /* TODO
  *
+ * correct context based on the context node
  * boolean set for predicates (or remove repeat copying some other way)
  */
 
@@ -6433,7 +6434,7 @@ lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, ui
 {
     struct lyxp_expr *exp;
     struct lyd_node *root, *node;
-    uint16_t exp_idx;
+    uint16_t exp_idx, i;
     int rc = -1;
 
     assert(expr && cur_node && set);
@@ -6456,11 +6457,10 @@ lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, ui
     if (!rc && exp) {
         print_expr_struct_debug(exp);
 
-        /* TODO add fake root */
+        /* add fake root */
         root = calloc(1, sizeof *root);
         root->prev = root;
         root->child = node;
-        /* TODO only for TREE_DFS, um? */
         root->schema = calloc(1, sizeof *root->schema);
         root->schema->nodetype = LYS_CONTAINER;
         root->schema->name = lydict_insert(cur_node->schema->module->ctx, "xpath-root", 0);
@@ -6473,14 +6473,23 @@ lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, ui
         exp_idx = 0;
         rc = eval_expr(exp, &exp_idx, cur_node, *set, line, 0);
 
-        /* TODO remove fake root */
+        /* remove fake root */
         LY_TREE_FOR(root->child, node) {
             node->parent = NULL;
         }
-        /* TODO it may be in the results, we cannot free it */
         lydict_remove(cur_node->schema->module->ctx, root->schema->name);
         free(root->schema);
         free(root);
+
+        /* check result and clear the root if it is there */
+        if ((*set)->type == LYXP_SET_NODE_SET) {
+            for (i = 0; i < (*set)->type; ++i) {
+                if ((*set)->node_type[i] == LYXP_NODE_ROOT) {
+                    (*set)->value.nodes[i] = NULL;
+                    break;
+                }
+            }
+        }
 
         if (rc) {
             set_free(*set, cur_node->schema->module->ctx);
@@ -6497,7 +6506,7 @@ lyxp_eval_schema(const char *expr, struct lys_node *cur_snode, struct lyxp_set *
 {
     struct lyxp_expr *exp;
     struct lys_node *root, *node;
-    uint16_t exp_idx;
+    uint16_t exp_idx, i;
     int rc = -1;
 
     assert(expr && cur_snode && set);
@@ -6522,7 +6531,7 @@ lyxp_eval_schema(const char *expr, struct lys_node *cur_snode, struct lyxp_set *
     if (!rc && exp) {
         print_expr_struct_debug(exp);
 
-        /* TODO add fake root */
+        /* add fake root */
         root = calloc(1, sizeof *root);
         root->prev = root;
         root->child = node;
@@ -6537,13 +6546,22 @@ lyxp_eval_schema(const char *expr, struct lys_node *cur_snode, struct lyxp_set *
         exp_idx = 0;
         rc = eval_expr(exp, &exp_idx, (struct lyd_node *)cur_snode, *set, line, 1);
 
-        /* TODO remove fake root */
+        /* remove fake root */
         LY_TREE_FOR(root->child, node) {
             node->parent = NULL;
         }
-        /* TODO it may be in the results, we cannot free it */
         lydict_remove(cur_snode->module->ctx, root->name);
         free(root);
+
+        /* check result and clear the root if it is there */
+        if ((*set)->type == LYXP_SET_NODE_SET) {
+            for (i = 0; i < (*set)->type; ++i) {
+                if ((*set)->node_type[i] == LYXP_NODE_ROOT) {
+                    (*set)->value.nodes[i] = NULL;
+                    break;
+                }
+            }
+        }
 
         if (rc) {
             set_free(*set, cur_snode->module->ctx);
