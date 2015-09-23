@@ -464,7 +464,7 @@ lys_node_unlink(struct lys_node *node)
 
     /* store pointers to important nodes */
     parent = node->parent;
-    if (parent && !parent->nodetype) {
+    if (parent && (parent->nodetype == LYS_AUGMENT)) {
         /* handle augments - first, unlink it from the augment parent ... */
         if (parent->child == node) {
             parent->child = node->next;
