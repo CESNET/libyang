@@ -2418,11 +2418,11 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
             return -parsed;
         }
         /* TODO probably not strictly required */
-        if (((struct lys_node_leaf *)dst_node)->type.base != ((struct lys_node_leaf *)src_node)->type.base) {
+        /*if (((struct lys_node_leaf *)dst_node)->type.base != ((struct lys_node_leaf *)src_node)->type.base) {
             LOGVAL(LYE_NORESOLV, line, path-parsed);
             LOGVAL(LYE_SPEC, 0, "\"%s\" is of a different type than \"%s\".", src_node->name, dst_node->name);
             return -parsed;
-        }
+        }*/
     } while (has_predicate);
 
     return parsed;
