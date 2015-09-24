@@ -2781,9 +2781,9 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
     struct ly_ctx *ctx;
     struct lys_node *node = NULL, *node_aux;
     struct lys_refine *rfn;
-    struct lys_restr *newmust;
+    struct lys_restr *must, **old_must;
     int i, j, rc;
-    uint8_t size;
+    uint8_t size, *old_size;
 
     assert(uses->grp);
 
@@ -2895,22 +2895,48 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
 
         /* must in leaf, leaf-list, list, container or anyxml */
         if (rfn->must_size) {
-            size = ((struct lys_node_leaf *)node)->must_size + rfn->must_size;
-            newmust = realloc(((struct lys_node_leaf *)node)->must, size * sizeof *rfn->must);
-            if (!newmust) {
+            switch (node->nodetype) {
+            case LYS_LEAF:
+                old_size = &((struct lys_node_leaf *)node)->must_size;
+                old_must = &((struct lys_node_leaf *)node)->must;
+                break;
+            case LYS_LEAFLIST:
+                old_size = &((struct lys_node_leaflist *)node)->must_size;
+                old_must = &((struct lys_node_leaflist *)node)->must;
+                break;
+            case LYS_LIST:
+                old_size = &((struct lys_node_list *)node)->must_size;
+                old_must = &((struct lys_node_list *)node)->must;
+                break;
+            case LYS_CONTAINER:
+                old_size = &((struct lys_node_container *)node)->must_size;
+                old_must = &((struct lys_node_container *)node)->must;
+                break;
+            case LYS_ANYXML:
+                old_size = &((struct lys_node_anyxml *)node)->must_size;
+                old_must = &((struct lys_node_anyxml *)node)->must;
+                break;
+            default:
+                LOGINT;
+                break;
+            }
+
+            size = *old_size + rfn->must_size;
+            must = realloc(*old_must, size * sizeof *rfn->must);
+            if (!must) {
                 LOGMEM;
                 return -1;
             }
-            for (i = 0, j = ((struct lys_node_leaf *)node)->must_size; i < rfn->must_size; i++, j++) {
-                newmust[j].expr = lydict_insert(ctx, rfn->must[i].expr, 0);
-                newmust[j].dsc = lydict_insert(ctx, rfn->must[i].dsc, 0);
-                newmust[j].ref = lydict_insert(ctx, rfn->must[i].ref, 0);
-                newmust[j].eapptag = lydict_insert(ctx, rfn->must[i].eapptag, 0);
-                newmust[j].emsg = lydict_insert(ctx, rfn->must[i].emsg, 0);
+            for (i = 0, j = *old_size; i < rfn->must_size; i++, j++) {
+                must[j].expr = lydict_insert(ctx, rfn->must[i].expr, 0);
+                must[j].dsc = lydict_insert(ctx, rfn->must[i].dsc, 0);
+                must[j].ref = lydict_insert(ctx, rfn->must[i].ref, 0);
+                must[j].eapptag = lydict_insert(ctx, rfn->must[i].eapptag, 0);
+                must[j].emsg = lydict_insert(ctx, rfn->must[i].emsg, 0);
             }
 
-            ((struct lys_node_leaf *)node)->must = newmust;
-            ((struct lys_node_leaf *)node)->must_size = size;
+            *old_must = must;
+            *old_size = size;
         }
     }
 
