@@ -2712,8 +2712,8 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
     choice->prev = (struct lys_node *)choice;
     retval = (struct lys_node *)choice;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | OPT_NACMEXT
-                        | (resolve ? OPT_INHERIT : 0))) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG
+            | (parent && (parent->nodetype == LYS_GROUPING) ? 0 : OPT_NACMEXT) | (resolve ? OPT_INHERIT : 0))) {
         goto error;
     }
 
@@ -2860,8 +2860,8 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
     anyxml->prev = (struct lys_node *)anyxml;
     retval = (struct lys_node *)anyxml;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | OPT_NACMEXT
-                        | (resolve ? OPT_INHERIT : 0))) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG
+            | (parent && (parent->nodetype == LYS_GROUPING) ? 0 : OPT_NACMEXT) | (resolve ? OPT_INHERIT : 0))) {
         goto error;
     }
 
@@ -2976,8 +2976,8 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     leaf->prev = (struct lys_node *)leaf;
     retval = (struct lys_node *)leaf;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | OPT_NACMEXT
-                        | (resolve ? OPT_INHERIT : 0))) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG
+            | (parent && (parent->nodetype == LYS_GROUPING) ? 0 : OPT_NACMEXT) | (resolve ? OPT_INHERIT : 0))) {
         goto error;
     }
 
@@ -3131,8 +3131,8 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
     llist->prev = (struct lys_node *)llist;
     retval = (struct lys_node *)llist;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | OPT_NACMEXT
-                        | (resolve ? OPT_INHERIT : 0))) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG
+            | (parent && (parent->nodetype == LYS_GROUPING) ? 0 : OPT_NACMEXT) | (resolve ? OPT_INHERIT : 0))) {
         goto error;
     }
 
@@ -3330,8 +3330,8 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     list->prev = (struct lys_node *)list;
     retval = (struct lys_node *)list;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | OPT_NACMEXT
-                        | (resolve ? OPT_INHERIT : 0))) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG
+            | (parent && (parent->nodetype == LYS_GROUPING) ? 0 : OPT_NACMEXT) | (resolve ? OPT_INHERIT : 0))) {
         goto error;
     }
 
@@ -3617,8 +3617,8 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
     cont->prev = (struct lys_node *)cont;
     retval = (struct lys_node *)cont;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG | OPT_NACMEXT
-                        | (resolve ? OPT_INHERIT : 0))) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_CONFIG
+            | (parent && (parent->nodetype == LYS_GROUPING) ? 0 : OPT_NACMEXT) | (resolve ? OPT_INHERIT : 0))) {
         goto error;
     }
 
@@ -4261,7 +4261,8 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     GETVAL(value, yin, "name");
     uses->name = lydict_insert(module->ctx, value, 0);
 
-    if (read_yin_common(module, parent, retval, yin, OPT_MODULE |  OPT_NACMEXT | (resolve ? OPT_INHERIT : 0))) {
+    if (read_yin_common(module, parent, retval, yin, OPT_MODULE
+            | (parent && (parent->nodetype == LYS_GROUPING) ? 0 : OPT_NACMEXT) | (resolve ? OPT_INHERIT : 0))) {
         goto error;
     }
 
