@@ -1276,8 +1276,6 @@ struct lys_feature *lys_is_disabled(struct lys_node *node, int recursive);
  * node was placed, not the augment definition node. Function just wraps usage of the
  * ::lys_node#parent pointer in this special case.
  *
- * TODO not implemented
- *
  * @param[in] node Child node to the returned parent node.
  * @return The parent node from the schema tree, NULL in case of top level nodes.
  */

@@ -2531,3 +2531,17 @@ lys_features_list(struct lys_module *module, uint8_t **states)
 
     return result;
 }
+
+API struct lys_node *
+lys_parent(struct lys_node *node)
+{
+    if (!node || !node->parent) {
+        return NULL;
+    }
+
+    if (node->parent->nodetype == LYS_AUGMENT) {
+        return ((struct lys_node_augment *)node->parent)->target;
+    }
+
+    return node->parent;
+}
