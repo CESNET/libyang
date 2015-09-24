@@ -199,7 +199,7 @@ get_max_name_len(struct lys_module *module, struct lys_node *node)
 static void
 tree_print_type(FILE *f, struct lys_type *type)
 {
-    if ((type->base == LY_TYPE_LEAFREF) && (!type->der)) {
+    if ((type->base == LY_TYPE_LEAFREF) && !type->der->module) {
         fprintf(f, "-> %s", type->info.lref.path);
     } else if (type->prefix) {
         fprintf(f, "%s:%s", type->prefix, type->der->name);
