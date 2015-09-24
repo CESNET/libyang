@@ -1036,7 +1036,7 @@ lys_restr_free(struct ly_ctx *ctx, struct lys_restr *restr)
     lydict_remove(ctx, restr->emsg);
 }
 
-static void
+static int
 lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, struct lys_type *old,
             struct unres_schema *unres)
 {
@@ -1050,10 +1050,11 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
     if (i != -1) {
         /* HACK for unres */
         new->der = (struct lys_tpdf *)parent;
+        /* all these unres additions can fail even though they did not before */
         if (unres_schema_add_str(mod, unres, new, UNRES_TYPE_DER, unres->str_snode[i], 0) == -1) {
-            LOGINT;
+            return -1;
         }
-        return;
+        return EXIT_SUCCESS;
     }
 
     switch (new->base) {
@@ -1105,7 +1106,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
             i = unres_schema_find(unres, old, UNRES_TYPE_IDENTREF);
             assert(i != -1);
             if (unres_schema_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i], 0) == -1) {
-                LOGINT;
+                return -1;
             }
         }
         break;
@@ -1130,7 +1131,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
     case LY_TYPE_LEAFREF:
         new->info.lref.path = lydict_insert(mod->ctx, old->info.lref.path, 0);
         if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent, 0) == -1) {
-            LOGINT;
+            return -1;
         }
         break;
 
@@ -1146,7 +1147,9 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
         if (new->info.uni.count) {
             new->info.uni.types = calloc(new->info.uni.count, sizeof *new->info.uni.types);
             for (i = 0; i < new->info.uni.count; i++) {
-                lys_type_dup(mod, parent, &(new->info.uni.types[i]), &(old->info.uni.types[i]), unres);
+                if (lys_type_dup(mod, parent, &(new->info.uni.types[i]), &(old->info.uni.types[i]), unres)) {
+                    return -1;
+                }
             }
         }
         break;
@@ -1155,6 +1158,8 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
         /* nothing to do for LY_TYPE_BOOL, LY_TYPE_EMPTY */
         break;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void
@@ -1235,33 +1240,6 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type)
     }
 }
 
-static struct lys_tpdf *
-lys_tpdf_dup(struct lys_module *mod, struct lys_node *parent, struct lys_tpdf *old, int size, struct unres_schema *unres)
-{
-    struct lys_tpdf *result;
-    int i;
-
-    if (!size) {
-        return NULL;
-    }
-
-    result = calloc(size, sizeof *result);
-    for (i = 0; i < size; i++) {
-        result[i].name = lydict_insert(mod->ctx, old[i].name, 0);
-        result[i].dsc = lydict_insert(mod->ctx, old[i].dsc, 0);
-        result[i].ref = lydict_insert(mod->ctx, old[i].ref, 0);
-        result[i].flags = old[i].flags;
-        result[i].module = old[i].module;
-
-        lys_type_dup(mod, parent, &(result[i].type), &(old[i].type), unres);
-
-        result[i].dflt = lydict_insert(mod->ctx, old[i].dflt, 0);
-        result[i].units = lydict_insert(mod->ctx, old[i].units, 0);
-    }
-
-    return result;
-}
-
 static void
 lys_tpdf_free(struct ly_ctx *ctx, struct lys_tpdf *tpdf)
 {
@@ -1278,6 +1256,39 @@ lys_tpdf_free(struct ly_ctx *ctx, struct lys_tpdf *tpdf)
 
     lydict_remove(ctx, tpdf->units);
     lydict_remove(ctx, tpdf->dflt);
+}
+
+static struct lys_tpdf *
+lys_tpdf_dup(struct lys_module *mod, struct lys_node *parent, struct lys_tpdf *old, int size, struct unres_schema *unres)
+{
+    struct lys_tpdf *result;
+    int i, j;
+
+    if (!size) {
+        return NULL;
+    }
+
+    result = calloc(size, sizeof *result);
+    for (i = 0; i < size; i++) {
+        result[i].name = lydict_insert(mod->ctx, old[i].name, 0);
+        result[i].dsc = lydict_insert(mod->ctx, old[i].dsc, 0);
+        result[i].ref = lydict_insert(mod->ctx, old[i].ref, 0);
+        result[i].flags = old[i].flags;
+        result[i].module = old[i].module;
+
+        if (lys_type_dup(mod, parent, &(result[i].type), &(old[i].type), unres)) {
+            for (j = 0; j <= i; ++j) {
+                lys_tpdf_free(mod->ctx, &result[j]);
+            }
+            free(result);
+            return NULL;
+        }
+
+        result[i].dflt = lydict_insert(mod->ctx, old[i].dflt, 0);
+        result[i].units = lydict_insert(mod->ctx, old[i].units, 0);
+    }
+
+    return result;
 }
 
 static struct lys_when *
@@ -2053,7 +2064,6 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
         LY_TREE_FOR(node->child, child) {
             aux = lys_node_dup(module, child, retval->flags, retval->nacm, 1, unres);
             if (!aux || lys_node_addchild(retval, NULL, aux)) {
-                LOGINT;
                 goto error;
             }
         }
@@ -2113,7 +2123,9 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
         break;
 
     case LYS_LEAF:
-        lys_type_dup(module, node->parent, &(leaf->type), &(leaf_orig->type), unres);
+        if (lys_type_dup(module, node->parent, &(leaf->type), &(leaf_orig->type), unres)) {
+            goto error;
+        }
         leaf->units = lydict_insert(module->ctx, leaf_orig->units, 0);
 
         if (leaf_orig->dflt) {
@@ -2140,7 +2152,9 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
         break;
 
     case LYS_LEAFLIST:
-        lys_type_dup(module, node->parent, &(llist->type), &(llist_orig->type), unres);
+        if (lys_type_dup(module, node->parent, &(llist->type), &(llist_orig->type), unres)) {
+            goto error;
+        }
         llist->units = lydict_insert(module->ctx, llist_orig->units, 0);
 
         llist->min = llist_orig->min;
