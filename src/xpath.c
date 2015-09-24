@@ -4601,6 +4601,8 @@ moveto_op_math(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
 static void
 moveto_schema_root(struct lyxp_set *set, struct lys_node *any_node)
 {
+    struct lys_node *root;
+
     if (!set) {
         return;
     }
@@ -4613,8 +4615,11 @@ moveto_schema_root(struct lyxp_set *set, struct lys_node *any_node)
     set_cast(set, LYXP_SET_EMPTY, any_node->module->ctx);
 
     /* move the node to the root */
-    for (; any_node->parent; any_node = any_node->parent);
-    assert(any_node->prev == any_node);
+    do {
+        root = any_node;
+        any_node = lys_parent(root);
+    } while (any_node);
+    assert(root->prev == root);
 
     set_insert_node(set, any_node, LYXP_NODE_ROOT, 0);
 }
@@ -4935,17 +4940,6 @@ moveto_schema_self(struct lyxp_set *set, int all_desc, uint32_t line)
     return EXIT_SUCCESS;
 }
 
-/**
- * @brief Move context \p set to parent. Handles '/' or '//' and '..'. Result is LYXP_SET_NODE_SET
- *        (or LYXP_SET_EMPTY). Indirectly context position aware.
- *
- * @param[in] set Set to use.
- * @param[in] all_desc Whether to go to all descendants ('//') or not ('/').
- * @param[in] any_node Any node from the data.
- * @param[in] line Line in the input file.
- *
- * @return EXIT_SUCCESS on success, -1 on error.
- */
 static int
 moveto_schema_parent(struct lyxp_set *set, int all_desc, uint32_t line)
 {
@@ -4970,7 +4964,7 @@ moveto_schema_parent(struct lyxp_set *set, int all_desc, uint32_t line)
 
     for (i = 0; i < set->used; ) {
         if (set->node_type[i] == LYXP_NODE_ELEM) {
-            new_node = ((struct lys_node *)set->value.nodes[i])->parent;
+            new_node = lys_parent((struct lys_node *)set->value.nodes[i]);
         } else {
             /* root does not have a parent */
             set_remove_node(set, i);
