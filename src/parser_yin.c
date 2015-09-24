@@ -1860,7 +1860,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             } else if (!strcmp(child->name, "unique")) {
                 if (d->mod == LY_DEVIATE_DEL) {
                     GETVAL(value, child, "tag");
-                    if (resolve_unique(dev->target, value, &d->unique[d->unique_size], LOGLINE(child))) {
+                    if (resolve_unique(dev->target, value, &d->unique[d->unique_size], 0, LOGLINE(child))) {
                         goto error;
                     }
 
@@ -1908,7 +1908,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     }
                 } else { /* replace or add */
                     GETVAL(value, child, "tag");
-                    if (resolve_unique(dev->target, value, &list->unique[list->unique_size], LOGLINE(child))) {
+                    if (resolve_unique(dev->target, value, &list->unique[list->unique_size], 0, LOGLINE(child))) {
                         goto error;
                     }
                     list->unique_size++;

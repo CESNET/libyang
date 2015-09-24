@@ -1447,12 +1447,13 @@ check_key(struct lys_node_leaf *key, uint8_t flags, struct lys_node_leaf **list,
  * @param[in] parent The parent node of the unique structure.
  * @param[in] uniq_str The value of the unique node.
  * @param[in] uniq_s The unique structure to use.
+ * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line The line in the input file.
  *
  * @return EXIT_SUCCESS on succes, EXIT_FAILURE on forward reference, -1 on error.
  */
 int
-resolve_unique(struct lys_node *parent, const char *uniq_str, struct lys_unique *uniq_s, uint32_t line)
+resolve_unique(struct lys_node *parent, const char *uniq_str, struct lys_unique *uniq_s, int first, uint32_t line)
 {
     char *uniq_val, *uniq_begin, *start;
     int i, j, rc;
@@ -1484,9 +1485,11 @@ resolve_unique(struct lys_node *parent, const char *uniq_str, struct lys_unique 
         rc = resolve_schema_nodeid(start, parent->child, parent->module, LYS_LEAF,
                                    (struct lys_node **)&uniq_s->leafs[i]);
         if (rc) {
-            LOGVAL(LYE_INARG, line, start, "unique");
-            if (rc == EXIT_FAILURE) {
-                LOGVAL(LYE_SPEC, 0, "Target leaf not found.");
+            if ((rc == -1) || !first) {
+                LOGVAL(LYE_INARG, line, start, "unique");
+                if (rc == EXIT_FAILURE) {
+                    LOGVAL(LYE_SPEC, 0, "Target leaf not found.");
+                }
             }
             goto error;
         }
@@ -1522,12 +1525,13 @@ error:
  * @brief Resolve (fill) a grouping in an uses. Logs directly.
  *
  * @param[in] uses The uses to use.
+ * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line The line in the input file.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-resolve_grouping(struct lys_node_uses *uses, uint32_t line)
+resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
 {
     struct lys_module *module;
     const char *prefix, *name;
@@ -1559,7 +1563,9 @@ resolve_grouping(struct lys_node_uses *uses, uint32_t line)
         return EXIT_SUCCESS;
     }
 
-    LOGVAL(LYE_INRESOLV, line, "grouping", uses->name);
+    if (prefix || !first) {
+        LOGVAL(LYE_INRESOLV, line, "grouping", uses->name);
+    }
     /* import must now be fully resolved */
     if (prefix) {
         return -1;
@@ -1572,13 +1578,14 @@ resolve_grouping(struct lys_node_uses *uses, uint32_t line)
  *
  * @param[in] name Feature name.
  * @param[in] module Module to search in.
+ * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line The line in the input file.
  * @param[out] ret Pointer to the resolved feature. Can be NULL.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-resolve_feature(const char *id, struct lys_module *module, uint32_t line, struct lys_feature **ret)
+resolve_feature(const char *id, struct lys_module *module, int first, uint32_t line, struct lys_feature **ret)
 {
     const char *prefix, *name;
     int pref_len, nam_len, i, j;
@@ -1625,7 +1632,9 @@ resolve_feature(const char *id, struct lys_module *module, uint32_t line, struct
     }
 
     /* not found */
-    LOGVAL(LYE_INRESOLV, line, "feature", id);
+    if (!first) {
+        LOGVAL(LYE_INRESOLV, line, "feature", id);
+    }
     return EXIT_FAILURE;
 }
 
@@ -2062,6 +2071,7 @@ resolve_data_nodeid(const char *prefix, int pref_len, const char *name, int name
  *        but line fail is always displayed.
  *
  * @param[in] pred Predicate to use.
+ * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line Line in the input file.
  * @param[in,out] node_match Nodes satisfying the restriction
  *                           without the predicate. Nodes not
@@ -2071,7 +2081,7 @@ resolve_data_nodeid(const char *prefix, int pref_len, const char *name, int name
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-resolve_path_predicate_data(const char *pred, uint32_t line, struct unres_data *node_match, int *parsed)
+resolve_path_predicate_data(const char *pred, int first, uint32_t line, struct unres_data *node_match, int *parsed)
 {
     /* ... /node[source = destination] ... */
     struct unres_data source_match, dest_match;
@@ -2103,7 +2113,9 @@ resolve_path_predicate_data(const char *pred, uint32_t line, struct unres_data *
             if ((rc = resolve_data_nodeid(sour_pref, sour_pref_len, source, sour_len, node_match->dnode[j],
                     &source_match)) || (source_match.count != 1) || (source_match.dnode[0]->schema->nodetype != LYS_LEAF)) {
                 /* general error, the one written later will suffice */
-                LOGVAL(LYE_LINE, line);
+                if ((rc == -1) || !first) {
+                    LOGVAL(LYE_LINE, line);
+                }
                 i = 0;
                 goto error;
             }
@@ -2122,7 +2134,9 @@ resolve_path_predicate_data(const char *pred, uint32_t line, struct unres_data *
                 dest_match.dnode[0] = dest_match.dnode[0]->parent;
                 if (!dest_match.dnode[0]) {
                     /* general error, the one written later will suffice */
-                    LOGVAL(LYE_LINE, line);
+                    if (!first) {
+                        LOGVAL(LYE_LINE, line);
+                    }
                     i = 0;
                     rc = EXIT_FAILURE;
                     goto error;
@@ -2132,7 +2146,9 @@ resolve_path_predicate_data(const char *pred, uint32_t line, struct unres_data *
                 if ((rc = resolve_data_nodeid(dest_pref, dest_pref_len, dest, dest_len, dest_match.dnode[0],
                         &dest_match)) || (dest_match.count != 1)) {
                     /* general error, the one written later will suffice */
-                    LOGVAL(LYE_LINE, line);
+                    if ((rc == -1) || !first) {
+                        LOGVAL(LYE_LINE, line);
+                    }
                     i = 0;
                     goto error;
                 }
@@ -2196,13 +2212,14 @@ error:
  *
  * @param[in] dnode Leafref data node.
  * @param[in] path Path of the leafref.
+ * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line Line in the input file.
  * @param[out] ret Matching nodes. Expects an empty, but allocated structure. Lines left untouched.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 otherwise.
  */
-int
-resolve_path_arg_data(struct lyd_node *dnode, const char *path, uint32_t line, struct unres_data *ret)
+static int
+resolve_path_arg_data(struct lyd_node *dnode, const char *path, int first, uint32_t line, struct unres_data *ret)
 {
     struct lyd_node *data = NULL;
     const char *prefix, *name;
@@ -2262,7 +2279,9 @@ resolve_path_arg_data(struct lyd_node *dnode, const char *path, uint32_t line, s
 
         /* node identifier */
         if ((rc = resolve_data_nodeid(prefix, pref_len, name, nam_len, data, ret))) {
-            LOGVAL(LYE_INELEM_LEN, line, nam_len, name);
+            if ((rc == -1) || !first) {
+                LOGVAL(LYE_INELEM_LEN, line, nam_len, name);
+            }
             goto error;
         }
 
@@ -2279,16 +2298,20 @@ resolve_path_arg_data(struct lyd_node *dnode, const char *path, uint32_t line, s
                 /* does not fulfill conditions, remove leafref record */
                 unres_data_del(ret, j);
             }
-            if ((rc = resolve_path_predicate_data(path, line, ret, &i))) {
+            if ((rc = resolve_path_predicate_data(path, first, line, ret, &i))) {
                 /* line was already displayed */
-                LOGVAL(LYE_NORESOLV, 0, path);
+                if ((rc == -1) || !first) {
+                    LOGVAL(LYE_NORESOLV, 0, path);
+                }
                 goto error;
             }
             path += i;
             parsed += i;
 
             if (!ret->count) {
-                LOGVAL(LYE_NORESOLV, line, path-parsed);
+                if (!first) {
+                    LOGVAL(LYE_NORESOLV, line, path-parsed);
+                }
                 rc = EXIT_FAILURE;
                 goto error;
             }
@@ -2313,14 +2336,16 @@ error:
  * @param[in] mod Schema module.
  * @param[in] source_node Left operand node.
  * @param[in] dest_node Right ooperand node.
+ * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line Line in the input file.
  *
- * @return Number of characters successfully parsed,
+ * @return 0 on forward reference, otherwise the number
+ *         of characters successfully parsed,
  *         positive on success, negative on failure.
  */
 static int
 resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct lys_node *source_node,
-                              struct lys_node *dest_node, uint32_t line)
+                              struct lys_node *dest_node, int first, uint32_t line)
 {
     struct lys_node *src_node, *dst_node;
     const char *path_key_expr, *source, *sour_pref, *dest, *dest_pref;
@@ -2339,8 +2364,10 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
         /* source (must be leaf) */
         rc = resolve_sibling(mod, source_node->child, sour_pref, sour_pref_len, source, sour_len, LYS_LEAF, &src_node);
         if (rc) {
-            LOGVAL(LYE_NORESOLV, line, path-parsed);
-            return -parsed;
+            if ((rc == -1) || !first) {
+                LOGVAL(LYE_NORESOLV, line, path-parsed);
+            }
+            return 0;
         }
 
         /* destination */
@@ -2356,16 +2383,20 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
         for (i = 1; i < dest_parent_times; ++i) {
             dst_node = dst_node->parent;
             if (!dst_node) {
-                LOGVAL(LYE_NORESOLV, line, path_key_expr);
-                return -parsed;
+                if (!first) {
+                    LOGVAL(LYE_NORESOLV, line, path_key_expr);
+                }
+                return 0;
             }
         }
         while (1) {
             rc = resolve_sibling(mod, dst_node->child, dest_pref, dest_pref_len, dest, dest_len,
                                  LYS_CONTAINER | LYS_LIST | LYS_LEAF, &dst_node);
             if (rc) {
-                LOGVAL(LYE_NORESOLV, line, path_key_expr);
-                return -parsed;
+                if ((rc == -1) || !first) {
+                    LOGVAL(LYE_NORESOLV, line, path_key_expr);
+                }
+                return 0;
             }
 
             if (pke_len == pke_parsed) {
@@ -2381,9 +2412,15 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
         }
 
         /* check source - dest match */
-        if ((dst_node->nodetype != LYS_LEAF) || ((struct lys_node_leaf *)dst_node)->type.base
-                != ((struct lys_node_leaf *)src_node)->type.base) {
+        if (dst_node->nodetype != LYS_LEAF) {
             LOGVAL(LYE_NORESOLV, line, path-parsed);
+            LOGVAL(LYE_SPEC, 0, "Destination node not a leaf, but %s.", strnodetype(dst_node->nodetype));
+            return -parsed;
+        }
+        /* TODO probably not strictly required */
+        if (((struct lys_node_leaf *)dst_node)->type.base != ((struct lys_node_leaf *)src_node)->type.base) {
+            LOGVAL(LYE_NORESOLV, line, path-parsed);
+            LOGVAL(LYE_SPEC, 0, "\"%s\" is of a different type than \"%s\".", src_node->name, dst_node->name);
             return -parsed;
         }
     } while (has_predicate);
@@ -2397,21 +2434,22 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
  * @param[in] mod Module to use.
  * @param[in] path Path to use.
  * @param[in] parent_node Parent of the leafref.
+ * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line Line in the input file.
  * @param[out] ret Pointer to the resolved schema node. Can be NULL.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_node *parent_node, uint32_t line,
-                        struct lys_node **ret)
+resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_node *parent_node, int first,
+                        uint32_t line, struct lys_node **ret)
 {
     struct lys_node *node;
     const char *id, *prefix, *name;
     int pref_len, nam_len, parent_times, has_predicate;
-    int i, first, rc;
+    int i, first_iter, rc;
 
-    first = 1;
+    first_iter = 1;
     parent_times = 0;
     id = path;
 
@@ -2422,11 +2460,13 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
         }
         id += i;
 
-        if (first) {
+        if (first_iter) {
             if (parent_times == -1) {
                 node = mod->data;
                 if (!node) {
-                    LOGVAL(LYE_NORESOLV, line, path);
+                    if (!first) {
+                        LOGVAL(LYE_NORESOLV, line, path);
+                    }
                     return EXIT_FAILURE;
                 }
             } else if (parent_times > 0) {
@@ -2435,7 +2475,9 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
                 i = 0;
                 while (1) {
                     if (!node) {
-                        LOGVAL(LYE_NORESOLV, line, path);
+                        if (!first) {
+                            LOGVAL(LYE_NORESOLV, line, path);
+                        }
                         return EXIT_FAILURE;
                     }
 
@@ -2458,14 +2500,16 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
                 LOGINT;
                 return -1;
             }
-            first = 0;
+            first_iter = 0;
         } else {
             node = node->child;
         }
 
         rc = resolve_sibling(mod, node, prefix, pref_len, name, nam_len, LYS_ANY & (~LYS_USES), &node);
         if (rc) {
-            LOGVAL(LYE_NORESOLV, line, path);
+            if ((rc == -1) || !first) {
+                LOGVAL(LYE_NORESOLV, line, path);
+            }
             return rc;
         }
 
@@ -2476,8 +2520,11 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
                 return -1;
             }
 
-            if ((i = resolve_path_predicate_schema(id, mod, node, parent_node, line)) < 1) {
+            i = resolve_path_predicate_schema(id, mod, node, parent_node, first, line);
+            if (!i) {
                 return EXIT_FAILURE;
+            } else if (i < 0) {
+                return -1;
             }
             id += i;
         }
@@ -2596,7 +2643,7 @@ remove_instid:
  *
  * @return Matching node or NULL if no such a node exists. If error occurs, NULL is returned and ly_errno is set.
  */
-struct lyd_node *
+static struct lyd_node *
 resolve_instid_json(struct lyd_node *data, const char *path, int line)
 {
     int i = 0, j;
@@ -2771,12 +2818,13 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
  *
  * @param[in] uses Uses to use.
  * @param[in,out] unres List of unresolved items.
+ * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward ereference, -1 on error.
  */
-int
-resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t line)
+static int
+resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, int first, uint32_t line)
 {
     struct ly_ctx *ctx;
     struct lys_node *node = NULL, *node_aux;
@@ -2809,7 +2857,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
         if (rc) {
             if (rc == -1) {
                 LOGVAL(LYE_INARG, line, rfn->target_name, "refine");
-            } else {
+            } else if (!first) {
                 LOGVAL(LYE_NORESOLV, line, rfn->target_name);
             }
             return rc;
@@ -2850,7 +2898,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
                 if (rc) {
                     if (rc == -1) {
                         LOGVAL(LYE_INARG, line, rfn->mod.dflt, "default");
-                    } else {
+                    } else if (!first) {
                         LOGVAL(LYE_NORESOLV, line, rfn->mod.dflt);
                     }
                     return rc;
@@ -2944,7 +2992,9 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
     for (i = 0; i < uses->augment_size; i++) {
         rc = resolve_augment(&uses->augment[i], uses->child);
         if (rc) {
-            LOGVAL(LYE_INRESOLV, line, "augment", uses->augment[i].target_name);
+            if ((rc == -1) || !first) {
+                LOGVAL(LYE_INRESOLV, line, "augment", uses->augment[i].target_name);
+            }
             return rc;
         }
     }
@@ -3042,6 +3092,7 @@ resolve_base_ident_sub(struct lys_module *module, struct lys_ident *ident, const
  * @param[in] ident Identity to use.
  * @param[in] basename Base name of the identity.
  * @param[in] parent Either "type" or "ident".
+ * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line Line in the input file.
  * @param[out] ret Pointer to the resolved identity. Can be NULL.
  *
@@ -3049,7 +3100,7 @@ resolve_base_ident_sub(struct lys_module *module, struct lys_ident *ident, const
  */
 static int
 resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const char *basename, const char* parent,
-                   uint32_t line, struct lys_ident **ret)
+                   int first, uint32_t line, struct lys_ident **ret)
 {
     const char *name;
     int i, prefix_len = 0;
@@ -3091,7 +3142,9 @@ resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const cha
         return EXIT_SUCCESS;
     }
 
-    LOGVAL(LYE_INARG, line, basename, parent);
+    if (!first) {
+        LOGVAL(LYE_INARG, line, basename, parent);
+    }
     return EXIT_FAILURE;
 }
 
@@ -3198,7 +3251,7 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
     for (parent = uses->parent; parent && (parent->nodetype != LYS_GROUPING); parent = parent->parent);
 
     if (!uses->grp) {
-        rc = resolve_grouping(uses, line);
+        rc = resolve_grouping(uses, first, line);
         if (rc) {
             if (parent && first && (rc == EXIT_FAILURE)) {
                 ++parent->nacm;
@@ -3214,7 +3267,7 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
         return EXIT_FAILURE;
     }
 
-    rc = resolve_uses(uses, unres, line);
+    rc = resolve_uses(uses, unres, first, line);
     if (!rc) {
         /* decrease unres count only if not first try */
         if (parent && !first) {
@@ -3238,12 +3291,13 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
  *
  * @param[in] list List to use.
  * @param[in] keys_str Keys node value.
+ * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-resolve_list_keys(struct lys_module *mod, struct lys_node_list *list, const char *keys_str, uint32_t line)
+resolve_list_keys(struct lys_module *mod, struct lys_node_list *list, const char *keys_str, int first, uint32_t line)
 {
     int i, len, rc;
     const char *value;
@@ -3261,8 +3315,8 @@ resolve_list_keys(struct lys_module *mod, struct lys_node_list *list, const char
 
         rc = resolve_sibling(mod, list->child, NULL, 0, keys_str, len, LYS_LEAF, (struct lys_node **)&list->keys[i]);
         if (rc) {
-            if (rc == EXIT_FAILURE) {
-                LOGVAL(LYE_INRESOLV, (line == UINT_MAX ? line : 0), "list keys", keys_str);
+            if ((rc == -1) || !first) {
+                LOGVAL(LYE_INRESOLV, line, "list keys", keys_str);
             }
             return rc;
         }
@@ -3284,7 +3338,8 @@ resolve_list_keys(struct lys_module *mod, struct lys_node_list *list, const char
 
 /* logs directly */
 static int
-resolve_unres_schema_when(struct lys_when *UNUSED(when), struct lys_node *UNUSED(start), uint32_t UNUSED(line))
+resolve_unres_schema_when(struct lys_when *UNUSED(when), struct lys_node *UNUSED(start), int UNUSED(first),
+                          uint32_t UNUSED(line))
 {
     /* TODO */
     return EXIT_SUCCESS;
@@ -3292,7 +3347,8 @@ resolve_unres_schema_when(struct lys_when *UNUSED(when), struct lys_node *UNUSED
 
 /* logs directly */
 static int
-resolve_unres_schema_must(struct lys_restr *UNUSED(must), struct lys_node *UNUSED(start), uint32_t UNUSED(line))
+resolve_unres_schema_must(struct lys_restr *UNUSED(must), struct lys_node *UNUSED(start), int UNUSED(first),
+                          uint32_t UNUSED(line))
 {
     /* TODO */
     return EXIT_SUCCESS;
@@ -3307,7 +3363,7 @@ resolve_unres_schema_must(struct lys_restr *UNUSED(must), struct lys_node *UNUSE
  * @param[in] str_snode String, a schema node, or NULL.
  * @param[in] unres Unres schema structure to use.
  * @param[in] first Whether this is the first resolution try.
- * @param[in] line Line in the input file. UINT_MAX turns logging off, 0 skips line print.
+ * @param[in] line Line in the input file. 0 skips line print.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
@@ -3333,21 +3389,21 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         base_name = str_snode;
         ident = item;
 
-        rc = resolve_base_ident(mod, ident, base_name, "ident", line, NULL);
+        rc = resolve_base_ident(mod, ident, base_name, "ident", first, line, NULL);
         has_str = 1;
         break;
     case UNRES_TYPE_IDENTREF:
         base_name = str_snode;
         stype = item;
 
-        rc = resolve_base_ident(mod, NULL, base_name, "type", line, &stype->info.ident.ref);
+        rc = resolve_base_ident(mod, NULL, base_name, "type", first, line, &stype->info.ident.ref);
         has_str = 1;
         break;
     case UNRES_TYPE_LEAFREF:
         node = str_snode;
         stype = item;
 
-        rc = resolve_path_arg_schema(mod, stype->info.lref.path, node, line,
+        rc = resolve_path_arg_schema(mod, stype->info.lref.path, node, first, line,
                                      (struct lys_node **)&stype->info.lref.target);
         has_str = 0;
         break;
@@ -3368,7 +3424,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         base_name = str_snode;
         feat_ptr = item;
 
-        rc = resolve_feature(base_name, mod, line, feat_ptr);
+        rc = resolve_feature(base_name, mod, first, line, feat_ptr);
         has_str = 1;
         break;
     case UNRES_USES:
@@ -3396,7 +3452,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         has_str = 1;
         break;
     case UNRES_LIST_KEYS:
-        rc = resolve_list_keys(mod, item, str_snode, line);
+        rc = resolve_list_keys(mod, item, str_snode, first, line);
         has_str = 1;
         break;
     case UNRES_LIST_UNIQ:
@@ -3404,15 +3460,15 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         base_name = str_snode;
         uniq = item;
 
-        rc = resolve_unique((struct lys_node *)uniq->leafs, base_name, uniq, line);
+        rc = resolve_unique((struct lys_node *)uniq->leafs, base_name, uniq, first, line);
         has_str = 1;
         break;
     case UNRES_WHEN:
-        rc = resolve_unres_schema_when(item, str_snode, line);
+        rc = resolve_unres_schema_when(item, str_snode, first, line);
         has_str = 0;
         break;
     case UNRES_MUST:
-        rc = resolve_unres_schema_must(item, str_snode, line);
+        rc = resolve_unres_schema_must(item, str_snode, first, line);
         has_str = 0;
         break;
     }
@@ -3533,12 +3589,12 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
 
         rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 0,
                                        LOGLINE_IDX(unres, i));
-        if (!rc) {
-            unres->type[i] = UNRES_RESOLVED;
-            ++resolved;
-        } else if (rc == -1) {
-            return -1;
+        if (rc) {
+            return rc;
         }
+
+        unres->type[i] = UNRES_RESOLVED;
+        ++resolved;
     }
 
     if (resolved < unres->count) {
@@ -3589,7 +3645,7 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
 
     assert(unres && item);
 
-    rc = resolve_unres_schema_item(mod, item, type, snode, unres, 1, UINT_MAX);
+    rc = resolve_unres_schema_item(mod, item, type, snode, unres, 1, line);
     if (rc != EXIT_FAILURE) {
         return rc;
     }
@@ -3699,12 +3755,13 @@ print_unres_data_item_fail(struct lyd_node *dnode, uint32_t line)
  * @brief Resolve a single unres data item. Logs directly.
  *
  * @param[in] dnode Data node to resolve.
- * @param[in] line Line in the input file. UINT_MAX turns logging off, 0 skips line print.
+ * @param[in] first Whether this is the first resolution try.
+ * @param[in] line Line in the input file. 0 skips line print.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-resolve_unres_data_item(struct lyd_node *dnode, uint32_t line)
+resolve_unres_data_item(struct lyd_node *dnode, int first, uint32_t line)
 {
     uint32_t i;
     int rc;
@@ -3718,7 +3775,7 @@ resolve_unres_data_item(struct lyd_node *dnode, uint32_t line)
 
     /* leafref */
     if (sleaf->type.base == LY_TYPE_LEAFREF) {
-        if ((rc = resolve_path_arg_data((struct lyd_node *)dleaf, sleaf->type.info.lref.path, line, &matches))) {
+        if ((rc = resolve_path_arg_data((struct lyd_node *)dleaf, sleaf->type.info.lref.path, first, line, &matches))) {
             return rc;
         }
 
@@ -3735,8 +3792,10 @@ resolve_unres_data_item(struct lyd_node *dnode, uint32_t line)
 
         if (!dleaf->value.leafref) {
             /* reference not found */
-            LOGVAL(LYE_SPEC, line, "Leafref \"%s\" value \"%s\" did not match any node value.",
-                   sleaf->type.info.lref.path, dleaf->value_str);
+            if (!first) {
+                LOGVAL(LYE_SPEC, line, "Leafref \"%s\" value \"%s\" did not match any node value.",
+                       sleaf->type.info.lref.path, dleaf->value_str);
+            }
             return EXIT_FAILURE;
         }
 
@@ -3747,7 +3806,9 @@ resolve_unres_data_item(struct lyd_node *dnode, uint32_t line)
             if (ly_errno) {
                 return -1;
             } else if (sleaf->type.info.inst.req > -1) {
-                LOGVAL(LYE_SPEC, line, "There is no instance of \"%s\".", dleaf->value_str);
+                if (!first) {
+                    LOGVAL(LYE_SPEC, line, "There is no instance of \"%s\".", dleaf->value_str);
+                }
                 return EXIT_FAILURE;
             } else {
                 LOGVRB("There is no instance of \"%s\", but is not required.", dleaf->value_str);
@@ -3777,7 +3838,7 @@ unres_data_add(struct unres_data *unres, struct lyd_node *dnode, uint32_t line)
 
     assert(unres && dnode);
 
-    rc = resolve_unres_data_item(dnode, UINT_MAX);
+    rc = resolve_unres_data_item(dnode, 1, line);
     if (rc != EXIT_FAILURE) {
         return rc;
     }
@@ -3809,7 +3870,7 @@ resolve_unres_data(struct unres_data *unres)
     int rc;
 
     for (i = 0; i < unres->count; ++i) {
-        rc = resolve_unres_data_item(unres->dnode[i], LOGLINE_IDX(unres, i));
+        rc = resolve_unres_data_item(unres->dnode[i], 0, LOGLINE_IDX(unres, i));
         if (rc) {
             LOGVAL(LYE_SPEC, 0, "There are unresolved data items left.");
             return -1;
