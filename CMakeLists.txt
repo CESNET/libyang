@@ -44,7 +44,8 @@ set(libsrc
 	src/parser.c
 	src/parser_yin.c
 	src/parser_xml.c
-	src/tree.c
+	src/tree_schema.c
+	src/tree_data.c
 	src/printer.c
 	src/yang_library.c
 	src/printer_yang.c
@@ -62,7 +63,8 @@ set(lintsrc
 
 set(headers
 	src/libyang.h
-	src/tree.h)
+	src/tree_schema.h
+	src/tree_data.h)
 
 add_library(yang SHARED ${libsrc})
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})

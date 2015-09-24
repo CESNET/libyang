@@ -25,7 +25,7 @@
 #include <assert.h>
 
 #include "common.h"
-#include "tree.h"
+#include "tree_schema.h"
 #include "resolve.h"
 
 #define INDENT_LEN 11

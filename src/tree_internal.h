@@ -23,7 +23,8 @@
 #ifndef LY_TREE_INTERNAL_H_
 #define LY_TREE_INTERNAL_H_
 
-#include "tree.h"
+#include "tree_schema.h"
+#include "tree_data.h"
 
 #define LY_INTERNAL_MODULE_COUNT 3
 

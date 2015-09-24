@@ -23,7 +23,7 @@
 #define LY_CONTEXT_H_
 
 #include "dict.h"
-#include "tree.h"
+#include "tree_schema.h"
 
 struct ly_modules_list {
     char *search_path;

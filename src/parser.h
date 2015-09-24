@@ -23,7 +23,7 @@
 #define LY_PARSER_H_
 
 #include "libyang.h"
-#include "tree.h"
+#include "tree_schema.h"
 #include "tree_internal.h"
 
 /**

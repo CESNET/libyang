@@ -24,7 +24,8 @@
 
 #include <stdio.h>
 
-#include "tree.h"
+#include "tree_schema.h"
+#include "tree_data.h"
 
 #ifdef __cplusplus
 extern "C" {

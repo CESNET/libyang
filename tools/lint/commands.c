@@ -33,7 +33,8 @@
 
 #include "commands.h"
 #include "../../src/libyang.h"
-#include "../../src/tree.h"
+#include "../../src/tree_schema.h"
+#include "../../src/tree_data.h"
 #include "../../src/parser.h"
 
 COMMAND commands[];

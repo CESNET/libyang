@@ -25,7 +25,7 @@
 #include <assert.h>
 
 #include "common.h"
-#include "tree.h"
+#include "tree_schema.h"
 
 /* spec_config = 0 (no special config status), 1 (read-only - rpc output, notification), 2 (write-only - rpc input) */
 static void tree_print_choice_content(FILE *f, struct lys_module* module, int level, char *indent, unsigned int max_name_len,
