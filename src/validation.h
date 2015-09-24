@@ -23,7 +23,8 @@
 #define LY_VALIDATION_H_
 
 #include "libyang.h"
-#include "tree.h"
+#include "tree_schema.h"
+#include "tree_data.h"
 
 /**
  * @brief Check, that the data node of the given schema node can even appear in a data tree.

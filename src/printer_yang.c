@@ -24,7 +24,7 @@
 #include <string.h>
 
 #include "common.h"
-#include "tree.h"
+#include "tree_schema.h"
 
 #define INDENT ""
 #define LEVEL (level*2)

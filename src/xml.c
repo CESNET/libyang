@@ -29,7 +29,7 @@
 
 #include "common.h"
 #include "dict.h"
-#include "tree.h"
+#include "tree_schema.h"
 #include "xml.h"
 
 #ifndef NDEBUG

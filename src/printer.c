@@ -23,7 +23,8 @@
 #include <stdio.h>
 
 #include "common.h"
-#include "tree.h"
+#include "tree_schema.h"
+#include "tree_data.h"
 
 /* printer/-.c */
 int yang_print_model(FILE * f, struct lys_module *module);

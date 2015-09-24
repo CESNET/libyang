@@ -4,12 +4,12 @@ project(libyang C)
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
 set(LIBYANG_MINOR_VERSION 2)
-set(LIBYANG_MICRO_VERSION 22)
+set(LIBYANG_MICRO_VERSION 28)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 
 # include custom Modules
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 
 # check the supported platform
 if(NOT UNIX)
@@ -44,7 +44,8 @@ set(libsrc
 	src/parser.c
 	src/parser_yin.c
 	src/parser_xml.c
-	src/tree.c
+	src/tree_schema.c
+	src/tree_data.c
 	src/printer.c
 	src/yang_library.c
 	src/printer_yang.c
@@ -62,7 +63,8 @@ set(lintsrc
 
 set(headers
 	src/libyang.h
-	src/tree.h)
+	src/tree_schema.h
+	src/tree_data.h)
 
 add_library(yang SHARED ${libsrc})
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})
@@ -85,7 +87,7 @@ configure_file(Doxyfile.in Doxyfile)
 # clean cmake cache
 add_custom_target(cclean
                   COMMAND make clean
-                  COMMAND find . -iname '*cmake*' -not -name CMakeLists.txt -exec rm -rf {} +
+                  COMMAND find . -iname '*cmake*' -not -name CMakeLists.txt -not -path './CMakeModules*' -exec rm -rf {} +
                   COMMAND rm -rf Makefile Doxyfile
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 

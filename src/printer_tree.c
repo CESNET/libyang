@@ -25,7 +25,7 @@
 #include <assert.h>
 
 #include "common.h"
-#include "tree.h"
+#include "tree_schema.h"
 
 /* spec_config = 0 (no special config status), 1 (read-only - rpc output, notification), 2 (write-only - rpc input) */
 static void tree_print_choice_content(FILE *f, struct lys_module* module, int level, char *indent, unsigned int max_name_len,
@@ -44,10 +44,14 @@ sibling_is_valid_child(const struct lys_node *node, int including)
 
     /* has a following printed child */
     LY_TREE_FOR((struct lys_node *)(including ? node : node->next), cur) {
-        if (!lys_is_disabled(cur, 0) && (cur->nodetype &
-                (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_CHOICE |
-                 LYS_RPC | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF | LYS_CASE))) {
-            return 1;
+        if (!lys_is_disabled(cur, 0)) {
+            if (cur->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_CHOICE |
+                    LYS_RPC | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF | LYS_CASE)) {
+                return 1;
+            }
+            if ((cur->nodetype == LYS_USES) && sibling_is_valid_child(cur->child, 1)) {
+                return 1;
+            }
         }
     }
 
@@ -195,7 +199,7 @@ get_max_name_len(struct lys_module *module, struct lys_node *node)
 static void
 tree_print_type(FILE *f, struct lys_type *type)
 {
-    if ((type->base == LY_TYPE_LEAFREF) && (!type->der)) {
+    if ((type->base == LY_TYPE_LEAFREF) && !type->der->module) {
         fprintf(f, "-> %s", type->info.lref.path);
     } else if (type->prefix) {
         fprintf(f, "%s:%s", type->prefix, type->der->name);

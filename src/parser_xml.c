@@ -891,6 +891,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     switch (schema->nodetype) {
     case LYS_CONTAINER:
+    case LYS_LIST:
         result = calloc(1, sizeof *result);
         havechildren = 1;
         break;
@@ -901,10 +902,6 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     case LYS_LEAFLIST:
         result = calloc(1, sizeof(struct lyd_node_leaflist));
         havechildren = 0;
-        break;
-    case LYS_LIST:
-        result = calloc(1, sizeof(struct lyd_node_list));
-        havechildren = 1;
         break;
     case LYS_ANYXML:
         result = calloc(1, sizeof(struct lyd_node_anyxml));
@@ -931,35 +928,10 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     result->schema = schema;
 
     /* type specific processing */
-    if (schema->nodetype == LYS_LIST) {
-        /* pointers to next and previous instances of the same list */
-        for (diter = result->prev; diter != result; diter = diter->prev) {
-            if (diter->schema == result->schema) {
-                /* instances of the same list */
-                ((struct lyd_node_list *)diter)->lnext = (struct lyd_node_list *)result;
-                ((struct lyd_node_list *)result)->lprev = (struct lyd_node_list *)diter;
-                break;
-            }
-        }
-    } else if (schema->nodetype == LYS_LEAF) {
+    if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
         if (xml_get_value(result, xml, options, unres)) {
             goto error;
-        }
-    } else if (schema->nodetype == LYS_LEAFLIST) {
-        /* type detection and assigning the value */
-        if (xml_get_value(result, xml, options, unres)) {
-            goto error;
-        }
-
-        /* pointers to next and previous instances of the same leaflist */
-        for (diter = result->prev; diter != result; diter = diter->prev) {
-            if (diter->schema == result->schema) {
-                /* instances of the same list */
-                ((struct lyd_node_leaflist *)diter)->lnext = (struct lyd_node_leaflist *)result;
-                ((struct lyd_node_leaflist *)result)->lprev = (struct lyd_node_leaflist *)diter;
-                break;
-            }
         }
     } else if (schema->nodetype == LYS_ANYXML && !(options & LYD_OPT_FILTER)) {
         /* HACK unlink xml children and link them to a separate copy of xml */

@@ -27,107 +27,7 @@
 #include "common.h"
 #include "context.h"
 #include "parser.h"
-
-static struct lys_node *
-ylib_get_next_sibling_recursive(struct lys_node *siblings, struct lys_node *prev, int *found)
-{
-    struct lys_node *sibling, *node;
-
-    LY_TREE_FOR(siblings, sibling) {
-        if (sibling->nodetype == LYS_GROUPING) {
-            continue;
-        }
-
-        if (sibling->nodetype == LYS_USES) {
-            node = ylib_get_next_sibling_recursive(sibling->child, (*found ? NULL : prev), found);
-            if (node) {
-                return node;
-            }
-            continue;
-        }
-
-        if (*found || !prev) {
-            return sibling;
-        }
-
-        if (prev == sibling) {
-            *found = 1;
-        }
-    }
-
-    return NULL;
-}
-
-static struct lys_node *
-ylib_get_next_sibling(struct lys_node *siblings, struct lys_node *prev)
-{
-    int found = 0;
-
-    return ylib_get_next_sibling_recursive(siblings, prev, &found);
-}
-
-static void
-ylib_append_children(struct lyd_node *parent, struct lyd_node *child)
-{
-    struct lyd_node *parent_last_child;
-
-    if (!parent || !child) {
-        return;
-    }
-
-    if (!parent->child) {
-        parent->child = child;
-        return;
-    }
-
-    parent_last_child = parent->child->prev;
-    parent->child->prev = child->prev;
-
-    parent_last_child->next = child;
-    child->prev = parent_last_child;
-}
-
-static void
-ylib_append_list(struct lyd_node_list *sibling, struct lyd_node_list *list)
-{
-    struct lyd_node *sibling_last;
-    struct lyd_node_list *sibling_last_list;
-
-    if (!sibling || !list) {
-        return;
-    }
-
-    sibling_last = sibling->prev;
-    sibling->prev = list->prev;
-    sibling_last->next = (struct lyd_node *)list;
-    list->prev = sibling_last->next;
-
-    sibling_last_list = sibling->lprev;
-    sibling->lprev = list->lprev;
-    sibling_last_list->lnext = list;
-    list->lprev = sibling_last_list->lnext;
-}
-
-static void
-ylib_append_llist(struct lyd_node_leaflist *sibling, struct lyd_node_leaflist *llist)
-{
-    struct lyd_node *sibling_last;
-    struct lyd_node_leaflist *sibling_last_llist;
-
-    if (!sibling || !llist) {
-        return;
-    }
-
-    sibling_last = sibling->prev;
-    sibling->prev = llist->prev;
-    sibling_last->next = (struct lyd_node *)llist;
-    llist->prev = sibling_last->next;
-
-    sibling_last_llist = sibling->lprev;
-    sibling->lprev = llist->lprev;
-    sibling_last_llist->lnext = llist;
-    llist->lprev = sibling_last_llist->lnext;
-}
+#include "tree_internal.h"
 
 static struct lyd_node *
 ylib_name_space(struct ly_ctx *ctx, struct lys_node *name_node, const char *name)
@@ -204,7 +104,6 @@ ylib_feature(struct ly_ctx *ctx, struct lys_node *feature_node, struct lys_modul
         }
         dllist = calloc(1, sizeof *dllist);
         dllist->prev = (struct lyd_node *)dllist;
-        dllist->lprev = dllist;
         dllist->schema = feature_node;
 
         dllist->value_str = lydict_insert(ctx, mod->features[i].name, 0);
@@ -212,7 +111,7 @@ ylib_feature(struct ly_ctx *ctx, struct lys_node *feature_node, struct lys_modul
         dllist->value_type = LY_TYPE_STRING;
 
         if (ret) {
-            ylib_append_llist(ret, dllist);
+            lyd_insert_after(ret->prev, (struct lyd_node *)dllist, LYD_OPT_STRICT);
         } else {
             ret = dllist;
         }
@@ -227,14 +126,13 @@ ylib_feature(struct ly_ctx *ctx, struct lys_node *feature_node, struct lys_modul
             dllist = calloc(1, sizeof *dllist);
             dllist->schema = feature_node;
             dllist->prev = (struct lyd_node *)dllist;
-            dllist->lprev = dllist;
 
             dllist->value_str = lydict_insert(ctx, mod->inc[i].submodule->features[j].name, 0);
             dllist->value.string = dllist->value_str;
             dllist->value_type = LY_TYPE_STRING;
 
             if (ret) {
-                ylib_append_llist(ret, dllist);
+                lyd_insert_after(ret->prev, (struct lyd_node *)dllist, LYD_OPT_STRICT);
             } else {
                 ret = dllist;
             }
@@ -250,7 +148,7 @@ ylib_deviation(struct ly_ctx *ctx, struct lys_node *deviation_node, struct lys_m
     int i, j, k;
     struct lys_module *target_module;
     struct lyd_node *dnode;
-    struct lyd_node_list *ret = NULL, *dlist;
+    struct lyd_node *ret = NULL, *dlist, *dlast;
     struct lys_node *deviation_child;
 
     for (i = 0; i < mod_count; ++i) {
@@ -265,11 +163,10 @@ ylib_deviation(struct ly_ctx *ctx, struct lys_node *deviation_node, struct lys_m
             if (target_module == mod) {
                 dlist = calloc(1, sizeof *dlist);
                 dlist->prev = (struct lyd_node *)dlist;
-                dlist->lprev = dlist;
                 dlist->schema = deviation_node;
 
                 deviation_child = NULL;
-                while ((deviation_child = ylib_get_next_sibling(deviation_node->child, deviation_child))) {
+                while ((deviation_child = lys_getnext(deviation_child, deviation_node, NULL, 0))) {
                     dnode = NULL;
 
                     if (!strcmp(deviation_child->name, "name")) {
@@ -279,15 +176,16 @@ ylib_deviation(struct ly_ctx *ctx, struct lys_node *deviation_node, struct lys_m
                     }
 
                     if (dnode) {
-                        ylib_append_children((struct lyd_node *)dlist, dnode);
+                        lyd_insert((struct lyd_node *)dlist, dnode, LYD_OPT_STRICT);
                     }
                 }
 
                 if (ret) {
-                    ylib_append_list(ret, dlist);
+                    lyd_insert_after((struct lyd_node *)dlast, (struct lyd_node *)dlist, LYD_OPT_STRICT);
                 } else {
                     ret = dlist;
                 }
+                dlast = dlist;
             }
         }
 
@@ -304,11 +202,10 @@ ylib_deviation(struct ly_ctx *ctx, struct lys_node *deviation_node, struct lys_m
                 if (target_module == mod) {
                     dlist = calloc(1, sizeof *dlist);
                     dlist->prev = (struct lyd_node *)dlist;
-                    dlist->lprev = dlist;
                     dlist->schema = deviation_node;
 
                     deviation_child = NULL;
-                    while ((deviation_child = ylib_get_next_sibling(deviation_node->child, deviation_child))) {
+                    while ((deviation_child = lys_getnext(deviation_child, deviation_node, NULL, 0))) {
                         dnode = NULL;
 
                         if (!strcmp(deviation_child->name, "name")) {
@@ -319,15 +216,16 @@ ylib_deviation(struct ly_ctx *ctx, struct lys_node *deviation_node, struct lys_m
                         }
 
                         if (dnode) {
-                            ylib_append_children((struct lyd_node *)dlist, dnode);
+                            lyd_insert((struct lyd_node *)dlist, dnode, LYD_OPT_STRICT);
                         }
                     }
 
                     if (ret) {
-                        ylib_append_list(ret, dlist);
+                        lyd_insert_after((struct lyd_node *)dlast, (struct lyd_node *)dlist, LYD_OPT_STRICT);
                     } else {
                         ret = dlist;
                     }
+                    dlast = dlist;
                 }
             }
         }
@@ -362,23 +260,22 @@ ylib_submodules(struct ly_ctx *ctx, struct lys_node *submodules_node, struct lys
     int i;
     struct lys_node *submodule_node, *submodule_child;
     struct lyd_node *ret = NULL, *dnode;
-    struct lyd_node_list *dsubmodule = NULL, *dlist;
+    struct lyd_node *dlist = NULL;
 
     ret = calloc(1, sizeof *ret);
     ret->prev = ret;
     ret->schema = submodules_node;
 
     submodule_node = NULL;
-    while ((submodule_node = ylib_get_next_sibling(submodules_node->child, submodule_node))) {
+    while ((submodule_node = lys_getnext(submodule_node, submodules_node, NULL, 0))) {
         if (!strcmp(submodule_node->name, "submodule")) {
             for (i = 0; i < inc_size; ++i) {
                 dlist = calloc(1, sizeof *dlist);
                 dlist->prev = (struct lyd_node *)dlist;
-                dlist->lprev = dlist;
                 dlist->schema = submodule_node;
 
                 submodule_child = NULL;
-                while ((submodule_child = ylib_get_next_sibling(submodule_node->child, submodule_child))) {
+                while ((submodule_child = lys_getnext(submodule_child, submodule_node, NULL, 0))) {
                     dnode = NULL;
 
                     if (!strcmp(submodule_child->name, "name")) {
@@ -390,20 +287,14 @@ ylib_submodules(struct ly_ctx *ctx, struct lys_node *submodules_node, struct lys
                     }
 
                     if (dnode) {
-                        ylib_append_children((struct lyd_node *)dlist, dnode);
+                        lyd_insert((struct lyd_node *)dlist, dnode, LYD_OPT_STRICT);
                     }
                 }
 
-                if (dsubmodule) {
-                    ylib_append_list(dsubmodule, dlist);
-                } else {
-                    dsubmodule = dlist;
-                }
+                lyd_insert(ret, (struct lyd_node *)dlist, LYD_OPT_STRICT);
             }
         }
     }
-
-    ret->child = (struct lyd_node *)dsubmodule;
 
     return ret;
 }
@@ -433,7 +324,7 @@ ly_ctx_info(struct ly_ctx *ctx)
     struct lys_module *mod;
     struct lys_node *modules_child, *module_child;
     struct lyd_node *root, *dnode;
-    struct lyd_node_list *dlist, *dmodule = NULL;
+    struct lyd_node *dlist = NULL;
 
     mod = ly_ctx_get_module(ctx, "ietf-yang-library", NULL);
     if (!mod) {
@@ -449,19 +340,18 @@ ly_ctx_info(struct ly_ctx *ctx)
     }
 
     root->prev = root;
-    root->schema = mod->data;
+    root->schema = mod->data->next;
 
     modules_child = NULL;
-    while ((modules_child = ylib_get_next_sibling(mod->data->next->child, modules_child))) {
+    while ((modules_child = lys_getnext(modules_child, mod->data->next, NULL, 0))) {
         if (!strcmp(modules_child->name, "module")) {
             for (i = 0; i < ctx->models.used; ++i) {
                 dlist = calloc(1, sizeof *dlist);
                 dlist->prev = (struct lyd_node *)dlist;
-                dlist->lprev = dlist;
                 dlist->schema = modules_child;
 
                 module_child = NULL;
-                while ((module_child = ylib_get_next_sibling(modules_child->child, module_child))) {
+                while ((module_child = lys_getnext(module_child, modules_child, NULL, 0))) {
                     dnode = NULL;
 
                     if (!strcmp(module_child->name, "name")) {
@@ -487,32 +377,27 @@ ly_ctx_info(struct ly_ctx *ctx)
                     }
 
                     if (dnode) {
-                        ylib_append_children((struct lyd_node *)dlist, dnode);
+                        lyd_insert((struct lyd_node *)dlist, dnode, LYD_OPT_STRICT);
                     }
                 }
 
-                if (dmodule) {
-                    ylib_append_list(dmodule, dlist);
-                } else {
-                    dmodule = dlist;
-                }
+                lyd_insert(root, (struct lyd_node *)dlist, LYD_OPT_STRICT);
             }
         }
     }
 
-    assert(dmodule);
-    ylib_append_children(root, (struct lyd_node *)dmodule);
+    assert(dlist);
 
     dnode = NULL;
     modules_child = NULL;
-    while ((modules_child = ylib_get_next_sibling(mod->data->next->child, modules_child))) {
+    while ((modules_child = lys_getnext(modules_child, mod->data->next, NULL, 0))) {
         if (!strcmp(modules_child->name, "module-set-id")) {
             dnode = ylib_module_set_id(ctx, modules_child);
         }
     }
 
     assert(dnode);
-    ylib_append_children(root, dnode);
+    lyd_insert(root, dnode, LYD_OPT_STRICT);
 
     return root;
 }
