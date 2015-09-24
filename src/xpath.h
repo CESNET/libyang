@@ -24,7 +24,8 @@
 
 #include <stdint.h>
 
-#include "tree.h"
+#include "tree_schema.h"
+#include "tree_data.h"
 
 /*
  * XPath evaluator fully compliant with http://www.w3.org/TR/1999/REC-xpath-19991116/
