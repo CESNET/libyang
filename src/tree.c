@@ -1626,7 +1626,7 @@ lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses)
         lydict_remove(ctx, uses->refine[i].dsc);
         lydict_remove(ctx, uses->refine[i].ref);
 
-        for (j = 0; j < uses->refine[j].must_size; j++) {
+        for (j = 0; j < uses->refine[i].must_size; j++) {
             lys_restr_free(ctx, &uses->refine[i].must[j]);
         }
         free(uses->refine[i].must);
