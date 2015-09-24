@@ -1377,8 +1377,9 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
          * being the node duplicated, so we must have a case of grouping
          * with a uses with augments. The augmented nodes have already been
          * copied and everything is almost fine except their parent is wrong
-         * (it was set to their actual data parent, not an augment), so
-         * we just correct it.
+         * (it was set to their actual data parent, not an augment), and
+         * the new augment does not have child pointer to its augment nodes,
+         * so we just correct it.
          */
         LY_TREE_FOR(new[i].target->child, new_child) {
             if (new_child->name == old[i].child->name) {
@@ -1386,6 +1387,7 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
             }
         }
         assert(new_child);
+        new[i].child = new_child;
         LY_TREE_FOR(old[i].child, old_child) {
             /* all augment nodes were connected as siblings, there can be no more after this */
             if (old_child->parent != (struct lys_node *)&old[i]) {
