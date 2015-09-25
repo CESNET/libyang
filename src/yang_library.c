@@ -32,7 +32,7 @@
 static struct lyd_node *
 ylib_name_space(struct ly_ctx *ctx, struct lys_node *name_node, const char *name)
 {
-    struct lyd_node_leaf *dleaf;
+    struct lyd_node_leaf_list *dleaf;
 
     dleaf = calloc(1, sizeof *dleaf);
     dleaf->prev = (struct lyd_node *)dleaf;
@@ -49,7 +49,7 @@ static struct lyd_node *
 ylib_revision(struct ly_ctx *ctx, struct lys_node *revision_node, struct lys_revision *rev, uint8_t rev_size)
 {
     int i, max = 0;
-    struct lyd_node_leaf *dleaf;
+    struct lyd_node_leaf_list *dleaf;
 
     dleaf = calloc(1, sizeof *dleaf);
     dleaf->prev = (struct lyd_node *)dleaf;
@@ -74,7 +74,7 @@ ylib_revision(struct ly_ctx *ctx, struct lys_node *revision_node, struct lys_rev
 static struct lyd_node *
 ylib_schema(struct ly_ctx *ctx, struct lys_node *schema_node, const char *uri)
 {
-    struct lyd_node_leaf *dleaf;
+    struct lyd_node_leaf_list *dleaf;
 
     if (!uri) {
         return NULL;
@@ -95,7 +95,7 @@ static struct lyd_node *
 ylib_feature(struct ly_ctx *ctx, struct lys_node *feature_node, struct lys_module *mod)
 {
     int i, j;
-    struct lyd_node_leaflist *dllist, *ret = NULL;
+    struct lyd_node_leaf_list *dllist, *ret = NULL;
 
     /* module features */
     for (i = 0; i < mod->features_size; ++i) {
@@ -237,7 +237,7 @@ ylib_deviation(struct ly_ctx *ctx, struct lys_node *deviation_node, struct lys_m
 static struct lyd_node *
 ylib_conformance(struct ly_ctx *ctx, struct lys_node *conformance_node, int implemented)
 {
-    struct lyd_node_leaf *dleaf;
+    struct lyd_node_leaf_list *dleaf;
 
     dleaf = calloc(1, sizeof *dleaf);
     dleaf->prev = (struct lyd_node *)dleaf;
@@ -302,7 +302,7 @@ ylib_submodules(struct ly_ctx *ctx, struct lys_node *submodules_node, struct lys
 static struct lyd_node *
 ylib_module_set_id(struct ly_ctx *ctx, struct lys_node *modules_set_id_node)
 {
-    struct lyd_node_leaf *dleaf;
+    struct lyd_node_leaf_list *dleaf;
     char id[8];
 
     dleaf = calloc(1, sizeof *dleaf);

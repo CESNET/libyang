@@ -253,14 +253,14 @@ lyd_free(struct lyd_node *node)
         lyxml_free_elem(node->schema->module->ctx, ((struct lyd_node_anyxml *)node)->value);
     } else {
         /* free value */
-        switch(((struct lyd_node_leaf *)node)->value_type) {
+        switch(((struct lyd_node_leaf_list *)node)->value_type) {
         case LY_TYPE_BINARY:
         case LY_TYPE_STRING:
-            lydict_remove(node->schema->module->ctx, ((struct lyd_node_leaf *)node)->value.string);
+            lydict_remove(node->schema->module->ctx, ((struct lyd_node_leaf_list *)node)->value.string);
             break;
         case LY_TYPE_BITS:
-            if (((struct lyd_node_leaf *)node)->value.bit) {
-                free(((struct lyd_node_leaf *)node)->value.bit);
+            if (((struct lyd_node_leaf_list *)node)->value.bit) {
+                free(((struct lyd_node_leaf_list *)node)->value.bit);
             }
             break;
         default:
@@ -293,12 +293,12 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
     switch (first->schema->nodetype) {
     case LYS_LEAFLIST:
         /* compare values */
-        if (((struct lyd_node_leaflist *)first)->value_str == ((struct lyd_node_leaflist *)second)->value_str) {
+        if (((struct lyd_node_leaf_list *)first)->value_str == ((struct lyd_node_leaf_list *)second)->value_str) {
             return 0;
         }
         return 1;
     case LYS_LIST:
-        slist = (struct lys_node_list*)first->schema;
+        slist = (struct lys_node_list *)first->schema;
 
         if (unique) {
             /* compare unique leafs */
@@ -309,13 +309,13 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                     val1 = val2 = ((struct lys_node_leaf *)snode)->dflt;
                     LY_TREE_FOR(first->child, diter) {
                         if (diter->schema == snode) {
-                            val1 = ((struct lyd_node_leaf *)diter)->value_str;
+                            val1 = ((struct lyd_node_leaf_list *)diter)->value_str;
                             break;
                         }
                     }
                     LY_TREE_FOR(second->child, diter) {
                         if (diter->schema == snode) {
-                            val2 = ((struct lyd_node_leaf *)diter)->value_str;
+                            val2 = ((struct lyd_node_leaf_list *)diter)->value_str;
                             break;
                         }
                     }
@@ -336,13 +336,13 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
             val1 = val2 = NULL;
             LY_TREE_FOR(first->child, diter) {
                 if (diter->schema == snode) {
-                    val1 = ((struct lyd_node_leaf *)diter)->value_str;
+                    val1 = ((struct lyd_node_leaf_list *)diter)->value_str;
                     break;
                 }
             }
             LY_TREE_FOR(second->child, diter) {
                 if (diter->schema == snode) {
-                    val2 = ((struct lyd_node_leaf *)diter)->value_str;
+                    val2 = ((struct lyd_node_leaf_list *)diter)->value_str;
                     break;
                 }
             }

@@ -79,7 +79,7 @@ filter_compare(struct lyd_node *first, struct lyd_node *second)
         LY_TREE_FOR(first->child, diter1) {
             if (!(diter1->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 continue;
-            } else if (!((struct lyd_node_leaf *)diter1)->value_str) {
+            } else if (!((struct lyd_node_leaf_list *)diter1)->value_str) {
                 /* selection node */
                 continue;
             }
@@ -88,7 +88,8 @@ filter_compare(struct lyd_node *first, struct lyd_node *second)
             LY_TREE_FOR(second->child, diter2) {
                 if (diter2->schema != diter1->schema) {
                     continue;
-                } else if (((struct lyd_node_leaf *)diter1)->value_str != ((struct lyd_node_leaf *)diter2)->value_str) {
+                } else if (((struct lyd_node_leaf_list *)diter1)->value_str !=
+                        ((struct lyd_node_leaf_list *)diter2)->value_str) {
                     continue;
                 }
                 match = 1;
@@ -105,7 +106,7 @@ filter_compare(struct lyd_node *first, struct lyd_node *second)
         LY_TREE_FOR(second->child, diter2) {
             if (!(diter2->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 continue;
-            } else if (!((struct lyd_node_leaf *)diter2)->value_str) {
+            } else if (!((struct lyd_node_leaf_list *)diter2)->value_str) {
                 /* selection node */
                 continue;
             }
@@ -117,7 +118,7 @@ filter_compare(struct lyd_node *first, struct lyd_node *second)
         break;
     case LYS_LEAF:
     case LYS_LEAFLIST:
-        if (((struct lyd_node_leaf *)first)->value_str != ((struct lyd_node_leaf *)second)->value_str) {
+        if (((struct lyd_node_leaf_list *)first)->value_str != ((struct lyd_node_leaf_list *)second)->value_str) {
             return 1;
         }
         break;
@@ -164,7 +165,8 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
             s2 = lyd_set_new();
             LY_TREE_FOR(to->child, diter1) {
                 /* is selection node */
-                if ((diter1->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && !((struct lyd_node_leaf *)diter1)->value_str) {
+                if ((diter1->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
+                        && !((struct lyd_node_leaf_list *)diter1)->value_str) {
                     lyd_set_add(s1, diter1);
                 } else if ((diter1->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter1)->value->child) {
                     lyd_set_add(s1, diter1);
@@ -176,7 +178,8 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
 
             LY_TREE_FOR(from->child, diter2) {
                 /* is selection node */
-                if ((diter2->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && !((struct lyd_node_leaf *)diter2)->value_str) {
+                if ((diter2->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
+                        && !((struct lyd_node_leaf_list *)diter2)->value_str) {
                     lyd_set_add(s2, diter2);
                 } else if ((diter2->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter2)->value->child) {
                     lyd_set_add(s2, diter2);
@@ -414,15 +417,17 @@ lyv_data_content(struct lyd_node *node, unsigned int line, int options)
                         }
                         break;
                     case LYS_LEAF:
-                        if (!((struct lyd_node_leaf *)diter)->value_str && ((struct lyd_node_leaf *)node)->value_str) {
+                        if (!((struct lyd_node_leaf_list *)diter)->value_str
+                                && ((struct lyd_node_leaf_list *)node)->value_str) {
                             /* the first instance is selection node but the new instance is content match node ->
                              * since content match node also works as selection node. keep only the new instance
                              */
                             lyd_free(diter);
                             /* return success to keep the node in the tree */
                             return EXIT_SUCCESS;
-                        } else if (!((struct lyd_node_leaf *)node)->value_str ||
-                                ((struct lyd_node_leaf *)diter)->value_str == ((struct lyd_node_leaf *)node)->value_str) {
+                        } else if (!((struct lyd_node_leaf_list *)node)->value_str
+                                || ((struct lyd_node_leaf_list *)diter)->value_str ==
+                                ((struct lyd_node_leaf_list *)node)->value_str) {
                             /* keep the previous instance and remove the current one ->
                              * return failure but do not set ly_errno */
                             return EXIT_FAILURE;
@@ -486,11 +491,11 @@ lyv_data_content(struct lyd_node *node, unsigned int line, int options)
                      * is selection node. In that case wee need to keep the other node, which is content
                      * match node and it somehow limit the data to be filtered.
                      */
-                    if (!((struct lyd_node_leaflist *)diter)->value_str) {
+                    if (!((struct lyd_node_leaf_list *)diter)->value_str) {
                         /* the other instance is selection node, keep the new one whatever it is */
                         lyd_free(diter);
                         break;
-                    } else if (!((struct lyd_node_leaflist *)node)->value_str) {
+                    } else if (!((struct lyd_node_leaf_list *)node)->value_str) {
                         /* the new instance is selection node, keep the previous instance which is
                          * content match node */
                         /* failure is returned but no ly_errno is set */

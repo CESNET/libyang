@@ -153,7 +153,7 @@ transform_data_json2xml(struct ly_ctx *ctx, const char *json_data, char ***prefi
 static void
 xml_print_leaf(FILE *f, int level, struct lyd_node *node)
 {
-    struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
+    struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
     char **prefs, **nss, *xml_data;
     uint32_t ns_count, i;
 
@@ -181,8 +181,8 @@ xml_print_leaf(FILE *f, int level, struct lyd_node *node)
 
     case LY_TYPE_IDENT:
     case LY_TYPE_INST:
-        xml_data = transform_data_json2xml(node->schema->module->ctx, ((struct lyd_node_leaf *)node)->value_str,
-                                               &prefs, &nss, &ns_count);
+        xml_data = transform_data_json2xml(node->schema->module->ctx, ((struct lyd_node_leaf_list *)node)->value_str,
+                                           &prefs, &nss, &ns_count);
         for (i = 0; i < ns_count; ++i) {
             fprintf(f, " xmlns:%s=\"%s\"", prefs[i], nss[i]);
         }
@@ -198,7 +198,7 @@ xml_print_leaf(FILE *f, int level, struct lyd_node *node)
         break;
 
     case LY_TYPE_LEAFREF:
-        fprintf(f, ">%s</%s>\n", ((struct lyd_node_leaf *)(leaf->value.leafref))->value_str, node->schema->name);
+        fprintf(f, ">%s</%s>\n", ((struct lyd_node_leaf_list *)(leaf->value.leafref))->value_str, node->schema->name);
         break;
 
     case LY_TYPE_EMPTY:

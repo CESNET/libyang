@@ -2171,8 +2171,8 @@ resolve_path_predicate_data(const char *pred, int first, uint32_t line, struct u
                 goto remove_leafref;
             }
 
-            if (((struct lyd_node_leaf *)source_match.dnode[0])->value_str
-                    != ((struct lyd_node_leaf *)dest_match.dnode[0])->value_str) {
+            if (((struct lyd_node_leaf_list *)source_match.dnode[0])->value_str
+                    != ((struct lyd_node_leaf_list *)dest_match.dnode[0])->value_str) {
                 goto remove_leafref;
             }
 
@@ -2611,8 +2611,8 @@ resolve_predicate_json(const char *pred, struct unres_data *node_match)
                 }
             }
 
-            if ((value && (strncmp(((struct lyd_node_leaf *)target_match.dnode[0])->value_str, value, val_len)
-                    || ((struct lyd_node_leaf *)target_match.dnode[0])->value_str[val_len]))
+            if ((value && (strncmp(((struct lyd_node_leaf_list *)target_match.dnode[0])->value_str, value, val_len)
+                    || ((struct lyd_node_leaf_list *)target_match.dnode[0])->value_str[val_len]))
                     || (!value && (idx != cur_idx))) {
                 goto remove_instid;
             }
@@ -3747,7 +3747,7 @@ print_unres_data_item_fail(struct lyd_node *dnode, uint32_t line)
                sleaf->type.info.lref.path, line_str);
     } else if (sleaf->type.base == LY_TYPE_INST) {
         LOGVRB("Instance-identifier \"%s\" could not be resolved, it will be attempted later%s.",
-               ((struct lyd_node_leaf *)dnode)->value_str, line_str);
+               ((struct lyd_node_leaf_list *)dnode)->value_str, line_str);
     }
 }
 
@@ -3765,12 +3765,12 @@ resolve_unres_data_item(struct lyd_node *dnode, int first, uint32_t line)
 {
     uint32_t i;
     int rc;
-    struct lyd_node_leaf *dleaf;
+    struct lyd_node_leaf_list *dleaf;
     struct lys_node_leaf *sleaf;
     struct unres_data matches;
 
     memset(&matches, 0, sizeof matches);
-    dleaf = (struct lyd_node_leaf *)dnode;
+    dleaf = (struct lyd_node_leaf_list *)dnode;
     sleaf = (struct lys_node_leaf *)dleaf->schema;
 
     /* leafref */
@@ -3781,7 +3781,7 @@ resolve_unres_data_item(struct lyd_node *dnode, int first, uint32_t line)
 
         /* check that value matches */
         for (i = 0; i < matches.count; ++i) {
-            if (dleaf->value_str == ((struct lyd_node_leaf *)matches.dnode[i])->value_str) {
+            if (dleaf->value_str == ((struct lyd_node_leaf_list *)matches.dnode[i])->value_str) {
                 dleaf->value.leafref = matches.dnode[i];
                 break;
             }

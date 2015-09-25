@@ -139,45 +139,16 @@ struct lyd_node {
 };
 
 /**
- * @brief Structure for data nodes defined as #LYS_LEAF.
+ * @brief Structure for data nodes defined as #LYS_LEAF or #LYS_LEAFLIST.
  *
- * Extension for ::lyd_node structure - replaces the ::lyd_node#child member by three new members (#value, #value_str
- * and #value_type) to provide information about the leaf's value. The first five members (#schema, #attr, #next,
+ * Extension for ::lyd_node structure. It replaces the ::lyd_node#child member by
+ * three new members (#value, #value_str and #value_type) to provide
+ * information about the value. The first five members (#schema, #attr, #next,
  * #prev and #parent) are compatible with the ::lyd_node's members.
  *
  * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
  */
-struct lyd_node_leaf {
-    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_leaf
-                                          structure */
-
-    struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
-    struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
-    struct lyd_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
-                                          never NULL. If there is no sibling node, pointer points to the node
-                                          itself. In case of the first node, this pointer points to the last
-                                          node in the list. */
-    struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
-
-    /* struct lyd_node *child; should be here, but it is not! */
-
-    /* leaf's specific members */
-    lyd_val value;                   /**< node's value representation */
-    const char *value_str;           /**< string representation of value (for comparison, printing,...) */
-    LY_DATA_TYPE value_type;         /**< type of the value in the node, mainly for union to avoid repeating of type detection */
-};
-
-/**
- * @brief Structure for data nodes defined as #LYS_LEAF.
- *
- * Extension for ::lyd_node structure. It combines ::lyd_node_leaf and :lyd_node_list by replacing the
- * ::lyd_node#child member by five new members (#value, #value_str and #value_type) to provide
- * information about the value and other leaf-list's instances. The first five members (#schema, #attr, #next,
- * #prev and #parent) are compatible with the ::lyd_node's members.
- *
- * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
- */
-struct lyd_node_leaflist {
+struct lyd_node_leaf_list {
     struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_leaflist
                                           structure */
 

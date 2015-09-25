@@ -384,7 +384,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
                int options, struct unres_data *unres, int log)
 {
     #define DECSIZE 21
-    struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
+    struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
     struct lys_type *type;
     char dec[DECSIZE];
     int64_t num;
@@ -895,11 +895,8 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         havechildren = 1;
         break;
     case LYS_LEAF:
-        result = calloc(1, sizeof(struct lyd_node_leaf));
-        havechildren = 0;
-        break;
     case LYS_LEAFLIST:
-        result = calloc(1, sizeof(struct lyd_node_leaflist));
+        result = calloc(1, sizeof(struct lyd_node_leaf_list));
         havechildren = 0;
         break;
     case LYS_ANYXML:

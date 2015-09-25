@@ -65,7 +65,7 @@ nscmp(struct lyd_node *node1, struct lyd_node *node2)
 static void
 json_print_leaf(FILE *f, int level, struct lyd_node *node, int onlyvalue)
 {
-    struct lyd_node_leaf *leaf = (struct lyd_node_leaf *)node;
+    struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
     LY_DATA_TYPE data_type;
     const char *schema;
 
