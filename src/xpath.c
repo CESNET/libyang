@@ -6436,7 +6436,7 @@ lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, ui
 
     /* find root, beginning */
     for (node = cur_node; node->parent; node = node->parent);
-    for (node = cur_node; node->prev->next; node = node->prev);
+    for (; node->prev->next; node = node->prev);
 
     exp = parse_expr(expr, line);
     if (exp) {
@@ -6507,8 +6507,12 @@ lyxp_eval_schema(const char *expr, struct lys_node *cur_snode, struct lyxp_set *
     assert(expr && cur_snode && set);
 
     /* find root, beginning */
-    for (node = cur_snode; node->parent; node = node->parent);
-    for (node = cur_snode; node->prev->next; node = node->prev);
+    root = cur_snode;
+    do {
+        node = root;
+        root = lys_parent(root);
+    } while (root);
+    for (; node->prev->next; node = node->prev);
 
     exp = parse_expr(expr, line);
     if (exp) {
