@@ -408,7 +408,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
 
     switch (node_type->base) {
     case LY_TYPE_BINARY:
-        leaf->value.binary = leaf->value_str;
+        leaf->value.binary = lydict_insert(leaf->schema->module->ctx, leaf->value_str, 0);
 
         if (validate_length_range(0, (leaf->value.binary ? strlen(leaf->value.binary) : 0), 0, 0, node_type,
                                   leaf->value.binary, log ? LOGLINE(xml) : UINT_MAX)) {
@@ -672,7 +672,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
         break;
 
     case LY_TYPE_STRING:
-        leaf->value.string = leaf->value_str;
+        leaf->value.string = lydict_insert(leaf->schema->module->ctx, leaf->value_str, 0);
 
         if (validate_length_range(0, (leaf->value.string ? strlen(leaf->value.string) : 0), 0, 0, node_type,
                 leaf->value.string, log ? LOGLINE(xml) : UINT_MAX)) {

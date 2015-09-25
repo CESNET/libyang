@@ -267,6 +267,8 @@ lyd_free(struct lyd_node *node)
             /* TODO nothing needed : LY_TYPE_BOOL, LY_TYPE_DEC64*/
             break;
         }
+
+        lydict_remove(node->schema->module->ctx, ((struct lyd_node_leaf_list *)node)->value_str);
     }
 
     lyd_unlink(node);
