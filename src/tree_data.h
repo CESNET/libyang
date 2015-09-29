@@ -25,6 +25,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "tree_schema.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
