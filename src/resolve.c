@@ -860,6 +860,10 @@ resolve_prefixed_module(struct lys_module *mod, const char *prefix, uint32_t pre
 
     assert(prefix && pref_len);
 
+    if (!mod) {
+        return NULL;
+    }
+
     /* module itself */
     if (!strncmp(mod->prefix, prefix, pref_len) && (mod->prefix[pref_len] == '\0')) {
         return mod;
@@ -1667,7 +1671,7 @@ resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *p
     struct lys_module *prefix_mod, *cur_mod;
     int in_submod;
 
-    assert(mod && siblings && name);
+    assert(siblings && name);
     assert(!(type & LYS_USES));
 
     /* find the beginning */
@@ -1696,7 +1700,11 @@ resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *p
             siblings = cur_mod->data;
         }
     } else {
-        prefix_mod = mod;
+        if (mod) {
+            prefix_mod = mod;
+        } else {
+            prefix_mod = siblings->module;
+        }
         if (prefix_mod->type) {
             prefix_mod = ((struct lys_submodule *)prefix_mod)->belongsto;
         }
