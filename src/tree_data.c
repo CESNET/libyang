@@ -70,7 +70,10 @@ lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name)
     if (!parent) {
         siblings = module->data;
     } else {
-        siblings = parent->child->schema;
+        if (!parent->schema) {
+            return NULL;
+        }
+        siblings = parent->schema->child;
     }
 
     if (resolve_sibling(module, siblings, NULL, 0, name, strlen(name), LYS_CONTAINER | LYS_INPUT | LYS_OUTPUT
@@ -112,7 +115,10 @@ lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char 
     if (!parent) {
         siblings = module->data;
     } else {
-        siblings = parent->child->schema;
+        if (!parent->schema) {
+            return NULL;
+        }
+        siblings = parent->schema->child;
     }
 
     if (resolve_sibling(module, siblings, NULL, 0, name, strlen(name), LYS_LEAFLIST | LYS_LEAF, &snode)
@@ -308,7 +314,10 @@ lyd_new_leaf_str(struct lyd_node *parent, struct lys_module *module, const char 
     if (!parent) {
         siblings = module->data;
     } else {
-        siblings = parent->child->schema;
+        if (!parent->schema) {
+            return NULL;
+        }
+        siblings = parent->schema->child;
     }
 
     if (resolve_sibling(module, siblings, NULL, 0, name, strlen(name), LYS_LEAFLIST | LYS_LEAF, &snode)
