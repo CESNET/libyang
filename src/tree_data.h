@@ -237,8 +237,6 @@ struct lyd_node *lyd_new_leaf_str(struct lyd_node *parent, struct lys_module *mo
 /**
  * @brief Create a new anyxml node in a data tree.
  *
- * TODO not implemented
- *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] snode Schema node of the new data node. Can only be #LYS_ANYXML.
  * @param[in] val_xml Value of the node being created. Must be a well-formed XML.
