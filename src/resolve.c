@@ -3760,7 +3760,7 @@ print_unres_data_item_fail(struct lyd_node *dnode, uint32_t line)
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
-static int
+int
 resolve_unres_data_item(struct lyd_node *dnode, int first, uint32_t line)
 {
     uint32_t i;

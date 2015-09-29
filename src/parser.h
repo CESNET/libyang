@@ -31,7 +31,8 @@
  * @{
  */
 struct lys_module *yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unres_schema *unres);
-struct lys_submodule *yin_read_submodule(struct lys_module *module, const char *data, int implement, struct unres_schema *unres);
+struct lys_submodule *yin_read_submodule(struct lys_module *module, const char *data, int implement,
+                                         struct unres_schema *unres);
 
 /**@} yin */
 
@@ -44,9 +45,15 @@ struct lyd_node *xml_read_data(struct ly_ctx *ctx, const char *data, int options
 /**@} xmldata */
 
 
-struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision);
+struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
+                                   const char *revision);
+
 void lyp_set_implemented(struct lys_module *module);
 
+struct lys_type *lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *found);
+
+int lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve, struct unres_data *unres,
+                    uint32_t line);
 
 int lyp_check_length_range(const char *expr, struct lys_type *type);
 

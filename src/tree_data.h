@@ -93,11 +93,12 @@ struct lyd_attr {
  */
 typedef union lyd_value_u {
     const char *binary;          /**< base64 encoded, NULL terminated string */
-    struct lys_type_bit **bit;   /**< array of pointers to the schema definition of the bit value that are set */
+    struct lys_type_bit **bit;   /**< bitmap of pointers to the schema definition of the bit value that are set,
+                                      its size is always the number of defined bits in the schema */
     int8_t bool;                 /**< 0 as false, 1 as true */
     int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
     struct lys_type_enum *enm;   /**< pointer to the schema definition of the enumeration value */
-    struct lys_ident *ident;      /**< pointer to the schema definition of the identityref value */
+    struct lys_ident *ident;     /**< pointer to the schema definition of the identityref value */
     struct lyd_node *instance;   /**< instance-identifier, pointer to the referenced data tree node */
     int8_t int8;                 /**< 8-bit signed integer */
     int16_t int16;               /**< 16-bit signed integer */
@@ -197,20 +198,52 @@ struct lyd_node_anyxml {
 };
 
 /**
- * @brief Create a new node in a data tree.
+ * @brief Create a new container node in a data tree.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
+ * @param[in] module Module with the node \p name.
+ * @param[in] name Schema node name of the new data node. The node can be #LYS_CONTAINER, #LYS_LIST,
+ * #LYS_INPUT, #LYS_OUTPUT, #LYS_NOTIF, or #LYS_RPC.
+ */
+struct lyd_node *lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name);
+
+/**
+ * @brief Create a new leaf or leaflist node in a data tree with a specific value.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
+ * @param[in] snode Schema node of the new data node. Can be #LYS_LEAF or #LYS_LEAFLIST.
+ * @param[in] type Type of the value provided in the \p value parameter. Cannot be #LY_TYPE_DER, #LY_TYPE_UNION,
+ * or #LY_TYPE_INST.
+ * @param[in] value Value of the node being created. Can be NULL only if \p type is #LY_TYPE_EMPTY.
+ */
+struct lyd_node *lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char *name,
+                                  LY_DATA_TYPE type, lyd_val *value);
+
+/**
+ * @brief Create a new leaf or leaflist node in a data tree with a string value that is converted to
+ * the actual value.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
+ * @param[in] snode Schema node of the new data node. Can be #LYS_LEAF or #LYS_LEAFLIST.
+ * @param[in] type Interpretation of the string provided in the \p val_str parameter. After appropriate
+ * conversion this will be the resulting type of the value in the node. Cannot be #LY_TYPE_DER or #LY_TYPE_UNION.
+ * @param[in] val_str String form of the value of the node being created. Can be NULL only if \p type is
+ * #LY_TYPE_EMPTY.
+ */
+struct lyd_node *lyd_new_leaf_str(struct lyd_node *parent, struct lys_module *module, const char *name,
+                                  LY_DATA_TYPE type, const char *val_str);
+
+/**
+ * @brief Create a new anyxml node in a data tree.
  *
  * TODO not implemented
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
- * @param[in] module Module of the node being created. Can be NULL in case the new node belongs to the same
- * module as its parent. Therefore, the module parameter must be specified for top level and augmenting elements.
- * @param[in] name Name of the node being created.
- * @param[in] type Type of the value provided in the \p value parameter. Accepted only in case of creating
- * #LYS_LEAF or #LYS_LEAFLIST.
- * @param[in] value Value of the node being created. Accepted only in case of creating #LYS_LEAF or #LYS_LEAFLIST.
+ * @param[in] snode Schema node of the new data node. Can only be #LYS_ANYXML.
+ * @param[in] val_xml Value of the node being created. Must be a well-formed XML.
  */
-struct lyd_node *lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name, LY_DATA_TYPE type,
-                         lyd_val *value);
+struct lyd_node *lyd_new_anyxml(struct lyd_node *parent, struct lys_module *module, const char *name,
+                                const char *val_xml);
 
 /**
  * @brief Create a copy of the specified data tree \p node

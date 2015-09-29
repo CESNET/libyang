@@ -46,7 +46,7 @@
  * @param[in] ctx Main context with the dictionary.
  * @param[in] xml XML data value.
  *
- * @return Transformed data or NULL on error.
+ * @return Transformed data in the dictionary or NULL on error.
  */
 static const char *
 transform_data_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml, int log)
@@ -136,7 +136,7 @@ transform_data_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml, int log)
  */
 static int
 validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnum, struct lys_type *type,
-                      const char *str_val, uint32_t line)
+                      const char *val_str, uint32_t line)
 {
     struct len_ran_intv *intv = NULL, *tmp_intv;
     int ret = EXIT_FAILURE;
@@ -172,14 +172,14 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
     }
 
     if (ret) {
-        LOGVAL(LYE_OORVAL, line, (str_val ? str_val : ""));
+        LOGVAL(LYE_OORVAL, line, (val_str ? val_str : ""));
     }
     return ret;
 }
 
 /* logs directly */
 static int
-validate_pattern(const char *str_val, struct lys_type *type, struct lyxml_elem *xml, int log)
+validate_pattern(const char *val_str, struct lys_type *type, const char *node_name, uint32_t line)
 {
     int i, err_offset;
     pcre *precomp;
@@ -188,11 +188,11 @@ validate_pattern(const char *str_val, struct lys_type *type, struct lyxml_elem *
 
     assert(type->base == LY_TYPE_STRING);
 
-    if (!str_val) {
-        str_val = "";
+    if (!val_str) {
+        val_str = "";
     }
 
-    if (type->der && validate_pattern(str_val, &type->der->type, xml, log)) {
+    if (type->der && validate_pattern(val_str, &type->der->type, node_name, line)) {
         return EXIT_FAILURE;
     }
 
@@ -220,11 +220,9 @@ validate_pattern(const char *str_val, struct lys_type *type, struct lyxml_elem *
         }
         free(perl_regex);
 
-        if (pcre_exec(precomp, NULL, str_val, strlen(str_val), 0, 0, NULL, 0)) {
+        if (pcre_exec(precomp, NULL, val_str, strlen(val_str), 0, 0, NULL, 0)) {
             free(precomp);
-            if (log) {
-                LOGVAL(LYE_INVAL, LOGLINE(xml), str_val, xml->name);
-            }
+            LOGVAL(LYE_INVAL, line, val_str, node_name);
             return EXIT_FAILURE;
         }
         free(precomp);
@@ -274,34 +272,28 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start)
 
 /* logs directly */
 static int
-parse_int(const char *str_val, struct lyxml_elem *xml, int64_t min, int64_t max, int base, int64_t *ret, int log)
+parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret, const char *node_name, uint32_t line)
 {
     char *strptr;
 
-    if (!str_val) {
-        if (log) {
-            LOGVAL(LYE_INVAL, LOGLINE(xml), "", xml->name);
-        }
+    if (!val_str) {
+        LOGVAL(LYE_INVAL, line, "", node_name);
         return EXIT_FAILURE;
     }
 
     /* convert to 64-bit integer, all the redundant characters are handled */
     errno = 0;
     strptr = NULL;
-    *ret = strtoll(str_val, &strptr, base);
+    *ret = strtoll(val_str, &strptr, base);
     if (errno || (*ret < min) || (*ret > max)) {
-        if (log) {
-            LOGVAL(LYE_OORVAL, LOGLINE(xml), str_val, xml->name);
-        }
+        LOGVAL(LYE_OORVAL, line, val_str, node_name);
         return EXIT_FAILURE;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
             ++strptr;
         }
         if (*strptr) {
-            if (log) {
-                LOGVAL(LYE_INVAL, LOGLINE(xml), str_val, xml->name);
-            }
+            LOGVAL(LYE_INVAL, line, val_str, node_name);
             return EXIT_FAILURE;
         }
     }
@@ -311,33 +303,27 @@ parse_int(const char *str_val, struct lyxml_elem *xml, int64_t min, int64_t max,
 
 /* logs directly */
 static int
-parse_uint(const char *str_val, struct lyxml_elem *xml, uint64_t max, int base, uint64_t *ret, int log)
+parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret, const char *node_name, uint32_t line)
 {
     char *strptr;
 
-    if (!str_val) {
-        if (log) {
-            LOGVAL(LYE_INVAL, LOGLINE(xml), "", xml->name);
-        }
+    if (!val_str) {
+        LOGVAL(LYE_INVAL, line, "", node_name);
         return EXIT_FAILURE;
     }
 
     errno = 0;
     strptr = NULL;
-    *ret = strtoull(str_val, &strptr, base);
+    *ret = strtoull(val_str, &strptr, base);
     if (errno || (*ret > max)) {
-        if (log) {
-            LOGVAL(LYE_OORVAL, LOGLINE(xml), str_val, xml->name);
-        }
+        LOGVAL(LYE_OORVAL, line, val_str, node_name);
         return EXIT_FAILURE;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
             ++strptr;
         }
         if (*strptr) {
-            if (log) {
-                LOGVAL(LYE_INVAL, LOGLINE(xml), str_val, xml->name);
-            }
+            LOGVAL(LYE_INVAL, line, val_str, node_name);
             return EXIT_FAILURE;
         }
     }
@@ -345,16 +331,361 @@ parse_uint(const char *str_val, struct lyxml_elem *xml, uint64_t max, int base, 
     return EXIT_SUCCESS;
 }
 
+/*
+ * logs directly
+ *
+ * resolve - whether resolve identityrefs and leafrefs (which must be in JSON form)
+ * unres - whether to try to resolve and on failure store it as unres or fail if resolving fails
+ */
+int
+lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve, struct unres_data *unres, uint32_t line)
+{
+    #define DECSIZE 21
+    struct lys_type *type;
+    char dec[DECSIZE];
+    int64_t num;
+    uint64_t unum;
+    int len;
+    int c, i, j, d;
+    int found;
+
+    assert(node && node->value_type && (node->value_type == stype->base));
+
+    switch (node->value_type) {
+    case LY_TYPE_BINARY:
+        if (validate_length_range(0, (node->value_str ? strlen(node->value_str) : 0), 0, 0, stype,
+                                  node->value_str, line)) {
+            return EXIT_FAILURE;
+        }
+
+        node->value.binary = lydict_insert(node->schema->module->ctx, node->value_str, 0);
+        break;
+
+    case LY_TYPE_BITS:
+        /* locate bits structure with the bits definitions */
+        for (type = stype; type->der->type.der; type = &type->der->type);
+
+        /* allocate the array of  pointers to bits definition */
+        node->value.bit = calloc(type->info.bits.count, sizeof *node->value.bit);
+
+        if (!node->value_str) {
+            /* no bits set */
+            break;
+        }
+
+        c = 0;
+        i = 0;
+        while (node->value_str[c]) {
+            /* skip leading whitespaces */
+            while (isspace(node->value_str[c])) {
+                c++;
+            }
+
+            /* get the length of the bit identifier */
+            for (len = 0; node->value_str[c] && !isspace(node->value_str[c]); c++, len++);
+
+            /* go back to the beginning of the identifier */
+            c = c - len;
+
+            /* find bit definition, identifiers appear ordered by their posititon */
+            for (found = 0; i < type->info.bits.count; i++) {
+                if (!strncmp(type->info.bits.bit[i].name, &node->value_str[c], len)
+                        && !type->info.bits.bit[i].name[len]) {
+                    /* we have match, store the pointer */
+                    node->value.bit[i] = &type->info.bits.bit[i];
+
+                    /* stop searching */
+                    i++;
+                    found = 1;
+                    break;
+                }
+            }
+
+            if (!found) {
+                /* referenced bit value does not exists */
+                LOGVAL(LYE_INVAL, line, node->value_str, node->schema->name);
+                return EXIT_FAILURE;
+            }
+
+            c = c + len;
+        }
+
+        break;
+
+    case LY_TYPE_BOOL:
+        if (!node->value_str) {
+            LOGVAL(LYE_INVAL, line, "", node->schema->name);
+            return EXIT_FAILURE;
+        }
+
+        if (!strcmp(node->value_str, "true")) {
+            node->value.bool = 1;
+        } /* else false, so keep it zero */
+        break;
+
+    case LY_TYPE_DEC64:
+        if (!node->value_str) {
+            LOGVAL(LYE_INVAL, line, "", node->schema->name);
+            return EXIT_FAILURE;
+        }
+
+        /* locate dec64 structure with the fraction-digits value */
+        for (type = stype; type->der->type.der; type = &type->der->type);
+
+        for (c = 0; isspace(node->value_str[c]); c++);
+        for (len = 0; node->value_str[c] && !isspace(node->value_str[c]); c++, len++);
+        c = c - len;
+        if (len > DECSIZE) {
+            /* too long */
+            LOGVAL(LYE_INVAL, line, node->value_str, node->schema->name);
+            return EXIT_FAILURE;
+        }
+
+        /* normalize the number */
+        dec[0] = '\0';
+        for (i = j = d = found = 0; i < DECSIZE; i++) {
+            if (node->value_str[c + i] == '.') {
+                found = 1;
+                j = type->info.dec64.dig;
+                i--;
+                c++;
+                continue;
+            }
+            if (node->value_str[c + i] == '\0') {
+                c--;
+                if (!found) {
+                    j = type->info.dec64.dig;
+                    found = 1;
+                }
+                if (!j) {
+                    dec[i] = '\0';
+                    break;
+                }
+                d++;
+                if (d > DECSIZE - 2) {
+                    LOGVAL(LYE_OORVAL, line, node->value_str, node->schema->name);
+                    return EXIT_FAILURE;
+                }
+                dec[i] = '0';
+            } else {
+                if (!isdigit(node->value_str[c + i])) {
+                    if (i || node->value_str[c] != '-') {
+                        LOGVAL(LYE_INVAL, line, node->value_str, node->schema->name);
+                        return EXIT_FAILURE;
+                    }
+                } else {
+                    d++;
+                }
+                if (d > DECSIZE - 2 || (found && !j)) {
+                    LOGVAL(LYE_OORVAL, line, node->value_str, node->schema->name);
+                    return EXIT_FAILURE;
+                }
+                dec[i] = node->value_str[c + i];
+            }
+            if (j) {
+                j--;
+            }
+        }
+
+        if (parse_int(dec, -9223372036854775807L - 1L, 9223372036854775807L, 10, &num, node->schema->name, line)
+                || validate_length_range(2, 0, 0, ((long double)num)/(1 << type->info.dec64.dig), stype,
+                                         node->value_str, line)) {
+            return EXIT_FAILURE;
+        }
+        node->value.dec64 = num;
+        break;
+
+    case LY_TYPE_EMPTY:
+        /* just check that it is empty */
+        if (node->value_str && node->value_str[0]) {
+            LOGVAL(LYE_INVAL, line, node->value_str, node->schema->name);
+            return EXIT_FAILURE;
+        }
+        break;
+
+    case LY_TYPE_ENUM:
+        if (!node->value_str) {
+            LOGVAL(LYE_INVAL, line, "", node->schema->name);
+            return EXIT_FAILURE;
+        }
+
+        /* locate enums structure with the enumeration definitions */
+        for (type = stype; type->der->type.der; type = &type->der->type);
+
+        /* find matching enumeration value */
+        for (i = 0; i < type->info.enums.count; i++) {
+            if (!strcmp(node->value_str, type->info.enums.enm[i].name)) {
+                /* we have match, store pointer to the definition */
+                node->value.enm = &type->info.enums.enm[i];
+                break;
+            }
+        }
+
+        if (!node->value.enm) {
+            LOGVAL(LYE_INVAL, line, node->value_str, node->schema->name);
+            return EXIT_FAILURE;
+        }
+
+        break;
+
+    case LY_TYPE_IDENT:
+        if (!node->value_str) {
+            LOGVAL(LYE_INVAL, line, "", node->schema->name);
+            return EXIT_FAILURE;
+        }
+
+        node->value.ident = resolve_identref_json(stype->info.ident.ref, node->value_str, line);
+        if (!node->value.ident) {
+            return EXIT_FAILURE;
+        }
+        break;
+
+    case LY_TYPE_INST:
+        if (!node->value_str) {
+            LOGVAL(LYE_INVAL, line, "", node->schema->name);
+            return EXIT_FAILURE;
+        }
+
+        if (!resolve) {
+            node->value_type |= LY_TYPE_INST_UNRES;
+        } else {
+            /* validity checking is performed later, right now the data tree
+             * is not complete, so many instanceids cannot be resolved
+             */
+            if (unres) {
+                if (unres_data_add(unres, (struct lyd_node *)node, line)) {
+                    return EXIT_FAILURE;
+                }
+            } else {
+                if (resolve_unres_data_item((struct lyd_node *)node, 0, line)) {
+                    return EXIT_FAILURE;
+                }
+            }
+        }
+        break;
+
+    case LY_TYPE_LEAFREF:
+        if (!node->value_str) {
+            LOGVAL(LYE_INVAL, line, "", node->schema->name);
+            return EXIT_FAILURE;
+        }
+
+        if (!resolve) {
+            do {
+                type = &((struct lys_node_leaf *)node->schema)->type.info.lref.target->type;
+            } while (type->base == LY_TYPE_LEAFREF);
+            node->value_type = type->base | LY_TYPE_LEAFREF_UNRES;
+        } else {
+            /* validity checking is performed later, right now the data tree
+             * is not complete, so many noderefs cannot be resolved
+             */
+            if (unres) {
+                if (unres_data_add(unres, (struct lyd_node *)node, line)) {
+                    return EXIT_FAILURE;
+                }
+            } else {
+                if (resolve_unres_data_item((struct lyd_node *)node, 0, line)) {
+                    return EXIT_FAILURE;
+                }
+            }
+        }
+        break;
+
+    case LY_TYPE_STRING:
+        if (validate_length_range(0, (node->value_str ? strlen(node->value_str) : 0), 0, 0, stype,
+                node->value_str, line)) {
+            return EXIT_FAILURE;
+        }
+
+        if (validate_pattern(node->value_str, stype, node->schema->name, line)) {
+            return EXIT_FAILURE;
+        }
+
+        node->value.string = lydict_insert(node->schema->module->ctx, node->value_str, 0);
+        break;
+
+    case LY_TYPE_INT8:
+        if (parse_int(node->value_str, -128, 127, 0, &num, node->schema->name, line)
+                || validate_length_range(1, 0, num, 0, stype, node->value_str, line)) {
+            return EXIT_FAILURE;
+        }
+        node->value.int8 = num;
+        break;
+
+    case LY_TYPE_INT16:
+        if (parse_int(node->value_str, -32768, 32767, 0, &num, node->schema->name, line)
+                || validate_length_range(1, 0, num, 0, stype, node->value_str, line)) {
+            return EXIT_FAILURE;
+        }
+        node->value.int16 = num;
+        break;
+
+    case LY_TYPE_INT32:
+        if (parse_int(node->value_str, -2147483648, 2147483647, 0, &num, node->schema->name, line)
+                || validate_length_range(1, 0, num, 0, stype, node->value_str, line)) {
+            return EXIT_FAILURE;
+        }
+        node->value.int32 = num;
+        break;
+
+    case LY_TYPE_INT64:
+        if (parse_int(node->value_str, -9223372036854775807L - 1L, 9223372036854775807L, 0, &num,
+                node->schema->name, line)
+                || validate_length_range(1, 0, num, 0, stype, node->value_str, line)) {
+            return EXIT_FAILURE;
+        }
+        node->value.int64 = num;
+        break;
+
+    case LY_TYPE_UINT8:
+        if (parse_uint(node->value_str, 255, 0, &unum, node->schema->name, line)
+                || validate_length_range(0, unum, 0, 0, stype, node->value_str, line)) {
+            return EXIT_FAILURE;
+        }
+        node->value.uint8 = unum;
+        break;
+
+    case LY_TYPE_UINT16:
+        if (parse_uint(node->value_str, 65535, 0, &unum, node->schema->name, line)
+                || validate_length_range(0, unum, 0, 0, stype, node->value_str, line)) {
+            return EXIT_FAILURE;
+        }
+        node->value.uint16 = unum;
+        break;
+
+    case LY_TYPE_UINT32:
+        if (parse_uint(node->value_str, 4294967295, 0, &unum, node->schema->name, line)
+                || validate_length_range(0, unum, 0, 0, stype, node->value_str, line)) {
+            return EXIT_FAILURE;
+        }
+        node->value.uint32 = unum;
+        break;
+
+    case LY_TYPE_UINT64:
+        if (parse_uint(node->value_str, 18446744073709551615UL, 0, &unum, node->schema->name, line)
+                || validate_length_range(0, unum, 0, 0, stype, node->value_str, line)) {
+            return EXIT_FAILURE;
+        }
+        node->value.uint64 = unum;
+        break;
+
+    default:
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
 /* does not log, cannot fail */
-static struct lys_type *
-get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *found)
+struct lys_type *
+lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *found)
 {
     int i;
     struct lys_type *ret = NULL;
 
     for (i = 0; i < type->info.uni.count; ++i) {
         if (type->info.uni.types[i].base == LY_TYPE_UNION) {
-            ret = get_next_union_type(&type->info.uni.types[i], prev_type, found);
+            ret = lyp_get_next_union_type(&type->info.uni.types[i], prev_type, found);
             if (ret) {
                 break;;
             }
@@ -372,7 +703,7 @@ get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *foun
     }
 
     if (!ret && type->der) {
-        ret = get_next_union_type(&type->der->type, prev_type, found);
+        ret = lyp_get_next_union_type(&type->der->type, prev_type, found);
     }
 
     return ret;
@@ -380,405 +711,68 @@ get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *foun
 
 /* logs directly */
 static int
-_xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_elem *xml,
-               int options, struct unres_data *unres, int log)
+xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct unres_data *unres)
 {
-    #define DECSIZE 21
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
-    struct lys_type *type;
-    char dec[DECSIZE];
-    int64_t num;
-    uint64_t unum;
-    int len;
-    int c, i, j, d;
-    int found;
+    struct lys_type *type, *stype;
+    int resolve, found;
 
-    assert(node && node_type && xml && unres);
+    assert(node && (node->schema->nodetype & (LYS_LEAFLIST | LYS_LEAF)) && xml && unres);
 
+    stype = &((struct lys_node_leaf *)node->schema)->type;
     leaf->value_str = xml->content;
     xml->content = NULL;
 
-    /* will be change in case of union */
-    leaf->value_type = node_type->base;
+    /* will be changed in case of union */
+    leaf->value_type = stype->base;
 
     if ((options & LYD_OPT_FILTER) && !leaf->value_str) {
         /* no value in filter (selection) node -> nothing more is needed */
         return EXIT_SUCCESS;
     }
 
-    switch (node_type->base) {
-    case LY_TYPE_BINARY:
-        leaf->value.binary = lydict_insert(leaf->schema->module->ctx, leaf->value_str, 0);
+    if (options & (LYD_OPT_FILTER | LYD_OPT_EDIT)) {
+        resolve = 0;
+    } else {
+        resolve = 1;
+    }
 
-        if (validate_length_range(0, (leaf->value.binary ? strlen(leaf->value.binary) : 0), 0, 0, node_type,
-                                  leaf->value.binary, log ? LOGLINE(xml) : UINT_MAX)) {
-            return EXIT_FAILURE;
-        }
-        break;
-
-    case LY_TYPE_BITS:
-        /* locate bits structure with the bits definitions */
-        for (type = node_type; type->der->type.der; type = &type->der->type);
-
-        /* allocate the array of  pointers to bits definition */
-        leaf->value.bit = calloc(type->info.bits.count, sizeof *leaf->value.bit);
-
-        if (!leaf->value_str) {
-            /* no bits set */
-            break;
-        }
-
-        c = 0;
-        i = 0;
-        while (leaf->value_str[c]) {
-            /* skip leading whitespaces */
-            while(isspace(leaf->value_str[c])) {
-                c++;
-            }
-
-            /* get the length of the bit identifier */
-            for (len = 0; leaf->value_str[c] && !isspace(leaf->value_str[c]); c++, len++);
-
-            /* go back to the beginning of the identifier */
-            c = c - len;
-
-            /* find bit definition, identifiers appear ordered by their posititon */
-            for (found = 0; i < type->info.bits.count; i++) {
-                if (!strncmp(type->info.bits.bit[i].name, &leaf->value_str[c], len)
-                        && !type->info.bits.bit[i].name[len]) {
-                    /* we have match, store the pointer */
-                    leaf->value.bit[i] = &type->info.bits.bit[i];
-
-                    /* stop searching */
-                    i++;
-                    found = 1;
-                    break;
-                }
-            }
-
-            if (!found) {
-                /* referenced bit value does not exists */
-                if (log) {
-                    LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
-                }
-                return EXIT_FAILURE;
-            }
-
-            c = c + len;
-        }
-
-        break;
-
-    case LY_TYPE_BOOL:
-        if (!strcmp(leaf->value_str, "true")) {
-            leaf->value.bool = 1;
-        } /* else false, so keep it zero */
-        break;
-
-    case LY_TYPE_DEC64:
-        /* locate dec64 structure with the fraction-digits value */
-        for (type = node_type; type->der->type.der; type = &type->der->type);
-
-        for (c = 0; isspace(leaf->value_str[c]); c++);
-        for (len = 0; leaf->value_str[c] && !isspace(leaf->value_str[c]); c++, len++);
-        c = c - len;
-        if (len > DECSIZE) {
-            /* too long */
-            if (log) {
-                LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
-            }
-            return EXIT_FAILURE;
-        }
-
-        /* normalize the number */
-        dec[0] = '\0';
-        for (i = j = d = found = 0; i < DECSIZE; i++) {
-            if (leaf->value_str[c + i] == '.') {
-                found = 1;
-                j = type->info.dec64.dig;
-                i--;
-                c++;
-                continue;
-            }
-            if (leaf->value_str[c + i] == '\0') {
-                c--;
-                if (!found) {
-                    j = type->info.dec64.dig;
-                    found = 1;
-                }
-                if (!j) {
-                    dec[i] = '\0';
-                    break;
-                }
-                d++;
-                if (d > DECSIZE - 2) {
-                    if (log) {
-                        LOGVAL(LYE_OORVAL, LOGLINE(xml), leaf->value_str, xml->name);
-                    }
-                    return EXIT_FAILURE;
-                }
-                dec[i] = '0';
-            } else {
-                if (!isdigit(leaf->value_str[c + i])) {
-                    if (i || leaf->value_str[c] != '-') {
-                        if (log) {
-                            LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
-                        }
-                        return EXIT_FAILURE;
-                    }
-                } else {
-                    d++;
-                }
-                if (d > DECSIZE - 2 || (found && !j)) {
-                    if (log) {
-                        LOGVAL(LYE_OORVAL, LOGLINE(xml), leaf->value_str, xml->name);
-                    }
-                    return EXIT_FAILURE;
-                }
-                dec[i] = leaf->value_str[c + i];
-            }
-            if (j) {
-                j--;
-            }
-        }
-
-        if (parse_int(dec, xml, -9223372036854775807L - 1L, 9223372036854775807L, 10, &num, log)
-                || validate_length_range(2, 0, 0, ((long double)num)/(1 << type->info.dec64.dig), node_type,
-                                         leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
-            return EXIT_FAILURE;
-        }
-        leaf->value.dec64 = num;
-        break;
-
-    case LY_TYPE_EMPTY:
-        /* just check that it is empty */
-        if (leaf->value_str && leaf->value_str[0]) {
-            if (log) {
-                LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
-            }
-            return EXIT_FAILURE;
-        }
-        break;
-
-    case LY_TYPE_ENUM:
-        if (!leaf->value_str) {
-            if (log) {
-                LOGVAL(LYE_INVAL, LOGLINE(xml), "", xml->name);
-            }
-            return EXIT_FAILURE;
-        }
-
-        /* locate enums structure with the enumeration definitions */
-        for (type = node_type; type->der->type.der; type = &type->der->type);
-
-        /* find matching enumeration value */
-        for (i = 0; i < type->info.enums.count; i++) {
-            if (!strcmp(leaf->value_str, type->info.enums.enm[i].name)) {
-                /* we have match, store pointer to the definition */
-                leaf->value.enm = &type->info.enums.enm[i];
-                break;
-            }
-        }
-
-        if (!leaf->value.enm) {
-            if (log) {
-                LOGVAL(LYE_INVAL, LOGLINE(xml), leaf->value_str, xml->name);
-            }
-            return EXIT_FAILURE;
-        }
-
-        break;
-
-    case LY_TYPE_IDENT:
-        if (!leaf->value_str) {
-            if (log) {
-                LOGVAL(LYE_INVAL, LOGLINE(xml), "", xml->name);
-            }
-            return EXIT_FAILURE;
-        }
-
+    if ((stype->base == LY_TYPE_IDENT) || (stype->base == LY_TYPE_INST)) {
         /* convert the path from the XML form using XML namespaces into the JSON format
          * using module names as namespaces
          */
         xml->content = leaf->value_str;
-        leaf->value_str = transform_data_xml2json(node->schema->module->ctx, xml, log);
-        lydict_remove(node->schema->module->ctx, xml->content);
+        leaf->value_str = transform_data_xml2json(leaf->schema->module->ctx, xml, 1);
+        lydict_remove(leaf->schema->module->ctx, xml->content);
         xml->content = NULL;
         if (!leaf->value_str) {
             return EXIT_FAILURE;
         }
+    }
 
-        leaf->value.ident = resolve_identref_json(node_type->info.ident.ref, leaf->value_str,
-                                                  log ? LOGLINE(xml) : UINT_MAX);
-        if (!leaf->value.ident) {
-            return EXIT_FAILURE;
-        }
-        break;
-
-    case LY_TYPE_INST:
-        if (!leaf->value_str) {
-            if (log) {
-                LOGVAL(LYE_INVAL, LOGLINE(xml), "", xml->name);
-            }
-            return EXIT_FAILURE;
-        }
-
-        /* convert the path from the XML form using XML namespaces into the JSON format
-         * using module names as namespaces
-         */
-        xml->content = leaf->value_str;
-        leaf->value_str = transform_data_xml2json(node->schema->module->ctx, xml, log);
-        lydict_remove(node->schema->module->ctx, xml->content);
-        xml->content = NULL;
-        if (!leaf->value_str) {
-            return EXIT_FAILURE;
-        }
-
-        if (options & (LYD_OPT_EDIT | LYD_OPT_FILTER)) {
-            leaf->value_type |= LY_TYPE_INST_UNRES;
-        } else {
-            /* validity checking is performed later, right now the data tree
-             * is not complete, so many instanceids cannot be resolved
-             */
-            /* remember the leaf for later checking */
-            if (unres_data_add(unres, node, (log ? LOGLINE(xml) : UINT_MAX))) {
-                return EXIT_FAILURE;
-            }
-        }
-        break;
-
-    case LY_TYPE_LEAFREF:
-        if (!leaf->value_str) {
-            if (log) {
-                LOGVAL(LYE_INVAL, LOGLINE(xml), "", xml->name);
-            }
-            return EXIT_FAILURE;
-        }
-
-        if (options & (LYD_OPT_EDIT | LYD_OPT_FILTER)) {
-            do {
-                type = &((struct lys_node_leaf *)leaf->schema)->type.info.lref.target->type;
-            } while (type->base == LY_TYPE_LEAFREF);
-            leaf->value_type = type->base | LY_TYPE_LEAFREF_UNRES;
-        } else {
-            /* validity checking is performed later, right now the data tree
-             * is not complete, so many leafrefs cannot be resolved
-             */
-            /* remember the leaf for later checking */
-            if (unres_data_add(unres, node, (log ? LOGLINE(xml) : UINT_MAX))) {
-                return EXIT_FAILURE;
-            }
-        }
-        break;
-
-    case LY_TYPE_STRING:
-        leaf->value.string = lydict_insert(leaf->schema->module->ctx, leaf->value_str, 0);
-
-        if (validate_length_range(0, (leaf->value.string ? strlen(leaf->value.string) : 0), 0, 0, node_type,
-                leaf->value.string, log ? LOGLINE(xml) : UINT_MAX)) {
-            return EXIT_FAILURE;
-        }
-
-        if (validate_pattern(leaf->value.string, node_type, xml, log)) {
-            return EXIT_FAILURE;
-        }
-        break;
-
-    case LY_TYPE_UNION:
+    if (stype->base == LY_TYPE_UNION) {
         found = 0;
-        type = get_next_union_type(node_type, NULL, &found);
-        for (; type; found = 0, type = get_next_union_type(node_type, type, &found)) {
-            xml->content = leaf->value_str;
-            if (!_xml_get_value(node, type, xml, options, unres, 0)) {
-                leaf->value_type = type->base;
+        /* TODO if type is IDENT | INST temporarily convert to JSON, convert back on fail */
+        type = lyp_get_next_union_type(stype, NULL, &found);
+        while (type) {
+            leaf->value_type = type->base;
+            if (!lyp_parse_value(leaf, type, resolve, unres, UINT_MAX)) {
                 break;
             }
+
+            found = 0;
+            type = lyp_get_next_union_type(stype, type, &found);
         }
 
         if (!type) {
-            if (log) {
-                LOGVAL(LYE_INVAL, LOGLINE(xml), (leaf->value_str ? leaf->value_str : ""), xml->name);
-            }
+            LOGVAL(LYE_INVAL, LOGLINE(xml), (leaf->value_str ? leaf->value_str : ""), xml->name);
             return EXIT_FAILURE;
         }
-        break;
-
-    case LY_TYPE_INT8:
-        if (parse_int(leaf->value_str, xml, -128, 127, 0, &num, log)
-                || validate_length_range(1, 0, num, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
-            return EXIT_FAILURE;
-        }
-        leaf->value.int8 = num;
-        break;
-
-    case LY_TYPE_INT16:
-        if (parse_int(leaf->value_str, xml, -32768, 32767, 0, &num, log)
-                || validate_length_range(1, 0, num, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
-            return EXIT_FAILURE;
-        }
-        leaf->value.int16 = num;
-        break;
-
-    case LY_TYPE_INT32:
-        if (parse_int(leaf->value_str, xml, -2147483648, 2147483647, 0, &num, log)
-                || validate_length_range(1, 0, num, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
-            return EXIT_FAILURE;
-        }
-        leaf->value.int32 = num;
-        break;
-
-    case LY_TYPE_INT64:
-        if (parse_int(leaf->value_str, xml, -9223372036854775807L - 1L, 9223372036854775807L, 0, &num, log)
-                || validate_length_range(1, 0, num, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
-            return EXIT_FAILURE;
-        }
-        leaf->value.int64 = num;
-        break;
-
-    case LY_TYPE_UINT8:
-        if (parse_uint(leaf->value_str, xml, 255, 0, &unum, log)
-                || validate_length_range(0, unum, 0, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
-            return EXIT_FAILURE;
-        }
-        leaf->value.uint8 = unum;
-        break;
-
-    case LY_TYPE_UINT16:
-        if (parse_uint(leaf->value_str, xml, 65535, 0, &unum, log)
-                || validate_length_range(0, unum, 0, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
-            return EXIT_FAILURE;
-        }
-        leaf->value.uint16 = unum;
-        break;
-
-    case LY_TYPE_UINT32:
-        if (parse_uint(leaf->value_str, xml, 4294967295, 0, &unum, log)
-                || validate_length_range(0, unum, 0, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
-            return EXIT_FAILURE;
-        }
-        leaf->value.uint32 = unum;
-        break;
-
-    case LY_TYPE_UINT64:
-        if (parse_uint(leaf->value_str, xml, 18446744073709551615UL, 0, &unum, log)
-                || validate_length_range(0, unum, 0, 0, node_type, leaf->value_str, log ? LOGLINE(xml) : UINT_MAX)) {
-            return EXIT_FAILURE;
-        }
-        leaf->value.uint64 = unum;
-        break;
-
-    default:
+    } else if (lyp_parse_value(leaf, stype, resolve, unres, LOGLINE(xml))) {
         return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
-}
-
-/* logs indirectly */
-static int
-xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct unres_data *unres)
-{
-    return _xml_get_value(node, &((struct lys_node_leaf *)node->schema)->type, xml, options, unres, 1);
 }
 
 /* logs directly */
