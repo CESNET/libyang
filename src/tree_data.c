@@ -96,7 +96,7 @@ lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name)
 
 API struct lyd_node *
 lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char *name, LY_DATA_TYPE type,
-                 lyd_val *value)
+                 lyd_val value)
 {
     struct lyd_node_leaf_list *ret;
     struct lys_node *snode = NULL, *siblings;
@@ -107,7 +107,7 @@ lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char 
     int i, str_len = 0, prev_len;
     uint64_t exp;
 
-    if ((!parent && !module) || !name || ((type != LY_TYPE_EMPTY) && !value)) {
+    if ((!parent && !module) || !name) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
@@ -128,7 +128,7 @@ lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char 
 
     switch (type) {
     case LY_TYPE_BINARY:
-        val_str = (char *)lydict_insert(snode->module->ctx, value->binary, 0);
+        val_str = (char *)lydict_insert(snode->module->ctx, value.binary, 0);
         break;
 
     case LY_TYPE_BITS:
@@ -142,26 +142,26 @@ lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char 
 
         /* concatenate set bits */
         for (i = 0; i < stype->info.bits.count; ++i) {
-            if (!value->bit[i]) {
+            if (!value.bit[i]) {
                 continue;
             }
 
             prev_len = str_len;
-            str_len += strlen(value->bit[i]->name) + 1;
+            str_len += strlen(value.bit[i]->name) + 1;
             val_str = realloc((char *)val_str, str_len * sizeof(char));
 
             if (prev_len) {
                 val_str[prev_len] = ' ';
                 ++prev_len;
             }
-            strcpy(val_str + prev_len, value->bit[i]->name);
+            strcpy(val_str + prev_len, value.bit[i]->name);
         }
 
         val_str = (char *)lydict_insert_zc(snode->module->ctx, val_str);
         break;
 
     case LY_TYPE_BOOL:
-        if (value->bool) {
+        if (value.bool) {
             val_str = (char *)lydict_insert(snode->module->ctx, "true", 4);
         } else {
             val_str = (char *)lydict_insert(snode->module->ctx, "false", 5);
@@ -178,7 +178,7 @@ lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char 
         }
 
         for (i = 0, exp = 1; i < stype->info.dec64.dig; ++i, exp *= 10);
-        sprintf(str_num, "%01.1Lf", ((long double)value->dec64) / exp);
+        sprintf(str_num, "%01.1Lf", ((long double)value.dec64) / exp);
         val_str = (char *)lydict_insert(snode->module->ctx, str_num, 0);
         break;
 
@@ -186,12 +186,12 @@ lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char 
         break;
 
     case LY_TYPE_ENUM:
-        val_str = (char *)lydict_insert(snode->module->ctx, value->enm->name, 0);
+        val_str = (char *)lydict_insert(snode->module->ctx, value.enm->name, 0);
         break;
 
     case LY_TYPE_IDENT:
         /* TODO move to function if used somewhere else (module -> import prefix) */
-        src_mod = value->ident->module;
+        src_mod = value.ident->module;
         if (src_mod->type) {
             src_mod = ((struct lys_submodule *)src_mod)->belongsto;
         }
@@ -215,10 +215,10 @@ lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char 
         }
 
         if (!prefix) {
-            val_str = (char *)lydict_insert(snode->module->ctx, value->ident->name, 0);
+            val_str = (char *)lydict_insert(snode->module->ctx, value.ident->name, 0);
         } else {
-            val_str = malloc((strlen(prefix) + 1 + strlen(value->ident->name) + 1) * sizeof(char));
-            sprintf(val_str, "%s:%s", prefix, value->ident->name);
+            val_str = malloc((strlen(prefix) + 1 + strlen(value.ident->name) + 1) * sizeof(char));
+            sprintf(val_str, "%s:%s", prefix, value.ident->name);
             val_str = (char *)lydict_insert_zc(snode->module->ctx, val_str);
         }
         break;
@@ -228,50 +228,50 @@ lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char 
         break;
 
     case LY_TYPE_LEAFREF:
-        val_str = (char *)lydict_insert(snode->module->ctx, ((struct lyd_node_leaf_list *)value->leafref)->value_str, 0);
+        val_str = (char *)lydict_insert(snode->module->ctx, ((struct lyd_node_leaf_list *)value.leafref)->value_str, 0);
         break;
 
     case LY_TYPE_STRING:
-        val_str = (char *)lydict_insert(snode->module->ctx, value->string, 0);
+        val_str = (char *)lydict_insert(snode->module->ctx, value.string, 0);
         break;
 
     case LY_TYPE_INT8:
-        sprintf(str_num, "%hhd", value->int8);
+        sprintf(str_num, "%hhd", value.int8);
         val_str = (char *)lydict_insert(snode->module->ctx, str_num, 0);
         break;
 
     case LY_TYPE_INT16:
-        sprintf(str_num, "%hd", value->int16);
+        sprintf(str_num, "%hd", value.int16);
         val_str = (char *)lydict_insert(snode->module->ctx, str_num, 0);
         break;
 
     case LY_TYPE_INT32:
-        sprintf(str_num, "%d", value->int32);
+        sprintf(str_num, "%d", value.int32);
         val_str = (char *)lydict_insert(snode->module->ctx, str_num, 0);
         break;
 
     case LY_TYPE_INT64:
-        sprintf(str_num, "%ld", value->int64);
+        sprintf(str_num, "%ld", value.int64);
         val_str = (char *)lydict_insert(snode->module->ctx, str_num, 0);
         break;
 
     case LY_TYPE_UINT8:
-        sprintf(str_num, "%hhu", value->uint8);
+        sprintf(str_num, "%hhu", value.uint8);
         val_str = (char *)lydict_insert(snode->module->ctx, str_num, 0);
         break;
 
     case LY_TYPE_UINT16:
-        sprintf(str_num, "%hu", value->uint16);
+        sprintf(str_num, "%hu", value.uint16);
         val_str = (char *)lydict_insert(snode->module->ctx, str_num, 0);
         break;
 
     case LY_TYPE_UINT32:
-        sprintf(str_num, "%u", value->uint32);
+        sprintf(str_num, "%u", value.uint32);
         val_str = (char *)lydict_insert(snode->module->ctx, str_num, 0);
         break;
 
     case LY_TYPE_UINT64:
-        sprintf(str_num, "%lu", value->uint64);
+        sprintf(str_num, "%lu", value.uint64);
         val_str = (char *)lydict_insert(snode->module->ctx, str_num, 0);
         break;
 
@@ -290,7 +290,7 @@ lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char 
             return NULL;
         }
     }
-    ret->value = *value;
+    ret->value = value;
     ret->value_str = val_str;
     ret->value_type = type;
 

@@ -214,10 +214,11 @@ struct lyd_node *lyd_new(struct lyd_node *parent, struct lys_module *module, con
  * @param[in] snode Schema node of the new data node. Can be #LYS_LEAF or #LYS_LEAFLIST.
  * @param[in] type Type of the value provided in the \p value parameter. Cannot be #LY_TYPE_DER, #LY_TYPE_UNION,
  * or #LY_TYPE_INST.
- * @param[in] value Value of the node being created. Can be NULL only if \p type is #LY_TYPE_EMPTY.
+ * @param[in] value Value of the node being created. Can be NULL only if \p type is #LY_TYPE_EMPTY. Must be
+ * statically allocated!
  */
 struct lyd_node *lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char *name,
-                                  LY_DATA_TYPE type, lyd_val *value);
+                                  LY_DATA_TYPE type, lyd_val value);
 
 /**
  * @brief Create a new leaf or leaflist node in a data tree with a string value that is converted to
