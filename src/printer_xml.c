@@ -261,17 +261,23 @@ xml_print_anyxml(FILE *f, int level, struct lyd_node *node)
     struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
 
     if (axml->value) {
+        fprintf(f, "%*s<%s>\n", LEVEL, INDENT, node->schema->name);
+
         /* dump the anyxml into a buffer */
         stream = open_memstream(&buf, &buf_size);
         lyxml_dump(stream, axml->value, 0);
         fclose(stream);
 
+        ++level;
         line = strtok_r(buf, "\n", &ptr);
         do {
             fprintf(f, "%*s%s\n", LEVEL, INDENT, line);
         } while ((line = strtok_r(NULL, "\n", &ptr)));
+        --level;
 
         free(buf);
+
+        fprintf(f, "%*s</%s>\n", LEVEL, INDENT, node->schema->name);
     } else {
         fprintf(f, "%*s<%s/>\n", LEVEL, INDENT, node->schema->name);
     }
