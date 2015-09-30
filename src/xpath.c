@@ -5011,6 +5011,7 @@ eval_literal(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyxp_set *set, str
  * @param[in] all_desc Whether to search all the descendants or children only.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -5099,6 +5100,7 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, int attr_axis, int all_
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
@@ -5228,6 +5230,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
  * @param[in] all_desc Whether to search all the descendants or children only.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
@@ -5317,6 +5320,7 @@ step:
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -5363,6 +5367,7 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -5551,6 +5556,7 @@ cleanup:
  * @param[in] any_node Any node from the data.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -5596,6 +5602,7 @@ eval_number(struct lyxp_expr *exp, uint16_t *exp_idx, struct ly_ctx *ctx, struct
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -5726,6 +5733,7 @@ predicate:
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -5842,6 +5850,7 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_n
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -5934,6 +5943,7 @@ eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_no
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -6028,6 +6038,7 @@ eval_additive_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -6120,6 +6131,7 @@ eval_relational_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -6210,6 +6222,7 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -6299,6 +6312,7 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_nod
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
