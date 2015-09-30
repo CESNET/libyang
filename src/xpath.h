@@ -35,14 +35,14 @@
  *
  * Full axes are not supported, abbreviated forms must be used,
  * variables are not supported, "id()" function is not supported,
- * and processing instruction and comment nodes are not supported,
- * which is also reflected in the grammar. Undefined rules and
- * constants are tokens.
+ * processing instruction and comment nodes are not supported,
+ * bsolute path "/" is not supported, which is also reflected
+ * in the grammar. Undefined rules and constants are tokens.
  *
  * Modified full grammar:
  *
  * [1] LocationPath ::= RelativeLocationPath | AbsoluteLocationPath
- * [2] AbsoluteLocationPath ::= '/' RelativeLocationPath? | '//' RelativeLocationPath
+ * [2] AbsoluteLocationPath ::= '/' RelativeLocationPath | '//' RelativeLocationPath
  * [3] RelativeLocationPath ::= Step | RelativeLocationPath '/' Step | RelativeLocationPath '//' Step
  * [4] Step ::= '@'? NodeTest Predicate* | '.' | '..'
  * [5] NodeTest ::= NameTest | NodeType '(' ')'
