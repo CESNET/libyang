@@ -862,6 +862,17 @@ print_set_debug(struct lyxp_set *set, struct ly_ctx *ctx, int is_snode)
             case LYXP_NODE_ELEM:
                 if (is_snode) {
                     LOGDBG("XPATH:\t%d: SCHEMA %s", i + 1, ((struct lys_node *)set->value.nodes[i])->name);
+                    if (((struct lys_node *)set->value.nodes[i])->nodetype == LYS_GROUPING) {
+                        LOGDBG("XPATH:\tGROUPING!");
+                    } else if (((struct lys_node *)set->value.nodes[i])->nodetype == LYS_USES) {
+                        LOGDBG("XPATH:\tUSES!");
+                    } else if (((struct lys_node *)set->value.nodes[i])->nodetype == LYS_CHOICE) {
+                        LOGDBG("XPATH:\tCHOICE!");
+                    } else if (((struct lys_node *)set->value.nodes[i])->nodetype == LYS_CASE) {
+                        LOGDBG("XPATH:\tCASE!");
+                    } else if (((struct lys_node *)set->value.nodes[i])->nodetype == LYS_AUGMENT) {
+                        LOGDBG("XPATH:\tAUGMENT!");
+                    }
                     break;
                 }
 
@@ -932,7 +943,7 @@ get_node_pos(struct lyd_node *node)
     struct lyd_node *root, *next, *elem;
     uint16_t pos = 1;
 
-    /* TODO fake root */
+    /* fake root */
     if (!node->schema->module) {
         return 0;
     }
@@ -981,57 +992,62 @@ static uint16_t
 get_schema_node_pos(struct lys_node *node)
 {
     struct lys_node *root, *next, *elem;
-    uint16_t pos = 1;
+    struct ly_ctx *ctx;
+    uint16_t pos = 1, i;
 
-    /* TODO fake root */
-    if (!node->module) {
-        return 0;
-    }
+    ctx = node->module->ctx;
 
-    root = node;
-    while (root->parent || (root->nodetype == LYS_AUGMENT)) {
-        if (root->nodetype == LYS_AUGMENT) {
-            root = ((struct lys_node_augment *)root)->target;
-        } else {
-            root = root->parent;
-        }
-    }
-    for (; root->prev->next; root = root->prev);
-
-    /* TREE DFS */
-    for (elem = next = root; elem; elem = next) {
-        if (elem == node) {
-            break;
-        }
-        ++pos;
-
-        /* TREE DFS NEXT ELEM */
-        /* select element for the next run - children first */
-        next = elem->child;
-        if (!next) {
-            next = elem->next;
-        }
-        while (!next) {
-            /* no siblings, go back through the parents */
-            if (elem->parent == root) {
-                /* we are done, no next element to process */
-                break;
+    for (i = 0; i < ctx->models.used; ++i) {
+        for (root = ctx->models.list[i]->data; root; root = root->next) {
+            if (root->nodetype & (LYS_GROUPING | LYS_AUGMENT)) {
+                continue;
             }
-            /* parent is already processed, go to its sibling */
-            elem = elem->parent;
-            /* this was an augment, behave accordingly */
-            if (elem->nodetype == LYS_AUGMENT) {
-                elem = ((struct lys_node_augment *)elem)->target;
+
+            /* TREE DFS */
+            for (elem = next = root; elem; elem = next) {
+                /* match */
+                if (elem == node) {
+                    return pos;
+                }
+                if (!(elem->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE))) {
+                    ++pos;
+                }
+
+                /* TREE DFS NEXT ELEM */
+                /* select element for the next run - children first */
+                next = elem->child;
+                while (next && (next->nodetype & (LYS_GROUPING | LYS_AUGMENT))) {
+                    next = next->next;
+                }
+                if (!next) {
+                    next = elem->next;
+                }
+                while (next && (next->nodetype & (LYS_GROUPING | LYS_AUGMENT))) {
+                    next = next->next;
+                }
+                while (!next) {
+                    /* no siblings, go back through the parents */
+                    if (elem->parent == root) {
+                        /* we are done, no next element to process */
+                        break;
+                    }
+                    /* parent is already processed, go to its sibling */
+                    elem = elem->parent;
+                    /* this was an augment, behave accordingly */
+                    if (elem->nodetype == LYS_AUGMENT) {
+                        elem = ((struct lys_node_augment *)elem)->target;
+                    }
+                    next = elem->next;
+                    while (next && (next->nodetype & (LYS_GROUPING | LYS_AUGMENT))) {
+                        next = next->next;
+                    }
+                }
             }
-            next = elem->next;
         }
     }
 
-    if (!elem) {
-        LOGINT;
-    }
-
-    return pos;
+    LOGINT;
+    return 0;
 }
 
 /**
@@ -1152,7 +1168,11 @@ set_sort(struct lyxp_set *set, int is_snode)
     }
 
     if (is_snode) {
-        ctx = ((struct lys_node *)set->value.nodes[0])->module->ctx;
+        if (set->node_type[0] == LYXP_NODE_ROOT) {
+            ctx = (struct ly_ctx *)set->value.nodes[0];
+        } else {
+            ctx = ((struct lys_node *)set->value.nodes[0])->module->ctx;
+        }
     } else {
         ctx = set->value.nodes[0]->schema->module->ctx;
     }
@@ -1182,7 +1202,11 @@ set_sort(struct lyxp_set *set, int is_snode)
             attr_pos1 = get_attr_pos(set->value.attrs[0], tmp_node);
         } else {
             if (is_snode) {
-                node_pos1 = get_schema_node_pos((struct lys_node *)set->value.nodes[0]);
+                if (set->node_type[0] == LYXP_NODE_ROOT) {
+                    node_pos1 = 0;
+                } else {
+                    node_pos1 = get_schema_node_pos((struct lys_node *)set->value.nodes[0]);
+                }
             } else {
                 node_pos1 = get_node_pos(set->value.nodes[0]);
             }
@@ -1208,13 +1232,21 @@ set_sort(struct lyxp_set *set, int is_snode)
             } else {
                 if (inverted) {
                     if (is_snode) {
-                        node_pos1 = get_schema_node_pos((struct lys_node *)set->value.nodes[j]);
+                        if (set->node_type[j] == LYXP_NODE_ROOT) {
+                            node_pos1 = 0;
+                        } else {
+                            node_pos1 = get_schema_node_pos((struct lys_node *)set->value.nodes[j]);
+                        }
                     } else {
                         node_pos1 = get_node_pos(set->value.nodes[j]);
                     }
                 } else {
                     if (is_snode) {
-                        node_pos2 = get_schema_node_pos((struct lys_node *)set->value.nodes[j]);
+                        if (set->node_type[j] == LYXP_NODE_ROOT) {
+                            node_pos2 = 0;
+                        } else {
+                            node_pos2 = get_schema_node_pos((struct lys_node *)set->value.nodes[j]);
+                        }
                     } else {
                         node_pos2 = get_node_pos(set->value.nodes[j]);
                     }
@@ -4577,8 +4609,6 @@ moveto_op_math(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
 static void
 moveto_schema_root(struct lyxp_set *set, struct lys_node *any_node)
 {
-    struct lys_node *root;
-
     if (!set) {
         return;
     }
@@ -4590,22 +4620,58 @@ moveto_schema_root(struct lyxp_set *set, struct lys_node *any_node)
 
     set_cast(set, LYXP_SET_EMPTY, any_node->module->ctx);
 
-    /* move the node to the root */
-    do {
-        root = any_node;
-        any_node = lys_parent(root);
-    } while (any_node);
-    assert(root->prev == root);
+    /* HACK we insert the context instead, since there is no root, it will be needed */
+    set_insert_node(set, any_node->module->ctx, LYXP_NODE_ROOT, 0);
+}
 
-    set_insert_node(set, root, LYXP_NODE_ROOT, 0);
+static void
+moveto_schema_node_check(struct lys_node *node, struct lyxp_set *set, uint16_t i, const char *qname,
+                         uint16_t qname_len, struct lys_module *moveto_mod, int *replaced)
+{
+    struct lys_module *cur_mod;
+    struct lys_node *child;
+
+    if (node->nodetype & (LYS_GROUPING | LYS_AUGMENT)) {
+        return;
+    }
+
+    if (node->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE)) {
+        LY_TREE_FOR(node->child, child) {
+            moveto_schema_node_check(child, set, i, qname, qname_len, moveto_mod, replaced);
+        }
+        return;
+    }
+
+    /* module check */
+    if (moveto_mod) {
+        cur_mod = node->module;
+        if (cur_mod->type) {
+            cur_mod = ((struct lys_submodule *)cur_mod)->belongsto;
+        }
+        if (cur_mod != moveto_mod) {
+            return;
+        }
+    }
+
+    /* name check */
+    if (((qname[0] == '*') && (qname_len == 1))
+            || (!strncmp(node->name, qname, qname_len) && !node->name[qname_len])) {
+        if (!(*replaced)) {
+            set->value.nodes[i] = (struct lyd_node *)node;
+            set->node_type[i] = LYXP_NODE_ELEM;
+            *replaced = 1;
+        } else {
+            set_insert_node(set, node, LYXP_NODE_ELEM, set->used);
+        }
+    }
 }
 
 static int
 moveto_schema_node(struct lyxp_set *set, const char *qname, uint16_t qname_len, uint32_t line)
 {
-    uint16_t i, orig_used;
-    int replaced, all = 0, pref_len;
-    struct lys_module *moveto_mod, *cur_mod;
+    uint16_t i, orig_used, j;
+    int replaced, pref_len;
+    struct lys_module *moveto_mod;
     struct lys_node *sub;
     struct ly_ctx *ctx;
 
@@ -4619,7 +4685,7 @@ moveto_schema_node(struct lyxp_set *set, const char *qname, uint16_t qname_len, 
     }
 
     if (set->node_type[0] == LYXP_NODE_ROOT) {
-        ctx = ((struct lys_node *)set->value.nodes[0])->child->module->ctx;
+        ctx = (struct ly_ctx *)set->value.nodes[0];
     } else {
         ctx = ((struct lys_node *)set->value.nodes[0])->module->ctx;
     }
@@ -4634,38 +4700,24 @@ moveto_schema_node(struct lyxp_set *set, const char *qname, uint16_t qname_len, 
         qname += pref_len + 1;
         qname_len -= pref_len + 1;
     } else {
-        pref_len = 0;
-    }
-
-    if ((qname_len == 1) && (qname[0] == '*')) {
-        all = 1;
+        moveto_mod = NULL;
     }
 
     orig_used = set->used;
     for (i = 0; i < orig_used; ) {
         replaced = 0;
 
-        LY_TREE_FOR(((struct lys_node *)set->value.nodes[i])->child, sub) {
-            /* module check */
-            if (pref_len) {
-                cur_mod = sub->module;
-                if (cur_mod->type) {
-                    cur_mod = ((struct lys_submodule *)cur_mod)->belongsto;
-                }
-                if (cur_mod != moveto_mod) {
-                    continue;
+        /* LYXP_NODE_TEXT gets removed */
+        if (set->node_type[i] == LYXP_NODE_ROOT) {
+            for (j = 0; j < ctx->models.used; ++j) {
+                LY_TREE_FOR(ctx->models.list[j]->data, sub) {
+                    /* LYS_GROUPING and LYS_USES handled inside */
+                    moveto_schema_node_check(sub, set, i, qname, qname_len, moveto_mod, &replaced);
                 }
             }
-
-            /* name check */
-            if (all || (!strncmp(sub->name, qname, qname_len) && !sub->name[qname_len])) {
-                if (!replaced) {
-                    set->value.nodes[i] = (struct lyd_node *)sub;
-                    set->node_type[i] = LYXP_NODE_ELEM;
-                    replaced = 1;
-                } else {
-                    set_insert_node(set, sub, LYXP_NODE_ELEM, set->used);
-                }
+        } else if (set->node_type[i] == LYXP_NODE_ELEM) {
+            LY_TREE_FOR(((struct lys_node *)set->value.nodes[i])->child, sub) {
+                moveto_schema_node_check(sub, set, i, qname, qname_len, moveto_mod, &replaced);
             }
         }
 
@@ -4703,7 +4755,7 @@ moveto_schema_node_alldesc(struct lyxp_set *set, const char *qname, uint16_t qna
     }
 
     if (set->node_type[0] == LYXP_NODE_ROOT) {
-        ctx = ((struct lys_node *)set->value.nodes[0])->child->module->ctx;
+        ctx = (struct ly_ctx *)set->value.nodes[0];
     } else {
         ctx = ((struct lys_node *)set->value.nodes[0])->module->ctx;
     }
@@ -4721,7 +4773,7 @@ moveto_schema_node_alldesc(struct lyxp_set *set, const char *qname, uint16_t qna
         pref_len = 0;
     }
 
-    /* replace the original nodes (and throw away all text and attr nodes) */
+    /* replace the original nodes (and throw away all text nodes) */
     if (moveto_schema_node(set, "*", 1, line)) {
         return -1;
     }
@@ -4737,7 +4789,16 @@ moveto_schema_node_alldesc(struct lyxp_set *set, const char *qname, uint16_t qna
         start = (struct lys_node *)set->value.nodes[i];
         replace = 0;
         for (elem = next = start; elem; elem = next) {
-            match = 1;
+            if (elem->nodetype & (LYS_GROUPING | LYS_AUGMENT)) {
+                goto skip_children;
+            }
+
+            /* LYS_USES, LYS_CHOICE, and LYS_CASE are skipped this way */
+            if (elem->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE)) {
+                match = 0;
+            } else {
+                match = 1;
+            }
 
             /* module check */
             if (pref_len) {
@@ -4876,11 +4937,34 @@ moveto_schema_union(struct lyxp_set *set1, struct lyxp_set *set2, uint32_t line)
     return EXIT_SUCCESS;
 }
 
+static void
+moveto_schema_self_check(struct lys_node *node, struct lyxp_set *set, uint16_t i, uint16_t *cont_i)
+{
+    struct lys_node *child;
+
+    if (node->nodetype & (LYS_GROUPING | LYS_AUGMENT)) {
+        return;
+    }
+
+    if (node->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE)) {
+        LY_TREE_FOR(node->child, child) {
+            moveto_schema_self_check(child, set, i, cont_i);
+        }
+        return;
+    }
+
+    if (set_dup_node_check(set, node, LYXP_NODE_ELEM, -1) == -1) {
+        set_insert_node(set, node, LYXP_NODE_ELEM, i + (*cont_i) + 1);
+        ++cont_i;
+    }
+}
+
 static int
 moveto_schema_self(struct lyxp_set *set, int all_desc, uint32_t line)
 {
     struct lys_node *sub;
-    uint16_t i, cont_i;
+    struct ly_ctx *ctx;
+    uint16_t i, cont_i, j;
 
     if (!set || (set->type == LYXP_SET_EMPTY)) {
         return EXIT_SUCCESS;
@@ -4900,12 +4984,23 @@ moveto_schema_self(struct lyxp_set *set, int all_desc, uint32_t line)
     for (i = 0; i < set->used; ++i) {
         cont_i = 0;
 
-        /* do not touch attributes and text nodes */
-        if ((set->node_type[i] == LYXP_NODE_ROOT) || (set->node_type[i] == LYXP_NODE_ELEM)) {
-            LY_TREE_FOR(((struct lys_node *)set->value.nodes[i])->child, sub) {
-                if (set_dup_node_check(set, sub, LYXP_NODE_ELEM, -1) == -1) {
-                    set_insert_node(set, sub, LYXP_NODE_ELEM, i + cont_i + 1);
-                    ++cont_i;
+        if (set->node_type[i] == LYXP_NODE_ROOT) {
+            ctx = (struct ly_ctx *)set->value.nodes[i];
+
+            for (j = 0; j < ctx->models.used; ++j) {
+                LY_TREE_FOR(ctx->models.list[j]->data, sub) {
+                    moveto_schema_self_check(sub, set, i, &cont_i);
+                }
+            }
+        } else if (set->node_type[i] == LYXP_NODE_ELEM) {
+            if (((struct lys_node *)set->value.nodes[i])->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+                sub = (struct lys_node *)set->value.nodes[i];
+                if (set_dup_node_check(set, sub, LYXP_NODE_TEXT, -1) == -1) {
+                    set_insert_node(set, sub, LYXP_NODE_TEXT, i + 1);
+                }
+            } else { /* LYS_ANYXML can go here, it has no children anyway */
+                LY_TREE_FOR(((struct lys_node *)set->value.nodes[i])->child, sub) {
+                    moveto_schema_self_check(sub, set, i, &cont_i);
                 }
             }
         }
@@ -4939,24 +5034,27 @@ moveto_schema_parent(struct lyxp_set *set, int all_desc, uint32_t line)
     }
 
     for (i = 0; i < set->used; ) {
-        if (set->node_type[i] == LYXP_NODE_ELEM) {
-            new_node = lys_parent((struct lys_node *)set->value.nodes[i]);
-        } else {
+        if (set->node_type[i] == LYXP_NODE_ROOT) {
             /* root does not have a parent */
             set_remove_node(set, i);
+            continue;
+        } else if (set->node_type[i] == LYXP_NODE_ELEM) {
+            new_node = lys_parent((struct lys_node *)set->value.nodes[i]);
+        } else { /* LYXP_NODE_TEXT */
+            set->node_type[i] = LYXP_NODE_ELEM;
             continue;
         }
 
         /* check for duplicate */
         if ((set_dup_node_check(set, new_node, LYXP_NODE_ELEM, -1) > -1)
-                || (!new_node->parent && set_dup_node_check(set, new_node, LYXP_NODE_ROOT, -1))) {
+                || (!new_node && (set_dup_node_check(set, new_node, LYXP_NODE_ROOT, -1) > -1))) {
             set_remove_node(set, i);
             continue;
         }
 
         /* update it */
         set->value.nodes[i] = (struct lyd_node *)new_node;
-        set->node_type[i] = (new_node->parent ? LYXP_NODE_ELEM : LYXP_NODE_ROOT);
+        set->node_type[i] = (new_node ? LYXP_NODE_ELEM : LYXP_NODE_ROOT);
 
         ++i;
     }
@@ -6469,7 +6567,7 @@ lyxp_eval_schema(const char *expr, struct lys_node *cur_snode, struct lyxp_set *
 {
     struct lyxp_expr *exp;
     struct lys_node *root, *node;
-    uint16_t exp_idx, i;
+    uint16_t exp_idx;
     int rc = -1;
 
     assert(expr && cur_snode && set);
@@ -6498,37 +6596,10 @@ lyxp_eval_schema(const char *expr, struct lys_node *cur_snode, struct lyxp_set *
     if (!rc && exp) {
         print_expr_struct_debug(exp);
 
-        /* add fake root */
-        root = calloc(1, sizeof *root);
-        root->prev = root;
-        root->child = node;
-        root->nodetype = LYS_CONTAINER;
-        root->name = lydict_insert(cur_snode->module->ctx, "xpath-root", 0);
-        LY_TREE_FOR(node, node) {
-            node->parent = root;
-        }
-
         *set = calloc(1, sizeof **set);
 
         exp_idx = 0;
         rc = eval_expr(exp, &exp_idx, (struct lyd_node *)cur_snode, *set, line, 1);
-
-        /* remove fake root */
-        LY_TREE_FOR(root->child, node) {
-            node->parent = NULL;
-        }
-        lydict_remove(cur_snode->module->ctx, root->name);
-        free(root);
-
-        /* check result and clear the root if it is there */
-        if ((*set)->type == LYXP_SET_NODE_SET) {
-            for (i = 0; i < (*set)->type; ++i) {
-                if ((*set)->node_type[i] == LYXP_NODE_ROOT) {
-                    (*set)->value.nodes[i] = NULL;
-                    break;
-                }
-            }
-        }
 
         if (rc) {
             set_free(*set, cur_snode->module->ctx);
