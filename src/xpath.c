@@ -4377,7 +4377,7 @@ moveto_parent(struct lyxp_set *set, int all_desc, struct lyd_node *any_node, uin
 
         /* check for duplicate */
         if ((set_dup_node_check(set, new_node, LYXP_NODE_ELEM, -1) > -1)
-                || (!new_node->parent && set_dup_node_check(set, new_node, LYXP_NODE_ROOT, -1))) {
+                || (!new_node->parent && (set_dup_node_check(set, new_node, LYXP_NODE_ROOT, -1) > -1))) {
             set_remove_node(set, i);
             continue;
         }
