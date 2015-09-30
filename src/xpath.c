@@ -4597,7 +4597,7 @@ moveto_schema_root(struct lyxp_set *set, struct lys_node *any_node)
     } while (any_node);
     assert(root->prev == root);
 
-    set_insert_node(set, any_node, LYXP_NODE_ROOT, 0);
+    set_insert_node(set, root, LYXP_NODE_ROOT, 0);
 }
 
 static int
