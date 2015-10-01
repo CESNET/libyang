@@ -33,6 +33,9 @@ set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -fvisibility=hidden")
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
 
+option(ENABLE_BUILD_TESTS "Build tests" ON)
+option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)
+
 set(libsrc
 	src/common.c
 	src/context.c
@@ -93,3 +96,10 @@ add_custom_target(cclean
 add_executable(yanglint ${lintsrc})
 target_link_libraries(yanglint yang)
 
+if(ENABLE_VALGRIND_TESTS)
+	set(ENABLE_BUILD_TESTS ON)
+endif()
+
+if(ENABLE_BUILD_TESTS)
+	add_subdirectory(tests)
+endif()
