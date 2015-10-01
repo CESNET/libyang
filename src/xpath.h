@@ -183,7 +183,22 @@ struct lyxp_set {
  * @brief Types of nodes that can be in an LYXP_SET_NODE_SET XPath set.
  */
 enum lyxp_node_type {
+
+    /* Value of the node of this type determines the context to a certain extent.
+     * Node value in schema:
+     *      NULL       - top-level root
+     *      LYS_NOTIF  - notification
+     *      LYS_RPC    - RPC input
+     *      LYS_OUTPUT - RPC output
+     *
+     * Node value in data:
+     *      LYS_CONTAINER && !node->parent - top-level root
+     *      LYS_NOTIF                      - notification
+     *      LYS_RPC                        - RPC input
+     *      LYS_OUTPUT                     - RPC output
+     */
     LYXP_NODE_ROOT,
+
     LYXP_NODE_ELEM,
     LYXP_NODE_TEXT,
     LYXP_NODE_ATTR
@@ -196,7 +211,7 @@ enum lyxp_node_type {
  * @param[in] expr XPath expression to use.
  * @param[in] cur_node Current (context) data node.
  * @param[out] set Result set.
- * @param[in] line Line on the input file.
+ * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -209,7 +224,7 @@ int lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set
  * @param[in] expr XPath expression to use.
  * @param[in] cur_snode Current (context) schema node.
  * @param[out] set Result set.
- * @param[in] line Line on the input file.
+ * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */

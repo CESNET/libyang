@@ -853,11 +853,31 @@ print_set_debug(struct lyxp_set *set, struct ly_ctx *ctx, int is_snode)
             switch (set->node_type[i]) {
             case LYXP_NODE_ROOT:
                 if (is_snode) {
-                    LOGDBG("XPATH:\t%d: SCHEMA ROOT", i + 1);
+                    if (((struct lys_node *)set->value.nodes[i])->nodetype == LYS_CONTAINER) {
+                        LOGDBG("XPATH:\t%d: SCHEMA ROOT container", i + 1);
+                    } else if (((struct lys_node *)set->value.nodes[i])->nodetype == LYS_RPC) {
+                        LOGDBG("XPATH:\t%d: SCHEMA ROOT rpc", i + 1);
+                    } else if (((struct lys_node *)set->value.nodes[i])->nodetype == LYS_NOTIF) {
+                        LOGDBG("XPATH:\t%d: SCHEMA ROOT notif", i + 1);
+                    } else if (((struct lys_node *)set->value.nodes[i])->nodetype == LYS_OUTPUT) {
+                        LOGDBG("XPATH:\t%d: SCHEMA ROOT output", i + 1);
+                    } else {
+                        LOGINT;
+                    }
                     break;
                 }
 
-                LOGDBG("XPATH:\t%d: ROOT", i + 1);
+                if (set->value.nodes[i]->schema->nodetype == LYS_CONTAINER) {
+                    LOGDBG("XPATH:\t%d: ROOT container", i + 1);
+                } else if (set->value.nodes[i]->schema->nodetype == LYS_RPC) {
+                    LOGDBG("XPATH:\t%d: ROOT rpc", i + 1);
+                } else if (set->value.nodes[i]->schema->nodetype == LYS_NOTIF) {
+                    LOGDBG("XPATH:\t%d: ROOT notif", i + 1);
+                } else if (set->value.nodes[i]->schema->nodetype == LYS_OUTPUT) {
+                    LOGDBG("XPATH:\t%d: ROOT output", i + 1);
+                } else {
+                    LOGINT;
+                }
                 break;
             case LYXP_NODE_ELEM:
                 if (is_snode) {
@@ -2213,6 +2233,7 @@ error:
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -2248,6 +2269,7 @@ xpath_boolean(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_no
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -2287,6 +2309,7 @@ xpath_ceiling(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_no
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -2336,6 +2359,7 @@ xpath_concat(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_nod
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -2377,6 +2401,7 @@ xpath_contains(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_n
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -2420,6 +2445,7 @@ xpath_count(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -2454,6 +2480,7 @@ xpath_current(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_no
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -2487,6 +2514,7 @@ xpath_false(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -2524,6 +2552,7 @@ xpath_floor(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -2612,6 +2641,7 @@ xpath_lang(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node,
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -2654,6 +2684,7 @@ xpath_last(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node,
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -2736,6 +2767,7 @@ xpath_local_name(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -2767,6 +2799,7 @@ xpath_name(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node,
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -2863,6 +2896,7 @@ xpath_namespace_uri(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -2899,6 +2933,7 @@ xpath_node(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node,
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -2987,6 +3022,7 @@ xpath_normalize_space(struct lyxp_set *args, uint16_t arg_count, struct lyd_node
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -3026,6 +3062,7 @@ xpath_not(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, 
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -3073,6 +3110,7 @@ xpath_number(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_nod
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -3116,6 +3154,7 @@ xpath_position(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_n
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -3162,6 +3201,7 @@ xpath_round(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -3203,6 +3243,7 @@ xpath_starts_with(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cu
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -3250,6 +3291,7 @@ xpath_string(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_nod
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -3293,6 +3335,7 @@ xpath_string_length(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -3372,6 +3415,7 @@ xpath_substring(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -3416,6 +3460,7 @@ xpath_substring_after(struct lyxp_set *args, uint16_t arg_count, struct lyd_node
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -3459,6 +3504,7 @@ xpath_substring_before(struct lyxp_set *args, uint16_t arg_count, struct lyd_nod
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -3525,6 +3571,7 @@ xpath_sum(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, 
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -3580,6 +3627,7 @@ xpath_text(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *UNUSED(cu
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -3658,6 +3706,7 @@ xpath_translate(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] line Line in the input file.
+ * @param[in] is_snode Whether we are working with the schema or data.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
@@ -3693,7 +3742,7 @@ xpath_true(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node,
  *
  * @param[in] mod_name_ns Either module name or namespace.
  * @param[in] mon_nam_ns_len Length of \p mod_name_ns.
- * @param[in] any_node Any node from the data.
+ * @param[in] ctx libyang context.
  * @param[in] is_name Whether \p mod_name_ns is module name (1) or namespace (0).
  *
  * @return Corresponding module or NULL on error.
@@ -3716,51 +3765,115 @@ moveto_resolve_model(const char *mod_name_ns, uint16_t mod_nam_ns_len, struct ly
 }
 
 /**
+ * @brief Get the context root.
+ *
+ * @param[in] cur_node Original context node.
+ *
+ * @return Context root.
+ */
+static struct lyd_node *
+moveto_get_root(struct lyd_node *cur_node)
+{
+    while (cur_node->parent) {
+        cur_node = cur_node->parent;
+        if (cur_node->schema->nodetype & (LYS_NOTIF | LYS_RPC | LYS_OUTPUT)) {
+            break;
+        }
+    }
+
+    return cur_node;
+}
+
+/**
  * @brief Move context \p set to the root. Handles absolute path.
  *        Result is LYXP_SET_NODE_SET.
  *
- * @param[in] set Set to use.
- * @param[in] any_node Any node from the data.
+ * @param[in,out] set Set to use.
+ * @param[in] cur_node Original context node.
  */
 static void
-moveto_root(struct lyxp_set *set, struct lyd_node *any_node)
+moveto_root(struct lyxp_set *set, struct lyd_node *cur_node)
 {
     if (!set) {
         return;
     }
 
-    if (!any_node) {
+    if (!cur_node) {
         LOGINT;
         return;
     }
 
-    set_cast(set, LYXP_SET_EMPTY, any_node->schema->module->ctx);
+    set_cast(set, LYXP_SET_EMPTY, cur_node->schema->module->ctx);
+    set_insert_node(set, moveto_get_root(cur_node), LYXP_NODE_ROOT, 0);
+}
 
-    /* move the node to the root */
-    for (; any_node->parent; any_node = any_node->parent);
-    assert(any_node->prev = any_node);
+/**
+ * @brief Check (process) \p node as a part of NameTest processing.
+ *
+ * @param[in] node Node to use.
+ * @param[in,out] set Set to use.
+ * @param[in] i Current index in \p set.
+ * @param[in] cur_node Original context node.
+ * @param[in] qname Qualified node name to move to.
+ * @param[in] qname_len Length of \p qname.
+ * @param[in] moveto_mod Expected module of the node.
+ * @param[in,out] replaced Whether the node in \p set has already been replaced.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
+static void
+moveto_node_check(struct lyd_node *node, struct lyxp_set *set, uint16_t i, struct lyd_node *cur_node,
+                  const char *qname, uint16_t qname_len, struct lys_module *moveto_mod, int *replaced)
+{
+    struct lys_module *cur_mod;
 
-    set_insert_node(set, any_node, LYXP_NODE_ROOT, 0);
+    /* module check */
+    if (moveto_mod) {
+        cur_mod = node->schema->module;
+        if (cur_mod->type) {
+            cur_mod = ((struct lys_submodule *)cur_mod)->belongsto;
+        }
+        if (cur_mod != moveto_mod) {
+            return;
+        }
+    }
+
+    /* context check */
+    if ((cur_node->schema->flags & LYS_CONFIG_W) && (node->schema->flags & LYS_CONFIG_R)) {
+        return;
+    }
+
+    /* name check */
+    if (((qname_len == 1) && (qname[0] == '*'))
+            || (!strncmp(node->schema->name, qname, qname_len) && !node->schema->name[qname_len])) {
+        if (!(*replaced)) {
+            set->value.nodes[i] = node;
+            set->node_type[i] = LYXP_NODE_ELEM;
+            *replaced = 1;
+        } else {
+            set_insert_node(set, node, LYXP_NODE_ELEM, set->used);
+        }
+    }
 }
 
 /**
  * @brief Move context \p set to a node. Handles '/' and '*', 'NAME', 'PREFIX:*', or 'PREFIX:NAME'.
  *        Result is LYXP_SET_NODE_SET (or LYXP_SET_EMPTY). Indirectly context position aware.
  *
- * @param[in] set Set to use.
+ * @param[in,out] set Set to use.
+ * @param[in] cur_node Original context node.
  * @param[in] qname Qualified node name to move to.
  * @param[in] qname_len Length of \p qname.
- * @param[in] any_node Any node from the data.
  * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-moveto_node(struct lyxp_set *set, const char *qname, uint16_t qname_len, uint32_t line)
+moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, uint16_t qname_len, uint32_t line)
 {
     uint16_t i, orig_used;
-    int replaced, all = 0, pref_len;
-    struct lys_module *moveto_mod, *cur_mod;
+    int replaced, pref_len;
+    struct lys_module *moveto_mod;
     struct lyd_node *sub;
     struct ly_ctx *ctx;
 
@@ -3773,11 +3886,7 @@ moveto_node(struct lyxp_set *set, const char *qname, uint16_t qname_len, uint32_
         return -1;
     }
 
-    if (set->node_type[0] == LYXP_NODE_ROOT) {
-        ctx = set->value.nodes[0]->child->schema->module->ctx;
-    } else {
-        ctx = set->value.nodes[0]->schema->module->ctx;
-    }
+    ctx = cur_node->schema->module->ctx;
 
     /* prefix */
     if (strnchr(qname, ':', qname_len)) {
@@ -3789,43 +3898,22 @@ moveto_node(struct lyxp_set *set, const char *qname, uint16_t qname_len, uint32_
         qname += pref_len + 1;
         qname_len -= pref_len + 1;
     } else {
-        pref_len = 0;
-    }
-
-    if ((qname_len == 1) && (qname[0] == '*')) {
-        all = 1;
+        moveto_mod = NULL;
     }
 
     orig_used = set->used;
     for (i = 0; i < orig_used; ) {
         replaced = 0;
 
-        /* skip nodes without children, leaves, leaflists, and anyxmls */
-        if ((set->node_type[i] == LYXP_NODE_ROOT) || ((set->node_type[i] == LYXP_NODE_ELEM)
-                && !(set->value.nodes[i]->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)))) {
+        if ((set->node_type[i] == LYXP_NODE_ROOT)
+                && (set->value.nodes[i]->schema->nodetype & (LYS_NOTIF | LYS_RPC | LYS_OUTPUT))) {
+            moveto_node_check(set->value.nodes[i], set, i, cur_node, qname, qname_len, moveto_mod, &replaced);
+
+        /* skip nodes without children - leaves, leaflists, and anyxmls (top-level root will eval to true) */
+        } else if (!(set->value.nodes[i]->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
 
             LY_TREE_FOR(set->value.nodes[i]->child, sub) {
-                /* module check */
-                if (pref_len) {
-                    cur_mod = sub->schema->module;
-                    if (cur_mod->type) {
-                        cur_mod = ((struct lys_submodule *)cur_mod)->belongsto;
-                    }
-                    if (cur_mod != moveto_mod) {
-                        continue;
-                    }
-                }
-
-                /* name check */
-                if (all || (!strncmp(sub->schema->name, qname, qname_len) && !sub->schema->name[qname_len])) {
-                    if (!replaced) {
-                        set->value.nodes[i] = sub;
-                        set->node_type[i] = LYXP_NODE_ELEM;
-                        replaced = 1;
-                    } else {
-                        set_insert_node(set, sub, LYXP_NODE_ELEM, set->used);
-                    }
-                }
+                moveto_node_check(sub, set, i, cur_node, qname, qname_len, moveto_mod, &replaced);
             }
         }
 
@@ -3850,15 +3938,16 @@ moveto_node(struct lyxp_set *set, const char *qname, uint16_t qname_len, uint32_
  *        Indirectly context position aware.
  *
  * @param[in] set Set to use.
+ * @param[in] cur_node Original context node.
  * @param[in] qname Qualified node name to move to.
  * @param[in] qname_len Length of \p qname.
- * @param[in] any_node Any node from the data.
  * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-moveto_node_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len, uint32_t line)
+moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, uint16_t qname_len,
+                    uint32_t line)
 {
     uint16_t i;
     int pref_len, all = 0, replace, match;
@@ -3875,11 +3964,7 @@ moveto_node_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len,
         return -1;
     }
 
-    if (set->node_type[0] == LYXP_NODE_ROOT) {
-        ctx = set->value.nodes[0]->child->schema->module->ctx;
-    } else {
-        ctx = set->value.nodes[0]->schema->module->ctx;
-    }
+    ctx = cur_node->schema->module->ctx;
 
     /* prefix */
     if (strnchr(qname, ':', qname_len)) {
@@ -3891,11 +3976,11 @@ moveto_node_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len,
         qname += pref_len + 1;
         qname_len -= pref_len + 1;
     } else {
-        pref_len = 0;
+        moveto_mod = 0;
     }
 
-    /* replace the original nodes (and throws away all text and attr nodes) */
-    if (moveto_node(set, "*", 1, line)) {
+    /* replace the original nodes (and throws away all text and attr nodes, root is replaced by a child) */
+    if (moveto_node(set, cur_node, "*", 1, line)) {
         return -1;
     }
 
@@ -3910,10 +3995,16 @@ moveto_node_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len,
         start = set->value.nodes[i];
         replace = 0;
         for (elem = next = start; elem; elem = next) {
+
+            /* context check */
+            if ((cur_node->schema->flags & LYS_CONFIG_W) && (elem->schema->flags & LYS_CONFIG_R)) {
+                goto skip_children;
+            }
+
             match = 1;
 
             /* module check */
-            if (pref_len) {
+            if (moveto_mod) {
                 cur_mod = elem->schema->module;
                 if (cur_mod->type) {
                     cur_mod = ((struct lys_submodule *)cur_mod)->belongsto;
@@ -3993,10 +4084,9 @@ skip_children:
  *        or '@PREFIX:NAME'. Result is LYXP_SET_NODE_SET (or LYXP_SET_EMPTY).
  *        Indirectly context position aware.
  *
- * @param[in] set Set to use.
+ * @param[in,out] set Set to use.
  * @param[in] qname Qualified node name to move to.
  * @param[in] qname_len Length of \p qname.
- * @param[in] any_node Any node from the data.
  * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
@@ -4100,7 +4190,7 @@ moveto_attr(struct lyxp_set *set, const char *qname, uint16_t qname_len, uint32_
  * @brief Move context \p set1 to union with \p set2. \p set2 is emptied afterwards.
  *        Result is LYXP_SET_NODE_SET (or LYXP_SET_EMPTY). Context position aware.
  *
- * @param[in] set1 Set to use for the result.
+ * @param[in,out] set1 Set to use for the result.
  * @param[in] set2 Set that is copied to \p set1.
  * @param[in] any_node Any node from the data.
  * @param[in] line Line in the input file.
@@ -4172,16 +4262,17 @@ moveto_union(struct lyxp_set *set1, struct lyxp_set *set2, uint32_t line)
  *        '@NAME', '@PREFIX:*', or '@PREFIX:NAME'. Result is LYXP_SET_NODE_SET (or LYXP_SET_EMPTY).
  *        Indirectly context position aware.
  *
- * @param[in] set Set to use.
+ * @param[in,out] set Set to use.
+ * @param[in] cur_node Original context node.
  * @param[in] qname Qualified node name to move to.
  * @param[in] qname_len Length of \p qname.
- * @param[in] any_node Any node from the data.
  * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-moveto_attr_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len, uint32_t line)
+moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, uint16_t qname_len,
+                    uint32_t line)
 {
     uint16_t i;
     int pref_len, replaced, all = 0;
@@ -4199,11 +4290,7 @@ moveto_attr_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len,
         return -1;
     }
 
-    if (set->node_type[0] == LYXP_NODE_ROOT) {
-        ctx = set->value.nodes[0]->child->schema->module->ctx;
-    } else {
-        ctx = set->value.nodes[0]->schema->module->ctx;
-    }
+    ctx = cur_node->schema->module->ctx;
 
     /* prefix */
     if (strnchr(qname, ':', qname_len)) {
@@ -4215,14 +4302,14 @@ moveto_attr_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len,
         qname += pref_len + 1;
         qname_len -= pref_len + 1;
     } else {
-        pref_len = 0;
+        moveto_mod = 0;
     }
 
     /* TODO? can be optimized similarly to moveto_node_alldesc() and save considerable amount of memory */
     /* copy the context */
     set_all_desc = set_copy(set, ctx);
     /* get all descendant nodes (the original context nodes are removed) */
-    if (moveto_node_alldesc(set_all_desc, "*", 1, line)) {
+    if (moveto_node_alldesc(set_all_desc, cur_node, "*", 1, line)) {
         return -1;
     }
     /* prepend the original context nodes */
@@ -4249,7 +4336,7 @@ moveto_attr_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len,
                 }
 
                 /* module check */
-                if ((pref_len && !sub->ns) || (!pref_len && sub->ns)) {
+                if ((moveto_mod && !sub->ns) || (!moveto_mod && sub->ns)) {
                     continue;
                 }
                 if (pref_len) {
@@ -4293,15 +4380,15 @@ moveto_attr_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len,
  * @brief Move context \p set to self. Handles '/' or '//' and '.'. Result is LYXP_SET_NODE_SET
  *        (or LYXP_SET_EMPTY). Indirectly context position aware.
  *
- * @param[in] set Set to use.
+ * @param[in,out] set Set to use.
+ * @param[in] cur_node Original context node.
  * @param[in] all_desc Whether to go to all descendants ('//') or not ('/').
- * @param[in] any_node Any node from the data.
  * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-moveto_self(struct lyxp_set *set, int all_desc, uint32_t line)
+moveto_self(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, uint32_t line)
 {
     struct lyd_node *sub;
     uint16_t i, cont_i;
@@ -4329,6 +4416,11 @@ moveto_self(struct lyxp_set *set, int all_desc, uint32_t line)
             /* add all the children ... */
             if (!(set->value.nodes[i]->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
                 LY_TREE_FOR(set->value.nodes[i]->child, sub) {
+                    /* context check */
+                    if ((cur_node->schema->flags & LYS_CONFIG_W) && (sub->schema->flags & LYS_CONFIG_R)) {
+                        continue;
+                    }
+
                     if (set_dup_node_check(set, sub, LYXP_NODE_ELEM, -1) == -1) {
                         set_insert_node(set, sub, LYXP_NODE_ELEM, i + cont_i + 1);
                         ++cont_i;
@@ -4359,14 +4451,14 @@ moveto_self(struct lyxp_set *set, int all_desc, uint32_t line)
  *        (or LYXP_SET_EMPTY). Indirectly context position aware.
  *
  * @param[in] set Set to use.
+ * @param[in] cur_node Original context node.
  * @param[in] all_desc Whether to go to all descendants ('//') or not ('/').
- * @param[in] any_node Any node from the data.
  * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-moveto_parent(struct lyxp_set *set, int all_desc, struct lyd_node *any_node, uint32_t line)
+moveto_parent(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, uint32_t line)
 {
     uint16_t i;
     struct lyd_node *new_node;
@@ -4382,7 +4474,7 @@ moveto_parent(struct lyxp_set *set, int all_desc, struct lyd_node *any_node, uin
 
     if (all_desc) {
         /* <path>//.. == <path>//./.. */
-        if (moveto_self(set, 1, line)) {
+        if (moveto_self(set, cur_node, 1, line)) {
             return -1;
         }
     }
@@ -4393,10 +4485,10 @@ moveto_parent(struct lyxp_set *set, int all_desc, struct lyd_node *any_node, uin
         } else if (set->node_type[i] == LYXP_NODE_TEXT) {
             new_node = set->value.nodes[i];
         } else if (set->node_type[i] == LYXP_NODE_ATTR) {
-            while (any_node->parent) {
-                any_node = any_node->parent;
+            while (cur_node->parent) {
+                cur_node = cur_node->parent;
             }
-            new_node = lyd_attr_parent(any_node, set->value.attrs[i]);
+            new_node = lyd_attr_parent(cur_node, set->value.attrs[i]);
             if (!new_node) {
                 LOGINT;
                 return -1;
@@ -4415,8 +4507,15 @@ moveto_parent(struct lyxp_set *set, int all_desc, struct lyd_node *any_node, uin
         }
 
         /* update it */
-        set->value.nodes[i] = new_node;
-        set->node_type[i] = (new_node->parent ? LYXP_NODE_ELEM : LYXP_NODE_ROOT);
+        if (moveto_get_root(cur_node) == set->value.nodes[i]) {
+            set->node_type[i] = LYXP_NODE_ROOT;
+        } else if (!new_node->parent) {
+            set->value.nodes[i] = new_node;
+            set->node_type[i] = LYXP_NODE_ROOT;
+        } else {
+            set->value.nodes[i] = new_node;
+            set->node_type[i] = LYXP_NODE_ELEM;
+        }
 
         ++i;
     }
@@ -4430,10 +4529,10 @@ moveto_parent(struct lyxp_set *set, int all_desc, struct lyd_node *any_node, uin
  * @brief Move context \p set to the result of a comparison. Handles '=', '!=', '<=', '<', '>=', or '>'.
  *        Result is LYXP_SET_BOOLEAN. Indirectly context position aware.
  *
- * @param[in] set1 Set to use for the result.
+ * @param[in,out] set1 Set to use for the result.
  * @param[in] set2 Set acting as the second operand for \p op.
  * @param[in] op Comparison operator to process.
- * @param[in] any_node Any node from the data.
+ * @param[in] ctx libyang context.
  */
 static void
 moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, struct ly_ctx *ctx)
@@ -4549,10 +4648,10 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
  * @brief Move context \p set to the result of a basic operation. Handles '+', '-', unary '-', '*', 'div',
  *        or 'mod'. Result is LYXP_SET_NUMBER. Indirectly context position aware.
  *
- * @param[in] set1 Set to use for the result.
+ * @param[in,out] set1 Set to use for the result.
  * @param[in] set2 Set acting as the second operand for \p op.
  * @param[in] op Operator to process.
- * @param[in] any_node Any node from the data.
+ * @param[in] ctx libyang context.
  */
 static void
 moveto_op_math(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, struct ly_ctx *ctx)
@@ -4606,27 +4705,65 @@ moveto_op_math(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
  * moveto_schema functions
  */
 
+/**
+ * @brief Get the context root in schema context.
+ *
+ * @param[in] cur_node Original context node.
+ *
+ * @return Context root.
+ */
+static struct lys_node *
+moveto_schema_get_root(struct lys_node *cur_node)
+{
+    for (; cur_node; cur_node = cur_node->parent) {
+        if (cur_node->nodetype & (LYS_NOTIF | LYS_RPC | LYS_OUTPUT)) {
+            break;
+        }
+    }
+
+    return cur_node;
+}
+
+/**
+ * @brief Move schema context \p set to the root. Handles absolute path.
+ *        Result is LYXP_SET_NODE_SET.
+ *
+ * @param[in,out] set Set to use.
+ * @param[in] cur_node Original context node.
+ */
 static void
-moveto_schema_root(struct lyxp_set *set, struct lys_node *any_node)
+moveto_schema_root(struct lyxp_set *set, struct lys_node *cur_node)
 {
     if (!set) {
         return;
     }
 
-    if (!any_node) {
+    if (!cur_node) {
         LOGINT;
         return;
     }
 
-    set_cast(set, LYXP_SET_EMPTY, any_node->module->ctx);
-
-    /* HACK we insert the context instead, since there is no root, it will be needed */
-    set_insert_node(set, any_node->module->ctx, LYXP_NODE_ROOT, 0);
+    set_cast(set, LYXP_SET_EMPTY, cur_node->module->ctx);
+    set_insert_node(set, moveto_schema_get_root(cur_node), LYXP_NODE_ROOT, 0);
 }
 
+/**
+ * @brief Check (process) \p node as a part of schema NameTest processing.
+ *
+ * @param[in] node Node to use.
+ * @param[in,out] set Set to use.
+ * @param[in] i Current index in \p set.
+ * @param[in] cur_node Original context node.
+ * @param[in] qname Qualified node name to move to.
+ * @param[in] qname_len Length of \p qname.
+ * @param[in] moveto_mod Expected module of the node.
+ * @param[in,out] replaced Whether the node in \p set has already been replaced.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
 static void
-moveto_schema_node_check(struct lys_node *node, struct lyxp_set *set, uint16_t i, const char *qname,
-                         uint16_t qname_len, struct lys_module *moveto_mod, int *replaced)
+moveto_schema_node_check(struct lys_node *node, struct lyxp_set *set, uint16_t i, struct lys_node *cur_node,
+                         const char *qname, uint16_t qname_len, struct lys_module *moveto_mod, int *replaced)
 {
     struct lys_module *cur_mod;
     struct lys_node *child;
@@ -4637,7 +4774,7 @@ moveto_schema_node_check(struct lys_node *node, struct lyxp_set *set, uint16_t i
 
     if (node->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE)) {
         LY_TREE_FOR(node->child, child) {
-            moveto_schema_node_check(child, set, i, qname, qname_len, moveto_mod, replaced);
+            moveto_schema_node_check(child, set, i, cur_node, qname, qname_len, moveto_mod, replaced);
         }
         return;
     }
@@ -4653,6 +4790,11 @@ moveto_schema_node_check(struct lys_node *node, struct lyxp_set *set, uint16_t i
         }
     }
 
+    /* context check */
+    if ((cur_node->flags & LYS_CONFIG_W) && (node->flags & LYS_CONFIG_R)) {
+        return;
+    }
+
     /* name check */
     if (((qname[0] == '*') && (qname_len == 1))
             || (!strncmp(node->name, qname, qname_len) && !node->name[qname_len])) {
@@ -4666,8 +4808,21 @@ moveto_schema_node_check(struct lys_node *node, struct lyxp_set *set, uint16_t i
     }
 }
 
+/**
+ * @brief Move schema context \p set to a node. Handles '/' and '*', 'NAME', 'PREFIX:*', or 'PREFIX:NAME'.
+ *        Result is LYXP_SET_NODE_SET (or LYXP_SET_EMPTY).
+ *
+ * @param[in,out] set Set to use.
+ * @param[in] cur_node Original context node.
+ * @param[in] qname Qualified node name to move to.
+ * @param[in] qname_len Length of \p qname.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
 static int
-moveto_schema_node(struct lyxp_set *set, const char *qname, uint16_t qname_len, uint32_t line)
+moveto_schema_node(struct lyxp_set *set, struct lys_node *cur_node, const char *qname, uint16_t qname_len,
+                   uint32_t line)
 {
     uint16_t i, orig_used, j;
     int replaced, pref_len;
@@ -4684,11 +4839,7 @@ moveto_schema_node(struct lyxp_set *set, const char *qname, uint16_t qname_len, 
         return -1;
     }
 
-    if (set->node_type[0] == LYXP_NODE_ROOT) {
-        ctx = (struct ly_ctx *)set->value.nodes[0];
-    } else {
-        ctx = ((struct lys_node *)set->value.nodes[0])->module->ctx;
-    }
+    ctx = cur_node->module->ctx;
 
     /* prefix */
     if (strnchr(qname, ':', qname_len)) {
@@ -4707,19 +4858,25 @@ moveto_schema_node(struct lyxp_set *set, const char *qname, uint16_t qname_len, 
     for (i = 0; i < orig_used; ) {
         replaced = 0;
 
-        /* LYXP_NODE_TEXT gets removed */
         if (set->node_type[i] == LYXP_NODE_ROOT) {
-            for (j = 0; j < ctx->models.used; ++j) {
-                LY_TREE_FOR(ctx->models.list[j]->data, sub) {
-                    /* LYS_GROUPING and LYS_USES handled inside */
-                    moveto_schema_node_check(sub, set, i, qname, qname_len, moveto_mod, &replaced);
+            if (!set->value.nodes[i]) {
+                for (j = 0; j < ctx->models.used; ++j) {
+                    LY_TREE_FOR(ctx->models.list[j]->data, sub) {
+                        /* LYS_GROUPING and LYS_USES handled inside */
+                        moveto_schema_node_check(sub, set, i, cur_node, qname, qname_len, moveto_mod, &replaced);
+                    }
+                }
+            } else {
+                LY_TREE_FOR((struct lys_node *)set->value.nodes[i], sub) {
+                    moveto_schema_node_check(sub, set, i, cur_node, qname, qname_len, moveto_mod, &replaced);
                 }
             }
         } else if (set->node_type[i] == LYXP_NODE_ELEM) {
             LY_TREE_FOR(((struct lys_node *)set->value.nodes[i])->child, sub) {
-                moveto_schema_node_check(sub, set, i, qname, qname_len, moveto_mod, &replaced);
+                moveto_schema_node_check(sub, set, i, cur_node, qname, qname_len, moveto_mod, &replaced);
             }
         }
+        /* LYXP_NODE_TEXT gets removed */
 
         if (!replaced) {
             /* no match */
@@ -4736,8 +4893,21 @@ moveto_schema_node(struct lyxp_set *set, const char *qname, uint16_t qname_len, 
     return EXIT_SUCCESS;
 }
 
+/**
+ * @brief Move schema context \p set to a node and all its descendants. Handles '//' and '*', 'NAME',
+ *        'PREFIX:*', or 'PREFIX:NAME'. Result is LYXP_SET_NODE_SET (or LYXP_SET_EMPTY).
+ *
+ * @param[in] set Set to use.
+ * @param[in] cur_node Original context node.
+ * @param[in] qname Qualified node name to move to.
+ * @param[in] qname_len Length of \p qname.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
 static int
-moveto_schema_node_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len, uint32_t line)
+moveto_schema_node_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char *qname, uint16_t qname_len,
+                           uint32_t line)
 {
     uint16_t i;
     int pref_len, all = 0, replace, match;
@@ -4754,11 +4924,7 @@ moveto_schema_node_alldesc(struct lyxp_set *set, const char *qname, uint16_t qna
         return -1;
     }
 
-    if (set->node_type[0] == LYXP_NODE_ROOT) {
-        ctx = (struct ly_ctx *)set->value.nodes[0];
-    } else {
-        ctx = ((struct lys_node *)set->value.nodes[0])->module->ctx;
-    }
+    ctx = cur_node->module->ctx;
 
     /* prefix */
     if (strnchr(qname, ':', qname_len)) {
@@ -4773,8 +4939,8 @@ moveto_schema_node_alldesc(struct lyxp_set *set, const char *qname, uint16_t qna
         pref_len = 0;
     }
 
-    /* replace the original nodes (and throw away all text nodes) */
-    if (moveto_schema_node(set, "*", 1, line)) {
+    /* replace the original nodes (and throw away all text nodes, root nodes are replaced by their children) */
+    if (moveto_schema_node(set, cur_node, "*", 1, line)) {
         return -1;
     }
 
@@ -4789,7 +4955,9 @@ moveto_schema_node_alldesc(struct lyxp_set *set, const char *qname, uint16_t qna
         start = (struct lys_node *)set->value.nodes[i];
         replace = 0;
         for (elem = next = start; elem; elem = next) {
-            if (elem->nodetype & (LYS_GROUPING | LYS_AUGMENT)) {
+            /* duplicated nodes skipped, context check */
+            if ((elem->nodetype & (LYS_GROUPING | LYS_AUGMENT))
+                    || ((cur_node->flags & LYS_CONFIG_W) && (elem->flags & LYS_CONFIG_R))){
                 goto skip_children;
             }
 
@@ -4877,6 +5045,17 @@ skip_children:
     return EXIT_SUCCESS;
 }
 
+/**
+ * @brief Move schema context \p set1 to union with \p set2. \p set2 is emptied afterwards.
+ *        Result is LYXP_SET_NODE_SET (or LYXP_SET_EMPTY).
+ *
+ * @param[in,out] set1 Set to use for the result.
+ * @param[in] set2 Set that is copied to \p set1.
+ * @param[in] any_node Any node from the data.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
 static int
 moveto_schema_union(struct lyxp_set *set1, struct lyxp_set *set2, uint32_t line)
 {
@@ -4937,8 +5116,21 @@ moveto_schema_union(struct lyxp_set *set1, struct lyxp_set *set2, uint32_t line)
     return EXIT_SUCCESS;
 }
 
+/**
+ * @brief Check (process) \p node as a part of schema '.' processing.
+ *
+ * @param[in] node Node to use.
+ * @param[in,out] set Set to use.
+ * @param[in] i Current index in \p set.
+ * @param[in] cur_node Original context node.
+ * @param[in,out] cur_i Number of nodes added with the same value of \p i. Used only
+ * to insert nodes in the correct document order.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
 static void
-moveto_schema_self_check(struct lys_node *node, struct lyxp_set *set, uint16_t i, uint16_t *cont_i)
+moveto_schema_self_check(struct lys_node *node, struct lyxp_set *set, uint16_t i, struct lys_node *cur_node,
+                         uint16_t *cur_i)
 {
     struct lys_node *child;
 
@@ -4948,23 +5140,38 @@ moveto_schema_self_check(struct lys_node *node, struct lyxp_set *set, uint16_t i
 
     if (node->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE)) {
         LY_TREE_FOR(node->child, child) {
-            moveto_schema_self_check(child, set, i, cont_i);
+            moveto_schema_self_check(child, set, i, cur_node, cur_i);
         }
         return;
     }
 
+    if ((cur_node->flags & LYS_CONFIG_W) && (node->flags & LYS_CONFIG_R)) {
+        return;
+    }
+
     if (set_dup_node_check(set, node, LYXP_NODE_ELEM, -1) == -1) {
-        set_insert_node(set, node, LYXP_NODE_ELEM, i + (*cont_i) + 1);
-        ++cont_i;
+        set_insert_node(set, node, LYXP_NODE_ELEM, i + (*cur_i) + 1);
+        ++cur_i;
     }
 }
 
+/**
+ * @brief Move schema context \p set to self. Handles '/' or '//' and '.'. Result is LYXP_SET_NODE_SET
+ *        (or LYXP_SET_EMPTY).
+ *
+ * @param[in,out] set Set to use.
+ * @param[in] cur_node Original context node.
+ * @param[in] all_desc Whether to go to all descendants ('//') or not ('/').
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
 static int
-moveto_schema_self(struct lyxp_set *set, int all_desc, uint32_t line)
+moveto_schema_self(struct lyxp_set *set, struct lys_node *cur_node, int all_desc, uint32_t line)
 {
     struct lys_node *sub;
     struct ly_ctx *ctx;
-    uint16_t i, cont_i, j;
+    uint16_t i, cur_i, j;
 
     if (!set || (set->type == LYXP_SET_EMPTY)) {
         return EXIT_SUCCESS;
@@ -4982,14 +5189,20 @@ moveto_schema_self(struct lyxp_set *set, int all_desc, uint32_t line)
 
     /* add all the children, they get added recursively */
     for (i = 0; i < set->used; ++i) {
-        cont_i = 0;
+        cur_i = 0;
 
         if (set->node_type[i] == LYXP_NODE_ROOT) {
-            ctx = (struct ly_ctx *)set->value.nodes[i];
+            if (!set->value.nodes[i]) {
+                ctx = cur_node->module->ctx;
 
-            for (j = 0; j < ctx->models.used; ++j) {
-                LY_TREE_FOR(ctx->models.list[j]->data, sub) {
-                    moveto_schema_self_check(sub, set, i, &cont_i);
+                for (j = 0; j < ctx->models.used; ++j) {
+                    LY_TREE_FOR(ctx->models.list[j]->data, sub) {
+                        moveto_schema_self_check(sub, set, i, cur_node, &cur_i);
+                    }
+                }
+            } else {
+                LY_TREE_FOR((struct lys_node *)set->value.nodes[i], sub) {
+                    moveto_schema_self_check(sub, set, i, cur_node, &cur_i);
                 }
             }
         } else if (set->node_type[i] == LYXP_NODE_ELEM) {
@@ -5000,7 +5213,7 @@ moveto_schema_self(struct lyxp_set *set, int all_desc, uint32_t line)
                 }
             } else { /* LYS_ANYXML can go here, it has no children anyway */
                 LY_TREE_FOR(((struct lys_node *)set->value.nodes[i])->child, sub) {
-                    moveto_schema_self_check(sub, set, i, &cont_i);
+                    moveto_schema_self_check(sub, set, i, cur_node, &cur_i);
                 }
             }
         }
@@ -5011,8 +5224,19 @@ moveto_schema_self(struct lyxp_set *set, int all_desc, uint32_t line)
     return EXIT_SUCCESS;
 }
 
+/**
+ * @brief Move schema context \p set to parent. Handles '/' or '//' and '..'. Result is LYXP_SET_NODE_SET
+ *        (or LYXP_SET_EMPTY).
+ *
+ * @param[in] set Set to use.
+ * @param[in] cur_node Original context node.
+ * @param[in] all_desc Whether to go to all descendants ('//') or not ('/').
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
 static int
-moveto_schema_parent(struct lyxp_set *set, int all_desc, uint32_t line)
+moveto_schema_parent(struct lyxp_set *set, struct lys_node *cur_node, int all_desc, uint32_t line)
 {
     uint16_t i;
     struct lys_node *new_node;
@@ -5028,7 +5252,7 @@ moveto_schema_parent(struct lyxp_set *set, int all_desc, uint32_t line)
 
     if (all_desc) {
         /* <path>//.. == <path>//./.. */
-        if (moveto_schema_self(set, 1, line)) {
+        if (moveto_schema_self(set, cur_node, 1, line)) {
             return -1;
         }
     }
@@ -5053,8 +5277,15 @@ moveto_schema_parent(struct lyxp_set *set, int all_desc, uint32_t line)
         }
 
         /* update it */
-        set->value.nodes[i] = (struct lyd_node *)new_node;
-        set->node_type[i] = (new_node ? LYXP_NODE_ELEM : LYXP_NODE_ROOT);
+        if (moveto_schema_get_root(cur_node) == (struct lys_node *)set->value.nodes[i]) {
+            set->node_type[i] = LYXP_NODE_ROOT;
+        } else if (!new_node) {
+            set->node_type[i] = LYXP_NODE_ROOT;
+            set->value.nodes[i] = NULL;
+        } else {
+            set->node_type[i] = LYXP_NODE_ELEM;
+            set->value.nodes[i] = (struct lyd_node *)new_node;
+        }
 
         ++i;
     }
@@ -5114,8 +5345,8 @@ eval_literal(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyxp_set *set, str
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, int attr_axis, int all_desc, struct lyxp_set *set,
-               uint32_t line, int is_snode)
+eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, int attr_axis, int all_desc,
+               struct lyxp_set *set, uint32_t line, int is_snode)
 {
     int rc = 0;
 
@@ -5123,22 +5354,26 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, int attr_axis, int all_
     case LYXP_TOKEN_NAMETEST:
         if (attr_axis && !is_snode) {
             if (all_desc) {
-                rc = moveto_attr_alldesc(set, &exp->expr[exp->expr_pos[*exp_idx]], exp->tok_len[*exp_idx], line);
+                rc = moveto_attr_alldesc(set, cur_node, &exp->expr[exp->expr_pos[*exp_idx]],
+                                         exp->tok_len[*exp_idx], line);
             } else {
                 rc = moveto_attr(set, &exp->expr[exp->expr_pos[*exp_idx]], exp->tok_len[*exp_idx], line);
             }
         } else if (!attr_axis) {
             if (all_desc) {
                 if (is_snode) {
-                    rc = moveto_schema_node_alldesc(set, &exp->expr[exp->expr_pos[*exp_idx]], exp->tok_len[*exp_idx], line);
+                    rc = moveto_schema_node_alldesc(set, (struct lys_node *)cur_node,
+                                                    &exp->expr[exp->expr_pos[*exp_idx]], exp->tok_len[*exp_idx], line);
                 } else {
-                    rc = moveto_node_alldesc(set, &exp->expr[exp->expr_pos[*exp_idx]], exp->tok_len[*exp_idx], line);
+                    rc = moveto_node_alldesc(set, cur_node, &exp->expr[exp->expr_pos[*exp_idx]],
+                                             exp->tok_len[*exp_idx], line);
                 }
             } else {
                 if (is_snode) {
-                    rc = moveto_schema_node(set, &exp->expr[exp->expr_pos[*exp_idx]], exp->tok_len[*exp_idx], line);
+                    rc = moveto_schema_node(set, (struct lys_node *)cur_node, &exp->expr[exp->expr_pos[*exp_idx]],
+                                            exp->tok_len[*exp_idx], line);
                 } else {
-                    rc = moveto_node(set, &exp->expr[exp->expr_pos[*exp_idx]], exp->tok_len[*exp_idx], line);
+                    rc = moveto_node(set, cur_node, &exp->expr[exp->expr_pos[*exp_idx]], exp->tok_len[*exp_idx], line);
                 }
             }
         }
@@ -5357,10 +5592,10 @@ step:
         switch (exp->tokens[*exp_idx]) {
         case LYXP_TOKEN_DOT:
             /* evaluate '.' */
-            if (is_snode && moveto_schema_self(set, all_desc, line)) {
+            if (is_snode && moveto_schema_self(set, (struct lys_node *)cur_node, all_desc, line)) {
                 return -1;
             }
-            if (!is_snode && moveto_self(set, all_desc, line)) {
+            if (!is_snode && moveto_self(set, cur_node, all_desc, line)) {
                 return -1;
             }
             LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
@@ -5369,10 +5604,10 @@ step:
             break;
         case LYXP_TOKEN_DDOT:
             /* evaluate '..' */
-            if (is_snode && moveto_schema_parent(set, all_desc, line)) {
+            if (is_snode && moveto_schema_parent(set, (struct lys_node *)cur_node, all_desc, line)) {
                 return -1;
             }
-            if (!is_snode && moveto_parent(set, all_desc, cur_node, line)) {
+            if (!is_snode && moveto_parent(set, cur_node, all_desc, line)) {
                 return -1;
             }
             LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
@@ -5390,7 +5625,7 @@ step:
             /* fall through */
         case LYXP_TOKEN_NAMETEST:
         case LYXP_TOKEN_NODETYPE:
-            if (eval_node_test(exp, exp_idx, attr_axis, all_desc, set, line, is_snode)) {
+            if (eval_node_test(exp, exp_idx, cur_node, attr_axis, all_desc, set, line, is_snode)) {
                 return -1;
             }
             while ((exp->used > *exp_idx) && (exp->tokens[*exp_idx] == LYXP_TOKEN_BRACK1)) {
@@ -6518,6 +6753,8 @@ lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, ui
             LOGVAL(LYE_SPEC, line, "Unparsed characters \"%s\" left at the end of an XPath expression.",
                    &exp->expr[exp->expr_pos[exp_idx]]);
             rc = -1;
+        }
+        if (rc) {
             exp_free(exp);
         }
     }
@@ -6542,19 +6779,13 @@ int
 lyxp_eval_schema(const char *expr, struct lys_node *cur_snode, struct lyxp_set **set, uint32_t line)
 {
     struct lyxp_expr *exp;
-    struct lys_node *root, *node;
     uint16_t exp_idx;
     int rc = -1;
 
-    assert(expr && cur_snode && set);
-
-    /* find root, beginning */
-    root = cur_snode;
-    do {
-        node = root;
-        root = lys_parent(root);
-    } while (root);
-    for (; node->prev->next; node = node->prev);
+    if (!expr || !cur_snode || !set) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
 
     exp = parse_expr(expr, line);
     if (exp) {
@@ -6573,7 +6804,6 @@ lyxp_eval_schema(const char *expr, struct lys_node *cur_snode, struct lyxp_set *
         print_expr_struct_debug(exp);
 
         *set = calloc(1, sizeof **set);
-
         exp_idx = 0;
         rc = eval_expr(exp, &exp_idx, (struct lyd_node *)cur_snode, *set, line, 1);
 
@@ -6597,7 +6827,7 @@ int
 main(int argc, char **argv)
 {
     struct ly_ctx *ctx;
-    /*struct lyd_node *data = NULL, *root, *node;*/
+    struct lyd_node *data = NULL, *root, *node, *next;
     struct lyxp_set *set;
     struct stat sb;
     int fd;
@@ -6619,29 +6849,28 @@ main(int argc, char **argv)
     munmap(addr, sb.st_size);
     close(fd);
 
-    ly_verb(3);
+    /*ly_verb(3);
     if (argc == 2) {
-        if (!lyxp_eval_schema(argv[1], ctx->models.list[4]->data, &set, 0)) {
+        if (!lyxp_eval_schema(argv[1], ctx->models.list[4]->notif->child, &set, 0)) {
             LOGDBG("XPATH: RESULT");
             print_set_debug(set, ctx->models.list[4]->data->module->ctx, 1);
             set_free(set, ctx);
         }
-    }
+    }*/
 
-    /*fd = open("./data.xml", O_RDONLY);
+    fd = open("./data.xml", O_RDONLY);
     fstat(fd, &sb);
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     data = lyd_parse(ctx, addr, LYD_XML, 0);
     munmap(addr, sb.st_size);
     close(fd);
 
-    * add fake root *
+    /* add fake root */
     root = calloc(1, sizeof *root);
     root->prev = root;
     root->child = data;
     root->schema = calloc(1, sizeof *root->schema);
     root->schema->nodetype = LYS_CONTAINER;
-    root->schema->name = lydict_insert(ctx, "xpath-root", 0);
     LY_TREE_FOR(data, node) {
         node->parent = root;
     }
@@ -6655,7 +6884,12 @@ main(int argc, char **argv)
         }
     }
 
-    lyd_free(root);*/
+    LY_TREE_FOR_SAFE(data, next, node) {
+        lyd_free(node);
+    }
+    free(root->schema);
+    free(root);
+
     ly_ctx_destroy(ctx);
 
     return 0;
