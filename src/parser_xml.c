@@ -783,7 +783,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct
 }
 
 /* logs directly */
-struct lyd_node *
+static struct lyd_node *
 xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev,
                int options, struct unres_data *unres)
 {
