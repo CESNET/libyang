@@ -6494,15 +6494,21 @@ int
 lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, uint32_t line)
 {
     struct lyxp_expr *exp;
-    struct lyd_node *root, *node;
-    uint16_t exp_idx, i;
+    struct lyd_node *root;
+    uint16_t exp_idx;
     int rc = -1;
 
-    assert(expr && cur_node && set);
+    if (!expr || !cur_node || !set) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
 
-    /* find root, beginning */
-    for (node = cur_node; node->parent; node = node->parent);
-    for (; node->prev->next; node = node->prev);
+    /* check root */
+    for (root = cur_node; root->parent; root = root->parent);
+    if ((root->prev != root) || !root->schema || (root->schema->nodetype != LYS_CONTAINER)) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
 
     exp = parse_expr(expr, line);
     if (exp) {
@@ -6518,39 +6524,9 @@ lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, ui
     if (!rc && exp) {
         print_expr_struct_debug(exp);
 
-        /* add fake root */
-        root = calloc(1, sizeof *root);
-        root->prev = root;
-        root->child = node;
-        root->schema = calloc(1, sizeof *root->schema);
-        root->schema->nodetype = LYS_CONTAINER;
-        root->schema->name = lydict_insert(cur_node->schema->module->ctx, "xpath-root", 0);
-        LY_TREE_FOR(node, node) {
-            node->parent = root;
-        }
-
         *set = calloc(1, sizeof **set);
-
         exp_idx = 0;
         rc = eval_expr(exp, &exp_idx, cur_node, *set, line, 0);
-
-        /* remove fake root */
-        LY_TREE_FOR(root->child, node) {
-            node->parent = NULL;
-        }
-        lydict_remove(cur_node->schema->module->ctx, root->schema->name);
-        free(root->schema);
-        free(root);
-
-        /* check result and clear the root if it is there */
-        if ((*set)->type == LYXP_SET_NODE_SET) {
-            for (i = 0; i < (*set)->type; ++i) {
-                if ((*set)->node_type[i] == LYXP_NODE_ROOT) {
-                    (*set)->value.nodes[i] = NULL;
-                    break;
-                }
-            }
-        }
 
         if (rc) {
             set_free(*set, cur_node->schema->module->ctx);
@@ -6621,7 +6597,7 @@ int
 main(int argc, char **argv)
 {
     struct ly_ctx *ctx;
-    /*struct lyd_node *data = NULL, *next, *iter;*/
+    /*struct lyd_node *data = NULL, *root, *node;*/
     struct lyxp_set *set;
     struct stat sb;
     int fd;
@@ -6659,6 +6635,17 @@ main(int argc, char **argv)
     munmap(addr, sb.st_size);
     close(fd);
 
+    * add fake root *
+    root = calloc(1, sizeof *root);
+    root->prev = root;
+    root->child = data;
+    root->schema = calloc(1, sizeof *root->schema);
+    root->schema->nodetype = LYS_CONTAINER;
+    root->schema->name = lydict_insert(ctx, "xpath-root", 0);
+    LY_TREE_FOR(data, node) {
+        node->parent = root;
+    }
+
     ly_verb(3);
     if (argc == 2) {
         if (!lyxp_eval(argv[1], data, &set, 0)) {
@@ -6668,9 +6655,7 @@ main(int argc, char **argv)
         }
     }
 
-    LY_TREE_FOR_SAFE(data, next, iter) {
-        lyd_free(iter);
-    }*/
+    lyd_free(root);*/
     ly_ctx_destroy(ctx);
 
     return 0;
