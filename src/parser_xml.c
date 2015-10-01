@@ -814,6 +814,20 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                         break;
                     }
                 }
+                if (!schema) {
+                    LY_TREE_FOR(ctx->models.list[i]->notif, schema) {
+                        if (schema->name == xml->name) {
+                            break;
+                        }
+                    }
+                }
+                if (!schema) {
+                    LY_TREE_FOR(ctx->models.list[i]->rpc, schema) {
+                        if (schema->name == xml->name) {
+                            break;
+                        }
+                    }
+                }
                 break;
             }
         }
@@ -892,6 +906,8 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     switch (schema->nodetype) {
     case LYS_CONTAINER:
     case LYS_LIST:
+    case LYS_NOTIF:
+    case LYS_RPC:
         result = calloc(1, sizeof *result);
         havechildren = 1;
         break;
@@ -960,7 +976,11 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     /* process children */
     if (havechildren && xml->child) {
-        xml_parse_data(ctx, xml->child, result, NULL, options, unres);
+        if (schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
+            xml_parse_data(ctx, xml->child, result, NULL, 0, unres);
+        } else {
+            xml_parse_data(ctx, xml->child, result, NULL, options, unres);
+        }
         if (ly_errno) {
             goto error;
         }
