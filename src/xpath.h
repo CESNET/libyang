@@ -190,7 +190,8 @@ enum lyxp_node_type {
 };
 
 /**
- * @brief Evaluate the XPath expression \p expr on data.
+ * @brief Evaluate the XPath expression \p expr on data. The context must have
+ * a single root without configuration meaning, but with schema with nodetype set.
  *
  * @param[in] expr XPath expression to use.
  * @param[in] cur_node Current (context) data node.
@@ -202,7 +203,8 @@ enum lyxp_node_type {
 int lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, uint32_t line);
 
 /**
- * @brief Evaluate the XPath expression \p expr on schema.
+ * @brief Evaluate the XPath expression \p expr on schema. The context root is only
+ * virtual and is simulated on the models list of libyang context structure.
  *
  * @param[in] expr XPath expression to use.
  * @param[in] cur_snode Current (context) schema node.
