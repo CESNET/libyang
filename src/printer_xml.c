@@ -310,7 +310,7 @@ xml_print_node(FILE *f, int level, struct lyd_node *node)
     }
 }
 
-API int
+int
 xml_print_data(FILE *f, struct lyd_node *root)
 {
     struct lyd_node *node;

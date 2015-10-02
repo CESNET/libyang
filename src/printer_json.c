@@ -261,7 +261,7 @@ json_print_nodes(FILE *f, int level, struct lyd_node *root)
     fprintf(f, "\n");
 }
 
-API int
+int
 json_print_data(FILE *f, struct lyd_node *root)
 {
     int level = 0;
