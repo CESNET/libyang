@@ -289,6 +289,16 @@ void lys_free(struct lys_module *module, int free_int_mods);
 struct lys_node *ly_check_mandatory(struct lyd_node *start);
 
 /**
+ * @brief Find the parent node of an attribute.
+ *
+ * @param[in] root Root element of the data tree with the attribute.
+ * @param[in] attr Attribute to find.
+ *
+ * @return Parent of \p attr, NULL if not found.
+ */
+struct lyd_node *lyd_attr_parent(struct lyd_node *root, struct lyd_attr *attr);
+
+/**
  * @brief Compare 2 data nodes if they are the same from the YANG point of view.
  *
  * - containers are the same if they are defined by the same schema tree node

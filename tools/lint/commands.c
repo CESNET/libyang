@@ -69,19 +69,19 @@ cmd_parse_help(const char *name)
 void
 cmd_data_help(void)
 {
-    cmd_parse_help("data\n");
+    cmd_parse_help("data");
 }
 
 void
 cmd_config_help(void)
 {
-    cmd_parse_help("config\n");
+    cmd_parse_help("config");
 }
 
 void
 cmd_filter_help(void)
 {
-    cmd_parse_help("filter\n");
+    cmd_parse_help("filter");
 }
 
 void

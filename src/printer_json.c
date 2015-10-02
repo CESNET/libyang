@@ -208,6 +208,8 @@ json_print_nodes(FILE *f, int level, struct lyd_node *root)
 
     LY_TREE_FOR(root, node) {
         switch (node->schema->nodetype) {
+        case LYS_RPC:
+        case LYS_NOTIF:
         case LYS_CONTAINER:
             if (node->prev->next) {
                 /* print the previous comma */

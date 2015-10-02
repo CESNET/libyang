@@ -287,6 +287,8 @@ void
 xml_print_node(FILE *f, int level, struct lyd_node *node)
 {
     switch (node->schema->nodetype) {
+    case LYS_NOTIF:
+    case LYS_RPC:
     case LYS_CONTAINER:
         xml_print_container(f, level, node);
         break;

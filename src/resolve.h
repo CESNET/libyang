@@ -74,7 +74,7 @@ int unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, voi
                          const char *str, uint32_t line);
 
 int unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
-                     struct lys_node *node, uint32_t line);
+                          struct lys_node *node, uint32_t line);
 
 int unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
                      void *new_item);

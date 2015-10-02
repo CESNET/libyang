@@ -2013,11 +2013,11 @@ resolve_data(struct lys_module *mod, const char *name, int nam_len, struct lyd_n
                     && node->schema->name[nam_len] == '\0') {
                 /* matching target */
                 if (!flag) {
-                    /* replace leafref instead of the current parent */
+                    /* put node instead of the current parent */
                     parents->dnode[i] = node;
                     flag = 1;
                 } else {
-                    /* multiple matching, so create new leafref structure */
+                    /* multiple matching, so create a new node */
                     ++parents->count;
                     parents->dnode = realloc(parents->dnode, parents->count * sizeof *parents->dnode);
                     parents->dnode[parents->count-1] = node;

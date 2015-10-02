@@ -90,6 +90,7 @@ transform_data_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml, int log)
         ns = lyxml_get_ns(xml, prefix);
         free(prefix);
         if (!ns) {
+            /* TODO a valid case if replacing an XPath in an augment part from a different model (won't happen if namespaces used in the augment get copied over as well) */
             if (log) {
                 LOGVAL(LYE_SPEC, LOGLINE(xml), "XML namespace with prefix \"%.*s\" not defined.", id_len, id);
             }
@@ -243,8 +244,8 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start)
             continue;
         }
 
-        /* go into cases, choices, uses */
-        if (result->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES)) {
+        /* go into cases, choices, uses and in RPCs into input and output */
+        if (result->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES | LYS_INPUT | LYS_OUTPUT)) {
             aux = xml_data_search_schemanode(xml, result->child);
             if (aux) {
                 /* we have matching result */
@@ -776,7 +777,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct
 }
 
 /* logs directly */
-struct lyd_node *
+static struct lyd_node *
 xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev,
                int options, struct unres_data *unres)
 {
@@ -805,6 +806,20 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                 LY_TREE_FOR(ctx->models.list[i]->data, schema) {
                     if (schema->name == xml->name) {
                         break;
+                    }
+                }
+                if (!schema) {
+                    LY_TREE_FOR(ctx->models.list[i]->notif, schema) {
+                        if (schema->name == xml->name) {
+                            break;
+                        }
+                    }
+                }
+                if (!schema) {
+                    LY_TREE_FOR(ctx->models.list[i]->rpc, schema) {
+                        if (schema->name == xml->name) {
+                            break;
+                        }
                     }
                 }
                 break;
@@ -885,6 +900,8 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     switch (schema->nodetype) {
     case LYS_CONTAINER:
     case LYS_LIST:
+    case LYS_NOTIF:
+    case LYS_RPC:
         result = calloc(1, sizeof *result);
         havechildren = 1;
         break;
@@ -945,7 +962,11 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     /* process children */
     if (havechildren && xml->child) {
-        xml_parse_data(ctx, xml->child, result, NULL, options, unres);
+        if (schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
+            xml_parse_data(ctx, xml->child, result, NULL, 0, unres);
+        } else {
+            xml_parse_data(ctx, xml->child, result, NULL, options, unres);
+        }
         if (ly_errno) {
             goto error;
         }
