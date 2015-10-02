@@ -246,8 +246,8 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start)
             continue;
         }
 
-        /* go into cases, choices, uses */
-        if (result->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES)) {
+        /* go into cases, choices, uses and in RPCs into input and output */
+        if (result->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES | LYS_INPUT | LYS_OUTPUT)) {
             aux = xml_data_search_schemanode(xml, result->child);
             if (aux) {
                 /* we have matching result */
