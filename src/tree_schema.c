@@ -516,7 +516,7 @@ lys_find_grouping_up(const char *name, struct lys_node *start, int in_submodules
     int i;
 
     for (par_iter = start; par_iter; par_iter = par_iter->parent) {
-        if (par_iter->nodetype & (LYS_CHOICE | LYS_CASE | LYS_AUGMENT | LYS_USES)) {
+        if (par_iter->parent && (par_iter->parent->nodetype & (LYS_CHOICE | LYS_CASE | LYS_AUGMENT | LYS_USES))) {
             continue;
         }
 

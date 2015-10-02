@@ -291,7 +291,18 @@ lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char 
             return NULL;
         }
     }
-    ret->value = value;
+
+    if (type == LY_TYPE_BINARY) {
+        ret->value.binary = val_str;
+    } else if (type == LY_TYPE_STRING) {
+        ret->value.string = val_str;
+    } else if (type == LY_TYPE_BITS) {
+        /* stype is left with the bits type definition */
+        ret->value.bit = malloc(stype->info.bits.count * sizeof *ret->value.bit);
+        memcpy(ret->value.bit, value.bit, stype->info.bits.count * sizeof *ret->value.bit);
+    } else {
+        ret->value = value;
+    }
     ret->value_str = val_str;
     ret->value_type = type;
 
