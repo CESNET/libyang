@@ -358,7 +358,7 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
             return EXIT_FAILURE;
         }
 
-        node->value.binary = lydict_insert(node->schema->module->ctx, node->value_str, 0);
+        node->value.binary = node->value_str;
         break;
 
     case LY_TYPE_BITS:
@@ -593,7 +593,7 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
 
     case LY_TYPE_STRING:
         if (validate_length_range(0, (node->value_str ? strlen(node->value_str) : 0), 0, 0, stype,
-                node->value_str, line)) {
+                                  node->value_str, line)) {
             return EXIT_FAILURE;
         }
 
@@ -601,7 +601,7 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
             return EXIT_FAILURE;
         }
 
-        node->value.string = lydict_insert(node->schema->module->ctx, node->value_str, 0);
+        node->value.string = node->value_str;
         break;
 
     case LY_TYPE_INT8:
