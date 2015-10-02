@@ -68,12 +68,11 @@ set(headers
 
 add_library(yang SHARED ${libsrc})
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})
-set(LIBS ${LIBS} yang)
 
 # find PCRE library
 find_package(PCRE REQUIRED)
 include_directories(${PCRE_INCLUDE_DIRS})
-set(LIBS ${LIBS} ${PCRE_LIBRARIES})
+target_link_libraries(yang ${PCRE_LIBRARIES})
 
 install(TARGETS yang DESTINATION ${LIB_INSTALL_DIR})
 install(FILES ${headers} DESTINATION ${INCLUDE_INSTALL_DIR})
@@ -92,5 +91,5 @@ add_custom_target(cclean
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(yanglint ${lintsrc})
-target_link_libraries(yanglint ${LIBS})
+target_link_libraries(yanglint yang)
 
