@@ -371,7 +371,7 @@ cmd_parse(const char *arg, int options)
             goto cleanup;
         case 'f':
             if (!strcmp(optarg, "xml")) {
-                format = LYD_XML;
+                format = LYD_XML_FORMAT;
             } else if (!strcmp(optarg, "json")) {
                 format = LYD_JSON;
             } else {

@@ -46,6 +46,7 @@ lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
 
     switch (format) {
     case LYD_XML:
+    case LYD_XML_FORMAT:
         return xml_read_data(ctx, data, options);
     case LYD_JSON:
     default:
