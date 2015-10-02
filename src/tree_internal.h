@@ -47,6 +47,21 @@ struct internal_modules {
 #define LY_NSYANG "urn:ietf:params:xml:ns:yang:1"
 
 /**
+ * @brief YIN namespace
+ */
+#define LY_NSYIN "urn:ietf:params:xml:ns:yang:yin:1"
+
+/**
+ * @brief NETCONF namespace
+ */
+#define LY_NSNC "urn:ietf:params:xml:ns:netconf:base:1.0"
+
+/**
+ * @brief NACM namespace
+ */
+#define LY_NSNACM "urn:ietf:params:xml:ns:yang:ietf-netconf-acm"
+
+/**
  * @brief Internal list of built-in types
  */
 struct ly_types {

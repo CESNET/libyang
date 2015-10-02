@@ -49,9 +49,6 @@ enum LY_IDENT {
     LY_IDENT_PREFIX
 };
 
-#define LY_NSYIN "urn:ietf:params:xml:ns:yang:yin:1"
-#define LY_NSNACM "urn:ietf:params:xml:ns:yang:ietf-netconf-acm"
-
 #define GETVAL(value, node, arg)                                    \
 	value = lyxml_get_attr(node, arg, NULL);                        \
 	if (!value) {                                                   \
@@ -4556,11 +4553,17 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
         } else if (!strcmp(child->name, "extension")) {
             GETVAL(value, child, "name");
 
-            /* we have 2 supported (hardcoded) extensions:
-             * NACM's default-deny-write and default-deny-all
-             */
-            if (strcmp(module->ns, LY_NSNACM) ||
-                    (strcmp(value, "default-deny-write") && strcmp(value, "default-deny-all"))) {
+            /* we have the following supported (hardcoded) extensions: */
+            /* ietf-netconf's get-filter-element-attributes */
+            if (!strcmp(module->ns, LY_NSNC) &&
+                    !strcmp(value, "get-filter-element-attributes")) {
+                LOGDBG("NETCONF filter extension found");
+            /* NACM's default-deny-write and default-deny-all */
+            } else if (!strcmp(module->ns, LY_NSNACM) &&
+                    (!strcmp(value, "default-deny-write") || !strcmp(value, "default-deny-all"))) {
+                LOGDBG("NACM extension found");
+            /* other extensions are not supported, so inform about such an extension */
+            } else {
                 LOGWRN("Not supported \"%s\" extension statement found, ignoring.", value);
                 lyxml_free_elem(ctx, child);
             }
