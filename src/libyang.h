@@ -332,11 +332,12 @@ struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
  * Parser also expects that the provided data are complete and performs data validation according to all
  * implemented YANG rules. This can be problem in case of representing NETCONF's subtree filter data or
  * edit-config's data which do not represent a complete data set. Therefore there are two options to make parser to
- * accept such a data: #LYD_OPT_FILTER and #LYD_OPT_EDIT.
+ * accept such a data: #LYD_OPT_FILTER and #LYD_OPT_EDIT. However, both these options are ignored when parsing
+ * an RPC or a notification.
  *
  * @{
  */
-#define LYD_OPT_STRICT   0x01  /**< instead of silent ignoring data without schema definition, rise error.
+#define LYD_OPT_STRICT   0x01  /**< instead of silent ignoring data without schema definition, raise an error.
                                     Having an unknown element of the known namespace is always an error. */
 #define LYD_OPT_EDIT     0x02  /**< make validation to accept NETCONF edit-config's content:
                                     - mandatory nodes can be omitted
