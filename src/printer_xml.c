@@ -313,19 +313,12 @@ xml_print_node(FILE *f, int level, struct lyd_node *node)
 API int
 xml_print_data(FILE *f, struct lyd_node *root)
 {
-    int level = 0;
     struct lyd_node *node;
-
-    /* start */
-    fprintf(f, "<libyang>\n");
 
     /* content */
     LY_TREE_FOR(root, node) {
-        xml_print_node(f, level + 1, node);
+        xml_print_node(f, 0, node);
     }
-
-    /* end */
-    fprintf(f, "</libyang>\n");
 
     return EXIT_SUCCESS;
 }
