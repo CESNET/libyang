@@ -12,6 +12,10 @@ branches:
     - devel
     - coverity
 
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -y libcmocka-dev
+
 env:
   global:
    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
