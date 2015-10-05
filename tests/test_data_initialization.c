@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <string.h>
 
+#include "config.h"
 #include "../src/libyang.h"
 
 struct ly_ctx *ctx;
@@ -102,9 +103,9 @@ error:
 
 static int setup_f()
 {
-	char *config_file = "../../tests/config/hello.xml";
-	char *yang_file = "../../tests/config/hello@2015-06-08.yin";
-	char *yang_folder = "../../tests/config";
+	char *config_file = TESTS_DIR"/config/hello.xml";
+	char *yang_file = TESTS_DIR"/config/hello@2015-06-08.yin";
+	char *yang_folder = TESTS_DIR"/config";
 	int rc;
 
 	rc = generic_init(config_file, yang_file, yang_folder);
