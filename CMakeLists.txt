@@ -101,5 +101,6 @@ if(ENABLE_VALGRIND_TESTS)
 endif()
 
 if(ENABLE_BUILD_TESTS)
+	enable_testing()
 	add_subdirectory(tests)
 endif()

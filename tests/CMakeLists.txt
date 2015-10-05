@@ -5,7 +5,6 @@ set(TEST_SOURCES
 	test_data_initialization.c
 )
 
-enable_testing()
 add_executable(test_data_initialization ${TEST_SOURCES})
 target_link_libraries(test_data_initialization ${CMOCKA_LIBRARIES} yang)
 add_test(NAME test_data_initialization COMMAND $<TARGET_FILE:test_data_initialization>)
