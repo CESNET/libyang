@@ -1800,8 +1800,6 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
     struct lys_module *prefix_mod, *start_mod;
     /* 0 - in module, 1 - in 1st submodule, 2 - in 2nd submodule, ... */
     uint8_t in_submod = 0;
-    /* 0 - in data, 1 - in RPCs, 2 - in notifications (relevant only with LYS_AUGMENT) */
-    uint8_t in_mod_part = 0;
 
     assert(mod);
     assert(id);
@@ -1904,31 +1902,6 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
 
         /* no match */
         if (!sibling) {
-            /* on augment search also RPCs and notifications, if we are in top-level */
-            if ((node_type == LYS_AUGMENT) && (!start || !start->parent)) {
-                /* we have searched all the data nodes */
-                if (in_mod_part == 0) {
-                    if (!in_submod) {
-                        start = start_mod->rpc;
-                    } else {
-                        start = start_mod->inc[in_submod-1].submodule->rpc;
-                    }
-                    in_mod_part = 1;
-                    continue;
-                }
-                /* we have searched all the RPCs */
-                if (in_mod_part == 1) {
-                    if (!in_submod) {
-                        start = start_mod->notif;
-                    } else {
-                        start = start_mod->inc[in_submod-1].submodule->notif;
-                    }
-                    in_mod_part = 2;
-                    continue;
-                }
-                /* we have searched all the notifications, nothing else to search in this module */
-            }
-
             /* are we done with the included submodules as well? */
             if (in_submod == start_mod->inc_size) {
                 return EXIT_FAILURE;
@@ -1936,7 +1909,6 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
 
             /* we aren't, check the next one */
             ++in_submod;
-            in_mod_part = 0;
             start = start_mod->inc[in_submod-1].submodule->data;
             continue;
         }

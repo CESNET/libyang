@@ -660,85 +660,7 @@ info_print_features_with_include(FILE *f, struct lys_module *mod)
 }
 
 static void
-info_print_rpc_with_include(FILE *f, struct lys_module *mod)
-{
-    int first = 1, i;
-    struct lys_node *node;
-
-    fprintf(f, "%-*s", INDENT_LEN, "RPCs: ");
-
-    if (mod->rpc) {
-        fprintf(f, "%s\n", mod->rpc->name);
-        node = mod->rpc->next;
-        first = 0;
-
-        for (; node; node = node->next) {
-            fprintf(f, "%*s%s\n", INDENT_LEN, "", node->name);
-        }
-    }
-
-    for (i = 0; i < mod->inc_size; ++i) {
-        if (mod->inc[i].submodule->rpc) {
-            if (first) {
-                fprintf(f, "%s\n", mod->inc[i].submodule->rpc->name);
-                node = mod->inc[i].submodule->rpc->next;
-            } else {
-                node = mod->inc[i].submodule->rpc;
-            }
-            first = 0;
-
-            for (; node; node = node->next) {
-                fprintf(f, "%*s%s\n", INDENT_LEN, "", node->name);
-            }
-        }
-    }
-
-    if (first) {
-        fprintf(f, "\n");
-    }
-}
-
-static void
-info_print_notif_with_include(FILE *f, struct lys_module *mod)
-{
-    int first = 1, i;
-    struct lys_node *node;
-
-    fprintf(f, "%-*s", INDENT_LEN, "Notifs: ");
-
-    if (mod->notif) {
-        fprintf(f, "%s\n", mod->notif->name);
-        node = mod->notif->next;
-        first = 0;
-
-        for (; node; node = node->next) {
-            fprintf(f, "%*s%s\n", INDENT_LEN, "", node->name);
-        }
-    }
-
-    for (i = 0; i < mod->inc_size; ++i) {
-        if (mod->inc[i].submodule->notif) {
-            if (first) {
-                fprintf(f, "%s\n", mod->inc[i].submodule->notif->name);
-                node = mod->inc[i].submodule->notif->next;
-            } else {
-                node = mod->inc[i].submodule->notif;
-            }
-            first = 0;
-
-            for (; node; node = node->next) {
-                fprintf(f, "%*s%s\n", INDENT_LEN, "", node->name);
-            }
-        }
-    }
-
-    if (first) {
-        fprintf(f, "\n");
-    }
-}
-
-static void
-info_print_snode_with_include(FILE *f, struct lys_module *mod)
+info_print_data_with_include(FILE *f, struct lys_module *mod)
 {
     int first = 1, i;
     struct lys_node *node;
@@ -848,9 +770,7 @@ info_print_module(FILE *f, struct lys_module *module)
     info_print_augment(f, module);
     info_print_deviation(f, module);
 
-    info_print_rpc_with_include(f, module);
-    info_print_notif_with_include(f, module);
-    info_print_snode_with_include(f, module);
+    info_print_data_with_include(f, module);
 }
 
 static void
@@ -877,9 +797,7 @@ info_print_submodule(FILE *f, struct lys_submodule *module)
     info_print_augment(f, (struct lys_module *)module);
     info_print_deviation(f, (struct lys_module *)module);
 
-    info_print_rpc_with_include(f, (struct lys_module *)module);
-    info_print_notif_with_include(f, (struct lys_module *)module);
-    info_print_snode_with_include(f, (struct lys_module *)module);
+    info_print_data_with_include(f, (struct lys_module *)module);
 }
 
 static void

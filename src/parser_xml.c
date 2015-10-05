@@ -808,20 +808,6 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                         break;
                     }
                 }
-                if (!schema) {
-                    LY_TREE_FOR(ctx->models.list[i]->notif, schema) {
-                        if (schema->name == xml->name) {
-                            break;
-                        }
-                    }
-                }
-                if (!schema) {
-                    LY_TREE_FOR(ctx->models.list[i]->rpc, schema) {
-                        if (schema->name == xml->name) {
-                            break;
-                        }
-                    }
-                }
                 break;
             }
         }

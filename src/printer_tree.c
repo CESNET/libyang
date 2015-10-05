@@ -98,13 +98,7 @@ create_indent(int level, const char *old_indent, const struct lys_node *node, in
                 found = 0;
                 for (i = 0; i < main_submod->inc_size; i++) {
                     if (found) {
-                        if (node->nodetype == LYS_RPC) {
-                            has_next = sibling_is_valid_child(main_submod->inc[i].submodule->rpc, 1);
-                        } else if (node->nodetype == LYS_NOTIF) {
-                            has_next = sibling_is_valid_child(main_submod->inc[i].submodule->notif, 1);
-                        } else {
-                            has_next = sibling_is_valid_child(main_submod->inc[i].submodule->data, 1);
-                        }
+                        has_next = sibling_is_valid_child(main_submod->inc[i].submodule->data, 1);
                         if (has_next) {
                             break;
                         }
@@ -115,13 +109,7 @@ create_indent(int level, const char *old_indent, const struct lys_node *node, in
                 }
 
                 if (!has_next) {
-                    if (node->nodetype == LYS_RPC) {
-                        has_next = sibling_is_valid_child(main_submod->rpc, 1);
-                    } else if (node->nodetype == LYS_NOTIF) {
-                        has_next = sibling_is_valid_child(main_submod->notif, 1);
-                    } else {
-                        has_next = sibling_is_valid_child(main_submod->data, 1);
-                    }
+                    has_next = sibling_is_valid_child(main_submod->data, 1);
                 }
             }
 
@@ -133,13 +121,7 @@ create_indent(int level, const char *old_indent, const struct lys_node *node, in
         for (i = 0; i < mod->inc_size; i++) {
             /* we found ours, check all the following submodules and the module */
             if (found) {
-                if (node->nodetype == LYS_RPC) {
-                    has_next = sibling_is_valid_child(mod->inc[i].submodule->rpc, 1);
-                } else if (node->nodetype == LYS_NOTIF) {
-                    has_next = sibling_is_valid_child(mod->inc[i].submodule->notif, 1);
-                } else {
-                    has_next = sibling_is_valid_child(mod->inc[i].submodule->data, 1);
-                }
+                has_next = sibling_is_valid_child(mod->inc[i].submodule->data, 1);
                 if (has_next) {
                     break;
                 }
@@ -151,13 +133,7 @@ create_indent(int level, const char *old_indent, const struct lys_node *node, in
 
         /* there is nothing in submodules, check module */
         if (!has_next) {
-            if (node->nodetype == LYS_RPC) {
-                has_next = sibling_is_valid_child(mod->rpc, 1);
-            } else if (node->nodetype == LYS_NOTIF) {
-                has_next = sibling_is_valid_child(mod->notif, 1);
-            } else {
-                has_next = sibling_is_valid_child(mod->data, 1);
-            }
+            has_next = sibling_is_valid_child(mod->data, 1);
         }
     }
 
@@ -716,9 +692,19 @@ tree_print_model(FILE *f, struct lys_module *module)
         max_child_len = get_max_name_len((struct lys_module *)module->inc[i].submodule, module->inc[i].submodule->data);
 
         LY_TREE_FOR(module->inc[i].submodule->data, node) {
-            tree_print_snode(f, (struct lys_module *)module->inc[i].submodule, level, indent, max_child_len, node,
-                             LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST
-                             | LYS_ANYXML | LYS_USES, 0, submod);
+            switch(node->nodetype) {
+            case LYS_RPC:
+                have_rpcs++;
+                break;
+            case LYS_NOTIF:
+                have_notifs++;
+                break;
+            default:
+                tree_print_snode(f, (struct lys_module *)module->inc[i].submodule, level, indent, max_child_len, node,
+                                 LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST
+                                 | LYS_ANYXML | LYS_USES, 0, submod);
+                break;
+            }
         }
     }
 
@@ -727,54 +713,68 @@ tree_print_model(FILE *f, struct lys_module *module)
     level++;
 
     LY_TREE_FOR(module->data, node) {
-        tree_print_snode(f, module, level, indent, max_child_len, node,
-                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST
-                         | LYS_ANYXML | LYS_USES, 0, submod);
+        switch(node->nodetype) {
+        case LYS_RPC:
+            have_rpcs++;
+            break;
+        case LYS_NOTIF:
+            have_notifs++;
+            break;
+        default:
+            tree_print_snode(f, module, level, indent, max_child_len, node,
+                             LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST
+                             | LYS_ANYXML | LYS_USES, 0, submod);
+            break;
+        }
     }
 
     /* rpc */
-    if (module->rpc) {
-        have_rpcs = 1;
-    } else {
-        for (i = 0; i < module->inc_size; i++) {
-            if (module->inc[i].submodule->rpc) {
-                have_rpcs = 1;
-                break;
-            }
-        }
-    }
     if (have_rpcs) {
         fprintf(f, "rpcs:\n");
         for (i = 0; i < module->inc_size; i++) {
-            LY_TREE_FOR(module->inc[i].submodule->rpc, node) {
-                tree_print_rpc(f, (struct lys_module *)module->inc[i].submodule, level, indent, node, submod);
+            LY_TREE_FOR(module->inc[i].submodule->data, node) {
+                if (!have_rpcs) {
+                    break;
+                }
+                if (node->nodetype == LYS_RPC) {
+                    tree_print_rpc(f, (struct lys_module *)module->inc[i].submodule, level, indent, node, submod);
+                    have_rpcs--;
+                }
             }
         }
-        LY_TREE_FOR(module->rpc, node) {
-            tree_print_rpc(f, module, level, indent, node, submod);
+        LY_TREE_FOR(module->data, node) {
+            if (!have_rpcs) {
+                break;
+            }
+            if (node->nodetype == LYS_RPC) {
+                tree_print_rpc(f, module, level, indent, node, submod);
+                have_rpcs--;
+            }
         }
     }
 
     /* notification */
-    if (module->notif) {
-        have_notifs = 1;
-    } else {
-        for (i = 0; i < module->inc_size; i++) {
-            if (module->inc[i].submodule->notif) {
-                have_notifs = 1;
-                break;
-            }
-        }
-    }
     if (have_notifs) {
         fprintf(f, "notifications:\n");
         for (i = 0; i < module->inc_size; i++) {
-            LY_TREE_FOR(module->inc[i].submodule->notif, node) {
-                tree_print_notif(f, (struct lys_module *)module->inc[i].submodule, level, indent, node, submod);
+            LY_TREE_FOR(module->inc[i].submodule->data, node) {
+                if (!have_notifs) {
+                    break;
+                }
+                if (node->nodetype == LYS_NOTIF) {
+                    tree_print_notif(f, (struct lys_module *)module->inc[i].submodule, level, indent, node, submod);
+                    have_notifs--;
+                }
             }
         }
-        LY_TREE_FOR(module->notif, node) {
-            tree_print_notif(f, module, level, indent, node, submod);
+        LY_TREE_FOR(module->data, node) {
+            if (!have_notifs) {
+                break;
+            }
+            if (node->nodetype == LYS_NOTIF) {
+                tree_print_notif(f, module, level, indent, node, submod);
+                have_notifs--;
+            }
         }
     }
 

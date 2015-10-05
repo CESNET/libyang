@@ -455,10 +455,6 @@ lys_node_unlink(struct lys_node *node)
     if (node->module) {
         if (node->module->data == node) {
             node->module->data = node->next;
-        } else if (node->module->rpc == node) {
-            node->module->rpc = node->next;
-        } else if (node->module->notif == node) {
-            node->module->notif = node->next;
         }
     }
 
@@ -747,7 +743,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
 int
 lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child)
 {
-    struct lys_node *iter, **trg = NULL;
+    struct lys_node *iter;
     int type;
 
     assert(child);
@@ -758,13 +754,6 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     } else {
         assert(module);
         type = 0;
-        if (child->nodetype == LYS_NOTIF) {
-            trg = &module->notif;
-        } else if (child->nodetype == LYS_RPC) {
-            trg = &module->rpc;
-        } else {
-            trg = &module->data;
-        }
     }
 
     /* checks */
@@ -846,12 +835,12 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     }
 
     if (!parent) {
-        if (*trg) {
-            (*trg)->prev->next = child;
-            child->prev = (*trg)->prev;
-            (*trg)->prev = child;
+        if (module->data) {
+            module->data->prev->next = child;
+            child->prev = module->data->prev;
+            module->data->prev = child;
         } else {
-            (*trg) = child;
+            module->data = child;
         }
     } else {
         if (!parent->child) {
@@ -1779,12 +1768,6 @@ module_free_common(struct lys_module *module, int free_int_mods)
 
     while (module->data) {
         lys_node_free(module->data);
-    }
-    while (module->rpc) {
-        lys_node_free(module->rpc);
-    }
-    while (module->notif) {
-        lys_node_free(module->notif);
     }
 
     lydict_remove(ctx, module->dsc);

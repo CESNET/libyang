@@ -237,9 +237,7 @@ struct lys_module {
     struct lys_node_augment *augment;/**< array of augments */
     struct lys_deviation *deviation; /**< array of specified deviations */
 
-    struct lys_node *data;           /**< first data statement */
-    struct lys_node *rpc;            /**< first rpc statement */
-    struct lys_node *notif;          /**< first notification statement */
+    struct lys_node *data;           /**< first data statement, includes also RPCs and Notifications */
 
     /* specific module's items in comparison to submodules */
     const char *ns;                  /**< namespace of the module (mandatory) */
@@ -291,9 +289,7 @@ struct lys_submodule {
     struct lys_node_augment *augment;/**< array of augments */
     struct lys_deviation *deviation; /**< array of specified deviations */
 
-    struct lys_node *data;           /**< first data statement */
-    struct lys_node *rpc;            /**< first rpc statement */
-    struct lys_node *notif;          /**< first notification statement */
+    struct lys_node *data;           /**< first data statement, includes also RPCs and Notifications */
 
     /* specific submodule's items in comparison to modules */
     struct lys_module *belongsto;    /**< belongs-to (parent module) */

@@ -1097,21 +1097,23 @@ yang_print_model(FILE *f, struct lys_module *module)
     }
 
     LY_TREE_FOR(module->data, node) {
-        yang_print_snode(f, level, node,
-                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                         LYS_USES | LYS_GROUPING | LYS_ANYXML);
+        switch(node->nodetype) {
+        case LYS_RPC:
+            yang_print_rpc(f, level, node);
+            break;
+        case LYS_NOTIF:
+            yang_print_notif(f, level, node);
+            break;
+        default:
+            yang_print_snode(f, level, node,
+                             LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
+                             LYS_USES | LYS_GROUPING | LYS_ANYXML);
+            break;
+        }
     }
 
     for (i = 0; i < module->augment_size; i++) {
         yang_print_augment(f, level, module, &module->augment[i]);
-    }
-
-    LY_TREE_FOR(module->rpc, node) {
-        yang_print_rpc(f, level, node);
-    }
-
-    LY_TREE_FOR(module->notif, node) {
-        yang_print_notif(f, level, node);
     }
 
     fprintf(f, "}\n");
