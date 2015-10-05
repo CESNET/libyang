@@ -33,8 +33,13 @@ set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -fvisibility=hidden")
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
 
-option(ENABLE_BUILD_TESTS "Build tests" ON)
-option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)
+if(CMAKE_BUILD_TYPE STREQUAL debug)
+	option(ENABLE_BUILD_TESTS "Build tests" ON)
+	option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)
+else()
+	option(ENABLE_BUILD_TESTS "Build tests" OFF)
+	option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
+endif()
 
 set(libsrc
 	src/common.c
