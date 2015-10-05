@@ -2829,7 +2829,7 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
  * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line Line in the input file.
  *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward ereference, -1 on error.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
 resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, int first, uint32_t line)
@@ -2974,7 +2974,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, int first, 
                 break;
             default:
                 LOGINT;
-                break;
+                return -1;
             }
 
             size = *old_size + rfn->must_size;
