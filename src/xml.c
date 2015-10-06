@@ -1133,7 +1133,6 @@ lyxml_read(struct ly_ctx *ctx, const char *data, int UNUSED(options))
             /* XMLDecl or PI - ignore it */
             c += 2;
             if (parse_ignore(c, "?>", &len)) {
-                LOGVAL(LYE_XML_MISS, lineno, "closing sequence", "?>");
                 return NULL;
             }
             c += len;
@@ -1141,7 +1140,6 @@ lyxml_read(struct ly_ctx *ctx, const char *data, int UNUSED(options))
             /* Comment - ignore it */
             c += 2;
             if (parse_ignore(c, "-->", &len)) {
-                LOGVAL(LYE_XML_MISS, lineno, "closing sequence", "-->");
                 return NULL;
             }
             c += len;
