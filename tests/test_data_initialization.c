@@ -45,7 +45,7 @@ int generic_init(char *config_file, char *yang_file, char *yang_folder)
     char *schema = NULL;
     char *config = NULL;
     struct stat sb;
-    int fd = 0;
+    int fd = -1;
 
     if (!config_file || !yang_file || !yang_folder) {
         goto error;
@@ -74,6 +74,7 @@ int generic_init(char *config_file, char *yang_file, char *yang_folder)
 
     config = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     close(fd);
+    fd = -1;
 
     if (!lys_parse(ctx, schema, yang_format)) {
         goto error;
