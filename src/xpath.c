@@ -1887,7 +1887,7 @@ parse_ncname(const char *ncname)
     int uc;
     unsigned int size;
 
-    uc = lyxml_getutf8(&ncname[parsed], &size);
+    uc = lyxml_getutf8(&ncname[parsed], &size, UINT_MAX);
     if (!is_xmlnamestartchar(uc) || (uc == ':')) {
        return parsed;
     }
@@ -1897,7 +1897,7 @@ parse_ncname(const char *ncname)
         if (!ncname[parsed]) {
             break;
         }
-        uc = lyxml_getutf8(&ncname[parsed], &size);
+        uc = lyxml_getutf8(&ncname[parsed], &size, UINT_MAX);
     } while (is_xmlnamechar(uc) && (uc != ':'));
 
     return parsed;

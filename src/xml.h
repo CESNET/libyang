@@ -267,6 +267,7 @@ struct lyxml_ns *lyxml_get_ns(struct lyxml_elem *elem, const char *prefix);
  * @param[in] buf pointr to the current position in input buffer
  * @param[out] read Number of processed bytes in buf (length of UTF-8
  * character).
+ * @param[in] line Line in the input file.
  * @return UTF-8 value as 4 byte number. 0 means error, only UTF-8 characters
  * valid for XML are returned, so:
  * #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
@@ -278,7 +279,7 @@ struct lyxml_ns *lyxml_get_ns(struct lyxml_elem *elem, const char *prefix);
  * 00000800 -- 0000FFFF:    1110xxxx 10xxxxxx 10xxxxxx
  * 00010000 -- 001FFFFF:    11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
  */
-int lyxml_getutf8(const char *buf, unsigned int *read);
+int lyxml_getutf8(const char *buf, unsigned int *read, unsigned int line);
 
 /**@}*/
 #endif /* LY_XML_H_ */
