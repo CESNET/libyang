@@ -128,9 +128,21 @@ get_path_skip_opts_completion(const char *hint, char ***matches, unsigned int *m
             ++ptr;
         }
 
-        ptr = strchr(ptr, ' ');
+        if (ptr[0] == '\'') {
+            ptr = strchr(ptr + 1, '\'');
+            if (ptr) {
+                ++ptr;
+            }
+        } else if (ptr[0] == '"') {
+            ptr = strchr(ptr + 1, '"');
+            if (ptr) {
+                ++ptr;
+            }
+        } else {
+            ptr = strchr(ptr, ' ');
+        }
         /* option argument is last - no hint */
-        if (!ptr) {
+        if (!ptr || !ptr[0]) {
             return;
         }
         while (*ptr == ' ') {
