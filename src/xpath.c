@@ -3558,17 +3558,19 @@ moveto_get_root(struct lyd_node *cur_node, enum lyxp_node_type *root_type)
     assert(cur_node && root_type);
 
     root = cur_node;
-    do {
-        prev = root;
-        root = root->parent;
+    if (root->parent) {
+        do {
+            prev = root;
+            root = root->parent;
 
-        if ((root->schema->nodetype == LYS_RPC) || (root->schema->nodetype == LYS_NOTIF)) {
-            if (prev && prev->schema->parent->nodetype == LYS_OUTPUT) {
-                is_output = 1;
+            if ((root->schema->nodetype == LYS_RPC) || (root->schema->nodetype == LYS_NOTIF)) {
+                if (prev && prev->schema->parent->nodetype == LYS_OUTPUT) {
+                    is_output = 1;
+                }
+                break;
             }
-            break;
-        }
-    } while (root->parent);
+        } while (root->parent);
+    }
 
     if (root->schema->nodetype == LYS_NOTIF) {
         *root_type = LYXP_NODE_ROOT_NOTIF;
