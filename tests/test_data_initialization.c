@@ -85,13 +85,17 @@ int generic_init(char *config_file, char *yang_file, char *yang_folder)
         goto error;
     }
 
+    /* cleanup */
+    munmap(config, sb_config.st_size);
+    munmap(schema, sb_schema.st_size);
+
     return 0;
 
 error:
-    if (!schema) {
+    if (schema) {
         munmap(schema, sb_schema.st_size);
     }
-    if (!config) {
+    if (config) {
         munmap(config, sb_config.st_size);
     }
     if (fd != -1) {
