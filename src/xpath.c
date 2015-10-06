@@ -1489,11 +1489,35 @@ reparse_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_
         return -1;
     }
 
-    /* '/' or '//' and RelativeLocationPath */
-    ++(*exp_idx);
+    /* '/' RelativeLocationPath? */
+    if (exp->tok_len[*exp_idx] == 1) {
+        /* '/' */
+        ++(*exp_idx);
 
-    if (reparse_relative_location_path(exp, exp_idx, line)) {
-        return -1;
+        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE, UINT_MAX)) {
+            return EXIT_SUCCESS;
+        }
+        switch (exp->tokens[*exp_idx]) {
+        case LYXP_TOKEN_DOT:
+        case LYXP_TOKEN_DDOT:
+        case LYXP_TOKEN_AT:
+        case LYXP_TOKEN_NAMETEST:
+        case LYXP_TOKEN_NODETYPE:
+            if (reparse_relative_location_path(exp, exp_idx, line)) {
+                return -1;
+            }
+        default:
+            break;
+        }
+
+    /* '//' RelativeLocationPath */
+    } else {
+        /* '//' */
+        ++(*exp_idx);
+
+        if (reparse_relative_location_path(exp, exp_idx, line)) {
+            return -1;
+        }
     }
 
     return EXIT_SUCCESS;
@@ -5428,19 +5452,41 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd
         moveto_root(set, cur_node);
     }
 
-    /* '/' or '//' and RelativeLocationPath */
+    /* '/' RelativeLocationPath? */
     if (exp->tok_len[*exp_idx] == 1) {
+        /* evaluate '/' - deferred */
         all_desc = 0;
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
+        ++(*exp_idx);
+
+        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE, UINT_MAX)) {
+            return EXIT_SUCCESS;
+        }
+        switch (exp->tokens[*exp_idx]) {
+        case LYXP_TOKEN_DOT:
+        case LYXP_TOKEN_DDOT:
+        case LYXP_TOKEN_AT:
+        case LYXP_TOKEN_NAMETEST:
+        case LYXP_TOKEN_NODETYPE:
+            if (eval_relative_location_path(exp, exp_idx, cur_node, all_desc, set, line)) {
+                return -1;
+            }
+        default:
+            break;
+        }
+
+    /* '//' RelativeLocationPath */
     } else {
+        /* evaluate '//' - deferred so as not to waste memory by remembering all the nodes */
         all_desc = 1;
-    }
+        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
+        ++(*exp_idx);
 
-    LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-           print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
-    ++(*exp_idx);
-
-    if (eval_relative_location_path(exp, exp_idx, cur_node, all_desc, set, line)) {
-        return -1;
+        if (eval_relative_location_path(exp, exp_idx, cur_node, all_desc, set, line)) {
+            return -1;
+        }
     }
 
     return EXIT_SUCCESS;
