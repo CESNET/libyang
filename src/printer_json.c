@@ -26,7 +26,6 @@
 #include <inttypes.h>
 
 #include "common.h"
-#include "xml.h"
 #include "tree_data.h"
 #include "resolve.h"
 #include "tree_internal.h"
