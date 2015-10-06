@@ -6417,7 +6417,7 @@ eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, s
     return EXIT_SUCCESS;
 }
 
-int
+API int
 lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, uint32_t line)
 {
     struct lyxp_expr *exp;

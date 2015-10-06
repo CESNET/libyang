@@ -36,6 +36,7 @@
 #include "../../src/tree_schema.h"
 #include "../../src/tree_data.h"
 #include "../../src/parser.h"
+#include "../../src/xpath.h"
 
 COMMAND commands[];
 extern int done;
@@ -82,6 +83,13 @@ void
 cmd_filter_help(void)
 {
     cmd_parse_help("filter");
+}
+
+void
+cmd_xpath_help(void)
+{
+    printf("xpath -e <XPath-expression> [-c <context-node-path>] <XML-data-file-name>\n\n");
+    printf("\tcontext-node-path: /<node-name>(/<node-name>)*\n");
 }
 
 void
@@ -443,6 +451,8 @@ cmd_parse(const char *arg, int options)
         lyd_print(output, data, format);
     }
 
+    ret = 0;
+
 cleanup:
     free(*argv);
     free(argv);
@@ -478,6 +488,168 @@ int
 cmd_filter(const char *arg)
 {
     return cmd_parse(arg, LYD_OPT_FILTER);
+}
+
+int
+cmd_xpath(const char *arg)
+{
+    int c, argc, option_index, fd = -1, ret = 1, long_str;
+    char **argv = NULL, *ptr, *ctx_node_path = NULL, *expr = NULL, *addr;
+    struct stat sb;
+    struct lyd_node *ctx_node, *data = NULL, *next, *iter;
+    struct lyxp_set *set = NULL;
+    static struct option long_options[] = {
+        {"help", no_argument, 0, 'h'},
+        {"expr", required_argument, 0, 'e'},
+        {"ctx-node", required_argument, 0, 'c'},
+        {NULL, 0, 0, 0}
+    };
+
+    long_str = 0;
+    argc = 1;
+    argv = malloc(2 * sizeof *argv);
+    *argv = strdup(arg);
+    ptr = strtok(*argv, " ");
+    while ((ptr = strtok(NULL, " "))) {
+        if (long_str) {
+            ptr[-1] = ' ';
+            if (ptr[strlen(ptr) - 1] == long_str) {
+                long_str = 0;
+                ptr[strlen(ptr) - 1] = '\0';
+            }
+        } else {
+            argv = realloc(argv, (argc + 2) * sizeof *argv);
+            argv[argc] = ptr;
+            if (ptr[0] == '"') {
+                long_str = '"';
+                ++argv[argc];
+            }
+            if (ptr[0] == '\'') {
+                long_str = '\'';
+                ++argv[argc];
+            }
+            if (ptr[strlen(ptr) - 1] == long_str) {
+                long_str = 0;
+                ptr[strlen(ptr) - 1] = '\0';
+            }
+            ++argc;
+        }
+    }
+    argv[argc] = NULL;
+
+    optind = 0;
+    while (1) {
+        option_index = 0;
+        c = getopt_long(argc, argv, "he:c:", long_options, &option_index);
+        if (c == -1) {
+            break;
+        }
+
+        switch (c) {
+        case 'h':
+            cmd_xpath_help();
+            ret = 0;
+            goto cleanup;
+        case 'e':
+            expr = optarg;
+            break;
+        case 'c':
+            ctx_node_path = optarg;
+            if ((ctx_node_path[0] != '/') || (strlen(ctx_node_path) < 2)
+                    || (ctx_node_path[strlen(ctx_node_path) - 1] == '/')) {
+                fprintf(stderr, "Invalid context node path \"%s\".\n", ctx_node_path);
+                goto cleanup;
+            }
+            break;
+        case '?':
+            fprintf(stderr, "Unknown option \"%d\".\n", (char)c);
+            goto cleanup;
+        }
+    }
+
+    if (optind == argc) {
+        fprintf(stderr, "Missing the file with data.\n");
+        goto cleanup;
+    }
+
+    if (!expr) {
+        fprintf(stderr, "Missing the XPath expression.\n");
+        goto cleanup;
+    }
+
+    /* data file */
+    fd = open(argv[optind], O_RDONLY);
+    if (fd == -1) {
+        fprintf(stderr, "The input file could not be opened (%s).\n", strerror(errno));
+        goto cleanup;
+    }
+    if (fstat(fd, &sb) == -1) {
+        fprintf(stderr, "Unable to get input file information (%s).\n", strerror(errno));
+        goto cleanup;
+    }
+    if (!S_ISREG(sb.st_mode)) {
+        fprintf(stderr, "Input file not a file.\n");
+        goto cleanup;
+    }
+    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    data = lyd_parse(ctx, addr, LYD_XML, 0);
+    munmap(addr, sb.st_size);
+
+    if (data == NULL) {
+        fprintf(stderr, "Failed to parse data.\n");
+        goto cleanup;
+    }
+
+    if (ctx_node_path) {
+        ctx_node = data;
+        ptr = strtok(ctx_node_path, "/");
+        do {
+            LY_TREE_FOR(ctx_node, ctx_node) {
+                if (!strcmp(ctx_node->schema->name, ptr)) {
+                    break;
+                }
+            }
+            if (!ctx_node) {
+                break;
+            }
+
+            ptr = strtok(NULL, "/");
+            if (ptr) {
+                ctx_node = ctx_node->child;
+            }
+        } while (ptr && ctx_node);
+
+        if (!ctx_node) {
+            fprintf(stderr, "Context node search failed at \"%s\".\n", ptr);
+            goto cleanup;
+        }
+    } else {
+        ctx_node = data;
+    }
+
+    if (lyxp_eval(expr, ctx_node, &set, 0)) {
+        fprintf(stderr, "XPath expression invalid.\n");
+        goto cleanup;
+    }
+
+    lyxp_print_set_xml(stdout, set);
+    ret = 0;
+
+cleanup:
+    free(*argv);
+    free(argv);
+
+    lyxp_set_free(set, ctx);
+
+    if (fd != -1) {
+        close(fd);
+    }
+
+    LY_TREE_FOR_SAFE(data, next, iter) {
+        lyd_free(iter);
+    }
+
+    return ret;
 }
 
 int
@@ -810,6 +982,7 @@ COMMAND commands[] = {
         {"data", cmd_data, cmd_data_help, "Load, validate and optionally print complete datastore data"},
         {"config", cmd_config, cmd_config_help, "Load, validate and optionally print edit-config's data"},
         {"filter", cmd_filter, cmd_filter_help, "Load, validate and optionally print subtree filter data"},
+        {"xpath", cmd_xpath, cmd_xpath_help, "Evaluate an XPath expression on a data tree"},
         {"list", cmd_list, cmd_list_help, "List all the loaded models"},
         {"feature", cmd_feature, cmd_feature_help, "Print/enable/disable all/specific features of models"},
         {"searchpath", cmd_searchpath, cmd_searchpath_help, "Set the search path for models"},
