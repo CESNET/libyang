@@ -410,28 +410,6 @@ cast_string_to_number(const char *str)
  */
 
 /**
- * @brief Free an XPath set. Should not be used afterwards.
- *
- * @param[in] set Set to free.
- * @param[in] ctx libyang context to use.
- */
-static void
-set_free(struct lyxp_set *set, struct ly_ctx *ctx)
-{
-    if (!set) {
-        return;
-    }
-
-    if (set->type == LYXP_SET_NODE_SET) {
-        free(set->value.nodes);
-        free(set->node_type);
-    } else if (set->type == LYXP_SET_STRING) {
-        lydict_remove(ctx, set->value.str);
-    }
-    free(set);
-}
-
-/**
  * @brief Create a deep copy of a \p set.
  *
  * @param[in] set Set to copy.
@@ -4137,7 +4115,7 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
     if (moveto_union(set, set_all_desc, cur_node, line)) {
         return -1;
     }
-    set_free(set_all_desc, ctx);
+    lyxp_set_free(set_all_desc, ctx);
 
     if ((qname_len == 1) && (qname[0] == '*')) {
         all = 1;
@@ -4533,7 +4511,7 @@ moveto_op_math(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
     if (!set2 && (op[0] == '-')) {
         set_cast(set1, LYXP_SET_NUMBER, cur_node);
         set1->value.num *= -1;
-        set_free(set2, ctx);
+        lyxp_set_free(set2, ctx);
         return;
     }
 
@@ -5285,8 +5263,8 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
                     free(pred_repeat[j]);
                 }
                 free(pred_repeat);
-                set_free(set2, ctx);
-                set_free(orig_set, ctx);
+                lyxp_set_free(set2, ctx);
+                lyxp_set_free(orig_set, ctx);
                 return -1;
             }
 
@@ -5306,7 +5284,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
             } else {
                 set_remove_node(set, i);
             }
-            set_free(set2, ctx);
+            lyxp_set_free(set2, ctx);
         }
 
         /* free predicate repeats */
@@ -5315,12 +5293,12 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         }
         free(pred_repeat);
 
-        set_free(orig_set, ctx);
+        lyxp_set_free(orig_set, ctx);
     } else {
         set2 = set_copy(set, ctx);
 
         if (eval_expr(exp, exp_idx, cur_node, set2, line)) {
-            set_free(set2, ctx);
+            lyxp_set_free(set2, ctx);
             return -1;
         }
 
@@ -5328,7 +5306,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         if (!set2->value.bool) {
             set_cast(set, LYXP_SET_EMPTY, cur_node);
         }
-        set_free(set2, ctx);
+        lyxp_set_free(set2, ctx);
     }
 
     /* ']' */
@@ -6472,7 +6450,7 @@ lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, ui
         rc = eval_expr(exp, &exp_idx, cur_node, *set, line);
 
         if (rc) {
-            set_free(*set, cur_node->schema->module->ctx);
+            lyxp_set_free(*set, cur_node->schema->module->ctx);
             *set = NULL;
         }
         exp_free(exp);
@@ -6531,9 +6509,18 @@ main(int argc, char **argv)
 
     LY_TREE_FOR_SAFE(data, next, node) {
         lyd_free(node);
+API void
+lyxp_set_free(struct lyxp_set *set, struct ly_ctx *ctx)
+{
+    if (!set) {
+        return;
     }
 
-    ly_ctx_destroy(ctx);
-
-    return 0;
+    if (set->type == LYXP_SET_NODE_SET) {
+        free(set->value.nodes);
+        free(set->node_type);
+    } else if (set->type == LYXP_SET_STRING) {
+        lydict_remove(ctx, set->value.str);
+    }
+    free(set);
 }

@@ -207,4 +207,12 @@ enum lyxp_node_type {
  */
 int lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, uint32_t line);
 
+/**
+ * @brief Free contents of an XPath \p set.
+ *
+ * @param[in] set Set to free.
+ * @param[in] ctx libyang context to use.
+ */
+void lyxp_set_free(struct lyxp_set *set, struct ly_ctx *ctx);
+
 #endif /* _XPATH_H */
