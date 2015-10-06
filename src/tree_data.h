@@ -120,7 +120,7 @@ typedef union lyd_value_u {
  * Completely fits to containers and choices and is compatible (can be used interchangeably except the #child member)
  * with all other lyd_node_* structures. All data nodes are provides as ::lyd_node structure by default.
  * According to the schema's ::lys_node#nodetype member, the specific object is supposed to be cast to
- * ::lyd_node_list, ::lyd_node_leaf, ::lyd_node_leaflist or ::lyd_node_anyxml structures. This structure fits only to
+ * ::lyd_node_leaf_list or ::lyd_node_anyxml structures. This structure fits only to
  * #LYS_CONTAINER and #LYS_CHOICE values.
  *
  * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
@@ -136,7 +136,7 @@ struct lyd_node {
                                           node in the list. */
     struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
     struct lyd_node *child;          /**< pointer to the first child node \note Since other lyd_node_*
-                                          structures (except ::lyd_node_list) represent end nodes, this member
+                                          structures represent end nodes, this member
                                           is replaced in those structures. Therefore, be careful with accessing
                                           this member without having information about the node type from the schema's
                                           ::lys_node#nodetype member. */
@@ -202,7 +202,7 @@ struct lyd_node_anyxml {
  * @brief Create a new container node in a data tree.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
- * @param[in] module Module with the node \p name.
+ * @param[in] module Module with the node being created.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_CONTAINER, #LYS_LIST,
  * #LYS_INPUT, #LYS_OUTPUT, #LYS_NOTIF, or #LYS_RPC.
  */
@@ -212,7 +212,8 @@ struct lyd_node *lyd_new(struct lyd_node *parent, struct lys_module *module, con
  * @brief Create a new leaf or leaflist node in a data tree with a specific value.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
- * @param[in] snode Schema node of the new data node. Can be #LYS_LEAF or #LYS_LEAFLIST.
+ * @param[in] module Module with the node being created.
+ * @param[in] name Schema node name of the new data node.
  * @param[in] type Type of the value provided in the \p value parameter. Cannot be #LY_TYPE_DER, #LY_TYPE_UNION,
  * or #LY_TYPE_INST.
  * @param[in] value Value of the node being created. Can be NULL only if \p type is #LY_TYPE_EMPTY.
@@ -225,7 +226,8 @@ struct lyd_node *lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *mo
  * the actual value.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
- * @param[in] snode Schema node of the new data node. Can be #LYS_LEAF or #LYS_LEAFLIST.
+ * @param[in] module Module with the node being created.
+ * @param[in] name Schema node name of the new data node.
  * @param[in] type Interpretation of the string provided in the \p val_str parameter. After appropriate
  * conversion this will be the resulting type of the value in the node. Cannot be #LY_TYPE_DER or #LY_TYPE_UNION.
  * @param[in] val_str String form of the value of the node being created. Can be NULL only if \p type is
@@ -238,7 +240,8 @@ struct lyd_node *lyd_new_leaf_str(struct lyd_node *parent, struct lys_module *mo
  * @brief Create a new anyxml node in a data tree.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
- * @param[in] snode Schema node of the new data node. Can only be #LYS_ANYXML.
+ * @param[in] module Module with the node being created.
+ * @param[in] name Schema node name of the new data node.
  * @param[in] val_xml Value of the node being created. Must be a well-formed XML.
  */
 struct lyd_node *lyd_new_anyxml(struct lyd_node *parent, struct lys_module *module, const char *name,
