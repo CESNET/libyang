@@ -4069,8 +4069,7 @@ moveto_union(struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *cur_
     memcpy(&set1->node_type[set1->used], set2->node_type, set2->used * sizeof *set2->node_type);
     set1->used += set2->used;
 
-    /* empty set2, it is not STRING, so NULL ctx is fine */
-    set_cast(set2, LYXP_SET_EMPTY, NULL);
+    set_cast(set2, LYXP_SET_EMPTY, cur_node);
 
     /* sort, remove duplicates */
     set_sort(set1, cur_node);
