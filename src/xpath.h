@@ -208,6 +208,14 @@ enum lyxp_node_type {
 int lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, uint32_t line);
 
 /**
+ * @brief Print \p set contents.
+ *
+ * @param[in] f File stream to use.
+ * @param[in] set Set to print.
+ */
+void lyxp_print_set_xml(FILE *f, struct lyxp_set *set);
+
+/**
  * @brief Free contents of an XPath \p set.
  *
  * @param[in] set Set to free.

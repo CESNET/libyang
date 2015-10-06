@@ -6459,56 +6459,83 @@ lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, ui
     return rc;
 }
 
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <fcntl.h>
+void xml_print_node(FILE *f, int level, struct lyd_node *node);
 
-int
-main(int argc, char **argv)
+API void
+lyxp_print_set_xml(FILE *f, struct lyxp_set *set)
 {
-    struct ly_ctx *ctx;
-    struct lyd_node *data = NULL, *node, *next;
-    struct lyxp_set *set;
-    struct stat sb;
-    int fd;
-    char *addr;
+    uint16_t i;
+    char *str_num;
 
-    ctx = ly_ctx_new(NULL);
+    switch (set->type) {
+    case LYXP_SET_EMPTY:
+        fprintf(f, "Empty XPath set\n\n");
+        break;
+    case LYXP_SET_BOOLEAN:
+        fprintf(f, "Boolean XPath set:\n");
+        fprintf(f, "%s\n\n", set->value.bool ? "true" : "false");
+        break;
+    case LYXP_SET_STRING:
+        fprintf(f, "String XPath set:\n");
+        fprintf(f, "\"%s\"\n\n", set->value.str);
+        break;
+    case LYXP_SET_NUMBER:
+        fprintf(f, "Number XPath set:\n");
 
-    fd = open("./test.yin", O_RDONLY);
-    fstat(fd, &sb);
-    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    lys_parse(ctx, addr, LYS_IN_YIN);
-    munmap(addr, sb.st_size);
-    close(fd);
-
-    fd = open("./test_augment.yin", O_RDONLY);
-    fstat(fd, &sb);
-    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    lys_parse(ctx, addr, LYS_IN_YIN);
-    munmap(addr, sb.st_size);
-    close(fd);
-
-    fd = open("./data.xml", O_RDONLY);
-    fstat(fd, &sb);
-    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    data = lyd_parse(ctx, addr, LYD_XML, 0);
-    munmap(addr, sb.st_size);
-    close(fd);
-
-    ly_verb(3);
-    if (argc == 2) {
-        if (!lyxp_eval(argv[1], data->next->next->child->next, &set, 0)) {
-            LOGDBG("XPATH: RESULT");
-            print_set_debug(set);
-            set_free(set, ctx);
+        if (isnan(set->value.num)) {
+            str_num = strdup("NaN");
+        } else if ((set->value.num == 0) || (set->value.num == -0)) {
+            str_num = strdup("0");
+        } else if (isinf(set->value.num) && !signbit(set->value.num)) {
+            str_num = strdup("Infinity");
+        } else if (isinf(set->value.num) && signbit(set->value.num)) {
+            str_num = strdup("-Infinity");
+        } else if ((long long)set->value.num == set->value.num) {
+            asprintf(&str_num, "%lld", (long long)set->value.num);
+        } else {
+            asprintf(&str_num, "%03.1Lf", set->value.num);
         }
-    }
+        fprintf(f, "%s\n\n", str_num);
+        free(str_num);
+        break;
+    case LYXP_SET_NODE_SET:
+        fprintf(f, "Node XPath set:\n");
 
-    LY_TREE_FOR_SAFE(data, next, node) {
-        lyd_free(node);
+        for (i = 0; i < set->used; ++i) {
+            fprintf(f, "%d. ", i + 1);
+            switch (set->node_type[i]) {
+            case LYXP_NODE_ROOT_CONFIG:
+                fprintf(f, "ROOT config\n\n");
+                break;
+            case LYXP_NODE_ROOT_STATE:
+                fprintf(f, "ROOT state\n\n");
+                break;
+            case LYXP_NODE_ROOT_NOTIF:
+                fprintf(f, "ROOT notification \"%s\"\n\n", set->value.nodes[i]->schema->name);
+                break;
+            case LYXP_NODE_ROOT_RPC:
+                fprintf(f, "ROOT rpc \"%s\"\n\n", set->value.nodes[i]->schema->name);
+                break;
+            case LYXP_NODE_ROOT_OUTPUT:
+                fprintf(f, "ROOT output of rpc \"%s\"\n\n", set->value.nodes[i]->schema->name);
+                break;
+            case LYXP_NODE_ELEM:
+                fprintf(f, "ELEM \"%s\"\n", set->value.nodes[i]->schema->name);
+                xml_print_node(f, 0, set->value.nodes[i]);
+                fprintf(f, "\n");
+                break;
+            case LYXP_NODE_TEXT:
+                fprintf(f, "TEXT \"%s\"\n\n", ((struct lyd_node_leaf *)set->value.nodes[i])->value_str);
+                break;
+            case LYXP_NODE_ATTR:
+                fprintf(f, "ATTR \"%s\" = \"%s\"\n\n", set->value.attrs[i]->name, set->value.attrs[i]->value);
+                break;
+            }
+        }
+        break;
+    }
+}
+
 API void
 lyxp_set_free(struct lyxp_set *set, struct ly_ctx *ctx)
 {
