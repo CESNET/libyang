@@ -44,7 +44,7 @@ int generic_init(char *config_file, char *yang_file, char *yang_folder)
     LYD_FORMAT in_format;
     char *schema = NULL;
     char *config = NULL;
-    struct stat sb;
+    struct stat sb_schema, sb_config;
     int fd = -1;
 
     if (!config_file || !yang_file || !yang_folder) {
@@ -60,19 +60,19 @@ int generic_init(char *config_file, char *yang_file, char *yang_folder)
     }
 
     fd = open(yang_file, O_RDONLY);
-    if (fd == -1 || fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
+    if (fd == -1 || fstat(fd, &sb_schema) == -1 || !S_ISREG(sb_schema.st_mode)) {
         goto error;
     }
 
-    schema = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    schema = mmap(NULL, sb_schema.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     close(fd);
 
     fd = open(config_file, O_RDONLY);
-    if (fd == -1 || fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
+    if (fd == -1 || fstat(fd, &sb_config) == -1 || !S_ISREG(sb_config.st_mode)) {
         goto error;
     }
 
-    config = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    config = mmap(NULL, sb_config.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     close(fd);
     fd = -1;
 
@@ -89,10 +89,10 @@ int generic_init(char *config_file, char *yang_file, char *yang_folder)
 
 error:
     if (!schema) {
-        munmap(schema, sb.st_size);
+        munmap(schema, sb_schema.st_size);
     }
     if (!config) {
-        munmap(config, sb.st_size);
+        munmap(config, sb_config.st_size);
     }
     if (fd != -1) {
         close(fd);
