@@ -37,7 +37,7 @@
 #include "parser.h"
 #include "resolve.h"
 #include "tree_internal.h"
-#include "xml.h"
+#include "xml_private.h"
 
 enum LY_IDENT {
     LY_IDENT_SIMPLE,   /* only syntax rules */

@@ -1,3 +1,4 @@
+
 /**
  * @file printer_xml.c
  * @author Michal Vasko <mvasko@cesnet.cz>
@@ -27,7 +28,7 @@
 #include <inttypes.h>
 
 #include "common.h"
-#include "xml.h"
+#include "xml_private.h"
 #include "tree_data.h"
 #include "tree_schema.h"
 #include "resolve.h"

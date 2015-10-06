@@ -32,7 +32,7 @@
 
 #include "xpath.h"
 #include "libyang.h"
-#include "xml.h"
+#include "xml_private.h"
 #include "tree_schema.h"
 #include "tree_data.h"
 #include "context.h"

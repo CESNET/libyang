@@ -23,8 +23,8 @@
 #include <stdlib.h>
 
 #include "libyang.h"
-#include "xml.h"
 #include "common.h"
+#include "xml_private.h"
 
 static struct lys_node_leaf *
 lyv_keys_present(struct lyd_node *list)

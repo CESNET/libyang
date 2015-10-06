@@ -32,9 +32,9 @@
 #include "common.h"
 #include "context.h"
 #include "resolve.h"
-#include "xml.h"
 #include "tree_internal.h"
 #include "validation.h"
+#include "xml_private.h"
 
 #define LY_NSNC "urn:ietf:params:xml:ns:netconf:base:1.0"
 
@@ -1001,6 +1001,40 @@ cleargotosiblings:
 
     /* ... and then go to siblings label */
     goto siblings;
+}
+
+API struct lyd_node *
+lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int options)
+{
+    struct lyd_node *result, *next, *iter;
+    struct unres_data *unres = NULL;
+
+    if (!ctx || !root) {
+        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        return NULL;
+    }
+
+    unres = calloc(1, sizeof *unres);
+
+    ly_errno = 0;
+    result = xml_parse_data(ctx, root->child, NULL, NULL, options, unres);
+
+    /* check leafrefs and/or instids if any */
+    if (result && resolve_unres_data(unres)) {
+        /* leafref & instid checking failed */
+        LY_TREE_FOR_SAFE(result, next, iter) {
+            lyd_free(iter);
+        }
+        result = NULL;
+    }
+
+    free(unres->dnode);
+#ifndef NDEBUG
+    free(unres->line);
+#endif
+    free(unres);
+
+    return result;
 }
 
 /* logs indirectly */

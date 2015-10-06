@@ -30,7 +30,7 @@
 #include "common.h"
 #include "dict.h"
 #include "tree_schema.h"
-#include "xml.h"
+#include "xml_private.h"
 
 #ifndef NDEBUG
 unsigned int lineno, lws_lineno;
@@ -377,7 +377,7 @@ lyxml_free_elem_(struct ly_ctx *ctx, struct lyxml_elem *elem)
     free(elem);
 }
 
-void
+API void
 lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem *elem)
 {
     if (!elem) {
@@ -1112,7 +1112,7 @@ error:
 }
 
 /* logs directly */
-struct lyxml_elem *
+API struct lyxml_elem *
 lyxml_read(struct ly_ctx *ctx, const char *data, int UNUSED(options))
 {
     const char *c = data;
@@ -1176,7 +1176,7 @@ lyxml_read(struct ly_ctx *ctx, const char *data, int UNUSED(options))
     return root;
 }
 
-struct lyxml_elem *
+API struct lyxml_elem *
 lyxml_read_fd(struct ly_ctx *ctx, int fd, int UNUSED(options))
 {
     if (fd == -1 || !ctx) {
@@ -1188,7 +1188,7 @@ lyxml_read_fd(struct ly_ctx *ctx, int fd, int UNUSED(options))
     return NULL;
 }
 
-struct lyxml_elem *
+API struct lyxml_elem *
 lyxml_read_file(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
 {
     if (!filename || !ctx) {
@@ -1227,7 +1227,7 @@ dump_text(FILE * f, const char *text)
 }
 
 static int
-dump_elem(FILE * f, struct lyxml_elem *e, int level)
+dump_elem(FILE * f, struct lyxml_elem *e, int level, int options)
 {
     int size = 0;
     struct lyxml_attr *a;
@@ -1254,11 +1254,16 @@ dump_elem(FILE * f, struct lyxml_elem *e, int level)
         indent = 0;
     }
 
-    /* opening tag */
-    if (e->ns && e->ns->prefix) {
-        size += fprintf(f, "%*s<%s:%s", indent, "", e->ns->prefix, e->name);
-    } else {
-        size += fprintf(f, "%*s<%s", indent, "", e->name);
+    if (!options || (options & LYXML_DUMP_OPEN)) {
+        /* opening tag */
+        if (e->ns && e->ns->prefix) {
+            size += fprintf(f, "%*s<%s:%s", indent, "", e->ns->prefix, e->name);
+        } else {
+            size += fprintf(f, "%*s<%s", indent, "", e->name);
+        }
+    } else if (options & LYXML_DUMP_CLOSE) {
+        indent = 0;
+        goto close;
     }
 
     /* attributes */
@@ -1274,6 +1279,17 @@ dump_elem(FILE * f, struct lyxml_elem *e, int level)
         } else {
             size += fprintf(f, " %s=\"%s\"", a->name, a->value);
         }
+    }
+
+    /* apply options */
+    if (options == (LYXML_DUMP_OPEN | LYXML_DUMP_CLOSE)) {
+        size += fprintf(f, "/>%s", delim);
+        return size;
+    } else if (options & LYXML_DUMP_OPEN) {
+        fputc('>', f);
+        return ++size;
+    } else if (options & LYXML_DUMP_ATTRS) {
+        return size;
     }
 
     if (!e->child && !e->content) {
@@ -1297,9 +1313,10 @@ dump_elem(FILE * f, struct lyxml_elem *e, int level)
 
     /* go recursively */
     LY_TREE_FOR(e->child, child) {
-        size += dump_elem(f, child, level + 1);
+        size += dump_elem(f, child, level + 1, 0);
     }
 
+close:
     /* closing tag */
     if (e->ns && e->ns->prefix) {
         size += fprintf(f, "%*s</%s:%s>%s", indent, "", e->ns->prefix, e->name, delim_outer);
@@ -1310,12 +1327,12 @@ dump_elem(FILE * f, struct lyxml_elem *e, int level)
     return size;
 }
 
-int
-lyxml_dump(FILE * stream, struct lyxml_elem *elem, int UNUSED(options))
+API int
+lyxml_dump(FILE * stream, struct lyxml_elem *elem, int options)
 {
     if (!elem) {
         return 0;
     }
 
-    return dump_elem(stream, elem, 0);
+    return dump_elem(stream, elem, 0, options);
 }

@@ -26,6 +26,7 @@
 
 #include "tree_schema.h"
 #include "tree_data.h"
+#include "xml.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -370,6 +371,24 @@ struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
 struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options);
+
+/**
+ * @brief Parse (and validate according to appropriate schema from the given context) XML tree.
+ *
+ * The output data tree is parsed from the given XML tree previously parsed by one of the
+ * lyxml_read* functions. Note, that the parser removes successfully parsed data from the
+ * XML tree except the root element (see the note about XML format in lyd_parse()). When
+ * the given XML tree is successfully parsed, the given \p root is kept but it has no children
+ * which are returned as a top level nodes in the output data tree.
+ *
+ * The context must be the same as the context used to parse XML tree by lyxml_read* function.
+ *
+ * @param[in] ctx Context to connect with the data tree being built here.
+ * @param[in] root XML tree to parse (convert) to data tree.
+ * @param[in] options Parser options, see @ref parseroptions.
+ * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
+ */
+struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int options);
 
 /**
  * @brief Read data from the given file

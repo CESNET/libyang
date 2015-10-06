@@ -1,3 +1,4 @@
+
 /**
  * @file tree_schema.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
@@ -31,7 +32,7 @@
 #include "context.h"
 #include "parser.h"
 #include "resolve.h"
-#include "xml.h"
+#include "xml_private.h"
 #include "tree_internal.h"
 #include "validation.h"
 
