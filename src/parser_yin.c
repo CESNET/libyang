@@ -33,6 +33,7 @@
 #include "libyang.h"
 #include "common.h"
 #include "context.h"
+#include "xpath.h"
 #include "dict.h"
 #include "parser.h"
 #include "resolve.h"
@@ -1986,7 +1987,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
                 lyxml_free_elem(module->ctx, child);
                 goto error;
             }
-            if (unres_schema_add_node(module, unres, aug->when, UNRES_WHEN, (struct lys_node *)aug, LOGLINE(child)) == -1) {
+            if (lyxp_syntax_check(aug->when->cond, LOGLINE(child))) {
                 goto error;
             }
             lyxml_free_elem(module->ctx, child);
@@ -2639,7 +2640,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             if (!cs->when) {
                 goto error;
             }
-            if (unres_schema_add_node(module, unres, cs->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
+            if (lyxp_syntax_check(cs->when->cond, LOGLINE(sub))) {
                 goto error;
             }
 
@@ -2791,7 +2792,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
             if (!choice->when) {
                 goto error;
             }
-            if (unres_schema_add_node(module, unres, choice->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
+            if (lyxp_syntax_check(choice->when->cond, LOGLINE(sub))) {
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
@@ -2910,7 +2911,7 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
                 lyxml_free_elem(module->ctx, sub);
                 goto error;
             }
-            if (unres_schema_add_node(module, unres, anyxml->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
+            if (lyxp_syntax_check(anyxml->when->cond, LOGLINE(sub))) {
                 goto error;
             }
             lyxml_free_elem(module->ctx, sub);
@@ -3047,7 +3048,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             if (!leaf->when) {
                 goto error;
             }
-            if (unres_schema_add_node(module, unres, leaf->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
+            if (lyxp_syntax_check(leaf->when->cond, LOGLINE(sub))) {
                 goto error;
             }
 
@@ -3250,7 +3251,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             if (!llist->when) {
                 goto error;
             }
-            if (unres_schema_add_node(module, unres, llist->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
+            if (lyxp_syntax_check(llist->when->cond, LOGLINE(sub))) {
                 goto error;
             }
         } else {
@@ -3471,7 +3472,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 lyxml_free_elem(module->ctx, sub);
                 goto error;
             }
-            if (unres_schema_add_node(module, unres, list->when, UNRES_WHEN, NULL, LOGLINE(sub)) == -1) {
+            if (lyxp_syntax_check(list->when->cond, LOGLINE(sub))) {
                 goto error;
             }
             lyxml_free_elem(module->ctx, sub);
@@ -3652,7 +3653,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
                 lyxml_free_elem(module->ctx, sub);
                 goto error;
             }
-            if (unres_schema_add_node(module, unres, cont->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
+            if (lyxp_syntax_check(cont->when->cond, LOGLINE(sub))) {
                 goto error;
             }
             lyxml_free_elem(module->ctx, sub);
@@ -4293,7 +4294,7 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 lyxml_free_elem(module->ctx, sub);
                 goto error;
             }
-            if (unres_schema_add_node(module, unres, uses->when, UNRES_WHEN, retval, LOGLINE(sub)) == -1) {
+            if (lyxp_syntax_check(uses->when->cond, LOGLINE(sub))) {
                 goto error;
             }
             lyxml_free_elem(module->ctx, sub);

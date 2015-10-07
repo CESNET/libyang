@@ -81,7 +81,6 @@ enum UNRES_ITEM {
     UNRES_CHOICE_DFLT,   /* check choice default case */
     UNRES_LIST_KEYS,     /* list keys */
     UNRES_LIST_UNIQ,     /* list uniques */
-    UNRES_WHEN,          /* check when */
     UNRES_MUST           /* check must */
 };
 
