@@ -3336,15 +3336,6 @@ resolve_list_keys(struct lys_module *mod, struct lys_node_list *list, const char
     return EXIT_SUCCESS;
 }
 
-/* logs directly */
-static int
-resolve_unres_schema_must(struct lys_restr *UNUSED(must), struct lys_node *UNUSED(start), int UNUSED(first),
-                          uint32_t UNUSED(line))
-{
-    /* TODO */
-    return EXIT_SUCCESS;
-}
-
 /**
  * @brief Resolve a single unres schema item. Logs indirectly.
  *
@@ -3454,10 +3445,6 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         rc = resolve_unique((struct lys_node *)uniq->leafs, base_name, uniq, first, line);
         has_str = 1;
         break;
-    case UNRES_MUST:
-        rc = resolve_unres_schema_must(item, str_snode, first, line);
-        has_str = 0;
-        break;
     }
 
     if (has_str && !rc) {
@@ -3512,9 +3499,6 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node, u
         break;
     case UNRES_LIST_UNIQ:
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later%s.", "list unique", (char *)str_node, line_str);
-        break;
-    case UNRES_MUST:
-        LOGVRB("Resolving %s \"%s\" failed, it will be attempted later%s.", "must", ((struct lys_restr *)item)->expr, line_str);
         break;
     }
 }
@@ -3678,8 +3662,7 @@ unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item,
         return -1;
     }
 
-    if ((type == UNRES_TYPE_LEAFREF) || (type == UNRES_USES) || (type == UNRES_TYPE_DFLT)
-            || (type == UNRES_MUST)) {
+    if ((type == UNRES_TYPE_LEAFREF) || (type == UNRES_USES) || (type == UNRES_TYPE_DFLT)) {
         if (unres_schema_add_node(mod, unres, new_item, type, unres->str_snode[i], 0) == -1) {
             LOGINT;
             return -1;
