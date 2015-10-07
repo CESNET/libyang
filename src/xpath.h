@@ -208,6 +208,17 @@ enum lyxp_node_type {
 int lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, uint32_t line);
 
 /**
+ * @brief Check the syntax of an XPath expression \p expr. Since it's only syntactic,
+ * node and function names may still be invalid.
+ *
+ * @param[in] expr XPath expression to check.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on pass, -1 on failure.
+ */
+int lyxp_syntax_check(const char *expr, uint32_t line);
+
+/**
  * @brief Print \p set contents.
  *
  * @param[in] f File stream to use.

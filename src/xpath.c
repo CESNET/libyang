@@ -6505,6 +6505,35 @@ lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, ui
     return rc;
 }
 
+API int
+lyxp_syntax_check(const char *expr, uint32_t line)
+{
+    struct lyxp_expr *exp;
+    uint16_t exp_idx;
+    int rc = -1;
+
+    if (!expr) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    exp = parse_expr(expr, line);
+    if (exp) {
+        exp_idx = 0;
+        rc = reparse_expr(exp, &exp_idx, line);
+        if (!rc && (exp->used > exp_idx)) {
+            LOGVAL(LYE_SPEC, line, "Unparsed characters \"%s\" left at the end of an XPath expression.",
+                   &exp->expr[exp->expr_pos[exp_idx]]);
+            rc = -1;
+        }
+        if (rc) {
+            exp_free(exp);
+        }
+    }
+
+    return rc;
+}
+
 void xml_print_node(FILE *f, int level, struct lyd_node *node);
 
 API void
