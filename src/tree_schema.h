@@ -153,7 +153,7 @@ extern "C" {
         }                                                                     \
         /* parent is already processed, go to its sibling */                  \
         if ((sizeof(typeof(*(START))) == sizeof(struct lys_node))             \
-                && (((struct lys_node *)(ELEM))->nodetype == LYS_AUGMENT)) {  \
+                && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) {  \
             (ELEM) = (ELEM)->parent->prev;                                    \
         } else {                                                              \
             (ELEM) = (ELEM)->parent;                                          \
