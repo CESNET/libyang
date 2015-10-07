@@ -107,16 +107,16 @@ lys_getnext(struct lys_node *last, struct lys_node *parent, struct lys_module *m
     }
 
 repeat:
-    while (next && (next->nodetype & (LYS_AUGMENT | LYS_GROUPING))) {
+    while (next && (next->nodetype == LYS_GROUPING)) {
         next = next->next;
     }
 
     while (!next) {
-        if (last->parent == parent) {
+        if (lys_parent(last) == parent) {
             /* no next element */
             return NULL;
         }
-        last = last->parent;
+        last = lys_parent(last);
         next = last->next;
         goto repeat;
     }
