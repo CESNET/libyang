@@ -114,7 +114,7 @@ extern "C" {
 #define LY_TREE_DFS_END(START, NEXT, ELEM)                                    \
     /* select element for the next run - children first */                    \
     (NEXT) = (ELEM)->child;                                                   \
-    if (offsetof(typeof(*(START)), next) < offsetof(typeof(*(START)), child)) {          \
+    if (sizeof(typeof(*(START))) == sizeof(struct lyd_node)) {                \
         /* child exception for lyd_node_leaf and lyd_node_leaflist */         \
         if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) { \
             (NEXT) = NULL;                                                    \
@@ -126,12 +126,38 @@ extern "C" {
     }                                                                         \
     while (!(NEXT)) {                                                         \
         /* no siblings, go back through parents */                            \
+        if (sizeof(typeof(*(START))) == sizeof(struct lys_node)) {            \
+            /* lys_node_augment only */                                       \
+            if ((ELEM)->parent && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) { \
+                if ((START)->parent && (((struct lys_node *)(START)->parent)->nodetype == LYS_AUGMENT)) { \
+                    /* lys_node prev is actually lys_node_augment target */   \
+                    if ((ELEM)->parent->prev == (START)->parent->prev) {      \
+                        break;                                                \
+                    }                                                         \
+                } else {                                                      \
+                    if ((ELEM)->parent->prev == (START)->parent) {            \
+                        break;                                                \
+                    }                                                         \
+                }                                                             \
+            } else {                                                          \
+                if ((START)->parent && (((struct lys_node *)(START)->parent)->nodetype == LYS_AUGMENT)) { \
+                    if ((ELEM)->parent == (START)->parent->prev) {            \
+                        break;                                                \
+                    }                                                         \
+                } /* else covered just below */                               \
+            }                                                                 \
+        }                                                                     \
         if ((ELEM)->parent == (START)->parent) {                              \
             /* we are done, no next element to process */                     \
             break;                                                            \
         }                                                                     \
         /* parent is already processed, go to its sibling */                  \
-        (ELEM) = (ELEM)->parent;                                              \
+        if ((sizeof(typeof(*(START))) == sizeof(struct lys_node))             \
+                && (((struct lys_node *)(ELEM))->nodetype == LYS_AUGMENT)) {  \
+            (ELEM) = (ELEM)->parent->prev;                                    \
+        } else {                                                              \
+            (ELEM) = (ELEM)->parent;                                          \
+        }                                                                     \
         (NEXT) = (ELEM)->next;                                                \
     }
 
