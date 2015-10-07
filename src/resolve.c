@@ -2818,13 +2818,12 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
  *
  * @param[in] uses Uses to use.
  * @param[in,out] unres List of unresolved items.
- * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line Line in the input file.
  *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward ereference, -1 on error.
+ * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, int first, uint32_t line)
+resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t line)
 {
     struct ly_ctx *ctx;
     struct lys_node *node = NULL, *node_aux;
@@ -2834,6 +2833,8 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, int first, 
     uint8_t size, *old_size;
 
     assert(uses->grp);
+    /* HACK just check that the grouing is resolved */
+    assert(!uses->grp->nacm);
 
     /* copy the data nodes from grouping into the uses context */
     LY_TREE_FOR(uses->grp->child, node) {
@@ -2850,17 +2851,15 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, int first, 
     }
     ctx = uses->module->ctx;
 
+    /* we managed to copy the grouping, the rest must be possible to resolve */
+
     /* apply refines */
     for (i = 0; i < uses->refine_size; i++) {
         rfn = &uses->refine[i];
         rc = resolve_schema_nodeid(rfn->target_name, uses->child, uses->module, LYS_LEAF, &node);
         if (rc) {
-            if (rc == -1) {
-                LOGVAL(LYE_INARG, line, rfn->target_name, "refine");
-            } else if (!first) {
-                LOGVAL(LYE_NORESOLV, line, rfn->target_name);
-            }
-            return rc;
+            LOGVAL(LYE_INARG, line, rfn->target_name, "refine");
+            return -1;
         }
 
         if (rfn->target_type && !(node->nodetype & rfn->target_type)) {
@@ -2896,12 +2895,8 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, int first, 
                 /* choice */
                 rc = resolve_schema_nodeid(rfn->mod.dflt, node->child, node->module, LYS_CHOICE, &((struct lys_node_choice *)node)->dflt);
                 if (rc) {
-                    if (rc == -1) {
-                        LOGVAL(LYE_INARG, line, rfn->mod.dflt, "default");
-                    } else if (!first) {
-                        LOGVAL(LYE_NORESOLV, line, rfn->mod.dflt);
-                    }
-                    return rc;
+                    LOGVAL(LYE_INARG, line, rfn->mod.dflt, "default");
+                    return -1;
                 }
             }
         }
@@ -2992,10 +2987,8 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, int first, 
     for (i = 0; i < uses->augment_size; i++) {
         rc = resolve_augment(&uses->augment[i], uses->child);
         if (rc) {
-            if ((rc == -1) || !first) {
-                LOGVAL(LYE_INRESOLV, line, "augment", uses->augment[i].target_name);
-            }
-            return rc;
+            LOGVAL(LYE_INRESOLV, line, "augment", uses->augment[i].target_name);
+            return -1;
         }
     }
 
@@ -3267,7 +3260,7 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
         return EXIT_FAILURE;
     }
 
-    rc = resolve_uses(uses, unres, first, line);
+    rc = resolve_uses(uses, unres, line);
     if (!rc) {
         /* decrease unres count only if not first try */
         if (parent && !first) {
