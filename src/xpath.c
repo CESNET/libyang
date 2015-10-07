@@ -6526,9 +6526,7 @@ lyxp_syntax_check(const char *expr, uint32_t line)
                    &exp->expr[exp->expr_pos[exp_idx]]);
             rc = -1;
         }
-        if (rc) {
-            exp_free(exp);
-        }
+        exp_free(exp);
     }
 
     return rc;
