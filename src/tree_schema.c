@@ -1308,7 +1308,7 @@ lys_when_dup(struct ly_ctx *ctx, struct lys_when *old)
     return new;
 }
 
-static void
+void
 lys_when_free(struct ly_ctx *ctx, struct lys_when *w)
 {
     if (!w) {

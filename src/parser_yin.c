@@ -2573,7 +2573,7 @@ read_yin_when(struct lys_module *module, struct lyxml_elem *yin)
 
 error:
 
-    lys_node_free((struct lys_node *)retval);
+    lys_when_free(module->ctx, retval);
     return NULL;
 }
 

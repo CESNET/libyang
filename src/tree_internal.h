@@ -214,6 +214,14 @@ struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *node, 
                               int recursive, struct unres_schema *unres);
 
 /**
+ * @brief Free a schema when condition
+ *
+ * @param[in] libyang context where the schema of the ondition is used.
+ * @param[in] w When structure to free.
+ */
+void lys_when_free(struct ly_ctx *ctx, struct lys_when *w);
+
+/**
  * @brief Free the schema tree restriction (must, ...) structure content
  *
  * @param[in] ctx libyang context where the schema of the restriction is used.
