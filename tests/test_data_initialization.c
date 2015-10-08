@@ -38,7 +38,8 @@
 struct ly_ctx *ctx = NULL;
 struct lyd_node *root = NULL;
 
-int generic_init(char *config_file, char *yang_file, char *yang_folder)
+int
+generic_init(char *config_file, char *yang_file, char *yang_folder)
 {
     LYS_INFORMAT yang_format;
     LYD_FORMAT in_format;
@@ -105,8 +106,10 @@ error:
     return -1;
 }
 
-static int setup_f()
+static int
+setup_f(void **state)
 {
+    (void) state; /* unused */
     char *config_file = TESTS_DIR"/config/hello.xml";
     char *yang_file = TESTS_DIR"/config/hello@2015-06-08.yin";
     char *yang_folder = TESTS_DIR"/config";
@@ -120,16 +123,20 @@ static int setup_f()
     return 0;
 }
 
-static int teardown_f()
+static int
+teardown_f(void **state)
 {
+    (void) state; /* unused */
     lyd_free(root);
     ly_ctx_destroy(ctx);
 
     return 0;
 }
 
-static void test_ctx_new_destroy()
+static void
+test_ctx_new_destroy(void **state)
 {
+    (void) state; /* unused */
     ctx = ly_ctx_new(NULL);
     if (!ctx) {
         fail();
@@ -138,8 +145,10 @@ static void test_ctx_new_destroy()
     ly_ctx_destroy(ctx);
 }
 
-static void test_container_name()
+static void
+test_container_name(void **state)
 {
+    (void) state; /* unused */
     struct lyd_node *node;
     const char *result = "";
 
@@ -149,8 +158,10 @@ static void test_container_name()
     assert_string_equal("hello", result);
 }
 
-static void test_leaf_name()
+static void
+test_leaf_name(void **state)
 {
+    (void) state; /* unused */
     struct lyd_node *node;
     const char *result;
 
@@ -160,8 +171,10 @@ static void test_leaf_name()
     assert_string_equal("foo", result);
 }
 
-static void test_leaf_list_parameters()
+static void
+test_leaf_list_parameters(void **state)
 {
+    (void) state; /* unused */
     struct lyd_node *node;
     struct lyd_node *tmp;
     const char *name_result;
