@@ -2481,33 +2481,6 @@ xpath_local_name(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur
     return EXIT_SUCCESS;
 }
 
-/** TODO after JSON parser is implemented
- * @brief Execute the XPath name(node-set?) function. Returns LYXP_SET_STRING
- *        with the full node name from the argument or the context.
- *
- * @param[in] args Array of arguments.
- * @param[in] arg_count Count of elements in \p args.
- * @param[in] cur_node Original context node.
- * @param[in,out] set Context and result set at the same time.
- * @param[in] line Line in the input file.
- * @param[in] is_snode Whether we are working with the schema or data.
- *
- * @return EXIT_SUCCESS on success, -1 on error.
- */
-static int
-xpath_name(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line)
-{
-    struct ly_ctx *ctx;
-
-    ctx = cur_node->schema->module->ctx;
-
-    (void)args;
-    (void)arg_count;
-    (void)line;
-    set_fill_string(set, "", 0, ctx);
-    return EXIT_SUCCESS;
-}
-
 /**
  * @brief Execute the XPath namespace-uri(node-set?) function. Returns LYXP_SET_STRING
  *        with the namespace of the node from the argument or the context.
@@ -5378,8 +5351,6 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
                 xpath_func = &xpath_lang;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "last", 4)) {
                 xpath_func = &xpath_last;
-            } else if (!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "name", 4)) {
-                xpath_func = &xpath_name;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "true", 4)) {
                 xpath_func = &xpath_true;
             }
