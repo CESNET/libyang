@@ -97,10 +97,10 @@ endif()
 
 # clean cmake cache
 add_custom_target(cclean
-                  COMMAND make clean
-                  COMMAND find . -iname '*cmake*' -not -name CMakeLists.txt -not -path './CMakeModules*' -exec rm -rf {} +
-                  COMMAND rm -rf Makefile Doxyfile
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+		COMMAND make clean
+		COMMAND find . -iname '*cmake*' -not -name CMakeLists.txt -not -path './CMakeModules*' -exec rm -rf {} +
+		COMMAND rm -rf Makefile Doxyfile
+		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(yanglint ${lintsrc})
 target_link_libraries(yanglint yang)
