@@ -90,6 +90,7 @@ transform_data_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml, int log)
         ns = lyxml_get_ns(xml, prefix);
         free(prefix);
         if (!ns) {
+            /* TODO a valid case if replacing an XPath in an augment part from a different model (won't happen if namespaces used in the augment get copied over as well) */
             if (log) {
                 LOGVAL(LYE_SPEC, LOGLINE(xml), "XML namespace with prefix \"%.*s\" not defined.", id_len, id);
             }
@@ -243,8 +244,8 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start)
             continue;
         }
 
-        /* go into cases, choices, uses */
-        if (result->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES)) {
+        /* go into cases, choices, uses and in RPCs into input and output */
+        if (result->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES | LYS_INPUT | LYS_OUTPUT)) {
             aux = xml_data_search_schemanode(xml, result->child);
             if (aux) {
                 /* we have matching result */
@@ -553,11 +554,11 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
              * is not complete, so many instanceids cannot be resolved
              */
             if (unres) {
-                if (unres_data_add(unres, (struct lyd_node *)node, line)) {
+                if (unres_data_add(unres, (struct lyd_node *)node, UNRES_INSTID, line)) {
                     return EXIT_FAILURE;
                 }
             } else {
-                if (resolve_unres_data_item((struct lyd_node *)node, 0, line)) {
+                if (resolve_unres_data_item((struct lyd_node *)node, UNRES_INSTID, 0, line)) {
                     return EXIT_FAILURE;
                 }
             }
@@ -580,11 +581,11 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
              * is not complete, so many noderefs cannot be resolved
              */
             if (unres) {
-                if (unres_data_add(unres, (struct lyd_node *)node, line)) {
+                if (unres_data_add(unres, (struct lyd_node *)node, UNRES_LEAFREF, line)) {
                     return EXIT_FAILURE;
                 }
             } else {
-                if (resolve_unres_data_item((struct lyd_node *)node, 0, line)) {
+                if (resolve_unres_data_item((struct lyd_node *)node, UNRES_LEAFREF, 0, line)) {
                     return EXIT_FAILURE;
                 }
             }
@@ -776,7 +777,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct
 }
 
 /* logs directly */
-struct lyd_node *
+static struct lyd_node *
 xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev,
                int options, struct unres_data *unres)
 {
@@ -807,6 +808,20 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                         break;
                     }
                 }
+                if (!schema) {
+                    LY_TREE_FOR(ctx->models.list[i]->notif, schema) {
+                        if (schema->name == xml->name) {
+                            break;
+                        }
+                    }
+                }
+                if (!schema) {
+                    LY_TREE_FOR(ctx->models.list[i]->rpc, schema) {
+                        if (schema->name == xml->name) {
+                            break;
+                        }
+                    }
+                }
                 break;
             }
         }
@@ -821,10 +836,6 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         } else {
             goto siblings;
         }
-    }
-
-    if (lyv_data_context(schema, LOGLINE(xml), options)) {
-        return NULL;
     }
 
     /* check insert attribute and its values */
@@ -885,6 +896,8 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     switch (schema->nodetype) {
     case LYS_CONTAINER:
     case LYS_LIST:
+    case LYS_NOTIF:
+    case LYS_RPC:
         result = calloc(1, sizeof *result);
         havechildren = 1;
         break;
@@ -917,6 +930,10 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     }
     result->schema = schema;
 
+    if (lyv_data_context(result, options, LOGLINE(xml), unres)) {
+        goto error;
+    }
+
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
@@ -947,7 +964,11 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     /* process children */
     if (havechildren && xml->child) {
-        xml_parse_data(ctx, xml->child, result, NULL, options, unres);
+        if (schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
+            xml_parse_data(ctx, xml->child, result, NULL, 0, unres);
+        } else {
+            xml_parse_data(ctx, xml->child, result, NULL, options, unres);
+        }
         if (ly_errno) {
             goto error;
         }
@@ -958,7 +979,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     /* various validation checks */
     ly_errno = 0;
-    if (lyv_data_content(result, LOGLINE(xml), options)) {
+    if (lyv_data_content(result, options, LOGLINE(xml), unres)) {
         if (ly_errno) {
             goto error;
         } else {
@@ -1018,14 +1039,15 @@ xml_read_data(struct ly_ctx *ctx, const char *data, int options)
 
     /* check leafrefs and/or instids if any */
     if (result && resolve_unres_data(unres)) {
-        /* leafref & instid checking failed */
+        /* resolution failed */
         LY_TREE_FOR_SAFE(result, next, iter) {
             lyd_free(iter);
         }
         result = NULL;
     }
 
-    free(unres->dnode);
+    free(unres->node);
+    free(unres->type);
 #ifndef NDEBUG
     free(unres->line);
 #endif

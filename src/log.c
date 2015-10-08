@@ -79,7 +79,7 @@ const char *ly_errs[] = {
 /* LYE_BITS_DUPVAL */  "The position \"%d\" of \"%s\" bits has already been used to another named bit.",
 /* LYE_BITS_DUPNAME */ "The bit name \"%s\" has already been assigned to another bit.",
 /* LYE_INPREF */       "Prefix in \"%s\" refers to an unknown module.",
-/* LYE_INPREF_LEN */   "Prefix in \"%.*s\" refers to an unknown module.",
+/* LYE_INPREF_LEN */   "Prefix \"%.*s\" refers to an unknown module.",
 /* LYE_KEY_NLEAF */    "Key \"%s\" is not a leaf.",
 /* LYE_KEY_TYPE */     "Key \"%s\" must not be the built-in type \"empty\".",
 /* LYE_KEY_CONFIG */   "The \"config\" value of the \"%s\" key differs from its list config value.",
@@ -98,7 +98,16 @@ const char *ly_errs[] = {
 /* LYE_OORVAL */       "Value \"%s\" is out of range or length.",
 /* LYE_INCHAR */       "Unexpected character(s) '%c' (%.15s).",
 /* LYE_INPRED */       "Predicate resolution failed on \"%s\".",
-/* LYE_MCASEDATA */    "Data for more than one case branch of \"%s\" choice present."
+/* LYE_MCASEDATA */    "Data for more than one case branch of \"%s\" choice present.",
+/* LYE_NOCOND */       "%s condition \"%s\" not satisfied.",
+
+/* LYE_XPATH_INTOK */  "Unexpected XPath token %s (%.15s).",
+/* LYE_XPATH_EOF */    "Unexpected XPath expression end.",
+/* LYE_XPATH_INOP_1 */ "Cannot apply XPath operation %s on %s.",
+/* LYE_XPATH_INOP_2 */ "Cannot apply XPath operation %s on %s and %s.",
+/* LYE_XPATH_INCTX */  "Invalid context type %s in %s.",
+/* LYE_XPATH_INARGCOUNT */ "Invalid number of arguments (%d) for the XPath function %s.",
+/* LYE_XPATH_INARGTYPE */ "Wrong type of argument #%d (%s) for the XPath function %s."
 };
 
 void

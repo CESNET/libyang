@@ -483,7 +483,7 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options)
     ly_errno = 0;
     LY_TREE_FOR_SAFE(node, next, iter) {
         /* various validation checks */
-        if (lyv_data_content(iter, 0, options)) {
+        if (lyv_data_content(iter, 0, options, NULL)) {
             if (ly_errno) {
                 return EXIT_FAILURE;
             } else {
@@ -547,7 +547,7 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node, int options)
     ly_errno = 0;
     LY_TREE_FOR_SAFE(node, next, iter) {
         /* various validation checks */
-        if (lyv_data_content(iter, 0, options)) {
+        if (lyv_data_content(iter, 0, options, NULL)) {
             if (ly_errno) {
                 return EXIT_FAILURE;
             } else {
@@ -618,6 +618,24 @@ lyd_attr_free(struct ly_ctx *ctx, struct lyd_attr *attr)
     lydict_remove(ctx, attr->name);
     lydict_remove(ctx, attr->value);
     free(attr);
+}
+
+struct lyd_node *
+lyd_attr_parent(struct lyd_node *root, struct lyd_attr *attr)
+{
+    struct lyd_node *next, *elem;
+    struct lyd_attr *node_attr;
+
+    LY_TREE_DFS_BEGIN(root, next, elem) {
+        for (node_attr = elem->attr; node_attr; node_attr = node_attr->next) {
+            if (node_attr == attr) {
+                return elem;
+            }
+        }
+        LY_TREE_DFS_END(root, next, elem)
+    }
+
+    return NULL;
 }
 
 API void
