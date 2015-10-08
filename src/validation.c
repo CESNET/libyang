@@ -515,5 +515,10 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
         }
     }
 
+    /* check must conditions */
+    if (unres_data_add(unres, node, UNRES_MUST, line) == -1) {
+        return EXIT_FAILURE;
+    }
+
     return EXIT_SUCCESS;
 }

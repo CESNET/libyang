@@ -3331,6 +3331,70 @@ resolve_list_keys(struct lys_module *mod, struct lys_node_list *list, const char
 }
 
 /**
+ * @brief Resolve (check) all must conditions of \p node.
+ * Logs directly.
+ *
+ * @param[in] node Data node with optional must statements.
+ * @param[in] first Whether this is the first resolution to try.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on pass, EXIT_FAILURE on fail, -1 on error.
+ */
+static int
+resolve_must(struct lyd_node *node, int first, uint32_t line)
+{
+    uint8_t i, must_size;
+    struct lys_restr *must;
+    struct lyxp_set set;
+
+    assert(node);
+    memset(&set, 0, sizeof set);
+
+    switch (node->schema->nodetype) {
+    case LYS_CONTAINER:
+        must_size = ((struct lys_node_container *)node->schema)->must_size;
+        must = ((struct lys_node_container *)node->schema)->must;
+        break;
+    case LYS_LEAF:
+        must_size = ((struct lys_node_leaf *)node->schema)->must_size;
+        must = ((struct lys_node_leaf *)node->schema)->must;
+        break;
+    case LYS_LEAFLIST:
+        must_size = ((struct lys_node_leaflist *)node->schema)->must_size;
+        must = ((struct lys_node_leaflist *)node->schema)->must;
+        break;
+    case LYS_LIST:
+        must_size = ((struct lys_node_list *)node->schema)->must_size;
+        must = ((struct lys_node_list *)node->schema)->must;
+        break;
+    case LYS_ANYXML:
+        must_size = ((struct lys_node_anyxml *)node->schema)->must_size;
+        must = ((struct lys_node_anyxml *)node->schema)->must;
+        break;
+    default:
+        must_size = 0;
+        break;
+    }
+
+    for (i = 0; i < must_size; ++i) {
+        if (lyxp_eval(must[i].expr, node, &set, line)) {
+            return -1;
+        }
+
+        lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node);
+
+        if (!set.value.bool) {
+            if (!first) {
+                LOGVAL(LYE_NOCOND, line, "Must", must[i].expr);
+            }
+            return 1;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/**
  * @brief Resolve (find) when condition context node. Does not log.
  *
  * @param[in] node Data node, whose conditional definition is being decided.
@@ -3404,7 +3468,7 @@ resolve_when(struct lyd_node *node, int first, uint32_t line)
 
         if (!set.value.bool) {
             if (!first) {
-                LOGVAL(LYE_NOWHEN, line, ((struct lys_node_container *)node->schema)->when->cond);
+                LOGVAL(LYE_NOCOND, line, "When", ((struct lys_node_container *)node->schema)->when->cond);
             }
             return 1;
         }
@@ -3431,7 +3495,7 @@ resolve_when(struct lyd_node *node, int first, uint32_t line)
 
             if (!set.value.bool) {
                 if (!first) {
-                    LOGVAL(LYE_NOWHEN, line, ((struct lys_node_uses *)parent)->when->cond);
+                    LOGVAL(LYE_NOCOND, line, "When", ((struct lys_node_uses *)parent)->when->cond);
                 }
                 return 1;
             }
@@ -3454,7 +3518,7 @@ check_augment:
 
             if (!set.value.bool) {
                 if (!first) {
-                    LOGVAL(LYE_NOWHEN, line, ((struct lys_node_augment *)parent->parent)->when->cond);
+                    LOGVAL(LYE_NOCOND, line, "When", ((struct lys_node_augment *)parent->parent)->when->cond);
                 }
                 return 1;
             }
@@ -3847,6 +3911,9 @@ print_unres_data_item_fail(struct lyd_node *node, enum UNRES_ITEM type, uint32_t
     case UNRES_WHEN:
         LOGVRB("There was an unsatisfied when condition, evaluation will be attempted later%s.", line_str);
         break;
+    case UNRES_MUST:
+        LOGVRB("There was an unsatisfied must condition, evaluation will be attempted later%s.", line_str);
+        break;
     default:
         LOGINT;
         break;
@@ -3927,6 +3994,12 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int first, 
         }
         break;
 
+    case UNRES_MUST:
+        if ((rc = resolve_must(node, first, line))) {
+            return rc;
+        }
+        break;
+
     default:
         LOGINT;
         return -1;
@@ -3949,7 +4022,7 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
 {
     int rc;
 
-    assert(unres && node && ((type == UNRES_LEAFREF) || (type == UNRES_INSTID) || (type == UNRES_WHEN)));
+    assert(unres && node && ((type == UNRES_LEAFREF) || (type == UNRES_INSTID) || (type == UNRES_WHEN) || (type == UNRES_MUST)));
 
     rc = resolve_unres_data_item(node, type, 1, line);
     if (rc != EXIT_FAILURE) {
