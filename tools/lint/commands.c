@@ -497,7 +497,7 @@ cmd_xpath(const char *arg)
     char **argv = NULL, *ptr, *ctx_node_path = NULL, *expr = NULL, *addr;
     struct stat sb;
     struct lyd_node *ctx_node, *data = NULL, *next, *iter;
-    struct lyxp_set *set = NULL;
+    struct lyxp_set set;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"expr", required_argument, 0, 'e'},
@@ -632,14 +632,12 @@ cmd_xpath(const char *arg)
         goto cleanup;
     }
 
-    lyxp_print_set_xml(stdout, set);
+    lyxp_set_print_xml(stdout, &set);
     ret = 0;
 
 cleanup:
     free(*argv);
     free(argv);
-
-    lyxp_set_free(set, ctx);
 
     if (fd != -1) {
         close(fd);

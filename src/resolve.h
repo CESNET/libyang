@@ -23,7 +23,55 @@
 #define _RESOLVE_H
 
 #include "libyang.h"
-#include "tree_internal.h"
+
+/**
+ * @brief Type of an unresolved item (in either SCHEMA or DATA)
+ */
+enum UNRES_ITEM {
+    UNRES_RESOLVED,      /* a resolved item */
+
+    /* SCHEMA */
+    UNRES_IDENT,         /* unresolved derived identities */
+    UNRES_TYPE_IDENTREF, /* check identityref value */
+    UNRES_TYPE_LEAFREF,  /* check leafref value */
+    UNRES_TYPE_DER,      /* unresolved derived type */
+    UNRES_IFFEAT,        /* unresolved if-feature */
+    UNRES_USES,          /* unresolved uses grouping (refines and augments in it are resolved as well) */
+    UNRES_TYPE_DFLT,     /* validate default type value */
+    UNRES_CHOICE_DFLT,   /* check choice default case */
+    UNRES_LIST_KEYS,     /* list keys */
+    UNRES_LIST_UNIQ,     /* list uniques */
+
+    /* DATA */
+    UNRES_LEAFREF,       /* unresolved leafref reference */
+    UNRES_INSTID,        /* unresolved instance-identifier reference */
+    UNRES_WHEN,          /* unresolved when condition */
+};
+
+/**
+ * @brief Unresolved items in DATA
+ */
+struct unres_data {
+    struct lyd_node **node;
+    enum UNRES_ITEM *type;
+#ifndef NDEBUG
+    uint32_t *line;
+#endif
+    uint32_t count;
+};
+
+/**
+ * @brief Unresolved items in a SCHEMA
+ */
+struct unres_schema {
+    void **item;            /* array of pointers, each is determined by the type (one of lys_* structures) */
+    enum UNRES_ITEM *type;  /* array of unres types */
+    void **str_snode;       /* array of pointers, each is determined by the type (a string, a lys_node *, or NULL) */
+#ifndef NDEBUG
+    uint32_t *line;         /* array of lines for each unres item */
+#endif
+    uint32_t count;         /* count of unres items */
+};
 
 struct len_ran_intv {
     /* 0 - unsigned, 1 - signed, 2 - floating point */
@@ -81,7 +129,7 @@ int unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *i
 
 int unres_schema_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type);
 
-int unres_data_add(struct unres_data *unres, struct lyd_node *dnode, uint32_t line);
+int unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type, uint32_t line);
 
 int resolve_unres_data(struct unres_data *unres);
 

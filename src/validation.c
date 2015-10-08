@@ -21,8 +21,13 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
+#include "validation.h"
 #include "libyang.h"
+#include "xpath.h"
+#include "resolve.h"
+#include "tree_internal.h"
 #include "xml.h"
 #include "common.h"
 
@@ -276,26 +281,32 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
 }
 
 int
-lyv_data_context(struct lys_node *schema, unsigned int line, int options)
+lyv_data_context(struct lyd_node *node, int options, unsigned int line, struct unres_data *unres)
 {
-    assert(schema);
+    assert(node);
 
     /* check if the node instance is enabled by if-feature */
-    if (lys_is_disabled(schema, 2)) {
-        LOGVAL(LYE_INELEM, line, schema->name);
+    if (lys_is_disabled(node->schema, 2)) {
+        LOGVAL(LYE_INELEM, line, node->schema->name);
+        return EXIT_FAILURE;
+    }
+
+    /* check all relevant when conditions */
+    if (unres_data_add(unres, node, UNRES_WHEN, line) == -1) {
         return EXIT_FAILURE;
     }
 
     /* check for (non-)presence of status data in edit-config data */
-    if ((options & LYD_OPT_EDIT) && (schema->flags & LYS_CONFIG_R)) {
-        LOGVAL(LYE_INELEM, line, schema->name);
+    if ((options & LYD_OPT_EDIT) && (node->schema->flags & LYS_CONFIG_R)) {
+        LOGVAL(LYE_INELEM, line, node->schema->name);
         return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
 }
+
 int
-lyv_data_content(struct lyd_node *node, unsigned int line, int options)
+lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct unres_data *unres)
 {
     struct lys_node *schema, *siter;
     struct lys_node *cs, *ch;

@@ -25,6 +25,7 @@
 
 #include "tree_schema.h"
 #include "tree_data.h"
+#include "resolve.h"
 
 #define LY_INTERNAL_MODULE_COUNT 3
 
@@ -54,47 +55,6 @@ struct ly_types {
     struct lys_tpdf *def;
 };
 extern struct ly_types ly_types[LY_DATA_TYPE_COUNT];
-
-/**
- * @brief Unresolved leafrefs or instance-identifiers in DATA
- */
-struct unres_data {
-    struct lyd_node **dnode;
-#ifndef NDEBUG
-    uint32_t *line;
-#endif
-    uint32_t count;
-};
-
-/**
- * @brief Type of an unresolved item in a SCHEMA
- */
-enum UNRES_ITEM {
-    UNRES_RESOLVED,      /* a resolved item */
-    UNRES_IDENT,         /* unresolved derived identities */
-    UNRES_TYPE_IDENTREF, /* check identityref value */
-    UNRES_TYPE_LEAFREF,  /* check leafref value */
-    UNRES_TYPE_DER,      /* unresolved derived type */
-    UNRES_IFFEAT,        /* unresolved if-feature */
-    UNRES_USES,          /* unresolved uses grouping (refines and augments in it are resolved as well) */
-    UNRES_TYPE_DFLT,     /* validate default type value */
-    UNRES_CHOICE_DFLT,   /* check choice default case */
-    UNRES_LIST_KEYS,     /* list keys */
-    UNRES_LIST_UNIQ,     /* list uniques */
-};
-
-/**
- * @brief Unresolved items in a SCHEMA
- */
-struct unres_schema {
-    void **item;            /* array of pointers, each is determined by the type (one of lys_* structures) */
-    enum UNRES_ITEM *type;  /* array of unres types */
-    void **str_snode;       /* array of pointers, each is determined by the type (a string, a lys_node *, or NULL) */
-#ifndef NDEBUG
-    uint32_t *line;         /* array of lines for each unres item */
-#endif
-    uint32_t count;         /* count of unres items */
-};
 
 /**
  * @brief Create submodule structure by reading data from memory.

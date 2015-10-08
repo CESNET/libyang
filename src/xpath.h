@@ -200,12 +200,12 @@ enum lyxp_node_type {
  *
  * @param[in] expr XPath expression to evaluate.
  * @param[in] cur_node Current (context) data node.
- * @param[out] set Result set.
+ * @param[out] set Result set. Must be valid (zeroed usually).
  * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
-int lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, uint32_t line);
+int lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line);
 
 /**
  * @brief Check the syntax of an XPath expression \p expr. Since it's only syntactic,
@@ -224,7 +224,17 @@ int lyxp_syntax_check(const char *expr, uint32_t line);
  * @param[in] f File stream to use.
  * @param[in] set Set to print.
  */
-void lyxp_print_set_xml(FILE *f, struct lyxp_set *set);
+void lyxp_set_print_xml(FILE *f, struct lyxp_set *set);
+
+/**
+ * @brief Cast XPath set to another type.
+ *        Indirectly context position aware.
+ *
+ * @param[in] set Set to cast.
+ * @param[in] target Target type to cast \p set into.
+ * @param[in] ctx libyang context to use.
+ */
+void lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct lyd_node *cur_node);
 
 /**
  * @brief Free contents of an XPath \p set.

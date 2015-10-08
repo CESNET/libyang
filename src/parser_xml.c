@@ -642,7 +642,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
              * is not complete, so many instanceids cannot be resolved
              */
             /* remember the leaf for later checking */
-            if (unres_data_add(unres, node, (log ? LOGLINE(xml) : UINT_MAX))) {
+            if (unres_data_add(unres, node, UNRES_INSTID, (log ? LOGLINE(xml) : UINT_MAX))) {
                 return EXIT_FAILURE;
             }
         }
@@ -666,7 +666,7 @@ _xml_get_value(struct lyd_node *node, struct lys_type *node_type, struct lyxml_e
              * is not complete, so many leafrefs cannot be resolved
              */
             /* remember the leaf for later checking */
-            if (unres_data_add(unres, node, (log ? LOGLINE(xml) : UINT_MAX))) {
+            if (unres_data_add(unres, node, UNRES_LEAFREF, (log ? LOGLINE(xml) : UINT_MAX))) {
                 return EXIT_FAILURE;
             }
         }
@@ -844,10 +844,6 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         }
     }
 
-    if (lyv_data_context(schema, LOGLINE(xml), options)) {
-        return NULL;
-    }
-
     /* check insert attribute and its values */
     if (options & LYD_OPT_EDIT) {
         i = 0;
@@ -943,6 +939,10 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     }
     result->schema = schema;
 
+    if (lyv_data_context(result, options, LOGLINE(xml), unres)) {
+        goto error;
+    }
+
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
@@ -991,7 +991,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     /* various validation checks */
     ly_errno = 0;
-    if (lyv_data_content(result, LOGLINE(xml), options)) {
+    if (lyv_data_content(result, options, LOGLINE(xml), unres)) {
         if (ly_errno) {
             goto error;
         } else {
@@ -1051,14 +1051,15 @@ xml_read_data(struct ly_ctx *ctx, const char *data, int options)
 
     /* check leafrefs and/or instids if any */
     if (result && resolve_unres_data(unres)) {
-        /* leafref & instid checking failed */
+        /* resolution failed */
         LY_TREE_FOR_SAFE(result, next, iter) {
             lyd_free(iter);
         }
         result = NULL;
     }
 
-    free(unres->dnode);
+    free(unres->node);
+    free(unres->type);
 #ifndef NDEBUG
     free(unres->line);
 #endif

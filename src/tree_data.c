@@ -98,7 +98,7 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options)
     ly_errno = 0;
     LY_TREE_FOR_SAFE(node, next, iter) {
         /* various validation checks */
-        if (lyv_data_content(iter, 0, options)) {
+        if (lyv_data_content(iter, 0, options, NULL)) {
             if (ly_errno) {
                 return EXIT_FAILURE;
             } else {
@@ -162,7 +162,7 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node, int options)
     ly_errno = 0;
     LY_TREE_FOR_SAFE(node, next, iter) {
         /* various validation checks */
-        if (lyv_data_content(iter, 0, options)) {
+        if (lyv_data_content(iter, 0, options, NULL)) {
             if (ly_errno) {
                 return EXIT_FAILURE;
             } else {
