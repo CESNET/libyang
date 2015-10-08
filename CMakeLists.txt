@@ -86,10 +86,14 @@ install(TARGETS yang DESTINATION ${LIB_INSTALL_DIR})
 install(FILES ${headers} DESTINATION ${INCLUDE_INSTALL_DIR})
 
 # generate doxygen documentation for libyang API
-add_custom_target(doc
-                  COMMAND doxygen  ${CMAKE_BINARY_DIR}/Doxyfile
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-configure_file(Doxyfile.in Doxyfile)
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+	set(DOXYGEN_SKIP_DOT TRUE)
+	add_custom_target(doc
+			COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile
+			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+	configure_file(Doxyfile.in Doxyfile)
+endif()
 
 # clean cmake cache
 add_custom_target(cclean
