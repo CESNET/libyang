@@ -158,10 +158,9 @@ static struct lys_node *
 check_mand_getnext(struct lys_node *last, struct lys_node *parent)
 {
     struct lys_node *next;
-
-repeat:
     next = lys_getnext(last, parent, NULL, LYS_GETNEXT_WITHCHOICE);
 
+repeat:
     if (next && next->nodetype == LYS_CONTAINER) {
         if (((struct lys_node_container *)next)->presence) {
             /* mandatory elements under the non-existing presence

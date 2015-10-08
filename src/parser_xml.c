@@ -928,7 +928,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         }
     } else if (schema->nodetype == LYS_ANYXML && !(options & LYD_OPT_FILTER)) {
         /* unlink xml children, they will be the anyxml value */
-        first_child = NULL;
+        first_child = last_child = NULL;
         LY_TREE_FOR(xml->child, child) {
             lyxml_unlink_elem(ctx, child, 1);
             if (!first_child) {
@@ -940,7 +940,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                 last_child = child;
             }
         }
-        first_child->prev = last_child;
+        if (first_child) {
+            first_child->prev = last_child;
+        }
 
         ((struct lyd_node_anyxml *)result)->value = first_child;
         /* we can safely continue with xml, it's like it was, only without children */

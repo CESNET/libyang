@@ -4,7 +4,7 @@ project(libyang C)
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
 set(LIBYANG_MINOR_VERSION 2)
-set(LIBYANG_MICRO_VERSION 33)
+set(LIBYANG_MICRO_VERSION 36)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 
@@ -32,6 +32,14 @@ endif()
 set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -fvisibility=hidden")
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
+
+if(CMAKE_BUILD_TYPE STREQUAL debug)
+	option(ENABLE_BUILD_TESTS "Build tests" ON)
+	option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)
+else()
+	option(ENABLE_BUILD_TESTS "Build tests" OFF)
+	option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
+endif()
 
 set(libsrc
 	src/common.c
@@ -79,18 +87,30 @@ install(TARGETS yang DESTINATION ${LIB_INSTALL_DIR})
 install(FILES ${headers} DESTINATION ${INCLUDE_INSTALL_DIR})
 
 # generate doxygen documentation for libyang API
-add_custom_target(doc
-                  COMMAND doxygen  ${CMAKE_BINARY_DIR}/Doxyfile
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-configure_file(Doxyfile.in Doxyfile)
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+	set(DOXYGEN_SKIP_DOT TRUE)
+	add_custom_target(doc
+			COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile
+			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+	configure_file(Doxyfile.in Doxyfile)
+endif()
 
 # clean cmake cache
 add_custom_target(cclean
-                  COMMAND make clean
-                  COMMAND find . -iname '*cmake*' -not -name CMakeLists.txt -not -path './CMakeModules*' -exec rm -rf {} +
-                  COMMAND rm -rf Makefile Doxyfile
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+		COMMAND make clean
+		COMMAND find . -iname '*cmake*' -not -name CMakeLists.txt -not -path './CMakeModules*' -exec rm -rf {} +
+		COMMAND rm -rf Makefile Doxyfile
+		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(yanglint ${lintsrc})
 target_link_libraries(yanglint yang)
 
+if(ENABLE_VALGRIND_TESTS)
+	set(ENABLE_BUILD_TESTS ON)
+endif()
+
+if(ENABLE_BUILD_TESTS)
+	enable_testing()
+	add_subdirectory(tests)
+endif()
