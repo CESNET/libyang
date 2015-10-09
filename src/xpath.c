@@ -3947,10 +3947,12 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
     set_all_desc = set_copy(set, ctx);
     /* get all descendant nodes (the original context nodes are removed) */
     if (moveto_node_alldesc(set_all_desc, cur_node, "*", 1, line)) {
+        lyxp_set_free(set_all_desc, ctx);
         return -1;
     }
     /* prepend the original context nodes */
     if (moveto_union(set, set_all_desc, cur_node, line)) {
+        lyxp_set_free(set_all_desc, ctx);
         return -1;
     }
     lyxp_set_free(set_all_desc, ctx);
