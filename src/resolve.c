@@ -1840,6 +1840,7 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
         LY_TREE_FOR(start, sibling) {
             /* name match */
             if (((sibling->nodetype != LYS_GROUPING) || (node_type == LYS_USES))
+                    && (!(sibling->nodetype & (LYS_RPC | LYS_NOTIF)) || (node_type == LYS_AUGMENT))
                     && ((sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len])
                     || (!strncmp(name, "input", 5) && (nam_len == 5) && (sibling->nodetype == LYS_INPUT))
                     || (!strncmp(name, "output", 6) && (nam_len == 6) && (sibling->nodetype == LYS_OUTPUT)))) {
