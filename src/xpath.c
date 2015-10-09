@@ -3380,7 +3380,7 @@ moveto_get_root(struct lyd_node *cur_node, enum lyxp_node_type *root_type)
             root = root->parent;
 
             if ((root->schema->nodetype == LYS_RPC) || (root->schema->nodetype == LYS_NOTIF)) {
-                if (prev && prev->schema->parent->nodetype == LYS_OUTPUT) {
+                if (prev->schema->parent->nodetype == LYS_OUTPUT) {
                     is_output = 1;
                 }
                 break;
