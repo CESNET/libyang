@@ -26,6 +26,7 @@
 
 #include "libyang.h"
 #include "resolve.h"
+#include "dict.h"
 
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
@@ -157,5 +158,34 @@ const char *strpbrk_backwards(const char *s, const char *accept, unsigned int s_
 char *strnchr(const char *s, int c, unsigned int len);
 
 const char *strnodetype(LYS_NODE type);
+
+/**
+ * @brief Transform expression from JSON format to XML format.
+ * Output arrays point to strings in the dictionary, but without
+ * correcting theit ref_count -> do not touch them.
+ *
+ * @param[in] ctx libyang context to use.
+ * @param[in] expr JSON expression.
+ * @param[out] prefixes Array of pointers to prefixes. After use free them with free(*prefixes).
+ * @param[out] namespaces Array of pointers to full namespaces. After use free them with
+ * free(*namespaces).
+ * @param[out] ns_count Number of elements in both \p prefixes and \p namespaces arrays.
+ *
+ * @return Transformed XML expression, NULL on error.
+ */
+char *transform_data_json2xml(struct ly_ctx *ctx, const char *expr, char ***prefixes, char ***namespaces,
+                              uint32_t *ns_count);
+
+/**
+ * @brief Transform expression from XML format (prefixes and separate NS definitions) to
+ *        JSON format (prefixes are module names instead). Logs directly.
+ *
+ * @param[in] ctx libyang context to use.
+ * @param[in] xml XML element with the expression.
+ * @param[in] log Whether to log errors or not.
+ *
+ * @return Transformed data in the dictionary or NULL on error.
+ */
+const char *transform_data_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml, int log);
 
 #endif /* LY_COMMON_H_ */
