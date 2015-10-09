@@ -2453,16 +2453,14 @@ xpath_local_name(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur
     }
 
     switch (type) {
-    case LYXP_NODE_TEXT:
-        set_fill_string(set, "", 0, ctx);
-        break;
-    case LYXP_NODE_ROOT_OUTPUT:
-        set_fill_string(set, "output", 6, ctx);
-        break;
     case LYXP_NODE_ROOT_CONFIG:
     case LYXP_NODE_ROOT_STATE:
     case LYXP_NODE_ROOT_NOTIF:
     case LYXP_NODE_ROOT_RPC:
+    case LYXP_NODE_ROOT_OUTPUT:
+    case LYXP_NODE_TEXT:
+        set_fill_string(set, "", 0, ctx);
+        break;
     case LYXP_NODE_ELEM:
         set_fill_string(set, node->schema->name, strlen(node->schema->name), ctx);
         break;
@@ -2536,12 +2534,12 @@ xpath_namespace_uri(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *
     switch (type) {
     case LYXP_NODE_ROOT_CONFIG:
     case LYXP_NODE_ROOT_STATE:
-    case LYXP_NODE_TEXT:
-        set_fill_string(set, "", 0, ctx);
-        break;
     case LYXP_NODE_ROOT_NOTIF:
     case LYXP_NODE_ROOT_RPC:
     case LYXP_NODE_ROOT_OUTPUT:
+    case LYXP_NODE_TEXT:
+        set_fill_string(set, "", 0, ctx);
+        break;
     case LYXP_NODE_ELEM:
         if (node->schema->module->type) {
             set_fill_string(set, ((struct lys_submodule *)node->schema->module)->belongsto->ns,
