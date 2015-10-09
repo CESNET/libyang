@@ -69,7 +69,8 @@ static void
 xml_print_leaf(struct lyout *out, int level, struct lyd_node *node)
 {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
-    char **prefs, **nss, *xml_data;
+    char **prefs, **nss;
+    const char *xml_expr;
     uint32_t ns_count, i;
 
     ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
@@ -96,20 +97,26 @@ xml_print_leaf(struct lyout *out, int level, struct lyd_node *node)
 
     case LY_TYPE_IDENT:
     case LY_TYPE_INST:
-        xml_data = transform_data_json2xml(node->schema->module->ctx, ((struct lyd_node_leaf_list *)node)->value_str,
+        xml_expr = transform_expr_json2xml(node->schema->module, ((struct lyd_node_leaf_list *)node)->value_str,
                                            &prefs, &nss, &ns_count);
+        if (!xml_expr) {
+            /* error */
+            ly_print(out, "\"(!error!)\"");
+            return;
+        }
+
         for (i = 0; i < ns_count; ++i) {
             ly_print(out, " xmlns:%s=\"%s\"", prefs[i], nss[i]);
         }
         free(prefs);
         free(nss);
 
-        if (xml_data[0]) {
-            ly_print(out, ">%s</%s>", xml_data, node->schema->name);
+        if (xml_expr[0]) {
+            ly_print(out, ">%s</%s>", xml_expr, node->schema->name);
         } else {
             ly_print(out, "/>");
         }
-        free(xml_data);
+        lydict_remove(node->schema->module->ctx, xml_expr);
         break;
 
     case LY_TYPE_LEAFREF:

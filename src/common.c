@@ -97,25 +97,22 @@ strnodetype(LYS_NODE type)
     return NULL;
 }
 
-char *
-transform_data_json2xml(struct ly_ctx *ctx, const char *expr, char ***prefixes, char ***namespaces,
-                          uint32_t *ns_count)
+const char *
+transform_expr_json2xml(struct lys_module *module, const char *expr, char ***prefixes, char ***namespaces,
+                        uint32_t *ns_count)
 {
-    const char *in, *id;
-    char *out, *col, *mod_name;
+    const char *in, *id, *pref;
+    char *out, *col;
     size_t out_size, out_used, id_len;
     struct lys_module *mod;
     uint32_t i;
 
-    assert(prefixes && namespaces && ns_count);
+    assert(module && expr && ((!prefixes && !namespaces && !ns_count) || (prefixes && namespaces && ns_count)));
 
-    *ns_count = 0;
-    *prefixes = NULL;
-    *namespaces = NULL;
-
-    if (!expr) {
-        /* empty value */
-        return strdup("");
+    if (ns_count) {
+        *ns_count = 0;
+        *prefixes = NULL;
+        *namespaces = NULL;
     }
 
     in = expr;
@@ -130,7 +127,7 @@ transform_data_json2xml(struct ly_ctx *ctx, const char *expr, char ***prefixes, 
             strcpy(&out[out_used], in);
             out_used += strlen(in)+1;
             assert(out_size == out_used);
-            return out;
+            return lydict_insert_zc(module->ctx, out);
         }
         id = strpbrk_backwards(col-1, "/ [", (col-in)-1);
         if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[')) {
@@ -139,22 +136,32 @@ transform_data_json2xml(struct ly_ctx *ctx, const char *expr, char ***prefixes, 
         id_len = col-id;
 
         /* get the module */
-        mod_name = strndup(id, id_len);
-        mod = ly_ctx_get_module(ctx, mod_name, NULL);
-        free(mod_name);
-
-        /* remember the new namespace definition */
-        for (i = 0; i < *ns_count; ++i) {
-            if ((*namespaces)[i] == mod->ns) {
+        for (i = 0; i < module->imp_size; ++i) {
+            if (!strncmp(module->imp[i].module->name, id, id_len) && !module->imp[i].module->name[id_len]) {
+                mod = module->imp[i].module;
+                pref = module->imp[i].prefix;
                 break;
             }
         }
-        if (i == *ns_count) {
-            ++(*ns_count);
-            *prefixes = realloc(*prefixes, *ns_count * sizeof **prefixes);
-            *namespaces = realloc(*namespaces, *ns_count * sizeof **namespaces);
-            (*prefixes)[*ns_count-1] = (char *)mod->prefix;
-            (*namespaces)[*ns_count-1] = (char *)mod->ns;
+        if (i == module->imp_size) {
+            LOGVAL(LYE_SPEC, 0, "Module \"%.*s\" not found in the imports of \"%s\".", id_len, id, module->name);
+            return NULL;
+        }
+
+        /* remember the namespace definition (only if it's new) */
+        if (ns_count) {
+            for (i = 0; i < *ns_count; ++i) {
+                if ((*namespaces)[i] == mod->ns) {
+                    break;
+                }
+            }
+            if (i == *ns_count) {
+                ++(*ns_count);
+                *prefixes = realloc(*prefixes, *ns_count * sizeof **prefixes);
+                *namespaces = realloc(*namespaces, *ns_count * sizeof **namespaces);
+                (*prefixes)[*ns_count-1] = (char *)pref;
+                (*namespaces)[*ns_count-1] = (char *)mod->ns;
+            }
         }
 
         /* adjust out size */
@@ -183,7 +190,7 @@ transform_data_json2xml(struct ly_ctx *ctx, const char *expr, char ***prefixes, 
 }
 
 const char *
-transform_data_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml, int log)
+transform_expr_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int log)
 {
     const char *in, *id;
     char *out, *col, *prefix;
@@ -191,7 +198,7 @@ transform_data_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml, int log)
     struct lys_module *mod;
     struct lyxml_ns *ns;
 
-    in = xml->content;
+    in = expr;
     out_size = strlen(in)+1;
     out = malloc(out_size);
     out_used = 0;

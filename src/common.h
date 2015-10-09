@@ -162,30 +162,36 @@ const char *strnodetype(LYS_NODE type);
 /**
  * @brief Transform expression from JSON format to XML format.
  * Output arrays point to strings in the dictionary, but without
- * correcting theit ref_count -> do not touch them.
+ * correcting theit ref_count -> do not touch them. Prefixes of
+ * the namespaces are import prefixes of the modules. Output
+ * parameters are optional, but either all 3 are set or none
+ * of them is. Logs directly.
  *
- * @param[in] ctx libyang context to use.
+ * @param[in] module Module with imports to use.
  * @param[in] expr JSON expression.
  * @param[out] prefixes Array of pointers to prefixes. After use free them with free(*prefixes).
+ * Can be NULL.
  * @param[out] namespaces Array of pointers to full namespaces. After use free them with
- * free(*namespaces).
+ * free(*namespaces). Can be NULL.
  * @param[out] ns_count Number of elements in both \p prefixes and \p namespaces arrays.
+ * Can be NULL.
  *
- * @return Transformed XML expression, NULL on error.
+ * @return Transformed XML expression in the dictionary, NULL on error.
  */
-char *transform_data_json2xml(struct ly_ctx *ctx, const char *expr, char ***prefixes, char ***namespaces,
-                              uint32_t *ns_count);
+const char *transform_expr_json2xml(struct lys_module *module, const char *expr, char ***prefixes, char ***namespaces,
+                                    uint32_t *ns_count);
 
 /**
  * @brief Transform expression from XML format (prefixes and separate NS definitions) to
  *        JSON format (prefixes are module names instead). Logs directly.
  *
  * @param[in] ctx libyang context to use.
+ * @param[in] expr XML expression.
  * @param[in] xml XML element with the expression.
  * @param[in] log Whether to log errors or not.
  *
- * @return Transformed data in the dictionary or NULL on error.
+ * @return Transformed JSON expression in the dictionary, NULL on error.
  */
-const char *transform_data_xml2json(struct ly_ctx *ctx, struct lyxml_elem *xml, int log);
+const char *transform_expr_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int log);
 
 #endif /* LY_COMMON_H_ */

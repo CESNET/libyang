@@ -650,7 +650,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct
          * using module names as namespaces
          */
         xml->content = leaf->value_str;
-        leaf->value_str = transform_data_xml2json(leaf->schema->module->ctx, xml, 1);
+        leaf->value_str = transform_expr_xml2json(leaf->schema->module->ctx, xml->content, xml, 1);
         lydict_remove(leaf->schema->module->ctx, xml->content);
         xml->content = NULL;
         if (!leaf->value_str) {

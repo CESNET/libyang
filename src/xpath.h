@@ -198,7 +198,7 @@ enum lyxp_node_type {
  * @brief Evaluate the XPath expression \p expr on data. The context must have
  * a single root without configuration meaning, but with schema with nodetype set.
  *
- * @param[in] expr XPath expression to evaluate.
+ * @param[in] expr XPath expression to evaluate. Must be in JSON format (prefixes are model names).
  * @param[in] cur_node Current (context) data node.
  * @param[out] set Result set. Must be valid (zeroed usually).
  * @param[in] line Line in the input file.
