@@ -128,9 +128,21 @@ get_path_skip_opts_completion(const char *hint, char ***matches, unsigned int *m
             ++ptr;
         }
 
-        ptr = strchr(ptr, ' ');
+        if (ptr[0] == '\'') {
+            ptr = strchr(ptr + 1, '\'');
+            if (ptr) {
+                ++ptr;
+            }
+        } else if (ptr[0] == '"') {
+            ptr = strchr(ptr + 1, '"');
+            if (ptr) {
+                ++ptr;
+            }
+        } else {
+            ptr = strchr(ptr, ' ');
+        }
         /* option argument is last - no hint */
-        if (!ptr) {
+        if (!ptr || !ptr[0]) {
             return;
         }
         while (*ptr == ' ') {
@@ -257,7 +269,8 @@ complete_cmd(const char *buf, linenoiseCompletions *lc)
     if (!strncmp(buf, "add ", 4)) {
         get_path_multiple_completion(buf, &matches, &match_count);
     } else if (!strncmp(buf, "searchpath ", 11) || !strncmp(buf, "data ", 5)
-            || !strncmp(buf, "config ", 7) || !strncmp(buf, "filter ", 7)) {
+            || !strncmp(buf, "config ", 7) || !strncmp(buf, "filter ", 7)
+            || !strncmp(buf, "xpath", 5)) {
         get_path_skip_opts_completion(buf, &matches, &match_count);
     } else if (!strncmp(buf, "print ", 6) || !strncmp(buf, "feature ", 8)) {
         get_model_completion(buf, &matches, &match_count);

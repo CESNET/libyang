@@ -99,6 +99,7 @@ const char *ly_errs[] = {
 /* LYE_INCHAR */       "Unexpected character(s) '%c' (%.15s).",
 /* LYE_INPRED */       "Predicate resolution failed on \"%s\".",
 /* LYE_MCASEDATA */    "Data for more than one case branch of \"%s\" choice present.",
+/* LYE_NOCOND */       "%s condition \"%s\" not satisfied.",
 
 /* LYE_XPATH_INTOK */  "Unexpected XPath token %s (%.15s).",
 /* LYE_XPATH_EOF */    "Unexpected XPath expression end.",

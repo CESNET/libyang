@@ -34,15 +34,15 @@
  * PARSED GRAMMAR
  *
  * Full axes are not supported, abbreviated forms must be used,
- * variables are not supported, "id()" function is not supported,
- * processing instruction and comment nodes are not supported,
- * bsolute path "/" is not supported, which is also reflected
- * in the grammar. Undefined rules and constants are tokens.
+ * variables are not supported, "id()" and "name(node-set?)"
+ * functions are not supported, and processing instruction and
+ * comment nodes are not supported, which is also reflected in
+ * the grammar. Undefined rules and constants are tokens.
  *
  * Modified full grammar:
  *
  * [1] LocationPath ::= RelativeLocationPath | AbsoluteLocationPath
- * [2] AbsoluteLocationPath ::= '/' RelativeLocationPath | '//' RelativeLocationPath
+ * [2] AbsoluteLocationPath ::= '/' RelativeLocationPath? | '//' RelativeLocationPath
  * [3] RelativeLocationPath ::= Step | RelativeLocationPath '/' Step | RelativeLocationPath '//' Step
  * [4] Step ::= '@'? NodeTest Predicate* | '.' | '..'
  * [5] NodeTest ::= NameTest | NodeType '(' ')'
@@ -183,21 +183,11 @@ struct lyxp_set {
  * @brief Types of nodes that can be in an LYXP_SET_NODE_SET XPath set.
  */
 enum lyxp_node_type {
-
-    /* Value of the node of this type determines the context to a certain extent.
-     * Node value in schema:
-     *      NULL       - top-level root
-     *      LYS_NOTIF  - notification
-     *      LYS_RPC    - RPC input
-     *      LYS_OUTPUT - RPC output
-     *
-     * Node value in data:
-     *      LYS_CONTAINER && !node->parent - top-level root
-     *      LYS_NOTIF                      - notification
-     *      LYS_RPC                        - RPC input
-     *      LYS_OUTPUT                     - RPC output
-     */
-    LYXP_NODE_ROOT,
+    LYXP_NODE_ROOT_CONFIG,      /* <running> data context (node value NULL) */
+    LYXP_NODE_ROOT_STATE,       /* <running> + state data context (node value NULL) */
+    LYXP_NODE_ROOT_NOTIF,       /* notification context (node value LYS_NOTIF) */
+    LYXP_NODE_ROOT_RPC,         /* RPC (input) context (node value LYS_RPC) */
+    LYXP_NODE_ROOT_OUTPUT,      /* RPC output-only context (node value LYS_RPC) */
 
     LYXP_NODE_ELEM,
     LYXP_NODE_TEXT,
@@ -208,26 +198,50 @@ enum lyxp_node_type {
  * @brief Evaluate the XPath expression \p expr on data. The context must have
  * a single root without configuration meaning, but with schema with nodetype set.
  *
- * @param[in] expr XPath expression to use.
+ * @param[in] expr XPath expression to evaluate.
  * @param[in] cur_node Current (context) data node.
- * @param[out] set Result set.
+ * @param[out] set Result set. Must be valid (zeroed usually).
  * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
-int lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set **set, uint32_t line);
+int lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line);
 
 /**
- * @brief Evaluate the XPath expression \p expr on schema. The context root is only
- * virtual and is simulated on the models list of libyang context structure.
+ * @brief Check the syntax of an XPath expression \p expr. Since it's only syntactic,
+ * node and function names may still be invalid.
  *
- * @param[in] expr XPath expression to use.
- * @param[in] cur_snode Current (context) schema node.
- * @param[out] set Result set.
+ * @param[in] expr XPath expression to check.
  * @param[in] line Line in the input file.
  *
- * @return EXIT_SUCCESS on success, -1 on error.
+ * @return EXIT_SUCCESS on pass, -1 on failure.
  */
-int lyxp_eval_schema(const char *expr, struct lys_node *cur_snode, struct lyxp_set **set, uint32_t line);
+int lyxp_syntax_check(const char *expr, uint32_t line);
+
+/**
+ * @brief Print \p set contents.
+ *
+ * @param[in] f File stream to use.
+ * @param[in] set Set to print.
+ */
+void lyxp_set_print_xml(FILE *f, struct lyxp_set *set);
+
+/**
+ * @brief Cast XPath set to another type.
+ *        Indirectly context position aware.
+ *
+ * @param[in] set Set to cast.
+ * @param[in] target Target type to cast \p set into.
+ * @param[in] ctx libyang context to use.
+ */
+void lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct lyd_node *cur_node);
+
+/**
+ * @brief Free contents of an XPath \p set.
+ *
+ * @param[in] set Set to free.
+ * @param[in] ctx libyang context to use.
+ */
+void lyxp_set_free(struct lyxp_set *set, struct ly_ctx *ctx);
 
 #endif /* _XPATH_H */

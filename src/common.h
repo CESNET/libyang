@@ -25,7 +25,7 @@
 #include <stdint.h>
 
 #include "libyang.h"
-#include "tree_internal.h"
+#include "resolve.h"
 
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
@@ -119,6 +119,7 @@ enum LY_ERR {
     LYE_INCHAR,
     LYE_INPRED,
     LYE_MCASEDATA,
+    LYE_NOCOND,
 
     LYE_XPATH_INTOK,
     LYE_XPATH_EOF,

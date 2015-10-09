@@ -40,6 +40,9 @@
 API struct lyd_node *
 lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
 {
+    struct lyxml_elem *xml;
+    struct lyd_node *result = NULL;
+
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
         return NULL;
@@ -48,14 +51,17 @@ lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
     switch (format) {
     case LYD_XML:
     case LYD_XML_FORMAT:
-        return xml_read_data(ctx, data, options);
+        xml = lyxml_read(ctx, data, 0);
+        result = lyd_parse_xml(ctx, xml, options);
+        lyxml_free_elem(ctx, xml);
+        break;
     case LYD_JSON:
     default:
         /* TODO */
         return NULL;
     }
 
-    return NULL;
+    return result;
 }
 
 API struct lyd_node *
@@ -485,7 +491,7 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options)
     ly_errno = 0;
     LY_TREE_FOR_SAFE(node, next, iter) {
         /* various validation checks */
-        if (lyv_data_content(iter, 0, options)) {
+        if (lyv_data_content(iter, 0, options, NULL)) {
             if (ly_errno) {
                 return EXIT_FAILURE;
             } else {
@@ -549,7 +555,7 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node, int options)
     ly_errno = 0;
     LY_TREE_FOR_SAFE(node, next, iter) {
         /* various validation checks */
-        if (lyv_data_content(iter, 0, options)) {
+        if (lyv_data_content(iter, 0, options, NULL)) {
             if (ly_errno) {
                 return EXIT_FAILURE;
             } else {

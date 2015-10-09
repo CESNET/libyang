@@ -554,11 +554,11 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
              * is not complete, so many instanceids cannot be resolved
              */
             if (unres) {
-                if (unres_data_add(unres, (struct lyd_node *)node, line)) {
+                if (unres_data_add(unres, (struct lyd_node *)node, UNRES_INSTID, line)) {
                     return EXIT_FAILURE;
                 }
             } else {
-                if (resolve_unres_data_item((struct lyd_node *)node, 0, line)) {
+                if (resolve_unres_data_item((struct lyd_node *)node, UNRES_INSTID, 0, line)) {
                     return EXIT_FAILURE;
                 }
             }
@@ -581,11 +581,11 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
              * is not complete, so many noderefs cannot be resolved
              */
             if (unres) {
-                if (unres_data_add(unres, (struct lyd_node *)node, line)) {
+                if (unres_data_add(unres, (struct lyd_node *)node, UNRES_LEAFREF, line)) {
                     return EXIT_FAILURE;
                 }
             } else {
-                if (resolve_unres_data_item((struct lyd_node *)node, 0, line)) {
+                if (resolve_unres_data_item((struct lyd_node *)node, UNRES_LEAFREF, 0, line)) {
                     return EXIT_FAILURE;
                 }
             }
@@ -824,10 +824,6 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         }
     }
 
-    if (lyv_data_context(schema, LOGLINE(xml), options)) {
-        return NULL;
-    }
-
     /* check insert attribute and its values */
     if (options & LYD_OPT_EDIT) {
         i = 0;
@@ -920,6 +916,10 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     }
     result->schema = schema;
 
+    if (lyv_data_context(result, options, LOGLINE(xml), unres)) {
+        goto error;
+    }
+
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
@@ -965,7 +965,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     /* various validation checks */
     ly_errno = 0;
-    if (lyv_data_content(result, LOGLINE(xml), options)) {
+    if (lyv_data_content(result, options, LOGLINE(xml), unres)) {
         if (ly_errno) {
             goto error;
         } else {
@@ -1030,50 +1030,12 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int options)
         result = NULL;
     }
 
-    free(unres->dnode);
+    free(unres->node);
+    free(unres->type);
 #ifndef NDEBUG
     free(unres->line);
 #endif
     free(unres);
-
-    return result;
-}
-
-/* logs indirectly */
-struct lyd_node *
-xml_read_data(struct ly_ctx *ctx, const char *data, int options)
-{
-    struct lyxml_elem *xml;
-    struct lyd_node *result, *next, *iter;
-    struct unres_data *unres = NULL;
-
-    xml = lyxml_read(ctx, data, 0);
-    if (!xml) {
-        return NULL;
-    }
-
-    unres = calloc(1, sizeof *unres);
-
-    ly_errno = 0;
-    result = xml_parse_data(ctx, xml->child, NULL, NULL, options, unres);
-
-    /* check leafrefs and/or instids if any */
-    if (result && resolve_unres_data(unres)) {
-        /* leafref & instid checking failed */
-        LY_TREE_FOR_SAFE(result, next, iter) {
-            lyd_free(iter);
-        }
-        result = NULL;
-    }
-
-    free(unres->dnode);
-#ifndef NDEBUG
-    free(unres->line);
-#endif
-    free(unres);
-
-    /* free source XML tree */
-    lyxml_free_elem(ctx, xml);
 
     return result;
 }
