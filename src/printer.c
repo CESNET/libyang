@@ -48,7 +48,7 @@ ly_print(struct lyout *out, const char *format, ...)
         break;
     case LYOUT_CALLBACK:
         count = vasprintf(&msg, format, ap);
-        count = out->method.writeclb(msg, count);
+        count = out->method.clb.f(out->method.clb.arg, msg, count);
         free(msg);
         break;
     }
@@ -66,7 +66,7 @@ ly_write(struct lyout *out, const char *buf, size_t count)
     case LYOUT_STREAM:
         return fwrite(buf, sizeof *buf, count, out->method.f);
     case LYOUT_CALLBACK:
-        return out->method.writeclb(buf, count);
+        return out->method.clb.f(out->method.clb.arg, buf, count);
     }
 
     return 0;
@@ -124,7 +124,7 @@ lys_print_fd(int fd, struct lys_module *module, LYS_OUTFORMAT format, const char
 }
 
 API int
-lys_print_clb(ssize_t (*writeclb)(const void *buf, size_t count), struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
 {
     struct lyout out;
 
@@ -134,7 +134,8 @@ lys_print_clb(ssize_t (*writeclb)(const void *buf, size_t count), struct lys_mod
     }
 
     out.type = LYOUT_CALLBACK;
-    out.method.writeclb = writeclb;
+    out.method.clb.f = writeclb;
+    out.method.clb.arg = arg;
 
     return lys_print_(&out, module, format, target_node);
 }
@@ -188,7 +189,7 @@ lyd_print_fd(int fd, struct lyd_node *root, LYD_FORMAT format)
 }
 
 API int
-lyd_print_clb(ssize_t (*writeclb)(const void *buf, size_t count), struct lyd_node *root, LYD_FORMAT format)
+lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lyd_node *root, LYD_FORMAT format)
 {
     struct lyout out;
 
@@ -198,7 +199,8 @@ lyd_print_clb(ssize_t (*writeclb)(const void *buf, size_t count), struct lyd_nod
     }
 
     out.type = LYOUT_CALLBACK;
-    out.method.writeclb = writeclb;
+    out.method.clb.f = writeclb;
+    out.method.clb.arg = arg;
 
     return lyd_print_(&out, root, format);
 }

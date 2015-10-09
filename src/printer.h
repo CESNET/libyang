@@ -37,7 +37,10 @@ struct lyout {
     union {
         int fd;
         FILE *f;
-        ssize_t (*writeclb)(const void *buf, size_t count);
+        struct {
+            ssize_t (*f)(void *arg, const void *buf, size_t count);
+            void *arg;
+        } clb;
     } method;
 };
 
