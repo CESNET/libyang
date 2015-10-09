@@ -171,7 +171,6 @@ struct lyxml_elem *lyxml_read_file(struct ly_ctx *ctx, const char *filename, int
  * @param[in] elem Root element of the XML tree to print
  * @param[in] options Dump options, see @ref xmldumpoptions.
  * @return number of printed characters.
- *
  */
 int lyxml_dump(FILE * stream, struct lyxml_elem *elem, int options);
 
@@ -184,9 +183,20 @@ int lyxml_dump(FILE * stream, struct lyxml_elem *elem, int options);
  * @param[in] elem Root element of the XML tree to print
  * @param[in] options Dump options, see @ref xmldumpoptions.
  * @return number of printed characters.
- *
  */
 int lyxml_dump_fd(int fd, struct lyxml_elem *elem, int options);
+
+/**
+ * @brief Dump XML tree to a IO stream
+ *
+ * Same as lyxml_dump(), but it writes data via the provided callback.
+ *
+ * @param[in] writeclb Callback function to write the data (see write(1)).
+ * @param[in] elem Root element of the XML tree to print
+ * @param[in] options Dump options, see @ref xmldumpoptions.
+ * @return number of printed characters.
+ */
+int lyxml_dump_clb(ssize_t (*writeclb)(const void *buf, size_t count), struct lyxml_elem *elem, int options);
 
 /**
  * @brief Free (and unlink from the XML tree) the specified element with all

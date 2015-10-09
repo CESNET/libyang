@@ -1361,3 +1361,18 @@ lyxml_dump_fd(int fd, struct lyxml_elem *elem, int options)
 
     return dump_elem(&out, elem, 0, options);
 }
+
+API int
+lyxml_dump_clb(ssize_t (*writeclb)(const void *buf, size_t count), struct lyxml_elem *elem, int options)
+{
+    struct lyout out;
+
+    if (!writeclb || !elem) {
+        return 0;
+    }
+
+    out.type = LYOUT_CALLBACK;
+    out.method.writeclb = writeclb;
+
+    return dump_elem(&out, elem, 0, options);
+}

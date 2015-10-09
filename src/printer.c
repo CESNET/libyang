@@ -19,7 +19,7 @@
  *    software without specific prior written permission.
  */
 
-#define _GNU_SOURCE /* vdprintf() */
+#define _GNU_SOURCE /* vasprintf(), vdprintf() */
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,6 +34,7 @@ int
 ly_print(struct lyout *out, const char *format, ...)
 {
     int count;
+    char *msg = NULL;
     va_list ap;
 
     va_start(ap, format);
@@ -44,6 +45,11 @@ ly_print(struct lyout *out, const char *format, ...)
         break;
     case LYOUT_STREAM:
         count = vfprintf(out->method.f, format, ap);
+        break;
+    case LYOUT_CALLBACK:
+        count = vasprintf(&msg, format, ap);
+        count = out->method.writeclb(msg, count);
+        free(msg);
         break;
     }
 
@@ -59,6 +65,8 @@ ly_write(struct lyout *out, const char *buf, size_t count)
         return write(out->method.fd, buf, count);
     case LYOUT_STREAM:
         return fwrite(buf, sizeof *buf, count, out->method.f);
+    case LYOUT_CALLBACK:
+        return out->method.writeclb(buf, count);
     }
 
     return 0;
@@ -115,6 +123,22 @@ lys_print_fd(int fd, struct lys_module *module, LYS_OUTFORMAT format, const char
     return lys_print_(&out, module, format, target_node);
 }
 
+API int
+lys_print_clb(ssize_t (*writeclb)(const void *buf, size_t count), struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+{
+    struct lyout out;
+
+    if (!writeclb || !module) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    out.type = LYOUT_CALLBACK;
+    out.method.writeclb = writeclb;
+
+    return lys_print_(&out, module, format, target_node);
+}
+
 static int
 lyd_print_(struct lyout *out, struct lyd_node *root, LYD_FORMAT format)
 {
@@ -159,6 +183,22 @@ lyd_print_fd(int fd, struct lyd_node *root, LYD_FORMAT format)
 
     out.type = LYOUT_FD;
     out.method.fd = fd;
+
+    return lyd_print_(&out, root, format);
+}
+
+API int
+lyd_print_clb(ssize_t (*writeclb)(const void *buf, size_t count), struct lyd_node *root, LYD_FORMAT format)
+{
+    struct lyout out;
+
+    if (!writeclb || !root) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    out.type = LYOUT_CALLBACK;
+    out.method.writeclb = writeclb;
 
     return lyd_print_(&out, root, format);
 }
