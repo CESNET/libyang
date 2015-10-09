@@ -2663,7 +2663,7 @@ xpath_normalize_space(struct lyxp_set *args, uint16_t arg_count, struct lyd_node
         }
 
         /* at worst there is one trailing space now */
-        if (is_xmlws(new[new_used - 1])) {
+        if (new_used && is_xmlws(new[new_used - 1])) {
             --new_used;
         }
 
