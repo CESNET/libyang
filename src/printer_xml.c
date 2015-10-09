@@ -27,6 +27,7 @@
 #include <inttypes.h>
 
 #include "common.h"
+#include "printer.h"
 #include "xml.h"
 #include "tree_data.h"
 #include "tree_schema.h"
@@ -36,10 +37,10 @@
 #define INDENT ""
 #define LEVEL (level*2)
 
-void xml_print_node(FILE *f, int level, struct lyd_node *node);
+void xml_print_node(struct lyout *out, int level, struct lyd_node *node);
 
 static void
-xml_print_attrs(FILE *f, struct lyd_node *node)
+xml_print_attrs(struct lyout *out, struct lyd_node *node)
 {
     struct lyd_attr *attr;
     struct lyd_ns *ns;
@@ -48,16 +49,16 @@ xml_print_attrs(FILE *f, struct lyd_node *node)
         if (attr->type == LYD_ATTR_NS) {
             ns = (struct lyd_ns *)attr;
             if (ns->prefix) {
-                fprintf(f, " xmlns:%s=\"%s\"", ns->prefix, ns->value);
+                ly_print(out, " xmlns:%s=\"%s\"", ns->prefix, ns->value);
             } else {
-                fprintf(f, " xmlns=\"%s\"", ns->value);
+                ly_print(out, " xmlns=\"%s\"", ns->value);
             }
 
         } else {
             if (attr->ns && attr->ns->prefix) {
-                fprintf(f, " %s:%s=\"%s\"", attr->ns->prefix, attr->name, attr->value);
+                ly_print(out, " %s:%s=\"%s\"", attr->ns->prefix, attr->name, attr->value);
             } else {
-                fprintf(f, " %s=\"%s\"", attr->name, attr->value);
+                ly_print(out, " %s=\"%s\"", attr->name, attr->value);
             }
         }
     }
@@ -151,15 +152,15 @@ transform_data_json2xml(struct ly_ctx *ctx, const char *json_data, char ***prefi
 }
 
 static void
-xml_print_leaf(FILE *f, int level, struct lyd_node *node)
+xml_print_leaf(struct lyout *out, int level, struct lyd_node *node)
 {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
     char **prefs, **nss, *xml_data;
     uint32_t ns_count, i;
 
-    fprintf(f, "%*s<%s", LEVEL, INDENT, node->schema->name);
+    ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
 
-    xml_print_attrs(f, node);
+    xml_print_attrs(out, node);
 
     switch (leaf->value_type & LY_DATA_TYPE_MASK) {
     case LY_TYPE_BINARY:
@@ -176,7 +177,7 @@ xml_print_leaf(FILE *f, int level, struct lyd_node *node)
     case LY_TYPE_UINT16:
     case LY_TYPE_UINT32:
     case LY_TYPE_UINT64:
-        fprintf(f, ">%s</%s>\n", (leaf->value_str ? leaf->value_str : ""), node->schema->name);
+        ly_print(out, ">%s</%s>\n", (leaf->value_str ? leaf->value_str : ""), node->schema->name);
         break;
 
     case LY_TYPE_IDENT:
@@ -184,76 +185,76 @@ xml_print_leaf(FILE *f, int level, struct lyd_node *node)
         xml_data = transform_data_json2xml(node->schema->module->ctx, ((struct lyd_node_leaf_list *)node)->value_str,
                                            &prefs, &nss, &ns_count);
         for (i = 0; i < ns_count; ++i) {
-            fprintf(f, " xmlns:%s=\"%s\"", prefs[i], nss[i]);
+            ly_print(out, " xmlns:%s=\"%s\"", prefs[i], nss[i]);
         }
         free(prefs);
         free(nss);
 
         if (xml_data[0]) {
-            fprintf(f, ">%s</%s>\n", xml_data, node->schema->name);
+            ly_print(out, ">%s</%s>\n", xml_data, node->schema->name);
         } else {
-            fprintf(f, "/>\n");
+            ly_print(out, "/>\n");
         }
         free(xml_data);
         break;
 
     case LY_TYPE_LEAFREF:
-        fprintf(f, ">%s</%s>\n", ((struct lyd_node_leaf_list *)(leaf->value.leafref))->value_str, node->schema->name);
+        ly_print(out, ">%s</%s>\n", ((struct lyd_node_leaf_list *)(leaf->value.leafref))->value_str, node->schema->name);
         break;
 
     case LY_TYPE_EMPTY:
-        fprintf(f, "/>\n");
+        ly_print(out, "/>\n");
         break;
 
     default:
         /* error */
-        fprintf(f, "\"(!error!)\"");
+        ly_print(out, "\"(!error!)\"");
     }
 }
 
 static void
-xml_print_container(FILE *f, int level, struct lyd_node *node)
+xml_print_container(struct lyout *out, int level, struct lyd_node *node)
 {
     struct lyd_node *child;
 
-    fprintf(f, "%*s<%s", LEVEL, INDENT, node->schema->name);
+    ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
 
-    xml_print_attrs(f, node);
+    xml_print_attrs(out, node);
 
-    fprintf(f, ">\n");
+    ly_print(out, ">\n");
 
     LY_TREE_FOR(node->child, child) {
-        xml_print_node(f, level + 1, child);
+        xml_print_node(out, level + 1, child);
     }
 
-    fprintf(f, "%*s</%s>\n", LEVEL, INDENT, node->schema->name);
+    ly_print(out, "%*s</%s>\n", LEVEL, INDENT, node->schema->name);
 }
 
 static void
-xml_print_list(FILE *f, int level, struct lyd_node *node, int is_list)
+xml_print_list(struct lyout *out, int level, struct lyd_node *node, int is_list)
 {
     struct lyd_node *child;
 
     if (is_list) {
         /* list print */
-        fprintf(f, "%*s<%s", LEVEL, INDENT, node->schema->name);
+        ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
 
-        xml_print_attrs(f, node);
-        fprintf(f, ">\n");
+        xml_print_attrs(out, node);
+        ly_print(out, ">\n");
 
         LY_TREE_FOR(node->child, child) {
-            xml_print_node(f, level + 1, child);
+            xml_print_node(out, level + 1, child);
         }
 
-        fprintf(f, "%*s</%s>\n", LEVEL, INDENT, node->schema->name);
+        ly_print(out, "%*s</%s>\n", LEVEL, INDENT, node->schema->name);
     } else {
         /* leaf-list print */
-        xml_print_leaf(f, level, node);
+        xml_print_leaf(out, level, node);
     }
 }
 
 static void
-xml_print_anyxml(FILE *f, int level, struct lyd_node *node)
+xml_print_anyxml(struct lyout *out, int level, struct lyd_node *node)
 {
     FILE *stream;
     char *buf, *ptr, *line;
@@ -261,7 +262,7 @@ xml_print_anyxml(FILE *f, int level, struct lyd_node *node)
     struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
 
     if (axml->value) {
-        fprintf(f, "%*s<%s>\n", LEVEL, INDENT, node->schema->name);
+        ly_print(out, "%*s<%s>\n", LEVEL, INDENT, node->schema->name);
 
         /* dump the anyxml into a buffer */
         stream = open_memstream(&buf, &buf_size);
@@ -271,38 +272,38 @@ xml_print_anyxml(FILE *f, int level, struct lyd_node *node)
         ++level;
         line = strtok_r(buf, "\n", &ptr);
         do {
-            fprintf(f, "%*s%s\n", LEVEL, INDENT, line);
+            ly_print(out, "%*s%s\n", LEVEL, INDENT, line);
         } while ((line = strtok_r(NULL, "\n", &ptr)));
         --level;
 
         free(buf);
 
-        fprintf(f, "%*s</%s>\n", LEVEL, INDENT, node->schema->name);
+        ly_print(out, "%*s</%s>\n", LEVEL, INDENT, node->schema->name);
     } else {
-        fprintf(f, "%*s<%s/>\n", LEVEL, INDENT, node->schema->name);
+        ly_print(out, "%*s<%s/>\n", LEVEL, INDENT, node->schema->name);
     }
 }
 
 void
-xml_print_node(FILE *f, int level, struct lyd_node *node)
+xml_print_node(struct lyout *out, int level, struct lyd_node *node)
 {
     switch (node->schema->nodetype) {
     case LYS_NOTIF:
     case LYS_RPC:
     case LYS_CONTAINER:
-        xml_print_container(f, level, node);
+        xml_print_container(out, level, node);
         break;
     case LYS_LEAF:
-        xml_print_leaf(f, level, node);
+        xml_print_leaf(out, level, node);
         break;
     case LYS_LEAFLIST:
-        xml_print_list(f, level, node, 0);
+        xml_print_list(out, level, node, 0);
         break;
     case LYS_LIST:
-        xml_print_list(f, level, node, 1);
+        xml_print_list(out, level, node, 1);
         break;
     case LYS_ANYXML:
-        xml_print_anyxml(f, level, node);
+        xml_print_anyxml(out, level, node);
         break;
     default:
         LOGINT;
@@ -310,22 +311,22 @@ xml_print_node(FILE *f, int level, struct lyd_node *node)
     }
 }
 
-API int
-xml_print_data(FILE *f, struct lyd_node *root)
+int
+xml_print_data(struct lyout *out, struct lyd_node *root)
 {
     int level = 0;
     struct lyd_node *node;
 
     /* start */
-    fprintf(f, "<libyang>\n");
+    ly_print(out, "<libyang>\n");
 
     /* content */
     LY_TREE_FOR(root, node) {
-        xml_print_node(f, level + 1, node);
+        xml_print_node(out, level + 1, node);
     }
 
     /* end */
-    fprintf(f, "</libyang>\n");
+    ly_print(out, "</libyang>\n");
 
     return EXIT_SUCCESS;
 }

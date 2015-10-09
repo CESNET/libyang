@@ -19,39 +19,74 @@
  *    software without specific prior written permission.
  */
 
-#include <stdlib.h>
+#define _GNU_SOURCE /* vdprintf() */
+#include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include "common.h"
 #include "tree_schema.h"
 #include "tree_data.h"
+#include "printer.h"
 
-/* printer/-.c */
-int yang_print_model(FILE * f, struct lys_module *module);
-int tree_print_model(FILE * f, struct lys_module *module);
-int info_print_model(FILE * f, struct lys_module *module, const char *target_node);
+int
+ly_print(struct lyout *out, const char *format, ...)
+{
+    int count;
+    va_list ap;
 
-int json_print_data(FILE *f, struct lyd_node *root);
-int xml_print_data(FILE *f, struct lyd_node *root);
+    va_start(ap, format);
+
+    switch(out->type) {
+    case LYOUT_FD:
+        count = vdprintf(out->method.fd, format, ap);
+        break;
+    case LYOUT_STREAM:
+        count = vfprintf(out->method.f, format, ap);
+        break;
+    }
+
+    va_end(ap);
+    return count;
+}
+
+int
+ly_write(struct lyout *out, const char *buf, size_t count)
+{
+    switch(out->type) {
+    case LYOUT_FD:
+        return write(out->method.fd, buf, count);
+    case LYOUT_STREAM:
+        return fwrite(buf, sizeof *buf, count, out->method.f);
+    }
+
+    return 0;
+}
 
 API int
 lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
 {
+    struct lyout out;
+
     if (!f || !module) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
+
+    out.type = LYOUT_STREAM;
+    out.method.f = f;
 
     switch (format) {
     case LYS_OUT_YIN:
         LOGERR(LY_EINVAL, "YIN output format not supported yet.");
         return EXIT_FAILURE;
     case LYS_OUT_YANG:
-        return yang_print_model(f, module);
+        return yang_print_model(&out, module);
     case LYS_OUT_TREE:
-        return tree_print_model(f, module);
+        return tree_print_model(&out, module);
     case LYS_OUT_INFO:
-        return info_print_model(f, module, target_node);
+        return info_print_model(&out, module, target_node);
     default:
         LOGERR(LY_EINVAL, "Unknown output format.");
         return EXIT_FAILURE;
@@ -61,16 +96,21 @@ lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const char *
 API int
 lyd_print(FILE * f, struct lyd_node *root, LYD_FORMAT format)
 {
+    struct lyout out;
+
     if (!f || !root) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
 
+    out.type = LYOUT_STREAM;
+    out.method.f = f;
+
     switch (format) {
     case LYD_XML:
-        return xml_print_data(f, root);
+        return xml_print_data(&out, root);
     case LYD_JSON:
-        return json_print_data(f, root);
+        return json_print_data(&out, root);
     default:
         LOGERR(LY_EINVAL, "Unknown output format.");
         return EXIT_FAILURE;
