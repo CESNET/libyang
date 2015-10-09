@@ -57,10 +57,12 @@ xml_print_attrs(struct lyout *out, struct lyd_node *node)
 
         } else {
             if (attr->ns && attr->ns->prefix) {
-                ly_print(out, " %s:%s=\"%s\"", attr->ns->prefix, attr->name, attr->value);
+                ly_print(out, " %s:%s=\"", attr->ns->prefix, attr->name);
             } else {
-                ly_print(out, " %s=\"%s\"", attr->name, attr->value);
+                ly_print(out, " %s=\"", attr->name);
             }
+            lyxml_dump_text(out, attr->value);
+            ly_print(out, "\"");
         }
     }
 }
@@ -92,7 +94,9 @@ xml_print_leaf(struct lyout *out, int level, struct lyd_node *node)
     case LY_TYPE_UINT16:
     case LY_TYPE_UINT32:
     case LY_TYPE_UINT64:
-        ly_print(out, ">%s</%s>", (leaf->value_str ? leaf->value_str : ""), node->schema->name);
+        ly_print(out, ">");
+        lyxml_dump_text(out, leaf->value_str);
+        ly_print(out, "</%s>", node->schema->name);
         break;
 
     case LY_TYPE_IDENT:
@@ -112,7 +116,9 @@ xml_print_leaf(struct lyout *out, int level, struct lyd_node *node)
         free(nss);
 
         if (xml_expr[0]) {
-            ly_print(out, ">%s</%s>", xml_expr, node->schema->name);
+            ly_print(out, ">");
+            lyxml_dump_text(out, xml_expr);
+            ly_print(out, "</%s>", node->schema->name);
         } else {
             ly_print(out, "/>");
         }
@@ -120,7 +126,9 @@ xml_print_leaf(struct lyout *out, int level, struct lyd_node *node)
         break;
 
     case LY_TYPE_LEAFREF:
-        ly_print(out, ">%s</%s>", ((struct lyd_node_leaf_list *)(leaf->value.leafref))->value_str, node->schema->name);
+        ly_print(out, ">");
+        lyxml_dump_text(out, ((struct lyd_node_leaf_list *)(leaf->value.leafref))->value_str);
+        ly_print(out, "</%s>", node->schema->name);
         break;
 
     case LY_TYPE_EMPTY:
