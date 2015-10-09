@@ -3976,7 +3976,7 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
                 if ((moveto_mod && !sub->ns) || (!moveto_mod && sub->ns)) {
                     continue;
                 }
-                if (pref_len) {
+                if (moveto_mod) {
                     cur_mod = moveto_resolve_model(sub->ns->value, strlen(sub->ns->value), ctx, 0);
                     if (cur_mod != moveto_mod) {
                         /* no match */
