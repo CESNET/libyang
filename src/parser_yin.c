@@ -1210,7 +1210,10 @@ fill_yin_must(struct lys_module *module, struct lyxml_elem *yin, struct lys_rest
     const char *value;
 
     GETVAL(value, yin, "condition");
-    must->expr = lydict_insert(module->ctx, value, strlen(value));
+    must->expr = transform_expr_xml2json(module->ctx, value, yin, 1);
+    if (!must->expr) {
+        goto error;
+    }
 
     return read_restr_substmt(module->ctx, must, yin);
 
@@ -2533,7 +2536,10 @@ read_yin_when(struct lys_module *module, struct lyxml_elem *yin)
     retval = calloc(1, sizeof *retval);
 
     GETVAL(value, yin, "condition");
-    retval->cond = lydict_insert(module->ctx, value, 0);
+    retval->cond = transform_expr_xml2json(module->ctx, value, yin, 1);
+    if (!retval->cond) {
+        goto error;
+    }
 
     LY_TREE_FOR(yin->child, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
