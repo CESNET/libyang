@@ -165,6 +165,8 @@ struct lyxml_elem *lyxml_read_file(struct ly_ctx *ctx, const char *filename, int
 /**
  * @brief Dump XML tree to a IO stream
  *
+ * To write data into a file descriptor instead of file stream, use lyxml_dump_fd().
+ *
  * @param[in] stream IO stream to print out the tree.
  * @param[in] elem Root element of the XML tree to print
  * @param[in] options Dump options, see @ref xmldumpoptions.
@@ -172,6 +174,19 @@ struct lyxml_elem *lyxml_read_file(struct ly_ctx *ctx, const char *filename, int
  *
  */
 int lyxml_dump(FILE * stream, struct lyxml_elem *elem, int options);
+
+/**
+ * @brief Dump XML tree to a IO stream
+ *
+ * Same as lyxml_dump(), but it writes data into the given file descriptor.
+ *
+ * @param[in] fd File descriptor to print out the tree.
+ * @param[in] elem Root element of the XML tree to print
+ * @param[in] options Dump options, see @ref xmldumpoptions.
+ * @return number of printed characters.
+ *
+ */
+int lyxml_dump_fd(int fd, struct lyxml_elem *elem, int options);
 
 /**
  * @brief Free (and unlink from the XML tree) the specified element with all
