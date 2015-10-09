@@ -418,8 +418,11 @@ lyd_new_anyxml(struct lyd_node *parent, struct lys_module *module, const char *n
     /* add fake root so we can parse the data */
     asprintf(&xml, "<root>%s</root>", val_xml);
     root = lyxml_read(ctx, xml, 0);
-    /* TODO: check return value */
     free(xml);
+    if (!root) {
+        free(ret);
+        return NULL;
+    }
 
     /* remove the root */
     first_child = last_child = NULL;
