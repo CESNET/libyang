@@ -1201,10 +1201,14 @@ lyxml_read_file(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
     return NULL;
 }
 
-static int
-dump_text(struct lyout *out, const char *text)
+int
+lyxml_dump_text(struct lyout *out, const char *text)
 {
     unsigned int i, n;
+
+    if (!text) {
+        return 0;
+    }
 
     for (i = n = 0; text[i]; i++) {
         switch (text[i]) {
@@ -1239,7 +1243,7 @@ dump_elem(struct lyout *out, struct lyxml_elem *e, int level, int options)
     if (!e->name) {
         /* mixed content */
         if (e->content) {
-            return dump_text(out, e->content);
+            return lyxml_dump_text(out, e->content);
         } else {
             return 0;
         }
@@ -1300,7 +1304,7 @@ dump_elem(struct lyout *out, struct lyxml_elem *e, int level, int options)
         ly_print(out, ">");
         size++;
 
-        size += dump_text(out, e->content);
+        size += lyxml_dump_text(out, e->content);
 
         if (e->ns && e->ns->prefix) {
             size += ly_print(out, "</%s:%s>%s", e->ns->prefix, e->name, delim);

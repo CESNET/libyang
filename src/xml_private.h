@@ -24,6 +24,7 @@
 
 #include <stdio.h>
 #include "xml.h"
+#include "printer.h"
 
 /*
  * Macro to test if character is #x20 | #x9 | #xA | #xD (whitespace)
@@ -137,5 +138,14 @@ void lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
  * 00010000 -- 001FFFFF:    11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
  */
 int lyxml_getutf8(const char *buf, unsigned int *read, unsigned int line);
+
+/**
+ * @brief Dump XML text. Converts special characters to their equivalent
+ * starting with '&'.
+ * @param[in] out Output structure.
+ * @param[in] text Text to dump.
+ * @return Number of dumped characters.
+ */
+int lyxml_dump_text(struct lyout *out, const char *text);
 
 #endif /* LY_XML_PRIVATE_H_ */
