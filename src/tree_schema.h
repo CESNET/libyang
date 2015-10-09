@@ -1,7 +1,7 @@
 /**
- * @file tree.h
+ * @file tree_schema.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief libyang representation of data model and data trees.
+ * @brief libyang representation of data model trees.
  *
  * Copyright (c) 2015 CESNET, z.s.p.o.
  *
