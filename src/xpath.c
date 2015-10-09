@@ -942,7 +942,7 @@ set_sort_compare(uint16_t first_node_pos, uint16_t first_attr_pos, uint16_t seco
     if (((set->node_type[first_idx] == LYXP_NODE_TEXT)
             && ((set->node_type[second_idx] == LYXP_NODE_ELEM) || (set->node_type[second_idx] == LYXP_NODE_ATTR)))
             || ((set->node_type[first_idx] == LYXP_NODE_ATTR) && (set->node_type[second_idx] == LYXP_NODE_ELEM))
-            || (((set->node_type[first_idx] == set->node_type[second_idx]) == LYXP_NODE_ATTR)
+            || (((set->node_type[first_idx] == LYXP_NODE_ATTR) && (set->node_type[second_idx] == LYXP_NODE_ATTR))
             && (first_attr_pos > second_attr_pos))) {
         return 1;
     }
