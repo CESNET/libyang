@@ -28,7 +28,8 @@
 
 typedef enum LYOUT_TYPE {
     LYOUT_FD,          /**< file descriptor */
-    LYOUT_STREAM       /**< FILE stream */
+    LYOUT_STREAM,      /**< FILE stream */
+    LYOUT_CALLBACK     /**< print via provided callback */
 } LYOUT_TYPE;
 
 struct lyout {
@@ -36,6 +37,7 @@ struct lyout {
     union {
         int fd;
         FILE *f;
+        ssize_t (*writeclb)(const void *buf, size_t count);
     } method;
 };
 
