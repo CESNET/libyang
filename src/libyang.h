@@ -466,6 +466,8 @@ struct lyd_node *lyd_read(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int opt
 /**
  * @brief Print schema tree in the specified format.
  *
+ * To write data into a file descriptor, use lys_print_fd().
+ *
  * @param[in] module Schema tree to print.
  * @param[in] f File stream where to print the schema.
  * @param[in] format Schema output format.
@@ -476,7 +478,23 @@ struct lyd_node *lyd_read(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int opt
 int lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
 
 /**
+ * @brief Print schema tree in the specified format.
+ *
+ * Same as lys_print(), but output is written into the specified file descriptor.
+ *
+ * @param[in] module Schema tree to print.
+ * @param[in] fd File descriptor where to print the data.
+ * @param[in] format Schema output format.
+ * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
+ * node in the module will be printed.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lys_print_fd(int fd, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+
+/**
  * @brief Print data tree in the specified format.
+ *
+ * To write data into a file descriptor, use lyd_print_fd().
  *
  * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
  * node of the data tree to print the specific subtree.
@@ -485,6 +503,19 @@ int lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const ch
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lyd_print(FILE *f, struct lyd_node *root, LYD_FORMAT format);
+
+/**
+ * @brief Print data tree in the specified format.
+ *
+ * Same as lyd_print(), but output is written into the specified file descriptor.
+ *
+ * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
+ * node of the data tree to print the specific subtree.
+ * @param[in] fd File descriptor where to print the data.
+ * @param[in] format Data output format.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lyd_print_fd(int fd, struct lyd_node *root, LYD_FORMAT format);
 
 /**@} printers */
 
