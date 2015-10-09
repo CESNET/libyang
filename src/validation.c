@@ -295,8 +295,14 @@ lyv_data_context(struct lyd_node *node, int options, unsigned int line, struct u
     }
 
     /* check all relevant when conditions */
-    if (unres_data_add(unres, node, UNRES_WHEN, line) == -1) {
-        return EXIT_FAILURE;
+    if (unres) {
+        if (unres_data_add(unres, node, UNRES_WHEN, line) == -1) {
+            return EXIT_FAILURE;
+        }
+    } else {
+        if (resolve_unres_data_item(node, UNRES_WHEN, 0, line)) {
+            return EXIT_FAILURE;
+        }
     }
 
     /* check for (non-)presence of status data in edit-config data */
@@ -521,8 +527,14 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
     }
 
     /* check must conditions */
-    if (unres_data_add(unres, node, UNRES_MUST, line) == -1) {
-        return EXIT_FAILURE;
+    if (unres) {
+        if (unres_data_add(unres, node, UNRES_MUST, line) == -1) {
+            return EXIT_FAILURE;
+        }
+    } else {
+        if (resolve_unres_data_item(node, UNRES_MUST, 0, line)) {
+            return EXIT_FAILURE;
+        }
     }
 
     return EXIT_SUCCESS;
