@@ -229,10 +229,6 @@ lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char 
         }
         break;
 
-    case LY_TYPE_INST:
-        /* TODO */
-        break;
-
     case LY_TYPE_LEAFREF:
         val_str = (char *)lydict_insert(snode->module->ctx, ((struct lyd_node_leaf_list *)value.leafref)->value_str, 0);
         break;
@@ -281,7 +277,7 @@ lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char 
         val_str = (char *)lydict_insert(snode->module->ctx, str_num, 0);
         break;
 
-    default:
+    default: /* LY_TYPE_INST */
         LOGINT;
         return NULL;
     }
