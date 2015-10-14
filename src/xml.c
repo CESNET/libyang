@@ -187,34 +187,35 @@ lyxml_find_ns(struct lyxml_elem *elem, const char *prefix, const char *value)
         return NULL;
     }
 
-    for (attr = elem->attr; attr; attr = attr->next) {
-        if (attr->type != LYXML_ATTR_NS) {
-            continue;
-        }
+    for (; elem; elem = elem->parent) {
+        for (attr = elem->attr; attr; attr = attr->next) {
+            if (attr->type != LYXML_ATTR_NS) {
+                continue;
+            }
 
-        pref_match = 0;
-        if (!prefix && !attr->name) {
-            pref_match = 1;
-        }
-        if (prefix && attr->name && !strcmp(attr->name, prefix)) {
-            pref_match = 1;
-        }
+            pref_match = 0;
+            if (!prefix && !attr->name) {
+                pref_match = 1;
+            }
+            if (prefix && attr->name && !strcmp(attr->name, prefix)) {
+                pref_match = 1;
+            }
 
-        val_match = 0;
-        if (!value && !attr->value) {
-            val_match = 1;
-        }
-        if (value && attr->value && !strcmp(attr->value, value)) {
-            val_match = 1;
-        }
+            val_match = 0;
+            if (!value && !attr->value) {
+                val_match = 1;
+            }
+            if (value && attr->value && !strcmp(attr->value, value)) {
+                val_match = 1;
+            }
 
-        if (pref_match && val_match) {
-            return (struct lyxml_ns *)attr;
+            if (pref_match && val_match) {
+                return (struct lyxml_ns *)attr;
+            }
         }
     }
 
-    /* go recursively */
-    return lyxml_find_ns(elem->parent, prefix, value);
+    return NULL;
 }
 
 static void
@@ -223,11 +224,11 @@ lyxml_correct_ns(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
     const struct lyxml_ns *elem_ns;
     struct lyxml_elem *elem_root, *ns_root, *tmp;
 
+    /* find the root of elem */
+    for (elem_root = elem; elem_root->parent; elem_root = elem_root->parent);
+
     LY_TREE_DFS_BEGIN(elem, tmp, elem) {
         if (elem->ns) {
-            /* find the root of elem */
-            for (elem_root = elem; elem_root->parent; elem_root = elem_root->parent);
-
             /* find the root of elem NS */
             for (ns_root = elem->ns->parent; ns_root->parent; ns_root = ns_root->parent);
 
