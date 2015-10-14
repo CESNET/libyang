@@ -57,6 +57,7 @@ ly_print(struct lyout *out, const char *format, ...)
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;
                 LOGMEM;
+                va_end(ap);
                 return -1;
             }
             out->method.mem.buf = aux;
