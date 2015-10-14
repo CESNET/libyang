@@ -494,16 +494,32 @@ int lys_print_fd(int fd, struct lys_module *module, LYS_OUTFORMAT format, const 
 /**
  * @brief Print schema tree in the specified format.
  *
- * Same as lys_print(), but output is written via provided callback.
+ * Same as lys_print(),  but it allocates memory and store the data into it.
+ * It is up to caller to free the returned string by free().
  *
+ * @param[out] strp Pointer to store the resulting dump.
  * @param[in] module Schema tree to print.
- * @param[in] writeclb Callback function to write the data (see write(1)).
  * @param[in] format Schema output format.
  * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
  * node in the module will be printed.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lys_print_clb(ssize_t (*writeclb)(const void *buf, size_t count), struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+int lys_print_mem(char **strp, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+
+/**
+ * @brief Print schema tree in the specified format.
+ *
+ * Same as lys_print(), but output is written via provided callback.
+ *
+ * @param[in] module Schema tree to print.
+ * @param[in] writeclb Callback function to write the data (see write(1)).
+ * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
+ * @param[in] format Schema output format.
+ * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
+ * node in the module will be printed.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
 
 /**
  * @brief Print data tree in the specified format.
@@ -531,6 +547,21 @@ int lyd_print(FILE *f, struct lyd_node *root, LYD_FORMAT format);
  */
 int lyd_print_fd(int fd, struct lyd_node *root, LYD_FORMAT format);
 
+
+ /**
+ * @brief Print data tree in the specified format.
+ *
+ * Same as lyd_print(), but it allocates memory and store the data into it.
+ * It is up to caller to free the returned string by free().
+ *
+ * @param[out] strp Pointer to store the resulting dump.
+ * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
+ * node of the data tree to print the specific subtree.
+ * @param[in] format Data output format.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lyd_print_mem(char **strp, struct lyd_node *root, LYD_FORMAT format);
+
 /**
  * @brief Print data tree in the specified format.
  *
@@ -539,10 +570,11 @@ int lyd_print_fd(int fd, struct lyd_node *root, LYD_FORMAT format);
  * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
  * node of the data tree to print the specific subtree.
  * @param[in] writeclb Callback function to write the data (see write(1)).
+ * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
  * @param[in] format Data output format.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print_clb(ssize_t (*writeclb)(const void *buf, size_t count), struct lyd_node *root, LYD_FORMAT format);
+int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lyd_node *root, LYD_FORMAT format);
 
 /**@} printers */
 

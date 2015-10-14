@@ -189,14 +189,28 @@ int lyxml_dump_fd(int fd, struct lyxml_elem *elem, int options);
 /**
  * @brief Dump XML tree to a IO stream
  *
- * Same as lyxml_dump(), but it writes data via the provided callback.
+ * Same as lyxml_dump(), but it allocates memory and store the data into it.
+ * It is up to caller to free the returned string by free().
  *
- * @param[in] writeclb Callback function to write the data (see write(1)).
+ * @param[out] strp Pointer to store the resulting dump.
  * @param[in] elem Root element of the XML tree to print
  * @param[in] options Dump options, see @ref xmldumpoptions.
  * @return number of printed characters.
  */
-int lyxml_dump_clb(ssize_t (*writeclb)(const void *buf, size_t count), struct lyxml_elem *elem, int options);
+int lyxml_dump_mem(char **strp, struct lyxml_elem *elem, int options);
+
+/**
+ * @brief Dump XML tree to a IO stream
+ *
+ * Same as lyxml_dump(), but it writes data via the provided callback.
+ *
+ * @param[in] writeclb Callback function to write the data (see write(1)).
+ * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
+ * @param[in] elem Root element of the XML tree to print
+ * @param[in] options Dump options, see @ref xmldumpoptions.
+ * @return number of printed characters.
+ */
+int lyxml_dump_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lyxml_elem *elem, int options);
 
 /**
  * @brief Free (and unlink from the XML tree) the specified element with all

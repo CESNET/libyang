@@ -1364,7 +1364,28 @@ lyxml_dump_fd(int fd, struct lyxml_elem *elem, int options)
 }
 
 API int
-lyxml_dump_clb(ssize_t (*writeclb)(const void *buf, size_t count), struct lyxml_elem *elem, int options)
+lyxml_dump_mem(char **strp, struct lyxml_elem *elem, int options)
+{
+    struct lyout out;
+    int r;
+
+    if (!strp || !elem) {
+        return 0;
+    }
+
+    out.type = LYOUT_MEMORY;
+    out.method.mem.buf = NULL;
+    out.method.mem.len = 0;
+    out.method.mem.size = 0;
+
+    r = dump_elem(&out, elem, 0, options);
+
+    *strp = out.method.mem.buf;
+    return r;
+}
+
+API int
+lyxml_dump_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lyxml_elem *elem, int options)
 {
     struct lyout out;
 
@@ -1373,7 +1394,8 @@ lyxml_dump_clb(ssize_t (*writeclb)(const void *buf, size_t count), struct lyxml_
     }
 
     out.type = LYOUT_CALLBACK;
-    out.method.writeclb = writeclb;
+    out.method.clb.f = writeclb;
+    out.method.clb.arg = arg;
 
     return dump_elem(&out, elem, 0, options);
 }
