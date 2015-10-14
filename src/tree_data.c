@@ -571,6 +571,127 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node, int options)
     return EXIT_SUCCESS;
 }
 
+/* return matching namespace in node or any of it's parents */
+static struct lyd_ns *
+lyd_find_ns(struct lyd_node *node, const char *prefix, const char *value)
+{
+    int pref_match, val_match;
+    struct lyd_attr *attr;
+
+    if (!node) {
+        return NULL;
+    }
+
+    for (; node; node = node->parent) {
+        for (attr = node->attr; attr; attr = attr->next) {
+            if (attr->type != LYD_ATTR_NS) {
+                continue;
+            }
+
+            pref_match = 0;
+            if (!prefix && !attr->name) {
+                pref_match = 1;
+            }
+            if (prefix && attr->name && !strcmp(attr->name, prefix)) {
+                pref_match = 1;
+            }
+
+            val_match = 0;
+            if (!value && !attr->value) {
+                val_match = 1;
+            }
+            if (value && attr->value && !strcmp(attr->value, value)) {
+                val_match = 1;
+            }
+
+            if (pref_match && val_match) {
+                return (struct lyd_ns *)attr;
+            }
+        }
+    }
+
+    return NULL;
+}
+
+/* create an attribute copy including correct namespace if used */
+static struct lyd_attr *
+lyd_dup_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr)
+{
+    struct lyd_attr *ret;
+
+    /* allocate new attr */
+    if (!parent->attr) {
+        parent->attr = malloc(sizeof *parent->attr);
+        ret = parent->attr;
+    } else {
+        for (ret = parent->attr; ret->next; ret = ret->next);
+        ret->next = malloc(sizeof *ret);
+        ret = ret->next;
+    }
+
+    /* fill new attr except ns/parent */
+    ret->type = attr->type;
+    ret->next = NULL;
+    ret->name = lydict_insert(ctx, attr->name, 0);
+    ret->value = lydict_insert(ctx, attr->value, 0);
+
+    if (ret->type == LYD_ATTR_NS) {
+        /* fill parent in a NS */
+        ((struct lyd_ns *)ret)->parent = parent;
+    } else if (attr->ns) {
+        /* attr has a namespace */
+
+        /* perhaps the namespace was already copied over? */
+        ret->ns = lyd_find_ns(parent, attr->ns->prefix, attr->ns->value);
+        if (!ret->ns) {
+            /* nope, it wasn't */
+            ret->ns = (struct lyd_ns *)lyd_dup_attr(ctx, parent, (struct lyd_attr *)attr->ns);
+        }
+    } else {
+        /* there is no namespace */
+        ret->ns = NULL;
+    }
+
+    return ret;
+}
+
+/* correct namespaces in the attributes of subtree nodes of node */
+static void
+lyd_correct_ns(struct lyd_node *node)
+{
+    const struct lyd_ns *attr_ns;
+    struct lyd_attr *attr;
+    struct lyd_node *node_root, *ns_root, *tmp;
+
+    /* find the root of node */
+    for (node_root = node; node_root->parent; node_root = node_root->parent);
+
+    LY_TREE_DFS_BEGIN(node, tmp, node) {
+        for (attr = node->attr; attr; attr = attr->next) {
+            if ((attr->type != LYD_ATTR_STD) || !attr->ns) {
+                continue;
+            }
+
+            /* find the root of attr NS */
+            for (ns_root = attr->ns->parent; ns_root->parent; ns_root = ns_root->parent);
+
+            /* attr NS is defined outside node subtree */
+            if (ns_root != node_root) {
+                attr_ns = attr->ns;
+                /* we may have already copied the NS over? */
+                attr->ns = lyd_find_ns(node, attr_ns->prefix, attr_ns->value);
+
+                /* we haven't copied it over, copy it now */
+                if (!attr->ns) {
+                    attr->ns = (struct lyd_ns *)lyd_dup_attr(node->schema->module->ctx, node,
+                                                             (struct lyd_attr *)attr_ns);
+                }
+            }
+        }
+        LY_TREE_DFS_END(node, tmp, node);
+    }
+}
+
 API int
 lyd_unlink(struct lyd_node *node)
 {
@@ -609,6 +730,7 @@ lyd_unlink(struct lyd_node *node)
     node->next = NULL;
     node->prev = node;
 
+    lyd_correct_ns(node);
     return EXIT_SUCCESS;
 }
 

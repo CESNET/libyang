@@ -324,7 +324,7 @@ int lyd_move_before(struct lyd_node *sibling, struct lyd_node *node);
 int lyd_move_after(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
- * @brief Unlink the specified data subtree.
+ * @brief Unlink the specified data subtree. All referenced namespaces are copied.
  *
  * Note, that the node's connection with the schema tree is kept. Therefore, in case of
  * reconnecting the node to a data tree using lyd_paste() it is necessary to paste it
