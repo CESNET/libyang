@@ -22,6 +22,7 @@
 #define _GNU_SOURCE /* vasprintf(), vdprintf() */
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -34,7 +35,7 @@ int
 ly_print(struct lyout *out, const char *format, ...)
 {
     int count;
-    char *msg = NULL;
+    char *msg = NULL, *aux;
     va_list ap;
 
     va_start(ap, format);
@@ -45,6 +46,24 @@ ly_print(struct lyout *out, const char *format, ...)
         break;
     case LYOUT_STREAM:
         count = vfprintf(out->method.f, format, ap);
+        break;
+    case LYOUT_MEMORY:
+        count = vasprintf(&msg, format, ap);
+        if (out->method.mem.len + count + 1 > out->method.mem.size) {
+            aux = realloc(out->method.mem.buf, out->method.mem.len + count + 1);
+            if (!aux) {
+                free(out->method.mem.buf);
+                out->method.mem.buf = NULL;
+                out->method.mem.len = 0;
+                out->method.mem.size = 0;
+                LOGMEM;
+                return -1;
+            }
+            out->method.mem.buf = aux;
+            out->method.mem.size += count + 1;
+        }
+        memcpy(&out->method.mem.buf[out->method.mem.len], msg, count + 1);
+        out->method.mem.len += count;
         break;
     case LYOUT_CALLBACK:
         count = vasprintf(&msg, format, ap);
@@ -60,11 +79,30 @@ ly_print(struct lyout *out, const char *format, ...)
 int
 ly_write(struct lyout *out, const char *buf, size_t count)
 {
+    char *aux;
+
     switch(out->type) {
     case LYOUT_FD:
         return write(out->method.fd, buf, count);
     case LYOUT_STREAM:
         return fwrite(buf, sizeof *buf, count, out->method.f);
+    case LYOUT_MEMORY:
+        if (out->method.mem.len + count + 1 > out->method.mem.size) {
+            aux = realloc(out->method.mem.buf, out->method.mem.len + count + 1);
+            if (!aux) {
+                free(out->method.mem.buf);
+                out->method.mem.buf = NULL;
+                out->method.mem.len = 0;
+                out->method.mem.size = 0;
+                LOGMEM;
+                return -1;
+            }
+            out->method.mem.buf = aux;
+            out->method.mem.size += count + 1;
+        }
+        memcpy(&out->method.mem.buf[out->method.mem.len], buf, count + 1);
+        out->method.mem.len += count;
+        return count;
     case LYOUT_CALLBACK:
         return out->method.clb.f(out->method.clb.arg, buf, count);
     }
@@ -121,6 +159,28 @@ lys_print_fd(int fd, struct lys_module *module, LYS_OUTFORMAT format, const char
     out.method.fd = fd;
 
     return lys_print_(&out, module, format, target_node);
+}
+
+API int
+lys_print_mem(char **strp, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+{
+    struct lyout out;
+    int r;
+
+    if (!strp || !module) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    out.type = LYOUT_MEMORY;
+    out.method.mem.buf = NULL;
+    out.method.mem.len = 0;
+    out.method.mem.size = 0;
+
+    r = lys_print_(&out, module, format, target_node);
+
+    *strp = out.method.mem.buf;
+    return r;
 }
 
 API int
@@ -186,6 +246,28 @@ lyd_print_fd(int fd, struct lyd_node *root, LYD_FORMAT format)
     out.method.fd = fd;
 
     return lyd_print_(&out, root, format);
+}
+
+API int
+lyd_print_mem(char **strp, struct lyd_node *root, LYD_FORMAT format)
+{
+    struct lyout out;
+    int r;
+
+    if (!strp || !root) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    out.type = LYOUT_MEMORY;
+    out.method.mem.buf = NULL;
+    out.method.mem.len = 0;
+    out.method.mem.size = 0;
+
+    r = lyd_print_(&out, root, format);
+
+    *strp = out.method.mem.buf;
+    return r;
 }
 
 API int
