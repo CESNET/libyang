@@ -248,9 +248,8 @@ struct lyd_node *lyd_new_anyxml(struct lyd_node *parent, struct lys_module *modu
                                 const char *val_xml);
 
 /**
- * @brief Create a copy of the specified data tree \p node
- *
- * TODO not implemented
+ * @brief Create a copy of the specified data tree \p node. Namespaces are copied as needed,
+ * schema references are kept the same.
  *
  * @param[in] node Data tree node to be duplicated.
  * @param[in] recursive 1 if all children are supposed to be also duplicated.

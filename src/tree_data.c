@@ -750,6 +750,125 @@ lyd_unlink(struct lyd_node *node)
     return EXIT_SUCCESS;
 }
 
+API struct lyd_node *
+lyd_dup(struct lyd_node *node, int recursive)
+{
+    struct lyd_node *next, *elem, *ret, *parent, *new_node;
+    struct lyd_attr *attr;
+    struct lyd_node_leaf_list *new_leaf;
+    struct lyd_node_anyxml *new_axml;
+    struct lys_type *type;
+
+    if (!node) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    ret = NULL;
+    parent = NULL;
+
+    /* LY_TREE_DFS */
+    for (elem = next = node; elem; elem = next) {
+
+        /* fill specific part */
+        switch (elem->schema->nodetype) {
+        case LYS_LEAF:
+        case LYS_LEAFLIST:
+            new_leaf = malloc(sizeof *new_leaf);
+            new_node = (struct lyd_node *)new_leaf;
+
+            new_leaf->value = ((struct lyd_node_leaf_list *)elem)->value;
+            new_leaf->value_str = lydict_insert(elem->schema->module->ctx,
+                                                ((struct lyd_node_leaf_list *)elem)->value_str, 0);
+            new_leaf->value_type = ((struct lyd_node_leaf_list *)elem)->value_type;
+            /* bits type must be treated specially */
+            if (new_leaf->value_type == LY_TYPE_BITS) {
+                for (type = &((struct lys_node_leaf *)elem->schema)->type; type->der->module; type = &type->der->type) {
+                    if (type->base != LY_TYPE_BITS) {
+                        LOGINT;
+                        lyd_free(ret);
+                        return NULL;
+                    }
+                }
+
+                new_leaf->value.bit = malloc(type->info.bits.count * sizeof *new_leaf->value.bit);
+                memcpy(new_leaf->value.bit, ((struct lyd_node_leaf_list *)elem)->value.bit,
+                       type->info.bits.count * sizeof *new_leaf->value.bit);
+            }
+            break;
+        case LYS_ANYXML:
+            new_axml = malloc(sizeof *new_axml);
+            new_node = (struct lyd_node *)new_axml;
+
+            new_axml->value = lyxml_dup_elem(elem->schema->module->ctx, ((struct lyd_node_anyxml *)elem)->value,
+                                             NULL, 1);
+            break;
+        case LYS_CONTAINER:
+        case LYS_LIST:
+        case LYS_NOTIF:
+        case LYS_RPC:
+            new_node = malloc(sizeof *new_node);
+            new_node->child = NULL;
+            break;
+        default:
+            LOGINT;
+            lyd_free(ret);
+            return NULL;
+        }
+
+        /* fill common part */
+        new_node->schema = elem->schema;
+        new_node->attr = NULL;
+        LY_TREE_FOR(elem->attr, attr) {
+            lyd_dup_attr(elem->schema->module->ctx, new_node, attr);
+        }
+        new_node->next = NULL;
+        new_node->prev = new_node;
+        new_node->parent = NULL;
+
+        if (!ret) {
+            ret = new_node;
+        }
+        if (parent) {
+            if (lyd_insert_schema_check_only(parent, new_node, NULL)) {
+                LOGINT;
+                lyd_free(ret);
+                return NULL;
+            }
+        }
+
+        if (!recursive) {
+            break;
+        }
+
+        /* LY_TREE_DFS_END */
+        /* select element for the next run - children first */
+        next = elem->child;
+        /* child exception for lyd_node_leaf and lyd_node_leaflist */
+        if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+            next = NULL;
+        }
+        if (!next) {
+            /* no children, so try siblings */
+            next = elem->next;
+        } else {
+            parent = new_node;
+        }
+        while (!next) {
+            /* no siblings, go back through parents */
+            elem = elem->parent;
+            if (elem->parent == node->parent) {
+                break;
+            }
+            parent = parent->parent;
+            /* parent is already processed, go to its sibling */
+            next = elem->next;
+        }
+    }
+
+    return ret;
+}
+
 static void
 lyd_attr_free(struct ly_ctx *ctx, struct lyd_attr *attr)
 {
