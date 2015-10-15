@@ -504,16 +504,11 @@ lyd_insert_parent(struct lyd_node *parent, struct lyd_node *node, int options, i
     return EXIT_SUCCESS;
 }
 
-API int
-lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node, int options)
+static int
+lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int options, int before)
 {
     struct lys_node *par1, *par2;
     struct lyd_node *iter, *next, *last;
-
-    if (!node || !sibling) {
-        ly_errno = LY_EINVAL;
-        return EXIT_FAILURE;
-    }
 
     if (node->parent || node->prev->next) {
         lyd_unlink(node);
@@ -532,21 +527,34 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node, int options)
         last = iter; /* remember the last of the inserted nodes */
     }
 
-    if (sibling->next) {
-        /* adding into a middle - fix the prev pointer of the node after inserted nodes */
-        last->next = sibling->next;
-        sibling->next->prev = last;
-    } else {
-        /* at the end - fix the prev pointer of the first node */
-        if (sibling->parent) {
-            sibling->parent->child->prev = last;
-        } else {
-            for (iter = sibling; iter->prev->next; iter = iter->prev);
-            iter->prev = last;
+    if (before) {
+        if (sibling->prev->next) {
+            /* adding into the list */
+            sibling->prev->next = node;
+        } else if (sibling->parent) {
+            /* at the beginning */
+            sibling->parent->child = node;
         }
+        node->prev = sibling->prev;
+        sibling->prev = last;
+        last->next = sibling;
+    } else {
+        if (sibling->next) {
+            /* adding into a middle - fix the prev pointer of the node after inserted nodes */
+            last->next = sibling->next;
+            sibling->next->prev = last;
+        } else {
+            /* at the end - fix the prev pointer of the first node */
+            if (sibling->parent) {
+                sibling->parent->child->prev = last;
+            } else {
+                for (iter = sibling; iter->prev->next; iter = iter->prev);
+                iter->prev = last;
+            }
+        }
+        sibling->next = node;
+        node->prev = sibling;
     }
-    sibling->next = node;
-    node->prev = sibling;
 
     ly_errno = 0;
     LY_TREE_FOR_SAFE(node, next, iter) {
@@ -572,6 +580,28 @@ API int
 lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options)
 {
     if (!node || !parent || lyd_insert_parent(parent, node, options, 1)) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+API int
+lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node, int options)
+{
+    if (!node || !sibling || lyd_insert_sibling(sibling, node, options, 1)) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+API int
+lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node, int options)
+{
+    if (!node || !sibling || lyd_insert_sibling(sibling, node, options, 0)) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
