@@ -325,10 +325,9 @@ struct lyxml_elem;
 /**
  * @brief Serialize anyxml content for further processing.
  *
- * TODO not implemented
- *
  * @param[in] anyxml Anyxml content from ::lyd_node_anyxml#value to serialize ax XML string
- * @return Serialized content of the anyxml or NULL in case of error
+ * @return Serialized content of the anyxml or NULL in case of error. Need to be freed after
+ * done using.
  */
 char *lyxml_serialize(struct lyxml_elem *anyxml);
 

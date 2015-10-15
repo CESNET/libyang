@@ -20,6 +20,7 @@
  *    software without specific prior written permission.
  */
 #define _GNU_SOURCE
+#define _XOPEN_SOURCE 700
 
 #include <assert.h>
 #include <ctype.h>
@@ -980,6 +981,33 @@ lyd_free(struct lyd_node *node)
     lyd_unlink(node);
     lyd_attr_free(node->schema->module->ctx, node->attr);
     free(node);
+}
+
+API char *
+lyxml_serialize(struct lyxml_elem *anyxml)
+{
+    FILE *stream;
+    char *buf;
+    size_t buf_size;
+
+    if (!anyxml) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    stream = open_memstream(&buf, &buf_size);
+    if (!stream) {
+        ly_errno = LY_ESYS;
+        return NULL;
+    }
+    if (lyxml_dump(stream, anyxml, 0) == 0) {
+        free(buf);
+        buf = NULL;
+        ly_errno = LY_EINVAL;
+    }
+    fclose(stream);
+
+    return buf;
 }
 
 int
