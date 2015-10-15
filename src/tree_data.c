@@ -786,6 +786,7 @@ lyd_dup(struct lyd_node *node, int recursive)
                 for (type = &((struct lys_node_leaf *)elem->schema)->type; type->der->module; type = &type->der->type) {
                     if (type->base != LY_TYPE_BITS) {
                         LOGINT;
+                        lyd_free(new_node);
                         lyd_free(ret);
                         return NULL;
                     }
