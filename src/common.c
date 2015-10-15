@@ -145,6 +145,7 @@ transform_expr_json2xml(struct lys_module *module, const char *expr, char ***pre
         }
         if (i == module->imp_size) {
             LOGVAL(LYE_SPEC, 0, "Module \"%.*s\" not found in the imports of \"%s\".", id_len, id, module->name);
+            free(out);
             return NULL;
         }
 
@@ -186,6 +187,7 @@ transform_expr_json2xml(struct lys_module *module, const char *expr, char ***pre
 
     /* unreachable */
     LOGINT;
+    free(out);
     return NULL;
 }
 
