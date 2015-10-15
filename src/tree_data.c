@@ -94,7 +94,7 @@ lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name)
     ret->schema = snode;
     ret->prev = ret;
     if (parent) {
-        if (lyd_insert(parent, ret, 0)) {
+        if (lyd_insert(parent, ret, LYD_OPT_STRICT)) {
             free(ret);
             return NULL;
         }
@@ -287,7 +287,7 @@ lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char 
     ret->schema = snode;
     ret->prev = (struct lyd_node *)ret;
     if (parent) {
-        if (lyd_insert(parent, (struct lyd_node *)ret, 0)) {
+        if (lyd_insert(parent, (struct lyd_node *)ret, LYD_OPT_STRICT)) {
             free(ret);
             lydict_remove(snode->module->ctx, val_str);
             return NULL;
@@ -410,7 +410,7 @@ lyd_new_anyxml(struct lyd_node *parent, struct lys_module *module, const char *n
     ret->schema = snode;
     ret->prev = (struct lyd_node *)ret;
     if (parent) {
-        if (lyd_insert(parent, (struct lyd_node *)ret, 0)) {
+        if (lyd_insert(parent, (struct lyd_node *)ret, LYD_OPT_STRICT)) {
             free(ret);
             return NULL;
         }
