@@ -861,6 +861,9 @@ lyd_dup(struct lyd_node *node, int recursive)
             if (elem->parent == node->parent) {
                 break;
             }
+            if (!parent) {
+                LOGINT;
+            }
             parent = parent->parent;
             /* parent is already processed, go to its sibling */
             next = elem->next;
