@@ -274,7 +274,8 @@ struct lyd_node *lyd_dup(struct lyd_node *node, int recursive);
 int lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options);
 
 /**
- * @brief Insert the \p node element after the \p sibling element.
+ * @brief Insert the \p node element after the \p sibling element. If \p node and \p siblings are already
+ * siblings (just moving \p node position), skip validation (\p options are ignored).
  *
  * @param[in] sibling The data tree node before which the \p node will be inserted.
  * @param[in] node The data tree node to be inserted.
@@ -287,39 +288,15 @@ int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node, int optio
 /**
  * @brief Insert the \p node element after the \p sibling element.
  *
- * @param[in] sibling The data tree node before which the \p node will be inserted.
+ * @param[in] sibling The data tree node before which the \p node will be inserted. If \p node and \p siblings
+ * are already siblings (just moving \p node position), skip validation (\p options are ignored).
+ *
  * @param[in] node The data tree node to be inserted.
  * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
  * @return 0 fo success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
  * in the data tree.
  */
 int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node, int options);
-
-/**
- * @brief Move the data tree \p node before the specified \p sibling node
- *
- * Both the data nodes must be in the same children list, i.e. they have the same parent.
- *
- * TODO not implemented
- *
- * @param[in] sibling The data tree node before which the \p node will be moved.
- * @param[in] node The data tree node to be moved.
- * @return 0 for success, nonzero in case of error
- */
-int lyd_move_before(struct lyd_node *sibling, struct lyd_node *node);
-
-/**
- * @brief Move the data tree \p node after the specified \p sibling node
- *
- * Both the data nodes must be in the same children list, i.e. they have the same parent.
- *
- * TODO not implemented
- *
- * @param[in] sibling The data tree node after which the \p node will be moved.
- * @param[in] node The data tree node to be moved.
- * @return 0 for success, nonzero in case of error
- */
-int lyd_move_after(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
  * @brief Unlink the specified data subtree. All referenced namespaces are copied.

@@ -509,6 +509,19 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int options,
 {
     struct lys_node *par1, *par2;
     struct lyd_node *iter, *next, *last;
+    int validate;
+
+    if (sibling == node) {
+        return EXIT_SUCCESS;
+    }
+
+    for (iter = node->prev; (iter != node) && (iter != sibling); iter = iter->prev);
+    if (iter == sibling) {
+        /* we're just moving the item, do not validate */
+        validate = 0;
+    } else {
+        validate = 1;
+    }
 
     if (node->parent || node->prev->next) {
         lyd_unlink(node);
@@ -556,20 +569,22 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int options,
         node->prev = sibling;
     }
 
-    ly_errno = 0;
-    LY_TREE_FOR_SAFE(node, next, iter) {
-        /* various validation checks */
-        if (lyv_data_content(iter, 0, options, NULL)) {
-            if (ly_errno) {
-                return EXIT_FAILURE;
-            } else {
-                lyd_free(iter);
+    if (validate) {
+        ly_errno = 0;
+        LY_TREE_FOR_SAFE(node, next, iter) {
+            /* various validation checks */
+            if (lyv_data_content(iter, 0, options, NULL)) {
+                if (ly_errno) {
+                    return EXIT_FAILURE;
+                } else {
+                    lyd_free(iter);
+                }
             }
-        }
 
-        if (iter == last) {
-            /* we are done - checking only the inserted nodes */
-            break;
+            if (iter == last) {
+                /* we are done - checking only the inserted nodes */
+                break;
+            }
         }
     }
 
