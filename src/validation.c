@@ -477,7 +477,7 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
             start = node->parent->child;
         } else {
             start = NULL;
-            for (diter = node; diter->prev->next; diter = diter->prev) {
+            for (diter = node; diter->next; diter = diter->prev) {
                 if (diter->schema == node->schema) {
                     /* the same list instance */
                     start = diter;
