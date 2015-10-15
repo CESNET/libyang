@@ -447,12 +447,11 @@ lyd_new_anyxml(struct lyd_node *parent, struct lys_module *module, const char *n
     return (struct lyd_node *)ret;
 }
 
-/* last - optional, points to the last inserted node */
 static int
-lyd_insert_schema_check_only(struct lyd_node *parent, struct lyd_node *node, struct lyd_node **last)
+lyd_insert_parent(struct lyd_node *parent, struct lyd_node *node, int options, int validate)
 {
     struct lys_node *sparent;
-    struct lyd_node *iter;
+    struct lyd_node *next, *iter, *last;
 
     if (node->parent || node->prev->next) {
         lyd_unlink(node);
@@ -480,43 +479,25 @@ lyd_insert_schema_check_only(struct lyd_node *parent, struct lyd_node *node, str
 
     LY_TREE_FOR(node, iter) {
         iter->parent = parent;
-        if (last) {
-            *last = iter; /* remember the last of the inserted nodes */
-        }
+        last = iter; /* remember the last of the inserted nodes */
     }
 
-    return EXIT_SUCCESS;
-}
-
-API int
-lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options)
-{
-    struct lyd_node *iter, *next, *last;
-
-    if (!node || !parent) {
-        ly_errno = LY_EINVAL;
-        return EXIT_FAILURE;
-    }
-
-    if (lyd_insert_schema_check_only(parent, node, &last)) {
-        ly_errno = LY_EINVAL;
-        return EXIT_FAILURE;
-    }
-
-    ly_errno = 0;
-    LY_TREE_FOR_SAFE(node, next, iter) {
-        /* various validation checks */
-        if (lyv_data_content(iter, 0, options, NULL)) {
-            if (ly_errno) {
-                return EXIT_FAILURE;
-            } else {
-                lyd_free(iter);
+    if (validate) {
+        ly_errno = 0;
+        LY_TREE_FOR_SAFE(node, next, iter) {
+            /* various validation checks */
+            if (lyv_data_content(iter, 0, options, NULL)) {
+                if (ly_errno) {
+                    return EXIT_FAILURE;
+                } else {
+                    lyd_free(iter);
+                }
             }
-        }
 
-        if (iter == last) {
-            /* we are done - checking only the inserted nodes */
-            break;
+            if (iter == last) {
+                /* we are done - checking only the inserted nodes */
+                break;
+            }
         }
     }
 
@@ -582,6 +563,17 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node, int options)
             /* we are done - checking only the inserted nodes */
             break;
         }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+API int
+lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options)
+{
+    if (!node || !parent || lyd_insert_parent(parent, node, options, 1)) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
@@ -831,7 +823,7 @@ lyd_dup(struct lyd_node *node, int recursive)
             ret = new_node;
         }
         if (parent) {
-            if (lyd_insert_schema_check_only(parent, new_node, NULL)) {
+            if (lyd_insert_parent(parent, new_node, 0, 0)) {
                 LOGINT;
                 lyd_free(ret);
                 return NULL;
