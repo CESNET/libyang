@@ -229,7 +229,9 @@ struct lyd_node *lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *mo
  * @param[in] module Module with the node being created.
  * @param[in] name Schema node name of the new data node.
  * @param[in] type Interpretation of the string provided in the \p val_str parameter. After appropriate
- * conversion this will be the resulting type of the value in the node. Cannot be #LY_TYPE_DER or #LY_TYPE_UNION.
+ * conversion this will be the resulting type of the value in the node. Cannot be #LY_TYPE_UNION. If
+ * #LY_TYPE_DER (0), \p val_str will be interpreted based on the schema node type, which cannot be
+ * #LY_TYPE_UNION in this case.
  * @param[in] val_str String form of the value of the node being created. Can be NULL only if \p type is
  * #LY_TYPE_EMPTY.
  */

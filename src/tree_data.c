@@ -125,6 +125,7 @@ lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char 
         siblings = module->data;
     } else {
         if (!parent->schema) {
+            ly_errno = LY_EINVAL;
             return NULL;
         }
         siblings = parent->schema->child;
@@ -132,6 +133,11 @@ lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char 
 
     if (resolve_sibling(module, siblings, NULL, 0, name, strlen(name), LYS_LEAFLIST | LYS_LEAF, &snode)
             || !snode) {
+        return NULL;
+    }
+
+    if (type != ((struct lys_node_leaf *)snode)->type.base) {
+        ly_errno = LY_EINVAL;
         return NULL;
     }
 
@@ -329,6 +335,7 @@ lyd_new_leaf_str(struct lyd_node *parent, struct lys_module *module, const char 
         siblings = module->data;
     } else {
         if (!parent->schema) {
+            ly_errno = LY_EINVAL;
             return NULL;
         }
         siblings = parent->schema->child;
@@ -336,20 +343,9 @@ lyd_new_leaf_str(struct lyd_node *parent, struct lys_module *module, const char 
 
     if (resolve_sibling(module, siblings, NULL, 0, name, strlen(name), LYS_LEAFLIST | LYS_LEAF, &snode)
             || !snode) {
+        ly_errno = LY_EINVAL;
         return NULL;
     }
-
-    ret = calloc(1, sizeof *ret);
-    ret->schema = snode;
-    ret->prev = (struct lyd_node *)ret;
-    if (parent) {
-        if (lyd_insert(parent, (struct lyd_node *)ret, 0)) {
-            free(ret);
-            return NULL;
-        }
-    }
-    ret->value_str = val_str;
-    ret->value_type = type;
 
     /* get the correct type struct */
     stype = &((struct lys_node_leaf *)snode)->type;
@@ -362,13 +358,32 @@ lyd_new_leaf_str(struct lyd_node *parent, struct lys_module *module, const char 
             stype = lyp_get_next_union_type(utype, stype, &found);
         }
         if (!stype) {
-            free(ret);
+            ly_errno = LY_EINVAL;
             return NULL;
         }
     }
 
+    if (type && (type != stype->base)) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+    type = stype->base;
+
+    ret = calloc(1, sizeof *ret);
+    ret->schema = snode;
+    ret->prev = (struct lyd_node *)ret;
+    if (parent) {
+        if (lyd_insert(parent, (struct lyd_node *)ret, LYD_OPT_STRICT)) {
+            free(ret);
+            return NULL;
+        }
+    }
+    ret->value_str = lydict_insert((module ? module->ctx : parent->schema->module->ctx), val_str, 0);
+    ret->value_type = type;
+
     if (lyp_parse_value(ret, stype, 1, NULL, 0)) {
         free(ret);
+        ly_errno = LY_EINVAL;
         return NULL;
     }
 
