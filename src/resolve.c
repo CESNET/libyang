@@ -2252,7 +2252,7 @@ resolve_path_arg_data(struct lyd_node *node, const char *path, int first, uint32
             /* absolute path */
             if (parent_times == -1) {
                 for (data = node; data->parent; data = data->parent);
-                /* TODO (may change!) we're still parsing it and the pointer is not correct yet */
+                /* we're still parsing it and the pointer is not correct yet */
                 if (data->prev) {
                     for (; data->prev->next; data = data->prev);
                 }
@@ -2399,12 +2399,6 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
             LOGVAL(LYE_SPEC, 0, "Destination node not a leaf, but %s.", strnodetype(dst_node->nodetype));
             return -parsed;
         }
-        /* TODO probably not strictly required */
-        /*if (((struct lys_node_leaf *)dst_node)->type.base != ((struct lys_node_leaf *)src_node)->type.base) {
-            LOGVAL(LYE_NORESOLV, line, path-parsed);
-            LOGVAL(LYE_SPEC, 0, "\"%s\" is of a different type than \"%s\".", src_node->name, dst_node->name);
-            return -parsed;
-        }*/
     } while (has_predicate);
 
     return parsed;
@@ -2642,7 +2636,7 @@ resolve_instid_json(struct lyd_node *data, const char *path, int line)
 
     /* we need root to resolve absolute path */
     for (; data->parent; data = data->parent);
-    /* TODO (may change!) we're still parsing it and the pointer is not correct yet */
+    /* we're still parsing it and the pointer is not correct yet */
     if (data->prev) {
         for (; data->prev->next; data = data->prev);
     }
@@ -3149,15 +3143,6 @@ resolve_identref_json(struct lys_ident *base, const char *ident_name, uint32_t l
         return NULL;
     }
 
-    /*if (prefix) {
-        module = resolve_prefixed_module(module, prefix, pref_len, 0);
-        if (!module) {
-            LOGVAL(LYE_SPEC, line, "Module \"%.*s\" could not be found.", pref_len, prefix);
-            return NULL;
-        }
-    }*/
-
-    /* TODO is this a valid (just silly) case? */
     if (!strcmp(base->name, name) && (!mod_name
             || (!strncmp(base->module->name, mod_name, mod_name_len) && !base->module->name[mod_name_len]))) {
         return base;

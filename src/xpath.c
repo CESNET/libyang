@@ -41,11 +41,6 @@
 #include "resolve.h"
 #include "dict.h"
 
-/* TODO
- *
- * boolean set for predicates (or remove repeat copying some other way)
- */
-
 static struct lyd_node *moveto_get_root(struct lyd_node *cur_node, enum lyxp_node_type *root_type);
 static int reparse_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line);
 static int eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
@@ -3776,7 +3771,7 @@ moveto_attr(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
         /* only attributes of an elem can be in the result, skip all the rest */
         if (set->node_type[i] == LYXP_NODE_ELEM) {
             LY_TREE_FOR(set->value.nodes[i]->attr, sub) {
-                /* TODO? since axes are not supported, there is no way how to select namespaces */
+                /* since axes are not supported, there is no way how to select namespaces */
                 if (sub->type == LYD_ATTR_NS) {
                     continue;
                 }
@@ -3940,7 +3935,8 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
         moveto_mod = 0;
     }
 
-    /* TODO? can be optimized similarly to moveto_node_alldesc() and save considerable amount of memory */
+    /* can be optimized similarly to moveto_node_alldesc() and save considerable amount of memory,
+     * but it likely won't be used much, so it's a waste of time */
     /* copy the context */
     set_all_desc = set_copy(set, ctx);
     /* get all descendant nodes (the original context nodes are removed) */
@@ -3965,7 +3961,7 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
         /* only attributes of an elem can be in the result, skip all the rest */
         if (set->node_type[i] == LYXP_NODE_ELEM) {
             LY_TREE_FOR(set->value.nodes[i]->attr, sub) {
-                /* TODO? since axes are not supported, there is no way how to select namespaces */
+                /* since axes are not supported, there is no way how to select namespaces */
                 if (sub->type == LYD_ATTR_NS) {
                     continue;
                 }
@@ -5070,7 +5066,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         /* find the predicate end */
         for (brack2_exp = orig_exp; exp->tokens[brack2_exp] != LYXP_TOKEN_BRACK2; ++brack2_exp);
 
-        /* copy predicate repeats, since they get deleted each time */
+        /* copy predicate repeats, since they get deleted each time (probably not an ideal solution) */
         pred_repeat = calloc(brack2_exp - orig_exp, sizeof *pred_repeat);
         for (j = 0; j < brack2_exp - orig_exp; ++j) {
             if (exp->repeat[orig_exp + j]) {
