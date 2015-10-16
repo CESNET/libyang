@@ -3912,7 +3912,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int first, 
     switch (type) {
     case UNRES_LEAFREF:
         assert(sleaf->type.base == LY_TYPE_LEAFREF);
-        if ((rc = resolve_path_arg_data((struct lyd_node *)leaf, sleaf->type.info.lref.path, first, line, &matches))) {
+        if ((rc = resolve_path_arg_data(node, sleaf->type.info.lref.path, first, line, &matches))) {
             return rc;
         }
 
