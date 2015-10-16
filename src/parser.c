@@ -519,7 +519,7 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
     int c, i, j, d;
     int found;
 
-    assert(node && node->value_type && (node->value_type == stype->base));
+    assert(node && (node->value_type == stype->base));
 
     switch (node->value_type) {
     case LY_TYPE_BINARY:
