@@ -94,8 +94,8 @@ lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name)
     ret->schema = snode;
     ret->prev = ret;
     if (parent) {
-        if (lyd_insert(parent, ret, LYD_OPT_STRICT)) {
-            free(ret);
+        if (lyd_insert(parent, ret)) {
+            lyd_free(ret);
             return NULL;
         }
     }
@@ -293,8 +293,8 @@ lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char 
     ret->schema = snode;
     ret->prev = (struct lyd_node *)ret;
     if (parent) {
-        if (lyd_insert(parent, (struct lyd_node *)ret, LYD_OPT_STRICT)) {
-            free(ret);
+        if (lyd_insert(parent, (struct lyd_node *)ret)) {
+            lyd_free((struct lyd_node *)ret);
             lydict_remove(snode->module->ctx, val_str);
             return NULL;
         }
@@ -373,8 +373,8 @@ lyd_new_leaf_str(struct lyd_node *parent, struct lys_module *module, const char 
     ret->schema = snode;
     ret->prev = (struct lyd_node *)ret;
     if (parent) {
-        if (lyd_insert(parent, (struct lyd_node *)ret, LYD_OPT_STRICT)) {
-            free(ret);
+        if (lyd_insert(parent, (struct lyd_node *)ret)) {
+            lyd_free((struct lyd_node *)ret);
             return NULL;
         }
     }
@@ -382,7 +382,7 @@ lyd_new_leaf_str(struct lyd_node *parent, struct lys_module *module, const char 
     ret->value_type = type;
 
     if (lyp_parse_value(ret, stype, 1, NULL, 0)) {
-        free(ret);
+        lyd_free((struct lyd_node *)ret);
         ly_errno = LY_EINVAL;
         return NULL;
     }
@@ -425,8 +425,8 @@ lyd_new_anyxml(struct lyd_node *parent, struct lys_module *module, const char *n
     ret->schema = snode;
     ret->prev = (struct lyd_node *)ret;
     if (parent) {
-        if (lyd_insert(parent, (struct lyd_node *)ret, LYD_OPT_STRICT)) {
-            free(ret);
+        if (lyd_insert(parent, (struct lyd_node *)ret)) {
+            lyd_free((struct lyd_node *)ret);
             return NULL;
         }
     }
@@ -436,7 +436,7 @@ lyd_new_anyxml(struct lyd_node *parent, struct lys_module *module, const char *n
     root = lyxml_read(ctx, xml, 0);
     free(xml);
     if (!root) {
-        free(ret);
+        lyd_free((struct lyd_node *)ret);
         return NULL;
     }
 
@@ -463,14 +463,15 @@ lyd_new_anyxml(struct lyd_node *parent, struct lys_module *module, const char *n
     return (struct lyd_node *)ret;
 }
 
-static int
-lyd_insert_parent(struct lyd_node *parent, struct lyd_node *node, int options, int validate)
+API int
+lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 {
     struct lys_node *sparent;
-    struct lyd_node *next, *iter, *last;
+    struct lyd_node *iter;
 
-    if (node->parent || node->prev->next) {
-        lyd_unlink(node);
+    if (!node || !parent) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
     }
 
     /* check placing the node to the appropriate place according to the schema */
@@ -480,6 +481,10 @@ lyd_insert_parent(struct lyd_node *parent, struct lyd_node *node, int options, i
     }
     if (sparent != parent->schema) {
         return EXIT_FAILURE;
+    }
+
+    if (node->parent || node->prev->next) {
+        lyd_unlink(node);
     }
 
     if (!parent->child) {
@@ -495,52 +500,19 @@ lyd_insert_parent(struct lyd_node *parent, struct lyd_node *node, int options, i
 
     LY_TREE_FOR(node, iter) {
         iter->parent = parent;
-        last = iter; /* remember the last of the inserted nodes */
-    }
-
-    if (validate) {
-        ly_errno = 0;
-        LY_TREE_FOR_SAFE(node, next, iter) {
-            /* various validation checks */
-            if (lyv_data_content(iter, 0, options, NULL)) {
-                if (ly_errno) {
-                    return EXIT_FAILURE;
-                } else {
-                    lyd_free(iter);
-                }
-            }
-
-            if (iter == last) {
-                /* we are done - checking only the inserted nodes */
-                break;
-            }
-        }
     }
 
     return EXIT_SUCCESS;
 }
 
 static int
-lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int options, int before)
+lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
 {
     struct lys_node *par1, *par2;
-    struct lyd_node *iter, *next, *last;
-    int validate;
+    struct lyd_node *iter, *last;
 
     if (sibling == node) {
         return EXIT_SUCCESS;
-    }
-
-    for (iter = node->prev; (iter != node) && (iter != sibling); iter = iter->prev);
-    if (iter == sibling) {
-        /* we're just moving the item, do not validate */
-        validate = 0;
-    } else {
-        validate = 1;
-    }
-
-    if (node->parent || node->prev->next) {
-        lyd_unlink(node);
     }
 
     /* check placing the node to the appropriate place according to the schema */
@@ -551,9 +523,13 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int options,
         return EXIT_FAILURE;
     }
 
+    if (node->parent || node->prev->next) {
+        lyd_unlink(node);
+    }
+
     LY_TREE_FOR(node, iter) {
         iter->parent = sibling->parent;
-        last = iter; /* remember the last of the inserted nodes */
+        last = iter;
     }
 
     if (before) {
@@ -585,56 +561,58 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int options,
         node->prev = sibling;
     }
 
-    if (validate) {
-        ly_errno = 0;
-        LY_TREE_FOR_SAFE(node, next, iter) {
-            /* various validation checks */
-            if (lyv_data_content(iter, 0, options, NULL)) {
-                if (ly_errno) {
-                    return EXIT_FAILURE;
-                } else {
-                    lyd_free(iter);
-                }
-            }
+    return EXIT_SUCCESS;
+}
 
-            if (iter == last) {
-                /* we are done - checking only the inserted nodes */
-                break;
+API int
+lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
+{
+    if (!node || !sibling || lyd_insert_sibling(sibling, node, 1)) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+API int
+lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
+{
+    if (!node || !sibling || lyd_insert_sibling(sibling, node, 0)) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+API int
+lyd_validate(struct lyd_node *node, int options)
+{
+    struct lyd_node *next, *iter, *to_free = NULL;
+
+    ly_errno = 0;
+    LY_TREE_DFS_BEGIN(node, next, iter) {
+        if (to_free) {
+            lyd_free(to_free);
+            to_free = NULL;
+        }
+
+        if (lyv_data_content(iter, 0, options, NULL)) {
+            if (ly_errno) {
+                return EXIT_FAILURE;
+            } else {
+                /* safe deferred removal */
+                to_free = iter;
             }
         }
+
+        LY_TREE_DFS_END(node, next, iter);
     }
 
-    return EXIT_SUCCESS;
-}
-
-API int
-lyd_insert(struct lyd_node *parent, struct lyd_node *node, int options)
-{
-    if (!node || !parent || lyd_insert_parent(parent, node, options, 1)) {
-        ly_errno = LY_EINVAL;
-        return EXIT_FAILURE;
-    }
-
-    return EXIT_SUCCESS;
-}
-
-API int
-lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node, int options)
-{
-    if (!node || !sibling || lyd_insert_sibling(sibling, node, options, 1)) {
-        ly_errno = LY_EINVAL;
-        return EXIT_FAILURE;
-    }
-
-    return EXIT_SUCCESS;
-}
-
-API int
-lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node, int options)
-{
-    if (!node || !sibling || lyd_insert_sibling(sibling, node, options, 0)) {
-        ly_errno = LY_EINVAL;
-        return EXIT_FAILURE;
+    if (to_free) {
+        lyd_free(to_free);
+        to_free = NULL;
     }
 
     return EXIT_SUCCESS;
@@ -865,8 +843,8 @@ lyd_dup(struct lyd_node *node, int recursive)
             new_node->child = NULL;
             break;
         default:
-            LOGINT;
             lyd_free(ret);
+            LOGINT;
             return NULL;
         }
 
@@ -884,9 +862,9 @@ lyd_dup(struct lyd_node *node, int recursive)
             ret = new_node;
         }
         if (parent) {
-            if (lyd_insert_parent(parent, new_node, 0, 0)) {
-                LOGINT;
+            if (lyd_insert(parent, new_node)) {
                 lyd_free(ret);
+                LOGINT;
                 return NULL;
             }
         }
