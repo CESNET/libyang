@@ -660,12 +660,32 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct
 
     if (stype->base == LY_TYPE_UNION) {
         found = 0;
-        /* TODO if type is IDENT | INST temporarily convert to JSON, convert back on fail */
         type = lyp_get_next_union_type(stype, NULL, &found);
         while (type) {
             leaf->value_type = type->base;
+
+            /* in these cases we use JSON format */
+            if ((type->base == LY_TYPE_IDENT) || (type->base == LY_TYPE_INST)) {
+                xml->content = leaf->value_str;
+                leaf->value_str = transform_expr_xml2json(leaf->schema->module->ctx, xml->content, xml, 0);
+                if (!leaf->value_str) {
+                    leaf->value_str = xml->content;
+                    xml->content = NULL;
+
+                    found = 0;
+                    type = lyp_get_next_union_type(stype, type, &found);
+                    continue;
+                }
+            }
+
             if (!lyp_parse_value(leaf, type, resolve, unres, UINT_MAX)) {
                 break;
+            }
+
+            if ((type->base == LY_TYPE_IDENT) || (type->base == LY_TYPE_INST)) {
+                lydict_remove(leaf->schema->module->ctx, leaf->value_str);
+                leaf->value_str = xml->content;
+                xml->content = NULL;
             }
 
             found = 0;
