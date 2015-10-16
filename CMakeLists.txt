@@ -55,7 +55,6 @@ set(libsrc
 	src/tree_schema.c
 	src/tree_data.c
 	src/printer.c
-	src/yang_library.c
 	src/xpath.c
 	src/printer_yang.c
 	src/printer_xml.c
