@@ -85,8 +85,8 @@ lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name)
         siblings = parent->schema->child;
     }
 
-    if (resolve_sibling(module, siblings, NULL, 0, name, strlen(name), LYS_CONTAINER | LYS_INPUT | LYS_OUTPUT
-                        | LYS_NOTIF | LYS_RPC, &snode) || !snode) {
+    if (resolve_sibling(module, siblings, NULL, 0, name, strlen(name), LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC,
+            &snode) || !snode) {
         return NULL;
     }
 
