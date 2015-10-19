@@ -31,6 +31,7 @@
 #include "resolve.h"
 #include "common.h"
 #include "xpath.h"
+#include "parser.h"
 #include "dict.h"
 #include "tree_internal.h"
 
@@ -1375,14 +1376,81 @@ resolve_superior_type(const char *name, const char *prefix, struct lys_module *m
     return EXIT_FAILURE;
 }
 
-/* logs directly */
+/**
+ * @brief Check the default \p value of the \p type. Logs directly.
+ *
+ * @param[in] type Type definition to use.
+ * @param[in] value Default value to check.
+ * @param[in] first Whether this is the first resolution try. Affects logging.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
+ */
 static int
-check_default(struct lys_type *type, const char *value)
+check_default(struct lys_type *type, const char *value, int first, uint32_t line)
 {
-    /* TODO - RFC 6020, sec. 7.3.4 */
-    (void)type;
-    (void)value;
-    return EXIT_SUCCESS;
+    struct lyd_node_leaf_list node;
+    struct lys_type *iter;
+    int ret = EXIT_SUCCESS, found;
+
+    /* dummy leaf */
+    node.value_str = value;
+    node.value_type = type->base;
+    node.schema = calloc(1, sizeof *node.schema);
+    node.schema->name = strdup("default");
+
+    if (type->base == LY_TYPE_UNION) {
+        found = 0;
+        iter = lyp_get_next_union_type(type, NULL, &found);
+        while (iter) {
+            node.value_type = iter->base;
+
+            /* special case with too much effort required and almost no added value */
+            if ((iter->base == LY_TYPE_IDENT) || (iter->base == LY_TYPE_INST)) {
+                LOGVAL(LYE_SPEC, line,
+                       "Union with \"instance-identifier\" or \"identityref\" and a default value is not supported!");
+                ret = -1;
+                goto finish;
+            }
+
+            if (!lyp_parse_value(&node, iter, 1, NULL, UINT_MAX)) {
+                break;
+            }
+
+            found = 0;
+            iter = lyp_get_next_union_type(type, iter, &found);
+        }
+
+        if (!iter) {
+            if (!first) {
+                LOGVAL(LYE_INVAL, line, node.value_str, "default");
+            }
+            ret = EXIT_FAILURE;
+            goto finish;
+        }
+
+    } else if (type->base == LY_TYPE_LEAFREF) {
+        if (!type->info.lref.target) {
+            ret = EXIT_FAILURE;
+            goto finish;
+        }
+        ret = check_default(&type->info.lref.target->type, value, first, line);
+
+    } else if ((type->base == LY_TYPE_INST) || (type->base == LY_TYPE_IDENT)) {
+        /* it was converted to JSON format before, nothing else sensible we can do */
+
+    } else {
+        ret = lyp_parse_value(&node, type, 1, NULL, (first ? UINT_MAX : line));
+    }
+
+finish:
+    if (node.value_type == LY_TYPE_BITS) {
+        free(node.value.bit);
+    }
+    free((char *)node.schema->name);
+    free(node.schema);
+
+    return ret;
 }
 
 /**
@@ -3574,7 +3642,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         base_name = str_snode;
         stype = item;
 
-        rc = check_default(stype, base_name);
+        rc = check_default(stype, base_name, first, line);
         /* do not remove base_name (dflt), it's in a typedef */
         has_str = 0;
         break;
