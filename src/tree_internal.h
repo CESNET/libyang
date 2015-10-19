@@ -123,29 +123,6 @@ void lys_submodule_free(struct lys_submodule *submodule, int free_int_mods);
 int lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child);
 
 /**
- * @brief Get next schema tree (sibling) node element that can be instanciated in a data tree.
- *
- * lys_getnext() is supposed to be called sequentially. In the first call, the \p last parameter is usually NULL
- * and function starts returning i) the first \p parent child or ii) the first top level element of the \p module.
- * Consequent calls suppose to provide the previously returned node as the \p last parameter and still the same
- * \p parent and \p module parameters.
- *
- * The function does not traverse via RPCs and Notifications.
- *
- * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
- * @param[in] parent Parent of the subtree where the function starts processing
- * @param[in] module In case of iterating on top level elements, the \p parent is NULL and module must be specified.
- * @param[in] option 1 to include the choice schema nodes into the result set.
- * @return Next schema tree node that can be instanciated in a data tree, NULL in case there is no such element
- */
-struct lys_node *lys_getnext(struct lys_node *last, struct lys_node *parent, struct lys_module *module, int options);
-
-/**
- * @brief option for lys_getnext() to allow returning the choice nodes.
- */
-#define LYS_GETNEXT_WITHCHOICE  0x01
-
-/**
  * @brief Find a valid grouping definition relative to a node.
  *
  * Valid definition means a sibling of \p start or a sibling of any of \p start 's parents.

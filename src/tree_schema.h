@@ -1292,6 +1292,29 @@ int lys_features_state(struct lys_module *module, const char *feature);
 struct lys_feature *lys_is_disabled(struct lys_node *node, int recursive);
 
 /**
+ * @brief Get next schema tree (sibling) node element that can be instanciated in a data tree. Returned node can
+ * be from an augment.
+ *
+ * lys_getnext() is supposed to be called sequentially. In the first call, the \p last parameter is usually NULL
+ * and function starts returning i) the first \p parent child or ii) the first top level element of the \p module.
+ * Consequent calls suppose to provide the previously returned node as the \p last parameter and still the same
+ * \p parent and \p module parameters.
+ *
+ * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
+ * @param[in] parent Parent of the subtree where the function starts processing
+ * @param[in] module In case of iterating on top level elements, the \p parent is NULL and module must be specified.
+ * @param[in] options 1 for including choice, 2 for case schema nodes in the result set.
+ * @return Next schema tree node that can be instanciated in a data tree, NULL in case there is no such element
+ */
+struct lys_node *lys_getnext(struct lys_node *last, struct lys_node *parent, struct lys_module *module, int options);
+
+/**
+ * @brief options for lys_getnext() to allow returning choice and case nodes.
+ */
+#define LYS_GETNEXT_WITHCHOICE   0x01
+#define LYS_GETNEXT_WITHCASE     0x02
+
+/**
  * @brief Return parent node in the schema tree.
  *
  * In case of augmenting node, it returns the target tree node where the augmenting

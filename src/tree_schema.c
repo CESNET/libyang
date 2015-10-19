@@ -85,7 +85,7 @@ check:
     goto check;
 }
 
-struct lys_node *
+API struct lys_node *
 lys_getnext(struct lys_node *last, struct lys_node *parent, struct lys_module *module, int options)
 {
     struct lys_node *next;
@@ -123,8 +123,12 @@ repeat:
     }
 
     switch (next->nodetype) {
-    case LYS_USES:
     case LYS_CASE:
+        if (options & LYS_GETNEXT_WITHCASE) {
+            return next;
+        }
+        /* fallthrough */
+    case LYS_USES:
         /* go into */
         next = next->child;
         goto repeat;
