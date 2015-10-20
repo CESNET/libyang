@@ -1035,7 +1035,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
 {
     int i;
 
-    new->prefix = lydict_insert(mod->ctx, old->prefix, 0);
+    new->module_name = lydict_insert(mod->ctx, old->module_name, 0);
     new->base = old->base;
     new->der = old->der;
 
@@ -1165,7 +1165,7 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type)
         return;
     }
 
-    lydict_remove(ctx, type->prefix);
+    lydict_remove(ctx, type->module_name);
 
     switch (type->base) {
     case LY_TYPE_BINARY:

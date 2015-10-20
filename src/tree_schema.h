@@ -357,7 +357,7 @@ typedef enum {
  * @brief YANG type structure providing information from the schema
  */
 struct lys_type {
-    const char *prefix;              /**< prefix for the type referenced in der pointer*/
+    const char *module_name;         /**< module name of the type referenced in der pointer*/
     LY_DATA_TYPE base;               /**< base type */
     struct lys_tpdf *der;            /**< pointer to the superior typedef. If NULL,
                                           structure provides information about one of the built-in types */

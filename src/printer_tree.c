@@ -178,8 +178,8 @@ tree_print_type(struct lyout *out, struct lys_type *type)
 {
     if ((type->base == LY_TYPE_LEAFREF) && !type->der->module) {
         ly_print(out, "-> %s", type->info.lref.path);
-    } else if (type->prefix) {
-        ly_print(out, "%s:%s", type->prefix, type->der->name);
+    } else if (type->module_name) {
+        ly_print(out, "%s:%s", type->module_name, type->der->name);
     } else {
         ly_print(out, "%s", type->der->name);
     }

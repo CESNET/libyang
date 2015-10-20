@@ -1260,22 +1260,22 @@ cleanup:
  * @brief Resolve a typedef. Does not log.
  *
  * @param[in] name Typedef name.
- * @param[in] prefix Typedef name prefix.
- * @param[in] module The main module.
- * @param[in] parent The parent of the resolved type definition.
+ * @param[in] mod_name Typedef name module name.
+ * @param[in] module Main module.
+ * @param[in] parent Parent of the resolved type definition.
  * @param[out] ret Pointer to the resolved typedef. Can be NULL.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 int
-resolve_superior_type(const char *name, const char *prefix, struct lys_module *module, struct lys_node *parent,
+resolve_superior_type(const char *name, const char *mod_name, struct lys_module *module, struct lys_node *parent,
                       struct lys_tpdf **ret)
 {
     int i, j;
     struct lys_tpdf *tpdf;
     int tpdf_size;
 
-    if (!prefix) {
+    if (!mod_name) {
         /* no prefix, try built-in types */
         for (i = 1; i < LY_DATA_TYPE_COUNT; i++) {
             if (!strcmp(ly_types[i].def->name, name)) {
@@ -1286,13 +1286,13 @@ resolve_superior_type(const char *name, const char *prefix, struct lys_module *m
             }
         }
     } else {
-        if (!strcmp(prefix, module->prefix)) {
+        if (!strcmp(mod_name, module->name)) {
             /* prefix refers to the current module, ignore it */
-            prefix = NULL;
+            mod_name = NULL;
         }
     }
 
-    if (!prefix && parent) {
+    if (!mod_name && parent) {
         /* search in local typedefs */
         while (parent) {
             switch (parent->nodetype) {
@@ -1343,9 +1343,9 @@ resolve_superior_type(const char *name, const char *prefix, struct lys_module *m
 
             parent = parent->parent;
         }
-    } else if (prefix) {
+    } else if (mod_name) {
         /* get module where to search */
-        module = resolve_prefixed_module(module, prefix, strlen(prefix));
+        module = ly_ctx_get_module(module->ctx, mod_name, NULL);
         if (!module) {
             return -1;
         }
@@ -1623,7 +1623,7 @@ resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
     if (prefix) {
         module = resolve_prefixed_module(uses->module, prefix, pref_len);
         if (!module) {
-            LOGVAL(LYE_INPREF_LEN, line, pref_len, prefix);
+            LOGVAL(LYE_INMOD_LEN, line, pref_len, prefix);
             return -1;
         }
         start = module->data;
@@ -1677,7 +1677,7 @@ resolve_feature(const char *id, struct lys_module *module, int first, uint32_t l
         module = resolve_prefixed_module(module, prefix, pref_len);
         if (!module) {
             /* identity refers unknown data model */
-            LOGVAL(LYE_INPREF_LEN, line, pref_len, prefix);
+            LOGVAL(LYE_INMOD_LEN, line, pref_len, prefix);
             return -1;
         }
     } else {
@@ -3162,7 +3162,7 @@ resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const cha
         module = resolve_prefixed_module(module, basename, prefix_len);
         if (!module) {
             /* identity refers unknown data model */
-            LOGVAL(LYE_INPREF, line, basename);
+            LOGVAL(LYE_INMOD, line, basename);
             return -1;
         }
     } else {
@@ -3621,7 +3621,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         /* HACK type->der is temporarily its parent */
         rc = resolve_superior_type(base_name, stype->prefix, mod, (struct lys_node *)stype->der, &stype->der);
         if (rc == -1) {
-            LOGVAL(LYE_INPREF, line, stype->prefix);
+            LOGVAL(LYE_INMOD, line, stype->module_name);
         } else if (!rc) {
             stype->base = stype->der->type.base;
         }
