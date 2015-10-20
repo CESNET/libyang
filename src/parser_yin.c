@@ -466,7 +466,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
               struct unres_schema *unres)
 {
 #define REGEX_ERR_LEN 128
-    const char *value, *name, *err_ptr;
+    const char *value, *delim, *name, *err_ptr;
     struct lyxml_elem *next, *node;
     struct lys_restr **restr;
     struct lys_type_bit bit;
@@ -476,15 +476,17 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     int64_t p, p_;
 
     GETVAL(value, yin, "name");
-    value = transform_expr_xml2json(module->ctx, value, yin, 1);
-    if (!value) {
-        goto error;
-    }
-    type->module_name = value;
 
-    rc = resolve_superior_type(value, type->module_name, module, parent, &type->der);
+    delim = strchr(value, ':');
+    if (delim) {
+        type->prefix = lydict_insert(module->ctx, value, delim - value);
+        delim++;
+        value += delim-value;
+    }
+
+    rc = resolve_superior_type(value, type->prefix, module, parent, &type->der);
     if (rc == -1) {
-        LOGVAL(LYE_INMOD, LOGLINE(yin), type->module_name);
+        LOGVAL(LYE_INPREF, LOGLINE(yin), type->prefix);
         goto error;
     } else if (rc == EXIT_FAILURE) {
         /* HACK for unres */
@@ -922,11 +924,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 }
 
                 GETVAL(value, node, "value");
-                /* store in the JSON format */
-                type->info.lref.path = transform_expr_xml2json(module->ctx, value, node, 1);
-                if (!type->info.lref.path) {
-                    goto error;
-                }
+                type->info.lref.path = lydict_insert(module->ctx, value, 0);
                 if (unres_schema_add_node(module, unres, type, UNRES_TYPE_LEAFREF, parent, LOGLINE(yin)) == -1) {
                     goto error;
                 }

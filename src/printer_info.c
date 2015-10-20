@@ -395,8 +395,8 @@ int_range:
     }
     ly_print(out, "%-*s", INDENT_LEN, "Superior: ");
     if (type->der) {
-        if (type->module_name) {
-            ly_print(out, "%s:", type->module_name);
+        if (type->prefix) {
+            ly_print(out, "%s:", type->prefix);
         }
         ly_print(out, "%s\n", type->der->name);
     } else {

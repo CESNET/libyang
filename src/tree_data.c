@@ -85,7 +85,7 @@ lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name)
         siblings = parent->schema->child;
     }
 
-    if (lys_getsibling(module, siblings, NULL, 0, name, strlen(name), LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC,
+    if (resolve_sibling(module, siblings, NULL, 0, name, strlen(name), LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC,
             &snode) || !snode) {
         return NULL;
     }
@@ -131,7 +131,7 @@ lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char 
         siblings = parent->schema->child;
     }
 
-    if (lys_getsibling(module, siblings, NULL, 0, name, strlen(name), LYS_LEAFLIST | LYS_LEAF, &snode)
+    if (resolve_sibling(module, siblings, NULL, 0, name, strlen(name), LYS_LEAFLIST | LYS_LEAF, &snode)
             || !snode) {
         return NULL;
     }
@@ -341,7 +341,7 @@ lyd_new_leaf_str(struct lyd_node *parent, struct lys_module *module, const char 
         siblings = parent->schema->child;
     }
 
-    if (lys_getsibling(module, siblings, NULL, 0, name, strlen(name), LYS_LEAFLIST | LYS_LEAF, &snode)
+    if (resolve_sibling(module, siblings, NULL, 0, name, strlen(name), LYS_LEAFLIST | LYS_LEAF, &snode)
             || !snode) {
         ly_errno = LY_EINVAL;
         return NULL;
@@ -416,7 +416,7 @@ lyd_new_anyxml(struct lyd_node *parent, struct lys_module *module, const char *n
         ctx = parent->schema->module->ctx;
     }
 
-    if (lys_getsibling(module, siblings, NULL, 0, name, strlen(name), LYS_ANYXML, &snode)
+    if (resolve_sibling(module, siblings, NULL, 0, name, strlen(name), LYS_ANYXML, &snode)
             || !snode) {
         return NULL;
     }

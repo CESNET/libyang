@@ -590,11 +590,7 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
 
         if (!strcmp(node->value_str, "true")) {
             node->value.bool = 1;
-        } else if (strcmp(node->value_str, "false")) {
-            LOGVAL(LYE_INVAL, line, node->value_str, node->schema->name);
-            return EXIT_FAILURE;
-        }
-        /* else stays 0 */
+        } /* else false, so keep it zero */
         break;
 
     case LY_TYPE_DEC64:

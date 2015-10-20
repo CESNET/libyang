@@ -205,7 +205,6 @@ struct lyd_node_anyxml {
  * @param[in] module Module with the node being created.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_CONTAINER, #LYS_LIST,
  * #LYS_INPUT, #LYS_OUTPUT, #LYS_NOTIF, or #LYS_RPC.
- * @return New node, NULL on error.
  */
 struct lyd_node *lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name);
 
@@ -218,7 +217,6 @@ struct lyd_node *lyd_new(struct lyd_node *parent, struct lys_module *module, con
  * @param[in] type Type of the value provided in the \p value parameter. Cannot be #LY_TYPE_DER, #LY_TYPE_UNION,
  * or #LY_TYPE_INST.
  * @param[in] value Value of the node being created. Can be NULL only if \p type is #LY_TYPE_EMPTY.
- * @return New node, NULL on error.
  */
 struct lyd_node *lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *module, const char *name,
                                   LY_DATA_TYPE type, lyd_val value);
@@ -236,7 +234,6 @@ struct lyd_node *lyd_new_leaf_val(struct lyd_node *parent, struct lys_module *mo
  * #LY_TYPE_UNION in this case.
  * @param[in] val_str String form of the value of the node being created. Can be NULL only if \p type is
  * #LY_TYPE_EMPTY.
- * @return New node, NULL on error.
  */
 struct lyd_node *lyd_new_leaf_str(struct lyd_node *parent, struct lys_module *module, const char *name,
                                   LY_DATA_TYPE type, const char *val_str);
@@ -248,7 +245,6 @@ struct lyd_node *lyd_new_leaf_str(struct lyd_node *parent, struct lys_module *mo
  * @param[in] module Module with the node being created.
  * @param[in] name Schema node name of the new data node.
  * @param[in] val_xml Value of the node being created. Must be a well-formed XML.
- * @return New node, NULL on error.
  */
 struct lyd_node *lyd_new_anyxml(struct lyd_node *parent, struct lys_module *module, const char *name,
                                 const char *val_xml);

@@ -107,6 +107,9 @@ int resolve_superior_type(const char *name, const char *prefix, struct lys_modul
 
 int resolve_unique(struct lys_node *parent, const char *uniq_str, struct lys_unique *uniq_s, int first, uint32_t line);
 
+int resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *prefix, int pref_len,
+                    const char *name, int nam_len, LYS_NODE type, struct lys_node **ret);
+
 int resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module *mod,
                           LYS_NODE node_type, struct lys_node **ret);
 

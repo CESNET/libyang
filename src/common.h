@@ -99,8 +99,8 @@ enum LY_ERR {
     LYE_ENUM_WS,
     LYE_BITS_DUPVAL,
     LYE_BITS_DUPNAME,
-    LYE_INMOD,
-    LYE_INMOD_LEN,
+    LYE_INPREF,
+    LYE_INPREF_LEN,
     LYE_KEY_NLEAF,
     LYE_KEY_TYPE,
     LYE_KEY_CONFIG,
@@ -165,7 +165,7 @@ const char *strnodetype(LYS_NODE type);
  * correcting theit ref_count -> do not touch them. Prefixes of
  * the namespaces are import prefixes of the modules. Output
  * parameters are optional, but either all 3 are set or none
- * of them are. Logs directly.
+ * of them is. Logs directly.
  *
  * @param[in] module Module with imports to use.
  * @param[in] expr JSON expression.
