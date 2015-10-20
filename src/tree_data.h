@@ -326,6 +326,16 @@ int lyd_unlink(struct lyd_node *node);
 void lyd_free(struct lyd_node *node);
 
 /**
+ * @brief Insert attribute into the data node.
+ *
+ * @param[in] parent Data node where to place the attribute
+ * @param[in] name Attribute name
+ * @param[in] value Attribute value
+ * @return pointer to the created attribute (which is already connected in \p parent) or NULL on error.
+ */
+struct lyd_attr *lyd_insert_attr(struct lyd_node *parent, const char *name, const char *value);
+
+/**
  * @brief Opaque internal structure, do not access it from outside.
  */
 struct lyxml_elem;

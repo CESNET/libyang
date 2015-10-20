@@ -937,6 +937,97 @@ lyd_attr_parent(struct lyd_node *root, struct lyd_attr *attr)
     return NULL;
 }
 
+static struct lyd_ns *
+lyd_get_attr_ns(struct lyd_node *node, const char *prefix)
+{
+    struct lyd_attr *attr;
+    int len;
+
+    while(node) {
+
+        if (!prefix) {
+            len = 0;
+        } else {
+            len = strlen(prefix) + 1;
+        }
+
+        for (attr = node->attr; attr; attr = attr->next) {
+            if (attr->type != LYD_ATTR_NS) {
+                continue;
+            }
+            if (!attr->name) {
+                if (!len) {
+                    /* default namespace found */
+                    if (!attr->value) {
+                        /* empty default namespace -> no default namespace */
+                        return NULL;
+                    }
+                    return (struct lyd_ns *)attr;
+                }
+            } else if (len && !memcmp(attr->name, prefix, len)) {
+                /* prefix found */
+                return (struct lyd_ns *)attr;
+            }
+        }
+        node = node->parent;
+    }
+
+    return NULL;
+}
+
+API struct lyd_attr *
+lyd_insert_attr(struct lyd_node *parent, const char *name, const char *value)
+{
+    struct lyd_ns *ns;
+    struct lyd_attr *a, *iter;
+    struct ly_ctx *ctx;
+    const char *p;
+    char *aux;
+
+    if (!parent || !name || !value) {
+        return NULL;
+    }
+    ctx = parent->schema->module->ctx;
+
+    a = calloc(1, sizeof *a);
+
+    if (!strncmp(name, "xmlns", 5) && (name[5] == ':' || !name[5])) {
+        ns = (struct lyd_ns *)a;
+        ns->type = LYD_ATTR_NS;
+        ns->parent = parent;
+        if (name[5]) {
+            ns->prefix = lydict_insert(ctx, &(name[6]), 0);
+        }
+    } else {
+        a->type = LYD_ATTR_STD;
+        if ((p = strchr(name, ':'))) {
+            /* search for the namespace */
+            aux = strndup(name, p - name);
+            a->ns = lyd_get_attr_ns(parent, aux);
+            free(aux);
+
+            if (!a->ns) {
+                /* namespace not found */
+                free(a);
+                return NULL;
+            }
+        } else {
+            /* no prefix -> no namespace */
+            a->name = name;
+        }
+    }
+
+    a->value = lydict_insert(ctx, value, 0);
+    if (!parent->attr) {
+        parent->attr = a;
+    } else {
+        for (iter = parent->attr; iter->next; iter = iter->next);
+        iter->next = a;
+    }
+
+    return a;
+}
+
 API void
 lyd_free(struct lyd_node *node)
 {
