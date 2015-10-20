@@ -242,6 +242,29 @@ struct lys_node *ly_check_mandatory(struct lyd_node *start);
 struct lyd_node *lyd_attr_parent(struct lyd_node *root, struct lyd_attr *attr);
 
 /**
+ * @brief Find a specific sibling. Does not log.
+ *
+ * Includes module comparison (can handle augments). Module is adjusted
+ * based on the \p mod_name. Includes are also searched if siblings are
+ * top-level nodes.
+ *
+ * @param[in] mod Main module. Prefix is considered to be from this module.
+ * @param[in] siblings Siblings to consider. They are first adjusted to
+ *                     point to the first sibling.
+ * @param[in] mod_name Module name.
+ * @param[in] mod_name_len Module name length.
+ * @param[in] name Node name.
+ * @param[in] nam_len Node name length.
+ * @param[in] type ORed desired type of the node. 0 means any type.
+ *                 Does not return groupings, uses, and augments (but returns augment nodes).
+ * @param[out] ret Pointer to the node of the desired type. Can be NULL.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
+ */
+int lys_getsibling(struct lys_module *mod, struct lys_node *siblings, const char *mod_name, int mod_name_len,
+                   const char *name, int nam_len, LYS_NODE type, struct lys_node **ret);
+
+/**
  * @brief Compare 2 data nodes if they are the same from the YANG point of view.
  *
  * - containers are the same if they are defined by the same schema tree node

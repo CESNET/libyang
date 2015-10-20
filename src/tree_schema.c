@@ -85,6 +85,117 @@ check:
     goto check;
 }
 
+int
+lys_getsibling(struct lys_module *mod, struct lys_node *siblings, const char *mod_name, int mod_name_len,
+               const char *name, int nam_len, LYS_NODE type, struct lys_node **ret)
+{
+    struct lys_node *node, *old_siblings = NULL;
+    struct lys_module *prefix_mod, *cur_mod;
+    int in_submod;
+    char *module_name;
+
+    assert(siblings && name);
+    assert(!(type & (LYS_AUGMENT | LYS_USES | LYS_GROUPING)));
+
+    /* find the beginning */
+    while (siblings->prev->next) {
+        siblings = siblings->prev;
+    }
+
+    /* fill the name length in case the caller is so indifferent */
+    if (!nam_len) {
+        nam_len = strlen(name);
+    }
+
+    /* we start with the module itself, submodules come later */
+    in_submod = 0;
+
+    /* set prefix_mod correctly */
+    if (mod_name) {
+        module_name = strndup(mod_name, mod_name_len);
+        prefix_mod = ly_ctx_get_module(siblings->module->ctx, module_name, NULL);
+        free(module_name);
+        if (!prefix_mod) {
+            return -1;
+        }
+        cur_mod = prefix_mod;
+        /* it is not our module */
+        if (cur_mod != mod) {
+            old_siblings = siblings;
+            siblings = cur_mod->data;
+        }
+    } else {
+        if (mod) {
+            prefix_mod = mod;
+        } else {
+            prefix_mod = siblings->module;
+        }
+        if (prefix_mod->type) {
+            prefix_mod = ((struct lys_submodule *)prefix_mod)->belongsto;
+        }
+        cur_mod = prefix_mod;
+    }
+
+    while (1) {
+        /* try to find the node */
+        node = NULL;
+        while ((node = lys_getnext(node, siblings->parent, cur_mod, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
+            if (!type || (node->nodetype & type)) {
+                /* module check */
+                if (!node->module->type) {
+                    if (cur_mod != node->module) {
+                        continue;
+                    }
+                } else {
+                    /* both are submodules */
+                    if (cur_mod->type) {
+                        if (cur_mod != node->module) {
+                            continue;
+                        }
+                    } else {
+                        if (cur_mod != ((struct lys_submodule *)node->module)->belongsto) {
+                            continue;
+                        }
+                    }
+                }
+
+                /* direct name check */
+                if ((node->name == name) || (!strncmp(node->name, name, nam_len) && !node->name[nam_len])) {
+                    if (ret) {
+                        *ret = node;
+                    }
+                    return EXIT_SUCCESS;
+                }
+            }
+        }
+
+        /* The original siblings may be valid,
+         * it's a special case when we're looking
+         * for a node from an augment.
+         */
+        if (old_siblings) {
+            siblings = old_siblings;
+            old_siblings = NULL;
+            continue;
+        }
+
+        /* we're not top-level, search ended */
+        if (siblings->parent) {
+            break;
+        }
+
+        /* let's try the submodules */
+        if (in_submod == prefix_mod->inc_size) {
+            break;
+        }
+        cur_mod = (struct lys_module *)prefix_mod->inc[in_submod].submodule;
+        siblings = cur_mod->data;
+        ++in_submod;
+    }
+
+    return EXIT_FAILURE;
+}
+
 API struct lys_node *
 lys_getnext(struct lys_node *last, struct lys_node *parent, struct lys_module *module, int options)
 {
@@ -2074,7 +2185,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
         }
 
         if (choice_orig->dflt) {
-            rc = resolve_sibling(choice->module, choice->child, NULL, 0, choice_orig->dflt->name, 0, LYS_ANYXML
+            rc = lys_getsibling(choice->module, choice->child, NULL, 0, choice_orig->dflt->name, 0, LYS_ANYXML
                                          | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST
                                          | LYS_LIST, &choice->dflt);
             if (rc) {
@@ -2149,8 +2260,8 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
             /* we managed to resolve it before, resolve it again manually */
             if (list_orig->keys[0]) {
                 for (i = 0; i < list->keys_size; ++i) {
-                    rc = resolve_sibling(list->module, list->child, NULL, 0, list_orig->keys[i]->name, 0, LYS_LEAF,
-                                         (struct lys_node **)&list->keys[i]);
+                    rc = lys_getsibling(list->module, list->child, NULL, 0, list_orig->keys[i]->name, 0, LYS_LEAF,
+                                        (struct lys_node **)&list->keys[i]);
                     if (rc) {
                         if (rc == EXIT_FAILURE) {
                             LOGINT;
