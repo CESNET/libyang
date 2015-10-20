@@ -1336,7 +1336,10 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     struct lys_restr **trg_must = NULL;
 
     GETVAL(value, yin, "target-node");
-    dev->target_name = lydict_insert(module->ctx, value, 0);
+    dev->target_name = transform_expr_xml2json(module->ctx, value, yin, 1);
+    if (!dev->target_name) {
+        goto error;
+    }
 
     /* resolve target node */
     rc = resolve_schema_nodeid(dev->target_name, NULL, module, LYS_AUGMENT, &dev->target);
@@ -2100,7 +2103,10 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
     }
 
     GETVAL(value, yin, "target-node");
-    rfn->target_name = lydict_insert(module->ctx, value, 0);
+    rfn->target_name = transform_expr_xml2json(module->ctx, value, yin, 1);
+    if (!rfn->target_name) {
+        goto error;
+    }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {

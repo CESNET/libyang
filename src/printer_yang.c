@@ -375,8 +375,11 @@ static void
 yang_print_refine(struct lyout *out, int level, struct lys_module *module, struct lys_refine *refine)
 {
     int i;
+    const char *str;
 
-    ly_print(out, "%*srefine \"%s\" {\n", LEVEL, INDENT, refine->target_name);
+    str = transform_expr_json2xml(module, refine->target_name, NULL, NULL, NULL);
+    ly_print(out, "%*srefine \"%s\" {\n", LEVEL, INDENT, str);
+    lydict_remove(module->ctx, str);
     level++;
 
     if (refine->flags & LYS_CONFIG_W) {
@@ -422,8 +425,11 @@ static void
 yang_print_deviation(struct lyout *out, int level, struct lys_module *module, struct lys_deviation *deviation)
 {
     int i, j;
+    const char *str;
 
-    ly_print(out, "%*sdeviation \"%s\" {\n", LEVEL, INDENT, deviation->target_name);
+    str = transform_expr_json2xml(module, deviation->target_name, NULL, NULL, NULL);
+    ly_print(out, "%*sdeviation \"%s\" {\n", LEVEL, INDENT, str);
+    lydict_remove(module->ctx, str);
     level++;
 
     if (deviation->dsc) {
