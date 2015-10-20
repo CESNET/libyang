@@ -480,7 +480,20 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     if (!value) {
         goto error;
     }
-    type->module_name = value;
+
+    i = parse_identifier(value);
+    if (i < 1) {
+        goto error;
+    }
+    /* module name */
+    if (value[i]) {
+        type->module_name = lydict_insert(module->ctx, value, i);
+        value += i;
+        if ((value[i] != ':') || (parse_identifier(value + i + 1) < 1)) {
+            goto error;
+        }
+        value += i + 1;
+    }
 
     rc = resolve_superior_type(value, type->module_name, module, parent, &type->der);
     if (rc == -1) {
