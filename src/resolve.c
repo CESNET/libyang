@@ -75,11 +75,11 @@ parse_identifier(const char *id)
 /**
  * @brief Parse a node-identifier.
  *
- * node-identifier     = [prefix ":"] identifier
+ * node-identifier     = [module-name ":"] identifier
  *
  * @param[in] id Identifier to use.
- * @param[out] prefix Points to the prefix, NULL if there is not any.
- * @param[out] pref_len Length of the prefix, 0 if there is not any.
+ * @param[out] mod_name Points to the module name, NULL if there is not any.
+ * @param[out] mod_name_len Length of the module name, 0 if there is not any.
  * @param[out] name Points to the node name.
  * @param[out] nam_len Length of the node name.
  *
@@ -87,16 +87,16 @@ parse_identifier(const char *id)
  *         positive on success, negative on failure.
  */
 static int
-parse_node_identifier(const char *id, const char **prefix, int *pref_len, const char **name, int *nam_len)
+parse_node_identifier(const char *id, const char **mod_name, int *mod_name_len, const char **name, int *nam_len)
 {
     int parsed = 0, ret;
 
     assert(id);
-    if (prefix) {
-        *prefix = NULL;
+    if (mod_name) {
+        *mod_name = NULL;
     }
-    if (pref_len) {
-        *pref_len = 0;
+    if (mod_name_len) {
+        *mod_name_len = 0;
     }
     if (name) {
         *name = NULL;
@@ -109,11 +109,11 @@ parse_node_identifier(const char *id, const char **prefix, int *pref_len, const 
         return ret;
     }
 
-    if (prefix) {
-        *prefix = id;
+    if (mod_name) {
+        *mod_name = id;
     }
-    if (pref_len) {
-        *pref_len = ret;
+    if (mod_name_len) {
+        *mod_name_len = ret;
     }
 
     parsed += ret;
@@ -126,18 +126,18 @@ parse_node_identifier(const char *id, const char **prefix, int *pref_len, const 
 
     /* there isn't */
     } else {
-        if (name && prefix) {
-            *name = *prefix;
+        if (name && mod_name) {
+            *name = *mod_name;
         }
-        if (prefix) {
-            *prefix = NULL;
+        if (mod_name) {
+            *mod_name = NULL;
         }
 
-        if (nam_len && pref_len) {
-            *nam_len = *pref_len;
+        if (nam_len && mod_name_len) {
+            *nam_len = *mod_name_len;
         }
-        if (pref_len) {
-            *pref_len = 0;
+        if (mod_name_len) {
+            *mod_name_len = 0;
         }
 
         return parsed;
@@ -759,8 +759,8 @@ parse_predicate_json(const char *id, const char **model, int *mod_len, const cha
  *                       absolute-schema-nodeid
  *
  * @param[in] id Identifier to use.
- * @param[out] prefix Points to the prefix, NULL if there is not any.
- * @param[out] pref_len Length of the prefix, 0 if there is not any.
+ * @param[out] mod_name Points to the module name, NULL if there is not any.
+ * @param[out] mod_name_len Length of the module name, 0 if there is not any.
  * @param[out] name Points to the node name. Can be identifier (from node-identifier), "." or pos.
  * @param[out] nam_len Length of the node name.
  * @param[out] is_relative Flag to mark whether the nodeid is absolute or descendant. Must be -1
@@ -770,18 +770,18 @@ parse_predicate_json(const char *id, const char **model, int *mod_len, const cha
  *         positive on success, negative on failure.
  */
 static int
-parse_schema_nodeid(const char *id, const char **prefix, int *pref_len, const char **name, int *nam_len,
+parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, const char **name, int *nam_len,
                     int *is_relative)
 {
     int parsed = 0, ret;
 
     assert(id);
     assert(is_relative);
-    if (prefix) {
-        *prefix = NULL;
+    if (mod_name) {
+        *mod_name = NULL;
     }
-    if (pref_len) {
-        *pref_len = 0;
+    if (mod_name_len) {
+        *mod_name_len = 0;
     }
     if (name) {
         *name = NULL;
@@ -804,7 +804,7 @@ parse_schema_nodeid(const char *id, const char **prefix, int *pref_len, const ch
         ++id;
     }
 
-    if ((ret = parse_node_identifier(id, prefix, pref_len, name, nam_len)) < 1) {
+    if ((ret = parse_node_identifier(id, mod_name, mod_name_len, name, nam_len)) < 1) {
         return -parsed+ret;
     }
 
@@ -1734,9 +1734,10 @@ int
 resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module *mod, LYS_NODE node_type,
                       struct lys_node **ret)
 {
-    const char *name, *prefix;
+    const char *name, *mod_name;
+    char *str;
     struct lys_node *sibling;
-    int i, nam_len, pref_len, is_relative = -1;
+    int i, nam_len, mod_name_len, is_relative = -1;
     struct lys_module *prefix_mod, *start_mod;
     /* 0 - in module, 1 - in 1st submodule, 2 - in 2nd submodule, ... */
     uint8_t in_submod = 0;
@@ -1744,7 +1745,7 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
     assert(mod);
     assert(id);
 
-    if ((i = parse_schema_nodeid(id, &prefix, &pref_len, &name, &nam_len, &is_relative)) < 1) {
+    if ((i = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
         return -1;
     }
     id += i;
@@ -1755,8 +1756,10 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
 
     /* absolute-schema-nodeid */
     if (!is_relative) {
-        if (prefix) {
-            start_mod = resolve_prefixed_module(mod, prefix, pref_len);
+        if (mod_name) {
+            str = strndup(mod_name, mod_name_len);
+            start_mod = ly_ctx_get_module(mod->ctx, str, NULL);
+            free(str);
             if (!start_mod) {
                 return -1;
             }
@@ -1785,8 +1788,10 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
                     || (!strncmp(name, "output", 6) && (nam_len == 6) && (sibling->nodetype == LYS_OUTPUT)))) {
 
                 /* prefix match check */
-                if (prefix) {
-                    prefix_mod = resolve_prefixed_module(mod, prefix, pref_len);
+                if (mod_name) {
+                    str = strndup(mod_name, mod_name_len);
+                    prefix_mod = ly_ctx_get_module(mod->ctx, str, NULL);
+                    free(str);
                     if (!prefix_mod) {
                         return -1;
                     }
@@ -1860,7 +1865,7 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
             in_submod = 0;
         }
 
-        if ((i = parse_schema_nodeid(id, &prefix, &pref_len, &name, &nam_len, &is_relative)) < 1) {
+        if ((i = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
             return -1;
         }
         id += i;
