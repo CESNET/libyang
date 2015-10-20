@@ -1607,12 +1607,13 @@ static int
 resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
 {
     struct lys_module *module;
-    const char *prefix, *name;
-    int i, pref_len, nam_len;
+    const char *mod_name, *name;
+    char *str;
+    int i, mod_name_len, nam_len;
     struct lys_node *start;
 
     /* parse the identifier, it must be parsed on one call */
-    if ((i = parse_node_identifier(uses->name, &prefix, &pref_len, &name, &nam_len)) < 1) {
+    if ((i = parse_node_identifier(uses->name, &mod_name, &mod_name_len, &name, &nam_len)) < 1) {
         LOGVAL(LYE_INCHAR, line, uses->name[-i], &uses->name[-i]);
         return -1;
     } else if (uses->name[i]) {
@@ -1620,10 +1621,12 @@ resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
         return -1;
     }
 
-    if (prefix) {
-        module = resolve_prefixed_module(uses->module, prefix, pref_len);
+    if (mod_name) {
+        str = strndup(mod_name, mod_name_len);
+        module = ly_ctx_get_module(uses->module->ctx, str, NULL);
+        free(str);
         if (!module) {
-            LOGVAL(LYE_INMOD_LEN, line, pref_len, prefix);
+            LOGVAL(LYE_INMOD_LEN, line, mod_name_len, mod_name);
             return -1;
         }
         start = module->data;
@@ -1636,11 +1639,11 @@ resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
         return EXIT_SUCCESS;
     }
 
-    if (prefix || !first) {
+    if (mod_name || !first) {
         LOGVAL(LYE_INRESOLV, line, "grouping", uses->name);
     }
     /* import must now be fully resolved */
-    if (prefix) {
+    if (mod_name) {
         return -1;
     }
     return EXIT_FAILURE;
@@ -1660,24 +1663,27 @@ resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
 static int
 resolve_feature(const char *id, struct lys_module *module, int first, uint32_t line, struct lys_feature **ret)
 {
-    const char *prefix, *name;
-    int pref_len, nam_len, i, j;
+    const char *mod_name, *name;
+    char *str;
+    int mod_name_len, nam_len, i, j;
 
     assert(id);
     assert(module);
 
     /* check prefix */
-    if ((i = parse_node_identifier(id, &prefix, &pref_len, &name, &nam_len)) < 1) {
+    if ((i = parse_node_identifier(id, &mod_name, &mod_name_len, &name, &nam_len)) < 1) {
         LOGVAL(LYE_INCHAR, line, id[-i], &id[-i]);
         return -1;
     }
 
-    if (prefix) {
+    if (mod_name) {
+        str = strndup(mod_name, mod_name_len);
         /* search in imported modules */
-        module = resolve_prefixed_module(module, prefix, pref_len);
+        module = ly_ctx_get_module(module->ctx, str, NULL);
+        free(str);
         if (!module) {
             /* identity refers unknown data model */
-            LOGVAL(LYE_INMOD_LEN, line, pref_len, prefix);
+            LOGVAL(LYE_INMOD_LEN, line, mod_name_len, mod_name);
             return -1;
         }
     } else {
@@ -3016,26 +3022,29 @@ resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const cha
                    int first, uint32_t line, struct lys_ident **ret)
 {
     const char *name;
-    int i, prefix_len = 0;
+    char *str;
+    int i, mod_name_len = 0;
 
     /* search for the base identity */
     name = strchr(basename, ':');
     if (name) {
         /* set name to correct position after colon */
-        prefix_len = name - basename;
+        mod_name_len = name - basename;
         name++;
 
-        if (!strncmp(basename, module->prefix, prefix_len) && !module->prefix[prefix_len]) {
+        if (!strncmp(basename, module->name, mod_name_len) && !module->name[mod_name_len]) {
             /* prefix refers to the current module, ignore it */
-            prefix_len = 0;
+            mod_name_len = 0;
         }
     } else {
         name = basename;
     }
 
-    if (prefix_len) {
+    if (mod_name_len) {
+        str = strndup(basename, mod_name_len);
         /* get module where to search */
-        module = resolve_prefixed_module(module, basename, prefix_len);
+        module = ly_ctx_get_module(module->ctx, str, NULL);
+        free(str);
         if (!module) {
             /* identity refers unknown data model */
             LOGVAL(LYE_INMOD, line, basename);
