@@ -498,8 +498,11 @@ yang_print_augment(struct lyout *out, int level, struct lys_module *module, stru
 {
     int i;
     struct lys_node *sub;
+    const char *str;
 
-    ly_print(out, "%*saugment \"%s\" {\n", LEVEL, INDENT, augment->target_name);
+    str = transform_expr_json2xml(module, augment->target_name, NULL, NULL, NULL);
+    ly_print(out, "%*saugment \"%s\" {\n", LEVEL, INDENT, str);
+    lydict_remove(module->ctx, str);
     level++;
 
     yang_print_nacmext(out, level, (struct lys_node *)augment, module);

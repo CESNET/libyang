@@ -1974,7 +1974,10 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
 
     aug->nodetype = LYS_AUGMENT;
     GETVAL(value, yin, "target-node");
-    aug->target_name = lydict_insert(module->ctx, value, 0);
+    aug->target_name = transform_expr_xml2json(module->ctx, value, yin, 1);
+    if (!aug->target_name) {
+        goto error;
+    }
     aug->parent = parent;
 
     if (read_yin_common(module, NULL, (struct lys_node *)aug, yin, OPT_MODULE | OPT_NACMEXT)) {
