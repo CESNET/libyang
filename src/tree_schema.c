@@ -125,10 +125,14 @@ repeat:
     switch (next->nodetype) {
     case LYS_USES:
     case LYS_CASE:
+    case LYS_INPUT:
+    case LYS_OUTPUT:
         /* go into */
         next = next->child;
         goto repeat;
 
+    case LYS_RPC:
+    case LYS_NOTIF:
     case LYS_CONTAINER:
     case LYS_LEAF:
     case LYS_ANYXML:
