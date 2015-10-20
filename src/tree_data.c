@@ -476,7 +476,7 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 
     /* check placing the node to the appropriate place according to the schema */
     sparent = node->schema->parent;
-    while (!(sparent->nodetype & (LYS_CONTAINER | LYS_LIST))) {
+    while (!(sparent->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_NOTIF))) {
         sparent = sparent->parent;
     }
     if (sparent != parent->schema) {
