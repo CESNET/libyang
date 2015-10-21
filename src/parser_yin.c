@@ -4469,7 +4469,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
 {
     struct ly_ctx *ctx = module->ctx;
     struct lys_submodule *submodule = (struct lys_submodule *)module;
-    struct lyxml_elem *next, *child, *child2, root, grps;
+    struct lyxml_elem *next, *child, *child2, root, grps, augs;
     struct lys_node *node = NULL;
     const char *value;
     int i, r;
@@ -4480,6 +4480,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
     /* init */
     memset(&root, 0, sizeof root);
     memset(&grps, 0, sizeof grps);
+    memset(&augs, 0, sizeof augs);
 
     /*
      * in the first run, we process elements with cardinality of 1 or 0..1 and
@@ -4567,6 +4568,10 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             c_inc++;
         } else if (!strcmp(child->name, "augment")) {
             c_aug++;
+            /* keep augments separated, processed last */
+            lyxml_unlink_elem(module->ctx, child, 1);
+            lyxml_add_child(module->ctx, &augs, child);
+
         } else if (!strcmp(child->name, "feature")) {
             c_ftrs++;
         } else if (!strcmp(child->name, "deviation")) {
@@ -4706,8 +4711,8 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
         module->deviation = calloc(c_dev, sizeof *module->deviation);
     }
 
-    /* middle part - process nodes with cardinality of 0..n except the data nodes */
-    LY_TREE_FOR(yin->child, child) {
+    /* middle part - process nodes with cardinality of 0..n except the data nodes and augments */
+    LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!strcmp(child->name, "import")) {
             r = fill_yin_import(module, child, &module->imp[module->imp_size]);
             module->imp_size++;
@@ -4722,6 +4727,8 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
                     goto error;
                 }
             }
+            lyxml_free_elem(ctx, child);
+
         } else if (!strcmp(child->name, "include")) {
             r = fill_yin_include(module, child, &module->inc[module->inc_size]);
             module->inc_size++;
@@ -4737,6 +4744,8 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
                     goto error;
                 }
             }
+            lyxml_free_elem(ctx, child);
+
         } else if (!strcmp(child->name, "revision")) {
             GETVAL(value, child, "date");
             if (check_date(value, LOGLINE(child))) {
@@ -4798,6 +4807,8 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             }
 
             module->rev_size++;
+            lyxml_free_elem(ctx, child);
+
         } else if (!strcmp(child->name, "typedef")) {
             r = fill_yin_typedef(module, NULL, child, &module->tpdf[module->tpdf_size], unres);
             module->tpdf_size++;
@@ -4805,6 +4816,8 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             if (r) {
                 goto error;
             }
+            lyxml_free_elem(ctx, child);
+
         } else if (!strcmp(child->name, "identity")) {
             r = fill_yin_identity(module, child, &module->ident[module->ident_size], unres);
             module->ident_size++;
@@ -4812,6 +4825,8 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             if (r) {
                 goto error;
             }
+            lyxml_free_elem(ctx, child);
+
         } else if (!strcmp(child->name, "feature")) {
             r = fill_yin_feature(module, child, &module->features[module->features_size], unres);
             module->features_size++;
@@ -4819,16 +4834,8 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             if (r) {
                 goto error;
             }
-        } else if (!strcmp(child->name, "augment")) {
-            r = fill_yin_augment(module, NULL, child, &module->augment[module->augment_size], unres);
-            module->augment_size++;
+            lyxml_free_elem(ctx, child);
 
-            if (r) {
-                goto error;
-            }
-
-            /* node is reconnected into the augment, so we have to skip its free at the end of the loop */
-            continue;
         } else if (!strcmp(child->name, "deviation")) {
             r = fill_yin_deviation(module, child, &module->deviation[module->deviation_size]);
             module->deviation_size++;
@@ -4836,6 +4843,8 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             if (r) {
                 goto error;
             }
+            lyxml_free_elem(ctx, child);
+
         }
     }
 
@@ -4880,7 +4889,16 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
         lyxml_free_elem(ctx, child);
     }
 
+    /* ... and finally augments (last, so we can augment our data, for instance) */
+    LY_TREE_FOR_SAFE(augs.child, next, child) {
+        r = fill_yin_augment(module, NULL, child, &module->augment[module->augment_size], unres);
+        module->augment_size++;
 
+        if (r) {
+            goto error;
+        }
+        lyxml_free_elem(ctx, child);
+    }
 
     return EXIT_SUCCESS;
 
@@ -4892,6 +4910,8 @@ error:
     while (grps.child) {
         lyxml_free_elem(module->ctx, grps.child);
     }
+    while (augs.child) {
+        lyxml_free_elem(module->ctx, augs.child);
     }
 
     free(unres->item);
