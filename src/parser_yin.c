@@ -4469,7 +4469,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
 {
     struct ly_ctx *ctx = module->ctx;
     struct lys_submodule *submodule = (struct lys_submodule *)module;
-    struct lyxml_elem *next, *child, *child2, root, grps, rpcs, notifs;
+    struct lyxml_elem *next, *child, *child2, root, grps;
     struct lys_node *node = NULL;
     const char *value;
     int i, r;
@@ -4480,8 +4480,6 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
     /* init */
     memset(&root, 0, sizeof root);
     memset(&grps, 0, sizeof grps);
-    memset(&rpcs, 0, sizeof rpcs);
-    memset(&notifs, 0, sizeof notifs);
 
     /*
      * in the first run, we process elements with cardinality of 1 or 0..1 and
@@ -4581,9 +4579,12 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
                 !strcmp(child->name, "list") ||
                 !strcmp(child->name, "choice") ||
                 !strcmp(child->name, "uses") ||
-                !strcmp(child->name, "anyxml")) {
+                !strcmp(child->name, "anyxml") ||
+                !strcmp(child->name, "rpc") ||
+                !strcmp(child->name, "notification")) {
             lyxml_unlink_elem(module->ctx, child, 1);
             lyxml_add_child(module->ctx, &root, child);
+
         } else if (!strcmp(child->name, "grouping")) {
             /* keep groupings separated and process them before other data statements */
             lyxml_unlink_elem(module->ctx, child, 1);
@@ -4643,14 +4644,6 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             }
             module->version = 1;
             lyxml_free_elem(ctx, child);
-
-            /* rpcs & notifications */
-        } else if (!strcmp(child->name, "rpc")) {
-            lyxml_unlink_elem(module->ctx, child, 1);
-            lyxml_add_child(module->ctx, &rpcs, child);
-        } else if (!strcmp(child->name, "notification")) {
-            lyxml_unlink_elem(module->ctx, child, 1);
-            lyxml_add_child(module->ctx, &notifs, child);
 
         } else if (!strcmp(child->name, "extension")) {
             GETVAL(value, child, "name");
@@ -4875,6 +4868,10 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             node = read_yin_uses(module, NULL, child, 1, unres);
         } else if (!strcmp(child->name, "anyxml")) {
             node = read_yin_anyxml(module, NULL, child, 1, unres);
+        } else if (!strcmp(child->name, "rpc")) {
+            node = read_yin_rpc(module, NULL, child, 0, unres);
+        } else if (!strcmp(child->name, "notification")) {
+            node = read_yin_notif(module, NULL, child, 0, unres);
         }
         if (!node) {
             goto error;
@@ -4883,25 +4880,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
         lyxml_free_elem(ctx, child);
     }
 
-    /* ... rpcs ... */
-    LY_TREE_FOR_SAFE(rpcs.child, next, child) {
-        node = read_yin_rpc(module, NULL, child, 0, unres);
-        if (!node) {
-            goto error;
-        }
 
-        lyxml_free_elem(ctx, child);
-    }
-
-    /* ... and notifications */
-    LY_TREE_FOR_SAFE(notifs.child, next, child) {
-        node = read_yin_notif(module, NULL, child, 0, unres);
-        if (!node) {
-            goto error;
-        }
-
-        lyxml_free_elem(ctx, child);
-    }
 
     return EXIT_SUCCESS;
 
@@ -4913,8 +4892,6 @@ error:
     while (grps.child) {
         lyxml_free_elem(module->ctx, grps.child);
     }
-    while (rpcs.child) {
-        lyxml_free_elem(module->ctx, rpcs.child);
     }
 
     free(unres->item);
