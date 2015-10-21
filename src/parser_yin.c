@@ -495,11 +495,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     if (value[i]) {
         type->module_name = lydict_insert(module->ctx, value, i);
         value += i;
-        if ((value[i] != ':') || (parse_identifier(value + i + 1) < 1)) {
+        if ((value[0] != ':') || (parse_identifier(value + 1) < 1)) {
             LOGVAL(LYE_INCHAR, LOGLINE(yin), value[0], value);
             goto error;
         }
-        value += i + 1;
+        ++value;
     }
 
     rc = resolve_superior_type(value, type->module_name, module, parent, &type->der);
