@@ -512,7 +512,7 @@ parse_path_arg(const char *id, const char **prefix, int *pref_len, const char **
 }
 
 /**
- * @brief Parse instance-identifier in JSON format. That means that prefixes
+ * @brief Parse instance-identifier in JSON data format. That means that prefixes
  *        (which are mandatory) are actually model names.
  *
  * instance-identifier = 1*("/" (node-identifier *predicate))
@@ -528,8 +528,8 @@ parse_path_arg(const char *id, const char **prefix, int *pref_len, const char **
  *         positive on success, negative on failure.
  */
 static int
-parse_instance_identifier_json(const char *id, const char **model, int *mod_len, const char **name, int *nam_len,
-                               int *has_predicate)
+parse_instance_identifier(const char *id, const char **model, int *mod_len, const char **name, int *nam_len,
+                          int *has_predicate)
 {
     int parsed = 0, ret;
 
@@ -574,7 +574,7 @@ parse_instance_identifier_json(const char *id, const char **model, int *mod_len,
 }
 
 /**
- * @brief Parse predicate (instance-identifier) in JSON format. That means that prefixes
+ * @brief Parse predicate (instance-identifier) in JSON data format. That means that prefixes
  *        (which are mandatory) are actually model names.
  *
  * predicate           = "[" *WSP (predicate-expr / pos) *WSP "]"
@@ -597,8 +597,8 @@ parse_instance_identifier_json(const char *id, const char **model, int *mod_len,
  *         positive on success, negative on failure.
  */
 static int
-parse_predicate_json(const char *id, const char **model, int *mod_len, const char **name, int *nam_len,
-                     const char **value, int *val_len, int *has_predicate)
+parse_predicate(const char *id, const char **model, int *mod_len, const char **name, int *nam_len,
+                const char **value, int *val_len, int *has_predicate)
 {
     const char *ptr;
     int parsed = 0, ret;
@@ -1987,7 +1987,7 @@ resolve_data_nodeid(const char *prefix, int pref_len, const char *name, int name
 }
 
 /**
- * @brief Resolve a path predicate (leafref) in data context. Logs directly
+ * @brief Resolve a path predicate (leafref) in JSON data context. Logs directly
  *        only specific errors, general no-resolvent error is left to the caller,
  *        but line fail is always displayed.
  *
@@ -2129,7 +2129,7 @@ error:
 }
 
 /**
- * @brief Resolve a path (leafref) in data context. Logs directly.
+ * @brief Resolve a path (leafref) in JSON data context. Logs directly.
  *
  * @param[in] node Leafref data node.
  * @param[in] path Path of the leafref.
@@ -2251,7 +2251,7 @@ error:
 }
 
 /**
- * @brief Resolve a path (leafref) predicate in schema context. Logs directly.
+ * @brief Resolve a path (leafref) predicate in JSON schema context. Logs directly.
  *
  * @param[in] path Path to use.
  * @param[in] mod Schema module.
@@ -2344,7 +2344,7 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
 }
 
 /**
- * @brief Resolve a path (leafref) in schema context. Logs directly.
+ * @brief Resolve a path (leafref) in JSON schema context. Logs directly.
  *
  * @param[in] mod Module to use.
  * @param[in] path Path to use.
@@ -2458,7 +2458,8 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
 }
 
 /**
- * @brief Resolve instance-identifier predicate. Does not log.
+ * @brief Resolve instance-identifier predicate in JSON data format.
+ *        Does not log.
  *
  * @param[in] pred Predicate to use.
  * @param[in,out] node_match Nodes matching the restriction without
@@ -2469,7 +2470,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
  *         positive on success, negative on failure.
  */
 static int
-resolve_predicate_json(const char *pred, struct unres_data *node_match)
+resolve_predicate(const char *pred, struct unres_data *node_match)
 {
     /* ... /node[target = value] ... */
     struct unres_data target_match;
@@ -2487,7 +2488,7 @@ resolve_predicate_json(const char *pred, struct unres_data *node_match)
     parsed = 0;
 
     do {
-        if ((i = parse_predicate_json(pred, &model, &mod_len, &name, &nam_len, &value, &val_len, &has_predicate)) < 1) {
+        if ((i = parse_predicate(pred, &model, &mod_len, &name, &nam_len, &value, &val_len, &has_predicate)) < 1) {
             return -parsed+i;
         }
         parsed += i;
@@ -2550,7 +2551,7 @@ remove_instid:
 }
 
 /**
- * @brief Resolve instance-identifier. Logs directly.
+ * @brief Resolve instance-identifier in JSON data format. Logs directly.
  *
  * @param[in] data Any node in the data tree, used to get a data tree root and context
  * @param[in] path Instance-identifier node value.
@@ -2559,7 +2560,7 @@ remove_instid:
  * @return Matching node or NULL if no such a node exists. If error occurs, NULL is returned and ly_errno is set.
  */
 static struct lyd_node *
-resolve_instid_json(struct lyd_node *data, const char *path, int line)
+resolve_instid(struct lyd_node *data, const char *path, int line)
 {
     int i = 0, j;
     struct lyd_node *result = NULL;
@@ -2582,7 +2583,7 @@ resolve_instid_json(struct lyd_node *data, const char *path, int line)
 
     /* search for the instance node */
     while (path[i]) {
-        j = parse_instance_identifier_json(&path[i], &model, &mod_len, &name, &name_len, &has_predicate);
+        j = parse_instance_identifier(&path[i], &model, &mod_len, &name, &name_len, &has_predicate);
         if (j <= 0) {
             LOGVAL(LYE_INCHAR, line, path[i-j], &path[i-j]);
             goto error;
@@ -2618,7 +2619,7 @@ resolve_instid_json(struct lyd_node *data, const char *path, int line)
                 unres_data_del(&node_match, k);
             }
 
-            j = resolve_predicate_json(&path[i], &node_match);
+            j = resolve_predicate(&path[i], &node_match);
             if (j < 1) {
                 LOGVAL(LYE_INPRED, line, &path[i-j]);
                 goto error;
@@ -3057,7 +3058,7 @@ resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const cha
 }
 
 /**
- * @brief Resolve JSON format identityref. Logs directly.
+ * @brief Resolve JSON data format identityref. Logs directly.
  *
  * @param[in] base Base identity.
  * @param[in] ident_name Identityref name.
@@ -3066,7 +3067,7 @@ resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const cha
  * @return Pointer to the identity resolvent, NULL on error.
  */
 struct lys_ident *
-resolve_identref_json(struct lys_ident *base, const char *ident_name, uint32_t line)
+resolve_identref(struct lys_ident *base, const char *ident_name, uint32_t line)
 {
     const char *mod_name, *name;
     int mod_name_len, rc;
@@ -3879,7 +3880,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int first, 
     case UNRES_INSTID:
         assert(sleaf->type.base == LY_TYPE_INST);
         ly_errno = 0;
-        if (!resolve_instid_json(node, leaf->value_str, line)) {
+        if (!resolve_instid(node, leaf->value_str, line)) {
             if (ly_errno) {
                 return -1;
             } else if (sleaf->type.info.inst.req > -1) {

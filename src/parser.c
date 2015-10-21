@@ -708,7 +708,7 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
             return EXIT_FAILURE;
         }
 
-        node->value.ident = resolve_identref_json(stype->info.ident.ref, node->value_str, line);
+        node->value.ident = resolve_identref(stype->info.ident.ref, node->value_str, line);
         if (!node->value.ident) {
             return EXIT_FAILURE;
         }
