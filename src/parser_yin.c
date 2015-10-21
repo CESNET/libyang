@@ -4967,7 +4967,7 @@ yin_read_submodule(struct lys_module *module, const char *data, int implement, s
     submodule->belongsto = module;
     submodule->implemented = (implement ? 1 : 0);
 
-    LOGVRB("reading submodule %s", submodule->name);
+    LOGVRB("Reading submodule %s", submodule->name);
     if (read_sub_module((struct lys_module *)submodule, yin, unres)) {
         goto error;
     }
@@ -4975,7 +4975,7 @@ yin_read_submodule(struct lys_module *module, const char *data, int implement, s
     /* cleanup */
     lyxml_free_elem(module->ctx, yin);
 
-    LOGVRB("submodule %s successfully parsed", submodule->name);
+    LOGVRB("Submodule %s successfully parsed", submodule->name);
 
     return submodule;
 
@@ -5023,7 +5023,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unre
     module->type = 0;
     module->implemented = (implement ? 1 : 0);
 
-    LOGVRB("reading module %s", module->name);
+    LOGVRB("Reading module %s", module->name);
     if (read_sub_module(module, yin, unres)) {
         goto error;
     }
@@ -5053,7 +5053,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unre
                     lys_free(module, 0);
                     unres->count = 0;
 
-                    LOGVRB("module %s already in context", ctx->models.list[i]->name);
+                    LOGVRB("Module %s already in context", ctx->models.list[i]->name);
 
                     if (implement && !ctx->models.list[i]->implemented) {
                         lyp_set_implemented(ctx->models.list[i]);
@@ -5077,7 +5077,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unre
     /* cleanup */
     lyxml_free_elem(ctx, yin);
 
-    LOGVRB("module %s successfully parsed", module->name);
+    LOGVRB("Module %s successfully parsed", module->name);
 
     return module;
 
