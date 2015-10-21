@@ -1274,7 +1274,7 @@ resolve_superior_type(const char *name, const char *mod_name, struct lys_module 
         }
     } else if (mod_name) {
         /* get module where to search */
-        module = lys_get_import_module(module, mod_name, strlen(mod_name));
+        module = lys_get_import_module(module, NULL, 0, mod_name, 0);
         if (!module) {
             return -1;
         }
@@ -1550,7 +1550,7 @@ resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
     }
 
     if (mod_name) {
-        module = lys_get_import_module(uses->module, mod_name, mod_name_len);
+        module = lys_get_import_module(uses->module, NULL, 0, mod_name, mod_name_len);
         if (!module) {
             LOGVAL(LYE_INMOD_LEN, line, mod_name_len, mod_name);
             return -1;
@@ -1603,7 +1603,7 @@ resolve_feature(const char *id, struct lys_module *module, int first, uint32_t l
 
     if (mod_name) {
         /* search in imported modules */
-        module = lys_get_import_module(module, mod_name, mod_name_len);
+        module = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
         if (!module) {
             /* identity refers unknown data model */
             LOGVAL(LYE_INMOD_LEN, line, mod_name_len, mod_name);
@@ -1685,7 +1685,7 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
     /* absolute-schema-nodeid */
     if (!is_relative) {
         if (mod_name) {
-            start_mod = lys_get_import_module(mod, mod_name, mod_name_len);
+            start_mod = lys_get_import_module(mod, NULL, 0, mod_name, mod_name_len);
             if (!start_mod) {
                 return -1;
             }
@@ -1715,7 +1715,7 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
 
                 /* prefix match check */
                 if (mod_name) {
-                    prefix_mod = lys_get_import_module(mod, mod_name, mod_name_len);
+                    prefix_mod = lys_get_import_module(mod, NULL, 0, mod_name, mod_name_len);
                     if (!prefix_mod) {
                         return -1;
                     }
@@ -2963,7 +2963,7 @@ resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const cha
 
     if (mod_name_len) {
         /* get module where to search */
-        module = lys_get_import_module(module, basename, mod_name_len);
+        module = lys_get_import_module(module, NULL, 0, basename, mod_name_len);
         if (!module) {
             /* identity refers unknown data model */
             LOGVAL(LYE_INMOD, line, basename);

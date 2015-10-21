@@ -111,7 +111,7 @@ lys_getsibling(struct lys_module *mod, struct lys_node *siblings, const char *mo
 
     /* set prefix_mod correctly */
     if (mod_name) {
-        prefix_mod = lys_get_import_module(siblings->module, mod_name, mod_name_len);
+        prefix_mod = lys_get_import_module(siblings->module, NULL, 0, mod_name, mod_name_len);
         if (!prefix_mod) {
             return -1;
         }
@@ -1831,12 +1831,25 @@ lys_node_free(struct lys_node *node)
 }
 
 struct lys_module *
-lys_get_import_module(struct lys_module *module, const char *name, int name_len)
+lys_get_import_module(struct lys_module *module, const char *prefix, int pref_len, const char *name, int name_len)
 {
-    int i;
+    int i, match;
+
+    assert(prefix || name);
+    if (prefix && !pref_len) {
+        pref_len = strlen(prefix);
+    }
+    if (name && !name_len) {
+        name_len = strlen(name);
+    }
 
     for (i = 0; i < module->imp_size; ++i) {
-        if (!strncmp(module->imp[i].module->name, name, name_len) && !module->imp[i].module->name[name_len]) {
+        match = 0;
+        if (!prefix || (!strncmp(module->imp[i].prefix, prefix, pref_len) && !module->imp[i].prefix[pref_len])) {
+            match = 1;
+        }
+        if (match && (!name
+                || (!strncmp(module->imp[i].module->name, name, name_len) && !module->imp[i].module->name[name_len]))) {
             return module->imp[i].module;
         }
     }
