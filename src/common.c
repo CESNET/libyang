@@ -137,6 +137,11 @@ transform_json2xml(struct lys_module *module, const char *expr, char ***prefixes
         id_len = col-id;
 
         /* get the module */
+        mod = NULL;
+        if (!strncmp(module->name, id, id_len) && !module->name[id_len]) {
+            mod = module;
+            pref = module->prefix;
+        }
         for (i = 0; i < module->imp_size; ++i) {
             if (!strncmp(module->imp[i].module->name, id, id_len) && !module->imp[i].module->name[id_len]) {
                 mod = module->imp[i].module;
@@ -144,8 +149,8 @@ transform_json2xml(struct lys_module *module, const char *expr, char ***prefixes
                 break;
             }
         }
-        if (i == module->imp_size) {
-            LOGVAL(LYE_SPEC, 0, "Module \"%.*s\" not found in the imports of \"%s\".", id_len, id, module->name);
+        if (!mod) {
+            LOGVAL(LYE_INMOD_LEN, 0, id_len, id);
             free(out);
             return NULL;
         }
