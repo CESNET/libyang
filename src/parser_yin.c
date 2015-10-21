@@ -370,7 +370,7 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
     const char *value;
 
     GETVAL(value, yin, "name");
-    ident->name = transform_expr_xml2json(module->ctx, value, yin, 1);
+    ident->name = transform_schema2json(module, value, LOGLINE(yin));
     if (!ident->name) {
         return EXIT_FAILURE;
     }
@@ -481,7 +481,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     int64_t p, p_;
 
     GETVAL(value, yin, "name");
-    value = transform_expr_xml2json(module->ctx, value, yin, 1);
+    value = transform_schema2json(module, value, LOGLINE(yin));
     if (!value) {
         goto error;
     }
@@ -941,7 +941,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
                 GETVAL(value, node, "value");
                 /* store in the JSON format */
-                type->info.lref.path = transform_expr_xml2json(module->ctx, value, node, 1);
+                type->info.lref.path = transform_schema2json(module, value, LOGLINE(node));
                 if (!type->info.lref.path) {
                     goto error;
                 }
@@ -1211,7 +1211,7 @@ fill_yin_feature(struct lys_module *module, struct lyxml_elem *yin, struct lys_f
     }
     LY_TREE_FOR(yin->child, child) {
         GETVAL(value, child, "name");
-        if (!(value = transform_expr_xml2json(module->ctx, value, child, 1))) {
+        if (!(value = transform_schema2json(module, value, LOGLINE(child)))) {
             goto error;
         }
         ret = unres_schema_add_str(module, unres, &f->features[f->features_size++], UNRES_IFFEAT, value,
@@ -1236,7 +1236,7 @@ fill_yin_must(struct lys_module *module, struct lyxml_elem *yin, struct lys_rest
     const char *value;
 
     GETVAL(value, yin, "condition");
-    must->expr = transform_expr_xml2json(module->ctx, value, yin, 1);
+    must->expr = transform_schema2json(module, value, LOGLINE(yin));
     if (!must->expr) {
         goto error;
     }
@@ -1347,7 +1347,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     struct lys_restr **trg_must = NULL;
 
     GETVAL(value, yin, "target-node");
-    dev->target_name = transform_expr_xml2json(module->ctx, value, yin, 1);
+    dev->target_name = transform_schema2json(module, value, LOGLINE(yin));
     if (!dev->target_name) {
         goto error;
     }
@@ -1988,7 +1988,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
 
     aug->nodetype = LYS_AUGMENT;
     GETVAL(value, yin, "target-node");
-    aug->target_name = transform_expr_xml2json(module->ctx, value, yin, 1);
+    aug->target_name = transform_schema2json(module, value, LOGLINE(yin));
     if (!aug->target_name) {
         goto error;
     }
@@ -2070,7 +2070,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
     LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!strcmp(child->name, "if-feature")) {
             GETVAL(value, child, "name");
-            if (!(value = transform_expr_xml2json(module->ctx, value, child, 1))) {
+            if (!(value = transform_schema2json(module, value, LOGLINE(child)))) {
                 goto error;
             }
             ret = unres_schema_add_str(module, unres, &aug->features[aug->features_size++], UNRES_IFFEAT, value,
@@ -2120,7 +2120,7 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
     }
 
     GETVAL(value, yin, "target-node");
-    rfn->target_name = transform_expr_xml2json(module->ctx, value, yin, 1);
+    rfn->target_name = transform_schema2json(module, value, LOGLINE(yin));
     if (!rfn->target_name) {
         goto error;
     }
@@ -2577,7 +2577,7 @@ read_yin_when(struct lys_module *module, struct lyxml_elem *yin)
     retval = calloc(1, sizeof *retval);
 
     GETVAL(value, yin, "condition");
-    retval->cond = transform_expr_xml2json(module->ctx, value, yin, 1);
+    retval->cond = transform_schema2json(module, value, LOGLINE(yin));
     if (!retval->cond) {
         goto error;
     }
@@ -2698,7 +2698,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     }
     LY_TREE_FOR(yin->child, sub) {
         GETVAL(value, sub, "name");
-        if (!(value = transform_expr_xml2json(module->ctx, value, sub, 1))) {
+        if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
             goto error;
         }
         ret = unres_schema_add_str(module, unres, &cs->features[cs->features_size++], UNRES_IFFEAT, value,
@@ -2863,7 +2863,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
 
     LY_TREE_FOR(yin->child, sub) {
         GETVAL(value, sub, "name");
-        if (!(value = transform_expr_xml2json(module->ctx, value, sub, 1))) {
+        if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
             goto error;
         }
         ret = unres_schema_add_str(module, unres, &choice->features[choice->features_size++], UNRES_IFFEAT, value,
@@ -2999,7 +2999,7 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
             }
         } else if (!strcmp(sub->name, "if-feature")) {
             GETVAL(value, sub, "name");
-            if (!(value = transform_expr_xml2json(module->ctx, value, sub, 1))) {
+            if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
                 goto error;
             }
             r = unres_schema_add_str(module, unres, &anyxml->features[anyxml->features_size++], UNRES_IFFEAT, value,
@@ -3157,7 +3157,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
         } else if (!strcmp(sub->name, "if-feature")) {
             GETVAL(value, sub, "name");
-            if (!(value = transform_expr_xml2json(module->ctx, value, sub, 1))) {
+            if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
                 goto error;
             }
             r = unres_schema_add_str(module, unres, &leaf->features[leaf->features_size++], UNRES_IFFEAT, value,
@@ -3357,7 +3357,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             }
         } else if (!strcmp(sub->name, "if-feature")) {
             GETVAL(value, sub, "name");
-            if (!(value = transform_expr_xml2json(module->ctx, value, sub, 1))) {
+            if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
                 goto error;
             }
             r = unres_schema_add_str(module, unres, &llist->features[llist->features_size++], UNRES_IFFEAT, value,
@@ -3582,7 +3582,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
         } else if (!strcmp(sub->name, "if-feature")) {
             GETVAL(value, sub, "name");
-            if (!(value = transform_expr_xml2json(module->ctx, value, sub, 1))) {
+            if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
                 goto error;
             }
             r = unres_schema_add_str(module, unres, &list->features[list->features_size++], UNRES_IFFEAT, value,
@@ -3787,7 +3787,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
             }
         } else if (!strcmp(sub->name, "if-feature")) {
             GETVAL(value, sub, "name");
-            if (!(value = transform_expr_xml2json(module->ctx, value, sub, 1))) {
+            if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
                 goto error;
             }
             r = unres_schema_add_str(module, unres, &cont->features[cont->features_size++], UNRES_IFFEAT, value,
@@ -4143,7 +4143,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
             }
         } else if (!strcmp(sub->name, "if-features")) {
             GETVAL(value, sub, "name");
-            if (!(value = transform_expr_xml2json(module->ctx, value, sub, 1))) {
+            if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
                 goto error;
             }
             r = unres_schema_add_str(module, unres, &notif->features[notif->features_size++], UNRES_IFFEAT, value,
@@ -4284,7 +4284,7 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
             }
         } else if (!strcmp(sub->name, "if-feature")) {
             GETVAL(value, sub, "name");
-            if (!(value = transform_expr_xml2json(module->ctx, value, sub, 1))) {
+            if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
                 goto error;
             }
             r = unres_schema_add_str(module, unres, &rpc->features[rpc->features_size++], UNRES_IFFEAT, value,
@@ -4423,7 +4423,7 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
         } else if (!strcmp(sub->name, "if-feature")) {
             GETVAL(value, sub, "name");
-            if (!(value = transform_expr_xml2json(module->ctx, value, sub, 1))) {
+            if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
                 goto error;
             }
             r = unres_schema_add_str(module, unres, &uses->features[uses->features_size++], UNRES_IFFEAT, value,

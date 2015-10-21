@@ -178,11 +178,11 @@ const char *strnodetype(LYS_NODE type);
  *
  * @return Transformed XML expression in the dictionary, NULL on error.
  */
-const char *transform_expr_json2xml(struct lys_module *module, const char *expr, char ***prefixes, char ***namespaces,
+const char *transform_json2xml(struct lys_module *module, const char *expr, char ***prefixes, char ***namespaces,
                                     uint32_t *ns_count);
 
 /**
- * @brief Transform expression from XML format (prefixes and separate NS definitions) to
+ * @brief Transform expression from XML data format (prefixes and separate NS definitions) to
  *        JSON format (prefixes are module names instead). Logs directly.
  *
  * @param[in] ctx libyang context to use.
@@ -192,6 +192,18 @@ const char *transform_expr_json2xml(struct lys_module *module, const char *expr,
  *
  * @return Transformed JSON expression in the dictionary, NULL on error.
  */
-const char *transform_expr_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int log);
+const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int log);
+
+/**
+ * @brief Transform expression from the schema format (prefixes of imports) to
+ *        JSON format (prefixes are module names directly). Logs directly.
+ *
+ * @param[in] module Module (schema) with imports to search.
+ * @param[in] expr Expression from \p module.
+ * @param[in] line Line in the input file.
+ *
+ * @return Transformed JSON expression in the dictionary, NULL on error.
+ */
+const char *transform_schema2json(struct lys_module *module, const char *expr, uint32_t line);
 
 #endif /* LY_COMMON_H_ */
