@@ -1843,6 +1843,11 @@ lys_get_import_module(struct lys_module *module, const char *prefix, int pref_le
         name_len = strlen(name);
     }
 
+    if ((!prefix || (!strncmp(module->prefix, prefix, pref_len) && !module->prefix[pref_len]))
+            && (!name || (!strncmp(module->name, name, name_len) && !module->name[name_len]))) {
+        return module;
+    }
+
     for (i = 0; i < module->imp_size; ++i) {
         match = 0;
         if (!prefix || (!strncmp(module->imp[i].prefix, prefix, pref_len) && !module->imp[i].prefix[pref_len])) {

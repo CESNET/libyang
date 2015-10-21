@@ -243,6 +243,7 @@ struct lyd_node *lyd_attr_parent(struct lyd_node *root, struct lyd_attr *attr);
 
 /**
  * @brief Find an import from \p module with matching \p prefix, \p name, or both.
+ * \p module itself is also compared.
  *
  * @param[in] module Module with imports.
  * @param[in] prefix Module prefix to search for.
