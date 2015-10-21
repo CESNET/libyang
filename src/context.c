@@ -127,7 +127,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
     }
 }
 
-const char *
+API const char *
 ly_ctx_get_searchdir(struct ly_ctx *ctx)
 {
     return ctx->models.search_path;
