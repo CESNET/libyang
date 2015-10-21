@@ -1345,7 +1345,7 @@ resolve_superior_type(const char *name, const char *mod_name, struct lys_module 
         }
     } else if (mod_name) {
         /* get module where to search */
-        module = ly_ctx_get_module(module->ctx, mod_name, NULL);
+        module = lys_get_import_module(module, mod_name, strlen(mod_name));
         if (!module) {
             return -1;
         }
@@ -1608,7 +1608,6 @@ resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
 {
     struct lys_module *module;
     const char *mod_name, *name;
-    char *str;
     int i, mod_name_len, nam_len;
     struct lys_node *start;
 
@@ -1622,9 +1621,7 @@ resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
     }
 
     if (mod_name) {
-        str = strndup(mod_name, mod_name_len);
-        module = ly_ctx_get_module(uses->module->ctx, str, NULL);
-        free(str);
+        module = lys_get_import_module(uses->module, mod_name, mod_name_len);
         if (!module) {
             LOGVAL(LYE_INMOD_LEN, line, mod_name_len, mod_name);
             return -1;
@@ -1664,7 +1661,6 @@ static int
 resolve_feature(const char *id, struct lys_module *module, int first, uint32_t line, struct lys_feature **ret)
 {
     const char *mod_name, *name;
-    char *str;
     int mod_name_len, nam_len, i, j;
 
     assert(id);
@@ -1677,10 +1673,8 @@ resolve_feature(const char *id, struct lys_module *module, int first, uint32_t l
     }
 
     if (mod_name) {
-        str = strndup(mod_name, mod_name_len);
         /* search in imported modules */
-        module = ly_ctx_get_module(module->ctx, str, NULL);
-        free(str);
+        module = lys_get_import_module(module, mod_name, mod_name_len);
         if (!module) {
             /* identity refers unknown data model */
             LOGVAL(LYE_INMOD_LEN, line, mod_name_len, mod_name);
@@ -1741,7 +1735,6 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
                       struct lys_node **ret)
 {
     const char *name, *mod_name;
-    char *str;
     struct lys_node *sibling;
     int i, nam_len, mod_name_len, is_relative = -1;
     struct lys_module *prefix_mod, *start_mod;
@@ -1763,9 +1756,7 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
     /* absolute-schema-nodeid */
     if (!is_relative) {
         if (mod_name) {
-            str = strndup(mod_name, mod_name_len);
-            start_mod = ly_ctx_get_module(mod->ctx, str, NULL);
-            free(str);
+            start_mod = lys_get_import_module(mod, mod_name, mod_name_len);
             if (!start_mod) {
                 return -1;
             }
@@ -1795,9 +1786,7 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
 
                 /* prefix match check */
                 if (mod_name) {
-                    str = strndup(mod_name, mod_name_len);
-                    prefix_mod = ly_ctx_get_module(mod->ctx, str, NULL);
-                    free(str);
+                    prefix_mod = lys_get_import_module(mod, mod_name, mod_name_len);
                     if (!prefix_mod) {
                         return -1;
                     }
@@ -3022,7 +3011,6 @@ resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const cha
                    int first, uint32_t line, struct lys_ident **ret)
 {
     const char *name;
-    char *str;
     int i, mod_name_len = 0;
 
     /* search for the base identity */
@@ -3041,10 +3029,8 @@ resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const cha
     }
 
     if (mod_name_len) {
-        str = strndup(basename, mod_name_len);
         /* get module where to search */
-        module = ly_ctx_get_module(module->ctx, str, NULL);
-        free(str);
+        module = lys_get_import_module(module, basename, mod_name_len);
         if (!module) {
             /* identity refers unknown data model */
             LOGVAL(LYE_INMOD, line, basename);

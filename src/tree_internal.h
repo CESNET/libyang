@@ -242,6 +242,17 @@ struct lys_node *ly_check_mandatory(struct lyd_node *start);
 struct lyd_node *lyd_attr_parent(struct lyd_node *root, struct lyd_attr *attr);
 
 /**
+ * @brief Find an import from \p module with \p name.
+ *
+ * @param[in] module Module with imports.
+ * @param[in] name Module name to search for.
+ * @param[in] name_len Module \p name length.
+ *
+ * @return Matching module, NULL if not found.
+ */
+struct lys_module *lys_get_import_module(struct lys_module *module, const char *name, int name_len);
+
+/**
  * @brief Find a specific sibling. Does not log.
  *
  * Includes module comparison (can handle augments). Module is adjusted

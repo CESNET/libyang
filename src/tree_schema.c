@@ -92,7 +92,6 @@ lys_getsibling(struct lys_module *mod, struct lys_node *siblings, const char *mo
     struct lys_node *node, *old_siblings = NULL;
     struct lys_module *prefix_mod, *cur_mod;
     int in_submod;
-    char *module_name;
 
     assert(siblings && name);
     assert(!(type & (LYS_AUGMENT | LYS_USES | LYS_GROUPING)));
@@ -112,9 +111,7 @@ lys_getsibling(struct lys_module *mod, struct lys_node *siblings, const char *mo
 
     /* set prefix_mod correctly */
     if (mod_name) {
-        module_name = strndup(mod_name, mod_name_len);
-        prefix_mod = ly_ctx_get_module(siblings->module->ctx, module_name, NULL);
-        free(module_name);
+        prefix_mod = lys_get_import_module(siblings->module, mod_name, mod_name_len);
         if (!prefix_mod) {
             return -1;
         }
@@ -1831,6 +1828,20 @@ lys_node_free(struct lys_node *node)
     /* again common part */
     lys_node_unlink(node);
     free(node);
+}
+
+struct lys_module *
+lys_get_import_module(struct lys_module *module, const char *name, int name_len)
+{
+    int i;
+
+    for (i = 0; i < module->imp_size; ++i) {
+        if (!strncmp(module->imp[i].module->name, name, name_len) && !module->imp[i].module->name[name_len]) {
+            return module->imp[i].module;
+        }
+    }
+
+    return NULL;
 }
 
 /* free_int_mods - flag whether to free the internal modules as well */
