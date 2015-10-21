@@ -488,6 +488,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     i = parse_identifier(value);
     if (i < 1) {
+        LOGVAL(LYE_INCHAR, LOGLINE(yin), value[-i], &value[-i]);
         goto error;
     }
     /* module name */
@@ -495,6 +496,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         type->module_name = lydict_insert(module->ctx, value, i);
         value += i;
         if ((value[i] != ':') || (parse_identifier(value + i + 1) < 1)) {
+            LOGVAL(LYE_INCHAR, LOGLINE(yin), value[0], value);
             goto error;
         }
         value += i + 1;
