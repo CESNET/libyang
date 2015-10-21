@@ -154,6 +154,10 @@ xml_print_container(struct lyout *out, int level, struct lyd_node *node)
 
     xml_print_attrs(out, node);
 
+    if (!node->child) {
+        ly_print(out, "/>%s", level ? "\n" : "");
+        return;
+    }
     ly_print(out, ">%s", level ? "\n" : "");
 
     LY_TREE_FOR(node->child, child) {
@@ -173,6 +177,11 @@ xml_print_list(struct lyout *out, int level, struct lyd_node *node, int is_list)
         ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
 
         xml_print_attrs(out, node);
+
+        if (!node->child) {
+            ly_print(out, "/>%s", level ? "\n" : "");
+            return;
+        }
         ly_print(out, ">%s", level ? "\n" : "");
 
         LY_TREE_FOR(node->child, child) {
