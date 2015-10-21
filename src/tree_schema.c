@@ -628,8 +628,6 @@ lys_find_grouping_up(const char *name, struct lys_node *start, int in_submodules
         if (par_iter->parent && !par_iter->parent->parent && (par_iter->parent->nodetype == LYS_AUGMENT)) {
             par_iter = par_iter->parent->module->data;
             if (!par_iter) {
-                /* this actually happens always on the first resolution,
-                 * augments are parsed before any data */
                 break;
             }
         }
