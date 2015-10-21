@@ -190,7 +190,7 @@ static void
 xml_print_anyxml(struct lyout *out, int level, struct lyd_node *node)
 {
     FILE *stream;
-    char *buf, *ptr, *line;
+    char *buf;
     size_t buf_size;
     struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
 
