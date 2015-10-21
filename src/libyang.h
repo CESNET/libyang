@@ -168,6 +168,14 @@ struct ly_ctx *ly_ctx_new(const char *search_dir);
 void ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
 
 /**
+ * @brief Get current value of the search path in libyang context
+ *
+ * @param[in] ctx Context to query.
+ * @return Current value of the search path.
+ */
+const char *ly_ctx_get_searchdir(struct ly_ctx *ctx);
+
+/**
  * @brief Get data of an internal ietf-yang-library module.
  *
  * @param[in] ctx Context with the modules.
