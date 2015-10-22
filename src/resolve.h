@@ -112,7 +112,7 @@ int resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_mod
 
 int resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings);
 
-struct lys_ident *resolve_identref_json(struct lys_ident *base, const char *ident_name, uint32_t line);
+struct lys_ident *resolve_identref(struct lys_ident *base, const char *ident_name, uint32_t line);
 
 int resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres);
 

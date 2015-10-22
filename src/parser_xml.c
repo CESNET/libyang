@@ -32,7 +32,7 @@
 #include "parser.h"
 #include "tree_internal.h"
 #include "validation.h"
-#include "xml_private.h"
+#include "xml_internal.h"
 
 #define LY_NSNC "urn:ietf:params:xml:ns:netconf:base:1.0"
 
@@ -108,7 +108,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct
          * using module names as namespaces
          */
         xml->content = leaf->value_str;
-        leaf->value_str = transform_expr_xml2json(leaf->schema->module->ctx, xml->content, xml, 1);
+        leaf->value_str = transform_xml2json(leaf->schema->module->ctx, xml->content, xml, 1);
         lydict_remove(leaf->schema->module->ctx, xml->content);
         xml->content = NULL;
         if (!leaf->value_str) {
@@ -125,7 +125,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct
             /* in these cases we use JSON format */
             if ((type->base == LY_TYPE_IDENT) || (type->base == LY_TYPE_INST)) {
                 xml->content = leaf->value_str;
-                leaf->value_str = transform_expr_xml2json(leaf->schema->module->ctx, xml->content, xml, 0);
+                leaf->value_str = transform_xml2json(leaf->schema->module->ctx, xml->content, xml, 0);
                 if (!leaf->value_str) {
                     leaf->value_str = xml->content;
                     xml->content = NULL;

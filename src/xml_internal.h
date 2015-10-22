@@ -1,5 +1,5 @@
 /**
- * @file xml_private.h
+ * @file xml_internal.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Internal part of libyang XML parser
  *
@@ -19,8 +19,8 @@
  *    software without specific prior written permission.
  */
 
-#ifndef LY_XML_PRIVATE_H_
-#define LY_XML_PRIVATE_H_
+#ifndef LY_XML_INTERNAL_H_
+#define LY_XML_INTERNAL_H_
 
 #include <stdio.h>
 #include "xml.h"
@@ -113,10 +113,12 @@ void lyxml_unlink_attr(struct lyxml_attr *attr);
  *
  * @param[in] ctx libyang context to use.
  * @param[in] elem Element to unlink from its parent (if any).
- * @param[in] copy_ns Flag true corrects NS of \p elem and children that are
- *                    defined outside \p elem subtree (copy NS and update pointer).
- *                    Flag false sets NS of \p elem and children that are defined
- *                    outside \p elem subtree to NULL.
+ * @param[in] copy_ns 0 sets NS of \p elem and children that are defined
+ * outside \p elem subtree to NULL,
+ * 1 corrects NS of \p elem and children that are defined outside \p elem
+ * subtree (copy NS and update pointer),
+ * 2 skips any NS checking.
+ *
  */
 void lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns);
 
@@ -148,4 +150,4 @@ int lyxml_getutf8(const char *buf, unsigned int *read, unsigned int line);
  */
 int lyxml_dump_text(struct lyout *out, const char *text);
 
-#endif /* LY_XML_PRIVATE_H_ */
+#endif /* LY_XML_INTERNAL_H_ */

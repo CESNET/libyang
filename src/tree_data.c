@@ -34,7 +34,7 @@
 #include "tree_data.h"
 #include "parser.h"
 #include "resolve.h"
-#include "xml_private.h"
+#include "xml_internal.h"
 #include "tree_internal.h"
 #include "validation.h"
 

@@ -29,7 +29,7 @@
 
 #include "common.h"
 #include "printer.h"
-#include "xml_private.h"
+#include "xml_internal.h"
 #include "tree_data.h"
 #include "tree_schema.h"
 #include "resolve.h"
@@ -101,8 +101,8 @@ xml_print_leaf(struct lyout *out, int level, struct lyd_node *node)
 
     case LY_TYPE_IDENT:
     case LY_TYPE_INST:
-        xml_expr = transform_expr_json2xml(node->schema->module, ((struct lyd_node_leaf_list *)node)->value_str,
-                                           &prefs, &nss, &ns_count);
+        xml_expr = transform_json2xml(node->schema->module, ((struct lyd_node_leaf_list *)node)->value_str,
+                                      &prefs, &nss, &ns_count);
         if (!xml_expr) {
             /* error */
             ly_print(out, "\"(!error!)\"");

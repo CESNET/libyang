@@ -29,7 +29,7 @@
 #include "xpath.h"
 #include "resolve.h"
 #include "tree_internal.h"
-#include "xml_private.h"
+#include "xml_internal.h"
 
 static struct lys_node_leaf *
 lyv_keys_present(struct lyd_node *list)

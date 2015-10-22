@@ -75,11 +75,11 @@ parse_identifier(const char *id)
 /**
  * @brief Parse a node-identifier.
  *
- * node-identifier     = [prefix ":"] identifier
+ * node-identifier     = [module-name ":"] identifier
  *
  * @param[in] id Identifier to use.
- * @param[out] prefix Points to the prefix, NULL if there is not any.
- * @param[out] pref_len Length of the prefix, 0 if there is not any.
+ * @param[out] mod_name Points to the module name, NULL if there is not any.
+ * @param[out] mod_name_len Length of the module name, 0 if there is not any.
  * @param[out] name Points to the node name.
  * @param[out] nam_len Length of the node name.
  *
@@ -87,16 +87,16 @@ parse_identifier(const char *id)
  *         positive on success, negative on failure.
  */
 static int
-parse_node_identifier(const char *id, const char **prefix, int *pref_len, const char **name, int *nam_len)
+parse_node_identifier(const char *id, const char **mod_name, int *mod_name_len, const char **name, int *nam_len)
 {
     int parsed = 0, ret;
 
     assert(id);
-    if (prefix) {
-        *prefix = NULL;
+    if (mod_name) {
+        *mod_name = NULL;
     }
-    if (pref_len) {
-        *pref_len = 0;
+    if (mod_name_len) {
+        *mod_name_len = 0;
     }
     if (name) {
         *name = NULL;
@@ -109,11 +109,11 @@ parse_node_identifier(const char *id, const char **prefix, int *pref_len, const 
         return ret;
     }
 
-    if (prefix) {
-        *prefix = id;
+    if (mod_name) {
+        *mod_name = id;
     }
-    if (pref_len) {
-        *pref_len = ret;
+    if (mod_name_len) {
+        *mod_name_len = ret;
     }
 
     parsed += ret;
@@ -126,18 +126,18 @@ parse_node_identifier(const char *id, const char **prefix, int *pref_len, const 
 
     /* there isn't */
     } else {
-        if (name && prefix) {
-            *name = *prefix;
+        if (name && mod_name) {
+            *name = *mod_name;
         }
-        if (prefix) {
-            *prefix = NULL;
+        if (mod_name) {
+            *mod_name = NULL;
         }
 
-        if (nam_len && pref_len) {
-            *nam_len = *pref_len;
+        if (nam_len && mod_name_len) {
+            *nam_len = *mod_name_len;
         }
-        if (pref_len) {
-            *pref_len = 0;
+        if (mod_name_len) {
+            *mod_name_len = 0;
         }
 
         return parsed;
@@ -512,7 +512,7 @@ parse_path_arg(const char *id, const char **prefix, int *pref_len, const char **
 }
 
 /**
- * @brief Parse instance-identifier in JSON format. That means that prefixes
+ * @brief Parse instance-identifier in JSON data format. That means that prefixes
  *        (which are mandatory) are actually model names.
  *
  * instance-identifier = 1*("/" (node-identifier *predicate))
@@ -528,8 +528,8 @@ parse_path_arg(const char *id, const char **prefix, int *pref_len, const char **
  *         positive on success, negative on failure.
  */
 static int
-parse_instance_identifier_json(const char *id, const char **model, int *mod_len, const char **name, int *nam_len,
-                               int *has_predicate)
+parse_instance_identifier(const char *id, const char **model, int *mod_len, const char **name, int *nam_len,
+                          int *has_predicate)
 {
     int parsed = 0, ret;
 
@@ -574,7 +574,7 @@ parse_instance_identifier_json(const char *id, const char **model, int *mod_len,
 }
 
 /**
- * @brief Parse predicate (instance-identifier) in JSON format. That means that prefixes
+ * @brief Parse predicate (instance-identifier) in JSON data format. That means that prefixes
  *        (which are mandatory) are actually model names.
  *
  * predicate           = "[" *WSP (predicate-expr / pos) *WSP "]"
@@ -597,8 +597,8 @@ parse_instance_identifier_json(const char *id, const char **model, int *mod_len,
  *         positive on success, negative on failure.
  */
 static int
-parse_predicate_json(const char *id, const char **model, int *mod_len, const char **name, int *nam_len,
-                     const char **value, int *val_len, int *has_predicate)
+parse_predicate(const char *id, const char **model, int *mod_len, const char **name, int *nam_len,
+                const char **value, int *val_len, int *has_predicate)
 {
     const char *ptr;
     int parsed = 0, ret;
@@ -759,8 +759,8 @@ parse_predicate_json(const char *id, const char **model, int *mod_len, const cha
  *                       absolute-schema-nodeid
  *
  * @param[in] id Identifier to use.
- * @param[out] prefix Points to the prefix, NULL if there is not any.
- * @param[out] pref_len Length of the prefix, 0 if there is not any.
+ * @param[out] mod_name Points to the module name, NULL if there is not any.
+ * @param[out] mod_name_len Length of the module name, 0 if there is not any.
  * @param[out] name Points to the node name. Can be identifier (from node-identifier), "." or pos.
  * @param[out] nam_len Length of the node name.
  * @param[out] is_relative Flag to mark whether the nodeid is absolute or descendant. Must be -1
@@ -770,18 +770,18 @@ parse_predicate_json(const char *id, const char **model, int *mod_len, const cha
  *         positive on success, negative on failure.
  */
 static int
-parse_schema_nodeid(const char *id, const char **prefix, int *pref_len, const char **name, int *nam_len,
+parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, const char **name, int *nam_len,
                     int *is_relative)
 {
     int parsed = 0, ret;
 
     assert(id);
     assert(is_relative);
-    if (prefix) {
-        *prefix = NULL;
+    if (mod_name) {
+        *mod_name = NULL;
     }
-    if (pref_len) {
-        *pref_len = 0;
+    if (mod_name_len) {
+        *mod_name_len = 0;
     }
     if (name) {
         *name = NULL;
@@ -804,82 +804,11 @@ parse_schema_nodeid(const char *id, const char **prefix, int *pref_len, const ch
         ++id;
     }
 
-    if ((ret = parse_node_identifier(id, prefix, pref_len, name, nam_len)) < 1) {
+    if ((ret = parse_node_identifier(id, mod_name, mod_name_len, name, nam_len)) < 1) {
         return -parsed+ret;
     }
 
     return parsed+ret;
-}
-
-/**
- * @brief Resolve (find) a prefix in a module include import. Does not log.
- *
- * @param[in] mod The module with the import.
- * @param[in] prefix The prefix to find.
- * @param[in] pref_len The prefix length.
- *
- * @return The matching module on success, NULL on error.
- */
-static struct lys_module *
-resolve_import_in_includes_recursive(struct lys_module *mod, const char *prefix, uint32_t pref_len)
-{
-    int i, j;
-    struct lys_submodule *sub_mod;
-    struct lys_module *ret;
-
-    for (i = 0; i < mod->inc_size; i++) {
-        sub_mod = mod->inc[i].submodule;
-        for (j = 0; j < sub_mod->imp_size; j++) {
-            if (!strncmp(sub_mod->imp[j].prefix, prefix, pref_len) && !sub_mod->imp[j].prefix[pref_len]) {
-                return sub_mod->imp[j].module;
-            }
-        }
-    }
-
-    for (i = 0; i < mod->inc_size; i++) {
-        ret = resolve_import_in_includes_recursive((struct lys_module *)mod->inc[i].submodule, prefix, pref_len);
-        if (ret) {
-            return ret;
-        }
-    }
-
-    return NULL;
-}
-
-/**
- * @brief Resolve (find) a prefix in a module import. Does not log.
- *
- * @param[in] mod The module with the import.
- * @param[in] prefix The prefix to find.
- * @param[in] pref_len The prefix length.
- *
- * @return The matching module on success, NULL on error.
- */
-static struct lys_module *
-resolve_prefixed_module(struct lys_module *mod, const char *prefix, uint32_t pref_len)
-{
-    int i;
-
-    assert(prefix && pref_len);
-
-    if (!mod) {
-        return NULL;
-    }
-
-    /* module itself */
-    if (!strncmp(mod->prefix, prefix, pref_len) && (mod->prefix[pref_len] == '\0')) {
-        return mod;
-    }
-
-    /* imported modules */
-    for (i = 0; i < mod->imp_size; i++) {
-        if (!strncmp(mod->imp[i].prefix, prefix, pref_len) && (mod->imp[i].prefix[pref_len] == '\0')) {
-            return mod->imp[i].module;
-        }
-    }
-
-    /* imports in includes */
-    return resolve_import_in_includes_recursive(mod, prefix, pref_len);
 }
 
 /**
@@ -1345,7 +1274,7 @@ resolve_superior_type(const char *name, const char *mod_name, struct lys_module 
         }
     } else if (mod_name) {
         /* get module where to search */
-        module = ly_ctx_get_module(module->ctx, mod_name, NULL);
+        module = lys_get_import_module(module, NULL, 0, mod_name, 0);
         if (!module) {
             return -1;
         }
@@ -1607,12 +1536,12 @@ static int
 resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
 {
     struct lys_module *module;
-    const char *prefix, *name;
-    int i, pref_len, nam_len;
+    const char *mod_name, *name;
+    int i, mod_name_len, nam_len;
     struct lys_node *start;
 
     /* parse the identifier, it must be parsed on one call */
-    if ((i = parse_node_identifier(uses->name, &prefix, &pref_len, &name, &nam_len)) < 1) {
+    if ((i = parse_node_identifier(uses->name, &mod_name, &mod_name_len, &name, &nam_len)) < 1) {
         LOGVAL(LYE_INCHAR, line, uses->name[-i], &uses->name[-i]);
         return -1;
     } else if (uses->name[i]) {
@@ -1620,10 +1549,10 @@ resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
         return -1;
     }
 
-    if (prefix) {
-        module = resolve_prefixed_module(uses->module, prefix, pref_len);
+    if (mod_name) {
+        module = lys_get_import_module(uses->module, NULL, 0, mod_name, mod_name_len);
         if (!module) {
-            LOGVAL(LYE_INMOD_LEN, line, pref_len, prefix);
+            LOGVAL(LYE_INMOD_LEN, line, mod_name_len, mod_name);
             return -1;
         }
         start = module->data;
@@ -1636,11 +1565,11 @@ resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
         return EXIT_SUCCESS;
     }
 
-    if (prefix || !first) {
+    if (mod_name || !first) {
         LOGVAL(LYE_INRESOLV, line, "grouping", uses->name);
     }
     /* import must now be fully resolved */
-    if (prefix) {
+    if (mod_name) {
         return -1;
     }
     return EXIT_FAILURE;
@@ -1660,24 +1589,24 @@ resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
 static int
 resolve_feature(const char *id, struct lys_module *module, int first, uint32_t line, struct lys_feature **ret)
 {
-    const char *prefix, *name;
-    int pref_len, nam_len, i, j;
+    const char *mod_name, *name;
+    int mod_name_len, nam_len, i, j;
 
     assert(id);
     assert(module);
 
     /* check prefix */
-    if ((i = parse_node_identifier(id, &prefix, &pref_len, &name, &nam_len)) < 1) {
+    if ((i = parse_node_identifier(id, &mod_name, &mod_name_len, &name, &nam_len)) < 1) {
         LOGVAL(LYE_INCHAR, line, id[-i], &id[-i]);
         return -1;
     }
 
-    if (prefix) {
+    if (mod_name) {
         /* search in imported modules */
-        module = resolve_prefixed_module(module, prefix, pref_len);
+        module = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
         if (!module) {
             /* identity refers unknown data model */
-            LOGVAL(LYE_INMOD_LEN, line, pref_len, prefix);
+            LOGVAL(LYE_INMOD_LEN, line, mod_name_len, mod_name);
             return -1;
         }
     } else {
@@ -1734,9 +1663,9 @@ int
 resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module *mod, LYS_NODE node_type,
                       struct lys_node **ret)
 {
-    const char *name, *prefix;
+    const char *name, *mod_name;
     struct lys_node *sibling;
-    int i, nam_len, pref_len, is_relative = -1;
+    int i, nam_len, mod_name_len, is_relative = -1;
     struct lys_module *prefix_mod, *start_mod;
     /* 0 - in module, 1 - in 1st submodule, 2 - in 2nd submodule, ... */
     uint8_t in_submod = 0;
@@ -1744,7 +1673,7 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
     assert(mod);
     assert(id);
 
-    if ((i = parse_schema_nodeid(id, &prefix, &pref_len, &name, &nam_len, &is_relative)) < 1) {
+    if ((i = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
         return -1;
     }
     id += i;
@@ -1755,8 +1684,8 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
 
     /* absolute-schema-nodeid */
     if (!is_relative) {
-        if (prefix) {
-            start_mod = resolve_prefixed_module(mod, prefix, pref_len);
+        if (mod_name) {
+            start_mod = lys_get_import_module(mod, NULL, 0, mod_name, mod_name_len);
             if (!start_mod) {
                 return -1;
             }
@@ -1785,8 +1714,8 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
                     || (!strncmp(name, "output", 6) && (nam_len == 6) && (sibling->nodetype == LYS_OUTPUT)))) {
 
                 /* prefix match check */
-                if (prefix) {
-                    prefix_mod = resolve_prefixed_module(mod, prefix, pref_len);
+                if (mod_name) {
+                    prefix_mod = lys_get_import_module(mod, NULL, 0, mod_name, mod_name_len);
                     if (!prefix_mod) {
                         return -1;
                     }
@@ -1860,7 +1789,7 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
             in_submod = 0;
         }
 
-        if ((i = parse_schema_nodeid(id, &prefix, &pref_len, &name, &nam_len, &is_relative)) < 1) {
+        if ((i = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
             return -1;
         }
         id += i;
@@ -1964,16 +1893,19 @@ resolve_data(struct lys_module *mod, const char *name, int nam_len, struct lyd_n
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 otherwise.
  */
 static int
-resolve_data_nodeid(const char *prefix, int pref_len, const char *name, int name_len, struct lyd_node *start,
+resolve_data_nodeid(const char *mod_name, int mod_name_len, const char *name, int name_len, struct lyd_node *start,
                     struct unres_data *parents)
 {
     struct lys_module *mod;
+    char *str;
 
     assert(start);
 
-    if (prefix) {
-        /* we have prefix, find appropriate module */
-        mod = resolve_prefixed_module(start->schema->module, prefix, pref_len);
+    if (mod_name) {
+        /* we have mod_name, find appropriate module */
+        str = strndup(mod_name, mod_name_len);
+        mod = ly_ctx_get_module(start->schema->module->ctx, str, NULL);
+        free(str);
         if (!mod) {
             /* invalid prefix */
             return -1;
@@ -1987,7 +1919,7 @@ resolve_data_nodeid(const char *prefix, int pref_len, const char *name, int name
 }
 
 /**
- * @brief Resolve a path predicate (leafref) in data context. Logs directly
+ * @brief Resolve a path predicate (leafref) in JSON data context. Logs directly
  *        only specific errors, general no-resolvent error is left to the caller,
  *        but line fail is always displayed.
  *
@@ -2129,7 +2061,7 @@ error:
 }
 
 /**
- * @brief Resolve a path (leafref) in data context. Logs directly.
+ * @brief Resolve a path (leafref) in JSON data context. Logs directly.
  *
  * @param[in] node Leafref data node.
  * @param[in] path Path of the leafref.
@@ -2251,7 +2183,7 @@ error:
 }
 
 /**
- * @brief Resolve a path (leafref) predicate in schema context. Logs directly.
+ * @brief Resolve a path (leafref) predicate in JSON schema context. Logs directly.
  *
  * @param[in] path Path to use.
  * @param[in] mod Schema module.
@@ -2344,7 +2276,7 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
 }
 
 /**
- * @brief Resolve a path (leafref) in schema context. Logs directly.
+ * @brief Resolve a path (leafref) in JSON schema context. Logs directly.
  *
  * @param[in] mod Module to use.
  * @param[in] path Path to use.
@@ -2458,7 +2390,8 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
 }
 
 /**
- * @brief Resolve instance-identifier predicate. Does not log.
+ * @brief Resolve instance-identifier predicate in JSON data format.
+ *        Does not log.
  *
  * @param[in] pred Predicate to use.
  * @param[in,out] node_match Nodes matching the restriction without
@@ -2469,7 +2402,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
  *         positive on success, negative on failure.
  */
 static int
-resolve_predicate_json(const char *pred, struct unres_data *node_match)
+resolve_predicate(const char *pred, struct unres_data *node_match)
 {
     /* ... /node[target = value] ... */
     struct unres_data target_match;
@@ -2487,7 +2420,7 @@ resolve_predicate_json(const char *pred, struct unres_data *node_match)
     parsed = 0;
 
     do {
-        if ((i = parse_predicate_json(pred, &model, &mod_len, &name, &nam_len, &value, &val_len, &has_predicate)) < 1) {
+        if ((i = parse_predicate(pred, &model, &mod_len, &name, &nam_len, &value, &val_len, &has_predicate)) < 1) {
             return -parsed+i;
         }
         parsed += i;
@@ -2550,7 +2483,7 @@ remove_instid:
 }
 
 /**
- * @brief Resolve instance-identifier. Logs directly.
+ * @brief Resolve instance-identifier in JSON data format. Logs directly.
  *
  * @param[in] data Any node in the data tree, used to get a data tree root and context
  * @param[in] path Instance-identifier node value.
@@ -2559,7 +2492,7 @@ remove_instid:
  * @return Matching node or NULL if no such a node exists. If error occurs, NULL is returned and ly_errno is set.
  */
 static struct lyd_node *
-resolve_instid_json(struct lyd_node *data, const char *path, int line)
+resolve_instid(struct lyd_node *data, const char *path, int line)
 {
     int i = 0, j;
     struct lyd_node *result = NULL;
@@ -2582,7 +2515,7 @@ resolve_instid_json(struct lyd_node *data, const char *path, int line)
 
     /* search for the instance node */
     while (path[i]) {
-        j = parse_instance_identifier_json(&path[i], &model, &mod_len, &name, &name_len, &has_predicate);
+        j = parse_instance_identifier(&path[i], &model, &mod_len, &name, &name_len, &has_predicate);
         if (j <= 0) {
             LOGVAL(LYE_INCHAR, line, path[i-j], &path[i-j]);
             goto error;
@@ -2618,7 +2551,7 @@ resolve_instid_json(struct lyd_node *data, const char *path, int line)
                 unres_data_del(&node_match, k);
             }
 
-            j = resolve_predicate_json(&path[i], &node_match);
+            j = resolve_predicate(&path[i], &node_match);
             if (j < 1) {
                 LOGVAL(LYE_INPRED, line, &path[i-j]);
                 goto error;
@@ -3011,26 +2944,26 @@ resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const cha
                    int first, uint32_t line, struct lys_ident **ret)
 {
     const char *name;
-    int i, prefix_len = 0;
+    int i, mod_name_len = 0;
 
     /* search for the base identity */
     name = strchr(basename, ':');
     if (name) {
         /* set name to correct position after colon */
-        prefix_len = name - basename;
+        mod_name_len = name - basename;
         name++;
 
-        if (!strncmp(basename, module->prefix, prefix_len) && !module->prefix[prefix_len]) {
+        if (!strncmp(basename, module->name, mod_name_len) && !module->name[mod_name_len]) {
             /* prefix refers to the current module, ignore it */
-            prefix_len = 0;
+            mod_name_len = 0;
         }
     } else {
         name = basename;
     }
 
-    if (prefix_len) {
+    if (mod_name_len) {
         /* get module where to search */
-        module = resolve_prefixed_module(module, basename, prefix_len);
+        module = lys_get_import_module(module, NULL, 0, basename, mod_name_len);
         if (!module) {
             /* identity refers unknown data model */
             LOGVAL(LYE_INMOD, line, basename);
@@ -3057,7 +2990,7 @@ resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const cha
 }
 
 /**
- * @brief Resolve JSON format identityref. Logs directly.
+ * @brief Resolve JSON data format identityref. Logs directly.
  *
  * @param[in] base Base identity.
  * @param[in] ident_name Identityref name.
@@ -3066,7 +2999,7 @@ resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const cha
  * @return Pointer to the identity resolvent, NULL on error.
  */
 struct lys_ident *
-resolve_identref_json(struct lys_ident *base, const char *ident_name, uint32_t line)
+resolve_identref(struct lys_ident *base, const char *ident_name, uint32_t line)
 {
     const char *mod_name, *name;
     int mod_name_len, rc;
@@ -3710,7 +3643,8 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
 {
     int rc;
 
-    assert(unres && item && ((type != UNRES_LEAFREF) && (type != UNRES_INSTID) && (type != UNRES_WHEN)));
+    assert(unres && item && ((type != UNRES_LEAFREF) && (type != UNRES_INSTID) && (type != UNRES_WHEN)
+           && (type != UNRES_MUST)));
 
     rc = resolve_unres_schema_item(mod, item, type, snode, unres, 1, line);
     if (rc != EXIT_FAILURE) {
@@ -3879,7 +3813,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int first, 
     case UNRES_INSTID:
         assert(sleaf->type.base == LY_TYPE_INST);
         ly_errno = 0;
-        if (!resolve_instid_json(node, leaf->value_str, line)) {
+        if (!resolve_instid(node, leaf->value_str, line)) {
             if (ly_errno) {
                 return -1;
             } else if (sleaf->type.info.inst.req > -1) {

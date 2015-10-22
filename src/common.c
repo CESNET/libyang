@@ -25,6 +25,7 @@
 #include <ctype.h>
 
 #include "common.h"
+#include "tree_internal.h"
 #include "libyang.h"
 
 /*
@@ -98,7 +99,7 @@ strnodetype(LYS_NODE type)
 }
 
 const char *
-transform_expr_json2xml(struct lys_module *module, const char *expr, char ***prefixes, char ***namespaces,
+transform_json2xml(struct lys_module *module, const char *expr, char ***prefixes, char ***namespaces,
                         uint32_t *ns_count)
 {
     const char *in, *id, *pref;
@@ -136,6 +137,11 @@ transform_expr_json2xml(struct lys_module *module, const char *expr, char ***pre
         id_len = col-id;
 
         /* get the module */
+        mod = NULL;
+        if (!strncmp(module->name, id, id_len) && !module->name[id_len]) {
+            mod = module;
+            pref = module->prefix;
+        }
         for (i = 0; i < module->imp_size; ++i) {
             if (!strncmp(module->imp[i].module->name, id, id_len) && !module->imp[i].module->name[id_len]) {
                 mod = module->imp[i].module;
@@ -143,8 +149,8 @@ transform_expr_json2xml(struct lys_module *module, const char *expr, char ***pre
                 break;
             }
         }
-        if (i == module->imp_size) {
-            LOGVAL(LYE_SPEC, 0, "Module \"%.*s\" not found in the imports of \"%s\".", id_len, id, module->name);
+        if (!mod) {
+            LOGVAL(LYE_INMOD_LEN, 0, id_len, id);
             free(out);
             return NULL;
         }
@@ -192,7 +198,7 @@ transform_expr_json2xml(struct lys_module *module, const char *expr, char ***pre
 }
 
 const char *
-transform_expr_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int log)
+transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int log)
 {
     const char *in, *id;
     char *out, *col, *prefix;
@@ -233,7 +239,6 @@ transform_expr_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem 
         ns = lyxml_get_ns(xml, prefix);
         free(prefix);
         if (!ns) {
-            /* TODO a valid case if replacing an XPath in an augment part from a different model (won't happen if namespaces used in the augment get copied over as well) */
             if (log) {
                 LOGVAL(LYE_SPEC, LOGLINE(xml), "XML namespace with prefix \"%.*s\" not defined.", id_len, id);
             }
@@ -245,6 +250,73 @@ transform_expr_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem 
             if (log) {
                 LOGVAL(LYE_SPEC, LOGLINE(xml), "Module with the namespace \"%s\" could not be found.", ns->value);
             }
+            free(out);
+            return NULL;
+        }
+
+        /* adjust out size (it can even decrease in some strange cases) */
+        out_size += strlen(mod->name)-id_len;
+        out = realloc(out, out_size);
+
+        /* copy the data before prefix */
+        strncpy(&out[out_used], in, id-in);
+        out_used += id-in;
+
+        /* copy the model name */
+        strcpy(&out[out_used], mod->name);
+        out_used += strlen(mod->name);
+
+        /* copy ':' */
+        out[out_used] = ':';
+        ++out_used;
+
+        /* finally adjust in pointer for next round */
+        in = col+1;
+    }
+
+    /* unreachable */
+    LOGINT;
+    return NULL;
+}
+
+const char *
+transform_schema2json(struct lys_module *module, const char *expr, uint32_t line)
+{
+    const char *in, *id;
+    char *out, *col;
+    size_t out_size, out_used, id_len, rc;
+    struct lys_module *mod;
+
+    in = expr;
+    out_size = strlen(in)+1;
+    out = malloc(out_size);
+    out_used = 0;
+
+    while (1) {
+        col = strchr(in, ':');
+        /* we're finished, copy the remaining part */
+        if (!col) {
+            strcpy(&out[out_used], in);
+            out_used += strlen(in)+1;
+            assert(out_size == out_used);
+            return lydict_insert_zc(module->ctx, out);
+        }
+        id = strpbrk_backwards(col-1, "/ [", (col-in)-1);
+        if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[')) {
+            ++id;
+        }
+        id_len = col-id;
+        rc = parse_identifier(id);
+        if (rc < id_len) {
+            LOGVAL(LYE_INCHAR, line, id[rc], &id[rc]);
+            free(out);
+            return NULL;
+        }
+
+        /* get the module */
+        mod = lys_get_import_module(module, id, id_len, NULL, 0);
+        if (!mod) {
+            LOGVAL(LYE_INMOD_LEN, line, id_len, id);
             free(out);
             return NULL;
         }

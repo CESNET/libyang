@@ -166,12 +166,15 @@ opendir_search:
         }
         close(fd);
 
-        if (result) {
-            asprintf(&model_path, "file://%s/%s", wd, file->d_name);
-            result->uri = lydict_insert(ctx, model_path, 0);
-            free(model_path);
-            break;
+        if (!result) {
+            goto cleanup;
         }
+
+        asprintf(&model_path, "file://%s/%s", wd, file->d_name);
+        result->uri = lydict_insert(ctx, model_path, 0);
+        free(model_path);
+        /* success */
+        goto cleanup;
     }
 
 searchpath:
@@ -184,6 +187,8 @@ searchpath:
         localsearch = 0;
         goto opendir_search;
     }
+
+    LOGERR(LY_ESYS, "Data model \"%s\" not found (search path is \"%s\")", name, ctx->models.search_path);
 
 cleanup:
     chdir(cwd);
@@ -708,7 +713,7 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
             return EXIT_FAILURE;
         }
 
-        node->value.ident = resolve_identref_json(stype->info.ident.ref, node->value_str, line);
+        node->value.ident = resolve_identref(stype->info.ident.ref, node->value_str, line);
         if (!node->value.ident) {
             return EXIT_FAILURE;
         }

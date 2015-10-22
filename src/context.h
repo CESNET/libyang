@@ -30,6 +30,7 @@ struct ly_modules_list {
     int size;
     int used;
     struct lys_module **list;
+    const char **parsing;
     uint16_t module_set_id;
 };
 

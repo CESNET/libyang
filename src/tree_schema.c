@@ -32,7 +32,7 @@
 #include "context.h"
 #include "parser.h"
 #include "resolve.h"
-#include "xml_private.h"
+#include "xml_internal.h"
 #include "tree_internal.h"
 #include "validation.h"
 
@@ -92,7 +92,6 @@ lys_getsibling(struct lys_module *mod, struct lys_node *siblings, const char *mo
     struct lys_node *node, *old_siblings = NULL;
     struct lys_module *prefix_mod, *cur_mod;
     int in_submod;
-    char *module_name;
 
     assert(siblings && name);
     assert(!(type & (LYS_AUGMENT | LYS_USES | LYS_GROUPING)));
@@ -112,9 +111,7 @@ lys_getsibling(struct lys_module *mod, struct lys_node *siblings, const char *mo
 
     /* set prefix_mod correctly */
     if (mod_name) {
-        module_name = strndup(mod_name, mod_name_len);
-        prefix_mod = ly_ctx_get_module(siblings->module->ctx, module_name, NULL);
-        free(module_name);
+        prefix_mod = lys_get_import_module(siblings->module, NULL, 0, mod_name, mod_name_len);
         if (!prefix_mod) {
             return -1;
         }
@@ -631,6 +628,14 @@ lys_find_grouping_up(const char *name, struct lys_node *start, int in_submodules
     int i;
 
     for (par_iter = start; par_iter; par_iter = par_iter->parent) {
+        /* top-level augment, look into module (uses augment is handled correctly below) */
+        if (par_iter->parent && !par_iter->parent->parent && (par_iter->parent->nodetype == LYS_AUGMENT)) {
+            par_iter = par_iter->parent->module->data;
+            if (!par_iter) {
+                break;
+            }
+        }
+
         if (par_iter->parent && (par_iter->parent->nodetype & (LYS_CHOICE | LYS_CASE | LYS_AUGMENT | LYS_USES))) {
             continue;
         }
@@ -1835,6 +1840,38 @@ lys_node_free(struct lys_node *node)
     /* again common part */
     lys_node_unlink(node);
     free(node);
+}
+
+struct lys_module *
+lys_get_import_module(struct lys_module *module, const char *prefix, int pref_len, const char *name, int name_len)
+{
+    int i, match;
+
+    assert(prefix || name);
+    if (prefix && !pref_len) {
+        pref_len = strlen(prefix);
+    }
+    if (name && !name_len) {
+        name_len = strlen(name);
+    }
+
+    if ((!prefix || (!strncmp(module->prefix, prefix, pref_len) && !module->prefix[pref_len]))
+            && (!name || (!strncmp(module->name, name, name_len) && !module->name[name_len]))) {
+        return module;
+    }
+
+    for (i = 0; i < module->imp_size; ++i) {
+        match = 0;
+        if (!prefix || (!strncmp(module->imp[i].prefix, prefix, pref_len) && !module->imp[i].prefix[pref_len])) {
+            match = 1;
+        }
+        if (match && (!name
+                || (!strncmp(module->imp[i].module->name, name, name_len) && !module->imp[i].module->name[name_len]))) {
+            return module->imp[i].module;
+        }
+    }
+
+    return NULL;
 }
 
 /* free_int_mods - flag whether to free the internal modules as well */

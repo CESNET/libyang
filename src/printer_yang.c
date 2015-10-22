@@ -31,28 +31,6 @@
 
 static void yang_print_snode(struct lyout *out, int level, struct lys_node *node, int mask);
 
-static const char*
-get_module_import_prefix(struct lys_module *main_mod, struct lys_module *imp_mod)
-{
-    int i, j;
-
-    for (i = 0; i < main_mod->imp_size; ++i) {
-        if (main_mod->imp[i].module == imp_mod) {
-            return main_mod->imp[i].prefix;
-        }
-    }
-
-    for (j = 0; j < main_mod->inc_size; ++j) {
-        for (i = 0; i < main_mod->inc[j].submodule->imp_size; ++i) {
-            if (main_mod->inc[j].submodule->imp[i].module == imp_mod) {
-                return main_mod->inc[j].submodule->imp[i].prefix;
-            }
-        }
-    }
-
-    return NULL;
-}
-
 static void
 yang_print_text(struct lyout *out, int level, const char *name, const char *text)
 {
@@ -168,7 +146,7 @@ yang_print_iffeature(struct lyout *out, int level, struct lys_module *module, st
 {
     ly_print(out, "%*sif-feature ", LEVEL, INDENT);
     if ((feat->module != module) && !feat->module->type) {
-        ly_print(out, "%s:", get_module_import_prefix(module, feat->module));
+        ly_print(out, "%s:", feat->module->name);
     }
     ly_print(out, "%s;\n", feat->name);
 }
@@ -212,7 +190,7 @@ yang_print_when(struct lyout *out, int level, struct lys_module *module, struct 
 {
     const char *xml_expr;
 
-    xml_expr = transform_expr_json2xml(module, when->cond, NULL, NULL, NULL);
+    xml_expr = transform_json2xml(module, when->cond, NULL, NULL, NULL);
     if (!xml_expr) {
         ly_print(out, "(!error!)");
         return;
@@ -239,7 +217,7 @@ yang_print_type(struct lyout *out, int level, struct lys_module *module, struct 
     const char *str;
 
     if (type->module_name) {
-        str = transform_expr_json2xml(module, type->module_name, NULL, NULL, NULL);
+        str = transform_json2xml(module, type->module_name, NULL, NULL, NULL);
         ly_print(out, "%*stype %s:%s {\n", LEVEL, INDENT, str, type->der->name);
         lydict_remove(module->ctx, str);
     } else {
@@ -312,7 +290,7 @@ yang_print_type(struct lyout *out, int level, struct lys_module *module, struct 
         }
         break;
     case LY_TYPE_LEAFREF:
-        str = transform_expr_json2xml(module, type->info.lref.path, NULL, NULL, NULL);
+        str = transform_json2xml(module, type->info.lref.path, NULL, NULL, NULL);
         ly_print(out, "%*spath \"%s\";\n", LEVEL, INDENT, str);
         lydict_remove(module->ctx, str);
         break;
@@ -346,7 +324,7 @@ yang_print_must(struct lyout *out, int level, struct lys_module *module, struct 
 {
     const char *xml_expr;
 
-    xml_expr = transform_expr_json2xml(module, must->expr, NULL, NULL, NULL);
+    xml_expr = transform_json2xml(module, must->expr, NULL, NULL, NULL);
     if (!xml_expr) {
         ly_print(out, "(!error!)");
         return;
@@ -375,8 +353,11 @@ static void
 yang_print_refine(struct lyout *out, int level, struct lys_module *module, struct lys_refine *refine)
 {
     int i;
+    const char *str;
 
-    ly_print(out, "%*srefine \"%s\" {\n", LEVEL, INDENT, refine->target_name);
+    str = transform_json2xml(module, refine->target_name, NULL, NULL, NULL);
+    ly_print(out, "%*srefine \"%s\" {\n", LEVEL, INDENT, str);
+    lydict_remove(module->ctx, str);
     level++;
 
     if (refine->flags & LYS_CONFIG_W) {
@@ -422,8 +403,11 @@ static void
 yang_print_deviation(struct lyout *out, int level, struct lys_module *module, struct lys_deviation *deviation)
 {
     int i, j;
+    const char *str;
 
-    ly_print(out, "%*sdeviation \"%s\" {\n", LEVEL, INDENT, deviation->target_name);
+    str = transform_json2xml(module, deviation->target_name, NULL, NULL, NULL);
+    ly_print(out, "%*sdeviation \"%s\" {\n", LEVEL, INDENT, str);
+    lydict_remove(module->ctx, str);
     level++;
 
     if (deviation->dsc) {
@@ -498,8 +482,11 @@ yang_print_augment(struct lyout *out, int level, struct lys_module *module, stru
 {
     int i;
     struct lys_node *sub;
+    const char *str;
 
-    ly_print(out, "%*saugment \"%s\" {\n", LEVEL, INDENT, augment->target_name);
+    str = transform_json2xml(module, augment->target_name, NULL, NULL, NULL);
+    ly_print(out, "%*saugment \"%s\" {\n", LEVEL, INDENT, str);
+    lydict_remove(module->ctx, str);
     level++;
 
     yang_print_nacmext(out, level, (struct lys_node *)augment, module);
@@ -552,7 +539,7 @@ yang_print_identity(struct lyout *out, int level, struct lys_ident *ident)
     if (ident->base) {
         ly_print(out, "%*sbase ", LEVEL, INDENT);
         if ((ident->module != ident->base->module) && !ident->base->module->type) {
-            ly_print(out, "%s:", get_module_import_prefix(ident->module, ident->base->module));
+            ly_print(out, "%s:", ident->base->module->name);
         }
         ly_print(out, "%s;\n", ident->base->name);
     }
@@ -870,7 +857,7 @@ yang_print_uses(struct lyout *out, int level, struct lys_node *node)
 
     ly_print(out, "%*suses ", LEVEL, INDENT);
     if (node->child && (node->module != node->child->module) && !node->child->module->type) {
-        ly_print(out, "%s:", get_module_import_prefix(node->module, node->child->module));
+        ly_print(out, "%s:", node->child->module->name);
     }
     ly_print(out, "%s {\n",uses->name);
     level++;
