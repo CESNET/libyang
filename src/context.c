@@ -31,7 +31,7 @@
 
 #include "common.h"
 #include "context.h"
-#include "dict.h"
+#include "dict_private.h"
 #include "parser.h"
 #include "tree_internal.h"
 

@@ -24,8 +24,8 @@
 #include <stdlib.h>
 
 #include "common.h"
-#include "dict.h"
 #include "context.h"
+#include "dict_private.h"
 
 void
 lydict_init(struct dict_table *dict)

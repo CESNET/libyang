@@ -24,9 +24,9 @@
 
 #include <stdint.h>
 
+#include "dict_private.h"
 #include "libyang.h"
 #include "resolve.h"
-#include "dict.h"
 
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))

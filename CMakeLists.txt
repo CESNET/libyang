@@ -73,7 +73,8 @@ set(headers
 	src/libyang.h
 	src/tree_schema.h
 	src/tree_data.h
-	src/xml.h)
+	src/xml.h
+	src/dict.h)
 
 add_library(yang SHARED ${libsrc})
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})

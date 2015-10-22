@@ -22,7 +22,7 @@
 #ifndef LY_CONTEXT_H_
 #define LY_CONTEXT_H_
 
-#include "dict.h"
+#include "dict_private.h"
 #include "tree_schema.h"
 
 struct ly_modules_list {

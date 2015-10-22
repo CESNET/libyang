@@ -28,7 +28,7 @@
 #include <unistd.h>
 
 #include "common.h"
-#include "dict.h"
+#include "dict_private.h"
 #include "printer.h"
 #include "tree_schema.h"
 #include "xml_private.h"

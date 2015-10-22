@@ -1,3 +1,4 @@
+
 /**
  * @file xpath.c
  * @author Michal Vasko <mvasko@cesnet.cz>
@@ -39,7 +40,7 @@
 #include "tree_internal.h"
 #include "common.h"
 #include "resolve.h"
-#include "dict.h"
+#include "dict_private.h"
 
 static struct lyd_node *moveto_get_root(struct lyd_node *cur_node, enum lyxp_node_type *root_type);
 static int reparse_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line);

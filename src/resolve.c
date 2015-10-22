@@ -31,7 +31,7 @@
 #include "resolve.h"
 #include "common.h"
 #include "xpath.h"
-#include "dict.h"
+#include "dict_private.h"
 #include "tree_internal.h"
 
 /**
