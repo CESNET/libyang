@@ -2734,7 +2734,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 !strcmp(sub->name, "choice") ||
                 !strcmp(sub->name, "anyxml")) {
 
-            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
         } else if (!strcmp(sub->name, "if-feature")) {
             c_ftrs++;
@@ -3494,7 +3494,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
                 !strcmp(sub->name, "anyxml")) {
-            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
 
             /* array counters */
@@ -3519,7 +3519,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             list->keys = calloc(list->keys_size, sizeof *list->keys);
         } else if (!strcmp(sub->name, "unique")) {
             c_uniq++;
-            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &uniq, sub);
         } else if (!strcmp(sub->name, "typedef")) {
             c_tpdf++;
@@ -3812,7 +3812,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
                 !strcmp(sub->name, "anyxml")) {
-            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
 
             /* array counters */
@@ -3951,7 +3951,7 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
                 !strcmp(sub->name, "anyxml")) {
-            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
 
             /* array counters */
@@ -4069,7 +4069,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
                 !strcmp(sub->name, "anyxml")) {
-            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
 
             /* array counters */
@@ -4180,7 +4180,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
                 !strcmp(sub->name, "anyxml")) {
-            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
 
             /* array counters */
@@ -4307,7 +4307,7 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
                 LOGVAL(LYE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
                 goto error;
             }
-            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
         } else if (!strcmp(sub->name, "output")) {
             if (rpc->child
@@ -4316,12 +4316,12 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
                 LOGVAL(LYE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
                 goto error;
             }
-            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
 
             /* data statements */
         } else if (!strcmp(sub->name, "grouping")) {
-            lyxml_unlink_elem(module->ctx, sub, 1);
+            lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
 
             /* array counters */
@@ -4635,7 +4635,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
         } else if (!strcmp(child->name, "augment")) {
             c_aug++;
             /* keep augments separated, processed last */
-            lyxml_unlink_elem(module->ctx, child, 1);
+            lyxml_unlink_elem(module->ctx, child, 2);
             lyxml_add_child(module->ctx, &augs, child);
 
         } else if (!strcmp(child->name, "feature")) {
@@ -4653,12 +4653,12 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
                 !strcmp(child->name, "anyxml") ||
                 !strcmp(child->name, "rpc") ||
                 !strcmp(child->name, "notification")) {
-            lyxml_unlink_elem(module->ctx, child, 1);
+            lyxml_unlink_elem(module->ctx, child, 2);
             lyxml_add_child(module->ctx, &root, child);
 
         } else if (!strcmp(child->name, "grouping")) {
             /* keep groupings separated and process them before other data statements */
-            lyxml_unlink_elem(module->ctx, child, 1);
+            lyxml_unlink_elem(module->ctx, child, 2);
             lyxml_add_child(module->ctx, &grps, child);
 
             /* optional statements */
@@ -4793,7 +4793,6 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
                     goto error;
                 }
             }
-            lyxml_free_elem(ctx, child);
 
         } else if (!strcmp(child->name, "include")) {
             r = fill_yin_include(module, child, &module->inc[module->inc_size]);
@@ -4810,7 +4809,6 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
                     goto error;
                 }
             }
-            lyxml_free_elem(ctx, child);
 
         } else if (!strcmp(child->name, "revision")) {
             GETVAL(value, child, "date");
@@ -4873,7 +4871,6 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             }
 
             module->rev_size++;
-            lyxml_free_elem(ctx, child);
 
         } else if (!strcmp(child->name, "typedef")) {
             r = fill_yin_typedef(module, NULL, child, &module->tpdf[module->tpdf_size], unres);
@@ -4882,7 +4879,6 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             if (r) {
                 goto error;
             }
-            lyxml_free_elem(ctx, child);
 
         } else if (!strcmp(child->name, "identity")) {
             r = fill_yin_identity(module, child, &module->ident[module->ident_size], unres);
@@ -4891,7 +4887,6 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             if (r) {
                 goto error;
             }
-            lyxml_free_elem(ctx, child);
 
         } else if (!strcmp(child->name, "feature")) {
             r = fill_yin_feature(module, child, &module->features[module->features_size], unres);
@@ -4900,7 +4895,6 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             if (r) {
                 goto error;
             }
-            lyxml_free_elem(ctx, child);
 
         } else if (!strcmp(child->name, "deviation")) {
             r = fill_yin_deviation(module, child, &module->deviation[module->deviation_size]);
@@ -4909,7 +4903,6 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             if (r) {
                 goto error;
             }
-            lyxml_free_elem(ctx, child);
 
         }
     }
