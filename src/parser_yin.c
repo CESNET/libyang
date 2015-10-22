@@ -2329,6 +2329,7 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
 {
     struct lyxml_elem *child;
     const char *value;
+    int count;
 
     LY_TREE_FOR(yin->child, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
@@ -2365,14 +2366,47 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
     }
 
     GETVAL(value, yin, "module");
+
+    /* check for circular import, store it if passed */
+    if (!module->ctx->models.parsing) {
+        count = 0;
+    } else {
+        for (count = 0; module->ctx->models.parsing[count]; ++count) {
+            if (value == module->ctx->models.parsing[count]) {
+                LOGERR(LY_EVALID, "Circular import dependency on the module \"%s\".", value);
+                goto error;
+            }
+        }
+    }
+    ++count;
+    module->ctx->models.parsing =
+        realloc(module->ctx->models.parsing, (count + 1) * sizeof *module->ctx->models.parsing);
+    module->ctx->models.parsing[count - 1] = value;
+    module->ctx->models.parsing[count] = NULL;
+
+    /* try to load the module */
     imp->module = ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
     if (!imp->module) {
         imp->module = lyp_search_file(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL);
-        if (!imp->module) {
-            LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
-            LOGVAL(LYE_INARG, LOGLINE(yin), value, yin->name);
-            goto error;
-        }
+    }
+
+    /* remove the new module name now that its parsing is finished (even if failed) */
+    if (module->ctx->models.parsing[count] || (module->ctx->models.parsing[count - 1] != value)) {
+        LOGINT;
+    }
+    --count;
+    if (count) {
+        module->ctx->models.parsing[count] = NULL;
+    } else {
+        free(module->ctx->models.parsing);
+        module->ctx->models.parsing = NULL;
+    }
+
+    /* check the result */
+    if (!imp->module) {
+        LOGVAL(LYE_INARG, LOGLINE(yin), value, yin->name);
+        LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
+        goto error;
     }
 
     return EXIT_SUCCESS;
@@ -2388,6 +2422,7 @@ fill_yin_include(struct lys_module *module, struct lyxml_elem *yin, struct lys_i
 {
     struct lyxml_elem *child;
     const char *value;
+    int count;
 
     LY_TREE_FOR(yin->child, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
@@ -2411,14 +2446,47 @@ fill_yin_include(struct lys_module *module, struct lyxml_elem *yin, struct lys_i
     }
 
     GETVAL(value, yin, "module");
+
+    /* check for circular include, store it if passed */
+    if (!module->ctx->models.parsing) {
+        count = 0;
+    } else {
+        for (count = 0; module->ctx->models.parsing[count]; ++count) {
+            if (value == module->ctx->models.parsing[count]) {
+                LOGERR(LY_EVALID, "Circular include dependency on the submodule \"%s\".", value);
+                goto error;
+            }
+        }
+    }
+    ++count;
+    module->ctx->models.parsing =
+        realloc(module->ctx->models.parsing, (count + 1) * sizeof *module->ctx->models.parsing);
+    module->ctx->models.parsing[count - 1] = value;
+    module->ctx->models.parsing[count] = NULL;
+
+    /* try to load the submodule */
     inc->submodule = ly_ctx_get_submodule(module, value, inc->rev[0] ? inc->rev : NULL);
     if (!inc->submodule) {
-        inc->submodule = (struct lys_submodule *) lyp_search_file(module->ctx, module, value, inc->rev[0] ? inc->rev : NULL);
-        if (!inc->submodule) {
-            LOGERR(LY_EVALID, "Including \"%s\" module into \"%s\" failed.", value, module->name);
-            LOGVAL(LYE_INARG, LOGLINE(yin), value, yin->name);
-            goto error;
-        }
+        inc->submodule = (struct lys_submodule *)lyp_search_file(module->ctx, module, value, inc->rev[0] ? inc->rev : NULL);
+    }
+
+    /* remove the new submodule name now that its parsing is finished (even if failed) */
+    if (module->ctx->models.parsing[count] || (module->ctx->models.parsing[count - 1] != value)) {
+        LOGINT;
+    }
+    --count;
+    if (count) {
+        module->ctx->models.parsing[count] = NULL;
+    } else {
+        free(module->ctx->models.parsing);
+        module->ctx->models.parsing = NULL;
+    }
+
+    /* check the result */
+    if (!inc->submodule) {
+        LOGVAL(LYE_INARG, LOGLINE(yin), value, yin->name);
+        LOGERR(LY_EVALID, "Including \"%s\" module into \"%s\" failed.", value, module->name);
+        goto error;
     }
 
     /* check that belongs-to corresponds */
