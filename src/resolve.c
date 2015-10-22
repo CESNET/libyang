@@ -31,6 +31,7 @@
 #include "resolve.h"
 #include "common.h"
 #include "xpath.h"
+#include "parser.h"
 #include "dict_private.h"
 #include "tree_internal.h"
 
@@ -1259,22 +1260,22 @@ cleanup:
  * @brief Resolve a typedef. Does not log.
  *
  * @param[in] name Typedef name.
- * @param[in] prefix Typedef name prefix.
- * @param[in] module The main module.
- * @param[in] parent The parent of the resolved type definition.
+ * @param[in] mod_name Typedef name module name.
+ * @param[in] module Main module.
+ * @param[in] parent Parent of the resolved type definition.
  * @param[out] ret Pointer to the resolved typedef. Can be NULL.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 int
-resolve_superior_type(const char *name, const char *prefix, struct lys_module *module, struct lys_node *parent,
+resolve_superior_type(const char *name, const char *mod_name, struct lys_module *module, struct lys_node *parent,
                       struct lys_tpdf **ret)
 {
     int i, j;
     struct lys_tpdf *tpdf;
     int tpdf_size;
 
-    if (!prefix) {
+    if (!mod_name) {
         /* no prefix, try built-in types */
         for (i = 1; i < LY_DATA_TYPE_COUNT; i++) {
             if (!strcmp(ly_types[i].def->name, name)) {
@@ -1285,13 +1286,13 @@ resolve_superior_type(const char *name, const char *prefix, struct lys_module *m
             }
         }
     } else {
-        if (!strcmp(prefix, module->prefix)) {
+        if (!strcmp(mod_name, module->name)) {
             /* prefix refers to the current module, ignore it */
-            prefix = NULL;
+            mod_name = NULL;
         }
     }
 
-    if (!prefix && parent) {
+    if (!mod_name && parent) {
         /* search in local typedefs */
         while (parent) {
             switch (parent->nodetype) {
@@ -1342,9 +1343,9 @@ resolve_superior_type(const char *name, const char *prefix, struct lys_module *m
 
             parent = parent->parent;
         }
-    } else if (prefix) {
+    } else if (mod_name) {
         /* get module where to search */
-        module = resolve_prefixed_module(module, prefix, strlen(prefix));
+        module = ly_ctx_get_module(module->ctx, mod_name, NULL);
         if (!module) {
             return -1;
         }
@@ -1375,14 +1376,81 @@ resolve_superior_type(const char *name, const char *prefix, struct lys_module *m
     return EXIT_FAILURE;
 }
 
-/* logs directly */
+/**
+ * @brief Check the default \p value of the \p type. Logs directly.
+ *
+ * @param[in] type Type definition to use.
+ * @param[in] value Default value to check.
+ * @param[in] first Whether this is the first resolution try. Affects logging.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
+ */
 static int
-check_default(struct lys_type *type, const char *value)
+check_default(struct lys_type *type, const char *value, int first, uint32_t line)
 {
-    /* TODO - RFC 6020, sec. 7.3.4 */
-    (void)type;
-    (void)value;
-    return EXIT_SUCCESS;
+    struct lyd_node_leaf_list node;
+    struct lys_type *iter;
+    int ret = EXIT_SUCCESS, found;
+
+    /* dummy leaf */
+    node.value_str = value;
+    node.value_type = type->base;
+    node.schema = calloc(1, sizeof *node.schema);
+    node.schema->name = strdup("default");
+
+    if (type->base == LY_TYPE_UNION) {
+        found = 0;
+        iter = lyp_get_next_union_type(type, NULL, &found);
+        while (iter) {
+            node.value_type = iter->base;
+
+            /* special case with too much effort required and almost no added value */
+            if ((iter->base == LY_TYPE_IDENT) || (iter->base == LY_TYPE_INST)) {
+                LOGVAL(LYE_SPEC, line,
+                       "Union with \"instance-identifier\" or \"identityref\" and a default value is not supported!");
+                ret = -1;
+                goto finish;
+            }
+
+            if (!lyp_parse_value(&node, iter, 1, NULL, UINT_MAX)) {
+                break;
+            }
+
+            found = 0;
+            iter = lyp_get_next_union_type(type, iter, &found);
+        }
+
+        if (!iter) {
+            if (!first) {
+                LOGVAL(LYE_INVAL, line, node.value_str, "default");
+            }
+            ret = EXIT_FAILURE;
+            goto finish;
+        }
+
+    } else if (type->base == LY_TYPE_LEAFREF) {
+        if (!type->info.lref.target) {
+            ret = EXIT_FAILURE;
+            goto finish;
+        }
+        ret = check_default(&type->info.lref.target->type, value, first, line);
+
+    } else if ((type->base == LY_TYPE_INST) || (type->base == LY_TYPE_IDENT)) {
+        /* it was converted to JSON format before, nothing else sensible we can do */
+
+    } else {
+        ret = lyp_parse_value(&node, type, 1, NULL, (first ? UINT_MAX : line));
+    }
+
+finish:
+    if (node.value_type == LY_TYPE_BITS) {
+        free(node.value.bit);
+    }
+    free((char *)node.schema->name);
+    free(node.schema);
+
+    return ret;
 }
 
 /**
@@ -1555,7 +1623,7 @@ resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
     if (prefix) {
         module = resolve_prefixed_module(uses->module, prefix, pref_len);
         if (!module) {
-            LOGVAL(LYE_INPREF_LEN, line, pref_len, prefix);
+            LOGVAL(LYE_INMOD_LEN, line, pref_len, prefix);
             return -1;
         }
         start = module->data;
@@ -1609,7 +1677,7 @@ resolve_feature(const char *id, struct lys_module *module, int first, uint32_t l
         module = resolve_prefixed_module(module, prefix, pref_len);
         if (!module) {
             /* identity refers unknown data model */
-            LOGVAL(LYE_INPREF_LEN, line, pref_len, prefix);
+            LOGVAL(LYE_INMOD_LEN, line, pref_len, prefix);
             return -1;
         }
     } else {
@@ -1640,135 +1708,6 @@ resolve_feature(const char *id, struct lys_module *module, int first, uint32_t l
     if (!first) {
         LOGVAL(LYE_INRESOLV, line, "feature", id);
     }
-    return EXIT_FAILURE;
-}
-
-/**
- * @brief Resolve (find) a valid sibling. Does not log.
- *
- * Valid child means a schema pointer to a node that is part of
- * the data meaning uses are skipped. Includes module comparison
- * (can handle augments). Module is adjusted based on the prefix.
- * Includes are also searched if siblings are top-level nodes.
- *
- * @param[in] mod Main module. Prefix is considered to be from this module.
- * @param[in] siblings Siblings to consider. They are first adjusted to
- *                     point to the first sibling.
- * @param[in] prefix Node prefix.
- * @param[in] pref_len Node prefix length.
- * @param[in] name Node name.
- * @param[in] nam_len Node name length.
- * @param[in] type ORed desired type of the node. 0 means any type.
- *                 Returns only schema data nodes (no uses, grouping, augment, choice, case).
- * @param[out] ret Pointer to the node of the desired type. Can be NULL.
- *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
- */
-int
-resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *prefix, int pref_len, const char *name,
-                int nam_len, LYS_NODE type, struct lys_node **ret)
-{
-    struct lys_node *node, *old_siblings = NULL;
-    struct lys_module *prefix_mod, *cur_mod;
-    int in_submod;
-
-    assert(siblings && name);
-    assert(!(type & LYS_USES));
-
-    /* find the beginning */
-    while (siblings->prev->next) {
-        siblings = siblings->prev;
-    }
-
-    /* fill the name length in case the caller is so indifferent */
-    if (!nam_len) {
-        nam_len = strlen(name);
-    }
-
-    /* we start with the module itself, submodules come later */
-    in_submod = 0;
-
-    /* set prefix_mod correctly */
-    if (prefix) {
-        prefix_mod = resolve_prefixed_module(mod, prefix, pref_len);
-        if (!prefix_mod) {
-            return -1;
-        }
-        cur_mod = prefix_mod;
-        /* it is not our module */
-        if (cur_mod != mod) {
-            old_siblings = siblings;
-            siblings = cur_mod->data;
-        }
-    } else {
-        if (mod) {
-            prefix_mod = mod;
-        } else {
-            prefix_mod = siblings->module;
-        }
-        if (prefix_mod->type) {
-            prefix_mod = ((struct lys_submodule *)prefix_mod)->belongsto;
-        }
-        cur_mod = prefix_mod;
-    }
-
-    while (1) {
-        /* try to find the node */
-        node = NULL;
-        while ((node = lys_getnext(node, siblings->parent, cur_mod, 0))) {
-            if (!type || (node->nodetype & type)) {
-                /* module check */
-                if (!node->module->type) {
-                    if (cur_mod != node->module) {
-                        continue;
-                    }
-                } else {
-                    /* both are submodules */
-                    if (cur_mod->type) {
-                        if (cur_mod != node->module) {
-                            continue;
-                        }
-                    } else {
-                        if (cur_mod != ((struct lys_submodule *)node->module)->belongsto) {
-                            continue;
-                        }
-                    }
-                }
-
-                /* direct name check */
-                if (node->name == name || (!strncmp(node->name, name, nam_len) && !node->name[nam_len])) {
-                    if (ret) {
-                        *ret = node;
-                    }
-                    return EXIT_SUCCESS;
-                }
-            }
-        }
-
-        /* The original siblings may be valid,
-         * it's a special case when we're looking
-         * for a node from augment.
-         */
-        if (old_siblings) {
-            siblings = old_siblings;
-            old_siblings = NULL;
-            continue;
-        }
-
-        /* we're not top-level, search ended */
-        if (siblings->parent) {
-            break;
-        }
-
-        /* let's try the submodules */
-        if (in_submod == prefix_mod->inc_size) {
-            break;
-        }
-        cur_mod = (struct lys_module *)prefix_mod->inc[in_submod].submodule;
-        siblings = cur_mod->data;
-        ++in_submod;
-    }
-
     return EXIT_FAILURE;
 }
 
@@ -2344,7 +2283,7 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
         path += i;
 
         /* source (must be leaf) */
-        rc = resolve_sibling(mod, source_node->child, sour_pref, sour_pref_len, source, sour_len, LYS_LEAF, &src_node);
+        rc = lys_getsibling(mod, source_node->child, sour_pref, sour_pref_len, source, sour_len, LYS_LEAF, &src_node);
         if (rc) {
             if ((rc == -1) || !first) {
                 LOGVAL(LYE_NORESOLV, line, path-parsed);
@@ -2372,7 +2311,7 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
             }
         }
         while (1) {
-            rc = resolve_sibling(mod, dst_node->child, dest_pref, dest_pref_len, dest, dest_len,
+            rc = lys_getsibling(mod, dst_node->child, dest_pref, dest_pref_len, dest, dest_len,
                                  LYS_CONTAINER | LYS_LIST | LYS_LEAF, &dst_node);
             if (rc) {
                 if ((rc == -1) || !first) {
@@ -2481,7 +2420,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
             node = node->child;
         }
 
-        rc = resolve_sibling(mod, node, prefix, pref_len, name, nam_len, LYS_ANY & (~LYS_USES), &node);
+        rc = lys_getsibling(mod, node, prefix, pref_len, name, nam_len, 0, &node);
         if (rc) {
             if ((rc == -1) || !first) {
                 LOGVAL(LYE_NORESOLV, line, path);
@@ -3094,7 +3033,7 @@ resolve_base_ident(struct lys_module *module, struct lys_ident *ident, const cha
         module = resolve_prefixed_module(module, basename, prefix_len);
         if (!module) {
             /* identity refers unknown data model */
-            LOGVAL(LYE_INPREF, line, basename);
+            LOGVAL(LYE_INMOD, line, basename);
             return -1;
         }
     } else {
@@ -3273,7 +3212,7 @@ resolve_list_keys(struct lys_module *mod, struct lys_node_list *list, const char
             len = strlen(keys_str);
         }
 
-        rc = resolve_sibling(mod, list->child, NULL, 0, keys_str, len, LYS_LEAF, (struct lys_node **)&list->keys[i]);
+        rc = lys_getsibling(mod, list->child, NULL, 0, keys_str, len, LYS_LEAF, (struct lys_node **)&list->keys[i]);
         if (rc) {
             if ((rc == -1) || !first) {
                 LOGVAL(LYE_INRESOLV, line, "list keys", keys_str);
@@ -3551,9 +3490,9 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         stype = item;
 
         /* HACK type->der is temporarily its parent */
-        rc = resolve_superior_type(base_name, stype->prefix, mod, (struct lys_node *)stype->der, &stype->der);
+        rc = resolve_superior_type(base_name, stype->module_name, mod, (struct lys_node *)stype->der, &stype->der);
         if (rc == -1) {
-            LOGVAL(LYE_INPREF, line, stype->prefix);
+            LOGVAL(LYE_INMOD, line, stype->module_name);
         } else if (!rc) {
             stype->base = stype->der->type.base;
         }
@@ -3574,7 +3513,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         base_name = str_snode;
         stype = item;
 
-        rc = check_default(stype, base_name);
+        rc = check_default(stype, base_name, first, line);
         /* do not remove base_name (dflt), it's in a typedef */
         has_str = 0;
         break;

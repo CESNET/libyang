@@ -236,9 +236,12 @@ static void
 yang_print_type(struct lyout *out, int level, struct lys_module *module, struct lys_type *type)
 {
     int i;
+    const char *str;
 
-    if (type->prefix) {
-        ly_print(out, "%*stype %s:%s {\n", LEVEL, INDENT, type->prefix, type->der->name);
+    if (type->module_name) {
+        str = transform_expr_json2xml(module, type->module_name, NULL, NULL, NULL);
+        ly_print(out, "%*stype %s:%s {\n", LEVEL, INDENT, str, type->der->name);
+        lydict_remove(module->ctx, str);
     } else {
         ly_print(out, "%*stype %s {\n", LEVEL, INDENT, type->der->name);
     }
@@ -309,7 +312,9 @@ yang_print_type(struct lyout *out, int level, struct lys_module *module, struct 
         }
         break;
     case LY_TYPE_LEAFREF:
-        ly_print(out, "%*spath \"%s\";\n", LEVEL, INDENT, type->info.lref.path);
+        str = transform_expr_json2xml(module, type->info.lref.path, NULL, NULL, NULL);
+        ly_print(out, "%*spath \"%s\";\n", LEVEL, INDENT, str);
+        lydict_remove(module->ctx, str);
         break;
     case LY_TYPE_STRING:
         if (type->info.str.length) {

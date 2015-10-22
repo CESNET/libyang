@@ -123,29 +123,6 @@ void lys_submodule_free(struct lys_submodule *submodule, int free_int_mods);
 int lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child);
 
 /**
- * @brief Get next schema tree (sibling) node element that can be instanciated in a data tree.
- *
- * lys_getnext() is supposed to be called sequentially. In the first call, the \p last parameter is usually NULL
- * and function starts returning i) the first \p parent child or ii) the first top level element of the \p module.
- * Consequent calls suppose to provide the previously returned node as the \p last parameter and still the same
- * \p parent and \p module parameters.
- *
- * The function does not traverse via RPCs and Notifications.
- *
- * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
- * @param[in] parent Parent of the subtree where the function starts processing
- * @param[in] module In case of iterating on top level elements, the \p parent is NULL and module must be specified.
- * @param[in] option 1 to include the choice schema nodes into the result set.
- * @return Next schema tree node that can be instanciated in a data tree, NULL in case there is no such element
- */
-struct lys_node *lys_getnext(struct lys_node *last, struct lys_node *parent, struct lys_module *module, int options);
-
-/**
- * @brief option for lys_getnext() to allow returning the choice nodes.
- */
-#define LYS_GETNEXT_WITHCHOICE  0x01
-
-/**
  * @brief Find a valid grouping definition relative to a node.
  *
  * Valid definition means a sibling of \p start or a sibling of any of \p start 's parents.
@@ -263,6 +240,29 @@ struct lys_node *ly_check_mandatory(struct lyd_node *start);
  * @return Parent of \p attr, NULL if not found.
  */
 struct lyd_node *lyd_attr_parent(struct lyd_node *root, struct lyd_attr *attr);
+
+/**
+ * @brief Find a specific sibling. Does not log.
+ *
+ * Includes module comparison (can handle augments). Module is adjusted
+ * based on the \p mod_name. Includes are also searched if siblings are
+ * top-level nodes.
+ *
+ * @param[in] mod Main module. Prefix is considered to be from this module.
+ * @param[in] siblings Siblings to consider. They are first adjusted to
+ *                     point to the first sibling.
+ * @param[in] mod_name Module name.
+ * @param[in] mod_name_len Module name length.
+ * @param[in] name Node name.
+ * @param[in] nam_len Node name length.
+ * @param[in] type ORed desired type of the node. 0 means any type.
+ *                 Does not return groupings, uses, and augments (but returns augment nodes).
+ * @param[out] ret Pointer to the node of the desired type. Can be NULL.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
+ */
+int lys_getsibling(struct lys_module *mod, struct lys_node *siblings, const char *mod_name, int mod_name_len,
+                   const char *name, int nam_len, LYS_NODE type, struct lys_node **ret);
 
 /**
  * @brief Compare 2 data nodes if they are the same from the YANG point of view.
