@@ -113,10 +113,12 @@ void lyxml_unlink_attr(struct lyxml_attr *attr);
  *
  * @param[in] ctx libyang context to use.
  * @param[in] elem Element to unlink from its parent (if any).
- * @param[in] copy_ns Flag true corrects NS of \p elem and children that are
- *                    defined outside \p elem subtree (copy NS and update pointer).
- *                    Flag false sets NS of \p elem and children that are defined
- *                    outside \p elem subtree to NULL.
+ * @param[in] copy_ns 0 sets NS of \p elem and children that are defined
+ * outside \p elem subtree to NULL,
+ * 1 corrects NS of \p elem and children that are defined outside \p elem
+ * subtree (copy NS and update pointer),
+ * 2 skips any NS checking.
+ *
  */
 void lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns);
 

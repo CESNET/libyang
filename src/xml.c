@@ -218,6 +218,7 @@ lyxml_find_ns(struct lyxml_elem *elem, const char *prefix, const char *value)
     return NULL;
 }
 
+/* copy_ns: 0 - set invalid namespaces to NULL, 1 - copy them into this subtree */
 static void
 lyxml_correct_ns(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
 {
@@ -302,7 +303,9 @@ lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
     elem->next = NULL;
     elem->prev = elem;
 
-    lyxml_correct_ns(ctx, elem, copy_ns);
+    if (copy_ns < 2) {
+        lyxml_correct_ns(ctx, elem, copy_ns);
+    }
 }
 
 void
