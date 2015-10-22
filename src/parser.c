@@ -145,8 +145,9 @@ opendir_search:
         /* get type according to filename suffix */
         if (!strcmp(&file->d_name[flen - 4], ".yin")) {
             format = LYS_IN_YIN;
-        } else if (!strcmp(&file->d_name[flen - 5], ".yang")) {
-            format = LYS_IN_YANG;
+        /*TODO } else if (!strcmp(&file->d_name[flen - 5], ".yang")) {
+            continue;
+            format = LYS_IN_YANG;*/
         } else {
             continue;
         }
