@@ -1250,7 +1250,7 @@ dump_elem(struct lyout *out, struct lyxml_elem *e, int level, int options)
         }
     }
 
-    delim = delim_outer = "\n";
+    delim = delim_outer = (options & LYXML_DUMP_FORMAT) ? "\n" : "";
     indent = 2 * level;
     if ((e->flags & LYXML_ELEM_MIXED) || (e->parent && (e->parent->flags & LYXML_ELEM_MIXED))) {
         delim = "";
@@ -1260,7 +1260,7 @@ dump_elem(struct lyout *out, struct lyxml_elem *e, int level, int options)
         indent = 0;
     }
 
-    if (!options || (options & LYXML_DUMP_OPEN)) {
+    if (!options || (options <= (LYXML_DUMP_FORMAT | LYXML_DUMP_OPEN)))  {
         /* opening tag */
         if (e->ns && e->ns->prefix) {
             size += ly_print(out, "%*s<%s:%s", indent, "", e->ns->prefix, e->name);
@@ -1288,7 +1288,7 @@ dump_elem(struct lyout *out, struct lyxml_elem *e, int level, int options)
     }
 
     /* apply options */
-    if (options == (LYXML_DUMP_OPEN | LYXML_DUMP_CLOSE)) {
+    if (options == (LYXML_DUMP_OPEN | LYXML_DUMP_CLOSE | LYXML_DUMP_FORMAT)) {
         size += ly_print(out, "/>%s", delim);
         return size;
     } else if (options & LYXML_DUMP_OPEN) {
@@ -1319,7 +1319,8 @@ dump_elem(struct lyout *out, struct lyxml_elem *e, int level, int options)
 
     /* go recursively */
     LY_TREE_FOR(e->child, child) {
-        size += dump_elem(out, child, level + 1, 0);
+        if (options & LYXML_DUMP_FORMAT) size += dump_elem(out, child, level + 1, LYXML_DUMP_FORMAT);
+        else size += dump_elem(out, child, level, 0);
     }
 
 close:
