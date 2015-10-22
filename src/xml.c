@@ -1260,8 +1260,7 @@ dump_elem(struct lyout *out, struct lyxml_elem *e, int level, int options)
         indent = 0;
     }
 
-    if (!options || (options <= (LYXML_DUMP_FORMAT | LYXML_DUMP_OPEN)) || ((options & LYXML_DUMP_CLOSE) &&
-            (options & LYXML_DUMP_OPEN)) || (options & LYXML_DUMP_OPEN))  {
+    if (!(options & (LYXML_DUMP_OPEN|LYXML_DUMP_CLOSE|LYXML_DUMP_ATTRS)) || (options & LYXML_DUMP_OPEN))  {
         /* opening tag */
         if (e->ns && e->ns->prefix) {
             size += ly_print(out, "%*s<%s:%s", indent, "", e->ns->prefix, e->name);
