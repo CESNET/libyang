@@ -2369,7 +2369,6 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
     if (!imp->module) {
         imp->module = lyp_search_file(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL);
         if (!imp->module) {
-            LOGERR(LY_EVALID, "Data model \"%s\" not found (search path is \"%s\")", value, module->ctx->models.search_path);
             LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
             LOGVAL(LYE_INARG, LOGLINE(yin), value, yin->name);
             goto error;
@@ -2416,7 +2415,6 @@ fill_yin_include(struct lys_module *module, struct lyxml_elem *yin, struct lys_i
     if (!inc->submodule) {
         inc->submodule = (struct lys_submodule *) lyp_search_file(module->ctx, module, value, inc->rev[0] ? inc->rev : NULL);
         if (!inc->submodule) {
-            LOGERR(LY_EVALID, "Data model \"%s\" not found (search path is \"%s\")", value, module->ctx->models.search_path);
             LOGERR(LY_EVALID, "Including \"%s\" module into \"%s\" failed.", value, module->name);
             LOGVAL(LYE_INARG, LOGLINE(yin), value, yin->name);
             goto error;
@@ -2429,7 +2427,7 @@ fill_yin_include(struct lys_module *module, struct lyxml_elem *yin, struct lys_i
     }
     if (inc->submodule->belongsto != module) {
         LOGVAL(LYE_INARG, LOGLINE(yin), value, yin->name);
-        LOGVAL(LYE_SPEC, 0, "The included module does not belongs-to the \"%s\" module", module->name);
+        LOGERR(LY_EVALID, "The included module does not belongs-to the \"%s\" module", module->name);
         goto error;
     }
 

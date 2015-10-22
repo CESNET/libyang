@@ -166,12 +166,15 @@ opendir_search:
         }
         close(fd);
 
-        if (result) {
-            asprintf(&model_path, "file://%s/%s", wd, file->d_name);
-            result->uri = lydict_insert(ctx, model_path, 0);
-            free(model_path);
-            break;
+        if (!result) {
+            goto cleanup;
         }
+
+        asprintf(&model_path, "file://%s/%s", wd, file->d_name);
+        result->uri = lydict_insert(ctx, model_path, 0);
+        free(model_path);
+        /* success */
+        goto cleanup;
     }
 
 searchpath:
@@ -184,6 +187,8 @@ searchpath:
         localsearch = 0;
         goto opendir_search;
     }
+
+    LOGERR(LY_ESYS, "Data model \"%s\" not found (search path is \"%s\")", name, ctx->models.search_path);
 
 cleanup:
     chdir(cwd);
