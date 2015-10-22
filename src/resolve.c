@@ -3643,7 +3643,8 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
 {
     int rc;
 
-    assert(unres && item && ((type != UNRES_LEAFREF) && (type != UNRES_INSTID) && (type != UNRES_WHEN)));
+    assert(unres && item && ((type != UNRES_LEAFREF) && (type != UNRES_INSTID) && (type != UNRES_WHEN)
+           && (type != UNRES_MUST)));
 
     rc = resolve_unres_schema_item(mod, item, type, snode, unres, 1, line);
     if (rc != EXIT_FAILURE) {
