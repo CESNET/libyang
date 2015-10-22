@@ -1319,8 +1319,11 @@ dump_elem(struct lyout *out, struct lyxml_elem *e, int level, int options)
 
     /* go recursively */
     LY_TREE_FOR(e->child, child) {
-        if (options & LYXML_DUMP_FORMAT) size += dump_elem(out, child, level + 1, LYXML_DUMP_FORMAT);
-        else size += dump_elem(out, child, level, 0);
+        if (options & LYXML_DUMP_FORMAT) {
+            size += dump_elem(out, child, level + 1, LYXML_DUMP_FORMAT);
+        } else {
+            size += dump_elem(out, child, level, 0);
+        }
     }
 
 close:
