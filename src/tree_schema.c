@@ -217,6 +217,9 @@ lys_getnext(struct lys_node *last, struct lys_node *parent, struct lys_module *m
 
 repeat:
     while (next && (next->nodetype == LYS_GROUPING)) {
+        if (options & LYS_GETNEXT_WITHGROUPING) {
+            return next;
+        }
         next = next->next;
     }
 
@@ -231,13 +234,25 @@ repeat:
     }
 
     switch (next->nodetype) {
+    case LYS_INPUT:
+    case LYS_OUTPUT:
+        if (options & LYS_GETNEXT_WITHINOUT) {
+            return next;
+        } else {
+            next = next->child;
+            goto repeat;
+        }
+        break;
+
     case LYS_CASE:
         if (options & LYS_GETNEXT_WITHCASE) {
             return next;
+        } else {
+            next = next->child;
+            goto repeat;
         }
-        /* fallthrough */
-    case LYS_INPUT:
-    case LYS_OUTPUT:
+        break;
+
     case LYS_USES:
         /* go into */
         next = next->child;
