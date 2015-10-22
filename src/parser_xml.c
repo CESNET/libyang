@@ -32,7 +32,7 @@
 #include "parser.h"
 #include "tree_internal.h"
 #include "validation.h"
-#include "xml_private.h"
+#include "xml_internal.h"
 
 #define LY_NSNC "urn:ietf:params:xml:ns:netconf:base:1.0"
 

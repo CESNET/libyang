@@ -1,5 +1,5 @@
 /**
- * @file xml_private.h
+ * @file xml_internal.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Internal part of libyang XML parser
  *
@@ -19,8 +19,8 @@
  *    software without specific prior written permission.
  */
 
-#ifndef LY_XML_PRIVATE_H_
-#define LY_XML_PRIVATE_H_
+#ifndef LY_XML_INTERNAL_H_
+#define LY_XML_INTERNAL_H_
 
 #include <stdio.h>
 #include "xml.h"
@@ -150,4 +150,4 @@ int lyxml_getutf8(const char *buf, unsigned int *read, unsigned int line);
  */
 int lyxml_dump_text(struct lyout *out, const char *text);
 
-#endif /* LY_XML_PRIVATE_H_ */
+#endif /* LY_XML_INTERNAL_H_ */

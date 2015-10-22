@@ -29,7 +29,7 @@
 
 #include "common.h"
 #include "printer.h"
-#include "xml_private.h"
+#include "xml_internal.h"
 #include "tree_data.h"
 #include "tree_schema.h"
 #include "resolve.h"

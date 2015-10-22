@@ -31,7 +31,7 @@
 #include "dict.h"
 #include "printer.h"
 #include "tree_schema.h"
-#include "xml_private.h"
+#include "xml_internal.h"
 
 #ifndef NDEBUG
 unsigned int lineno, lws_lineno;
