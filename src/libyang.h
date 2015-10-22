@@ -246,8 +246,6 @@ struct lys_submodule *ly_ctx_get_submodule(struct lys_module *module, const char
 /**
  * @brief Get schema node according to the given absolute schema node identifier.
  *
- * TODO not implemented
- *
  * @param[in] ctx Context to work in.
  * @param[in] nodeid Absolute schema node identifier with module names used as
  * prefixes. Prefix (module name) must be used whenever the child node is from
@@ -257,7 +255,7 @@ struct lys_submodule *ly_ctx_get_submodule(struct lys_module *module, const char
  * - /ietf-netconf-monitoring:get-schema/input/identifier
  * - /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/ip
  */
-struct lys_node *lys_ctx_get_node(struct ly_ctx *ctx, const char *nodeid);
+struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const char *nodeid);
 
 /**
  * @brief Free all internal structures of the specified context.

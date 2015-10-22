@@ -293,6 +293,42 @@ ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *module_name)
     return result;
 }
 
+API struct lys_node *
+ly_ctx_get_node(struct ly_ctx *ctx, const char *nodeid)
+{
+    struct lys_node *ret;
+    struct lys_module *module;
+    char *mod_name;
+    int parsed;
+
+    if (!ctx || !nodeid) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    if ((nodeid[0] != '/') || ((parsed = parse_identifier(nodeid + 1)) < 1)) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    /* get the correct module */
+    mod_name = strndup(nodeid + 1, parsed);
+    module = ly_ctx_get_module(ctx, mod_name, NULL);
+    free(mod_name);
+    if (!module) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    /* now we can parse the whole schema */
+    if (resolve_schema_nodeid(nodeid, NULL, module, LYS_AUGMENT, &ret)) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    return ret;
+}
+
 static int
 ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod)
 {
