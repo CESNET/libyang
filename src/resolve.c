@@ -1643,13 +1643,13 @@ resolve_feature(const char *id, struct lys_module *module, int first, uint32_t l
 /**
  * @brief Resolve (find) a schema node based on a schema-nodeid. Does not log.
  *
- * node_type - LYS_AUGMENT (searches also RPCs and notifications)
+ * node_type - LYS_AUGMENT (searches also RPCs and notifications, augmented nodes are fine, too)
  *           - LYS_USES    (only descendant-schema-nodeid allowed, ".." not allowed, always return a grouping)
  *           - LYS_CHOICE  (search only start->child, only descendant-schema-nodeid allowed)
  *           - LYS_LEAF    (like LYS_USES, but always returns a data node)
  *
- * If id is absolute, start is ignored. If id is relative, start must be the first child to be searched
- * continuing with its siblings.
+ * If \p id is absolute, \p start is ignored. If \p id is relative, \p start must be the first child to be searched
+ * continuing with its siblings. Normally skips augments except \p node_type LYS_AUGMENT (augmenting an augment node).
  *
  * @param[in] id Schema-nodeid string.
  * @param[in] start Start of the relative search.
@@ -1665,8 +1665,8 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
 {
     const char *name, *mod_name;
     struct lys_node *sibling;
-    int i, nam_len, mod_name_len, is_relative = -1;
-    struct lys_module *prefix_mod, *start_mod;
+    int i, opts, nam_len, mod_name_len, is_relative = -1;
+    struct lys_module *prev_mod, *prefix_mod, *start_mod;
     /* 0 - in module, 1 - in 1st submodule, 2 - in 2nd submodule, ... */
     uint8_t in_submod = 0;
 
@@ -1680,6 +1680,12 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
 
     if (!is_relative && (node_type & (LYS_USES | LYS_CHOICE | LYS_LEAF))) {
         return -1;
+    }
+
+    /* set options for lys_getnext() */
+    opts = LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT;
+    if (node_type == LYS_USES) {
+        opts |= LYS_GETNEXT_WITHGROUPING;
     }
 
     /* absolute-schema-nodeid */
@@ -1703,9 +1709,11 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
         }
     }
 
+    prev_mod = start_mod;
+
     while (1) {
-        sibling = NULL;
-        LY_TREE_FOR(start, sibling) {
+        sibling = lys_getnext(NULL, start->parent, start_mod, opts);
+        while (sibling) {
             /* name match */
             if (((sibling->nodetype != LYS_GROUPING) || (node_type == LYS_USES))
                     && (!(sibling->nodetype & (LYS_RPC | LYS_NOTIF)) || (node_type == LYS_AUGMENT))
@@ -1713,27 +1721,34 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
                     || (!strncmp(name, "input", 5) && (nam_len == 5) && (sibling->nodetype == LYS_INPUT))
                     || (!strncmp(name, "output", 6) && (nam_len == 6) && (sibling->nodetype == LYS_OUTPUT)))) {
 
-                /* prefix match check */
+                /* module name match check */
                 if (mod_name) {
-                    prefix_mod = lys_get_import_module(mod, NULL, 0, mod_name, mod_name_len);
+                    prefix_mod = lys_get_import_module(prev_mod, NULL, 0, mod_name, mod_name_len);
+                    if (!prefix_mod && (node_type == LYS_AUGMENT)) {
+                        /* we want augment nodes in this case */
+                        prefix_mod = sibling->module;
+                        if (prefix_mod->type) {
+                            prefix_mod = ((struct lys_submodule *)prefix_mod)->belongsto;
+                        }
+                        if (strncmp(prefix_mod->name, mod_name, mod_name_len) || prefix_mod->name[mod_name_len]) {
+                            prefix_mod = NULL;
+                        }
+                    }
                     if (!prefix_mod) {
                         return -1;
                     }
                 } else {
-                    prefix_mod = mod;
-                    if (prefix_mod->type) {
-                        prefix_mod = ((struct lys_submodule *)prefix_mod)->belongsto;
-                    }
+                    prefix_mod = prev_mod;
                 }
 
                 /* modules need to always be checked, we want to skip augments */
                 if (!sibling->module->type) {
                     if (prefix_mod != sibling->module) {
-                        continue;
+                        goto next;
                     }
                 } else {
                     if (prefix_mod != ((struct lys_submodule *)sibling->module)->belongsto) {
-                        continue;
+                        goto next;
                     }
                 }
 
@@ -1741,7 +1756,7 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
                 if (!id[0]) {
                     /* we're looking only for groupings, this is a data node */
                     if ((node_type == LYS_USES) && (sibling->nodetype != LYS_GROUPING)) {
-                        continue;
+                        goto next;
                     }
                     if (ret) {
                         *ret = sibling;
@@ -1753,8 +1768,11 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
                  * but this isn't it, we cannot search inside
                  */
                 if (sibling->nodetype == LYS_GROUPING) {
-                    continue;
+                    goto next;
                 }
+
+                /* remember the module */
+                prev_mod = prefix_mod;
 
                 /* check for shorthand cases - then 'start' does not change */
                 if (!sibling->parent || (sibling->parent->nodetype != LYS_CHOICE)
@@ -1763,6 +1781,9 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
                 }
                 break;
             }
+
+next:
+            sibling = lys_getnext(sibling, start->parent, NULL, opts);
         }
 
         /* we did not find the case in direct siblings */
