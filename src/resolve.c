@@ -1705,6 +1705,7 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
         if (start) {
             start_mod = start->module;
         } else {
+            start = mod->data;
             start_mod = mod;
         }
     }
