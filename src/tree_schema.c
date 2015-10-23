@@ -193,6 +193,80 @@ lys_get_sibling(struct lys_module *mod, struct lys_node *siblings, const char *m
     return EXIT_FAILURE;
 }
 
+int
+lys_get_data_sibling(struct lys_module *mod, struct lys_node *siblings, const char *name, LYS_NODE type,
+                     struct lys_node **ret)
+{
+    struct lys_node *node;
+    struct lys_module *cur_mod;
+    int in_submod;
+
+    assert(siblings && name);
+    assert(!(type & (LYS_AUGMENT | LYS_USES | LYS_GROUPING | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT)));
+
+    /* find the beginning */
+    while (siblings->prev->next) {
+        siblings = siblings->prev;
+    }
+
+    /* we start with the module itself, submodules come later */
+    in_submod = 0;
+
+    if (!mod) {
+        mod = siblings->module;
+    }
+    cur_mod = mod;
+
+    while (1) {
+        /* try to find the node */
+        node = NULL;
+        while ((node = lys_getnext(node, siblings->parent, cur_mod, 0))) {
+            if (!type || (node->nodetype & type)) {
+                /* module check */
+                if (!node->module->type) {
+                    if (cur_mod != node->module) {
+                        continue;
+                    }
+                } else {
+                    /* both are submodules */
+                    if (cur_mod->type) {
+                        if (cur_mod != node->module) {
+                            continue;
+                        }
+                    } else {
+                        if (cur_mod != ((struct lys_submodule *)node->module)->belongsto) {
+                            continue;
+                        }
+                    }
+                }
+
+                /* direct name check */
+                if ((node->name == name) || !strcmp(node->name, name)) {
+                    if (ret) {
+                        *ret = node;
+                    }
+                    return EXIT_SUCCESS;
+                }
+            }
+        }
+
+        /* we're not top-level, search ended */
+        if (siblings->parent) {
+            break;
+        }
+
+        /* let's try the submodules */
+        if (in_submod == mod->inc_size) {
+            break;
+        }
+        cur_mod = (struct lys_module *)mod->inc[in_submod].submodule;
+        siblings = cur_mod->data;
+        ++in_submod;
+    }
+
+    return EXIT_FAILURE;
+}
+
 API struct lys_node *
 lys_getnext(struct lys_node *last, struct lys_node *parent, struct lys_module *module, int options)
 {

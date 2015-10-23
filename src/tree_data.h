@@ -204,7 +204,7 @@ struct lyd_node_anyxml {
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_CONTAINER, #LYS_LIST,
- * #LYS_INPUT, #LYS_OUTPUT, #LYS_NOTIF, or #LYS_RPC.
+ * #LYS_NOTIF, or #LYS_RPC.
  * @return New node, NULL on error.
  */
 struct lyd_node *lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name);
