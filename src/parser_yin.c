@@ -1851,7 +1851,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     for (i = 0; i < *trg_must_size; i++) {
                         if (d->must[d->must_size].expr == (*trg_must)[i].expr) {
                             /* we have a match, free the must structure ... */
-                            lys_restr_free(dev->target->module->ctx, &(*trg_must[i]));
+                            lys_restr_free(dev->target->module->ctx, &((*trg_must)[i]));
                             /* ... and maintain the array */
                             (*trg_must_size)--;
                             if (i != *trg_must_size) {
