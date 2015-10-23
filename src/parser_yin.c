@@ -1798,7 +1798,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 /* reallocate the must array of the target */
                 d->must = realloc(*trg_must, (c_must + *trg_must_size) * sizeof *d->must);
                 *trg_must = d->must;
-                d->must = &(*trg_must[*trg_must_size]);
+                d->must = &((*trg_must)[*trg_must_size]);
                 d->must_size = c_must;
             } else { /* LY_DEVIATE_DEL */
                 d->must = calloc(c_must, sizeof *d->must);
