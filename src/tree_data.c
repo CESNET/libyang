@@ -598,6 +598,10 @@ lyd_validate(struct lyd_node *node, int options)
         if (lyv_data_content(iter, 0, options, NULL)) {
             if (ly_errno) {
                 return EXIT_FAILURE;
+            } else if (iter == node) {
+                /* removing the whole subtree */
+                to_free = node;
+                break;
             } else {
                 /* safe deferred removal */
                 to_free = iter;
