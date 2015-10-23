@@ -894,7 +894,9 @@ lyd_dup(struct lyd_node *node, int recursive)
                 break;
             }
             if (!parent) {
+                lyd_free(ret);
                 LOGINT;
+                return NULL;
             }
             parent = parent->parent;
             /* parent is already processed, go to its sibling */
