@@ -259,9 +259,9 @@ struct lys_module *lys_get_import_module(struct lys_module *module, const char *
 /**
  * @brief Find a specific sibling. Does not log.
  *
- * Includes module comparison (can handle augments). Module is adjusted
- * based on the \p mod_name. Includes are also searched if siblings are
- * top-level nodes.
+ * Includes module comparison (handles augments if \p type & LYS_AUGMENT).
+ * Module is adjusted based on the \p mod_name. Includes are also searched
+ * if \p siblings are top-level nodes.
  *
  * @param[in] mod Main module. Prefix is considered to be from this module.
  * @param[in] siblings Siblings to consider. They are first adjusted to
@@ -271,13 +271,13 @@ struct lys_module *lys_get_import_module(struct lys_module *module, const char *
  * @param[in] name Node name.
  * @param[in] nam_len Node name length.
  * @param[in] type ORed desired type of the node. 0 means any type.
- *                 Does not return groupings, uses, and augments (but returns augment nodes).
+ *                 Does not return groupings, uses, and augments (but can return augment nodes).
  * @param[out] ret Pointer to the node of the desired type. Can be NULL.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
-int lys_getsibling(struct lys_module *mod, struct lys_node *siblings, const char *mod_name, int mod_name_len,
-                   const char *name, int nam_len, LYS_NODE type, struct lys_node **ret);
+int lys_get_sibling(struct lys_module *mod, struct lys_node *siblings, const char *mod_name, int mod_name_len,
+                    const char *name, int nam_len, LYS_NODE type, struct lys_node **ret);
 
 /**
  * @brief Compare 2 data nodes if they are the same from the YANG point of view.

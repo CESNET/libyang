@@ -2236,7 +2236,8 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
         path += i;
 
         /* source (must be leaf) */
-        rc = lys_getsibling(mod, source_node->child, sour_pref, sour_pref_len, source, sour_len, LYS_LEAF, &src_node);
+        rc = lys_get_sibling(mod, source_node->child, sour_pref, sour_pref_len, source, sour_len,
+                             LYS_LEAF | LYS_AUGMENT, &src_node);
         if (rc) {
             if ((rc == -1) || !first) {
                 LOGVAL(LYE_NORESOLV, line, path-parsed);
@@ -2264,8 +2265,8 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, struct l
             }
         }
         while (1) {
-            rc = lys_getsibling(mod, dst_node->child, dest_pref, dest_pref_len, dest, dest_len,
-                                 LYS_CONTAINER | LYS_LIST | LYS_LEAF, &dst_node);
+            rc = lys_get_sibling(mod, dst_node->child, dest_pref, dest_pref_len, dest, dest_len,
+                                 LYS_CONTAINER | LYS_LIST | LYS_LEAF | LYS_AUGMENT, &dst_node);
             if (rc) {
                 if ((rc == -1) || !first) {
                     LOGVAL(LYE_NORESOLV, line, path_key_expr);
@@ -2373,7 +2374,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
             node = node->child;
         }
 
-        rc = lys_getsibling(mod, node, prefix, pref_len, name, nam_len, 0, &node);
+        rc = lys_get_sibling(mod, node, prefix, pref_len, name, nam_len, LYS_ANY & ~(LYS_USES | LYS_GROUPING), &node);
         if (rc) {
             if ((rc == -1) || !first) {
                 LOGVAL(LYE_NORESOLV, line, path);
@@ -3166,7 +3167,7 @@ resolve_list_keys(struct lys_module *mod, struct lys_node_list *list, const char
             len = strlen(keys_str);
         }
 
-        rc = lys_getsibling(mod, list->child, NULL, 0, keys_str, len, LYS_LEAF, (struct lys_node **)&list->keys[i]);
+        rc = lys_get_sibling(mod, list->child, NULL, 0, keys_str, len, LYS_LEAF, (struct lys_node **)&list->keys[i]);
         if (rc) {
             if ((rc == -1) || !first) {
                 LOGVAL(LYE_INRESOLV, line, "list keys", keys_str);
