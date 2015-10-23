@@ -657,6 +657,9 @@ cmd_list(const char *UNUSED(arg))
     int has_modules = 0;
 
     ylib = ly_ctx_info(ctx);
+    if (!ylib) {
+        return 1;
+    }
 
     LY_TREE_FOR(ylib->child, node) {
         if (!strcmp(node->schema->name, "module-set-id")) {

@@ -340,7 +340,7 @@ ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod)
             continue;
         }
 
-        if (!lyd_new_leaf_str(parent, NULL, "feature", LY_TYPE_STRING, cur_mod->features[i].name)) {
+        if (!lyd_new_leaf(parent, NULL, "feature", cur_mod->features[i].name)) {
             return EXIT_FAILURE;
         }
     }
@@ -352,7 +352,7 @@ ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod)
                 continue;
             }
 
-            if (!lyd_new_leaf_str(parent, NULL, "feature", LY_TYPE_STRING, cur_mod->inc[i].submodule->features[j].name)) {
+            if (!lyd_new_leaf(parent, NULL, "feature", cur_mod->inc[i].submodule->features[j].name)) {
                 return EXIT_FAILURE;
             }
         }
@@ -384,11 +384,10 @@ ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod, struct ly_ct
                     return EXIT_FAILURE;
                 }
 
-                if (!lyd_new_leaf_str(cont, NULL, "name", LY_TYPE_STRING, mod_iter->name)) {
+                if (!lyd_new_leaf(cont, NULL, "name", mod_iter->name)) {
                     return EXIT_FAILURE;
                 }
-                if (!lyd_new_leaf_str(cont, NULL, "revision", LY_TYPE_STRING,
-                        (mod_iter->rev_size ? mod_iter->rev[0].date : ""))) {
+                if (!lyd_new_leaf(cont, NULL, "revision", (mod_iter->rev_size ? mod_iter->rev[0].date : ""))) {
                     return EXIT_FAILURE;
                 }
             }
@@ -410,10 +409,10 @@ ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod, struct ly_ct
                         return EXIT_FAILURE;
                     }
 
-                    if (!lyd_new_leaf_str(cont, NULL, "name", LY_TYPE_STRING, mod_iter->inc[j].submodule->name)) {
+                    if (!lyd_new_leaf(cont, NULL, "name", mod_iter->inc[j].submodule->name)) {
                         return EXIT_FAILURE;
                     }
-                    if (!lyd_new_leaf_str(cont, NULL, "revision", LY_TYPE_STRING,
+                    if (!lyd_new_leaf(cont, NULL, "revision",
                                           (mod_iter->inc[j].submodule->rev_size ?
                                            mod_iter->inc[j].submodule->rev[0].date : ""))) {
                         return EXIT_FAILURE;
@@ -438,15 +437,15 @@ ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod)
             return EXIT_FAILURE;
         }
 
-        if (!lyd_new_leaf_str(cont, NULL, "name", LY_TYPE_STRING, cur_mod->inc[i].submodule->name)) {
+        if (!lyd_new_leaf(cont, NULL, "name", cur_mod->inc[i].submodule->name)) {
             return EXIT_FAILURE;
         }
-        if (!lyd_new_leaf_str(cont, NULL, "revision", LY_TYPE_STRING, (cur_mod->inc[i].submodule->rev_size ?
-                              cur_mod->inc[i].submodule->rev[0].date : ""))) {
+        if (!lyd_new_leaf(cont, NULL, "revision", (cur_mod->inc[i].submodule->rev_size ?
+                          cur_mod->inc[i].submodule->rev[0].date : ""))) {
             return EXIT_FAILURE;
         }
         if (cur_mod->inc[i].submodule->uri
-                && !lyd_new_leaf_str(cont, NULL, "schema", LY_TYPE_STRING, cur_mod->inc[i].submodule->uri)) {
+                && !lyd_new_leaf(cont, NULL, "schema", cur_mod->inc[i].submodule->uri)) {
             return EXIT_FAILURE;
         }
     }
@@ -482,21 +481,21 @@ ly_ctx_info(struct ly_ctx *ctx)
             return NULL;
         }
 
-        if (!lyd_new_leaf_str(cont, NULL, "name", LY_TYPE_STRING, ctx->models.list[i]->name)) {
+        if (!lyd_new_leaf(cont, NULL, "name", ctx->models.list[i]->name)) {
             lyd_free(root);
             return NULL;
         }
-        if (!lyd_new_leaf_str(cont, NULL, "revision", LY_TYPE_STRING, (ctx->models.list[i]->rev_size ?
+        if (!lyd_new_leaf(cont, NULL, "revision", (ctx->models.list[i]->rev_size ?
                               ctx->models.list[i]->rev[0].date : ""))) {
             lyd_free(root);
             return NULL;
         }
         if (ctx->models.list[i]->uri
-                && !lyd_new_leaf_str(cont, NULL, "schema", LY_TYPE_STRING, ctx->models.list[i]->uri)) {
+                && !lyd_new_leaf(cont, NULL, "schema", ctx->models.list[i]->uri)) {
             lyd_free(root);
             return NULL;
         }
-        if (!lyd_new_leaf_str(cont, NULL, "namespace", LY_TYPE_STRING, ctx->models.list[i]->ns)) {
+        if (!lyd_new_leaf(cont, NULL, "namespace", ctx->models.list[i]->ns)) {
             lyd_free(root);
             return NULL;
         }
@@ -509,12 +508,12 @@ ly_ctx_info(struct ly_ctx *ctx)
             return NULL;
         }
         if (ctx->models.list[i]->implemented
-                && !lyd_new_leaf_str(cont, NULL, "conformance", LY_TYPE_ENUM, "implement")) {
+                && !lyd_new_leaf(cont, NULL, "conformance", "implement")) {
             lyd_free(root);
             return NULL;
         }
         if (!ctx->models.list[i]->implemented
-                && !lyd_new_leaf_str(cont, NULL, "conformance", LY_TYPE_ENUM, "import")) {
+                && !lyd_new_leaf(cont, NULL, "conformance", "import")) {
             lyd_free(root);
             return NULL;
         }
@@ -525,7 +524,7 @@ ly_ctx_info(struct ly_ctx *ctx)
     }
 
     sprintf(id, "%u", ctx->models.module_set_id);
-    if (!lyd_new_leaf_str(root, mod, "module-set-id", LY_TYPE_STRING, id)) {
+    if (!lyd_new_leaf(root, mod, "module-set-id", id)) {
         lyd_free(root);
         return NULL;
     }
