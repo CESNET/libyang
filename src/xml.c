@@ -389,7 +389,7 @@ lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem *elem)
         return;
     }
 
-    lyxml_unlink_elem(ctx, elem, 0);
+    lyxml_unlink_elem(ctx, elem, 2);
     lyxml_free_elem_(ctx, elem);
 }
 
