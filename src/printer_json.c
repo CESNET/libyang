@@ -36,32 +36,6 @@
 
 void json_print_nodes(struct lyout *out, int level, struct lyd_node *root);
 
-/* 0 - same, 1 - different */
-static int
-nscmp(struct lyd_node *node1, struct lyd_node *node2)
-{
-    struct lys_module *m1, *m2;
-
-    /* we have to cover submodules belonging to the same module */
-    if (node1->schema->module->type) {
-        m1 = ((struct lys_submodule *)node1->schema->module)->belongsto;
-    } else {
-        m1 = node1->schema->module;
-    }
-    if (node2->schema->module->type) {
-        m2 = ((struct lys_submodule *)node2->schema->module)->belongsto;
-    } else {
-        m2 = node2->schema->module;
-    }
-    if (m1 == m2) {
-        /* belongs to the same module */
-        return 0;
-    } else {
-        /* different modules */
-        return 1;
-    }
-}
-
 static void
 json_print_leaf(struct lyout *out, int level, struct lyd_node *node, int onlyvalue)
 {

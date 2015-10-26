@@ -344,6 +344,11 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     }
 
     result->attr = (struct lyd_attr *)xml->attr;
+    for (attr = xml->attr; attr; attr = attr->next) {
+        if (attr->type == LYXML_ATTR_NS) {
+            ((struct lyd_ns *)attr)->parent = result;
+        }
+    }
     xml->attr = NULL;
 
     /* various validation checks */
@@ -393,6 +398,11 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int options)
 {
     struct lyd_node *result, *next, *iter;
     struct unres_data *unres = NULL;
+    struct lyd_attr *attr;
+    struct nsc {
+        struct lyd_ns* ns;
+        struct nsc *next;
+    } *nsc = NULL, *nsc_aux, *nsc_prev;
 
     if (!ctx || !root) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -411,6 +421,41 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int options)
             lyd_free(iter);
         }
         result = NULL;
+    }
+
+    /* namespace cleanup */
+    LY_TREE_DFS_BEGIN(result, next, iter) {
+        for (attr = iter->attr; attr; attr = attr->next) {
+            if (attr->type == LYD_ATTR_NS) {
+                /* new namespace found */
+                nsc_aux = malloc(sizeof *nsc_aux);
+                nsc_aux->next = nsc;
+                nsc_aux->ns = (struct lyd_ns *)attr;
+                nsc = nsc_aux;
+            } else if (attr->ns) {
+                /* search for the used namespace and remove the namespace from nsc list */
+                for (nsc_prev = NULL, nsc_aux = nsc; nsc_aux; nsc_prev = nsc_aux, nsc_aux = nsc_aux->next) {
+                    if (nsc_aux->ns == attr->ns) {
+                        if (nsc_prev) {
+                            nsc_prev->next = nsc_aux->next;
+                        } else {
+                            nsc = nsc_aux->next;
+                        }
+                        free(nsc_aux);
+                        break;
+                    }
+                }
+            }
+        }
+    LY_TREE_DFS_END(result, next, iter)}
+    while(nsc) {
+        lyxml_free_attr(nsc->ns->parent->schema->module->ctx,
+                        (struct lyxml_elem *)nsc->ns->parent,
+                        (struct lyxml_attr *)nsc->ns);
+
+        nsc_aux = nsc;
+        nsc = nsc->next;
+        free(nsc_aux);
     }
 
     free(unres->node);

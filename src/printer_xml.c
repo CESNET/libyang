@@ -71,11 +71,23 @@ static void
 xml_print_leaf(struct lyout *out, int level, struct lyd_node *node)
 {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
+    const char *ns;
     char **prefs, **nss;
     const char *xml_expr;
     uint32_t ns_count, i;
 
-    ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
+    if (!node->parent || nscmp(node, node->parent)) {
+        /* print "namespace" */
+        if (node->schema->module->type) {
+            /* submodule, get module */
+            ns = ((struct lys_submodule *)node->schema->module)->belongsto->ns;
+        } else {
+            ns = node->schema->module->ns;
+        }
+        ly_print(out, "%*s<%s xmlns=\"%s\"", LEVEL, INDENT, node->schema->name, ns);
+    } else {
+        ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
+    }
 
     xml_print_attrs(out, node);
 
@@ -149,8 +161,20 @@ static void
 xml_print_container(struct lyout *out, int level, struct lyd_node *node)
 {
     struct lyd_node *child;
+    const char *ns;
 
-    ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
+    if (!node->parent || nscmp(node, node->parent)) {
+        /* print "namespace" */
+        if (node->schema->module->type) {
+            /* submodule, get module */
+            ns = ((struct lys_submodule *)node->schema->module)->belongsto->ns;
+        } else {
+            ns = node->schema->module->ns;
+        }
+        ly_print(out, "%*s<%s xmlns=\"%s\"", LEVEL, INDENT, node->schema->name, ns);
+    } else {
+        ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
+    }
 
     xml_print_attrs(out, node);
 
@@ -171,10 +195,22 @@ static void
 xml_print_list(struct lyout *out, int level, struct lyd_node *node, int is_list)
 {
     struct lyd_node *child;
+    const char *ns;
 
     if (is_list) {
         /* list print */
-        ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
+        if (!node->parent || nscmp(node, node->parent)) {
+            /* print "namespace" */
+            if (node->schema->module->type) {
+                /* submodule, get module */
+                ns = ((struct lys_submodule *)node->schema->module)->belongsto->ns;
+            } else {
+                ns = node->schema->module->ns;
+            }
+            ly_print(out, "%*s<%s xmlns=\"%s\"", LEVEL, INDENT, node->schema->name, ns);
+        } else {
+            ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
+        }
 
         xml_print_attrs(out, node);
 
@@ -202,11 +238,23 @@ xml_print_anyxml(struct lyout *out, int level, struct lyd_node *node)
     char *buf;
     size_t buf_size;
     struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
+    const char *ns;
+
+    if (!node->parent || nscmp(node, node->parent)) {
+        /* print "namespace" */
+        if (node->schema->module->type) {
+            /* submodule, get module */
+            ns = ((struct lys_submodule *)node->schema->module)->belongsto->ns;
+        } else {
+            ns = node->schema->module->ns;
+        }
+        ly_print(out, "%*s<%s xmlns=\"%s\"", LEVEL, INDENT, node->schema->name, ns);
+    } else {
+        ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
+    }
+    xml_print_attrs(out, node);
 
     if (axml->value) {
-        ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
-
-        xml_print_attrs(out, node);
         ly_print(out, ">%s", level ? "\n" : "");
 
         /* dump the anyxml into a buffer */
@@ -217,8 +265,6 @@ xml_print_anyxml(struct lyout *out, int level, struct lyd_node *node)
         ly_print(out, "%s</%s>%s", buf, node->schema->name, level ? "\n" : "");
         free(buf);
     } else {
-        ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
-        xml_print_attrs(out, node);
         ly_print(out, "/>%s", level ? "\n" : "");
     }
 }
