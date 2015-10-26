@@ -227,7 +227,7 @@ json_print_nodes(struct lyout *out, int level, struct lyd_node *root)
         case LYS_LEAFLIST:
         case LYS_LIST:
             /* is it already printed? */
-            for (iter = node; iter->next; iter = iter->prev) {
+            for (iter = node->prev; iter->next; iter = iter->prev) {
                 if (iter == node) {
                     continue;
                 }
