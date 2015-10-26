@@ -34,8 +34,6 @@
 #include "validation.h"
 #include "xml_internal.h"
 
-#define LY_NSNC "urn:ietf:params:xml:ns:netconf:base:1.0"
-
 /* does not log */
 static struct lys_node *
 xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start)

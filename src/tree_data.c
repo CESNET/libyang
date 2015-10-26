@@ -58,8 +58,10 @@ lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
         lyxml_free_elem(ctx, xml);
         break;
     case LYD_JSON:
+        result = lyd_parse_json(ctx, data, options);
+        break;
     default:
-        /* TODO */
+        /* error */
         return NULL;
     }
 

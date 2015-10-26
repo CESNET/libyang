@@ -30,15 +30,12 @@
 #include "common.h"
 #include "dict_private.h"
 #include "printer.h"
+#include "parser.h"
 #include "tree_schema.h"
 #include "xml_internal.h"
 
 #ifndef NDEBUG
-unsigned int lineno, lws_lineno;
-#define COUNTLINE(c) if ((c) == 0xa) {lineno++;}
-#else
-#define lineno 0
-#define COUNTLINE(C)
+static unsigned int lineno, lws_lineno;
 #endif
 
 #define ign_xmlws(p)                                                    \
@@ -532,53 +529,6 @@ lyxml_getutf8(const char *buf, unsigned int *read, unsigned int line)
     return c;
 }
 
-/**
- * Store UTF-8 character specified as 4byte integer into the dst buffer.
- * Returns number of written bytes (4 max), expects that dst has enough space.
- *
- * UTF-8 mapping:
- * 00000000 -- 0000007F: 	0xxxxxxx
- * 00000080 -- 000007FF: 	110xxxxx 10xxxxxx
- * 00000800 -- 0000FFFF: 	1110xxxx 10xxxxxx 10xxxxxx
- * 00010000 -- 001FFFFF: 	11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
- *
- */
-static unsigned int
-pututf8(char *dst, int32_t value)
-{
-    if (value < 0x80) {
-        /* one byte character */
-        dst[0] = value;
-
-        return 1;
-    } else if (value < 0x800) {
-        /* two bytes character */
-        dst[0] = 0xc0 | (value >> 6);
-        dst[1] = 0x80 | (value & 0x3f);
-
-        return 2;
-    } else if (value < 0x10000) {
-        /* three bytes character */
-        dst[0] = 0xe0 | (value >> 12);
-        dst[1] = 0x80 | ((value >> 6) & 0x3f);
-        dst[2] = 0x80 | (value & 0x3f);
-
-        return 3;
-    } else if (value < 0x200000) {
-        /* four bytes character */
-        dst[0] = 0xf0 | (value >> 18);
-        dst[1] = 0x80 | ((value >> 12) & 0x3f);
-        dst[2] = 0x80 | ((value >> 6) & 0x3f);
-        dst[3] = 0x80 | (value & 0x3f);
-
-        return 4;
-    } else {
-        /* out of range */
-        LOGVAL(LYE_SPEC, lineno, "Invalid UTF-8 value 0x%08x", value);
-        return 0;
-    }
-}
-
 /* logs directly */
 static int
 parse_ignore(const char *data, const char *endstr, unsigned int *len)
@@ -703,7 +653,7 @@ loop:
                     goto error;
 
                 }
-                r = pututf8(&buf[o], n);
+                r = pututf8(&buf[o], n, lineno);
                 if (!r) {
                     LOGVAL(LYE_XML_INVAL, lineno, "character reference value");
                     goto error;

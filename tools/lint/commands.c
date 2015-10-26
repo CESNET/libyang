@@ -341,10 +341,11 @@ cmd_parse(const char *arg, int options)
 {
     int c, argc, option_index, ret = 1, fd = -1;
     struct stat sb;
+    size_t len;
     char **argv = NULL, *ptr, *addr;
     const char *out_path = NULL;
     struct lyd_node *data = NULL, *next, *iter;
-    LYD_FORMAT format = LYD_UNKNOWN;
+    LYD_FORMAT outformat = LYD_UNKNOWN, informat = LYD_UNKNOWN;
     FILE *output = stdout;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
@@ -379,9 +380,9 @@ cmd_parse(const char *arg, int options)
             goto cleanup;
         case 'f':
             if (!strcmp(optarg, "xml")) {
-                format = LYD_XML_FORMAT;
+                outformat = LYD_XML_FORMAT;
             } else if (!strcmp(optarg, "json")) {
-                format = LYD_JSON;
+                outformat = LYD_JSON;
             } else {
                 fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
                 goto cleanup;
@@ -409,6 +410,17 @@ cmd_parse(const char *arg, int options)
         goto cleanup;
     }
 
+    /* detect input format according to file suffix */
+    len = strlen(argv[optind]);
+    if (len >= 5 && !strcmp(&argv[optind][len - 4], ".xml")) {
+        informat = LYD_XML;
+    } else if (len >= 6 && !strcmp(&argv[optind][len - 5], ".json")) {
+        informat = LYD_JSON;
+    } else {
+        fprintf(stderr, "Unable to resolve format of the input file, please add \".xml\" or \".json\" suffix.");
+        goto cleanup;
+    }
+
     fd = open(argv[optind], O_RDONLY);
     if (fd == -1) {
         fprintf(stderr, "The input file could not be opened (%s).\n", strerror(errno));
@@ -426,7 +438,7 @@ cmd_parse(const char *arg, int options)
     }
 
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    data = lyd_parse(ctx, addr, LYD_XML, options);
+    data = lyd_parse(ctx, addr, informat, options);
     munmap(addr, sb.st_size);
 
     if (data == NULL) {
@@ -440,15 +452,10 @@ cmd_parse(const char *arg, int options)
             fprintf(stderr, "Could not open the output file (%s).\n", strerror(errno));
             goto cleanup;
         }
-
-        if (format == LYD_UNKNOWN) {
-            /* default */
-            format = LYD_XML;
-        }
     }
 
-    if (format != LYD_UNKNOWN) {
-        lyd_print(output, data, format);
+    if (outformat != LYD_UNKNOWN) {
+        lyd_print(output, data, outformat);
     }
 
     ret = 0;

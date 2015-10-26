@@ -52,6 +52,7 @@ set(libsrc
 	src/parser.c
 	src/parser_yin.c
 	src/parser_xml.c
+	src/parser_json.c
 	src/tree_schema.c
 	src/tree_data.c
 	src/printer.c
