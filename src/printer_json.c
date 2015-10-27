@@ -80,7 +80,7 @@ json_print_leaf(struct lyout *out, int level, struct lyd_node *node, int onlyval
     case LY_TYPE_UINT16:
     case LY_TYPE_UINT32:
     case LY_TYPE_UINT64:
-        ly_print(out, "%s", leaf->value_str ? leaf->value_str : "");
+        ly_print(out, "%s", leaf->value_str ? leaf->value_str : "null");
         break;
 
     case LY_TYPE_LEAFREF:
@@ -125,6 +125,12 @@ json_print_leaf_list(struct lyout *out, int level, struct lyd_node *node, int is
 {
     const char *schema;
     struct lyd_node *list = node;
+    int flag_empty = 0;
+
+    if (!list->child) {
+        /* empty, e.g. in case of filter */
+        flag_empty = 1;
+    }
 
     if (!node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
@@ -134,10 +140,16 @@ json_print_leaf_list(struct lyout *out, int level, struct lyd_node *node, int is
         } else {
             schema = node->schema->module->name;
         }
-        ly_print(out, "%*s\"%s:%s\": [\n", LEVEL, INDENT, schema, node->schema->name);
+        ly_print(out, "%*s\"%s:%s\":", LEVEL, INDENT, schema, node->schema->name);
     } else {
-        ly_print(out, "%*s\"%s\": [\n", LEVEL, INDENT, node->schema->name);
+        ly_print(out, "%*s\"%s\":", LEVEL, INDENT, node->schema->name);
     }
+
+    if (flag_empty) {
+        ly_print(out, " null");
+        return;
+    }
+    ly_print(out, " [\n");
 
     if (!is_list) {
         ++level;

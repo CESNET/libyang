@@ -167,8 +167,8 @@ struct lyd_node_leaf_list {
     /* struct lyd_node *child; should be here, but is not */
 
     /* leaflist's specific members */
-    lyd_val value;                   /**< node's value representation */
     const char *value_str;           /**< string representation of value (for comparison, printing,...) */
+    lyd_val value;                   /**< node's value representation */
     LY_DATA_TYPE value_type;         /**< type of the value in the node, mainly for union to avoid repeating of type detection */
 };
 
