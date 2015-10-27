@@ -106,9 +106,13 @@ xml_print_leaf(struct lyout *out, int level, struct lyd_node *node)
     case LY_TYPE_UINT16:
     case LY_TYPE_UINT32:
     case LY_TYPE_UINT64:
-        ly_print(out, ">");
-        lyxml_dump_text(out, leaf->value_str);
-        ly_print(out, "</%s>", node->schema->name);
+        if (!leaf->value_str) {
+            ly_print(out, "/>");
+        } else {
+            ly_print(out, ">");
+            lyxml_dump_text(out, leaf->value_str);
+            ly_print(out, "</%s>", node->schema->name);
+        }
         break;
 
     case LY_TYPE_IDENT:
