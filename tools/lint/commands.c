@@ -33,8 +33,10 @@
 
 #include "commands.h"
 #include "../../src/libyang.h"
-#include "../../src/tree.h"
+#include "../../src/tree_schema.h"
+#include "../../src/tree_data.h"
 #include "../../src/parser.h"
+#include "../../src/xpath.h"
 
 COMMAND commands[];
 extern int done;
@@ -44,13 +46,13 @@ extern char *search_path;
 void
 cmd_add_help(void)
 {
-    printf("add <path-to-model>\n");
+    printf("add <path-to-model> [<other-models> ...]\n");
 }
 
 void
 cmd_print_help(void)
 {
-    printf("print [-f (yang | tree | info)] [-t <info-target-node>] [-o <output-file>] <model-name>(@<revision>)\n\n");
+    printf("print [-f (yang | tree | info)] [-t <info-target-node>] [-o <output-file>] <model-name>[@<revision>]\n\n");
     printf("\tinfo-target-node: <absolute-schema-node> | typedef/<typedef-name> |\n");
     printf("\t                  | identity/<identity-name> | feature/<feature-name> |\n");
     printf("\t                  | grouping/<grouping-name>(<absolute-schema-nodeid>) |\n");
@@ -84,6 +86,13 @@ cmd_filter_help(void)
 }
 
 void
+cmd_xpath_help(void)
+{
+    printf("xpath -e <XPath-expression> [-c <context-node-path>] <XML-data-file-name>\n\n");
+    printf("\tcontext-node-path: /<node-name>(/<node-name>)*\n");
+}
+
+void
 cmd_list_help(void)
 {
     printf("list\n");
@@ -92,7 +101,7 @@ cmd_list_help(void)
 void
 cmd_feature_help(void)
 {
-    printf("feature -(-p)rint | (-(-e)nable | -(-d)isable (* | <feature-name>)) <model-name>(@<revision>)\n");
+    printf("feature [ -(-e)nable | -(-d)isable (* | <feature-name>[,<feature-name> ...]) ] <model-name>[@<revision>]\n");
 }
 
 void
@@ -110,9 +119,9 @@ cmd_verb_help(void)
 int
 cmd_add(const char *arg)
 {
-    int fd;
-    char *addr, *ptr;
-    const char *path;
+    int fd, path_len;
+    char *addr, *ptr, *path;
+    const char *arg_ptr;
     struct lys_module *model;
     struct stat sb;
     LYS_INFORMAT format;
@@ -122,50 +131,81 @@ cmd_add(const char *arg)
         return 1;
     }
 
-    path = (arg + strlen("add "));
+    arg_ptr = arg + strlen("add ");
+    while (arg_ptr[0] == ' ') {
+        ++arg_ptr;
+    }
+    if (strchr(arg_ptr, ' ')) {
+        path_len = strchr(arg_ptr, ' ') - arg_ptr;
+    } else {
+        path_len = strlen(arg_ptr);
+    }
 
-    if ((ptr = strrchr(path, '.')) != NULL) {
-        ++ptr;
-        if (!strcmp(ptr, "yin")) {
-            format = LYS_IN_YIN;
-        } else if (!strcmp(ptr, "yang")) {
-            format = LYS_IN_YANG;
+    path = strndup(arg_ptr, path_len);
+
+    while (path) {
+        if ((ptr = strrchr(path, '.')) != NULL) {
+            ++ptr;
+            if (!strcmp(ptr, "yin")) {
+                format = LYS_IN_YIN;
+            } else if (!strcmp(ptr, "yang")) {
+                format = LYS_IN_YANG;
+            } else {
+                fprintf(stderr, "Input file in an unknown format \"%s\".\n", ptr);
+                free(path);
+                return 1;
+            }
         } else {
-            fprintf(stderr, "Input file in an unknown format \"%s\".\n", ptr);
+            fprintf(stdout, "Input file \"%.*s\" without extension, assuming YIN format.\n", path_len, arg_ptr);
+            format = LYS_IN_YIN;
+        }
+
+        fd = open(path, O_RDONLY);
+        free(path);
+        if (fd == -1) {
+            fprintf(stderr, "Opening input file \"%.*s\" failed (%s).\n", path_len, arg_ptr, strerror(errno));
             return 1;
         }
-    } else {
-        fprintf(stdout, "Input file without extension, assuming YIN format.\n");
-        format = LYS_IN_YIN;
-    }
 
-    fd = open(path, O_RDONLY);
-    if (fd == -1) {
-        fprintf(stderr, "Opening input file failed (%s).\n", strerror(errno));
-        return 1;
-    }
+        if (fstat(fd, &sb) == -1) {
+            fprintf(stderr, "Unable to get input file \"%.*s\" information (%s).\n", path_len, arg_ptr, strerror(errno));
+            close(fd);
+            return 1;
+        }
 
-    if (fstat(fd, &sb) == -1) {
-        fprintf(stderr, "Unable to get input file information (%s).\n", strerror(errno));
+        if (!S_ISREG(sb.st_mode)) {
+            fprintf(stderr, "Input file \"%.*s\" not a file.\n", path_len, arg_ptr);
+            close(fd);
+            return 1;
+        }
+
+        addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+
+        model = lys_parse(ctx, addr, format);
+        munmap(addr, sb.st_size);
         close(fd);
-        return 1;
-    }
 
-    if (!S_ISREG(sb.st_mode)) {
-        fprintf(stderr, "Input file not a file.\n");
-        close(fd);
-        return 1;
-    }
+        if (!model) {
+            /* libyang printed the error messages */
+            return 1;
+        }
 
-    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        /* next model */
+        arg_ptr += path_len;
+        while (arg_ptr[0] == ' ') {
+            ++arg_ptr;
+        }
+        if (strchr(arg_ptr, ' ')) {
+            path_len = strchr(arg_ptr, ' ') - arg_ptr;
+        } else {
+            path_len = strlen(arg_ptr);
+        }
 
-    model = lys_parse(ctx, addr, format);
-    munmap(addr, sb.st_size);
-    close(fd);
-
-    if (!model) {
-        /* libyang printed the error messages */
-        return 1;
+        if (path_len) {
+            path = strndup(arg_ptr, path_len);
+        } else {
+            path = NULL;
+        }
     }
 
     return 0;
@@ -339,7 +379,7 @@ cmd_parse(const char *arg, int options)
             goto cleanup;
         case 'f':
             if (!strcmp(optarg, "xml")) {
-                format = LYD_XML;
+                format = LYD_XML_FORMAT;
             } else if (!strcmp(optarg, "json")) {
                 format = LYD_JSON;
             } else {
@@ -411,6 +451,8 @@ cmd_parse(const char *arg, int options)
         lyd_print(output, data, format);
     }
 
+    ret = 0;
+
 cleanup:
     free(*argv);
     free(argv);
@@ -449,16 +491,179 @@ cmd_filter(const char *arg)
 }
 
 int
+cmd_xpath(const char *arg)
+{
+    int c, argc, option_index, fd = -1, ret = 1, long_str;
+    char **argv = NULL, *ptr, *ctx_node_path = NULL, *expr = NULL, *addr;
+    struct stat sb;
+    struct lyd_node *ctx_node, *data = NULL, *next, *iter;
+    struct lyxp_set set;
+    static struct option long_options[] = {
+        {"help", no_argument, 0, 'h'},
+        {"expr", required_argument, 0, 'e'},
+        {"ctx-node", required_argument, 0, 'c'},
+        {NULL, 0, 0, 0}
+    };
+
+    long_str = 0;
+    argc = 1;
+    argv = malloc(2 * sizeof *argv);
+    *argv = strdup(arg);
+    ptr = strtok(*argv, " ");
+    while ((ptr = strtok(NULL, " "))) {
+        if (long_str) {
+            ptr[-1] = ' ';
+            if (ptr[strlen(ptr) - 1] == long_str) {
+                long_str = 0;
+                ptr[strlen(ptr) - 1] = '\0';
+            }
+        } else {
+            argv = realloc(argv, (argc + 2) * sizeof *argv);
+            argv[argc] = ptr;
+            if (ptr[0] == '"') {
+                long_str = '"';
+                ++argv[argc];
+            }
+            if (ptr[0] == '\'') {
+                long_str = '\'';
+                ++argv[argc];
+            }
+            if (ptr[strlen(ptr) - 1] == long_str) {
+                long_str = 0;
+                ptr[strlen(ptr) - 1] = '\0';
+            }
+            ++argc;
+        }
+    }
+    argv[argc] = NULL;
+
+    optind = 0;
+    while (1) {
+        option_index = 0;
+        c = getopt_long(argc, argv, "he:c:", long_options, &option_index);
+        if (c == -1) {
+            break;
+        }
+
+        switch (c) {
+        case 'h':
+            cmd_xpath_help();
+            ret = 0;
+            goto cleanup;
+        case 'e':
+            expr = optarg;
+            break;
+        case 'c':
+            ctx_node_path = optarg;
+            if ((ctx_node_path[0] != '/') || (strlen(ctx_node_path) < 2)
+                    || (ctx_node_path[strlen(ctx_node_path) - 1] == '/')) {
+                fprintf(stderr, "Invalid context node path \"%s\".\n", ctx_node_path);
+                goto cleanup;
+            }
+            break;
+        case '?':
+            fprintf(stderr, "Unknown option \"%d\".\n", (char)c);
+            goto cleanup;
+        }
+    }
+
+    if (optind == argc) {
+        fprintf(stderr, "Missing the file with data.\n");
+        goto cleanup;
+    }
+
+    if (!expr) {
+        fprintf(stderr, "Missing the XPath expression.\n");
+        goto cleanup;
+    }
+
+    /* data file */
+    fd = open(argv[optind], O_RDONLY);
+    if (fd == -1) {
+        fprintf(stderr, "The input file could not be opened (%s).\n", strerror(errno));
+        goto cleanup;
+    }
+    if (fstat(fd, &sb) == -1) {
+        fprintf(stderr, "Unable to get input file information (%s).\n", strerror(errno));
+        goto cleanup;
+    }
+    if (!S_ISREG(sb.st_mode)) {
+        fprintf(stderr, "Input file not a file.\n");
+        goto cleanup;
+    }
+    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    data = lyd_parse(ctx, addr, LYD_XML, 0);
+    munmap(addr, sb.st_size);
+
+    if (data == NULL) {
+        fprintf(stderr, "Failed to parse data.\n");
+        goto cleanup;
+    }
+
+    if (ctx_node_path) {
+        ctx_node = data;
+        ptr = strtok(ctx_node_path, "/");
+        do {
+            LY_TREE_FOR(ctx_node, ctx_node) {
+                if (!strcmp(ctx_node->schema->name, ptr)) {
+                    break;
+                }
+            }
+            if (!ctx_node) {
+                break;
+            }
+
+            ptr = strtok(NULL, "/");
+            if (ptr) {
+                ctx_node = ctx_node->child;
+            }
+        } while (ptr && ctx_node);
+
+        if (!ctx_node) {
+            fprintf(stderr, "Context node search failed at \"%s\".\n", ptr);
+            goto cleanup;
+        }
+    } else {
+        ctx_node = data;
+    }
+
+    if (lyxp_eval(expr, ctx_node, &set, 0)) {
+        fprintf(stderr, "XPath expression invalid.\n");
+        goto cleanup;
+    }
+
+    lyxp_set_print_xml(stdout, &set);
+    ret = 0;
+
+cleanup:
+    free(*argv);
+    free(argv);
+
+    if (fd != -1) {
+        close(fd);
+    }
+
+    LY_TREE_FOR_SAFE(data, next, iter) {
+        lyd_free(iter);
+    }
+
+    return ret;
+}
+
+int
 cmd_list(const char *UNUSED(arg))
 {
     struct lyd_node *ylib, *module, *submodule, *node;
     int has_modules = 0;
 
     ylib = ly_ctx_info(ctx);
+    if (!ylib) {
+        return 1;
+    }
 
     LY_TREE_FOR(ylib->child, node) {
         if (!strcmp(node->schema->name, "module-set-id")) {
-            printf("List of the loaded models (mod-set-id %s):\n", ((struct lyd_node_leaf *)node)->value_str);
+            printf("List of the loaded models (mod-set-id %s):\n", ((struct lyd_node_leaf_list *)node)->value_str);
             break;
         }
     }
@@ -471,12 +676,12 @@ cmd_list(const char *UNUSED(arg))
             /* module print */
             LY_TREE_FOR(module->child, node) {
                 if (!strcmp(node->schema->name, "name")) {
-                    printf("\t%s", ((struct lyd_node_leaf *)node)->value_str);
+                    printf("\t%s", ((struct lyd_node_leaf_list *)node)->value_str);
                 } else if (!strcmp(node->schema->name, "revision")) {
-                    if (((struct lyd_node_leaf *)node)->value_str[0] == '\0') {
+                    if (((struct lyd_node_leaf_list *)node)->value_str[0] == '\0') {
                         printf("\n");
                     } else {
-                        printf("@%s\n", ((struct lyd_node_leaf *)node)->value_str);
+                        printf("@%s\n", ((struct lyd_node_leaf_list *)node)->value_str);
                     }
                 }
             }
@@ -488,12 +693,12 @@ cmd_list(const char *UNUSED(arg))
                         if (!strcmp(submodule->schema->name, "submodule")) {
                             LY_TREE_FOR(submodule->child, node) {
                                 if (!strcmp(node->schema->name, "name")) {
-                                    printf("\t\t%s", ((struct lyd_node_leaf *)node)->value_str);
+                                    printf("\t\t%s", ((struct lyd_node_leaf_list *)node)->value_str);
                                 } else if (!strcmp(node->schema->name, "revision")) {
-                                    if (((struct lyd_node_leaf *)node)->value_str[0] == '\0') {
+                                    if (((struct lyd_node_leaf_list *)node)->value_str[0] == '\0') {
                                         printf("\n");
                                     } else {
-                                        printf("@%s\n", ((struct lyd_node_leaf *)node)->value_str);
+                                        printf("@%s\n", ((struct lyd_node_leaf_list *)node)->value_str);
                                     }
                                 }
                             }
@@ -516,15 +721,14 @@ cmd_list(const char *UNUSED(arg))
 int
 cmd_feature(const char *arg)
 {
-    int c, i, argc, option_index, ret = 1, task = -1;
+    int c, i, argc, option_index, ret = 1, task = 0;
     unsigned int max_len;
-    char **argv = NULL, *ptr, *model_name, *revision;
-    const char *feat_name = NULL, **names;
+    char **argv = NULL, *ptr, *model_name, *revision, *feat_names = NULL;
+    const char **names;
     uint8_t *states;
     struct lys_module *model, *parent_model;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
-        {"print", no_argument, 0, 'p'},
         {"enable", required_argument, 0, 'e'},
         {"disable", required_argument, 0, 'd'},
         {NULL, 0, 0, 0}
@@ -543,7 +747,7 @@ cmd_feature(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "hpe:d:", long_options, &option_index);
+        c = getopt_long(argc, argv, "he:d:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -553,28 +757,21 @@ cmd_feature(const char *arg)
             cmd_feature_help();
             ret = 0;
             goto cleanup;
-        case 'p':
-            if (task != -1) {
-                fprintf(stderr, "Only one of print, enable, or disable can be specified.\n");
-                goto cleanup;
-            }
-            task = 0;
-            break;
         case 'e':
-            if (task != -1) {
-                fprintf(stderr, "Only one of print, enable, or disable can be specified.\n");
+            if (task) {
+                fprintf(stderr, "Only one of enable or disable can be specified.\n");
                 goto cleanup;
             }
             task = 1;
-            feat_name = optarg;
+            feat_names = optarg;
             break;
         case 'd':
-            if (task != -1) {
-                fprintf(stderr, "Only one of print, enable, or disable can be specified.\n");
+            if (task) {
+                fprintf(stderr, "Only one of enable, or disable can be specified.\n");
                 goto cleanup;
             }
             task = 2;
-            feat_name = optarg;
+            feat_names = optarg;
             break;
         case '?':
             fprintf(stderr, "Unknown option \"%d\".\n", (char)c);
@@ -616,12 +813,7 @@ cmd_feature(const char *arg)
         goto cleanup;
     }
 
-    if (task == -1) {
-        fprintf(stderr, "One of print, enable, or disable must be specified.\n");
-        goto cleanup;
-    }
-
-    if (task == 0) {
+    if (!task) {
         printf("%s features:\n", model->name);
 
         names = lys_features_list(model, &states);
@@ -641,15 +833,15 @@ cmd_feature(const char *arg)
         if (!i) {
             printf("\t(none)\n");
         }
-    } else if (task == 1) {
-        if (lys_features_enable(model, feat_name)) {
-            fprintf(stderr, "Feature \"%s\" not found.\n", feat_name);
-            ret = 1;
-        }
-    } else if (task == 2) {
-        if (lys_features_disable(model, feat_name)) {
-            fprintf(stderr, "Feature \"%s\" not found.\n", feat_name);
-            ret = 1;
+    } else {
+        feat_names = strtok(feat_names, ",");
+        while (feat_names) {
+            if (((task == 1) && lys_features_enable(model, feat_names))
+                    || ((task == 2) && lys_features_disable(model, feat_names))) {
+                fprintf(stderr, "Feature \"%s\" not found.\n", feat_names);
+                ret = 1;
+            }
+            feat_names = strtok(NULL, ",");
         }
     }
 
@@ -699,6 +891,10 @@ cmd_clear(const char *UNUSED(arg))
 {
     ly_ctx_destroy(ctx);
     ctx = ly_ctx_new(search_path);
+    if (!ctx) {
+        fprintf(stderr, "Failed to create context.\n");
+        return 1;
+    }
     return 0;
 }
 
@@ -787,6 +983,7 @@ COMMAND commands[] = {
         {"data", cmd_data, cmd_data_help, "Load, validate and optionally print complete datastore data"},
         {"config", cmd_config, cmd_config_help, "Load, validate and optionally print edit-config's data"},
         {"filter", cmd_filter, cmd_filter_help, "Load, validate and optionally print subtree filter data"},
+        {"xpath", cmd_xpath, cmd_xpath_help, "Evaluate an XPath expression on a data tree"},
         {"list", cmd_list, cmd_list_help, "List all the loaded models"},
         {"feature", cmd_feature, cmd_feature_help, "Print/enable/disable all/specific features of models"},
         {"searchpath", cmd_searchpath, cmd_searchpath_help, "Set the search path for models"},

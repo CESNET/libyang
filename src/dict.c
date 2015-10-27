@@ -24,8 +24,8 @@
 #include <stdlib.h>
 
 #include "common.h"
-#include "dict.h"
 #include "context.h"
+#include "dict_private.h"
 
 void
 lydict_init(struct dict_table *dict)
@@ -86,7 +86,7 @@ dict_hash(const char *key, size_t len)
     return hash;
 }
 
-void
+API void
 lydict_remove(struct ly_ctx *ctx, const char *value)
 {
     size_t len;
@@ -198,11 +198,11 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
 
     record->next = new;
 
-    LOGDBG("DICT: inserting \"%s\" with collision ", record->value);
+    LOGDBG("DICT: inserting \"%s\" with collision ", new->value);
     return new->value;
 }
 
-const char *
+API const char *
 lydict_insert(struct ly_ctx *ctx, const char *value, size_t len)
 {
     if (value && !len) {
@@ -215,7 +215,7 @@ lydict_insert(struct ly_ctx *ctx, const char *value, size_t len)
     return dict_insert(ctx, (char *)value, len, 0);
 }
 
-const char *
+API const char *
 lydict_insert_zc(struct ly_ctx *ctx, char *value)
 {
     if (!value) {

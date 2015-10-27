@@ -19,37 +19,111 @@
  *    software without specific prior written permission.
  */
 
-#include <stdlib.h>
+#define _GNU_SOURCE /* vasprintf(), vdprintf() */
+#include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include "common.h"
-#include "tree.h"
+#include "tree_schema.h"
+#include "tree_data.h"
+#include "printer.h"
 
-/* printer/-.c */
-int yang_print_model(FILE * f, struct lys_module *module);
-int tree_print_model(FILE * f, struct lys_module *module);
-int info_print_model(FILE * f, struct lys_module *module, const char *target_node);
-
-int json_print_data(FILE *f, struct lyd_node *root);
-
-API int
-lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+int
+ly_print(struct lyout *out, const char *format, ...)
 {
-    if (!f || !module) {
-        ly_errno = LY_EINVAL;
-        return EXIT_FAILURE;
+    int count;
+    char *msg = NULL, *aux;
+    va_list ap;
+
+    va_start(ap, format);
+
+    switch(out->type) {
+    case LYOUT_FD:
+        count = vdprintf(out->method.fd, format, ap);
+        break;
+    case LYOUT_STREAM:
+        count = vfprintf(out->method.f, format, ap);
+        break;
+    case LYOUT_MEMORY:
+        count = vasprintf(&msg, format, ap);
+        if (out->method.mem.len + count + 1 > out->method.mem.size) {
+            aux = realloc(out->method.mem.buf, out->method.mem.len + count + 1);
+            if (!aux) {
+                free(out->method.mem.buf);
+                out->method.mem.buf = NULL;
+                out->method.mem.len = 0;
+                out->method.mem.size = 0;
+                LOGMEM;
+                va_end(ap);
+                return -1;
+            }
+            out->method.mem.buf = aux;
+            out->method.mem.size += count + 1;
+        }
+        memcpy(&out->method.mem.buf[out->method.mem.len], msg, count + 1);
+        out->method.mem.len += count;
+        break;
+    case LYOUT_CALLBACK:
+        count = vasprintf(&msg, format, ap);
+        count = out->method.clb.f(out->method.clb.arg, msg, count);
+        free(msg);
+        break;
     }
 
+    va_end(ap);
+    return count;
+}
+
+int
+ly_write(struct lyout *out, const char *buf, size_t count)
+{
+    char *aux;
+
+    switch(out->type) {
+    case LYOUT_FD:
+        return write(out->method.fd, buf, count);
+    case LYOUT_STREAM:
+        return fwrite(buf, sizeof *buf, count, out->method.f);
+    case LYOUT_MEMORY:
+        if (out->method.mem.len + count + 1 > out->method.mem.size) {
+            aux = realloc(out->method.mem.buf, out->method.mem.len + count + 1);
+            if (!aux) {
+                free(out->method.mem.buf);
+                out->method.mem.buf = NULL;
+                out->method.mem.len = 0;
+                out->method.mem.size = 0;
+                LOGMEM;
+                return -1;
+            }
+            out->method.mem.buf = aux;
+            out->method.mem.size += count + 1;
+        }
+        memcpy(&out->method.mem.buf[out->method.mem.len], buf, count + 1);
+        out->method.mem.len += count;
+        return count;
+    case LYOUT_CALLBACK:
+        return out->method.clb.f(out->method.clb.arg, buf, count);
+    }
+
+    return 0;
+}
+
+static int
+lys_print_(struct lyout *out, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+{
     switch (format) {
     case LYS_OUT_YIN:
         LOGERR(LY_EINVAL, "YIN output format not supported yet.");
         return EXIT_FAILURE;
     case LYS_OUT_YANG:
-        return yang_print_model(f, module);
+        return yang_print_model(out, module);
     case LYS_OUT_TREE:
-        return tree_print_model(f, module);
+        return tree_print_model(out, module);
     case LYS_OUT_INFO:
-        return info_print_model(f, module, target_node);
+        return info_print_model(out, module, target_node);
     default:
         LOGERR(LY_EINVAL, "Unknown output format.");
         return EXIT_FAILURE;
@@ -57,21 +131,159 @@ lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const char *
 }
 
 API int
-lyd_print(FILE * f, struct lyd_node *root, LYD_FORMAT format)
+lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
 {
+    struct lyout out;
+
+    if (!f || !module) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    out.type = LYOUT_STREAM;
+    out.method.f = f;
+
+    return lys_print_(&out, module, format, target_node);
+}
+
+API int
+lys_print_fd(int fd, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+{
+    struct lyout out;
+
+    if (fd < 0 || !module) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    out.type = LYOUT_FD;
+    out.method.fd = fd;
+
+    return lys_print_(&out, module, format, target_node);
+}
+
+API int
+lys_print_mem(char **strp, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+{
+    struct lyout out;
+    int r;
+
+    if (!strp || !module) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    out.type = LYOUT_MEMORY;
+    out.method.mem.buf = NULL;
+    out.method.mem.len = 0;
+    out.method.mem.size = 0;
+
+    r = lys_print_(&out, module, format, target_node);
+
+    *strp = out.method.mem.buf;
+    return r;
+}
+
+API int
+lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+{
+    struct lyout out;
+
+    if (!writeclb || !module) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    out.type = LYOUT_CALLBACK;
+    out.method.clb.f = writeclb;
+    out.method.clb.arg = arg;
+
+    return lys_print_(&out, module, format, target_node);
+}
+
+static int
+lyd_print_(struct lyout *out, struct lyd_node *root, LYD_FORMAT format)
+{
+    switch (format) {
+    case LYD_XML:
+        return xml_print_data(out, root, 0);
+    case LYD_XML_FORMAT:
+        return xml_print_data(out, root, 1);
+    case LYD_JSON:
+        return json_print_data(out, root);
+    default:
+        LOGERR(LY_EINVAL, "Unknown output format.");
+        return EXIT_FAILURE;
+    }
+}
+
+API int
+lyd_print(FILE *f, struct lyd_node *root, LYD_FORMAT format)
+{
+    struct lyout out;
+
     if (!f || !root) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
 
-    switch (format) {
-    case LYD_XML:
-        LOGERR(LY_EINVAL, "XML output format not supported yet.");
-        return EXIT_FAILURE;
-    case LYD_JSON:
-        return json_print_data(f, root);
-    default:
-        LOGERR(LY_EINVAL, "Unknown output format.");
+    out.type = LYOUT_STREAM;
+    out.method.f = f;
+
+    return lyd_print_(&out, root, format);
+}
+
+API int
+lyd_print_fd(int fd, struct lyd_node *root, LYD_FORMAT format)
+{
+    struct lyout out;
+
+    if (fd < 0 || !root) {
+        ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
+
+    out.type = LYOUT_FD;
+    out.method.fd = fd;
+
+    return lyd_print_(&out, root, format);
+}
+
+API int
+lyd_print_mem(char **strp, struct lyd_node *root, LYD_FORMAT format)
+{
+    struct lyout out;
+    int r;
+
+    if (!strp || !root) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    out.type = LYOUT_MEMORY;
+    out.method.mem.buf = NULL;
+    out.method.mem.len = 0;
+    out.method.mem.size = 0;
+
+    r = lyd_print_(&out, root, format);
+
+    *strp = out.method.mem.buf;
+    return r;
+}
+
+API int
+lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lyd_node *root, LYD_FORMAT format)
+{
+    struct lyout out;
+
+    if (!writeclb || !root) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    out.type = LYOUT_CALLBACK;
+    out.method.clb.f = writeclb;
+    out.method.clb.arg = arg;
+
+    return lyd_print_(&out, root, format);
 }

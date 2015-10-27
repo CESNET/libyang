@@ -1,7 +1,7 @@
 /**
- * @file tree.h
+ * @file tree_schema.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief libyang representation of data model and data trees.
+ * @brief libyang representation of data model trees.
  *
  * Copyright (c) 2015 CESNET, z.s.p.o.
  *
@@ -17,33 +17,17 @@
  * 3. Neither the name of the Company nor the names of its contributors
  *    may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
- *
- * ALTERNATIVELY, provided that this notice is retained in full, this
- * product may be distributed under the terms of the GNU General Public
- * License (GPL) version 2 or later, in which case the provisions
- * of the GPL apply INSTEAD OF those given above.
- *
- * This software is provided ``as is, and any express or implied
- * warranties, including, but not limited to, the implied warranties of
- * merchantability and fitness for a particular purpose are disclaimed.
- * In no event shall the company or contributors be liable for any
- * direct, indirect, incidental, special, exemplary, or consequential
- * damages (including, but not limited to, procurement of substitute
- * goods or services; loss of use, data, or profits; or business
- * interruption) however caused and on any theory of liability, whether
- * in contract, strict liability, or tort (including negligence or
- * otherwise) arising in any way out of the use of this software, even
- * if advised of the possibility of such damage.
- *
  */
 
-#include <netinet/ip.h>
-
-#ifndef LY_TREE_H_
-#define LY_TREE_H_
+#ifndef LY_TREE_SCHEMA_H_
+#define LY_TREE_SCHEMA_H_
 
 #include <stddef.h>
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @ingroup datatree
@@ -130,9 +114,9 @@
 #define LY_TREE_DFS_END(START, NEXT, ELEM)                                    \
     /* select element for the next run - children first */                    \
     (NEXT) = (ELEM)->child;                                                   \
-    if (offsetof(typeof(*(START)), next) < offsetof(typeof(*(START)), child)) {          \
+    if (sizeof(typeof(*(START))) == sizeof(struct lyd_node)) {                \
         /* child exception for lyd_node_leaf and lyd_node_leaflist */         \
-        if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) { \
+        if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) { \
             (NEXT) = NULL;                                                    \
         }                                                                     \
     }                                                                         \
@@ -142,12 +126,38 @@
     }                                                                         \
     while (!(NEXT)) {                                                         \
         /* no siblings, go back through parents */                            \
+        if (sizeof(typeof(*(START))) == sizeof(struct lys_node)) {            \
+            /* lys_node_augment only */                                       \
+            if ((ELEM)->parent && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) { \
+                if ((START)->parent && (((struct lys_node *)(START)->parent)->nodetype == LYS_AUGMENT)) { \
+                    /* lys_node prev is actually lys_node_augment target */   \
+                    if ((ELEM)->parent->prev == (START)->parent->prev) {      \
+                        break;                                                \
+                    }                                                         \
+                } else {                                                      \
+                    if ((ELEM)->parent->prev == (START)->parent) {            \
+                        break;                                                \
+                    }                                                         \
+                }                                                             \
+            } else {                                                          \
+                if ((START)->parent && (((struct lys_node *)(START)->parent)->nodetype == LYS_AUGMENT)) { \
+                    if ((ELEM)->parent == (START)->parent->prev) {            \
+                        break;                                                \
+                    }                                                         \
+                } /* else covered just below */                               \
+            }                                                                 \
+        }                                                                     \
         if ((ELEM)->parent == (START)->parent) {                              \
             /* we are done, no next element to process */                     \
             break;                                                            \
         }                                                                     \
         /* parent is already processed, go to its sibling */                  \
-        (ELEM) = (ELEM)->parent;                                              \
+        if ((sizeof(typeof(*(START))) == sizeof(struct lys_node))             \
+                && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) {  \
+            (ELEM) = (ELEM)->parent->prev;                                    \
+        } else {                                                              \
+            (ELEM) = (ELEM)->parent;                                          \
+        }                                                                     \
         (NEXT) = (ELEM)->next;                                                \
     }
 
@@ -253,9 +263,7 @@ struct lys_module {
     struct lys_node_augment *augment;/**< array of augments */
     struct lys_deviation *deviation; /**< array of specified deviations */
 
-    struct lys_node *data;           /**< first data statement */
-    struct lys_node *rpc;            /**< first rpc statement */
-    struct lys_node *notif;          /**< first notification statement */
+    struct lys_node *data;           /**< first data statement, includes also RPCs and Notifications */
 
     /* specific module's items in comparison to submodules */
     const char *ns;                  /**< namespace of the module (mandatory) */
@@ -307,9 +315,7 @@ struct lys_submodule {
     struct lys_node_augment *augment;/**< array of augments */
     struct lys_deviation *deviation; /**< array of specified deviations */
 
-    struct lys_node *data;           /**< first data statement */
-    struct lys_node *rpc;            /**< first rpc statement */
-    struct lys_node *notif;          /**< first notification statement */
+    struct lys_node *data;           /**< first data statement, includes also RPCs and Notifications */
 
     /* specific submodule's items in comparison to modules */
     struct lys_module *belongsto;    /**< belongs-to (parent module) */
@@ -319,7 +325,7 @@ struct lys_submodule {
  * @brief YANG built-in types
  */
 typedef enum {
-    LY_TYPE_DER,         /**< Derived type */
+    LY_TYPE_DER = 0,     /**< Derived type */
     LY_TYPE_BINARY,      /**< Any binary data ([RFC 6020 sec 9.8](http://tools.ietf.org/html/rfc6020#section-9.8)) */
     LY_TYPE_BITS,        /**< A set of bits or flags ([RFC 6020 sec 9.7](http://tools.ietf.org/html/rfc6020#section-9.7)) */
     LY_TYPE_BOOL,        /**< "true" or "false" ([RFC 6020 sec 9.5](http://tools.ietf.org/html/rfc6020#section-9.5)) */
@@ -351,7 +357,7 @@ typedef enum {
  * @brief YANG type structure providing information from the schema
  */
 struct lys_type {
-    const char *prefix;              /**< prefix for the type referenced in der pointer*/
+    const char *module_name;         /**< module name of the type referenced in der pointer*/
     LY_DATA_TYPE base;               /**< base type */
     struct lys_tpdf *der;            /**< pointer to the superior typedef. If NULL,
                                           structure provides information about one of the built-in types */
@@ -491,6 +497,9 @@ struct lys_type {
  *
  * To cover all possible schema nodes, the ::lys_node type is used in ::lyd_node#schema for referencing schema
  * definition for a specific data node instance.
+ *
+ * The #private member is completely out of libyang control. It is just a pointer to allow libyang
+ * caller to store some proprietary data (e.g. callbacks) connected with the specific schema tree node.
  */
 struct lys_node {
     const char *name;                /**< node name (mandatory) */
@@ -512,6 +521,7 @@ struct lys_node {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 };
 
 /**
@@ -543,6 +553,7 @@ struct lys_node_container {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific container's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -584,6 +595,7 @@ struct lys_node_choice {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific choice's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -623,6 +635,7 @@ struct lys_node_leaf {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific leaf's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -668,6 +681,7 @@ struct lys_node_leaflist {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific leaf-list's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -711,6 +725,7 @@ struct lys_node_list {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific list's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -760,6 +775,7 @@ struct lys_node_anyxml {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific anyxml's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -799,6 +815,7 @@ struct lys_node_uses {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific uses's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -842,6 +859,7 @@ struct lys_node_grp {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific grouping's data */
     uint8_t tpdf_size;               /**< number of elements in #tpdf array */
@@ -876,6 +894,7 @@ struct lys_node_case {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific case's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -909,6 +928,9 @@ struct lys_node_rpc_inout {
     /* specific list's data */
     uint8_t tpdf_size;                /**< number of elements in the #tpdf array */
     struct lys_tpdf *tpdf;            /**< array of typedefs */
+
+    /* again ::lys_node compatible data */
+    void *private;                   /**< private caller's data, not used by libyang */
 };
 
 /**
@@ -937,6 +959,7 @@ struct lys_node_notif {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific rpc's data */
     uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
@@ -969,6 +992,7 @@ struct lys_node_rpc {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
+    void *private;                   /**< private caller's data, not used by libyang */
 
     /* specific rpc's data */
     uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
@@ -980,14 +1004,13 @@ struct lys_node_rpc {
  *
  * This structure is partially interchangeable with ::lys_node structure with the following exceptions:
  * - ::lys_node#name member is replaced by ::lys_node_augment#target_name member
- * - ::lys_node#module member is replaced by ::lys_node_augment#target member
- * - ::lys_node_augment structure is extended by the #when member
+ * - ::lys_node_augment structure is extended by the #when and #target member
  *
  * ::lys_node_augment is not placed between all other nodes defining data node. However, it must be compatible with
  * ::lys_node structure since its children actually keeps the parent pointer to point to the original augment node
  * instead of the target node they augments (the target node is accessible via the ::lys_node_augment#target pointer).
  * The fact that a schema node comes from augment can be get via testing the #nodetype of its parent - the value in
- * ::lys_node_augment is always 0 (#LYS_AUGMENT).
+ * ::lys_node_augment is #LYS_AUGMENT.
  */
 struct lys_node_augment {
     const char *target_name;         /**< schema node identifier of the node where the augment content is supposed to be
@@ -996,7 +1019,8 @@ struct lys_node_augment {
     const char *ref;                 /**< reference statement (optional) */
     uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
     uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
-    struct lys_node *target;         /**< pointer to the target node TODO refer to augmentation description */
+    struct lys_module *module;       /**< pointer to the node's module (mandatory) */
+
     LYS_NODE nodetype;               /**< #LYS_AUGMENT */
     struct lys_node *parent;         /**< uses node or NULL in case of module's top level augment */
     struct lys_node *child;          /**< augmenting data \note The child here points to the data which are also
@@ -1005,10 +1029,16 @@ struct lys_node_augment {
                                           node (this way they can be distinguished from the original target's children).
                                           It is necessary to check this carefully. */
 
+    /* replaces #next and #prev members of ::lys_node */
+    struct lys_when *when;           /**< when statement (optional) */
+    struct lys_node *target;         /**< pointer to the target node TODO refer to augmentation description */
+
+    /* again compatible members with ::lys_node */
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
-    struct lys_when *when;           /**< when statement (optional) */
+    void *private;                   /**< private caller's data, not used by libyang */
+
 };
 
 /**
@@ -1253,11 +1283,38 @@ int lys_features_state(struct lys_module *module, const char *feature);
  * affecting the node.
  *
  * @param[in] node Schema node to check.
- * @param[in] recursive 1 to check all ascendant nodes
+ * @param[in] recursive - 0 to check if-feature only in the \p node schema node,
+ * - 1 to check if-feature in all ascendant schema nodes
+ * - 2 to check if-feature in all ascendant schema nodes that cannot have an instance in a data tree
  * @return - NULL if enabled,
  * - pointer to the disabling feature if disabled.
  */
 struct lys_feature *lys_is_disabled(struct lys_node *node, int recursive);
+
+/**
+ * @brief Get next schema tree (sibling) node element that can be instanciated in a data tree. Returned node can
+ * be from an augment.
+ *
+ * lys_getnext() is supposed to be called sequentially. In the first call, the \p last parameter is usually NULL
+ * and function starts returning i) the first \p parent child or ii) the first top level element of the \p module.
+ * Consequent calls suppose to provide the previously returned node as the \p last parameter and still the same
+ * \p parent and \p module parameters.
+ *
+ * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
+ * @param[in] parent Parent of the subtree where the function starts processing
+ * @param[in] module In case of iterating on top level elements, the \p parent is NULL and module must be specified.
+ * @param[in] options ORed options LYS_GETNEXT_*.
+ * @return Next schema tree node that can be instanciated in a data tree, NULL in case there is no such element
+ */
+struct lys_node *lys_getnext(struct lys_node *last, struct lys_node *parent, struct lys_module *module, int options);
+
+/**
+ * @brief options for lys_getnext() to allow returning choice, case, grouping, input and output nodes.
+ */
+#define LYS_GETNEXT_WITHCHOICE   0x01
+#define LYS_GETNEXT_WITHCASE     0x02
+#define LYS_GETNEXT_WITHGROUPING 0x04
+#define LYS_GETNEXT_WITHINOUT    0x08
 
 /**
  * @brief Return parent node in the schema tree.
@@ -1266,8 +1323,6 @@ struct lys_feature *lys_is_disabled(struct lys_node *node, int recursive);
  * node was placed, not the augment definition node. Function just wraps usage of the
  * ::lys_node#parent pointer in this special case.
  *
- * TODO not implemented
- *
  * @param[in] node Child node to the returned parent node.
  * @return The parent node from the schema tree, NULL in case of top level nodes.
  */
@@ -1275,367 +1330,8 @@ struct lys_node *lys_parent(struct lys_node *node);
 
 /**@} */
 
-/**
- * @addtogroup datatree
- * @{
- */
+#ifdef __cplusplus
+}
+#endif
 
-/**
- * @brief Data input/output formats supported by libyang [parser](@ref parsers) and [printer](@ref printers) functions.
- */
-typedef enum {
-    LYD_UNKNOWN,         /**< unknown format, used as return value in case of error */
-    LYD_XML,             /**< XML format of the instance data */
-    LYD_JSON,            /**< JSON format of the instance data */
-} LYD_FORMAT;
-
-/**
- * @brief Data attribute's type to distinguish between a standard (XML) attribute and namespace definition
- */
-typedef enum lyd_attr_type {
-    LYD_ATTR_STD = 1,                /**< standard attribute, see ::lyd_attr structure */
-    LYD_ATTR_NS = 2                  /**< namespace definition, see ::lyd_ns structure */
-} LYD_ATTR_TYPE;
-
-/**
- * @brief Namespace definition structure.
- *
- * Usually, the object is provided as ::lyd_attr structure. The structure is compatible with
- * ::lyd_attr within the first two members (#type and #next) to allow passing through and type
- * detection interchangeably.  When the type member is set to #LYD_ATTR_NS, the ::lyd_attr
- * structure should be cast to ::lyd_ns to access the rest of members.
- */
-struct lyd_ns {
-    LYD_ATTR_TYPE type;              /**< always #LYD_ATTR_NS, compatible with ::lyd_attr */
-    struct lyd_attr *next;           /**< pointer to the next attribute or namespace definition of an element,
-                                          compatible with ::lyd_attr */
-    struct lyd_node *parent;         /**< pointer to the element where the namespace definition is placed */
-    const char *prefix;              /**< namespace prefix value */
-    const char *value;               /**< namespace value */
-};
-
-/**
- * @brief Attribute structure.
- *
- * The structure provides information about attributes of a data element and covers not only
- * attributes but also namespace definitions. Therefore, the first two members (#type and #next)
- * can be safely accessed to pass through the attributes list and type detection. When the #type
- * member has #LYD_ATTR_STD value, the rest of the members can be used. Otherwise, the object
- * should be cast to the appropriate structure according to #LYD_ATTR_TYPE enumeration.
- */
-struct lyd_attr {
-    LYD_ATTR_TYPE type;              /**< type of the attribute, to access the last three members, the value
-                                          must be ::LYD_ATTR_STD */
-    struct lyd_attr *next;           /**< pointer to the next attribute or namespace definition of an element */
-    struct lyd_ns *ns;               /**< pointer to the definition of the namespace of the attribute */
-    const char *name;                /**< attribute name */
-    const char *value;               /**< attribute value */
-};
-
-/**
- * @brief node's value representation
- */
-typedef union lyd_value_u {
-    const char *binary;          /**< base64 encoded, NULL terminated string */
-    struct lys_type_bit **bit;   /**< array of pointers to the schema definition of the bit value that are set */
-    int8_t bool;                 /**< 0 as false, 1 as true */
-    int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
-    struct lys_type_enum *enm;   /**< pointer to the schema definition of the enumeration value */
-    struct lys_ident *ident;      /**< pointer to the schema definition of the identityref value */
-    struct lyd_node *instance;   /**< instance-identifier, pointer to the referenced data tree node */
-    int8_t int8;                 /**< 8-bit signed integer */
-    int16_t int16;               /**< 16-bit signed integer */
-    int32_t int32;               /**< 32-bit signed integer */
-    int64_t int64;               /**< 64-bit signed integer */
-    struct lyd_node *leafref;    /**< pointer to the referenced leaf/leaflist instance in data tree */
-    const char *string;          /**< string */
-    uint8_t uint8;               /**< 8-bit unsigned integer */
-    uint16_t uint16;             /**< 16-bit signed integer */
-    uint32_t uint32;             /**< 32-bit signed integer */
-    uint64_t uint64;             /**< 64-bit signed integer */
-} lyd_val;
-
-/**
- * @brief Generic structure for a data node, directly applicable to the data nodes defined as #LYS_CONTAINER
- * and #LYS_CHOICE.
- *
- * Completely fits to containers and choices and is compatible (can be used interchangeably except the #child member)
- * with all other lyd_node_* structures. All data nodes are provides as ::lyd_node structure by default.
- * According to the schema's ::lys_node#nodetype member, the specific object is supposed to be cast to
- * ::lyd_node_list, ::lyd_node_leaf, ::lyd_node_leaflist or ::lyd_node_anyxml structures. This structure fits only to
- * #LYS_CONTAINER and #LYS_CHOICE values.
- *
- * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
- */
-struct lyd_node {
-    struct lys_node *schema;         /**< pointer to the schema definition of this node */
-
-    struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
-    struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
-    struct lyd_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
-                                          never NULL. If there is no sibling node, pointer points to the node
-                                          itself. In case of the first node, this pointer points to the last
-                                          node in the list. */
-    struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
-    struct lyd_node *child;          /**< pointer to the first child node \note Since other lyd_node_*
-                                          structures (except ::lyd_node_list) represent end nodes, this member
-                                          is replaced in those structures. Therefore, be careful with accessing
-                                          this member without having information about the node type from the schema's
-                                          ::lys_node#nodetype member. */
-};
-
-/**
- * @brief Structure for data nodes defined as #LYS_LIST.
- *
- * Extension for ::lyd_node structure - adds #lprev and #lnext members to simplify going through the instance nodes
- * of a list. The first six members (#schema, #attr, #next, #prev, #parent and #child) are compatible with the
- * ::lyd_node's members.
- *
- * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
- */
-struct lyd_node_list {
-    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_list
-                                          structure */
-
-    struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
-    struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
-    struct lyd_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
-                                          never NULL. If there is no sibling node, pointer points to the node
-                                          itself. In case of the first node, this pointer points to the last
-                                          node in the list. */
-    struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
-    struct lyd_node *child;          /**< pointer to the first child node */
-
-    /* list's specific members */
-    struct lyd_node_list* lprev;     /**< pointer to the previous instance node of the same list,
-                                          NULL in case of the first instance of the list */
-    struct lyd_node_list* lnext;     /**< pointer to the next instance node of the same list,
-                                          NULL in case of the last instance of the list */
-};
-
-/**
- * @brief Structure for data nodes defined as #LYS_LEAF.
- *
- * Extension for ::lyd_node structure - replaces the ::lyd_node#child member by three new members (#value, #value_str
- * and #value_type) to provide information about the leaf's value. The first five members (#schema, #attr, #next,
- * #prev and #parent) are compatible with the ::lyd_node's members.
- *
- * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
- */
-struct lyd_node_leaf {
-    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_leaf
-                                          structure */
-
-    struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
-    struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
-    struct lyd_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
-                                          never NULL. If there is no sibling node, pointer points to the node
-                                          itself. In case of the first node, this pointer points to the last
-                                          node in the list. */
-    struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
-
-    /* struct lyd_node *child; should be here, but it is not! */
-
-    /* leaf's specific members */
-    lyd_val value;                   /**< node's value representation */
-    const char *value_str;           /**< string representation of value (for comparison, printing,...) */
-    LY_DATA_TYPE value_type;         /**< type of the value in the node, mainly for union to avoid repeating of type detection */
-};
-
-/**
- * @brief Structure for data nodes defined as #LYS_LEAF.
- *
- * Extension for ::lyd_node structure. It combines ::lyd_node_leaf and :lyd_node_list by replacing the
- * ::lyd_node#child member by five new members (#value, #value_str, #value_type, #lprev and #lnext) to provide
- * information about the value and other leaf-list's instances. The first five members (#schema, #attr, #next,
- * #prev and #parent) are compatible with the ::lyd_node's members.
- *
- * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
- */
-struct lyd_node_leaflist {
-    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_leaflist
-                                          structure */
-
-    struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
-    struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
-    struct lyd_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
-                                          never NULL. If there is no sibling node, pointer points to the node
-                                          itself. In case of the first node, this pointer points to the last
-                                          node in the list. */
-    struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
-
-    /* struct lyd_node *child; should be here, but is not */
-
-    /* leaflist's specific members */
-    lyd_val value;                   /**< node's value representation */
-    const char *value_str;           /**< string representation of value (for comparison, printing,...) */
-    LY_DATA_TYPE value_type;         /**< type of the value in the node, mainly for union to avoid repeating of type detection */
-
-    struct lyd_node_leaflist* lprev; /**< pointer to the previous instance node of the same leaf-list,
-                                          NULL in case of the first instance of the leaf-list */
-    struct lyd_node_leaflist* lnext; /**< pointer to the next instance node of the same leaf-list,
-                                          NULL in case of the last instance of the leaf-list */
-};
-
-/**
- * @brief Structure for data nodes defined as #LYS_ANYXML.
- *
- * Extension for ::lyd_node structure - replaces the ::lyd_node#child member by new #value member. The first five
- * members (#schema, #attr, #next, #prev and #parent) are compatible with the ::lyd_node's members.
- *
- * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
- */
-struct lyd_node_anyxml {
-    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_anyxml
-                                          structure */
-
-    struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
-    struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
-    struct lyd_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
-                                          never NULL. If there is no sibling node, pointer points to the node
-                                          itself. In case of the first node, this pointer points to the last
-                                          node in the list. */
-    struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
-
-    /* struct lyd_node *child; should be here, but is not */
-
-    /* anyxml's specific members */
-    struct lyxml_elem *value;       /**< anyxml name is the root element of value! */
-};
-
-/**
- * @brief Create a new node in a data tree.
- *
- * TODO not implemented
- *
- * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
- * @param[in] module Module of the node being created. Can be NULL in case the new node belongs to the same
- * module as its parent. Therefore, the module parameter must be specified for top level and augmenting elements.
- * @param[in] name Name of the node being created.
- * @param[in] type Type of the value provided in the \p value parameter. Accepted only in case of creating
- * #LYS_LEAF or #LYS_LEAFLIST.
- * @param[in] value Value of the node being created. Accepted only in case of creating #LYS_LEAF or #LYS_LEAFLIST.
- */
-struct lyd_node *lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name, LY_DATA_TYPE type,
-                         lyd_val *value);
-
-/**
- * @brief Create a copy of the specified data tree \p node
- *
- * TODO not implemented
- *
- * @param[in] node Data tree node to be duplicated.
- * @param[in] recursive 1 if all children are supposed to be also duplicated.
- * @return Created copy of the provided data \p node.
- */
-struct lyd_node *lyd_dup(struct lyd_node *node, int recursive);
-
-/**
- * @brief Insert the \p node element as child to the \p parent element. The \p node is inserted as a last child of the
- * \p parent.
- *
- * TODO not implemented
- *
- * @param[in] parent Parent node for the \p node being inserted.
- * @param[in] node The node being inserted.
- * @return 0 fo success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
- * in the data tree.
- */
-int lyd_insert(struct lyd_node *parent, struct lyd_node *node);
-
-/**
- * @brief Insert the \p node element after the \p sibling element.
- *
- * TODO not implemented
- *
- * @param[in] sibling The data tree node before which the \p node will be inserted.
- * @param[in] node The data tree node to be inserted.
- * @return 0 fo success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
- * in the data tree.
- */
-int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
-
-/**
- * @brief Insert the \p node element after the \p sibling element.
- *
- * TODO not implemented
- *
- * @param[in] sibling The data tree node before which the \p node will be inserted.
- * @param[in] node The data tree node to be inserted.
- * @return 0 fo success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
- * in the data tree.
- */
-int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
-
-/**
- * @brief Move the data tree \p node before the specified \p sibling node
- *
- * Both the data nodes must be in the same children list, i.e. they have the same parent.
- *
- * TODO not implemented
- *
- * @param[in] sibling The data tree node before which the \p node will be moved.
- * @param[in] node The data tree node to be moved.
- * @return 0 for success, nonzero in case of error
- */
-int lyd_move_before(struct lyd_node *sibling, struct lyd_node *node);
-
-/**
- * @brief Move the data tree \p node after the specified \p sibling node
- *
- * Both the data nodes must be in the same children list, i.e. they have the same parent.
- *
- * TODO not implemented
- *
- * @param[in] sibling The data tree node after which the \p node will be moved.
- * @param[in] node The data tree node to be moved.
- * @return 0 for success, nonzero in case of error
- */
-int lyd_move_after(struct lyd_node *sibling, struct lyd_node *node);
-
-/**
- * @brief Test if the given node is last. Note, that this can be simply checked
- * from the node's next member, but this function differs from this how a
- * list's and leaf-list's instances are considered. If the node is followed
- * only by instances of lists that have their first instance before the given
- * node (or the node itself), this function will mark the node as last even the node's ::lyd_node#next is not empty.
- * This is useful especially when you traverse all siblings and process the
- * list's or leaf-list's instances in once.
- *
- * @param[in] node The data node to be checked.
- * @return 0 if the node has a successor, 1 if the node is last in sense as
- * described above.
- */
-int lyd_is_last(struct lyd_node *node);
-
-/**
- * @brief Unlink the specified data subtree.
- *
- * Note, that the node's connection with the schema tree is kept. Therefore, in case of
- * reconnecting the node to a data tree using lyd_paste() it is necessary to paste it
- * to the appropriate place in the data tree following the schema.
- *
- * TODO not implemented
- *
- * @param[in] node Data tree node to be unlinked (together with all children).
- * @return 0 for success, nonzero for error
- */
-int lyd_unlink(struct lyd_node *node);
-
-/**
- * @brief Free (and unlink) the specified data (sub)tree.
- *
- * @param[in] node Root of the (sub)tree to be freed.
- */
-void lyd_free(struct lyd_node *node);
-
-
-
-/*
-lyd_node_read
-int lyd_node_update
-int lyd_node_delete
-*/
-/**@} */
-
-#endif /* LY_TREE_H_ */
+#endif /* LY_TREE_SCHEMA_H_ */

@@ -22,14 +22,15 @@
 #ifndef LY_CONTEXT_H_
 #define LY_CONTEXT_H_
 
-#include "dict.h"
-#include "tree.h"
+#include "dict_private.h"
+#include "tree_schema.h"
 
 struct ly_modules_list {
     char *search_path;
     int size;
     int used;
     struct lys_module **list;
+    const char **parsing;
     uint16_t module_set_id;
 };
 

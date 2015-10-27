@@ -24,50 +24,22 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * structure definition from context.h
  */
 struct ly_ctx;
 
 /**
- * size of the dictionary for each context
- */
-#define DICT_SIZE 1024
-
-/**
- * record of the dictionary
- * TODO: save the next pointer by different collision strategy, will need to
- * make dictionary size dynamic
- */
-struct dict_rec {
-    char *value;
-    uint32_t refcount;
-    struct dict_rec *next;
-};
-
-/**
- * dictionary to store repeating strings
- * TODO: make it variable size
- */
-struct dict_table {
-    struct dict_rec recs[DICT_SIZE];
-    int hash_mask;
-    uint32_t used;
-};
-
-/**
- * @brief Initiate content (non-zero values) of the dictionary
+ * @defgroup dict Dictionary
+ * @{
  *
- * @param[in] dict Dictionary table to initiate
+ * Publicly visible functions and values of the libyang dictionary. They provide
+ * access to the strings stored in the libyang context.
  */
-void lydict_init(struct dict_table *dict);
-
-/**
- * @brief Cleanup the dictionary content
- *
- * @param[in] dict Dictionary table to cleanup
- */
-void lydict_clean(struct dict_table *dict);
 
 /**
  * @brief Insert string into dictionary. If the string is already present,
@@ -110,5 +82,11 @@ const char *lydict_insert_zc(struct ly_ctx *ctx, char *value);
  * counter is decremented only if it matches.
  */
 void lydict_remove(struct ly_ctx *ctx, const char *value);
+
+/**@} dict */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LY_DICT_H_ */

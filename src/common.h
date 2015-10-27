@@ -24,8 +24,9 @@
 
 #include <stdint.h>
 
+#include "dict_private.h"
 #include "libyang.h"
-#include "tree_internal.h"
+#include "resolve.h"
 
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
@@ -91,13 +92,15 @@ enum LY_ERR {
     LYE_MISSARG,
     LYE_TOOMANY,
     LYE_DUPID,
+    LYE_DUPLEAFLIST,
+    LYE_DUPLIST,
     LYE_ENUM_DUPVAL,
     LYE_ENUM_DUPNAME,
     LYE_ENUM_WS,
     LYE_BITS_DUPVAL,
     LYE_BITS_DUPNAME,
-    LYE_INPREF,
-    LYE_INPREF_LEN,
+    LYE_INMOD,
+    LYE_INMOD_LEN,
     LYE_KEY_NLEAF,
     LYE_KEY_TYPE,
     LYE_KEY_CONFIG,
@@ -106,13 +109,26 @@ enum LY_ERR {
     LYE_INREGEX,
     LYE_INRESOLV,
 
+    LYE_NORESOLV,
     LYE_INELEM,
     LYE_INELEM_LEN,
     LYE_MISSELEM,
     LYE_INVAL,
+    LYE_INATTR,
+    LYE_MISSATTR,
     LYE_OORVAL,
     LYE_INCHAR,
-    LYE_INPRED
+    LYE_INPRED,
+    LYE_MCASEDATA,
+    LYE_NOCOND,
+
+    LYE_XPATH_INTOK,
+    LYE_XPATH_EOF,
+    LYE_XPATH_INOP_1,
+    LYE_XPATH_INOP_2,
+    LYE_XPATH_INCTX,
+    LYE_XPATH_INARGCOUNT,
+    LYE_XPATH_INARGTYPE
 };
 void ly_vlog(enum LY_ERR code, unsigned int line, ...);
 
@@ -120,12 +136,74 @@ void ly_vlog(enum LY_ERR code, unsigned int line, ...);
 
 #ifdef NDEBUG
 #    define LOGLINE(node) 0
+#    define LOGLINE_IDX(node, idx) 0
 #else
 #    define LOGLINE(node) (node)->line
+#    define LOGLINE_IDX(node, idx) (node)->line[idx]
 #endif
+
+/**
+ * @brief Basic functionality like strpbrk(3). However, it searches string \p s
+ *        backwards up to most \p s_len characters.
+ *
+ * @param[in] s String to search backwards.
+ * @param[in] accept String of characters that are searched for.
+ * @param[in] s_len Backward length of \p s.
+ *
+ * @return Pointer to the first backward occurence of a character from
+ *         \p accept or \p s - \p s_len if not found.
+ */
+const char *strpbrk_backwards(const char *s, const char *accept, unsigned int s_len);
 
 char *strnchr(const char *s, int c, unsigned int len);
 
 const char *strnodetype(LYS_NODE type);
+
+/**
+ * @brief Transform expression from JSON format to XML format.
+ * Output arrays point to strings in the dictionary, but without
+ * correcting theit ref_count -> do not touch them. Prefixes of
+ * the namespaces are import prefixes of the modules. Output
+ * parameters are optional, but either all 3 are set or none
+ * of them are. Logs directly.
+ *
+ * @param[in] module Module with imports to use.
+ * @param[in] expr JSON expression.
+ * @param[out] prefixes Array of pointers to prefixes. After use free them with free(*prefixes).
+ * Can be NULL.
+ * @param[out] namespaces Array of pointers to full namespaces. After use free them with
+ * free(*namespaces). Can be NULL.
+ * @param[out] ns_count Number of elements in both \p prefixes and \p namespaces arrays.
+ * Can be NULL.
+ *
+ * @return Transformed XML expression in the dictionary, NULL on error.
+ */
+const char *transform_json2xml(struct lys_module *module, const char *expr, char ***prefixes, char ***namespaces,
+                                    uint32_t *ns_count);
+
+/**
+ * @brief Transform expression from XML data format (prefixes and separate NS definitions) to
+ *        JSON format (prefixes are module names instead). Logs directly.
+ *
+ * @param[in] ctx libyang context to use.
+ * @param[in] expr XML expression.
+ * @param[in] xml XML element with the expression.
+ * @param[in] log Whether to log errors or not.
+ *
+ * @return Transformed JSON expression in the dictionary, NULL on error.
+ */
+const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int log);
+
+/**
+ * @brief Transform expression from the schema format (prefixes of imports) to
+ *        JSON format (prefixes are module names directly). Logs directly.
+ *
+ * @param[in] module Module (schema) with imports to search.
+ * @param[in] expr Expression from \p module.
+ * @param[in] line Line in the input file.
+ *
+ * @return Transformed JSON expression in the dictionary, NULL on error.
+ */
+const char *transform_schema2json(struct lys_module *module, const char *expr, uint32_t line);
 
 #endif /* LY_COMMON_H_ */

@@ -31,7 +31,8 @@
 
 #include "common.h"
 #include "context.h"
-#include "dict.h"
+#include "dict_private.h"
+#include "parser.h"
 #include "tree_internal.h"
 
 #define IETF_INET_TYPES_PATH "../models/ietf-inet-types@2013-07-15.h"
@@ -126,6 +127,12 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
     }
 }
 
+API const char *
+ly_ctx_get_searchdir(struct ly_ctx *ctx)
+{
+    return ctx->models.search_path;
+}
+
 API void
 ly_ctx_destroy(struct ly_ctx *ctx)
 {
@@ -135,7 +142,7 @@ ly_ctx_destroy(struct ly_ctx *ctx)
 
     /* models list */
     while (ctx->models.used) {
-        lys_free(ctx->models.list[0]);
+        lys_free(ctx->models.list[0], 1);
     }
     free(ctx->models.search_path);
     free(ctx->models.list);
@@ -284,4 +291,248 @@ ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *module_name)
     result[i] = NULL;
 
     return result;
+}
+
+API struct lys_node *
+ly_ctx_get_node(struct ly_ctx *ctx, const char *nodeid)
+{
+    struct lys_node *ret;
+    struct lys_module *module;
+    char *mod_name;
+    int parsed;
+
+    if (!ctx || !nodeid) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    if ((nodeid[0] != '/') || ((parsed = parse_identifier(nodeid + 1)) < 1)) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    /* get the correct module */
+    mod_name = strndup(nodeid + 1, parsed);
+    module = ly_ctx_get_module(ctx, mod_name, NULL);
+    free(mod_name);
+    if (!module) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    /* now we can parse the whole schema */
+    if (resolve_schema_nodeid(nodeid, NULL, module, LYS_AUGMENT, &ret)) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    return ret;
+}
+
+static int
+ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod)
+{
+    int i, j;
+
+    /* module features */
+    for (i = 0; i < cur_mod->features_size; ++i) {
+        if (!(cur_mod->features[i].flags & LYS_FENABLED)) {
+            continue;
+        }
+
+        if (!lyd_new_leaf(parent, NULL, "feature", cur_mod->features[i].name)) {
+            return EXIT_FAILURE;
+        }
+    }
+
+    /* submodule features */
+    for (i = 0; i < cur_mod->inc_size; ++i) {
+        for (j = 0; j < cur_mod->inc[i].submodule->features_size; ++j) {
+            if (!(cur_mod->inc[i].submodule->features[j].flags & LYS_FENABLED)) {
+                continue;
+            }
+
+            if (!lyd_new_leaf(parent, NULL, "feature", cur_mod->inc[i].submodule->features[j].name)) {
+                return EXIT_FAILURE;
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+static int
+ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod, struct ly_ctx *ctx)
+{
+    int i, j, k;
+    struct lys_module *target_module, *mod_iter;
+    struct lyd_node *cont;
+
+    for (i = 0; i < ctx->models.used; ++i) {
+        mod_iter = ctx->models.list[i];
+        for (k = 0; k < mod_iter->deviation_size; ++k) {
+            if (mod_iter->deviation[k].target->module->type) {
+                target_module = ((struct lys_submodule *)mod_iter->deviation[k].target->module)->belongsto;
+            } else {
+                target_module = mod_iter->deviation[k].target->module;
+            }
+
+            /* we found a module deviating our module */
+            if (target_module == cur_mod) {
+                cont = lyd_new(parent, NULL, "deviation");
+                if (!cont) {
+                    return EXIT_FAILURE;
+                }
+
+                if (!lyd_new_leaf(cont, NULL, "name", mod_iter->name)) {
+                    return EXIT_FAILURE;
+                }
+                if (!lyd_new_leaf(cont, NULL, "revision", (mod_iter->rev_size ? mod_iter->rev[0].date : ""))) {
+                    return EXIT_FAILURE;
+                }
+            }
+        }
+
+        for (j = 0; j < mod_iter->inc_size; ++j) {
+            for (k = 0; k < mod_iter->inc[j].submodule->deviation_size; ++k) {
+                if (mod_iter->inc[j].submodule->deviation[k].target->module->type) {
+                    target_module = ((struct lys_submodule *)
+                                    mod_iter->inc[j].submodule->deviation[k].target->module)->belongsto;
+                } else {
+                    target_module = mod_iter->inc[j].submodule->deviation[k].target->module;
+                }
+
+                /* we found a submodule deviating our module */
+                if (target_module == cur_mod) {
+                    cont = lyd_new(parent, NULL, "deviation");
+                    if (!cont) {
+                        return EXIT_FAILURE;
+                    }
+
+                    if (!lyd_new_leaf(cont, NULL, "name", mod_iter->inc[j].submodule->name)) {
+                        return EXIT_FAILURE;
+                    }
+                    if (!lyd_new_leaf(cont, NULL, "revision",
+                                          (mod_iter->inc[j].submodule->rev_size ?
+                                           mod_iter->inc[j].submodule->rev[0].date : ""))) {
+                        return EXIT_FAILURE;
+                    }
+                }
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+static int
+ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod)
+{
+    int i;
+    struct lyd_node *cont;
+
+    for (i = 0; i < cur_mod->inc_size; ++i) {
+        cont = lyd_new(parent, NULL, "submodule");
+        if (!cont) {
+            return EXIT_FAILURE;
+        }
+
+        if (!lyd_new_leaf(cont, NULL, "name", cur_mod->inc[i].submodule->name)) {
+            return EXIT_FAILURE;
+        }
+        if (!lyd_new_leaf(cont, NULL, "revision", (cur_mod->inc[i].submodule->rev_size ?
+                          cur_mod->inc[i].submodule->rev[0].date : ""))) {
+            return EXIT_FAILURE;
+        }
+        if (cur_mod->inc[i].submodule->uri
+                && !lyd_new_leaf(cont, NULL, "schema", cur_mod->inc[i].submodule->uri)) {
+            return EXIT_FAILURE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+API struct lyd_node *
+ly_ctx_info(struct ly_ctx *ctx)
+{
+    int i;
+    char id[8];
+    struct lys_module *mod;
+    struct lyd_node *root, *cont;
+
+    mod = ly_ctx_get_module(ctx, "ietf-yang-library", NULL);
+    if (!mod) {
+        mod = lyp_search_file(ctx, NULL, "ietf-yang-library", NULL);
+    }
+    if (!mod || !mod->data || strcmp(mod->data->next->name, "modules")) {
+        return NULL;
+    }
+
+    root = lyd_new(NULL, mod, "modules");
+    if (!root) {
+        return NULL;
+    }
+
+    for (i = 0; i < ctx->models.used; ++i) {
+        cont = lyd_new(root, NULL, "module");
+        if (!cont) {
+            lyd_free(root);
+            return NULL;
+        }
+
+        if (!lyd_new_leaf(cont, NULL, "name", ctx->models.list[i]->name)) {
+            lyd_free(root);
+            return NULL;
+        }
+        if (!lyd_new_leaf(cont, NULL, "revision", (ctx->models.list[i]->rev_size ?
+                              ctx->models.list[i]->rev[0].date : ""))) {
+            lyd_free(root);
+            return NULL;
+        }
+        if (ctx->models.list[i]->uri
+                && !lyd_new_leaf(cont, NULL, "schema", ctx->models.list[i]->uri)) {
+            lyd_free(root);
+            return NULL;
+        }
+        if (!lyd_new_leaf(cont, NULL, "namespace", ctx->models.list[i]->ns)) {
+            lyd_free(root);
+            return NULL;
+        }
+        if (ylib_feature(cont, ctx->models.list[i])) {
+            lyd_free(root);
+            return NULL;
+        }
+        if (ylib_deviation(cont, ctx->models.list[i], ctx)) {
+            lyd_free(root);
+            return NULL;
+        }
+        if (ctx->models.list[i]->implemented
+                && !lyd_new_leaf(cont, NULL, "conformance", "implement")) {
+            lyd_free(root);
+            return NULL;
+        }
+        if (!ctx->models.list[i]->implemented
+                && !lyd_new_leaf(cont, NULL, "conformance", "import")) {
+            lyd_free(root);
+            return NULL;
+        }
+        if (ylib_submodules(cont, ctx->models.list[i])) {
+            lyd_free(root);
+            return NULL;
+        }
+    }
+
+    sprintf(id, "%u", ctx->models.module_set_id);
+    if (!lyd_new_leaf(root, mod, "module-set-id", id)) {
+        lyd_free(root);
+        return NULL;
+    }
+
+    if (lyd_validate(root, 0)) {
+        lyd_free(root);
+        return NULL;
+    }
+
+    return root;
 }

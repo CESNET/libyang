@@ -23,7 +23,56 @@
 #define _RESOLVE_H
 
 #include "libyang.h"
-#include "tree_internal.h"
+
+/**
+ * @brief Type of an unresolved item (in either SCHEMA or DATA)
+ */
+enum UNRES_ITEM {
+    UNRES_RESOLVED,      /* a resolved item */
+
+    /* SCHEMA */
+    UNRES_IDENT,         /* unresolved derived identities */
+    UNRES_TYPE_IDENTREF, /* check identityref value */
+    UNRES_TYPE_LEAFREF,  /* check leafref value */
+    UNRES_TYPE_DER,      /* unresolved derived type */
+    UNRES_IFFEAT,        /* unresolved if-feature */
+    UNRES_USES,          /* unresolved uses grouping (refines and augments in it are resolved as well) */
+    UNRES_TYPE_DFLT,     /* validate default type value */
+    UNRES_CHOICE_DFLT,   /* check choice default case */
+    UNRES_LIST_KEYS,     /* list keys */
+    UNRES_LIST_UNIQ,     /* list uniques */
+
+    /* DATA */
+    UNRES_LEAFREF,       /* unresolved leafref reference */
+    UNRES_INSTID,        /* unresolved instance-identifier reference */
+    UNRES_WHEN,          /* unresolved when condition */
+    UNRES_MUST           /* unresolved must condition */
+};
+
+/**
+ * @brief Unresolved items in DATA
+ */
+struct unres_data {
+    struct lyd_node **node;
+    enum UNRES_ITEM *type;
+#ifndef NDEBUG
+    uint32_t *line;
+#endif
+    uint32_t count;
+};
+
+/**
+ * @brief Unresolved items in a SCHEMA
+ */
+struct unres_schema {
+    void **item;            /* array of pointers, each is determined by the type (one of lys_* structures) */
+    enum UNRES_ITEM *type;  /* array of unres types */
+    void **str_snode;       /* array of pointers, each is determined by the type (a string, a lys_node *, or NULL) */
+#ifndef NDEBUG
+    uint32_t *line;         /* array of lines for each unres item */
+#endif
+    uint32_t count;         /* count of unres items */
+};
 
 struct len_ran_intv {
     /* 0 - unsigned, 1 - signed, 2 - floating point */
@@ -48,40 +97,40 @@ struct len_ran_intv {
     struct len_ran_intv *next;
 };
 
+int parse_identifier(const char *id);
+
 int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int superior_restr,
                              struct len_ran_intv **local_intv);
 
-struct lys_node *resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module *mod,
-                                       LYS_NODE node_type);
+int resolve_superior_type(const char *name, const char *prefix, struct lys_module *module,
+                          struct lys_node *parent, struct lys_tpdf **ret);
 
-struct lys_ident *resolve_identityref(struct lys_ident *base, const char *name, const char *ns);
+int resolve_unique(struct lys_node *parent, const char *uniq_str, struct lys_unique *uniq_s, int first, uint32_t line);
 
-int resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t line);
+int resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module *mod,
+                          LYS_NODE node_type, struct lys_node **ret);
 
-struct lys_node *resolve_sibling(struct lys_module *mod, struct lys_node *siblings, const char *prefix, int pref_len,
-                                 const char *name, int nam_len, LYS_NODE type);
+int resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings);
 
-int resolve_path_arg_data(struct unres_data *unres, const char *path, struct unres_data **ret);
+struct lys_ident *resolve_identref(struct lys_ident *base, const char *ident_name, uint32_t line);
 
-struct lyd_node *resolve_instid(struct lyd_node *data, const char *path, int line);
+int resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres);
 
-struct lys_tpdf *resolve_superior_type(const char *name, const char *prefix, struct lys_module *module,
-                                      struct lys_node *parent);
+int unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
+                         const char *str, uint32_t line);
 
-int resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct lys_module *module);
+int unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
+                          struct lys_node *node, uint32_t line);
 
-int resolve_unique(struct lys_node *parent, const char *uniq_str, struct lys_unique *uniq_s, uint32_t line);
+int unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
+                     void *new_item);
 
-int resolve_unres(struct lys_module *mod, struct unres_schema *unres);
+int unres_schema_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type);
 
-void unres_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, const char *str,
-                   uint32_t line);
+int resolve_unres_data_item(struct lyd_node *dnode, enum UNRES_ITEM type, int first, uint32_t line);
 
-void unres_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
-                     struct lys_node *node, uint32_t line);
+int unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type, uint32_t line);
 
-int unres_dup(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, void *new_item);
-
-int unres_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type);
+int resolve_unres_data(struct unres_data *unres);
 
 #endif /* _RESOLVE_H */

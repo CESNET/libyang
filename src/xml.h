@@ -1,7 +1,7 @@
 /**
  * @file xml.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief XML parser for libyang
+ * @brief Public API of libyang XML parser
  *
  * Copyright (c) 2015 CESNET, z.s.p.o.
  *
@@ -52,8 +52,8 @@ struct lyxml_ns {
     LYXML_ATTR_TYPE type;            /**< type of the attribute = LYXML_ATTR_NS */
     struct lyxml_ns *next;           /**< next sibling attribute */
     struct lyxml_elem *parent;       /**< parent node of the attribute */
-    const char *value;               /**< the namespace value */
     const char *prefix;              /**< the namespace prefix if defined, NULL for default namespace */
+    const char *value;               /**< the namespace value */
 };
 
 /**
@@ -69,8 +69,8 @@ struct lyxml_attr {
     LYXML_ATTR_TYPE type;            /**< type of the attribute */
     struct lyxml_attr *next;         /**< next sibling attribute */
     const struct lyxml_ns *ns;       /**< pointer to the namespace of the attribute if any */
-    const char *value;               /**< data stored in the attribute */
     const char *name;                /**< name of the attribute (the LocalPart of the qualified name) */
+    const char *value;               /**< data stored in the attribute */
 };
 
 /**
@@ -109,6 +109,7 @@ struct lyxml_elem {
 /**
  * @brief Parse XML from in-memory string
  *
+ * @param[in] ctx libyang context to use
  * @param[in] data Pointer to a NULL-terminated string containing XML data to
  * parse.
  * @param[in] options Parser options. Currently ignored, no option defined yet.
@@ -119,6 +120,7 @@ struct lyxml_elem *lyxml_read(struct ly_ctx *ctx, const char *data, int options)
 /**
  * @brief Parse XML from file descriptor - TODO: NOT IMPLEMENTED
  *
+ * @param[in] ctx libyang context to use
  * @param[in] fd File descriptor where read data to parse
  * @param[in] options Parser options. Currently ignored, no option defined yet.
  * @return pointer to root of the parsed XML document tree.
@@ -128,6 +130,7 @@ struct lyxml_elem *lyxml_read_fd(struct ly_ctx *ctx, int fd, int options);
 /**
  * @brief Parse XML from filesystem - TODO: NOT IMPLEMENTED
  *
+ * @param[in] ctx libyang context to use
  * @param[in] filename Path to the file where read data to parse
  * @param[in] options Parser options. Currently ignored, no option defined yet.
  * @return pointer to root of the parsed XML document tree.
@@ -135,67 +138,85 @@ struct lyxml_elem *lyxml_read_fd(struct ly_ctx *ctx, int fd, int options);
 struct lyxml_elem *lyxml_read_file(struct ly_ctx *ctx, const char *filename, int options);
 
 /**
+ * @defgroup xmldumpoptions XML dump options
+ * @ingroup xmlparser
+ *
+ * Various options to change behavior of XML dump functions (lyxml_dump()).
+ *
+ * When no option is specified (value 0), dumper prints all the content at once.
+ *
+ * @{
+ */
+#define LYXML_DUMP_OPEN   0x01  /**< print only the open part of the XML element.
+                                     If used in combination with #LYXML_DUMP_CLOSE, it prints the element without
+                                     its children: \<element/\>. If none of these two options is used, the element
+                                     is printed including all its children. */
+#define LYXML_DUMP_FORMAT 0x02  /**< print format output.
+                                     If option is not used, the element and its children are printed without indent.
+                                     If used in combination with #LYXML_DUMP_CLOSE or LYXML_DUMP_ATTRS or LYXML_DUMP_OPEN,
+                                     it has no effect.*/
+#define LYXML_DUMP_CLOSE  0x04  /**< print only the closing part of the XML element.
+                                     If used in combination with #LYXML_DUMP_OPEN, it prints the element without
+                                     its children: \<element/\>. If none of these two options is used, the element
+                                     is printed including all its children. */
+#define LYXML_DUMP_ATTRS  0x08  /**< dump only attributes and namespace declarations of the element (element name
+                                     is not printed). This option cannot be used in combination with
+                                     #LYXML_DUMP_OPEN and/or #LYXML_DUMP_CLOSE */
+
+
+/**
+ * @}
+ */
+
+/**
  * @brief Dump XML tree to a IO stream
+ *
+ * To write data into a file descriptor instead of file stream, use lyxml_dump_fd().
  *
  * @param[in] stream IO stream to print out the tree.
  * @param[in] elem Root element of the XML tree to print
- * @param[in] options Parser options. Currently ignored, no option defined yet.
+ * @param[in] options Dump options, see @ref xmldumpoptions.
  * @return number of printed characters.
- *
  */
 int lyxml_dump(FILE * stream, struct lyxml_elem *elem, int options);
 
-/*
- * Functions
- * Tree Manipulation
+/**
+ * @brief Dump XML tree to a IO stream
+ *
+ * Same as lyxml_dump(), but it writes data into the given file descriptor.
+ *
+ * @param[in] fd File descriptor to print out the tree.
+ * @param[in] elem Root element of the XML tree to print
+ * @param[in] options Dump options, see @ref xmldumpoptions.
+ * @return number of printed characters.
  */
+int lyxml_dump_fd(int fd, struct lyxml_elem *elem, int options);
 
 /**
- * @brief Connect the attribute into the specified element.
+ * @brief Dump XML tree to a IO stream
  *
- * @param[in] parent Element where to connect the attribute.
- * @param[in] attr Attribute to connect. Can be both, the common attribute as
- * well as a namespace definition.
- * @return EXIT_SUCCESS or EXIT_FAILURE
+ * Same as lyxml_dump(), but it allocates memory and store the data into it.
+ * It is up to caller to free the returned string by free().
+ *
+ * @param[out] strp Pointer to store the resulting dump.
+ * @param[in] elem Root element of the XML tree to print
+ * @param[in] options Dump options, see @ref xmldumpoptions.
+ * @return number of printed characters.
  */
-int lyxml_add_attr(struct lyxml_elem *parent, struct lyxml_attr *attr);
+int lyxml_dump_mem(char **strp, struct lyxml_elem *elem, int options);
 
 /**
- * @brief Get value of the attribute in the specified element.
- */
-const char *lyxml_get_attr(struct lyxml_elem *elem, const char *name, const char *ns);
-
-/**
- * @brief Add a child element into a parent element.
+ * @brief Dump XML tree to a IO stream
  *
- * The child is added as a last child.
+ * Same as lyxml_dump(), but it writes data via the provided callback.
  *
- * @param[in] parent Element where to add the child.
- * @param[in] child Element to be added as a last child of the parent.
- * @return EXIT_SUCCESS or EXIT_FAILURE
+ * @param[in] writeclb Callback function to write the data (see write(1)).
+ * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
+ * @param[in] elem Root element of the XML tree to print
+ * @param[in] options Dump options, see @ref xmldumpoptions.
+ * @return number of printed characters.
  */
-int lyxml_add_child(struct lyxml_elem *parent, struct lyxml_elem *child);
-
-struct lyxml_elem *lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem,
-                                  struct lyxml_elem *parent, int recursive);
-
-/**
- * @brief Free attribute. Includes unlinking from an element if the attribute
- * is placed anywhere.
- *
- * @param[in] ctx libyang context to use
- * @param[in] parent Parent element where the attribute is placed
- * @param[in] attr Attribute to free.
- */
-void lyxml_free_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr *attr);
-
-/**
- * @brief Free (and unlink from their element) all attributes (including
- * namespace definitions) of the specified element.
- *
- * @param[in] elem Element to modify.
- */
-void lyxml_free_attrs(struct ly_ctx *ctx, struct lyxml_elem *elem);
+int lyxml_dump_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lyxml_elem *elem, int options);
 
 /**
  * @brief Free (and unlink from the XML tree) the specified element with all
@@ -207,21 +228,9 @@ void lyxml_free_attrs(struct ly_ctx *ctx, struct lyxml_elem *elem);
 void lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem *elem);
 
 /**
- * @brief Unlink the attribute from its parent element. In contrast to
- * lyxml_free_attr(), after return the caller can still manipulate with the
- * attr.
- *
- * @param[in] attr Attribute to unlink from its parent (if any).
+ * @brief Get value of the attribute in the specified element.
  */
-void lyxml_unlink_attr(struct lyxml_attr *attr);
-
-/**
- * @brief Unlink the element from its parent. In contrast to lyxml_free_elem(),
- * after return the caller can still manipulate with the elem.
- *
- * @param[in] elem Element to unlink from its parent (if any).
- */
-void lyxml_unlink_elem(struct lyxml_elem *elem);
+const char *lyxml_get_attr(struct lyxml_elem *elem, const char *name, const char *ns);
 
 /**
  * @brief Get namespace definition of the given prefix in context of the specified element.

@@ -24,7 +24,14 @@
 
 #include <stdio.h>
 
-#include "tree.h"
+#include "tree_schema.h"
+#include "tree_data.h"
+#include "xml.h"
+#include "dict.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @page howto How To ...
@@ -135,9 +142,16 @@ struct ly_ctx;
  * @brief Create libyang context
  *
  * Context is used to hold all information about schemas. Usually, the application is supposed
- * to work with a single context in which libyang is holding all data models and other internal
- * information according to which the data will be processed and validated. Therefore, both schema
- * and data trees are connected with a specific context.
+ * to work with a single context in which libyang is holding all schemas (and other internal
+ * information) according to which the data trees will be processed and validated. So, the schema
+ * trees are tightly connected with the specific context and they are held by the context internally
+ * - caller does not need to keep pointers to the schemas returned by lys_parse(), context knows
+ * about them. The data trees created with lyd_parse() are still connected with the specific context,
+ * but they are not internally held by the context. The data tree just points and lean on some data
+ * held by the context (schema tree, string dictionary, etc.). Therefore, in case of data trees, caller
+ * is supposed to keep pointers returned by the lyd_parse() and manage the data tree on its own. This
+ * also affects the number of instances of both tree types. While you can have only one instance of
+ * specific schema connected with a single context, number of data tree instances is not connected.
  *
  * @param[in] search_dir Directory where libyang will search for the imported or included modules
  * and submodules. If no such directory is available, NULL is accepted.
@@ -153,6 +167,14 @@ struct ly_ctx *ly_ctx_new(const char *search_dir);
  * @param[in] search_dir New search path to replace the current one in ctx.
  */
 void ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
+
+/**
+ * @brief Get current value of the search path in libyang context
+ *
+ * @param[in] ctx Context to query.
+ * @return Current value of the search path.
+ */
+const char *ly_ctx_get_searchdir(struct ly_ctx *ctx);
 
 /**
  * @brief Get data of an internal ietf-yang-library module.
@@ -224,8 +246,6 @@ struct lys_submodule *ly_ctx_get_submodule(struct lys_module *module, const char
 /**
  * @brief Get schema node according to the given absolute schema node identifier.
  *
- * TODO not implemented
- *
  * @param[in] ctx Context to work in.
  * @param[in] nodeid Absolute schema node identifier with module names used as
  * prefixes. Prefix (module name) must be used whenever the child node is from
@@ -235,7 +255,7 @@ struct lys_submodule *ly_ctx_get_submodule(struct lys_module *module, const char
  * - /ietf-netconf-monitoring:get-schema/input/identifier
  * - /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/ip
  */
-struct lys_node *lys_ctx_get_node(struct ly_ctx *ctx, const char *nodeid);
+struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const char *nodeid);
 
 /**
  * @brief Free all internal structures of the specified context.
@@ -320,21 +340,24 @@ struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
  * Parser also expects that the provided data are complete and performs data validation according to all
  * implemented YANG rules. This can be problem in case of representing NETCONF's subtree filter data or
  * edit-config's data which do not represent a complete data set. Therefore there are two options to make parser to
- * accept such a data: #LYD_OPT_FILTER and #LYD_OPT_EDIT.
+ * accept such a data: #LYD_OPT_FILTER and #LYD_OPT_EDIT. However, both these options are ignored when parsing
+ * an RPC or a notification.
  *
  * @{
  */
-#define LYD_OPT_STRICT   0x01  /**< instead of silent ignoring data without schema definition, rise error.
+#define LYD_OPT_STRICT   0x01  /**< instead of silent ignoring data without schema definition, raise an error.
                                     Having an unknown element of the known namespace is always an error. */
 #define LYD_OPT_EDIT     0x02  /**< make validation to accept NETCONF edit-config's content:
                                     - mandatory nodes can be omitted
-                                    - leafrefs and instance-identifier are not resolved */
+                                    - leafrefs and instance-identifier are not resolved
+                                    - status data are not allowed */
 #define LYD_OPT_FILTER   0x04  /**< make validation to accept NETCONF subtree filter data:
                                     - leafs/leaf-lists with no data are allowed (even not allowed e.g. by length restriction)
                                     - multiple instances of container/leaf/.. are allowed
                                     - list's keys are not required
                                     - mandatory nodes can be omitted
-                                    - leafrefs and instance-identifier are not resolved */
+                                    - leafrefs and instance-identifier are not resolved
+                                    - data from different choice's branches are allowed */
 /**
  * @}
  */
@@ -355,6 +378,24 @@ struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
 struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options);
+
+/**
+ * @brief Parse (and validate according to appropriate schema from the given context) XML tree.
+ *
+ * The output data tree is parsed from the given XML tree previously parsed by one of the
+ * lyxml_read* functions. Note, that the parser removes successfully parsed data from the
+ * XML tree except the root element (see the note about XML format in lyd_parse()). When
+ * the given XML tree is successfully parsed, the given \p root is kept but it has no children
+ * which are returned as a top level nodes in the output data tree.
+ *
+ * The context must be the same as the context used to parse XML tree by lyxml_read* function.
+ *
+ * @param[in] ctx Context to connect with the data tree being built here.
+ * @param[in] root XML tree to parse (convert) to data tree.
+ * @param[in] options Parser options, see @ref parseroptions.
+ * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
+ */
+struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int options);
 
 /**
  * @brief Read data from the given file
@@ -432,6 +473,8 @@ struct lyd_node *lyd_read(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int opt
 /**
  * @brief Print schema tree in the specified format.
  *
+ * To write data into a file descriptor, use lys_print_fd().
+ *
  * @param[in] module Schema tree to print.
  * @param[in] f File stream where to print the schema.
  * @param[in] format Schema output format.
@@ -442,7 +485,53 @@ struct lyd_node *lyd_read(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int opt
 int lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
 
 /**
+ * @brief Print schema tree in the specified format.
+ *
+ * Same as lys_print(), but output is written into the specified file descriptor.
+ *
+ * @param[in] module Schema tree to print.
+ * @param[in] fd File descriptor where to print the data.
+ * @param[in] format Schema output format.
+ * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
+ * node in the module will be printed.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lys_print_fd(int fd, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+
+/**
+ * @brief Print schema tree in the specified format.
+ *
+ * Same as lys_print(),  but it allocates memory and store the data into it.
+ * It is up to caller to free the returned string by free().
+ *
+ * @param[out] strp Pointer to store the resulting dump.
+ * @param[in] module Schema tree to print.
+ * @param[in] format Schema output format.
+ * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
+ * node in the module will be printed.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lys_print_mem(char **strp, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+
+/**
+ * @brief Print schema tree in the specified format.
+ *
+ * Same as lys_print(), but output is written via provided callback.
+ *
+ * @param[in] module Schema tree to print.
+ * @param[in] writeclb Callback function to write the data (see write(1)).
+ * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
+ * @param[in] format Schema output format.
+ * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
+ * node in the module will be printed.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+
+/**
  * @brief Print data tree in the specified format.
+ *
+ * To write data into a file descriptor, use lyd_print_fd().
  *
  * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
  * node of the data tree to print the specific subtree.
@@ -451,6 +540,48 @@ int lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const ch
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lyd_print(FILE *f, struct lyd_node *root, LYD_FORMAT format);
+
+/**
+ * @brief Print data tree in the specified format.
+ *
+ * Same as lyd_print(), but output is written into the specified file descriptor.
+ *
+ * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
+ * node of the data tree to print the specific subtree.
+ * @param[in] fd File descriptor where to print the data.
+ * @param[in] format Data output format.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lyd_print_fd(int fd, struct lyd_node *root, LYD_FORMAT format);
+
+
+ /**
+ * @brief Print data tree in the specified format.
+ *
+ * Same as lyd_print(), but it allocates memory and store the data into it.
+ * It is up to caller to free the returned string by free().
+ *
+ * @param[out] strp Pointer to store the resulting dump.
+ * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
+ * node of the data tree to print the specific subtree.
+ * @param[in] format Data output format.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lyd_print_mem(char **strp, struct lyd_node *root, LYD_FORMAT format);
+
+/**
+ * @brief Print data tree in the specified format.
+ *
+ * Same as lyd_print(), but output is written via provided callback.
+ *
+ * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
+ * node of the data tree to print the specific subtree.
+ * @param[in] writeclb Callback function to write the data (see write(1)).
+ * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
+ * @param[in] format Data output format.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lyd_node *root, LYD_FORMAT format);
 
 /**@} printers */
 
@@ -498,5 +629,9 @@ typedef enum {
 extern LY_ERR ly_errno;
 
 /**@} logger */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LY_LIBYANG_H_ */
