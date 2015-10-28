@@ -19,8 +19,6 @@
  *    software without specific prior written permission.
  */
 
-#define _GNU_SOURCE
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -74,8 +72,12 @@ get_path_multiple_completion(const char *hint, char ***matches, unsigned int *ma
         ptr = path;
         dir = opendir(".");
     } else {
+        char buf[FILENAME_MAX] = { 0 };
+
         ++ptr;
-        dir = opendir(strndupa(path, ptr-path));
+        snprintf(buf, ptr - path, "%s", path);
+
+        dir = opendir(buf);
     }
 
     if (dir == NULL) {
@@ -158,8 +160,12 @@ get_path_skip_opts_completion(const char *hint, char ***matches, unsigned int *m
         ptr = path;
         dir = opendir(".");
     } else {
+        char buf[FILENAME_MAX] = { 0 };
+
         ++ptr;
-        dir = opendir(strndupa(path, ptr-path));
+        snprintf(buf, ptr-path, "%s", path);
+
+        dir = opendir(buf);
     }
 
     if (dir == NULL) {
