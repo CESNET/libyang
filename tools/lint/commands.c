@@ -500,7 +500,7 @@ cmd_xpath(const char *arg)
     char **argv = NULL, *ptr, *ctx_node_path = NULL, *expr = NULL, *addr;
     struct stat sb;
     struct lyd_node *ctx_node, *data = NULL, *next, *iter;
-    struct lyxp_set set = {0};
+    struct lyxp_set set = {0, {NULL}, NULL, 0, 0, 0};
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"expr", required_argument, 0, 'e'},
