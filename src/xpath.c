@@ -40,6 +40,7 @@
 #include "tree_internal.h"
 #include "common.h"
 #include "resolve.h"
+#include "printer.h"
 #include "dict_private.h"
 
 static struct lyd_node *moveto_get_root(struct lyd_node *cur_node, enum lyxp_node_type *root_type);
@@ -6338,28 +6339,32 @@ lyxp_syntax_check(const char *expr, uint32_t line)
     return rc;
 }
 
-void xml_print_node(FILE *f, int level, struct lyd_node *node);
+void xml_print_node(struct lyout *out, int level, struct lyd_node *node);
 
 API void
 lyxp_set_print_xml(FILE *f, struct lyxp_set *set)
 {
     uint16_t i;
     char *str_num;
+    struct lyout out;
+
+    out.type = LYOUT_STREAM;
+    out.method.f = f;
 
     switch (set->type) {
     case LYXP_SET_EMPTY:
-        fprintf(f, "Empty XPath set\n\n");
+        ly_print(&out, "Empty XPath set\n\n");
         break;
     case LYXP_SET_BOOLEAN:
-        fprintf(f, "Boolean XPath set:\n");
-        fprintf(f, "%s\n\n", set->value.bool ? "true" : "false");
+        ly_print(&out, "Boolean XPath set:\n");
+        ly_print(&out, "%s\n\n", set->value.bool ? "true" : "false");
         break;
     case LYXP_SET_STRING:
-        fprintf(f, "String XPath set:\n");
-        fprintf(f, "\"%s\"\n\n", set->value.str);
+        ly_print(&out, "String XPath set:\n");
+        ly_print(&out, "\"%s\"\n\n", set->value.str);
         break;
     case LYXP_SET_NUMBER:
-        fprintf(f, "Number XPath set:\n");
+        ly_print(&out, "Number XPath set:\n");
 
         if (isnan(set->value.num)) {
             str_num = strdup("NaN");
@@ -6374,40 +6379,40 @@ lyxp_set_print_xml(FILE *f, struct lyxp_set *set)
         } else {
             asprintf(&str_num, "%03.1Lf", set->value.num);
         }
-        fprintf(f, "%s\n\n", str_num);
+        ly_print(&out, "%s\n\n", str_num);
         free(str_num);
         break;
     case LYXP_SET_NODE_SET:
-        fprintf(f, "Node XPath set:\n");
+        ly_print(&out, "Node XPath set:\n");
 
         for (i = 0; i < set->used; ++i) {
-            fprintf(f, "%d. ", i + 1);
+            ly_print(&out, "%d. ", i + 1);
             switch (set->node_type[i]) {
             case LYXP_NODE_ROOT_CONFIG:
-                fprintf(f, "ROOT config\n\n");
+                ly_print(&out, "ROOT config\n\n");
                 break;
             case LYXP_NODE_ROOT_STATE:
-                fprintf(f, "ROOT state\n\n");
+                ly_print(&out, "ROOT state\n\n");
                 break;
             case LYXP_NODE_ROOT_NOTIF:
-                fprintf(f, "ROOT notification \"%s\"\n\n", set->value.nodes[i]->schema->name);
+                ly_print(&out, "ROOT notification \"%s\"\n\n", set->value.nodes[i]->schema->name);
                 break;
             case LYXP_NODE_ROOT_RPC:
-                fprintf(f, "ROOT rpc \"%s\"\n\n", set->value.nodes[i]->schema->name);
+                ly_print(&out, "ROOT rpc \"%s\"\n\n", set->value.nodes[i]->schema->name);
                 break;
             case LYXP_NODE_ROOT_OUTPUT:
-                fprintf(f, "ROOT output of rpc \"%s\"\n\n", set->value.nodes[i]->schema->name);
+                ly_print(&out, "ROOT output of rpc \"%s\"\n\n", set->value.nodes[i]->schema->name);
                 break;
             case LYXP_NODE_ELEM:
-                fprintf(f, "ELEM \"%s\"\n", set->value.nodes[i]->schema->name);
-                xml_print_node(f, 0, set->value.nodes[i]);
-                fprintf(f, "\n");
+                ly_print(&out, "ELEM \"%s\"\n", set->value.nodes[i]->schema->name);
+                xml_print_node(&out, 1, set->value.nodes[i]);
+                ly_print(&out, "\n");
                 break;
             case LYXP_NODE_TEXT:
-                fprintf(f, "TEXT \"%s\"\n\n", ((struct lyd_node_leaf_list *)set->value.nodes[i])->value_str);
+                ly_print(&out, "TEXT \"%s\"\n\n", ((struct lyd_node_leaf_list *)set->value.nodes[i])->value_str);
                 break;
             case LYXP_NODE_ATTR:
-                fprintf(f, "ATTR \"%s\" = \"%s\"\n\n", set->value.attrs[i]->name, set->value.attrs[i]->value);
+                ly_print(&out, "ATTR \"%s\" = \"%s\"\n\n", set->value.attrs[i]->name, set->value.attrs[i]->value);
                 break;
             }
         }
