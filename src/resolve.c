@@ -3238,11 +3238,11 @@ resolve_must(struct lyd_node *node, int first, uint32_t line)
     }
 
     for (i = 0; i < must_size; ++i) {
-        if (lyxp_eval(must[i].expr, node, &set, line)) {
+        if (lyxp_eval(must[i].expr, node, &set, 1, line)) {
             return -1;
         }
 
-        lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node);
+        lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, 1);
 
         if (!set.value.bool) {
             if (!first) {
@@ -3321,11 +3321,11 @@ resolve_when(struct lyd_node *node, int first, uint32_t line)
     memset(&set, 0, sizeof set);
 
     if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC)) && (((struct lys_node_container *)node->schema)->when)) {
-        if (lyxp_eval(((struct lys_node_container *)node->schema)->when->cond, node, &set, line)) {
+        if (lyxp_eval(((struct lys_node_container *)node->schema)->when->cond, node, &set, 1, line)) {
             return -1;
         }
 
-        lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node);
+        lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, 1);
 
         if (!set.value.bool) {
             if (!first) {
@@ -3348,11 +3348,11 @@ resolve_when(struct lyd_node *node, int first, uint32_t line)
                     return -1;
                 }
             }
-            if (lyxp_eval(((struct lys_node_uses *)parent)->when->cond, ctx_node, &set, line)) {
+            if (lyxp_eval(((struct lys_node_uses *)parent)->when->cond, ctx_node, &set, 1, line)) {
                 return -1;
             }
 
-            lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node);
+            lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, 1);
 
             if (!set.value.bool) {
                 if (!first) {
@@ -3371,11 +3371,11 @@ check_augment:
                     return -1;
                 }
             }
-            if (lyxp_eval(((struct lys_node_augment *)parent->parent)->when->cond, ctx_node, &set, line)) {
+            if (lyxp_eval(((struct lys_node_augment *)parent->parent)->when->cond, ctx_node, &set, 1, line)) {
                 return -1;
             }
 
-            lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node);
+            lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, 1);
 
             if (!set.value.bool) {
                 if (!first) {

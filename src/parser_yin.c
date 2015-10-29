@@ -370,10 +370,7 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
     const char *value;
 
     GETVAL(value, yin, "name");
-    ident->name = transform_schema2json(module, value, LOGLINE(yin));
-    if (!ident->name) {
-        return EXIT_FAILURE;
-    }
+    ident->name = value;
 
     if (read_yin_common(module, NULL, (struct lys_node *)ident, yin, OPT_IDENT | OPT_MODULE)) {
         return EXIT_FAILURE;
@@ -391,9 +388,16 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
                 return EXIT_FAILURE;
             }
             GETVAL(value, node, "name");
-            if (unres_schema_add_str(module, unres, ident, UNRES_IDENT, value, LOGLINE(node)) == -1) {
+            value = transform_schema2json(module, value, LOGLINE(node));
+            if (!value) {
                 return EXIT_FAILURE;
             }
+
+            if (unres_schema_add_str(module, unres, ident, UNRES_IDENT, value, LOGLINE(node)) == -1) {
+                lydict_remove(module->ctx, value);
+                return EXIT_FAILURE;
+            }
+            lydict_remove(module->ctx, value);
         } else {
             LOGVAL(LYE_INSTMT, LOGLINE(node), node->name, "identity");
             return EXIT_FAILURE;
