@@ -858,8 +858,8 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
         break;
     case LY_TYPE_INT8:
         kind = 1;
-        local_smin = -128;
-        local_smax = 127;
+        local_smin = __INT64_C(-128);
+        local_smax = __INT64_C(127);
 
         if (!str_restr && type->info.num.range) {
             str_restr = type->info.num.range->expr;
@@ -867,8 +867,8 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
         break;
     case LY_TYPE_INT16:
         kind = 1;
-        local_smin = -32768;
-        local_smax = 32767;
+        local_smin = __INT64_C(-32768);
+        local_smax = __INT64_C(32767);
 
         if (!str_restr && type->info.num.range) {
             str_restr = type->info.num.range->expr;
@@ -876,8 +876,8 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
         break;
     case LY_TYPE_INT32:
         kind = 1;
-        local_smin = -2147483648;
-        local_smax = 2147483647;
+        local_smin = __INT64_C(-2147483648);
+        local_smax = __INT64_C(2147483647);
 
         if (!str_restr && type->info.num.range) {
             str_restr = type->info.num.range->expr;
@@ -885,8 +885,8 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
         break;
     case LY_TYPE_INT64:
         kind = 1;
-        local_smin = -9223372036854775807L - 1L;
-        local_smax = 9223372036854775807L;
+        local_smin = __INT64_C(-9223372036854775807) - __INT64_C(1);
+        local_smax = __INT64_C(9223372036854775807);
 
         if (!str_restr && type->info.num.range) {
             str_restr = type->info.num.range->expr;
@@ -894,8 +894,8 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
         break;
     case LY_TYPE_UINT8:
         kind = 0;
-        local_umin = 0;
-        local_umax = 255;
+        local_umin = __UINT64_C(0);
+        local_umax = __UINT64_C(255);
 
         if (!str_restr && type->info.num.range) {
             str_restr = type->info.num.range->expr;
@@ -903,8 +903,8 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
         break;
     case LY_TYPE_UINT16:
         kind = 0;
-        local_umin = 0;
-        local_umax = 65535;
+        local_umin = __UINT64_C(0);
+        local_umax = __UINT64_C(65535);
 
         if (!str_restr && type->info.num.range) {
             str_restr = type->info.num.range->expr;
@@ -912,8 +912,8 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
         break;
     case LY_TYPE_UINT32:
         kind = 0;
-        local_umin = 0;
-        local_umax = 4294967295;
+        local_umin = __UINT64_C(0);
+        local_umax = __UINT64_C(4294967295);
 
         if (!str_restr && type->info.num.range) {
             str_restr = type->info.num.range->expr;
@@ -921,8 +921,8 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
         break;
     case LY_TYPE_UINT64:
         kind = 0;
-        local_umin = 0;
-        local_umax = 18446744073709551615UL;
+        local_umin = __UINT64_C(0);
+        local_umax = __UINT64_C(18446744073709551615);
 
         if (!str_restr && type->info.num.range) {
             str_restr = type->info.num.range->expr;
@@ -930,8 +930,8 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
         break;
     case LY_TYPE_STRING:
         kind = 0;
-        local_umin = 0;
-        local_umax = 18446744073709551615UL;
+        local_umin = __UINT64_C(0);
+        local_umax = __UINT64_C(18446744073709551615);
 
         if (!str_restr && type->info.str.length) {
             str_restr = type->info.str.length->expr;
