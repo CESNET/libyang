@@ -34,6 +34,24 @@
 #  define UNUSED(x) UNUSED_ ## x
 #endif
 
+#ifndef __WORDSIZE
+#  if defined __x86_64__ && !defined __ILP32__
+#   define __WORDSIZE 64
+#  else
+#   define __WORDSIZE 32
+#  endif
+#endif
+
+#ifndef __INT64_C
+#  if __WORDSIZE == 64
+#    define __INT64_C(c)  c ## L
+#    define __UINT64_C(c) c ## UL
+#  else
+#    define __INT64_C(c)  c ## LL
+#    define __UINT64_C(c) c ## ULL
+#  endif
+#endif
+
 /*
  * If the compiler supports attribute to mark objects as hidden, mark all
  * objects as hidden and export only objects explicitly marked to be part of
