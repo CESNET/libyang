@@ -3532,7 +3532,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
     }
 
     orig_used = set->used;
-    for (i = 0; i < orig_used; ) {
+    for (i = 0; (i < orig_used) && (set->type == LYXP_SET_NODE_SET); ) {
         replaced = 0;
 
         if ((set->node_type[i] == LYXP_NODE_ROOT_NOTIF) || (set->node_type[i] == LYXP_NODE_ROOT_RPC)) {
