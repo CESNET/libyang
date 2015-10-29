@@ -201,11 +201,12 @@ enum lyxp_node_type {
  * @param[in] expr XPath expression to evaluate. Must be in JSON format (prefixes are model names).
  * @param[in] cur_node Current (context) data node.
  * @param[out] set Result set. Must be valid (zeroed usually).
+ * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
  * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
-int lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set *set, uint32_t line);
+int lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set *set, int when_must_eval, uint32_t line);
 
 /**
  * @brief Check the syntax of an XPath expression \p expr. Since it's only syntactic,
@@ -232,9 +233,10 @@ void lyxp_set_print_xml(FILE *f, struct lyxp_set *set);
  *
  * @param[in] set Set to cast.
  * @param[in] target Target type to cast \p set into.
- * @param[in] ctx libyang context to use.
+ * @param[in] cur_node Current (context) data node.
+ * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
  */
-void lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct lyd_node *cur_node);
+void lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct lyd_node *cur_node, int when_must_eval);
 
 /**
  * @brief Free contents of an XPath \p set.
