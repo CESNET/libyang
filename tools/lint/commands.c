@@ -89,7 +89,8 @@ void
 cmd_xpath_help(void)
 {
     printf("xpath -e <XPath-expression> [-c <context-node-path>] <XML-data-file-name>\n\n");
-    printf("\tcontext-node-path: /<node-name>(/<node-name>)*\n");
+    printf("\tcontext-node-path: /<node-name>(/<node-name>)*\n\n");
+    printf("\tIf context node is not specififed, data root is used.\n");
 }
 
 void
