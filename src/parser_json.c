@@ -276,7 +276,7 @@ lyjson_parse_number(const char *data)
 static unsigned int
 lyjson_parse_boolean(const char *data)
 {
-    unsigned int len;
+    unsigned int len = 0;
 
     if (!strncmp(data, "false", 5)) {
         len = 5;
