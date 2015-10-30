@@ -99,11 +99,11 @@ strnodetype(LYS_NODE type)
 }
 
 const char *
-transform_json2xml(struct lys_module *module, const char *expr, char ***prefixes, char ***namespaces,
+transform_json2xml(struct lys_module *module, const char *expr, const char ***prefixes, const char ***namespaces,
                         uint32_t *ns_count)
 {
-    const char *in, *id, *pref;
-    char *out, *col;
+    const char *in, *id;
+    char *out, *col, *name;
     size_t out_size, out_used, id_len;
     struct lys_module *mod;
     uint32_t i;
@@ -137,18 +137,9 @@ transform_json2xml(struct lys_module *module, const char *expr, char ***prefixes
         id_len = col-id;
 
         /* get the module */
-        mod = NULL;
-        if (!strncmp(module->name, id, id_len) && !module->name[id_len]) {
-            mod = module;
-            pref = module->prefix;
-        }
-        for (i = 0; i < module->imp_size; ++i) {
-            if (!strncmp(module->imp[i].module->name, id, id_len) && !module->imp[i].module->name[id_len]) {
-                mod = module->imp[i].module;
-                pref = module->imp[i].prefix;
-                break;
-            }
-        }
+        name = strndup(id, id_len);
+        mod = ly_ctx_get_module(module->ctx, name, NULL);
+        free(name);
         if (!mod) {
             LOGVAL(LYE_INMOD_LEN, 0, id_len, id);
             free(out);
@@ -166,8 +157,8 @@ transform_json2xml(struct lys_module *module, const char *expr, char ***prefixes
                 ++(*ns_count);
                 *prefixes = realloc(*prefixes, *ns_count * sizeof **prefixes);
                 *namespaces = realloc(*namespaces, *ns_count * sizeof **namespaces);
-                (*prefixes)[*ns_count-1] = (char *)pref;
-                (*namespaces)[*ns_count-1] = (char *)mod->ns;
+                (*prefixes)[*ns_count-1] = mod->prefix;
+                (*namespaces)[*ns_count-1] = mod->ns;
             }
         }
 

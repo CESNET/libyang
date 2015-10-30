@@ -63,4 +63,7 @@ int info_print_model(struct lyout *out, struct lys_module *module, const char *t
 int json_print_data(struct lyout *out, struct lyd_node *root);
 int xml_print_data(struct lyout *out, struct lyd_node *root, int format);
 
+/* 0 - same, 1 - different */
+int nscmp(struct lyd_node *node1, struct lyd_node *node2);
+
 #endif /* LY_PRINTER_H_ */

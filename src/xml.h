@@ -84,10 +84,10 @@ struct lyxml_attr {
  */
 struct lyxml_elem {
     struct lyxml_elem *parent;       /**< parent node */
+    struct lyxml_attr *attr;         /**< first attribute declared in the element */
     struct lyxml_elem *child;        /**< first children element */
     struct lyxml_elem *next;         /**< next sibling node */
     struct lyxml_elem *prev;         /**< previous sibling node */
-    struct lyxml_attr *attr;         /**< first attribute declared in the element */
 
     const char *name;                /**< name of the element */
     const struct lyxml_ns *ns;       /**< namespace of the element */

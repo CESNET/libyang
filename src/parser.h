@@ -26,6 +26,13 @@
 #include "tree_schema.h"
 #include "tree_internal.h"
 
+#ifndef NDEBUG
+#define COUNTLINE(c) if ((c) == 0xa) {lineno++;}
+#else
+#define lineno 0
+#define COUNTLINE(C)
+#endif
+
 /**
  * @defgroup yin YIN format support
  * @{
@@ -44,6 +51,14 @@ struct lyd_node *xml_read_data(struct ly_ctx *ctx, const char *data, int options
 
 /**@} xmldata */
 
+/**
+ * @defgroup jsondata JSON data format support
+ * @{
+ */
+struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const char *data, int options);
+
+/**@} jsondata */
+
 
 struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
                                    const char *revision);
@@ -56,5 +71,18 @@ int lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int
                     uint32_t line);
 
 int lyp_check_length_range(const char *expr, struct lys_type *type);
+
+/**
+ * Store UTF-8 character specified as 4byte integer into the dst buffer.
+ * Returns number of written bytes (4 max), expects that dst has enough space.
+ *
+ * UTF-8 mapping:
+ * 00000000 -- 0000007F:    0xxxxxxx
+ * 00000080 -- 000007FF:    110xxxxx 10xxxxxx
+ * 00000800 -- 0000FFFF:    1110xxxx 10xxxxxx 10xxxxxx
+ * 00010000 -- 001FFFFF:    11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+ *
+ */
+unsigned int pututf8(char *dst, int32_t value, uint32_t lineno);
 
 #endif /* LY_PARSER_H_ */

@@ -34,8 +34,6 @@
 #include "validation.h"
 #include "xml_internal.h"
 
-#define LY_NSNC "urn:ietf:params:xml:ns:netconf:base:1.0"
-
 /* does not log */
 static struct lys_node *
 xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start)
@@ -168,6 +166,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 {
     struct lyd_node *result = NULL, *diter;
     struct lys_node *schema = NULL;
+    struct lyd_attr *dattr, *dattr_iter;
     struct lyxml_attr *attr;
     struct lyxml_elem *first_child, *last_child, *child;
     int i, havechildren;
@@ -345,8 +344,35 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         }
     }
 
-    result->attr = (struct lyd_attr *)xml->attr;
-    xml->attr = NULL;
+    for (attr = xml->attr; attr; attr = attr->next) {
+        if (attr->type != LYXML_ATTR_STD) {
+            continue;
+        } else if (!attr->ns) {
+            LOGWRN("Ignoring \"%s\" attribute in \"%s\" element.", attr->name, xml->name);
+            continue;
+        }
+
+        dattr = malloc(sizeof *dattr);
+        dattr->next = NULL;
+        dattr->name = attr->name;
+        dattr->value = attr->value;
+        attr->name = NULL;
+        attr->value = NULL;
+
+        dattr->module = ly_ctx_get_module_by_ns(ctx, attr->ns->value, NULL);
+        if (!dattr->module) {
+            LOGWRN("Attribute \"%s\" from unknown schema (\"%s\") - skipping.", attr->name, attr->ns->value);
+            free(dattr);
+            continue;
+        }
+
+        if (!result->attr) {
+            result->attr = dattr;
+        } else {
+            for (dattr_iter = result->attr; dattr_iter->next; dattr_iter = dattr_iter->next);
+            dattr_iter->next = dattr;
+        }
+    }
 
     /* various validation checks */
     ly_errno = 0;
