@@ -47,44 +47,20 @@ typedef enum {
 } LYD_FORMAT;
 
 /**
- * @brief Data attribute's type to distinguish between a standard (XML) attribute and namespace definition
- */
-typedef enum lyd_attr_type {
-    LYD_ATTR_STD = 1,                /**< standard attribute, see ::lyd_attr structure */
-    LYD_ATTR_NS = 2                  /**< namespace definition, see ::lyd_ns structure */
-} LYD_ATTR_TYPE;
-
-/**
- * @brief Namespace definition structure.
- *
- * Usually, the object is provided as ::lyd_attr structure. The structure is compatible with
- * ::lyd_attr within the first two members (#type and #next) to allow passing through and type
- * detection interchangeably.  When the type member is set to #LYD_ATTR_NS, the ::lyd_attr
- * structure should be cast to ::lyd_ns to access the rest of members.
- */
-struct lyd_ns {
-    LYD_ATTR_TYPE type;              /**< always #LYD_ATTR_NS, compatible with ::lyd_attr */
-    struct lyd_attr *next;           /**< pointer to the next attribute or namespace definition of an element,
-                                          compatible with ::lyd_attr */
-    struct lyd_node *parent;         /**< pointer to the element where the namespace definition is placed */
-    const char *prefix;              /**< namespace prefix value */
-    const char *value;               /**< namespace value */
-};
-
-/**
  * @brief Attribute structure.
  *
- * The structure provides information about attributes of a data element and covers not only
- * attributes but also namespace definitions. Therefore, the first two members (#type and #next)
- * can be safely accessed to pass through the attributes list and type detection. When the #type
- * member has #LYD_ATTR_STD value, the rest of the members can be used. Otherwise, the object
- * should be cast to the appropriate structure according to #LYD_ATTR_TYPE enumeration.
+ * The structure provides information about attributes of a data element. Such attributes partially
+ * maps to annotations from draft-ietf-netmod-yang-metadata. In XML, they are represented as standard
+ * XML attrbutes. In JSON, they are represented as JSON elements starting with the '@' character
+ * (for more information, see the yang metadata draft.
+ *
  */
 struct lyd_attr {
-    LYD_ATTR_TYPE type;              /**< type of the attribute, to access the last three members, the value
-                                          must be ::LYD_ATTR_STD */
-    struct lyd_attr *next;           /**< pointer to the next attribute or namespace definition of an element */
-    struct lyd_ns *ns;               /**< pointer to the definition of the namespace of the attribute */
+    struct lyd_attr *next;           /**< pointer to the next attribute of the same element */
+    struct lys_module *module;       /**< pointer to the attribute's module.
+                                          TODO when annotations will be supported, point to the annotation definition
+                                          and validate that the attribute is really defined there. Currently, we just
+                                          believe that it is defined in the module it says */
     const char *name;                /**< attribute name */
     const char *value;               /**< attribute value */
 };
@@ -315,7 +291,8 @@ void lyd_free(struct lyd_node *node);
  * @brief Insert attribute into the data node.
  *
  * @param[in] parent Data node where to place the attribute
- * @param[in] name Attribute name
+ * @param[in] name Attribute name including the prefix (prefix:name). Prefix must be the name of one of the
+ *            schema in the \p parent's context.
  * @param[in] value Attribute value
  * @return pointer to the created attribute (which is already connected in \p parent) or NULL on error.
  */
