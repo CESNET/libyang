@@ -144,15 +144,15 @@ lyd_new_leaf(struct lyd_node *parent, struct lys_module *module, const char *nam
     stype = &((struct lys_node_leaf *)snode)->type;
     if (stype->base == LY_TYPE_UNION) {
         found = 0;
-        type = lyp_get_next_union_type(stype, NULL, &found);
-        do {
+        type = NULL;
+        while ((type = lyp_get_next_union_type(stype, type, &found))) {
             ret->value_type = type->base;
             if (!lyp_parse_value(ret, type, 1, NULL, UINT_MAX)) {
                 /* success! */
                 break;
             }
             found = 0;
-        } while ((type = lyp_get_next_union_type(stype, type, &found)));
+        }
 
         if (!type) {
             /* fail */
