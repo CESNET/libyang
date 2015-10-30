@@ -792,7 +792,7 @@ attr_repeat:
         break;
     default:
         LOGINT;
-        return 0;
+        goto error;
     }
     result->parent = *parent;
     if (*parent && !(*parent)->child) {
