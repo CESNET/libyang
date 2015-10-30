@@ -685,7 +685,7 @@ lyd_insert_attr(struct lyd_node *parent, const char *name, const char *value)
 
         if (!module) {
             /* module not found */
-            LOGERR(LYE_INVAL, "Attribute prefix does not match any schema in the context.");
+            LOGERR(LY_EINVAL, "Attribute prefix does not match any schema in the context.");
             return NULL;
         }
     } else {
