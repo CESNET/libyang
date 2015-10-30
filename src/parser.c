@@ -667,7 +667,7 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
             }
         }
 
-        if (parse_int(dec, -9223372036854775807L - 1L, 9223372036854775807L, 10, &num, node->schema->name, line)
+        if (parse_int(dec, __INT64_C(-9223372036854775807) - __INT64_C(1), __INT64_C(9223372036854775807), 10, &num, node->schema->name, line)
                 || validate_length_range(2, 0, 0, ((long double)num)/(1 << type->info.dec64.dig), stype,
                                          node->value_str, line)) {
             return EXIT_FAILURE;
@@ -785,7 +785,7 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
         break;
 
     case LY_TYPE_INT8:
-        if (parse_int(node->value_str, -128, 127, 0, &num, node->schema->name, line)
+        if (parse_int(node->value_str, __INT64_C(-128), __INT64_C(127), 0, &num, node->schema->name, line)
                 || validate_length_range(1, 0, num, 0, stype, node->value_str, line)) {
             return EXIT_FAILURE;
         }
@@ -793,7 +793,7 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
         break;
 
     case LY_TYPE_INT16:
-        if (parse_int(node->value_str, -32768, 32767, 0, &num, node->schema->name, line)
+        if (parse_int(node->value_str, __INT64_C(-32768), __INT64_C(32767), 0, &num, node->schema->name, line)
                 || validate_length_range(1, 0, num, 0, stype, node->value_str, line)) {
             return EXIT_FAILURE;
         }
@@ -801,7 +801,7 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
         break;
 
     case LY_TYPE_INT32:
-        if (parse_int(node->value_str, -2147483648, 2147483647, 0, &num, node->schema->name, line)
+        if (parse_int(node->value_str, __INT64_C(-2147483648), __INT64_C(2147483647), 0, &num, node->schema->name, line)
                 || validate_length_range(1, 0, num, 0, stype, node->value_str, line)) {
             return EXIT_FAILURE;
         }
@@ -809,7 +809,7 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
         break;
 
     case LY_TYPE_INT64:
-        if (parse_int(node->value_str, -9223372036854775807L - 1L, 9223372036854775807L, 0, &num,
+        if (parse_int(node->value_str, __INT64_C(-9223372036854775807) - __INT64_C(1), __INT64_C(9223372036854775807), 0, &num,
                 node->schema->name, line)
                 || validate_length_range(1, 0, num, 0, stype, node->value_str, line)) {
             return EXIT_FAILURE;
@@ -818,7 +818,7 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
         break;
 
     case LY_TYPE_UINT8:
-        if (parse_uint(node->value_str, 255, 0, &unum, node->schema->name, line)
+        if (parse_uint(node->value_str, __UINT64_C(255), __UINT64_C(0), &unum, node->schema->name, line)
                 || validate_length_range(0, unum, 0, 0, stype, node->value_str, line)) {
             return EXIT_FAILURE;
         }
@@ -826,7 +826,7 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
         break;
 
     case LY_TYPE_UINT16:
-        if (parse_uint(node->value_str, 65535, 0, &unum, node->schema->name, line)
+        if (parse_uint(node->value_str, __UINT64_C(65535), __UINT64_C(0), &unum, node->schema->name, line)
                 || validate_length_range(0, unum, 0, 0, stype, node->value_str, line)) {
             return EXIT_FAILURE;
         }
@@ -834,7 +834,7 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
         break;
 
     case LY_TYPE_UINT32:
-        if (parse_uint(node->value_str, 4294967295, 0, &unum, node->schema->name, line)
+        if (parse_uint(node->value_str, __UINT64_C(4294967295), __UINT64_C(0), &unum, node->schema->name, line)
                 || validate_length_range(0, unum, 0, 0, stype, node->value_str, line)) {
             return EXIT_FAILURE;
         }
@@ -842,7 +842,7 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
         break;
 
     case LY_TYPE_UINT64:
-        if (parse_uint(node->value_str, 18446744073709551615UL, 0, &unum, node->schema->name, line)
+        if (parse_uint(node->value_str, __UINT64_C(18446744073709551615), __UINT64_C(0), &unum, node->schema->name, line)
                 || validate_length_range(0, unum, 0, 0, stype, node->value_str, line)) {
             return EXIT_FAILURE;
         }

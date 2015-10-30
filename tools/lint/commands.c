@@ -89,7 +89,10 @@ void
 cmd_xpath_help(void)
 {
     printf("xpath -e <XPath-expression> [-c <context-node-path>] <XML-data-file-name>\n\n");
-    printf("\tcontext-node-path: /<node-name>(/<node-name>)*\n");
+    printf("\tcontext-node-path: /<node-name>(/<node-name>)*\n\n");
+    printf("\tIf context node is not specififed, data root is used.\n");
+    printf("\tIf context node is explicitly specified, \"when\" and \"must\"\n");
+    printf("\tdata tree access restrictions are applied.\n");
 }
 
 void
@@ -500,11 +503,11 @@ cmd_filter(const char *arg)
 int
 cmd_xpath(const char *arg)
 {
-    int c, argc, option_index, fd = -1, ret = 1, long_str;
+    int c, argc, option_index, fd = -1, ret = 1, long_str, when_must_eval = 0;
     char **argv = NULL, *ptr, *ctx_node_path = NULL, *expr = NULL, *addr;
     struct stat sb;
     struct lyd_node *ctx_node, *data = NULL, *next, *iter;
-    struct lyxp_set set;
+    struct lyxp_set set = {0, {NULL}, NULL, 0, 0, 0};
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"expr", required_argument, 0, 'e'},
@@ -567,6 +570,7 @@ cmd_xpath(const char *arg)
                 fprintf(stderr, "Invalid context node path \"%s\".\n", ctx_node_path);
                 goto cleanup;
             }
+            when_must_eval = 1;
             break;
         case '?':
             fprintf(stderr, "Unknown option \"%d\".\n", (char)c);
@@ -634,7 +638,7 @@ cmd_xpath(const char *arg)
         ctx_node = data;
     }
 
-    if (lyxp_eval(expr, ctx_node, &set, 0)) {
+    if (lyxp_eval(expr, ctx_node, &set, when_must_eval, 0)) {
         fprintf(stderr, "XPath expression invalid.\n");
         goto cleanup;
     }
