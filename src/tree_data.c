@@ -602,19 +602,46 @@ lyd_dup(struct lyd_node *node, int recursive)
     return ret;
 }
 
-static void
-lyd_attr_free(struct ly_ctx *ctx, struct lyd_attr *attr)
+API void
+lyd_free_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr, int recursive)
 {
-    if (!attr) {
+    struct lyd_attr *iter;
+
+    if (!ctx || !attr) {
         return;
     }
 
-    if (attr->next) {
-        lyd_attr_free(ctx, attr->next);
+    if (parent) {
+        if (parent->attr == attr) {
+            if (recursive) {
+                parent->attr = NULL;
+            } else {
+                parent->attr = attr->next;
+            }
+        } else {
+            for (iter = parent->attr; iter->next != attr; iter = iter->next);
+            if (iter->next) {
+                if (recursive) {
+                    iter->next = NULL;
+                } else {
+                    iter->next = attr->next;
+                }
+            }
+        }
     }
-    lydict_remove(ctx, attr->name);
-    lydict_remove(ctx, attr->value);
-    free(attr);
+
+    if (!recursive) {
+        attr->next = NULL;
+    }
+
+    for(iter = attr; iter; ) {
+        attr = iter;
+        iter = iter->next;
+
+        lydict_remove(ctx, attr->name);
+        lydict_remove(ctx, attr->value);
+        free(attr);
+    }
 }
 
 struct lyd_node *
@@ -717,7 +744,7 @@ lyd_free(struct lyd_node *node)
     }
 
     lyd_unlink(node);
-    lyd_attr_free(node->schema->module->ctx, node->attr);
+    lyd_free_attr(node->schema->module->ctx, node, node->attr, 1);
     free(node);
 }
 

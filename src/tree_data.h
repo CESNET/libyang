@@ -299,6 +299,20 @@ void lyd_free(struct lyd_node *node);
 struct lyd_attr *lyd_insert_attr(struct lyd_node *parent, const char *name, const char *value);
 
 /**
+ * @brief Destroy data attribute
+ *
+ * If the attribute to destroy is a member of a node attribute list, it is necessary to
+ * provide the node itself as \p parent to keep the list consistent.
+ *
+ * @param[in] ctx Context where the attribute was created (usually it is the context of the \p parent)
+ * @param[in] parent Parent node where the attribute is placed
+ * @param[in] attr Attribute to destroy
+ * @param[in] recursive Zero to destroy only the attribute, non-zero to destroy also all the subsequent attributes
+ *            in the list.
+ */
+void lyd_free_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr, int recursive);
+
+/**
  * @brief Opaque internal structure, do not access it from outside.
  */
 struct lyxml_elem;

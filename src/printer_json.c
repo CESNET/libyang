@@ -110,11 +110,10 @@ json_print_leaf(struct lyout *out, int level, struct lyd_node *node, int onlyval
 
     /* print attributes as sibling leaf */
     if (!onlyvalue && node->attr) {
-        ly_print(out, "\n");
         if (schema) {
-            ly_print(out, "%*s\"@%s:%s\": {\n", LEVEL, INDENT, schema, node->schema->name);
+            ly_print(out, ",\n%*s\"@%s:%s\": {\n", LEVEL, INDENT, schema, node->schema->name);
         } else {
-            ly_print(out, "%*s\"@%s\": {\n", LEVEL, INDENT, node->schema->name);
+            ly_print(out, ",\n%*s\"@%s\": {\n", LEVEL, INDENT, node->schema->name);
         }
         json_print_attrs(out, level + 1, node);
         ly_print(out, "%*s}", LEVEL, INDENT);
@@ -224,9 +223,9 @@ json_print_leaf_list(struct lyout *out, int level, struct lyd_node *node, int is
     /* attributes */
     if (!is_list && flag_attrs) {
         if (schema) {
-            ly_print(out, "\n%*s\"@%s:%s\": [\n", LEVEL, INDENT, schema, node->schema->name);
+            ly_print(out, ",\n%*s\"@%s:%s\": [\n", LEVEL, INDENT, schema, node->schema->name);
         } else {
-            ly_print(out, "\n%*s\"@%s\": [\n", LEVEL, INDENT, node->schema->name);
+            ly_print(out, ",\n%*s\"@%s\": [\n", LEVEL, INDENT, node->schema->name);
         }
         level++;
         for (list = node; list; ) {
@@ -269,11 +268,10 @@ json_print_anyxml(struct lyout *out, int level, struct lyd_node *node)
 
     /* print attributes as sibling leaf */
     if (node->attr) {
-        ly_print(out, "\n");
         if (schema) {
-            ly_print(out, "%*s\"@%s:%s\": {\n", LEVEL, INDENT, schema, node->schema->name);
+            ly_print(out, ",\n%*s\"@%s:%s\": {\n", LEVEL, INDENT, schema, node->schema->name);
         } else {
-            ly_print(out, "%*s\"@%s\": {\n", LEVEL, INDENT, node->schema->name);
+            ly_print(out, ",\n%*s\"@%s\": {\n", LEVEL, INDENT, node->schema->name);
         }
         json_print_attrs(out, level + 1, node);
         ly_print(out, "%*s}", LEVEL, INDENT);
