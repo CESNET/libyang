@@ -496,9 +496,10 @@ json_parse_attr(struct lys_module *parent_module, struct lyd_attr **attr, const 
     struct lys_module *module = parent_module;
     struct lyd_attr *attr_new, *attr_last = NULL;
 
+    *attr = NULL;
+
     if (data[len] != '{') {
         if (!strncmp(&data[len], "null", 4)) {
-            *attr = NULL;
             len += 4;
             len += skip_ws(&data[len]);
             return len;
@@ -548,7 +549,7 @@ repeat:
 
     if (data[len] != '"') {
         LOGVAL(LYE_XML_INVAL, lineno, "JSON data (missing quotation-mark at the beginning of string)");
-        return 0;
+        goto error;
     }
     len++;
     value = lyjson_parse_text(&data[len], &r);
@@ -556,6 +557,7 @@ repeat:
         goto error;
     } else if (data[len + r] != '"') {
         LOGVAL(LYE_XML_INVAL, lineno, "JSON data (missing quotation-mark at the end of string)");
+        free(value);
         goto error;
     }
     len += r + 1;
@@ -574,12 +576,13 @@ repeat:
     }
 
     free(str);
+    str = NULL;
 
     if (data[len] == ',') {
         goto repeat;
     } else if (data[len] != '}') {
         LOGVAL(LYE_XML_INVAL, lineno, "JSON data (missing end-object)");
-        return 0;
+        goto error;
     }
     len++;
     len += skip_ws(&data[len]);
@@ -588,6 +591,10 @@ repeat:
 
 error:
     free(str);
+    if (*attr) {
+        lyd_free_attr((*attr)->module->ctx, NULL, *attr, 1);
+        *attr = NULL;
+    }
     return 0;
 }
 
@@ -724,9 +731,6 @@ json_parse_data(struct ly_ctx *ctx, const char *data, struct lyd_node **parent, 
     }
 
     if (str[0] == '@') {
-        free(str);
-        str = NULL;
-
         /* attribute for some sibling node */
         if (data[len] == '[') {
             flag_leaflist = 1;
@@ -771,9 +775,6 @@ attr_repeat:
         result = prev;
         goto siblings;
     }
-
-    free(str);
-    str = NULL;
 
     switch (schema->nodetype) {
     case LYS_CONTAINER:
@@ -999,6 +1000,7 @@ siblings:
         len += skip_ws(&data[len]);
     }
 
+    free(str);
     return len;
 
 error:
