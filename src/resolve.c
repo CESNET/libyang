@@ -1536,12 +1536,12 @@ static int
 resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
 {
     struct lys_module *module;
-    const char *mod_name, *name;
-    int i, mod_name_len, nam_len;
+    const char *mod_prefix, *name;
+    int i, mod_prefix_len, nam_len;
     struct lys_node *start;
 
     /* parse the identifier, it must be parsed on one call */
-    if ((i = parse_node_identifier(uses->name, &mod_name, &mod_name_len, &name, &nam_len)) < 1) {
+    if ((i = parse_node_identifier(uses->name, &mod_prefix, &mod_prefix_len, &name, &nam_len)) < 1) {
         LOGVAL(LYE_INCHAR, line, uses->name[-i], &uses->name[-i]);
         return -1;
     } else if (uses->name[i]) {
@@ -1549,10 +1549,10 @@ resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
         return -1;
     }
 
-    if (mod_name) {
-        module = lys_get_import_module(uses->module, NULL, 0, mod_name, mod_name_len);
+    if (mod_prefix) {
+        module = lys_get_import_module(uses->module, mod_prefix, mod_prefix_len, NULL, 0);
         if (!module) {
-            LOGVAL(LYE_INMOD_LEN, line, mod_name_len, mod_name);
+            LOGVAL(LYE_INMOD_LEN, line, mod_prefix_len, mod_prefix);
             return -1;
         }
         start = module->data;
@@ -1565,11 +1565,11 @@ resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
         return EXIT_SUCCESS;
     }
 
-    if (mod_name || !first) {
+    if (mod_prefix || !first) {
         LOGVAL(LYE_INRESOLV, line, "grouping", uses->name);
     }
     /* import must now be fully resolved */
-    if (mod_name) {
+    if (mod_prefix) {
         return -1;
     }
     return EXIT_FAILURE;
