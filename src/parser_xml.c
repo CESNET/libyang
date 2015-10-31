@@ -342,6 +342,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             } else {
                 r = xml_parse_data(ctx, child, *result, dlast, options, unres, &diter);
             }
+            if (options & LYD_OPT_DESTRUCT) {
+                lyxml_free_elem(ctx, child);
+            }
             if (r) {
                 goto error;
             }
@@ -434,6 +437,9 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int options)
     iter = result = last = NULL;
     LY_TREE_FOR_SAFE(root->child, xmlaux, xmlelem) {
         r = xml_parse_data(ctx, xmlelem, NULL, last, options, unres, &iter);
+        if (options & LYD_OPT_DESTRUCT) {
+            lyxml_free_elem(ctx, xmlelem);
+        }
         if (r) {
             LY_TREE_FOR_SAFE(result, next, iter) {
                 lyd_free(iter);

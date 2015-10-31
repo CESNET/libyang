@@ -358,6 +358,10 @@ struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
                                     - mandatory nodes can be omitted
                                     - leafrefs and instance-identifier are not resolved
                                     - data from different choice's branches are allowed */
+#define LYD_OPT_DESTRUCT 0x08  /**< safe consumed memory and free the processed XML data continuously.
+                                    On success, only the top level XML element is kept in the end. This
+                                    option is applicable only with lyd_parse_xml(). */
+
 /**
  * @}
  */
