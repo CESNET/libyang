@@ -739,7 +739,7 @@ lys_find_grouping_up(const char *name, struct lys_node *start, int in_submodules
                 continue;
             }
 
-            if (name == iter->name) {
+            if (!strcmp(name, iter->name)) {
                 return (struct lys_node_grp *)iter;
             }
         }
@@ -752,7 +752,7 @@ lys_find_grouping_up(const char *name, struct lys_node *start, int in_submodules
                     continue;
                 }
 
-                if (name == iter->name) {
+                if (!strcmp(name, iter->name)) {
                     return (struct lys_node_grp *)iter;
                 }
             }
