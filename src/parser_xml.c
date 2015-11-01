@@ -333,6 +333,14 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         /* we can safely continue with xml, it's like it was, only without children */
     }
 
+    result->attr = (struct lyd_attr *)xml->attr;
+    for (attr = xml->attr; attr; attr = attr->next) {
+        if (attr->type == LYXML_ATTR_NS) {
+            ((struct lyd_ns *)attr)->parent = result;
+        }
+    }
+    xml->attr = NULL;
+
     /* process children */
     if (havechildren && xml->child) {
         if (schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
@@ -344,9 +352,6 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             goto error;
         }
     }
-
-    result->attr = (struct lyd_attr *)xml->attr;
-    xml->attr = NULL;
 
     /* various validation checks */
     ly_errno = 0;
