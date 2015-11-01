@@ -959,13 +959,13 @@ attr_repeat:
                 }
                 len += r;
 
-                if (result->child) {
+                if (list->child) {
                     diter = list->child->prev;
                 }
             } while(data[len] == ',');
 
             /* store attributes */
-            if (store_attrs(ctx, attrs_aux, result->child)) {
+            if (store_attrs(ctx, attrs_aux, list->child)) {
                 goto error;
             }
 
