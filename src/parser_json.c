@@ -605,33 +605,79 @@ struct attr_cont {
     unsigned int index;    /** non-zero only in case of leaf-list */
 };
 
+static int
+store_attrs(struct ly_ctx *ctx, struct attr_cont *attrs, struct lyd_node *first)
+{
+    struct lyd_node *diter;
+    struct attr_cont *iter;
+    unsigned int flag_leaflist = 0;
+
+    while (attrs) {
+        iter = attrs;
+        attrs = attrs->next;
+
+        if (iter->index) {
+            flag_leaflist = 1;
+        }
+
+        LY_TREE_FOR(first, diter) {
+            if (iter->schema != diter->schema) {
+                continue;
+            }
+
+            if (flag_leaflist && flag_leaflist != iter->index) {
+                flag_leaflist++;
+                continue;
+            }
+
+            /* we have match */
+            if (diter->attr) {
+                LOGVAL(LYE_XML_INVAL, lineno, "attribute (multiple attribute definitions belong to a single element)");
+                free(iter);
+                goto error;
+            }
+
+            diter->attr = iter->attr;
+            break;
+        }
+
+        if (!diter) {
+            LOGVAL(LYE_XML_INVAL, lineno, "attribute with no corresponding element to belongs to");
+            lyd_free_attr(iter->schema->module->ctx, NULL, iter->attr, 1);
+            free(iter);
+            goto error;
+        }
+        free(iter);
+    }
+
+    return 0;
+
+error:
+
+    while (attrs) {
+        iter = attrs;
+        attrs = attrs->next;
+
+        lyd_free_attr(ctx, NULL, iter->attr, 1);
+        free(iter);
+    }
+
+    return -1;
+}
+
 static unsigned int
 json_parse_data(struct ly_ctx *ctx, const char *data, struct lyd_node **parent, struct lyd_node *prev,
                 struct attr_cont **attrs, int options, struct unres_data *unres)
 {
     unsigned int len = 0;
     unsigned int r;
-    unsigned int flag_object = 0, flag_leaflist = 0;
+    unsigned int flag_leaflist = 0;
     char *name, *prefix = NULL, *str = NULL;
     struct lys_module *module = NULL;
     struct lys_node *schema = NULL;
     struct lyd_node *result = NULL, *new, *list, *diter = NULL;
     struct lyd_attr *attr;
-    struct attr_cont *attrs_new, *attrs_start = NULL;
-
-    if (!attrs) {
-        attrs = &attrs_start;
-    }
-
-    /* skip leading whitespaces */
-    len += skip_ws(&data[len]);
-
-    /* skip top-level { if any */
-    if (data[len] == '{') {
-        flag_object = 1;
-        len++;
-        len += skip_ws(&data[len]);
-    }
+    struct attr_cont *attrs_aux;
 
     /* each YANG data node representation starts with string (node identifier) */
     if (data[len] != '"') {
@@ -689,8 +735,8 @@ json_parse_data(struct ly_ctx *ctx, const char *data, struct lyd_node **parent, 
         } else {
             (*parent)->attr = attr;
         }
-        result = prev;
-        goto siblings;
+        free(str);
+        return len;
     }
 
     /* find schema node */
@@ -746,12 +792,12 @@ attr_repeat:
         len += r;
 
         if (attr) {
-            attrs_new = malloc(sizeof *attrs_new);
-            attrs_new->attr = attr;
-            attrs_new->index = flag_leaflist;
-            attrs_new->schema = schema;
-            attrs_new->next = *attrs;
-            *attrs = attrs_new;
+            attrs_aux = malloc(sizeof *attrs_aux);
+            attrs_aux->attr = attr;
+            attrs_aux->index = flag_leaflist;
+            attrs_aux->schema = schema;
+            attrs_aux->next = *attrs;
+            *attrs = attrs_aux;
         } else if (!flag_leaflist) {
             /* error */
             LOGVAL(LYE_XML_INVAL, lineno, "attribute data");
@@ -772,8 +818,8 @@ attr_repeat:
             len += skip_ws(&data[len]);
         }
 
-        result = prev;
-        goto siblings;
+        free(str);
+        return len;
     }
 
     switch (schema->nodetype) {
@@ -844,11 +890,28 @@ attr_repeat:
 
         if (data[len] != '}') {
             /* non-empty container */
-            r = json_parse_data(ctx, &data[len], &result, NULL, NULL, options, unres);
-            if (!r) {
+            len--;
+            diter = NULL;
+            attrs_aux = NULL;
+            do {
+                len++;
+                len += skip_ws(&data[len]);
+
+                r = json_parse_data(ctx, &data[len], &result, diter, &attrs_aux, options, unres);
+                if (!r) {
+                    goto error;
+                }
+                len += r;
+
+                if (result->child) {
+                    diter = result->child->prev;
+                }
+            } while(data[len] == ',');
+
+            /* store attributes */
+            if (store_attrs(ctx, attrs_aux, result->child)) {
                 goto error;
             }
-            len += r;
         }
 
         if (data[len] != '}') {
@@ -880,11 +943,38 @@ attr_repeat:
                 }
             }
 
-            r = json_parse_data(ctx, &data[len], &list, NULL, NULL, options, unres);
-            if (!r) {
+            if (data[len] != '{') {
+                LOGVAL(LYE_XML_INVAL, lineno, "JSON data (missing list instance's begin-object)");
                 goto error;
             }
-            len += r;
+            diter = NULL;
+            attrs_aux = NULL;
+            do {
+                len++;
+                len += skip_ws(&data[len]);
+
+                r = json_parse_data(ctx, &data[len], &list, diter, &attrs_aux, options, unres);
+                if (!r) {
+                    goto error;
+                }
+                len += r;
+
+                if (result->child) {
+                    diter = list->child->prev;
+                }
+            } while(data[len] == ',');
+
+            /* store attributes */
+            if (store_attrs(ctx, attrs_aux, result->child)) {
+                goto error;
+            }
+
+            if (data[len] != '}') {
+                /* expecting end-object */
+                LOGVAL(LYE_XML_INVAL, lineno, "JSON data (missing list instance's end-object)");
+                goto error;
+            }
+            len++;
             len += skip_ws(&data[len]);
 
             if (data[len] == ',') {
@@ -932,74 +1022,6 @@ attr_repeat:
         *parent = result;
     }
 
-siblings:
-    /* process siblings */
-    if (data[len] && data[len] == ',') {
-        /* have siblings */
-        len++;
-        len += skip_ws(&data[len]);
-
-        r = json_parse_data(ctx, &data[len], parent, result, attrs, options, unres);
-        if (!r) {
-            goto error;
-        }
-
-        len += r;
-    } else {
-        len += skip_ws(&data[len]);
-    }
-
-    if (!prev) {
-        /* first sibling - now process the sibling attributes since there must be a node for them */
-        while (*attrs) {
-            attrs_new = *attrs;
-            *attrs = (*attrs)->next;
-
-            if (attrs_new->index) {
-                flag_leaflist = 1;
-            }
-
-            LY_TREE_FOR(result, diter) {
-                if (attrs_new->schema != diter->schema) {
-                    continue;
-                }
-
-                if (flag_leaflist && flag_leaflist != attrs_new->index) {
-                    flag_leaflist++;
-                    continue;
-                }
-
-                /* we have match */
-                if (diter->attr) {
-                    LOGVAL(LYE_XML_INVAL, lineno, "attribute (multiple attribute definitions belong to a single element)");
-                    free(attrs_new);
-                    goto error;
-                }
-
-                diter->attr = attrs_new->attr;
-                break;
-            }
-
-            if (!diter) {
-                LOGVAL(LYE_XML_INVAL, lineno, "attribute with no corresponding element to belongs to");
-                lyd_free_attr(attrs_new->schema->module->ctx, NULL, attrs_new->attr, 1);
-                free(attrs_new);
-                goto error;
-            }
-            free(attrs_new);
-        }
-    }
-
-    if (flag_object) {
-        if (data[len] != '}') {
-            /* expecting end-object */
-            LOGVAL(LYE_XML_INVAL, lineno, "JSON data (missing end-object)");
-            goto error;
-        }
-        len++;
-        len += skip_ws(&data[len]);
-    }
-
     free(str);
     return len;
 
@@ -1008,11 +1030,11 @@ error:
         (*parent) = NULL;
     }
     while (*attrs) {
-        attrs_new = *attrs;
+        attrs_aux = *attrs;
         *attrs = (*attrs)->next;
 
-        lyd_free_attr(ctx, NULL, attrs_new->attr, 1);
-        free(attrs_new);
+        lyd_free_attr(ctx, NULL, attrs_aux->attr, 1);
+        free(attrs_aux);
     }
 
     lyd_free(result);
@@ -1024,8 +1046,10 @@ error:
 struct lyd_node *
 lyd_parse_json(struct ly_ctx *ctx, const char *data, int options)
 {
-    struct lyd_node *result, *next, *iter;
+    struct lyd_node *result = NULL, *next = NULL, *iter = NULL;
     struct unres_data *unres = NULL;
+    unsigned int len = 0, r;
+    struct attr_cont *attrs = NULL;
 
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -1038,19 +1062,67 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options)
     lineno = 0;
 #endif
     ly_errno = 0;
-    result = NULL;
-    json_parse_data(ctx, data, &result, NULL, NULL, options, unres);
+
+    /* skip leading whitespaces */
+    len += skip_ws(&data[len]);
+
+    /* expect top-level { */
+    if (data[len] != '{') {
+        LOGVAL(LYE_XML_INVAL, lineno, "JSON data (missing top level begin-object)");
+        goto cleanup;
+    }
+
+    do {
+        len++;
+        len += skip_ws(&data[len]);
+
+        r =json_parse_data(ctx, &data[len], &next, iter, &attrs, options, unres);
+        if (!r) {
+            result = NULL;
+            goto cleanup;
+        }
+        len += r;
+
+        if (!result) {
+            result = next;
+        }
+        if (next) {
+            iter = next;
+        }
+        next = NULL;
+    } while(data[len] == ',');
+
+    if (data[len] != '}') {
+        /* expecting end-object */
+        LOGVAL(LYE_XML_INVAL, lineno, "JSON data (missing top-level end-object)");
+        LY_TREE_FOR_SAFE(result, next, iter) {
+            lyd_free(iter);
+        }
+        result = NULL;
+        goto cleanup;
+    }
+    len++;
+    len += skip_ws(&data[len]);
+
+    /* store attributes */
+    if (store_attrs(ctx, attrs, result)) {
+        LY_TREE_FOR_SAFE(result, next, iter) {
+            lyd_free(iter);
+        }
+        result = NULL;
+        goto cleanup;
+    }
 
     /* check leafrefs and/or instids if any */
     if (result && resolve_unres_data(unres)) {
         /* leafref & instid checking failed */
-        LY_TREE_FOR_SAFE(result, next, iter)
-        {
+        LY_TREE_FOR_SAFE(result, next, iter) {
             lyd_free(iter);
         }
         result = NULL;
     }
 
+cleanup:
     free(unres->node);
     free(unres->type);
 #ifndef NDEBUG
