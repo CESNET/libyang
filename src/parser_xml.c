@@ -333,27 +333,6 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         /* we can safely continue with xml, it's like it was, only without children */
     }
 
-    /* process children */
-    if (havechildren && xml->child) {
-        diter = dlast = NULL;
-        LY_TREE_FOR_SAFE(xml->child, next, child) {
-            if (schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
-                r = xml_parse_data(ctx, child, *result, dlast, 0, unres, &diter);
-            } else {
-                r = xml_parse_data(ctx, child, *result, dlast, options, unres, &diter);
-            }
-            if (options & LYD_OPT_DESTRUCT) {
-                lyxml_free_elem(ctx, child);
-            }
-            if (r) {
-                goto error;
-            }
-            if (diter) {
-                dlast = diter;
-            }
-        }
-    }
-
     for (attr = xml->attr; attr; attr = attr->next) {
         if (attr->type != LYXML_ATTR_STD) {
             continue;
@@ -381,6 +360,27 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         } else {
             for (dattr_iter = (*result)->attr; dattr_iter->next; dattr_iter = dattr_iter->next);
             dattr_iter->next = dattr;
+        }
+    }
+
+    /* process children */
+    if (havechildren && xml->child) {
+        diter = dlast = NULL;
+        LY_TREE_FOR_SAFE(xml->child, next, child) {
+            if (schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
+                r = xml_parse_data(ctx, child, *result, dlast, 0, unres, &diter);
+            } else {
+                r = xml_parse_data(ctx, child, *result, dlast, options, unres, &diter);
+            }
+            if (options & LYD_OPT_DESTRUCT) {
+                lyxml_free_elem(ctx, child);
+            }
+            if (r) {
+                goto error;
+            }
+            if (diter) {
+                dlast = diter;
+            }
         }
     }
 
