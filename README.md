@@ -14,6 +14,7 @@ providing API) in C.
 
 * parsing (and validating) data models in YIN format
 * reading instance data in XML format and validating
+* reading instance data in JSON format and validating
 * providing instance data in XML format
 * providing instance data in JSON format
 
@@ -21,7 +22,6 @@ providing API) in C.
 ## Planned Features
 
 * parsing (and validating) data models in YANG format
-* reading instance data in JSON format and validating
 
 
 ## Requirements
