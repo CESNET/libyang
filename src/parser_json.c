@@ -1113,6 +1113,11 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options)
         goto cleanup;
     }
 
+    if (!result) {
+        LOGERR(LY_EVALID, "Model for the data to be linked with not found.");
+        goto cleanup;
+    }
+
     /* check leafrefs and/or instids if any */
     if (result && resolve_unres_data(unres)) {
         /* leafref & instid checking failed */

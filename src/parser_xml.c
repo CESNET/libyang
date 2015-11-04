@@ -443,6 +443,11 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int options)
         }
     }
 
+    if (!result) {
+        LOGERR(LY_EVALID, "Model for the data to be linked with not found.");
+        goto cleanup;
+    }
+
     /* check leafrefs and/or instids if any */
     if (result && resolve_unres_data(unres)) {
         /* leafref & instid checking failed */
