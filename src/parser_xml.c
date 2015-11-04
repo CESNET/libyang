@@ -400,19 +400,7 @@ error:
     ret--;
 
 clear:
-
     /* cleanup */
-    if (parent && parent->child == *result) {
-        parent->child = NULL;
-    }
-    if (prev && prev->next == *result) {
-        prev->next = NULL;
-
-        /* fix the "last" pointer */
-        for (diter = prev; diter->prev != *result; diter = diter->prev);
-        diter->prev = prev;
-    }
-
     lyd_free(*result);
     *result = NULL;
 
