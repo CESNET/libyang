@@ -75,7 +75,7 @@ get_path_multiple_completion(const char *hint, char ***matches, unsigned int *ma
         char buf[FILENAME_MAX] = { 0 };
 
         ++ptr;
-        snprintf(buf, ptr - path, "%s", path);
+        sprintf(buf, "%.*s", (int)(ptr - path), path);
 
         dir = opendir(buf);
     }
@@ -163,7 +163,7 @@ get_path_skip_opts_completion(const char *hint, char ***matches, unsigned int *m
         char buf[FILENAME_MAX] = { 0 };
 
         ++ptr;
-        snprintf(buf, ptr-path, "%s", path);
+        sprintf(buf, "%.*s", (int)(ptr - path), path);
 
         dir = opendir(buf);
     }
