@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 2.6)
-find_package(CMocka 1.0.0 REQUIRED)
 
 set(TEST_SOURCES
 	test_data_initialization.c
