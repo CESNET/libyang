@@ -1713,7 +1713,12 @@ resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module 
     prev_mod = start_mod;
 
     while (1) {
-        sibling = lys_getnext(NULL, start->parent, start_mod, opts);
+        if (start) {
+            sibling = lys_getnext(NULL, start->parent, start_mod, opts);
+        } else {
+            sibling = NULL;
+        }
+
         while (sibling) {
             /* name match */
             if (((sibling->nodetype != LYS_GROUPING) || (node_type == LYS_USES))
