@@ -420,7 +420,7 @@ cmd_parse(const char *arg, int options)
     } else if (len >= 6 && !strcmp(&argv[optind][len - 5], ".json")) {
         informat = LYD_JSON;
     } else {
-        fprintf(stderr, "Unable to resolve format of the input file, please add \".xml\" or \".json\" suffix.");
+        fprintf(stderr, "Unable to resolve format of the input file, please add \".xml\" or \".json\" suffix.\n");
         goto cleanup;
     }
 
