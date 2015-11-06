@@ -43,7 +43,7 @@ $ make
 
 #### Changing Compiler
 
-Set 'CC' variable:
+Set `CC` variable:
 
 ```
 $ CC=/usr/bin/clang cmake ..
@@ -52,12 +52,12 @@ $ CC=/usr/bin/clang cmake ..
 #### Changing Install Path
 
 To change the prefix where the library, headers and any other files are installed,
-set 'CMAKE_INSTALL_PREFIX' variable:
+set `CMAKE_INSTALL_PREFIX` variable:
 ```
 $ cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr
 ```
 
-Default prefix is '/usr/local'.
+Default prefix is `/usr/local`.
 
 #### Build Modes
 
