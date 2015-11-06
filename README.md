@@ -79,7 +79,7 @@ Note that, with CMake, if you want to change the compiler or its options after
 you already ran CMake, you need to clear its cache first - the most simple way
 to do it is to remove all content from the 'build' directory.
 
-### Tests
+## Tests
 
 libyang includes several tests built with [cmocka](https://cmocka.org/). The tests
 can be found in `tests` subdirectory and they are designed for checking library
@@ -105,5 +105,14 @@ Tests can be run by the make's `test` target:
 $ make test
 ```
 
+## yanglint
+
+libyang source codes include a simple example tool to demanstrate how an application
+can work with the libyang library. The tool is called `yanglint`. It is not being
+installed together with the library itself, but it is built together with the library
+binary and you can find it in [`tools/lint`](./tools/lint) directory.
+
+There is also [README](./tools/lint/examples/README.md) describing some examples of
+using `yanglint`.
 
 
