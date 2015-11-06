@@ -39,7 +39,27 @@ $ make
 # make install
 ```
 
-### Build Modes
+### Useful CMake Options
+
+#### Changing Compiler
+
+Set 'CC' variable:
+
+```
+$ CC=/usr/bin/clang cmake ..
+```
+
+#### Changing Install Path
+
+To change the prefix where the library, headers and any other files are installed,
+set 'CMAKE_INSTALL_PREFIX' variable:
+```
+$ cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr
+```
+
+Default prefix is '/usr/local'.
+
+#### Build Modes
 
 There are two build modes:
 * Release.
@@ -53,14 +73,11 @@ The `Debug` mode is currently used as the default one. to switch to the
 ```
 $ cmake -D CMAKE_BUILD_TYPE:String="Release" .
 ```
+### CMake Notes
 
-### Changing Compiler
-
-Set CC variable:
-
-```
-$ CC=/usr/bin/clang cmake ..
-```
+Note that, with CMake, if you want to change the compiler or its options after
+you already ran CMake, you need to clear its cache first - the most simple way
+to do it is to remove all content from the 'build' directory.
 
 ### Tests
 
@@ -79,19 +96,14 @@ additional dependency), but it can be enabled via cmake option:
 $ cmake -DENABLE_BUILD_TESTS=ON ..
 ```
 
+Note that if the necessary [cmocka](https://cmocka.org/) headers are not present
+in the system include paths, tests are not available despite the build mode or
+cmake's options.
+
 Tests can be run by the make's `test` target:
 ```
 $ make test
 ```
 
 
-### CMake Notes
-
-Note that, with CMake, if you want to change the compiler or its options after
-you already ran CMake, you need to clear its cache first. For your convenience,
-this action is available as `cclean` target of the Makefile:
-```
-$ make cclean
-$ CC=gcc CFLAGS='-fstack-protector-strong -Wa,--noexecstack' cmake ..
-```
 
