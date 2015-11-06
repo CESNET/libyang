@@ -241,7 +241,7 @@ struct lys_module {
     uint8_t type:1;                  /**< 0 - structure type used to distinguish structure from ::lys_submodule */
     uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
-    const char *uri;                 /**< origin URI of the module */
+    const char *uri;                 /**< source of this module in URI format (can be NULL) */
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in #rev array */
