@@ -54,7 +54,7 @@ $ CC=/usr/bin/clang cmake ..
 To change the prefix where the library, headers and any other files are installed,
 set `CMAKE_INSTALL_PREFIX` variable:
 ```
-$ cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr
+$ cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr ..
 ```
 
 Default prefix is `/usr/local`.
