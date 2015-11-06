@@ -14,12 +14,12 @@
     <groups>
       <group>
         <name>test</name>
-        <user-name>krejci</user-name>
+        <user-name>smith</user-name>
       </group>
       <group>
         <nam>almighty</name>
-        <user-name>krejci</user-name>
-        <user-name>xyz</user-name>
+        <user-name>smith</user-name>
+        <user-name>doe</user-name>
       </group>
     </groups>
   </nacm>
