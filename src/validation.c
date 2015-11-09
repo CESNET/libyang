@@ -477,15 +477,21 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
         if (options & (LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
             /* skip key uniqueness check in case of get/get-config data */
             start = NULL;
-        } else if (node->parent) {
-            start = node->parent->child;
         } else {
+            diter = start;
             start = NULL;
-            for (diter = node; diter->next; diter = diter->prev) {
+            while(diter) {
+                if (diter == node) {
+                    diter = diter->next;
+                    continue;
+                }
+
                 if (diter->schema == node->schema) {
                     /* the same list instance */
                     start = diter;
+                    break;
                 }
+                diter = diter->next;
             }
         }
 
