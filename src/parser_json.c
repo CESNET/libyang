@@ -357,7 +357,7 @@ json_get_value(struct lyd_node_leaf_list *leaf, const char *data, int options, s
     assert(leaf && data && unres);
     ctx = leaf->schema->module->ctx;
 
-    if (options & (LYD_OPT_FILTER | LYD_OPT_EDIT)) {
+    if (options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
         resolve = 0;
     } else {
         resolve = 1;

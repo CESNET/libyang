@@ -337,30 +337,41 @@ struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
  * clients are not required to understand everything the server does. Of course, the optimal strategy is to use
  * filtering to get only the required data.
  *
+ * The #LYD_OPT_DESTRUCT option is used to optimize memory consumption profile of the parser in case the input
+ * data are no more needed after the parser function call. It continuously free the input data whenever it is
+ * processed for the output. This option is applicable only in case the input data are in the XML tree format.
+ *
  * Parser also expects that the provided data are complete and performs data validation according to all
- * implemented YANG rules. This can be problem in case of representing NETCONF's subtree filter data or
- * edit-config's data which do not represent a complete data set. Therefore there are two options to make parser to
- * accept such a data: #LYD_OPT_FILTER and #LYD_OPT_EDIT. However, both these options are ignored when parsing
- * an RPC or a notification.
+ * implemented YANG rules. This can be problem in case of representing NETCONF's subtree filter data,
+ * edit-config's data or the received data (after get or get-config request) where a filter was applied - such data
+ * do not represent a complete data set and different validation rules can fail. Therefore there are other options
+ * to make parser to accept such a data.
  *
  * @{
  */
-#define LYD_OPT_STRICT   0x01  /**< instead of silent ignoring data without schema definition, raise an error.
-                                    Having an unknown element of the known namespace is always an error. */
-#define LYD_OPT_EDIT     0x02  /**< make validation to accept NETCONF edit-config's content:
-                                    - mandatory nodes can be omitted
-                                    - leafrefs and instance-identifier are not resolved
-                                    - status data are not allowed */
-#define LYD_OPT_FILTER   0x04  /**< make validation to accept NETCONF subtree filter data:
-                                    - leafs/leaf-lists with no data are allowed (even not allowed e.g. by length restriction)
-                                    - multiple instances of container/leaf/.. are allowed
-                                    - list's keys are not required
-                                    - mandatory nodes can be omitted
-                                    - leafrefs and instance-identifier are not resolved
-                                    - data from different choice's branches are allowed */
-#define LYD_OPT_DESTRUCT 0x08  /**< safe consumed memory and free the processed XML data continuously.
-                                    On success, only the top level XML element is kept in the end. This
-                                    option is applicable only with lyd_parse_xml(). */
+#define LYD_OPT_STRICT    0x01  /**< instead of silent ignoring data without schema definition, raise an error.
+                                     Having an unknown element of the known namespace is always an error. */
+#define LYD_OPT_DESTRUCT  0x02  /**< safe consumed memory and free the processed XML data continuously.
+                                     On success, only the top level XML element is kept in the end. This
+                                     option is applicable only with lyd_parse_xml(). */
+#define LYD_OPT_EDIT      0x04  /**< make validation to accept NETCONF edit-config's content:
+                                     - mandatory nodes can be omitted
+                                     - leafrefs and instance-identifier are not resolved
+                                     - status data are not allowed */
+#define LYD_OPT_FILTER    0x08  /**< make validation to accept NETCONF subtree filter data:
+                                     - leafs/leaf-lists with no data are allowed (even not allowed e.g. by length restriction)
+                                     - multiple instances of container/leaf/.. are allowed
+                                     - list's keys/unique nodes are not required
+                                     - mandatory nodes can be omitted
+                                     - leafrefs and instance-identifier are not resolved
+                                     - data from different choice's branches are allowed */
+#define LYD_OPT_GETCONFIG 0x10  /**< make validation to accept get-config's result data even with applied filter:
+                                     - mandatory nodes can be omitted
+                                     - leafrefs and instance-identifier are not resolved
+                                     - list's keys/unique nodes are not required (so duplication is not checked)
+                                     - status data are not allowed */
+#define LYD_OPT_GET       0x20  /**< make validation to accept get's result data even with applied filter:
+                                     - same as for #LYD_OPT_GETCONFIG but the status data are allowed */
 
 /**
  * @}

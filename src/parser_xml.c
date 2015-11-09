@@ -95,7 +95,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct
         return EXIT_SUCCESS;
     }
 
-    if (options & (LYD_OPT_FILTER | LYD_OPT_EDIT)) {
+    if (options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
         resolve = 0;
     } else {
         resolve = 1;

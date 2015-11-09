@@ -306,7 +306,7 @@ lyv_data_context(struct lyd_node *node, int options, unsigned int line, struct u
     }
 
     /* check for (non-)presence of status data in edit-config data */
-    if ((options & LYD_OPT_EDIT) && (node->schema->flags & LYS_CONFIG_R)) {
+    if ((options & (LYD_OPT_EDIT | LYD_OPT_GETCONFIG)) && (node->schema->flags & LYS_CONFIG_R)) {
         LOGVAL(LYE_INELEM, line, node->schema->name);
         return EXIT_FAILURE;
     }
@@ -327,7 +327,7 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
     schema = node->schema; /* shortcut */
 
     /* check presence of all keys in case of list */
-    if (schema->nodetype == LYS_LIST && !(options & LYD_OPT_FILTER)) {
+    if (schema->nodetype == LYS_LIST && !(options & (LYD_OPT_FILTER | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
         siter = (struct lys_node *)lyv_keys_present(node);
         if (siter) {
             /* key not found in the data */
@@ -337,7 +337,8 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
     }
 
     /* mandatory children */
-    if ((schema->nodetype & (LYS_CONTAINER | LYS_LIST)) && !(options & (LYD_OPT_FILTER | LYD_OPT_EDIT))) {
+    if ((schema->nodetype & (LYS_CONTAINER | LYS_LIST))
+            && !(options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
         siter = ly_check_mandatory(node);
         if (siter) {
             if (siter->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
@@ -473,7 +474,10 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
         /* uniqueness of list/leaflist instances */
 
         /* get the first list/leaflist instance sibling */
-        if (node->parent) {
+        if (options & (LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
+            /* skip key uniqueness check in case of get/get-config data */
+            start = NULL;
+        } else if (node->parent) {
             start = node->parent->child;
         } else {
             start = NULL;
