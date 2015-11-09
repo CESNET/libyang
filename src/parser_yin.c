@@ -5093,7 +5093,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unre
 
     /* add to the context's list of modules */
     if (ctx->models.used == ctx->models.size) {
-        newlist = realloc(ctx->models.list, ctx->models.size * 2);
+        newlist = realloc(ctx->models.list, (2 * ctx->models.size) * sizeof *newlist);
         if (!newlist) {
             LOGMEM;
             goto error;
