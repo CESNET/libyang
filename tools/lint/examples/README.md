@@ -84,7 +84,7 @@ add ietf-netconf-acm.yin
 Comand and its output:
 
 ```
-> config config-missing-key.xml
+> data -x edit config-missing-key.xml
 libyang[0]: Parser fails around the line 20.
 libyang[0]: Mixed opening (nam) and closing (name) element tags.
 libyang[0]: lyd_parse_xml: Invalid parameter.
@@ -96,7 +96,7 @@ Failed to parse data.
 Comand and its output:
 
 ```
-> config config-unknown-element.xml
+> data -x edit config-unknown-element.xml
 libyang[0]: Parser fails around the line 25.
 libyang[0]: Unknown element "denied-operations".
 Failed to parse data.
