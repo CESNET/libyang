@@ -5056,6 +5056,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unre
 {
     struct lyxml_elem *yin;
     struct lys_module *module = NULL, **newlist = NULL;
+    struct lys_module *existmod = NULL;
     const char *value;
     int i;
 
@@ -5113,15 +5114,16 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unre
                     /* both have the same revision -> we already have the same module */
                     /* so free the new one and update the old one's implement flag if needed */
                     lyxml_free_elem(ctx, yin);
+					existmod = ctx->models.list[i];
                     lys_free(module, 0);
                     unres->count = 0;
 
-                    LOGVRB("Module %s already in context", ctx->models.list[i]->name);
+                    LOGVRB("Module %s already in context", existmod->name);
 
-                    if (implement && !ctx->models.list[i]->implemented) {
-                        lyp_set_implemented(ctx->models.list[i]);
+                    if (implement && !existmod->implemented) {
+                        lyp_set_implemented(existmod);
                     }
-                    return ctx->models.list[i];
+                    return existmod;
                 }
             }
             /* else (both elses) keep searching, for now the caller is just adding
