@@ -118,7 +118,9 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
             free(cwd);
             return;
         }
+        free(ctx->models.search_path);
         ctx->models.search_path = get_current_dir_name();
+
         chdir(cwd);
         free(cwd);
     } else {
