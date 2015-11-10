@@ -5056,7 +5056,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unre
 {
     struct lyxml_elem *yin;
     struct lys_module *module = NULL, **newlist = NULL;
-	struct lys_module *existmod = NULL;
+    struct lys_module *existmod = NULL;
     const char *value;
     int i;
 
