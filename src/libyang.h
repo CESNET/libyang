@@ -221,6 +221,20 @@ const char **ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *module_n
 struct lys_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision);
 
 /**
+ * @brief Try to find the model in a specific directory and then the searchpath
+ * and load it into context.
+ *
+ * @param[in] ctx Context to add to.
+ * @param[in] dir Optional directory to search in first.
+ * @param[in] name Name of the module to load.
+ * @param[in] revision Optional revision date of the module. If not specified, it is
+ * assumed that there is only one model revision in the searchpath (the first matching file
+ * is parsed).
+ * @return Pointer to the data model structure, NULL if not found or some error occured.
+ */
+struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *dir, const char *name, const char *revision);
+
+/**
  * @brief Get pointer to the schema tree of the module of the specified namespace
  *
  * @param[in] ctx Context to work in.

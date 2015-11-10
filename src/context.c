@@ -246,6 +246,40 @@ ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision)
     return ly_ctx_get_module_by(ctx, name, offsetof(struct lys_module, name), revision);
 }
 
+API struct lys_module *
+ly_ctx_load_module(struct ly_ctx *ctx, const char *dir, const char *name, const char *revision)
+{
+    struct lys_module *module;
+    char *cwd = NULL;
+
+    if (!ctx || !name) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    if (dir) {
+        cwd = get_current_dir_name();
+        if (chdir(dir) == -1) {
+            LOGWRN("Unable to change working directory to \"%s\" (%s).", dir, strerror(errno));
+            free(cwd);
+            cwd = NULL;
+        }
+    }
+
+    module = lyp_search_file(ctx, NULL, name, revision);
+
+    /* did we change the working directory? */
+    if (cwd) {
+        if (chdir(cwd) == -1) {
+            /* should seriously not happen */
+            LOGINT;
+        }
+        free(cwd);
+    }
+
+    return module;
+}
+
 API const char **
 ly_ctx_get_module_names(struct ly_ctx *ctx)
 {
