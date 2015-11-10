@@ -61,28 +61,10 @@ cmd_print_help(void)
     printf("\tabsolute-schema-nodeid: ( /(<import-prefix>:)<node-identifier> )+\n");
 }
 
-static void
-cmd_parse_help(const char *name)
-{
-    printf("%s [-f (xml | json)] [-o <output-file>] <%s-file-name>\n", name, name);
-}
-
 void
 cmd_data_help(void)
 {
-    cmd_parse_help("data");
-}
-
-void
-cmd_config_help(void)
-{
-    cmd_parse_help("config");
-}
-
-void
-cmd_filter_help(void)
-{
-    cmd_parse_help("filter");
+    printf("data [-f (xml | json)] [-x (edit | filter | get | getconfig)] [-o <output-file>] <data-file-name>\n");
 }
 
 void
@@ -339,10 +321,11 @@ cleanup:
     return ret;
 }
 
-static int
-cmd_parse(const char *arg, int options)
+int
+cmd_data(const char *arg)
 {
     int c, argc, option_index, ret = 1, fd = -1;
+    int options = 0;
     struct stat sb;
     size_t len;
     char **argv = NULL, *ptr, *addr;
@@ -353,6 +336,7 @@ cmd_parse(const char *arg, int options)
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"format", required_argument, 0, 'f'},
+        {"option", required_argument, 0, 'x'},
         {"output", required_argument, 0, 'o'},
         {"strict", no_argument, 0, 's'},
         {NULL, 0, 0, 0}
@@ -371,7 +355,7 @@ cmd_parse(const char *arg, int options)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "hf:o:xyz", long_options, &option_index);
+        c = getopt_long(argc, argv, "hf:o:x:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -400,6 +384,17 @@ cmd_parse(const char *arg, int options)
             break;
         case 's':
             options |= LYD_OPT_STRICT;
+            break;
+        case 'x':
+            if (!strcmp(optarg, "edit")) {
+                options |= LYD_OPT_EDIT;
+            } else if (!strcmp(optarg, "filter")) {
+                options |= LYD_OPT_FILTER;
+            } else if (!strcmp(optarg, "get")) {
+                options |= LYD_OPT_GET;
+            } else if (!strcmp(optarg, "getconfig")) {
+                options |= LYD_OPT_GETCONFIG;
+            }
             break;
         case '?':
             fprintf(stderr, "Unknown option \"%d\".\n", (char)c);
@@ -480,24 +475,6 @@ cleanup:
     }
 
     return ret;
-}
-
-int
-cmd_data(const char *arg)
-{
-    return cmd_parse(arg, 0);
-}
-
-int
-cmd_config(const char *arg)
-{
-    return cmd_parse(arg, LYD_OPT_EDIT);
-}
-
-int
-cmd_filter(const char *arg)
-{
-    return cmd_parse(arg, LYD_OPT_FILTER);
 }
 
 int
@@ -991,9 +968,7 @@ COMMAND commands[] = {
         {"help", cmd_help, NULL, "Display commands description"},
         {"add", cmd_add, cmd_add_help, "Add a new model"},
         {"print", cmd_print, cmd_print_help, "Print model"},
-        {"data", cmd_data, cmd_data_help, "Load, validate and optionally print complete datastore data"},
-        {"config", cmd_config, cmd_config_help, "Load, validate and optionally print edit-config's data"},
-        {"filter", cmd_filter, cmd_filter_help, "Load, validate and optionally print subtree filter data"},
+        {"data", cmd_data, cmd_data_help, "Load, validate and optionally print instance data"},
         {"xpath", cmd_xpath, cmd_xpath_help, "Evaluate an XPath expression on a data tree"},
         {"list", cmd_list, cmd_list_help, "List all the loaded models"},
         {"feature", cmd_feature, cmd_feature_help, "Print/enable/disable all/specific features of models"},
