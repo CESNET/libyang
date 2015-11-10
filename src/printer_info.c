@@ -440,10 +440,10 @@ info_print_unique(struct lyout *out, struct lys_unique *unique, uint8_t unique_s
     ly_print(out, "%-*s", INDENT_LEN, "Unique: ");
 
     if (unique_size) {
-        ly_print(out, "%s\n", unique[0].leafs[0]->name);
+        ly_print(out, "%s\n", unique[0].expr[0]);
         for (i = 0; i < unique_size; ++i) {
-            for (j = (!i ? 1 : 0); j < unique[i].leafs_size; ++j) {
-                ly_print(out, "%*s%s\n", INDENT_LEN, "", unique[i].leafs[j]->name);
+            for (j = (!i ? 1 : 0); j < unique[i].expr_size; ++j) {
+                ly_print(out, "%*s%s\n", INDENT_LEN, "", unique[i].expr[j]);
             }
         }
     } else {

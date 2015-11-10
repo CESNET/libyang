@@ -1743,7 +1743,7 @@ lys_leaflist_free(struct ly_ctx *ctx, struct lys_node_leaflist *llist)
 static void
 lys_list_free(struct ly_ctx *ctx, struct lys_node_list *list)
 {
-    int i;
+    int i, j;
 
     /* handle only specific parts for LY_NODE_LIST */
     for (i = 0; i < list->tpdf_size; i++) {
@@ -1759,7 +1759,10 @@ lys_list_free(struct ly_ctx *ctx, struct lys_node_list *list)
     lys_when_free(ctx, list->when);
 
     for (i = 0; i < list->unique_size; i++) {
-        free(list->unique[i].leafs);
+        for (j = 0; j > list->unique[i].expr_size; j++) {
+            lydict_remove(ctx, list->unique[i].expr[j]);
+        }
+        free(list->unique[i].expr);
     }
     free(list->unique);
 
@@ -1799,7 +1802,7 @@ lys_feature_free(struct ly_ctx *ctx, struct lys_feature *f)
 static void
 lys_deviation_free(struct ly_ctx *ctx, struct lys_deviation *dev)
 {
-    int i, j;
+    int i, j, k;
 
     lydict_remove(ctx, dev->target_name);
     lydict_remove(ctx, dev->dsc);
@@ -1816,7 +1819,10 @@ lys_deviation_free(struct ly_ctx *ctx, struct lys_deviation *dev)
             free(dev->deviate[i].must);
 
             for (j = 0; j < dev->deviate[i].unique_size; j++) {
-                free(dev->deviate[j].unique[j].leafs);
+                for (k = 0; k < dev->deviate[i].unique[j].expr_size; k++) {
+                    lydict_remove(ctx, dev->deviate[i].unique[j].expr[k]);
+                }
+                free(dev->deviate[j].unique[j].expr);
             }
             free(dev->deviate[i].unique);
         }
@@ -2079,79 +2085,6 @@ lys_submodule_free(struct lys_submodule *submodule, int free_int_mods)
     free(submodule);
 }
 
-static struct lys_node_leaf *
-lys_uniq_find(struct lys_node_list *list, struct lys_node_leaf *orig_leaf)
-{
-    struct lys_node *node, *node2, *ret = NULL, *parent1, *parent2;
-    int depth = 1, i;
-
-    /* find the correct direct descendant of list in orig_leaf */
-    node = (struct lys_node *)orig_leaf;
-    while (1) {
-        if (!node->parent) {
-            return NULL;
-        }
-        if (!strcmp(node->parent->name, list->name)) {
-            break;
-        }
-
-        node = node->parent;
-        ++depth;
-    }
-
-    /* make sure the nodes are equal */
-    parent1 = node->parent->parent;
-    parent2 = list->parent;
-    while (1) {
-        if ((parent1 && !parent2) || (!parent1 && parent2)) {
-            return NULL;
-        }
-
-        if (parent1 == parent2) {
-            break;
-        }
-
-        parent1 = parent1->parent;
-        parent2 = parent2->parent;
-    }
-
-    /* find the descendant in the list */
-    LY_TREE_FOR(list->child, node2) {
-        if (!strcmp(node2->name, node->name)) {
-            ret = node2;
-            break;
-        }
-    }
-
-    if (!ret) {
-        return NULL;
-    }
-
-    /* continue traversing both trees, the nodes are always truly equal */
-    while (1) {
-        --depth;
-        if (!depth) {
-            if (ret->nodetype != LYS_LEAF) {
-                return NULL;
-            }
-            return (struct lys_node_leaf *)ret;
-        }
-        node = (struct lys_node *)orig_leaf;
-        for (i = 0; i < depth-1; ++i) {
-            node = node->parent;
-        }
-        LY_TREE_FOR(ret->child, node2) {
-            if (!strcmp(node2->name, node->name)) {
-                ret = node2;
-                break;
-            }
-        }
-        if (!node2) {
-            return NULL;
-        }
-    }
-}
-
 struct lys_node *
 lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, uint8_t nacm, int recursive,
              struct unres_schema *unres)
@@ -2376,14 +2309,12 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
         list->max = list_orig->max;
 
         list->must_size = list_orig->must_size;
-        list->tpdf_size = list_orig->tpdf_size;
-        list->keys_size = list_orig->keys_size;
-        list->unique_size = list_orig->unique_size;
-
         list->must = lys_restr_dup(ctx, list_orig->must, list->must_size);
 
+        list->tpdf_size = list_orig->tpdf_size;
         list->tpdf = lys_tpdf_dup(module, node->parent, list_orig->tpdf, list->tpdf_size, unres);
 
+        list->keys_size = list_orig->keys_size;
         if (list->keys_size) {
             list->keys = calloc(list->keys_size, sizeof *list->keys);
 
@@ -2408,18 +2339,15 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
             }
         }
 
-        list->unique = calloc(list->unique_size, sizeof *list->unique);
-        if (list_orig->unique) {
-            for (i = 0; i < list->unique_size; ++i) {
-                list->unique[i].leafs = calloc(list->unique[i].leafs_size, sizeof *list->unique[i].leafs);
-                for (j = 0; j < list->unique[i].leafs_size; j++) {
-                    list->unique[i].leafs[j] = lys_uniq_find(list, list_orig->unique[i].leafs[j]);
-                }
-            }
-        } else {
-            for (i = 0; i < list->unique_size; ++i) {
-                /* HACK for unres */
-                list->unique[i].leafs = (struct lys_node_leaf **)list;
+        list->unique_size = list_orig->unique_size;
+        list->unique = malloc(list->unique_size * sizeof *list->unique);
+        for (i = 0; i < list->unique_size; ++i) {
+            list->unique[i].expr_size = list_orig->unique[i].expr_size;
+            list->unique[i].expr = malloc(list->unique[i].expr_size * sizeof *list->unique[i].expr);
+            for (j = 0; j < list->unique[i].expr_size; j++) {
+                list->unique[i].expr[j] = lydict_insert(ctx, list_orig->unique[i].expr[j], 0);
+
+                /* if it stays in unres list, duplicate it also there */
                 unres_schema_dup(module, unres, &list_orig->unique[i], UNRES_LIST_UNIQ, &list->unique[i]);
             }
         }

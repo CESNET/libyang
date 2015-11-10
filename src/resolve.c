@@ -1444,81 +1444,41 @@ check_key(struct lys_node_leaf *key, uint8_t flags, struct lys_node_leaf **list,
 }
 
 /**
- * @brief Resolve (fill) a unique. Logs directly.
+ * @brief Resolve (test the target exists) unique. Logs directly.
  *
  * @param[in] parent The parent node of the unique structure.
  * @param[in] uniq_str The value of the unique node.
- * @param[in] uniq_s The unique structure to use.
  * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line The line in the input file.
  *
  * @return EXIT_SUCCESS on succes, EXIT_FAILURE on forward reference, -1 on error.
  */
 int
-resolve_unique(struct lys_node *parent, const char *uniq_str, struct lys_unique *uniq_s, int first, uint32_t line)
+resolve_unique(struct lys_node *parent, const char *uniq_str, int first, uint32_t line)
 {
-    char *uniq_val, *uniq_begin, *start;
-    int i, j, rc;
+    int rc;
+    struct lys_node *leaf = NULL;
 
-    /* count the number of unique values */
-    uniq_val = uniq_begin = strdup(uniq_str);
-    uniq_s->leafs_size = 0;
-    while ((uniq_val = strpbrk(uniq_val, " \t\n"))) {
-        uniq_s->leafs_size++;
-        while (isspace(*uniq_val)) {
-            uniq_val++;
+    rc = resolve_schema_nodeid(uniq_str, parent->child, parent->module, LYS_LEAF, &leaf);
+    if (rc) {
+        if ((rc == -1) || !first) {
+            LOGVAL(LYE_INARG, line, uniq_str, "unique");
+            if (rc == EXIT_FAILURE) {
+                LOGVAL(LYE_SPEC, 0, "Target leaf not found.");
+            }
         }
+        goto error;
     }
-    uniq_s->leafs_size++;
-    uniq_s->leafs = calloc(uniq_s->leafs_size, sizeof *uniq_s->leafs);
-
-    /* interconnect unique values with the leafs */
-    uniq_val = uniq_begin;
-    for (i = 0; uniq_val && i < uniq_s->leafs_size; i++) {
-        start = uniq_val;
-        if ((uniq_val = strpbrk(start, " \t\n"))) {
-            *uniq_val = '\0'; /* add terminating NULL byte */
-            uniq_val++;
-            while (isspace(*uniq_val)) {
-                uniq_val++;
-            }
-        } /* else only one nodeid present/left already NULL byte terminated */
-
-        rc = resolve_schema_nodeid(start, parent->child, parent->module, LYS_LEAF,
-                                   (struct lys_node **)&uniq_s->leafs[i]);
-        if (rc) {
-            if ((rc == -1) || !first) {
-                LOGVAL(LYE_INARG, line, start, "unique");
-                if (rc == EXIT_FAILURE) {
-                    LOGVAL(LYE_SPEC, 0, "Target leaf not found.");
-                }
-            }
-            goto error;
-        }
-        if (uniq_s->leafs[i]->nodetype != LYS_LEAF) {
-            LOGVAL(LYE_INARG, line, start, "unique");
-            LOGVAL(LYE_SPEC, 0, "Target is not a leaf.");
-            rc = -1;
-            goto error;
-        }
-
-        for (j = 0; j < i; j++) {
-            if (uniq_s->leafs[j] == uniq_s->leafs[i]) {
-                LOGVAL(LYE_INARG, line, start, "unique");
-                LOGVAL(LYE_SPEC, 0, "The identifier is not unique");
-                rc = -1;
-                goto error;
-            }
-        }
+    if (!leaf || leaf->nodetype != LYS_LEAF) {
+        LOGVAL(LYE_INARG, line, uniq_str, "unique");
+        LOGVAL(LYE_SPEC, 0, "Target is not a leaf.");
+        rc = -1;
+        goto error;
     }
 
-    free(uniq_begin);
     return EXIT_SUCCESS;
 
 error:
-
-    free(uniq_s->leafs);
-    free(uniq_begin);
 
     return rc;
 }
@@ -1638,6 +1598,59 @@ resolve_feature(const char *id, struct lys_module *module, int first, uint32_t l
         LOGVAL(LYE_INRESOLV, line, "feature", id);
     }
     return EXIT_FAILURE;
+}
+
+/**
+ * @brief Resolve (find) a data node based on a schema-nodeid.
+ *
+ * Used for resolving unique statements - so id is expected to be relative and local (without reference to a different
+ * module).
+ *
+ */
+struct lyd_node *
+resolve_data_nodeid(const char *id, struct lyd_node *start)
+{
+    char *str, *token, *p;
+    struct lyd_node *result = start, *iter;
+    struct lys_node *schema = NULL;
+
+    assert(start);
+    assert(id);
+
+    if (id[0] == '/') {
+        return NULL;
+    }
+
+    str = p = strdup(id);
+    while(p) {
+        token = p;
+        p = strchr(p, '/');
+        if (p) {
+            *p = '\0';
+            p++;
+        }
+
+        if (resolve_schema_nodeid(token, result->schema, result->schema->module, LYS_LEAF, &schema)) {
+            free(str);
+            return NULL;
+        }
+
+        LY_TREE_FOR(result, iter) {
+            if (iter->schema == schema) {
+                break;
+            }
+        }
+
+        if (!p) {
+            /* final result */
+            result = iter;
+        } else {
+            result = iter->child;
+        }
+    }
+    free(str);
+
+    return result;
 }
 
 /**
@@ -1909,8 +1922,8 @@ resolve_data(struct lys_module *mod, const char *name, int nam_len, struct lyd_n
 /**
  * @brief Resolve (find) a data node. Does not log.
  *
- * @param[in] prefix Prefix of the data node.
- * @param[in] pref_len Length of the prefix.
+ * @param[in] mod_name Module name of the data node.
+ * @param[in] mod_name_len Length of the module name.
  * @param[in] name Name of the data node.
  * @param[in] nam_len Length of the name.
  * @param[in] start Data node to start the search from.
@@ -1920,7 +1933,7 @@ resolve_data(struct lys_module *mod, const char *name, int nam_len, struct lyd_n
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 otherwise.
  */
 static int
-resolve_data_nodeid(const char *mod_name, int mod_name_len, const char *name, int name_len, struct lyd_node *start,
+resolve_data_node(const char *mod_name, int mod_name_len, const char *name, int name_len, struct lyd_node *start,
                     struct unres_data *parents)
 {
     struct lys_module *mod;
@@ -1990,7 +2003,7 @@ resolve_path_predicate_data(const char *pred, int first, uint32_t line, struct u
             source_match.node[0] = node_match->node[j];
 
             /* must be leaf (key of a list) */
-            if ((rc = resolve_data_nodeid(sour_pref, sour_pref_len, source, sour_len, node_match->node[j],
+            if ((rc = resolve_data_node(sour_pref, sour_pref_len, source, sour_len, node_match->node[j],
                     &source_match)) || (source_match.count != 1) || (source_match.node[0]->schema->nodetype != LYS_LEAF)) {
                 /* general error, the one written later will suffice */
                 if ((rc == -1) || !first) {
@@ -2023,7 +2036,7 @@ resolve_path_predicate_data(const char *pred, int first, uint32_t line, struct u
                 }
             }
             while (1) {
-                if ((rc = resolve_data_nodeid(dest_pref, dest_pref_len, dest, dest_len, dest_match.node[0],
+                if ((rc = resolve_data_node(dest_pref, dest_pref_len, dest, dest_len, dest_match.node[0],
                         &dest_match)) || (dest_match.count != 1)) {
                     /* general error, the one written later will suffice */
                     if ((rc == -1) || !first) {
@@ -2158,7 +2171,7 @@ resolve_path_arg_data(struct lyd_node *node, const char *path, int first, uint32
         }
 
         /* node identifier */
-        if ((rc = resolve_data_nodeid(prefix, pref_len, name, nam_len, data, ret))) {
+        if ((rc = resolve_data_node(prefix, pref_len, name, nam_len, data, ret))) {
             if ((rc == -1) || !first) {
                 LOGVAL(LYE_INELEM_LEN, line, nam_len, name);
             }
@@ -3421,7 +3434,6 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
     struct lys_type *stype;
     struct lys_feature **feat_ptr;
     struct lys_node_choice *choic;
-    struct lys_unique *uniq;
 
     switch (type) {
     case UNRES_IDENT:
@@ -3495,11 +3507,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         has_str = 1;
         break;
     case UNRES_LIST_UNIQ:
-        /* actually the unique string */
-        base_name = str_snode;
-        uniq = item;
-
-        rc = resolve_unique((struct lys_node *)uniq->leafs, base_name, uniq, first, line);
+        rc = resolve_unique(item, str_snode, first, line);
         has_str = 1;
         break;
     default:

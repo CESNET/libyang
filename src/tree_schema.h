@@ -1158,8 +1158,8 @@ struct lys_tpdf {
  * @brief YANG list's unique statement structure, see [RFC 6020 sec. 7.8.3](http://tools.ietf.org/html/rfc6020#section-7.8.3)
  */
 struct lys_unique {
-    struct lys_node_leaf **leafs;    /**< array of pointers to the leafs for the unique value */
-    uint8_t leafs_size;              /**< size of the #leafs array */
+    const char **expr;               /**< array of unique expressions specifying target leafs to be unique */
+    uint8_t expr_size;               /**< size of the #axpr array */
 };
 
 /**

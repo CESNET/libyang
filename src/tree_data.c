@@ -779,7 +779,7 @@ int
 lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
 {
     struct lys_node_list *slist;
-    struct lys_node *snode;
+    struct lys_node *snode = NULL;
     struct lyd_node *diter;
     const char *val1, *val2;
     int i, j;
@@ -804,27 +804,32 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
         if (unique) {
             /* compare unique leafs */
             for (i = 0; i < slist->unique_size; i++) {
-                for (j = 0; j < slist->unique[i].leafs_size; j++) {
-                    snode = (struct lys_node *)slist->unique[i].leafs[j];
-                    /* use default values if the instances of unique leafs are not present */
-                    val1 = val2 = ((struct lys_node_leaf *)snode)->dflt;
-                    LY_TREE_FOR(first->child, diter) {
-                        if (diter->schema == snode) {
-                            val1 = ((struct lyd_node_leaf_list *)diter)->value_str;
-                            break;
-                        }
+                for (j = 0; j < slist->unique[i].expr_size; j++) {
+                    /* first */
+                    diter = resolve_data_nodeid(slist->unique[i].expr[j], first->child);
+                    if (diter) {
+                        val1 = ((struct lyd_node_leaf_list *)diter)->value_str;
+                    } else {
+                        /* use default value */
+                        resolve_schema_nodeid(slist->unique[i].expr[j], first->schema->child, first->schema->module, LYS_LEAF, &snode);
+                        val1 = ((struct lys_node_leaf *)snode)->dflt;
                     }
-                    LY_TREE_FOR(second->child, diter) {
-                        if (diter->schema == snode) {
-                            val2 = ((struct lyd_node_leaf_list *)diter)->value_str;
-                            break;
-                        }
+
+                    /* second */
+                    diter = resolve_data_nodeid(slist->unique[i].expr[j], second->child);
+                    if (diter) {
+                        val2 = ((struct lyd_node_leaf_list *)diter)->value_str;
+                    } else {
+                        /* use default value */
+                        resolve_schema_nodeid(slist->unique[i].expr[j], second->schema->child, second->schema->module, LYS_LEAF, &snode);
+                        val2 = ((struct lys_node_leaf *)snode)->dflt;
                     }
+
                     if (val1 != val2) {
                         break;
                     }
                 }
-                if (j && j == slist->unique[i].leafs_size) {
+                if (j && j == slist->unique[i].expr_size) {
                     /* all unique leafs are the same in this set */
                     return 0;
                 }

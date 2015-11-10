@@ -343,8 +343,8 @@ yang_print_unique(struct lyout *out, int level, struct lys_unique *uniq)
     int i;
 
     ly_print(out, "%*sunique \"", LEVEL, INDENT);
-    for (i = 0; i < uniq->leafs_size; i++) {
-        ly_print(out, "%s%s", uniq->leafs[i]->name, i + 1 < uniq->leafs_size ? " " : "");
+    for (i = 0; i < uniq->expr_size; i++) {
+        ly_print(out, "%s%s", uniq->expr[i], i + 1 < uniq->expr_size ? " " : "");
     }
     ly_print(out, "\";\n");
 }

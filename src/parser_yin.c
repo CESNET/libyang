@@ -1254,6 +1254,67 @@ error: /* GETVAL requires this label */
     return EXIT_FAILURE;
 }
 
+static int
+fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_unique *unique, struct unres_schema *unres)
+{
+    int i, j;
+    const char *value, *vaux;
+
+    /* get unique value (list of leafs supposed to be unique */
+    GETVAL(value, yin, "tag");
+
+    /* count the number of unique leafs in the value */
+    vaux = value;
+    while ((vaux = strpbrk(vaux, " \t\n"))) {
+       unique->expr_size++;
+        while (isspace(*vaux)) {
+            vaux++;
+        }
+    }
+    unique->expr_size++;
+    unique->expr = calloc(unique->expr_size, sizeof *unique->expr);
+
+    for (i = 0; i < unique->expr_size; i++) {
+        vaux = strpbrk(value, " \t\n");
+        if (!vaux) {
+            /* the last token, lydict_insert() will count its size on its own */
+            vaux = value;
+        }
+
+        /* store token into unique structure */
+        unique->expr[i] = lydict_insert(module->ctx, value, vaux - value);
+
+        /* check that the expression does not repeat */
+        for (j = 0; j < i; j++) {
+            if (unique->expr[j] == unique->expr[i]) {
+                LOGVAL(LYE_INARG, LOGLINE(yin), unique->expr[i], "unique");
+                LOGVAL(LYE_SPEC, 0, "The identifier is not unique");
+                goto error;
+            }
+        }
+
+        /* try to resolve leaf */
+        if (unres) {
+            unres_schema_add_str(module, unres, parent, UNRES_LIST_UNIQ, unique->expr[i], LOGLINE(yin));
+        } else {
+            if (resolve_unique(parent, value, 0, LOGLINE(yin))) {
+                goto error;
+            }
+        }
+
+        /* move to next token */
+        value = vaux;
+        while(isspace(*value)) {
+            value++;
+        }
+    }
+
+    return EXIT_SUCCESS;
+
+error:
+    return EXIT_FAILURE;
+}
+
 /* logs directly
  *
  * type: 0 - min, 1 - max
@@ -1342,7 +1403,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     struct lyxml_elem *next, *child, *develem;
     int c_dev = 0, c_must, c_uniq;
     int f_min = 0; /* flags */
-    int i, j, rc;
+    int i, j, k, rc;
     struct lys_deviate *d = NULL;
     struct lys_node *node = NULL;
     struct lys_node_choice *choice = NULL;
@@ -1826,7 +1887,10 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
 
                 for (i = 0; i < list->unique_size; i++) {
-                    free(list->unique[i].leafs);
+                    for (j = 0; j < list->unique[i].expr_size; j++) {
+                        lydict_remove(list->module->ctx, list->unique[i].expr[j]);
+                    }
+                    free(list->unique[i].expr);
                 }
                 free(list->unique);
                 list->unique = d->unique = calloc(c_uniq, sizeof *d->unique);
@@ -1895,39 +1959,42 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
             } else if (!strcmp(child->name, "unique")) {
                 if (d->mod == LY_DEVIATE_DEL) {
-                    GETVAL(value, child, "tag");
-                    if (resolve_unique(dev->target, value, &d->unique[d->unique_size], 0, LOGLINE(child))) {
+                    if (fill_yin_unique(module, dev->target, child, &d->unique[d->unique_size], NULL)) {
+                        d->unique_size++;
                         goto error;
                     }
 
                     /* find unique structures to delete */
                     for (i = 0; i < list->unique_size; i++) {
-                        if (list->unique[i].leafs_size != d->unique[d->unique_size].leafs_size) {
+                        if (list->unique[i].expr_size != d->unique[d->unique_size].expr_size) {
                             continue;
                         }
 
-                        for (j = 0; j < d->unique[d->unique_size].leafs_size; j++) {
-                            if (list->unique[i].leafs[j] != d->unique[d->unique_size].leafs[j]) {
+                        for (j = 0; j < d->unique[d->unique_size].expr_size; j++) {
+                            if (list->unique[i].expr[j] != d->unique[d->unique_size].expr[j]) {
                                 break;
                             }
                         }
 
-                        if (j == d->unique[d->unique_size].leafs_size) {
+                        if (j == d->unique[d->unique_size].expr_size) {
                             /* we have a match, free the unique structure ... */
-                            free(list->unique[i].leafs);
+                            for (j = 0; j < list->unique[i].expr_size; j++) {
+                                lydict_remove(list->module->ctx, list->unique[i].expr[j]);
+                            }
+                            free(list->unique[i].expr);
                             /* ... and maintain the array */
                             list->unique_size--;
                             if (i != list->unique_size) {
-                                list->unique[i].leafs_size = list->unique[list->unique_size].leafs_size;
-                                list->unique[i].leafs = list->unique[list->unique_size].leafs;
+                                list->unique[i].expr_size = list->unique[list->unique_size].expr_size;
+                                list->unique[i].expr = list->unique[list->unique_size].expr;
                             }
 
                             if (!list->unique_size) {
                                 free(list->unique);
                                 list->unique = NULL;
                             } else {
-                                list->unique[list->unique_size].leafs_size = 0;
-                                list->unique[list->unique_size].leafs = NULL;
+                                list->unique[list->unique_size].expr_size = 0;
+                                list->unique[list->unique_size].expr = NULL;
                             }
 
                             i = -1; /* set match flag */
@@ -1943,11 +2010,9 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         goto error;
                     }
                 } else { /* replace or add */
-                    GETVAL(value, child, "tag");
-                    if (resolve_unique(dev->target, value, &list->unique[list->unique_size], 0, LOGLINE(child))) {
+                    if (fill_yin_unique(module, dev->target, child, &list->unique[list->unique_size++], NULL)) {
                         goto error;
                     }
-                    list->unique_size++;
                 }
             }
         }
@@ -1971,7 +2036,10 @@ error:
                 free(dev->deviate[i].must);
 
                 for (j = 0; j < dev->deviate[i].unique_size; j++) {
-                    free(dev->deviate[i].unique[j].leafs);
+                    for (k = 0; k < dev->deviate[i].unique[i].expr_size; k++) {
+                        lydict_remove(module->ctx, dev->deviate[i].unique[j].expr[k]);
+                    }
+                    free(dev->deviate[i].unique[j].expr);
                 }
                 free(dev->deviate[i].unique);
             }
@@ -3720,11 +3788,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         list->unique = calloc(c_uniq, sizeof *list->unique);
     }
     LY_TREE_FOR_SAFE(uniq.child, next, sub) {
-        /* HACK for unres */
-        list->unique[list->unique_size++].leafs = (struct lys_node_leaf **)list;
-        GETVAL(value, sub, "tag");
-        if (unres_schema_add_str(module, unres, &list->unique[list->unique_size-1], UNRES_LIST_UNIQ, value,
-                          LOGLINE(sub)) == -1) {
+        if (fill_yin_unique(module, retval, sub, &list->unique[list->unique_size++], unres)) {
             goto error;
         }
 

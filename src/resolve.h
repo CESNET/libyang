@@ -105,10 +105,11 @@ int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int s
 int resolve_superior_type(const char *name, const char *prefix, struct lys_module *module,
                           struct lys_node *parent, struct lys_tpdf **ret);
 
-int resolve_unique(struct lys_node *parent, const char *uniq_str, struct lys_unique *uniq_s, int first, uint32_t line);
+int resolve_unique(struct lys_node *parent, const char *uniq_str, int first, uint32_t line);
 
 int resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module *mod,
                           LYS_NODE node_type, struct lys_node **ret);
+struct lyd_node *resolve_data_nodeid(const char *id, struct lyd_node *start);
 
 int resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings);
 
