@@ -99,6 +99,7 @@ ly_print(struct lyout *out, const char *format, ...)
         }
         memcpy(&out->method.mem.buf[out->method.mem.len], msg, count + 1);
         out->method.mem.len += count;
+        free(msg);
         break;
     case LYOUT_CALLBACK:
         count = vasprintf(&msg, format, ap);
