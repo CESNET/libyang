@@ -398,8 +398,6 @@ struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
  * XML element. The element is not parsed, but it is expected to keep XML data well formed in all
  * cases. There are no restrictions for the element name or its namespace.
  *
- * LY_JSON format is not yet supported.
- *
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] data Serialized data in the specified format.
  * @param[in] format Format of the input data to be parsed.
