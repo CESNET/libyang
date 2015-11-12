@@ -165,9 +165,13 @@ cmd_add(const char *arg)
         }
 
         addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-
-        model = lys_parse(ctx, addr, format);
-        munmap(addr, sb.st_size);
+        if (addr == MAP_FAILED) {
+            fprintf(stderr,"Map file into memory failed.\n");
+            model = NULL;
+        } else {
+            model = lys_parse(ctx, addr, format);
+            munmap(addr, sb.st_size);
+        }
         close(fd);
 
         if (!model) {
@@ -436,6 +440,10 @@ cmd_data(const char *arg)
     }
 
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (addr == MAP_FAILED) {
+        fprintf(stderr,"Map file into memory failed.\n");
+        goto cleanup;
+    }
     data = lyd_parse(ctx, addr, informat, options);
     munmap(addr, sb.st_size);
 
@@ -580,6 +588,10 @@ cmd_xpath(const char *arg)
         goto cleanup;
     }
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (addr == MAP_FAILED) {
+        fprintf(stderr,"Map file into memory failed.\n");
+        goto cleanup;
+    }
     data = lyd_parse(ctx, addr, LYD_XML, 0);
     munmap(addr, sb.st_size);
 
