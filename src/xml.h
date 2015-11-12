@@ -23,6 +23,7 @@
 #define LY_XML_H_
 
 #include <stdio.h>
+#include "context.h"
 
 /**
  * @defgroup xmlparser XML Parser
@@ -118,17 +119,7 @@ struct lyxml_elem {
 struct lyxml_elem *lyxml_read(struct ly_ctx *ctx, const char *data, int options);
 
 /**
- * @brief Parse XML from file descriptor - TODO: NOT IMPLEMENTED
- *
- * @param[in] ctx libyang context to use
- * @param[in] fd File descriptor where read data to parse
- * @param[in] options Parser options. Currently ignored, no option defined yet.
- * @return pointer to root of the parsed XML document tree.
- */
-struct lyxml_elem *lyxml_read_fd(struct ly_ctx *ctx, int fd, int options);
-
-/**
- * @brief Parse XML from filesystem - TODO: NOT IMPLEMENTED
+ * @brief Parse XML from filesystem
  *
  * @param[in] ctx libyang context to use
  * @param[in] filename Path to the file where read data to parse
