@@ -1,4 +1,3 @@
-
 /**
  * @file xpath.c
  * @author Michal Vasko <mvasko@cesnet.cz>
@@ -19,6 +18,7 @@
  *    may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
  */
+
 #define _XOPEN_SOURCE 700
 #define _GNU_SOURCE
 
@@ -200,6 +200,8 @@ cast_string_realloc(uint16_t needed, char **str, uint16_t *used, uint16_t *size)
  * @brief Cast nodes recursively to one string \p str.
  *
  * @param[in] node Node to cast.
+ * @param[in] fake_cont Whether to put the data into a "fake" container.
+ * @param[in] root_type Type of the XPath root.
  * @param[in] indent Current indent.
  * @param[in,out] str Resulting string.
  * @param[in,out] used Used bytes in \p str.
@@ -308,6 +310,8 @@ cast_string_recursive(struct lyd_node *node, int fake_cont, enum lyxp_node_type 
  * @brief Cast an element into a string.
  *
  * @param[in] node Node to cast.
+ * @param[in] fake_cont Whether to put the data into a "fake" container.
+ * @param[in] root_type Type of the XPath root.
  * @param[in] ctx libyang context to use.
  *
  * @return Element cast to string in the dictionary.
@@ -792,7 +796,9 @@ print_set_debug(struct lyxp_set *set)
  * @brief Get unique \p node position in the data.
  *
  * @param[in] node Node to find.
- * @param[in] cur_node Original context node.
+ * @param[in] node_type Node type of \p node.
+ * @param[in] root Root node.
+ * @param[in] root_type Type of the XPath \p root node.
  *
  * @return Node position.
  */
