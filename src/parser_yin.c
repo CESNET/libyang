@@ -1012,7 +1012,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         if (i) {
             type->info.str.patterns = calloc(i, sizeof *type->info.str.patterns);
             LY_TREE_FOR(yin->child, node) {
-                GETVAL(value, yin->child, "value");
+                GETVAL(value, node, "value");
 
                 /* check that the regex is valid */
                 precomp = pcre_compile(value, PCRE_NO_AUTO_CAPTURE, &err_ptr, &err_offset, NULL);
@@ -1026,7 +1026,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 type->info.str.patterns[type->info.str.pat_count].expr = lydict_insert(module->ctx, value, 0);
 
                 /* get possible sub-statements */
-                if (read_restr_substmt(module->ctx, &type->info.str.patterns[type->info.str.pat_count], yin->child)) {
+                if (read_restr_substmt(module->ctx, &type->info.str.patterns[type->info.str.pat_count], node)) {
                     free(type->info.str.patterns);
                     goto error;
                 }
