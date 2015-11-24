@@ -3442,8 +3442,15 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         node = str_snode;
         stype = item;
 
-        rc = resolve_path_arg_schema(mod, stype->info.lref.path, node, first, line,
+		if (stype->info.lref.path) {
+			rc = resolve_path_arg_schema(mod, stype->info.lref.path, node, first, line,
                                      (struct lys_node **)&stype->info.lref.target);
+        } else {
+            rc = resolve_path_arg_schema(mod, stype->der->type.info.lref.path, node, first, line,
+                                     (struct lys_node **)&stype->info.lref.target);
+        }
+
+        
         has_str = 0;
         break;
     case UNRES_TYPE_DER:
