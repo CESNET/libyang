@@ -534,7 +534,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             if (!strcmp(node->name, "bit")) {
                 type->info.bits.count++;
             } else {
-                LOGVAL(LYE_INSTMT, LOGLINE(yin->child), yin->child->name);
+                LOGVAL(LYE_INSTMT, LOGLINE(node), node->name);
                 goto error;
             }
         }
@@ -608,7 +608,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                         }
                     }
                 } else {
-                    LOGVAL(LYE_INSTMT, LOGLINE(next), next->name);
+                    LOGVAL(LYE_INSTMT, LOGLINE(node), node->name);
                     goto error;
                 }
             }
@@ -708,7 +708,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             if (!strcmp(node->name, "enum")) {
                 type->info.enums.count++;
             } else {
-                LOGVAL(LYE_INSTMT, LOGLINE(yin->child), yin->child->name);
+                LOGVAL(LYE_INSTMT, LOGLINE(node), node->name);
                 goto error;
             }
         }
@@ -791,7 +791,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                         }
                     }
                 } else {
-                    LOGVAL(LYE_INSTMT, LOGLINE(next), next->name);
+                    LOGVAL(LYE_INSTMT, LOGLINE(node), node->name);
                     goto error;
                 }
             }
@@ -819,8 +819,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 continue;
             }
 
-            if (strcmp(yin->child->name, "base")) {
-                LOGVAL(LYE_INSTMT, LOGLINE(yin->child), yin->child->name);
+            if (strcmp(node->name, "base")) {
+                LOGVAL(LYE_INSTMT, LOGLINE(node), node->name);
                 goto error;
             }
         }
