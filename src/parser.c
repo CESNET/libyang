@@ -93,13 +93,7 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
         lys_free(module, 0);
         module = NULL;
     }
-    free(unres->item);
-    free(unres->type);
-    free(unres->str_snode);
-#ifndef NDEBUG
-    free(unres->line);
-#endif
-    free(unres);
+    unres_schema_free(ctx, unres);
 
     return module;
 }

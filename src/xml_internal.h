@@ -56,16 +56,6 @@
  */
 
 /**
- * @brief Connect the attribute into the specified element.
- *
- * @param[in] parent Element where to connect the attribute.
- * @param[in] attr Attribute to connect. Can be both, the common attribute as
- * well as a namespace definition.
- * @return EXIT_SUCCESS or EXIT_FAILURE
- */
-int lyxml_add_attr(struct lyxml_elem *parent, struct lyxml_attr *attr);
-
-/**
  * @brief Add a child element into a parent element.
  *
  * The child is added as a last child.

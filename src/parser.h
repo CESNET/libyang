@@ -72,6 +72,9 @@ int lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int
 
 int lyp_check_length_range(const char *expr, struct lys_type *type);
 
+int fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_type *type,
+              struct unres_schema *unres);
+
 /**
  * Store UTF-8 character specified as 4byte integer into the dst buffer.
  * Returns number of written bytes (4 max), expects that dst has enough space.

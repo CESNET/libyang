@@ -469,12 +469,11 @@ error:
     return EXIT_FAILURE;
 }
 
-/* logs directly */
-static int
+/* logs directly, returns EXIT_SUCCESS, EXIT_FAILURE, -1 */
+int
 fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_type *type,
               struct unres_schema *unres)
 {
-#define REGEX_ERR_LEN 128
     const char *value, *name, *err_ptr;
     struct lyxml_elem *next, *node;
     struct lys_restr **restr;
@@ -493,6 +492,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     i = parse_identifier(value);
     if (i < 1) {
         LOGVAL(LYE_INCHAR, LOGLINE(yin), value[-i], &value[-i]);
+        lydict_remove(module->ctx, value);
         goto error;
     }
     /* module name */
@@ -501,24 +501,21 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         value += i;
         if ((value[0] != ':') || (parse_identifier(value + 1) < 1)) {
             LOGVAL(LYE_INCHAR, LOGLINE(yin), value[0], value);
+            lydict_remove(module->ctx, value);
             goto error;
         }
         ++value;
     }
 
     rc = resolve_superior_type(value, type->module_name, module, parent, &type->der);
+    lydict_remove(module->ctx, value);
     if (rc == -1) {
         LOGVAL(LYE_INMOD, LOGLINE(yin), type->module_name);
         goto error;
+
+    /* the type could not be resolved or it was resolved to an unresolved typedef */
     } else if (rc == EXIT_FAILURE) {
-        /* HACK for unres */
-        type->der = (struct lys_tpdf *)parent;
-        rc = unres_schema_add_str(module, unres, type, UNRES_TYPE_DER, value, LOGLINE(yin));
-        if (rc == -1) {
-            goto error;
-        } else {
-            return EXIT_SUCCESS;
-        }
+        return EXIT_FAILURE;
     }
     type->base = type->der->type.base;
 
@@ -939,7 +936,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 continue;
             }
 
-            if (!strcmp(node->name, "path")) {
+            if (!strcmp(node->name, "path") && !type->der->type.der) {
                 if (type->info.lref.path) {
                     LOGVAL(LYE_TOOMANY, LOGLINE(node), node->name, yin->name);
                     goto error;
@@ -961,11 +958,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
         }
 
-        if (!type->info.lref.path) {
-            if (type->der->type.der) {
-                /* this is just a derived type with no path specified/required */
-                break;
-            }
+        if (!type->info.lref.path && !type->der->type.der) {
             LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), "path", "type");
             goto error;
         }
@@ -1056,7 +1049,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
         if (!i) {
             if (type->der->type.der) {
-                /* this is just a derived type with no base specified/required */
+                /* this is just a derived type with no additional type specified/required */
                 break;
             }
             LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), "type", "(union) type");
@@ -1067,40 +1060,56 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         type->info.uni.types = calloc(i, sizeof *type->info.uni.types);
         /* ... and fill the structures */
         LY_TREE_FOR(yin->child, node) {
-            if (fill_yin_type(module, parent, node, &type->info.uni.types[type->info.uni.count], unres)) {
+            rc = fill_yin_type(module, parent, node, &type->info.uni.types[type->info.uni.count], unres);
+            if (!rc) {
+                type->info.uni.count++;
+
+                /* union's type cannot be empty or leafref */
+                if (type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_EMPTY) {
+                    LOGVAL(LYE_INARG, LOGLINE(node), "empty", node->name);
+                    rc = -1;
+                } else if (type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_LEAFREF) {
+                    LOGVAL(LYE_INARG, LOGLINE(node), "leafref", node->name);
+                    rc = -1;
+                }
+            }
+            if (rc) {
+                /* even if we got EXIT_FAILURE, throw it all away, too much trouble doing something else */
+                for (i = 0; i < type->info.uni.count; ++i) {
+                    lys_type_free(module->ctx, &type->info.uni.types[i]);
+                }
+                free(type->info.uni.types);
+                type->info.uni.types = NULL;
+                type->info.uni.count = 0;
+
+                if (rc == EXIT_FAILURE) {
+                    return EXIT_FAILURE;
+                }
                 goto error;
             }
-            type->info.uni.count++;
+        }
+        break;
 
-            /* union's type cannot be empty or leafref */
-            if (type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_EMPTY) {
-                LOGVAL(LYE_INARG, LOGLINE(node), "empty", node->name);
-                goto error;
-            } else if (type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_LEAFREF) {
-                LOGVAL(LYE_INARG, LOGLINE(node), "leafref", node->name);
+    case LY_TYPE_BOOL:
+    case LY_TYPE_EMPTY:
+        /* no sub-statement allowed */
+        LY_TREE_FOR(yin->child, node) {
+            if (node->ns && !strcmp(node->ns->value, LY_NSYIN)) {
+                LOGVAL(LYE_INSTMT, LOGLINE(node), node->name);
                 goto error;
             }
         }
         break;
 
     default:
-        /* no sub-statement allowed in:
-         * LY_TYPE_BOOL, LY_TYPE_EMPTY
-         */
-        LY_TREE_FOR(yin->child, node) {
-            if (node->ns && !strcmp(node->ns->value, LY_NSYIN)) {
-                LOGVAL(LYE_INSTMT, LOGLINE(yin->child), yin->child->name);
-                goto error;
-            }
-        }
-        break;
+        LOGINT;
+        goto error;
     }
 
     return EXIT_SUCCESS;
 
 error:
-
-    return EXIT_FAILURE;
+    return -1;
 }
 
 /* logs directly */
@@ -1108,7 +1117,7 @@ static int
 fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_tpdf *tpdf, struct unres_schema *unres)
 {
     const char *value;
-    struct lyxml_elem *node;
+    struct lyxml_elem *node, *next;
     int has_type = 0, dflt_line;
 
     GETVAL(value, yin, "name");
@@ -1122,7 +1131,7 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
         goto error;
     }
 
-    LY_TREE_FOR(yin->child, node) {
+    LY_TREE_FOR_SAFE(yin->child, next, node) {
         if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
             /* garbage */
             continue;
@@ -1133,7 +1142,9 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
                 LOGVAL(LYE_TOOMANY, LOGLINE(node), node->name, yin->name);
                 goto error;
             }
-            if (fill_yin_type(module, parent, node, &tpdf->type, unres)) {
+            /* HACK for unres */
+            tpdf->type.der = (struct lys_tpdf *)node;
+            if (unres_schema_add_node(module, unres, &tpdf->type, UNRES_TYPE_DER, parent, LOGLINE(node))) {
                 goto error;
             }
             has_type = 1;
@@ -1255,7 +1266,8 @@ error: /* GETVAL requires this label */
 }
 
 static int
-fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_unique *unique, struct unres_schema *unres)
+fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_unique *unique,
+                struct unres_schema *unres)
 {
     int i, j;
     const char *value, *vaux;
@@ -1397,7 +1409,8 @@ error:
 
 /* logs directly */
 static int
-fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys_deviation *dev)
+fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys_deviation *dev,
+                   struct unres_schema *unres)
 {
     const char *value, **stritem;
     struct lyxml_elem *next, *child, *develem;
@@ -1752,7 +1765,9 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 lys_type_free(dev->target->module->ctx, t);
 
                 /* ... and replace it with the value specified in deviation */
-                if (fill_yin_type(module, dev->target, child, t, NULL)) {
+                /* HACK for unres */
+                t->der = (struct lys_tpdf *)child;
+                if (unres_schema_add_node(module, unres, t, UNRES_TYPE_DER, dev->target, LOGLINE(child))) {
                     goto error;
                 }
                 d->type = t;
@@ -1812,7 +1827,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 goto error;
             }
 
-            lyxml_free_elem(module->ctx, child);
+            /* do not free sub, it could have been unlinked and stored in unres */
         }
 
         if (c_must) {
@@ -3200,7 +3215,10 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 LOGVAL(LYE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
                 goto error;
             }
-            if (fill_yin_type(module, parent, sub, &leaf->type, unres)) {
+            /* HACK for unres */
+            leaf->type.der = (struct lys_tpdf *)sub;
+            if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DER, parent, LOGLINE(sub))) {
+                leaf->type.der = NULL;
                 goto error;
             }
             has_type = 1;
@@ -3264,7 +3282,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             goto error;
         }
 
-        lyxml_free_elem(module->ctx, sub);
+        /* do not free sub, it could have been unlinked and stored in unres */
     }
 
     /* check mandatory parameters */
@@ -3361,7 +3379,10 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
                 LOGVAL(LYE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
                 goto error;
             }
-            if (fill_yin_type(module, parent, sub, &llist->type, unres)) {
+            /* HACK for unres */
+            llist->type.der = (struct lys_tpdf *)sub;
+            if (unres_schema_add_node(module, unres, &llist->type, UNRES_TYPE_DER, parent, LOGLINE(sub))) {
+                llist->type.der = NULL;
                 goto error;
             }
             has_type = 1;
@@ -3465,7 +3486,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             goto error;
         }
 
-        lyxml_free_elem(module->ctx, sub);
+        /* do not free sub, it could have been unlinked and stored in unres */
     }
 
     /* check constraints */
@@ -4965,7 +4986,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             }
 
         } else if (!strcmp(child->name, "deviation")) {
-            r = fill_yin_deviation(module, child, &module->deviation[module->deviation_size]);
+            r = fill_yin_deviation(module, child, &module->deviation[module->deviation_size], unres);
             module->deviation_size++;
 
             if (r) {

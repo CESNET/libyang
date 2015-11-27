@@ -32,6 +32,7 @@
 #include "context.h"
 #include "parser.h"
 #include "resolve.h"
+#include "xml.h"
 #include "xml_internal.h"
 #include "tree_internal.h"
 #include "validation.h"
@@ -1104,13 +1105,7 @@ lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
         lys_free(mod, 0);
         mod = NULL;
     }
-    free(unres->item);
-    free(unres->type);
-    free(unres->str_snode);
-#ifndef NDEBUG
-    free(unres->line);
-#endif
-    free(unres);
+    unres_schema_free(ctx, unres);
 
     return mod;
 }
@@ -1140,13 +1135,7 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
         lys_submodule_free(submod, 0);
         submod = NULL;
     }
-    free(unres->item);
-    free(unres->type);
-    free(unres->str_snode);
-#ifndef NDEBUG
-    free(unres->line);
-#endif
-    free(unres);
+    unres_schema_free(module->ctx, unres);
 
     return submod;
 }
@@ -1250,10 +1239,11 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
 
     i = unres_schema_find(unres, old, UNRES_TYPE_DER);
     if (i != -1) {
-        /* HACK for unres */
-        new->der = (struct lys_tpdf *)parent;
+        /* HACK (serious one) for unres */
+        /* nothing else we can do but duplicate it immediately */
+        new->der = (struct lys_tpdf *)lyxml_dup_elem(mod->ctx, (struct lyxml_elem *)old->der, NULL, 1);
         /* all these unres additions can fail even though they did not before */
-        if (unres_schema_add_str(mod, unres, new, UNRES_TYPE_DER, unres->str_snode[i], 0) == -1) {
+        if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_DER, parent, 0)) {
             return -1;
         }
         return EXIT_SUCCESS;
@@ -1307,7 +1297,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
         } else {
             i = unres_schema_find(unres, old, UNRES_TYPE_IDENTREF);
             assert(i != -1);
-            if (unres_schema_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i], 0) == -1) {
+            if (unres_schema_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i], 0)) {
                 return -1;
             }
         }
@@ -1332,7 +1322,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
 
     case LY_TYPE_LEAFREF:
         new->info.lref.path = lydict_insert(mod->ctx, old->info.lref.path, 0);
-        if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent, 0) == -1) {
+        if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent, 0)) {
             return -1;
         }
         break;

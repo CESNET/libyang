@@ -32,6 +32,7 @@
 #include "common.h"
 #include "xpath.h"
 #include "parser.h"
+#include "xml_internal.h"
 #include "dict_private.h"
 #include "tree_internal.h"
 
@@ -1186,7 +1187,7 @@ cleanup:
 }
 
 /**
- * @brief Resolve a typedef. Does not log.
+ * @brief Resolve a typedef, return only resolved typedefs if derived. Does not log.
  *
  * @param[in] name Typedef name.
  * @param[in] mod_name Typedef name module name.
@@ -1262,7 +1263,7 @@ resolve_superior_type(const char *name, const char *mod_name, struct lys_module 
             }
 
             for (i = 0; i < tpdf_size; i++) {
-                if (!strcmp(tpdf[i].name, name)) {
+                if (!strcmp(tpdf[i].name, name) && tpdf[i].type.base) {
                     if (ret) {
                         *ret = &tpdf[i];
                     }
@@ -1282,7 +1283,7 @@ resolve_superior_type(const char *name, const char *mod_name, struct lys_module 
 
     /* search in top level typedefs */
     for (i = 0; i < module->tpdf_size; i++) {
-        if (!strcmp(module->tpdf[i].name, name)) {
+        if (!strcmp(module->tpdf[i].name, name) && module->tpdf[i].type.base) {
             if (ret) {
                 *ret = &module->tpdf[i];
             }
@@ -1293,7 +1294,7 @@ resolve_superior_type(const char *name, const char *mod_name, struct lys_module 
     /* search in submodules */
     for (i = 0; i < module->inc_size; i++) {
         for (j = 0; j < module->inc[i].submodule->tpdf_size; j++) {
-            if (!strcmp(module->inc[i].submodule->tpdf[j].name, name)) {
+            if (!strcmp(module->inc[i].submodule->tpdf[j].name, name) && module->inc[i].submodule->tpdf[j].type.base) {
                 if (ret) {
                     *ret = &module->inc[i].submodule->tpdf[j];
                 }
@@ -3434,6 +3435,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
     struct lys_type *stype;
     struct lys_feature **feat_ptr;
     struct lys_node_choice *choic;
+    struct lyxml_elem *yin;
 
     switch (type) {
     case UNRES_IDENT:
@@ -3459,17 +3461,23 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         has_str = 0;
         break;
     case UNRES_TYPE_DER:
-        base_name = str_snode;
+        /* parent */
+        node = str_snode;
         stype = item;
 
-        /* HACK type->der is temporarily its parent */
-        rc = resolve_superior_type(base_name, stype->module_name, mod, (struct lys_node *)stype->der, &stype->der);
-        if (rc == -1) {
-            LOGVAL(LYE_INMOD, line, stype->module_name);
-        } else if (!rc) {
-            stype->base = stype->der->type.base;
+        /* HACK type->der is temporarily unparsed type statement */
+        yin = (struct lyxml_elem *)stype->der;
+        stype->der = NULL;
+
+        rc = fill_yin_type(mod, node, yin, stype, unres);
+        if (!rc) {
+            /* we need to always be able to free this, it's safe only in this case */
+            lyxml_free_elem(mod->ctx, yin);
+        } else {
+            /* may try again later, put all back how it was */
+            stype->der = (struct lys_tpdf *)yin;
         }
-        has_str = 1;
+        has_str = 0;
         break;
     case UNRES_IFFEAT:
         base_name = str_snode;
@@ -3545,7 +3553,8 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node, u
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later%s.", "leafref", ((struct lys_type *)item)->info.lref.path, line_str);
         break;
     case UNRES_TYPE_DER:
-        LOGVRB("Resolving %s \"%s\" failed, it will be attempted later%s.", "derived type", (char *)str_node, line_str);
+        LOGVRB("Resolving %s \"%s\" failed, it will be attempted later%s.", "derived type",
+               ((struct lyxml_elem *)((struct lys_type *)item)->der)->attr->value, line_str);
         break;
     case UNRES_IFFEAT:
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later%s.", "if-feature", (char *)str_node, line_str);
@@ -3582,7 +3591,7 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node, u
 int
 resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
 {
-    uint32_t i, resolved, unres_uses, res_uses;
+    uint32_t i, resolved, unres_count, res_count;
     int rc;
 
     assert(unres);
@@ -3591,28 +3600,30 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
 
     /* uses */
     do {
-        unres_uses = 0;
-        res_uses = 0;
+        unres_count = 0;
+        res_count = 0;
 
         for (i = 0; i < unres->count; ++i) {
-            if (unres->type[i] != UNRES_USES) {
+            /* we do not need to have UNRES_TYPE_IDENTREF or UNRES_TYPE_LEAFREF resolved,
+             * we need every type's base only */
+            if ((unres->type[i] != UNRES_USES) && (unres->type[i] != UNRES_TYPE_DER)) {
                 continue;
             }
 
-            ++unres_uses;
+            ++unres_count;
             rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 0,
                                            LOGLINE_IDX(unres, i));
             if (!rc) {
                 unres->type[i] = UNRES_RESOLVED;
                 ++resolved;
-                ++res_uses;
+                ++res_count;
             } else if (rc == -1) {
                 return -1;
             }
         }
-    } while (res_uses && (res_uses < unres_uses));
+    } while (res_count && (res_count < unres_count));
 
-    if (res_uses < unres_uses) {
+    if (res_count < unres_count) {
         LOGVAL(LYE_SPEC, 0, "There are unresolved uses left.");
         return -1;
     }
@@ -3667,7 +3678,7 @@ unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *i
  * @param[in] mod Main module.
  * @param[in] unres Unres schema structure to use.
  * @param[in] item Item to resolve. Type determined by \p type.
- * @param[in] type Type of the unresolved item.
+ * @param[in] type Type of the unresolved item. UNRES_TYPE_DER is handled specially!
  * @param[in] snode Schema node argument.
  * @param[in] line Line in the input file.
  *
@@ -3678,6 +3689,7 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
                       struct lys_node *snode, uint32_t line)
 {
     int rc;
+    struct lyxml_elem *yin;
 
     assert(unres && item && ((type != UNRES_LEAFREF) && (type != UNRES_INSTID) && (type != UNRES_WHEN)
            && (type != UNRES_MUST)));
@@ -3688,6 +3700,13 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
     }
 
     print_unres_schema_item_fail(item, type, snode, line);
+
+    /* HACK unlinking is performed here so that we do not do any (NS) copying in vain */
+    if (type == UNRES_TYPE_DER) {
+        yin = (struct lyxml_elem *)((struct lys_type *)item)->der;
+        lyxml_unlink_elem(mod->ctx, yin, 1);
+        ((struct lys_type *)item)->der = (struct lys_tpdf *)yin;
+    }
 
     unres->count++;
     unres->item = realloc(unres->item, unres->count*sizeof *unres->item);
@@ -3757,6 +3776,26 @@ unres_schema_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type)
     }
 
     return ret;
+}
+
+void
+unres_schema_free(struct ly_ctx *ctx, struct unres_schema *unres)
+{
+    uint32_t i;
+
+    for (i = 0; i < unres->count; ++i) {
+        if (unres->type[i] == UNRES_TYPE_DER) {
+            lyxml_free_elem(ctx, (struct lyxml_elem *)((struct lys_type *)unres->item[i])->der);
+        }
+    }
+
+    free(unres->item);
+    free(unres->type);
+    free(unres->str_snode);
+#ifndef NDEBUG
+    free(unres->line);
+#endif
+    free(unres);
 }
 
 /* logs directly */

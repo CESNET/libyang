@@ -44,7 +44,9 @@ static unsigned int lineno, lws_lineno;
 		p++;                                                            \
 	}
 
-struct lyxml_ns *
+static struct lyxml_attr *lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr *attr);
+
+API struct lyxml_ns *
 lyxml_get_ns(struct lyxml_elem *elem, const char *prefix)
 {
     struct lyxml_attr *attr;
@@ -83,7 +85,37 @@ lyxml_get_ns(struct lyxml_elem *elem, const char *prefix)
     return lyxml_get_ns(elem->parent, prefix);
 }
 
-struct lyxml_attr *
+static void
+lyxml_correct_attr_ns(struct ly_ctx *ctx, struct lyxml_attr *attr, struct lyxml_elem *attr_parent, int copy_ns)
+{
+    const struct lyxml_ns *tmp_ns;
+    struct lyxml_elem *ns_root;
+
+    if ((attr->type != LYXML_ATTR_NS) && attr->ns) {
+        for (; attr_parent->parent; attr_parent = attr_parent->parent);
+
+        /* find the root of attr NS */
+        for (ns_root = attr->ns->parent; ns_root->parent; ns_root = ns_root->parent);
+
+        /* elem NS is defined outside elem subtree */
+        if (ns_root != attr_parent) {
+            if (copy_ns) {
+                tmp_ns = attr->ns;
+                /* we may have already copied the NS over? */
+                attr->ns = lyxml_get_ns(attr->ns->parent, tmp_ns->prefix);
+
+                /* we haven't copied it over, copy it now */
+                if (!attr->ns) {
+                    attr->ns = (struct lyxml_ns *)lyxml_dup_attr(ctx, attr->ns->parent, (struct lyxml_attr *)tmp_ns);
+                }
+            } else {
+                attr->ns = NULL;
+            }
+        }
+    }
+}
+
+static struct lyxml_attr *
 lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr *attr)
 {
     struct lyxml_attr *result, *a;
@@ -107,7 +139,8 @@ lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr 
 
     /* set namespace in case of standard attributes */
     if (result->type == LYXML_ATTR_STD && attr->ns) {
-        result->ns = lyxml_get_ns(parent, attr->ns->prefix);
+        result->ns = attr->ns;
+        lyxml_correct_attr_ns(ctx, result, parent, 1);
     }
 
     /* set parent pointer in case of namespace attribute */
@@ -127,6 +160,47 @@ lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr 
     }
 
     return result;
+}
+
+/* copy_ns: 0 - set invalid namespaces to NULL, 1 - copy them into this subtree */
+static void
+lyxml_correct_elem_ns(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns, int correct_attrs)
+{
+    const struct lyxml_ns *tmp_ns;
+    struct lyxml_elem *elem_root, *ns_root, *tmp;
+    struct lyxml_attr *attr;
+
+    /* find the root of elem */
+    for (elem_root = elem; elem_root->parent; elem_root = elem_root->parent);
+
+    LY_TREE_DFS_BEGIN(elem, tmp, elem) {
+        if (elem->ns) {
+            /* find the root of elem NS */
+            for (ns_root = elem->ns->parent; ns_root->parent; ns_root = ns_root->parent);
+
+            /* elem NS is defined outside elem subtree */
+            if (ns_root != elem_root) {
+                if (copy_ns) {
+                    tmp_ns = elem->ns;
+                    /* we may have already copied the NS over? */
+                    elem->ns = lyxml_get_ns(elem, tmp_ns->prefix);
+
+                    /* we haven't copied it over, copy it now */
+                    if (!elem->ns) {
+                        elem->ns = (struct lyxml_ns *)lyxml_dup_attr(ctx, elem, (struct lyxml_attr *)tmp_ns);
+                    }
+                } else {
+                    elem->ns = NULL;
+                }
+            }
+        }
+        if (correct_attrs) {
+            LY_TREE_FOR(elem->attr, attr) {
+                lyxml_correct_attr_ns(ctx, attr, elem_root, copy_ns);
+            }
+        }
+        LY_TREE_DFS_END(elem, tmp, elem);
+    }
 }
 
 struct lyxml_elem *
@@ -152,10 +226,11 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
         lyxml_add_child(ctx, parent, result);
     }
 
-    /* namespace */
-    if (elem->ns) {
-        result->ns = lyxml_get_ns(result, elem->ns->prefix);
-    }
+    /* keep old namespace for now */
+    result->ns = elem->ns;
+
+    /* correct namespaces */
+    lyxml_correct_elem_ns(ctx, result, 1, 0);
 
     /* duplicate attributes */
     for (attr = elem->attr; attr; attr = attr->next) {
@@ -172,82 +247,6 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
     }
 
     return result;
-}
-
-static struct lyxml_ns *
-lyxml_find_ns(struct lyxml_elem *elem, const char *prefix, const char *value)
-{
-    int pref_match, val_match;
-    struct lyxml_attr *attr;
-
-    if (!elem) {
-        return NULL;
-    }
-
-    for (; elem; elem = elem->parent) {
-        for (attr = elem->attr; attr; attr = attr->next) {
-            if (attr->type != LYXML_ATTR_NS) {
-                continue;
-            }
-
-            pref_match = 0;
-            if (!prefix && !attr->name) {
-                pref_match = 1;
-            }
-            if (prefix && attr->name && !strcmp(attr->name, prefix)) {
-                pref_match = 1;
-            }
-
-            val_match = 0;
-            if (!value && !attr->value) {
-                val_match = 1;
-            }
-            if (value && attr->value && !strcmp(attr->value, value)) {
-                val_match = 1;
-            }
-
-            if (pref_match && val_match) {
-                return (struct lyxml_ns *)attr;
-            }
-        }
-    }
-
-    return NULL;
-}
-
-/* copy_ns: 0 - set invalid namespaces to NULL, 1 - copy them into this subtree */
-static void
-lyxml_correct_ns(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
-{
-    const struct lyxml_ns *elem_ns;
-    struct lyxml_elem *elem_root, *ns_root, *tmp;
-
-    /* find the root of elem */
-    for (elem_root = elem; elem_root->parent; elem_root = elem_root->parent);
-
-    LY_TREE_DFS_BEGIN(elem, tmp, elem) {
-        if (elem->ns) {
-            /* find the root of elem NS */
-            for (ns_root = elem->ns->parent; ns_root->parent; ns_root = ns_root->parent);
-
-            /* elem NS is defined outside elem subtree */
-            if (ns_root != elem_root) {
-                if (copy_ns) {
-                    elem_ns = elem->ns;
-                    /* we may have already copied the NS over? */
-                    elem->ns = lyxml_find_ns(elem, elem_ns->prefix, elem_ns->value);
-
-                    /* we haven't copied it over, copy it now */
-                    if (!elem->ns) {
-                        elem->ns = (struct lyxml_ns *)lyxml_dup_attr(ctx, elem, (struct lyxml_attr *)elem_ns);
-                    }
-                } else {
-                    elem->ns = NULL;
-                }
-            }
-        }
-        LY_TREE_DFS_END(elem, tmp, elem)
-    }
 }
 
 void
@@ -271,6 +270,10 @@ lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
         }
         /* forget about the parent */
         elem->parent = NULL;
+    }
+
+    if (copy_ns < 2) {
+        lyxml_correct_elem_ns(ctx, elem, copy_ns, 1);
     }
 
     /* unlink from siblings */
@@ -299,10 +302,6 @@ lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
     /* clean up the unlinked element */
     elem->next = NULL;
     elem->prev = elem;
-
-    if (copy_ns < 2) {
-        lyxml_correct_ns(ctx, elem, copy_ns);
-    }
 }
 
 void
@@ -390,7 +389,7 @@ lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem *elem)
     lyxml_free_elem_(ctx, elem);
 }
 
-const char *
+API const char *
 lyxml_get_attr(struct lyxml_elem *elem, const char *name, const char *ns)
 {
     struct lyxml_attr *a;

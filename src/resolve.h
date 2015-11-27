@@ -128,6 +128,8 @@ int unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *i
 
 int unres_schema_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type);
 
+void unres_schema_free(struct ly_ctx *ctx, struct unres_schema *unres);
+
 int resolve_unres_data_item(struct lyd_node *dnode, enum UNRES_ITEM type, int first, uint32_t line);
 
 int unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type, uint32_t line);
