@@ -967,7 +967,7 @@ set_sort_compare(uint16_t first_node_pos, uint16_t first_attr_pos, uint16_t seco
 static int
 set_sort(struct lyxp_set *set, struct lyd_node *cur_node, int when_must_eval)
 {
-    uint16_t i, j, node_pos1, node_pos2, attr_pos1, attr_pos2;
+    uint16_t i, j, node_pos1 = 0, node_pos2 = 0, attr_pos1 = 0, attr_pos2 = 0;
     int ret = 0, cmp, inverted, change;
     struct lyd_node *tmp_node, *root = NULL;
     enum lyxp_node_type tmp_type, root_type;
@@ -2300,7 +2300,7 @@ xpath_lang(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node,
            int when_must_eval, uint32_t line)
 {
     struct lyd_node *node;
-    struct lyd_attr *attr;
+    struct lyd_attr *attr = NULL;
     int i;
     struct ly_ctx *ctx;
 
@@ -3838,6 +3838,7 @@ moveto_attr(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
     }
 
     /* no need to sort */
+    (void)when_must_eval; /* suppress unused variable warning */
     assert(!set_sort(set, cur_node, when_must_eval));
     assert(!set_sorted_dup_node_clean(set));
 

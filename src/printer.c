@@ -60,7 +60,7 @@ nscmp(struct lyd_node *node1, struct lyd_node *node2)
 int
 ly_print(struct lyout *out, const char *format, ...)
 {
-    int count;
+    int count = 0;
     char *msg = NULL, *aux;
     va_list ap;
 

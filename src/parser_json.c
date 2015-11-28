@@ -33,9 +33,7 @@
 #include "tree_internal.h"
 #include "validation.h"
 
-#ifndef NDEBUG
-static unsigned int lineno;
-#endif
+static unsigned int lineno = 0;
 
 static int
 lyjson_isspace(int c)
@@ -108,7 +106,7 @@ lyjson_parse_text(const char *data, unsigned int *len)
 
     char buf[BUFSIZE];
     char *result = NULL, *aux;
-    int o, size;
+    int o, size = 0;
     unsigned int r, i;
     int32_t value;
 

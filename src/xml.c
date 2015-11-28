@@ -35,8 +35,9 @@
 #include "xml_internal.h"
 
 #ifndef NDEBUG
-static unsigned int lineno, lws_lineno;
+static unsigned int lws_lineno = 0;
 #endif
+static unsigned int lineno = 0;
 
 #define ign_xmlws(p)                                                    \
 	while (is_xmlws(*p)) {                                              \

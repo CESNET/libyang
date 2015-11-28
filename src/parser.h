@@ -29,8 +29,7 @@
 #ifndef NDEBUG
 #define COUNTLINE(c) if ((c) == 0xa) {lineno++;}
 #else
-#define lineno 0
-#define COUNTLINE(C)
+#define COUNTLINE(c)
 #endif
 
 /**
