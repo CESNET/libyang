@@ -52,8 +52,10 @@ lyp_set_implemented(struct lys_module *module)
     }
 }
 
-/*
- * (temporary) alternative for lys_read() + lys_parse() in case of import
+/**
+ * @brief Alternative for lys_read() + lys_parse() in case of import
+ *
+ * @param[in] fd MUST be a regular file (will be used by mmap)
  */
 struct lys_module *
 lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
@@ -70,14 +72,13 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 
     unres = calloc(1, sizeof *unres);
 
-    /*
-     * TODO
-     * This is just a temporary solution to make working automatic search for
-     * imported modules. This doesn't work e.g. for streams (stdin)
-     */
     fstat(fd, &sb);
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-
+    if (addr == MAP_FAILED) {
+        LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
+        free(unres);
+        return NULL;
+    }
     switch (format) {
     case LYS_IN_YIN:
         module = yin_read_module(ctx, addr, 0, unres);

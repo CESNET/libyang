@@ -1152,13 +1152,12 @@ lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
         return NULL;
     }
 
-    /*
-     * TODO
-     * This is just a temporary solution to make working automatic search for
-     * imported modules. This doesn't work e.g. for streams (stdin)
-     */
     fstat(fd, &sb);
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (addr == MAP_FAILED) {
+        LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
+        return NULL;
+    }
     module = lys_parse(ctx, addr, format);
     munmap(addr, sb.st_size);
 
@@ -1175,14 +1174,12 @@ lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format, int i
     assert(module);
     assert(fd >= 0);
 
-    /*
-     * TODO
-     * This is just a temporary solution to make working automatic search for
-     * imported modules. This doesn't work e.g. for streams (stdin)
-     */
     fstat(fd, &sb);
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    /* TODO addr error check */
+    if (addr == MAP_FAILED) {
+        LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
+        return NULL;
+    }
     submodule = lys_submodule_parse(module, addr, format, implement);
     munmap(addr, sb.st_size);
 

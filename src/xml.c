@@ -26,6 +26,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <fcntl.h>
 
 #include "common.h"
 #include "dict_private.h"
@@ -1132,26 +1135,42 @@ lyxml_read(struct ly_ctx *ctx, const char *data, int UNUSED(options))
 }
 
 API struct lyxml_elem *
-lyxml_read_fd(struct ly_ctx *ctx, int fd, int UNUSED(options))
-{
-    if (fd == -1 || !ctx) {
-        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
-        return NULL;
-    }
-
-    LOGERR(LY_EINT, "%s function is not implemented", __func__);
-    return NULL;
-}
-
-API struct lyxml_elem *
 lyxml_read_file(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
 {
+    struct lyxml_elem *elem=NULL;
+    struct stat sb;
+    int fd;
+    char *addr;
+
     if (!filename || !ctx) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
         return NULL;
     }
 
-    LOGERR(LY_EINT, "%s function is not implemented", __func__);
+    fd = open(filename, O_RDONLY);
+    if (fd == -1) {
+        LOGERR(LY_EINVAL,"Opening file \"%s\" failed.",filename);
+        return NULL;
+    }
+    if (fstat(fd, &sb) == -1) {
+        LOGERR(LY_EINVAL, "Unable to get file \"%s\" information.\n", filename);
+        goto error;
+    }
+    if (!S_ISREG(sb.st_mode)) {
+        fprintf(stderr, "File \"%s\" not a file.\n",filename);
+        goto error;
+    }
+    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (addr == MAP_FAILED) {
+        LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
+        goto error;
+    }
+    elem=lyxml_read(ctx,addr,0);
+    munmap(addr, sb.st_size);
+    return elem;
+
+error:
+    if (fd!=-1) close(fd);
     return NULL;
 }
 
