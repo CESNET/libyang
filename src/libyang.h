@@ -332,7 +332,8 @@ struct lys_module *lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT 
  * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
  *
  * @param[in] ctx libyang context where to process the data model.
- * @param[in] fd The standard file descriptor of the file containing the schema in the specified format.
+ * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the schema
+ *            in the specified format.
  * @param[in] format Format of the input data (YANG or YIN).
  * @return Pointer to the data model structure or NULL on error.
  */

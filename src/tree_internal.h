@@ -88,7 +88,8 @@ struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char 
  * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
  *
  * @param[in] module Schema tree where to connect the submodule, belongs-to value must match.
- * @param[in] fd Standard file descriptor of the file containing the submodule specification in the given \p format.
+ * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the submodule
+ *            specification in the given \p format.
  * @param[in] format Format of the data to read.
  * @param[in] implement Flag to distinguish implemented and just imported (sub)modules.
  * @return Created submodule structure or NULL in case of error.

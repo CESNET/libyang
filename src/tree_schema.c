@@ -1163,11 +1163,6 @@ lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
         return NULL;
     }
 
-    /*
-     * TODO
-     * This is just a temporary solution to make working automatic search for
-     * imported modules. This doesn't work e.g. for streams (stdin)
-     */
     fstat(fd, &sb);
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
@@ -1190,11 +1185,6 @@ lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format, int i
     assert(module);
     assert(fd >= 0);
 
-    /*
-     * TODO
-     * This is just a temporary solution to make working automatic search for
-     * imported modules. This doesn't work e.g. for streams (stdin)
-     */
     fstat(fd, &sb);
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
