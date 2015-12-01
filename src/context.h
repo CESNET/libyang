@@ -24,6 +24,7 @@
 
 #include "dict_private.h"
 #include "tree_schema.h"
+#include "libyang.h"
 
 struct ly_modules_list {
     char *search_path;

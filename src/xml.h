@@ -23,7 +23,6 @@
 #define LY_XML_H_
 
 #include <stdio.h>
-#include "context.h"
 
 /**
  * @defgroup xmlparser XML Parser
@@ -33,6 +32,11 @@
 /*
  * Structures
  */
+
+/*
+ * structure definition from context.h
+ */
+struct ly_ctx;
 
 /**
  * @brief enumeration of attribute types
