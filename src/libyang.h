@@ -174,7 +174,7 @@ void ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
  * @param[in] ctx Context to query.
  * @return Current value of the search path.
  */
-const char *ly_ctx_get_searchdir(struct ly_ctx *ctx);
+const char *ly_ctx_get_searchdir(const struct ly_ctx *ctx);
 
 /**
  * @brief Get data of an internal ietf-yang-library module.
@@ -194,7 +194,7 @@ struct lyd_node *ly_ctx_info(struct ly_ctx *ctx);
  * names in the array. Also remember that the names will be freed with freeing
  * the context.
  */
-const char **ly_ctx_get_module_names(struct ly_ctx *ctx);
+const char **ly_ctx_get_module_names(const struct ly_ctx *ctx);
 
 /**
  * @brief Get the names of the loaded submodules of the specified module.
@@ -206,7 +206,7 @@ const char **ly_ctx_get_module_names(struct ly_ctx *ctx);
  * names in the array. Also remember that the names will be freed with freeing
  * the context.
  */
-const char **ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *module_name);
+const char **ly_ctx_get_submodule_names(const struct ly_ctx *ctx, const char *module_name);
 
 /**
  * @brief Get pointer to the schema tree of the module of the specified name.
@@ -218,7 +218,7 @@ const char **ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *module_n
  * @return Pointer to the data model structure, NULL if no schema following the name and
  * revision requirements is present in the context.
  */
-struct lys_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision);
+const struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision);
 
 /**
  * @brief Try to find the model in a specific directory and then the searchpath
@@ -244,7 +244,7 @@ struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *dir, const
  * @return Pointer to the data model structure, NULL if no schema following the namespace and
  * revision requirements is present in the context.
  */
-struct lys_module *ly_ctx_get_module_by_ns(struct ly_ctx *ctx, const char *ns, const char *revision);
+const struct lys_module *ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const char *ns, const char *revision);
 
 /**
  * @brief Get submodule from the context's search dir.
@@ -255,7 +255,8 @@ struct lys_module *ly_ctx_get_module_by_ns(struct ly_ctx *ctx, const char *ns, c
  * not specified, the newest revision is returned (TODO).
  * @return Pointer to the data model structure.
  */
-struct lys_submodule *ly_ctx_get_submodule(struct lys_module *module, const char *name, const char *revision);
+const struct lys_submodule *ly_ctx_get_submodule(const struct lys_module *module, const char *name,
+                                                 const char *revision);
 
 /**
  * @brief Get schema node according to the given absolute schema node identifier.
@@ -269,7 +270,7 @@ struct lys_submodule *ly_ctx_get_submodule(struct lys_module *module, const char
  * - /ietf-netconf-monitoring:get-schema/input/identifier
  * - /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/ip
  */
-struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const char *nodeid);
+const struct lys_node *ly_ctx_get_node(const struct ly_ctx *ctx, const char *nodeid);
 
 /**
  * @brief Free all internal structures of the specified context.
@@ -322,7 +323,7 @@ void ly_ctx_destroy(struct ly_ctx *ctx);
  * @param[in] format Format of the input data (YANG or YIN).
  * @return Pointer to the data model structure or NULL on error.
  */
-struct lys_module *lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
+const struct lys_module *lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
 
 /**
  * @brief Read a schema from file into the specified context.
@@ -337,7 +338,7 @@ struct lys_module *lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT 
  * @param[in] format Format of the input data (YANG or YIN).
  * @return Pointer to the data model structure or NULL on error.
  */
-struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
+const struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
 
 /**
  * @defgroup parseroptions Data parser options
@@ -510,7 +511,7 @@ struct lyd_node *lyd_read(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int opt
  * node in the module will be printed.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+int lys_print(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
 
 /**
  * @brief Print schema tree in the specified format.
@@ -524,7 +525,7 @@ int lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const ch
  * node in the module will be printed.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lys_print_fd(int fd, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+int lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
 
 /**
  * @brief Print schema tree in the specified format.
@@ -539,7 +540,7 @@ int lys_print_fd(int fd, struct lys_module *module, LYS_OUTFORMAT format, const 
  * node in the module will be printed.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lys_print_mem(char **strp, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+int lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
 
 /**
  * @brief Print schema tree in the specified format.
@@ -554,7 +555,8 @@ int lys_print_mem(char **strp, struct lys_module *module, LYS_OUTFORMAT format, 
  * node in the module will be printed.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+int lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
+                  const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
 
 /**
  * @brief Print data tree in the specified format.
@@ -567,7 +569,7 @@ int lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count),
  * @param[in] format Data output format.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print(FILE *f, struct lyd_node *root, LYD_FORMAT format);
+int lyd_print(FILE *f, const struct lyd_node *root, LYD_FORMAT format);
 
 /**
  * @brief Print data tree in the specified format.
@@ -580,7 +582,7 @@ int lyd_print(FILE *f, struct lyd_node *root, LYD_FORMAT format);
  * @param[in] format Data output format.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print_fd(int fd, struct lyd_node *root, LYD_FORMAT format);
+int lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format);
 
 
  /**
@@ -595,7 +597,7 @@ int lyd_print_fd(int fd, struct lyd_node *root, LYD_FORMAT format);
  * @param[in] format Data output format.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print_mem(char **strp, struct lyd_node *root, LYD_FORMAT format);
+int lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format);
 
 /**
  * @brief Print data tree in the specified format.
@@ -609,7 +611,8 @@ int lyd_print_mem(char **strp, struct lyd_node *root, LYD_FORMAT format);
  * @param[in] format Data output format.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lyd_node *root, LYD_FORMAT format);
+int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
+                  const struct lyd_node *root, LYD_FORMAT format);
 
 /**@} printers */
 

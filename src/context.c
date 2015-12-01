@@ -78,21 +78,21 @@ ly_ctx_new(const char *search_dir)
     ctx->models.module_set_id = 1;
 
     /* load ietf-inet-types */
-    ctx->models.list[0] = lys_parse(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN);
+    ctx->models.list[0] = (struct lys_module *)lys_parse(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN);
     if (!ctx->models.list[0]) {
         ly_ctx_destroy(ctx);
         return NULL;
     }
 
     /* load ietf-yang-types */
-    ctx->models.list[1] = lys_parse(ctx, (char *)ietf_yang_types_2013_07_15_yin, LYS_IN_YIN);
+    ctx->models.list[1] = (struct lys_module *)lys_parse(ctx, (char *)ietf_yang_types_2013_07_15_yin, LYS_IN_YIN);
     if (!ctx->models.list[1]) {
         ly_ctx_destroy(ctx);
         return NULL;
     }
 
     /* load ietf-yang-library */
-    ctx->models.list[2] = lys_parse(ctx, (char *)ietf_yang_library_2015_07_03_yin, LYS_IN_YIN);
+    ctx->models.list[2] = (struct lys_module *)lys_parse(ctx, (char *)ietf_yang_library_2015_07_03_yin, LYS_IN_YIN);
     if (!ctx->models.list[2]) {
         ly_ctx_destroy(ctx);
         return NULL;
@@ -130,7 +130,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 }
 
 API const char *
-ly_ctx_get_searchdir(struct ly_ctx *ctx)
+ly_ctx_get_searchdir(const struct ly_ctx *ctx)
 {
     return ctx->models.search_path;
 }
@@ -155,8 +155,8 @@ ly_ctx_destroy(struct ly_ctx *ctx)
     free(ctx);
 }
 
-API struct lys_submodule *
-ly_ctx_get_submodule(struct lys_module *module, const char *name, const char *revision)
+API const struct lys_submodule *
+ly_ctx_get_submodule(const struct lys_module *module, const char *name, const char *revision)
 {
     struct lys_submodule *result;
     int i;
@@ -186,8 +186,8 @@ ly_ctx_get_submodule(struct lys_module *module, const char *name, const char *re
     return NULL;
 }
 
-static struct lys_module *
-ly_ctx_get_module_by(struct ly_ctx *ctx, const char *key, int offset, const char *revision)
+static const struct lys_module *
+ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, int offset, const char *revision)
 {
     int i;
     struct lys_module *result = NULL;
@@ -234,14 +234,14 @@ ly_ctx_get_module_by(struct ly_ctx *ctx, const char *key, int offset, const char
 
 }
 
-API struct lys_module *
-ly_ctx_get_module_by_ns(struct ly_ctx *ctx, const char *ns, const char *revision)
+API const struct lys_module *
+ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const char *ns, const char *revision)
 {
     return ly_ctx_get_module_by(ctx, ns, offsetof(struct lys_module, ns), revision);
 }
 
-API struct lys_module *
-ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision)
+API const struct lys_module *
+ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision)
 {
     return ly_ctx_get_module_by(ctx, name, offsetof(struct lys_module, name), revision);
 }
@@ -281,7 +281,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *dir, const char *name, const 
 }
 
 API const char **
-ly_ctx_get_module_names(struct ly_ctx *ctx)
+ly_ctx_get_module_names(const struct ly_ctx *ctx)
 {
     int i;
     const char **result = NULL;
@@ -302,11 +302,11 @@ ly_ctx_get_module_names(struct ly_ctx *ctx)
 }
 
 API const char **
-ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *module_name)
+ly_ctx_get_submodule_names(const struct ly_ctx *ctx, const char *module_name)
 {
     int i;
     const char **result = NULL;
-    struct lys_module *mod;
+    const struct lys_module *mod;
 
     if (!ctx) {
         ly_errno = LY_EINVAL;
@@ -329,11 +329,11 @@ ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *module_name)
     return result;
 }
 
-API struct lys_node *
-ly_ctx_get_node(struct ly_ctx *ctx, const char *nodeid)
+API const struct lys_node *
+ly_ctx_get_node(const struct ly_ctx *ctx, const char *nodeid)
 {
-    struct lys_node *ret;
-    struct lys_module *module;
+    const struct lys_node *ret;
+    const struct lys_module *module;
     char *mod_name;
     int parsed;
 
@@ -494,7 +494,7 @@ ly_ctx_info(struct ly_ctx *ctx)
 {
     int i;
     char id[8];
-    struct lys_module *mod;
+    const struct lys_module *mod;
     struct lyd_node *root, *cont;
 
     mod = ly_ctx_get_module(ctx, "ietf-yang-library", NULL);

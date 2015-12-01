@@ -1433,7 +1433,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     }
 
     /* resolve target node */
-    rc = resolve_schema_nodeid(dev->target_name, NULL, module, LYS_AUGMENT, &dev->target);
+    rc = resolve_schema_nodeid(dev->target_name, NULL, module, LYS_AUGMENT, (const struct lys_node **)&dev->target);
     if (rc) {
         LOGVAL(LYE_INARG, LOGLINE(yin), dev->target_name, yin->name);
         goto error;
@@ -1607,7 +1607,8 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         }
                     }
 
-                    rc = resolve_schema_nodeid(d->dflt, choice->child, choice->module, LYS_CHOICE, &node);
+                    rc = resolve_schema_nodeid(d->dflt, choice->child, choice->module, LYS_CHOICE,
+                                               (const struct lys_node **)&node);
                     if (rc) {
                         LOGVAL(LYE_INARG, LOGLINE(child), value, child->name);
                         goto error;
@@ -2472,7 +2473,7 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
     module->ctx->models.parsing[count] = NULL;
 
     /* try to load the module */
-    imp->module = ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
+    imp->module = (struct lys_module *)ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
     if (!imp->module) {
         imp->module = lyp_search_file(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL);
     }
@@ -2552,7 +2553,7 @@ fill_yin_include(struct lys_module *module, struct lyxml_elem *yin, struct lys_i
     module->ctx->models.parsing[count] = NULL;
 
     /* try to load the submodule */
-    inc->submodule = ly_ctx_get_submodule(module, value, inc->rev[0] ? inc->rev : NULL);
+    inc->submodule = (struct lys_submodule *)ly_ctx_get_submodule(module, value, inc->rev[0] ? inc->rev : NULL);
     if (!inc->submodule) {
         inc->submodule = (struct lys_submodule *)lyp_search_file(module->ctx, module, value, inc->rev[0] ? inc->rev : NULL);
     }

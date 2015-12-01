@@ -107,7 +107,7 @@ cmd_add(const char *arg)
     int fd, path_len;
     char *addr, *ptr, *path;
     const char *arg_ptr;
-    struct lys_module *model;
+    const struct lys_module *model;
     struct stat sb;
     LYS_INFORMAT format;
 
@@ -206,7 +206,7 @@ cmd_print(const char *arg)
     int c, i, argc, option_index, ret = 1;
     char **argv = NULL, *ptr, *target_node = NULL, *model_name, *revision;
     const char **names, *out_path = NULL;
-    struct lys_module *model, *parent_model;
+    const struct lys_module *model, *parent_model;
     LYS_OUTFORMAT format = LYS_OUT_TREE;
     FILE *output = stdout;
     static struct option long_options[] = {
@@ -726,7 +726,7 @@ cmd_feature(const char *arg)
     char **argv = NULL, *ptr, *model_name, *revision, *feat_names = NULL;
     const char **names;
     uint8_t *states;
-    struct lys_module *model, *parent_model;
+    const struct lys_module *model, *parent_model;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"enable", required_argument, 0, 'e'},

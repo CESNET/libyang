@@ -348,7 +348,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         attr->name = NULL;
         attr->value = NULL;
 
-        dattr->module = ly_ctx_get_module_by_ns(ctx, attr->ns->value, NULL);
+        dattr->module = (struct lys_module *)ly_ctx_get_module_by_ns(ctx, attr->ns->value, NULL);
         if (!dattr->module) {
             LOGWRN("Attribute \"%s\" from unknown schema (\"%s\") - skipping.", attr->name, attr->ns->value);
             free(dattr);

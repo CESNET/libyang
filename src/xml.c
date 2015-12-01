@@ -50,8 +50,8 @@ static unsigned int lineno = 0;
 
 static struct lyxml_attr *lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr *attr);
 
-API struct lyxml_ns *
-lyxml_get_ns(struct lyxml_elem *elem, const char *prefix)
+API const struct lyxml_ns *
+lyxml_get_ns(const struct lyxml_elem *elem, const char *prefix)
 {
     struct lyxml_attr *attr;
     int len;
@@ -394,7 +394,7 @@ lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem *elem)
 }
 
 API const char *
-lyxml_get_attr(struct lyxml_elem *elem, const char *name, const char *ns)
+lyxml_get_attr(const struct lyxml_elem *elem, const char *name, const char *ns)
 {
     struct lyxml_attr *a;
 
@@ -1205,7 +1205,7 @@ lyxml_dump_text(struct lyout *out, const char *text)
 }
 
 static int
-dump_elem(struct lyout *out, struct lyxml_elem *e, int level, int options)
+dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options)
 {
     int size = 0;
     struct lyxml_attr *a;
@@ -1310,7 +1310,7 @@ close:
 }
 
 API int
-lyxml_dump(FILE *stream, struct lyxml_elem *elem, int options)
+lyxml_dump(FILE *stream, const struct lyxml_elem *elem, int options)
 {
     struct lyout out;
 
@@ -1325,7 +1325,7 @@ lyxml_dump(FILE *stream, struct lyxml_elem *elem, int options)
 }
 
 API int
-lyxml_dump_fd(int fd, struct lyxml_elem *elem, int options)
+lyxml_dump_fd(int fd, const struct lyxml_elem *elem, int options)
 {
     struct lyout out;
 
@@ -1340,7 +1340,7 @@ lyxml_dump_fd(int fd, struct lyxml_elem *elem, int options)
 }
 
 API int
-lyxml_dump_mem(char **strp, struct lyxml_elem *elem, int options)
+lyxml_dump_mem(char **strp, const struct lyxml_elem *elem, int options)
 {
     struct lyout out;
     int r;
@@ -1361,7 +1361,7 @@ lyxml_dump_mem(char **strp, struct lyxml_elem *elem, int options)
 }
 
 API int
-lyxml_dump_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lyxml_elem *elem, int options)
+lyxml_dump_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyxml_elem *elem, int options)
 {
     struct lyout out;
 

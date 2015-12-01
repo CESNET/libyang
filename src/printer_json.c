@@ -34,10 +34,10 @@
 #define INDENT ""
 #define LEVEL (level*2)
 
-void json_print_nodes(struct lyout *out, int level, struct lyd_node *root);
+void json_print_nodes(struct lyout *out, int level, const struct lyd_node *root);
 
 static void
-json_print_attrs(struct lyout *out, int level, struct lyd_node *node)
+json_print_attrs(struct lyout *out, int level, const struct lyd_node *node)
 {
     struct lyd_attr *attr;
 
@@ -52,7 +52,7 @@ json_print_attrs(struct lyout *out, int level, struct lyd_node *node)
 }
 
 static void
-json_print_leaf(struct lyout *out, int level, struct lyd_node *node, int onlyvalue)
+json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int onlyvalue)
 {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
     const char *schema = NULL;
@@ -123,7 +123,7 @@ json_print_leaf(struct lyout *out, int level, struct lyd_node *node, int onlyval
 }
 
 static void
-json_print_container(struct lyout *out, int level, struct lyd_node *node)
+json_print_container(struct lyout *out, int level, const struct lyd_node *node)
 {
     const char *schema;
 
@@ -151,10 +151,10 @@ json_print_container(struct lyout *out, int level, struct lyd_node *node)
 }
 
 static void
-json_print_leaf_list(struct lyout *out, int level, struct lyd_node *node, int is_list)
+json_print_leaf_list(struct lyout *out, int level, const struct lyd_node *node, int is_list)
 {
     const char *schema = NULL;
-    struct lyd_node *list = node;
+    const struct lyd_node *list = node;
     int flag_empty = 0, flag_attrs = 0;
 
     if (!list->child) {
@@ -249,7 +249,7 @@ json_print_leaf_list(struct lyout *out, int level, struct lyd_node *node, int is
 }
 
 static void
-json_print_anyxml(struct lyout *out, int level, struct lyd_node *node)
+json_print_anyxml(struct lyout *out, int level, const struct lyd_node *node)
 {
     const char *schema = NULL;
 
@@ -279,9 +279,9 @@ json_print_anyxml(struct lyout *out, int level, struct lyd_node *node)
 }
 
 void
-json_print_nodes(struct lyout *out, int level, struct lyd_node *root)
+json_print_nodes(struct lyout *out, int level, const struct lyd_node *root)
 {
-    struct lyd_node *node, *iter;
+    const struct lyd_node *node, *iter;
 
     LY_TREE_FOR(root, node) {
         switch (node->schema->nodetype) {
@@ -339,7 +339,7 @@ json_print_nodes(struct lyout *out, int level, struct lyd_node *root)
 }
 
 int
-json_print_data(struct lyout *out, struct lyd_node *root)
+json_print_data(struct lyout *out, const struct lyd_node *root)
 {
     int level = 0;
 

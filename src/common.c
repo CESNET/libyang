@@ -99,13 +99,13 @@ strnodetype(LYS_NODE type)
 }
 
 const char *
-transform_json2xml(struct lys_module *module, const char *expr, const char ***prefixes, const char ***namespaces,
+transform_json2xml(const struct lys_module *module, const char *expr, const char ***prefixes, const char ***namespaces,
                         uint32_t *ns_count)
 {
     const char *in, *id;
     char *out, *col, *name;
     size_t out_size, out_used, id_len;
-    struct lys_module *mod;
+    const struct lys_module *mod;
     uint32_t i;
 
     assert(module && expr && ((!prefixes && !namespaces && !ns_count) || (prefixes && namespaces && ns_count)));
@@ -194,8 +194,8 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
     const char *in, *id;
     char *out, *col, *prefix;
     size_t out_size, out_used, id_len, rc;
-    struct lys_module *mod;
-    struct lyxml_ns *ns;
+    const struct lys_module *mod;
+    const struct lyxml_ns *ns;
 
     in = expr;
     out_size = strlen(in)+1;
@@ -271,12 +271,12 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
 }
 
 const char *
-transform_schema2json(struct lys_module *module, const char *expr, uint32_t line)
+transform_schema2json(const struct lys_module *module, const char *expr, uint32_t line)
 {
     const char *in, *id;
     char *out, *col;
     size_t out_size, out_used, id_len, rc;
-    struct lys_module *mod;
+    const struct lys_module *mod;
 
     in = expr;
     out_size = strlen(in)+1;

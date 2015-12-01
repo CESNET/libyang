@@ -183,7 +183,7 @@ struct lyd_node_anyxml {
  * #LYS_NOTIF, or #LYS_RPC.
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name);
+struct lyd_node *lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *name);
 
 /**
  * @brief Create a new leaf or leaflist node in a data tree with a string value that is converted to
@@ -196,7 +196,7 @@ struct lyd_node *lyd_new(struct lyd_node *parent, struct lys_module *module, con
  * or #LY_TYPE_IDENT, JSON node-id format is expected (nodes are prefixed with module names, not XML namespaces).
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_new_leaf(struct lyd_node *parent, struct lys_module *module, const char *name,
+struct lyd_node *lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const char *name,
                               const char *val_str);
 
 /**
@@ -208,7 +208,7 @@ struct lyd_node *lyd_new_leaf(struct lyd_node *parent, struct lys_module *module
  * @param[in] val_xml Value of the node being created. Must be a well-formed XML.
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_new_anyxml(struct lyd_node *parent, struct lys_module *module, const char *name,
+struct lyd_node *lyd_new_anyxml(struct lyd_node *parent, const struct lys_module *module, const char *name,
                                 const char *val_xml);
 
 /**
@@ -219,7 +219,7 @@ struct lyd_node *lyd_new_anyxml(struct lyd_node *parent, struct lys_module *modu
  * @param[in] recursive 1 if all children are supposed to be also duplicated.
  * @return Created copy of the provided data \p node.
  */
-struct lyd_node *lyd_dup(struct lyd_node *node, int recursive);
+struct lyd_node *lyd_dup(const struct lyd_node *node, int recursive);
 
 /**
  * @brief Insert the \p node element as child to the \p parent element. The \p node is inserted as a last child of the
@@ -324,7 +324,7 @@ struct lyxml_elem;
  * @return Serialized content of the anyxml or NULL in case of error. Need to be freed after
  * done using.
  */
-char *lyxml_serialize(struct lyxml_elem *anyxml);
+char *lyxml_serialize(const struct lyxml_elem *anyxml);
 
 /**
  * @brief Structure to hold a set of (not necessary somehow connected) ::lyd_node objects.

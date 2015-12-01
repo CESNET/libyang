@@ -33,7 +33,7 @@
 
 /* 0 - same, 1 - different */
 int
-nscmp(struct lyd_node *node1, struct lyd_node *node2)
+nscmp(const struct lyd_node *node1, const struct lyd_node *node2)
 {
     struct lys_module *m1, *m2;
 
@@ -140,7 +140,7 @@ ly_write(struct lyout *out, const char *buf, size_t count)
 }
 
 static int
-lys_print_(struct lyout *out, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
 {
     switch (format) {
     case LYS_OUT_YIN:
@@ -159,7 +159,7 @@ lys_print_(struct lyout *out, struct lys_module *module, LYS_OUTFORMAT format, c
 }
 
 API int
-lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+lys_print(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
 {
     struct lyout out;
 
@@ -175,7 +175,7 @@ lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const char *
 }
 
 API int
-lys_print_fd(int fd, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
 {
     struct lyout out;
 
@@ -191,7 +191,7 @@ lys_print_fd(int fd, struct lys_module *module, LYS_OUTFORMAT format, const char
 }
 
 API int
-lys_print_mem(char **strp, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
 {
     struct lyout out;
     int r;
@@ -213,7 +213,7 @@ lys_print_mem(char **strp, struct lys_module *module, LYS_OUTFORMAT format, cons
 }
 
 API int
-lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
 {
     struct lyout out;
 
@@ -230,7 +230,7 @@ lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
 }
 
 static int
-lyd_print_(struct lyout *out, struct lyd_node *root, LYD_FORMAT format)
+lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format)
 {
     switch (format) {
     case LYD_XML:
@@ -246,7 +246,7 @@ lyd_print_(struct lyout *out, struct lyd_node *root, LYD_FORMAT format)
 }
 
 API int
-lyd_print(FILE *f, struct lyd_node *root, LYD_FORMAT format)
+lyd_print(FILE *f, const struct lyd_node *root, LYD_FORMAT format)
 {
     struct lyout out;
 
@@ -262,7 +262,7 @@ lyd_print(FILE *f, struct lyd_node *root, LYD_FORMAT format)
 }
 
 API int
-lyd_print_fd(int fd, struct lyd_node *root, LYD_FORMAT format)
+lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format)
 {
     struct lyout out;
 
@@ -278,7 +278,7 @@ lyd_print_fd(int fd, struct lyd_node *root, LYD_FORMAT format)
 }
 
 API int
-lyd_print_mem(char **strp, struct lyd_node *root, LYD_FORMAT format)
+lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format)
 {
     struct lyout out;
     int r;
@@ -300,7 +300,7 @@ lyd_print_mem(char **strp, struct lyd_node *root, LYD_FORMAT format)
 }
 
 API int
-lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lyd_node *root, LYD_FORMAT format)
+lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyd_node *root, LYD_FORMAT format)
 {
     struct lyout out;
 

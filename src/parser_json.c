@@ -526,7 +526,7 @@ repeat:
         *name = '\0';
         name++;
         prefix = str;
-        module = ly_ctx_get_module(parent_module->ctx, prefix, NULL);
+        module = (struct lys_module *)ly_ctx_get_module(parent_module->ctx, prefix, NULL);
         if (!module) {
             LOGVAL(LYE_INELEM, lineno, name);
             goto error;
@@ -671,7 +671,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, struct lyd_node **parent, 
     unsigned int r;
     unsigned int flag_leaflist = 0;
     char *name, *prefix = NULL, *str = NULL;
-    struct lys_module *module = NULL;
+    const struct lys_module *module = NULL;
     struct lys_node *schema = NULL;
     struct lyd_node *result = NULL, *new, *list, *diter = NULL;
     struct lyd_attr *attr;
@@ -763,7 +763,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, struct lyd_node **parent, 
                 goto error;
             }
         }
-        while ((schema = lys_getnext(schema, (*parent)->schema, module, 0))) {
+        while ((schema = (struct lys_node *)lys_getnext(schema, (*parent)->schema, module, 0))) {
             if (!strcmp(schema->name, name)) {
                 break;
             }

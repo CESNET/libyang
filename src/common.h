@@ -196,7 +196,7 @@ const char *strnodetype(LYS_NODE type);
  *
  * @return Transformed XML expression in the dictionary, NULL on error.
  */
-const char *transform_json2xml(struct lys_module *module, const char *expr, const char ***prefixes, const char ***namespaces,
+const char *transform_json2xml(const struct lys_module *module, const char *expr, const char ***prefixes, const char ***namespaces,
                                uint32_t *ns_count);
 
 /**
@@ -222,6 +222,6 @@ const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxm
  *
  * @return Transformed JSON expression in the dictionary, NULL on error.
  */
-const char *transform_schema2json(struct lys_module *module, const char *expr, uint32_t line);
+const char *transform_schema2json(const struct lys_module *module, const char *expr, uint32_t line);
 
 #endif /* LY_COMMON_H_ */

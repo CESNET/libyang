@@ -40,7 +40,7 @@
  * @param[out] unres Structure to store unresolved items into. Can be NULL.
  * @return EXIT_SUCCESS or EXIT_FAILURE with ly_errno set.
  */
-int lyv_data_context(struct lyd_node *node, int options, unsigned int line, struct unres_data *unres);
+int lyv_data_context(const struct lyd_node *node, int options, unsigned int line, struct unres_data *unres);
 
 /**
  * @brief Validate if the node's content is valid in the context it is placed.

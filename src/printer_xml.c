@@ -38,10 +38,10 @@
 #define INDENT ""
 #define LEVEL (level ? level*2-2 : 0)
 
-void xml_print_node(struct lyout *out, int level, struct lyd_node *node, int toplevel);
+void xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int toplevel);
 
 static void
-xml_print_ns(struct lyout *out, struct lyd_node *node)
+xml_print_ns(struct lyout *out, const struct lyd_node *node)
 {
     struct lyd_node *next, *cur;
     struct lyd_attr *attr;
@@ -98,7 +98,7 @@ xml_print_ns(struct lyout *out, struct lyd_node *node)
 }
 
 static void
-xml_print_attrs(struct lyout *out, struct lyd_node *node)
+xml_print_attrs(struct lyout *out, const struct lyd_node *node)
 {
     struct lyd_attr *attr;
 
@@ -110,9 +110,9 @@ xml_print_attrs(struct lyout *out, struct lyd_node *node)
 }
 
 static void
-xml_print_leaf(struct lyout *out, int level, struct lyd_node *node, int toplevel)
+xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
 {
-    struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
+    const struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
     const char *ns;
     const char **prefs, **nss;
     const char *xml_expr;
@@ -208,7 +208,7 @@ xml_print_leaf(struct lyout *out, int level, struct lyd_node *node, int toplevel
 }
 
 static void
-xml_print_container(struct lyout *out, int level, struct lyd_node *node, int toplevel)
+xml_print_container(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
 {
     struct lyd_node *child;
     const char *ns;
@@ -246,7 +246,7 @@ xml_print_container(struct lyout *out, int level, struct lyd_node *node, int top
 }
 
 static void
-xml_print_list(struct lyout *out, int level, struct lyd_node *node, int is_list, int toplevel)
+xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is_list, int toplevel)
 {
     struct lyd_node *child;
     const char *ns;
@@ -289,7 +289,7 @@ xml_print_list(struct lyout *out, int level, struct lyd_node *node, int is_list,
 }
 
 static void
-xml_print_anyxml(struct lyout *out, int level, struct lyd_node *node, int toplevel)
+xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
 {
     FILE *stream;
     char *buf;
@@ -331,7 +331,7 @@ xml_print_anyxml(struct lyout *out, int level, struct lyd_node *node, int toplev
 }
 
 void
-xml_print_node(struct lyout *out, int level, struct lyd_node *node, int toplevel)
+xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
 {
     switch (node->schema->nodetype) {
     case LYS_NOTIF:
@@ -358,9 +358,9 @@ xml_print_node(struct lyout *out, int level, struct lyd_node *node, int toplevel
 }
 
 int
-xml_print_data(struct lyout *out, struct lyd_node *root, int format)
+xml_print_data(struct lyout *out, const struct lyd_node *root, int format)
 {
-    struct lyd_node *node;
+    const struct lyd_node *node;
 
     /* content */
     LY_TREE_FOR(root, node) {

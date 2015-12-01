@@ -69,10 +69,10 @@ lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
 }
 
 API struct lyd_node *
-lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name)
+lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *name)
 {
     struct lyd_node *ret;
-    struct lys_node *snode = NULL, *siblings;
+    const struct lys_node *snode = NULL, *siblings;
 
     if ((!parent && !module) || !name) {
         ly_errno = LY_EINVAL;
@@ -94,7 +94,7 @@ lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name)
     }
 
     ret = calloc(1, sizeof *ret);
-    ret->schema = snode;
+    ret->schema = (struct lys_node *)snode;
     ret->prev = ret;
     if (parent) {
         if (lyd_insert(parent, ret)) {
@@ -107,10 +107,10 @@ lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name)
 }
 
 API struct lyd_node *
-lyd_new_leaf(struct lyd_node *parent, struct lys_module *module, const char *name, const char *val_str)
+lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str)
 {
     struct lyd_node_leaf_list *ret;
-    struct lys_node *snode = NULL, *siblings;
+    const struct lys_node *snode = NULL, *siblings;
     struct lys_type *stype, *type;
     int found;
 
@@ -136,7 +136,7 @@ lyd_new_leaf(struct lyd_node *parent, struct lys_module *module, const char *nam
 
     /* create the new leaf */
     ret = calloc(1, sizeof *ret);
-    ret->schema = snode;
+    ret->schema = (struct lys_node *)snode;
     ret->prev = (struct lyd_node *)ret;
     ret->value_str = lydict_insert((module ? module->ctx : parent->schema->module->ctx), val_str, 0);
 
@@ -182,10 +182,10 @@ lyd_new_leaf(struct lyd_node *parent, struct lys_module *module, const char *nam
 }
 
 API struct lyd_node *
-lyd_new_anyxml(struct lyd_node *parent, struct lys_module *module, const char *name, const char *val_xml)
+lyd_new_anyxml(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_xml)
 {
     struct lyd_node_anyxml *ret;
-    struct lys_node *siblings, *snode;
+    const struct lys_node *siblings, *snode;
     struct lyxml_elem *root, *first_child, *last_child, *child;
     struct ly_ctx *ctx;
     char *xml;
@@ -211,7 +211,7 @@ lyd_new_anyxml(struct lyd_node *parent, struct lys_module *module, const char *n
     }
 
     ret = calloc(1, sizeof *ret);
-    ret->schema = snode;
+    ret->schema = (struct lys_node *)snode;
     ret->prev = (struct lyd_node *)ret;
     if (parent) {
         if (lyd_insert(parent, (struct lyd_node *)ret)) {
@@ -478,9 +478,10 @@ lyd_unlink(struct lyd_node *node)
 }
 
 API struct lyd_node *
-lyd_dup(struct lyd_node *node, int recursive)
+lyd_dup(const struct lyd_node *node, int recursive)
 {
-    struct lyd_node *next, *elem, *ret, *parent, *new_node;
+    const struct lyd_node *next, *elem;
+    struct lyd_node *ret, *parent, *new_node;
     struct lyd_attr *attr;
     struct lyd_node_leaf_list *new_leaf;
     struct lyd_node_anyxml *new_axml;
@@ -667,7 +668,7 @@ lyd_insert_attr(struct lyd_node *parent, const char *name, const char *value)
 {
     struct lyd_attr *a, *iter;
     struct ly_ctx *ctx;
-    struct lys_module *module;
+    const struct lys_module *module;
     const char *p;
     char *aux;
 
@@ -694,7 +695,7 @@ lyd_insert_attr(struct lyd_node *parent, const char *name, const char *value)
     }
 
     a = malloc(sizeof *a);
-    a->module = module;
+    a->module = (struct lys_module *)module;
     a->next = NULL;
     a->name = lydict_insert(ctx, name, 0);
     a->value = lydict_insert(ctx, value, 0);
@@ -749,7 +750,7 @@ lyd_free(struct lyd_node *node)
 }
 
 API char *
-lyxml_serialize(struct lyxml_elem *anyxml)
+lyxml_serialize(const struct lyxml_elem *anyxml)
 {
     FILE *stream;
     char *buf;
@@ -779,7 +780,7 @@ int
 lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
 {
     struct lys_node_list *slist;
-    struct lys_node *snode = NULL;
+    const struct lys_node *snode = NULL;
     struct lyd_node *diter;
     const char *val1, *val2;
     int i, j;

@@ -46,8 +46,8 @@ static const struct internal_modules int_mods = {
     .count = LY_INTERNAL_MODULE_COUNT
 };
 
-API struct lys_feature *
-lys_is_disabled(struct lys_node *node, int recursive)
+API const struct lys_feature *
+lys_is_disabled(const struct lys_node *node, int recursive)
 {
     int i;
 
@@ -87,11 +87,11 @@ check:
 }
 
 int
-lys_get_sibling(struct lys_module *mod, struct lys_node *siblings, const char *mod_name, int mod_name_len,
-                const char *name, int nam_len, LYS_NODE type, struct lys_node **ret)
+lys_get_sibling(struct lys_module *mod, const struct lys_node *siblings, const char *mod_name, int mod_name_len,
+                const char *name, int nam_len, LYS_NODE type, const struct lys_node **ret)
 {
-    struct lys_node *node, *old_siblings = NULL;
-    struct lys_module *prefix_mod, *cur_mod;
+    const struct lys_node *node, *old_siblings = NULL;
+    const struct lys_module *prefix_mod, *cur_mod;
     int in_submod;
 
     assert(siblings && name);
@@ -195,11 +195,11 @@ lys_get_sibling(struct lys_module *mod, struct lys_node *siblings, const char *m
 }
 
 int
-lys_get_data_sibling(struct lys_module *mod, struct lys_node *siblings, const char *name, LYS_NODE type,
-                     struct lys_node **ret)
+lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblings, const char *name, LYS_NODE type,
+                     const struct lys_node **ret)
 {
-    struct lys_node *node;
-    struct lys_module *cur_mod;
+    const struct lys_node *node;
+    const struct lys_module *cur_mod;
     int in_submod;
 
     assert(siblings && name);
@@ -268,10 +268,10 @@ lys_get_data_sibling(struct lys_module *mod, struct lys_node *siblings, const ch
     return EXIT_FAILURE;
 }
 
-API struct lys_node *
-lys_getnext(struct lys_node *last, struct lys_node *parent, struct lys_module *module, int options)
+API const struct lys_node *
+lys_getnext(const struct lys_node *last, const struct lys_node *parent, const struct lys_module *module, int options)
 {
-    struct lys_node *next;
+    const struct lys_node *next;
 
     if (!last) {
         /* first call */
@@ -360,10 +360,11 @@ repeat:
 
 }
 
-static struct lys_node *
-check_mand_getnext(struct lys_node *last, struct lys_node *parent)
+static const struct lys_node *
+check_mand_getnext(const struct lys_node *last, const struct lys_node *parent)
 {
-    struct lys_node *next;
+    const struct lys_node *next;
+
     next = lys_getnext(last, parent, NULL, LYS_GETNEXT_WITHCHOICE);
 
 repeat:
@@ -382,8 +383,8 @@ repeat:
     return next;
 }
 
-static struct lys_node *
-check_mand_check(struct lys_node *node, struct lys_node *stop, struct lyd_node *data)
+static const struct lys_node *
+check_mand_check(const struct lys_node *node, const struct lys_node *stop, const struct lyd_node *data)
 {
     struct lys_node *siter = NULL, *parent = NULL;
     struct lyd_node *diter = NULL;
@@ -503,11 +504,11 @@ check_mand_check(struct lys_node *node, struct lys_node *stop, struct lyd_node *
     return NULL;
 }
 
-struct lys_node *
-ly_check_mandatory(struct lyd_node *data)
+const struct lys_node *
+ly_check_mandatory(const struct lyd_node *data)
 {
-    struct lys_node *siter, *saux, *saux2, *result, *parent = NULL, *parent2;
-    struct lyd_node *diter;
+    const struct lys_node *siter, *saux, *saux2, *result, *parent = NULL, *parent2;
+    const struct lyd_node *diter;
     int found;
 
     siter = data->schema->child;
@@ -1078,7 +1079,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     return EXIT_SUCCESS;
 }
 
-API struct lys_module *
+API const struct lys_module *
 lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
     struct unres_schema *unres;
@@ -1140,10 +1141,10 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
     return submod;
 }
 
-API struct lys_module *
+API const struct lys_module *
 lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
-    struct lys_module *module;
+    const struct lys_module *module;
     struct stat sb;
     char *addr;
 
@@ -1554,7 +1555,8 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
         new[i].module = old[i].module;
         new[i].nodetype = old[i].nodetype;
         /* this must succeed, it was already resolved once */
-        if (resolve_schema_nodeid(new[i].target_name, parent->child, new[i].module, LYS_AUGMENT, &new[i].target)) {
+        if (resolve_schema_nodeid(new[i].target_name, parent->child, new[i].module, LYS_AUGMENT,
+                                  (const struct lys_node **)&new[i].target)) {
             LOGINT;
             free(new);
             return NULL;
@@ -1924,8 +1926,8 @@ lys_node_free(struct lys_node *node)
     free(node);
 }
 
-struct lys_module *
-lys_get_import_module(struct lys_module *module, const char *prefix, int pref_len, const char *name, int name_len)
+const struct lys_module *
+lys_get_import_module(const struct lys_module *module, const char *prefix, int pref_len, const char *name, int name_len)
 {
     int i, match;
 
@@ -2073,7 +2075,7 @@ lys_submodule_free(struct lys_submodule *submodule, int free_int_mods)
 }
 
 struct lys_node *
-lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, uint8_t nacm, int recursive,
+lys_node_dup(struct lys_module *module, const struct lys_node *node, uint8_t flags, uint8_t nacm, int recursive,
              struct unres_schema *unres)
 {
     struct lys_node *retval = NULL, *aux, *child;
@@ -2237,7 +2239,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
         if (choice_orig->dflt) {
             rc = lys_get_sibling(choice->module, choice->child, NULL, 0, choice_orig->dflt->name, 0, LYS_ANYXML
                                          | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST
-                                         | LYS_LIST, &choice->dflt);
+                                         | LYS_LIST, (const struct lys_node **)&choice->dflt);
             if (rc) {
                 if (rc == EXIT_FAILURE) {
                     LOGINT;
@@ -2309,7 +2311,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
             if (list_orig->keys[0]) {
                 for (i = 0; i < list->keys_size; ++i) {
                     rc = lys_get_sibling(list->module, list->child, NULL, 0, list_orig->keys[i]->name, 0, LYS_LEAF,
-                                         (struct lys_node **)&list->keys[i]);
+                                         (const struct lys_node **)&list->keys[i]);
                     if (rc) {
                         if (rc == EXIT_FAILURE) {
                             LOGINT;
@@ -2451,7 +2453,7 @@ lys_free(struct lys_module *module, int free_int_mods)
  * op: 1 - enable, 0 - disable
  */
 static int
-lys_features_change(struct lys_module *module, const char *name, int op)
+lys_features_change(const struct lys_module *module, const char *name, int op)
 {
     int all = 0;
     int i, j, k;
@@ -2510,19 +2512,19 @@ lys_features_change(struct lys_module *module, const char *name, int op)
 }
 
 API int
-lys_features_enable(struct lys_module *module, const char *feature)
+lys_features_enable(const struct lys_module *module, const char *feature)
 {
     return lys_features_change(module, feature, 1);
 }
 
 API int
-lys_features_disable(struct lys_module *module, const char *feature)
+lys_features_disable(const struct lys_module *module, const char *feature)
 {
     return lys_features_change(module, feature, 0);
 }
 
 API int
-lys_features_state(struct lys_module *module, const char *feature)
+lys_features_state(const struct lys_module *module, const char *feature)
 {
     int i, j;
 
@@ -2562,7 +2564,7 @@ lys_features_state(struct lys_module *module, const char *feature)
 }
 
 API const char **
-lys_features_list(struct lys_module *module, uint8_t **states)
+lys_features_list(const struct lys_module *module, uint8_t **states)
 {
     const char **result = NULL;
     int i, j;
@@ -2619,7 +2621,7 @@ lys_features_list(struct lys_module *module, uint8_t **states)
 }
 
 API struct lys_node *
-lys_parent(struct lys_node *node)
+lys_parent(const struct lys_node *node)
 {
     if (!node || !node->parent) {
         return NULL;

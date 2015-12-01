@@ -32,7 +32,7 @@
 #include "xml_internal.h"
 
 static struct lys_node_leaf *
-lyv_keys_present(struct lyd_node *list)
+lyv_keys_present(const struct lyd_node *list)
 {
     struct lyd_node *aux;
     struct lys_node_list *schema;
@@ -63,7 +63,7 @@ lyv_keys_present(struct lyd_node *list)
  * @return 0 if both filter nodes selects the same data.
  */
 static int
-filter_compare(struct lyd_node *first, struct lyd_node *second)
+filter_compare(const struct lyd_node *first, const struct lyd_node *second)
 {
     struct lyd_node *diter1, *diter2;
     int match, c1, c2;
@@ -284,7 +284,7 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
 }
 
 int
-lyv_data_context(struct lyd_node *node, int options, unsigned int line, struct unres_data *unres)
+lyv_data_context(const struct lyd_node *node, int options, unsigned int line, struct unres_data *unres)
 {
     assert(node);
 
@@ -296,11 +296,11 @@ lyv_data_context(struct lyd_node *node, int options, unsigned int line, struct u
 
     /* check all relevant when conditions */
     if (unres) {
-        if (unres_data_add(unres, node, UNRES_WHEN, line) == -1) {
+        if (unres_data_add(unres, (struct lyd_node *)node, UNRES_WHEN, line) == -1) {
             return EXIT_FAILURE;
         }
     } else {
-        if (resolve_unres_data_item(node, UNRES_WHEN, 0, line)) {
+        if (resolve_unres_data_item((struct lyd_node *)node, UNRES_WHEN, 0, line)) {
             return EXIT_FAILURE;
         }
     }
@@ -317,8 +317,8 @@ lyv_data_context(struct lyd_node *node, int options, unsigned int line, struct u
 int
 lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct unres_data *unres)
 {
-    struct lys_node *schema, *siter;
-    struct lys_node *cs, *ch;
+    const struct lys_node *schema, *siter;
+    const struct lys_node *cs, *ch;
     struct lyd_node *diter, *start;
 
     assert(node);
