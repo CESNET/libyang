@@ -221,18 +221,48 @@ const char **ly_ctx_get_submodule_names(const struct ly_ctx *ctx, const char *mo
 const struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision);
 
 /**
- * @brief Try to find the model in a specific directory and then the searchpath
- * and load it into context.
+ * @brief Try to find the model in the searchpath of \p ctx and load it into it. If custom missing
+ * module callback is set, it is used instead.
  *
  * @param[in] ctx Context to add to.
- * @param[in] dir Optional directory to search in first.
  * @param[in] name Name of the module to load.
  * @param[in] revision Optional revision date of the module. If not specified, it is
  * assumed that there is only one model revision in the searchpath (the first matching file
  * is parsed).
  * @return Pointer to the data model structure, NULL if not found or some error occured.
  */
-struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *dir, const char *name, const char *revision);
+const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision);
+
+/**
+ * @brief Callback for retrieving missing included or imported models in a custom way.
+ *
+ * @param[in] name Missing module name.
+ * @param[in] revision Optional missing module revision.
+ * @param[in] user_data User-supplied callback data.
+ * @param[out] format Format of the returned module data.
+ * @param[out] free_module_data Optional callback for freeing the returned module data. If not set, free() is used.
+ * @return Requested module data or NULL on error.
+ */
+typedef char *(*ly_module_clb)(const char *name, const char *revision, void *user_data, LYS_INFORMAT *format,
+                               void (**free_module_data)(char *model_data));
+
+/**
+ * @brief Set missing include or import model callback.
+ *
+ * @param[in] ctx Context that will use this callback.
+ * @param[in] clb Callback responsible for returning a missing model.
+ * @param[in] user_data Arbitrary data that will always be passed to the callback \p clb.
+ */
+void ly_ctx_set_module_clb(struct ly_ctx *ctx, ly_module_clb clb, void *user_data);
+
+/**
+ * @brief Get the custom callback for missing module retrieval.
+ *
+ * @param[in] ctx Context to read from.
+ * @param[in] user_data Optional pointer for getting the user-supplied callbck data.
+ * @return Custom user missing module callback or NULL if not set.
+ */
+ly_module_clb ly_ctx_get_module_clb(const struct ly_ctx *ctx, void **user_data);
 
 /**
  * @brief Get pointer to the schema tree of the module of the specified namespace

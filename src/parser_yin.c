@@ -2475,7 +2475,8 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
     /* try to load the module */
     imp->module = (struct lys_module *)ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
     if (!imp->module) {
-        imp->module = lyp_search_file(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL);
+        /* whether to use a user callback is decided in the function */
+        imp->module = (struct lys_module *)ly_ctx_load_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
     }
 
     /* remove the new module name now that its parsing is finished (even if failed) */
@@ -2510,6 +2511,9 @@ fill_yin_include(struct lys_module *module, struct lyxml_elem *yin, struct lys_i
 {
     struct lyxml_elem *child;
     const char *value;
+    char *module_data;
+    void (*module_data_free)(char *module_data) = NULL;
+    LYS_INFORMAT format = LYS_IN_UNKNOWN;
     int count;
 
     LY_TREE_FOR(yin->child, child) {
@@ -2555,7 +2559,23 @@ fill_yin_include(struct lys_module *module, struct lyxml_elem *yin, struct lys_i
     /* try to load the submodule */
     inc->submodule = (struct lys_submodule *)ly_ctx_get_submodule(module, value, inc->rev[0] ? inc->rev : NULL);
     if (!inc->submodule) {
-        inc->submodule = (struct lys_submodule *)lyp_search_file(module->ctx, module, value, inc->rev[0] ? inc->rev : NULL);
+        if (module->ctx->module_clb) {
+            module_data = module->ctx->module_clb(value, inc->rev[0] ? inc->rev : NULL, module->ctx->module_clb_data,
+                                                  &format, &module_data_free);
+            if (module_data) {
+                inc->submodule = lys_submodule_parse(module, module_data, format, module->implemented);
+                if (module_data_free) {
+                    module_data_free(module_data);
+                } else {
+                    free(module_data);
+                }
+            } else {
+                LOGERR(LY_EVALID, "User module retrieval callback failed!");
+            }
+        } else {
+            inc->submodule = (struct lys_submodule *)lyp_search_file(module->ctx, module, value,
+                                                                     inc->rev[0] ? inc->rev : NULL);
+        }
     }
 
     /* remove the new submodule name now that its parsing is finished (even if failed) */

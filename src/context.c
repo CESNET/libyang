@@ -246,35 +246,49 @@ ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revisi
     return ly_ctx_get_module_by(ctx, name, offsetof(struct lys_module, name), revision);
 }
 
-API struct lys_module *
-ly_ctx_load_module(struct ly_ctx *ctx, const char *dir, const char *name, const char *revision)
+API void
+ly_ctx_set_module_clb(struct ly_ctx *ctx, ly_module_clb clb, void *user_data)
 {
-    struct lys_module *module;
-    char *cwd = NULL;
+    ctx->module_clb = clb;
+    ctx->module_clb_data = user_data;
+}
+
+API ly_module_clb
+ly_ctx_get_module_clb(const struct ly_ctx *ctx, void **user_data)
+{
+    if (user_data) {
+        *user_data = ctx->module_clb_data;
+    }
+    return ctx->module_clb;
+}
+
+API const struct lys_module *
+ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
+{
+    const struct lys_module *module;
+    char *module_data;
+    void (*module_data_free)(char *module_data) = NULL;
+    LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
     if (!ctx || !name) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
 
-    if (dir) {
-        cwd = get_current_dir_name();
-        if (chdir(dir) == -1) {
-            LOGWRN("Unable to change working directory to \"%s\" (%s).", dir, strerror(errno));
-            free(cwd);
-            cwd = NULL;
+    if (ctx->module_clb) {
+        module_data = ctx->module_clb(name, revision, ctx->module_clb_data, &format, &module_data_free);
+        if (!module_data) {
+            LOGERR(LY_EVALID, "User module retrieval callback failed!");
+            return NULL;
         }
-    }
-
-    module = lyp_search_file(ctx, NULL, name, revision);
-
-    /* did we change the working directory? */
-    if (cwd) {
-        if (chdir(cwd) == -1) {
-            /* should seriously not happen */
-            LOGINT;
+        module = lys_parse(ctx, module_data, format);
+        if (module_data_free) {
+            module_data_free(module_data);
+        } else {
+            free(module_data);
         }
-        free(cwd);
+    } else {
+        module = lyp_search_file(ctx, NULL, name, revision);
     }
 
     return module;
