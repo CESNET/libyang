@@ -39,8 +39,8 @@
 #include "tree_internal.h"
 #include "validation.h"
 
-API struct lyd_node *
-lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
+static struct lyd_node *
+lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, LYD_FORMAT format, int options)
 {
     struct lyxml_elem *xml;
     struct lyd_node *result = NULL;
@@ -54,11 +54,15 @@ lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
     case LYD_XML:
     case LYD_XML_FORMAT:
         xml = lyxml_read(ctx, data, 0);
-        result = lyd_parse_xml(ctx, xml, options);
+        if (parent) {
+            result = lyd_parse_output_xml(parent, xml, options);
+        } else {
+            result = lyd_parse_xml(ctx, xml, options);
+        }
         lyxml_free_elem(ctx, xml);
         break;
     case LYD_JSON:
-        result = lyd_parse_json(ctx, data, options);
+        result = lyd_parse_json(ctx, parent, data, options);
         break;
     default:
         /* error */
@@ -66,6 +70,23 @@ lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
     }
 
     return result;
+}
+
+API struct lyd_node *
+lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
+{
+    return lyd_parse_(ctx, NULL, data, format, options);
+}
+
+API struct lyd_node *
+lyd_parse_output(const struct lys_node *rpc, const char *data, LYD_FORMAT format, int options)
+{
+    if (!rpc || (rpc->nodetype != LYS_RPC)) {
+        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        return NULL;
+    }
+
+    return lyd_parse_(rpc->module->ctx, rpc, data, format, options);
 }
 
 API struct lyd_node *

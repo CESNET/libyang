@@ -439,6 +439,21 @@ const struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT forma
 struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options);
 
 /**
+ * @brief Parse (and validate according to appropriate schema from the given context) RPC output data.
+ *
+ * In case of LY_XML format, the data string is expected to contain XML data under a single
+ * XML element. The element is not parsed, but it is expected to keep XML data well formed in all
+ * cases. There are no restrictions for the element name or its namespace.
+ *
+ * @param[in] rpc RPC structure, whose output should \p data be.
+ * @param[in] data Serialized data in the specified format.
+ * @param[in] format Format of the input data to be parsed.
+ * @param[in] options Parser options, see @ref parseroptions.
+ * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
+ */
+struct lyd_node *lyd_parse_output(const struct lys_node *rpc, const char *data, LYD_FORMAT format, int options);
+
+/**
  * @brief Parse (and validate according to appropriate schema from the given context) XML tree.
  *
  * The output data tree is parsed from the given XML tree previously parsed by one of the
@@ -455,6 +470,25 @@ struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT form
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
 struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int options);
+
+/**
+ * @brief Parse (and validate according to appropriate schema from the given context) RPC output XML tree.
+ *
+ * The output data tree is parsed from the given XML tree previously parsed by one of the
+ * lyxml_read* functions. Note, that the parser removes successfully parsed data from the
+ * XML tree except the root element (see the note about XML format in lyd_parse()). When
+ * the given XML tree is successfully parsed, the given \p root is kept but it has no children
+ * which are returned as a top level nodes in the output data tree.
+ *
+ * The context (to which \p rpc belongs) must be the same as the context used to parse XML tree
+ * by lyxml_read* function.
+ *
+ * @param[in] rpc RPC structure, whose output should \p data be.
+ * @param[in] root XML tree to parse (convert) to data tree.
+ * @param[in] options Parser options, see @ref parseroptions.
+ * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
+ */
+struct lyd_node *lyd_parse_output_xml(const struct lys_node *rpc, struct lyxml_elem *root, int options);
 
 /**
  * @brief Read data from the given file

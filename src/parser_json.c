@@ -664,8 +664,8 @@ error:
 }
 
 static unsigned int
-json_parse_data(struct ly_ctx *ctx, const char *data, struct lyd_node **parent, struct lyd_node *prev,
-                struct attr_cont **attrs, int options, struct unres_data *unres)
+json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *schema_parent, struct lyd_node **parent,
+                struct lyd_node *prev, struct attr_cont **attrs, int options, struct unres_data *unres)
 {
     unsigned int len = 0;
     unsigned int r;
@@ -763,9 +763,17 @@ json_parse_data(struct ly_ctx *ctx, const char *data, struct lyd_node **parent, 
                 goto error;
             }
         }
-        while ((schema = (struct lys_node *)lys_getnext(schema, (*parent)->schema, module, 0))) {
-            if (!strcmp(schema->name, name)) {
-                break;
+        if (schema_parent) {
+            while ((schema = (struct lys_node *)lys_getnext(schema, schema_parent, module, 0))) {
+                if (!strcmp(schema->name, name)) {
+                    break;
+                }
+            }
+        } else {
+            while ((schema = (struct lys_node *)lys_getnext(schema, (*parent)->schema, module, 0))) {
+                if (!strcmp(schema->name, name)) {
+                    break;
+                }
             }
         }
     }
@@ -895,7 +903,7 @@ attr_repeat:
                 len++;
                 len += skip_ws(&data[len]);
 
-                r = json_parse_data(ctx, &data[len], &result, diter, &attrs_aux, options, unres);
+                r = json_parse_data(ctx, &data[len], NULL, &result, diter, &attrs_aux, options, unres);
                 if (!r) {
                     goto error;
                 }
@@ -951,7 +959,7 @@ attr_repeat:
                 len++;
                 len += skip_ws(&data[len]);
 
-                r = json_parse_data(ctx, &data[len], &list, diter, &attrs_aux, options, unres);
+                r = json_parse_data(ctx, &data[len], NULL, &list, diter, &attrs_aux, options, unres);
                 if (!r) {
                     goto error;
                 }
@@ -1042,7 +1050,7 @@ error:
 }
 
 struct lyd_node *
-lyd_parse_json(struct ly_ctx *ctx, const char *data, int options)
+lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, int options)
 {
     struct lyd_node *result = NULL, *next = NULL, *iter = NULL;
     struct unres_data *unres = NULL;
@@ -1074,7 +1082,7 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options)
         len++;
         len += skip_ws(&data[len]);
 
-        r =json_parse_data(ctx, &data[len], &next, iter, &attrs, options, unres);
+        r = json_parse_data(ctx, &data[len], parent, &next, iter, &attrs, options, unres);
         if (!r) {
             result = NULL;
             goto cleanup;

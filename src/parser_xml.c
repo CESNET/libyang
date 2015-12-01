@@ -161,8 +161,8 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct
 
 /* logs directly */
 static int
-xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev,
-               int options, struct unres_data *unres, struct lyd_node **result)
+xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node *schema_parent, struct lyd_node *parent,
+               struct lyd_node *prev, int options, struct unres_data *unres, struct lyd_node **result)
 {
     struct lyd_node *diter, *dlast;
     struct lys_node *schema = NULL;
@@ -182,7 +182,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     }
 
     /* find schema node */
-    if (!parent) {
+    if (schema_parent) {
+        schema = xml_data_search_schemanode(xml, schema_parent->child);
+    } else if (!parent) {
         /* starting in root */
         for (i = 0; i < ctx->models.used; i++) {
             /* match data model based on namespace */
@@ -368,9 +370,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         diter = dlast = NULL;
         LY_TREE_FOR_SAFE(xml->child, next, child) {
             if (schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
-                r = xml_parse_data(ctx, child, *result, dlast, 0, unres, &diter);
+                r = xml_parse_data(ctx, child, NULL, *result, dlast, 0, unres, &diter);
             } else {
-                r = xml_parse_data(ctx, child, *result, dlast, options, unres, &diter);
+                r = xml_parse_data(ctx, child, NULL, *result, dlast, options, unres, &diter);
             }
             if (options & LYD_OPT_DESTRUCT) {
                 lyxml_free_elem(ctx, child);
@@ -407,8 +409,8 @@ clear:
     return ret;
 }
 
-API struct lyd_node *
-lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int options)
+static struct lyd_node *
+lyd_parse_xml_(struct ly_ctx *ctx, const struct lys_node *parent, struct lyxml_elem *root, int options)
 {
     struct lyd_node *result, *next, *iter, *last;
     struct lyxml_elem *xmlelem, *xmlaux;
@@ -424,7 +426,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int options)
 
     iter = result = last = NULL;
     LY_TREE_FOR_SAFE(root->child, xmlaux, xmlelem) {
-        r = xml_parse_data(ctx, xmlelem, NULL, last, options, unres, &iter);
+        r = xml_parse_data(ctx, xmlelem, parent, NULL, last, options, unres, &iter);
         if (options & LYD_OPT_DESTRUCT) {
             lyxml_free_elem(ctx, xmlelem);
         }
@@ -466,4 +468,21 @@ cleanup:
     free(unres);
 
     return result;
+}
+
+API struct lyd_node *
+lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int options)
+{
+    return lyd_parse_xml_(ctx, NULL, root, options);
+}
+
+API struct lyd_node *
+lyd_parse_output_xml(const struct lys_node *rpc, struct lyxml_elem *root, int options)
+{
+    if (!rpc || (rpc->nodetype != LYS_RPC)) {
+        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        return NULL;
+    }
+
+    return lyd_parse_xml_(rpc->module->ctx, rpc, root, options);
 }
