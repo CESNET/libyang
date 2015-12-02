@@ -100,7 +100,7 @@ strnodetype(LYS_NODE type)
 
 const char *
 transform_json2xml(const struct lys_module *module, const char *expr, const char ***prefixes, const char ***namespaces,
-                        uint32_t *ns_count)
+                   uint32_t *ns_count)
 {
     const char *in, *id;
     char *out, *col, *name;
