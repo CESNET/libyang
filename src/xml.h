@@ -220,7 +220,17 @@ int lyxml_dump_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count)
  * @param[in] ctx libyang context to use
  * @param[in] elem Pointer to the element to free.
  */
-void lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem *elem);
+void lyxml_free(struct ly_ctx *ctx, struct lyxml_elem *elem);
+
+/**
+ * @brief Unlink the element from its parent. In contrast to lyxml_free(),
+ * after return the caller can still manipulate with the elem. Any namespaces
+ * are corrected and copied, if needed.
+ *
+ * @param[in] ctx libyang context to use.
+ * @param[in] elem Element to unlink from its parent (if any).
+ */
+void lyxml_unlink(struct ly_ctx *ctx, struct lyxml_elem *elem);
 
 /**
  * @brief Get value of the attribute in the specified element.

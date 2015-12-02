@@ -527,7 +527,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         LY_TREE_FOR_SAFE(yin->child, next, node) {
             if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
                 /* garbage */
-                lyxml_free_elem(module->ctx, node);
+                lyxml_free(module->ctx, node);
                 continue;
             }
 
@@ -701,7 +701,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         LY_TREE_FOR_SAFE(yin->child, next, node) {
             if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
                 /* garbage */
-                lyxml_free_elem(module->ctx, node);
+                lyxml_free(module->ctx, node);
                 continue;
             }
 
@@ -815,7 +815,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         LY_TREE_FOR_SAFE(yin->child, next, node) {
             if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
                 /* garbage */
-                lyxml_free_elem(module->ctx, node);
+                lyxml_free(module->ctx, node);
                 continue;
             }
 
@@ -971,7 +971,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         LY_TREE_FOR_SAFE(yin->child, next, node) {
             if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
                 /* garbage */
-                lyxml_free_elem(module->ctx, node);
+                lyxml_free(module->ctx, node);
                 continue;
             }
 
@@ -993,7 +993,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 if (read_restr_substmt(module->ctx, type->info.str.length, node)) {
                     goto error;
                 }
-                lyxml_free_elem(module->ctx, node);
+                lyxml_free(module->ctx, node);
             } else if (!strcmp(node->name, "pattern")) {
                 i++;
             } else {
@@ -1035,7 +1035,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         LY_TREE_FOR_SAFE(yin->child, next, node) {
             if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
                 /* garbage */
-                lyxml_free_elem(module->ctx, node);
+                lyxml_free(module->ctx, node);
                 continue;
             }
 
@@ -1211,7 +1211,7 @@ fill_yin_feature(struct lys_module *module, struct lyxml_elem *yin, struct lys_f
     LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
             /* garbage */
-            lyxml_free_elem(module->ctx, child);
+            lyxml_free(module->ctx, child);
             continue;
         }
 
@@ -1448,7 +1448,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
             /* garbage */
-            lyxml_free_elem(module->ctx, child);
+            lyxml_free(module->ctx, child);
             continue;
         }
 
@@ -1473,7 +1473,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         } else if (!strcmp(child->name, "deviate")) {
             c_dev++;
 
-            /* skip lyxml_free_elem() at the end of the loop, node will be
+            /* skip lyxml_free() at the end of the loop, node will be
              * further processed later
              */
             continue;
@@ -1483,7 +1483,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             goto error;
         }
 
-        lyxml_free_elem(module->ctx, child);
+        lyxml_free(module->ctx, child);
     }
 
     if (c_dev) {
@@ -1538,7 +1538,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         LY_TREE_FOR_SAFE(develem->child, next, child) {
             if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
                 /* garbage */
-                lyxml_free_elem(module->ctx, child);
+                lyxml_free(module->ctx, child);
                 continue;
             }
 
@@ -1730,7 +1730,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
             } else if (!strcmp(child->name, "must")) {
                 c_must++;
-                /* skip lyxml_free_elem() at the end of the loop, this node will be processed later */
+                /* skip lyxml_free() at the end of the loop, this node will be processed later */
                 continue;
             } else if (!strcmp(child->name, "type")) {
                 if (d->type) {
@@ -1774,7 +1774,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 d->type = t;
             } else if (!strcmp(child->name, "unique")) {
                 c_uniq++;
-                /* skip lyxml_free_elem() at the end of the loop, this node will be processed later */
+                /* skip lyxml_free() at the end of the loop, this node will be processed later */
                 continue;
             } else if (!strcmp(child->name, "units")) {
                 if (d->units) {
@@ -2091,7 +2091,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
     LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
             /* garbage */
-            lyxml_free_elem(module->ctx, child);
+            lyxml_free(module->ctx, child);
             continue;
         }
 
@@ -2106,13 +2106,13 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
 
             aug->when = read_yin_when(module, child);
             if (!aug->when) {
-                lyxml_free_elem(module->ctx, child);
+                lyxml_free(module->ctx, child);
                 goto error;
             }
             if (lyxp_syntax_check(aug->when->cond, LOGLINE(child))) {
                 goto error;
             }
-            lyxml_free_elem(module->ctx, child);
+            lyxml_free(module->ctx, child);
             continue;
 
         /* check allowed data sub-statements */
@@ -2150,7 +2150,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
         }
 
         node = NULL;
-        lyxml_free_elem(module->ctx, child);
+        lyxml_free(module->ctx, child);
     }
 
     if (c) {
@@ -2169,7 +2169,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
             if (ret == -1) {
                 goto error;
             }
-            lyxml_free_elem(module->ctx, child);
+            lyxml_free(module->ctx, child);
         }
     }
 
@@ -2218,7 +2218,7 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
             /* garbage */
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
             continue;
         }
 
@@ -2387,7 +2387,7 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
             goto error;
         }
 
-        lyxml_free_elem(module->ctx, sub);
+        lyxml_free(module->ctx, sub);
     }
 
     /* process nodes with cardinality of 0..n */
@@ -2649,7 +2649,7 @@ read_yin_common(struct lys_module *module, struct lys_node *parent,
     LY_TREE_FOR_SAFE(xmlnode->child, next, sub) {
         if (!sub->ns) {
             /* garbage */
-            lyxml_free_elem(ctx, sub);
+            lyxml_free(ctx, sub);
             continue;
         }
         if  (strcmp(sub->ns->value, LY_NSYIN)) {
@@ -2666,7 +2666,7 @@ read_yin_common(struct lys_module *module, struct lys_node *parent,
             }
 
             /* else garbage */
-            lyxml_free_elem(ctx, sub);
+            lyxml_free(ctx, sub);
             continue;
         }
 
@@ -2719,10 +2719,10 @@ read_yin_common(struct lys_module *module, struct lys_node *parent,
                 goto error;
             }
         } else {
-            /* skip the lyxml_free_elem */
+            /* skip the lyxml_free */
             continue;
         }
-        lyxml_free_elem(ctx, sub);
+        lyxml_free(ctx, sub);
     }
 
     if ((opt & OPT_INHERIT) && !(node->flags & LYS_CONFIG_MASK)) {
@@ -2830,7 +2830,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
             /* garbage */
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
             continue;
         }
 
@@ -2846,7 +2846,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             lyxml_add_child(module->ctx, &root, sub);
         } else if (!strcmp(sub->name, "if-feature")) {
             c_ftrs++;
-            /* skip lyxml_free_elem() at the end of the loop, sub is processed later */
+            /* skip lyxml_free() at the end of the loop, sub is processed later */
             continue;
         } else if (!strcmp(sub->name, "when")) {
             if (cs->when) {
@@ -2862,7 +2862,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
 
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
         } else {
             LOGVAL(LYE_INSTMT, LOGLINE(sub), sub->name);
             goto error;
@@ -2906,7 +2906,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             goto error;
         }
 
-        lyxml_free_elem(module->ctx, sub);
+        lyxml_free(module->ctx, sub);
     }
 
     return retval;
@@ -2914,7 +2914,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 error:
 
     while (root.child) {
-        lyxml_free_elem(module->ctx, root.child);
+        lyxml_free(module->ctx, root.child);
     }
     lys_node_free(retval);
 
@@ -2953,7 +2953,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
             /* garbage */
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
             continue;
         }
 
@@ -3022,7 +3022,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
         } else if (!strcmp(sub->name, "if-feature")) {
             c_ftrs++;
 
-            /* skip lyxml_free_elem() at the end of the loop, the sub node is processed later */
+            /* skip lyxml_free() at the end of the loop, the sub node is processed later */
             continue;
         } else {
             LOGVAL(LYE_INSTMT, LOGLINE(sub), sub->name);
@@ -3030,7 +3030,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
         }
 
         node = NULL;
-        lyxml_free_elem(ctx, sub);
+        lyxml_free(ctx, sub);
     }
 
     if (c_ftrs) {
@@ -3105,7 +3105,7 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
             /* garbage */
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
             continue;
         }
 
@@ -3129,7 +3129,7 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
                 goto error;
             }
             /* else false is the default value, so we can ignore it */
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "when")) {
             if (anyxml->when) {
                 LOGVAL(LYE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
@@ -3138,13 +3138,13 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
 
             anyxml->when = read_yin_when(module, sub);
             if (!anyxml->when) {
-                lyxml_free_elem(module->ctx, sub);
+                lyxml_free(module->ctx, sub);
                 goto error;
             }
             if (lyxp_syntax_check(anyxml->when->cond, LOGLINE(sub))) {
                 goto error;
             }
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "must")) {
             c_must++;
         } else if (!strcmp(sub->name, "if-feature")) {
@@ -3227,7 +3227,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
             /* garbage */
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
             continue;
         }
 
@@ -3391,7 +3391,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
             /* garbage */
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
             continue;
         }
 
@@ -3428,7 +3428,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
                 /* RFC 6020, 7.7.5 - ignore ordering when the list represents
                  * state data
                  */
-                lyxml_free_elem(module->ctx, sub);
+                lyxml_free(module->ctx, sub);
                 continue;
             }
 
@@ -3595,7 +3595,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
             /* garbage */
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
             continue;
         }
 
@@ -3657,7 +3657,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 /* RFC 6020, 7.7.5 - ignore ordering when the list represents
                  * state data
                  */
-                lyxml_free_elem(module->ctx, sub);
+                lyxml_free(module->ctx, sub);
                 continue;
             }
 
@@ -3669,7 +3669,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
             /* else system is the default value, so we can ignore it */
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "min-elements")) {
             if (f_min) {
                 LOGVAL(LYE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
@@ -3691,7 +3691,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
             list->min = (uint32_t) val;
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "max-elements")) {
             if (f_max) {
                 LOGVAL(LYE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
@@ -3713,7 +3713,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
             list->max = (uint32_t) val;
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "when")) {
             if (list->when) {
                 LOGVAL(LYE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
@@ -3722,13 +3722,13 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
             list->when = read_yin_when(module, sub);
             if (!list->when) {
-                lyxml_free_elem(module->ctx, sub);
+                lyxml_free(module->ctx, sub);
                 goto error;
             }
             if (lyxp_syntax_check(list->when->cond, LOGLINE(sub))) {
                 goto error;
             }
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
         } else {
             LOGVAL(LYE_INSTMT, LOGLINE(sub), sub->name);
             goto error;
@@ -3814,7 +3814,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             goto error;
         }
 
-        lyxml_free_elem(module->ctx, sub);
+        lyxml_free(module->ctx, sub);
     }
 
     if (!key_str) {
@@ -3834,7 +3834,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             goto error;
         }
 
-        lyxml_free_elem(module->ctx, sub);
+        lyxml_free(module->ctx, sub);
     }
 
     return retval;
@@ -3843,10 +3843,10 @@ error:
 
     lys_node_free(retval);
     while (root.child) {
-        lyxml_free_elem(module->ctx, root.child);
+        lyxml_free(module->ctx, root.child);
     }
     while (uniq.child) {
-        lyxml_free_elem(module->ctx, uniq.child);
+        lyxml_free(module->ctx, uniq.child);
     }
 
     return NULL;
@@ -3884,7 +3884,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns) {
             /* garbage */
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
             continue;
         }
 
@@ -3896,7 +3896,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
             GETVAL(value, sub, "value");
             cont->presence = lydict_insert(module->ctx, value, strlen(value));
 
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "when")) {
             if (cont->when) {
                 LOGVAL(LYE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
@@ -3905,13 +3905,13 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
 
             cont->when = read_yin_when(module, sub);
             if (!cont->when) {
-                lyxml_free_elem(module->ctx, sub);
+                lyxml_free(module->ctx, sub);
                 goto error;
             }
             if (lyxp_syntax_check(cont->when->cond, LOGLINE(sub))) {
                 goto error;
             }
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
 
             /* data statements */
         } else if (!strcmp(sub->name, "container") ||
@@ -4004,7 +4004,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
             goto error;
         }
 
-        lyxml_free_elem(module->ctx, sub);
+        lyxml_free(module->ctx, sub);
     }
 
     return retval;
@@ -4013,7 +4013,7 @@ error:
 
     lys_node_free(retval);
     while (root.child) {
-        lyxml_free_elem(module->ctx, root.child);
+        lyxml_free(module->ctx, root.child);
     }
 
     return NULL;
@@ -4048,7 +4048,7 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
             /* garbage */
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
             continue;
         }
 
@@ -4112,7 +4112,7 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
             goto error;
         }
 
-        lyxml_free_elem(module->ctx, sub);
+        lyxml_free(module->ctx, sub);
     }
 
     return retval;
@@ -4121,7 +4121,7 @@ error:
 
     lys_node_free(retval);
     while (root.child) {
-        lyxml_free_elem(module->ctx, root.child);
+        lyxml_free(module->ctx, root.child);
     }
 
     return NULL;
@@ -4167,7 +4167,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
             /* garbage */
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
             continue;
         }
 
@@ -4232,7 +4232,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
             goto error;
         }
 
-        lyxml_free_elem(module->ctx, sub);
+        lyxml_free(module->ctx, sub);
     }
 
     return retval;
@@ -4241,7 +4241,7 @@ error:
 
     lys_node_free(retval);
     while (root.child) {
-        lyxml_free_elem(module->ctx, root.child);
+        lyxml_free(module->ctx, root.child);
     }
 
     return NULL;
@@ -4277,7 +4277,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
             /* garbage */
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
             continue;
         }
 
@@ -4360,7 +4360,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
             goto error;
         }
 
-        lyxml_free_elem(module->ctx, sub);
+        lyxml_free(module->ctx, sub);
     }
 
     return retval;
@@ -4369,7 +4369,7 @@ error:
 
     lys_node_free(retval);
     while (root.child) {
-        lyxml_free_elem(module->ctx, root.child);
+        lyxml_free(module->ctx, root.child);
     }
 
     return NULL;
@@ -4406,7 +4406,7 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
             /* garbage */
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
             continue;
         }
 
@@ -4491,7 +4491,7 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
             goto error;
         }
 
-        lyxml_free_elem(module->ctx, sub);
+        lyxml_free(module->ctx, sub);
     }
 
     return retval;
@@ -4500,7 +4500,7 @@ error:
 
     lys_node_free(retval);
     while (root.child) {
-        lyxml_free_elem(module->ctx, root.child);
+        lyxml_free(module->ctx, root.child);
     }
 
     return NULL;
@@ -4542,7 +4542,7 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
             /* garbage */
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
             continue;
         }
 
@@ -4560,13 +4560,13 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
             uses->when = read_yin_when(module, sub);
             if (!uses->when) {
-                lyxml_free_elem(module->ctx, sub);
+                lyxml_free(module->ctx, sub);
                 goto error;
             }
             if (lyxp_syntax_check(uses->when->cond, LOGLINE(sub))) {
                 goto error;
             }
-            lyxml_free_elem(module->ctx, sub);
+            lyxml_free(module->ctx, sub);
         } else {
             LOGVAL(LYE_INSTMT, LOGLINE(sub), sub->name);
             goto error;
@@ -4669,7 +4669,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
     LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
             /* garbage */
-            lyxml_free_elem(ctx, child);
+            lyxml_free(ctx, child);
             continue;
         }
 
@@ -4680,7 +4680,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             }
             GETVAL(value, child, "uri");
             module->ns = lydict_insert(ctx, value, strlen(value));
-            lyxml_free_elem(ctx, child);
+            lyxml_free(ctx, child);
         } else if (!module->type && !strcmp(child->name, "prefix")) {
             if (module->prefix) {
                 LOGVAL(LYE_TOOMANY, LOGLINE(child), child->name, yin->name);
@@ -4691,7 +4691,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
                 goto error;
             }
             module->prefix = lydict_insert(ctx, value, strlen(value));
-            lyxml_free_elem(ctx, child);
+            lyxml_free(ctx, child);
         } else if (module->type && !strcmp(child->name, "belongs-to")) {
             if (belongsto_flag) {
                 LOGVAL(LYE_TOOMANY, LOGLINE(child), child->name, yin->name);
@@ -4729,7 +4729,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             module->prefix = lydict_insert(ctx, value, strlen(value));
 
             /* we are done with belongs-to */
-            lyxml_free_elem(ctx, child);
+            lyxml_free(ctx, child);
 
             /* counters (statements with n..1 cardinality) */
         } else if (!strcmp(child->name, "import")) {
@@ -4778,7 +4778,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
                 goto error;
             }
             module->dsc = read_yin_subnode(ctx, child, "text");
-            lyxml_free_elem(ctx, child);
+            lyxml_free(ctx, child);
             if (!module->dsc) {
                 goto error;
             }
@@ -4788,7 +4788,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
                 goto error;
             }
             module->ref = read_yin_subnode(ctx, child, "text");
-            lyxml_free_elem(ctx, child);
+            lyxml_free(ctx, child);
             if (!module->ref) {
                 goto error;
             }
@@ -4798,7 +4798,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
                 goto error;
             }
             module->org = read_yin_subnode(ctx, child, "text");
-            lyxml_free_elem(ctx, child);
+            lyxml_free(ctx, child);
             if (!module->org) {
                 goto error;
             }
@@ -4808,7 +4808,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
                 goto error;
             }
             module->contact = read_yin_subnode(ctx, child, "text");
-            lyxml_free_elem(ctx, child);
+            lyxml_free(ctx, child);
             if (!module->contact) {
                 goto error;
             }
@@ -4824,7 +4824,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
                 goto error;
             }
             module->version = 1;
-            lyxml_free_elem(ctx, child);
+            lyxml_free(ctx, child);
 
         } else if (!strcmp(child->name, "extension")) {
             GETVAL(value, child, "name");
@@ -4841,7 +4841,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             /* other extensions are not supported, so inform about such an extension */
             } else {
                 LOGWRN("Not supported \"%s\" extension statement found, ignoring.", value);
-                lyxml_free_elem(ctx, child);
+                lyxml_free(ctx, child);
             }
         } else {
             LOGVAL(LYE_INSTMT, LOGLINE(child), child->name);
@@ -5026,7 +5026,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             goto error;
         }
 
-        lyxml_free_elem(ctx, child);
+        lyxml_free(ctx, child);
     }
 
     /* parse data nodes, ... */
@@ -5055,7 +5055,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
             goto error;
         }
 
-        lyxml_free_elem(ctx, child);
+        lyxml_free(ctx, child);
     }
 
     /* ... and finally augments (last, so we can augment our data, for instance) */
@@ -5066,7 +5066,7 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
         if (r) {
             goto error;
         }
-        lyxml_free_elem(ctx, child);
+        lyxml_free(ctx, child);
     }
 
     return EXIT_SUCCESS;
@@ -5074,13 +5074,13 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
 error:
     /* cleanup */
     while (root.child) {
-        lyxml_free_elem(module->ctx, root.child);
+        lyxml_free(module->ctx, root.child);
     }
     while (grps.child) {
-        lyxml_free_elem(module->ctx, grps.child);
+        lyxml_free(module->ctx, grps.child);
     }
     while (augs.child) {
-        lyxml_free_elem(module->ctx, augs.child);
+        lyxml_free(module->ctx, augs.child);
     }
 
     free(unres->item);
@@ -5142,7 +5142,7 @@ yin_read_submodule(struct lys_module *module, const char *data, int implement, s
     }
 
     /* cleanup */
-    lyxml_free_elem(module->ctx, yin);
+    lyxml_free(module->ctx, yin);
 
     LOGVRB("Submodule %s successfully parsed", submodule->name);
 
@@ -5150,7 +5150,7 @@ yin_read_submodule(struct lys_module *module, const char *data, int implement, s
 
 error:
     /* cleanup */
-    lyxml_free_elem(module->ctx, yin);
+    lyxml_free(module->ctx, yin);
     lys_submodule_free(submodule, 0);
 
     return NULL;
@@ -5218,7 +5218,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unre
                 if (!module->rev_size || !strcmp(ctx->models.list[i]->rev[0].date, module->rev[0].date)) {
                     /* both have the same revision -> we already have the same module */
                     /* so free the new one and update the old one's implement flag if needed */
-                    lyxml_free_elem(ctx, yin);
+                    lyxml_free(ctx, yin);
                     lys_free(module, 0);
                     unres->count = 0;
 
@@ -5244,7 +5244,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unre
     ctx->models.module_set_id++;
 
     /* cleanup */
-    lyxml_free_elem(ctx, yin);
+    lyxml_free(ctx, yin);
 
     LOGVRB("Module %s successfully parsed", module->name);
 
@@ -5252,7 +5252,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unre
 
 error:
     /* cleanup */
-    lyxml_free_elem(ctx, yin);
+    lyxml_free(ctx, yin);
     lys_free(module, 0);
 
     return NULL;

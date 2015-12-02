@@ -3475,7 +3475,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         rc = fill_yin_type(mod, node, yin, stype, unres);
         if (!rc) {
             /* we need to always be able to free this, it's safe only in this case */
-            lyxml_free_elem(mod->ctx, yin);
+            lyxml_free(mod->ctx, yin);
         } else {
             /* may try again later, put all back how it was */
             stype->der = (struct lys_tpdf *)yin;
@@ -3788,7 +3788,7 @@ unres_schema_free(struct ly_ctx *ctx, struct unres_schema *unres)
 
     for (i = 0; i < unres->count; ++i) {
         if (unres->type[i] == UNRES_TYPE_DER) {
-            lyxml_free_elem(ctx, (struct lyxml_elem *)((struct lys_type *)unres->item[i])->der);
+            lyxml_free(ctx, (struct lyxml_elem *)((struct lys_type *)unres->item[i])->der);
         }
     }
 

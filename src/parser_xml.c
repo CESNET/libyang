@@ -375,7 +375,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
                 r = xml_parse_data(ctx, child, NULL, *result, dlast, options, unres, &diter);
             }
             if (options & LYD_OPT_DESTRUCT) {
-                lyxml_free_elem(ctx, child);
+                lyxml_free(ctx, child);
             }
             if (r) {
                 goto error;
@@ -428,7 +428,7 @@ lyd_parse_xml_(struct ly_ctx *ctx, const struct lys_node *parent, struct lyxml_e
     LY_TREE_FOR_SAFE(root->child, xmlaux, xmlelem) {
         r = xml_parse_data(ctx, xmlelem, parent, NULL, last, options, unres, &iter);
         if (options & LYD_OPT_DESTRUCT) {
-            lyxml_free_elem(ctx, xmlelem);
+            lyxml_free(ctx, xmlelem);
         }
         if (r) {
             LY_TREE_FOR_SAFE(result, next, iter) {

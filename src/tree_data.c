@@ -59,7 +59,7 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
         } else {
             result = lyd_parse_xml(ctx, xml, options);
         }
-        lyxml_free_elem(ctx, xml);
+        lyxml_free(ctx, xml);
         break;
     case LYD_JSON:
         result = lyd_parse_json(ctx, parent, data, options);
@@ -266,7 +266,7 @@ lyd_new_anyxml(struct lyd_node *parent, const struct lys_module *module, const c
     if (first_child) {
         first_child->prev = last_child;
     }
-    lyxml_free_elem(ctx, root);
+    lyxml_free(ctx, root);
 
     ret->value = first_child;
 
@@ -746,7 +746,7 @@ lyd_free(struct lyd_node *node)
             lyd_free(child);
         }
     } else if (node->schema->nodetype == LYS_ANYXML) {
-        lyxml_free_elem(node->schema->module->ctx, ((struct lyd_node_anyxml *)node)->value);
+        lyxml_free(node->schema->module->ctx, ((struct lyd_node_anyxml *)node)->value);
     } else {
         /* free value */
         switch(((struct lyd_node_leaf_list *)node)->value_type) {

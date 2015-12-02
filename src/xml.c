@@ -308,6 +308,16 @@ lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
     elem->prev = elem;
 }
 
+API void
+lyxml_unlink(struct ly_ctx *ctx, struct lyxml_elem *elem)
+{
+    if (!elem) {
+        return;
+    }
+
+    lyxml_unlink_elem(ctx, elem, 1);
+}
+
 void
 lyxml_free_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr *attr)
 {
@@ -383,7 +393,7 @@ lyxml_free_elem_(struct ly_ctx *ctx, struct lyxml_elem *elem)
 }
 
 API void
-lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem *elem)
+lyxml_free(struct ly_ctx *ctx, struct lyxml_elem *elem)
 {
     if (!elem) {
         return;
@@ -1064,7 +1074,7 @@ store_content:
     return elem;
 
 error:
-    lyxml_free_elem(ctx, elem);
+    lyxml_free(ctx, elem);
 
     return NULL;
 }
