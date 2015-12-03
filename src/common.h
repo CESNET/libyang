@@ -180,8 +180,8 @@ const char *strnodetype(LYS_NODE type);
 /**
  * @brief Transform expression from JSON format to XML format.
  * Output arrays point to strings in the dictionary, but without
- * correcting theit ref_count -> do not touch them. Prefixes of
- * the namespaces are import prefixes of the modules. Output
+ * correcting their ref_count -> do not touch them. Prefixes of
+ * the namespaces are prefixes specified by the module itself. Output
  * parameters are optional, but either all 3 are set or none
  * of them are. Logs directly.
  *
@@ -196,8 +196,8 @@ const char *strnodetype(LYS_NODE type);
  *
  * @return Transformed XML expression in the dictionary, NULL on error.
  */
-const char *transform_json2xml(struct lys_module *module, const char *expr, char ***prefixes, char ***namespaces,
-                                    uint32_t *ns_count);
+const char *transform_json2xml(const struct lys_module *module, const char *expr, const char ***prefixes, const char ***namespaces,
+                               uint32_t *ns_count);
 
 /**
  * @brief Transform expression from XML data format (prefixes and separate NS definitions) to
@@ -222,6 +222,6 @@ const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxm
  *
  * @return Transformed JSON expression in the dictionary, NULL on error.
  */
-const char *transform_schema2json(struct lys_module *module, const char *expr, uint32_t line);
+const char *transform_schema2json(const struct lys_module *module, const char *expr, uint32_t line);
 
 #endif /* LY_COMMON_H_ */

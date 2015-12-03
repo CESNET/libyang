@@ -174,7 +174,7 @@ void ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
  * @param[in] ctx Context to query.
  * @return Current value of the search path.
  */
-const char *ly_ctx_get_searchdir(struct ly_ctx *ctx);
+const char *ly_ctx_get_searchdir(const struct ly_ctx *ctx);
 
 /**
  * @brief Get data of an internal ietf-yang-library module.
@@ -194,7 +194,7 @@ struct lyd_node *ly_ctx_info(struct ly_ctx *ctx);
  * names in the array. Also remember that the names will be freed with freeing
  * the context.
  */
-const char **ly_ctx_get_module_names(struct ly_ctx *ctx);
+const char **ly_ctx_get_module_names(const struct ly_ctx *ctx);
 
 /**
  * @brief Get the names of the loaded submodules of the specified module.
@@ -206,7 +206,7 @@ const char **ly_ctx_get_module_names(struct ly_ctx *ctx);
  * names in the array. Also remember that the names will be freed with freeing
  * the context.
  */
-const char **ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *module_name);
+const char **ly_ctx_get_submodule_names(const struct ly_ctx *ctx, const char *module_name);
 
 /**
  * @brief Get pointer to the schema tree of the module of the specified name.
@@ -218,7 +218,51 @@ const char **ly_ctx_get_submodule_names(struct ly_ctx *ctx, const char *module_n
  * @return Pointer to the data model structure, NULL if no schema following the name and
  * revision requirements is present in the context.
  */
-struct lys_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const char *revision);
+const struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision);
+
+/**
+ * @brief Try to find the model in the searchpath of \p ctx and load it into it. If custom missing
+ * module callback is set, it is used instead.
+ *
+ * @param[in] ctx Context to add to.
+ * @param[in] name Name of the module to load.
+ * @param[in] revision Optional revision date of the module. If not specified, it is
+ * assumed that there is only one model revision in the searchpath (the first matching file
+ * is parsed).
+ * @return Pointer to the data model structure, NULL if not found or some error occured.
+ */
+const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision);
+
+/**
+ * @brief Callback for retrieving missing included or imported models in a custom way.
+ *
+ * @param[in] name Missing module name.
+ * @param[in] revision Optional missing module revision.
+ * @param[in] user_data User-supplied callback data.
+ * @param[out] format Format of the returned module data.
+ * @param[out] free_module_data Optional callback for freeing the returned module data. If not set, free() is used.
+ * @return Requested module data or NULL on error.
+ */
+typedef char *(*ly_module_clb)(const char *name, const char *revision, void *user_data, LYS_INFORMAT *format,
+                               void (**free_module_data)(char *model_data));
+
+/**
+ * @brief Set missing include or import model callback.
+ *
+ * @param[in] ctx Context that will use this callback.
+ * @param[in] clb Callback responsible for returning a missing model.
+ * @param[in] user_data Arbitrary data that will always be passed to the callback \p clb.
+ */
+void ly_ctx_set_module_clb(struct ly_ctx *ctx, ly_module_clb clb, void *user_data);
+
+/**
+ * @brief Get the custom callback for missing module retrieval.
+ *
+ * @param[in] ctx Context to read from.
+ * @param[in] user_data Optional pointer for getting the user-supplied callbck data.
+ * @return Custom user missing module callback or NULL if not set.
+ */
+ly_module_clb ly_ctx_get_module_clb(const struct ly_ctx *ctx, void **user_data);
 
 /**
  * @brief Get pointer to the schema tree of the module of the specified namespace
@@ -230,7 +274,7 @@ struct lys_module *ly_ctx_get_module(struct ly_ctx *ctx, const char *name, const
  * @return Pointer to the data model structure, NULL if no schema following the namespace and
  * revision requirements is present in the context.
  */
-struct lys_module *ly_ctx_get_module_by_ns(struct ly_ctx *ctx, const char *ns, const char *revision);
+const struct lys_module *ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const char *ns, const char *revision);
 
 /**
  * @brief Get submodule from the context's search dir.
@@ -241,7 +285,8 @@ struct lys_module *ly_ctx_get_module_by_ns(struct ly_ctx *ctx, const char *ns, c
  * not specified, the newest revision is returned (TODO).
  * @return Pointer to the data model structure.
  */
-struct lys_submodule *ly_ctx_get_submodule(struct lys_module *module, const char *name, const char *revision);
+const struct lys_submodule *ly_ctx_get_submodule(const struct lys_module *module, const char *name,
+                                                 const char *revision);
 
 /**
  * @brief Get schema node according to the given absolute schema node identifier.
@@ -255,7 +300,7 @@ struct lys_submodule *ly_ctx_get_submodule(struct lys_module *module, const char
  * - /ietf-netconf-monitoring:get-schema/input/identifier
  * - /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/ip
  */
-struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const char *nodeid);
+const struct lys_node *ly_ctx_get_node(const struct ly_ctx *ctx, const char *nodeid);
 
 /**
  * @brief Free all internal structures of the specified context.
@@ -308,7 +353,7 @@ void ly_ctx_destroy(struct ly_ctx *ctx);
  * @param[in] format Format of the input data (YANG or YIN).
  * @return Pointer to the data model structure or NULL on error.
  */
-struct lys_module *lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
+const struct lys_module *lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
 
 /**
  * @brief Read a schema from file into the specified context.
@@ -318,11 +363,12 @@ struct lys_module *lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT 
  * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
  *
  * @param[in] ctx libyang context where to process the data model.
- * @param[in] fd The standard file descriptor of the file containing the schema in the specified format.
+ * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the schema
+ *            in the specified format.
  * @param[in] format Format of the input data (YANG or YIN).
  * @return Pointer to the data model structure or NULL on error.
  */
-struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
+const struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
 
 /**
  * @defgroup parseroptions Data parser options
@@ -337,27 +383,42 @@ struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
  * clients are not required to understand everything the server does. Of course, the optimal strategy is to use
  * filtering to get only the required data.
  *
+ * The #LYD_OPT_DESTRUCT option is used to optimize memory consumption profile of the parser in case the input
+ * data are no more needed after the parser function call. It continuously free the input data whenever it is
+ * processed for the output. This option is applicable only in case the input data are in the XML tree format.
+ *
  * Parser also expects that the provided data are complete and performs data validation according to all
- * implemented YANG rules. This can be problem in case of representing NETCONF's subtree filter data or
- * edit-config's data which do not represent a complete data set. Therefore there are two options to make parser to
- * accept such a data: #LYD_OPT_FILTER and #LYD_OPT_EDIT. However, both these options are ignored when parsing
- * an RPC or a notification.
+ * implemented YANG rules. This can be problem in case of representing NETCONF's subtree filter data,
+ * edit-config's data or the received data (after get or get-config request) where a filter was applied - such data
+ * do not represent a complete data set and different validation rules can fail. Therefore there are other options
+ * to make parser to accept such a data.
  *
  * @{
  */
-#define LYD_OPT_STRICT   0x01  /**< instead of silent ignoring data without schema definition, raise an error.
-                                    Having an unknown element of the known namespace is always an error. */
-#define LYD_OPT_EDIT     0x02  /**< make validation to accept NETCONF edit-config's content:
-                                    - mandatory nodes can be omitted
-                                    - leafrefs and instance-identifier are not resolved
-                                    - status data are not allowed */
-#define LYD_OPT_FILTER   0x04  /**< make validation to accept NETCONF subtree filter data:
-                                    - leafs/leaf-lists with no data are allowed (even not allowed e.g. by length restriction)
-                                    - multiple instances of container/leaf/.. are allowed
-                                    - list's keys are not required
-                                    - mandatory nodes can be omitted
-                                    - leafrefs and instance-identifier are not resolved
-                                    - data from different choice's branches are allowed */
+#define LYD_OPT_STRICT    0x01  /**< instead of silent ignoring data without schema definition, raise an error.
+                                     Having an unknown element of the known namespace is always an error. */
+#define LYD_OPT_DESTRUCT  0x02  /**< safe consumed memory and free the processed XML data continuously.
+                                     On success, only the top level XML element is kept in the end. This
+                                     option is applicable only with lyd_parse_xml(). */
+#define LYD_OPT_EDIT      0x04  /**< make validation to accept NETCONF edit-config's content:
+                                     - mandatory nodes can be omitted
+                                     - leafrefs and instance-identifier are not resolved
+                                     - status data are not allowed */
+#define LYD_OPT_FILTER    0x08  /**< make validation to accept NETCONF subtree filter data:
+                                     - leafs/leaf-lists with no data are allowed (even not allowed e.g. by length restriction)
+                                     - multiple instances of container/leaf/.. are allowed
+                                     - list's keys/unique nodes are not required
+                                     - mandatory nodes can be omitted
+                                     - leafrefs and instance-identifier are not resolved
+                                     - data from different choice's branches are allowed */
+#define LYD_OPT_GETCONFIG 0x10  /**< make validation to accept get-config's result data even with applied filter:
+                                     - mandatory nodes can be omitted
+                                     - leafrefs and instance-identifier are not resolved
+                                     - list's keys/unique nodes are not required (so duplication is not checked)
+                                     - status data are not allowed */
+#define LYD_OPT_GET       0x20  /**< make validation to accept get's result data even with applied filter:
+                                     - same as for #LYD_OPT_GETCONFIG but the status data are allowed */
+
 /**
  * @}
  */
@@ -369,8 +430,6 @@ struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
  * XML element. The element is not parsed, but it is expected to keep XML data well formed in all
  * cases. There are no restrictions for the element name or its namespace.
  *
- * LY_JSON format is not yet supported.
- *
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] data Serialized data in the specified format.
  * @param[in] format Format of the input data to be parsed.
@@ -378,6 +437,21 @@ struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
 struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options);
+
+/**
+ * @brief Parse (and validate according to appropriate schema from the given context) RPC output data.
+ *
+ * In case of LY_XML format, the data string is expected to contain XML data under a single
+ * XML element. The element is not parsed, but it is expected to keep XML data well formed in all
+ * cases. There are no restrictions for the element name or its namespace.
+ *
+ * @param[in] rpc RPC structure, whose output should \p data be.
+ * @param[in] data Serialized data in the specified format.
+ * @param[in] format Format of the input data to be parsed.
+ * @param[in] options Parser options, see @ref parseroptions.
+ * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
+ */
+struct lyd_node *lyd_parse_output(const struct lys_node *rpc, const char *data, LYD_FORMAT format, int options);
 
 /**
  * @brief Parse (and validate according to appropriate schema from the given context) XML tree.
@@ -396,6 +470,25 @@ struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT form
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
 struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int options);
+
+/**
+ * @brief Parse (and validate according to appropriate schema from the given context) RPC output XML tree.
+ *
+ * The output data tree is parsed from the given XML tree previously parsed by one of the
+ * lyxml_read* functions. Note, that the parser removes successfully parsed data from the
+ * XML tree except the root element (see the note about XML format in lyd_parse()). When
+ * the given XML tree is successfully parsed, the given \p root is kept but it has no children
+ * which are returned as a top level nodes in the output data tree.
+ *
+ * The context (to which \p rpc belongs) must be the same as the context used to parse XML tree
+ * by lyxml_read* function.
+ *
+ * @param[in] rpc RPC structure, whose output should \p data be.
+ * @param[in] root XML tree to parse (convert) to data tree.
+ * @param[in] options Parser options, see @ref parseroptions.
+ * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
+ */
+struct lyd_node *lyd_parse_output_xml(const struct lys_node *rpc, struct lyxml_elem *root, int options);
 
 /**
  * @brief Read data from the given file
@@ -482,7 +575,7 @@ struct lyd_node *lyd_read(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int opt
  * node in the module will be printed.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+int lys_print(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
 
 /**
  * @brief Print schema tree in the specified format.
@@ -496,7 +589,7 @@ int lys_print(FILE *f, struct lys_module *module, LYS_OUTFORMAT format, const ch
  * node in the module will be printed.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lys_print_fd(int fd, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+int lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
 
 /**
  * @brief Print schema tree in the specified format.
@@ -511,7 +604,7 @@ int lys_print_fd(int fd, struct lys_module *module, LYS_OUTFORMAT format, const 
  * node in the module will be printed.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lys_print_mem(char **strp, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+int lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
 
 /**
  * @brief Print schema tree in the specified format.
@@ -526,7 +619,8 @@ int lys_print_mem(char **strp, struct lys_module *module, LYS_OUTFORMAT format, 
  * node in the module will be printed.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+int lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
+                  const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
 
 /**
  * @brief Print data tree in the specified format.
@@ -539,7 +633,7 @@ int lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count),
  * @param[in] format Data output format.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print(FILE *f, struct lyd_node *root, LYD_FORMAT format);
+int lyd_print(FILE *f, const struct lyd_node *root, LYD_FORMAT format);
 
 /**
  * @brief Print data tree in the specified format.
@@ -552,7 +646,7 @@ int lyd_print(FILE *f, struct lyd_node *root, LYD_FORMAT format);
  * @param[in] format Data output format.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print_fd(int fd, struct lyd_node *root, LYD_FORMAT format);
+int lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format);
 
 
  /**
@@ -567,7 +661,7 @@ int lyd_print_fd(int fd, struct lyd_node *root, LYD_FORMAT format);
  * @param[in] format Data output format.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print_mem(char **strp, struct lyd_node *root, LYD_FORMAT format);
+int lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format);
 
 /**
  * @brief Print data tree in the specified format.
@@ -581,7 +675,8 @@ int lyd_print_mem(char **strp, struct lyd_node *root, LYD_FORMAT format);
  * @param[in] format Data output format.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lyd_node *root, LYD_FORMAT format);
+int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
+                  const struct lyd_node *root, LYD_FORMAT format);
 
 /**@} printers */
 

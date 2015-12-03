@@ -32,6 +32,7 @@
 #include "context.h"
 #include "parser.h"
 #include "resolve.h"
+#include "xml.h"
 #include "xml_internal.h"
 #include "tree_internal.h"
 #include "validation.h"
@@ -45,8 +46,8 @@ static const struct internal_modules int_mods = {
     .count = LY_INTERNAL_MODULE_COUNT
 };
 
-API struct lys_feature *
-lys_is_disabled(struct lys_node *node, int recursive)
+API const struct lys_feature *
+lys_is_disabled(const struct lys_node *node, int recursive)
 {
     int i;
 
@@ -86,11 +87,11 @@ check:
 }
 
 int
-lys_get_sibling(struct lys_module *mod, struct lys_node *siblings, const char *mod_name, int mod_name_len,
-                const char *name, int nam_len, LYS_NODE type, struct lys_node **ret)
+lys_get_sibling(struct lys_module *mod, const struct lys_node *siblings, const char *mod_name, int mod_name_len,
+                const char *name, int nam_len, LYS_NODE type, const struct lys_node **ret)
 {
-    struct lys_node *node, *old_siblings = NULL;
-    struct lys_module *prefix_mod, *cur_mod;
+    const struct lys_node *node, *old_siblings = NULL;
+    const struct lys_module *prefix_mod, *cur_mod;
     int in_submod;
 
     assert(siblings && name);
@@ -194,11 +195,11 @@ lys_get_sibling(struct lys_module *mod, struct lys_node *siblings, const char *m
 }
 
 int
-lys_get_data_sibling(struct lys_module *mod, struct lys_node *siblings, const char *name, LYS_NODE type,
-                     struct lys_node **ret)
+lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblings, const char *name, LYS_NODE type,
+                     const struct lys_node **ret)
 {
-    struct lys_node *node;
-    struct lys_module *cur_mod;
+    const struct lys_node *node;
+    const struct lys_module *cur_mod;
     int in_submod;
 
     assert(siblings && name);
@@ -267,10 +268,10 @@ lys_get_data_sibling(struct lys_module *mod, struct lys_node *siblings, const ch
     return EXIT_FAILURE;
 }
 
-API struct lys_node *
-lys_getnext(struct lys_node *last, struct lys_node *parent, struct lys_module *module, int options)
+API const struct lys_node *
+lys_getnext(const struct lys_node *last, const struct lys_node *parent, const struct lys_module *module, int options)
 {
-    struct lys_node *next;
+    const struct lys_node *next;
 
     if (!last) {
         /* first call */
@@ -359,10 +360,11 @@ repeat:
 
 }
 
-static struct lys_node *
-check_mand_getnext(struct lys_node *last, struct lys_node *parent)
+static const struct lys_node *
+check_mand_getnext(const struct lys_node *last, const struct lys_node *parent)
 {
-    struct lys_node *next;
+    const struct lys_node *next;
+
     next = lys_getnext(last, parent, NULL, LYS_GETNEXT_WITHCHOICE);
 
 repeat:
@@ -381,8 +383,8 @@ repeat:
     return next;
 }
 
-static struct lys_node *
-check_mand_check(struct lys_node *node, struct lys_node *stop, struct lyd_node *data)
+static const struct lys_node *
+check_mand_check(const struct lys_node *node, const struct lys_node *stop, const struct lyd_node *data)
 {
     struct lys_node *siter = NULL, *parent = NULL;
     struct lyd_node *diter = NULL;
@@ -502,11 +504,11 @@ check_mand_check(struct lys_node *node, struct lys_node *stop, struct lyd_node *
     return NULL;
 }
 
-struct lys_node *
-ly_check_mandatory(struct lyd_node *data)
+const struct lys_node *
+ly_check_mandatory(const struct lyd_node *data)
 {
-    struct lys_node *siter, *saux, *saux2, *result, *parent = NULL, *parent2;
-    struct lyd_node *diter;
+    const struct lys_node *siter, *saux, *saux2, *result, *parent = NULL, *parent2;
+    const struct lyd_node *diter;
     int found;
 
     siter = data->schema->child;
@@ -739,7 +741,7 @@ lys_find_grouping_up(const char *name, struct lys_node *start, int in_submodules
                 continue;
             }
 
-            if (name == iter->name) {
+            if (!strcmp(name, iter->name)) {
                 return (struct lys_node_grp *)iter;
             }
         }
@@ -752,7 +754,7 @@ lys_find_grouping_up(const char *name, struct lys_node *start, int in_submodules
                     continue;
                 }
 
-                if (name == iter->name) {
+                if (!strcmp(name, iter->name)) {
                     return (struct lys_node_grp *)iter;
                 }
             }
@@ -1077,7 +1079,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     return EXIT_SUCCESS;
 }
 
-API struct lys_module *
+API const struct lys_module *
 lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
     struct unres_schema *unres;
@@ -1104,13 +1106,7 @@ lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
         lys_free(mod, 0);
         mod = NULL;
     }
-    free(unres->item);
-    free(unres->type);
-    free(unres->str_snode);
-#ifndef NDEBUG
-    free(unres->line);
-#endif
-    free(unres);
+    unres_schema_free(ctx, unres);
 
     return mod;
 }
@@ -1140,21 +1136,15 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
         lys_submodule_free(submod, 0);
         submod = NULL;
     }
-    free(unres->item);
-    free(unres->type);
-    free(unres->str_snode);
-#ifndef NDEBUG
-    free(unres->line);
-#endif
-    free(unres);
+    unres_schema_free(module->ctx, unres);
 
     return submod;
 }
 
-API struct lys_module *
+API const struct lys_module *
 lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
-    struct lys_module *module;
+    const struct lys_module *module;
     struct stat sb;
     char *addr;
 
@@ -1163,13 +1153,12 @@ lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
         return NULL;
     }
 
-    /*
-     * TODO
-     * This is just a temporary solution to make working automatic search for
-     * imported modules. This doesn't work e.g. for streams (stdin)
-     */
     fstat(fd, &sb);
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (addr == MAP_FAILED) {
+        LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
+        return NULL;
+    }
     module = lys_parse(ctx, addr, format);
     munmap(addr, sb.st_size);
 
@@ -1186,14 +1175,12 @@ lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format, int i
     assert(module);
     assert(fd >= 0);
 
-    /*
-     * TODO
-     * This is just a temporary solution to make working automatic search for
-     * imported modules. This doesn't work e.g. for streams (stdin)
-     */
     fstat(fd, &sb);
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    /* TODO addr error check */
+    if (addr == MAP_FAILED) {
+        LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
+        return NULL;
+    }
     submodule = lys_submodule_parse(module, addr, format, implement);
     munmap(addr, sb.st_size);
 
@@ -1250,10 +1237,11 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
 
     i = unres_schema_find(unres, old, UNRES_TYPE_DER);
     if (i != -1) {
-        /* HACK for unres */
-        new->der = (struct lys_tpdf *)parent;
+        /* HACK (serious one) for unres */
+        /* nothing else we can do but duplicate it immediately */
+        new->der = (struct lys_tpdf *)lyxml_dup_elem(mod->ctx, (struct lyxml_elem *)old->der, NULL, 1);
         /* all these unres additions can fail even though they did not before */
-        if (unres_schema_add_str(mod, unres, new, UNRES_TYPE_DER, unres->str_snode[i], 0) == -1) {
+        if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_DER, parent, 0)) {
             return -1;
         }
         return EXIT_SUCCESS;
@@ -1307,7 +1295,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
         } else {
             i = unres_schema_find(unres, old, UNRES_TYPE_IDENTREF);
             assert(i != -1);
-            if (unres_schema_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i], 0) == -1) {
+            if (unres_schema_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i], 0)) {
                 return -1;
             }
         }
@@ -1332,7 +1320,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
 
     case LY_TYPE_LEAFREF:
         new->info.lref.path = lydict_insert(mod->ctx, old->info.lref.path, 0);
-        if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent, 0) == -1) {
+        if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent, 0)) {
             return -1;
         }
         break;
@@ -1567,7 +1555,8 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
         new[i].module = old[i].module;
         new[i].nodetype = old[i].nodetype;
         /* this must succeed, it was already resolved once */
-        if (resolve_schema_nodeid(new[i].target_name, parent->child, new[i].module, LYS_AUGMENT, &new[i].target)) {
+        if (resolve_schema_nodeid(new[i].target_name, parent->child, new[i].module, LYS_AUGMENT,
+                                  (const struct lys_node **)&new[i].target)) {
             LOGINT;
             free(new);
             return NULL;
@@ -1743,7 +1732,7 @@ lys_leaflist_free(struct ly_ctx *ctx, struct lys_node_leaflist *llist)
 static void
 lys_list_free(struct ly_ctx *ctx, struct lys_node_list *list)
 {
-    int i;
+    int i, j;
 
     /* handle only specific parts for LY_NODE_LIST */
     for (i = 0; i < list->tpdf_size; i++) {
@@ -1759,7 +1748,10 @@ lys_list_free(struct ly_ctx *ctx, struct lys_node_list *list)
     lys_when_free(ctx, list->when);
 
     for (i = 0; i < list->unique_size; i++) {
-        free(list->unique[i].leafs);
+        for (j = 0; j > list->unique[i].expr_size; j++) {
+            lydict_remove(ctx, list->unique[i].expr[j]);
+        }
+        free(list->unique[i].expr);
     }
     free(list->unique);
 
@@ -1799,7 +1791,7 @@ lys_feature_free(struct ly_ctx *ctx, struct lys_feature *f)
 static void
 lys_deviation_free(struct ly_ctx *ctx, struct lys_deviation *dev)
 {
-    int i, j;
+    int i, j, k;
 
     lydict_remove(ctx, dev->target_name);
     lydict_remove(ctx, dev->dsc);
@@ -1816,7 +1808,10 @@ lys_deviation_free(struct ly_ctx *ctx, struct lys_deviation *dev)
             free(dev->deviate[i].must);
 
             for (j = 0; j < dev->deviate[i].unique_size; j++) {
-                free(dev->deviate[j].unique[j].leafs);
+                for (k = 0; k < dev->deviate[i].unique[j].expr_size; k++) {
+                    lydict_remove(ctx, dev->deviate[i].unique[j].expr[k]);
+                }
+                free(dev->deviate[j].unique[j].expr);
             }
             free(dev->deviate[i].unique);
         }
@@ -1931,8 +1926,8 @@ lys_node_free(struct lys_node *node)
     free(node);
 }
 
-struct lys_module *
-lys_get_import_module(struct lys_module *module, const char *prefix, int pref_len, const char *name, int name_len)
+const struct lys_module *
+lys_get_import_module(const struct lys_module *module, const char *prefix, int pref_len, const char *name, int name_len)
 {
     int i, match;
 
@@ -2079,81 +2074,8 @@ lys_submodule_free(struct lys_submodule *submodule, int free_int_mods)
     free(submodule);
 }
 
-static struct lys_node_leaf *
-lys_uniq_find(struct lys_node_list *list, struct lys_node_leaf *orig_leaf)
-{
-    struct lys_node *node, *node2, *ret = NULL, *parent1, *parent2;
-    int depth = 1, i;
-
-    /* find the correct direct descendant of list in orig_leaf */
-    node = (struct lys_node *)orig_leaf;
-    while (1) {
-        if (!node->parent) {
-            return NULL;
-        }
-        if (!strcmp(node->parent->name, list->name)) {
-            break;
-        }
-
-        node = node->parent;
-        ++depth;
-    }
-
-    /* make sure the nodes are equal */
-    parent1 = node->parent->parent;
-    parent2 = list->parent;
-    while (1) {
-        if ((parent1 && !parent2) || (!parent1 && parent2)) {
-            return NULL;
-        }
-
-        if (parent1 == parent2) {
-            break;
-        }
-
-        parent1 = parent1->parent;
-        parent2 = parent2->parent;
-    }
-
-    /* find the descendant in the list */
-    LY_TREE_FOR(list->child, node2) {
-        if (!strcmp(node2->name, node->name)) {
-            ret = node2;
-            break;
-        }
-    }
-
-    if (!ret) {
-        return NULL;
-    }
-
-    /* continue traversing both trees, the nodes are always truly equal */
-    while (1) {
-        --depth;
-        if (!depth) {
-            if (ret->nodetype != LYS_LEAF) {
-                return NULL;
-            }
-            return (struct lys_node_leaf *)ret;
-        }
-        node = (struct lys_node *)orig_leaf;
-        for (i = 0; i < depth-1; ++i) {
-            node = node->parent;
-        }
-        LY_TREE_FOR(ret->child, node2) {
-            if (!strcmp(node2->name, node->name)) {
-                ret = node2;
-                break;
-            }
-        }
-        if (!node2) {
-            return NULL;
-        }
-    }
-}
-
 struct lys_node *
-lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, uint8_t nacm, int recursive,
+lys_node_dup(struct lys_module *module, const struct lys_node *node, uint8_t flags, uint8_t nacm, int recursive,
              struct unres_schema *unres)
 {
     struct lys_node *retval = NULL, *aux, *child;
@@ -2317,7 +2239,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
         if (choice_orig->dflt) {
             rc = lys_get_sibling(choice->module, choice->child, NULL, 0, choice_orig->dflt->name, 0, LYS_ANYXML
                                          | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST
-                                         | LYS_LIST, &choice->dflt);
+                                         | LYS_LIST, (const struct lys_node **)&choice->dflt);
             if (rc) {
                 if (rc == EXIT_FAILURE) {
                     LOGINT;
@@ -2376,14 +2298,12 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
         list->max = list_orig->max;
 
         list->must_size = list_orig->must_size;
-        list->tpdf_size = list_orig->tpdf_size;
-        list->keys_size = list_orig->keys_size;
-        list->unique_size = list_orig->unique_size;
-
         list->must = lys_restr_dup(ctx, list_orig->must, list->must_size);
 
+        list->tpdf_size = list_orig->tpdf_size;
         list->tpdf = lys_tpdf_dup(module, node->parent, list_orig->tpdf, list->tpdf_size, unres);
 
+        list->keys_size = list_orig->keys_size;
         if (list->keys_size) {
             list->keys = calloc(list->keys_size, sizeof *list->keys);
 
@@ -2391,7 +2311,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
             if (list_orig->keys[0]) {
                 for (i = 0; i < list->keys_size; ++i) {
                     rc = lys_get_sibling(list->module, list->child, NULL, 0, list_orig->keys[i]->name, 0, LYS_LEAF,
-                                         (struct lys_node **)&list->keys[i]);
+                                         (const struct lys_node **)&list->keys[i]);
                     if (rc) {
                         if (rc == EXIT_FAILURE) {
                             LOGINT;
@@ -2408,18 +2328,15 @@ lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, ui
             }
         }
 
-        list->unique = calloc(list->unique_size, sizeof *list->unique);
-        if (list_orig->unique) {
-            for (i = 0; i < list->unique_size; ++i) {
-                list->unique[i].leafs = calloc(list->unique[i].leafs_size, sizeof *list->unique[i].leafs);
-                for (j = 0; j < list->unique[i].leafs_size; j++) {
-                    list->unique[i].leafs[j] = lys_uniq_find(list, list_orig->unique[i].leafs[j]);
-                }
-            }
-        } else {
-            for (i = 0; i < list->unique_size; ++i) {
-                /* HACK for unres */
-                list->unique[i].leafs = (struct lys_node_leaf **)list;
+        list->unique_size = list_orig->unique_size;
+        list->unique = malloc(list->unique_size * sizeof *list->unique);
+        for (i = 0; i < list->unique_size; ++i) {
+            list->unique[i].expr_size = list_orig->unique[i].expr_size;
+            list->unique[i].expr = malloc(list->unique[i].expr_size * sizeof *list->unique[i].expr);
+            for (j = 0; j < list->unique[i].expr_size; j++) {
+                list->unique[i].expr[j] = lydict_insert(ctx, list_orig->unique[i].expr[j], 0);
+
+                /* if it stays in unres list, duplicate it also there */
                 unres_schema_dup(module, unres, &list_orig->unique[i], UNRES_LIST_UNIQ, &list->unique[i]);
             }
         }
@@ -2536,7 +2453,7 @@ lys_free(struct lys_module *module, int free_int_mods)
  * op: 1 - enable, 0 - disable
  */
 static int
-lys_features_change(struct lys_module *module, const char *name, int op)
+lys_features_change(const struct lys_module *module, const char *name, int op)
 {
     int all = 0;
     int i, j, k;
@@ -2595,19 +2512,19 @@ lys_features_change(struct lys_module *module, const char *name, int op)
 }
 
 API int
-lys_features_enable(struct lys_module *module, const char *feature)
+lys_features_enable(const struct lys_module *module, const char *feature)
 {
     return lys_features_change(module, feature, 1);
 }
 
 API int
-lys_features_disable(struct lys_module *module, const char *feature)
+lys_features_disable(const struct lys_module *module, const char *feature)
 {
     return lys_features_change(module, feature, 0);
 }
 
 API int
-lys_features_state(struct lys_module *module, const char *feature)
+lys_features_state(const struct lys_module *module, const char *feature)
 {
     int i, j;
 
@@ -2647,7 +2564,7 @@ lys_features_state(struct lys_module *module, const char *feature)
 }
 
 API const char **
-lys_features_list(struct lys_module *module, uint8_t **states)
+lys_features_list(const struct lys_module *module, uint8_t **states)
 {
     const char **result = NULL;
     int i, j;
@@ -2704,7 +2621,7 @@ lys_features_list(struct lys_module *module, uint8_t **states)
 }
 
 API struct lys_node *
-lys_parent(struct lys_node *node)
+lys_parent(const struct lys_node *node)
 {
     if (!node || !node->parent) {
         return NULL;

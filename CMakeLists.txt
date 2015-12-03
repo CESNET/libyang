@@ -1,10 +1,12 @@
 cmake_minimum_required(VERSION 2.6)
 project(libyang C)
 
+set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and toolkit written (and providing API) in C.")
+
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
-set(LIBYANG_MINOR_VERSION 2)
-set(LIBYANG_MICRO_VERSION 75)
+set(LIBYANG_MINOR_VERSION 3)
+set(LIBYANG_MICRO_VERSION 35)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 
@@ -52,6 +54,7 @@ set(libsrc
 	src/parser.c
 	src/parser_yin.c
 	src/parser_xml.c
+	src/parser_json.c
 	src/tree_schema.c
 	src/tree_data.c
 	src/printer.c
@@ -86,6 +89,13 @@ target_link_libraries(yang ${PCRE_LIBRARIES})
 
 install(TARGETS yang DESTINATION ${LIB_INSTALL_DIR})
 install(FILES ${headers} DESTINATION ${INCLUDE_INSTALL_DIR})
+
+find_package(PkgConfig)
+if(PKG_CONFIG_FOUND)
+	# generate and install pkg-config file
+	configure_file("libyang.pc.in" "libyang.pc" @ONLY)
+	install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libyang.pc" DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig")
+endif()
 
 # generate doxygen documentation for libyang API
 find_package(Doxygen)

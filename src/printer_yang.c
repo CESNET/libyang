@@ -29,7 +29,7 @@
 #define INDENT ""
 #define LEVEL (level*2)
 
-static void yang_print_snode(struct lyout *out, int level, struct lys_node *node, int mask);
+static void yang_print_snode(struct lyout *out, int level, const struct lys_node *node, int mask);
 
 static void
 yang_print_text(struct lyout *out, int level, const char *name, const char *text)
@@ -53,7 +53,7 @@ yang_print_text(struct lyout *out, int level, const char *name, const char *text
 }
 
 static void
-yang_print_nacmext(struct lyout *out, int level, struct lys_node *node, struct lys_module *module)
+yang_print_nacmext(struct lyout *out, int level, const struct lys_node *node, const struct lys_module *module)
 {
     int i, j;
     const char *prefix = NULL;
@@ -97,7 +97,7 @@ yang_print_nacmext(struct lyout *out, int level, struct lys_node *node, struct l
  * description, reference, status
  */
 static void
-yang_print_snode_common(struct lyout *out, int level, struct lys_node *node)
+yang_print_snode_common(struct lyout *out, int level, const struct lys_node *node)
 {
     if (node->flags & LYS_STATUS_CURR) {
         ly_print(out, "%*sstatus \"current\";\n", LEVEL, INDENT);
@@ -121,7 +121,7 @@ yang_print_snode_common(struct lyout *out, int level, struct lys_node *node)
  * description, reference, status
  */
 static void
-yang_print_snode_common2(struct lyout *out, int level, struct lys_node *node)
+yang_print_snode_common2(struct lyout *out, int level, const struct lys_node *node)
 {
     if (!node->parent || (node->parent->flags & LYS_CONFIG_MASK) != (node->flags & LYS_CONFIG_MASK)) {
         /* print config only when it differs from the parent or in root */
@@ -142,7 +142,7 @@ yang_print_snode_common2(struct lyout *out, int level, struct lys_node *node)
 }
 
 static void
-yang_print_iffeature(struct lyout *out, int level, struct lys_module *module, struct lys_feature *feat)
+yang_print_iffeature(struct lyout *out, int level, const struct lys_module *module, const struct lys_feature *feat)
 {
     ly_print(out, "%*sif-feature ", LEVEL, INDENT);
     if ((feat->module != module) && !feat->module->type) {
@@ -152,7 +152,7 @@ yang_print_iffeature(struct lyout *out, int level, struct lys_module *module, st
 }
 
 static void
-yang_print_feature(struct lyout *out, int level, struct lys_feature *feat)
+yang_print_feature(struct lyout *out, int level, const struct lys_feature *feat)
 {
     int i;
 
@@ -169,7 +169,7 @@ yang_print_feature(struct lyout *out, int level, struct lys_feature *feat)
 }
 
 static void
-yang_print_restr(struct lyout *out, int level, struct lys_restr *restr)
+yang_print_restr(struct lyout *out, int level, const struct lys_restr *restr)
 {
     if (restr->dsc != NULL) {
         yang_print_text(out, level, "description", restr->dsc);
@@ -186,7 +186,7 @@ yang_print_restr(struct lyout *out, int level, struct lys_restr *restr)
 }
 
 static void
-yang_print_when(struct lyout *out, int level, struct lys_module *module, struct lys_when *when)
+yang_print_when(struct lyout *out, int level, const struct lys_module *module, const struct lys_when *when)
 {
     const char *xml_expr;
 
@@ -211,7 +211,7 @@ yang_print_when(struct lyout *out, int level, struct lys_module *module, struct 
 }
 
 static void
-yang_print_type(struct lyout *out, int level, struct lys_module *module, struct lys_type *type)
+yang_print_type(struct lyout *out, int level, const struct lys_module *module, const struct lys_type *type)
 {
     int i;
     const char *str;
@@ -320,7 +320,7 @@ yang_print_type(struct lyout *out, int level, struct lys_module *module, struct 
 }
 
 static void
-yang_print_must(struct lyout *out, int level, struct lys_module *module, struct lys_restr *must)
+yang_print_must(struct lyout *out, int level, const struct lys_module *module, const struct lys_restr *must)
 {
     const char *xml_expr;
 
@@ -338,19 +338,19 @@ yang_print_must(struct lyout *out, int level, struct lys_module *module, struct 
 }
 
 static void
-yang_print_unique(struct lyout *out, int level, struct lys_unique *uniq)
+yang_print_unique(struct lyout *out, int level, const struct lys_unique *uniq)
 {
     int i;
 
     ly_print(out, "%*sunique \"", LEVEL, INDENT);
-    for (i = 0; i < uniq->leafs_size; i++) {
-        ly_print(out, "%s%s", uniq->leafs[i]->name, i + 1 < uniq->leafs_size ? " " : "");
+    for (i = 0; i < uniq->expr_size; i++) {
+        ly_print(out, "%s%s", uniq->expr[i], i + 1 < uniq->expr_size ? " " : "");
     }
     ly_print(out, "\";\n");
 }
 
 static void
-yang_print_refine(struct lyout *out, int level, struct lys_module *module, struct lys_refine *refine)
+yang_print_refine(struct lyout *out, int level, const struct lys_module *module, const struct lys_refine *refine)
 {
     int i;
     const char *str;
@@ -400,7 +400,8 @@ yang_print_refine(struct lyout *out, int level, struct lys_module *module, struc
 }
 
 static void
-yang_print_deviation(struct lyout *out, int level, struct lys_module *module, struct lys_deviation *deviation)
+yang_print_deviation(struct lyout *out, int level, const struct lys_module *module,
+                     const struct lys_deviation *deviation)
 {
     int i, j;
     const char *str;
@@ -478,7 +479,8 @@ yang_print_deviation(struct lyout *out, int level, struct lys_module *module, st
 }
 
 static void
-yang_print_augment(struct lyout *out, int level, struct lys_module *module, struct lys_node_augment *augment)
+yang_print_augment(struct lyout *out, int level, const struct lys_module *module,
+                   const struct lys_node_augment *augment)
 {
     int i;
     struct lys_node *sub;
@@ -511,7 +513,7 @@ yang_print_augment(struct lyout *out, int level, struct lys_module *module, stru
 }
 
 static void
-yang_print_typedef(struct lyout *out, int level, struct lys_module *module, struct lys_tpdf *tpdf)
+yang_print_typedef(struct lyout *out, int level, const struct lys_module *module, const struct lys_tpdf *tpdf)
 {
     ly_print(out, "%*stypedef %s {\n", LEVEL, INDENT, tpdf->name);
     level++;
@@ -530,7 +532,7 @@ yang_print_typedef(struct lyout *out, int level, struct lys_module *module, stru
 }
 
 static void
-yang_print_identity(struct lyout *out, int level, struct lys_ident *ident)
+yang_print_identity(struct lyout *out, int level, const struct lys_ident *ident)
 {
     ly_print(out, "%*sidentity %s {\n", LEVEL, INDENT, ident->name);
     level++;
@@ -550,7 +552,7 @@ yang_print_identity(struct lyout *out, int level, struct lys_ident *ident)
 }
 
 static void
-yang_print_container(struct lyout *out, int level, struct lys_node *node)
+yang_print_container(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node *sub;
@@ -599,7 +601,7 @@ yang_print_container(struct lyout *out, int level, struct lys_node *node)
 }
 
 static void
-yang_print_case(struct lyout *out, int level, struct lys_node *node)
+yang_print_case(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node *sub;
@@ -633,7 +635,7 @@ yang_print_case(struct lyout *out, int level, struct lys_node *node)
 }
 
 static void
-yang_print_choice(struct lyout *out, int level, struct lys_node *node)
+yang_print_choice(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node *sub;
@@ -670,7 +672,7 @@ yang_print_choice(struct lyout *out, int level, struct lys_node *node)
 }
 
 static void
-yang_print_leaf(struct lyout *out, int level, struct lys_node *node)
+yang_print_leaf(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node_leaf *leaf = (struct lys_node_leaf *)node;
@@ -702,7 +704,7 @@ yang_print_leaf(struct lyout *out, int level, struct lys_node *node)
 }
 
 static void
-yang_print_anyxml(struct lyout *out, int level, struct lys_node *node)
+yang_print_anyxml(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node_anyxml *anyxml = (struct lys_node_anyxml *)node;
@@ -725,7 +727,7 @@ yang_print_anyxml(struct lyout *out, int level, struct lys_node *node)
 }
 
 static void
-yang_print_leaflist(struct lyout *out, int level, struct lys_node *node)
+yang_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node_leaflist *llist = (struct lys_node_leaflist *)node;
@@ -763,7 +765,7 @@ yang_print_leaflist(struct lyout *out, int level, struct lys_node *node)
 }
 
 static void
-yang_print_list(struct lyout *out, int level, struct lys_node *node)
+yang_print_list(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node *sub;
@@ -824,7 +826,7 @@ yang_print_list(struct lyout *out, int level, struct lys_node *node)
 }
 
 static void
-yang_print_grouping(struct lyout *out, int level, struct lys_node *node)
+yang_print_grouping(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node *child;
@@ -850,7 +852,7 @@ yang_print_grouping(struct lyout *out, int level, struct lys_node *node)
 }
 
 static void
-yang_print_uses(struct lyout *out, int level, struct lys_node *node)
+yang_print_uses(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node_uses *uses = (struct lys_node_uses *)node;
@@ -884,7 +886,7 @@ yang_print_uses(struct lyout *out, int level, struct lys_node *node)
 }
 
 static void
-yang_print_input_output(struct lyout *out, int level, struct lys_node *node)
+yang_print_input_output(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node *sub;
@@ -912,7 +914,7 @@ yang_print_input_output(struct lyout *out, int level, struct lys_node *node)
 }
 
 static void
-yang_print_rpc(struct lyout *out, int level, struct lys_node *node)
+yang_print_rpc(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node *sub;
@@ -941,7 +943,7 @@ yang_print_rpc(struct lyout *out, int level, struct lys_node *node)
 }
 
 static void
-yang_print_notif(struct lyout *out, int level, struct lys_node *node)
+yang_print_notif(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node *sub;
@@ -975,7 +977,7 @@ yang_print_notif(struct lyout *out, int level, struct lys_node *node)
 }
 
 static void
-yang_print_snode(struct lyout *out, int level, struct lys_node *node, int mask)
+yang_print_snode(struct lyout *out, int level, const struct lys_node *node, int mask)
 {
     switch (node->nodetype & mask) {
     case LYS_CONTAINER:
@@ -1015,7 +1017,7 @@ yang_print_snode(struct lyout *out, int level, struct lys_node *node, int mask)
 }
 
 int
-yang_print_model(struct lyout *out, struct lys_module *module)
+yang_print_model(struct lyout *out, const struct lys_module *module)
 {
     unsigned int i;
     int level = 0;

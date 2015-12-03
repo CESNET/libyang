@@ -241,7 +241,7 @@ struct lys_module {
     uint8_t type:1;                  /**< 0 - structure type used to distinguish structure from ::lys_submodule */
     uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
-    const char *uri;                 /**< origin URI of the module */
+    const char *uri;                 /**< source of this module in URI format (can be NULL) */
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in #rev array */
@@ -338,12 +338,12 @@ typedef enum {
     LY_TYPE_STRING,      /**< Human-readable string ([RFC 6020 sec 9.4](http://tools.ietf.org/html/rfc6020#section-9.4)) */
     LY_TYPE_UNION,       /**< Choice of member types ([RFC 6020 sec 9.12](http://tools.ietf.org/html/rfc6020#section-9.12)) */
     LY_TYPE_INT8,        /**< 8-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-    LY_TYPE_INT16,       /**< 16-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-    LY_TYPE_INT32,       /**< 32-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-    LY_TYPE_INT64,       /**< 64-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
     LY_TYPE_UINT8,       /**< 8-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+    LY_TYPE_INT16,       /**< 16-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
     LY_TYPE_UINT16,      /**< 16-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+    LY_TYPE_INT32,       /**< 32-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
     LY_TYPE_UINT32,      /**< 32-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+    LY_TYPE_INT64,       /**< 64-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
     LY_TYPE_UINT64,      /**< 64-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
 } LY_DATA_TYPE;
 #define LY_DATA_TYPE_COUNT 20        /**< number of #LY_DATA_TYPE built-in types */
@@ -1158,8 +1158,8 @@ struct lys_tpdf {
  * @brief YANG list's unique statement structure, see [RFC 6020 sec. 7.8.3](http://tools.ietf.org/html/rfc6020#section-7.8.3)
  */
 struct lys_unique {
-    struct lys_node_leaf **leafs;    /**< array of pointers to the leafs for the unique value */
-    uint8_t leafs_size;              /**< size of the #leafs array */
+    const char **expr;               /**< array of unique expressions specifying target leafs to be unique */
+    uint8_t expr_size;               /**< size of the #axpr array */
 };
 
 /**
@@ -1242,7 +1242,7 @@ struct lys_ident_der {
  * must be freed by the caller, do not free names in the array. Also remember
  * that the names will be freed with freeing the context of the module.
  */
-const char **lys_features_list(struct lys_module *module, uint8_t **states);
+const char **lys_features_list(const struct lys_module *module, uint8_t **states);
 
 /**
  * @brief Enable specified feature in the module
@@ -1253,7 +1253,7 @@ const char **lys_features_list(struct lys_module *module, uint8_t **states);
  * @param[in] feature Name of the feature to enable. To enable all features at once, use asterisk character.
  * @return 0 on success, 1 when the feature is not defined in the specified module
  */
-int lys_features_enable(struct lys_module *module, const char *feature);
+int lys_features_enable(const struct lys_module *module, const char *feature);
 
 /**
  * @brief Disable specified feature in the module
@@ -1264,7 +1264,7 @@ int lys_features_enable(struct lys_module *module, const char *feature);
  * @param[in] feature Name of the feature to disable. To disable all features at once, use asterisk character.
  * @return 0 on success, 1 when the feature is not defined in the specified module
  */
-int lys_features_disable(struct lys_module *module, const char *feature);
+int lys_features_disable(const struct lys_module *module, const char *feature);
 
 /**
  * @brief Get the current status of the specified feature in the module.
@@ -1276,7 +1276,7 @@ int lys_features_disable(struct lys_module *module, const char *feature);
  * - 0 if feature is disabled,
  * - -1 in case of error (e.g. feature is not defined)
  */
-int lys_features_state(struct lys_module *module, const char *feature);
+int lys_features_state(const struct lys_module *module, const char *feature);
 
 /**
  * @brief Check if the schema node is enabled in the schema tree, i.e. there is no disabled if-feature statement
@@ -1289,7 +1289,7 @@ int lys_features_state(struct lys_module *module, const char *feature);
  * @return - NULL if enabled,
  * - pointer to the disabling feature if disabled.
  */
-struct lys_feature *lys_is_disabled(struct lys_node *node, int recursive);
+const struct lys_feature *lys_is_disabled(const struct lys_node *node, int recursive);
 
 /**
  * @brief Get next schema tree (sibling) node element that can be instanciated in a data tree. Returned node can
@@ -1306,7 +1306,8 @@ struct lys_feature *lys_is_disabled(struct lys_node *node, int recursive);
  * @param[in] options ORed options LYS_GETNEXT_*.
  * @return Next schema tree node that can be instanciated in a data tree, NULL in case there is no such element
  */
-struct lys_node *lys_getnext(struct lys_node *last, struct lys_node *parent, struct lys_module *module, int options);
+const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys_node *parent,
+                                   const struct lys_module *module, int options);
 
 /**
  * @brief options for lys_getnext() to allow returning choice, case, grouping, input and output nodes.
@@ -1326,7 +1327,7 @@ struct lys_node *lys_getnext(struct lys_node *last, struct lys_node *parent, str
  * @param[in] node Child node to the returned parent node.
  * @return The parent node from the schema tree, NULL in case of top level nodes.
  */
-struct lys_node *lys_parent(struct lys_node *node);
+struct lys_node *lys_parent(const struct lys_node *node);
 
 /**@} */
 

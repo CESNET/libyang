@@ -88,7 +88,8 @@ struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char 
  * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
  *
  * @param[in] module Schema tree where to connect the submodule, belongs-to value must match.
- * @param[in] fd Standard file descriptor of the file containing the submodule specification in the given \p format.
+ * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the submodule
+ *            specification in the given \p format.
  * @param[in] format Format of the data to read.
  * @param[in] implement Flag to distinguish implemented and just imported (sub)modules.
  * @return Created submodule structure or NULL in case of error.
@@ -160,7 +161,7 @@ int lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_modu
  * @param[in] unres TODO provide description
  * @return Created copy of the provided schema \p node.
  */
-struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *node, uint8_t flags, uint8_t nacm,
+struct lys_node *lys_node_dup(struct lys_module *module, const struct lys_node *node, uint8_t flags, uint8_t nacm,
                               int recursive, struct unres_schema *unres);
 
 /**
@@ -229,7 +230,7 @@ void lys_free(struct lys_module *module, int free_int_mods);
  * @return The first mandatory element definition not present in the data, NULL if
  * there is no such element in the \p starts's subtree.
  */
-struct lys_node *ly_check_mandatory(struct lyd_node *start);
+const struct lys_node *ly_check_mandatory(const struct lyd_node *start);
 
 /**
  * @brief Find the parent node of an attribute.
@@ -253,8 +254,8 @@ struct lyd_node *lyd_attr_parent(struct lyd_node *root, struct lyd_attr *attr);
  *
  * @return Matching module, NULL if not found.
  */
-struct lys_module *lys_get_import_module(struct lys_module *module, const char *prefix, int pref_len, const char *name,
-                                         int name_len);
+const struct lys_module *lys_get_import_module(const struct lys_module *module, const char *prefix, int pref_len,
+                                               const char *name, int name_len);
 
 /**
  * @brief Find a specific sibling. Does not log.
@@ -276,8 +277,8 @@ struct lys_module *lys_get_import_module(struct lys_module *module, const char *
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
-int lys_get_sibling(struct lys_module *mod, struct lys_node *siblings, const char *mod_name, int mod_name_len,
-                    const char *name, int nam_len, LYS_NODE type, struct lys_node **ret);
+int lys_get_sibling(struct lys_module *mod, const struct lys_node *siblings, const char *mod_name, int mod_name_len,
+                    const char *name, int nam_len, LYS_NODE type, const struct lys_node **ret);
 
 /**
  * @brief Find a specific sibling that can appear in the data. Does not log.
@@ -294,8 +295,8 @@ int lys_get_sibling(struct lys_module *mod, struct lys_node *siblings, const cha
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on fail.
  */
-int lys_get_data_sibling(struct lys_module *mod, struct lys_node *siblings, const char *name, LYS_NODE type,
-                         struct lys_node **ret);
+int lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblings, const char *name, LYS_NODE type,
+                         const struct lys_node **ret);
 
 /**
  * @brief Compare 2 data nodes if they are the same from the YANG point of view.

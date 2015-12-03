@@ -26,20 +26,21 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <fcntl.h>
 
 #include "common.h"
 #include "dict_private.h"
 #include "printer.h"
+#include "parser.h"
 #include "tree_schema.h"
 #include "xml_internal.h"
 
 #ifndef NDEBUG
-unsigned int lineno, lws_lineno;
-#define COUNTLINE(c) if ((c) == 0xa) {lineno++;}
-#else
-#define lineno 0
-#define COUNTLINE(C)
+static unsigned int lws_lineno = 0;
 #endif
+static unsigned int lineno = 0;
 
 #define ign_xmlws(p)                                                    \
 	while (is_xmlws(*p)) {                                              \
@@ -47,8 +48,10 @@ unsigned int lineno, lws_lineno;
 		p++;                                                            \
 	}
 
-struct lyxml_ns *
-lyxml_get_ns(struct lyxml_elem *elem, const char *prefix)
+static struct lyxml_attr *lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr *attr);
+
+API const struct lyxml_ns *
+lyxml_get_ns(const struct lyxml_elem *elem, const char *prefix)
 {
     struct lyxml_attr *attr;
     int len;
@@ -86,7 +89,38 @@ lyxml_get_ns(struct lyxml_elem *elem, const char *prefix)
     return lyxml_get_ns(elem->parent, prefix);
 }
 
-struct lyxml_attr *
+static void
+lyxml_correct_attr_ns(struct ly_ctx *ctx, struct lyxml_attr *attr, struct lyxml_elem *attr_parent, int copy_ns)
+{
+    const struct lyxml_ns *tmp_ns;
+    struct lyxml_elem *ns_root, *attr_root;
+
+    if ((attr->type != LYXML_ATTR_NS) && attr->ns) {
+        /* find the root of attr */
+        for (attr_root = attr_parent; attr_root->parent; attr_root = attr_root->parent);
+
+        /* find the root of attr NS */
+        for (ns_root = attr->ns->parent; ns_root->parent; ns_root = ns_root->parent);
+
+        /* attr NS is defined outside attr parent subtree */
+        if (ns_root != attr_root) {
+            if (copy_ns) {
+                tmp_ns = attr->ns;
+                /* we may have already copied the NS over? */
+                attr->ns = lyxml_get_ns(attr->ns->parent, tmp_ns->prefix);
+
+                /* we haven't copied it over, copy it now */
+                if (!attr->ns) {
+                    attr->ns = (struct lyxml_ns *)lyxml_dup_attr(ctx, attr_parent, (struct lyxml_attr *)tmp_ns);
+                }
+            } else {
+                attr->ns = NULL;
+            }
+        }
+    }
+}
+
+static struct lyxml_attr *
 lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr *attr)
 {
     struct lyxml_attr *result, *a;
@@ -110,7 +144,8 @@ lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr 
 
     /* set namespace in case of standard attributes */
     if (result->type == LYXML_ATTR_STD && attr->ns) {
-        result->ns = lyxml_get_ns(parent, attr->ns->prefix);
+        result->ns = attr->ns;
+        lyxml_correct_attr_ns(ctx, result, parent, 1);
     }
 
     /* set parent pointer in case of namespace attribute */
@@ -130,6 +165,47 @@ lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr 
     }
 
     return result;
+}
+
+/* copy_ns: 0 - set invalid namespaces to NULL, 1 - copy them into this subtree */
+static void
+lyxml_correct_elem_ns(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns, int correct_attrs)
+{
+    const struct lyxml_ns *tmp_ns;
+    struct lyxml_elem *elem_root, *ns_root, *tmp;
+    struct lyxml_attr *attr;
+
+    /* find the root of elem */
+    for (elem_root = elem; elem_root->parent; elem_root = elem_root->parent);
+
+    LY_TREE_DFS_BEGIN(elem, tmp, elem) {
+        if (elem->ns) {
+            /* find the root of elem NS */
+            for (ns_root = elem->ns->parent; ns_root->parent; ns_root = ns_root->parent);
+
+            /* elem NS is defined outside elem subtree */
+            if (ns_root != elem_root) {
+                if (copy_ns) {
+                    tmp_ns = elem->ns;
+                    /* we may have already copied the NS over? */
+                    elem->ns = lyxml_get_ns(elem, tmp_ns->prefix);
+
+                    /* we haven't copied it over, copy it now */
+                    if (!elem->ns) {
+                        elem->ns = (struct lyxml_ns *)lyxml_dup_attr(ctx, elem, (struct lyxml_attr *)tmp_ns);
+                    }
+                } else {
+                    elem->ns = NULL;
+                }
+            }
+        }
+        if (correct_attrs) {
+            LY_TREE_FOR(elem->attr, attr) {
+                lyxml_correct_attr_ns(ctx, attr, elem_root, copy_ns);
+            }
+        }
+        LY_TREE_DFS_END(elem, tmp, elem);
+    }
 }
 
 struct lyxml_elem *
@@ -155,10 +231,11 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
         lyxml_add_child(ctx, parent, result);
     }
 
-    /* namespace */
-    if (elem->ns) {
-        result->ns = lyxml_get_ns(result, elem->ns->prefix);
-    }
+    /* keep old namespace for now */
+    result->ns = elem->ns;
+
+    /* correct namespaces */
+    lyxml_correct_elem_ns(ctx, result, 1, 0);
 
     /* duplicate attributes */
     for (attr = elem->attr; attr; attr = attr->next) {
@@ -175,82 +252,6 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
     }
 
     return result;
-}
-
-static struct lyxml_ns *
-lyxml_find_ns(struct lyxml_elem *elem, const char *prefix, const char *value)
-{
-    int pref_match, val_match;
-    struct lyxml_attr *attr;
-
-    if (!elem) {
-        return NULL;
-    }
-
-    for (; elem; elem = elem->parent) {
-        for (attr = elem->attr; attr; attr = attr->next) {
-            if (attr->type != LYXML_ATTR_NS) {
-                continue;
-            }
-
-            pref_match = 0;
-            if (!prefix && !attr->name) {
-                pref_match = 1;
-            }
-            if (prefix && attr->name && !strcmp(attr->name, prefix)) {
-                pref_match = 1;
-            }
-
-            val_match = 0;
-            if (!value && !attr->value) {
-                val_match = 1;
-            }
-            if (value && attr->value && !strcmp(attr->value, value)) {
-                val_match = 1;
-            }
-
-            if (pref_match && val_match) {
-                return (struct lyxml_ns *)attr;
-            }
-        }
-    }
-
-    return NULL;
-}
-
-/* copy_ns: 0 - set invalid namespaces to NULL, 1 - copy them into this subtree */
-static void
-lyxml_correct_ns(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
-{
-    const struct lyxml_ns *elem_ns;
-    struct lyxml_elem *elem_root, *ns_root, *tmp;
-
-    /* find the root of elem */
-    for (elem_root = elem; elem_root->parent; elem_root = elem_root->parent);
-
-    LY_TREE_DFS_BEGIN(elem, tmp, elem) {
-        if (elem->ns) {
-            /* find the root of elem NS */
-            for (ns_root = elem->ns->parent; ns_root->parent; ns_root = ns_root->parent);
-
-            /* elem NS is defined outside elem subtree */
-            if (ns_root != elem_root) {
-                if (copy_ns) {
-                    elem_ns = elem->ns;
-                    /* we may have already copied the NS over? */
-                    elem->ns = lyxml_find_ns(elem, elem_ns->prefix, elem_ns->value);
-
-                    /* we haven't copied it over, copy it now */
-                    if (!elem->ns) {
-                        elem->ns = (struct lyxml_ns *)lyxml_dup_attr(ctx, elem, (struct lyxml_attr *)elem_ns);
-                    }
-                } else {
-                    elem->ns = NULL;
-                }
-            }
-        }
-        LY_TREE_DFS_END(elem, tmp, elem)
-    }
 }
 
 void
@@ -274,6 +275,10 @@ lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
         }
         /* forget about the parent */
         elem->parent = NULL;
+    }
+
+    if (copy_ns < 2) {
+        lyxml_correct_elem_ns(ctx, elem, copy_ns, 1);
     }
 
     /* unlink from siblings */
@@ -302,10 +307,16 @@ lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
     /* clean up the unlinked element */
     elem->next = NULL;
     elem->prev = elem;
+}
 
-    if (copy_ns < 2) {
-        lyxml_correct_ns(ctx, elem, copy_ns);
+API void
+lyxml_unlink(struct ly_ctx *ctx, struct lyxml_elem *elem)
+{
+    if (!elem) {
+        return;
     }
+
+    lyxml_unlink_elem(ctx, elem, 1);
 }
 
 void
@@ -365,7 +376,7 @@ lyxml_free_attrs(struct ly_ctx *ctx, struct lyxml_elem *elem)
 }
 
 static void
-lyxml_free_elem_(struct ly_ctx *ctx, struct lyxml_elem *elem)
+lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem *elem)
 {
     struct lyxml_elem *e, *next;
 
@@ -375,7 +386,7 @@ lyxml_free_elem_(struct ly_ctx *ctx, struct lyxml_elem *elem)
 
     lyxml_free_attrs(ctx, elem);
     LY_TREE_FOR_SAFE(elem->child, next, e) {
-        lyxml_free_elem_(ctx, e);
+        lyxml_free_elem(ctx, e);
     }
     lydict_remove(ctx, elem->name);
     lydict_remove(ctx, elem->content);
@@ -383,18 +394,18 @@ lyxml_free_elem_(struct ly_ctx *ctx, struct lyxml_elem *elem)
 }
 
 API void
-lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem *elem)
+lyxml_free(struct ly_ctx *ctx, struct lyxml_elem *elem)
 {
     if (!elem) {
         return;
     }
 
     lyxml_unlink_elem(ctx, elem, 2);
-    lyxml_free_elem_(ctx, elem);
+    lyxml_free_elem(ctx, elem);
 }
 
-const char *
-lyxml_get_attr(struct lyxml_elem *elem, const char *name, const char *ns)
+API const char *
+lyxml_get_attr(const struct lyxml_elem *elem, const char *name, const char *ns)
 {
     struct lyxml_attr *a;
 
@@ -532,53 +543,6 @@ lyxml_getutf8(const char *buf, unsigned int *read, unsigned int line)
     return c;
 }
 
-/**
- * Store UTF-8 character specified as 4byte integer into the dst buffer.
- * Returns number of written bytes (4 max), expects that dst has enough space.
- *
- * UTF-8 mapping:
- * 00000000 -- 0000007F: 	0xxxxxxx
- * 00000080 -- 000007FF: 	110xxxxx 10xxxxxx
- * 00000800 -- 0000FFFF: 	1110xxxx 10xxxxxx 10xxxxxx
- * 00010000 -- 001FFFFF: 	11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
- *
- */
-static unsigned int
-pututf8(char *dst, int32_t value)
-{
-    if (value < 0x80) {
-        /* one byte character */
-        dst[0] = value;
-
-        return 1;
-    } else if (value < 0x800) {
-        /* two bytes character */
-        dst[0] = 0xc0 | (value >> 6);
-        dst[1] = 0x80 | (value & 0x3f);
-
-        return 2;
-    } else if (value < 0x10000) {
-        /* three bytes character */
-        dst[0] = 0xe0 | (value >> 12);
-        dst[1] = 0x80 | ((value >> 6) & 0x3f);
-        dst[2] = 0x80 | (value & 0x3f);
-
-        return 3;
-    } else if (value < 0x200000) {
-        /* four bytes character */
-        dst[0] = 0xf0 | (value >> 18);
-        dst[1] = 0x80 | ((value >> 12) & 0x3f);
-        dst[2] = 0x80 | ((value >> 6) & 0x3f);
-        dst[3] = 0x80 | (value & 0x3f);
-
-        return 4;
-    } else {
-        /* out of range */
-        LOGVAL(LYE_SPEC, lineno, "Invalid UTF-8 value 0x%08x", value);
-        return 0;
-    }
-}
-
 /* logs directly */
 static int
 parse_ignore(const char *data, const char *endstr, unsigned int *len)
@@ -703,7 +667,7 @@ loop:
                     goto error;
 
                 }
-                r = pututf8(&buf[o], n);
+                r = pututf8(&buf[o], n, lineno);
                 if (!r) {
                     LOGVAL(LYE_XML_INVAL, lineno, "character reference value");
                     goto error;
@@ -1111,7 +1075,7 @@ store_content:
     return elem;
 
 error:
-    lyxml_free_elem(ctx, elem);
+    lyxml_free(ctx, elem);
 
     return NULL;
 }
@@ -1182,26 +1146,48 @@ lyxml_read(struct ly_ctx *ctx, const char *data, int UNUSED(options))
 }
 
 API struct lyxml_elem *
-lyxml_read_fd(struct ly_ctx *ctx, int fd, int UNUSED(options))
-{
-    if (fd == -1 || !ctx) {
-        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
-        return NULL;
-    }
-
-    LOGERR(LY_EINT, "%s function is not implemented", __func__);
-    return NULL;
-}
-
-API struct lyxml_elem *
 lyxml_read_file(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
 {
+    struct lyxml_elem *elem = NULL;
+    struct stat sb;
+    int fd;
+    char *addr;
+
     if (!filename || !ctx) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
         return NULL;
     }
 
-    LOGERR(LY_EINT, "%s function is not implemented", __func__);
+    fd = open(filename, O_RDONLY);
+    if (fd == -1) {
+        LOGERR(LY_EINVAL,"Opening file \"%s\" failed.", filename);
+        return NULL;
+    }
+    if (fstat(fd, &sb) == -1) {
+        LOGERR(LY_EINVAL, "Unable to get file \"%s\" information.\n", filename);
+        goto error;
+    }
+    if (!S_ISREG(sb.st_mode)) {
+        fprintf(stderr, "File \"%s\" not a file.\n", filename);
+        goto error;
+    }
+    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (addr == MAP_FAILED) {
+        LOGERR(LY_EMEM,"Map file into memory failed (%s()).", __func__);
+        goto error;
+    }
+
+    elem = lyxml_read(ctx, addr, 0);
+    munmap(addr, sb.st_size);
+    close(fd);
+
+    return elem;
+
+error:
+    if (fd != -1) {
+        close(fd);
+    }
+
     return NULL;
 }
 
@@ -1236,7 +1222,7 @@ lyxml_dump_text(struct lyout *out, const char *text)
 }
 
 static int
-dump_elem(struct lyout *out, struct lyxml_elem *e, int level, int options)
+dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options)
 {
     int size = 0;
     struct lyxml_attr *a;
@@ -1341,7 +1327,7 @@ close:
 }
 
 API int
-lyxml_dump(FILE *stream, struct lyxml_elem *elem, int options)
+lyxml_dump(FILE *stream, const struct lyxml_elem *elem, int options)
 {
     struct lyout out;
 
@@ -1356,7 +1342,7 @@ lyxml_dump(FILE *stream, struct lyxml_elem *elem, int options)
 }
 
 API int
-lyxml_dump_fd(int fd, struct lyxml_elem *elem, int options)
+lyxml_dump_fd(int fd, const struct lyxml_elem *elem, int options)
 {
     struct lyout out;
 
@@ -1371,7 +1357,7 @@ lyxml_dump_fd(int fd, struct lyxml_elem *elem, int options)
 }
 
 API int
-lyxml_dump_mem(char **strp, struct lyxml_elem *elem, int options)
+lyxml_dump_mem(char **strp, const struct lyxml_elem *elem, int options)
 {
     struct lyout out;
     int r;
@@ -1392,7 +1378,7 @@ lyxml_dump_mem(char **strp, struct lyxml_elem *elem, int options)
 }
 
 API int
-lyxml_dump_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lyxml_elem *elem, int options)
+lyxml_dump_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyxml_elem *elem, int options)
 {
     struct lyout out;
 

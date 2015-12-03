@@ -102,13 +102,14 @@ int parse_identifier(const char *id);
 int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int superior_restr,
                              struct len_ran_intv **local_intv);
 
-int resolve_superior_type(const char *name, const char *prefix, struct lys_module *module,
-                          struct lys_node *parent, struct lys_tpdf **ret);
+int resolve_superior_type(const char *name, const char *prefix, const struct lys_module *module,
+                          const struct lys_node *parent, struct lys_tpdf **ret);
 
-int resolve_unique(struct lys_node *parent, const char *uniq_str, struct lys_unique *uniq_s, int first, uint32_t line);
+int resolve_unique(struct lys_node *parent, const char *uniq_str, int first, uint32_t line);
 
-int resolve_schema_nodeid(const char *id, struct lys_node *start, struct lys_module *mod,
-                          LYS_NODE node_type, struct lys_node **ret);
+int resolve_schema_nodeid(const char *id, const struct lys_node *start, const struct lys_module *mod,
+                          LYS_NODE node_type, const struct lys_node **ret);
+struct lyd_node *resolve_data_nodeid(const char *id, struct lyd_node *start);
 
 int resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings);
 
@@ -126,6 +127,8 @@ int unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *i
                      void *new_item);
 
 int unres_schema_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type);
+
+void unres_schema_free(struct ly_ctx *ctx, struct unres_schema *unres);
 
 int resolve_unres_data_item(struct lyd_node *dnode, enum UNRES_ITEM type, int first, uint32_t line);
 

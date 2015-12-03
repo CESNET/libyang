@@ -24,6 +24,7 @@
 
 #include "dict_private.h"
 #include "tree_schema.h"
+#include "libyang.h"
 
 struct ly_modules_list {
     char *search_path;
@@ -37,6 +38,8 @@ struct ly_modules_list {
 struct ly_ctx {
     struct dict_table dict;
     struct ly_modules_list models;
+    ly_module_clb module_clb;
+    void *module_clb_data;
 };
 
 #endif /* LY_CONTEXT_H_ */

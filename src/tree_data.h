@@ -47,44 +47,20 @@ typedef enum {
 } LYD_FORMAT;
 
 /**
- * @brief Data attribute's type to distinguish between a standard (XML) attribute and namespace definition
- */
-typedef enum lyd_attr_type {
-    LYD_ATTR_STD = 1,                /**< standard attribute, see ::lyd_attr structure */
-    LYD_ATTR_NS = 2                  /**< namespace definition, see ::lyd_ns structure */
-} LYD_ATTR_TYPE;
-
-/**
- * @brief Namespace definition structure.
- *
- * Usually, the object is provided as ::lyd_attr structure. The structure is compatible with
- * ::lyd_attr within the first two members (#type and #next) to allow passing through and type
- * detection interchangeably.  When the type member is set to #LYD_ATTR_NS, the ::lyd_attr
- * structure should be cast to ::lyd_ns to access the rest of members.
- */
-struct lyd_ns {
-    LYD_ATTR_TYPE type;              /**< always #LYD_ATTR_NS, compatible with ::lyd_attr */
-    struct lyd_attr *next;           /**< pointer to the next attribute or namespace definition of an element,
-                                          compatible with ::lyd_attr */
-    struct lyd_node *parent;         /**< pointer to the element where the namespace definition is placed */
-    const char *prefix;              /**< namespace prefix value */
-    const char *value;               /**< namespace value */
-};
-
-/**
  * @brief Attribute structure.
  *
- * The structure provides information about attributes of a data element and covers not only
- * attributes but also namespace definitions. Therefore, the first two members (#type and #next)
- * can be safely accessed to pass through the attributes list and type detection. When the #type
- * member has #LYD_ATTR_STD value, the rest of the members can be used. Otherwise, the object
- * should be cast to the appropriate structure according to #LYD_ATTR_TYPE enumeration.
+ * The structure provides information about attributes of a data element. Such attributes partially
+ * maps to annotations from draft-ietf-netmod-yang-metadata. In XML, they are represented as standard
+ * XML attrbutes. In JSON, they are represented as JSON elements starting with the '@' character
+ * (for more information, see the yang metadata draft.
+ *
  */
 struct lyd_attr {
-    LYD_ATTR_TYPE type;              /**< type of the attribute, to access the last three members, the value
-                                          must be ::LYD_ATTR_STD */
-    struct lyd_attr *next;           /**< pointer to the next attribute or namespace definition of an element */
-    struct lyd_ns *ns;               /**< pointer to the definition of the namespace of the attribute */
+    struct lyd_attr *next;           /**< pointer to the next attribute of the same element */
+    struct lys_module *module;       /**< pointer to the attribute's module.
+                                          TODO when annotations will be supported, point to the annotation definition
+                                          and validate that the attribute is really defined there. Currently, we just
+                                          believe that it is defined in the module it says */
     const char *name;                /**< attribute name */
     const char *value;               /**< attribute value */
 };
@@ -167,8 +143,8 @@ struct lyd_node_leaf_list {
     /* struct lyd_node *child; should be here, but is not */
 
     /* leaflist's specific members */
-    lyd_val value;                   /**< node's value representation */
     const char *value_str;           /**< string representation of value (for comparison, printing,...) */
+    lyd_val value;                   /**< node's value representation */
     LY_DATA_TYPE value_type;         /**< type of the value in the node, mainly for union to avoid repeating of type detection */
 };
 
@@ -207,7 +183,7 @@ struct lyd_node_anyxml {
  * #LYS_NOTIF, or #LYS_RPC.
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_new(struct lyd_node *parent, struct lys_module *module, const char *name);
+struct lyd_node *lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *name);
 
 /**
  * @brief Create a new leaf or leaflist node in a data tree with a string value that is converted to
@@ -220,7 +196,7 @@ struct lyd_node *lyd_new(struct lyd_node *parent, struct lys_module *module, con
  * or #LY_TYPE_IDENT, JSON node-id format is expected (nodes are prefixed with module names, not XML namespaces).
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_new_leaf(struct lyd_node *parent, struct lys_module *module, const char *name,
+struct lyd_node *lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const char *name,
                               const char *val_str);
 
 /**
@@ -232,7 +208,7 @@ struct lyd_node *lyd_new_leaf(struct lyd_node *parent, struct lys_module *module
  * @param[in] val_xml Value of the node being created. Must be a well-formed XML.
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_new_anyxml(struct lyd_node *parent, struct lys_module *module, const char *name,
+struct lyd_node *lyd_new_anyxml(struct lyd_node *parent, const struct lys_module *module, const char *name,
                                 const char *val_xml);
 
 /**
@@ -243,7 +219,7 @@ struct lyd_node *lyd_new_anyxml(struct lyd_node *parent, struct lys_module *modu
  * @param[in] recursive 1 if all children are supposed to be also duplicated.
  * @return Created copy of the provided data \p node.
  */
-struct lyd_node *lyd_dup(struct lyd_node *node, int recursive);
+struct lyd_node *lyd_dup(const struct lyd_node *node, int recursive);
 
 /**
  * @brief Insert the \p node element as child to the \p parent element. The \p node is inserted as a last child of the
@@ -315,11 +291,26 @@ void lyd_free(struct lyd_node *node);
  * @brief Insert attribute into the data node.
  *
  * @param[in] parent Data node where to place the attribute
- * @param[in] name Attribute name
+ * @param[in] name Attribute name including the prefix (prefix:name). Prefix must be the name of one of the
+ *            schema in the \p parent's context.
  * @param[in] value Attribute value
  * @return pointer to the created attribute (which is already connected in \p parent) or NULL on error.
  */
 struct lyd_attr *lyd_insert_attr(struct lyd_node *parent, const char *name, const char *value);
+
+/**
+ * @brief Destroy data attribute
+ *
+ * If the attribute to destroy is a member of a node attribute list, it is necessary to
+ * provide the node itself as \p parent to keep the list consistent.
+ *
+ * @param[in] ctx Context where the attribute was created (usually it is the context of the \p parent)
+ * @param[in] parent Parent node where the attribute is placed
+ * @param[in] attr Attribute to destroy
+ * @param[in] recursive Zero to destroy only the attribute, non-zero to destroy also all the subsequent attributes
+ *            in the list.
+ */
+void lyd_free_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr, int recursive);
 
 /**
  * @brief Opaque internal structure, do not access it from outside.
@@ -333,7 +324,7 @@ struct lyxml_elem;
  * @return Serialized content of the anyxml or NULL in case of error. Need to be freed after
  * done using.
  */
-char *lyxml_serialize(struct lyxml_elem *anyxml);
+char *lyxml_serialize(const struct lyxml_elem *anyxml);
 
 /**
  * @brief Structure to hold a set of (not necessary somehow connected) ::lyd_node objects.

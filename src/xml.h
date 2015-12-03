@@ -33,6 +33,11 @@
  * Structures
  */
 
+/*
+ * structure definition from context.h
+ */
+struct ly_ctx;
+
 /**
  * @brief enumeration of attribute types
  */
@@ -84,10 +89,10 @@ struct lyxml_attr {
  */
 struct lyxml_elem {
     struct lyxml_elem *parent;       /**< parent node */
+    struct lyxml_attr *attr;         /**< first attribute declared in the element */
     struct lyxml_elem *child;        /**< first children element */
     struct lyxml_elem *next;         /**< next sibling node */
     struct lyxml_elem *prev;         /**< previous sibling node */
-    struct lyxml_attr *attr;         /**< first attribute declared in the element */
 
     const char *name;                /**< name of the element */
     const struct lyxml_ns *ns;       /**< namespace of the element */
@@ -118,17 +123,7 @@ struct lyxml_elem {
 struct lyxml_elem *lyxml_read(struct ly_ctx *ctx, const char *data, int options);
 
 /**
- * @brief Parse XML from file descriptor - TODO: NOT IMPLEMENTED
- *
- * @param[in] ctx libyang context to use
- * @param[in] fd File descriptor where read data to parse
- * @param[in] options Parser options. Currently ignored, no option defined yet.
- * @return pointer to root of the parsed XML document tree.
- */
-struct lyxml_elem *lyxml_read_fd(struct ly_ctx *ctx, int fd, int options);
-
-/**
- * @brief Parse XML from filesystem - TODO: NOT IMPLEMENTED
+ * @brief Parse XML from filesystem
  *
  * @param[in] ctx libyang context to use
  * @param[in] filename Path to the file where read data to parse
@@ -178,7 +173,7 @@ struct lyxml_elem *lyxml_read_file(struct ly_ctx *ctx, const char *filename, int
  * @param[in] options Dump options, see @ref xmldumpoptions.
  * @return number of printed characters.
  */
-int lyxml_dump(FILE * stream, struct lyxml_elem *elem, int options);
+int lyxml_dump(FILE * stream, const struct lyxml_elem *elem, int options);
 
 /**
  * @brief Dump XML tree to a IO stream
@@ -190,7 +185,7 @@ int lyxml_dump(FILE * stream, struct lyxml_elem *elem, int options);
  * @param[in] options Dump options, see @ref xmldumpoptions.
  * @return number of printed characters.
  */
-int lyxml_dump_fd(int fd, struct lyxml_elem *elem, int options);
+int lyxml_dump_fd(int fd, const struct lyxml_elem *elem, int options);
 
 /**
  * @brief Dump XML tree to a IO stream
@@ -203,7 +198,7 @@ int lyxml_dump_fd(int fd, struct lyxml_elem *elem, int options);
  * @param[in] options Dump options, see @ref xmldumpoptions.
  * @return number of printed characters.
  */
-int lyxml_dump_mem(char **strp, struct lyxml_elem *elem, int options);
+int lyxml_dump_mem(char **strp, const struct lyxml_elem *elem, int options);
 
 /**
  * @brief Dump XML tree to a IO stream
@@ -216,7 +211,7 @@ int lyxml_dump_mem(char **strp, struct lyxml_elem *elem, int options);
  * @param[in] options Dump options, see @ref xmldumpoptions.
  * @return number of printed characters.
  */
-int lyxml_dump_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct lyxml_elem *elem, int options);
+int lyxml_dump_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyxml_elem *elem, int options);
 
 /**
  * @brief Free (and unlink from the XML tree) the specified element with all
@@ -225,12 +220,22 @@ int lyxml_dump_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count)
  * @param[in] ctx libyang context to use
  * @param[in] elem Pointer to the element to free.
  */
-void lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem *elem);
+void lyxml_free(struct ly_ctx *ctx, struct lyxml_elem *elem);
+
+/**
+ * @brief Unlink the element from its parent. In contrast to lyxml_free(),
+ * after return the caller can still manipulate with the elem. Any namespaces
+ * are corrected and copied, if needed.
+ *
+ * @param[in] ctx libyang context to use.
+ * @param[in] elem Element to unlink from its parent (if any).
+ */
+void lyxml_unlink(struct ly_ctx *ctx, struct lyxml_elem *elem);
 
 /**
  * @brief Get value of the attribute in the specified element.
  */
-const char *lyxml_get_attr(struct lyxml_elem *elem, const char *name, const char *ns);
+const char *lyxml_get_attr(const struct lyxml_elem *elem, const char *name, const char *ns);
 
 /**
  * @brief Get namespace definition of the given prefix in context of the specified element.
@@ -239,7 +244,7 @@ const char *lyxml_get_attr(struct lyxml_elem *elem, const char *name, const char
  * @param[in] prefix Prefix of the namespace to search for
  * @return Namespace defintion or NULL if no such namespace exists
  */
-struct lyxml_ns *lyxml_get_ns(struct lyxml_elem *elem, const char *prefix);
+const struct lyxml_ns *lyxml_get_ns(const struct lyxml_elem *elem, const char *prefix);
 
 /**@}*/
 #endif /* LY_XML_H_ */

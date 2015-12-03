@@ -72,10 +72,10 @@ get_path_multiple_completion(const char *hint, char ***matches, unsigned int *ma
         ptr = path;
         dir = opendir(".");
     } else {
-        char buf[FILENAME_MAX] = { 0 };
+        char buf[FILENAME_MAX];
 
         ++ptr;
-        snprintf(buf, ptr - path, "%s", path);
+        sprintf(buf, "%.*s", (int)(ptr - path), path);
 
         dir = opendir(buf);
     }
@@ -160,10 +160,10 @@ get_path_skip_opts_completion(const char *hint, char ***matches, unsigned int *m
         ptr = path;
         dir = opendir(".");
     } else {
-        char buf[FILENAME_MAX] = { 0 };
+        char buf[FILENAME_MAX];
 
         ++ptr;
-        snprintf(buf, ptr-path, "%s", path);
+        sprintf(buf, "%.*s", (int)(ptr - path), path);
 
         dir = opendir(buf);
     }
@@ -276,7 +276,7 @@ complete_cmd(const char *buf, linenoiseCompletions *lc)
         get_path_multiple_completion(buf, &matches, &match_count);
     } else if (!strncmp(buf, "searchpath ", 11) || !strncmp(buf, "data ", 5)
             || !strncmp(buf, "config ", 7) || !strncmp(buf, "filter ", 7)
-            || !strncmp(buf, "xpath", 5)) {
+            || !strncmp(buf, "xpath ", 6)) {
         get_path_skip_opts_completion(buf, &matches, &match_count);
     } else if (!strncmp(buf, "print ", 6) || !strncmp(buf, "feature ", 8)) {
         get_model_completion(buf, &matches, &match_count);

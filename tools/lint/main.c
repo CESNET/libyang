@@ -59,7 +59,7 @@ main_noninteractive(int argc, char *argv[])
     int c;
     int ret = EXIT_FAILURE;
     int fd = -1;
-    struct lys_module *model;
+    const struct lys_module *model;
     struct stat sb;
     char *addr = NULL;
 
@@ -103,6 +103,11 @@ main_noninteractive(int argc, char *argv[])
         goto cleanup;
     }
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (addr == MAP_FAILED) {
+        fprintf(stderr,"Map file into memory failed.\n");
+        addr = NULL;
+        goto cleanup;
+    }
 
     /* libyang */
     ctx = ly_ctx_new(search_path);

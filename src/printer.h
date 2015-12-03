@@ -56,11 +56,14 @@ struct lyout {
 int ly_print(struct lyout *out, const char *format, ...);
 int ly_write(struct lyout *out, const char *buf, size_t count);
 
-int yang_print_model(struct lyout *out, struct lys_module *module);
-int tree_print_model(struct lyout *out, struct lys_module *module);
-int info_print_model(struct lyout *out, struct lys_module *module, const char *target_node);
+int yang_print_model(struct lyout *out, const struct lys_module *module);
+int tree_print_model(struct lyout *out, const struct lys_module *module);
+int info_print_model(struct lyout *out, const struct lys_module *module, const char *target_node);
 
-int json_print_data(struct lyout *out, struct lyd_node *root);
-int xml_print_data(struct lyout *out, struct lyd_node *root, int format);
+int json_print_data(struct lyout *out, const struct lyd_node *root);
+int xml_print_data(struct lyout *out, const struct lyd_node *root, int format);
+
+/* 0 - same, 1 - different */
+int nscmp(const struct lyd_node *node1, const struct lyd_node *node2);
 
 #endif /* LY_PRINTER_H_ */

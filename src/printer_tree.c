@@ -29,10 +29,12 @@
 #include "tree_schema.h"
 
 /* spec_config = 0 (no special config status), 1 (read-only - rpc output, notification), 2 (write-only - rpc input) */
-static void tree_print_choice_content(struct lyout *out, struct lys_module* module, int level, char *indent, unsigned int max_name_len,
-                                    struct lys_node *node, int mask, int spec_config, struct lys_submodule *main_submod);
-static void tree_print_snode(struct lyout *out, struct lys_module *module, int level, char *indent, unsigned int max_name_len, struct lys_node *node,
-                             int mask, int spec_config, struct lys_submodule *main_submod);
+static void tree_print_choice_content(struct lyout *out, const struct lys_module* module, int level, char *indent,
+                                      unsigned int max_name_len, const struct lys_node *node, int mask,
+                                      int spec_config, const struct lys_submodule *main_submod);
+static void tree_print_snode(struct lyout *out, const struct lys_module *module, int level, char *indent,
+                             unsigned int max_name_len, const struct lys_node *node, int mask, int spec_config,
+                             const struct lys_submodule *main_submod);
 
 static int
 sibling_is_valid_child(const struct lys_node *node, int including)
@@ -65,7 +67,8 @@ sibling_is_valid_child(const struct lys_node *node, int including)
 }
 
 static char *
-create_indent(int level, const char *old_indent, const struct lys_node *node, int shorthand, struct lys_submodule *main_submod)
+create_indent(int level, const char *old_indent, const struct lys_node *node, int shorthand,
+              const struct lys_submodule *main_submod)
 {
     int next_is_case = 0, is_case = 0, has_next = 0, i, found;
     char *new_indent = malloc((level * 4 + 1) * sizeof (char));
@@ -149,9 +152,9 @@ strcat_indent:
 }
 
 static unsigned int
-get_max_name_len(struct lys_module *module, struct lys_node *node)
+get_max_name_len(const struct lys_module *module, const struct lys_node *node)
 {
-    struct lys_node *sub;
+    const struct lys_node *sub;
     unsigned int max_name_len = 0, uses_max_name_len, name_len;
 
     LY_TREE_FOR(node, sub) {
@@ -174,7 +177,7 @@ get_max_name_len(struct lys_module *module, struct lys_node *node)
 }
 
 static void
-tree_print_type(struct lyout *out, struct lys_type *type)
+tree_print_type(struct lyout *out, const struct lys_type *type)
 {
     if ((type->base == LY_TYPE_LEAFREF) && !type->der->module) {
         ly_print(out, "-> %s", type->info.lref.path);
@@ -205,8 +208,8 @@ tree_print_features(struct lyout *out, const struct lys_feature **features, uint
 }
 
 static void
-tree_print_inout(struct lyout *out, struct lys_module *module, int level, char *indent, struct lys_node *node,
-                 int spec_config, struct lys_submodule *main_submod)
+tree_print_inout(struct lyout *out, const struct lys_module *module, int level, char *indent,
+                 const struct lys_node *node, int spec_config, const struct lys_submodule *main_submod)
 {
     unsigned int max_child_len;
     char *new_indent;
@@ -231,8 +234,8 @@ tree_print_inout(struct lyout *out, struct lys_module *module, int level, char *
 }
 
 static void
-tree_print_container(struct lyout *out, struct lys_module *module, int level, char *indent, struct lys_node *node,
-                     int spec_config, struct lys_submodule *main_submod)
+tree_print_container(struct lyout *out, const struct lys_module *module, int level, char *indent,
+                     const struct lys_node *node, int spec_config, const struct lys_submodule *main_submod)
 {
     unsigned int max_child_len;
     char *new_indent;
@@ -277,8 +280,8 @@ tree_print_container(struct lyout *out, struct lys_module *module, int level, ch
 }
 
 static void
-tree_print_choice(struct lyout *out, struct lys_module *module, int level, char *indent, struct lys_node *node,
-                  int spec_config, struct lys_submodule *main_submod)
+tree_print_choice(struct lyout *out, const struct lys_module *module, int level, char *indent,
+                  const struct lys_node *node, int spec_config, const struct lys_submodule *main_submod)
 {
     unsigned int max_child_len;
     char *new_indent;
@@ -329,8 +332,8 @@ tree_print_choice(struct lyout *out, struct lys_module *module, int level, char 
 }
 
 static void
-tree_print_case(struct lyout *out, struct lys_module *module, int level, char *indent, unsigned int max_name_len,
-                struct lys_node *node, int shorthand, int spec_config, struct lys_submodule *main_submod)
+tree_print_case(struct lyout *out, const struct lys_module *module, int level, char *indent, unsigned int max_name_len,
+                const struct lys_node *node, int shorthand, int spec_config, const struct lys_submodule *main_submod)
 {
     char *new_indent;
     struct lys_node_case *cas = (struct lys_node_case *)node;
@@ -368,7 +371,8 @@ tree_print_case(struct lyout *out, struct lys_module *module, int level, char *i
 }
 
 static void
-tree_print_anyxml(struct lyout *out, struct lys_module *module, char *indent, unsigned int max_name_len, struct lys_node *node, int spec_config)
+tree_print_anyxml(struct lyout *out, const struct lys_module *module, char *indent, unsigned int max_name_len,
+                  const struct lys_node *node, int spec_config)
 {
     uint8_t prefix_len;
     struct lys_node_anyxml *anyxml = (struct lys_node_anyxml *)node;
@@ -401,7 +405,8 @@ tree_print_anyxml(struct lyout *out, struct lys_module *module, char *indent, un
 }
 
 static void
-tree_print_leaf(struct lyout *out, struct lys_module *module, char *indent, unsigned int max_name_len, struct lys_node *node, int spec_config)
+tree_print_leaf(struct lyout *out, const struct lys_module *module, char *indent, unsigned int max_name_len,
+                const struct lys_node *node, int spec_config)
 {
     uint8_t prefix_len;
     struct lys_node_leaf *leaf = (struct lys_node_leaf *)node;
@@ -456,7 +461,8 @@ tree_print_leaf(struct lyout *out, struct lys_module *module, char *indent, unsi
 }
 
 static void
-tree_print_leaflist(struct lyout *out, struct lys_module *module, char *indent, unsigned int max_name_len, struct lys_node *node, int spec_config)
+tree_print_leaflist(struct lyout *out, const struct lys_module *module, char *indent, unsigned int max_name_len,
+                    const struct lys_node *node, int spec_config)
 {
     struct lys_node_leaflist *leaflist = (struct lys_node_leaflist *)node;
 
@@ -487,8 +493,8 @@ tree_print_leaflist(struct lyout *out, struct lys_module *module, char *indent, 
 }
 
 static void
-tree_print_list(struct lyout *out, struct lys_module *module, int level, char *indent, struct lys_node *node, int spec_config,
-                struct lys_submodule *main_submod)
+tree_print_list(struct lyout *out, const struct lys_module *module, int level, char *indent,
+                const struct lys_node *node, int spec_config, const struct lys_submodule *main_submod)
 {
     int i;
     unsigned int max_child_len;
@@ -539,8 +545,8 @@ tree_print_list(struct lyout *out, struct lys_module *module, int level, char *i
 }
 
 static void
-tree_print_uses(struct lyout *out, struct lys_module *module, int level, char *indent, unsigned int max_name_len,
-                struct lys_node *node, int spec_config, struct lys_submodule *main_submod)
+tree_print_uses(struct lyout *out, const struct lys_module *module, int level, char *indent, unsigned int max_name_len,
+                const struct lys_node *node, int spec_config, const struct lys_submodule *main_submod)
 {
     struct lys_node *child;
     struct lys_node_uses *uses = (struct lys_node_uses *)node;
@@ -553,7 +559,8 @@ tree_print_uses(struct lyout *out, struct lys_module *module, int level, char *i
 }
 
 static void
-tree_print_rpc(struct lyout *out, struct lys_module *module, int level, char *indent, struct lys_node *node, struct lys_submodule *main_submod)
+tree_print_rpc(struct lyout *out, const struct lys_module *module, int level, char *indent,
+               const struct lys_node *node, const struct lys_submodule *main_submod)
 {
     char *new_indent;
     struct lys_node *child;
@@ -585,7 +592,8 @@ tree_print_rpc(struct lyout *out, struct lys_module *module, int level, char *in
 }
 
 static void
-tree_print_notif(struct lyout *out, struct lys_module *module, int level, char *indent, struct lys_node *node, struct lys_submodule *main_submod)
+tree_print_notif(struct lyout *out, const struct lys_module *module, int level, char *indent,
+                 const struct lys_node *node, const struct lys_submodule *main_submod)
 {
     unsigned int max_child_len;
     char *new_indent;
@@ -619,8 +627,9 @@ tree_print_notif(struct lyout *out, struct lys_module *module, int level, char *
 }
 
 static void
-tree_print_choice_content(struct lyout *out, struct lys_module *module, int level, char *indent, unsigned int max_name_len,
-                          struct lys_node *node, int mask, int spec_config, struct lys_submodule *main_submod)
+tree_print_choice_content(struct lyout *out, const struct lys_module *module, int level, char *indent,
+                          unsigned int max_name_len, const struct lys_node *node, int mask, int spec_config,
+                          const struct lys_submodule *main_submod)
 {
     if (lys_is_disabled(node, 0)) {
         return;
@@ -636,8 +645,9 @@ tree_print_choice_content(struct lyout *out, struct lys_module *module, int leve
 }
 
 static void
-tree_print_snode(struct lyout *out, struct lys_module *module, int level, char *indent, unsigned int max_name_len,
-                 struct lys_node *node, int mask, int spec_config, struct lys_submodule *main_submod)
+tree_print_snode(struct lyout *out, const struct lys_module *module, int level, char *indent,
+                 unsigned int max_name_len, const struct lys_node *node, int mask, int spec_config,
+                 const struct lys_submodule *main_submod)
 {
     if (lys_is_disabled(node, 0)) {
         return;
@@ -671,7 +681,7 @@ tree_print_snode(struct lyout *out, struct lys_module *module, int level, char *
 }
 
 int
-tree_print_model(struct lyout *out, struct lys_module *module)
+tree_print_model(struct lyout *out, const struct lys_module *module)
 {
     struct lys_node *node;
     struct lys_submodule *submod;

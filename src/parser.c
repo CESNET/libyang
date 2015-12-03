@@ -52,8 +52,10 @@ lyp_set_implemented(struct lys_module *module)
     }
 }
 
-/*
- * (temporary) alternative for lys_read() + lys_parse() in case of import
+/**
+ * @brief Alternative for lys_read() + lys_parse() in case of import
+ *
+ * @param[in] fd MUST be a regular file (will be used by mmap)
  */
 struct lys_module *
 lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
@@ -70,14 +72,13 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 
     unres = calloc(1, sizeof *unres);
 
-    /*
-     * TODO
-     * This is just a temporary solution to make working automatic search for
-     * imported modules. This doesn't work e.g. for streams (stdin)
-     */
     fstat(fd, &sb);
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-
+    if (addr == MAP_FAILED) {
+        LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
+        free(unres);
+        return NULL;
+    }
     switch (format) {
     case LYS_IN_YIN:
         module = yin_read_module(ctx, addr, 0, unres);
@@ -93,13 +94,7 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
         lys_free(module, 0);
         module = NULL;
     }
-    free(unres->item);
-    free(unres->type);
-    free(unres->str_snode);
-#ifndef NDEBUG
-    free(unres->line);
-#endif
-    free(unres);
+    unres_schema_free(ctx, unres);
 
     return module;
 }
@@ -887,4 +882,51 @@ lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *
     }
 
     return ret;
+}
+
+/**
+ * Store UTF-8 character specified as 4byte integer into the dst buffer.
+ * Returns number of written bytes (4 max), expects that dst has enough space.
+ *
+ * UTF-8 mapping:
+ * 00000000 -- 0000007F:    0xxxxxxx
+ * 00000080 -- 000007FF:    110xxxxx 10xxxxxx
+ * 00000800 -- 0000FFFF:    1110xxxx 10xxxxxx 10xxxxxx
+ * 00010000 -- 001FFFFF:    11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+ *
+ */
+unsigned int
+pututf8(char *dst, int32_t value, uint32_t lineno)
+{
+    if (value < 0x80) {
+        /* one byte character */
+        dst[0] = value;
+
+        return 1;
+    } else if (value < 0x800) {
+        /* two bytes character */
+        dst[0] = 0xc0 | (value >> 6);
+        dst[1] = 0x80 | (value & 0x3f);
+
+        return 2;
+    } else if (value < 0x10000) {
+        /* three bytes character */
+        dst[0] = 0xe0 | (value >> 12);
+        dst[1] = 0x80 | ((value >> 6) & 0x3f);
+        dst[2] = 0x80 | (value & 0x3f);
+
+        return 3;
+    } else if (value < 0x200000) {
+        /* four bytes character */
+        dst[0] = 0xf0 | (value >> 18);
+        dst[1] = 0x80 | ((value >> 12) & 0x3f);
+        dst[2] = 0x80 | ((value >> 6) & 0x3f);
+        dst[3] = 0x80 | (value & 0x3f);
+
+        return 4;
+    } else {
+        /* out of range */
+        LOGVAL(LYE_SPEC, lineno, "Invalid UTF-8 value 0x%08x", value);
+        return 0;
+    }
 }

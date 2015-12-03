@@ -61,28 +61,10 @@ cmd_print_help(void)
     printf("\tabsolute-schema-nodeid: ( /(<import-prefix>:)<node-identifier> )+\n");
 }
 
-static void
-cmd_parse_help(const char *name)
-{
-    printf("%s [-f (xml | json)] [-o <output-file>] <%s-file-name>\n", name, name);
-}
-
 void
 cmd_data_help(void)
 {
-    cmd_parse_help("data");
-}
-
-void
-cmd_config_help(void)
-{
-    cmd_parse_help("config");
-}
-
-void
-cmd_filter_help(void)
-{
-    cmd_parse_help("filter");
+    printf("data [-f (xml | json)] [-x (edit | filter | get | getconfig)] [-o <output-file>] <data-file-name>\n");
 }
 
 void
@@ -125,7 +107,7 @@ cmd_add(const char *arg)
     int fd, path_len;
     char *addr, *ptr, *path;
     const char *arg_ptr;
-    struct lys_module *model;
+    const struct lys_module *model;
     struct stat sb;
     LYS_INFORMAT format;
 
@@ -183,9 +165,13 @@ cmd_add(const char *arg)
         }
 
         addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-
-        model = lys_parse(ctx, addr, format);
-        munmap(addr, sb.st_size);
+        if (addr == MAP_FAILED) {
+            fprintf(stderr,"Map file into memory failed.\n");
+            model = NULL;
+        } else {
+            model = lys_parse(ctx, addr, format);
+            munmap(addr, sb.st_size);
+        }
         close(fd);
 
         if (!model) {
@@ -220,7 +206,7 @@ cmd_print(const char *arg)
     int c, i, argc, option_index, ret = 1;
     char **argv = NULL, *ptr, *target_node = NULL, *model_name, *revision;
     const char **names, *out_path = NULL;
-    struct lys_module *model, *parent_model;
+    const struct lys_module *model, *parent_model;
     LYS_OUTFORMAT format = LYS_OUT_TREE;
     FILE *output = stdout;
     static struct option long_options[] = {
@@ -339,19 +325,22 @@ cleanup:
     return ret;
 }
 
-static int
-cmd_parse(const char *arg, int options)
+int
+cmd_data(const char *arg)
 {
     int c, argc, option_index, ret = 1, fd = -1;
+    int options = 0;
     struct stat sb;
+    size_t len;
     char **argv = NULL, *ptr, *addr;
     const char *out_path = NULL;
     struct lyd_node *data = NULL, *next, *iter;
-    LYD_FORMAT format = LYD_UNKNOWN;
+    LYD_FORMAT outformat = LYD_UNKNOWN, informat = LYD_UNKNOWN;
     FILE *output = stdout;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"format", required_argument, 0, 'f'},
+        {"option", required_argument, 0, 'x'},
         {"output", required_argument, 0, 'o'},
         {"strict", no_argument, 0, 's'},
         {NULL, 0, 0, 0}
@@ -370,7 +359,7 @@ cmd_parse(const char *arg, int options)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "hf:o:xyz", long_options, &option_index);
+        c = getopt_long(argc, argv, "hf:o:x:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -382,9 +371,9 @@ cmd_parse(const char *arg, int options)
             goto cleanup;
         case 'f':
             if (!strcmp(optarg, "xml")) {
-                format = LYD_XML_FORMAT;
+                outformat = LYD_XML_FORMAT;
             } else if (!strcmp(optarg, "json")) {
-                format = LYD_JSON;
+                outformat = LYD_JSON;
             } else {
                 fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
                 goto cleanup;
@@ -400,6 +389,17 @@ cmd_parse(const char *arg, int options)
         case 's':
             options |= LYD_OPT_STRICT;
             break;
+        case 'x':
+            if (!strcmp(optarg, "edit")) {
+                options |= LYD_OPT_EDIT;
+            } else if (!strcmp(optarg, "filter")) {
+                options |= LYD_OPT_FILTER;
+            } else if (!strcmp(optarg, "get")) {
+                options |= LYD_OPT_GET;
+            } else if (!strcmp(optarg, "getconfig")) {
+                options |= LYD_OPT_GETCONFIG;
+            }
+            break;
         case '?':
             fprintf(stderr, "Unknown option \"%d\".\n", (char)c);
             goto cleanup;
@@ -409,6 +409,17 @@ cmd_parse(const char *arg, int options)
     /* file name */
     if (optind == argc) {
         fprintf(stderr, "Missing the data file name.\n");
+        goto cleanup;
+    }
+
+    /* detect input format according to file suffix */
+    len = strlen(argv[optind]);
+    if (len >= 5 && !strcmp(&argv[optind][len - 4], ".xml")) {
+        informat = LYD_XML;
+    } else if (len >= 6 && !strcmp(&argv[optind][len - 5], ".json")) {
+        informat = LYD_JSON;
+    } else {
+        fprintf(stderr, "Unable to resolve format of the input file, please add \".xml\" or \".json\" suffix.\n");
         goto cleanup;
     }
 
@@ -429,7 +440,11 @@ cmd_parse(const char *arg, int options)
     }
 
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    data = lyd_parse(ctx, addr, LYD_XML, options);
+    if (addr == MAP_FAILED) {
+        fprintf(stderr,"Map file into memory failed.\n");
+        goto cleanup;
+    }
+    data = lyd_parse(ctx, addr, informat, options);
     munmap(addr, sb.st_size);
 
     if (data == NULL) {
@@ -443,15 +458,10 @@ cmd_parse(const char *arg, int options)
             fprintf(stderr, "Could not open the output file (%s).\n", strerror(errno));
             goto cleanup;
         }
-
-        if (format == LYD_UNKNOWN) {
-            /* default */
-            format = LYD_XML;
-        }
     }
 
-    if (format != LYD_UNKNOWN) {
-        lyd_print(output, data, format);
+    if (outformat != LYD_UNKNOWN) {
+        lyd_print(output, data, outformat);
     }
 
     ret = 0;
@@ -473,24 +483,6 @@ cleanup:
     }
 
     return ret;
-}
-
-int
-cmd_data(const char *arg)
-{
-    return cmd_parse(arg, 0);
-}
-
-int
-cmd_config(const char *arg)
-{
-    return cmd_parse(arg, LYD_OPT_EDIT);
-}
-
-int
-cmd_filter(const char *arg)
-{
-    return cmd_parse(arg, LYD_OPT_FILTER);
 }
 
 int
@@ -596,6 +588,10 @@ cmd_xpath(const char *arg)
         goto cleanup;
     }
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (addr == MAP_FAILED) {
+        fprintf(stderr,"Map file into memory failed.\n");
+        goto cleanup;
+    }
     data = lyd_parse(ctx, addr, LYD_XML, 0);
     munmap(addr, sb.st_size);
 
@@ -730,7 +726,7 @@ cmd_feature(const char *arg)
     char **argv = NULL, *ptr, *model_name, *revision, *feat_names = NULL;
     const char **names;
     uint8_t *states;
-    struct lys_module *model, *parent_model;
+    const struct lys_module *model, *parent_model;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"enable", required_argument, 0, 'e'},
@@ -984,9 +980,7 @@ COMMAND commands[] = {
         {"help", cmd_help, NULL, "Display commands description"},
         {"add", cmd_add, cmd_add_help, "Add a new model"},
         {"print", cmd_print, cmd_print_help, "Print model"},
-        {"data", cmd_data, cmd_data_help, "Load, validate and optionally print complete datastore data"},
-        {"config", cmd_config, cmd_config_help, "Load, validate and optionally print edit-config's data"},
-        {"filter", cmd_filter, cmd_filter_help, "Load, validate and optionally print subtree filter data"},
+        {"data", cmd_data, cmd_data_help, "Load, validate and optionally print instance data"},
         {"xpath", cmd_xpath, cmd_xpath_help, "Evaluate an XPath expression on a data tree"},
         {"list", cmd_list, cmd_list_help, "List all the loaded models"},
         {"feature", cmd_feature, cmd_feature_help, "Print/enable/disable all/specific features of models"},

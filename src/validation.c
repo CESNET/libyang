@@ -32,7 +32,7 @@
 #include "xml_internal.h"
 
 static struct lys_node_leaf *
-lyv_keys_present(struct lyd_node *list)
+lyv_keys_present(const struct lyd_node *list)
 {
     struct lyd_node *aux;
     struct lys_node_list *schema;
@@ -63,7 +63,7 @@ lyv_keys_present(struct lyd_node *list)
  * @return 0 if both filter nodes selects the same data.
  */
 static int
-filter_compare(struct lyd_node *first, struct lyd_node *second)
+filter_compare(const struct lyd_node *first, const struct lyd_node *second)
 {
     struct lyd_node *diter1, *diter2;
     int match, c1, c2;
@@ -284,7 +284,7 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
 }
 
 int
-lyv_data_context(struct lyd_node *node, int options, unsigned int line, struct unres_data *unres)
+lyv_data_context(const struct lyd_node *node, int options, unsigned int line, struct unres_data *unres)
 {
     assert(node);
 
@@ -296,17 +296,17 @@ lyv_data_context(struct lyd_node *node, int options, unsigned int line, struct u
 
     /* check all relevant when conditions */
     if (unres) {
-        if (unres_data_add(unres, node, UNRES_WHEN, line) == -1) {
+        if (unres_data_add(unres, (struct lyd_node *)node, UNRES_WHEN, line) == -1) {
             return EXIT_FAILURE;
         }
     } else {
-        if (resolve_unres_data_item(node, UNRES_WHEN, 0, line)) {
+        if (resolve_unres_data_item((struct lyd_node *)node, UNRES_WHEN, 0, line)) {
             return EXIT_FAILURE;
         }
     }
 
     /* check for (non-)presence of status data in edit-config data */
-    if ((options & LYD_OPT_EDIT) && (node->schema->flags & LYS_CONFIG_R)) {
+    if ((options & (LYD_OPT_EDIT | LYD_OPT_GETCONFIG)) && (node->schema->flags & LYS_CONFIG_R)) {
         LOGVAL(LYE_INELEM, line, node->schema->name);
         return EXIT_FAILURE;
     }
@@ -317,8 +317,8 @@ lyv_data_context(struct lyd_node *node, int options, unsigned int line, struct u
 int
 lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct unres_data *unres)
 {
-    struct lys_node *schema, *siter;
-    struct lys_node *cs, *ch;
+    const struct lys_node *schema, *siter;
+    const struct lys_node *cs, *ch;
     struct lyd_node *diter, *start;
 
     assert(node);
@@ -327,7 +327,7 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
     schema = node->schema; /* shortcut */
 
     /* check presence of all keys in case of list */
-    if (schema->nodetype == LYS_LIST && !(options & LYD_OPT_FILTER)) {
+    if (schema->nodetype == LYS_LIST && !(options & (LYD_OPT_FILTER | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
         siter = (struct lys_node *)lyv_keys_present(node);
         if (siter) {
             /* key not found in the data */
@@ -337,7 +337,8 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
     }
 
     /* mandatory children */
-    if ((schema->nodetype & (LYS_CONTAINER | LYS_LIST)) && !(options & (LYD_OPT_FILTER | LYD_OPT_EDIT))) {
+    if ((schema->nodetype & (LYS_CONTAINER | LYS_LIST))
+            && !(options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
         siter = ly_check_mandatory(node);
         if (siter) {
             if (siter->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
@@ -473,15 +474,24 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
         /* uniqueness of list/leaflist instances */
 
         /* get the first list/leaflist instance sibling */
-        if (node->parent) {
-            start = node->parent->child;
-        } else {
+        if (options & (LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
+            /* skip key uniqueness check in case of get/get-config data */
             start = NULL;
-            for (diter = node; diter->next; diter = diter->prev) {
+        } else {
+            diter = start;
+            start = NULL;
+            while(diter) {
+                if (diter == node) {
+                    diter = diter->next;
+                    continue;
+                }
+
                 if (diter->schema == node->schema) {
                     /* the same list instance */
                     start = diter;
+                    break;
                 }
+                diter = diter->next;
             }
         }
 

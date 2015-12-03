@@ -69,7 +69,7 @@ info_print_text(struct lyout *out, const char *text, const char *label)
 }
 
 static void
-info_print_snode(struct lyout *out, struct lys_node *parent, struct lys_node *node, const char *label)
+info_print_snode(struct lyout *out, const struct lys_node *parent, const struct lys_node *node, const char *label)
 {
     assert(strlen(label) < INDENT_LEN-1);
 
@@ -158,7 +158,7 @@ info_print_flags(struct lyout *out, uint8_t flags, uint8_t mask, int is_list)
 }
 
 static void
-info_print_if_feature(struct lyout *out, struct lys_feature **features, uint8_t features_size)
+info_print_if_feature(struct lyout *out, struct lys_feature ** const features, uint8_t features_size)
 {
     int i;
 
@@ -175,7 +175,7 @@ info_print_if_feature(struct lyout *out, struct lys_feature **features, uint8_t 
 }
 
 static void
-info_print_when(struct lyout *out, struct lys_when *when)
+info_print_when(struct lyout *out, const struct lys_when *when)
 {
     ly_print(out, "%-*s", INDENT_LEN, "When: ");
     if (when) {
@@ -186,7 +186,7 @@ info_print_when(struct lyout *out, struct lys_when *when)
 }
 
 static void
-info_print_must(struct lyout *out, struct lys_restr *must, uint8_t must_size)
+info_print_must(struct lyout *out, const struct lys_restr *must, uint8_t must_size)
 {
     int i;
 
@@ -203,7 +203,7 @@ info_print_must(struct lyout *out, struct lys_restr *must, uint8_t must_size)
 }
 
 static void
-info_print_typedef(struct lyout *out, struct lys_tpdf *tpdf, uint8_t tpdf_size)
+info_print_typedef(struct lyout *out, const struct lys_tpdf *tpdf, uint8_t tpdf_size)
 {
     int i;
 
@@ -220,7 +220,7 @@ info_print_typedef(struct lyout *out, struct lys_tpdf *tpdf, uint8_t tpdf_size)
 }
 
 static void
-info_print_typedef_with_include(struct lyout *out, struct lys_module *mod)
+info_print_typedef_with_include(struct lyout *out, const struct lys_module *mod)
 {
     int i, j, first = 1;
 
@@ -257,7 +257,7 @@ info_print_typedef_with_include(struct lyout *out, struct lys_module *mod)
 }
 
 static void
-info_print_type_detail(struct lyout *out, struct lys_type *type, int uni)
+info_print_type_detail(struct lyout *out, const struct lys_type *type, int uni)
 {
     int i;
 
@@ -416,7 +416,7 @@ info_print_list_constr(struct lyout *out, uint32_t min, uint32_t max)
 }
 
 static void
-info_print_keys(struct lyout *out, struct lys_node_leaf **keys, uint8_t keys_size)
+info_print_keys(struct lyout *out, struct lys_node_leaf ** const keys, uint8_t keys_size)
 {
     int i;
 
@@ -433,17 +433,17 @@ info_print_keys(struct lyout *out, struct lys_node_leaf **keys, uint8_t keys_siz
 }
 
 static void
-info_print_unique(struct lyout *out, struct lys_unique *unique, uint8_t unique_size)
+info_print_unique(struct lyout *out, const struct lys_unique *unique, uint8_t unique_size)
 {
     int i, j;
 
     ly_print(out, "%-*s", INDENT_LEN, "Unique: ");
 
     if (unique_size) {
-        ly_print(out, "%s\n", unique[0].leafs[0]->name);
+        ly_print(out, "%s\n", unique[0].expr[0]);
         for (i = 0; i < unique_size; ++i) {
-            for (j = (!i ? 1 : 0); j < unique[i].leafs_size; ++j) {
-                ly_print(out, "%*s%s\n", INDENT_LEN, "", unique[i].leafs[j]->name);
+            for (j = (!i ? 1 : 0); j < unique[i].expr_size; ++j) {
+                ly_print(out, "%*s%s\n", INDENT_LEN, "", unique[i].expr[j]);
             }
         }
     } else {
@@ -468,7 +468,7 @@ info_print_nacmext(struct lyout *out, uint8_t nacm)
 }
 
 static void
-info_print_revision(struct lyout *out, struct lys_revision *rev, uint8_t rev_size)
+info_print_revision(struct lyout *out, const struct lys_revision *rev, uint8_t rev_size)
 {
     int i;
 
@@ -485,7 +485,7 @@ info_print_revision(struct lyout *out, struct lys_revision *rev, uint8_t rev_siz
 }
 
 static void
-info_print_import_with_include(struct lyout *out, struct lys_module *mod)
+info_print_import_with_include(struct lyout *out, const struct lys_module *mod)
 {
     int first = 1, i, j;
 
@@ -524,7 +524,7 @@ info_print_import_with_include(struct lyout *out, struct lys_module *mod)
 }
 
 static void
-info_print_include(struct lyout *out, struct lys_module *mod)
+info_print_include(struct lyout *out, const struct lys_module *mod)
 {
     int first = 1, i;
 
@@ -545,7 +545,7 @@ info_print_include(struct lyout *out, struct lys_module *mod)
 }
 
 static void
-info_print_augment(struct lyout *out, struct lys_module *mod)
+info_print_augment(struct lyout *out, const struct lys_module *mod)
 {
     int first = 1, i;
 
@@ -566,7 +566,7 @@ info_print_augment(struct lyout *out, struct lys_module *mod)
 }
 
 static void
-info_print_deviation(struct lyout *out, struct lys_module *mod)
+info_print_deviation(struct lyout *out, const struct lys_module *mod)
 {
     int first = 1, i;
 
@@ -587,7 +587,7 @@ info_print_deviation(struct lyout *out, struct lys_module *mod)
 }
 
 static void
-info_print_ident_with_include(struct lyout *out, struct lys_module *mod)
+info_print_ident_with_include(struct lyout *out, const struct lys_module *mod)
 {
     int first = 1, i, j;
 
@@ -624,7 +624,7 @@ info_print_ident_with_include(struct lyout *out, struct lys_module *mod)
 }
 
 static void
-info_print_features_with_include(struct lyout *out, struct lys_module *mod)
+info_print_features_with_include(struct lyout *out, const struct lys_module *mod)
 {
     int first = 1, i, j;
 
@@ -661,7 +661,7 @@ info_print_features_with_include(struct lyout *out, struct lys_module *mod)
 }
 
 static void
-info_print_data_with_include(struct lyout *out, struct lys_module *mod)
+info_print_data_with_include(struct lyout *out, const struct lys_module *mod)
 
 {
     int first = 1, i;
@@ -701,7 +701,7 @@ info_print_data_with_include(struct lyout *out, struct lys_module *mod)
 }
 
 static void
-info_print_typedef_detail(struct lyout *outf, struct lys_tpdf *tpdf)
+info_print_typedef_detail(struct lyout *outf, const struct lys_tpdf *tpdf)
 {
     ly_print(outf, "%-*s%s\n", INDENT_LEN, "Typedef: ", tpdf->name);
     ly_print(outf, "%-*s%s\n", INDENT_LEN, "Module: ", tpdf->module->name);
@@ -714,7 +714,7 @@ info_print_typedef_detail(struct lyout *outf, struct lys_tpdf *tpdf)
 }
 
 static void
-info_print_ident_detail(struct lyout *out, struct lys_ident *ident)
+info_print_ident_detail(struct lyout *out, const struct lys_ident *ident)
 {
     struct lys_ident_der *der;
 
@@ -738,7 +738,7 @@ info_print_ident_detail(struct lyout *out, struct lys_ident *ident)
 }
 
 static void
-info_print_feature_detail(struct lyout *out, struct lys_feature *feat)
+info_print_feature_detail(struct lyout *out, const struct lys_feature *feat)
 {
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Feature: ", feat->name);
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Module: ", feat->module->name);
@@ -749,7 +749,7 @@ info_print_feature_detail(struct lyout *out, struct lys_feature *feat)
 }
 
 static void
-info_print_module(struct lyout *out, struct lys_module *module)
+info_print_module(struct lyout *out, const struct lys_module *module)
 {
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Module: ", module->name);
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Namespace: ", module->ns);
@@ -776,7 +776,7 @@ info_print_module(struct lyout *out, struct lys_module *module)
 }
 
 static void
-info_print_submodule(struct lyout *out, struct lys_submodule *module)
+info_print_submodule(struct lyout *out, const struct lys_submodule *module)
 {
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Submodule: ", module->name);
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Parent: ", module->belongsto->name);
@@ -803,7 +803,7 @@ info_print_submodule(struct lyout *out, struct lys_submodule *module)
 }
 
 static void
-info_print_container(struct lyout *out, struct lys_node *node)
+info_print_container(struct lyout *out, const struct lys_node *node)
 {
     struct lys_node_container *cont = (struct lys_node_container *)node;
 
@@ -823,7 +823,7 @@ info_print_container(struct lyout *out, struct lys_node *node)
 }
 
 static void
-info_print_choice(struct lyout *out, struct lys_node *node)
+info_print_choice(struct lyout *out, const struct lys_node *node)
 {
     struct lys_node_choice *choice = (struct lys_node_choice *)node;
 
@@ -846,7 +846,7 @@ info_print_choice(struct lyout *out, struct lys_node *node)
 }
 
 static void
-info_print_leaf(struct lyout *out, struct lys_node *node)
+info_print_leaf(struct lyout *out, const struct lys_node *node)
 {
     struct lys_node_leaf *leaf = (struct lys_node_leaf *)node;
 
@@ -865,7 +865,7 @@ info_print_leaf(struct lyout *out, struct lys_node *node)
 }
 
 static void
-info_print_leaflist(struct lyout *out, struct lys_node *node)
+info_print_leaflist(struct lyout *out, const struct lys_node *node)
 {
     struct lys_node_leaflist *llist = (struct lys_node_leaflist *)node;
 
@@ -884,7 +884,7 @@ info_print_leaflist(struct lyout *out, struct lys_node *node)
 }
 
 static void
-info_print_list(struct lyout *out, struct lys_node *node)
+info_print_list(struct lyout *out, const struct lys_node *node)
 {
     struct lys_node_list *list = (struct lys_node_list *)node;
 
@@ -906,7 +906,7 @@ info_print_list(struct lyout *out, struct lys_node *node)
 }
 
 static void
-info_print_anyxml(struct lyout *out, struct lys_node *node)
+info_print_anyxml(struct lyout *out, const struct lys_node *node)
 {
     struct lys_node_anyxml *axml = (struct lys_node_anyxml *)node;
 
@@ -922,7 +922,7 @@ info_print_anyxml(struct lyout *out, struct lys_node *node)
 }
 
 static void
-info_print_grouping(struct lyout *out, struct lys_node *node)
+info_print_grouping(struct lyout *out, const struct lys_node *node)
 {
     struct lys_node_grp *group = (struct lys_node_grp *)node;
 
@@ -938,7 +938,7 @@ info_print_grouping(struct lyout *out, struct lys_node *node)
 }
 
 static void
-info_print_case(struct lyout *out, struct lys_node *node)
+info_print_case(struct lyout *out, const struct lys_node *node)
 {
     struct lys_node_case *cas = (struct lys_node_case *)node;
 
@@ -955,7 +955,7 @@ info_print_case(struct lyout *out, struct lys_node *node)
 }
 
 static void
-info_print_input(struct lyout *out, struct lys_node *node)
+info_print_input(struct lyout *out, const struct lys_node *node)
 {
     struct lys_node_rpc_inout *input = (struct lys_node_rpc_inout *)node;
 
@@ -968,7 +968,7 @@ info_print_input(struct lyout *out, struct lys_node *node)
 }
 
 static void
-info_print_output(struct lyout *out, struct lys_node *node)
+info_print_output(struct lyout *out, const struct lys_node *node)
 {
     struct lys_node_rpc_inout *output = (struct lys_node_rpc_inout *)node;
 
@@ -981,7 +981,7 @@ info_print_output(struct lyout *out, struct lys_node *node)
 }
 
 static void
-info_print_notif(struct lyout *out, struct lys_node *node)
+info_print_notif(struct lyout *out, const struct lys_node *node)
 {
     struct lys_node_notif *ntf = (struct lys_node_notif *)node;
 
@@ -998,7 +998,7 @@ info_print_notif(struct lyout *out, struct lys_node *node)
 }
 
 static void
-info_print_rpc(struct lyout *out, struct lys_node *node)
+info_print_rpc(struct lyout *out, const struct lys_node *node)
 {
     struct lys_node_rpc *rpc = (struct lys_node_rpc *)node;
 
@@ -1015,7 +1015,7 @@ info_print_rpc(struct lyout *out, struct lys_node *node)
 }
 
 int
-info_print_model(struct lyout *out, struct lys_module *module, const char *target_node)
+info_print_model(struct lyout *out, const struct lys_module *module, const char *target_node)
 {
     int i, rc;
     char *grouping_target = NULL;
@@ -1029,7 +1029,8 @@ info_print_model(struct lyout *out, struct lys_module *module, const char *targe
         }
     } else {
         if ((target_node[0] == '/') || !strncmp(target_node, "type/", 5)) {
-            rc = resolve_schema_nodeid((target_node[0] == '/' ? target_node : target_node+4), module->data, module, LYS_AUGMENT, &target);
+            rc = resolve_schema_nodeid((target_node[0] == '/' ? target_node : target_node+4), module->data, module,
+                                       LYS_AUGMENT, (const struct lys_node **)&target);
             if (rc) {
                 ly_print(out, "Target %s could not be resolved.\n", (target_node[0] == '/' ? target_node : target_node+4));
                 return EXIT_FAILURE;
@@ -1041,7 +1042,7 @@ info_print_model(struct lyout *out, struct lys_module *module, const char *targe
                 *strchr(target_node+9, '/') = '\0';
                 grouping_target = (char *)(target_node+strlen(target_node)+1);
             }
-            rc = resolve_schema_nodeid(target_node+9, module->data, module, LYS_USES, &target);
+            rc = resolve_schema_nodeid(target_node+9, module->data, module, LYS_USES, (const struct lys_node **)&target);
             if (rc) {
                 ly_print(out, "Grouping %s not found.\n", target_node+9);
                 return EXIT_FAILURE;
@@ -1109,7 +1110,8 @@ info_print_model(struct lyout *out, struct lys_module *module, const char *targe
 
         /* find the node in the grouping */
         if (grouping_target) {
-            rc = resolve_schema_nodeid(grouping_target, target->child, module, LYS_LEAF, &target);
+            rc = resolve_schema_nodeid(grouping_target, target->child, module, LYS_LEAF,
+                                       (const struct lys_node **)&target);
             if (rc) {
                 ly_print(out, "Grouping %s child \"%s\" not found.\n", target_node+9, grouping_target);
                 return EXIT_FAILURE;
