@@ -211,7 +211,7 @@ lyd_new_anyxml(struct lyd_node *parent, const struct lys_module *module, const c
     struct ly_ctx *ctx;
     char *xml;
 
-    if ((!parent && !module) || !name || !val_xml) {
+    if ((!parent && !module) || !name) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
@@ -241,34 +241,36 @@ lyd_new_anyxml(struct lyd_node *parent, const struct lys_module *module, const c
         }
     }
 
-    /* add fake root so we can parse the data */
-    asprintf(&xml, "<root>%s</root>", val_xml);
-    root = lyxml_read(ctx, xml, 0);
-    free(xml);
-    if (!root) {
-        lyd_free((struct lyd_node *)ret);
-        return NULL;
-    }
-
-    /* remove the root */
-    first_child = last_child = NULL;
-    LY_TREE_FOR(root->child, child) {
-        lyxml_unlink_elem(ctx, child, 1);
-        if (!first_child) {
-            first_child = child;
-            last_child = child;
-        } else {
-            last_child->next = child;
-            child->prev = last_child;
-            last_child = child;
+    if (val_xml && val_xml[0]) {
+        /* add fake root so we can parse the data */
+        asprintf(&xml, "<root>%s</root>", val_xml);
+        root = lyxml_read(ctx, xml, 0);
+        free(xml);
+        if (!root) {
+            lyd_free((struct lyd_node *)ret);
+            return NULL;
         }
-    }
-    if (first_child) {
-        first_child->prev = last_child;
-    }
-    lyxml_free(ctx, root);
 
-    ret->value = first_child;
+        /* remove the root */
+        first_child = last_child = NULL;
+        LY_TREE_FOR(root->child, child) {
+            lyxml_unlink_elem(ctx, child, 1);
+            if (!first_child) {
+                first_child = child;
+                last_child = child;
+            } else {
+                last_child->next = child;
+                child->prev = last_child;
+                last_child = child;
+            }
+        }
+        if (first_child) {
+            first_child->prev = last_child;
+        }
+        lyxml_free(ctx, root);
+
+        ret->value = first_child;
+    }
 
     return (struct lyd_node *)ret;
 }
