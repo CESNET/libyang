@@ -1147,7 +1147,7 @@ lyxml_read(struct ly_ctx *ctx, const char *data, int UNUSED(options))
 API struct lyxml_elem *
 lyxml_read_file(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
 {
-    struct lyxml_elem *elem=NULL;
+    struct lyxml_elem *elem = NULL;
     struct stat sb;
     int fd;
     char *addr;
@@ -1159,7 +1159,7 @@ lyxml_read_file(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
 
     fd = open(filename, O_RDONLY);
     if (fd == -1) {
-        LOGERR(LY_EINVAL,"Opening file \"%s\" failed.",filename);
+        LOGERR(LY_EINVAL,"Opening file \"%s\" failed.", filename);
         return NULL;
     }
     if (fstat(fd, &sb) == -1) {
@@ -1167,20 +1167,25 @@ lyxml_read_file(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
         goto error;
     }
     if (!S_ISREG(sb.st_mode)) {
-        fprintf(stderr, "File \"%s\" not a file.\n",filename);
+        fprintf(stderr, "File \"%s\" not a file.\n", filename);
         goto error;
     }
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
-        LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
+        LOGERR(LY_EMEM,"Map file into memory failed (%s()).", __func__);
         goto error;
     }
-    elem=lyxml_read(ctx,addr,0);
+
+    elem = lyxml_read(ctx, addr, 0);
     munmap(addr, sb.st_size);
+
     return elem;
 
 error:
-    if (fd!=-1) close(fd);
+    if (fd != -1) {
+        close(fd);
+    }
+
     return NULL;
 }
 
