@@ -422,6 +422,10 @@ lyd_validate(struct lyd_node *node, int options)
             } else {
                 /* safe deferred removal */
                 to_free = iter;
+                if (iter == node) {
+                    /* removing the whole subtree */
+                    break;
+                }
             }
         }
 
