@@ -413,13 +413,12 @@ lyd_validate(struct lyd_node *node, int options)
             to_free = NULL;
         }
 
-        if (lyv_data_content(iter, 0, options, NULL)) {
+        if (lyv_data_context(iter, options, 0, NULL)) {
+            return EXIT_FAILURE;
+        }
+        if (lyv_data_content(iter, options, 0, NULL)) {
             if (ly_errno) {
                 return EXIT_FAILURE;
-            } else if (iter == node) {
-                /* removing the whole subtree */
-                to_free = node;
-                break;
             } else {
                 /* safe deferred removal */
                 to_free = iter;
