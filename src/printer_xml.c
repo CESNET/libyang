@@ -104,17 +104,18 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node)
     const char **prefs, **nss;
     const char *xml_expr;
     uint32_t ns_count, i;
-    int get_config_filter = 0;
+    int rpc_filter = 0;
 
     /* technically, check for the extension get-filter-element-attributes from ietf-netconf */
-    if (!strcmp(node->schema->name, "filter") && !strcmp(node->schema->module->name, "ietf-netconf")) {
-        get_config_filter = 1;
+    if (!strcmp(node->schema->name, "filter")
+            && (!strcmp(node->schema->module->name, "ietf-netconf") || !strcmp(node->schema->module->name, "notifications"))) {
+        rpc_filter = 1;
     }
 
     for (attr = node->attr; attr; attr = attr->next) {
-        if (get_config_filter && !strcmp(attr->name, "type")) {
+        if (rpc_filter && !strcmp(attr->name, "type")) {
             ly_print(out, " %s=\"", attr->name);
-        } else if (get_config_filter && !strcmp(attr->name, "select")) {
+        } else if (rpc_filter && !strcmp(attr->name, "select")) {
             xml_expr = transform_json2xml(node->schema->module, attr->value, &prefs, &nss, &ns_count);
             if (!xml_expr) {
                 /* error */
