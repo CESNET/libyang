@@ -564,36 +564,6 @@ struct lyd_node *lyd_read(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int opt
  */
 
 /**
- * @brief Transform expression from JSON format to XML format.
- * Prefixes of the namespaces are prefixes specified by the module
- * itself. Output parameters are optional, but either all 3 are set
- * or none of them are.
- *
- * @param[in] module Module with imports to use.
- * @param[in] expr JSON expression.
- * @param[out] prefixes Array of pointers to prefixes. Can be NULL.
- * @param[out] namespaces Array of pointers to full namespaces. Can be NULL.
- * @param[out] ns_count Number of elements in both \p prefixes and \p namespaces arrays.
- * Can be NULL.
- *
- * @return Transformed XML expression, NULL on error.
- */
-char *ly_transform_json2xml(const struct lys_module *module, const char *expr, char ***prefixes,
-                            char ***namespaces, uint32_t *ns_count);
-
-/**
- * @brief Transform expression from XML data format (prefixes and separate NS definitions) to
- *        JSON format (prefixes are module names instead).
- *
- * @param[in] ctx libyang context to use.
- * @param[in] expr XML expression.
- * @param[in] xml XML element with the expression.
- *
- * @return Transformed JSON expression, NULL on error.
- */
-char *ly_transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml);
-
-/**
  * @brief Print schema tree in the specified format.
  *
  * To write data into a file descriptor, use lys_print_fd().
