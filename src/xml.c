@@ -1178,6 +1178,7 @@ lyxml_read_file(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
 
     elem = lyxml_read(ctx, addr, 0);
     munmap(addr, sb.st_size);
+    close(fd);
 
     return elem;
 
