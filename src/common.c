@@ -336,38 +336,3 @@ transform_schema2json(const struct lys_module *module, const char *expr, uint32_
     LOGINT;
     return NULL;
 }
-
-API char *
-ly_transform_json2xml(const struct lys_module *module, const char *expr, char ***prefixes, char ***namespaces,
-                      uint32_t *ns_count)
-{
-    const char *dict_ret;
-    char *ret;
-    uint32_t i;
-
-    dict_ret = transform_json2xml(module, expr, (const char ***)prefixes, (const char ***)namespaces, ns_count);
-    if (!dict_ret) {
-        return NULL;
-    }
-
-    for (i = 0; i < *ns_count; ++i) {
-        (*prefixes)[i] = strdup((*prefixes)[i]);
-        (*namespaces)[i] = strdup((*namespaces)[i]);
-    }
-
-    ret = strdup(dict_ret);
-    lydict_remove(module->ctx, dict_ret);
-    return ret;
-}
-
-API char *
-ly_transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml)
-{
-    const char *dict_ret;
-    char *ret;
-
-    dict_ret = transform_xml2json(ctx, expr, xml, 1);
-    ret = strdup(dict_ret);
-    lydict_remove(ctx, dict_ret);
-    return ret;
-}

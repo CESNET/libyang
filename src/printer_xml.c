@@ -101,9 +101,43 @@ static void
 xml_print_attrs(struct lyout *out, const struct lyd_node *node)
 {
     struct lyd_attr *attr;
+    const char **prefs, **nss;
+    const char *xml_expr;
+    uint32_t ns_count, i;
+    int rpc_filter = 0;
+
+    /* technically, check for the extension get-filter-element-attributes from ietf-netconf */
+    if (!strcmp(node->schema->name, "filter")
+            && (!strcmp(node->schema->module->name, "ietf-netconf") || !strcmp(node->schema->module->name, "notifications"))) {
+        rpc_filter = 1;
+    }
 
     for (attr = node->attr; attr; attr = attr->next) {
-        ly_print(out, " %s:%s=\"", attr->module->prefix, attr->name);
+        if (rpc_filter && !strcmp(attr->name, "type")) {
+            ly_print(out, " %s=\"", attr->name);
+        } else if (rpc_filter && !strcmp(attr->name, "select")) {
+            xml_expr = transform_json2xml(node->schema->module, attr->value, &prefs, &nss, &ns_count);
+            if (!xml_expr) {
+                /* error */
+                ly_print(out, "\"(!error!)\"");
+                return;
+            }
+
+            for (i = 0; i < ns_count; ++i) {
+                ly_print(out, " xmlns:%s=\"%s\"", prefs[i], nss[i]);
+            }
+            free(prefs);
+            free(nss);
+
+            ly_print(out, " %s=\"", attr->name);
+            lyxml_dump_text(out, xml_expr);
+            ly_print(out, "\"");
+
+            lydict_remove(node->schema->module->ctx, xml_expr);
+            continue;
+        } else {
+            ly_print(out, " %s:%s=\"", attr->module->prefix, attr->name);
+        }
         lyxml_dump_text(out, attr->value);
         ly_print(out, "\"");
     }
