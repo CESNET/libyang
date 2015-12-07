@@ -556,6 +556,10 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             i++;
 
             GETVAL(value, next, "name");
+            if (check_identifier(value, LY_IDENT_SIMPLE, LOGLINE(next), NULL, NULL)) {
+                goto error;
+            }
+
             type->info.bits.bit[i].name = lydict_insert(module->ctx, value, strlen(value));
             if (read_yin_common(module, NULL, (struct lys_node *)&type->info.bits.bit[i], next, 0)) {
                 type->info.bits.count = i + 1;
