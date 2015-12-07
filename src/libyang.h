@@ -729,6 +729,18 @@ typedef enum {
 void ly_verb(LY_LOG_LEVEL level);
 
 /**
+ * @brief Set logger callback.
+ * @param[in] clb Logging callback.
+ */
+void ly_set_log_clb(void (*clb)(LY_LOG_LEVEL, const char *));
+
+/**
+ * @brief Get logger callback.
+ * @return Logger callback (can be NULL).
+ */
+void (*ly_get_log_clb(void))(LY_LOG_LEVEL, const char *);
+
+/**
  * @typedef LY_ERR
  * @brief libyang's error codes available via ly_errno extern variable.
  * @ingroup logger
