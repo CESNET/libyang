@@ -159,7 +159,7 @@ lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT for
 }
 
 API int
-lys_print(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
 {
     struct lyout out;
 
@@ -246,7 +246,7 @@ lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format)
 }
 
 API int
-lyd_print(FILE *f, const struct lyd_node *root, LYD_FORMAT format)
+lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format)
 {
     struct lyout out;
 

@@ -26,10 +26,15 @@
 #include <ctype.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <string.h>
+#include <errno.h>
 
+#include "libyang.h"
 #include "common.h"
 #include "context.h"
 #include "tree_data.h"
@@ -73,13 +78,63 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
 }
 
 API struct lyd_node *
-lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
+lyd_parse_data(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
 {
     return lyd_parse_(ctx, NULL, data, format, options);
 }
 
 API struct lyd_node *
-lyd_parse_output(const struct lys_node *rpc, const char *data, LYD_FORMAT format, int options)
+lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options)
+{
+    struct lyd_node *ret;
+    struct stat sb;
+    char *data;
+
+    if (!ctx || (fd == -1)) {
+        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        return NULL;
+    }
+
+    if (fstat(fd, &sb) == -1) {
+        LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
+        return NULL;
+    }
+
+    data = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (data == MAP_FAILED) {
+        LOGERR(LY_ESYS, "Mapping file descriptor into memory failed.");
+        return NULL;
+    }
+
+    ret = lyd_parse_data(ctx, data, format, options);
+    munmap(data, sb.st_size);
+    return ret;
+}
+
+API struct lyd_node *
+lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options)
+{
+    int fd;
+    struct lyd_node *ret;
+
+    if (!ctx || !path) {
+        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        return NULL;
+    }
+
+    fd = open(path, O_RDONLY);
+    if (fd == -1) {
+        LOGERR(LY_ESYS, "Failed to open data file \"%s\" (%s).", path, strerror(errno));
+        return NULL;
+    }
+
+    ret = lyd_parse_fd(ctx, fd, format, options);
+    close(fd);
+    return ret;
+}
+
+API struct lyd_node *
+lyd_parse_output_data(const struct lys_node *rpc, const char *data, LYD_FORMAT format, int options)
 {
     if (!rpc || (rpc->nodetype != LYS_RPC)) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);

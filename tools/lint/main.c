@@ -22,13 +22,8 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <getopt.h>
 #include <errno.h>
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <unistd.h>
 #include <sys/times.h>
 #include <string.h>
 
@@ -58,10 +53,7 @@ main_noninteractive(int argc, char *argv[])
 {
     int c;
     int ret = EXIT_FAILURE;
-    int fd = -1;
     const struct lys_module *model;
-    struct stat sb;
-    char *addr = NULL;
 
     int opt_i;
     struct option opt[] = {
@@ -93,29 +85,13 @@ main_noninteractive(int argc, char *argv[])
         goto cleanup;
     }
 
-    fd = open(argv[optind], O_RDONLY);
-    if (fd == -1) {
-        fprintf(stderr, "Opening input file failed (%s).\n", strerror(errno));
-        goto cleanup;
-    }
-    if (fstat(fd, &sb) == -1) {
-        fprintf(stderr, "Unable to get input file information (%s).\n", strerror(errno));
-        goto cleanup;
-    }
-    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (addr == MAP_FAILED) {
-        fprintf(stderr,"Map file into memory failed.\n");
-        addr = NULL;
-        goto cleanup;
-    }
-
     /* libyang */
     ctx = ly_ctx_new(search_path);
     if (!ctx) {
         fprintf(stderr, "Failed to create context.\n");
         goto cleanup;
     }
-    model = lys_parse(ctx, addr, LYS_IN_YIN);
+    model = lys_parse_path(ctx, argv[optind], LYS_IN_YIN);
     if (!model) {
         fprintf(stderr, "Parsing data model failed.\n");
         goto cleanup;
@@ -125,12 +101,6 @@ main_noninteractive(int argc, char *argv[])
 
 cleanup:
     ly_ctx_destroy(ctx);
-    if (addr) {
-        munmap(addr, sb.st_size);
-    }
-    if (fd != -1) {
-        close(fd);
-    }
 
     return ret;
 }

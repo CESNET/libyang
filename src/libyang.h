@@ -353,10 +353,22 @@ void ly_ctx_destroy(struct ly_ctx *ctx);
  * @param[in] format Format of the input data (YANG or YIN).
  * @return Pointer to the data model structure or NULL on error.
  */
-const struct lys_module *lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
+const struct lys_module *lys_parse_data(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
 
 /**
- * @brief Read a schema from file into the specified context.
+ * @brief Load a schema into the specified context from a file.
+ *
+ * LY_IN_YANG (YANG) format is not yet supported.
+ *
+ * @param[in] ctx libyang context where to process the data model.
+ * @param[in] path Path to the file with the model in the specified format.
+ * @param[in] format Format of the input data (YANG or YIN).
+ * @return Pointer to the data model structure or NULL on error.
+ */
+const struct lys_module *lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format);
+
+/**
+ * @brief Read a schema from file descriptor into the specified context.
  *
  * LY_IN_YANG (YANG) format is not yet supported.
  *
@@ -368,7 +380,7 @@ const struct lys_module *lys_parse(struct ly_ctx *ctx, const char *data, LYS_INF
  * @param[in] format Format of the input data (YANG or YIN).
  * @return Pointer to the data model structure or NULL on error.
  */
-const struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
+const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
 
 /**
  * @defgroup parseroptions Data parser options
@@ -436,7 +448,7 @@ const struct lys_module *lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT forma
  * @param[in] options Parser options, see @ref parseroptions.
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
-struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options);
+struct lyd_node *lyd_parse_data(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options);
 
 /**
  * @brief Parse (and validate according to appropriate schema from the given context) RPC output data.
@@ -451,7 +463,7 @@ struct lyd_node *lyd_parse(struct ly_ctx *ctx, const char *data, LYD_FORMAT form
  * @param[in] options Parser options, see @ref parseroptions.
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
-struct lyd_node *lyd_parse_output(const struct lys_node *rpc, const char *data, LYD_FORMAT format, int options);
+struct lyd_node *lyd_parse_output_data(const struct lys_node *rpc, const char *data, LYD_FORMAT format, int options);
 
 /**
  * @brief Parse (and validate according to appropriate schema from the given context) XML tree.
@@ -491,9 +503,9 @@ struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int 
 struct lyd_node *lyd_parse_output_xml(const struct lys_node *rpc, struct lyxml_elem *root, int options);
 
 /**
- * @brief Read data from the given file
+ * @brief Read data from the given file descriptor.
  *
- * TODO not implemented
+ * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
  *
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] fd The standard file descriptor of the file containing the data tree in the specified format.
@@ -501,7 +513,18 @@ struct lyd_node *lyd_parse_output_xml(const struct lys_node *rpc, struct lyxml_e
  * @param[in] options Parser options, see @ref parseroptions.
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
-struct lyd_node *lyd_read(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options);
+struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options);
+
+/**
+ * @brief Read data from the given file path.
+ *
+ * @param[in] ctx Context to connect with the data tree being built here.
+ * @param[in] path Path to the file containing the data tree in the specified format.
+ * @param[in] format Format of the input data to be parsed.
+ * @param[in] options Parser options, see @ref parseroptions.
+ * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
+ */
+struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options);
 
 /**@} parsers */
 
@@ -575,7 +598,7 @@ struct lyd_node *lyd_read(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int opt
  * node in the module will be printed.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lys_print(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+int lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
 
 /**
  * @brief Print schema tree in the specified format.
@@ -633,7 +656,7 @@ int lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count),
  * @param[in] format Data output format.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print(FILE *f, const struct lyd_node *root, LYD_FORMAT format);
+int lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format);
 
 /**
  * @brief Print data tree in the specified format.

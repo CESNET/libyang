@@ -25,8 +25,12 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <sys/mman.h>
+#include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <string.h>
+#include <unistd.h>
+#include <errno.h>
 
 #include "common.h"
 #include "context.h"
@@ -1080,7 +1084,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
 }
 
 API const struct lys_module *
-lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
+lys_parse_data(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
     struct unres_schema *unres;
     struct lys_module *mod = NULL;
@@ -1142,7 +1146,29 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
 }
 
 API const struct lys_module *
-lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
+lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
+{
+    int fd;
+    const struct lys_module *ret;
+
+    if (!ctx || !path) {
+        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        return NULL;
+    }
+
+    fd = open(path, O_RDONLY);
+    if (fd == -1) {
+        LOGERR(LY_ESYS, "Opening file \"%s\" failed (%s).", path, strerror(errno));
+        return NULL;
+    }
+
+    ret = lys_parse_fd(ctx, fd, format);
+    close(fd);
+    return ret;
+}
+
+API const struct lys_module *
+lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
     const struct lys_module *module;
     struct stat sb;
@@ -1156,10 +1182,10 @@ lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     fstat(fd, &sb);
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
-        LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
+        LOGERR(LY_EMEM, "Map file into memory failed (%s()).",__func__);
         return NULL;
     }
-    module = lys_parse(ctx, addr, format);
+    module = lys_parse_data(ctx, addr, format);
     munmap(addr, sb.st_size);
 
     return module;
