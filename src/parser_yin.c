@@ -731,6 +731,10 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             i++;
 
             GETVAL(value, next, "name");
+            if (!value[0]) {
+                LOGVAL(LYE_SPEC, LOGLINE(next), "Enum name must not be empty.");
+                goto error;
+            }
             type->info.enums.enm[i].name = lydict_insert(module->ctx, value, strlen(value));
             if (read_yin_common(module, NULL, (struct lys_node *)&type->info.enums.enm[i], next, 0)) {
                 type->info.enums.count = i + 1;
