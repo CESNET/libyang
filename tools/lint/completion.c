@@ -81,7 +81,6 @@ get_path_multiple_completion(const char *hint, char ***matches, unsigned int *ma
     }
 
     if (dir == NULL) {
-        fprintf(stderr, "opendir failed (%s)\n", strerror(errno));
         return;
     }
 
