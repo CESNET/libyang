@@ -341,10 +341,11 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
         return EXIT_FAILURE;
     }
 
-    /* check placing the node to the appropriate place according to the schema */
-    for(sparent = node->schema->parent;
-        sparent && !(sparent->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF));
-        sparent = sparent->parent);
+    /* check placing the node to the appropriate place according to the schema (if LYS_OUTPUT is returned,
+     * the parent's schema will never match and it fails as it should) */
+    for (sparent = node->schema->parent;
+         sparent && !(sparent->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_OUTPUT | LYS_NOTIF));
+         sparent = sparent->parent);
     if (sparent != parent->schema) {
         return EXIT_FAILURE;
     }
