@@ -644,6 +644,7 @@ tree_print_choice_content(struct lyout *out, const struct lys_module *module, in
     }
 }
 
+/* spec_config = 0 (no special config status), 1 (read-only - rpc output, notification), 2 (write-only - rpc input) */
 static void
 tree_print_snode(struct lyout *out, const struct lys_module *module, int level, char *indent,
                  unsigned int max_name_len, const struct lys_node *node, int mask, int spec_config,
