@@ -523,7 +523,7 @@ tree_print_list(struct lyout *out, const struct lys_module *module, int level, c
         if (i == 0) {
             ly_print(out, " [");
         }
-        ly_print(out, "%s%s", list->keys[i]->name, i + 1 < list->keys_size ? "," : "]");
+        ly_print(out, "%s%s", list->keys[i]->name, i + 1 < list->keys_size ? " " : "]");
     }
 
     tree_print_features(out, (const struct lys_feature **)list->features, list->features_size);
