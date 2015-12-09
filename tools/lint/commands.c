@@ -39,7 +39,6 @@
 COMMAND commands[];
 extern int done;
 extern struct ly_ctx *ctx;
-extern char *search_path;
 
 void
 cmd_add_help(void)
@@ -798,10 +797,7 @@ cmd_searchpath(const char *arg)
         return 1;
     }
 
-    free(search_path);
-    search_path = strdup(path);
-
-    ly_ctx_set_searchdir(ctx, search_path);
+    ly_ctx_set_searchdir(ctx, path);
 
     return 0;
 }
@@ -810,7 +806,7 @@ int
 cmd_clear(const char *UNUSED(arg))
 {
     ly_ctx_destroy(ctx);
-    ctx = ly_ctx_new(search_path);
+    ctx = ly_ctx_new(NULL);
     if (!ctx) {
         fprintf(stderr, "Failed to create context.\n");
         return 1;
