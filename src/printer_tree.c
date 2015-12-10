@@ -49,7 +49,7 @@ sibling_is_valid_child(const struct lys_node *node, int including)
     LY_TREE_FOR((struct lys_node *)(including ? node : node->next), cur) {
         if (!lys_is_disabled(cur, 0)) {
             if (cur->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_CHOICE |
-                    LYS_RPC | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF | LYS_CASE)) {
+                    LYS_INPUT | LYS_OUTPUT | LYS_CASE)) {
                 return 1;
             }
             if ((cur->nodetype == LYS_USES) && sibling_is_valid_child(cur->child, 1)) {
