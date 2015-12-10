@@ -479,23 +479,27 @@ static int
 ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod)
 {
     int i;
-    struct lyd_node *cont;
+    struct lyd_node *cont, *item;
+
+    if (cur_mod->inc_size) {
+        cont = lyd_new(parent, NULL, "submodules");
+    }
 
     for (i = 0; i < cur_mod->inc_size; ++i) {
-        cont = lyd_new(parent, NULL, "submodule");
-        if (!cont) {
+        item = lyd_new(cont, NULL, "submodule");
+        if (!item) {
             return EXIT_FAILURE;
         }
 
-        if (!lyd_new_leaf(cont, NULL, "name", cur_mod->inc[i].submodule->name)) {
+        if (!lyd_new_leaf(item, NULL, "name", cur_mod->inc[i].submodule->name)) {
             return EXIT_FAILURE;
         }
-        if (!lyd_new_leaf(cont, NULL, "revision", (cur_mod->inc[i].submodule->rev_size ?
+        if (!lyd_new_leaf(item, NULL, "revision", (cur_mod->inc[i].submodule->rev_size ?
                           cur_mod->inc[i].submodule->rev[0].date : ""))) {
             return EXIT_FAILURE;
         }
         if (cur_mod->inc[i].submodule->uri
-                && !lyd_new_leaf(cont, NULL, "schema", cur_mod->inc[i].submodule->uri)) {
+                && !lyd_new_leaf(item, NULL, "schema", cur_mod->inc[i].submodule->uri)) {
             return EXIT_FAILURE;
         }
     }

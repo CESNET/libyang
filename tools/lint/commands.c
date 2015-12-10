@@ -573,7 +573,7 @@ int
 cmd_list(const char *UNUSED(arg))
 {
     struct lyd_node *ylib, *module, *submodule, *node;
-    int has_modules = 0;
+    int has_modules = 0, flag;
 
     ylib = ly_ctx_info(ctx);
     if (!ylib) {
@@ -597,10 +597,8 @@ cmd_list(const char *UNUSED(arg))
                 if (!strcmp(node->schema->name, "name")) {
                     printf("\t%s", ((struct lyd_node_leaf_list *)node)->value_str);
                 } else if (!strcmp(node->schema->name, "revision")) {
-                    if (((struct lyd_node_leaf_list *)node)->value_str[0] == '\0') {
-                        printf("\n");
-                    } else {
-                        printf("@%s\n", ((struct lyd_node_leaf_list *)node)->value_str);
+                    if (((struct lyd_node_leaf_list *)node)->value_str[0] != '\0') {
+                        printf("@%s", ((struct lyd_node_leaf_list *)node)->value_str);
                     }
                 }
             }
@@ -608,24 +606,27 @@ cmd_list(const char *UNUSED(arg))
             /* submodules print */
             LY_TREE_FOR(module->child, submodule) {
                 if (!strcmp(submodule->schema->name, "submodules")) {
+                    printf(" (");
+                    flag = 0;
                     LY_TREE_FOR(submodule->child, submodule) {
                         if (!strcmp(submodule->schema->name, "submodule")) {
                             LY_TREE_FOR(submodule->child, node) {
                                 if (!strcmp(node->schema->name, "name")) {
-                                    printf("\t\t%s", ((struct lyd_node_leaf_list *)node)->value_str);
+                                    printf("%s%s", flag ? "," : "", ((struct lyd_node_leaf_list *)node)->value_str);
                                 } else if (!strcmp(node->schema->name, "revision")) {
-                                    if (((struct lyd_node_leaf_list *)node)->value_str[0] == '\0') {
-                                        printf("\n");
-                                    } else {
-                                        printf("@%s\n", ((struct lyd_node_leaf_list *)node)->value_str);
+                                    if (((struct lyd_node_leaf_list *)node)->value_str[0] != '\0') {
+                                        printf("@%s", ((struct lyd_node_leaf_list *)node)->value_str);
                                     }
                                 }
                             }
+                            flag++;
                         }
                     }
+                    printf(")");
                     break;
                 }
             }
+            printf("\n");
         }
     }
 
