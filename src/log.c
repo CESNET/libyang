@@ -132,6 +132,7 @@ ly_vlog(enum LY_ERR code, uint32_t line, ...)
 {
     va_list ap;
     const char *fmt;
+    char line_msg[41];
 
     if (line == UINT_MAX) {
         return;
@@ -139,7 +140,12 @@ ly_vlog(enum LY_ERR code, uint32_t line, ...)
 
     ly_errno = LY_EVALID;
     if (line) {
-        fprintf(stderr, "libyang[%d]: Parser fails around the line %u.\n", LY_LLERR, line);
+        if (ly_log_clb) {
+            sprintf(line_msg, "Parser fails around the line %u.", line);
+            ly_log_clb(LY_LLERR, line_msg);
+        } else {
+            fprintf(stderr, "libyang[%d]: Parser fails around the line %u.\n", LY_LLERR, line);
+        }
     }
 
     if (code == LYE_LINE) {
