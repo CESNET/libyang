@@ -716,10 +716,14 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
     LY_TREE_FOR(module->data, node) {
         switch(node->nodetype) {
         case LYS_RPC:
-            have_rpcs++;
+            if (!lys_is_disabled(node, 0)) {
+                have_rpcs++;
+            }
             break;
         case LYS_NOTIF:
-            have_notifs++;
+            if (!lys_is_disabled(node, 0)) {
+                have_notifs++;
+            }
             break;
         default:
             tree_print_snode(out, module, level, indent, max_child_len, node,
