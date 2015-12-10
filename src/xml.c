@@ -1082,7 +1082,7 @@ error:
 
 /* logs directly */
 API struct lyxml_elem *
-lyxml_read(struct ly_ctx *ctx, const char *data, int UNUSED(options))
+lyxml_read_data(struct ly_ctx *ctx, const char *data, int UNUSED(options))
 {
     const char *c = data;
     unsigned int len;
@@ -1146,7 +1146,7 @@ lyxml_read(struct ly_ctx *ctx, const char *data, int UNUSED(options))
 }
 
 API struct lyxml_elem *
-lyxml_read_file(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
+lyxml_read_path(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
 {
     struct lyxml_elem *elem = NULL;
     struct stat sb;
@@ -1177,7 +1177,7 @@ lyxml_read_file(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
         goto error;
     }
 
-    elem = lyxml_read(ctx, addr, 0);
+    elem = lyxml_read_data(ctx, addr, 0);
     munmap(addr, sb.st_size);
     close(fd);
 
@@ -1327,7 +1327,7 @@ close:
 }
 
 API int
-lyxml_dump(FILE *stream, const struct lyxml_elem *elem, int options)
+lyxml_dump_file(FILE *stream, const struct lyxml_elem *elem, int options)
 {
     struct lyout out;
 

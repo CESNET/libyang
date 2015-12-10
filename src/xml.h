@@ -120,7 +120,7 @@ struct lyxml_elem {
  * @param[in] options Parser options. Currently ignored, no option defined yet.
  * @return pointer to root of the parsed XML document tree.
  */
-struct lyxml_elem *lyxml_read(struct ly_ctx *ctx, const char *data, int options);
+struct lyxml_elem *lyxml_read_data(struct ly_ctx *ctx, const char *data, int options);
 
 /**
  * @brief Parse XML from filesystem
@@ -130,7 +130,7 @@ struct lyxml_elem *lyxml_read(struct ly_ctx *ctx, const char *data, int options)
  * @param[in] options Parser options. Currently ignored, no option defined yet.
  * @return pointer to root of the parsed XML document tree.
  */
-struct lyxml_elem *lyxml_read_file(struct ly_ctx *ctx, const char *filename, int options);
+struct lyxml_elem *lyxml_read_path(struct ly_ctx *ctx, const char *filename, int options);
 
 /**
  * @defgroup xmldumpoptions XML dump options
@@ -173,7 +173,7 @@ struct lyxml_elem *lyxml_read_file(struct ly_ctx *ctx, const char *filename, int
  * @param[in] options Dump options, see @ref xmldumpoptions.
  * @return number of printed characters.
  */
-int lyxml_dump(FILE * stream, const struct lyxml_elem *elem, int options);
+int lyxml_dump_file(FILE * stream, const struct lyxml_elem *elem, int options);
 
 /**
  * @brief Dump XML tree to a IO stream

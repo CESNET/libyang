@@ -58,7 +58,7 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
     switch (format) {
     case LYD_XML:
     case LYD_XML_FORMAT:
-        xml = lyxml_read(ctx, data, 0);
+        xml = lyxml_read_data(ctx, data, 0);
         if (parent) {
             result = lyd_parse_output_xml(parent, xml, options);
         } else {
@@ -299,7 +299,7 @@ lyd_new_anyxml(struct lyd_node *parent, const struct lys_module *module, const c
     if (val_xml && val_xml[0]) {
         /* add fake root so we can parse the data */
         asprintf(&xml, "<root>%s</root>", val_xml);
-        root = lyxml_read(ctx, xml, 0);
+        root = lyxml_read_data(ctx, xml, 0);
         free(xml);
         if (!root) {
             lyd_free((struct lyd_node *)ret);
@@ -851,7 +851,7 @@ lyxml_serialize(const struct lyxml_elem *anyxml)
         ly_errno = LY_ESYS;
         return NULL;
     }
-    if (lyxml_dump(stream, anyxml, 0) == 0) {
+    if (lyxml_dump_file(stream, anyxml, 0) == 0) {
         free(buf);
         buf = NULL;
         ly_errno = LY_EINVAL;

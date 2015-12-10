@@ -354,7 +354,7 @@ xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int 
 
         /* dump the anyxml into a buffer */
         stream = open_memstream(&buf, &buf_size);
-        lyxml_dump(stream, axml->value, 0);
+        lyxml_dump_file(stream, axml->value, 0);
         fclose(stream);
 
         ly_print(out, "%s</%s>%s", buf, node->schema->name, level ? "\n" : "");

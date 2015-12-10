@@ -5110,7 +5110,7 @@ yin_read_submodule(struct lys_module *module, const char *data, int implement, s
 
     assert(module->ctx);
 
-    yin = lyxml_read(module->ctx, data, 0);
+    yin = lyxml_read_data(module->ctx, data, 0);
     if (!yin) {
         return NULL;
     }
@@ -5167,7 +5167,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unre
     const char *value;
     int i;
 
-    yin = lyxml_read(ctx, data, 0);
+    yin = lyxml_read_data(ctx, data, 0);
     if (!yin) {
         return NULL;
     }
