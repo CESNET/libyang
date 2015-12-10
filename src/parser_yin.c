@@ -4851,7 +4851,10 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
         }
     }
 
-    if (!submodule) {
+    if (module->type && !belongsto_flag) {
+        LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), "belongs-to", "submodule");
+        goto error;
+    } else {
         /* check for mandatory statements */
         if (!module->ns) {
             LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), "namespace", "module");
