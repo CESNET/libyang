@@ -68,7 +68,7 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node)
         }
     }
 
-    if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+    if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
         LY_TREE_DFS_BEGIN(node->child, next, cur) {
             for (attr = cur->attr; attr; attr = attr->next) {
                 for (mlist_new = mlist; mlist_new; mlist_new = mlist_new->next) {
@@ -323,18 +323,20 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
 }
 
 static void
-xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
+xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int UNUSED(toplevel))
 {
     FILE *stream;
     char *buf;
     size_t buf_size;
     struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
-    const char *ns;
+    /*const char *ns;*/
 
-    if (!node->parent || nscmp(node, node->parent)) {
-        /* print "namespace" */
+    /* anyxml with it's namespace is saved in the value, may change later */
+
+    /*if (!node->parent || nscmp(node, node->parent)) {
+        * print "namespace" *
         if (node->schema->module->type) {
-            /* submodule, get module */
+            * submodule, get module *
             ns = ((struct lys_submodule *)node->schema->module)->belongsto->ns;
         } else {
             ns = node->schema->module->ns;
@@ -349,19 +351,15 @@ xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int 
     }
     xml_print_attrs(out, node);
 
-    if (axml->value) {
-        ly_print(out, ">%s", level ? "\n" : "");
+    ly_print(out, ">%s", level ? "\n" : "");*/
 
-        /* dump the anyxml into a buffer */
-        stream = open_memstream(&buf, &buf_size);
-        lyxml_dump_file(stream, axml->value, 0);
-        fclose(stream);
+    /* dump the anyxml into a buffer */
+    stream = open_memstream(&buf, &buf_size);
+    lyxml_dump_file(stream, axml->value, LYXML_DUMP_FORMAT);
+    fclose(stream);
 
-        ly_print(out, "%s</%s>%s", buf, node->schema->name, level ? "\n" : "");
-        free(buf);
-    } else {
-        ly_print(out, "/>%s", level ? "\n" : "");
-    }
+    ly_print(out, "%*s%s", LEVEL, INDENT, buf);
+    free(buf);
 }
 
 void

@@ -168,7 +168,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     struct lys_node *schema = NULL;
     struct lyd_attr *dattr, *dattr_iter;
     struct lyxml_attr *attr;
-    struct lyxml_elem *first_child, *last_child, *child, *next;
+    struct lyxml_elem *tmp_xml, *child, *next;
     int i, havechildren, r;
     int ret = 0;
 
@@ -314,24 +314,27 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             goto error;
         }
     } else if (schema->nodetype == LYS_ANYXML && !(options & LYD_OPT_FILTER)) {
-        /* unlink xml children, they will be the anyxml value */
-        first_child = last_child = NULL;
-        LY_TREE_FOR(xml->child, child) {
-            lyxml_unlink_elem(ctx, child, 1);
-            if (!first_child) {
-                first_child = child;
-                last_child = child;
-            } else {
-                last_child->next = child;
-                child->prev = last_child;
-                last_child = child;
-            }
-        }
-        if (first_child) {
-            first_child->prev = last_child;
-        }
+        /* HACK unlink xml children and link them to a separate copy of xml */
+        tmp_xml = calloc(1, sizeof *tmp_xml);
+        memcpy(tmp_xml, xml, sizeof *tmp_xml);
+        /* keep attributes in the original */
+        tmp_xml->attr = NULL;
+        /* increase reference counters on strings */
+        tmp_xml->name = lydict_insert(ctx, tmp_xml->name, 0);
+        tmp_xml->content = lydict_insert(ctx, tmp_xml->content, 0);
+        xml->child = NULL;
+        /* xml is correct now */
 
-        ((struct lyd_node_anyxml *)(*result))->value = first_child;
+        LY_TREE_FOR(tmp_xml->child, child) {
+            child->parent = tmp_xml;
+        }
+        /* children are correct now */
+
+        tmp_xml->parent = NULL;
+        lyxml_unlink_elem(ctx, tmp_xml, 1);
+        /* tmp_xml is correct now */
+
+        ((struct lyd_node_anyxml *)*result)->value = tmp_xml;
         /* we can safely continue with xml, it's like it was, only without children */
     }
 

@@ -173,7 +173,7 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
                 if ((diter1->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
                         && !((struct lyd_node_leaf_list *)diter1)->value_str) {
                     lyd_set_add(s1, diter1);
-                } else if ((diter1->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter1)->value) {
+                } else if ((diter1->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter1)->value->child) {
                     lyd_set_add(s1, diter1);
                 } else if (diter1->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) {
                     /* or containment node */
@@ -186,7 +186,7 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
                 if ((diter2->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
                         && !((struct lyd_node_leaf_list *)diter2)->value_str) {
                     lyd_set_add(s2, diter2);
-                } else if ((diter2->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter2)->value) {
+                } else if ((diter2->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter2)->value->child) {
                     lyd_set_add(s2, diter2);
                 } else if (diter2->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) {
                     /* or containment node */

@@ -262,7 +262,7 @@ lyd_new_anyxml(struct lyd_node *parent, const struct lys_module *module, const c
 {
     struct lyd_node_anyxml *ret;
     const struct lys_node *siblings, *snode;
-    struct lyxml_elem *root, *first_child, *last_child, *child;
+    struct lyxml_elem *root;
     struct ly_ctx *ctx;
     char *xml;
 
@@ -296,36 +296,20 @@ lyd_new_anyxml(struct lyd_node *parent, const struct lys_module *module, const c
         }
     }
 
-    if (val_xml && val_xml[0]) {
-        /* add fake root so we can parse the data */
-        asprintf(&xml, "<root>%s</root>", val_xml);
-        root = lyxml_read_data(ctx, xml, 0);
-        free(xml);
-        if (!root) {
-            lyd_free((struct lyd_node *)ret);
-            return NULL;
-        }
-
-        /* remove the root */
-        first_child = last_child = NULL;
-        LY_TREE_FOR(root->child, child) {
-            lyxml_unlink_elem(ctx, child, 1);
-            if (!first_child) {
-                first_child = child;
-                last_child = child;
-            } else {
-                last_child->next = child;
-                child->prev = last_child;
-                last_child = child;
-            }
-        }
-        if (first_child) {
-            first_child->prev = last_child;
-        }
-        lyxml_free(ctx, root);
-
-        ret->value = first_child;
+    /* add fake root and top-level and parse the data */
+    asprintf(&xml, "<root><%s>%s</%s></root>", name, (val_xml ? val_xml : ""), name);
+    root = lyxml_read_data(ctx, xml, 0);
+    free(xml);
+    if (!root) {
+        lyd_free((struct lyd_node *)ret);
+        return NULL;
     }
+
+    /* remove the root */
+    ret->value = root->child;
+    lyxml_unlink_elem(ctx, root->child, 1);
+
+    lyxml_free(ctx, root);
 
     return (struct lyd_node *)ret;
 }
