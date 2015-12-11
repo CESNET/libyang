@@ -578,6 +578,7 @@ cmd_list(const char *UNUSED(arg))
 
     ylib = ly_ctx_info(ctx);
     if (!ylib) {
+        fprintf(stderr, "Getting context info (ietf-yang-library data) failed.\n");
         return 1;
     }
 
