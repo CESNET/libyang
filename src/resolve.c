@@ -1665,6 +1665,12 @@ resolve_data_nodeid(const char *id, struct lyd_node *start)
  * If \p id is absolute, \p start is ignored. If \p id is relative, \p start must be the first child to be searched
  * continuing with its siblings. Normally skips augments except \p node_type LYS_AUGMENT (augmenting an augment node).
  *
+ * ASSUMPTION 1: Module to resolve prefixes (JSON module names) from never changes.
+ * ASSUMPTION 2: Submodule belongs-to does not act as an import (main module definitions or anything else is not
+ *               available to the submodule).
+ * ASSUMPTION 3: Module prefix (name) must be resolved only in absolute-schema-nodeid and only on the first
+ *               node. The prefix cannot further change except for nodes from an augment.
+ *
  * @param[in] id Schema-nodeid string.
  * @param[in] start Start of the relative search.
  * @param[in] mod Module to use.
@@ -1677,10 +1683,11 @@ int
 resolve_schema_nodeid(const char *id, const struct lys_node *start, const struct lys_module *mod, LYS_NODE node_type,
                       const struct lys_node **ret)
 {
-    const char *name, *mod_name;
+    const char *name, *mod_name, *pref_mod_name;
     const struct lys_node *sibling;
     int i, opts, nam_len, mod_name_len, is_relative = -1;
-    const struct lys_module *prev_mod, *prefix_mod, *start_mod;
+    /* resolved import module from the start module, it must match the next node-name-match sibling */
+    const struct lys_module *prefix_mod;
     /* 0 - in module, 1 - in 1st submodule, 2 - in 2nd submodule, ... */
     uint8_t in_submod = 0;
 
@@ -1705,35 +1712,22 @@ resolve_schema_nodeid(const char *id, const struct lys_node *start, const struct
     /* absolute-schema-nodeid */
     if (!is_relative) {
         if (mod_name) {
-            start_mod = lys_get_import_module(mod, NULL, 0, mod_name, mod_name_len);
-            if (!start_mod) {
+            prefix_mod = lys_get_import_module(mod, NULL, 0, mod_name, mod_name_len);
+            if (!prefix_mod) {
                 return -1;
             }
-            start = start_mod->data;
+            start = prefix_mod->data;
         } else {
             start = mod->data;
-            start_mod = mod;
         }
     /* descendant-schema-nodeid */
-    } else {
-        if (start) {
-            start_mod = start->module;
-        } else {
-            start = mod->data;
-            start_mod = mod;
-        }
+    } else if (!start) {
+        /* start must be set in this case */
+        return -1;
     }
 
-    prev_mod = start_mod;
-
     while (1) {
-        if (start) {
-            sibling = lys_getnext(NULL, start->parent, start_mod, opts);
-        } else {
-            sibling = NULL;
-        }
-
-        while (sibling) {
+        for (sibling = start; sibling; sibling = lys_getnext(sibling, start->parent, NULL, opts)) {
             /* name match */
             if (((sibling->nodetype != LYS_GROUPING) || (node_type == LYS_USES))
                     && (!(sibling->nodetype & (LYS_RPC | LYS_NOTIF)) || (node_type == LYS_AUGMENT))
@@ -1741,16 +1735,19 @@ resolve_schema_nodeid(const char *id, const struct lys_node *start, const struct
                     || (!strncmp(name, "input", 5) && (nam_len == 5) && (sibling->nodetype == LYS_INPUT))
                     || (!strncmp(name, "output", 6) && (nam_len == 6) && (sibling->nodetype == LYS_OUTPUT)))) {
 
-                /* module name match check */
+                /* get module for module name match check */
                 if (mod_name) {
-                    prefix_mod = lys_get_import_module(prev_mod, NULL, 0, mod_name, mod_name_len);
+                    prefix_mod = lys_get_import_module(mod, NULL, 0, mod_name, mod_name_len);
+
                     if (!prefix_mod && (node_type == LYS_AUGMENT)) {
                         /* we want augment nodes in this case */
                         prefix_mod = sibling->module;
                         if (prefix_mod->type) {
-                            prefix_mod = ((struct lys_submodule *)prefix_mod)->belongsto;
+                            pref_mod_name = ((struct lys_submodule *)prefix_mod)->belongsto->name;
+                        } else {
+                            pref_mod_name = prefix_mod->name;
                         }
-                        if (strncmp(prefix_mod->name, mod_name, mod_name_len) || prefix_mod->name[mod_name_len]) {
+                        if (strncmp(pref_mod_name, mod_name, mod_name_len) || pref_mod_name[mod_name_len]) {
                             prefix_mod = NULL;
                         }
                     }
@@ -1758,17 +1755,26 @@ resolve_schema_nodeid(const char *id, const struct lys_node *start, const struct
                         return -1;
                     }
                 } else {
-                    prefix_mod = prev_mod;
+                    prefix_mod = mod;
                 }
 
-                /* modules need to always be checked, we want to skip augments */
-                if (!sibling->module->type) {
-                    if (prefix_mod != sibling->module) {
-                        goto next;
-                    }
-                } else {
-                    if (prefix_mod != ((struct lys_submodule *)sibling->module)->belongsto) {
-                        goto next;
+                /* modules need to always be checked, we want to skip augments (no other reason to check them) */
+                if (prefix_mod != sibling->module) {
+                    if (in_submod) {
+                        if (prefix_mod->type) {
+                            prefix_mod = ((struct lys_submodule *)prefix_mod)->belongsto;
+                        }
+                        if (sibling->module->type) {
+                            if (prefix_mod != ((struct lys_submodule *)sibling->module)->belongsto) {
+                                continue;
+                            }
+                        } else {
+                            if (prefix_mod != sibling->module) {
+                                continue;
+                            }
+                        }
+                    } else {
+                        continue;
                     }
                 }
 
@@ -1776,7 +1782,7 @@ resolve_schema_nodeid(const char *id, const struct lys_node *start, const struct
                 if (!id[0]) {
                     /* we're looking only for groupings, this is a data node */
                     if ((node_type == LYS_USES) && (sibling->nodetype != LYS_GROUPING)) {
-                        goto next;
+                        continue;
                     }
                     if (ret) {
                         *ret = sibling;
@@ -1788,11 +1794,8 @@ resolve_schema_nodeid(const char *id, const struct lys_node *start, const struct
                  * but this isn't it, we cannot search inside
                  */
                 if (sibling->nodetype == LYS_GROUPING) {
-                    goto next;
+                    continue;
                 }
-
-                /* remember the module */
-                prev_mod = prefix_mod;
 
                 /* check for shorthand cases - then 'start' does not change */
                 if (!sibling->parent || (sibling->parent->nodetype != LYS_CHOICE)
@@ -1801,9 +1804,6 @@ resolve_schema_nodeid(const char *id, const struct lys_node *start, const struct
                 }
                 break;
             }
-
-next:
-            sibling = lys_getnext(sibling, start->parent, NULL, opts);
         }
 
         /* we did not find the case in direct siblings */
@@ -1814,20 +1814,14 @@ next:
         /* no match */
         if (!sibling) {
             /* are we done with the included submodules as well? */
-            if (in_submod == start_mod->inc_size) {
+            if (start->parent || (in_submod == mod->inc_size)) {
                 return EXIT_FAILURE;
             }
 
             /* we aren't, check the next one */
             ++in_submod;
-            start = start_mod->inc[in_submod-1].submodule->data;
+            start = mod->inc[in_submod-1].submodule->data;
             continue;
-        }
-
-        /* we found our submodule */
-        if (in_submod) {
-            start_mod = (struct lys_module *)start_mod->inc[in_submod-1].submodule;
-            in_submod = 0;
         }
 
         if ((i = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {

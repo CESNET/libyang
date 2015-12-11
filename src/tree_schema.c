@@ -1956,6 +1956,7 @@ const struct lys_module *
 lys_get_import_module(const struct lys_module *module, const char *prefix, int pref_len, const char *name, int name_len)
 {
     int i, match;
+    struct lys_submodule *submodule = (struct lys_submodule *)module;
 
     assert(prefix || name);
     if (prefix && !pref_len) {
@@ -1965,9 +1966,17 @@ lys_get_import_module(const struct lys_module *module, const char *prefix, int p
         name_len = strlen(name);
     }
 
-    if ((!prefix || (!strncmp(module->prefix, prefix, pref_len) && !module->prefix[pref_len]))
-            && (!name || (!strncmp(module->name, name, name_len) && !module->name[name_len]))) {
-        return module;
+    /* special case, in submodule we pretend the (JSON) module name is the name of the belongs-to module */
+    if (module->type) {
+        if ((!prefix || (!strncmp(submodule->prefix, prefix, pref_len) && !submodule->prefix[pref_len]))
+                && (!name || (!strncmp(submodule->belongsto->name, name, name_len) && !submodule->belongsto->name[name_len]))) {
+            return module;
+        }
+    } else {
+        if ((!prefix || (!strncmp(module->prefix, prefix, pref_len) && !module->prefix[pref_len]))
+                && (!name || (!strncmp(module->name, name, name_len) && !module->name[name_len]))) {
+            return module;
+        }
     }
 
     for (i = 0; i < module->imp_size; ++i) {

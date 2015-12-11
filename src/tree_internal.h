@@ -244,7 +244,8 @@ struct lyd_node *lyd_attr_parent(struct lyd_node *root, struct lyd_attr *attr);
 
 /**
  * @brief Find an import from \p module with matching \p prefix, \p name, or both.
- * \p module itself is also compared.
+ * \p module itself is also compared. If \p module is a submodule, it's module
+ * name is actually the name of the belongs-to module.
  *
  * @param[in] module Module with imports.
  * @param[in] prefix Module prefix to search for.
@@ -252,7 +253,7 @@ struct lyd_node *lyd_attr_parent(struct lyd_node *root, struct lyd_attr *attr);
  * @param[in] name Module name to search for.
  * @param[in] name_len Module \p name length. If 0, the whole name is used, if not NULL.
  *
- * @return Matching module, NULL if not found.
+ * @return Matching module (or submodule), NULL if not found.
  */
 const struct lys_module *lys_get_import_module(const struct lys_module *module, const char *prefix, int pref_len,
                                                const char *name, int name_len);

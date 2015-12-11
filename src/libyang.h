@@ -291,14 +291,17 @@ const struct lys_submodule *ly_ctx_get_submodule(const struct lys_module *module
 /**
  * @brief Get schema node according to the given absolute schema node identifier.
  *
- * @param[in] ctx Context to work in.
- * @param[in] nodeid Absolute schema node identifier with module names used as
- * prefixes. Prefix (module name) must be used whenever the child node is from
- * other module (augments the parent node). The first node in the path must be
- * always specified with the prefix. Here are some examples:
+ * Prefix (module name) must be used in two cases. Firstly, the first node MUST
+ * have a prefix, which is treated as the current module. Secondly, every other
+ * node MUST have a prefix if its module differs from the current module.
+ * Here are some examples:
  *
- * - /ietf-netconf-monitoring:get-schema/input/identifier
- * - /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/ip
+ * /ietf-netconf-monitoring:get-schema/input/identifier
+ * /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/ietf-ip:address/ietf-ip:ip
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] nodeid Absolute schema node identifier.
+ * @return Resolved schema node or NULL.
  */
 const struct lys_node *ly_ctx_get_node(const struct ly_ctx *ctx, const char *nodeid);
 
