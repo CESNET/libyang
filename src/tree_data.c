@@ -314,6 +314,33 @@ lyd_new_anyxml(struct lyd_node *parent, const struct lys_module *module, const c
     return (struct lyd_node *)ret;
 }
 
+API struct lyd_node *
+lyd_new_output(const struct lys_node *rpc_schema)
+{
+    struct lyd_node *ret;
+    struct lys_node *output;
+
+    if (!rpc_schema || (rpc_schema->nodetype != LYS_RPC)) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    if (rpc_schema->child->nodetype == LYS_OUTPUT) {
+        output = rpc_schema->child;
+    } else if (rpc_schema->child->next->nodetype == LYS_OUTPUT) {
+        output = rpc_schema->child->next;
+    } else {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    ret = calloc(1, sizeof *ret);
+    ret->schema = output;
+    ret->prev = ret;
+
+    return (struct lyd_node *)ret;
+}
+
 API int
 lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 {
