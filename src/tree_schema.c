@@ -91,14 +91,15 @@ check:
 }
 
 int
-lys_get_sibling(struct lys_module *mod, const struct lys_node *siblings, const char *mod_name, int mod_name_len,
-                const char *name, int nam_len, LYS_NODE type, const struct lys_node **ret)
+lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int mod_name_len, const char *name,
+                int nam_len, LYS_NODE type, const struct lys_node **ret)
 {
     const struct lys_node *node, *old_siblings = NULL;
-    const struct lys_module *prefix_mod, *cur_mod;
+    const struct lys_module *mod;
+    const char *node_mod_name;
     int in_submod;
 
-    assert(siblings && name);
+    assert(siblings && mod_name && name);
     assert(!(type & (LYS_USES | LYS_GROUPING)));
 
     /* find the beginning */
@@ -106,7 +107,10 @@ lys_get_sibling(struct lys_module *mod, const struct lys_node *siblings, const c
         siblings = siblings->prev;
     }
 
-    /* fill the name length in case the caller is so indifferent */
+    /* fill the lengths in case the caller is so indifferent */
+    if (!mod_name_len) {
+        mod_name_len = strlen(mod_name);
+    }
     if (!nam_len) {
         nam_len = strlen(name);
     }
@@ -114,51 +118,34 @@ lys_get_sibling(struct lys_module *mod, const struct lys_node *siblings, const c
     /* we start with the module itself, submodules come later */
     in_submod = 0;
 
-    /* set prefix_mod correctly */
-    if (mod_name) {
-        prefix_mod = lys_get_import_module(siblings->module, NULL, 0, mod_name, mod_name_len);
-        if (!prefix_mod) {
+    /* set mod correctly */
+    if (!siblings->parent) {
+        mod = lys_get_import_module(siblings->module, NULL, 0, mod_name, mod_name_len);
+        if (mod) {
+            old_siblings = siblings;
+            siblings = mod->data;
+        } else if (type & LYS_AUGMENT) {
+            mod = siblings->module;
+        } else {
             return -1;
         }
-        cur_mod = prefix_mod;
-        /* it is not our module */
-        if (cur_mod != mod) {
-            old_siblings = siblings;
-            siblings = cur_mod->data;
-        }
     } else {
-        if (mod) {
-            prefix_mod = mod;
-        } else {
-            prefix_mod = siblings->module;
-        }
-        if (prefix_mod->type) {
-            prefix_mod = ((struct lys_submodule *)prefix_mod)->belongsto;
-        }
-        cur_mod = prefix_mod;
+        mod = siblings->module;
     }
 
     while (1) {
         /* try to find the node */
         node = NULL;
-        while ((node = lys_getnext(node, siblings->parent, cur_mod, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
+        while ((node = lys_getnext(node, siblings->parent, mod, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
             if (!type || (node->nodetype & type)) {
-                /* module check */
-                if (!node->module->type) {
-                    if (cur_mod != node->module) {
-                        continue;
-                    }
+                /* modules need to always be checked, we want to skip augments (no other reason to check them) */
+                if (node->module->type) {
+                    node_mod_name = ((struct lys_submodule *)node->module)->belongsto->name;
                 } else {
-                    /* both are submodules */
-                    if (cur_mod->type) {
-                        if (cur_mod != node->module) {
-                            continue;
-                        }
-                    } else {
-                        if (cur_mod != ((struct lys_submodule *)node->module)->belongsto) {
-                            continue;
-                        }
-                    }
+                    node_mod_name = node->module->name;
+                }
+                if ((node_mod_name != mod_name) && (strncmp(node_mod_name, mod_name, mod_name_len) || node_mod_name[mod_name_len])) {
+                    continue;
                 }
 
                 /* direct name check */
@@ -187,11 +174,10 @@ lys_get_sibling(struct lys_module *mod, const struct lys_node *siblings, const c
         }
 
         /* let's try the submodules */
-        if (in_submod == prefix_mod->inc_size) {
+        if (in_submod == mod->inc_size) {
             break;
         }
-        cur_mod = (struct lys_module *)prefix_mod->inc[in_submod].submodule;
-        siblings = cur_mod->data;
+        siblings = mod->inc[in_submod].submodule->data;
         ++in_submod;
     }
 
@@ -2272,7 +2258,7 @@ lys_node_dup(struct lys_module *module, const struct lys_node *node, uint8_t fla
         }
 
         if (choice_orig->dflt) {
-            rc = lys_get_sibling(choice->module, choice->child, NULL, 0, choice_orig->dflt->name, 0, LYS_ANYXML
+            rc = lys_get_sibling(choice->child, choice->module->name, 0, choice_orig->dflt->name, 0, LYS_ANYXML
                                          | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST
                                          | LYS_LIST, (const struct lys_node **)&choice->dflt);
             if (rc) {
@@ -2345,7 +2331,7 @@ lys_node_dup(struct lys_module *module, const struct lys_node *node, uint8_t fla
             /* we managed to resolve it before, resolve it again manually */
             if (list_orig->keys[0]) {
                 for (i = 0; i < list->keys_size; ++i) {
-                    rc = lys_get_sibling(list->module, list->child, NULL, 0, list_orig->keys[i]->name, 0, LYS_LEAF,
+                    rc = lys_get_sibling(list->child, list->module->name, 0, list_orig->keys[i]->name, 0, LYS_LEAF,
                                          (const struct lys_node **)&list->keys[i]);
                     if (rc) {
                         if (rc == EXIT_FAILURE) {

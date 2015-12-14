@@ -2221,7 +2221,6 @@ error:
  * @brief Resolve a path (leafref) predicate in JSON schema context. Logs directly.
  *
  * @param[in] path Path to use.
- * @param[in] mod Schema module.
  * @param[in] source_node Left operand node.
  * @param[in] dest_node Right ooperand node.
  * @param[in] first Whether this is the first resolution try. Affects logging.
@@ -2232,7 +2231,7 @@ error:
  *         positive on success, negative on failure.
  */
 static int
-resolve_path_predicate_schema(const char *path, struct lys_module *mod, const struct lys_node *source_node,
+resolve_path_predicate_schema(const char *path, const struct lys_node *source_node,
                               struct lys_node *dest_node, int first, uint32_t line)
 {
     const struct lys_node *src_node, *dst_node;
@@ -2250,7 +2249,10 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, const st
         path += i;
 
         /* source (must be leaf) */
-        rc = lys_get_sibling(mod, source_node->child, sour_pref, sour_pref_len, source, sour_len,
+        if (!sour_pref) {
+            sour_pref = source_node->module->name;
+        }
+        rc = lys_get_sibling(source_node->child, sour_pref, sour_pref_len, source, sour_len,
                              LYS_LEAF | LYS_AUGMENT, &src_node);
         if (rc) {
             if ((rc == -1) || !first) {
@@ -2279,7 +2281,10 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, const st
             }
         }
         while (1) {
-            rc = lys_get_sibling(mod, dst_node->child, dest_pref, dest_pref_len, dest, dest_len,
+            if (!dest_pref) {
+                dest_pref = dst_node->module->name;
+            }
+            rc = lys_get_sibling(dst_node->child, dest_pref, dest_pref_len, dest, dest_len,
                                  LYS_CONTAINER | LYS_LIST | LYS_LEAF | LYS_AUGMENT, &dst_node);
             if (rc) {
                 if ((rc == -1) || !first) {
@@ -2314,7 +2319,6 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, const st
 /**
  * @brief Resolve a path (leafref) in JSON schema context. Logs directly.
  *
- * @param[in] mod Module to use.
  * @param[in] path Path to use.
  * @param[in] parent_node Parent of the leafref.
  * @param[in] first Whether this is the first resolution try. Affects logging.
@@ -2324,8 +2328,8 @@ resolve_path_predicate_schema(const char *path, struct lys_module *mod, const st
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_node *parent_node, int first,
-                        uint32_t line, const struct lys_node **ret)
+resolve_path_arg_schema(const char *path, struct lys_node *parent_node, int first, uint32_t line,
+                        const struct lys_node **ret)
 {
     const struct lys_node *node;
     const char *id, *prefix, *name;
@@ -2345,7 +2349,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
 
         if (first_iter) {
             if (parent_times == -1) {
-                node = mod->data;
+                node = parent_node->module->data;
                 if (!node) {
                     if (!first) {
                         LOGVAL(LYE_NORESOLV, line, path);
@@ -2378,17 +2382,25 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
                     }
                     node = node->parent;
                 }
+
                 node = node->child;
             } else {
                 LOGINT;
                 return -1;
             }
+
+            if (!prefix) {
+                prefix = parent_node->module->name;
+            }
             first_iter = 0;
         } else {
+            if (!prefix) {
+                prefix = node->module->name;
+            }
             node = node->child;
         }
 
-        rc = lys_get_sibling(mod, node, prefix, pref_len, name, nam_len, LYS_ANY & ~(LYS_USES | LYS_GROUPING), &node);
+        rc = lys_get_sibling(node, prefix, pref_len, name, nam_len, LYS_ANY & ~(LYS_USES | LYS_GROUPING), &node);
         if (rc) {
             if ((rc == -1) || !first) {
                 LOGVAL(LYE_NORESOLV, line, path);
@@ -2403,7 +2415,7 @@ resolve_path_arg_schema(struct lys_module *mod, const char *path, struct lys_nod
                 return -1;
             }
 
-            i = resolve_path_predicate_schema(id, mod, node, parent_node, first, line);
+            i = resolve_path_predicate_schema(id, node, parent_node, first, line);
             if (!i) {
                 return EXIT_FAILURE;
             } else if (i < 0) {
@@ -3168,7 +3180,7 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-resolve_list_keys(struct lys_module *mod, struct lys_node_list *list, const char *keys_str, int first, uint32_t line)
+resolve_list_keys(struct lys_node_list *list, const char *keys_str, int first, uint32_t line)
 {
     int i, len, rc;
     const char *value;
@@ -3184,7 +3196,7 @@ resolve_list_keys(struct lys_module *mod, struct lys_node_list *list, const char
             len = strlen(keys_str);
         }
 
-        rc = lys_get_sibling(mod, list->child, NULL, 0, keys_str, len, LYS_LEAF, (const struct lys_node **)&list->keys[i]);
+        rc = lys_get_sibling(list->child, list->module->name, 0, keys_str, len, LYS_LEAF, (const struct lys_node **)&list->keys[i]);
         if (rc) {
             if ((rc == -1) || !first) {
                 LOGVAL(LYE_INRESOLV, line, "list keys", keys_str);
@@ -3453,7 +3465,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         node = str_snode;
         stype = item;
 
-        rc = resolve_path_arg_schema(mod, stype->info.lref.path, node, first, line,
+        rc = resolve_path_arg_schema(stype->info.lref.path, node, first, line,
                                      (const struct lys_node **)&stype->info.lref.target);
         has_str = 0;
         break;
@@ -3508,7 +3520,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         has_str = 1;
         break;
     case UNRES_LIST_KEYS:
-        rc = resolve_list_keys(mod, item, str_snode, first, line);
+        rc = resolve_list_keys(item, str_snode, first, line);
         has_str = 1;
         break;
     case UNRES_LIST_UNIQ:
