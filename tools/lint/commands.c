@@ -39,7 +39,6 @@
 COMMAND commands[];
 extern int done;
 extern struct ly_ctx *ctx;
-extern char *search_path;
 
 void
 cmd_add_help(void)
@@ -582,7 +581,7 @@ int
 cmd_list(const char *UNUSED(arg))
 {
     struct lyd_node *ylib, *module, *submodule, *node;
-    int has_modules = 0;
+    int has_modules = 0, flag;
 
     ylib = ly_ctx_info(ctx);
     if (!ylib) {
@@ -607,10 +606,8 @@ cmd_list(const char *UNUSED(arg))
                 if (!strcmp(node->schema->name, "name")) {
                     printf("\t%s", ((struct lyd_node_leaf_list *)node)->value_str);
                 } else if (!strcmp(node->schema->name, "revision")) {
-                    if (((struct lyd_node_leaf_list *)node)->value_str[0] == '\0') {
-                        printf("\n");
-                    } else {
-                        printf("@%s\n", ((struct lyd_node_leaf_list *)node)->value_str);
+                    if (((struct lyd_node_leaf_list *)node)->value_str[0] != '\0') {
+                        printf("@%s", ((struct lyd_node_leaf_list *)node)->value_str);
                     }
                 }
             }
@@ -618,24 +615,27 @@ cmd_list(const char *UNUSED(arg))
             /* submodules print */
             LY_TREE_FOR(module->child, submodule) {
                 if (!strcmp(submodule->schema->name, "submodules")) {
+                    printf(" (");
+                    flag = 0;
                     LY_TREE_FOR(submodule->child, submodule) {
                         if (!strcmp(submodule->schema->name, "submodule")) {
                             LY_TREE_FOR(submodule->child, node) {
                                 if (!strcmp(node->schema->name, "name")) {
-                                    printf("\t\t%s", ((struct lyd_node_leaf_list *)node)->value_str);
+                                    printf("%s%s", flag ? "," : "", ((struct lyd_node_leaf_list *)node)->value_str);
                                 } else if (!strcmp(node->schema->name, "revision")) {
-                                    if (((struct lyd_node_leaf_list *)node)->value_str[0] == '\0') {
-                                        printf("\n");
-                                    } else {
-                                        printf("@%s\n", ((struct lyd_node_leaf_list *)node)->value_str);
+                                    if (((struct lyd_node_leaf_list *)node)->value_str[0] != '\0') {
+                                        printf("@%s", ((struct lyd_node_leaf_list *)node)->value_str);
                                     }
                                 }
                             }
+                            flag++;
                         }
                     }
+                    printf(")");
                     break;
                 }
             }
+            printf("\n");
         }
     }
 
@@ -807,10 +807,7 @@ cmd_searchpath(const char *arg)
         return 1;
     }
 
-    free(search_path);
-    search_path = strdup(path);
-
-    ly_ctx_set_searchdir(ctx, search_path);
+    ly_ctx_set_searchdir(ctx, path);
 
     return 0;
 }
@@ -819,7 +816,7 @@ int
 cmd_clear(const char *UNUSED(arg))
 {
     ly_ctx_destroy(ctx);
-    ctx = ly_ctx_new(search_path);
+    ctx = ly_ctx_new(NULL);
     if (!ctx) {
         fprintf(stderr, "Failed to create context.\n");
         return 1;

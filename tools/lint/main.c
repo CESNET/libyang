@@ -34,89 +34,15 @@
 
 int done;
 struct ly_ctx *ctx = NULL;
-char *search_path;
-
-void
-usage(const char *progname)
-{
-    fprintf(stdout, "Usage: %s [[-h] [-v level] [-p dir] file.yin]\n\n", progname);
-    fprintf(stdout, "  -h, --help             Print this text.\n");
-    fprintf(stdout, "  -v, --verbose level    Set verbosity level (0-3).\n");
-    fprintf(stdout, "  -p, --path dir         Search path for data models.\n");
-    fprintf(stdout, "  file.yin               Input file in YIN format.\n\n");
-    fprintf(stdout, "The specified model is only loaded and validated.\n");
-    fprintf(stdout, "Executing without arguments starts the full interactive version.\n\n");
-}
 
 int
-main_noninteractive(int argc, char *argv[])
-{
-    int c;
-    int ret = EXIT_FAILURE;
-    const struct lys_module *model;
-
-    int opt_i;
-    struct option opt[] = {
-            { "help",        no_argument,       0, 'h' },
-            { "path",        required_argument, 0, 'p' },
-            { "verbose",     required_argument, 0, 'v' },
-            { 0, 0, 0, 0 } };
-
-    while ((c = getopt_long(argc, argv, "hp:v:", opt, &opt_i)) != -1) {
-        switch (c) {
-        case 'h':
-            usage(argv[0]);
-            ret = EXIT_SUCCESS;
-            goto cleanup;
-        case 'p':
-            search_path = optarg;
-            break;
-        case 'v':
-            ly_verb(atoi(optarg));
-            break;
-        default: /* '?' */
-            usage(argv[0]);
-            goto cleanup;
-        }
-    }
-
-    if (optind != argc - 1) {
-        usage(argv[0]);
-        goto cleanup;
-    }
-
-    /* libyang */
-    ctx = ly_ctx_new(search_path);
-    if (!ctx) {
-        fprintf(stderr, "Failed to create context.\n");
-        goto cleanup;
-    }
-    model = lys_parse_path(ctx, argv[optind], LYS_IN_YIN);
-    if (!model) {
-        fprintf(stderr, "Parsing data model failed.\n");
-        goto cleanup;
-    }
-
-    ret = EXIT_SUCCESS;
-
-cleanup:
-    ly_ctx_destroy(ctx);
-
-    return ret;
-}
-
-int
-main(int argc, char **argv)
+main(void)
 {
     char *cmd, *cmdline, *cmdstart;
     int i, j;
 
-    if (argc > 1) {
-        return main_noninteractive(argc, argv);
-    }
-
     linenoiseSetCompletionCallback(complete_cmd);
-    ctx = ly_ctx_new(search_path);
+    ctx = ly_ctx_new(NULL);
     if (!ctx) {
         fprintf(stderr, "Failed to create context.\n");
         return 1;
@@ -175,7 +101,6 @@ main(int argc, char **argv)
     }
 
     ly_ctx_destroy(ctx);
-    free(search_path);
 
     return 0;
 }

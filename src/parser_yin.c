@@ -1243,8 +1243,9 @@ fill_yin_feature(struct lys_module *module, struct lyxml_elem *yin, struct lys_f
         }
         /* hack - store pointer to the parent node for later status check */
         f->features[f->features_size] = f;
-        ret = unres_schema_add_str(module, unres, &f->features[f->features_size++], UNRES_IFFEAT, value,
+        ret = unres_schema_add_str(module, unres, &f->features[f->features_size], UNRES_IFFEAT, value,
                                    LOGLINE(child));
+        f->features_size++;
         lydict_remove(module->ctx, value);
         if (ret == -1) {
             goto error;
@@ -2038,7 +2039,9 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         goto error;
                     }
                 } else { /* replace or add */
-                    if (fill_yin_unique(module, dev->target, child, &list->unique[list->unique_size++], NULL)) {
+                    i = fill_yin_unique(module, dev->target, child, &list->unique[list->unique_size], NULL);
+                    list->unique_size++;
+                    if (i) {
                         goto error;
                     }
                 }
@@ -2177,8 +2180,9 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
             }
             /* hack - store pointer to the parent node for later status check */
             aug->features[aug->features_size] = (struct lys_feature *)aug;
-            ret = unres_schema_add_str(module, unres, &aug->features[aug->features_size++], UNRES_IFFEAT, value,
+            ret = unres_schema_add_str(module, unres, &aug->features[aug->features_size], UNRES_IFFEAT, value,
                                        LOGLINE(child));
+            aug->features_size++;
             lydict_remove(module->ctx, value);
             if (ret == -1) {
                 goto error;
@@ -2409,7 +2413,8 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
         rfn->must = calloc(c_must, sizeof *rfn->must);
     }
     LY_TREE_FOR(yin->child, sub) {
-        r = fill_yin_must(module, sub, &rfn->must[rfn->must_size++]);
+        r = fill_yin_must(module, sub, &rfn->must[rfn->must_size]);
+        rfn->must_size++;
         if (r) {
             goto error;
         }
@@ -2893,8 +2898,9 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
         /* hack - store pointer to the parent node for later status check */
         cs->features[cs->features_size] = (struct lys_feature *)cs;
-        ret = unres_schema_add_str(module, unres, &cs->features[cs->features_size++], UNRES_IFFEAT, value,
+        ret = unres_schema_add_str(module, unres, &cs->features[cs->features_size], UNRES_IFFEAT, value,
                                    LOGLINE(sub));
+        cs->features_size++;
         lydict_remove(module->ctx, value);
         if (ret == -1) {
             goto error;
@@ -3060,8 +3066,9 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
         }
         /* hack - store pointer to the parent node for later status check */
         choice->features[choice->features_size] = (struct lys_feature *)choice;
-        ret = unres_schema_add_str(module, unres, &choice->features[choice->features_size++], UNRES_IFFEAT, value,
+        ret = unres_schema_add_str(module, unres, &choice->features[choice->features_size], UNRES_IFFEAT, value,
                                    LOGLINE(sub));
+        choice->features_size++;
         lydict_remove(module->ctx, value);
         if (ret == -1) {
             goto error;
@@ -3184,7 +3191,8 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
 
     LY_TREE_FOR(yin->child, sub) {
         if (!strcmp(sub->name, "must")) {
-            r = fill_yin_must(module, sub, &anyxml->must[anyxml->must_size++]);
+            r = fill_yin_must(module, sub, &anyxml->must[anyxml->must_size]);
+            anyxml->must_size++;
             if (r) {
                 goto error;
             }
@@ -3198,8 +3206,9 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
             }
             /* hack - store pointer to the parent node for later status check */
             anyxml->features[anyxml->features_size] = (struct lys_feature *)anyxml;
-            r = unres_schema_add_str(module, unres, &anyxml->features[anyxml->features_size++], UNRES_IFFEAT, value,
+            r = unres_schema_add_str(module, unres, &anyxml->features[anyxml->features_size], UNRES_IFFEAT, value,
                                      LOGLINE(sub));
+            anyxml->features_size++;
             lydict_remove(module->ctx, value);
             if (r == -1) {
                 goto error;
@@ -3348,7 +3357,8 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     LY_TREE_FOR(yin->child, sub) {
         if (!strcmp(sub->name, "must")) {
-            r = fill_yin_must(module, sub, &leaf->must[leaf->must_size++]);
+            r = fill_yin_must(module, sub, &leaf->must[leaf->must_size]);
+            leaf->must_size++;
             if (r) {
                 goto error;
             }
@@ -3362,8 +3372,9 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
             /* hack - store pointer to the parent node for later status check */
             leaf->features[leaf->features_size] = (struct lys_feature *)leaf;
-            r = unres_schema_add_str(module, unres, &leaf->features[leaf->features_size++], UNRES_IFFEAT, value,
+            r = unres_schema_add_str(module, unres, &leaf->features[leaf->features_size], UNRES_IFFEAT, value,
                                      LOGLINE(sub));
+            leaf->features_size++;
             lydict_remove(module->ctx, value);
             if (r == -1) {
                 goto error;
@@ -3554,7 +3565,8 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
 
     LY_TREE_FOR(yin->child, sub) {
         if (!strcmp(sub->name, "must")) {
-            r = fill_yin_must(module, sub, &llist->must[llist->must_size++]);
+            r = fill_yin_must(module, sub, &llist->must[llist->must_size]);
+            llist->must_size++;
             if (r) {
                 goto error;
             }
@@ -3568,8 +3580,9 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             }
             /* hack - store pointer to the parent node for later status check */
             llist->features[llist->features_size] = (struct lys_feature *)llist;
-            r = unres_schema_add_str(module, unres, &llist->features[llist->features_size++], UNRES_IFFEAT, value,
+            r = unres_schema_add_str(module, unres, &llist->features[llist->features_size], UNRES_IFFEAT, value,
                                      LOGLINE(sub));
+            llist->features_size++;
             lydict_remove(module->ctx, value);
             if (r == -1) {
                 goto error;
@@ -3783,8 +3796,8 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     }
     LY_TREE_FOR(yin->child, sub) {
         if (!strcmp(sub->name, "typedef")) {
-            r = fill_yin_typedef(module, retval, sub, &list->tpdf[list->tpdf_size++], unres);
-
+            r = fill_yin_typedef(module, retval, sub, &list->tpdf[list->tpdf_size], unres);
+            list->tpdf_size++;
             if (r) {
                 goto error;
             }
@@ -3795,14 +3808,16 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
             /* hack - store pointer to the parent node for later status check */
             list->features[list->features_size] = (struct lys_feature *)list;
-            r = unres_schema_add_str(module, unres, &list->features[list->features_size++], UNRES_IFFEAT, value,
-                                       LOGLINE(sub));
+            r = unres_schema_add_str(module, unres, &list->features[list->features_size], UNRES_IFFEAT, value,
+                                     LOGLINE(sub));
+            list->features_size++;
             lydict_remove(module->ctx, value);
             if (r == -1) {
                 goto error;
             }
         } else if (!strcmp(sub->name, "must")) {
-            r = fill_yin_must(module, sub, &list->must[list->must_size++]);
+            r = fill_yin_must(module, sub, &list->must[list->must_size]);
+            list->must_size++;
             if (r) {
                 goto error;
             }
@@ -3858,7 +3873,9 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         list->unique = calloc(c_uniq, sizeof *list->unique);
     }
     LY_TREE_FOR_SAFE(uniq.child, next, sub) {
-        if (fill_yin_unique(module, retval, sub, &list->unique[list->unique_size++], unres)) {
+        r = fill_yin_unique(module, retval, sub, &list->unique[list->unique_size], unres);
+        list->unique_size++;
+        if (r) {
             goto error;
         }
 
@@ -3979,12 +3996,14 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
 
     LY_TREE_FOR(yin->child, sub) {
         if (!strcmp(sub->name, "typedef")) {
-            r = fill_yin_typedef(module, retval, sub, &cont->tpdf[cont->tpdf_size++], unres);
+            r = fill_yin_typedef(module, retval, sub, &cont->tpdf[cont->tpdf_size], unres);
+            cont->tpdf_size++;
             if (r) {
                 goto error;
             }
         } else if (!strcmp(sub->name, "must")) {
-            r = fill_yin_must(module, sub, &cont->must[cont->must_size++]);
+            r = fill_yin_must(module, sub, &cont->must[cont->must_size]);
+            cont->must_size++;
             if (r) {
                 goto error;
             }
@@ -3998,8 +4017,9 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
             }
             /* hack - store pointer to the parent node for later status check */
             cont->features[cont->features_size] = (struct lys_feature *)cont;
-            r = unres_schema_add_str(module, unres, &cont->features[cont->features_size++], UNRES_IFFEAT, value,
-                                       LOGLINE(sub));
+            r = unres_schema_add_str(module, unres, &cont->features[cont->features_size], UNRES_IFFEAT, value,
+                                     LOGLINE(sub));
+            cont->features_size++;
             lydict_remove(module->ctx, value);
             if (r == -1) {
                 goto error;
@@ -4108,8 +4128,8 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
         grp->tpdf = calloc(c_tpdf, sizeof *grp->tpdf);
     }
     LY_TREE_FOR(yin->child, sub) {
-        r = fill_yin_typedef(module, retval, sub, &grp->tpdf[grp->tpdf_size++], unres);
-
+        r = fill_yin_typedef(module, retval, sub, &grp->tpdf[grp->tpdf_size], unres);
+        grp->tpdf_size++;
         if (r) {
             goto error;
         }
@@ -4228,8 +4248,8 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
     }
 
     LY_TREE_FOR(yin->child, sub) {
-        r = fill_yin_typedef(module, retval, sub, &inout->tpdf[inout->tpdf_size++], unres);
-
+        r = fill_yin_typedef(module, retval, sub, &inout->tpdf[inout->tpdf_size], unres);
+        inout->tpdf_size++;
         if (r) {
             goto error;
         }
@@ -4344,8 +4364,8 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
 
     LY_TREE_FOR(yin->child, sub) {
         if (!strcmp(sub->name, "typedef")) {
-            r = fill_yin_typedef(module, retval, sub, &notif->tpdf[notif->tpdf_size++], unres);
-
+            r = fill_yin_typedef(module, retval, sub, &notif->tpdf[notif->tpdf_size], unres);
+            notif->tpdf_size++;
             if (r) {
                 goto error;
             }
@@ -4356,8 +4376,9 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
             }
             /* hack - store pointer to the parent node for later status check */
             notif->features[notif->features_size] = (struct lys_feature *)notif;
-            r = unres_schema_add_str(module, unres, &notif->features[notif->features_size++], UNRES_IFFEAT, value,
-                                       LOGLINE(sub));
+            r = unres_schema_add_str(module, unres, &notif->features[notif->features_size], UNRES_IFFEAT, value,
+                                     LOGLINE(sub));
+            notif->features_size++;
             lydict_remove(module->ctx, value);
             if (r == -1) {
                 goto error;
@@ -4487,8 +4508,8 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
 
     LY_TREE_FOR(yin->child, sub) {
         if (!strcmp(sub->name, "typedef")) {
-            r = fill_yin_typedef(module, retval, sub, &rpc->tpdf[rpc->tpdf_size++], unres);
-
+            r = fill_yin_typedef(module, retval, sub, &rpc->tpdf[rpc->tpdf_size], unres);
+            rpc->tpdf_size++;
             if (r) {
                 goto error;
             }
@@ -4499,8 +4520,9 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
             }
             /* hack - store pointer to the parent node for later status check */
             rpc->features[rpc->features_size] = (struct lys_feature *)rpc;
-            r = unres_schema_add_str(module, unres, &rpc->features[rpc->features_size++], UNRES_IFFEAT, value,
-                                       LOGLINE(sub));
+            r = unres_schema_add_str(module, unres, &rpc->features[rpc->features_size], UNRES_IFFEAT, value,
+                                     LOGLINE(sub));
+            rpc->features_size++;
             lydict_remove(module->ctx, value);
             if (r == -1) {
                 goto error;
@@ -4624,12 +4646,14 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     LY_TREE_FOR(yin->child, sub) {
         if (!strcmp(sub->name, "refine")) {
-            r = fill_yin_refine(module, sub, &uses->refine[uses->refine_size++]);
+            r = fill_yin_refine(module, sub, &uses->refine[uses->refine_size]);
+            uses->refine_size++;
             if (r) {
                 goto error;
             }
         } else if (!strcmp(sub->name, "augment")) {
-            r = fill_yin_augment(module, retval, sub, &uses->augment[uses->augment_size++], unres);
+            r = fill_yin_augment(module, retval, sub, &uses->augment[uses->augment_size], unres);
+            uses->augment_size++;
             if (r) {
                 goto error;
             }
@@ -4640,8 +4664,9 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
             /* hack - store pointer to the parent node for later status check */
             uses->features[uses->features_size] = (struct lys_feature *)uses;
-            r = unres_schema_add_str(module, unres, &uses->features[uses->features_size++], UNRES_IFFEAT, value,
+            r = unres_schema_add_str(module, unres, &uses->features[uses->features_size], UNRES_IFFEAT, value,
                                      LOGLINE(sub));
+            uses->features_size++;
             lydict_remove(module->ctx, value);
             if (r == -1) {
                 goto error;
@@ -5024,7 +5049,6 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
         } else if (!strcmp(child->name, "typedef")) {
             r = fill_yin_typedef(module, NULL, child, &module->tpdf[module->tpdf_size], unres);
             module->tpdf_size++;
-
             if (r) {
                 goto error;
             }
@@ -5032,7 +5056,6 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
         } else if (!strcmp(child->name, "identity")) {
             r = fill_yin_identity(module, child, &module->ident[module->ident_size], unres);
             module->ident_size++;
-
             if (r) {
                 goto error;
             }
@@ -5040,7 +5063,6 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
         } else if (!strcmp(child->name, "feature")) {
             r = fill_yin_feature(module, child, &module->features[module->features_size], unres);
             module->features_size++;
-
             if (r) {
                 goto error;
             }
@@ -5048,7 +5070,6 @@ read_sub_module(struct lys_module *module, struct lyxml_elem *yin, struct unres_
         } else if (!strcmp(child->name, "deviation")) {
             r = fill_yin_deviation(module, child, &module->deviation[module->deviation_size], unres);
             module->deviation_size++;
-
             if (r) {
                 goto error;
             }

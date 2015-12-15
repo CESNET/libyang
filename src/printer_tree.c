@@ -49,7 +49,7 @@ sibling_is_valid_child(const struct lys_node *node, int including)
     LY_TREE_FOR((struct lys_node *)(including ? node : node->next), cur) {
         if (!lys_is_disabled(cur, 0)) {
             if (cur->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_CHOICE |
-                    LYS_RPC | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF | LYS_CASE)) {
+                    LYS_INPUT | LYS_OUTPUT | LYS_CASE)) {
                 return 1;
             }
             if ((cur->nodetype == LYS_USES) && sibling_is_valid_child(cur->child, 1)) {
@@ -523,7 +523,7 @@ tree_print_list(struct lyout *out, const struct lys_module *module, int level, c
         if (i == 0) {
             ly_print(out, " [");
         }
-        ly_print(out, "%s%s", list->keys[i]->name, i + 1 < list->keys_size ? "," : "]");
+        ly_print(out, "%s%s", list->keys[i]->name, i + 1 < list->keys_size ? " " : "]");
     }
 
     tree_print_features(out, (const struct lys_feature **)list->features, list->features_size);
@@ -717,10 +717,14 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
     LY_TREE_FOR(module->data, node) {
         switch(node->nodetype) {
         case LYS_RPC:
-            have_rpcs++;
+            if (!lys_is_disabled(node, 0)) {
+                have_rpcs++;
+            }
             break;
         case LYS_NOTIF:
-            have_notifs++;
+            if (!lys_is_disabled(node, 0)) {
+                have_notifs++;
+            }
             break;
         default:
             tree_print_snode(out, module, level, indent, max_child_len, node,
