@@ -2234,6 +2234,7 @@ lys_node_dup(struct lys_module *module, const struct lys_node *node, uint8_t fla
     retval->features_size = node->features_size;
     retval->features = calloc(retval->features_size, sizeof *retval->features);
     for (i = 0; i < node->features_size; ++i) {
+        retval->features[i] = (struct lys_feature *)retval;
         if (unres_schema_dup(module, unres, &node->features[i], UNRES_IFFEAT, &retval->features[i])) {
             retval->features[i] = node->features[i];
         }

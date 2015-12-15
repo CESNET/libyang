@@ -104,6 +104,7 @@ const char *ly_errs[] = {
 /* LYE_KEY_DUP */      "Key identifier \"%s\" is not unique.",
 /* LYE_INREGEX */      "Regular expression \"%s\" is not valid (%s).",
 /* LYE_INRESOLV */     "Failed to resolve %s \"%s\".",
+/* LYE_INSTATUS */     "A \"%s\" definition %s references \"%s\" definition %s.",
 
 /* LYE_NORESOLV */     "No resolvents found for \"%s\".",
 /* LYE_INELEM */       "Unknown element \"%s\".",

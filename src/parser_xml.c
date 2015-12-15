@@ -389,7 +389,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         }
     }
 
-    /* various validation checks */
+    /* rest of validation checks */
     ly_errno = 0;
     if (lyv_data_content(*result, options, LOGLINE(xml), unres)) {
         if (ly_errno) {

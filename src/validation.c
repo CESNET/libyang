@@ -27,6 +27,7 @@
 #include "validation.h"
 #include "libyang.h"
 #include "xpath.h"
+#include "parser.h"
 #include "resolve.h"
 #include "tree_internal.h"
 #include "xml_internal.h"
@@ -320,6 +321,7 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
     const struct lys_node *schema, *siter;
     const struct lys_node *cs, *ch;
     struct lyd_node *diter, *start;
+    struct lys_ident *ident;
 
     assert(node);
     assert(node->schema);
@@ -533,6 +535,15 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
                 LOGVAL(LYE_DUPLIST, line, schema->name);
                 return EXIT_FAILURE;
             }
+        }
+    }
+
+    /* status of the identity value */
+    if ((schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && (((struct lyd_node_leaf_list *)node)->value_type == LY_TYPE_IDENT)) {
+        ident = ((struct lyd_node_leaf_list *)node)->value.ident;
+        if (check_status(schema->flags, schema->module, schema->name,
+                         ident->flags, ident->module, ident->name, line)) {
+            return EXIT_FAILURE;
         }
     }
 
