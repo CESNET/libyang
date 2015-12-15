@@ -62,7 +62,13 @@ cmd_print_help(void)
 void
 cmd_data_help(void)
 {
-    printf("data [-f (xml | json)] [-x (edit | filter | get | getconfig)] [-o <output-file>] <data-file-name>\n");
+    printf("data [-f (xml | json)] [-x OPTION] [-o <output-file>] <data-file-name>\n");
+    printf("Accepted OPTIONs:\n");
+    printf("\tedit       - LYD_OPT_EDIT\n");
+    printf("\tfilter     - LYD_OPT_FILTER\n");
+    printf("\tget        - LYD_OPT_GET\n");
+    printf("\tgetconfig  - LYD_OPT_GETCONFIG\n");
+    printf("\tobsolete   - add LYD_OPT_OBSOLETE\n");
 }
 
 void
@@ -361,13 +367,15 @@ cmd_data(const char *arg)
             break;
         case 'x':
             if (!strcmp(optarg, "edit")) {
-                options |= LYD_OPT_EDIT;
+                options = (options & 0xc3) | LYD_OPT_EDIT;
             } else if (!strcmp(optarg, "filter")) {
-                options |= LYD_OPT_FILTER;
+                options = (options & 0xc3) | LYD_OPT_FILTER;
             } else if (!strcmp(optarg, "get")) {
-                options |= LYD_OPT_GET;
+                options = (options & 0xc3) | LYD_OPT_GET;
             } else if (!strcmp(optarg, "getconfig")) {
-                options |= LYD_OPT_GETCONFIG;
+                options = (options & 0xc3) | LYD_OPT_GETCONFIG;
+            } else if (!strcmp(optarg, "obsolete")) {
+                options |= LYD_OPT_OBSOLETE;
             }
             break;
         case '?':
