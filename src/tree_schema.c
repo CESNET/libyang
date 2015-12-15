@@ -1107,10 +1107,12 @@ lys_parse_data(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
     }
 
     if (mod && unres->count && resolve_unres_schema(mod, unres)) {
+        unres_schema_free(ctx, unres);
         lys_free(mod, 0);
         mod = NULL;
+    } else {
+        unres_schema_free(ctx, unres);
     }
-    unres_schema_free(ctx, unres);
 
     return mod;
 }
@@ -1137,10 +1139,12 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
     }
 
    if (submod && unres->count && resolve_unres_schema((struct lys_module *)submod, unres)) {
+       unres_schema_free(module->ctx, unres);
         lys_submodule_free(submod, 0);
         submod = NULL;
+    } else {
+        unres_schema_free(module->ctx, unres);
     }
-    unres_schema_free(module->ctx, unres);
 
     return submod;
 }
