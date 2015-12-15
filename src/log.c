@@ -105,6 +105,8 @@ const char *ly_errs[] = {
 /* LYE_INREGEX */      "Regular expression \"%s\" is not valid (%s).",
 /* LYE_INRESOLV */     "Failed to resolve %s \"%s\".",
 /* LYE_INSTATUS */     "A \"%s\" definition %s references \"%s\" definition %s.",
+/* LYE_OBSDATA */      "Obsolete data \"%s\" instantiated.",
+/* LYE_OBSTYPE */      "Data node \"%s\" with obsolete type \"%s\" instantiated.",
 
 /* LYE_NORESOLV */     "No resolvents found for \"%s\".",
 /* LYE_INELEM */       "Unknown element \"%s\".",
