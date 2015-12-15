@@ -1477,6 +1477,11 @@ resolve_unique(struct lys_node *parent, const char *uniq_str, int first, uint32_
         goto error;
     }
 
+    /* check status */
+    if (check_status(parent->flags, parent->module, parent->name, leaf->flags, leaf->module, leaf->name, line)) {
+        return -1;
+    }
+
     return EXIT_SUCCESS;
 
 error:
@@ -1552,6 +1557,7 @@ resolve_feature(const char *id, const struct lys_module *module, int first, uint
 {
     const char *mod_name, *name;
     int mod_name_len, nam_len, i, j;
+    struct lys_node *node;
 
     assert(id);
     assert(module);
@@ -1588,6 +1594,12 @@ resolve_feature(const char *id, const struct lys_module *module, int first, uint
     for (j = 0; j < module->features_size; j++) {
         if (!strcmp(name, module->features[j].name)) {
             if (ret) {
+                /* check status */
+                node = (struct lys_node *)*ret;
+                if (check_status(node->flags, node->module, node->name, module->features[j].flags,
+                                 module->features[j].module, module->features[j].name, line)) {
+                    return -1;
+                }
                 *ret = &module->features[j];
             }
             return EXIT_SUCCESS;
@@ -2431,6 +2443,12 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent_node, int firs
         return -1;
     }
 
+    /* check status */
+    if (check_status(parent_node->flags, parent_node->module, parent_node->name,
+                     node->flags, node->module, node->name, line)) {
+        return -1;
+    }
+
     if (ret) {
         *ret = node;
     }
@@ -2912,6 +2930,8 @@ resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident,
     struct lys_ident *base_iter = NULL;
     struct lys_ident_der *der;
 
+    assert(ret);
+
     /* search module */
     for (i = 0; i < module->ident_size; i++) {
         if (!strcmp(basename, module->ident[i].name)) {
@@ -2920,9 +2940,7 @@ resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident,
                 /* just search for type, so do not modify anything, just return
                  * the base identity pointer
                  */
-                if (ret) {
-                    *ret = &module->ident[i];
-                }
+                *ret = &module->ident[i];
                 return EXIT_SUCCESS;
             }
 
@@ -2940,9 +2958,7 @@ resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident,
                 if (!strcmp(basename, module->inc[j].submodule->ident[i].name)) {
 
                     if (!ident) {
-                        if (ret) {
-                            *ret = &module->inc[j].submodule->ident[i];
-                        }
+                        *ret = &module->inc[j].submodule->ident[i];
                         return EXIT_SUCCESS;
                     }
 
@@ -2968,9 +2984,7 @@ resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident,
 
             base_iter = base_iter->base;
         }
-        if (ret) {
-            *ret = ident->base;
-        }
+        *ret = ident->base;
         return EXIT_SUCCESS;
     }
 
@@ -2986,16 +3000,33 @@ resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident,
  * @param[in] parent Either "type" or "ident".
  * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line Line in the input file.
- * @param[out] ret Pointer to the resolved identity. Can be NULL.
+ * @param[in,out] type Type structure where we want to resolve identity. Can be NULL.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
 resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, const char *basename, const char* parent,
-                   int first, uint32_t line, struct lys_ident **ret)
+                   int first, uint32_t line, struct lys_type *type)
 {
     const char *name;
     int i, mod_name_len = 0;
+    struct lys_ident *target, **ret;
+    uint8_t flags;
+    struct lys_module *mod;
+
+    assert((ident && !type) || (!ident && type));
+
+    if (!type) {
+        /* have ident to resolve */
+        ret = &target;
+        flags = ident->flags;
+        mod = ident->module;
+    } else {
+        /* have type to fill */
+        ret = &type->info.ident.ref;
+        flags = type->parent->flags;
+        mod = type->parent->module;
+    }
 
     /* search for the base identity */
     name = strchr(basename, ':');
@@ -3024,20 +3055,28 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
         /* search in submodules */
         for (i = 0; i < module->inc_size; i++) {
             if (!resolve_base_ident_sub((struct lys_module *)module->inc[i].submodule, ident, name, ret)) {
-                return EXIT_SUCCESS;
+                goto success;
             }
         }
     }
 
     /* search in the identified module */
     if (!resolve_base_ident_sub(module, ident, name, ret)) {
-        return EXIT_SUCCESS;
+        goto success;
     }
 
     if (!first) {
         LOGVAL(LYE_INARG, line, basename, parent);
     }
     return EXIT_FAILURE;
+
+success:
+    /* check status */
+    if (check_status(flags, mod, ident ? ident->name : "of type", (*ret)->flags, (*ret)->module, (*ret)->name, line)) {
+        return -1;
+    }
+
+    return EXIT_SUCCESS;
 }
 
 /**
@@ -3160,6 +3199,13 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
             }
             --parent->nacm;
         }
+
+        /* check status */
+        if (check_status(uses->flags, uses->module, "of uses",
+                         uses->grp->flags, uses->grp->module, uses->grp->name, line)) {
+            return -1;
+        }
+
         return EXIT_SUCCESS;
     }
 
@@ -3206,6 +3252,12 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str, int first, u
 
         if (check_key(list->keys[i], list->flags, list->keys, i, keys_str, len, line)) {
             /* check_key logs */
+            return -1;
+        }
+
+        /* check status */
+        if (check_status(list->flags, list->module, list->name,
+                         list->keys[i]->flags, list->keys[i]->module, list->keys[i]->name, line)) {
             return -1;
         }
 
@@ -3458,7 +3510,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         base_name = str_snode;
         stype = item;
 
-        rc = resolve_base_ident(mod, NULL, base_name, "type", first, line, &stype->info.ident.ref);
+        rc = resolve_base_ident(mod, NULL, base_name, "type", first, line, stype);
         has_str = 1;
         break;
     case UNRES_TYPE_LEAFREF:

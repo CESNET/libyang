@@ -433,6 +433,9 @@ const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT f
                                      - status data are not allowed */
 #define LYD_OPT_GET       0x20  /**< make validation to accept get's result data even with applied filter:
                                      - same as for #LYD_OPT_GETCONFIG but the status data are allowed */
+#define LYD_OPT_OBSOLETE  0x40  /**< By default, using obsolete statements (status set to obsolete) just generates
+                                     a warning, but the processing continues. With this flag, using such a statement
+                                     raises an error. */
 
 /**
  * @}

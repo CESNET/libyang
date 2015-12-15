@@ -74,6 +74,9 @@ int lyp_check_length_range(const char *expr, struct lys_type *type);
 int fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_type *type,
               struct unres_schema *unres);
 
+int check_status(uint8_t flags1, struct lys_module *mod1, const char *name1,
+                 uint8_t flags2, struct lys_module *mod2, const char *name2, unsigned int line);
+
 /**
  * Store UTF-8 character specified as 4byte integer into the dst buffer.
  * Returns number of written bytes (4 max), expects that dst has enough space.

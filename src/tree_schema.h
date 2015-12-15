@@ -361,6 +361,8 @@ struct lys_type {
     LY_DATA_TYPE base;               /**< base type */
     struct lys_tpdf *der;            /**< pointer to the superior typedef. If NULL,
                                           structure provides information about one of the built-in types */
+    struct lys_tpdf *parent;         /**< except ::lys_tpdf, it can points also to ::lys_node_ leaf or lys_node_leaflist
+                                          so access only the compatible members! */
 
     union {
         /* LY_TYPE_BINARY */
@@ -1145,6 +1147,7 @@ struct lys_tpdf {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values (or 0) are allowed */
+    uint8_t padding;                 /**< padding to keep module member at the same place as in ::lys_node */
     struct lys_module *module;       /**< pointer to the module where the data type is defined (mandatory),
                                           NULL in case of built-in typedefs */
 
@@ -1279,20 +1282,20 @@ int lys_features_disable(const struct lys_module *module, const char *feature);
 int lys_features_state(const struct lys_module *module, const char *feature);
 
 /**
- * @brief Check if the schema node is enabled in the schema tree, i.e. there is no disabled if-feature statement
+ * @brief Check if the schema node is disabled in the schema tree, i.e. there is any disabled if-feature statement
  * affecting the node.
  *
  * @param[in] node Schema node to check.
  * @param[in] recursive - 0 to check if-feature only in the \p node schema node,
  * - 1 to check if-feature in all ascendant schema nodes
- * - 2 to check if-feature in all ascendant schema nodes that cannot have an instance in a data tree
+ * - 2 to check if-feature in all ascendant schema nodes until there a node having an instance in a data tree
  * @return - NULL if enabled,
  * - pointer to the disabling feature if disabled.
  */
 const struct lys_feature *lys_is_disabled(const struct lys_node *node, int recursive);
 
 /**
- * @brief Get next schema tree (sibling) node element that can be instanciated in a data tree. Returned node can
+ * @brief Get next schema tree (sibling) node element that can be instantiated in a data tree. Returned node can
  * be from an augment.
  *
  * lys_getnext() is supposed to be called sequentially. In the first call, the \p last parameter is usually NULL

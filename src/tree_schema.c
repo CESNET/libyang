@@ -1093,10 +1093,12 @@ lys_parse_data(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
     }
 
     if (mod && unres->count && resolve_unres_schema(mod, unres)) {
+        unres_schema_free(ctx, unres);
         lys_free(mod, 0);
         mod = NULL;
+    } else {
+        unres_schema_free(ctx, unres);
     }
-    unres_schema_free(ctx, unres);
 
     return mod;
 }
@@ -1123,10 +1125,12 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
     }
 
    if (submod && unres->count && resolve_unres_schema((struct lys_module *)submod, unres)) {
+       unres_schema_free(module->ctx, unres);
         lys_submodule_free(submod, 0);
         submod = NULL;
+    } else {
+        unres_schema_free(module->ctx, unres);
     }
-    unres_schema_free(module->ctx, unres);
 
     return submod;
 }
@@ -2220,6 +2224,7 @@ lys_node_dup(struct lys_module *module, const struct lys_node *node, uint8_t fla
     retval->features_size = node->features_size;
     retval->features = calloc(retval->features_size, sizeof *retval->features);
     for (i = 0; i < node->features_size; ++i) {
+        retval->features[i] = (struct lys_feature *)retval;
         if (unres_schema_dup(module, unres, &node->features[i], UNRES_IFFEAT, &retval->features[i])) {
             retval->features[i] = node->features[i];
         }
