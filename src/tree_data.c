@@ -908,7 +908,10 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                         val1 = ((struct lyd_node_leaf_list *)diter)->value_str;
                     } else {
                         /* use default value */
-                        resolve_schema_nodeid(slist->unique[i].expr[j], first->schema->child, first->schema->module, LYS_LEAF, &snode);
+                        if (resolve_schema_nodeid(slist->unique[i].expr[j], first->schema->child, first->schema->module, LYS_LEAF, &snode)) {
+                            /* error, but unique expression was checked when the schema was parsed */
+                            return -1;
+                        }
                         val1 = ((struct lys_node_leaf *)snode)->dflt;
                     }
 
@@ -918,7 +921,10 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                         val2 = ((struct lyd_node_leaf_list *)diter)->value_str;
                     } else {
                         /* use default value */
-                        resolve_schema_nodeid(slist->unique[i].expr[j], second->schema->child, second->schema->module, LYS_LEAF, &snode);
+                        if (resolve_schema_nodeid(slist->unique[i].expr[j], second->schema->child, second->schema->module, LYS_LEAF, &snode)) {
+                            /* error, but unique expression was checked when the schema was parsed */
+                            return -1;
+                        }
                         val2 = ((struct lys_node_leaf *)snode)->dflt;
                     }
 
