@@ -146,8 +146,8 @@ struct lyxml_elem *lyxml_read_path(struct ly_ctx *ctx, const char *filename, int
                                      If used in combination with #LYXML_DUMP_CLOSE, it prints the element without
                                      its children: \<element/\>. If none of these two options is used, the element
                                      is printed including all its children. */
-#define LYXML_DUMP_FORMAT 0x02  /**< print format output.
-                                     If option is not used, the element and its children are printed without indent.
+#define LYXML_DUMP_FORMAT 0x02  /**< format the output.
+                                     If option is not used, the element and its children are printed without indentantion.
                                      If used in combination with #LYXML_DUMP_CLOSE or LYXML_DUMP_ATTRS or LYXML_DUMP_OPEN,
                                      it has no effect.*/
 #define LYXML_DUMP_CLOSE  0x04  /**< print only the closing part of the XML element.
@@ -157,7 +157,11 @@ struct lyxml_elem *lyxml_read_path(struct ly_ctx *ctx, const char *filename, int
 #define LYXML_DUMP_ATTRS  0x08  /**< dump only attributes and namespace declarations of the element (element name
                                      is not printed). This option cannot be used in combination with
                                      #LYXML_DUMP_OPEN and/or #LYXML_DUMP_CLOSE */
-
+#define LYXML_DUMP_SIBLINGS 0x10/**< dump all top-level siblings. By default, the given XML element is supposed to be
+                                     the only root element (and document is supposed to be well-formed XML). With this
+                                     option the printer consider that the given XML element can has some sibling
+                                     elements and print them all (so the given element is not necessarily printed as
+                                     the first one). */
 
 /**
  * @}

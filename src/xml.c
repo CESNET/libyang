@@ -1249,7 +1249,7 @@ dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options)
         indent = 0;
     }
 
-    if (!(options & (LYXML_DUMP_OPEN|LYXML_DUMP_CLOSE|LYXML_DUMP_ATTRS)) || (options & LYXML_DUMP_OPEN))  {
+    if (!(options & (LYXML_DUMP_OPEN | LYXML_DUMP_CLOSE | LYXML_DUMP_ATTRS)) || (options & LYXML_DUMP_OPEN))  {
         /* opening tag */
         if (e->ns && e->ns->prefix) {
             size += ly_print(out, "%*s<%s:%s", indent, "", e->ns->prefix, e->name);
@@ -1326,6 +1326,28 @@ close:
     return size;
 }
 
+static int
+dump_siblings(struct lyout *out, const struct lyxml_elem *e, int options)
+{
+    const struct lyxml_elem *start, *iter;
+    int ret = 0;
+
+    if (e->parent) {
+        start = e->parent->child;
+    } else {
+        start = e;
+        while(start->prev && start->prev->next) {
+            start = start->prev;
+        }
+    }
+
+    LY_TREE_FOR(start, iter) {
+        ret += dump_elem(out, iter, 0, options);
+    }
+
+    return ret;
+}
+
 API int
 lyxml_dump_file(FILE *stream, const struct lyxml_elem *elem, int options)
 {
@@ -1338,7 +1360,11 @@ lyxml_dump_file(FILE *stream, const struct lyxml_elem *elem, int options)
     out.type = LYOUT_STREAM;
     out.method.f = stream;
 
-    return dump_elem(&out, elem, 0, options);
+    if (options & LYXML_DUMP_SIBLINGS) {
+        return dump_siblings(&out, elem, options);
+    } else {
+        return dump_elem(&out, elem, 0, options);
+    }
 }
 
 API int
@@ -1353,7 +1379,11 @@ lyxml_dump_fd(int fd, const struct lyxml_elem *elem, int options)
     out.type = LYOUT_FD;
     out.method.fd = fd;
 
-    return dump_elem(&out, elem, 0, options);
+    if (options & LYXML_DUMP_SIBLINGS) {
+        return dump_siblings(&out, elem, options);
+    } else {
+        return dump_elem(&out, elem, 0, options);
+    }
 }
 
 API int
@@ -1371,7 +1401,11 @@ lyxml_dump_mem(char **strp, const struct lyxml_elem *elem, int options)
     out.method.mem.len = 0;
     out.method.mem.size = 0;
 
-    r = dump_elem(&out, elem, 0, options);
+    if (options & LYXML_DUMP_SIBLINGS) {
+        r = dump_siblings(&out, elem, options);
+    } else {
+        r = dump_elem(&out, elem, 0, options);
+    }
 
     *strp = out.method.mem.buf;
     return r;
@@ -1390,5 +1424,9 @@ lyxml_dump_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), vo
     out.method.clb.f = writeclb;
     out.method.clb.arg = arg;
 
-    return dump_elem(&out, elem, 0, options);
+    if (options & LYXML_DUMP_SIBLINGS) {
+        return dump_siblings(&out, elem, options);
+    } else {
+        return dump_elem(&out, elem, 0, options);
+    }
 }
