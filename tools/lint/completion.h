@@ -24,6 +24,6 @@
 
 #include "../../linenoise/linenoise.h"
 
-void complete_cmd(const char *buf, linenoiseCompletions *lc);
+void complete_cmd(const char *buf, const char *hint, linenoiseCompletions *lc);
 
 #endif /* COMPLETION_H_ */
