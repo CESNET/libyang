@@ -72,7 +72,7 @@ typedef union lyd_value_u {
     const char *binary;          /**< base64 encoded, NULL terminated string */
     struct lys_type_bit **bit;   /**< bitmap of pointers to the schema definition of the bit value that are set,
                                       its size is always the number of defined bits in the schema */
-    int8_t bool;                 /**< 0 as false, 1 as true */
+    int8_t bln;                  /**< 0 as false, 1 as true */
     int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
     struct lys_type_enum *enm;   /**< pointer to the schema definition of the enumeration value */
     struct lys_ident *ident;     /**< pointer to the schema definition of the identityref value */
