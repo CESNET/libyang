@@ -292,8 +292,8 @@ transform_schema2json(const struct lys_module *module, const char *expr, uint32_
             assert(out_size == out_used);
             return lydict_insert_zc(module->ctx, out);
         }
-        id = strpbrk_backwards(col-1, "/ [\'", (col-in)-1);
-        if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[') || (id[0] == '\'')) {
+        id = strpbrk_backwards(col-1, "/ [\'\"", (col-in)-1);
+        if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[') || (id[0] == '\'') || (id[0] == '"')) {
             ++id;
         }
         id_len = col-id;
