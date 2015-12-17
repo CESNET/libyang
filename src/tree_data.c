@@ -49,20 +49,25 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
 {
     struct lyxml_elem *xml;
     struct lyd_node *result = NULL;
+    int xmlopt = LYXML_READ_MULTIROOT;
 
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
         return NULL;
     }
 
+    if (options & LYD_OPT_NOSIBLINGS) {
+        xmlopt = 0;
+    }
+
     switch (format) {
     case LYD_XML:
     case LYD_XML_FORMAT:
-        xml = lyxml_read_data(ctx, data, 0);
+        xml = lyxml_read_data(ctx, data, xmlopt);
         if (parent) {
-            result = lyd_parse_output_xml(parent, xml, options);
+            result = lyd_parse_output_xml(parent, &xml, options);
         } else {
-            result = lyd_parse_xml(ctx, xml, options);
+            result = lyd_parse_xml(ctx, &xml, options);
         }
         lyxml_free(ctx, xml);
         break;
@@ -296,8 +301,8 @@ lyd_new_anyxml(struct lyd_node *parent, const struct lys_module *module, const c
         }
     }
 
-    /* add fake root and top-level and parse the data */
-    asprintf(&xml, "<root><%s>%s</%s></root>", name, (val_xml ? val_xml : ""), name);
+    /* store the anyxml data together with the anyxml element */
+    asprintf(&xml, "<%s>%s</%s>", name, (val_xml ? val_xml : ""), name);
     root = lyxml_read_data(ctx, xml, 0);
     free(xml);
     if (!root) {

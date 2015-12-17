@@ -412,9 +412,9 @@ const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT f
  */
 #define LYD_OPT_STRICT    0x01  /**< instead of silent ignoring data without schema definition, raise an error.
                                      Having an unknown element of the known namespace is always an error. */
-#define LYD_OPT_DESTRUCT  0x02  /**< safe consumed memory and free the processed XML data continuously.
-                                     On success, only the top level XML element is kept in the end. This
-                                     option is applicable only with lyd_parse_xml(). */
+#define LYD_OPT_DESTRUCT  0x02  /**< safe consumed memory and free the processed XML data continuously. On the
+                                     other hand, it takes some more time. This option is applicable only with
+                                     lyd_parse_xml() and lyd_parse_output_xml() functions. */
 #define LYD_OPT_EDIT      0x04  /**< make validation to accept NETCONF edit-config's content:
                                      - mandatory nodes can be omitted
                                      - leafrefs and instance-identifier are not resolved
@@ -436,6 +436,10 @@ const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT f
 #define LYD_OPT_OBSOLETE  0x40  /**< By default, using obsolete statements (status set to obsolete) just generates
                                      a warning, but the processing continues. With this flag, using such a statement
                                      raises an error. */
+#define LYD_OPT_NOSIBLINGS 0x80 /**< Parse only the XML tree with the provided (in case of lyd_parse_*_xml() functions)
+                                     or the first (in case of other lyd_parse_*() functions) root element. By default,
+                                     the parser processes all top-level elements. This option applies only to XML
+                                     input data. */
 
 /**
  * @}
@@ -444,9 +448,10 @@ const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT f
 /**
  * @brief Parse (and validate according to appropriate schema from the given context) data.
  *
- * In case of LY_XML format, the data string is expected to contain XML data under a single
- * XML element. The element is not parsed, but it is expected to keep XML data well formed in all
- * cases. There are no restrictions for the element name or its namespace.
+ * In case of LY_XML format, the data string is parsed completely. It means that when it contains
+ * a non well-formed XML with multiple root elements, all those sibling XML trees are parsed. The
+ * returned data node is a root of the first tree with other trees connected via the next pointer.
+ * This behavior can be changed by #LYD_OPT_NOSIBLINGS option.
  *
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] data Serialized data in the specified format.
@@ -459,9 +464,10 @@ struct lyd_node *lyd_parse_data(struct ly_ctx *ctx, const char *data, LYD_FORMAT
 /**
  * @brief Parse (and validate according to appropriate schema from the given context) RPC output data.
  *
- * In case of LY_XML format, the data string is expected to contain XML data under a single
- * XML element. The element is not parsed, but it is expected to keep XML data well formed in all
- * cases. There are no restrictions for the element name or its namespace.
+ * In case of LY_XML format, the data string is parsed completely. It means that when it contains
+ * a non well-formed XML with multiple root elements, all those sibling XML trees are parsed. The
+ * returned data node is a root of the first tree with other trees connected via the next pointer.
+ * This behavior can be changed by #LYD_OPT_NOSIBLINGS option.
  *
  * @param[in] rpc RPC structure, whose output should \p data be.
  * @param[in] data Serialized data in the specified format.
@@ -475,10 +481,17 @@ struct lyd_node *lyd_parse_output_data(const struct lys_node *rpc, const char *d
  * @brief Parse (and validate according to appropriate schema from the given context) XML tree.
  *
  * The output data tree is parsed from the given XML tree previously parsed by one of the
- * lyxml_read* functions. Note, that the parser removes successfully parsed data from the
- * XML tree except the root element (see the note about XML format in lyd_parse()). When
- * the given XML tree is successfully parsed, the given \p root is kept but it has no children
- * which are returned as a top level nodes in the output data tree.
+ * lyxml_read* functions. Note, that the parser removes all successfully parsed data.
+ *
+ * If there are some sibling elements of the \p root (data were read with #LYXML_READ_MULTIROOT option
+ * or the provided root is a root element of a subtree), all the sibling nodes (previous as well as
+ * following) are processed as well. The returned data node is a root of the first tree with other
+ * trees connected via the next pointer. This behavior can be changed by #LYD_OPT_NOSIBLINGS option.
+ *
+ * When the function is used with #LYD_OPT_DESTRUCT, all the successfully parsed data including the
+ * XML \p root and all its siblings (if #LYD_OPT_NOSIBLINGS is not used) are freed. Only with
+ * #LYD_OPT_DESTRUCT option the \p root pointer is changed - if all the data are parsed, it is set
+ * to NULL, otherwise it will hold the XML tree without the successfully parsed elements.
  *
  * The context must be the same as the context used to parse XML tree by lyxml_read* function.
  *
@@ -487,16 +500,23 @@ struct lyd_node *lyd_parse_output_data(const struct lys_node *rpc, const char *d
  * @param[in] options Parser options, see @ref parseroptions.
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
-struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int options);
+struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options);
 
 /**
  * @brief Parse (and validate according to appropriate schema from the given context) RPC output XML tree.
  *
  * The output data tree is parsed from the given XML tree previously parsed by one of the
- * lyxml_read* functions. Note, that the parser removes successfully parsed data from the
- * XML tree except the root element (see the note about XML format in lyd_parse()). When
- * the given XML tree is successfully parsed, the given \p root is kept but it has no children
- * which are returned as a top level nodes in the output data tree.
+ * lyxml_read* functions. Note, that the parser removes all successfully parsed data.
+ *
+ * If there are some sibling elements of the \p root (data were read with #LYXML_READ_MULTIROOT option
+ * or the provided root is a root element of a subtree), all the sibling nodes (previous as well as
+ * following) are processed as well. The returned data node is a root of the first tree with other
+ * trees connected via the next pointer. This behavior can be changed by #LYD_OPT_NOSIBLINGS option.
+ *
+ * When the function is used with #LYD_OPT_DESTRUCT, all the successfully parsed data including the
+ * XML \p root and all its siblings (if #LYD_OPT_NOSIBLINGS is not used) are freed. Only with
+ * #LYD_OPT_DESTRUCT option the \p root pointer is changed - if all the data are parsed, it is set
+ * to NULL, otherwise it will hold the XML tree without the successfully parsed elements.
  *
  * The context (to which \p rpc belongs) must be the same as the context used to parse XML tree
  * by lyxml_read* function.
@@ -506,12 +526,17 @@ struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int 
  * @param[in] options Parser options, see @ref parseroptions.
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
-struct lyd_node *lyd_parse_output_xml(const struct lys_node *rpc, struct lyxml_elem *root, int options);
+struct lyd_node *lyd_parse_output_xml(const struct lys_node *rpc, struct lyxml_elem **root, int options);
 
 /**
  * @brief Read data from the given file descriptor.
  *
  * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
+ *
+ * In case of LY_XML format, the file content is parsed completely. It means that when it contains
+ * a non well-formed XML with multiple root elements, all those sibling XML trees are parsed. The
+ * returned data node is a root of the first tree with other trees connected via the next pointer.
+ * This behavior can be changed by #LYD_OPT_NOSIBLINGS option.
  *
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] fd The standard file descriptor of the file containing the data tree in the specified format.
@@ -523,6 +548,11 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
 
 /**
  * @brief Read data from the given file path.
+ *
+ * In case of LY_XML format, the file content is parsed completely. It means that when it contains
+ * a non well-formed XML with multiple root elements, all those sibling XML trees are parsed. The
+ * returned data node is a root of the first tree with other trees connected via the next pointer.
+ * This behavior can be changed by #LYD_OPT_NOSIBLINGS option.
  *
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] path Path to the file containing the data tree in the specified format.
