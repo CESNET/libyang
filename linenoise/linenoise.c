@@ -499,6 +499,7 @@ void linenoisePathCompletion(const char *buf, const char *hint, linenoiseComplet
 
     dir = opendir(full_path);
     if (dir == NULL) {
+        free(full_path);
         return;
     }
 

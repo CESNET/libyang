@@ -74,6 +74,7 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 
     if (fstat(fd, &sb) == -1) {
         LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
+        free(unres);
         return NULL;
     }
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
