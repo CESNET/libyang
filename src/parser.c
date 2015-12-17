@@ -72,7 +72,11 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 
     unres = calloc(1, sizeof *unres);
 
-    fstat(fd, &sb);
+    if (fstat(fd, &sb) == -1) {
+        LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
+        free(unres);
+        return NULL;
+    }
     addr = mmap(NULL, sb.st_size + 1, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
@@ -592,7 +596,7 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
         }
 
         if (!strcmp(node->value_str, "true")) {
-            node->value.bool = 1;
+            node->value.bln = 1;
         } else if (strcmp(node->value_str, "false")) {
             LOGVAL(LYE_INVAL, line, node->value_str, node->schema->name);
             return EXIT_FAILURE;

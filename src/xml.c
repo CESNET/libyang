@@ -1183,7 +1183,7 @@ lyxml_read_path(struct ly_ctx *ctx, const char *filename, int options)
         goto error;
     }
     if (!S_ISREG(sb.st_mode)) {
-        fprintf(stderr, "File \"%s\" not a file.\n", filename);
+        LOGERR(LY_EINVAL, "File \"%s\" not a file.\n", filename);
         goto error;
     }
     addr = mmap(NULL, sb.st_size + 1, PROT_READ, MAP_PRIVATE, fd, 0);
