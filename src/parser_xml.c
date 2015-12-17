@@ -287,6 +287,11 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         LOGINT;
         return -1;
     }
+    if (!(*result)) {
+        LOGMEM;
+        return -1;
+    }
+
     (*result)->parent = parent;
     if (parent && !parent->child) {
         parent->child = *result;
@@ -316,6 +321,10 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     } else if (schema->nodetype == LYS_ANYXML && !(options & LYD_OPT_FILTER)) {
         /* HACK unlink xml children and link them to a separate copy of xml */
         tmp_xml = calloc(1, sizeof *tmp_xml);
+        if (!tmp_xml) {
+            LOGMEM;
+            goto error;
+        }
         memcpy(tmp_xml, xml, sizeof *tmp_xml);
         /* keep attributes in the original */
         tmp_xml->attr = NULL;
@@ -347,6 +356,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         }
 
         dattr = malloc(sizeof *dattr);
+        if (!dattr) {
+            goto error;
+        }
         dattr->next = NULL;
         dattr->name = attr->name;
         dattr->value = attr->value;
@@ -426,6 +438,10 @@ lyd_parse_xml_(struct ly_ctx *ctx, const struct lys_node *parent, struct lyxml_e
     }
 
     unres = calloc(1, sizeof *unres);
+    if (!unres) {
+        LOGMEM;
+        return NULL;
+    }
 
     iter = result = last = NULL;
     LY_TREE_FOR_SAFE(root->child, xmlaux, xmlelem) {

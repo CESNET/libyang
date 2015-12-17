@@ -60,6 +60,11 @@ ly_ctx_new(const char *search_dir)
 
     /* models list */
     ctx->models.list = calloc(16, sizeof *ctx->models.list);
+    if (!ctx->models.list) {
+        LOGMEM;
+        free(ctx);
+        return NULL;
+    }
     ctx->models.used = 0;
     ctx->models.size = 16;
     if (search_dir) {
@@ -306,6 +311,10 @@ ly_ctx_get_module_names(const struct ly_ctx *ctx)
     }
 
     result = malloc((ctx->models.used+1) * sizeof *result);
+    if (!result) {
+        LOGMEM;
+        return NULL;
+    }
 
     for (i = 0; i < ctx->models.used; i++) {
         result[i] = ctx->models.list[i]->name;
@@ -334,6 +343,10 @@ ly_ctx_get_submodule_names(const struct ly_ctx *ctx, const char *module_name)
     }
 
     result = malloc((mod->inc_size+1) * sizeof *result);
+    if (!result) {
+        LOGMEM;
+        return NULL;
+    }
 
     for (i = 0; i < mod->inc_size; i++) {
         result[i] = mod->inc[i].submodule->name;
@@ -363,6 +376,10 @@ ly_ctx_get_node(const struct ly_ctx *ctx, const char *nodeid)
 
     /* get the correct module */
     mod_name = strndup(nodeid + 1, parsed);
+    if (!mod_name) {
+        LOGMEM;
+        return NULL;
+    }
     module = ly_ctx_get_module(ctx, mod_name, NULL);
     free(mod_name);
     if (!module) {

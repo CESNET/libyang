@@ -73,6 +73,11 @@ create_indent(int level, const char *old_indent, const struct lys_node *node, in
     int next_is_case = 0, is_case = 0, has_next = 0, i, found;
     char *new_indent = malloc((level * 4 + 1) * sizeof (char));
 
+    if (!new_indent) {
+        LOGMEM;
+        return NULL;
+    }
+
     strcpy(new_indent, old_indent);
 
     /* this is the indent of a case (standard or shorthand) */
@@ -689,6 +694,11 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
     unsigned int max_child_len;
     int level = 1, i, have_rpcs = 0, have_notifs = 0;
     char *indent = malloc((level * 4 + 1) * sizeof (char));
+
+    if (!indent) {
+        LOGMEM;
+        return EXIT_FAILURE;
+    }
     strcpy(indent, "   ");
 
     if (module->type) {

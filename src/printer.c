@@ -76,9 +76,8 @@ ly_print(struct lyout *out, const char *format, ...)
     case LYOUT_MEMORY:
         count = vasprintf(&msg, format, ap);
         if (out->method.mem.len + count + 1 > out->method.mem.size) {
-            aux = realloc(out->method.mem.buf, out->method.mem.len + count + 1);
+            aux = ly_realloc(out->method.mem.buf, out->method.mem.len + count + 1);
             if (!aux) {
-                free(out->method.mem.buf);
                 out->method.mem.buf = NULL;
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;
@@ -117,9 +116,8 @@ ly_write(struct lyout *out, const char *buf, size_t count)
         return fwrite(buf, sizeof *buf, count, out->method.f);
     case LYOUT_MEMORY:
         if (out->method.mem.len + count + 1 > out->method.mem.size) {
-            aux = realloc(out->method.mem.buf, out->method.mem.len + count + 1);
+            aux = ly_realloc(out->method.mem.buf, out->method.mem.len + count + 1);
             if (!aux) {
-                free(out->method.mem.buf);
                 out->method.mem.buf = NULL;
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;

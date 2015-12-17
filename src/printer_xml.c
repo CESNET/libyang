@@ -62,6 +62,10 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node)
 
         if (!mlist_new) {
             mlist_new = malloc(sizeof *mlist_new);
+            if (!mlist_new) {
+                LOGMEM;
+                return;
+            }
             mlist_new->next = mlist;
             mlist_new->module = attr->module;
             mlist = mlist_new;
@@ -79,6 +83,10 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node)
 
                 if (!mlist_new) {
                     mlist_new = malloc(sizeof *mlist_new);
+                    if (!mlist_new) {
+                        LOGMEM;
+                        return;
+                    }
                     mlist_new->next = mlist;
                     mlist_new->module = attr->module;
                     mlist = mlist_new;

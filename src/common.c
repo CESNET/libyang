@@ -119,6 +119,10 @@ transform_json2xml(const struct lys_module *module, const char *expr, const char
     in = expr;
     out_size = strlen(in)+1;
     out = malloc(out_size);
+    if (!out) {
+        LOGMEM;
+        return NULL;
+    }
     out_used = 0;
 
     while (1) {
@@ -142,8 +146,7 @@ transform_json2xml(const struct lys_module *module, const char *expr, const char
         free(name);
         if (!mod) {
             LOGVAL(LYE_INMOD_LEN, 0, id_len, id);
-            free(out);
-            return NULL;
+            goto fail;
         }
 
         /* remember the namespace definition (only if it's new) */
@@ -155,8 +158,16 @@ transform_json2xml(const struct lys_module *module, const char *expr, const char
             }
             if (i == *ns_count) {
                 ++(*ns_count);
-                *prefixes = realloc(*prefixes, *ns_count * sizeof **prefixes);
-                *namespaces = realloc(*namespaces, *ns_count * sizeof **namespaces);
+                *prefixes = ly_realloc(*prefixes, *ns_count * sizeof **prefixes);
+                if (!(*prefixes)) {
+                    LOGMEM;
+                    goto fail;
+                }
+                *namespaces = ly_realloc(*namespaces, *ns_count * sizeof **namespaces);
+                if (!(*namespaces)) {
+                    LOGMEM;
+                    goto fail;
+                }
                 (*prefixes)[*ns_count-1] = mod->prefix;
                 (*namespaces)[*ns_count-1] = mod->ns;
             }
@@ -164,7 +175,11 @@ transform_json2xml(const struct lys_module *module, const char *expr, const char
 
         /* adjust out size */
         out_size += strlen(mod->prefix)-id_len;
-        out = realloc(out, out_size);
+        out = ly_realloc(out, out_size);
+        if (!out) {
+            LOGMEM;
+            goto fail;
+        }
 
         /* copy the data before prefix */
         strncpy(&out[out_used], in, id-in);
@@ -184,6 +199,10 @@ transform_json2xml(const struct lys_module *module, const char *expr, const char
 
     /* unreachable */
     LOGINT;
+
+fail:
+    free(*prefixes);
+    free(*namespaces);
     free(out);
     return NULL;
 }
@@ -200,6 +219,12 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
     in = expr;
     out_size = strlen(in)+1;
     out = malloc(out_size);
+    if (!out) {
+        if (log) {
+            LOGMEM;
+        }
+        return NULL;
+    }
     out_used = 0;
 
     while (1) {
@@ -227,6 +252,13 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
 
         /* get the module */
         prefix = strndup(id, id_len);
+        if (!prefix) {
+            if (log) {
+                LOGMEM;
+            }
+            free(out);
+            return NULL;
+        }
         ns = lyxml_get_ns(xml, prefix);
         free(prefix);
         if (!ns) {
@@ -247,7 +279,13 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
 
         /* adjust out size (it can even decrease in some strange cases) */
         out_size += strlen(mod->name)-id_len;
-        out = realloc(out, out_size);
+        out = ly_realloc(out, out_size);
+        if (!out) {
+            if (log) {
+                LOGMEM;
+            }
+            return NULL;
+        }
 
         /* copy the data before prefix */
         strncpy(&out[out_used], in, id-in);
@@ -281,6 +319,10 @@ transform_schema2json(const struct lys_module *module, const char *expr, uint32_
     in = expr;
     out_size = strlen(in)+1;
     out = malloc(out_size);
+    if (!out) {
+        LOGMEM;
+        return NULL;
+    }
     out_used = 0;
 
     while (1) {
@@ -317,7 +359,11 @@ transform_schema2json(const struct lys_module *module, const char *expr, uint32_
 
         /* adjust out size (it can even decrease in some strange cases) */
         out_size += strlen(mod->name)-id_len;
-        out = realloc(out, out_size);
+        out = ly_realloc(out, out_size);
+        if (!out) {
+            LOGMEM;
+            return NULL;
+        }
 
         /* copy the data before prefix */
         strncpy(&out[out_used], in, id-in);
@@ -338,4 +384,17 @@ transform_schema2json(const struct lys_module *module, const char *expr, uint32_
     /* unreachable */
     LOGINT;
     return NULL;
+}
+
+void *
+ly_realloc(void *ptr, size_t size)
+{
+    void *new_mem;
+
+    new_mem = realloc(ptr, size);
+    if (!new_mem) {
+        free(ptr);
+    }
+
+    return new_mem;
 }

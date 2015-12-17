@@ -1000,6 +1000,10 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
             tmp_local_intv->next = malloc(sizeof **local_intv);
             tmp_local_intv = tmp_local_intv->next;
         }
+        if (!tmp_local_intv) {
+            LOGMEM;
+            return -1;
+        }
 
         tmp_local_intv->kind = kind;
         tmp_local_intv->next = NULL;
@@ -1327,7 +1331,15 @@ check_default(struct lys_type *type, const char *value, int first, uint32_t line
     node.value_str = value;
     node.value_type = type->base;
     node.schema = calloc(1, sizeof *node.schema);
+    if (!node.schema) {
+        LOGMEM;
+        return -1;
+    }
     node.schema->name = strdup("default");
+    if (!node.schema->name) {
+        LOGMEM;
+        return -1;
+    }
 
     if (type->base == LY_TYPE_UNION) {
         found = 0;
@@ -1407,6 +1419,10 @@ check_key(struct lys_node_leaf *key, uint8_t flags, struct lys_node_leaf **list,
     if (!key) {
         if (name[len] != '\0') {
             dup = strdup(name);
+            if (!dup) {
+                LOGMEM;
+                return -1;
+            }
             dup[len] = '\0';
             name = dup;
         }
@@ -1635,6 +1651,10 @@ resolve_data_nodeid(const char *id, struct lyd_node *start)
     }
 
     str = p = strdup(id);
+    if (!str) {
+        LOGMEM;
+        return NULL;
+    }
     while(p) {
         token = p;
         p = strchr(p, '/');
@@ -1888,6 +1908,10 @@ resolve_data(const struct lys_module *mod, const char *name, int nam_len, struct
     if (!parents->count) {
         parents->count = 1;
         parents->node = malloc(sizeof *parents->node);
+        if (!parents->node) {
+            LOGMEM;
+            return EXIT_FAILURE;
+        }
         parents->node[0] = NULL;
     }
     for (i = 0; i < parents->count;) {
@@ -1908,7 +1932,10 @@ resolve_data(const struct lys_module *mod, const char *name, int nam_len, struct
                 } else {
                     /* multiple matching, so create a new node */
                     ++parents->count;
-                    parents->node = realloc(parents->node, parents->count * sizeof *parents->node);
+                    parents->node = ly_realloc(parents->node, parents->count * sizeof *parents->node);
+                    if (!parents->node) {
+                        return EXIT_FAILURE;
+                    }
                     parents->node[parents->count-1] = node;
                     ++i;
                 }
@@ -1951,6 +1978,10 @@ resolve_data_node(const char *mod_name, int mod_name_len, const char *name, int 
     if (mod_name) {
         /* we have mod_name, find appropriate module */
         str = strndup(mod_name, mod_name_len);
+        if (!str) {
+            LOGMEM;
+            return -1;
+        }
         mod = ly_ctx_get_module(start->schema->module->ctx, str, NULL);
         free(str);
         if (!mod) {
@@ -1992,8 +2023,16 @@ resolve_path_predicate_data(const char *pred, int first, uint32_t line, struct u
 
     source_match.count = 1;
     source_match.node = malloc(sizeof *source_match.node);
+    if (!source_match.node) {
+        LOGMEM;
+        return -1;
+    }
     dest_match.count = 1;
     dest_match.node = malloc(sizeof *dest_match.node);
+    if (!dest_match.node) {
+        LOGMEM;
+        return -1;
+    }
 
     do {
         if ((i = parse_path_predicate(pred, &sour_pref, &sour_pref_len, &source, &sour_len, &path_key_expr,
@@ -2145,6 +2184,10 @@ resolve_path_arg_data(struct lyd_node *node, const char *path, int first, uint32
             if (parent_times != -1) {
                 ret->count = 1;
                 ret->node = calloc(1, sizeof *ret->node);
+                if (!ret->node) {
+                    LOGMEM;
+                    goto error;
+                }
             }
             for (i = 0; i < parent_times; ++i) {
                 /* relative path */
@@ -2503,6 +2546,10 @@ resolve_predicate(const char *pred, struct unres_data *node_match)
             if ((name[0] == '.') || !value) {
                 target_match.count = 1;
                 target_match.node = malloc(sizeof *target_match.node);
+                if (!target_match.node) {
+                    LOGMEM;
+                    return -1;
+                }
                 target_match.node[0] = node_match->node[j];
             } else {
                 str = strndup(model, mod_len);
@@ -2589,6 +2636,10 @@ resolve_instid(struct lyd_node *data, const char *path, int line)
         i += j;
 
         str = strndup(model, mod_len);
+        if (!str) {
+            LOGMEM;
+            goto error;
+        }
         mod = ly_ctx_get_module(ctx, str, NULL);
         free(str);
 
@@ -2978,6 +3029,10 @@ resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident,
                 der = der->next;
             } else {
                 ident->base->der = der = malloc(sizeof *der);
+            }
+            if (!der) {
+                LOGMEM;
+                return EXIT_FAILURE;
             }
             der->next = NULL;
             der->ident = ident;
@@ -3770,14 +3825,30 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
     }
 
     unres->count++;
-    unres->item = realloc(unres->item, unres->count*sizeof *unres->item);
+    unres->item = ly_realloc(unres->item, unres->count*sizeof *unres->item);
+    if (!unres->item) {
+        LOGMEM;
+        return -1;
+    }
     unres->item[unres->count-1] = item;
-    unres->type = realloc(unres->type, unres->count*sizeof *unres->type);
+    unres->type = ly_realloc(unres->type, unres->count*sizeof *unres->type);
+    if (!unres->type) {
+        LOGMEM;
+        return -1;
+    }
     unres->type[unres->count-1] = type;
-    unres->str_snode = realloc(unres->str_snode, unres->count*sizeof *unres->str_snode);
+    unres->str_snode = ly_realloc(unres->str_snode, unres->count*sizeof *unres->str_snode);
+    if (!unres->str_snode) {
+        LOGMEM;
+        return -1;
+    }
     unres->str_snode[unres->count-1] = snode;
 #ifndef NDEBUG
-    unres->line = realloc(unres->line, unres->count*sizeof *unres->line);
+    unres->line = ly_realloc(unres->line, unres->count*sizeof *unres->line);
+    if (!unres->line) {
+        LOGMEM;
+        return -1;
+    }
     unres->line[unres->count-1] = line;
 #endif
 
@@ -4007,12 +4078,24 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
     print_unres_data_item_fail(node, type, line);
 
     ++unres->count;
-    unres->node = realloc(unres->node, unres->count * sizeof *unres->node);
+    unres->node = ly_realloc(unres->node, unres->count * sizeof *unres->node);
+    if (!unres->node) {
+        LOGMEM;
+        return -1;
+    }
     unres->node[unres->count - 1] = node;
-    unres->type = realloc(unres->type, unres->count * sizeof *unres->type);
+    unres->type = ly_realloc(unres->type, unres->count * sizeof *unres->type);
+    if (!unres->type) {
+        LOGMEM;
+        return -1;
+    }
     unres->type[unres->count - 1] = type;
 #ifndef NDEBUG
-    unres->line = realloc(unres->line, unres->count * sizeof *unres->line);
+    unres->line = ly_realloc(unres->line, unres->count * sizeof *unres->line);
+    if (!unres->line) {
+        LOGMEM;
+        return -1;
+    }
     unres->line[unres->count - 1] = line;
 #endif
 

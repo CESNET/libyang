@@ -1081,6 +1081,10 @@ lys_parse_data(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
     }
 
     unres = calloc(1, sizeof *unres);
+    if (!unres) {
+        LOGMEM;
+        return NULL;
+    }
 
     switch (format) {
     case LYS_IN_YIN:
@@ -1113,6 +1117,10 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
     assert(data);
 
     unres = calloc(1, sizeof *unres);
+    if (!unres) {
+        LOGMEM;
+        return NULL;
+    }
 
     switch (format) {
     case LYS_IN_YIN:
@@ -1221,6 +1229,9 @@ lys_restr_dup(struct ly_ctx *ctx, struct lys_restr *old, int size)
     }
 
     result = calloc(size, sizeof *result);
+    if (!result) {
+        return NULL;
+    }
     for (i = 0; i < size; i++) {
         result[i].expr = lydict_insert(ctx, old[i].expr, 0);
         result[i].dsc = lydict_insert(ctx, old[i].dsc, 0);
@@ -1280,6 +1291,10 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
         new->info.bits.count = old->info.bits.count;
         if (new->info.bits.count) {
             new->info.bits.bit = calloc(new->info.bits.count, sizeof *new->info.bits.bit);
+            if (!new->info.bits.bit) {
+                LOGMEM;
+                return -1;
+            }
             for (i = 0; i < new->info.bits.count; i++) {
                 new->info.bits.bit[i].name = lydict_insert(mod->ctx, old->info.bits.bit[i].name, 0);
                 new->info.bits.bit[i].dsc = lydict_insert(mod->ctx, old->info.bits.bit[i].dsc, 0);
@@ -1301,6 +1316,10 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
         new->info.enums.count = old->info.enums.count;
         if (new->info.enums.count) {
             new->info.enums.enm = calloc(new->info.enums.count, sizeof *new->info.enums.enm);
+            if (!new->info.enums.enm) {
+                LOGMEM;
+                return -1;
+            }
             for (i = 0; i < new->info.enums.count; i++) {
                 new->info.enums.enm[i].name = lydict_insert(mod->ctx, old->info.enums.enm[i].name, 0);
                 new->info.enums.enm[i].dsc = lydict_insert(mod->ctx, old->info.enums.enm[i].dsc, 0);
@@ -1358,6 +1377,10 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
         new->info.uni.count = old->info.uni.count;
         if (new->info.uni.count) {
             new->info.uni.types = calloc(new->info.uni.count, sizeof *new->info.uni.types);
+            if (!new->info.uni.types) {
+                LOGMEM;
+                return -1;
+            }
             for (i = 0; i < new->info.uni.count; i++) {
                 if (lys_type_dup(mod, parent, &(new->info.uni.types[i]), &(old->info.uni.types[i]), unres)) {
                     return -1;
@@ -1481,6 +1504,10 @@ lys_tpdf_dup(struct lys_module *mod, struct lys_node *parent, struct lys_tpdf *o
     }
 
     result = calloc(size, sizeof *result);
+    if (!result) {
+        LOGMEM;
+        return NULL;
+    }
     for (i = 0; i < size; i++) {
         result[i].name = lydict_insert(mod->ctx, old[i].name, 0);
         result[i].dsc = lydict_insert(mod->ctx, old[i].dsc, 0);
@@ -1513,6 +1540,10 @@ lys_when_dup(struct ly_ctx *ctx, struct lys_when *old)
     }
 
     new = calloc(1, sizeof *new);
+    if (!new) {
+        LOGMEM;
+        return NULL;
+    }
     new->cond = lydict_insert(ctx, old->cond, 0);
     new->dsc = lydict_insert(ctx, old->dsc, 0);
     new->ref = lydict_insert(ctx, old->ref, 0);
@@ -1569,6 +1600,10 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
     }
 
     new = calloc(size, sizeof *new);
+    if (!new) {
+        LOGMEM;
+        return NULL;
+    }
     for (i = 0; i < size; i++) {
         new[i].target_name = lydict_insert(module->ctx, old[i].target_name, 0);
         new[i].dsc = lydict_insert(module->ctx, old[i].dsc, 0);
@@ -1628,6 +1663,10 @@ lys_refine_dup(struct lys_module *mod, struct lys_refine *old, int size)
     }
 
     result = calloc(size, sizeof *result);
+    if (!result) {
+        LOGMEM;
+        return NULL;
+    }
     for (i = 0; i < size; i++) {
         result[i].target_name = lydict_insert(mod->ctx, old[i].target_name, 0);
         result[i].dsc = lydict_insert(mod->ctx, old[i].dsc, 0);
@@ -2209,6 +2248,11 @@ lys_node_dup(struct lys_module *module, const struct lys_node *node, uint8_t fla
         goto error;
     }
 
+    if (!retval) {
+        LOGMEM;
+        return NULL;
+    }
+
     /*
      * duplicate generic part of the structure
      */
@@ -2229,6 +2273,10 @@ lys_node_dup(struct lys_module *module, const struct lys_node *node, uint8_t fla
 
     retval->features_size = node->features_size;
     retval->features = calloc(retval->features_size, sizeof *retval->features);
+    if (!retval->features) {
+        LOGMEM;
+        goto error;
+    }
     for (i = 0; i < node->features_size; ++i) {
         retval->features[i] = (struct lys_feature *)retval;
         if (unres_schema_dup(module, unres, &node->features[i], UNRES_IFFEAT, &retval->features[i])) {
@@ -2338,6 +2386,10 @@ lys_node_dup(struct lys_module *module, const struct lys_node *node, uint8_t fla
         list->keys_size = list_orig->keys_size;
         if (list->keys_size) {
             list->keys = calloc(list->keys_size, sizeof *list->keys);
+            if (!list->keys) {
+                LOGMEM;
+                goto error;
+            }
 
             /* we managed to resolve it before, resolve it again manually */
             if (list_orig->keys[0]) {
@@ -2362,9 +2414,17 @@ lys_node_dup(struct lys_module *module, const struct lys_node *node, uint8_t fla
 
         list->unique_size = list_orig->unique_size;
         list->unique = malloc(list->unique_size * sizeof *list->unique);
+        if (!list->unique) {
+            LOGMEM;
+            goto error;
+        }
         for (i = 0; i < list->unique_size; ++i) {
             list->unique[i].expr_size = list_orig->unique[i].expr_size;
             list->unique[i].expr = malloc(list->unique[i].expr_size * sizeof *list->unique[i].expr);
+            if (!list->unique[i].expr) {
+                LOGMEM;
+                goto error;
+            }
             for (j = 0; j < list->unique[i].expr_size; j++) {
                 list->unique[i].expr[j] = lydict_insert(ctx, list_orig->unique[i].expr[j], 0);
 
@@ -2611,8 +2671,17 @@ lys_features_list(const struct lys_module *module, uint8_t **states)
         count += module->inc[i].submodule->features_size;
     }
     result = malloc((count + 1) * sizeof *result);
+    if (!result) {
+        LOGMEM;
+        return NULL;
+    }
     if (states) {
         *states = malloc((count + 1) * sizeof **states);
+        if (!(*states)) {
+            LOGMEM;
+            free(result);
+            return NULL;
+        }
     }
     count = 0;
 

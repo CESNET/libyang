@@ -170,6 +170,10 @@ lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *na
     }
 
     ret = calloc(1, sizeof *ret);
+    if (!ret) {
+        LOGMEM;
+        return NULL;
+    }
     ret->schema = (struct lys_node *)snode;
     ret->prev = ret;
     if (parent) {
@@ -212,6 +216,10 @@ lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const cha
 
     /* create the new leaf */
     ret = calloc(1, sizeof *ret);
+    if (!ret) {
+        LOGMEM;
+        return NULL;
+    }
     ret->schema = (struct lys_node *)snode;
     ret->prev = (struct lyd_node *)ret;
     ret->value_str = lydict_insert((module ? module->ctx : parent->schema->module->ctx), val_str, 0);
@@ -287,6 +295,10 @@ lyd_new_anyxml(struct lyd_node *parent, const struct lys_module *module, const c
     }
 
     ret = calloc(1, sizeof *ret);
+    if (!ret) {
+        LOGMEM;
+        return NULL;
+    }
     ret->schema = (struct lys_node *)snode;
     ret->prev = (struct lyd_node *)ret;
     if (parent) {
@@ -335,6 +347,10 @@ lyd_new_output(const struct lys_node *rpc_schema)
     }
 
     ret = calloc(1, sizeof *ret);
+    if (!ret) {
+        LOGMEM;
+        return NULL;
+    }
     ret->schema = output;
     ret->prev = ret;
 
@@ -522,6 +538,10 @@ lyd_dup_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr)
         ret->next = malloc(sizeof *ret);
         ret = ret->next;
     }
+    if (!ret) {
+        LOGMEM;
+        return NULL;
+    }
 
     /* fill new attr except */
     ret->next = NULL;
@@ -600,6 +620,10 @@ lyd_dup(const struct lyd_node *node, int recursive)
         case LYS_LEAFLIST:
             new_leaf = malloc(sizeof *new_leaf);
             new_node = (struct lyd_node *)new_leaf;
+            if (!new_node) {
+                LOGMEM;
+                return NULL;
+            }
 
             new_leaf->value = ((struct lyd_node_leaf_list *)elem)->value;
             new_leaf->value_str = lydict_insert(elem->schema->module->ctx,
@@ -617,6 +641,12 @@ lyd_dup(const struct lyd_node *node, int recursive)
                 }
 
                 new_leaf->value.bit = malloc(type->info.bits.count * sizeof *new_leaf->value.bit);
+                if (!new_leaf->value.bit) {
+                    LOGMEM;
+                    lyd_free(new_node);
+                    lyd_free(ret);
+                    return NULL;
+                }
                 memcpy(new_leaf->value.bit, ((struct lyd_node_leaf_list *)elem)->value.bit,
                        type->info.bits.count * sizeof *new_leaf->value.bit);
             }
@@ -624,6 +654,10 @@ lyd_dup(const struct lyd_node *node, int recursive)
         case LYS_ANYXML:
             new_axml = malloc(sizeof *new_axml);
             new_node = (struct lyd_node *)new_axml;
+            if (!new_node) {
+                LOGMEM;
+                return NULL;
+            }
 
             new_axml->value = lyxml_dup_elem(elem->schema->module->ctx, ((struct lyd_node_anyxml *)elem)->value,
                                              NULL, 1);
@@ -633,6 +667,10 @@ lyd_dup(const struct lyd_node *node, int recursive)
         case LYS_NOTIF:
         case LYS_RPC:
             new_node = malloc(sizeof *new_node);
+            if (!new_node) {
+                LOGMEM;
+                return NULL;
+            }
             new_node->child = NULL;
             break;
         default:
@@ -776,6 +814,10 @@ lyd_insert_attr(struct lyd_node *parent, const char *name, const char *value)
     if ((p = strchr(name, ':'))) {
         /* search for the namespace */
         aux = strndup(name, p - name);
+        if (!aux) {
+            LOGMEM;
+            return NULL;
+        }
         module = ly_ctx_get_module(ctx, aux, NULL);
         free(aux);
         name = p + 1;
@@ -791,6 +833,10 @@ lyd_insert_attr(struct lyd_node *parent, const char *name, const char *value)
     }
 
     a = malloc(sizeof *a);
+    if (!a) {
+        LOGMEM;
+        return NULL;
+    }
     a->module = (struct lys_module *)module;
     a->next = NULL;
     a->name = lydict_insert(ctx, name, 0);
@@ -995,7 +1041,7 @@ lyd_set_add(struct lyd_set *set, struct lyd_node *node)
     }
 
     if (set->size == set->number) {
-        new = realloc(set->set, (set->size + 8) * sizeof *(set->set));
+        new = ly_realloc(set->set, (set->size + 8) * sizeof *(set->set));
         if (!new) {
             LOGMEM;
             return EXIT_FAILURE;
