@@ -112,12 +112,30 @@ struct lyxml_elem {
  */
 
 /**
+ * @defgroup xmlreadoptions
+ * @ingroup xmlparser
+ *
+ * Various options to change behavior of XML read functions (lyxml_read_*()).
+ *
+ * @{
+ */
+#define LYXML_READ_MULTIROOT 0x01 /**< By default, XML is supposed to be well-formed so the input file or memory chunk
+                                       contains only a single XML tree. This option make parser to read multiple XML
+                                       trees from a single source (regular file terminated by EOF or memory chunk
+                                       terminated by NULL byte). In such a case, the returned XML element has other
+                                       siblings representing the other XML trees from the source. */
+
+/**
+ * @}
+ */
+
+/**
  * @brief Parse XML from in-memory string
  *
  * @param[in] ctx libyang context to use
  * @param[in] data Pointer to a NULL-terminated string containing XML data to
  * parse.
- * @param[in] options Parser options. Currently ignored, no option defined yet.
+ * @param[in] options Parser options, see @ref xmlreadoptions.
  * @return pointer to root of the parsed XML document tree.
  */
 struct lyxml_elem *lyxml_read_data(struct ly_ctx *ctx, const char *data, int options);
@@ -127,7 +145,7 @@ struct lyxml_elem *lyxml_read_data(struct ly_ctx *ctx, const char *data, int opt
  *
  * @param[in] ctx libyang context to use
  * @param[in] filename Path to the file where read data to parse
- * @param[in] options Parser options. Currently ignored, no option defined yet.
+ * @param[in] options Parser options, see @ref xmlreadoptions.
  * @return pointer to root of the parsed XML document tree.
  */
 struct lyxml_elem *lyxml_read_path(struct ly_ctx *ctx, const char *filename, int options);
@@ -136,7 +154,7 @@ struct lyxml_elem *lyxml_read_path(struct ly_ctx *ctx, const char *filename, int
  * @defgroup xmldumpoptions XML dump options
  * @ingroup xmlparser
  *
- * Various options to change behavior of XML dump functions (lyxml_dump()).
+ * Various options to change behavior of XML dump functions (lyxml_dump_*()).
  *
  * When no option is specified (value 0), dumper prints all the content at once.
  *

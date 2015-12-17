@@ -1082,17 +1082,18 @@ error:
 
 /* logs directly */
 API struct lyxml_elem *
-lyxml_read_data(struct ly_ctx *ctx, const char *data, int UNUSED(options))
+lyxml_read_data(struct ly_ctx *ctx, const char *data, int options)
 {
     const char *c = data;
     unsigned int len;
-    struct lyxml_elem *root = NULL;
+    struct lyxml_elem *root, *first = NULL;
 
 #ifndef NDEBUG
     /* TODO: threads support */
     lineno = 1;
 #endif
 
+repeat:
     /* process document */
     while (*c) {
         if (is_xmlws(*c)) {
@@ -1130,7 +1131,17 @@ lyxml_read_data(struct ly_ctx *ctx, const char *data, int UNUSED(options))
 
     root = parse_elem(ctx, c, &len, NULL);
     if (!root) {
+        for(root = first->next; root; root = root->next) {
+            lyxml_free(ctx, root);
+        }
+        lyxml_free(ctx, first);
         return NULL;
+    } else if (!first) {
+        first = root;
+    } else {
+        first->prev->next = root;
+        root->prev = first->prev;
+        first->prev = root;
     }
     c += len;
 
@@ -1139,14 +1150,18 @@ lyxml_read_data(struct ly_ctx *ctx, const char *data, int UNUSED(options))
      */
     ign_xmlws(c);
     if (*c) {
-        LOGWRN("There are some not parsed data:\n%s", c);
+        if (options & LYXML_READ_MULTIROOT) {
+            goto repeat;
+        } else {
+            LOGWRN("There are some not parsed data:\n%s", c);
+        }
     }
 
-    return root;
+    return first;
 }
 
 API struct lyxml_elem *
-lyxml_read_path(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
+lyxml_read_path(struct ly_ctx *ctx, const char *filename, int options)
 {
     struct lyxml_elem *elem = NULL;
     struct stat sb;
@@ -1177,7 +1192,7 @@ lyxml_read_path(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
         goto error;
     }
 
-    elem = lyxml_read_data(ctx, addr, 0);
+    elem = lyxml_read_data(ctx, addr, options);
     munmap(addr, sb.st_size);
     close(fd);
 
