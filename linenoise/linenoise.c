@@ -512,7 +512,10 @@ void linenoisePathCompletion(const char *buf, const char *hint, linenoiseComplet
         if (!strncmp(ptr, ent->d_name, strlen(ptr))) {
             /* is it a directory? */
             strcpy(hint_ptr, ent->d_name);
-            stat(full_path, &st);
+            if (stat(full_path, &st)) {
+                /* skip this item */
+                continue;
+            }
 
             strcpy(match, ent->d_name);
             if (S_ISDIR(st.st_mode)) {
