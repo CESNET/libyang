@@ -5496,7 +5496,7 @@ static int
 eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
                    int when_must_eval, uint32_t line)
 {
-    int rc;
+    int rc = EXIT_FAILURE;
     int (*xpath_func)(struct lyxp_set *, uint16_t, struct lyd_node *, struct lyxp_set *, int, uint32_t) = NULL;
     uint16_t arg_count = 0, i;
     struct lyxp_set *args = NULL;
