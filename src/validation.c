@@ -27,6 +27,7 @@
 #include "validation.h"
 #include "libyang.h"
 #include "xpath.h"
+#include "parser.h"
 #include "resolve.h"
 #include "tree_internal.h"
 #include "xml_internal.h"
@@ -173,7 +174,7 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
                 if ((diter1->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
                         && !((struct lyd_node_leaf_list *)diter1)->value_str) {
                     lyd_set_add(s1, diter1);
-                } else if ((diter1->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter1)->value) {
+                } else if ((diter1->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter1)->value->child) {
                     lyd_set_add(s1, diter1);
                 } else if (diter1->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) {
                     /* or containment node */
@@ -186,7 +187,7 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
                 if ((diter2->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
                         && !((struct lyd_node_leaf_list *)diter2)->value_str) {
                     lyd_set_add(s2, diter2);
-                } else if ((diter2->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter2)->value) {
+                } else if ((diter2->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter2)->value->child) {
                     lyd_set_add(s2, diter2);
                 } else if (diter2->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) {
                     /* or containment node */
@@ -320,6 +321,8 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
     const struct lys_node *schema, *siter;
     const struct lys_node *cs, *ch;
     struct lyd_node *diter, *start;
+    struct lys_ident *ident;
+    struct lys_tpdf *tpdf;
 
     assert(node);
     assert(node->schema);
@@ -531,6 +534,39 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
                 }
             } else if (!lyd_compare(diter, node, 1)) { /* comparing keys and unique combinations */
                 LOGVAL(LYE_DUPLIST, line, schema->name);
+                return EXIT_FAILURE;
+            }
+        }
+    }
+
+    /* status - of the node's schema node itself and all its parents that
+     * cannot have their own instance (like a choice statement) */
+    siter = node->schema;
+    do {
+        if (((siter->flags & LYS_STATUS_MASK) == LYS_STATUS_OBSLT) && (options & LYD_OPT_OBSOLETE)) {
+            LOGVAL(LYE_OBSDATA, line, node->schema->name);
+            return EXIT_FAILURE;
+        }
+        siter = siter->parent;
+    } while(siter && !(siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST)));
+
+    /* status of the identity value */
+    if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+        if (options & LYD_OPT_OBSOLETE) {
+            /* check that we are not instantiating obsolete type */
+            tpdf = ((struct lys_node_leaf *)node->schema)->type.der;
+            while(tpdf) {
+                if ((tpdf->flags & LYS_STATUS_MASK) == LYS_STATUS_OBSLT) {
+                    LOGVAL(LYE_OBSTYPE, line, node->schema->name, tpdf->name);
+                    return EXIT_FAILURE;
+                }
+                tpdf = tpdf->type.der;
+            }
+        }
+        if (((struct lyd_node_leaf_list *)node)->value_type == LY_TYPE_IDENT) {
+            ident = ((struct lyd_node_leaf_list *)node)->value.ident;
+            if (check_status(schema->flags, schema->module, schema->name,
+                             ident->flags, ident->module, ident->name, line)) {
                 return EXIT_FAILURE;
             }
         }

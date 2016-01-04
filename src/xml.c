@@ -138,6 +138,10 @@ lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr 
     } else {
         result = calloc(1, sizeof (struct lyxml_attr));
     }
+    if (!result) {
+        LOGMEM;
+        return NULL;
+    }
     result->value = lydict_insert(ctx, attr->value, 0);
     result->name = lydict_insert(ctx, attr->name, 0);
     result->type = attr->type;
@@ -219,6 +223,10 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
     }
 
     result = calloc(1, sizeof *result);
+    if (!result) {
+        LOGMEM;
+        return NULL;
+    }
     result->content = lydict_insert(ctx, elem->content, 0);
     result->name = lydict_insert(ctx, elem->name, 0);
     result->flags = elem->flags;
@@ -591,11 +599,15 @@ loop:
             /* add buffer into the result */
             if (result) {
                 size = size + o;
-                aux = realloc(result, size + 1);
+                aux = ly_realloc(result, size + 1);
                 result = aux;
             } else {
                 size = o;
                 result = malloc((size + 1) * sizeof *result);
+            }
+            if (!result) {
+                LOGMEM;
+                return NULL;
             }
             memcpy(&result[size - o], buf, o);
 
@@ -697,6 +709,10 @@ loop:
             size = o;
             result = malloc((size + 1) * sizeof *result);
         }
+        if (!result) {
+            LOGMEM;
+            return NULL;
+        }
         memcpy(&result[size - o], buf, o);
     }
     if (result) {
@@ -727,6 +743,10 @@ parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
     if (!memcmp(c, "xmlns", 5)) {
         /* namespace */
         attr = calloc(1, sizeof (struct lyxml_ns));
+        if (!attr) {
+            LOGMEM;
+            return NULL;
+        }
         attr->type = LYXML_ATTR_NS;
         ((struct lyxml_ns *)attr)->parent = parent;
         c += 5;
@@ -738,6 +758,10 @@ parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
     } else {
         /* attribute */
         attr = calloc(1, sizeof *attr);
+        if (!attr) {
+            LOGMEM;
+            return NULL;
+        }
         attr->type = LYXML_ATTR_STD;
     }
 
@@ -866,6 +890,10 @@ parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
 
     /* allocate element structure */
     elem = calloc(1, sizeof *elem);
+    if (!elem) {
+        LOGMEM;
+        return NULL;
+    }
 #ifndef NDEBUG
     elem->line = lineno;
 #endif
@@ -933,6 +961,10 @@ process:
                 /* check that it corresponds to opening tag */
                 size = e - c;
                 str = malloc((size + 1) * sizeof *str);
+                if (!str) {
+                    LOGMEM;
+                    goto error;
+                }
                 memcpy(str, c, e - c);
                 str[e - c] = '\0';
                 if (size != strlen(elem->name) || memcmp(str, elem->name, size)) {
@@ -990,6 +1022,10 @@ process:
                 if (elem->content) {
                     /* we have a mixed content */
                     child = calloc(1, sizeof *child);
+                    if (!child) {
+                        LOGMEM;
+                        goto error;
+                    }
                     child->content = elem->content;
                     elem->content = NULL;
                     lyxml_add_child(ctx, elem, child);
@@ -1026,6 +1062,10 @@ store_content:
                 if (elem->child) {
                     /* we have a mixed content */
                     child = calloc(1, sizeof *child);
+                    if (!child) {
+                        LOGMEM;
+                        goto error;
+                    }
                     child->content = elem->content;
                     elem->content = NULL;
                     lyxml_add_child(ctx, elem, child);
@@ -1082,7 +1122,7 @@ error:
 
 /* logs directly */
 API struct lyxml_elem *
-lyxml_read(struct ly_ctx *ctx, const char *data, int UNUSED(options))
+lyxml_read_data(struct ly_ctx *ctx, const char *data, int UNUSED(options))
 {
     const char *c = data;
     unsigned int len;
@@ -1146,7 +1186,7 @@ lyxml_read(struct ly_ctx *ctx, const char *data, int UNUSED(options))
 }
 
 API struct lyxml_elem *
-lyxml_read_file(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
+lyxml_read_path(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
 {
     struct lyxml_elem *elem = NULL;
     struct stat sb;
@@ -1168,7 +1208,7 @@ lyxml_read_file(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
         goto error;
     }
     if (!S_ISREG(sb.st_mode)) {
-        fprintf(stderr, "File \"%s\" not a file.\n", filename);
+        LOGERR(LY_EINVAL, "File \"%s\" not a file.\n", filename);
         goto error;
     }
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
@@ -1177,7 +1217,7 @@ lyxml_read_file(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
         goto error;
     }
 
-    elem = lyxml_read(ctx, addr, 0);
+    elem = lyxml_read_data(ctx, addr, 0);
     munmap(addr, sb.st_size);
     close(fd);
 
@@ -1327,7 +1367,7 @@ close:
 }
 
 API int
-lyxml_dump(FILE *stream, const struct lyxml_elem *elem, int options)
+lyxml_dump_file(FILE *stream, const struct lyxml_elem *elem, int options)
 {
     struct lyout out;
 

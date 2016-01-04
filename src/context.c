@@ -60,6 +60,11 @@ ly_ctx_new(const char *search_dir)
 
     /* models list */
     ctx->models.list = calloc(16, sizeof *ctx->models.list);
+    if (!ctx->models.list) {
+        LOGMEM;
+        free(ctx);
+        return NULL;
+    }
     ctx->models.used = 0;
     ctx->models.size = 16;
     if (search_dir) {
@@ -78,21 +83,21 @@ ly_ctx_new(const char *search_dir)
     ctx->models.module_set_id = 1;
 
     /* load ietf-inet-types */
-    ctx->models.list[0] = (struct lys_module *)lys_parse(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN);
+    ctx->models.list[0] = (struct lys_module *)lys_parse_data(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN);
     if (!ctx->models.list[0]) {
         ly_ctx_destroy(ctx);
         return NULL;
     }
 
     /* load ietf-yang-types */
-    ctx->models.list[1] = (struct lys_module *)lys_parse(ctx, (char *)ietf_yang_types_2013_07_15_yin, LYS_IN_YIN);
+    ctx->models.list[1] = (struct lys_module *)lys_parse_data(ctx, (char *)ietf_yang_types_2013_07_15_yin, LYS_IN_YIN);
     if (!ctx->models.list[1]) {
         ly_ctx_destroy(ctx);
         return NULL;
     }
 
     /* load ietf-yang-library */
-    ctx->models.list[2] = (struct lys_module *)lys_parse(ctx, (char *)ietf_yang_library_2015_07_03_yin, LYS_IN_YIN);
+    ctx->models.list[2] = (struct lys_module *)lys_parse_data(ctx, (char *)ietf_yang_library_2015_07_03_yin, LYS_IN_YIN);
     if (!ctx->models.list[2]) {
         ly_ctx_destroy(ctx);
         return NULL;
@@ -281,7 +286,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
             LOGERR(LY_EVALID, "User module retrieval callback failed!");
             return NULL;
         }
-        module = lys_parse(ctx, module_data, format);
+        module = lys_parse_data(ctx, module_data, format);
         if (module_data_free) {
             module_data_free(module_data);
         } else {
@@ -306,6 +311,10 @@ ly_ctx_get_module_names(const struct ly_ctx *ctx)
     }
 
     result = malloc((ctx->models.used+1) * sizeof *result);
+    if (!result) {
+        LOGMEM;
+        return NULL;
+    }
 
     for (i = 0; i < ctx->models.used; i++) {
         result[i] = ctx->models.list[i]->name;
@@ -334,6 +343,10 @@ ly_ctx_get_submodule_names(const struct ly_ctx *ctx, const char *module_name)
     }
 
     result = malloc((mod->inc_size+1) * sizeof *result);
+    if (!result) {
+        LOGMEM;
+        return NULL;
+    }
 
     for (i = 0; i < mod->inc_size; i++) {
         result[i] = mod->inc[i].submodule->name;
@@ -363,6 +376,10 @@ ly_ctx_get_node(const struct ly_ctx *ctx, const char *nodeid)
 
     /* get the correct module */
     mod_name = strndup(nodeid + 1, parsed);
+    if (!mod_name) {
+        LOGMEM;
+        return NULL;
+    }
     module = ly_ctx_get_module(ctx, mod_name, NULL);
     free(mod_name);
     if (!module) {
@@ -479,23 +496,27 @@ static int
 ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod)
 {
     int i;
-    struct lyd_node *cont;
+    struct lyd_node *cont, *item;
+
+    if (cur_mod->inc_size) {
+        cont = lyd_new(parent, NULL, "submodules");
+    }
 
     for (i = 0; i < cur_mod->inc_size; ++i) {
-        cont = lyd_new(parent, NULL, "submodule");
-        if (!cont) {
+        item = lyd_new(cont, NULL, "submodule");
+        if (!item) {
             return EXIT_FAILURE;
         }
 
-        if (!lyd_new_leaf(cont, NULL, "name", cur_mod->inc[i].submodule->name)) {
+        if (!lyd_new_leaf(item, NULL, "name", cur_mod->inc[i].submodule->name)) {
             return EXIT_FAILURE;
         }
-        if (!lyd_new_leaf(cont, NULL, "revision", (cur_mod->inc[i].submodule->rev_size ?
+        if (!lyd_new_leaf(item, NULL, "revision", (cur_mod->inc[i].submodule->rev_size ?
                           cur_mod->inc[i].submodule->rev[0].date : ""))) {
             return EXIT_FAILURE;
         }
         if (cur_mod->inc[i].submodule->uri
-                && !lyd_new_leaf(cont, NULL, "schema", cur_mod->inc[i].submodule->uri)) {
+                && !lyd_new_leaf(item, NULL, "schema", cur_mod->inc[i].submodule->uri)) {
             return EXIT_FAILURE;
         }
     }

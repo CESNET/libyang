@@ -71,8 +71,16 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     }
 
     unres = calloc(1, sizeof *unres);
+    if (!unres) {
+        LOGMEM;
+        return NULL;
+    }
 
-    fstat(fd, &sb);
+    if (fstat(fd, &sb) == -1) {
+        LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
+        free(unres);
+        return NULL;
+    }
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
@@ -91,10 +99,12 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     munmap(addr, sb.st_size);
 
     if (module && unres->count && resolve_unres_schema(module, unres)) {
+        unres_schema_free(ctx, unres);
         lys_free(module, 0);
         module = NULL;
+    } else {
+        unres_schema_free(ctx, unres);
     }
-    unres_schema_free(ctx, unres);
 
     return module;
 }
@@ -166,7 +176,11 @@ opendir_search:
             goto cleanup;
         }
 
-        asprintf(&model_path, "file://%s/%s", wd, file->d_name);
+        if (asprintf(&model_path, "file://%s/%s", wd, file->d_name) == -1) {
+            LOGMEM;
+            result = NULL;
+            goto cleanup;
+        }
         result->uri = lydict_insert(ctx, model_path, 0);
         free(model_path);
         /* success */
@@ -180,6 +194,10 @@ searchpath:
         /* search in local directory done, try context's search_path */
         closedir(dir);
         wd = strdup(ctx->models.search_path);
+        if (!wd) {
+            LOGMEM;
+            goto cleanup;
+        }
         localsearch = 0;
         goto opendir_search;
     }
@@ -331,6 +349,10 @@ validate_pattern(const char *val_str, struct lys_type *type, const char *node_na
          * http://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs
          */
         perl_regex = malloc((strlen(type->info.str.patterns[i].expr)+2) * sizeof(char));
+        if (!perl_regex) {
+            LOGMEM;
+            return EXIT_FAILURE;
+        }
         perl_regex[0] = '\0';
         strcat(perl_regex, type->info.str.patterns[i].expr);
         if (strncmp(type->info.str.patterns[i].expr
@@ -538,6 +560,10 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
 
         /* allocate the array of  pointers to bits definition */
         node->value.bit = calloc(type->info.bits.count, sizeof *node->value.bit);
+        if (!node->value.bit) {
+            LOGMEM;
+            return EXIT_FAILURE;
+        }
 
         if (!node->value_str) {
             /* no bits set */
@@ -882,6 +908,24 @@ lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *
     }
 
     return ret;
+}
+
+int
+check_status(uint8_t flags1, struct lys_module *mod1, const char *name1,
+             uint8_t flags2, struct lys_module *mod2, const char *name2, unsigned int line)
+{
+    uint8_t flg1, flg2;
+
+    flg1 = (flags1 & LYS_STATUS_MASK) ? (flags1 & LYS_STATUS_MASK) : LYS_STATUS_CURR;
+    flg2 = (flags2 & LYS_STATUS_MASK) ? (flags2 & LYS_STATUS_MASK) : LYS_STATUS_CURR;
+
+    if ((flg1 < flg2) && (mod1 == mod2)) {
+        LOGVAL(LYE_INSTATUS, line, flg1 == LYS_STATUS_CURR ? "current" : "deprecated", name1,
+               flg2 == LYS_STATUS_OBSLT ? "obsolete" : "deprecated", name2);
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
 }
 
 /**

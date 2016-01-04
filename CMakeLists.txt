@@ -5,8 +5,8 @@ set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and tool
 
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
-set(LIBYANG_MINOR_VERSION 3)
-set(LIBYANG_MICRO_VERSION 39)
+set(LIBYANG_MINOR_VERSION 4)
+set(LIBYANG_MICRO_VERSION 19)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 
@@ -95,6 +95,14 @@ if(PKG_CONFIG_FOUND)
 	# generate and install pkg-config file
 	configure_file("libyang.pc.in" "libyang.pc" @ONLY)
 	install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libyang.pc" DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig")
+	# check that pkg-config includes the used path
+	execute_process(COMMAND ${PKG_CONFIG_EXECUTABLE} --variable pc_path pkg-config RESULT_VARIABLE RETURN OUTPUT_VARIABLE PC_PATH ERROR_QUIET)
+	if(RETURN EQUAL 0)
+		string(FIND ${PC_PATH} "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig" PC_PATH_IDX)
+		if(PC_PATH_IDX EQUAL -1)
+			message(WARNING "pkg-config will not detect the new package after installation, adjust PKG_CONFIG_PATH using \"export PKG_CONFIG_PATH=\${PKG_CONFIG_PATH}:${CMAKE_INSTALL_PREFIX}/lib/pkgconfig\".")
+		endif()
+	endif()
 endif()
 
 # generate doxygen documentation for libyang API

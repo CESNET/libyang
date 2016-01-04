@@ -244,7 +244,8 @@ struct lyd_node *lyd_attr_parent(struct lyd_node *root, struct lyd_attr *attr);
 
 /**
  * @brief Find an import from \p module with matching \p prefix, \p name, or both.
- * \p module itself is also compared.
+ * \p module itself is also compared. If \p module is a submodule, it's module
+ * name is actually the name of the belongs-to module.
  *
  * @param[in] module Module with imports.
  * @param[in] prefix Module prefix to search for.
@@ -252,7 +253,7 @@ struct lyd_node *lyd_attr_parent(struct lyd_node *root, struct lyd_attr *attr);
  * @param[in] name Module name to search for.
  * @param[in] name_len Module \p name length. If 0, the whole name is used, if not NULL.
  *
- * @return Matching module, NULL if not found.
+ * @return Matching module (or submodule), NULL if not found.
  */
 const struct lys_module *lys_get_import_module(const struct lys_module *module, const char *prefix, int pref_len,
                                                const char *name, int name_len);
@@ -264,12 +265,11 @@ const struct lys_module *lys_get_import_module(const struct lys_module *module, 
  * Module is adjusted based on the \p mod_name. Includes are also searched
  * if \p siblings are top-level nodes.
  *
- * @param[in] mod Main module. Prefix is considered to be from this module.
  * @param[in] siblings Siblings to consider. They are first adjusted to
  *                     point to the first sibling.
- * @param[in] mod_name Module name.
+ * @param[in] mod_name Module name, mandatory.
  * @param[in] mod_name_len Module name length.
- * @param[in] name Node name.
+ * @param[in] name Node name, mandatory.
  * @param[in] nam_len Node name length.
  * @param[in] type ORed desired type of the node. 0 means any type.
  *                 Does not return groupings, uses, and augments (but can return augment nodes).
@@ -277,8 +277,8 @@ const struct lys_module *lys_get_import_module(const struct lys_module *module, 
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
-int lys_get_sibling(struct lys_module *mod, const struct lys_node *siblings, const char *mod_name, int mod_name_len,
-                    const char *name, int nam_len, LYS_NODE type, const struct lys_node **ret);
+int lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int mod_name_len, const char *name,
+                    int nam_len, LYS_NODE type, const struct lys_node **ret);
 
 /**
  * @brief Find a specific sibling that can appear in the data. Does not log.

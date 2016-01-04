@@ -23,11 +23,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <assert.h>
 #include <unistd.h>
 #include <getopt.h>
 
@@ -41,7 +39,6 @@
 COMMAND commands[];
 extern int done;
 extern struct ly_ctx *ctx;
-extern char *search_path;
 
 void
 cmd_add_help(void)
@@ -64,7 +61,13 @@ cmd_print_help(void)
 void
 cmd_data_help(void)
 {
-    printf("data [-f (xml | json)] [-x (edit | filter | get | getconfig)] [-o <output-file>] <data-file-name>\n");
+    printf("data [-f (xml | json)] [-x OPTION] [-o <output-file>] <data-file-name>\n");
+    printf("Accepted OPTIONs:\n");
+    printf("\tedit       - LYD_OPT_EDIT\n");
+    printf("\tfilter     - LYD_OPT_FILTER\n");
+    printf("\tget        - LYD_OPT_GET\n");
+    printf("\tgetconfig  - LYD_OPT_GETCONFIG\n");
+    printf("\tobsolete   - add LYD_OPT_OBSOLETE\n");
 }
 
 void
@@ -104,11 +107,10 @@ cmd_verb_help(void)
 int
 cmd_add(const char *arg)
 {
-    int fd, path_len;
-    char *addr, *ptr, *path;
+    int path_len;
+    char *ptr, *path;
     const char *arg_ptr;
     const struct lys_module *model;
-    struct stat sb;
     LYS_INFORMAT format;
 
     if (strlen(arg) < 5) {
@@ -145,34 +147,8 @@ cmd_add(const char *arg)
             format = LYS_IN_YIN;
         }
 
-        fd = open(path, O_RDONLY);
+        model = lys_parse_path(ctx, path, format);
         free(path);
-        if (fd == -1) {
-            fprintf(stderr, "Opening input file \"%.*s\" failed (%s).\n", path_len, arg_ptr, strerror(errno));
-            return 1;
-        }
-
-        if (fstat(fd, &sb) == -1) {
-            fprintf(stderr, "Unable to get input file \"%.*s\" information (%s).\n", path_len, arg_ptr, strerror(errno));
-            close(fd);
-            return 1;
-        }
-
-        if (!S_ISREG(sb.st_mode)) {
-            fprintf(stderr, "Input file \"%.*s\" not a file.\n", path_len, arg_ptr);
-            close(fd);
-            return 1;
-        }
-
-        addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-        if (addr == MAP_FAILED) {
-            fprintf(stderr,"Map file into memory failed.\n");
-            model = NULL;
-        } else {
-            model = lys_parse(ctx, addr, format);
-            munmap(addr, sb.st_size);
-        }
-        close(fd);
 
         if (!model) {
             /* libyang printed the error messages */
@@ -312,7 +288,7 @@ cmd_print(const char *arg)
         }
     }
 
-    ret = lys_print(output, model, format, target_node);
+    ret = lys_print_file(output, model, format, target_node);
 
 cleanup:
     free(*argv);
@@ -328,11 +304,10 @@ cleanup:
 int
 cmd_data(const char *arg)
 {
-    int c, argc, option_index, ret = 1, fd = -1;
+    int c, argc, option_index, ret = 1;
     int options = 0;
-    struct stat sb;
     size_t len;
-    char **argv = NULL, *ptr, *addr;
+    char **argv = NULL, *ptr;
     const char *out_path = NULL;
     struct lyd_node *data = NULL, *next, *iter;
     LYD_FORMAT outformat = LYD_UNKNOWN, informat = LYD_UNKNOWN;
@@ -391,13 +366,15 @@ cmd_data(const char *arg)
             break;
         case 'x':
             if (!strcmp(optarg, "edit")) {
-                options |= LYD_OPT_EDIT;
+                options = (options & 0xc3) | LYD_OPT_EDIT;
             } else if (!strcmp(optarg, "filter")) {
-                options |= LYD_OPT_FILTER;
+                options = (options & 0xc3) | LYD_OPT_FILTER;
             } else if (!strcmp(optarg, "get")) {
-                options |= LYD_OPT_GET;
+                options = (options & 0xc3) | LYD_OPT_GET;
             } else if (!strcmp(optarg, "getconfig")) {
-                options |= LYD_OPT_GETCONFIG;
+                options = (options & 0xc3) | LYD_OPT_GETCONFIG;
+            } else if (!strcmp(optarg, "obsolete")) {
+                options |= LYD_OPT_OBSOLETE;
             }
             break;
         case '?':
@@ -423,29 +400,7 @@ cmd_data(const char *arg)
         goto cleanup;
     }
 
-    fd = open(argv[optind], O_RDONLY);
-    if (fd == -1) {
-        fprintf(stderr, "The input file could not be opened (%s).\n", strerror(errno));
-        goto cleanup;
-    }
-
-    if (fstat(fd, &sb) == -1) {
-        fprintf(stderr, "Unable to get input file information (%s).\n", strerror(errno));
-        goto cleanup;
-    }
-
-    if (!S_ISREG(sb.st_mode)) {
-        fprintf(stderr, "Input file not a file.\n");
-        goto cleanup;
-    }
-
-    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (addr == MAP_FAILED) {
-        fprintf(stderr,"Map file into memory failed.\n");
-        goto cleanup;
-    }
-    data = lyd_parse(ctx, addr, informat, options);
-    munmap(addr, sb.st_size);
+    data = lyd_parse_path(ctx, argv[optind], informat, options);
 
     if (data == NULL) {
         fprintf(stderr, "Failed to parse data.\n");
@@ -461,7 +416,7 @@ cmd_data(const char *arg)
     }
 
     if (outformat != LYD_UNKNOWN) {
-        lyd_print(output, data, outformat);
+        lyd_print_file(output, data, outformat);
     }
 
     ret = 0;
@@ -474,10 +429,6 @@ cleanup:
         fclose(output);
     }
 
-    if (fd != -1) {
-        close(fd);
-    }
-
     LY_TREE_FOR_SAFE(data, next, iter) {
         lyd_free(iter);
     }
@@ -488,9 +439,8 @@ cleanup:
 int
 cmd_xpath(const char *arg)
 {
-    int c, argc, option_index, fd = -1, ret = 1, long_str, when_must_eval = 0;
-    char **argv = NULL, *ptr, *ctx_node_path = NULL, *expr = NULL, *addr;
-    struct stat sb;
+    int c, argc, option_index, ret = 1, long_str, when_must_eval = 0;
+    char **argv = NULL, *ptr, *ctx_node_path = NULL, *expr = NULL;
     struct lyd_node *ctx_node, *data = NULL, *next, *iter;
     struct lyxp_set set = {0, {NULL}, NULL, 0, 0, 0};
     static struct option long_options[] = {
@@ -574,26 +524,7 @@ cmd_xpath(const char *arg)
     }
 
     /* data file */
-    fd = open(argv[optind], O_RDONLY);
-    if (fd == -1) {
-        fprintf(stderr, "The input file could not be opened (%s).\n", strerror(errno));
-        goto cleanup;
-    }
-    if (fstat(fd, &sb) == -1) {
-        fprintf(stderr, "Unable to get input file information (%s).\n", strerror(errno));
-        goto cleanup;
-    }
-    if (!S_ISREG(sb.st_mode)) {
-        fprintf(stderr, "Input file not a file.\n");
-        goto cleanup;
-    }
-    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (addr == MAP_FAILED) {
-        fprintf(stderr,"Map file into memory failed.\n");
-        goto cleanup;
-    }
-    data = lyd_parse(ctx, addr, LYD_XML, 0);
-    munmap(addr, sb.st_size);
+    data = lyd_parse_path(ctx, argv[optind], LYD_XML, 0);
 
     if (data == NULL) {
         fprintf(stderr, "Failed to parse data.\n");
@@ -639,10 +570,6 @@ cleanup:
     free(*argv);
     free(argv);
 
-    if (fd != -1) {
-        close(fd);
-    }
-
     LY_TREE_FOR_SAFE(data, next, iter) {
         lyd_free(iter);
     }
@@ -654,10 +581,11 @@ int
 cmd_list(const char *UNUSED(arg))
 {
     struct lyd_node *ylib, *module, *submodule, *node;
-    int has_modules = 0;
+    int has_modules = 0, flag;
 
     ylib = ly_ctx_info(ctx);
     if (!ylib) {
+        fprintf(stderr, "Getting context info (ietf-yang-library data) failed.\n");
         return 1;
     }
 
@@ -678,10 +606,8 @@ cmd_list(const char *UNUSED(arg))
                 if (!strcmp(node->schema->name, "name")) {
                     printf("\t%s", ((struct lyd_node_leaf_list *)node)->value_str);
                 } else if (!strcmp(node->schema->name, "revision")) {
-                    if (((struct lyd_node_leaf_list *)node)->value_str[0] == '\0') {
-                        printf("\n");
-                    } else {
-                        printf("@%s\n", ((struct lyd_node_leaf_list *)node)->value_str);
+                    if (((struct lyd_node_leaf_list *)node)->value_str[0] != '\0') {
+                        printf("@%s", ((struct lyd_node_leaf_list *)node)->value_str);
                     }
                 }
             }
@@ -689,24 +615,27 @@ cmd_list(const char *UNUSED(arg))
             /* submodules print */
             LY_TREE_FOR(module->child, submodule) {
                 if (!strcmp(submodule->schema->name, "submodules")) {
+                    printf(" (");
+                    flag = 0;
                     LY_TREE_FOR(submodule->child, submodule) {
                         if (!strcmp(submodule->schema->name, "submodule")) {
                             LY_TREE_FOR(submodule->child, node) {
                                 if (!strcmp(node->schema->name, "name")) {
-                                    printf("\t\t%s", ((struct lyd_node_leaf_list *)node)->value_str);
+                                    printf("%s%s", flag ? "," : "", ((struct lyd_node_leaf_list *)node)->value_str);
                                 } else if (!strcmp(node->schema->name, "revision")) {
-                                    if (((struct lyd_node_leaf_list *)node)->value_str[0] == '\0') {
-                                        printf("\n");
-                                    } else {
-                                        printf("@%s\n", ((struct lyd_node_leaf_list *)node)->value_str);
+                                    if (((struct lyd_node_leaf_list *)node)->value_str[0] != '\0') {
+                                        printf("@%s", ((struct lyd_node_leaf_list *)node)->value_str);
                                     }
                                 }
                             }
+                            flag++;
                         }
                     }
+                    printf(")");
                     break;
                 }
             }
+            printf("\n");
         }
     }
 
@@ -878,10 +807,7 @@ cmd_searchpath(const char *arg)
         return 1;
     }
 
-    free(search_path);
-    search_path = strdup(path);
-
-    ly_ctx_set_searchdir(ctx, search_path);
+    ly_ctx_set_searchdir(ctx, path);
 
     return 0;
 }
@@ -890,7 +816,7 @@ int
 cmd_clear(const char *UNUSED(arg))
 {
     ly_ctx_destroy(ctx);
-    ctx = ly_ctx_new(search_path);
+    ctx = ly_ctx_new(NULL);
     if (!ctx) {
         fprintf(stderr, "Failed to create context.\n");
         return 1;

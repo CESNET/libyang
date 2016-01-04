@@ -25,8 +25,12 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <sys/mman.h>
+#include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <string.h>
+#include <unistd.h>
+#include <errno.h>
 
 #include "common.h"
 #include "context.h"
@@ -87,14 +91,15 @@ check:
 }
 
 int
-lys_get_sibling(struct lys_module *mod, const struct lys_node *siblings, const char *mod_name, int mod_name_len,
-                const char *name, int nam_len, LYS_NODE type, const struct lys_node **ret)
+lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int mod_name_len, const char *name,
+                int nam_len, LYS_NODE type, const struct lys_node **ret)
 {
     const struct lys_node *node, *old_siblings = NULL;
-    const struct lys_module *prefix_mod, *cur_mod;
+    const struct lys_module *mod;
+    const char *node_mod_name;
     int in_submod;
 
-    assert(siblings && name);
+    assert(siblings && mod_name && name);
     assert(!(type & (LYS_USES | LYS_GROUPING)));
 
     /* find the beginning */
@@ -102,7 +107,10 @@ lys_get_sibling(struct lys_module *mod, const struct lys_node *siblings, const c
         siblings = siblings->prev;
     }
 
-    /* fill the name length in case the caller is so indifferent */
+    /* fill the lengths in case the caller is so indifferent */
+    if (!mod_name_len) {
+        mod_name_len = strlen(mod_name);
+    }
     if (!nam_len) {
         nam_len = strlen(name);
     }
@@ -110,51 +118,34 @@ lys_get_sibling(struct lys_module *mod, const struct lys_node *siblings, const c
     /* we start with the module itself, submodules come later */
     in_submod = 0;
 
-    /* set prefix_mod correctly */
-    if (mod_name) {
-        prefix_mod = lys_get_import_module(siblings->module, NULL, 0, mod_name, mod_name_len);
-        if (!prefix_mod) {
+    /* set mod correctly */
+    if (!siblings->parent) {
+        mod = lys_get_import_module(siblings->module, NULL, 0, mod_name, mod_name_len);
+        if (mod) {
+            old_siblings = siblings;
+            siblings = mod->data;
+        } else if (type & LYS_AUGMENT) {
+            mod = siblings->module;
+        } else {
             return -1;
         }
-        cur_mod = prefix_mod;
-        /* it is not our module */
-        if (cur_mod != mod) {
-            old_siblings = siblings;
-            siblings = cur_mod->data;
-        }
     } else {
-        if (mod) {
-            prefix_mod = mod;
-        } else {
-            prefix_mod = siblings->module;
-        }
-        if (prefix_mod->type) {
-            prefix_mod = ((struct lys_submodule *)prefix_mod)->belongsto;
-        }
-        cur_mod = prefix_mod;
+        mod = siblings->module;
     }
 
     while (1) {
         /* try to find the node */
         node = NULL;
-        while ((node = lys_getnext(node, siblings->parent, cur_mod, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
+        while ((node = lys_getnext(node, siblings->parent, mod, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
             if (!type || (node->nodetype & type)) {
-                /* module check */
-                if (!node->module->type) {
-                    if (cur_mod != node->module) {
-                        continue;
-                    }
+                /* modules need to always be checked, we want to skip augments (no other reason to check them) */
+                if (node->module->type) {
+                    node_mod_name = ((struct lys_submodule *)node->module)->belongsto->name;
                 } else {
-                    /* both are submodules */
-                    if (cur_mod->type) {
-                        if (cur_mod != node->module) {
-                            continue;
-                        }
-                    } else {
-                        if (cur_mod != ((struct lys_submodule *)node->module)->belongsto) {
-                            continue;
-                        }
-                    }
+                    node_mod_name = node->module->name;
+                }
+                if ((node_mod_name != mod_name) && (strncmp(node_mod_name, mod_name, mod_name_len) || node_mod_name[mod_name_len])) {
+                    continue;
                 }
 
                 /* direct name check */
@@ -183,11 +174,10 @@ lys_get_sibling(struct lys_module *mod, const struct lys_node *siblings, const c
         }
 
         /* let's try the submodules */
-        if (in_submod == prefix_mod->inc_size) {
+        if (in_submod == mod->inc_size) {
             break;
         }
-        cur_mod = (struct lys_module *)prefix_mod->inc[in_submod].submodule;
-        siblings = cur_mod->data;
+        siblings = mod->inc[in_submod].submodule->data;
         ++in_submod;
     }
 
@@ -1080,7 +1070,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
 }
 
 API const struct lys_module *
-lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
+lys_parse_data(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
     struct unres_schema *unres;
     struct lys_module *mod = NULL;
@@ -1091,6 +1081,10 @@ lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
     }
 
     unres = calloc(1, sizeof *unres);
+    if (!unres) {
+        LOGMEM;
+        return NULL;
+    }
 
     switch (format) {
     case LYS_IN_YIN:
@@ -1103,10 +1097,12 @@ lys_parse(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
     }
 
     if (mod && unres->count && resolve_unres_schema(mod, unres)) {
+        unres_schema_free(ctx, unres);
         lys_free(mod, 0);
         mod = NULL;
+    } else {
+        unres_schema_free(ctx, unres);
     }
-    unres_schema_free(ctx, unres);
 
     return mod;
 }
@@ -1121,6 +1117,10 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
     assert(data);
 
     unres = calloc(1, sizeof *unres);
+    if (!unres) {
+        LOGMEM;
+        return NULL;
+    }
 
     switch (format) {
     case LYS_IN_YIN:
@@ -1133,16 +1133,40 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
     }
 
    if (submod && unres->count && resolve_unres_schema((struct lys_module *)submod, unres)) {
+       unres_schema_free(module->ctx, unres);
         lys_submodule_free(submod, 0);
         submod = NULL;
+    } else {
+        unres_schema_free(module->ctx, unres);
     }
-    unres_schema_free(module->ctx, unres);
 
     return submod;
 }
 
 API const struct lys_module *
-lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
+lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
+{
+    int fd;
+    const struct lys_module *ret;
+
+    if (!ctx || !path) {
+        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        return NULL;
+    }
+
+    fd = open(path, O_RDONLY);
+    if (fd == -1) {
+        LOGERR(LY_ESYS, "Opening file \"%s\" failed (%s).", path, strerror(errno));
+        return NULL;
+    }
+
+    ret = lys_parse_fd(ctx, fd, format);
+    close(fd);
+    return ret;
+}
+
+API const struct lys_module *
+lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
     const struct lys_module *module;
     struct stat sb;
@@ -1153,13 +1177,16 @@ lys_read(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
         return NULL;
     }
 
-    fstat(fd, &sb);
-    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (addr == MAP_FAILED) {
-        LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
+    if (fstat(fd, &sb) == -1) {
+        LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
         return NULL;
     }
-    module = lys_parse(ctx, addr, format);
+    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (addr == MAP_FAILED) {
+        LOGERR(LY_EMEM, "Map file into memory failed (%s()).",__func__);
+        return NULL;
+    }
+    module = lys_parse_data(ctx, addr, format);
     munmap(addr, sb.st_size);
 
     return module;
@@ -1175,7 +1202,10 @@ lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format, int i
     assert(module);
     assert(fd >= 0);
 
-    fstat(fd, &sb);
+    if (fstat(fd, &sb) == -1) {
+        LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
+        return NULL;
+    }
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
@@ -1199,6 +1229,9 @@ lys_restr_dup(struct ly_ctx *ctx, struct lys_restr *old, int size)
     }
 
     result = calloc(size, sizeof *result);
+    if (!result) {
+        return NULL;
+    }
     for (i = 0; i < size; i++) {
         result[i].expr = lydict_insert(ctx, old[i].expr, 0);
         result[i].dsc = lydict_insert(ctx, old[i].dsc, 0);
@@ -1258,6 +1291,10 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
         new->info.bits.count = old->info.bits.count;
         if (new->info.bits.count) {
             new->info.bits.bit = calloc(new->info.bits.count, sizeof *new->info.bits.bit);
+            if (!new->info.bits.bit) {
+                LOGMEM;
+                return -1;
+            }
             for (i = 0; i < new->info.bits.count; i++) {
                 new->info.bits.bit[i].name = lydict_insert(mod->ctx, old->info.bits.bit[i].name, 0);
                 new->info.bits.bit[i].dsc = lydict_insert(mod->ctx, old->info.bits.bit[i].dsc, 0);
@@ -1279,6 +1316,10 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
         new->info.enums.count = old->info.enums.count;
         if (new->info.enums.count) {
             new->info.enums.enm = calloc(new->info.enums.count, sizeof *new->info.enums.enm);
+            if (!new->info.enums.enm) {
+                LOGMEM;
+                return -1;
+            }
             for (i = 0; i < new->info.enums.count; i++) {
                 new->info.enums.enm[i].name = lydict_insert(mod->ctx, old->info.enums.enm[i].name, 0);
                 new->info.enums.enm[i].dsc = lydict_insert(mod->ctx, old->info.enums.enm[i].dsc, 0);
@@ -1336,6 +1377,10 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
         new->info.uni.count = old->info.uni.count;
         if (new->info.uni.count) {
             new->info.uni.types = calloc(new->info.uni.count, sizeof *new->info.uni.types);
+            if (!new->info.uni.types) {
+                LOGMEM;
+                return -1;
+            }
             for (i = 0; i < new->info.uni.count; i++) {
                 if (lys_type_dup(mod, parent, &(new->info.uni.types[i]), &(old->info.uni.types[i]), unres)) {
                     return -1;
@@ -1459,6 +1504,10 @@ lys_tpdf_dup(struct lys_module *mod, struct lys_node *parent, struct lys_tpdf *o
     }
 
     result = calloc(size, sizeof *result);
+    if (!result) {
+        LOGMEM;
+        return NULL;
+    }
     for (i = 0; i < size; i++) {
         result[i].name = lydict_insert(mod->ctx, old[i].name, 0);
         result[i].dsc = lydict_insert(mod->ctx, old[i].dsc, 0);
@@ -1491,6 +1540,10 @@ lys_when_dup(struct ly_ctx *ctx, struct lys_when *old)
     }
 
     new = calloc(1, sizeof *new);
+    if (!new) {
+        LOGMEM;
+        return NULL;
+    }
     new->cond = lydict_insert(ctx, old->cond, 0);
     new->dsc = lydict_insert(ctx, old->dsc, 0);
     new->ref = lydict_insert(ctx, old->ref, 0);
@@ -1547,6 +1600,10 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
     }
 
     new = calloc(size, sizeof *new);
+    if (!new) {
+        LOGMEM;
+        return NULL;
+    }
     for (i = 0; i < size; i++) {
         new[i].target_name = lydict_insert(module->ctx, old[i].target_name, 0);
         new[i].dsc = lydict_insert(module->ctx, old[i].dsc, 0);
@@ -1606,6 +1663,10 @@ lys_refine_dup(struct lys_module *mod, struct lys_refine *old, int size)
     }
 
     result = calloc(size, sizeof *result);
+    if (!result) {
+        LOGMEM;
+        return NULL;
+    }
     for (i = 0; i < size; i++) {
         result[i].target_name = lydict_insert(mod->ctx, old[i].target_name, 0);
         result[i].dsc = lydict_insert(mod->ctx, old[i].dsc, 0);
@@ -1930,6 +1991,7 @@ const struct lys_module *
 lys_get_import_module(const struct lys_module *module, const char *prefix, int pref_len, const char *name, int name_len)
 {
     int i, match;
+    struct lys_submodule *submodule = (struct lys_submodule *)module;
 
     assert(prefix || name);
     if (prefix && !pref_len) {
@@ -1939,9 +2001,17 @@ lys_get_import_module(const struct lys_module *module, const char *prefix, int p
         name_len = strlen(name);
     }
 
-    if ((!prefix || (!strncmp(module->prefix, prefix, pref_len) && !module->prefix[pref_len]))
-            && (!name || (!strncmp(module->name, name, name_len) && !module->name[name_len]))) {
-        return module;
+    /* special case, in submodule we pretend the (JSON) module name is the name of the belongs-to module */
+    if (module->type) {
+        if ((!prefix || (!strncmp(submodule->prefix, prefix, pref_len) && !submodule->prefix[pref_len]))
+                && (!name || (!strncmp(submodule->belongsto->name, name, name_len) && !submodule->belongsto->name[name_len]))) {
+            return module;
+        }
+    } else {
+        if ((!prefix || (!strncmp(module->prefix, prefix, pref_len) && !module->prefix[pref_len]))
+                && (!name || (!strncmp(module->name, name, name_len) && !module->name[name_len]))) {
+            return module;
+        }
     }
 
     for (i = 0; i < module->imp_size; ++i) {
@@ -2178,6 +2248,11 @@ lys_node_dup(struct lys_module *module, const struct lys_node *node, uint8_t fla
         goto error;
     }
 
+    if (!retval) {
+        LOGMEM;
+        return NULL;
+    }
+
     /*
      * duplicate generic part of the structure
      */
@@ -2198,7 +2273,12 @@ lys_node_dup(struct lys_module *module, const struct lys_node *node, uint8_t fla
 
     retval->features_size = node->features_size;
     retval->features = calloc(retval->features_size, sizeof *retval->features);
+    if (!retval->features) {
+        LOGMEM;
+        goto error;
+    }
     for (i = 0; i < node->features_size; ++i) {
+        retval->features[i] = (struct lys_feature *)retval;
         if (unres_schema_dup(module, unres, &node->features[i], UNRES_IFFEAT, &retval->features[i])) {
             retval->features[i] = node->features[i];
         }
@@ -2237,7 +2317,7 @@ lys_node_dup(struct lys_module *module, const struct lys_node *node, uint8_t fla
         }
 
         if (choice_orig->dflt) {
-            rc = lys_get_sibling(choice->module, choice->child, NULL, 0, choice_orig->dflt->name, 0, LYS_ANYXML
+            rc = lys_get_sibling(choice->child, choice->module->name, 0, choice_orig->dflt->name, 0, LYS_ANYXML
                                          | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST
                                          | LYS_LIST, (const struct lys_node **)&choice->dflt);
             if (rc) {
@@ -2306,11 +2386,15 @@ lys_node_dup(struct lys_module *module, const struct lys_node *node, uint8_t fla
         list->keys_size = list_orig->keys_size;
         if (list->keys_size) {
             list->keys = calloc(list->keys_size, sizeof *list->keys);
+            if (!list->keys) {
+                LOGMEM;
+                goto error;
+            }
 
             /* we managed to resolve it before, resolve it again manually */
             if (list_orig->keys[0]) {
                 for (i = 0; i < list->keys_size; ++i) {
-                    rc = lys_get_sibling(list->module, list->child, NULL, 0, list_orig->keys[i]->name, 0, LYS_LEAF,
+                    rc = lys_get_sibling(list->child, list->module->name, 0, list_orig->keys[i]->name, 0, LYS_LEAF,
                                          (const struct lys_node **)&list->keys[i]);
                     if (rc) {
                         if (rc == EXIT_FAILURE) {
@@ -2330,9 +2414,17 @@ lys_node_dup(struct lys_module *module, const struct lys_node *node, uint8_t fla
 
         list->unique_size = list_orig->unique_size;
         list->unique = malloc(list->unique_size * sizeof *list->unique);
+        if (!list->unique) {
+            LOGMEM;
+            goto error;
+        }
         for (i = 0; i < list->unique_size; ++i) {
             list->unique[i].expr_size = list_orig->unique[i].expr_size;
             list->unique[i].expr = malloc(list->unique[i].expr_size * sizeof *list->unique[i].expr);
+            if (!list->unique[i].expr) {
+                LOGMEM;
+                goto error;
+            }
             for (j = 0; j < list->unique[i].expr_size; j++) {
                 list->unique[i].expr[j] = lydict_insert(ctx, list_orig->unique[i].expr[j], 0);
 
@@ -2579,8 +2671,17 @@ lys_features_list(const struct lys_module *module, uint8_t **states)
         count += module->inc[i].submodule->features_size;
     }
     result = malloc((count + 1) * sizeof *result);
+    if (!result) {
+        LOGMEM;
+        return NULL;
+    }
     if (states) {
         *states = malloc((count + 1) * sizeof **states);
+        if (!(*states)) {
+            LOGMEM;
+            free(result);
+            return NULL;
+        }
     }
     count = 0;
 

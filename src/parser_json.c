@@ -115,11 +115,19 @@ lyjson_parse_text(const char *data, unsigned int *len)
             /* add buffer into the result */
             if (result) {
                 size = size + o;
-                aux = realloc(result, size + 1);
+                aux = ly_realloc(result, size + 1);
+                if (!aux) {
+                    LOGMEM;
+                    return NULL;
+                }
                 result = aux;
             } else {
                 size = o;
                 result = malloc((size + 1) * sizeof *result);
+                if (!result) {
+                    LOGMEM;
+                    return NULL;
+                }
             }
             memcpy(&result[size - o], buf, o);
 
@@ -208,11 +216,19 @@ lyjson_parse_text(const char *data, unsigned int *len)
     if (o) {
         if (result) {
             size = size + o;
-            aux = realloc(result, size + 1);
+            aux = ly_realloc(result, size + 1);
+            if (!aux) {
+                LOGMEM;
+                return NULL;
+            }
             result = aux;
         } else {
             size = o;
             result = malloc((size + 1) * sizeof *result);
+            if (!result) {
+                LOGMEM;
+                return NULL;
+            }
         }
         memcpy(&result[size - o], buf, o);
     }
@@ -457,6 +473,10 @@ repeat:
         if (data[len] == ',') {
             /* another instance of the leaf-list */
             new = calloc(1, sizeof(struct lyd_node_leaf_list));
+            if (!new) {
+                LOGMEM;
+                return 0;
+            }
             new->parent = leaf->parent;
             new->prev = (struct lyd_node *)leaf;
             leaf->next = (struct lyd_node *)new;
@@ -562,6 +582,10 @@ repeat:
     len += skip_ws(&data[len]);
 
     attr_new = malloc(sizeof **attr);
+    if (!attr_new) {
+        LOGMEM;
+        goto error;
+    }
     attr_new->module = module;
     attr_new->next = NULL;
     attr_new->name = lydict_insert(module->ctx, name, 0);
@@ -799,6 +823,10 @@ attr_repeat:
 
         if (attr) {
             attrs_aux = malloc(sizeof *attrs_aux);
+            if (!attrs_aux) {
+                LOGMEM;
+                goto error;
+            }
             attrs_aux->attr = attr;
             attrs_aux->index = flag_leaflist;
             attrs_aux->schema = schema;
@@ -846,6 +874,11 @@ attr_repeat:
         LOGINT;
         goto error;
     }
+    if (!result) {
+        LOGMEM;
+        goto error;
+    }
+
     result->parent = *parent;
     if (*parent && !(*parent)->child) {
         (*parent)->child = result;
@@ -986,6 +1019,9 @@ attr_repeat:
             if (data[len] == ',') {
                 /* another instance of the list */
                 new = calloc(1, sizeof *new);
+                if (!new) {
+                    goto error;
+                }
                 new->parent = list->parent;
                 new->prev = list;
                 list->next = new;
@@ -1063,6 +1099,10 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
     }
 
     unres = calloc(1, sizeof *unres);
+    if (!unres) {
+        LOGMEM;
+        return NULL;
+    }
 
 #ifndef NDEBUG
     lineno = 0;

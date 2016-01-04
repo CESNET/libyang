@@ -126,6 +126,9 @@ enum LY_ERR {
     LYE_KEY_DUP,
     LYE_INREGEX,
     LYE_INRESOLV,
+    LYE_INSTATUS,
+    LYE_OBSDATA,
+    LYE_OBSTYPE,
 
     LYE_NORESOLV,
     LYE_INELEM,
@@ -223,5 +226,16 @@ const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxm
  * @return Transformed JSON expression in the dictionary, NULL on error.
  */
 const char *transform_schema2json(const struct lys_module *module, const char *expr, uint32_t line);
+
+/**
+ * @brief Wrapper for realloc() call. The only difference is that if it fails to
+ * allocate the requested memory, the original memory is freed as well.
+ *
+ * @param[in] ptr Memory to reallocate.
+ * @param[in] size New size of the memory block.
+ *
+ * @return Pointer to the new memory, NULL on error.
+ */
+void *ly_realloc(void *ptr, size_t size);
 
 #endif /* LY_COMMON_H_ */

@@ -192,7 +192,10 @@ cast_string_realloc(uint16_t needed, char **str, uint16_t *used, uint16_t *size)
         do {
             *size += LYXP_STRING_CAST_SIZE_STEP;
         } while (*size - *used < needed);
-        *str = realloc(*str, *size * sizeof(char));
+        *str = ly_realloc(*str, *size * sizeof(char));
+        if (!(*str)) {
+            LOGMEM;
+        }
     }
 }
 
@@ -273,7 +276,7 @@ cast_string_recursive(struct lyd_node *node, int fake_cont, enum lyxp_node_type 
 
     case LYS_ANYXML:
         stream = open_memstream(&buf, &buf_size);
-        lyxml_dump(stream, ((struct lyd_node_anyxml *)node)->value->child, 0);
+        lyxml_dump_file(stream, ((struct lyd_node_anyxml *)node)->value->child, 0);
         fclose(stream);
 
         line = strtok_r(buf, "\n", &ptr);
@@ -323,6 +326,10 @@ cast_string_elem(struct lyd_node *node, int fake_cont, enum lyxp_node_type root_
     uint16_t used, size;
 
     str = malloc(LYXP_STRING_CAST_SIZE_START * sizeof(char));
+    if (!str) {
+        LOGMEM;
+        return NULL;
+    }
     str[0] = '\0';
     used = 1;
     size = LYXP_STRING_CAST_SIZE_START;
@@ -330,7 +337,11 @@ cast_string_elem(struct lyd_node *node, int fake_cont, enum lyxp_node_type root_
     cast_string_recursive(node, fake_cont, root_type, 0, &str, &used, &size);
 
     if (size > used) {
-        str = realloc(str, used * sizeof(char));
+        str = ly_realloc(str, used * sizeof(char));
+        if (!str) {
+            LOGMEM;
+            return NULL;
+        }
     }
     return lydict_insert_zc(ctx, str);
 }
@@ -422,11 +433,26 @@ set_copy(struct lyxp_set *set, struct ly_ctx *ctx)
     }
 
     ret = malloc(sizeof *ret);
+    if (!ret) {
+        LOGMEM;
+        return NULL;
+    }
     if (set->type == LYXP_SET_NODE_SET) {
         ret->type = set->type;
         ret->value.nodes = malloc(set->used * sizeof *ret->value.nodes);
+        if (!ret->value.nodes) {
+            LOGMEM;
+            free(ret);
+            return NULL;
+        }
         memcpy(ret->value.nodes, set->value.nodes, set->used * sizeof *ret->value.nodes);
         ret->node_type = malloc(set->used * sizeof *ret->node_type);
+        if (!ret->node_type) {
+            LOGMEM;
+            free(ret->value.nodes);
+            free(ret);
+            return NULL;
+        }
         memcpy(ret->node_type, set->node_type, set->used * sizeof *ret->node_type);
         ret->used = ret->size = set->used;
     } else {
@@ -546,7 +572,18 @@ set_fill_set(struct lyxp_set *set, struct lyxp_set *src, struct ly_ctx *ctx)
             set->pos = src->pos;
 
             set->value.nodes = malloc(set->used * sizeof *set->value.nodes);
+            if (!set->value.nodes) {
+                LOGMEM;
+                memset(set, 0, sizeof *set);
+                return;
+            }
             set->node_type = malloc(set->used * sizeof *set->node_type);
+            if (!set->node_type) {
+                LOGMEM;
+                free(set->value.nodes);
+                memset(set, 0, sizeof *set);
+                return;
+            }
 
             memcpy(set->value.nodes, src->value.nodes, src->used * sizeof *src->value.nodes);
             memcpy(set->node_type, src->node_type, src->used * sizeof *src->node_type);
@@ -660,11 +697,20 @@ set_insert_node(struct lyxp_set *set, void *node, enum lyxp_node_type node_type,
             /* no real harm done, but it is a bug */
             LOGINT;
         }
-        set->type = LYXP_SET_NODE_SET;
         set->value.nodes = calloc(LYXP_SET_SIZE_START, sizeof *set->value.nodes);
+        if (!set->value.nodes) {
+            LOGMEM;
+            return;
+        }
         set->value.nodes[0] = node;
         set->node_type = malloc(LYXP_SET_SIZE_START * sizeof *set->node_type);
+        if (!set->node_type) {
+            LOGMEM;
+            free(set->value.nodes);
+            return;
+        }
         set->node_type[0] = node_type;
+        set->type = LYXP_SET_NODE_SET;
         set->used = 1;
         set->size = LYXP_SET_SIZE_START;
         set->pos = 0;
@@ -673,8 +719,19 @@ set_insert_node(struct lyxp_set *set, void *node, enum lyxp_node_type node_type,
         if (set->used == set->size) {
 
             /* set is full */
-            set->value.nodes = realloc(set->value.nodes, (set->size + LYXP_SET_SIZE_STEP) * sizeof *set->value.nodes);
-            set->node_type = realloc(set->node_type, (set->size + LYXP_SET_SIZE_STEP) * sizeof *set->node_type);
+            set->value.nodes = ly_realloc(set->value.nodes, (set->size + LYXP_SET_SIZE_STEP) * sizeof *set->value.nodes);
+            if (!set->value.nodes) {
+                LOGMEM;
+                memset(set, 0, sizeof *set);
+                return;
+            }
+            set->node_type = ly_realloc(set->node_type, (set->size + LYXP_SET_SIZE_STEP) * sizeof *set->node_type);
+            if (!set->node_type) {
+                LOGMEM;
+                free(set->value.nodes);
+                memset(set, 0, sizeof *set);
+                return;
+            }
             set->size += LYXP_SET_SIZE_STEP;
         }
 
@@ -785,6 +842,11 @@ print_set_debug(struct lyxp_set *set)
             asprintf(&str_num, "%lld", (long long)set->value.num);
         } else {
             asprintf(&str_num, "%03.1Lf", set->value.num);
+        }
+
+        if (!str_num) {
+            LOGMEM;
+            return;
         }
 
         LOGDBG("XPATH:\t%s", str_num);
@@ -1092,9 +1154,21 @@ exp_add_token(struct lyxp_expr *exp, enum lyxp_token token, uint16_t expr_pos, u
 {
     if (exp->used == exp->size) {
         exp->size += LYXP_EXPR_SIZE_STEP;
-        exp->tokens = realloc(exp->tokens, exp->size * sizeof *exp->tokens);
-        exp->expr_pos = realloc(exp->expr_pos, exp->size * sizeof *exp->expr_pos);
-        exp->tok_len = realloc(exp->tok_len, exp->size * sizeof *exp->tok_len);
+        exp->tokens = ly_realloc(exp->tokens, exp->size * sizeof *exp->tokens);
+        if (!exp->tokens) {
+            LOGMEM;
+            return;
+        }
+        exp->expr_pos = ly_realloc(exp->expr_pos, exp->size * sizeof *exp->expr_pos);
+        if (!exp->expr_pos) {
+            LOGMEM;
+            return;
+        }
+        exp->tok_len = ly_realloc(exp->tok_len, exp->size * sizeof *exp->tok_len);
+        if (!exp->tok_len) {
+            LOGMEM;
+            return;
+        }
     }
 
     exp->tokens[exp->used] = token;
@@ -1188,10 +1262,18 @@ exp_repeat_push(struct lyxp_expr *exp, uint16_t exp_idx, uint16_t repeat_op_idx)
     if (exp->repeat[exp_idx]) {
         for (i = 0; exp->repeat[exp_idx][i]; ++i);
         exp->repeat[exp_idx] = realloc(exp->repeat[exp_idx], (i + 2) * sizeof *exp->repeat[exp_idx]);
+        if (!exp->repeat[exp_idx]) {
+            LOGMEM;
+            return;
+        }
         exp->repeat[exp_idx][i] = repeat_op_idx;
         exp->repeat[exp_idx][i + 1] = 0;
     } else {
         exp->repeat[exp_idx] = calloc(2, sizeof *exp->repeat[exp_idx]);
+        if (!exp->repeat[exp_idx]) {
+            LOGMEM;
+            return;
+        }
         exp->repeat[exp_idx][0] = repeat_op_idx;
     }
 }
@@ -1770,12 +1852,34 @@ parse_expr(const char *expr, uint32_t line)
 
     /* init lyxp_expr structure */
     ret = malloc(sizeof *ret);
+    if (!ret) {
+        LOGMEM;
+        return NULL;
+    }
     ret->expr = expr;
     ret->used = 0;
     ret->size = LYXP_EXPR_SIZE_START;
     ret->tokens = malloc(ret->size * sizeof *ret->tokens);
+    if (!ret->tokens) {
+        LOGMEM;
+        free(ret);
+        return NULL;
+    }
     ret->expr_pos = malloc(ret->size * sizeof *ret->expr_pos);
+    if (!ret->expr_pos) {
+        LOGMEM;
+        free(ret->tokens);
+        free(ret);
+        return NULL;
+    }
     ret->tok_len = malloc(ret->size * sizeof *ret->tok_len);
+    if (!ret->tok_len) {
+        LOGMEM;
+        free(ret->tokens);
+        free(ret->expr_pos);
+        free(ret);
+        return NULL;
+    }
 
     while (is_xmlws(expr[parsed])) {
         ++parsed;
@@ -1983,6 +2087,10 @@ parse_expr(const char *expr, uint32_t line)
 
     /* prealloc repeat */
     ret->repeat = calloc(ret->size, sizeof *ret->repeat);
+    if (!ret->repeat) {
+        LOGMEM;
+        goto error;
+    }
 
     return ret;
 
@@ -2099,7 +2207,11 @@ xpath_concat(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_nod
     for (i = 0; i < arg_count; ++i) {
         lyxp_set_cast(&args[i], LYXP_SET_STRING, cur_node, when_must_eval);
 
-        str = realloc(str, (used + strlen(args[i].value.str)) * sizeof(char));
+        str = ly_realloc(str, (used + strlen(args[i].value.str)) * sizeof(char));
+        if (!str) {
+            LOGMEM;
+            return -1;
+        }
         strcpy(str + used - 1, args[i].value.str);
         used += strlen(args[i].value.str);
     }
@@ -2652,6 +2764,10 @@ xpath_normalize_space(struct lyxp_set *args, uint16_t arg_count, struct lyd_node
     if (have_spaces) {
         /* it's enough, at least one character will go, makes space for ending '\0' */
         new = malloc(strlen(set->value.str) * sizeof(char));
+        if (!new) {
+            LOGMEM;
+            return -1;
+        }
         new_used = 0;
 
         space_before = 0;
@@ -2676,7 +2792,11 @@ xpath_normalize_space(struct lyxp_set *args, uint16_t arg_count, struct lyd_node
             --new_used;
         }
 
-        new = realloc(new, (new_used + 1) * sizeof(char));
+        new = ly_realloc(new, (new_used + 1) * sizeof(char));
+        if (!new) {
+            LOGMEM;
+            return -1;
+        }
         new[new_used] = '\0';
 
         lydict_remove(ctx, set->value.str);
@@ -3154,7 +3274,16 @@ xpath_sum(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_node, 
 
     set_item.type = LYXP_SET_NODE_SET;
     set_item.value.nodes = malloc(sizeof *set_item.value.nodes);
+    if (!set_item.value.nodes) {
+        LOGMEM;
+        return -1;
+    }
     set_item.node_type = malloc(sizeof *set_item.node_type);
+    if (!set_item.node_type) {
+        LOGMEM;
+        free(set_item.value.nodes);
+        return -1;
+    }
     set_item.used = 1;
     set_item.size = 1;
     set_item.pos = 0;
@@ -3267,6 +3396,10 @@ xpath_translate(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_
     lyxp_set_cast(&args[2], LYXP_SET_STRING, cur_node, when_must_eval);
 
     new = malloc((strlen(args[0].value.str) + 1) * sizeof(char));
+    if (!new) {
+        LOGMEM;
+        return -1;
+    }
     new_used = 0;
 
     have_removed = 0;
@@ -3297,7 +3430,11 @@ xpath_translate(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *cur_
     }
 
     if (have_removed) {
-        new = realloc(new, (new_used + 1) * sizeof(char));
+        new = ly_realloc(new, (new_used + 1) * sizeof(char));
+        if (!new) {
+            LOGMEM;
+            return -1;
+        }
     }
     new[new_used] = '\0';
 
@@ -5095,11 +5232,23 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
 
         /* copy predicate repeats, since they get deleted each time (probably not an ideal solution) */
         pred_repeat = calloc(brack2_exp - orig_exp, sizeof *pred_repeat);
+        if (!pred_repeat) {
+            LOGMEM;
+            return -1;
+        }
         for (j = 0; j < brack2_exp - orig_exp; ++j) {
             if (exp->repeat[orig_exp + j]) {
                 for (rep_size = 0; exp->repeat[orig_exp + j][rep_size]; ++rep_size);
                 ++rep_size;
                 pred_repeat[j] = malloc(rep_size * sizeof **pred_repeat);
+                if (!pred_repeat[j]) {
+                    LOGMEM;
+                    for (i = 0; i < j; ++i) {
+                        free(pred_repeat[j]);
+                    }
+                    free(pred_repeat);
+                    return -1;
+                }
                 memcpy(pred_repeat[j], exp->repeat[orig_exp + j], rep_size * sizeof **pred_repeat);
             }
         }
@@ -5347,7 +5496,7 @@ static int
 eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
                    int when_must_eval, uint32_t line)
 {
-    int rc;
+    int rc = EXIT_FAILURE;
     int (*xpath_func)(struct lyxp_set *, uint16_t, struct lyd_node *, struct lyxp_set *, int, uint32_t) = NULL;
     uint16_t arg_count = 0, i;
     struct lyxp_set *args = NULL;
@@ -5465,6 +5614,10 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
         if (set) {
             arg_count = 1;
             args = calloc(1, sizeof *args);
+            if (!args) {
+                LOGMEM;
+                goto cleanup;
+            }
         }
         if ((rc = eval_expr(exp, exp_idx, cur_node, args, when_must_eval, line))) {
             goto cleanup;
@@ -5477,7 +5630,11 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
 
         if (set) {
             ++arg_count;
-            args = realloc(args, arg_count * sizeof *args);
+            args = ly_realloc(args, arg_count * sizeof *args);
+            if (!args) {
+                LOGMEM;
+                goto cleanup;
+            }
             memset(&args[arg_count - 1], 0, sizeof *args);
 
             if ((rc = eval_expr(exp, exp_idx, cur_node, &args[arg_count - 1], when_must_eval, line))) {
@@ -6404,6 +6561,10 @@ lyxp_set_print_xml(FILE *f, struct lyxp_set *set)
             asprintf(&str_num, "%lld", (long long)set->value.num);
         } else {
             asprintf(&str_num, "%03.1Lf", set->value.num);
+        }
+        if (!str_num) {
+            LOGMEM;
+            return;
         }
         ly_print(&out, "%s\n\n", str_num);
         free(str_num);

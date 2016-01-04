@@ -32,8 +32,8 @@
 #include <unistd.h>
 #include <string.h>
 
-#include "config.h"
-#include "../src/libyang.h"
+#include "../config.h"
+#include "../../src/libyang.h"
 
 struct ly_ctx *ctx = NULL;
 struct lyd_node *root = NULL;
@@ -77,11 +77,11 @@ generic_init(char *config_file, char *yang_file, char *yang_folder)
     close(fd);
     fd = -1;
 
-    if (!lys_parse(ctx, schema, yang_format)) {
+    if (!lys_parse_data(ctx, schema, yang_format)) {
         goto error;
     }
 
-    root = lyd_parse(ctx, config, in_format, LYD_OPT_STRICT);
+    root = lyd_parse_data(ctx, config, in_format, LYD_OPT_STRICT);
     if (!root) {
         goto error;
     }
@@ -110,9 +110,9 @@ static int
 setup_f(void **state)
 {
     (void) state; /* unused */
-    char *config_file = TESTS_DIR"/config/hello.xml";
-    char *yang_file = TESTS_DIR"/config/hello@2015-06-08.yin";
-    char *yang_folder = TESTS_DIR"/config";
+    char *config_file = TESTS_DIR"/data/files/hello.xml";
+    char *yang_file = TESTS_DIR"/data/files/hello@2015-06-08.yin";
+    char *yang_folder = TESTS_DIR"/data/files";
     int rc;
 
     rc = generic_init(config_file, yang_file, yang_folder);

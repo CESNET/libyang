@@ -43,12 +43,31 @@
 extern "C" {
 #endif
 
+struct linenoiseState {
+    int ifd;            /* Terminal stdin file descriptor. */
+    int ofd;            /* Terminal stdout file descriptor. */
+    char *buf;          /* Edited line buffer. */
+    size_t buflen;      /* Edited line buffer size. */
+    const char *prompt; /* Prompt to display. */
+    size_t plen;        /* Prompt length. */
+    size_t pos;         /* Current cursor position. */
+    size_t oldpos;      /* Previous refresh cursor position. */
+    size_t len;         /* Current edited line length. */
+    size_t cols;        /* Number of columns in terminal. */
+    size_t maxrows;     /* Maximum num of rows used so far (multiline mode) */
+    int rawmode;
+    int history_index;  /* The history index we are currently editing. */
+};
+
+extern struct linenoiseState ls;
+
 typedef struct linenoiseCompletions {
-  size_t len;
-  char **cvec;
+    int path;
+    size_t len;
+    char **cvec;
 } linenoiseCompletions;
 
-typedef void(linenoiseCompletionCallback)(const char *, linenoiseCompletions *);
+typedef void(linenoiseCompletionCallback)(const char *, const char *, linenoiseCompletions *);
 void linenoiseSetCompletionCallback(linenoiseCompletionCallback *);
 void linenoiseAddCompletion(linenoiseCompletions *, const char *);
 
@@ -60,6 +79,11 @@ int linenoiseHistoryLoad(const char *filename);
 void linenoiseClearScreen(void);
 void linenoiseSetMultiLine(int ml);
 void linenoisePrintKeyCodes(void);
+
+void linenoisePathCompletion(const char *, const char *, linenoiseCompletions *);
+void linenoiseRefreshLine(void);
+int linenoiseEnableRawMode(int fd);
+void linenoiseDisableRawMode(int fd);
 
 #ifdef __cplusplus
 }

@@ -27,11 +27,24 @@
 #include "common.h"
 
 volatile uint8_t ly_log_level = LY_LLERR;
+static void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg);
 
 API void
 ly_verb(LY_LOG_LEVEL level)
 {
     ly_log_level = level;
+}
+
+API void
+ly_set_log_clb(void (*clb)(LY_LOG_LEVEL, const char *))
+{
+    ly_log_clb = clb;
+}
+
+API void
+(*ly_get_log_clb(void))(LY_LOG_LEVEL, const char *)
+{
+    return ly_log_clb;
 }
 
 static void
@@ -42,7 +55,11 @@ log_vprintf(LY_LOG_LEVEL level, const char *format, va_list args)
 
     vsnprintf(prv_msg, PRV_MSG_SIZE - 1, format, args);
     prv_msg[PRV_MSG_SIZE - 1] = '\0';
-    fprintf(stderr, "libyang[%d]: %s\n", level, prv_msg);
+    if (ly_log_clb) {
+        ly_log_clb(level, prv_msg);
+    } else {
+        fprintf(stderr, "libyang[%d]: %s\n", level, prv_msg);
+    }
 #undef PRV_MSG_SIZE
 }
 
@@ -87,6 +104,9 @@ const char *ly_errs[] = {
 /* LYE_KEY_DUP */      "Key identifier \"%s\" is not unique.",
 /* LYE_INREGEX */      "Regular expression \"%s\" is not valid (%s).",
 /* LYE_INRESOLV */     "Failed to resolve %s \"%s\".",
+/* LYE_INSTATUS */     "A \"%s\" definition %s references \"%s\" definition %s.",
+/* LYE_OBSDATA */      "Obsolete data \"%s\" instantiated.",
+/* LYE_OBSTYPE */      "Data node \"%s\" with obsolete type \"%s\" instantiated.",
 
 /* LYE_NORESOLV */     "No resolvents found for \"%s\".",
 /* LYE_INELEM */       "Unknown element \"%s\".",
@@ -115,6 +135,7 @@ ly_vlog(enum LY_ERR code, uint32_t line, ...)
 {
     va_list ap;
     const char *fmt;
+    char line_msg[41];
 
     if (line == UINT_MAX) {
         return;
@@ -122,7 +143,12 @@ ly_vlog(enum LY_ERR code, uint32_t line, ...)
 
     ly_errno = LY_EVALID;
     if (line) {
-        fprintf(stderr, "libyang[%d]: Parser fails around the line %u.\n", LY_LLERR, line);
+        if (ly_log_clb) {
+            sprintf(line_msg, "Parser fails around the line %u.", line);
+            ly_log_clb(LY_LLERR, line_msg);
+        } else {
+            fprintf(stderr, "libyang[%d]: Parser fails around the line %u.\n", LY_LLERR, line);
+        }
     }
 
     if (code == LYE_LINE) {

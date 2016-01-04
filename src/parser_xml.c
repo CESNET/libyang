@@ -168,7 +168,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     struct lys_node *schema = NULL;
     struct lyd_attr *dattr, *dattr_iter;
     struct lyxml_attr *attr;
-    struct lyxml_elem *first_child, *last_child, *child, *next;
+    struct lyxml_elem *tmp_xml, *child, *next;
     int i, havechildren, r;
     int ret = 0;
 
@@ -287,6 +287,11 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         LOGINT;
         return -1;
     }
+    if (!(*result)) {
+        LOGMEM;
+        return -1;
+    }
+
     (*result)->parent = parent;
     if (parent && !parent->child) {
         parent->child = *result;
@@ -314,24 +319,31 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             goto error;
         }
     } else if (schema->nodetype == LYS_ANYXML && !(options & LYD_OPT_FILTER)) {
-        /* unlink xml children, they will be the anyxml value */
-        first_child = last_child = NULL;
-        LY_TREE_FOR(xml->child, child) {
-            lyxml_unlink_elem(ctx, child, 1);
-            if (!first_child) {
-                first_child = child;
-                last_child = child;
-            } else {
-                last_child->next = child;
-                child->prev = last_child;
-                last_child = child;
-            }
+        /* HACK unlink xml children and link them to a separate copy of xml */
+        tmp_xml = calloc(1, sizeof *tmp_xml);
+        if (!tmp_xml) {
+            LOGMEM;
+            goto error;
         }
-        if (first_child) {
-            first_child->prev = last_child;
-        }
+        memcpy(tmp_xml, xml, sizeof *tmp_xml);
+        /* keep attributes in the original */
+        tmp_xml->attr = NULL;
+        /* increase reference counters on strings */
+        tmp_xml->name = lydict_insert(ctx, tmp_xml->name, 0);
+        tmp_xml->content = lydict_insert(ctx, tmp_xml->content, 0);
+        xml->child = NULL;
+        /* xml is correct now */
 
-        ((struct lyd_node_anyxml *)(*result))->value = first_child;
+        LY_TREE_FOR(tmp_xml->child, child) {
+            child->parent = tmp_xml;
+        }
+        /* children are correct now */
+
+        tmp_xml->parent = NULL;
+        lyxml_unlink_elem(ctx, tmp_xml, 1);
+        /* tmp_xml is correct now */
+
+        ((struct lyd_node_anyxml *)*result)->value = tmp_xml;
         /* we can safely continue with xml, it's like it was, only without children */
     }
 
@@ -344,6 +356,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         }
 
         dattr = malloc(sizeof *dattr);
+        if (!dattr) {
+            goto error;
+        }
         dattr->next = NULL;
         dattr->name = attr->name;
         dattr->value = attr->value;
@@ -386,7 +401,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         }
     }
 
-    /* various validation checks */
+    /* rest of validation checks */
     ly_errno = 0;
     if (lyv_data_content(*result, options, LOGLINE(xml), unres)) {
         if (ly_errno) {
@@ -423,6 +438,10 @@ lyd_parse_xml_(struct ly_ctx *ctx, const struct lys_node *parent, struct lyxml_e
     }
 
     unres = calloc(1, sizeof *unres);
+    if (!unres) {
+        LOGMEM;
+        return NULL;
+    }
 
     iter = result = last = NULL;
     LY_TREE_FOR_SAFE(root->child, xmlaux, xmlelem) {

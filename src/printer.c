@@ -76,9 +76,8 @@ ly_print(struct lyout *out, const char *format, ...)
     case LYOUT_MEMORY:
         count = vasprintf(&msg, format, ap);
         if (out->method.mem.len + count + 1 > out->method.mem.size) {
-            aux = realloc(out->method.mem.buf, out->method.mem.len + count + 1);
+            aux = ly_realloc(out->method.mem.buf, out->method.mem.len + count + 1);
             if (!aux) {
-                free(out->method.mem.buf);
                 out->method.mem.buf = NULL;
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;
@@ -117,9 +116,8 @@ ly_write(struct lyout *out, const char *buf, size_t count)
         return fwrite(buf, sizeof *buf, count, out->method.f);
     case LYOUT_MEMORY:
         if (out->method.mem.len + count + 1 > out->method.mem.size) {
-            aux = realloc(out->method.mem.buf, out->method.mem.len + count + 1);
+            aux = ly_realloc(out->method.mem.buf, out->method.mem.len + count + 1);
             if (!aux) {
-                free(out->method.mem.buf);
                 out->method.mem.buf = NULL;
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;
@@ -159,7 +157,7 @@ lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT for
 }
 
 API int
-lys_print(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
 {
     struct lyout out;
 
@@ -246,7 +244,7 @@ lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format)
 }
 
 API int
-lyd_print(FILE *f, const struct lyd_node *root, LYD_FORMAT format)
+lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format)
 {
     struct lyout out;
 

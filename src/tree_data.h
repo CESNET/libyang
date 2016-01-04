@@ -212,6 +212,14 @@ struct lyd_node *lyd_new_anyxml(struct lyd_node *parent, const struct lys_module
                                 const char *val_xml);
 
 /**
+ * @brief Create a new output node in a data tree.
+ *
+ * @param[in] rpc_schema Schema node of the RPC of the output.
+ * @return New node, NULL on error.
+ */
+struct lyd_node *lyd_new_output(const struct lys_node *rpc_schema);
+
+/**
  * @brief Create a copy of the specified data tree \p node. Namespaces are copied as needed,
  * schema references are kept the same.
  *
