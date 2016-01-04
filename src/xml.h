@@ -22,6 +22,7 @@
 #ifndef LY_XML_H_
 #define LY_XML_H_
 
+#include <sys/types.h>
 #include <stdio.h>
 
 /**

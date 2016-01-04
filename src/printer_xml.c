@@ -19,7 +19,7 @@
  *    may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
  */
-#define _XOPEN_SOURCE 700
+#define _GNU_SOURCE
 
 #include <stdlib.h>
 #include <stdio.h>
