@@ -1122,17 +1122,18 @@ error:
 
 /* logs directly */
 API struct lyxml_elem *
-lyxml_read_data(struct ly_ctx *ctx, const char *data, int UNUSED(options))
+lyxml_read_data(struct ly_ctx *ctx, const char *data, int options)
 {
     const char *c = data;
     unsigned int len;
-    struct lyxml_elem *root = NULL;
+    struct lyxml_elem *root, *first = NULL;
 
 #ifndef NDEBUG
     /* TODO: threads support */
     lineno = 1;
 #endif
 
+repeat:
     /* process document */
     while (*c) {
         if (is_xmlws(*c)) {
@@ -1170,7 +1171,17 @@ lyxml_read_data(struct ly_ctx *ctx, const char *data, int UNUSED(options))
 
     root = parse_elem(ctx, c, &len, NULL);
     if (!root) {
+        for(root = first->next; root; root = root->next) {
+            lyxml_free(ctx, root);
+        }
+        lyxml_free(ctx, first);
         return NULL;
+    } else if (!first) {
+        first = root;
+    } else {
+        first->prev->next = root;
+        root->prev = first->prev;
+        first->prev = root;
     }
     c += len;
 
@@ -1179,14 +1190,18 @@ lyxml_read_data(struct ly_ctx *ctx, const char *data, int UNUSED(options))
      */
     ign_xmlws(c);
     if (*c) {
-        LOGWRN("There are some not parsed data:\n%s", c);
+        if (options & LYXML_READ_MULTIROOT) {
+            goto repeat;
+        } else {
+            LOGWRN("There are some not parsed data:\n%s", c);
+        }
     }
 
-    return root;
+    return first;
 }
 
 API struct lyxml_elem *
-lyxml_read_path(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
+lyxml_read_path(struct ly_ctx *ctx, const char *filename, int options)
 {
     struct lyxml_elem *elem = NULL;
     struct stat sb;
@@ -1211,13 +1226,13 @@ lyxml_read_path(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
         LOGERR(LY_EINVAL, "File \"%s\" not a file.\n", filename);
         goto error;
     }
-    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    addr = mmap(NULL, sb.st_size + 1, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         LOGERR(LY_EMEM,"Map file into memory failed (%s()).", __func__);
         goto error;
     }
 
-    elem = lyxml_read_data(ctx, addr, 0);
+    elem = lyxml_read_data(ctx, addr, options);
     munmap(addr, sb.st_size);
     close(fd);
 
@@ -1289,7 +1304,7 @@ dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options)
         indent = 0;
     }
 
-    if (!(options & (LYXML_DUMP_OPEN|LYXML_DUMP_CLOSE|LYXML_DUMP_ATTRS)) || (options & LYXML_DUMP_OPEN))  {
+    if (!(options & (LYXML_DUMP_OPEN | LYXML_DUMP_CLOSE | LYXML_DUMP_ATTRS)) || (options & LYXML_DUMP_OPEN))  {
         /* opening tag */
         if (e->ns && e->ns->prefix) {
             size += ly_print(out, "%*s<%s:%s", indent, "", e->ns->prefix, e->name);
@@ -1366,6 +1381,28 @@ close:
     return size;
 }
 
+static int
+dump_siblings(struct lyout *out, const struct lyxml_elem *e, int options)
+{
+    const struct lyxml_elem *start, *iter;
+    int ret = 0;
+
+    if (e->parent) {
+        start = e->parent->child;
+    } else {
+        start = e;
+        while(start->prev && start->prev->next) {
+            start = start->prev;
+        }
+    }
+
+    LY_TREE_FOR(start, iter) {
+        ret += dump_elem(out, iter, 0, options);
+    }
+
+    return ret;
+}
+
 API int
 lyxml_dump_file(FILE *stream, const struct lyxml_elem *elem, int options)
 {
@@ -1378,7 +1415,11 @@ lyxml_dump_file(FILE *stream, const struct lyxml_elem *elem, int options)
     out.type = LYOUT_STREAM;
     out.method.f = stream;
 
-    return dump_elem(&out, elem, 0, options);
+    if (options & LYXML_DUMP_SIBLINGS) {
+        return dump_siblings(&out, elem, options);
+    } else {
+        return dump_elem(&out, elem, 0, options);
+    }
 }
 
 API int
@@ -1393,7 +1434,11 @@ lyxml_dump_fd(int fd, const struct lyxml_elem *elem, int options)
     out.type = LYOUT_FD;
     out.method.fd = fd;
 
-    return dump_elem(&out, elem, 0, options);
+    if (options & LYXML_DUMP_SIBLINGS) {
+        return dump_siblings(&out, elem, options);
+    } else {
+        return dump_elem(&out, elem, 0, options);
+    }
 }
 
 API int
@@ -1411,7 +1456,11 @@ lyxml_dump_mem(char **strp, const struct lyxml_elem *elem, int options)
     out.method.mem.len = 0;
     out.method.mem.size = 0;
 
-    r = dump_elem(&out, elem, 0, options);
+    if (options & LYXML_DUMP_SIBLINGS) {
+        r = dump_siblings(&out, elem, options);
+    } else {
+        r = dump_elem(&out, elem, 0, options);
+    }
 
     *strp = out.method.mem.buf;
     return r;
@@ -1430,5 +1479,9 @@ lyxml_dump_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), vo
     out.method.clb.f = writeclb;
     out.method.clb.arg = arg;
 
-    return dump_elem(&out, elem, 0, options);
+    if (options & LYXML_DUMP_SIBLINGS) {
+        return dump_siblings(&out, elem, options);
+    } else {
+        return dump_elem(&out, elem, 0, options);
+    }
 }

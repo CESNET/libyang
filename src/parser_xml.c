@@ -389,11 +389,10 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             } else {
                 r = xml_parse_data(ctx, child, NULL, *result, dlast, options, unres, &diter);
             }
-            if (options & LYD_OPT_DESTRUCT) {
-                lyxml_free(ctx, child);
-            }
             if (r) {
                 goto error;
+            } else if (options & LYD_OPT_DESTRUCT) {
+                lyxml_free(ctx, child);
             }
             if (diter) {
                 dlast = diter;
@@ -425,10 +424,10 @@ clear:
 }
 
 static struct lyd_node *
-lyd_parse_xml_(struct ly_ctx *ctx, const struct lys_node *parent, struct lyxml_elem *root, int options)
+lyd_parse_xml_(struct ly_ctx *ctx, const struct lys_node *parent, struct lyxml_elem **root, int options)
 {
     struct lyd_node *result, *next, *iter, *last;
-    struct lyxml_elem *xmlelem, *xmlaux;
+    struct lyxml_elem *xmlstart, *xmlelem, *xmlaux;
     struct unres_data *unres = NULL;
     int r;
 
@@ -443,24 +442,43 @@ lyd_parse_xml_(struct ly_ctx *ctx, const struct lys_node *parent, struct lyxml_e
         return NULL;
     }
 
-    iter = result = last = NULL;
-    LY_TREE_FOR_SAFE(root->child, xmlaux, xmlelem) {
-        r = xml_parse_data(ctx, xmlelem, parent, NULL, last, options, unres, &iter);
-        if (options & LYD_OPT_DESTRUCT) {
-            lyxml_free(ctx, xmlelem);
+    if (!(options & LYD_OPT_NOSIBLINGS)) {
+        /* locate the first root to process */
+        if ((*root)->parent) {
+            xmlstart = (*root)->parent->child;
+        } else {
+            xmlstart = *root;
+            while(xmlstart->prev->next) {
+                xmlstart = xmlstart->prev;
+            }
         }
+    } else {
+        xmlstart = *root;
+    }
+    iter = result = last = NULL;
+
+    LY_TREE_FOR_SAFE(xmlstart, xmlaux, xmlelem) {
+        r = xml_parse_data(ctx, xmlelem, parent, NULL, last, options, unres, &iter);
         if (r) {
             LY_TREE_FOR_SAFE(result, next, iter) {
                 lyd_free(iter);
             }
             result = NULL;
             goto cleanup;
+        } else if (options & LYD_OPT_DESTRUCT) {
+            lyxml_free(ctx, xmlelem);
+            *root = xmlaux;
         }
         if (iter) {
             last = iter;
         }
         if (!result) {
             result = iter;
+        }
+
+        if (options & LYD_OPT_NOSIBLINGS) {
+            /* stop after the first processed root */
+            break;
         }
     }
 
@@ -490,13 +508,13 @@ cleanup:
 }
 
 API struct lyd_node *
-lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int options)
+lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options)
 {
     return lyd_parse_xml_(ctx, NULL, root, options);
 }
 
 API struct lyd_node *
-lyd_parse_output_xml(const struct lys_node *rpc, struct lyxml_elem *root, int options)
+lyd_parse_output_xml(const struct lys_node *rpc, struct lyxml_elem **root, int options)
 {
     if (!rpc || (rpc->nodetype != LYS_RPC)) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
