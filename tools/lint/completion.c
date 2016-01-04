@@ -76,72 +76,28 @@ last_is_opt(const char *hint)
 }
 
 static void
-get_model_completion(const char *buf, char ***matches, unsigned int *match_count)
+get_model_completion(const char *hint, char ***matches, unsigned int *match_count)
 {
-    int i, j, no_arg;
-    const char *ptr;
+    int i, j;
     const char **names, **sub_names;
 
     *match_count = 0;
     *matches = NULL;
 
-    /* skip the command */
-    ptr = strchr(buf, ' ');
-    while (*ptr == ' ') {
-        ++ptr;
-    }
-
-    /* options - skip them */
-    while (*ptr == '-') {
-        /* -p, --print do not have an argument */
-        if (!strncmp(ptr, "-p", 2) || !strncmp(ptr, "--print", 7)) {
-            no_arg = 1;
-        } else {
-            no_arg = 0;
-        }
-
-        ptr = strchr(ptr, ' ');
-        /* option is last - no hint */
-        if (!ptr) {
-            return;
-        }
-        while (*ptr == ' ') {
-            ++ptr;
-        }
-
-        if (no_arg) {
-            continue;
-        }
-
-        ptr = strchr(ptr, ' ');
-        /* option argument is last - no hint */
-        if (!ptr) {
-            return;
-        }
-        while (*ptr == ' ') {
-            ++ptr;
-        }
-    };
-
-    /* now ptr points to the model name hint, can be just "" */
     names = ly_ctx_get_module_names(ctx);
     for (i = 0; names[i]; ++i) {
-        if (!strncmp(ptr, names[i], strlen(ptr))) {
+        if (!strncmp(hint, names[i], strlen(hint))) {
             ++(*match_count);
             *matches = realloc(*matches, *match_count * sizeof **matches);
-            (*matches)[*match_count-1] = malloc((ptr-buf)+strlen(names[i])+1);
-            strncpy((*matches)[*match_count-1], buf, ptr-buf);
-            strcpy((*matches)[*match_count-1]+(ptr-buf), names[i]);
+            (*matches)[*match_count-1] = strdup(names[i]);
         }
 
         sub_names = ly_ctx_get_submodule_names(ctx, names[i]);
         for (j = 0; sub_names[j]; ++j) {
-            if (!strncmp(ptr, sub_names[j], strlen(ptr))) {
+            if (!strncmp(hint, sub_names[j], strlen(hint))) {
                 ++(*match_count);
                 *matches = realloc(*matches, *match_count * sizeof **matches);
-                (*matches)[*match_count-1] = malloc((ptr-buf)+strlen(sub_names[j])+1);
-                strncpy((*matches)[*match_count-1], buf, ptr-buf);
-                strcpy((*matches)[*match_count-1]+(ptr-buf), sub_names[j]);
+                (*matches)[*match_count-1] = strdup(sub_names[j]);
             }
         }
         free(sub_names);
@@ -161,8 +117,8 @@ complete_cmd(const char *buf, const char *hint, linenoiseCompletions *lc)
             || !strncmp(buf, "config ", 7) || !strncmp(buf, "filter ", 7)
             || !strncmp(buf, "xpath ", 6)) && !last_is_opt(hint)) {
         linenoisePathCompletion(buf, hint, lc);
-    } else if (!strncmp(buf, "print ", 6) || !strncmp(buf, "feature ", 8)) {
-        get_model_completion(buf, &matches, &match_count);
+    } else if ((!strncmp(buf, "print ", 6) || !strncmp(buf, "feature ", 8)) && !last_is_opt(hint)) {
+        get_model_completion(hint, &matches, &match_count);
     } else if (!strchr(buf, ' ') && hint[0]) {
         get_cmd_completion(hint, &matches, &match_count);
     }
