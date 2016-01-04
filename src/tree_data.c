@@ -370,9 +370,9 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 
     /* check placing the node to the appropriate place according to the schema (if LYS_OUTPUT is returned,
      * the parent's schema will never match and it fails as it should) */
-    for (sparent = node->schema->parent;
+    for (sparent = lys_parent(node->schema);
          sparent && !(sparent->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_OUTPUT | LYS_NOTIF));
-         sparent = sparent->parent);
+         sparent = lys_parent(sparent));
     if (sparent != parent->schema) {
         return EXIT_FAILURE;
     }
@@ -410,12 +410,12 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
     }
 
     /* check placing the node to the appropriate place according to the schema */
-    for (par1 = sibling->schema->parent;
+    for (par1 = lys_parent(sibling->schema);
          par1 && !(par1->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF));
-         par1 = par1->parent);
-    for (par2 = node->schema->parent;
+         par1 = lys_parent(par1));
+    for (par2 = lys_parent(node->schema);
          par2 && !(par2->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF));
-         par2 = par2->parent);
+         par2 = lys_parent(par2));
     if (par1 != par2) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
