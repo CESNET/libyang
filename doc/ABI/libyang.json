@@ -1,0 +1,7 @@
+{
+  "Name":           "libyang",
+  "SourceDir":      "src/libyang/",
+  "ChangeLog":      "On",
+  "HeadersDiff":    "On",
+  "PkgDiff":        "On",
+}
