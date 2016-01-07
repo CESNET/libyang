@@ -142,6 +142,7 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
     unsigned int i, j;
     struct lyd_set *s1 = NULL, *s2 = NULL;
     int copy;
+    int ret = EXIT_FAILURE;
 
     if (!to || !from || to->schema != from->schema) {
         ly_errno = LY_EINVAL;
@@ -169,16 +170,26 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
              */
             s1 = lyd_set_new();
             s2 = lyd_set_new();
+            if (!s1 || !s2) {
+                LOGMEM;
+                goto cleanup;
+            }
             LY_TREE_FOR(to->child, diter1) {
                 /* is selection node */
                 if ((diter1->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
                         && !((struct lyd_node_leaf_list *)diter1)->value_str) {
-                    lyd_set_add(s1, diter1);
+                    if (lyd_set_add(s1, diter1)) {
+                        goto cleanup;
+                    }
                 } else if ((diter1->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter1)->value->child) {
-                    lyd_set_add(s1, diter1);
+                    if (lyd_set_add(s1, diter1)) {
+                        goto cleanup;
+                    }
                 } else if (diter1->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) {
                     /* or containment node */
-                    lyd_set_add(s1, diter1);
+                    if (lyd_set_add(s1, diter1)) {
+                        goto cleanup;
+                    }
                 }
             }
 
@@ -186,12 +197,18 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
                 /* is selection node */
                 if ((diter2->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
                         && !((struct lyd_node_leaf_list *)diter2)->value_str) {
-                    lyd_set_add(s2, diter2);
+                    if (lyd_set_add(s2, diter2)) {
+                        goto cleanup;
+                    }
                 } else if ((diter2->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter2)->value->child) {
-                    lyd_set_add(s2, diter2);
+                    if (lyd_set_add(s2, diter2)) {
+                        goto cleanup;
+                    }
                 } else if (diter2->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) {
                     /* or containment node */
-                    lyd_set_add(s2, diter2);
+                    if (lyd_set_add(s2, diter2)) {
+                        goto cleanup;
+                    }
                 }
             }
 
@@ -277,11 +294,13 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
          * keep the default branch to make compiler silent */
         break;
     }
+    ret = EXIT_SUCCESS;
 
+cleanup:
     lyd_set_free(s1);
     lyd_set_free(s2);
 
-    return EXIT_SUCCESS;
+    return ret;
 }
 
 int
