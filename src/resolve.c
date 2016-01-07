@@ -2186,6 +2186,7 @@ resolve_path_arg_data(struct lyd_node *node, const char *path, int first, uint32
                 ret->node = calloc(1, sizeof *ret->node);
                 if (!ret->node) {
                     LOGMEM;
+                    rc = -1;
                     goto error;
                 }
             }
