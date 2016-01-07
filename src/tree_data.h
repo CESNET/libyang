@@ -296,6 +296,13 @@ int lyd_unlink(struct lyd_node *node);
 void lyd_free(struct lyd_node *node);
 
 /**
+ * @brief Free (and unlink) the specified data (sub)tree and all its siblings (preceding as well as following).
+ *
+ * @param[in] node One of the siblings root element of the (sub)trees to be freed.
+ */
+void lyd_free_withsiblings(struct lyd_node *node);
+
+/**
  * @brief Insert attribute into the data node.
  *
  * @param[in] parent Data node where to place the attribute

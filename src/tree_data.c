@@ -900,6 +900,27 @@ lyd_free(struct lyd_node *node)
     free(node);
 }
 
+API void
+lyd_free_withsiblings(struct lyd_node *node)
+{
+    struct lyd_node *iter, *aux;
+
+    if (!node) {
+        return;
+    }
+
+    /* optimization - avoid freeing (unlinking) the last node of the siblings list */
+    /* so, first, free the node's predecessors to the beginning of the list ... */
+    for(iter = node->prev; iter->next; iter = aux) {
+        aux = iter->prev;
+        lyd_free(iter);
+    }
+    /* ... then, the node is the first in the siblings list, so free them all */
+    LY_TREE_FOR_SAFE(node, aux, iter) {
+        lyd_free(iter);
+    }
+}
+
 API char *
 lyxml_serialize(const struct lyxml_elem *anyxml)
 {
