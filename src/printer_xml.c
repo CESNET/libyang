@@ -64,7 +64,7 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node)
             mlist_new = malloc(sizeof *mlist_new);
             if (!mlist_new) {
                 LOGMEM;
-                return;
+                goto print;
             }
             mlist_new->next = mlist;
             mlist_new->module = attr->module;
@@ -85,7 +85,7 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node)
                     mlist_new = malloc(sizeof *mlist_new);
                     if (!mlist_new) {
                         LOGMEM;
-                        return;
+                        goto print;
                     }
                     mlist_new->next = mlist;
                     mlist_new->module = attr->module;
@@ -95,6 +95,7 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node)
         LY_TREE_DFS_END(node->child, next, cur)}
     }
 
+print:
     /* print used namespaces */
     while (mlist) {
         mlist_new = mlist;
