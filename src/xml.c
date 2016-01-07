@@ -1171,10 +1171,12 @@ repeat:
 
     root = parse_elem(ctx, c, &len, NULL);
     if (!root) {
-        for(root = first->next; root; root = root->next) {
-            lyxml_free(ctx, root);
+        if (first) {
+            for (root = first->next; root; root = root->next) {
+                lyxml_free(ctx, root);
+            }
+            lyxml_free(ctx, first);
         }
-        lyxml_free(ctx, first);
         return NULL;
     } else if (!first) {
         first = root;
