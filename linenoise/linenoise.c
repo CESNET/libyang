@@ -508,7 +508,6 @@ void linenoisePathCompletion(const char *buf, const char *hint, linenoiseComplet
             continue;
         }
 
-        /* some serious pointer fun */
         if (!strncmp(ptr, ent->d_name, strlen(ptr))) {
             /* is it a directory? */
             strcpy(hint_ptr, ent->d_name);
