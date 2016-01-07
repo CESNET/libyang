@@ -192,9 +192,12 @@ searchpath:
         LOGWRN("No search path defined for the current context.");
     } else if (!result && localsearch) {
         /* search in local directory done, try context's search_path */
-        closedir(dir);
+        if (dir) {
+            closedir(dir);
+        }
         wd = strdup(ctx->models.search_path);
         if (!wd) {
+            dir = NULL;
             LOGMEM;
             goto cleanup;
         }
@@ -210,7 +213,9 @@ cleanup:
         free(wd);
     }
     free(cwd);
-    closedir(dir);
+    if (dir) {
+        closedir(dir);
+    }
 
     return result;
 }
