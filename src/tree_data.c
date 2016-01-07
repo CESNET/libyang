@@ -575,9 +575,13 @@ lyd_unlink(struct lyd_node *node)
         node->next->prev = node->prev;
     } else {
         /* unlinking the last node */
-        iter = node->prev;
-        while (iter->prev != node) {
-            iter = iter->prev;
+        if (node->parent) {
+            iter = node->parent->child;
+        } else {
+            iter = node->prev;
+            while (iter->prev != node) {
+                iter = iter->prev;
+            }
         }
         /* update the "last" pointer from the first node */
         iter->prev = node->prev;
