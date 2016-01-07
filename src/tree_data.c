@@ -1046,7 +1046,7 @@ lyd_set_add(struct lyd_set *set, struct lyd_node *node)
     }
 
     if (set->size == set->number) {
-        new = ly_realloc(set->set, (set->size + 8) * sizeof *(set->set));
+        new = realloc(set->set, (set->size + 8) * sizeof *(set->set));
         if (!new) {
             LOGMEM;
             return EXIT_FAILURE;
