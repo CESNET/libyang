@@ -5234,6 +5234,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         pred_repeat = calloc(brack2_exp - orig_exp, sizeof *pred_repeat);
         if (!pred_repeat) {
             LOGMEM;
+            lyxp_set_free(orig_set, ctx);
             return -1;
         }
         for (j = 0; j < brack2_exp - orig_exp; ++j) {
@@ -5247,6 +5248,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
                         free(pred_repeat[j]);
                     }
                     free(pred_repeat);
+                    lyxp_set_free(orig_set, ctx);
                     return -1;
                 }
                 memcpy(pred_repeat[j], exp->repeat[orig_exp + j], rep_size * sizeof **pred_repeat);
