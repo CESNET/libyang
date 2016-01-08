@@ -2377,6 +2377,8 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *source_no
  *
  * @param[in] path Path to use.
  * @param[in] parent_node Parent of the leafref.
+ * @param[in] parent_tpdf Flag if the parent node is actually typedef, in that case the path
+ *            has to contain absolute path
  * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line Line in the input file.
  * @param[out] ret Pointer to the resolved schema node. Can be NULL.
@@ -2384,7 +2386,7 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *source_no
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-resolve_path_arg_schema(const char *path, struct lys_node *parent_node, int first, uint32_t line,
+resolve_path_arg_schema(const char *path, struct lys_node *parent_node, int parent_tpdf, int first, uint32_t line,
                         const struct lys_node **ret)
 {
     const struct lys_node *node;
@@ -2414,6 +2416,12 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent_node, int firs
                 }
             } else if (parent_times > 0) {
                 /* node is the parent already, skip one ".." */
+                if (parent_tpdf) {
+                    /* the path is not allowed to contain relative path since we are in top level typedef */
+                    LOGVAL(LYE_NORESOLV, line, path);
+                    return -1;
+                }
+
                 node = parent_node;
                 i = 0;
                 while (1) {
@@ -3544,7 +3552,7 @@ static int
 resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, void *str_snode,
                           struct unres_schema *unres, int first, uint32_t line)
 {
-    int rc = -1, has_str = 0;
+    int rc = -1, has_str = 0, tpdf_flag = 0;
     struct lys_node *node;
     const char *base_name;
 
@@ -3573,7 +3581,15 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         node = str_snode;
         stype = item;
 
-        rc = resolve_path_arg_schema(stype->info.lref.path, node, first, line,
+        /* HACK - when there is no parent, we are in top level typedef and in that
+         * case, the path has to contain absolute path, so we let the resolve_path_arg_schema()
+         * know it via tpdf_flag */
+        if (!node) {
+            tpdf_flag = 1;
+            node = (struct lys_node *)stype->parent;
+        }
+
+        rc = resolve_path_arg_schema(stype->info.lref.path, node, tpdf_flag, first, line,
                                      (const struct lys_node **)&stype->info.lref.target);
         has_str = 0;
         break;
