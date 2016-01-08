@@ -425,7 +425,9 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
                    if (!set) {
                        set = lyd_set_new();
                    }
-                   lyd_set_add(set, (struct lyd_node *)parent);
+                   /* ignore return - memory error is logged and we will
+                    * check at least the rest of nodes we have */
+                   (void) lyd_set_add(set, (struct lyd_node *)parent);
                }
            }
 
