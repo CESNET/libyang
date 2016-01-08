@@ -1126,7 +1126,7 @@ lyxml_read_data(struct ly_ctx *ctx, const char *data, int options)
 {
     const char *c = data;
     unsigned int len;
-    struct lyxml_elem *root, *first = NULL;
+    struct lyxml_elem *root, *first = NULL, *next;
 
 #ifndef NDEBUG
     /* TODO: threads support */
@@ -1172,10 +1172,9 @@ repeat:
     root = parse_elem(ctx, c, &len, NULL);
     if (!root) {
         if (first) {
-            for (root = first->next; root; root = root->next) {
+            LY_TREE_FOR_SAFE(first, next, root) {
                 lyxml_free(ctx, root);
             }
-            lyxml_free(ctx, first);
         }
         return NULL;
     } else if (!first) {
