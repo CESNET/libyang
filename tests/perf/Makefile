@@ -18,11 +18,11 @@ test: validation validation_xml
 	cat data.xml >> data_xml.xml; \
 	echo "</config>" >> data_xml.xml; \
 	echo "Loading and validating data with $(ITEMS) items..."; \
-	echo "	libyang:"; \
-	time ./validation perftest.yin data.xml; \
+	echo "libyang"; \
+	TIME=" time  : %Es\n memory: %MKb" time ./validation perftest.yin data.xml | grep real | sed 's/* //'; \
 	echo; \
-	echo "	libxml2:"; \
-	time ./validation_xml perftest.yin data_xml.xml perftest-config.rng perftest-schematron.xsl; \
+	echo "libxml2"; \
+	TIME=" time  : %Es\n memory: %MKb" time ./validation_xml perftest.yin data_xml.xml perftest-config.rng perftest-schematron.xsl; \
 
 clean:
 	rm -rf validation validation_xml data.xml data_xml.xml
