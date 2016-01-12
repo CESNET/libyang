@@ -361,7 +361,7 @@ struct lys_type {
     LY_DATA_TYPE base;               /**< base type */
     struct lys_tpdf *der;            /**< pointer to the superior typedef. If NULL,
                                           structure provides information about one of the built-in types */
-    struct lys_tpdf *parent;         /**< except ::lys_tpdf, it can points also to ::lys_node_ leaf or lys_node_leaflist
+    struct lys_tpdf *parent;         /**< except ::lys_tpdf, it can points also to ::lys_node_leaf or ::lys_node_leaflist
                                           so access only the compatible members! */
 
     union {
@@ -1162,7 +1162,7 @@ struct lys_tpdf {
  */
 struct lys_unique {
     const char **expr;               /**< array of unique expressions specifying target leafs to be unique */
-    uint8_t expr_size;               /**< size of the #axpr array */
+    uint8_t expr_size;               /**< size of the #expr array */
 };
 
 /**

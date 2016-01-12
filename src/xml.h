@@ -113,7 +113,7 @@ struct lyxml_elem {
  */
 
 /**
- * @defgroup xmlreadoptions
+ * @defgroup xmlreadoptions XML parser options
  * @ingroup xmlparser
  *
  * Various options to change behavior of XML read functions (lyxml_read_*()).
