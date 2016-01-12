@@ -436,10 +436,10 @@ const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT f
 #define LYD_OPT_OBSOLETE  0x40  /**< By default, using obsolete statements (status set to obsolete) just generates
                                      a warning, but the processing continues. With this flag, using such a statement
                                      raises an error. */
-#define LYD_OPT_NOSIBLINGS 0x80 /**< Parse only the XML tree with the provided (in case of lyd_parse_*_xml() functions)
-                                     or the first (in case of other lyd_parse_*() functions) root element. By default,
-                                     the parser processes all top-level elements. This option applies only to XML
-                                     input data. */
+#define LYD_OPT_NOSIBLINGS 0x80 /**< Parse only the XML tree from the provided pointer (in case of lyd_parse_*_xml()
+                                     functions) or the first (in case of other lyd_parse_*() functions) root element
+                                     in the data. By default, the parser processes all top-level elements. This option
+                                     applies only to XML input data. */
 
 /**
  * @}
