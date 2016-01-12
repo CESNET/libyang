@@ -63,42 +63,6 @@ skip_ws(const char *data)
     return len;
 }
 
-int lyjson_dump_string(struct lyout *out, const char *text)
-{
-    unsigned int i, n;
-
-    if (!text) {
-        return 0;
-    }
-
-    ly_write(out, "\"", 1);
-    for (i = n = 0; text[i]; i++) {
-        if (text[i] < 0x20) {
-            /* control character */
-            n += ly_print(out, "\\u%.4X");
-        } else {
-            switch (text[i]) {
-            case '"':
-                n += ly_print(out, "\\\"");
-                break;
-            case '\\':
-                n += ly_print(out, "\\\\");
-                break;
-            case '/':
-                n += ly_print(out, "\\/");
-                break;
-            default:
-                ly_write(out, &text[i], 1);
-                n++;
-            }
-        }
-    }
-    ly_write(out, "\"", 1);
-
-    return n + 2;
-}
-
-
 static char *
 lyjson_parse_text(const char *data, unsigned int *len)
 {

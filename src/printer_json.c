@@ -36,6 +36,39 @@
 
 void json_print_nodes(struct lyout *out, int level, const struct lyd_node *root);
 
+static int
+json_print_string(struct lyout *out, const char *text)
+{
+    unsigned int i, n;
+
+    if (!text) {
+        return 0;
+    }
+
+    ly_write(out, "\"", 1);
+    for (i = n = 0; text[i]; i++) {
+        if (text[i] < 0x20) {
+            /* control character */
+            n += ly_print(out, "\\u%.4X");
+        } else {
+            switch (text[i]) {
+            case '"':
+                n += ly_print(out, "\\\"");
+                break;
+            case '\\':
+                n += ly_print(out, "\\\\");
+                break;
+            default:
+                ly_write(out, &text[i], 1);
+                n++;
+            }
+        }
+    }
+    ly_write(out, "\"", 1);
+
+    return n + 2;
+}
+
 static void
 json_print_attrs(struct lyout *out, int level, const struct lyd_node *node)
 {
@@ -43,11 +76,12 @@ json_print_attrs(struct lyout *out, int level, const struct lyd_node *node)
 
     for (attr = node->attr; attr; attr = attr->next) {
         if (attr->module != node->schema->module) {
-            ly_print(out, "%*s\"%s:%s\":\"%s\"%s", LEVEL, INDENT, attr->module->name, attr->name, attr->value,
-                     attr->next ? ",\n" : "\n");
+            ly_print(out, "%*s\"%s:%s\":", LEVEL, INDENT, attr->module->name, attr->name);
         } else {
-            ly_print(out, "%*s\"%s\":\"%s\"%s", LEVEL, INDENT, attr->name, attr->value, attr->next ? ",\n" : "\n");
+            ly_print(out, "%*s\"%s\":", LEVEL, INDENT, attr->name);
         }
+        json_print_string(out, attr->value ? attr->value : "");
+        ly_print(out, "%s", attr->next ? ",\n" : "\n");
     }
 }
 
@@ -79,7 +113,7 @@ json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int o
     case LY_TYPE_ENUM:
     case LY_TYPE_IDENT:
     case LY_TYPE_INST:
-        ly_print(out, "\"%s\"", leaf->value_str ? leaf->value_str : "");
+        json_print_string(out, leaf->value_str ? leaf->value_str : "");
         break;
 
     case LY_TYPE_BOOL:
@@ -108,7 +142,7 @@ json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int o
         ly_print(out, "\"(!error!)\"");
     }
 
-    /* print attributes as sibling leaf */
+    /* print attributes as sibling leafs */
     if (!onlyvalue && node->attr) {
         if (schema) {
             ly_print(out, ",\n%*s\"@%s:%s\": {\n", LEVEL, INDENT, schema, node->schema->name);
