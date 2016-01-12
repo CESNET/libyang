@@ -40,6 +40,31 @@
 #include "resolve.h"
 #include "tree_internal.h"
 
+int
+lyp_is_rpc(struct lys_node *node)
+{
+    assert(node);
+
+    while(node->parent) {
+        node = node->parent;
+    }
+
+    if (node->nodetype == LYS_RPC) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+int
+lyp_check_options(int options)
+{
+    int x = options & LYD_OPT_TYPEMASK;
+
+    /* "is power of 2" algorithm, with 0 exception */
+    return x ? !(x && !(x & (x - 1))) : 0;
+}
+
 void
 lyp_set_implemented(struct lys_module *module)
 {

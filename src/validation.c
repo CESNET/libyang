@@ -306,6 +306,9 @@ cleanup:
 int
 lyv_data_context(const struct lyd_node *node, int options, unsigned int line, struct unres_data *unres)
 {
+    struct lyd_node *iter;
+    struct lys_node *siter = NULL;
+
     assert(node);
 
     /* check if the node instance is enabled by if-feature */
@@ -326,9 +329,29 @@ lyv_data_context(const struct lyd_node *node, int options, unsigned int line, st
     }
 
     /* check for (non-)presence of status data in edit-config data */
-    if ((options & (LYD_OPT_EDIT | LYD_OPT_GETCONFIG)) && (node->schema->flags & LYS_CONFIG_R)) {
+    if ((options & (LYD_OPT_EDIT | LYD_OPT_GETCONFIG | LYD_OPT_CONFIG)) && (node->schema->flags & LYS_CONFIG_R)) {
         LOGVAL(LYE_INELEM, line, node->schema->name);
         return EXIT_FAILURE;
+    }
+
+    /* check elements order in case of RPC's input and output */
+    if (lyp_is_rpc(node->schema)) {
+        siter = node->schema->prev;
+        for (iter = node->prev; iter->next; iter = iter->prev) {
+            while (siter->next) {
+                if (siter == iter->schema) {
+                    break;
+                }
+                siter = siter->prev;
+            }
+
+            if (!siter->next) {
+                /* schema node of the node's predecessors not found in node's schema node predecessors
+                 * so the elements are in wrong order */
+                LOGVAL(LYE_INORDER, line, node->schema->name, iter->schema->name);
+                return EXIT_FAILURE;
+            }
+        }
     }
 
     return EXIT_SUCCESS;

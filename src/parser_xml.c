@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
@@ -36,19 +37,25 @@
 
 /* does not log */
 static struct lys_node *
-xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start)
+xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start, int options)
 {
     struct lys_node *result, *aux;
 
     LY_TREE_FOR(start, result) {
-        /* skip groupings */
+        /* skip groupings ... */
         if (result->nodetype == LYS_GROUPING) {
+            continue;
+        /* ... and output in case of RPC ... */
+        } else if (result->nodetype == LYS_OUTPUT && (options & LYD_OPT_RPC)) {
+            continue;
+        /* ... and input in case of RPC reply */
+        } else if (result->nodetype == LYS_INPUT && (options & LYD_OPT_RPCREPLY)) {
             continue;
         }
 
         /* go into cases, choices, uses and in RPCs into input and output */
         if (result->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES | LYS_INPUT | LYS_OUTPUT)) {
-            aux = xml_data_search_schemanode(xml, result->child);
+            aux = xml_data_search_schemanode(xml, result->child, options);
             if (aux) {
                 /* we have matching result */
                 return aux;
@@ -183,7 +190,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
 
     /* find schema node */
     if (schema_parent) {
-        schema = xml_data_search_schemanode(xml, schema_parent->child);
+        schema = xml_data_search_schemanode(xml, schema_parent->child, options);
     } else if (!parent) {
         /* starting in root */
         for (i = 0; i < ctx->models.used; i++) {
@@ -191,6 +198,21 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             if (ctx->models.list[i]->ns == xml->ns->value) {
                 /* get the proper schema node */
                 LY_TREE_FOR(ctx->models.list[i]->data, schema) {
+                    /* skip nodes in module's data which are not expected here according to options' data type */
+                    if (options & LYD_OPT_RPC) {
+                        if (schema->nodetype != LYS_RPC) {
+                            continue;
+                        }
+                    } else if (options & LYD_OPT_NOTIF) {
+                        if (schema->nodetype != LYS_NOTIF) {
+                            continue;
+                        }
+                    } else if (!(options & LYD_OPT_RPCREPLY)) {
+                        /* rest of the data types except RPCREPLY which cannot be here */
+                        if (schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
+                            continue;
+                        }
+                    }
                     if (schema->name == xml->name) {
                         break;
                     }
@@ -200,7 +222,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         }
     } else {
         /* parsing some internal node, we start with parent's schema pointer */
-        schema = xml_data_search_schemanode(xml, parent->schema->child);
+        schema = xml_data_search_schemanode(xml, parent->schema->child, options);
     }
     if (!schema) {
         if ((options & LYD_OPT_STRICT) || ly_ctx_get_module_by_ns(ctx, xml->ns->value, NULL)) {
@@ -423,23 +445,39 @@ clear:
     return ret;
 }
 
-static struct lyd_node *
-lyd_parse_xml_(struct ly_ctx *ctx, const struct lys_node *parent, struct lyxml_elem **root, int options)
+API struct lyd_node *
+lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 {
-    struct lyd_node *result, *next, *iter, *last;
-    struct lyxml_elem *xmlstart, *xmlelem, *xmlaux;
-    struct unres_data *unres = NULL;
+    va_list ap;
     int r;
+    struct unres_data *unres = NULL;
+    const struct lys_node *rpc = NULL;
+    struct lyd_node *result = NULL, *next, *iter, *last;
+    struct lyxml_elem *xmlstart, *xmlelem, *xmlaux;
 
     if (!ctx || !root) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
         return NULL;
     }
 
+    if (lyp_check_options(options)) {
+        LOGERR(LY_EINVAL, "%s: Invalid options (multiple data type flags set).", __func__);
+        return NULL;
+    }
+
+    va_start(ap, options);
+    if (options & LYD_OPT_RPCREPLY) {
+        rpc = va_arg(ap,  struct lys_node*);
+        if (!rpc || (rpc->nodetype != LYS_RPC)) {
+            LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+            goto cleanup;
+        }
+    }
+
     unres = calloc(1, sizeof *unres);
     if (!unres) {
         LOGMEM;
-        return NULL;
+        goto cleanup;
     }
 
     if (!(options & LYD_OPT_NOSIBLINGS)) {
@@ -458,7 +496,7 @@ lyd_parse_xml_(struct ly_ctx *ctx, const struct lys_node *parent, struct lyxml_e
     iter = result = last = NULL;
 
     LY_TREE_FOR_SAFE(xmlstart, xmlaux, xmlelem) {
-        r = xml_parse_data(ctx, xmlelem, parent, NULL, last, options, unres, &iter);
+        r = xml_parse_data(ctx, xmlelem, rpc, NULL, last, options, unres, &iter);
         if (r) {
             LY_TREE_FOR_SAFE(result, next, iter) {
                 lyd_free(iter);
@@ -497,29 +535,15 @@ lyd_parse_xml_(struct ly_ctx *ctx, const struct lys_node *parent, struct lyxml_e
     }
 
 cleanup:
-    free(unres->node);
-    free(unres->type);
+    if (unres) {
+        free(unres->node);
+        free(unres->type);
 #ifndef NDEBUG
-    free(unres->line);
+        free(unres->line);
 #endif
-    free(unres);
+        free(unres);
+    }
+    va_end(ap);
 
     return result;
-}
-
-API struct lyd_node *
-lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options)
-{
-    return lyd_parse_xml_(ctx, NULL, root, options);
-}
-
-API struct lyd_node *
-lyd_parse_output_xml(const struct lys_node *rpc, struct lyxml_elem **root, int options)
-{
-    if (!rpc || (rpc->nodetype != LYS_RPC)) {
-        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
-        return NULL;
-    }
-
-    return lyd_parse_xml_(rpc->module->ctx, rpc, root, options);
 }

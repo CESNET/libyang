@@ -63,10 +63,14 @@ cmd_data_help(void)
 {
     printf("data [-f (xml | json)] [-x OPTION] [-o <output-file>] <data-file-name>\n");
     printf("Accepted OPTIONs:\n");
-    printf("\tedit       - LYD_OPT_EDIT\n");
-    printf("\tfilter     - LYD_OPT_FILTER\n");
+    printf("\tconfig     - LYD_OPT_CONFIG\n");
     printf("\tget        - LYD_OPT_GET\n");
     printf("\tgetconfig  - LYD_OPT_GETCONFIG\n");
+    printf("\tedit       - LYD_OPT_EDIT\n");
+    printf("\trpc        - LYD_OPT_RPC\n");
+    /* printf("\trpcreply   - LYD_OPT_RPCREPLY\n"); */
+    printf("\tnotif      - LYD_OPT_NOTIF\n");
+    printf("\tfilter     - LYD_OPT_FILTER\n");
     printf("\tobsolete   - add LYD_OPT_OBSOLETE\n");
 }
 
@@ -363,18 +367,28 @@ cmd_data(const char *arg)
             break;
         case 's':
             options |= LYD_OPT_STRICT;
+            options |= LYD_OPT_OBSOLETE;
             break;
         case 'x':
-            if (!strcmp(optarg, "edit")) {
-                options = (options & 0xc3) | LYD_OPT_EDIT;
-            } else if (!strcmp(optarg, "filter")) {
-                options = (options & 0xc3) | LYD_OPT_FILTER;
+            if (!strcmp(optarg, "config")) {
+                options = (options & LYD_OPT_TYPEMASK) | LYD_OPT_CONFIG;
             } else if (!strcmp(optarg, "get")) {
-                options = (options & 0xc3) | LYD_OPT_GET;
+                options = (options & LYD_OPT_TYPEMASK) | LYD_OPT_GET;
             } else if (!strcmp(optarg, "getconfig")) {
-                options = (options & 0xc3) | LYD_OPT_GETCONFIG;
-            } else if (!strcmp(optarg, "obsolete")) {
-                options |= LYD_OPT_OBSOLETE;
+                options = (options & LYD_OPT_TYPEMASK) | LYD_OPT_GETCONFIG;
+            } else if (!strcmp(optarg, "edit")) {
+                options = (options & LYD_OPT_TYPEMASK) | LYD_OPT_EDIT;
+            } else if (!strcmp(optarg, "rpc")) {
+                options = (options & LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
+            /* support for RPC replies is missing, because it requires to provide
+             * also pointer to the reply's RPC request
+            } else if (!strcmp(optarg, "rpcreply")) {
+                options = (options & LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY;
+             */
+            } else if (!strcmp(optarg, "notif")) {
+                options = (options & LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
+            } else if (!strcmp(optarg, "filter")) {
+                options = (options & LYD_OPT_TYPEMASK) | LYD_OPT_FILTER;
             }
             break;
         case '?':

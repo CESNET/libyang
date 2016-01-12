@@ -25,6 +25,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <limits.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -64,11 +65,7 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
     case LYD_XML:
     case LYD_XML_FORMAT:
         xml = lyxml_read_data(ctx, data, xmlopt);
-        if (parent) {
-            result = lyd_parse_output_xml(parent, &xml, options);
-        } else {
-            result = lyd_parse_xml(ctx, &xml, options);
-        }
+        result = lyd_parse_xml(ctx, &xml, options, parent);
         lyxml_free(ctx, xml);
         break;
     case LYD_JSON:
@@ -82,18 +79,47 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
     return result;
 }
 
-API struct lyd_node *
-lyd_parse_data(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
+static struct lyd_node *
+lyd_parse_data_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, va_list ap)
 {
-    return lyd_parse_(ctx, NULL, data, format, options);
+    const struct lys_node *rpc = NULL;
+
+    if (lyp_check_options(options)) {
+        LOGERR(LY_EINVAL, "%s: Invalid options (multiple data type flags set).", __func__);
+        return NULL;
+    }
+
+    if (options & LYD_OPT_RPCREPLY) {
+        rpc = va_arg(ap,  struct lys_node*);
+        if (!rpc || (rpc->nodetype != LYS_RPC)) {
+            LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+            return NULL;
+        }
+    }
+
+    return lyd_parse_(ctx, rpc, data, format, options);
 }
 
 API struct lyd_node *
-lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options)
+lyd_parse_data(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, ...)
+{
+    va_list ap;
+    struct lyd_node *result;
+
+    va_start(ap, options);
+    result = lyd_parse_data_(ctx, data, format, options, ap);
+    va_end(ap);
+
+    return result;
+}
+
+API struct lyd_node *
+lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, ...)
 {
     struct lyd_node *ret;
     struct stat sb;
     char *data;
+    va_list ap;
 
     if (!ctx || (fd == -1)) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -111,16 +137,21 @@ lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options)
         return NULL;
     }
 
-    ret = lyd_parse_data(ctx, data, format, options);
+    va_start(ap, options);
+    ret = lyd_parse_data_(ctx, data, format, options, ap);
+
+    va_end(ap);
     munmap(data, sb.st_size);
+
     return ret;
 }
 
 API struct lyd_node *
-lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options)
+lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options, ...)
 {
     int fd;
     struct lyd_node *ret;
+    va_list ap;
 
     if (!ctx || !path) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -133,20 +164,13 @@ lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int opti
         return NULL;
     }
 
+    va_start(ap, options);
     ret = lyd_parse_fd(ctx, fd, format, options);
+
+    va_end(ap);
     close(fd);
+
     return ret;
-}
-
-API struct lyd_node *
-lyd_parse_output_data(const struct lys_node *rpc, const char *data, LYD_FORMAT format, int options)
-{
-    if (!rpc || (rpc->nodetype != LYS_RPC)) {
-        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
-        return NULL;
-    }
-
-    return lyd_parse_(rpc->module->ctx, rpc, data, format, options);
 }
 
 API struct lyd_node *

@@ -733,6 +733,21 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
         if (module) {
             /* get the proper schema node */
             LY_TREE_FOR(module->data, schema) {
+                /* skip nodes in module's data which are not expected here according to options' data type */
+                if (options & LYD_OPT_RPC) {
+                    if (schema->nodetype != LYS_RPC) {
+                        continue;
+                    }
+                } else if (options & LYD_OPT_NOTIF) {
+                    if (schema->nodetype != LYS_NOTIF) {
+                        continue;
+                    }
+                } else if (!(options & LYD_OPT_RPCREPLY)) {
+                    /* rest of the data types except RPCREPLY which cannot be here */
+                    if (schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
+                        continue;
+                    }
+                }
                 if (!strcmp(schema->name, name)) {
                     break;
                 }
@@ -751,6 +766,24 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
                 goto error;
             }
         }
+
+        /* go through RPC's input/output following the options' data type */
+        if ((*parent)->schema->nodetype == LYS_RPC) {
+            while ((schema = (struct lys_node *)lys_getnext(schema, (*parent)->schema, module, LYS_GETNEXT_WITHINOUT))) {
+                if ((options & LYD_OPT_RPC) && schema->nodetype == LYS_INPUT) {
+                    break;
+                } else if ((options & LYD_OPT_RPCREPLY) && schema->nodetype == LYS_OUTPUT) {
+                    break;
+                }
+            }
+            if (!schema) {
+                LOGVAL(LYE_INELEM, lineno, name);
+                goto error;
+            }
+            schema_parent = schema;
+            schema = NULL;
+        }
+
         if (schema_parent) {
             while ((schema = (struct lys_node *)lys_getnext(schema, schema_parent, module, 0))) {
                 if (!strcmp(schema->name, name)) {
@@ -863,6 +896,8 @@ attr_repeat:
         goto error;
     }
 
+    /* TODO handle notifications */
+
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
@@ -883,7 +918,7 @@ attr_repeat:
         }
         len += r;
         len += skip_ws(&data[len]);
-    } else if (schema->nodetype == LYS_CONTAINER) {
+    } else if (schema->nodetype & (LYS_CONTAINER | LYS_RPC)) {
         if (data[len] != '{') {
             LOGVAL(LYE_XML_INVAL, lineno, "JSON data (missing begin-object)");
             goto error;

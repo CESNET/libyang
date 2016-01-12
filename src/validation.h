@@ -33,6 +33,8 @@
  * - data node is not disabled via if-features
  * - data node is not disabled via an unsatisfied when condition
  * - data node is not status in case of edit-config content (options includes LYD_OPT_EDIT)
+ * - data node is in correct place (options includes LYD_OPT_RPC or LYD_OPT_RPCREPLY), since elements order matters
+ *   in RPCs and RPC replies.
  *
  * @param[in] node Data tree node to be checked.
  * @param[in] options Parser options, see @ref parseroptions.

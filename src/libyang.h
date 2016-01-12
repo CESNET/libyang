@@ -391,55 +391,69 @@ const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT f
  *
  * Various options to change the data tree parsers behavior.
  *
- * By default, parser silently ignores the data without a matching node in schema trees. If the caller want to stop
+ * Default behavior:
+ * - in case of XML, parser reads all data from its input (file, memory, XML tree) including the case of not well-formed
+ * XML document (multiple top-level elements) and if there is an unknown element, it is skipped including its subtree
+ * (see the next point). This can be changed by the #LYD_OPT_NOSIBLINGS option which make parser to read only a single
+ * tree (with a single root element) from its input.
+ * - parser silently ignores the data without a matching node in schema trees. If the caller want to stop
  * parsing in case of presence of unknown data, the #LYD_OPT_STRICT can be used. The strict mode is useful for
  * NETCONF servers, since NETCONF clients should always send data according to the capabilities announced by the server.
  * On the other hand, the default non-strict mode is useful for clients receiving data from NETCONF server since
- * clients are not required to understand everything the server does. Of course, the optimal strategy is to use
- * filtering to get only the required data.
- *
- * The #LYD_OPT_DESTRUCT option is used to optimize memory consumption profile of the parser in case the input
- * data are no more needed after the parser function call. It continuously free the input data whenever it is
- * processed for the output. This option is applicable only in case the input data are in the XML tree format.
- *
- * Parser also expects that the provided data are complete and performs data validation according to all
- * implemented YANG rules. This can be problem in case of representing NETCONF's subtree filter data,
- * edit-config's data or the received data (after get or get-config request) where a filter was applied - such data
- * do not represent a complete data set and different validation rules can fail. Therefore there are other options
- * to make parser to accept such a data.
- *
+ * clients are not required to understand everything the server does. Of course, the optimal strategy for clients is
+ * to use filtering to get only the required data. Having an unknown element of the known namespace is always an error.
+ * The behavior can be changed by #LYD_OPT_STRICT option.
+ * - using obsolete statements (status set to obsolete) just generates a warning, but the processing continues. The
+ * behavior can be changed by #LYD_OPT_OBSOLETE option.
+ * - parser expects that the provided data provides complete datastore content (both the configuration and state data)
+ * and performs data validation according to all YANG rules. This can be a problem in case of representing NETCONF's
+ * subtree filter data, edit-config's data or other type of data set - such data do not represent a complete data set
+ * and some of the validation rules can fail. Therefore there are other options (within lower 8 bits) to make parser
+ * to accept such a data.
  * @{
  */
-#define LYD_OPT_STRICT    0x01  /**< instead of silent ignoring data without schema definition, raise an error.
-                                     Having an unknown element of the known namespace is always an error. */
-#define LYD_OPT_DESTRUCT  0x02  /**< safe consumed memory and free the processed XML data continuously. On the
-                                     other hand, it takes some more time. This option is applicable only with
-                                     lyd_parse_xml() and lyd_parse_output_xml() functions. */
-#define LYD_OPT_EDIT      0x04  /**< make validation to accept NETCONF edit-config's content:
+
+#define LYD_OPT_DATA       0x00 /**< Default type of data - complete datastore content with configuration as well as
+                                     state data. */
+#define LYD_OPT_CONFIG     0x01 /**< A configuration datastore - complete datastore without state data.
+                                     Validation modifications:
+                                     - status data are not allowed */
+#define LYD_OPT_GET        0x02 /**< Data content from a NETCONF reply message to the NETCONF \<get\> operation.
+                                     Validation modifications:
+                                     - mandatory nodes can be omitted
+                                     - leafrefs and instance-identifier are not resolved
+                                     - list's keys/unique nodes are not required (so duplication is not checked) */
+#define LYD_OPT_GETCONFIG  0x04 /**< Data content from a NETCONF reply message to the NETCONF \<get-config\> operation
+                                     Validation modifications:
+                                     - mandatory nodes can be omitted
+                                     - leafrefs and instance-identifier are not resolved
+                                     - list's keys/unique nodes are not required (so duplication is not checked)
+                                     - status data are not allowed */
+#define LYD_OPT_EDIT       0x08 /**< Content of the NETCONF \<edit-config\>'s config element.
+                                     Validation modifications:
                                      - mandatory nodes can be omitted
                                      - leafrefs and instance-identifier are not resolved
                                      - status data are not allowed */
-#define LYD_OPT_FILTER    0x08  /**< make validation to accept NETCONF subtree filter data:
+#define LYD_OPT_RPC        0x10 /**< Data represents RPC's input parameters. */
+#define LYD_OPT_RPCREPLY   0x20 /**< Data represents RPC's output parameters (maps to NETCONF <rpc-reply> data). */
+#define LYD_OPT_NOTIF      0x40 /**< Data represents an event notification data. */
+#define LYD_OPT_FILTER     0x80 /**< Data represents NETCONF subtree filter. Validation modifications:
                                      - leafs/leaf-lists with no data are allowed (even not allowed e.g. by length restriction)
                                      - multiple instances of container/leaf/.. are allowed
                                      - list's keys/unique nodes are not required
                                      - mandatory nodes can be omitted
                                      - leafrefs and instance-identifier are not resolved
                                      - data from different choice's branches are allowed */
-#define LYD_OPT_GETCONFIG 0x10  /**< make validation to accept get-config's result data even with applied filter:
-                                     - mandatory nodes can be omitted
-                                     - leafrefs and instance-identifier are not resolved
-                                     - list's keys/unique nodes are not required (so duplication is not checked)
-                                     - status data are not allowed */
-#define LYD_OPT_GET       0x20  /**< make validation to accept get's result data even with applied filter:
-                                     - same as for #LYD_OPT_GETCONFIG but the status data are allowed */
-#define LYD_OPT_OBSOLETE  0x40  /**< By default, using obsolete statements (status set to obsolete) just generates
-                                     a warning, but the processing continues. With this flag, using such a statement
-                                     raises an error. */
-#define LYD_OPT_NOSIBLINGS 0x80 /**< Parse only the XML tree from the provided pointer (in case of lyd_parse_*_xml()
-                                     functions) or the first (in case of other lyd_parse_*() functions) root element
-                                     in the data. By default, the parser processes all top-level elements. This option
-                                     applies only to XML input data. */
+#define LYD_OPT_TYPEMASK   0xff /**< Mask to filter data type options. Always only a single data type option (only
+                                     single bit from the lower 8 bits) can be set. */
+
+#define LYD_OPT_STRICT     0x0100 /**< Instead of silent ignoring data without schema definition, raise an error. */
+#define LYD_OPT_DESTRUCT   0x0200 /**< Free the provided XML tree during parsing the data. With this option, the
+                                       provided XML tree is affected and all succesfully parsed data are freed.
+                                       This option is applicable only to lyd_parse_xml() function. */
+#define LYD_OPT_OBSOLETE   0x0400 /**< Raise an error when an obsolete statement (status set to obsolete) is used. */
+#define LYD_OPT_NOSIBLINGS 0x0800 /**< Parse only a single XML tree from the input. This option applies only to
+                                       XML input data. */
 
 /**
  * @}
@@ -457,31 +471,18 @@ const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT f
  * @param[in] data Serialized data in the specified format.
  * @param[in] format Format of the input data to be parsed.
  * @param[in] options Parser options, see @ref parseroptions.
+ * @param[in] ... Additional argument must be supplied when #LYD_OPT_RPCREPLY value is specified in \p options. The
+ *            argument is supposed to provide pointer to the RPC schema node for the reply's request
+ *            (const struct ::lys_node* rpc).
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
-struct lyd_node *lyd_parse_data(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options);
-
-/**
- * @brief Parse (and validate according to appropriate schema from the given context) RPC output data.
- *
- * In case of LY_XML format, the data string is parsed completely. It means that when it contains
- * a non well-formed XML with multiple root elements, all those sibling XML trees are parsed. The
- * returned data node is a root of the first tree with other trees connected via the next pointer.
- * This behavior can be changed by #LYD_OPT_NOSIBLINGS option.
- *
- * @param[in] rpc RPC structure, whose output should \p data be.
- * @param[in] data Serialized data in the specified format.
- * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions.
- * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
- */
-struct lyd_node *lyd_parse_output_data(const struct lys_node *rpc, const char *data, LYD_FORMAT format, int options);
+struct lyd_node *lyd_parse_data(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, ...);
 
 /**
  * @brief Parse (and validate according to appropriate schema from the given context) XML tree.
  *
  * The output data tree is parsed from the given XML tree previously parsed by one of the
- * lyxml_read* functions. Note, that the parser removes all successfully parsed data.
+ * lyxml_read* functions.
  *
  * If there are some sibling elements of the \p root (data were read with #LYXML_READ_MULTIROOT option
  * or the provided root is a root element of a subtree), all the sibling nodes (previous as well as
@@ -496,37 +497,15 @@ struct lyd_node *lyd_parse_output_data(const struct lys_node *rpc, const char *d
  * The context must be the same as the context used to parse XML tree by lyxml_read* function.
  *
  * @param[in] ctx Context to connect with the data tree being built here.
- * @param[in] root XML tree to parse (convert) to data tree.
+ * @param[in,out] root XML tree to parse (convert) to data tree. By default, parser do not change the XML tree. However,
+ *            when #LYD_OPT_DESTRUCT is specified in \p options, parser frees all successfully parsed data.
  * @param[in] options Parser options, see @ref parseroptions.
+ * @param[in] ... Additional argument must be supplied when #LYD_OPT_RPCREPLY value is specified in \p options. The
+ *            argument is supposed to provide pointer to the RPC schema node for the reply's request
+ *            (const struct ::lys_node* rpc).
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
-struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options);
-
-/**
- * @brief Parse (and validate according to appropriate schema from the given context) RPC output XML tree.
- *
- * The output data tree is parsed from the given XML tree previously parsed by one of the
- * lyxml_read* functions. Note, that the parser removes all successfully parsed data.
- *
- * If there are some sibling elements of the \p root (data were read with #LYXML_READ_MULTIROOT option
- * or the provided root is a root element of a subtree), all the sibling nodes (previous as well as
- * following) are processed as well. The returned data node is a root of the first tree with other
- * trees connected via the next pointer. This behavior can be changed by #LYD_OPT_NOSIBLINGS option.
- *
- * When the function is used with #LYD_OPT_DESTRUCT, all the successfully parsed data including the
- * XML \p root and all its siblings (if #LYD_OPT_NOSIBLINGS is not used) are freed. Only with
- * #LYD_OPT_DESTRUCT option the \p root pointer is changed - if all the data are parsed, it is set
- * to NULL, otherwise it will hold the XML tree without the successfully parsed elements.
- *
- * The context (to which \p rpc belongs) must be the same as the context used to parse XML tree
- * by lyxml_read* function.
- *
- * @param[in] rpc RPC structure, whose output should \p data be.
- * @param[in] root XML tree to parse (convert) to data tree.
- * @param[in] options Parser options, see @ref parseroptions.
- * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
- */
-struct lyd_node *lyd_parse_output_xml(const struct lys_node *rpc, struct lyxml_elem **root, int options);
+struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options,...);
 
 /**
  * @brief Read data from the given file descriptor.
@@ -542,9 +521,12 @@ struct lyd_node *lyd_parse_output_xml(const struct lys_node *rpc, struct lyxml_e
  * @param[in] fd The standard file descriptor of the file containing the data tree in the specified format.
  * @param[in] format Format of the input data to be parsed.
  * @param[in] options Parser options, see @ref parseroptions.
+ * @param[in] ... Additional argument must be supplied when #LYD_OPT_RPCREPLY value is specified in \p options. The
+ *            argument is supposed to provide pointer to the RPC schema node for the reply's request
+ *            (const struct ::lys_node* rpc).
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
-struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options);
+struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, ...);
 
 /**
  * @brief Read data from the given file path.
@@ -558,9 +540,12 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
  * @param[in] path Path to the file containing the data tree in the specified format.
  * @param[in] format Format of the input data to be parsed.
  * @param[in] options Parser options, see @ref parseroptions.
+ * @param[in] ... Additional argument must be supplied when #LYD_OPT_RPCREPLY value is specified in \p options. The
+ *            argument is supposed to provide pointer to the RPC schema node for the reply's request
+ *            (const struct ::lys_node* rpc).
  * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
  */
-struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options);
+struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options, ...);
 
 /**@} parsers */
 

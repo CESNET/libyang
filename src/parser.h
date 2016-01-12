@@ -78,6 +78,22 @@ int check_status(uint8_t flags1, struct lys_module *mod1, const char *name1,
                  uint8_t flags2, struct lys_module *mod2, const char *name2, unsigned int line);
 
 /**
+ * @brief Get know if the node is part of the RPC's input/output
+ *
+ * @param node Schema node to be examined.
+ * @return 1 for true, 0 for false
+ */
+int lyp_is_rpc(struct lys_node *node);
+
+/**
+ * @brief Check validity of parser options.
+ *
+ * @param options Parser options to be checked.
+ * @retrun 0 for ok, 1 when multiple data types bits are set.
+ */
+int lyp_check_options(int options);
+
+/**
  * Store UTF-8 character specified as 4byte integer into the dst buffer.
  * Returns number of written bytes (4 max), expects that dst has enough space.
  *
