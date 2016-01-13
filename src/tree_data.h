@@ -212,12 +212,31 @@ struct lyd_node *lyd_new_anyxml(struct lyd_node *parent, const struct lys_module
                                 const char *val_xml);
 
 /**
- * @brief Create a new output node in a data tree.
+ * @brief Create a new container node in a data tree, whose schema parent is #LYS_OUTPUT.
  *
- * @param[in] rpc_schema Schema node of the RPC of the output.
+ * @param[in] schema Schema node of the container.
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_new_output(const struct lys_node *rpc_schema);
+struct lyd_node *lyd_output_new(const struct lys_node *schema);
+
+/**
+ * @brief Create a new leaf or leaflist node in a data tree, whose schema parent is #LYS_OUTPUT.
+ *
+ * @param[in] schema Schema node of the leaf.
+ * @param[in] val_str String form of the value of the node being created. In case the type is #LY_TYPE_INST
+ * or #LY_TYPE_IDENT, JSON node-id format is expected (nodes are prefixed with module names, not XML namespaces).
+ * @return New node, NULL on error.
+ */
+struct lyd_node *lyd_output_new_leaf(const struct lys_node *schema, const char *val_str);
+
+/**
+ * @brief Create a new anyxml node in a data tree, whose schema parent is #LYS_OUTPUT.
+ *
+ * @param[in] schema Schema node of the leaf.
+ * @param[in] val_xml Value of the node being created. Must be a well-formed XML.
+ * @return New node, NULL on error.
+ */
+struct lyd_node *lyd_output_new_anyxml(const struct lys_node *schema, const char *val_xml);
 
 /**
  * @brief Create a copy of the specified data tree \p node. Namespaces are copied as needed,
