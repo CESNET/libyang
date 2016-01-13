@@ -2736,3 +2736,13 @@ lys_parent(const struct lys_node *node)
 
     return node->parent;
 }
+
+API void
+lys_set_private(const struct lys_node *node, void *priv)
+{
+    if (!node) {
+        return;
+    }
+
+    ((struct lys_node *)node)->private = priv;
+}

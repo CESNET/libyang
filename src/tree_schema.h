@@ -1332,6 +1332,14 @@ const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys
  */
 struct lys_node *lys_parent(const struct lys_node *node);
 
+/**
+ * @brief Set a schema private pointer to a user pointer.
+ *
+ * @param[in] node Node, whose private field will be assigned.
+ * @param[in] priv Arbitrary user-specified pointer.
+ */
+void lys_set_private(const struct lys_node *node, void *priv);
+
 /**@} */
 
 #ifdef __cplusplus
