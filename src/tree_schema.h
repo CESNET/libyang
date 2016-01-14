@@ -121,10 +121,22 @@ extern "C" {
         }                                                                     \
     }                                                                         \
     if (!(NEXT)) {                                                            \
-        /* no children, so try siblings */                                    \
+        /* no children */                                                     \
+        if ((ELEM) == (START)) {                                              \
+            /* we are done, (START) has no children */                        \
+            break;                                                            \
+        }                                                                     \
+        /* try siblings */                                                    \
         (NEXT) = (ELEM)->next;                                                \
     }                                                                         \
     while (!(NEXT)) {                                                         \
+        /* parent is already processed, go to its sibling */                  \
+        if ((sizeof(typeof(*(START))) == sizeof(struct lys_node))             \
+                && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) {  \
+            (ELEM) = (ELEM)->parent->prev;                                    \
+        } else {                                                              \
+            (ELEM) = (ELEM)->parent;                                          \
+        }                                                                     \
         /* no siblings, go back through parents */                            \
         if (sizeof(typeof(*(START))) == sizeof(struct lys_node)) {            \
             /* lys_node_augment only */                                       \
@@ -150,13 +162,6 @@ extern "C" {
         if ((ELEM)->parent == (START)->parent) {                              \
             /* we are done, no next element to process */                     \
             break;                                                            \
-        }                                                                     \
-        /* parent is already processed, go to its sibling */                  \
-        if ((sizeof(typeof(*(START))) == sizeof(struct lys_node))             \
-                && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) {  \
-            (ELEM) = (ELEM)->parent->prev;                                    \
-        } else {                                                              \
-            (ELEM) = (ELEM)->parent;                                          \
         }                                                                     \
         (NEXT) = (ELEM)->next;                                                \
     }

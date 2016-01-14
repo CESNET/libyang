@@ -43,7 +43,7 @@ void xml_print_node(struct lyout *out, int level, const struct lyd_node *node, i
 static void
 xml_print_ns(struct lyout *out, const struct lyd_node *node)
 {
-    struct lyd_node *next, *cur;
+    struct lyd_node *next, *cur, *node2;
     struct lyd_attr *attr;
     struct mlist {
         struct mlist *next;
@@ -73,26 +73,30 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node)
     }
 
     if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
-        LY_TREE_DFS_BEGIN(node->child, next, cur) {
-            for (attr = cur->attr; attr; attr = attr->next) {
-                for (mlist_new = mlist; mlist_new; mlist_new = mlist_new->next) {
-                    if (attr->module == mlist_new->module) {
-                        break;
+        node2 = (struct lyd_node *)node;
+        LY_TREE_FOR(node->child, node2) {
+            LY_TREE_DFS_BEGIN(node2, next, cur) {
+                for (attr = cur->attr; attr; attr = attr->next) {
+                    for (mlist_new = mlist; mlist_new; mlist_new = mlist_new->next) {
+                        if (attr->module == mlist_new->module) {
+                            break;
+                        }
                     }
-                }
 
-                if (!mlist_new) {
-                    mlist_new = malloc(sizeof *mlist_new);
                     if (!mlist_new) {
-                        LOGMEM;
-                        goto print;
+                        mlist_new = malloc(sizeof *mlist_new);
+                        if (!mlist_new) {
+                            LOGMEM
+                            ;
+                            goto print;
+                        }
+                        mlist_new->next = mlist;
+                        mlist_new->module = attr->module;
+                        mlist = mlist_new;
                     }
-                    mlist_new->next = mlist;
-                    mlist_new->module = attr->module;
-                    mlist = mlist_new;
                 }
-            }
-        LY_TREE_DFS_END(node->child, next, cur)}
+            LY_TREE_DFS_END(node2, next, cur)}
+        }
     }
 
 print:
