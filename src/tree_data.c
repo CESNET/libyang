@@ -204,6 +204,7 @@ lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *na
         return NULL;
     }
     ret->schema = (struct lys_node *)snode;
+    ret->validity = LYD_VAL_NOT;
     ret->prev = ret;
     if (parent) {
         if (lyd_insert(parent, ret)) {
@@ -226,6 +227,7 @@ lyd_create_leaf(const struct lys_node *schema, const char *val_str)
         return NULL;
     }
     ret->schema = (struct lys_node *)schema;
+    ret->validity = LYD_VAL_NOT;
     ret->prev = (struct lyd_node *)ret;
     ret->value_type = ((struct lys_node_leaf *)schema)->type.base;
     ret->value_str = lydict_insert(schema->module->ctx, val_str, 0);
@@ -279,6 +281,16 @@ lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const cha
         }
     }
 
+    if (ret->schema->flags & LYS_UNIQUE) {
+        /* locate the first parent list */
+        for (parent = ret->parent; parent && parent->schema->nodetype != LYS_LIST; parent = parent->parent);
+
+        /* set flag for future validation */
+        if (parent) {
+            parent->validity |= LYD_VAL_UNIQUE;
+        }
+    }
+
     return ret;
 
 }
@@ -296,6 +308,7 @@ lyd_create_anyxml(const struct lys_node *schema, const char *val_xml)
         return NULL;
     }
     ret->schema = (struct lys_node *)schema;
+    ret->validity = LYD_VAL_NOT;
     ret->prev = (struct lyd_node *)ret;
 
     /* store the anyxml data together with the anyxml element */
@@ -372,6 +385,7 @@ lyd_output_new(const struct lys_node *schema)
         return NULL;
     }
     ret->schema = (struct lys_node *)schema;
+    ret->validity = LYD_VAL_NOT;
     ret->prev = ret;
 
     return ret;
@@ -401,24 +415,89 @@ lyd_output_new_anyxml(const struct lys_node *schema, const char *val_xml)
     return lyd_create_anyxml(schema, val_xml);
 }
 
+static void
+lyd_insert_setinvalid(struct lyd_node *node)
+{
+    struct lyd_node *next, *elem, *parent_list;
+
+    assert(node);
+
+    /* overall validity of the node itself */
+    node->validity = LYD_VAL_NOT;
+
+    /* explore changed unique leafs */
+    /* first, get know if there is a list in parents chain */
+    for (parent_list = node->parent;
+         parent_list && parent_list->schema->nodetype != LYS_LIST;
+         parent_list = parent_list->parent);
+    if (parent_list && !(parent_list->validity & LYD_VAL_UNIQUE)) {
+        /* there is a list, so check if we inserted a leaf supposed to be unique */
+        for (elem = node; elem; elem = next) {
+            if (elem->schema->nodetype == LYS_LIST) {
+                /* stop searching to the depth, children would be unique to a list in subtree */
+                goto nextsibling;
+            }
+
+            if (elem->schema->nodetype == LYS_LEAF && (elem->schema->flags & LYS_UNIQUE)) {
+                /* set flag to list for future validation */
+                parent_list->validity |= LYD_VAL_UNIQUE;
+                break;
+            }
+
+            /* select next elem to process */
+            /* go into children */
+            next = elem->child;
+            /* got through siblings */
+            if (!next) {
+nextsibling:
+                next = elem->next;
+                if (!next) {
+                    /* no children */
+                    if (elem == node) {
+                        /* we are done, back in start node */
+                        break;
+                    }
+                    /* try siblings */
+                    next = elem->next;
+                }
+            }
+            /* go back to parents */
+            while (!next) {
+                if (elem->parent == node) {
+                    /* we are done, back in start node */
+                    break;
+                }
+                /* parent was actually already processed, so go to the parent's sibling */
+                next = elem->parent->next;
+            }
+        }
+    }
+}
+
 API int
 lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 {
     struct lys_node *sparent;
     struct lyd_node *iter;
+    int invalid = 0;
 
     if (!node || !parent) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
 
-    /* check placing the node to the appropriate place according to the schema (if LYS_OUTPUT is returned,
-     * the parent's schema will never match and it fails as it should) */
+    /* check placing the node to the appropriate place according to the schema */
     for (sparent = lys_parent(node->schema);
          sparent && !(sparent->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_OUTPUT | LYS_NOTIF));
          sparent = lys_parent(sparent));
     if (sparent != parent->schema) {
         return EXIT_FAILURE;
+    }
+
+    if (node->parent != parent || lyp_is_rpc(node->schema)) {
+        /* it is not just moving under a parent node or it is in an RPC where
+         * nodes order matters, so the validation will be necessary */
+        invalid = 1;
     }
 
     if (node->parent || node->prev->next) {
@@ -438,6 +517,9 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 
     LY_TREE_FOR(node, iter) {
         iter->parent = parent;
+        if (invalid) {
+            lyd_insert_setinvalid(iter);
+        }
     }
 
     return EXIT_SUCCESS;
@@ -448,6 +530,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
 {
     struct lys_node *par1, *par2;
     struct lyd_node *iter, *last;
+    int invalid = 0;
 
     if (sibling == node) {
         return EXIT_SUCCESS;
@@ -465,6 +548,12 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
         return EXIT_FAILURE;
     }
 
+    if (node->parent != sibling->parent || lyp_is_rpc(node->schema)) {
+        /* it is not just moving under a parent node or it is in an RPC where
+         * nodes order matters, so the validation will be necessary */
+        invalid = 1;
+    }
+
     if (node->parent || node->prev->next) {
         lyd_unlink(node);
     }
@@ -472,6 +561,10 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
     LY_TREE_FOR(node, iter) {
         iter->parent = sibling->parent;
         last = iter;
+
+        if (invalid) {
+            lyd_insert_setinvalid(iter);
+        }
     }
 
     if (before) {
@@ -555,6 +648,9 @@ lyd_validate(struct lyd_node *node, int options)
                 }
             }
         }
+
+        /* validation successful */
+        iter->validity = LYD_VAL_OK;
 
         LY_TREE_DFS_END(node, next, iter);
     }
@@ -736,6 +832,7 @@ lyd_dup(const struct lyd_node *node, int recursive)
         new_node->next = NULL;
         new_node->prev = new_node;
         new_node->parent = NULL;
+        new_node->validity = LYD_VAL_NOT;
 
         if (!ret) {
             ret = new_node;
@@ -1052,6 +1149,11 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                     return 0;
                 }
             }
+        }
+
+        if (second->validity == LYD_VAL_UNIQUE) {
+            /* only unique part changed somewhere, so it is no need to check keys */
+            return 0;
         }
 
         /* compare keys */

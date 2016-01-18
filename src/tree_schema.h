@@ -488,6 +488,7 @@ struct lys_type {
 #define LYS_USERORDERED  0x80        /**< ordered-by user lists, applicable only to
                                           ::lys_node_list and ::lys_node_leaflist */
 #define LYS_FENABLED     0x80        /**< feature enabled flag, applicable only to ::lys_feature */
+#define LYS_UNIQUE       0x80        /**< part of the list's unique, applicable only to ::lys_node_leaf */
 /**
  * @}
  */

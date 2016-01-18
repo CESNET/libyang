@@ -289,6 +289,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         (*result)->prev = *result;
     }
     (*result)->schema = schema;
+    (*result)->validity = LYD_VAL_NOT;
 
     if (lyv_data_context(*result, options, LOGLINE(xml), unres)) {
         goto error;
@@ -391,6 +392,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             goto clear;
         }
     }
+
+    /* validation successful */
+    (*result)->validity = LYD_VAL_OK;
 
     return ret;
 

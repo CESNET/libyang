@@ -1468,6 +1468,9 @@ resolve_unique(struct lys_node *parent, const char *uniq_str, int first, uint32_
         return -1;
     }
 
+    /* set leaf's unique flag */
+    ((struct lys_node_leaf *)leaf)->flags |= LYS_UNIQUE;
+
     return EXIT_SUCCESS;
 
 error:

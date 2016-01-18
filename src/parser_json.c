@@ -873,6 +873,7 @@ attr_repeat:
         result->prev = result;
     }
     result->schema = schema;
+    result->validity = LYD_VAL_NOT;
 
     if (lyv_data_context(result, options, lineno, unres)) {
         goto error;
@@ -1040,6 +1041,9 @@ attr_repeat:
             goto error;
         }
     }
+
+    /* validation successful */
+    result->validity = LYD_VAL_OK;
 
     if (!(*parent)) {
         *parent = result;

@@ -90,19 +90,35 @@ typedef union lyd_value_u {
 } lyd_val;
 
 /**
+ * @defgroup validityflags Validity flags
+ * @ingroup datatree
+ *
+ * Validity flags for data nodes.
+ *
+ * @{
+ */
+#define LYD_VAL_OK       0x00    /**< node is successfully validated including whole subtree */
+#define LYD_VAL_UNIQUE   0x01    /**< Unique value(s) changed, applicable only to ::lys_node_list data nodes */
+#define LYD_VAL_NOT      0xff    /**< node was not validated yet */
+/**
+ * @}
+ */
+
+/**
  * @brief Generic structure for a data node, directly applicable to the data nodes defined as #LYS_CONTAINER, #LYS_LIST
  * and #LYS_CHOICE.
  *
  * Completely fits to containers and choices and is compatible (can be used interchangeably except the #child member)
  * with all other lyd_node_* structures. All data nodes are provides as ::lyd_node structure by default.
  * According to the schema's ::lys_node#nodetype member, the specific object is supposed to be cast to
- * ::lyd_node_leaf_list or ::lyd_node_anyxml structures. This structure fits only to
- * #LYS_CONTAINER and #LYS_CHOICE values.
+ * ::lyd_node_leaf_list or ::lyd_node_anyxml structures. This structure fits only to #LYS_CONTAINER, #LYS_LIST and
+ * #LYS_CHOICE values.
  *
  * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
  */
 struct lyd_node {
     struct lys_node *schema;         /**< pointer to the schema definition of this node */
+    uint8_t validity;                /**< [validity flags](@ref validityflags) */
 
     struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
     struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
@@ -131,6 +147,7 @@ struct lyd_node {
 struct lyd_node_leaf_list {
     struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_leaflist
                                           structure */
+    uint8_t validity;                /**< [validity flags](@ref validityflags) */
 
     struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
     struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
@@ -159,6 +176,7 @@ struct lyd_node_leaf_list {
 struct lyd_node_anyxml {
     struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_anyxml
                                           structure */
+    uint8_t validity;                /**< [validity flags](@ref validityflags) */
 
     struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
     struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
@@ -265,7 +283,7 @@ int lyd_insert(struct lyd_node *parent, struct lyd_node *node);
 
 /**
  * @brief Insert the \p node element after the \p sibling element. If \p node and \p siblings are already
- * siblings (just moving \p node position), skip validation (\p options are ignored).
+ * siblings (just moving \p node position), skip validation.
  *
  * @param[in] sibling The data tree node before which the \p node will be inserted.
  * @param[in] node The data tree node to be inserted.
@@ -278,7 +296,7 @@ int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
  * @brief Insert the \p node element after the \p sibling element.
  *
  * @param[in] sibling The data tree node before which the \p node will be inserted. If \p node and \p siblings
- * are already siblings (just moving \p node position), skip validation (\p options are ignored).
+ * are already siblings (just moving \p node position), skip validation.
  * @param[in] node The data tree node to be inserted.
  * @return 0 on success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
  * in the data tree.

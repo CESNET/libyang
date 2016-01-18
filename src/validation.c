@@ -335,7 +335,7 @@ lyv_data_context(const struct lyd_node *node, int options, unsigned int line, st
     }
 
     /* check elements order in case of RPC's input and output */
-    if (lyp_is_rpc(node->schema)) {
+    if (node->validity && lyp_is_rpc(node->schema)) {
         siter = node->schema->prev;
         for (iter = node->prev; iter->next; iter = iter->prev) {
             while (siter->next) {
@@ -371,245 +371,248 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
 
     schema = node->schema; /* shortcut */
 
-    /* check presence of all keys in case of list */
-    if (schema->nodetype == LYS_LIST && !(options & (LYD_OPT_FILTER | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
-        siter = (struct lys_node *)lyv_keys_present(node);
-        if (siter) {
-            /* key not found in the data */
-            LOGVAL(LYE_MISSELEM, line, siter->name, schema->name);
-            return EXIT_FAILURE;
-        }
-    }
-
-    /* mandatory children */
-    if ((schema->nodetype & (LYS_CONTAINER | LYS_LIST))
-            && !(options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
-        siter = ly_check_mandatory(node);
-        if (siter) {
-            if (siter->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-                LOGVAL(LYE_SPEC, line, "Number of \"%s\" instances in \"%s\" does not follow min/max constraints.",
-                       siter->name, siter->parent->name);
-            } else {
-                LOGVAL(LYE_MISSELEM, line, siter->name, siter->parent->name);
-            }
-            return EXIT_FAILURE;
-        }
-    }
-
-    /* get the first sibling */
-    if (node->parent) {
-        start = node->parent->child;
-    } else {
-        for (start = node; start->prev->next; start = start->prev);
-    }
-
-    /* check that there are no data from different choice case */
-    if (!(options & LYD_OPT_FILTER)) {
-        /* init loop condition */
-        ch = schema;
-
-        while (ch->parent && (ch->parent->nodetype & (LYS_CASE | LYS_CHOICE))) {
-            if (ch->parent->nodetype == LYS_CHOICE) {
-                cs = NULL;
-                ch = ch->parent;
-            } else { /* ch->parent->nodetype == LYS_CASE */
-                cs = ch->parent;
-                ch = ch->parent->parent;
-            }
-
-            for (diter = start; diter; diter = diter->next) {
-                if (diter == node) {
-                    continue;
-                }
-
-                /* find correct level to compare */
-                for (siter = diter->schema->parent; siter; siter = siter->parent) {
-                    if (siter->nodetype == LYS_CHOICE) {
-                        if (siter == ch) {
-                            LOGVAL(LYE_MCASEDATA, line, ch->name);
-                            return EXIT_FAILURE;
-                        } else {
-                            continue;
-                        }
-                    }
-
-                    if (siter->nodetype == LYS_CASE) {
-                        if (siter->parent != ch) {
-                            continue;
-                        } else if (!cs || cs != siter) {
-                            LOGVAL(LYE_MCASEDATA, line, ch->name);
-                            return EXIT_FAILURE;
-                        }
-                    }
-
-                    /* diter is from something else choice (subtree) */
-                    break;
-                }
+    if (node->validity) {
+        /* check presence of all keys in case of list */
+        if (schema->nodetype == LYS_LIST && !(options & (LYD_OPT_FILTER | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
+            siter = (struct lys_node *)lyv_keys_present(node);
+            if (siter) {
+                /* key not found in the data */
+                LOGVAL(LYE_MISSELEM, line, siter->name, schema->name);
+                return EXIT_FAILURE;
             }
         }
-    }
 
-    /* keep this check the last since in case of filter it affects the data and can modify the tree */
-    /* check number of instances (similar to list uniqueness) for non-list nodes */
-    if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML)) {
-        /* find duplicity */
-        for (diter = start; diter; diter = diter->next) {
-            if (diter->schema == schema && diter != node) {
-                if (options & LYD_OPT_FILTER) {
-                    /* normalize the filter if needed */
-                    switch (schema->nodetype) {
-                    case LYS_CONTAINER:
-                        if (!filter_compare(diter, node)) {
-                            /* merge the two containers, diter will be kept ... */
-                            filter_merge(diter, node);
-                            /* ... and node will be removed (ly_errno is not set) */
-                            return EXIT_FAILURE;
-                        } else {
-                            /* check that some of them is not a selection node */
-                            if (!diter->child) {
-                                /* keep diter since it selects all such containers
-                                 * and let remove the node since it selects just a subset */
-                                return EXIT_FAILURE;
-                            } else if (!node->child) {
-                                /* keep the node and remove diter since it selects subset
-                                 * of what is selected by node */
-                                lyd_free(diter);
-                            }
-                            /* keep them as they are */
-                            return EXIT_SUCCESS;
-                        }
-                        break;
-                    case LYS_LEAF:
-                        if (!((struct lyd_node_leaf_list *)diter)->value_str
-                                && ((struct lyd_node_leaf_list *)node)->value_str) {
-                            /* the first instance is selection node but the new instance is content match node ->
-                             * since content match node also works as selection node. keep only the new instance
-                             */
-                            lyd_free(diter);
-                            /* return success to keep the node in the tree */
-                            return EXIT_SUCCESS;
-                        } else if (!((struct lyd_node_leaf_list *)node)->value_str
-                                || ((struct lyd_node_leaf_list *)diter)->value_str ==
-                                ((struct lyd_node_leaf_list *)node)->value_str) {
-                            /* keep the previous instance and remove the current one ->
-                             * return failure but do not set ly_errno */
-                            return EXIT_FAILURE;
-                        }
-                        break;
-                    case LYS_ANYXML:
-                        /* filtering according to the anyxml content is not allowed,
-                         * so anyxml is always a selection node with no content.
-                         * Therefore multiple instances of anyxml does not make sense
-                         */
-                        /* failure is returned but no ly_errno is set */
-                        return EXIT_FAILURE;
-                    default:
-                        /* not possible, but necessary to silence compiler warnings */
-                        break;
-                    }
-                    /* we are done */
-                    break;
+        /* mandatory children */
+        if ((schema->nodetype & (LYS_CONTAINER | LYS_LIST))
+                && !(options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
+            siter = ly_check_mandatory(node);
+            if (siter) {
+                if (siter->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+                    LOGVAL(LYE_SPEC, line, "Number of \"%s\" instances in \"%s\" does not follow min/max constraints.",
+                           siter->name, siter->parent->name);
                 } else {
-                    LOGVAL(LYE_TOOMANY, line, schema->name, schema->parent ? schema->parent->name : "data tree");
-                    return EXIT_FAILURE;
+                    LOGVAL(LYE_MISSELEM, line, siter->name, siter->parent->name);
                 }
+                return EXIT_FAILURE;
             }
         }
-    } else if (schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-        /* uniqueness of list/leaflist instances */
 
-        /* get the first list/leaflist instance sibling */
-        if (options & (LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
-            /* skip key uniqueness check in case of get/get-config data */
-            start = NULL;
+        /* get the first sibling */
+        if (node->parent) {
+            start = node->parent->child;
         } else {
-            diter = start;
-            start = NULL;
-            while(diter) {
-                if (diter == node) {
-                    diter = diter->next;
-                    continue;
+            for (start = node; start->prev->next; start = start->prev);
+        }
+
+        /* check that there are no data from different choice case */
+        if (!(options & LYD_OPT_FILTER)) {
+            /* init loop condition */
+            ch = schema;
+
+            while (ch->parent && (ch->parent->nodetype & (LYS_CASE | LYS_CHOICE))) {
+                if (ch->parent->nodetype == LYS_CHOICE) {
+                    cs = NULL;
+                    ch = ch->parent;
+                } else { /* ch->parent->nodetype == LYS_CASE */
+                    cs = ch->parent;
+                    ch = ch->parent->parent;
                 }
 
-                if (diter->schema == node->schema) {
-                    /* the same list instance */
-                    start = diter;
-                    break;
+                for (diter = start; diter; diter = diter->next) {
+                    if (diter == node) {
+                        continue;
+                    }
+
+                    /* find correct level to compare */
+                    for (siter = diter->schema->parent; siter; siter = siter->parent) {
+                        if (siter->nodetype == LYS_CHOICE) {
+                            if (siter == ch) {
+                                LOGVAL(LYE_MCASEDATA, line, ch->name);
+                                return EXIT_FAILURE;
+                            } else {
+                                continue;
+                            }
+                        }
+
+                        if (siter->nodetype == LYS_CASE) {
+                            if (siter->parent != ch) {
+                                continue;
+                            } else if (!cs || cs != siter) {
+                                LOGVAL(LYE_MCASEDATA, line, ch->name);
+                                return EXIT_FAILURE;
+                            }
+                        }
+
+                        /* diter is from something else choice (subtree) */
+                        break;
+                    }
                 }
-                diter = diter->next;
             }
         }
 
-        /* check uniqueness of the list/leaflist instances (compare values) */
-        for (diter = start; diter; diter = diter->next) {
-            if (diter->schema != node->schema || diter == node) {
-                continue;
-            }
-
-            if (options & LYD_OPT_FILTER) {
-                /* compare content match nodes */
-                if (!filter_compare(diter, node)) {
-                    /* merge both nodes */
-                    /* add selection and containment nodes from result into the diter,
-                     * but only in case the diter already contains some selection nodes,
-                     * otherwise it already will return all the data */
-                    filter_merge(diter, node);
-
-                    /* not the error, just return no data */
-                    /* failure is returned but no ly_errno is set */
-                    return EXIT_FAILURE;
-                } else if (node->schema->nodetype == LYS_LEAFLIST) {
-                    /* in contrast to lists, leaflists can be still safely optimized if one of them
-                     * is selection node. In that case wee need to keep the other node, which is content
-                     * match node and it somehow limit the data to be filtered.
-                     */
-                    if (!((struct lyd_node_leaf_list *)diter)->value_str) {
-                        /* the other instance is selection node, keep the new one whatever it is */
-                        lyd_free(diter);
+        /* keep this check the last since in case of filter it affects the data and can modify the tree */
+        /* check number of instances (similar to list uniqueness) for non-list nodes */
+        if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML)) {
+            /* find duplicity */
+            for (diter = start; diter; diter = diter->next) {
+                if (diter->schema == schema && diter != node) {
+                    if (options & LYD_OPT_FILTER) {
+                        /* normalize the filter if needed */
+                        switch (schema->nodetype) {
+                        case LYS_CONTAINER:
+                            if (!filter_compare(diter, node)) {
+                                /* merge the two containers, diter will be kept ... */
+                                filter_merge(diter, node);
+                                /* ... and node will be removed (ly_errno is not set) */
+                                return EXIT_FAILURE;
+                            } else {
+                                /* check that some of them is not a selection node */
+                                if (!diter->child) {
+                                    /* keep diter since it selects all such containers
+                                     * and let remove the node since it selects just a subset */
+                                    return EXIT_FAILURE;
+                                } else if (!node->child) {
+                                    /* keep the node and remove diter since it selects subset
+                                     * of what is selected by node */
+                                    lyd_free(diter);
+                                }
+                                /* keep them as they are */
+                                return EXIT_SUCCESS;
+                            }
+                            break;
+                        case LYS_LEAF:
+                            if (!((struct lyd_node_leaf_list *)diter)->value_str
+                                    && ((struct lyd_node_leaf_list *)node)->value_str) {
+                                /* the first instance is selection node but the new instance is content match node ->
+                                 * since content match node also works as selection node. keep only the new instance
+                                 */
+                                lyd_free(diter);
+                                /* return success to keep the node in the tree */
+                                return EXIT_SUCCESS;
+                            } else if (!((struct lyd_node_leaf_list *)node)->value_str
+                                    || ((struct lyd_node_leaf_list *)diter)->value_str ==
+                                    ((struct lyd_node_leaf_list *)node)->value_str) {
+                                /* keep the previous instance and remove the current one ->
+                                 * return failure but do not set ly_errno */
+                                return EXIT_FAILURE;
+                            }
+                            break;
+                        case LYS_ANYXML:
+                            /* filtering according to the anyxml content is not allowed,
+                             * so anyxml is always a selection node with no content.
+                             * Therefore multiple instances of anyxml does not make sense
+                             */
+                            /* failure is returned but no ly_errno is set */
+                            return EXIT_FAILURE;
+                        default:
+                            /* not possible, but necessary to silence compiler warnings */
+                            break;
+                        }
+                        /* we are done */
                         break;
-                    } else if (!((struct lyd_node_leaf_list *)node)->value_str) {
-                        /* the new instance is selection node, keep the previous instance which is
-                         * content match node */
-                        /* failure is returned but no ly_errno is set */
+                    } else {
+                        LOGVAL(LYE_TOOMANY, line, schema->name, schema->parent ? schema->parent->name : "data tree");
                         return EXIT_FAILURE;
                     }
                 }
-            } else if (!lyd_compare(diter, node, 1)) { /* comparing keys and unique combinations */
-                LOGVAL(LYE_DUPLIST, line, schema->name);
-                return EXIT_FAILURE;
             }
-        }
-    }
+        } else if (schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+            /* uniqueness of list/leaflist instances */
 
-    /* status - of the node's schema node itself and all its parents that
-     * cannot have their own instance (like a choice statement) */
-    siter = node->schema;
-    do {
-        if (((siter->flags & LYS_STATUS_MASK) == LYS_STATUS_OBSLT) && (options & LYD_OPT_OBSOLETE)) {
-            LOGVAL(LYE_OBSDATA, line, node->schema->name);
-            return EXIT_FAILURE;
-        }
-        siter = siter->parent;
-    } while(siter && !(siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST)));
+            /* get the first list/leaflist instance sibling */
+            if (options & (LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
+                /* skip key uniqueness check in case of get/get-config data */
+                start = NULL;
+            } else {
+                diter = start;
+                start = NULL;
+                while(diter) {
+                    if (diter == node) {
+                        diter = diter->next;
+                        continue;
+                    }
 
-    /* status of the identity value */
-    if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-        if (options & LYD_OPT_OBSOLETE) {
-            /* check that we are not instantiating obsolete type */
-            tpdf = ((struct lys_node_leaf *)node->schema)->type.der;
-            while(tpdf) {
-                if ((tpdf->flags & LYS_STATUS_MASK) == LYS_STATUS_OBSLT) {
-                    LOGVAL(LYE_OBSTYPE, line, node->schema->name, tpdf->name);
+                    if (diter->schema == node->schema) {
+                        /* the same list instance */
+                        start = diter;
+                        break;
+                    }
+                    diter = diter->next;
+                }
+            }
+
+            /* check uniqueness of the list/leaflist instances (compare values) */
+            for (diter = start; diter; diter = diter->next) {
+                if (diter->schema != node->schema || diter == node ||
+                        diter->validity) { /* skip comparison that will be done in future when checking diter as node */
+                    continue;
+                }
+
+                if (options & LYD_OPT_FILTER) {
+                    /* compare content match nodes */
+                    if (!filter_compare(diter, node)) {
+                        /* merge both nodes */
+                        /* add selection and containment nodes from result into the diter,
+                         * but only in case the diter already contains some selection nodes,
+                         * otherwise it already will return all the data */
+                        filter_merge(diter, node);
+
+                        /* not the error, just return no data */
+                        /* failure is returned but no ly_errno is set */
+                        return EXIT_FAILURE;
+                    } else if (node->schema->nodetype == LYS_LEAFLIST) {
+                        /* in contrast to lists, leaflists can be still safely optimized if one of them
+                         * is selection node. In that case wee need to keep the other node, which is content
+                         * match node and it somehow limit the data to be filtered.
+                         */
+                        if (!((struct lyd_node_leaf_list *)diter)->value_str) {
+                            /* the other instance is selection node, keep the new one whatever it is */
+                            lyd_free(diter);
+                            break;
+                        } else if (!((struct lyd_node_leaf_list *)node)->value_str) {
+                            /* the new instance is selection node, keep the previous instance which is
+                             * content match node */
+                            /* failure is returned but no ly_errno is set */
+                            return EXIT_FAILURE;
+                        }
+                    }
+                } else if (!lyd_compare(diter, node, 1)) { /* comparing keys and unique combinations */
+                    LOGVAL(LYE_DUPLIST, line, schema->name);
                     return EXIT_FAILURE;
                 }
-                tpdf = tpdf->type.der;
             }
         }
-        if (((struct lyd_node_leaf_list *)node)->value_type == LY_TYPE_IDENT) {
-            ident = ((struct lyd_node_leaf_list *)node)->value.ident;
-            if (check_status(schema->flags, schema->module, schema->name,
-                             ident->flags, ident->module, ident->name, line)) {
+
+        /* status - of the node's schema node itself and all its parents that
+         * cannot have their own instance (like a choice statement) */
+        siter = node->schema;
+        do {
+            if (((siter->flags & LYS_STATUS_MASK) == LYS_STATUS_OBSLT) && (options & LYD_OPT_OBSOLETE)) {
+                LOGVAL(LYE_OBSDATA, line, node->schema->name);
                 return EXIT_FAILURE;
+            }
+            siter = siter->parent;
+        } while(siter && !(siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST)));
+
+        /* status of the identity value */
+        if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+            if (options & LYD_OPT_OBSOLETE) {
+                /* check that we are not instantiating obsolete type */
+                tpdf = ((struct lys_node_leaf *)node->schema)->type.der;
+                while(tpdf) {
+                    if ((tpdf->flags & LYS_STATUS_MASK) == LYS_STATUS_OBSLT) {
+                        LOGVAL(LYE_OBSTYPE, line, node->schema->name, tpdf->name);
+                        return EXIT_FAILURE;
+                    }
+                    tpdf = tpdf->type.der;
+                }
+            }
+            if (((struct lyd_node_leaf_list *)node)->value_type == LY_TYPE_IDENT) {
+                ident = ((struct lyd_node_leaf_list *)node)->value.ident;
+                if (check_status(schema->flags, schema->module, schema->name,
+                                 ident->flags, ident->module, ident->name, line)) {
+                    return EXIT_FAILURE;
+                }
             }
         }
     }
