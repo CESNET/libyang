@@ -295,6 +295,44 @@ lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const cha
 
 }
 
+int
+lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
+{
+    const char *backup;
+    struct lyd_node *parent;
+
+    if (!leaf) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    backup = leaf->value_str;
+    leaf->value_str = val_str;
+
+    /* resolve the type correctly */
+    if (lyp_parse_value(leaf, NULL, 1, NULL, 0)) {
+        leaf->value_str = backup;
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    /* value is correct, finish the changes in leaf */
+    lydict_remove(leaf->schema->module->ctx, backup);
+    leaf->value_str = lydict_insert(leaf->schema->module->ctx, val_str, 0);
+
+    if (leaf->schema->flags & LYS_UNIQUE) {
+        /* locate the first parent list */
+        for (parent = leaf->parent; parent && parent->schema->nodetype != LYS_LIST; parent = parent->parent);
+
+        /* set flag for future validation */
+        if (parent) {
+            parent->validity |= LYD_VAL_UNIQUE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
 static struct lyd_node *
 lyd_create_anyxml(const struct lys_node *schema, const char *val_xml)
 {
