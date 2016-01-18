@@ -85,17 +85,15 @@ static int
 xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct unres_data *unres)
 {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
-    struct lys_type *type, *stype;
-    int resolve, found;
+    int resolve;
 
     assert(node && (node->schema->nodetype & (LYS_LEAFLIST | LYS_LEAF)) && xml && unres);
 
-    stype = &((struct lys_node_leaf *)node->schema)->type;
     leaf->value_str = xml->content;
     xml->content = NULL;
 
     /* will be changed in case of union */
-    leaf->value_type = stype->base;
+    leaf->value_type = ((struct lys_node_leaf *)node->schema)->type.base;
 
     if ((options & LYD_OPT_FILTER) && !leaf->value_str) {
         /* no value in filter (selection) node -> nothing more is needed */
@@ -108,7 +106,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct
         resolve = 1;
     }
 
-    if ((stype->base == LY_TYPE_IDENT) || (stype->base == LY_TYPE_INST)) {
+    if ((leaf->value_type == LY_TYPE_IDENT) || (leaf->value_type == LY_TYPE_INST)) {
         /* convert the path from the XML form using XML namespaces into the JSON format
          * using module names as namespaces
          */
@@ -121,45 +119,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct
         }
     }
 
-    if (stype->base == LY_TYPE_UNION) {
-        found = 0;
-        type = lyp_get_next_union_type(stype, NULL, &found);
-        while (type) {
-            leaf->value_type = type->base;
-
-            /* in these cases we use JSON format */
-            if ((type->base == LY_TYPE_IDENT) || (type->base == LY_TYPE_INST)) {
-                xml->content = leaf->value_str;
-                leaf->value_str = transform_xml2json(leaf->schema->module->ctx, xml->content, xml, 0);
-                if (!leaf->value_str) {
-                    leaf->value_str = xml->content;
-                    xml->content = NULL;
-
-                    found = 0;
-                    type = lyp_get_next_union_type(stype, type, &found);
-                    continue;
-                }
-            }
-
-            if (!lyp_parse_value(leaf, type, resolve, unres, UINT_MAX)) {
-                break;
-            }
-
-            if ((type->base == LY_TYPE_IDENT) || (type->base == LY_TYPE_INST)) {
-                lydict_remove(leaf->schema->module->ctx, leaf->value_str);
-                leaf->value_str = xml->content;
-                xml->content = NULL;
-            }
-
-            found = 0;
-            type = lyp_get_next_union_type(stype, type, &found);
-        }
-
-        if (!type) {
-            LOGVAL(LYE_INVAL, LOGLINE(xml), (leaf->value_str ? leaf->value_str : ""), xml->name);
-            return EXIT_FAILURE;
-        }
-    } else if (lyp_parse_value(leaf, stype, resolve, unres, LOGLINE(xml))) {
+    if (lyp_parse_value(leaf, xml, resolve, unres, LOGLINE(xml))) {
         return EXIT_FAILURE;
     }
 

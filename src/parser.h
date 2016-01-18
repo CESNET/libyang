@@ -66,8 +66,7 @@ void lyp_set_implemented(struct lys_module *module);
 
 struct lys_type *lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *found);
 
-int lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve, struct unres_data *unres,
-                    uint32_t line);
+int lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int resolve, struct unres_data *unres, int line);
 
 int lyp_check_length_range(const char *expr, struct lys_type *type);
 

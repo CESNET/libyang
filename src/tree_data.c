@@ -218,9 +218,7 @@ lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *na
 static struct lyd_node *
 lyd_create_leaf(const struct lys_node *schema, const char *val_str)
 {
-    int found;
     struct lyd_node_leaf_list *ret;
-    struct lys_type *stype, *type;
 
     ret = calloc(1, sizeof *ret);
     if (!ret) {
@@ -229,35 +227,14 @@ lyd_create_leaf(const struct lys_node *schema, const char *val_str)
     }
     ret->schema = (struct lys_node *)schema;
     ret->prev = (struct lyd_node *)ret;
+    ret->value_type = ((struct lys_node_leaf *)schema)->type.base;
     ret->value_str = lydict_insert(schema->module->ctx, val_str, 0);
 
     /* resolve the type correctly */
-    stype = &((struct lys_node_leaf *)schema)->type;
-    if (stype->base == LY_TYPE_UNION) {
-        found = 0;
-        type = NULL;
-        while ((type = lyp_get_next_union_type(stype, type, &found))) {
-            ret->value_type = type->base;
-            if (!lyp_parse_value(ret, type, 1, NULL, UINT_MAX)) {
-                /* success! */
-                break;
-            }
-            found = 0;
-        }
-
-        if (!type) {
-            /* fail */
-            ly_errno = LY_EINVAL;
-            lyd_free((struct lyd_node *)ret);
-            return NULL;
-        }
-    } else {
-        ret->value_type = stype->base;
-        if (lyp_parse_value(ret, stype, 1, NULL, 0)) {
-            lyd_free((struct lyd_node *)ret);
-            ly_errno = LY_EINVAL;
-            return NULL;
-        }
+    if (lyp_parse_value(ret, NULL, 1, NULL, 0)) {
+        lyd_free((struct lyd_node *)ret);
+        ly_errno = LY_EINVAL;
+        return NULL;
     }
 
     return (struct lyd_node *)ret;

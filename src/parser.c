@@ -25,6 +25,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -560,8 +561,8 @@ error:
  * resolve - whether resolve identityrefs and leafrefs (which must be in JSON form)
  * unres - whether to try to resolve and on failure store it as unres or fail if resolving fails
  */
-int
-lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve, struct unres_data *unres, uint32_t line)
+static int
+lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve, struct unres_data *unres, uint32_t line)
 {
     #define DECSIZE 21
     struct lys_type *type;
@@ -901,6 +902,62 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
         break;
 
     default:
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int
+lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int resolve, struct unres_data *unres, int line)
+{
+    int found = 0;
+    struct lys_type *type, *stype;
+
+    assert(leaf);
+
+    stype = &((struct lys_node_leaf *)leaf->schema)->type;
+    if (stype->base == LY_TYPE_UNION) {
+        type = lyp_get_next_union_type(stype, NULL, &found);
+        while (type) {
+            leaf->value_type = type->base;
+
+            /* in these cases we use JSON format */
+            if (xml && ((type->base == LY_TYPE_IDENT) || (type->base == LY_TYPE_INST))) {
+                xml->content = leaf->value_str;
+                leaf->value_str = transform_xml2json(leaf->schema->module->ctx, xml->content, xml, 0);
+                if (!leaf->value_str) {
+                    leaf->value_str = xml->content;
+                    xml->content = NULL;
+
+                    found = 0;
+                    type = lyp_get_next_union_type(stype, type, &found);
+                    continue;
+                }
+            }
+
+            if (!lyp_parse_value_(leaf, type, resolve, unres, UINT_MAX)) {
+                /* success */
+                break;
+            }
+
+            if (xml && ((type->base == LY_TYPE_IDENT) || (type->base == LY_TYPE_INST))) {
+                lydict_remove(leaf->schema->module->ctx, leaf->value_str);
+                leaf->value_str = xml->content;
+                xml->content = NULL;
+            }
+
+            found = 0;
+            type = lyp_get_next_union_type(stype, type, &found);
+        }
+
+        if (!type) {
+            /* failure */
+            LOGVAL(LYE_INVAL, line, (leaf->value_str ? leaf->value_str : ""), leaf->schema->name);
+            return EXIT_FAILURE;
+        }
+    } else if (lyp_parse_value_(leaf, stype, resolve, unres, line)) {
+        ly_errno = LY_EVALID;
         return EXIT_FAILURE;
     }
 

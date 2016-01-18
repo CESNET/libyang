@@ -1324,13 +1324,12 @@ static int
 check_default(struct lys_type *type, const char *value, int first, uint32_t line)
 {
     struct lyd_node_leaf_list node;
-    struct lys_type *iter;
-    int ret = EXIT_SUCCESS, found;
+    int ret = EXIT_SUCCESS;
 
     /* dummy leaf */
     node.value_str = value;
     node.value_type = type->base;
-    node.schema = calloc(1, sizeof *node.schema);
+    node.schema = calloc(1, sizeof (struct lys_node_leaf));
     if (!node.schema) {
         LOGMEM;
         return -1;
@@ -1340,38 +1339,9 @@ check_default(struct lys_type *type, const char *value, int first, uint32_t line
         LOGMEM;
         return -1;
     }
+    memcpy(&((struct lys_node_leaf *)node.schema)->type, type, sizeof *type);
 
-    if (type->base == LY_TYPE_UNION) {
-        found = 0;
-        iter = lyp_get_next_union_type(type, NULL, &found);
-        while (iter) {
-            node.value_type = iter->base;
-
-            /* special case with too much effort required and almost no added value */
-            if ((iter->base == LY_TYPE_IDENT) || (iter->base == LY_TYPE_INST)) {
-                LOGVAL(LYE_SPEC, line,
-                       "Union with \"instance-identifier\" or \"identityref\" and a default value is not supported!");
-                ret = -1;
-                goto finish;
-            }
-
-            if (!lyp_parse_value(&node, iter, 1, NULL, UINT_MAX)) {
-                break;
-            }
-
-            found = 0;
-            iter = lyp_get_next_union_type(type, iter, &found);
-        }
-
-        if (!iter) {
-            if (!first) {
-                LOGVAL(LYE_INVAL, line, node.value_str, "default");
-            }
-            ret = EXIT_FAILURE;
-            goto finish;
-        }
-
-    } else if (type->base == LY_TYPE_LEAFREF) {
+    if (type->base == LY_TYPE_LEAFREF) {
         if (!type->info.lref.target) {
             ret = EXIT_FAILURE;
             goto finish;
@@ -1382,7 +1352,7 @@ check_default(struct lys_type *type, const char *value, int first, uint32_t line
         /* it was converted to JSON format before, nothing else sensible we can do */
 
     } else {
-        ret = lyp_parse_value(&node, type, 1, NULL, (first ? UINT_MAX : line));
+        ret = lyp_parse_value(&node, NULL, 1, NULL, line);
     }
 
 finish:

@@ -326,10 +326,10 @@ static unsigned int
 json_get_value(struct lyd_node_leaf_list *leaf, const char *data, int options, struct unres_data *unres)
 {
     struct lyd_node_leaf_list *new, *diter;
-    struct lys_type *stype, *type;
+    struct lys_type *stype;
     struct ly_ctx *ctx;
     unsigned int len = 0, r;
-    int found, resolve;
+    int resolve;
     char *str;
 
     assert(leaf && data && unres);
@@ -408,25 +408,7 @@ repeat:
         return 0;
     }
 
-    if (stype->base == LY_TYPE_UNION) {
-        found = 0;
-        type = lyp_get_next_union_type(stype, NULL, &found);
-        while (type) {
-            leaf->value_type = type->base;
-
-            if (!lyp_parse_value(leaf, type, resolve, unres, UINT_MAX)) {
-                break;
-            }
-
-            found = 0;
-            type = lyp_get_next_union_type(stype, type, &found);
-        }
-
-        if (!type) {
-            LOGVAL(LYE_INVAL, lineno, (leaf->value_str ? leaf->value_str : ""), leaf->schema->name);
-            return 0;
-        }
-    } else if (lyp_parse_value(leaf, stype, resolve, unres, lineno)) {
+    if (lyp_parse_value(leaf, NULL, resolve, unres, lineno)) {
         ly_errno = LY_EVALID;
         return 0;
     }
