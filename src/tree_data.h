@@ -419,6 +419,30 @@ struct lyd_set *lyd_set_new(void);
 int lyd_set_add(struct lyd_set *set, struct lyd_node *node);
 
 /**
+ * @brief Remove a ::lyd_node object from the set.
+ *
+ * Note that after removing a node from a set, indexes of other nodes in the set can change
+ * (the last object is placed instead of the removed object).
+ *
+ * @param[in] set Set from which the \p node will be removed.
+ * @param[in] node The ::lyd_node object to be removed from the \p set;
+ * @return 0 on success
+ */
+int lyd_set_rm(struct lyd_set *set, struct lyd_node *node);
+
+/**
+ * @brief Remove a ::lyd_node object from the set index.
+ *
+ * Note that after removing a node from a set, indexes of other nodes in the set can change
+ * (the last object is placed instead of the removed object).
+ *
+ * @param[in] set Set from which a node will be removed.
+ * @param[in] index Index of the ::lyd_node object in the \p set to be removed from the \p set;
+ * @return 0 on success
+ */
+int lyd_set_rm_index(struct lyd_set *set, unsigned int index);
+
+/**
  * @brief Free the ::lyd_set data. Frees only the set structure content, not the referred data.
  *
  * @param[in] set The set to be freed.

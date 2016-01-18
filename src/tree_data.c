@@ -1272,3 +1272,49 @@ lyd_set_add(struct lyd_set *set, struct lyd_node *node)
 
     return EXIT_SUCCESS;
 }
+
+API int
+lyd_set_rm_index(struct lyd_set *set, unsigned int index)
+{
+    if (!set || (index + 1) > set->number) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    if (index == set->number - 1) {
+        /* removing last item in set */
+        set->set[index] = NULL;
+    } else {
+        /* removing item somewhere in a middle, so put there the last item */
+        set->set[index] = set->set[set->number - 1];
+        set->set[set->number - 1] = NULL;
+    }
+    set->number--;
+
+    return EXIT_SUCCESS;
+}
+
+API int
+lyd_set_rm(struct lyd_set *set, struct lyd_node *node)
+{
+    unsigned int i;
+
+    if (!set || !node) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    /* get index */
+    for (i = 0; i < set->number; i++) {
+        if (set->set[i] == node) {
+            break;
+        }
+    }
+    if (i == set->number) {
+        /* node is not in set */
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    return lyd_set_rm_index(set, i);
+}
