@@ -316,6 +316,18 @@ int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
 int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
+ * @brief Search in the given data for instances of the provided schema node.
+ *
+ * The \p data is used to find the data root and function then searches in the whole tree and all sibling trees.
+ *
+ * @param[in] data A node in the data tree to search.
+ * @param[in] schema Schema node of the data nodes caller want to find.
+ * @return Set of found data nodes. If no data node is found, the returned set is empty.
+ * In case of error, NULL is returned.
+ */
+struct lyd_set *lyd_get_node(const struct lyd_node *data, const struct lys_node *schema);
+
+/**
  * @brief Validate \p node data subtree.
  *
  * @param[in] node Data subtree to be validated.

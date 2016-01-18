@@ -1223,6 +1223,95 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
 }
 
 API struct lyd_set *
+lyd_get_node(const struct lyd_node *data, const struct lys_node *schema)
+{
+    struct lyd_set *ret, *ret_aux, *spath;
+    const struct lys_node *siter;
+    struct lyd_node *iter;
+    unsigned int i, j;
+
+    if (!data || !schema ||
+            !(schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_ANYXML | LYS_NOTIF | LYS_RPC))) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    ret = lyd_set_new();
+    spath = lyd_set_new();
+    if (!ret || !spath) {
+        LOGMEM;
+        goto error;
+    }
+
+    /* find data root */
+    while (data->parent) {
+        /* vertical move (up) */
+        data = data->parent;
+    }
+    while (data->prev->next) {
+        /* horizontal move (left) */
+        data = data->prev;
+    }
+
+    /* build schema path */
+    for (siter = schema; siter; ) {
+        if (siter->nodetype == LYS_AUGMENT) {
+            siter = ((struct lys_node_augment *)siter)->target;
+            continue;
+        } else if (siter->nodetype == LYS_OUTPUT) {
+            /* done for RPC reply */
+            break;
+        } else if (siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_ANYXML | LYS_NOTIF | LYS_RPC)) {
+            /* standard data node */
+            lyd_set_add(spath, (void*)siter);
+
+        } /* else skip the rest node types */
+        siter = siter->parent;
+    }
+    if (!spath->number) {
+        /* no valid path */
+        goto error;
+    }
+
+    /* start searching */
+    LY_TREE_FOR((struct lyd_node *)data, iter) {
+        if (iter->schema == (struct lys_node*)spath->set[spath->number - 1]) {
+            lyd_set_add(ret, iter);
+        }
+    }
+    for (i = spath->number - 1; i; i--) {
+        if (!ret->number) {
+            /* nothing found */
+            return ret;
+        }
+
+        ret_aux = lyd_set_new();
+        if (!ret_aux) {
+            LOGMEM;
+            goto error;
+        }
+        for (j = 0; j < ret->number; j++) {
+            LY_TREE_FOR(ret->set[j]->child, iter) {
+                if (iter->schema == (struct lys_node*)spath->set[i - 1]) {
+                    lyd_set_add(ret_aux, iter);
+                }
+            }
+        }
+        lyd_set_free(ret);
+        ret = ret_aux;
+    }
+
+    lyd_set_free(spath);
+    return ret;
+
+error:
+    lyd_set_free(ret);
+    lyd_set_free(spath);
+
+    return NULL;
+}
+
+API struct lyd_set *
 lyd_set_new(void)
 {
     return calloc(1, sizeof(struct lyd_set));
