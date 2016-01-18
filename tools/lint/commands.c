@@ -489,7 +489,7 @@ cmd_data(const char *arg)
     }
 
     if (outformat != LYD_UNKNOWN) {
-        lyd_print_file(output, data, outformat);
+        lyd_print_file(output, data, outformat, 1);
     }
 
     ret = 0;

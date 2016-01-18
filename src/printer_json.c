@@ -34,7 +34,7 @@
 #define INDENT ""
 #define LEVEL (level*2)
 
-void json_print_nodes(struct lyout *out, int level, const struct lyd_node *root);
+static void json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int withsiblings);
 
 static int
 json_print_string(struct lyout *out, const char *text)
@@ -179,7 +179,7 @@ json_print_container(struct lyout *out, int level, const struct lyd_node *node)
         json_print_attrs(out, level + 1, node);
         ly_print(out, "%*s}%s", LEVEL, INDENT, node->child ? ",\n" : "");
     }
-    json_print_nodes(out, level, node->child);
+    json_print_nodes(out, level, node->child, 1);
     level--;
     ly_print(out, "%*s}", LEVEL, INDENT);
 }
@@ -230,7 +230,7 @@ json_print_leaf_list(struct lyout *out, int level, const struct lyd_node *node, 
                 json_print_attrs(out, level + 1, node);
                 ly_print(out, "%*s}%s", LEVEL, INDENT, list->child ? ",\n" : "");
             }
-            json_print_nodes(out, level, list->child);
+            json_print_nodes(out, level, list->child, 1);
             --level;
             ly_print(out, "%*s}", LEVEL, INDENT);
             --level;
@@ -312,8 +312,8 @@ json_print_anyxml(struct lyout *out, int level, const struct lyd_node *node)
     }
 }
 
-void
-json_print_nodes(struct lyout *out, int level, const struct lyd_node *root)
+static void
+json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int withsiblings)
 {
     const struct lyd_node *node, *iter;
 
@@ -368,12 +368,16 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root)
             LOGINT;
             break;
         }
+
+        if (!withsiblings) {
+            break;
+        }
     }
     ly_print(out, "\n");
 }
 
 int
-json_print_data(struct lyout *out, const struct lyd_node *root)
+json_print_data(struct lyout *out, const struct lyd_node *root, int options)
 {
     int level = 0;
 
@@ -381,7 +385,7 @@ json_print_data(struct lyout *out, const struct lyd_node *root)
     ly_print(out, "{\n");
 
     /* content */
-    json_print_nodes(out, level + 1, root);
+    json_print_nodes(out, level + 1, root, options & LYP_WITHSIBLINGS);
 
     /* end */
     ly_print(out, "}\n");

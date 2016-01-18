@@ -667,6 +667,20 @@ int lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count),
                   const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
 
 /**
+ * @defgroup printerflags Printer flags
+ * @ingroup printers
+ *
+ * Validity flags for data nodes.
+ *
+ * @{
+ */
+#define LYP_WITHSIBLINGS 0x01 /**< Flag for printing also the (following) sibling nodes of the data node. */
+
+/**
+ * @}
+ */
+
+/**
  * @brief Print data tree in the specified format.
  *
  * To write data into a file descriptor, use lyd_print_fd().
@@ -675,9 +689,10 @@ int lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count),
  * node of the data tree to print the specific subtree.
  * @param[in] f File stream where to print the data.
  * @param[in] format Data output format.
+ * @param[in] options [printer flags](@ref printerflags).
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format);
+int lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int options);
 
 /**
  * @brief Print data tree in the specified format.
@@ -688,9 +703,10 @@ int lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format);
  * node of the data tree to print the specific subtree.
  * @param[in] fd File descriptor where to print the data.
  * @param[in] format Data output format.
+ * @param[in] options [printer flags](@ref printerflags).
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format);
+int lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options);
 
 
  /**
@@ -703,9 +719,10 @@ int lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format);
  * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
  * node of the data tree to print the specific subtree.
  * @param[in] format Data output format.
+ * @param[in] options [printer flags](@ref printerflags).
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format);
+int lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int options);
 
 /**
  * @brief Print data tree in the specified format.
@@ -717,10 +734,11 @@ int lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format);
  * @param[in] writeclb Callback function to write the data (see write(1)).
  * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
  * @param[in] format Data output format.
+ * @param[in] options [printer flags](@ref printerflags).
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
-                  const struct lyd_node *root, LYD_FORMAT format);
+                  const struct lyd_node *root, LYD_FORMAT format, int options);
 
 /**@} printers */
 
