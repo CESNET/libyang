@@ -1242,11 +1242,20 @@ lyd_set_free(struct lyd_set *set)
 API int
 lyd_set_add(struct lyd_set *set, struct lyd_node *node)
 {
+    unsigned int i;
     struct lyd_node **new;
 
-    if (!set) {
+    if (!set || !node) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
+    }
+
+    /* search for duplication */
+    for (i = 0; i < set->number; i++) {
+        if (set->set[i] == node) {
+            /* already in set */
+            return EXIT_SUCCESS;
+        }
     }
 
     if (set->size == set->number) {
