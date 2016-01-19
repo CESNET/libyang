@@ -1346,6 +1346,25 @@ struct lys_node *lys_parent(const struct lys_node *node);
  */
 void lys_set_private(const struct lys_node *node, void *priv);
 
+/**
+ * @brief Get schema node according to the given absolute schema node identifier.
+ *
+ * The \p module determines the starting module and the default one for the \p nodeid.
+ * That means if a node is without prefix, this starting module is assumed. In every
+ * other case the prefix of the module must be specified. Here are some examples:
+ *
+ * module - ietf-netconf-monitoring
+ * /get-schema/input/identifier
+ *
+ * module - ietf-interfaces
+ * /interfaces/interface/ietf-ip:ipv4/ietf-ip:address/ietf-ip:ip
+ *
+ * @param[in] module Starting (current) module.
+ * @param[in] nodeid Absolute schema node identifier.
+ * @return Resolved schema node or NULL.
+ */
+const struct lys_node *lys_get_node(const struct lys_module *module, const char *nodeid);
+
 /**@} */
 
 #ifdef __cplusplus

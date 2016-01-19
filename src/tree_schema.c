@@ -2746,3 +2746,26 @@ lys_set_private(const struct lys_node *node, void *priv)
 
     ((struct lys_node *)node)->private = priv;
 }
+
+API const struct lys_node *
+lys_get_node(const struct lys_module *module, const char *nodeid)
+{
+    const struct lys_node *ret;
+
+    if (!module || !nodeid) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    if (nodeid[0] != '/') {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    if (resolve_schema_nodeid(nodeid, NULL, module, LYS_AUGMENT, &ret)) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    return ret;
+}
