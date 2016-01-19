@@ -1282,7 +1282,7 @@ lyd_get_node(const struct lyd_node *data, const struct lys_node *schema)
     for (i = spath->number - 1; i; i--) {
         if (!ret->number) {
             /* nothing found */
-            return ret;
+            break;
         }
 
         ret_aux = lyd_set_new();
