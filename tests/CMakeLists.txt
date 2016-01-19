@@ -8,7 +8,7 @@ add_executable(test_augment schema/yin/test_augment.c)
 target_link_libraries(test_augment ${CMOCKA_LIBRARIES} yang)
 add_test(NAME test_augment COMMAND $<TARGET_FILE:test_augment>)
 
-configure_file(config.h.in config.h)
+configure_file("${PROJECT_SOURCE_DIR}/tests/config.h.in" "${PROJECT_SOURCE_DIR}/tests/config.h" ESCAPE_QUOTES @ONLY)
 
 if(ENABLE_VALGRIND_TESTS)
 	find_program(valgrind_FOUND valgrind)
