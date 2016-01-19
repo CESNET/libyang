@@ -1,23 +1,22 @@
+os: linux
+sudo: required
+dist: trusty
 language: c
 
 compiler:
   - clang
-
-os:
-  - linux
+  - gcc
 
 branches:
   only:
     - master
     - devel
-    - coverity
 
 before_install:
   - wget https://cmocka.org/files/1.0/cmocka-1.0.1.tar.xz
   - tar -xJvf cmocka-1.0.1.tar.xz
   - cd cmocka-1.0.1 && mkdir build && cd build
-  - cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr ..
-  - sudo make install
+  - cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr .. && make -j2 && sudo make install
   - cd ../..
 
 env:
@@ -31,9 +30,10 @@ addons:
     project:
       name: "CESNET/libyang"
     notification_email: rkrejci@cesnet.cz
-    build_command_prepend: "cmake .; make clean"
-    build_command:   "make"
+    build_command_prepend: "mkdir build ; cd build ; cmake .. ; make clean"
+    build_command: "make"
     branch_pattern: coverity
 
-script: cmake . && make && make test
+script: 
+  - mkdir build && cd build ; cmake .. && make -j2 && make test
 
