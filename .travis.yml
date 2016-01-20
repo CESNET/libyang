@@ -19,21 +19,6 @@ before_install:
   - cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr .. && make -j2 && sudo make install
   - cd ../..
 
-env:
-  global:
-   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
-   #   via the "travis encrypt" command using the project repo's public key
-   - secure: "dOIHA+29WzdS1GPm2A/2osTIm4GAGP+OCP/CoYN8gZ4W9yxHKY+noJevDtPw+KDQ5wgBKEcqPnLA1gVI6PeRLdxjHpWULzaH9GZsjktK2YNJJkO2kw2tBrXp09ak4jczokaYcdOM1pfXFbTPYRpDHyd4nS8QvFM4nev7xg87zvU="
-
-addons:
-  coverity_scan:
-    project:
-      name: "CESNET/libyang"
-    notification_email: rkrejci@cesnet.cz
-    build_command_prepend: "mkdir build ; cd build ; cmake .. ; make clean"
-    build_command: "make"
-    branch_pattern: coverity
-
 script: 
   - mkdir build && cd build ; cmake .. && make -j2 && make test
 
