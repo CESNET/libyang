@@ -1,7 +1,10 @@
 ITEMS=5000
 CFLAGS=-Wall -O0
 
-compilation: validation validation_xml
+compilation: validation validation_xml addloop
+
+addloop: addloop.c
+	$(CC) $(CFLAGS) -lyang $< -o $@
 
 validation: validation.c
 	$(CC) $(CFLAGS) -lyang $< -o $@
@@ -9,12 +12,16 @@ validation: validation.c
 validation_xml: validation_xml.c
 	$(CC) $(CFLAGS) -lxml2 -lxslt $< -o $@
 
+
 test: validation validation_xml
-	@rm -rf data.xml data_xml.xml; \
-	for i in $(shell seq 1 ${ITEMS}); do \
+	@rm -rf data.xml data_xml.xml addloop_result.xml; \
+	echo "Adding 5000 list items one by one (libyang)"; \
+	TIME=" time  : %Es\n memory: %MKb" time ./addloop perftest.yin | grep real | sed 's/* //'; \
+	echo;
+	@for i in $(shell seq 1 ${ITEMS}); do \
 		echo "<ptest1 xmlns=\"urn:libyang:performance:test\"><index>$$i</index><p1>$$i</p1></ptest1>" >> data.xml; \
-	done; \
-	echo "<config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">" > data_xml.xml; \
+	done;
+	@echo "<config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">" > data_xml.xml; \
 	cat data.xml >> data_xml.xml; \
 	echo "</config>" >> data_xml.xml; \
 	echo "Loading and validating data with $(ITEMS) items..."; \
@@ -25,5 +32,5 @@ test: validation validation_xml
 	TIME=" time  : %Es\n memory: %MKb" time ./validation_xml perftest.yin data_xml.xml perftest-config.rng perftest-schematron.xsl; \
 
 clean:
-	rm -rf validation validation_xml data.xml data_xml.xml
+	rm -rf validation validation_xml addloop data.xml data_xml.xml addloop_result.xml
 
