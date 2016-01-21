@@ -130,7 +130,11 @@ json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int o
         break;
 
     case LY_TYPE_LEAFREF:
-        json_print_leaf(out, level, leaf->value.leafref, 1);
+        if (leaf->value.leafref) {
+            json_print_leaf(out, level, leaf->value.leafref, 1);
+        } else {
+            ly_print(out, "");
+        }
         break;
 
     case LY_TYPE_EMPTY:

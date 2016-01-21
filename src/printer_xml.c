@@ -236,7 +236,9 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
 
     case LY_TYPE_LEAFREF:
         ly_print(out, ">");
-        lyxml_dump_text(out, ((struct lyd_node_leaf_list *)(leaf->value.leafref))->value_str);
+        if (leaf->value.leafref) {
+            lyxml_dump_text(out, ((struct lyd_node_leaf_list *)(leaf->value.leafref))->value_str);
+        }
         ly_print(out, "</%s>", node->schema->name);
         break;
 
