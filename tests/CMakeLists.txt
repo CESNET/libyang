@@ -4,6 +4,10 @@ add_executable(test_data_initialization data/test_data_initialization.c)
 target_link_libraries(test_data_initialization ${CMOCKA_LIBRARIES} yang)
 add_test(NAME test_data_initialization COMMAND $<TARGET_FILE:test_data_initialization>)
 
+add_executable(test_leafref_remove data/test_leafref_remove.c)
+target_link_libraries(test_leafref_remove ${CMOCKA_LIBRARIES} yang)
+add_test(NAME test_leafref_remove COMMAND $<TARGET_FILE:test_leafref_remove>)
+
 add_executable(test_augment schema/yin/test_augment.c)
 target_link_libraries(test_augment ${CMOCKA_LIBRARIES} yang)
 add_test(NAME test_augment COMMAND $<TARGET_FILE:test_augment>)
