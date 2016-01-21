@@ -125,7 +125,7 @@ ly_write(struct lyout *out, const char *buf, size_t count)
                 return -1;
             }
             out->method.mem.buf = aux;
-            out->method.mem.size += count + 1;
+            out->method.mem.size = out->method.mem.len + count + 1;
         }
         memcpy(&out->method.mem.buf[out->method.mem.len], buf, count + 1);
         out->method.mem.len += count;
