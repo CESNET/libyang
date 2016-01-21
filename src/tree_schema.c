@@ -1764,6 +1764,11 @@ lys_leaf_free(struct ly_ctx *ctx, struct lys_node_leaf *leaf)
 {
     int i;
 
+    if (leaf->child) {
+        /* leafref backlinks */
+        ly_set_free((struct ly_set *)leaf->child);
+    }
+
     for (i = 0; i < leaf->must_size; i++) {
         lys_restr_free(ctx, &leaf->must[i]);
     }
@@ -1780,6 +1785,11 @@ static void
 lys_leaflist_free(struct ly_ctx *ctx, struct lys_node_leaflist *llist)
 {
     int i;
+
+    if (llist->child) {
+        /* leafref backlinks */
+        ly_set_free((struct ly_set *)llist->child);
+    }
 
     for (i = 0; i < llist->must_size; i++) {
         lys_restr_free(ctx, &llist->must[i]);
@@ -1929,15 +1939,17 @@ lys_node_free(struct lys_node *node)
     ctx = node->module->ctx;
 
     /* common part */
-    LY_TREE_FOR_SAFE(node->child, next, sub) {
-        lys_node_free(sub);
-    }
-
     if (!(node->nodetype & (LYS_INPUT | LYS_OUTPUT))) {
         free(node->features);
         lydict_remove(ctx, node->name);
         lydict_remove(ctx, node->dsc);
         lydict_remove(ctx, node->ref);
+    }
+
+    if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+        LY_TREE_FOR_SAFE(node->child, next, sub) {
+            lys_node_free(sub);
+        }
     }
 
     /* specific part */

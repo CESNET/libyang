@@ -60,4 +60,14 @@ int lyv_data_context(const struct lyd_node *node, int options, unsigned int line
  */
 int lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct unres_data *unres);
 
+/**
+ * @brief Validate the node's value. Applies only to referrence values where the validity can change by
+ * modifying a value/tree outside the node itself (leafrefs).
+ *
+ * @param[in] node Data tree node to be checked.
+ * @param[in] options Parser options, see @ref parseroptions.
+ * @return EXIT_SUCCESS or EXIT_FAILURE with ly_errno set.
+ */
+int lyv_data_value(struct lyd_node *node, int options);
+
 #endif /* LY_VALIDATION_H_ */

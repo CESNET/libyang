@@ -482,6 +482,10 @@ lyd_insert_setinvalid(struct lyd_node *node)
                 break;
             }
 
+            if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                goto nextsibling;
+            }
+
             /* select next elem to process */
             /* go into children */
             next = elem->child;
@@ -686,6 +690,9 @@ lyd_validate(struct lyd_node *node, int options)
                 }
             }
         }
+        if (lyv_data_value(iter, options)) {
+            return EXIT_FAILURE;
+        }
 
         /* validation successful */
         iter->validity = LYD_VAL_OK;
@@ -733,11 +740,34 @@ lyd_dup_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr)
 API int
 lyd_unlink(struct lyd_node *node)
 {
-    struct lyd_node *iter;
+    struct lyd_node *iter, *next;
+    struct ly_set *set, *data;
+    unsigned int i, j;
 
     if (!node) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
+    }
+
+    /* fix leafrefs */
+    LY_TREE_DFS_BEGIN(node, next, iter) {
+        /* the node is target of a leafref */
+        if ((iter->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && iter->schema->child) {
+            set = (struct ly_set *)iter->schema->child;
+            for (i = 0; i < set->number; i++) {
+                data = lyd_get_node(iter, set->sset[i]);
+                if (data) {
+                    for (j = 0; j < data->number; j++) {
+                        if (((struct lyd_node_leaf_list *)data->dset[j])->value.leafref == iter) {
+                            /* remove reference to the node we are going to replace */
+                            ((struct lyd_node_leaf_list *)data->dset[j])->value.leafref = NULL;
+                        }
+                    }
+                    ly_set_free(data);
+                }
+            }
+        }
+        LY_TREE_DFS_END(node, next, iter)
     }
 
     /* unlink from siblings */
@@ -1038,7 +1068,7 @@ lyd_insert_attr(struct lyd_node *parent, const char *name, const char *value)
 API void
 lyd_free(struct lyd_node *node)
 {
-    struct lyd_node *next, *child;
+    struct lyd_node *next, *iter;
 
     if (!node) {
         return;
@@ -1046,14 +1076,14 @@ lyd_free(struct lyd_node *node)
 
     if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
         /* free children */
-        LY_TREE_FOR_SAFE(node->child, next, child) {
-            lyd_free(child);
+        LY_TREE_FOR_SAFE(node->child, next, iter) {
+            lyd_free(iter);
         }
     } else if (node->schema->nodetype == LYS_ANYXML) {
         lyxml_free(node->schema->module->ctx, ((struct lyd_node_anyxml *)node)->value);
-    } else {
+    } else { /* LYS_LEAF | LYS_LEAFLIST */
         /* free value */
-        switch(((struct lyd_node_leaf_list *)node)->value_type) {
+        switch (((struct lyd_node_leaf_list *)node)->value_type) {
         case LY_TYPE_BINARY:
         case LY_TYPE_STRING:
             lydict_remove(node->schema->module->ctx, ((struct lyd_node_leaf_list *)node)->value.string);

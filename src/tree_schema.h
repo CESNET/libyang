@@ -633,7 +633,9 @@ struct lys_node_leaf {
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_LEAF */
     struct lys_node *parent;         /**< pointer to the parent node, NULL in case of a top level node */
-    struct lys_node *child;          /**< always NULL */
+    struct lys_node *child;          /**< always NULL except the leaf/leaflist is target of a leafref, in that case
+                                          the pointer stores set of ::lys_node leafref objects with path referencing
+                                          the current ::lys_node_leaf */
     struct lys_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
     struct lys_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
@@ -679,7 +681,9 @@ struct lys_node_leaflist {
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_LEAFLIST */
     struct lys_node *parent;         /**< pointer to the parent node, NULL in case of a top level node */
-    struct lys_node *child;          /**< always NULL */
+    struct lys_node *child;          /**< always NULL except the leaf/leaflist is target of a leafref, in that case
+                                          the pointer stores set of ::lys_node leafref objects with path referencing
+                                          the current ::lys_node_leaflist */
     struct lys_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
     struct lys_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node

@@ -304,6 +304,44 @@ cleanup:
 }
 
 int
+lyv_data_value(struct lyd_node *node, int options)
+{
+    int rc;
+
+    assert(node);
+
+    if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+        /* nothing to check */
+        return EXIT_SUCCESS;
+    }
+
+    switch (((struct lys_node_leaf *)node->schema)->type.base) {
+    case LY_TYPE_LEAFREF:
+        if (!((struct lyd_node_leaf_list *)node)->value.leafref) {
+            if (options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
+                /* in this case the leafref is always unresolved */
+                if (!(((struct lyd_node_leaf_list *)node)->value_type & LY_TYPE_LEAFREF_UNRES)) {
+                    LOGVAL(LYE_SPEC, 0, "lyv_data_value(): Invalid options for given data.");
+                    return EXIT_FAILURE;
+                }
+            } else {
+                /* try to resolve leafref */
+                rc = resolve_unres_data_item(node, UNRES_LEAFREF, 0, 0);
+                if (rc) {
+                    return EXIT_FAILURE;
+                }
+            }
+        }
+        break;
+    default:
+        /* do nothing */
+        break;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int
 lyv_data_context(const struct lyd_node *node, int options, unsigned int line, struct unres_data *unres)
 {
     struct lyd_node *iter;

@@ -3564,6 +3564,18 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
 
         rc = resolve_path_arg_schema(stype->info.lref.path, node, tpdf_flag, first, line,
                                      (const struct lys_node **)&stype->info.lref.target);
+        if (stype->info.lref.target) {
+            /* store the backlink from leafref target */
+            if (!stype->info.lref.target->child) {
+                stype->info.lref.target->child = (void*)ly_set_new();
+                if (!stype->info.lref.target->child) {
+                    LOGMEM;
+                    return -1;
+                }
+            }
+            ly_set_add((struct ly_set *)stype->info.lref.target->child, stype->parent);
+        }
+
         has_str = 0;
         break;
     case UNRES_TYPE_DER:
