@@ -666,38 +666,51 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 API int
 lyd_validate(struct lyd_node *node, int options)
 {
-    struct lyd_node *next, *iter, *to_free = NULL;
+    struct lyd_node *root, *next, *iter, *to_free = NULL;
 
     ly_errno = 0;
-    LY_TREE_DFS_BEGIN(node, next, iter) {
-        if (to_free) {
-            lyd_free(to_free);
-            to_free = NULL;
-        }
 
-        if (lyv_data_context(iter, options, 0, NULL)) {
-            return EXIT_FAILURE;
+    if (!(options & LYD_OPT_NOSIBLINGS)) {
+        /* check that the node is the first sibling */
+        while(node->prev->next) {
+            node = node->prev;
         }
-        if (lyv_data_content(iter, options, 0, NULL)) {
-            if (ly_errno) {
+    }
+
+    LY_TREE_FOR(node, root) {
+        LY_TREE_DFS_BEGIN(root, next, iter) {
+            if (to_free) {
+                lyd_free(to_free);
+                to_free = NULL;
+            }
+
+            if (lyv_data_context(iter, options, 0, NULL)) {
                 return EXIT_FAILURE;
-            } else {
-                /* safe deferred removal */
-                to_free = iter;
-                if (iter == node) {
-                    /* removing the whole subtree */
-                    break;
+            }
+            if (lyv_data_content(iter, options, 0, NULL)) {
+                if (ly_errno) {
+                    return EXIT_FAILURE;
+                } else {
+                    /* safe deferred removal */
+                    to_free = iter;
+                    if (iter == root) {
+                        /* removing the whole subtree */
+                        break;
+                    }
                 }
             }
-        }
-        if (lyv_data_value(iter, options)) {
-            return EXIT_FAILURE;
-        }
+            if (lyv_data_value(iter, options)) {
+                return EXIT_FAILURE;
+            }
 
-        /* validation successful */
-        iter->validity = LYD_VAL_OK;
+            /* validation successful */
+            iter->validity = LYD_VAL_OK;
 
-        LY_TREE_DFS_END(node, next, iter);
+        LY_TREE_DFS_END(node, next, iter)}
+
+        if (options & LYD_OPT_NOSIBLINGS) {
+            break;
+        }
     }
 
     if (to_free) {
