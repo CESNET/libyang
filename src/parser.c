@@ -803,9 +803,10 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
         }
 
         if (!resolve) {
-            do {
-                type = &((struct lys_node_leaf *)node->schema)->type.info.lref.target->type;
-            } while (type->base == LY_TYPE_LEAFREF);
+            type = &((struct lys_node_leaf *)node->schema)->type.info.lref.target->type;
+            while (type->base == LY_TYPE_LEAFREF) {
+                type = &type->info.lref.target->type;
+            }
             node->value_type = type->base | LY_TYPE_LEAFREF_UNRES;
         } else {
             /* validity checking is performed later, right now the data tree
