@@ -551,6 +551,77 @@ struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT
  */
 
 /**
+ * @ingroup datatree
+ * @ingroup schematree
+ * @{
+ *
+ * @brief Structure to hold a set of (not necessary somehow connected) ::lyd_node or ::lys_node objects.
+ * Caller is supposed to not mix the type of objects added to the set and according to its knowledge about
+ * the set content, it is supposed to access the set via the sset, dset or set members of the structure.
+ *
+ * To free the structure, use lyd_set_free() function, to manipulate with the structure, use other
+ * lyd_set_* functions.
+ */
+struct ly_set {
+    unsigned int size;               /**< allocated size of the set array */
+    unsigned int number;             /**< number of elements in (used size of) the set array */
+    union {
+        struct lys_node **sset;      /**< array of pointers to a ::lys_node objects */
+        struct lyd_node **dset;      /**< array of pointers to a ::lyd_node objects */
+        void **set;                   /**< dummy array for generic work */
+    };
+};
+
+/**
+ * @brief Create and initiate new ::lyd_set structure.
+ *
+ * @return Created ::lyd_set structure or NULL in case of error.
+ */
+struct ly_set *ly_set_new(void);
+
+/**
+ * @brief Add a ::lyd_node or ::lys_node object into the set
+ *
+ * @param[in] set Set where the \p node will be added.
+ * @param[in] node The ::lyd_node or ::lys_node object to be added into the \p set;
+ * @return 0 on success
+ */
+int ly_set_add(struct ly_set *set, void *node);
+
+/**
+ * @brief Remove a ::lyd_node or ::lys_node object from the set.
+ *
+ * Note that after removing a node from a set, indexes of other nodes in the set can change
+ * (the last object is placed instead of the removed object).
+ *
+ * @param[in] set Set from which the \p node will be removed.
+ * @param[in] node The ::lyd_node or ::lys_node object to be removed from the \p set;
+ * @return 0 on success
+ */
+int ly_set_rm(struct ly_set *set, void *node);
+
+/**
+ * @brief Remove a ::lyd_node or ::lys_node object from the set index.
+ *
+ * Note that after removing a node from a set, indexes of other nodes in the set can change
+ * (the last object is placed instead of the removed object).
+ *
+ * @param[in] set Set from which a node will be removed.
+ * @param[in] index Index of the ::lyd_node or ::lys_node object in the \p set to be removed from the \p set;
+ * @return 0 on success
+ */
+int ly_set_rm_index(struct ly_set *set, unsigned int index);
+
+/**
+ * @brief Free the ::lyd_set data. Frees only the set structure content, not the referred data.
+ *
+ * @param[in] set The set to be freed.
+ */
+void ly_set_free(struct ly_set *set);
+
+/**@} sets */
+
+/**
  * @defgroup printers Printers
  * @{
  *

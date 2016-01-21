@@ -140,7 +140,7 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
 {
     struct lyd_node *diter1, *diter2;
     unsigned int i, j;
-    struct lyd_set *s1 = NULL, *s2 = NULL;
+    struct ly_set *s1 = NULL, *s2 = NULL;
     int copy;
     int ret = EXIT_FAILURE;
 
@@ -168,8 +168,8 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
              * selects all the data so it does not make sense to limit it by any
              * selection/containment node.
              */
-            s1 = lyd_set_new();
-            s2 = lyd_set_new();
+            s1 = ly_set_new();
+            s2 = ly_set_new();
             if (!s1 || !s2) {
                 LOGMEM;
                 goto cleanup;
@@ -178,16 +178,16 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
                 /* is selection node */
                 if ((diter1->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
                         && !((struct lyd_node_leaf_list *)diter1)->value_str) {
-                    if (lyd_set_add(s1, diter1)) {
+                    if (ly_set_add(s1, diter1)) {
                         goto cleanup;
                     }
                 } else if ((diter1->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter1)->value->child) {
-                    if (lyd_set_add(s1, diter1)) {
+                    if (ly_set_add(s1, diter1)) {
                         goto cleanup;
                     }
                 } else if (diter1->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) {
                     /* or containment node */
-                    if (lyd_set_add(s1, diter1)) {
+                    if (ly_set_add(s1, diter1)) {
                         goto cleanup;
                     }
                 }
@@ -197,16 +197,16 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
                 /* is selection node */
                 if ((diter2->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
                         && !((struct lyd_node_leaf_list *)diter2)->value_str) {
-                    if (lyd_set_add(s2, diter2)) {
+                    if (ly_set_add(s2, diter2)) {
                         goto cleanup;
                     }
                 } else if ((diter2->schema->nodetype == LYS_ANYXML) && !((struct lyd_node_anyxml *)diter2)->value->child) {
-                    if (lyd_set_add(s2, diter2)) {
+                    if (ly_set_add(s2, diter2)) {
                         goto cleanup;
                     }
                 } else if (diter2->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) {
                     /* or containment node */
-                    if (lyd_set_add(s2, diter2)) {
+                    if (ly_set_add(s2, diter2)) {
                         goto cleanup;
                     }
                 }
@@ -220,7 +220,7 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
                  * removing all selection and containment nodes
                  */
                 for (i = 0; i < s1->number; i++) {
-                    lyd_free(s1->set[i]);
+                    lyd_free(s1->dset[i]);
                 }
                 break;
             } else {
@@ -228,26 +228,26 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
                 for (j = 0; j < s2->number; j++) { /* from */
                     copy = 0;
                     for (i = 0; i < s1->number; i++) { /* to */
-                        if (s1->set[i]->schema != s2->set[j]->schema) {
+                        if (s1->dset[i]->schema != s2->dset[j]->schema) {
                             continue;
                         }
 
                         /* we have something similar to diter1, explore it more */
-                        switch (s2->set[j]->schema->nodetype) {
+                        switch (s2->dset[j]->schema->nodetype) {
                         case LYS_LIST:
                         case LYS_CONTAINER:
-                            if (!filter_compare(s2->set[j], s1->set[i])) {
+                            if (!filter_compare(s2->dset[j], s1->dset[i])) {
                                 /* merge the two containers into the to */
-                                filter_merge(s1->set[i], s2->set[j]);
+                                filter_merge(s1->dset[i], s2->dset[j]);
                             } else {
                                 /* check that some of them is not a selection node */
-                                if (!s2->set[j]->child) {
+                                if (!s2->dset[j]->child) {
                                     /* from is selection node, so keep only it because to selects subset */
-                                    lyd_free(s1->set[i]);
+                                    lyd_free(s1->dset[i]);
                                     /* set the flag to copy the from child at the end */
                                     copy = 1;
                                     continue;
-                                } else if (!s1->set[i]->child) {
+                                } else if (!s1->dset[i]->child) {
                                     /* to is already selection node, so ignore the from child */
                                 } else {
                                     /* they are different so keep trying to search for some other matching instance */
@@ -273,15 +273,15 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
 
                     if (copy || i == s1->number) {
                         /* the node is not yet present in to, so move it there */
-                        lyd_unlink(s2->set[j]);
+                        lyd_unlink(s2->dset[j]);
                         if (to->child) {
-                            to->child->prev->next = s2->set[j];
-                            s2->set[j]->prev = to->child->prev;
-                            to->child->prev = s2->set[j];
+                            to->child->prev->next = s2->dset[j];
+                            s2->dset[j]->prev = to->child->prev;
+                            to->child->prev = s2->dset[j];
                         } else {
-                            to->child = s2->set[j];
+                            to->child = s2->dset[j];
                         }
-                        s2->set[j]->parent = to;
+                        s2->dset[j]->parent = to;
                     }
                 }
             }
@@ -297,8 +297,8 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
     ret = EXIT_SUCCESS;
 
 cleanup:
-    lyd_set_free(s1);
-    lyd_set_free(s2);
+    ly_set_free(s1);
+    ly_set_free(s2);
 
     return ret;
 }

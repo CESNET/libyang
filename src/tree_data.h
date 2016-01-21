@@ -322,10 +322,10 @@ int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
  *
  * @param[in] data A node in the data tree to search.
  * @param[in] schema Schema node of the data nodes caller want to find.
- * @return Set of found data nodes. If no data node is found, the returned set is empty.
+ * @return Set of found data nodes (use ::ly_set#dset). If no data node is found, the returned set is empty.
  * In case of error, NULL is returned.
  */
-struct lyd_set *lyd_get_node(const struct lyd_node *data, const struct lys_node *schema);
+struct ly_set *lyd_get_node(const struct lyd_node *data, const struct lys_node *schema);
 
 /**
  * @brief Validate \p node data subtree.
@@ -401,65 +401,6 @@ struct lyxml_elem;
  * done using.
  */
 char *lyxml_serialize(const struct lyxml_elem *anyxml);
-
-/**
- * @brief Structure to hold a set of (not necessary somehow connected) ::lyd_node objects.
- *
- * To free the structure, use lyd_set_free() function, to manipulate with the structure, use other
- * lyd_set_* functions.
- */
-struct lyd_set {
-    unsigned int size;               /**< allocated size of the set array */
-    unsigned int number;             /**< number of elements in (used size of) the set array */
-    struct lyd_node **set;           /**< array of pointers to a ::lyd_node objects */
-};
-
-/**
- * @brief Create and initiate new ::lyd_set structure.
- *
- * @return Created ::lyd_set structure or NULL in case of error.
- */
-struct lyd_set *lyd_set_new(void);
-
-/**
- * @brief Add a ::lyd_node object into the set
- *
- * @param[in] set Set where the \p node will be added.
- * @param[in] node The ::lyd_node object to be added into the \p set;
- * @return 0 on success
- */
-int lyd_set_add(struct lyd_set *set, struct lyd_node *node);
-
-/**
- * @brief Remove a ::lyd_node object from the set.
- *
- * Note that after removing a node from a set, indexes of other nodes in the set can change
- * (the last object is placed instead of the removed object).
- *
- * @param[in] set Set from which the \p node will be removed.
- * @param[in] node The ::lyd_node object to be removed from the \p set;
- * @return 0 on success
- */
-int lyd_set_rm(struct lyd_set *set, struct lyd_node *node);
-
-/**
- * @brief Remove a ::lyd_node object from the set index.
- *
- * Note that after removing a node from a set, indexes of other nodes in the set can change
- * (the last object is placed instead of the removed object).
- *
- * @param[in] set Set from which a node will be removed.
- * @param[in] index Index of the ::lyd_node object in the \p set to be removed from the \p set;
- * @return 0 on success
- */
-int lyd_set_rm_index(struct lyd_set *set, unsigned int index);
-
-/**
- * @brief Free the ::lyd_set data. Frees only the set structure content, not the referred data.
- *
- * @param[in] set The set to be freed.
- */
-void lyd_set_free(struct lyd_set *set);
 
 /**@} */
 

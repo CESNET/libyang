@@ -378,7 +378,7 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
 {
     struct lys_node *siter = NULL, *parent = NULL;
     struct lyd_node *diter = NULL;
-    struct lyd_set *set = NULL;
+    struct ly_set *set = NULL;
     unsigned int i;
     uint32_t minmax;
 
@@ -418,16 +418,16 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
                        /* 7.6.5, rule 1, checking presence is not needed
                         * since it is done in check_mand_getnext()
                         */
-                       lyd_set_free(set);
+                       ly_set_free(set);
                        return NULL;
                    }
                    /* add the parent to the list for searching in data tree */
                    if (!set) {
-                       set = lyd_set_new();
+                       set = ly_set_new();
                    }
                    /* ignore return - memory error is logged and we will
                     * check at least the rest of nodes we have */
-                   (void) lyd_set_add(set, (struct lyd_node *)parent);
+                   (void) ly_set_add(set, parent);
                }
            }
 
@@ -435,19 +435,19 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
            if (set) {
                for (i = 0; i < set->number; i++) {
                    LY_TREE_FOR(data->child, diter) {
-                       if (diter->schema == (struct lys_node *)(set->set[i])) {
+                       if (diter->schema == set->sset[i]) {
                            break;
                        }
                    }
                    if (!diter) {
                        /* instance not found */
-                       node = (struct lys_node *)(set->set[i]);
-                       lyd_set_free(set);
+                       node = set->sset[i];
+                       ly_set_free(set);
                        return node;
                    }
                    data = diter;
                }
-               lyd_set_free(set);
+               ly_set_free(set);
            }
 
            LY_TREE_FOR(data->child, diter) {
