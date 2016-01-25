@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include "context.h"
 #include "resolve.h"
+#include "common.h"
+#include "parser_yang.h"
 
 struct Scheck {
 	int check;
@@ -121,23 +123,26 @@ struct Scheck *checked=NULL;
 
 %%
 
-start: module_stmt {printf ("SYNTAX OK\n> ");}
- |  submodule_stmt {printf("SYNTAX OK\n> ");}
+start: module_stmt 
+ |  submodule_stmt 
 
 
-string_1: STRING            { s = malloc(yyleng+1); strcpy(s,yytext); }
-          optsep string_2  {free(s);}
+string_1: STRING            { s = strdup(yytext); if (!s) {LOGMEM; YYERROR;} }
+          optsep string_2
 
 
 string_2: %empty
   |  string_2 '+' optsep 
-     STRING { s = realloc(s,yyleng+strlen(s)+1); strcat(s,yytext); } 
+     STRING { s = realloc(s,yyleng+strlen(s)+1); 
+              if (s) { strcat(s,yytext); }
+              else { LOGMEM; YYERROR; } 
+            } 
      optsep;
 
 start_check: stmtsep {struct Scheck *new; new=malloc(sizeof(struct Scheck)); if (new==NULL) exit(1); new->next=checked; checked=new; 
                       checked->check=0; }
 
-module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str
+module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { yang_read_common(module,s,MODULE_KEYWORD,yylineno); s=NULL; }
               '{' start_check 
                         module_header_stmts {if ((checked->check&2)==0) { yyerror(module,unres,"namespace missing."); YYERROR; } 
                                              if ((checked->check&4)==0) { yyerror(module,unres,"prefix missing."); YYERROR; } 
@@ -1062,17 +1067,17 @@ integer_value: ZERO
   ;
 
 prefix_arg_str: string_1
-  |  identifier_print optsep;
+  |  identifiers optsep;
 
-identifier_arg_str: identifier_print optsep 
+identifier_arg_str: identifiers optsep 
   |  string_1 
   ;
 
-node_identifier: identifier_print 
+node_identifier: identifiers 
   | IDENTIFIERPREFIX 
   ; 
 
-identifier_ref_arg_str: identifier_print optsep
+identifier_ref_arg_str: identifiers optsep
   | IDENTIFIERPREFIX optsep
   | string_1
   ; 
@@ -1117,7 +1122,7 @@ whitespace_opt: %empty
 
 string: STRINGS optsep
   | REVISION_DATE optsep
-  | identifier_print optsep
+  | identifiers optsep
   | string_1
   ;
 
@@ -1215,7 +1220,7 @@ yychecked_8: %empty { if ((checked->check&128)==0) checked->check|=128; else { y
 yychecked_9: %empty { if ((checked->check&256)==0) checked->check|=256; else { yyerror(module,unres,"syntax error!"); YYERROR; }	}
 yychecked_10: %empty { if ((checked->check&512)==0) checked->check|=512; else { yyerror(module,unres,"syntax error!"); YYERROR; }	}
 
-identifier_print: identifier { s = malloc(yyleng+1); strcpy(s,yytext); }
+identifiers: identifier { s = strdup(yytext); if (!s) { LOGMEM; YYERROR; } }
 
 %%
 

@@ -1,5 +1,6 @@
 %option noyywrap yylineno
 %{
+#include "parser_yang.h"
 #include "parser_yang_bis.h"
 %}
 %x COMMENT1
@@ -83,6 +84,7 @@
 "yang-version" { return YANG_VERSION_KEYWORD; }
 "yin-element" { return YIN_ELEMENT_KEYWORD; }
 "add" { return ADD_KEYWORD; }
+"current" { return CURRENT_KEYWORD; }
 <PATH>"current" { return CURRENT_KEYWORD; }
 "delete" { return DELETE_KEYWORD; }
 "deprecated" { return DEPRECATED_KEYWORD; }
@@ -148,9 +150,9 @@
                            switch(yytext[1]) { 
                              case '*': BEGIN COMMENT1; yyless(2); break;
                              case '/': yyless(2); BEGIN COMMENT2; break;
-                             default:  printf("%s\n",yytext); return STRINGS;
+                             default:  return STRINGS;
                             }
-                          } else {printf("%s\n",yytext); return STRINGS;} }
+                          } else {return STRINGS;} }
 \n { return EOL;}
 [ \t]+ { return WHITESPACE;}
 
