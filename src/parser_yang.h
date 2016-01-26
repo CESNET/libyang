@@ -22,10 +22,15 @@
 #ifndef LY_PARSER_YANG_H_
 #define LY_PARSER_YANG_H_
 
+#include <stdlib.h>
+
 #include "tree_schema.h"
 #include "resolve.h"
+#include "common.h"
 
 
 int yang_read_common(struct lys_module *module,char *value, int type, int line);
+
+int yang_read_prefix(struct lys_module *module, void *save, char *value,int type,int line);
 
 #endif /* LY_PARSER_YANG_H_ */

@@ -25,6 +25,10 @@ struct Scheck *checked=NULL;
 
 %parse-param {struct lys_module *module} {struct unres_schema *unres}
 
+%union {
+  int i;
+}
+
 %token ANYXML_KEYWORD
 %token WHITESPACE
 %token ERROR
@@ -121,6 +125,8 @@ struct Scheck *checked=NULL;
 %token UNBOUNDED_KEYWORD
 %token USER_KEYWORD
 
+%type <i> module_header_stmts
+
 %%
 
 start: module_stmt 
@@ -144,19 +150,19 @@ start_check: stmtsep {struct Scheck *new; new=malloc(sizeof(struct Scheck)); if 
 
 module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { yang_read_common(module,s,MODULE_KEYWORD,yylineno); s=NULL; }
               '{' start_check 
-                        module_header_stmts {if ((checked->check&2)==0) { yyerror(module,unres,"namespace missing."); YYERROR; } 
-                                             if ((checked->check&4)==0) { yyerror(module,unres,"prefix missing."); YYERROR; } 
-                                             checked->check=0; }
+                        module_header_stmts { if (!module->ns) { LOGVAL(LYE_MISSSTMT2,yylineno,"namespace", "module"); YYERROR; } 
+                                              if (!module->prefix) { LOGVAL(LYE_MISSSTMT2,yylineno,"prefix", "module"); YYERROR; }
+                                             }
                         linkage_stmts
                         meta_stmts         {free_check();}
                         revision_stmts 
                         body_stmts
                      '}' optsep ;
 
-module_header_stmts: %empty
-  |  module_header_stmts yychecked_1 yang_version_stmt 
-  |  module_header_stmts yychecked_2 namespace_stmt 
-  |  module_header_stmts yychecked_3 prefix_stmt 
+module_header_stmts: %empty  { $$ = 0; }
+  |  module_header_stmts yang_version_stmt { if ($1) { LOGVAL(LYE_TOOMANY, yylineno, "yang version", "module"); YYERROR; } $$ = 1; }
+  |  module_header_stmts namespace_stmt { if (yang_read_common(module,s,NAMESPACE_KEYWORD,yylineno)) {YYERROR;} s=NULL; } 
+  |  module_header_stmts prefix_stmt { if (yang_read_prefix(module,NULL,s,MODULE_KEYWORD,yylineno)) {YYERROR;} s=NULL; } 
   ;
 
 submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str
@@ -1224,14 +1230,17 @@ identifiers: identifier { s = strdup(yytext); if (!s) { LOGMEM; YYERROR; } }
 
 %%
 
-void yyerror(struct lys_module *module, struct unres_schema *unres, char *s, ...){
+void yyerror(struct lys_module *module, struct unres_schema *unres, char *str, ...){
   va_list ap;
-  va_start(ap,s);
+  va_start(ap,str);
 
   fprintf(stderr,"%d: error: ", yylineno);
-  vfprintf(stderr,s,ap);
+  vfprintf(stderr,str,ap);
   //fprintf(stderr," Given %s.",yytext);
   fprintf(stderr,"\n");
+  if (s) {
+    free(s);
+  }
 }
 
 void free_check(){
