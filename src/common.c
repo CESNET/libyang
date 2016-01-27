@@ -355,9 +355,6 @@ transform_schema2json(const struct lys_module *module, const char *expr, uint32_
             free(out);
             return NULL;
         }
-        if (mod->type) {
-           mod = ((struct lys_submodule *)module)->belongsto;
-        }
 
         /* adjust out size (it can even decrease in some strange cases) */
         out_size += strlen(mod->name)-id_len;

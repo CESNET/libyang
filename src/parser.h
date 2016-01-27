@@ -36,9 +36,8 @@
  * @defgroup yin YIN format support
  * @{
  */
-struct lys_module *yin_read_module(struct ly_ctx *ctx, const char *data, int implement, struct unres_schema *unres);
-struct lys_submodule *yin_read_submodule(struct lys_module *module, const char *data, int implement,
-                                         struct unres_schema *unres);
+struct lys_module *yin_read_module(struct ly_ctx *ctx, const char *data, int implement);
+struct lys_submodule *yin_read_submodule(struct lys_module *module, const char *data, struct unres_schema *unres);
 
 /**@} yin */
 
@@ -60,7 +59,7 @@ struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *paren
 
 
 struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
-                                   const char *revision);
+                                   const char *revision, struct unres_schema *unres);
 
 void lyp_set_implemented(struct lys_module *module);
 

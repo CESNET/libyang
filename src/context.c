@@ -171,15 +171,15 @@ ly_ctx_get_submodule(const struct lys_module *module, const char *name, const ch
         return NULL;
     }
 
-    /* TODO search also for submodules not directly available from the main module */
-
-    /* search in modules included by the main module */
+    /* make sure that the provided module is not submodule */
     if (module->type) {
         module = ((struct lys_submodule *)module)->belongsto;
     }
+
+    /* search in submodules list */
     for (i = 0; i < module->inc_size; i++) {
         result = module->inc[i].submodule;
-        if (strcmp(name, result->name)) {
+        if (!result || strcmp(name, result->name)) {
             continue;
         }
 
@@ -293,7 +293,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
             free(module_data);
         }
     } else {
-        module = lyp_search_file(ctx, NULL, name, revision);
+        module = lyp_search_file(ctx, NULL, name, revision, NULL);
     }
 
     return module;
@@ -348,7 +348,7 @@ ly_ctx_get_submodule_names(const struct ly_ctx *ctx, const char *module_name)
         return NULL;
     }
 
-    for (i = 0; i < mod->inc_size; i++) {
+    for (i = 0; i < mod->inc_size && mod->inc[i].submodule; i++) {
         result[i] = mod->inc[i].submodule->name;
     }
     result[i] = NULL;
@@ -373,7 +373,7 @@ ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod)
     }
 
     /* submodule features */
-    for (i = 0; i < cur_mod->inc_size; ++i) {
+    for (i = 0; i < cur_mod->inc_size && cur_mod->inc[i].submodule; ++i) {
         for (j = 0; j < cur_mod->inc[i].submodule->features_size; ++j) {
             if (!(cur_mod->inc[i].submodule->features[j].flags & LYS_FENABLED)) {
                 continue;
@@ -398,11 +398,7 @@ ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod, struct ly_ct
     for (i = 0; i < ctx->models.used; ++i) {
         mod_iter = ctx->models.list[i];
         for (k = 0; k < mod_iter->deviation_size; ++k) {
-            if (mod_iter->deviation[k].target->module->type) {
-                target_module = ((struct lys_submodule *)mod_iter->deviation[k].target->module)->belongsto;
-            } else {
-                target_module = mod_iter->deviation[k].target->module;
-            }
+            target_module = mod_iter->deviation[k].target->module;
 
             /* we found a module deviating our module */
             if (target_module == cur_mod) {
@@ -420,14 +416,9 @@ ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod, struct ly_ct
             }
         }
 
-        for (j = 0; j < mod_iter->inc_size; ++j) {
+        for (j = 0; j < mod_iter->inc_size && mod_iter->inc[j].submodule; ++j) {
             for (k = 0; k < mod_iter->inc[j].submodule->deviation_size; ++k) {
-                if (mod_iter->inc[j].submodule->deviation[k].target->module->type) {
-                    target_module = ((struct lys_submodule *)
-                                    mod_iter->inc[j].submodule->deviation[k].target->module)->belongsto;
-                } else {
-                    target_module = mod_iter->inc[j].submodule->deviation[k].target->module;
-                }
+                target_module = mod_iter->inc[j].submodule->deviation[k].target->module;
 
                 /* we found a submodule deviating our module */
                 if (target_module == cur_mod) {
@@ -462,7 +453,7 @@ ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod)
         cont = lyd_new(parent, NULL, "submodules");
     }
 
-    for (i = 0; i < cur_mod->inc_size; ++i) {
+    for (i = 0; i < cur_mod->inc_size && cur_mod->inc[i].submodule; ++i) {
         item = lyd_new(cont, NULL, "submodule");
         if (!item) {
             return EXIT_FAILURE;
@@ -494,7 +485,7 @@ ly_ctx_info(struct ly_ctx *ctx)
 
     mod = ly_ctx_get_module(ctx, "ietf-yang-library", NULL);
     if (!mod) {
-        mod = lyp_search_file(ctx, NULL, "ietf-yang-library", NULL);
+        mod = lyp_search_file(ctx, NULL, "ietf-yang-library", NULL, NULL);
     }
     if (!mod || !mod->data || strcmp(mod->data->next->name, "modules")) {
         return NULL;

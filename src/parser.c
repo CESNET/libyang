@@ -71,9 +71,10 @@ lyp_set_implemented(struct lys_module *module)
 {
     int i;
 
+    assert(module);
     module->implemented = 1;
 
-    for (i = 0; i < module->inc_size; i++) {
+    for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
         lyp_set_implemented((struct lys_module *)module->inc[i].submodule);
     }
 }
@@ -86,7 +87,6 @@ lyp_set_implemented(struct lys_module *module)
 struct lys_module *
 lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
-    struct unres_schema *unres;
     struct lys_module *module = NULL;
     struct stat sb;
     char *addr;
@@ -96,26 +96,19 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
         return NULL;
     }
 
-    unres = calloc(1, sizeof *unres);
-    if (!unres) {
-        LOGMEM;
-        return NULL;
-    }
 
     if (fstat(fd, &sb) == -1) {
         LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
-        free(unres);
         return NULL;
     }
     addr = mmap(NULL, sb.st_size + 1, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
-        free(unres);
         return NULL;
     }
     switch (format) {
     case LYS_IN_YIN:
-        module = yin_read_module(ctx, addr, 0, unres);
+        module = yin_read_module(ctx, addr, 0);
         break;
     case LYS_IN_YANG:
     default:
@@ -124,19 +117,13 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     }
     munmap(addr, sb.st_size);
 
-    if (module && unres->count && resolve_unres_schema(module, unres)) {
-        unres_schema_free(ctx, unres);
-        lys_free(module, 0);
-        module = NULL;
-    } else {
-        unres_schema_free(ctx, unres);
-    }
-
     return module;
 }
 
+/* if module is !NULL, then the function searches for submodule */
 struct lys_module *
-lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision)
+lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
+                struct unres_schema *unres)
 {
     size_t len, flen;
     int fd;
@@ -149,6 +136,15 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
 
     len = strlen(name);
     cwd = wd = get_current_dir_name();
+
+    if (module) {
+        /* searching for submodule, try if it is already loaded */
+        result = (struct lys_module *)ly_ctx_get_submodule(module, name, revision);
+        if (result) {
+            /* success */
+            return result;
+        }
+    }
 
 opendir_search:
     chdir(wd);
@@ -192,7 +188,7 @@ opendir_search:
         }
 
         if (module) {
-            result = (struct lys_module *)lys_submodule_read(module, fd, format, module->implemented);
+            result = (struct lys_module *)lys_submodule_read(module, fd, format, unres);
         } else {
             result = lys_read_import(ctx, fd, format);
         }
@@ -922,6 +918,7 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
         type = lyp_get_next_union_type(stype, NULL, &found);
         while (type) {
             leaf->value_type = type->base;
+            memset(&leaf->value, 0, sizeof leaf->value);
 
             /* in these cases we use JSON format */
             if (xml && ((type->base == LY_TYPE_IDENT) || (type->base == LY_TYPE_INST))) {
@@ -957,9 +954,12 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
             LOGVAL(LYE_INVAL, line, (leaf->value_str ? leaf->value_str : ""), leaf->schema->name);
             return EXIT_FAILURE;
         }
-    } else if (lyp_parse_value_(leaf, stype, resolve, unres, line)) {
-        ly_errno = LY_EVALID;
-        return EXIT_FAILURE;
+    } else {
+        memset(&leaf->value, 0, sizeof leaf->value);
+        if (lyp_parse_value_(leaf, stype, resolve, unres, line)) {
+            ly_errno = LY_EVALID;
+            return EXIT_FAILURE;
+        }
     }
 
     return EXIT_SUCCESS;

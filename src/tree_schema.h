@@ -239,14 +239,14 @@ struct lys_module {
     const char *ref;                 /**< cross-reference for the module */
     const char *org;                 /**< party/company responsible for the module */
     const char *contact;             /**< contact information for the module */
+    const char *uri;                 /**< source of this module in URI format (can be NULL) */
+    uint8_t type:1;                  /**< 0 - structure type used to distinguish structure from ::lys_submodule */
     uint8_t version:5;               /**< yang-version:
                                           - 0 = not specified, YANG 1.0 as default,
                                           - 1 = YANG 1.0,
                                           - 2 = YANG 1.1 not yet supported */
-    uint8_t type:1;                  /**< 0 - structure type used to distinguish structure from ::lys_submodule */
     uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
-    const char *uri;                 /**< source of this module in URI format (can be NULL) */
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in #rev array */
@@ -268,9 +268,8 @@ struct lys_module {
     struct lys_node_augment *augment;/**< array of augments */
     struct lys_deviation *deviation; /**< array of specified deviations */
 
-    struct lys_node *data;           /**< first data statement, includes also RPCs and Notifications */
-
     /* specific module's items in comparison to submodules */
+    struct lys_node *data;           /**< first data statement, includes also RPCs and Notifications */
     const char *ns;                  /**< namespace of the module (mandatory) */
 };
 
@@ -278,9 +277,8 @@ struct lys_module {
  * @brief Submodule schema node structure that can be included into a YANG module.
  *
  * Compatible with ::lys_module structure with exception of the last, #belongsto member, which is replaced by
- * ::lys_module#ns member. Sometimes, ::lys_submodule can be provided casted to ::lys_module. Such a thing can
- * be determined via the #type member value.
- *
+ * ::lys_module#data and ::lys_module#ns members. Sometimes, ::lys_submodule can be provided casted to ::lys_module.
+ * Such a thing can be determined via the #type member value.
  *
  */
 struct lys_submodule {
@@ -291,14 +289,9 @@ struct lys_submodule {
     const char *ref;                 /**< cross-reference for the submodule */
     const char *org;                 /**< party responsible for the submodule */
     const char *contact;             /**< contact information for the submodule */
-    uint8_t version:5;               /**< yang-version:
-                                          - 0 = not specified, YANG 1.0 as default,
-                                          - 1 = YANG 1.0,
-                                          - 2 = YANG 1.1 not yet supported */
-    uint8_t type:1;                  /**< 1 - structure type used to distinguish structure from ::lys_module */
-    uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
-    uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
     const char *uri;                 /**< origin URI of the submodule */
+    uint8_t type:1;                  /**< 1 - structure type used to distinguish structure from ::lys_module */
+    uint8_t padding:7;                /**< not used, kept for compatibility with ::lys_module */
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in #rev array */
@@ -319,8 +312,6 @@ struct lys_submodule {
     struct lys_feature *features;    /**< array of feature definitions */
     struct lys_node_augment *augment;/**< array of augments */
     struct lys_deviation *deviation; /**< array of specified deviations */
-
-    struct lys_node *data;           /**< first data statement, includes also RPCs and Notifications */
 
     /* specific submodule's items in comparison to modules */
     struct lys_module *belongsto;    /**< belongs-to (parent module) */
@@ -1130,6 +1121,7 @@ struct lys_import {
     struct lys_module *module;       /**< link to the imported module (mandatory) */
     const char *prefix;              /**< prefix for the data from the imported schema (mandatory) */
     char rev[LY_REV_SIZE];           /**< revision-date of the imported module (optional) */
+    uint8_t external;                /**< flag for import records from submodules */
 };
 
 /**
@@ -1138,6 +1130,7 @@ struct lys_import {
 struct lys_include {
     struct lys_submodule *submodule; /**< link to the included submodule (mandatory) */
     char rev[LY_REV_SIZE];           /**< revision-date of the included submodule (optional) */
+    uint8_t external;                /**< flag for include records from submodules */
 };
 
 /**

@@ -77,10 +77,11 @@ extern struct ly_types ly_types[LY_DATA_TYPE_COUNT];
  * @param[in] module Schema tree where to connect the submodule, belongs-to value must match.
  * @param[in] data String containing the submodule specification in the given \p format.
  * @param[in] format Format of the data to read.
- * @param[in] implement Flag to distinguish implemented and just imported (sub)modules.
+ * @param[in] unres TODO provide description
  * @return Created submodule structure or NULL in case of error.
  */
-struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT format, int implement);
+struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT format,
+                                          struct unres_schema *unres);
 
 /**
  * @brief Create submodule structure by reading data from file descriptor.
@@ -91,10 +92,11 @@ struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char 
  * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the submodule
  *            specification in the given \p format.
  * @param[in] format Format of the data to read.
- * @param[in] implement Flag to distinguish implemented and just imported (sub)modules.
+ * @param[in] unres TODO provide description
  * @return Created submodule structure or NULL in case of error.
  */
-struct lys_submodule *lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format, int implement);
+struct lys_submodule *lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format,
+                                         struct unres_schema *unres);
 
 /**
  * @brief Free the submodule structure
@@ -130,10 +132,9 @@ int lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct
  *
  * @param[in] name Name of the searched grouping.
  * @param[in] start Definition must be valid (visible) for this node.
- * @param[in] in_submodules Whether search the submodules as well or not.
  * @return Matching valid grouping or NULL.
  */
-struct lys_node_grp *lys_find_grouping_up(const char *name, struct lys_node *start, int in_submodules);
+struct lys_node_grp *lys_find_grouping_up(const char *name, struct lys_node *start);
 
 /**
  * @brief Check that the \p node being connected into the \p parent has a unique name (identifier).
@@ -154,15 +155,26 @@ int lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_modu
  * @brief Create a copy of the specified schema tree \p node
  *
  * @param[in] module Target module for the duplicated node.
+ * @param[in] parent Schema tree node where the node is being connected, NULL in case of top level \p node.
  * @param[in] node Schema tree node to be duplicated.
  * @param[in] flags Config flag to be inherited in case the origin node does not specify config flag
  * @param[in] nacm NACM flags to be inherited from the parent
- * @param[in] recursive 1 if all children are supposed to be also duplicated.
  * @param[in] unres TODO provide description
  * @return Created copy of the provided schema \p node.
  */
-struct lys_node *lys_node_dup(struct lys_module *module, const struct lys_node *node, uint8_t flags, uint8_t nacm,
-                              int recursive, struct unres_schema *unres);
+struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct lys_node *node,
+                              uint8_t flags, uint8_t nacm, struct unres_schema *unres);
+
+/**
+ * @brief Return main module of the schema tree node.
+ *
+ * In case of regular YANG module, it returns ::lys_node#module pointer,
+ * but in case of submodule, it returns pointer to the main module.
+ *
+ * @param[in] node Schema tree node to be examined
+ * @return pointer to the main module (schema structure), NULL in case of error.
+ */
+struct lys_module *lys_mainmodule(const struct lys_node *node);
 
 /**
  * @brief Free a schema when condition
@@ -243,9 +255,8 @@ const struct lys_node *ly_check_mandatory(const struct lyd_node *start);
 struct lyd_node *lyd_attr_parent(struct lyd_node *root, struct lyd_attr *attr);
 
 /**
- * @brief Find an import from \p module with matching \p prefix, \p name, or both.
- * \p module itself is also compared. If \p module is a submodule, it's module
- * name is actually the name of the belongs-to module.
+ * @brief Find an import from \p module with matching \p prefix, \p name, or both,
+ * \p module itself is also compared.
  *
  * @param[in] module Module with imports.
  * @param[in] prefix Module prefix to search for.
@@ -253,7 +264,7 @@ struct lyd_node *lyd_attr_parent(struct lyd_node *root, struct lyd_attr *attr);
  * @param[in] name Module name to search for.
  * @param[in] name_len Module \p name length. If 0, the whole name is used, if not NULL.
  *
- * @return Matching module (or submodule), NULL if not found.
+ * @return Matching module, NULL if not found.
  */
 const struct lys_module *lys_get_import_module(const struct lys_module *module, const char *prefix, int pref_len,
                                                const char *name, int name_len);

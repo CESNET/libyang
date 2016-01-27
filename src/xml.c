@@ -185,7 +185,7 @@ lyxml_correct_elem_ns(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns, 
     LY_TREE_DFS_BEGIN(elem, tmp, iter) {
         if (iter->ns) {
             /* find the root of elem NS */
-            for (ns_root = iter->ns->parent; ns_root->parent; ns_root = ns_root->parent);
+            for (ns_root = iter->ns->parent; ns_root; ns_root = ns_root->parent);
 
             /* elem NS is defined outside elem subtree */
             if (ns_root != elem_root) {

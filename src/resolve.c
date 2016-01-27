@@ -1277,7 +1277,7 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
 
             parent = parent->parent;
         }
-    } else if (mod_name) {
+    } else {
         /* get module where to search */
         module = lys_get_import_module(module, NULL, 0, mod_name, 0);
         if (!module) {
@@ -1296,7 +1296,7 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
     }
 
     /* search in submodules */
-    for (i = 0; i < module->inc_size; i++) {
+    for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
         for (j = 0; j < module->inc[i].submodule->tpdf_size; j++) {
             if (!strcmp(module->inc[i].submodule->tpdf[j].name, name) && module->inc[i].submodule->tpdf[j].type.base) {
                 if (ret) {
@@ -1504,18 +1504,17 @@ resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
         return -1;
     }
 
-    if (mod_prefix) {
-        module = lys_get_import_module(uses->module, mod_prefix, mod_prefix_len, NULL, 0);
-        if (!module) {
-            LOGVAL(LYE_INMOD_LEN, line, mod_prefix_len, mod_prefix);
-            return -1;
-        }
+    module = lys_get_import_module(uses->module, mod_prefix, mod_prefix_len, NULL, 0);
+    if (!module) {
+        LOGVAL(LYE_INMOD_LEN, line, mod_prefix_len, mod_prefix);
+        return -1;
+    } else if (module != uses->module) {
         start = module->data;
     } else {
         start = (struct lys_node *)uses;
     }
 
-    uses->grp = lys_find_grouping_up(name, start, 1);
+    uses->grp = lys_find_grouping_up(name, start);
     if (uses->grp) {
         return EXIT_SUCCESS;
     }
@@ -1557,29 +1556,14 @@ resolve_feature(const char *id, const struct lys_module *module, int first, uint
         return -1;
     }
 
-    if (mod_name) {
-        /* search in imported modules */
-        module = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
-        if (!module) {
-            /* identity refers unknown data model */
-            LOGVAL(LYE_INMOD_LEN, line, mod_name_len, mod_name);
-            return -1;
-        }
-    } else {
-        /* search in submodules */
-        for (i = 0; i < module->inc_size; i++) {
-            for (j = 0; j < module->inc[i].submodule->features_size; j++) {
-                if (!strcmp(name, module->inc[i].submodule->features[j].name)) {
-                    if (ret) {
-                        *ret = &(module->inc[i].submodule->features[j]);
-                    }
-                    return EXIT_SUCCESS;
-                }
-            }
-        }
+    module = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+    if (!module) {
+        /* identity refers unknown data model */
+        LOGVAL(LYE_INMOD_LEN, line, mod_name_len, mod_name);
+        return -1;
     }
 
-    /* search in the identified module */
+    /* search in the identified module ... */
     for (j = 0; j < module->features_size; j++) {
         if (!strcmp(name, module->features[j].name)) {
             if (ret) {
@@ -1592,6 +1576,25 @@ resolve_feature(const char *id, const struct lys_module *module, int first, uint
                 *ret = &module->features[j];
             }
             return EXIT_SUCCESS;
+        }
+    }
+    /* ... and all its submodules */
+    for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
+        for (j = 0; j < module->inc[i].submodule->features_size; j++) {
+            if (!strcmp(name, module->inc[i].submodule->features[j].name)) {
+                if (ret) {
+                    /* check status */
+                    node = (struct lys_node *)*ret;
+                    if (check_status(node->flags, node->module, node->name,
+                                     module->inc[i].submodule->features[j].flags,
+                                     module->inc[i].submodule->features[j].module,
+                                     module->inc[i].submodule->features[j].name, line)) {
+                        return -1;
+                    }
+                    *ret = &(module->inc[i].submodule->features[j]);
+                }
+                return EXIT_SUCCESS;
+            }
         }
     }
 
@@ -1688,13 +1691,11 @@ int
 resolve_schema_nodeid(const char *id, const struct lys_node *start, const struct lys_module *mod, LYS_NODE node_type,
                       const struct lys_node **ret)
 {
-    const char *name, *mod_name, *pref_mod_name;
+    const char *name, *mod_name;
     const struct lys_node *sibling;
     int i, opts, nam_len, mod_name_len, is_relative = -1;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
     const struct lys_module *prefix_mod;
-    /* 0 - in module, 1 - in 1st submodule, 2 - in 2nd submodule, ... */
-    uint8_t in_submod = 0;
 
     assert(mod);
     assert(id);
@@ -1716,15 +1717,11 @@ resolve_schema_nodeid(const char *id, const struct lys_node *start, const struct
 
     /* absolute-schema-nodeid */
     if (!is_relative) {
-        if (mod_name) {
-            prefix_mod = lys_get_import_module(mod, NULL, 0, mod_name, mod_name_len);
-            if (!prefix_mod) {
-                return -1;
-            }
-            start = prefix_mod->data;
-        } else {
-            start = mod->data;
+        prefix_mod = lys_get_import_module(mod, NULL, 0, mod_name, mod_name_len);
+        if (!prefix_mod) {
+            return -1;
         }
+        start = prefix_mod->data;
     /* descendant-schema-nodeid */
     } else if (!start) {
         /* start must be set in this case */
@@ -1741,46 +1738,21 @@ resolve_schema_nodeid(const char *id, const struct lys_node *start, const struct
                     || (!strncmp(name, "output", 6) && (nam_len == 6) && (sibling->nodetype == LYS_OUTPUT)))) {
 
                 /* get module for module name match check */
-                if (mod_name) {
-                    prefix_mod = lys_get_import_module(mod, NULL, 0, mod_name, mod_name_len);
-
-                    if (!prefix_mod && (node_type == LYS_AUGMENT)) {
-                        /* we want augment nodes in this case */
-                        prefix_mod = sibling->module;
-                        if (prefix_mod->type) {
-                            pref_mod_name = ((struct lys_submodule *)prefix_mod)->belongsto->name;
-                        } else {
-                            pref_mod_name = prefix_mod->name;
-                        }
-                        if (strncmp(pref_mod_name, mod_name, mod_name_len) || pref_mod_name[mod_name_len]) {
-                            prefix_mod = NULL;
-                        }
-                    }
-                    if (!prefix_mod) {
+                prefix_mod = lys_get_import_module(mod, NULL, 0, mod_name, mod_name_len);
+                if (!prefix_mod && (node_type == LYS_AUGMENT)) {
+                    /* we want augment nodes in this case */
+                    prefix_mod = sibling->module;
+                    if (strncmp(prefix_mod->name, mod_name, mod_name_len) || prefix_mod->name[mod_name_len]) {
                         return -1;
                     }
-                } else {
-                    prefix_mod = mod;
+                } else if (!prefix_mod) {
+                    return -1;
                 }
 
                 /* modules need to always be checked, we want to skip augments (no other reason to check them) */
-                if (prefix_mod != sibling->module) {
-                    if (in_submod) {
-                        if (prefix_mod->type) {
-                            prefix_mod = ((struct lys_submodule *)prefix_mod)->belongsto;
-                        }
-                        if (sibling->module->type) {
-                            if (prefix_mod != ((struct lys_submodule *)sibling->module)->belongsto) {
-                                continue;
-                            }
-                        } else {
-                            if (prefix_mod != sibling->module) {
-                                continue;
-                            }
-                        }
-                    } else {
-                        continue;
-                    }
+                if ((!sibling->module->type && prefix_mod != sibling->module) ||
+                       (sibling->module->type && prefix_mod != ((struct lys_submodule *)sibling->module)->belongsto)) {
+                    continue;
                 }
 
                 /* the result node? */
@@ -1818,15 +1790,7 @@ resolve_schema_nodeid(const char *id, const struct lys_node *start, const struct
 
         /* no match */
         if (!sibling) {
-            /* are we done with the included submodules as well? */
-            if (start->parent || (in_submod == mod->inc_size)) {
-                return EXIT_FAILURE;
-            }
-
-            /* we aren't, check the next one */
-            ++in_submod;
-            start = mod->inc[in_submod-1].submodule->data;
-            continue;
+            return EXIT_FAILURE;
         }
 
         if ((i = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
@@ -2363,6 +2327,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent_node, int pare
                         const struct lys_node **ret)
 {
     const struct lys_node *node;
+    const struct lys_module *mod;
     const char *id, *prefix, *name;
     int pref_len, nam_len, parent_times, has_predicate;
     int i, first_iter, rc;
@@ -2380,7 +2345,10 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent_node, int pare
 
         if (first_iter) {
             if (parent_times == -1) {
-                node = parent_node->module->data;
+                /* resolve prefix of the module */
+                mod = lys_get_import_module(parent_node->module, NULL, 0, prefix, pref_len);
+                /* get start node */
+                node = mod ? mod->data : NULL;
                 if (!node) {
                     if (!first) {
                         LOGVAL(LYE_NORESOLV, line, path);
@@ -2427,12 +2395,14 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent_node, int pare
             }
 
             if (!prefix) {
-                prefix = parent_node->module->name;
+                mod = parent_node->module;
+                prefix = mod->type ? ((struct lys_submodule *)mod)->belongsto->name : mod->name;
             }
             first_iter = 0;
         } else {
             if (!prefix) {
-                prefix = node->module->name;
+                mod = parent_node->module;
+                prefix = mod->type ? ((struct lys_submodule *)mod)->belongsto->name : mod->name;
             }
             node = node->child;
         }
@@ -2718,6 +2688,7 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
 {
     int rc;
     struct lys_node *sub;
+    struct lys_module *mm;
 
     assert(aug);
 
@@ -2741,9 +2712,10 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
         inherit_config_flag(sub);
     }
 
-    /* check identifier uniquness as in lys_node_addchild() */
+    /* check identifier uniqueness as in lys_node_addchild() */
+    mm = aug->module->type ? ((struct lys_submodule *)aug->module)->belongsto : aug->module;
     LY_TREE_FOR(aug->child, sub) {
-        if (lys_check_id(sub, aug->parent, aug->module)) {
+        if (lys_check_id(sub, aug->parent, mm)) {
             return -1;
         }
     }
@@ -2786,14 +2758,9 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
 
     /* copy the data nodes from grouping into the uses context */
     LY_TREE_FOR(uses->grp->child, node_aux) {
-        node = lys_node_dup(uses->module, node_aux, uses->flags, uses->nacm, 1, unres);
+        node = lys_node_dup(uses->module, (struct lys_node *)uses, node_aux, uses->flags, uses->nacm, unres);
         if (!node) {
             LOGVAL(LYE_SPEC, line, "Copying data from grouping failed.");
-            return -1;
-        }
-        if (lys_node_addchild((struct lys_node *)uses, NULL, node)) {
-            /* error logged */
-            lys_node_free(node);
             return -1;
         }
     }
@@ -2986,7 +2953,7 @@ resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident,
 
     /* search submodules */
     if (!base_iter) {
-        for (j = 0; j < module->inc_size; j++) {
+        for (j = 0; j < module->inc_size && module->inc[j].submodule; j++) {
             for (i = 0; i < module->inc[j].submodule->ident_size; i++) {
                 if (!strcmp(basename, module->inc[j].submodule->ident[i].name)) {
 
@@ -3080,26 +3047,23 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
         name = basename;
     }
 
-    if (mod_name_len) {
-        /* get module where to search */
-        module = lys_get_import_module(module, NULL, 0, basename, mod_name_len);
-        if (!module) {
-            /* identity refers unknown data model */
-            LOGVAL(LYE_INMOD, line, basename);
-            return -1;
-        }
-    } else {
-        /* search in submodules */
-        for (i = 0; i < module->inc_size; i++) {
-            if (!resolve_base_ident_sub((struct lys_module *)module->inc[i].submodule, ident, name, ret)) {
-                goto success;
-            }
-        }
+    /* get module where to search */
+    module = lys_get_import_module(module, NULL, 0, mod_name_len ? basename : NULL, mod_name_len);
+    if (!module) {
+        /* identity refers unknown data model */
+        LOGVAL(LYE_INMOD, line, basename);
+        return -1;
     }
 
-    /* search in the identified module */
+    /* search in the identified module ... */
     if (!resolve_base_ident_sub(module, ident, name, ret)) {
         goto success;
+    }
+    /* and all its submodules */
+    for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
+        if (!resolve_base_ident_sub((struct lys_module *)module->inc[i].submodule, ident, name, ret)) {
+            goto success;
+        }
     }
 
     if (!first) {
@@ -3266,7 +3230,7 @@ static int
 resolve_list_keys(struct lys_node_list *list, const char *keys_str, int first, uint32_t line)
 {
     int i, len, rc;
-    const char *value;
+    const char *value, *modname;
 
     for (i = 0; i < list->keys_size; ++i) {
         /* get the key name */
@@ -3279,7 +3243,8 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str, int first, u
             len = strlen(keys_str);
         }
 
-        rc = lys_get_sibling(list->child, list->module->name, 0, keys_str, len, LYS_LEAF, (const struct lys_node **)&list->keys[i]);
+        modname = list->module->type ? ((struct lys_submodule *)list->module)->belongsto->name : list->module->name;
+        rc = lys_get_sibling(list->child, modname, 0, keys_str, len, LYS_LEAF, (const struct lys_node **)&list->keys[i]);
         if (rc) {
             if ((rc == -1) || !first) {
                 LOGVAL(LYE_INRESOLV, line, "list keys", keys_str);
@@ -3767,6 +3732,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         return -1;
     }
 
+    unres->count = 0;
     return EXIT_SUCCESS;
 }
 
@@ -3845,6 +3811,12 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
         return -1;
     }
     unres->str_snode[unres->count-1] = snode;
+    unres->module = ly_realloc(unres->module, unres->count*sizeof *unres->module);
+    if (!unres->module) {
+        LOGMEM;
+        return -1;
+    }
+    unres->module[unres->count-1] = mod;
 #ifndef NDEBUG
     unres->line = ly_realloc(unres->line, unres->count*sizeof *unres->line);
     if (!unres->line) {
@@ -3913,23 +3885,41 @@ unres_schema_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type)
 }
 
 void
-unres_schema_free(struct ly_ctx *ctx, struct unres_schema *unres)
+unres_schema_free(struct lys_module *module, struct unres_schema **unres)
 {
     uint32_t i;
+    unsigned int unresolved = 0;
 
-    for (i = 0; i < unres->count; ++i) {
-        if (unres->type[i] == UNRES_TYPE_DER) {
-            lyxml_free(ctx, (struct lyxml_elem *)((struct lys_type *)unres->item[i])->der);
-        }
+    if (!unres || !(*unres)) {
+        return;
     }
 
-    free(unres->item);
-    free(unres->type);
-    free(unres->str_snode);
+    assert(module || (*unres)->count == 0);
+
+    for (i = 0; i < (*unres)->count; ++i) {
+        if ((*unres)->module[i] != module) {
+            if ((*unres)->type[i] != UNRES_RESOLVED) {
+                unresolved++;
+            }
+            continue;
+        }
+        if ((*unres)->type[i] == UNRES_TYPE_DER) {
+            lyxml_free(module->ctx, (struct lyxml_elem *)((struct lys_type *)(*unres)->item[i])->der);
+        }
+        (*unres)->type[i] = UNRES_RESOLVED;
+    }
+
+    if (!module || (!unresolved && !module->type)) {
+        free((*unres)->item);
+        free((*unres)->type);
+        free((*unres)->str_snode);
+        free((*unres)->module);
 #ifndef NDEBUG
-    free(unres->line);
+        free((*unres)->line);
 #endif
-    free(unres);
+        free((*unres));
+        (*unres) = NULL;
+    }
 }
 
 /* logs directly */
