@@ -134,9 +134,6 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     struct lys_module *result = NULL;
     int localsearch = 1;
 
-    len = strlen(name);
-    cwd = wd = get_current_dir_name();
-
     if (module) {
         /* searching for submodule, try if it is already loaded */
         result = (struct lys_module *)ly_ctx_get_submodule(module, name, revision);
@@ -145,6 +142,9 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
             return result;
         }
     }
+
+    len = strlen(name);
+    cwd = wd = get_current_dir_name();
 
 opendir_search:
     chdir(wd);
