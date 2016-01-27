@@ -647,7 +647,7 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
             }
             if (((struct lyd_node_leaf_list *)node)->value_type == LY_TYPE_IDENT) {
                 ident = ((struct lyd_node_leaf_list *)node)->value.ident;
-                if (check_status(schema->flags, schema->module, schema->name,
+                if (lyp_check_status(schema->flags, schema->module, schema->name,
                                  ident->flags, ident->module, ident->name, line)) {
                     return EXIT_FAILURE;
                 }

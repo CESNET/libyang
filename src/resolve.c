@@ -1464,7 +1464,7 @@ resolve_unique(struct lys_node *parent, const char *uniq_str, int first, uint32_
     }
 
     /* check status */
-    if (check_status(parent->flags, parent->module, parent->name, leaf->flags, leaf->module, leaf->name, line)) {
+    if (lyp_check_status(parent->flags, parent->module, parent->name, leaf->flags, leaf->module, leaf->name, line)) {
         return -1;
     }
 
@@ -1569,7 +1569,7 @@ resolve_feature(const char *id, const struct lys_module *module, int first, uint
             if (ret) {
                 /* check status */
                 node = (struct lys_node *)*ret;
-                if (check_status(node->flags, node->module, node->name, module->features[j].flags,
+                if (lyp_check_status(node->flags, node->module, node->name, module->features[j].flags,
                                  module->features[j].module, module->features[j].name, line)) {
                     return -1;
                 }
@@ -1585,7 +1585,7 @@ resolve_feature(const char *id, const struct lys_module *module, int first, uint
                 if (ret) {
                     /* check status */
                     node = (struct lys_node *)*ret;
-                    if (check_status(node->flags, node->module, node->name,
+                    if (lyp_check_status(node->flags, node->module, node->name,
                                      module->inc[i].submodule->features[j].flags,
                                      module->inc[i].submodule->features[j].module,
                                      module->inc[i].submodule->features[j].name, line)) {
@@ -2439,7 +2439,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent_node, int pare
     }
 
     /* check status */
-    if (check_status(parent_node->flags, parent_node->module, parent_node->name,
+    if (lyp_check_status(parent_node->flags, parent_node->module, parent_node->name,
                      node->flags, node->module, node->name, line)) {
         return -1;
     }
@@ -3073,7 +3073,7 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
 
 success:
     /* check status */
-    if (check_status(flags, mod, ident ? ident->name : "of type", (*ret)->flags, (*ret)->module, (*ret)->name, line)) {
+    if (lyp_check_status(flags, mod, ident ? ident->name : "of type", (*ret)->flags, (*ret)->module, (*ret)->name, line)) {
         return -1;
     }
 
@@ -3202,7 +3202,7 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
         }
 
         /* check status */
-        if (check_status(uses->flags, uses->module, "of uses",
+        if (lyp_check_status(uses->flags, uses->module, "of uses",
                          uses->grp->flags, uses->grp->module, uses->grp->name, line)) {
             return -1;
         }
@@ -3258,7 +3258,7 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str, int first, u
         }
 
         /* check status */
-        if (check_status(list->flags, list->module, list->name,
+        if (lyp_check_status(list->flags, list->module, list->name,
                          list->keys[i]->flags, list->keys[i]->module, list->keys[i]->name, line)) {
             return -1;
         }

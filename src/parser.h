@@ -57,6 +57,15 @@ struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *paren
 
 /**@} jsondata */
 
+enum LY_IDENT {
+    LY_IDENT_SIMPLE,   /* only syntax rules */
+    LY_IDENT_FEATURE,
+    LY_IDENT_IDENTITY,
+    LY_IDENT_TYPE,
+    LY_IDENT_NODE,
+    LY_IDENT_NAME,     /* uniqueness across the siblings */
+    LY_IDENT_PREFIX
+};
 
 struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
                                    const char *revision, struct unres_schema *unres);
@@ -70,10 +79,10 @@ int lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int
 int lyp_check_length_range(const char *expr, struct lys_type *type);
 
 int fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_type *type,
-              struct unres_schema *unres);
+                  struct unres_schema *unres);
 
-int check_status(uint8_t flags1, struct lys_module *mod1, const char *name1,
-                 uint8_t flags2, struct lys_module *mod2, const char *name2, unsigned int line);
+int lyp_check_status(uint8_t flags1, struct lys_module *mod1, const char *name1,
+                     uint8_t flags2, struct lys_module *mod2, const char *name2, unsigned int line);
 
 /**
  * @brief Get know if the node is part of the RPC's input/output
@@ -90,6 +99,11 @@ int lyp_is_rpc(struct lys_node *node);
  * @retrun 0 for ok, 1 when multiple data types bits are set.
  */
 int lyp_check_options(int options);
+
+int lyp_check_identifier(const char *id, enum LY_IDENT type, unsigned int line, struct lys_module *module,
+                         struct lys_node *parent);
+int lyp_check_date(const char *date, unsigned int line);
+int lyp_check_mandatory(struct lys_node *node);
 
 /**
  * Store UTF-8 character specified as 4byte integer into the dst buffer.

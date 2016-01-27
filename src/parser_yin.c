@@ -40,22 +40,15 @@
 #include "tree_internal.h"
 #include "xml_internal.h"
 
-enum LY_IDENT {
-    LY_IDENT_SIMPLE,   /* only syntax rules */
-    LY_IDENT_FEATURE,
-    LY_IDENT_IDENTITY,
-    LY_IDENT_TYPE,
-    LY_IDENT_NODE,
-    LY_IDENT_NAME,     /* uniqueness across the siblings */
-    LY_IDENT_PREFIX
-};
-
 #define GETVAL(value, node, arg)                                    \
 	value = lyxml_get_attr(node, arg, NULL);                        \
 	if (!value) {                                                   \
 		LOGVAL(LYE_MISSARG, LOGLINE(node), arg, node->name);         \
 		goto error;                                                 \
 	}
+
+/* parser.c */
+int dup_prefix_check(const char *prefix, struct lys_module *module);
 
 #define OPT_IDENT   0x01
 #define OPT_CONFIG  0x02
@@ -83,252 +76,6 @@ static struct lys_node *read_yin_uses(struct lys_module *module, struct lys_node
 static struct lys_node *read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
                                           int resolve, struct unres_schema *unres);
 static struct lys_when *read_yin_when(struct lys_module *module, struct lyxml_elem *yin);
-
-/* does not log */
-static int
-dup_typedef_check(const char *type, struct lys_tpdf *tpdf, int size)
-{
-    int i;
-
-    for (i = 0; i < size; i++) {
-        if (!strcmp(type, tpdf[i].name)) {
-            /* name collision */
-            return EXIT_FAILURE;
-        }
-    }
-
-    return EXIT_SUCCESS;
-}
-
-/* does not log */
-static int
-dup_feature_check(const char *id, struct lys_module *module)
-{
-    int i;
-
-    for (i = 0; i < module->features_size; i++) {
-        if (!strcmp(id, module->features[i].name)) {
-            return EXIT_FAILURE;
-        }
-    }
-
-    return EXIT_SUCCESS;
-}
-
-/* does not log */
-static int
-dup_prefix_check(const char *prefix, struct lys_module *module)
-{
-    int i;
-
-    if (module->prefix && !strcmp(module->prefix, prefix)) {
-        return EXIT_FAILURE;
-    }
-    for (i = 0; i < module->imp_size; i++) {
-        if (!strcmp(module->imp[i].prefix, prefix)) {
-            return EXIT_FAILURE;
-        }
-    }
-
-    return EXIT_SUCCESS;
-}
-
-/* logs directly */
-static int
-check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
-                 struct lys_module *module, struct lys_node *parent)
-{
-    int i;
-    int size;
-    struct lys_tpdf *tpdf;
-    struct lys_node *node;
-
-    assert(id);
-
-    /* check id syntax */
-    if (!(id[0] >= 'A' && id[0] <= 'Z') && !(id[0] >= 'a' && id[0] <= 'z') && id[0] != '_') {
-        LOGVAL(LYE_INID, line, id, "invalid start character");
-        return EXIT_FAILURE;
-    }
-    for (i = 1; id[i]; i++) {
-        if (!(id[i] >= 'A' && id[i] <= 'Z') && !(id[i] >= 'a' && id[i] <= 'z')
-                && !(id[i] >= '0' && id[i] <= '9') && id[i] != '_' && id[i] != '-' && id[i] != '.') {
-            LOGVAL(LYE_INID, line, id, "invalid character");
-            return EXIT_FAILURE;
-        }
-    }
-
-    if (i > 64) {
-        LOGWRN("Identifier \"%s\" is long, you should use something shorter.", id);
-    }
-
-    switch (type) {
-    case LY_IDENT_NAME:
-        /* check uniqueness of the node within its siblings */
-        if (!parent) {
-            break;
-        }
-
-        LY_TREE_FOR(parent->child, node) {
-            if (node->name == id) {
-                LOGVAL(LYE_INID, line, id, "name duplication");
-                return EXIT_FAILURE;
-            }
-        }
-        break;
-    case LY_IDENT_TYPE:
-        assert(module);
-
-        /* check collision with the built-in types */
-        if (!strcmp(id, "binary") || !strcmp(id, "bits") ||
-                !strcmp(id, "boolean") || !strcmp(id, "decimal64") ||
-                !strcmp(id, "empty") || !strcmp(id, "enumeration") ||
-                !strcmp(id, "identityref") || !strcmp(id, "instance-identifier") ||
-                !strcmp(id, "int8") || !strcmp(id, "int16") ||
-                !strcmp(id, "int32") || !strcmp(id, "int64") ||
-                !strcmp(id, "leafref") || !strcmp(id, "string") ||
-                !strcmp(id, "uint8") || !strcmp(id, "uint16") ||
-                !strcmp(id, "uint32") || !strcmp(id, "uint64") || !strcmp(id, "union")) {
-            LOGVAL(LYE_SPEC, line, "Typedef name duplicates built-in type.");
-            return EXIT_FAILURE;
-        }
-
-        /* check locally scoped typedefs (avoid name shadowing) */
-        for (; parent; parent = parent->parent) {
-            switch (parent->nodetype) {
-            case LYS_CONTAINER:
-                size = ((struct lys_node_container *)parent)->tpdf_size;
-                tpdf = ((struct lys_node_container *)parent)->tpdf;
-                break;
-            case LYS_LIST:
-                size = ((struct lys_node_list *)parent)->tpdf_size;
-                tpdf = ((struct lys_node_list *)parent)->tpdf;
-                break;
-            case LYS_GROUPING:
-                size = ((struct lys_node_grp *)parent)->tpdf_size;
-                tpdf = ((struct lys_node_grp *)parent)->tpdf;
-                break;
-            default:
-                continue;
-            }
-
-            if (dup_typedef_check(id, tpdf, size)) {
-                LOGVAL(LYE_DUPID, line, "typedef", id);
-                return EXIT_FAILURE;
-            }
-        }
-
-        /* check top-level names */
-        if (dup_typedef_check(id, module->tpdf, module->tpdf_size)) {
-            LOGVAL(LYE_DUPID, line, "typedef", id);
-            return EXIT_FAILURE;
-        }
-
-        /* check submodule's top-level names */
-        for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
-            if (dup_typedef_check(id, module->inc[i].submodule->tpdf, module->inc[i].submodule->tpdf_size)) {
-                LOGVAL(LYE_DUPID, line, "typedef", id);
-                return EXIT_FAILURE;
-            }
-        }
-
-        break;
-    case LY_IDENT_PREFIX:
-        assert(module);
-
-        /* check the module itself */
-        if (dup_prefix_check(id, module)) {
-            LOGVAL(LYE_DUPID, line, "prefix", id);
-            return EXIT_FAILURE;
-        }
-
-        /* and all its submodules */
-        for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
-            if (dup_prefix_check(id, (struct lys_module *)module->inc[i].submodule)) {
-                LOGVAL(LYE_DUPID, line, "prefix", id);
-                return EXIT_FAILURE;
-            }
-        }
-        break;
-    case LY_IDENT_FEATURE:
-        assert(module);
-
-        /* check feature name uniqness*/
-        /* check features in the current module */
-        if (dup_feature_check(id, module)) {
-            LOGVAL(LYE_DUPID, line, "feature", id);
-            return EXIT_FAILURE;
-        }
-
-        /* and all its submodules */
-        for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
-            if (dup_feature_check(id, (struct lys_module *)module->inc[i].submodule)) {
-                LOGVAL(LYE_DUPID, line, "feature", id);
-                return EXIT_FAILURE;
-            }
-        }
-        break;
-
-    default:
-        /* no check required */
-        break;
-    }
-
-    return EXIT_SUCCESS;
-}
-
-/* does not log */
-static int
-check_mandatory(struct lys_node *node)
-{
-    struct lys_node *child;
-
-    assert(node);
-
-    if (node->flags & LYS_MAND_TRUE) {
-        return EXIT_FAILURE;
-    }
-
-    if (node->nodetype == LYS_CASE || node->nodetype == LYS_CHOICE) {
-        LY_TREE_FOR(node->child, child) {
-            if (check_mandatory(child)) {
-                return EXIT_FAILURE;
-            }
-        }
-    }
-
-    return EXIT_SUCCESS;
-}
-
-/* logs directly */
-static int
-check_date(const char *date, unsigned int line)
-{
-    int i;
-
-    assert(date);
-
-    if (strlen(date) != LY_REV_SIZE - 1) {
-        goto error;
-    }
-
-    for (i = 0; i < LY_REV_SIZE - 1; i++) {
-        if (i == 4 || i == 7) {
-            if (date[i] != '-') {
-                goto error;
-            }
-        } else if (!isdigit(date[i])) {
-            goto error;
-        }
-    }
-
-    return EXIT_SUCCESS;
-
-error:
-
-    LOGVAL(LYE_INDATE, line, date);
-    return EXIT_FAILURE;
-}
 
 /* logs directly */
 static const char *
@@ -506,7 +253,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     type->base = type->der->type.base;
 
     /* check status */
-    if (check_status(type->parent->flags, type->parent->module, type->parent->name,
+    if (lyp_check_status(type->parent->flags, type->parent->module, type->parent->name,
                      type->der->flags, type->der->module, type->der->name, LOGLINE(yin))) {
         return -1;
     }
@@ -552,7 +299,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             i++;
 
             GETVAL(value, next, "name");
-            if (check_identifier(value, LY_IDENT_SIMPLE, LOGLINE(next), NULL, NULL)) {
+            if (lyp_check_identifier(value, LY_IDENT_SIMPLE, LOGLINE(next), NULL, NULL)) {
                 goto error;
             }
 
@@ -1144,7 +891,7 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
     int has_type = 0, dflt_line;
 
     GETVAL(value, yin, "name");
-    if (check_identifier(value, LY_IDENT_TYPE, LOGLINE(yin), module, parent)) {
+    if (lyp_check_identifier(value, LY_IDENT_TYPE, LOGLINE(yin), module, parent)) {
         goto error;
     }
     tpdf->name = lydict_insert(module->ctx, value, strlen(value));
@@ -1222,7 +969,7 @@ fill_yin_feature(struct lys_module *module, struct lyxml_elem *yin, struct lys_f
     int c = 0, ret;
 
     GETVAL(value, yin, "name");
-    if (check_identifier(value, LY_IDENT_FEATURE, LOGLINE(yin), module, NULL)) {
+    if (lyp_check_identifier(value, LY_IDENT_FEATURE, LOGLINE(yin), module, NULL)) {
         goto error;
     }
     f->name = lydict_insert(module->ctx, value, strlen(value));
@@ -2193,7 +1940,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
         /* check for mandatory nodes - if the target node is in another module
          * the added nodes cannot be mandatory
          */
-        if ((!parent || (parent->nodetype != LYS_USES)) && check_mandatory(node)) {
+        if ((!parent || (parent->nodetype != LYS_USES)) && lyp_check_mandatory(node)) {
             LOGVAL(LYE_SPEC, LOGLINE(child), "When augmenting data in another module, mandatory statement is not allowed.");
             goto error;
         }
@@ -2488,7 +2235,7 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
 
         if (!strcmp(child->name, "prefix")) {
             GETVAL(value, child, "value");
-            if (check_identifier(value, LY_IDENT_PREFIX, LOGLINE(child), module, NULL)) {
+            if (lyp_check_identifier(value, LY_IDENT_PREFIX, LOGLINE(child), module, NULL)) {
                 goto error;
             }
             imp->prefix = lydict_insert(module->ctx, value, strlen(value));
@@ -2498,7 +2245,7 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
                 goto error;
             }
             GETVAL(value, child, "date");
-            if (check_date(value, LOGLINE(child))) {
+            if (lyp_check_date(value, LOGLINE(child))) {
                 goto error;
             }
             memcpy(imp->rev, value, LY_REV_SIZE - 1);
@@ -2592,7 +2339,7 @@ fill_yin_include(struct lys_module *module, struct lyxml_elem *yin, struct lys_i
                 goto error;
             }
             GETVAL(value, child, "date");
-            if (check_date(value, LOGLINE(child))) {
+            if (lyp_check_date(value, LOGLINE(child))) {
                 goto error;
             }
             memcpy(inc->rev, value, LY_REV_SIZE - 1);
@@ -2693,7 +2440,7 @@ read_yin_common(struct lys_module *module, struct lys_node *parent,
 
     if (opt & OPT_IDENT) {
         GETVAL(value, xmlnode, "name");
-        if (check_identifier(value, LY_IDENT_NAME, LOGLINE(xmlnode), NULL, NULL)) {
+        if (lyp_check_identifier(value, LY_IDENT_NAME, LOGLINE(xmlnode), NULL, NULL)) {
             goto error;
         }
         node->name = lydict_insert(ctx, value, strlen(value));
@@ -4947,7 +4694,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 goto error;
             }
             GETVAL(value, child, "value");
-            if (check_identifier(value, LY_IDENT_PREFIX, LOGLINE(child), module, NULL)) {
+            if (lyp_check_identifier(value, LY_IDENT_PREFIX, LOGLINE(child), module, NULL)) {
                 goto error;
             }
             module->prefix = lydict_insert(ctx, value, strlen(value));
@@ -4979,7 +4726,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             /* check here differs from a generic prefix check, since this prefix
              * don't have to be unique
              */
-            if (check_identifier(value, LY_IDENT_NAME, LOGLINE(child->child), NULL, NULL)) {
+            if (lyp_check_identifier(value, LY_IDENT_NAME, LOGLINE(child->child), NULL, NULL)) {
                 goto error;
             }
             submodule->prefix = lydict_insert(ctx, value, strlen(value));
@@ -5226,7 +4973,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
 
         } else if (!strcmp(child->name, "revision")) {
             GETVAL(value, child, "date");
-            if (check_date(value, LOGLINE(child))) {
+            if (lyp_check_date(value, LOGLINE(child))) {
                 goto error;
             }
             memcpy(trg->rev[trg->rev_size].date, value, LY_REV_SIZE - 1);
@@ -5498,7 +5245,7 @@ yin_read_submodule(struct lys_module *module, const char *data, struct unres_sch
     }
 
     GETVAL(value, yin, "name");
-    if (check_identifier(value, LY_IDENT_NAME, LOGLINE(yin), NULL, NULL)) {
+    if (lyp_check_identifier(value, LY_IDENT_NAME, LOGLINE(yin), NULL, NULL)) {
         goto error;
     }
 
@@ -5562,7 +5309,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement)
     }
 
     GETVAL(value, yin, "name");
-    if (check_identifier(value, LY_IDENT_NAME, LOGLINE(yin), NULL, NULL)) {
+    if (lyp_check_identifier(value, LY_IDENT_NAME, LOGLINE(yin), NULL, NULL)) {
         goto error;
     }
 
