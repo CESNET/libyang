@@ -23,8 +23,12 @@ if(ENABLE_VALGRIND_TESTS)
 	if(valgrind_FOUND)
 		add_test(test_data_initialization_valgrind valgrind --leak-check=full --show-leak-kinds=all
 			 ${CMAKE_BINARY_DIR}/tests/test_data_initialization)
-        add_test(test_augment_valgrind valgrind --leak-check=full --show-leak-kinds=all
-             ${CMAKE_BINARY_DIR}/tests/test_augment)
+		add_test(test_leafref_remove_valgrind valgrind --leak-check=full --show-leak-kinds=all
+			 ${CMAKE_BINARY_DIR}/tests/test_leafref_remove)
+	        add_test(test_ietf_valgrind valgrind --leak-check=full --show-leak-kinds=all
+			 ${CMAKE_BINARY_DIR}/tests/test_ietf)
+		add_test(test_augment_valgrind valgrind --leak-check=full --show-leak-kinds=all
+			 ${CMAKE_BINARY_DIR}/tests/test_augment)
 	else(valgrind_FOUND)
 		Message("-- valgrind executable not found! Disabling memory leaks tests")
 	endif(valgrind_FOUND)
