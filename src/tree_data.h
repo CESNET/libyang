@@ -330,10 +330,11 @@ struct ly_set *lyd_get_node(const struct lyd_node *data, const struct lys_node *
 /**
  * @brief Validate \p node data subtree.
  *
- * @param[in] node Data subtree to be validated.
+ * @param[in] node Data tree to be validated.
  * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
- * @return 0 on success (if options include #LYD_OPT_FILTER, some nodes could still have been deleted as an optimization),
- * nonzero in case of an error.
+ * @return 0 on success (if options include #LYD_OPT_FILTER, some nodes could still have been deleted as an
+ * optimization, which can have a bad consequences when the \p node stores a subtree instead of a tree with
+ * a top-level node(s)), nonzero in case of an error.
  */
 int lyd_validate(struct lyd_node *node, int options);
 

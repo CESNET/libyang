@@ -666,7 +666,7 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 API int
 lyd_validate(struct lyd_node *node, int options)
 {
-    struct lyd_node *root, *next, *iter, *to_free = NULL;
+    struct lyd_node *root, *next1, *next2, *iter, *to_free = NULL;
 
     ly_errno = 0;
 
@@ -677,8 +677,8 @@ lyd_validate(struct lyd_node *node, int options)
         }
     }
 
-    LY_TREE_FOR(node, root) {
-        LY_TREE_DFS_BEGIN(root, next, iter) {
+    LY_TREE_FOR_SAFE(node, next1, root) {
+        LY_TREE_DFS_BEGIN(root, next2, iter) {
             if (to_free) {
                 lyd_free(to_free);
                 to_free = NULL;
@@ -687,36 +687,64 @@ lyd_validate(struct lyd_node *node, int options)
             if (lyv_data_context(iter, options, 0, NULL)) {
                 return EXIT_FAILURE;
             }
+            if (lyv_data_value(iter, options)) {
+                return EXIT_FAILURE;
+            }
             if (lyv_data_content(iter, options, 0, NULL)) {
                 if (ly_errno) {
                     return EXIT_FAILURE;
                 } else {
                     /* safe deferred removal */
                     to_free = iter;
-                    if (iter == root) {
-                        /* removing the whole subtree */
-                        break;
-                    }
+                    next2 = NULL;
+                    goto nextsiblings;
                 }
-            }
-            if (lyv_data_value(iter, options)) {
-                return EXIT_FAILURE;
             }
 
             /* validation successful */
             iter->validity = LYD_VAL_OK;
 
-        LY_TREE_DFS_END(node, next, iter)}
+            /* where go next? - modified LY_TREE_DFS_END */
+            if (iter->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                next2 = NULL;
+            } else {
+                next2 = iter->child;
+            }
+nextsiblings:
+            if (!next2) {
+                /* no children */
+                if (iter == root) {
+                    /* we are done */
+                    break;
+                }
+                /* try siblings */
+                next2 = iter->next;
+            }
+            while (!next2) {
+                iter = iter->parent;
+                /* parent is already processed, go to its sibling */
+                if (iter->parent == root->parent) {
+                    /* we are done */
+                    break;
+                }
+                next2 = iter->next;
+            } /* end of modified LY_TREE_DFS_END */
+        }
+
+        if (to_free) {
+            if (node == to_free) {
+                /* we shouldn't be here */
+                assert(0);
+            }
+            lyd_free(to_free);
+            to_free = NULL;
+        }
 
         if (options & LYD_OPT_NOSIBLINGS) {
             break;
         }
     }
 
-    if (to_free) {
-        lyd_free(to_free);
-        to_free = NULL;
-    }
 
     return EXIT_SUCCESS;
 }
