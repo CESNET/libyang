@@ -2275,7 +2275,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
         }
 
         if (choice_orig->dflt) {
-            modname = list->module->type ? ((struct lys_submodule *)list->module)->belongsto->name : list->module->name;
+            modname = choice->module->type ? ((struct lys_submodule *)choice->module)->belongsto->name : choice->module->name;
             rc = lys_get_sibling(choice->child, modname, 0, choice_orig->dflt->name, 0, LYS_ANYXML
                                          | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST
                                          | LYS_LIST, (const struct lys_node **)&choice->dflt);
