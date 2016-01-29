@@ -340,7 +340,7 @@ cmd_data(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "hf:o:x:", long_options, &option_index);
+        c = getopt_long(argc, argv, "hf:o:sx:", long_options, &option_index);
         if (c == -1) {
             break;
         }
