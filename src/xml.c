@@ -1128,6 +1128,8 @@ lyxml_read_data(struct ly_ctx *ctx, const char *data, int options)
     unsigned int len;
     struct lyxml_elem *root, *first = NULL, *next;
 
+    ly_errno = LY_SUCCESS;
+
 #ifndef NDEBUG
     /* TODO: threads support */
     lineno = 1;

@@ -1078,6 +1078,8 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
     unsigned int len = 0, r;
     struct attr_cont *attrs = NULL;
 
+    ly_errno = LY_SUCCESS;
+
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
         return NULL;
@@ -1092,7 +1094,6 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
 #ifndef NDEBUG
     lineno = 0;
 #endif
-    ly_errno = 0;
 
     /* skip leading whitespaces */
     len += skip_ws(&data[len]);

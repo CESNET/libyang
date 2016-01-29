@@ -423,7 +423,7 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
         /* mandatory children */
         if ((schema->nodetype & (LYS_CONTAINER | LYS_LIST))
                 && !(options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
-            siter = ly_check_mandatory(node);
+            siter = ly_check_mandatory(node, NULL);
             if (siter) {
                 if (siter->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
                     LOGVAL(LYE_SPEC, line, "Number of \"%s\" instances in \"%s\" does not follow min/max constraints.",

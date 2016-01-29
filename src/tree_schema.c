@@ -316,11 +316,11 @@ repeat:
 }
 
 static const struct lys_node *
-check_mand_getnext(const struct lys_node *last, const struct lys_node *parent)
+check_mand_getnext(const struct lys_node *last, const struct lys_node *parent, const struct lys_module *module)
 {
     const struct lys_node *next;
 
-    next = lys_getnext(last, parent, NULL, LYS_GETNEXT_WITHCHOICE);
+    next = lys_getnext(last, parent, module, LYS_GETNEXT_WITHCHOICE);
 
 repeat:
     if (next && next->nodetype == LYS_CONTAINER) {
@@ -348,93 +348,99 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
     uint32_t minmax;
 
     if (node->flags & LYS_MAND_TRUE) {
-       switch (node->nodetype) {
-       case LYS_LEAF:
-       case LYS_ANYXML:
-       case LYS_CHOICE:
-           if (node->parent->nodetype == LYS_CASE) {
-               /* 7.6.5, rule 2 */
-               /* 7.9.4, rule 1 */
-               if (node->parent->parent->parent == data->schema) {
-                   /* the only case the node's siblings can exist is that the
-                    * data node passed originaly to ly_check_mandatory()
-                    * had this choice as a child
-                    */
-                   /* try to find the node's siblings in data */
-                   LY_TREE_FOR(data->child, diter) {
-                       LY_TREE_FOR(node->parent->child, siter) {
-                           if (siter == diter->schema) {
-                               /* some sibling exists, rule applies */
-                               break;
-                           }
-                       }
-                       if (siter) {
-                           break;
-                       }
-                   }
-               }
-               if (!siter) {
-                   /* no sibling exists */
-                   return NULL;
-               }
-           } else {
-               for(parent = node->parent; parent != stop; parent = parent->parent) {
-                   if (parent->nodetype != LYS_CONTAINER) {
-                       /* 7.6.5, rule 1, checking presence is not needed
-                        * since it is done in check_mand_getnext()
-                        */
-                       ly_set_free(set);
-                       return NULL;
-                   }
-                   /* add the parent to the list for searching in data tree */
-                   if (!set) {
-                       set = ly_set_new();
-                   }
-                   /* ignore return - memory error is logged and we will
-                    * check at least the rest of nodes we have */
-                   (void) ly_set_add(set, parent);
-               }
-           }
+        if (!data) {
+            /* we have no data but a mandatory node */
+            return node;
+        }
+        switch (node->nodetype) {
+        case LYS_LEAF:
+        case LYS_ANYXML:
+        case LYS_CHOICE:
+            if (node->parent && node->parent->nodetype == LYS_CASE) {
+                /* 7.6.5, rule 2 */
+                /* 7.9.4, rule 1 */
+                if (node->parent->parent->parent == data->schema) {
+                    /* the only case the node's siblings can exist is that the
+                     * data node passed originally to ly_check_mandatory()
+                     * had this choice as a child
+                     */
+                    /* try to find the node's siblings in data */
+                    LY_TREE_FOR(data->child, diter) {
+                        LY_TREE_FOR(node->parent->child, siter) {
+                            if (siter == diter->schema) {
+                                /* some sibling exists, rule applies */
+                                break;
+                            }
+                        }
+                        if (siter) {
+                            break;
+                        }
+                    }
+                }
+                if (!siter) {
+                    /* no sibling exists */
+                    return NULL;
+                }
+            } else {
+                for (parent = node->parent; parent != stop; parent = parent->parent) {
+                    if (parent->nodetype != LYS_CONTAINER) {
+                        /* 7.6.5, rule 1, checking presence is not needed
+                         * since it is done in check_mand_getnext()
+                         */
+                        ly_set_free(set);
+                        return NULL;
+                    }
+                    /* add the parent to the list for searching in data tree */
+                    if (!set) {
+                        set = ly_set_new();
+                    }
+                    /* ignore return - memory error is logged and we will
+                     * check at least the rest of nodes we have */
+                    (void)ly_set_add(set, parent);
+                }
+            }
 
-           /* search for instance */
-           if (set) {
-               for (i = 0; i < set->number; i++) {
-                   LY_TREE_FOR(data->child, diter) {
-                       if (diter->schema == set->sset[i]) {
-                           break;
-                       }
-                   }
-                   if (!diter) {
-                       /* instance not found */
-                       node = set->sset[i];
-                       ly_set_free(set);
-                       return node;
-                   }
-                   data = diter;
-               }
-               ly_set_free(set);
-           }
+            /* search for instance */
+            if (set) {
+                for (i = 0; i < set->number; i++) {
+                    LY_TREE_FOR(data->child, diter) {
+                        if (diter->schema == set->sset[i]) {
+                            break;
+                        }
+                    }
+                    if (!diter) {
+                        /* instance not found */
+                        node = set->sset[i];
+                        ly_set_free(set);
+                        return node;
+                    }
+                    data = diter;
+                }
+                ly_set_free(set);
+            }
 
-           LY_TREE_FOR(data->child, diter) {
-               if (diter->schema == node) {
-                   return NULL;
-               }
-           }
+            LY_TREE_FOR(data->child, diter) {
+                if (diter->schema == node) {
+                    return NULL;
+                }
+            }
 
-           /* instance not found */
-           /* 7.6.5, rule 3 (or 2) */
-           /* 7.9.4, rule 2 */
-           return node;
-       default:
-           /* error */
-           break;
-       }
+            /* instance not found */
+            /* 7.6.5, rule 3 (or 2) */
+            /* 7.9.4, rule 2 */
+            return node;
+        default:
+            /* error */
+            break;
+        }
     } else if (node->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
         /* search for number of instances */
         minmax = 0;
-        LY_TREE_FOR(data->child, diter) {
-            if (diter->schema == node) {
-                minmax++;
+        if (data) {
+            LY_TREE_FOR(data->child, diter) {
+                if (diter->schema == node) {
+                    minmax++;
+                }
             }
         }
 
@@ -462,13 +468,19 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
 }
 
 const struct lys_node *
-ly_check_mandatory(const struct lyd_node *data)
+ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema)
 {
     const struct lys_node *siter, *saux, *saux2, *result, *parent = NULL, *parent2;
     const struct lyd_node *diter;
     int found;
 
-    siter = data->schema->child;
+    assert(data || schema);
+
+    if (!data) { /* !data && schema */
+        siter = schema;
+    } else { /* data && !schema */
+        schema = siter = data->schema->child;
+    }
 
 repeat:
     while (siter) {
@@ -491,7 +503,7 @@ repeat:
             /* ... and then the subtree */
             if (parent && siter->nodetype == LYS_CONTAINER && !((struct lys_node_container *)siter)->presence) {
                 saux = NULL;
-                while ((saux = check_mand_getnext(saux, siter))) {
+                while ((saux = check_mand_getnext(saux, siter, NULL))) {
                     result = check_mand_check(saux, siter, data);
                     if (result) {
                         return result;
@@ -507,7 +519,7 @@ repeat:
             found = 0;
             parent2 = NULL;
 repeat_choice:
-            while (siter) {
+            while (siter && data) {
                 if (lys_is_disabled(siter, 2)) {
                     siter = siter->next;
                     continue;
@@ -529,7 +541,7 @@ repeat_choice:
                         /* check presence of mandatory siblings */
                         if (parent2 && parent2->nodetype == LYS_CASE) {
                             saux2 = NULL;
-                            while ((saux2 = check_mand_getnext(saux2, parent2))) {
+                            while ((saux2 = check_mand_getnext(saux2, parent2, NULL))) {
                                 result = check_mand_check(saux2, parent2, data);
                                 if (result) {
                                     return result;
@@ -595,7 +607,7 @@ repeat_choice:
 
     if (parent) {
         siter = parent->next;
-        if (parent->parent == data->schema) {
+        if (parent->parent == schema) {
             parent = NULL;
         } else {
             parent = parent->parent;

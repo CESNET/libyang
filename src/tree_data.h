@@ -322,7 +322,7 @@ int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
  *
  * @param[in] data A node in the data tree to search.
  * @param[in] schema Schema node of the data nodes caller want to find.
- * @return Set of found data nodes (use ::ly_set#dset). If no data node is found, the returned set is empty.
+ * @return Set of found data nodes (use dset member of ::ly_set). If no data node is found, the returned set is empty.
  * In case of error, NULL is returned.
  */
 struct ly_set *lyd_get_node(const struct lyd_node *data, const struct lys_node *schema);
@@ -332,11 +332,12 @@ struct ly_set *lyd_get_node(const struct lyd_node *data, const struct lys_node *
  *
  * @param[in] node Data tree to be validated.
  * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
+ * @param[in] ctx libyang context for the data (used only in case the \p node is NULL, so in case of checking empty data tree)
  * @return 0 on success (if options include #LYD_OPT_FILTER, some nodes could still have been deleted as an
  * optimization, which can have a bad consequences when the \p node stores a subtree instead of a tree with
  * a top-level node(s)), nonzero in case of an error.
  */
-int lyd_validate(struct lyd_node *node, int options);
+int lyd_validate(struct lyd_node *node, int options, ...);
 
 /**
  * @brief Unlink the specified data subtree. All referenced namespaces are copied.

@@ -457,7 +457,9 @@ const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT f
  * @param[in] ... Additional argument must be supplied when #LYD_OPT_RPCREPLY value is specified in \p options. The
  *            argument is supposed to provide pointer to the RPC schema node for the reply's request
  *            (const struct ::lys_node* rpc).
- * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
+ * @return Pointer to the built data tree or NULL in case of empty \p data. To free the returned structure,
+ *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
+ *         #ly_errno contains appropriate error code (see #LY_ERR).
  */
 struct lyd_node *lyd_parse_data(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, ...);
 
@@ -486,7 +488,9 @@ struct lyd_node *lyd_parse_data(struct ly_ctx *ctx, const char *data, LYD_FORMAT
  * @param[in] ... Additional argument must be supplied when #LYD_OPT_RPCREPLY value is specified in \p options. The
  *            argument is supposed to provide pointer to the RPC schema node for the reply's request
  *            (const struct ::lys_node* rpc).
- * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
+ * @return Pointer to the built data tree or NULL in case of empty \p root. To free the returned structure,
+ *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
+ *         #ly_errno contains appropriate error code (see #LY_ERR).
  */
 struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options,...);
 
@@ -507,7 +511,9 @@ struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int
  * @param[in] ... Additional argument must be supplied when #LYD_OPT_RPCREPLY value is specified in \p options. The
  *            argument is supposed to provide pointer to the RPC schema node for the reply's request
  *            (const struct ::lys_node* rpc).
- * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
+ * @return Pointer to the built data tree or NULL in case of empty file. To free the returned structure,
+ *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
+ *         #ly_errno contains appropriate error code (see #LY_ERR).
  */
 struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, ...);
 
@@ -526,7 +532,9 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
  * @param[in] ... Additional argument must be supplied when #LYD_OPT_RPCREPLY value is specified in \p options. The
  *            argument is supposed to provide pointer to the RPC schema node for the reply's request
  *            (const struct ::lys_node* rpc).
- * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
+ * @return Pointer to the built data tree or NULL in case of empty file. To free the returned structure,
+ *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
+ *         #ly_errno contains appropriate error code (see #LY_ERR).
  */
 struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options, ...);
 

@@ -137,7 +137,9 @@ struct lyxml_elem {
  * @param[in] data Pointer to a NULL-terminated string containing XML data to
  * parse.
  * @param[in] options Parser options, see @ref xmlreadoptions.
- * @return pointer to root of the parsed XML document tree.
+ * @return Pointer to the root of the parsed XML document tree or NULL in case of empty \p data. To free the
+ *         returned data, use lyxml_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case
+ *         of error, #ly_errno contains appropriate error code (see #LY_ERR).
  */
 struct lyxml_elem *lyxml_read_data(struct ly_ctx *ctx, const char *data, int options);
 
@@ -147,7 +149,9 @@ struct lyxml_elem *lyxml_read_data(struct ly_ctx *ctx, const char *data, int opt
  * @param[in] ctx libyang context to use
  * @param[in] filename Path to the file where read data to parse
  * @param[in] options Parser options, see @ref xmlreadoptions.
- * @return pointer to root of the parsed XML document tree.
+ * @return Pointer to the root of the parsed XML document tree or NULL in case of empty file. To free the
+ *         returned data, use lyxml_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case
+ *         of error, #ly_errno contains appropriate error code (see #LY_ERR).
  */
 struct lyxml_elem *lyxml_read_path(struct ly_ctx *ctx, const char *filename, int options);
 

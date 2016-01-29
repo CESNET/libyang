@@ -237,12 +237,14 @@ void lys_free(struct lys_module *module, int free_int_mods);
  * Besides the mandatory statements, also min-elements and max-elements constraints in
  * lists and leaf-list are checked.
  *
- * @param[in] start Root node for the searching subtree. Expecting that all child instances
+ * @param[in] data Root node for the searching subtree. Expecting that all child instances
  * are already resolved. Note that the \p start node itself is not checked since it must be present.
+ * @param[in] schema To check mandatory elements in empty data tree (\p data is NULL), we need
+ * the first schema node in a schema to be checked.
  * @return The first mandatory element definition not present in the data, NULL if
  * there is no such element in the \p starts's subtree.
  */
-const struct lys_node *ly_check_mandatory(const struct lyd_node *start);
+const struct lys_node *ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema);
 
 /**
  * @brief Find the parent node of an attribute.

@@ -144,8 +144,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     *result = NULL;
 
     if (!xml->ns || !xml->ns->value) {
-        LOGVAL(LYE_XML_MISS, LOGLINE(xml), "element's", "namespace");
-        return -1;
+        if (options & LYD_OPT_STRICT) {
+            LOGVAL(LYE_XML_MISS, LOGLINE(xml), "element's", "namespace");
+            return -1;
+        } else {
+            return 0;
+        }
     }
 
     /* find schema node */
@@ -419,8 +423,16 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     struct lyd_node *result = NULL, *next, *iter, *last;
     struct lyxml_elem *xmlstart, *xmlelem, *xmlaux;
 
+    ly_errno = LY_SUCCESS;
+
     if (!ctx || !root) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        return NULL;
+    }
+
+    if (!(*root)) {
+        /* empty tree - no work is needed */
+        lyd_validate(NULL, options);
         return NULL;
     }
 
@@ -482,11 +494,6 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
             /* stop after the first processed root */
             break;
         }
-    }
-
-    if (!result) {
-        LOGERR(LY_EVALID, "Model for the data to be linked with not found.");
-        goto cleanup;
     }
 
     /* check leafrefs and/or instids if any */

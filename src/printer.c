@@ -230,6 +230,14 @@ lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
 static int
 lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
+    if (!root) {
+        /* no data to print, but even empty tree is valid */
+        if (out->type == LYOUT_MEMORY || out->type == LYOUT_CALLBACK) {
+            ly_print(out, "");
+        }
+        return EXIT_SUCCESS;
+    }
+
     switch (format) {
     case LYD_XML:
         return xml_print_data(out, root, 0, options);
@@ -248,7 +256,7 @@ lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int opti
 {
     struct lyout out;
 
-    if (!f || !root) {
+    if (!f) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
@@ -264,7 +272,7 @@ lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options
 {
     struct lyout out;
 
-    if (fd < 0 || !root) {
+    if (fd < 0) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
@@ -281,7 +289,7 @@ lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int o
     struct lyout out;
     int r;
 
-    if (!strp || !root) {
+    if (!strp) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
@@ -303,7 +311,7 @@ lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
 {
     struct lyout out;
 
-    if (!writeclb || !root) {
+    if (!writeclb) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }

@@ -76,6 +76,10 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
         return NULL;
     }
 
+    if (!result && !ly_errno) {
+        /* is empty data tree really valid ? */
+        lyd_validate(NULL, options);
+    }
     return result;
 }
 
@@ -664,11 +668,54 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 }
 
 API int
-lyd_validate(struct lyd_node *node, int options)
+lyd_validate(struct lyd_node *node, int options, ...)
 {
     struct lyd_node *root, *next1, *next2, *iter, *to_free = NULL;
+    const struct lys_node *schema;
+    struct ly_ctx *ctx;
+    int i;
+    va_list ap;
 
     ly_errno = 0;
+
+    if (!node) {
+        /* TODO what about LYD_OPT_NOTIF, LYD_OPT_RPC and LYD_OPT_RPCREPLY ? */
+        if (options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
+            return EXIT_SUCCESS;
+        }
+        /* LYD_OPT_DATA || LYD_OPT_CONFIG */
+
+        /* get context with schemas from the variable arguments */
+        va_start(ap, options);
+        ctx = va_arg(ap,  struct ly_ctx*);
+        if (!ctx) {
+            LOGERR(LY_EINVAL, "%s: Invalid variable argument.", __func__);
+            va_end(ap);
+            return EXIT_FAILURE;
+        }
+
+        /* check for missing mandatory elements according to schemas in context */
+        for (i = 0; i < ctx->models.used; i++) {
+            if (!ctx->models.list[i]->data) {
+                continue;
+            }
+            schema = ly_check_mandatory(NULL, ctx->models.list[i]->data);
+            if (schema) {
+                if (schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+                    LOGVAL(LYE_SPEC, 0, "Number of \"%s\" instances in \"%s\" does not follow min-elements constraint.",
+                           schema->name, schema->parent ? schema->parent->name : ctx->models.list[i]->name);
+                } else {
+                    LOGVAL(LYE_MISSELEM, 0, schema->name, schema->parent ? schema->parent->name : ctx->models.list[i]->name);
+                }
+                va_end(ap);
+                return EXIT_FAILURE;
+
+            }
+        }
+
+        va_end(ap);
+        return EXIT_SUCCESS;
+    }
 
     if (!(options & LYD_OPT_NOSIBLINGS)) {
         /* check that the node is the first sibling */
