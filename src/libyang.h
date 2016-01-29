@@ -846,10 +846,18 @@ typedef enum {
     LY_EINT,       /**< Internal error */
     LY_EVALID      /**< Validation failure */
 } LY_ERR;
+
 /**
- * @brief libyang specific errno.
+ * @cond INTERNAL
+ * Function to get address of global `ly_errno' variable.
  */
-extern LY_ERR ly_errno;
+LY_ERR *ly_errno_location(void);
+
+/**
+ * @endcond INTERNAL
+ * @brief libyang specific (thread-safe) errno.
+ */
+#define ly_errno (*ly_errno_location())
 
 /**@} logger */
 

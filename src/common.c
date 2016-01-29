@@ -25,15 +25,48 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <pthread.h>
 
 #include "common.h"
 #include "tree_internal.h"
 #include "libyang.h"
 
-/*
- * libyang errno
- */
-LY_ERR ly_errno = 0;
+/* libyang errno */
+LY_ERR ly_errno_int = LY_EINT;
+static pthread_once_t ly_errno_once = PTHREAD_ONCE_INIT;
+static pthread_key_t ly_errno_key;
+static void
+ly_errno_createkey(void)
+{
+    if (pthread_key_create(&ly_errno_key, free)) {
+        LOGMEM;
+    }
+}
+
+API LY_ERR *
+ly_errno_location(void)
+{
+    LY_ERR *retval;
+
+    if (pthread_once(&ly_errno_once, ly_errno_createkey)) {
+        return &ly_errno_int;
+    }
+
+    retval = pthread_getspecific(ly_errno_key);
+    if (!retval) {
+        /* first call */
+        retval = calloc(1, sizeof *retval);
+        if (!retval) {
+            return &ly_errno_int;
+        }
+
+        if (pthread_setspecific(ly_errno_key, retval)) {
+            return &ly_errno_int;
+        }
+    }
+
+    return retval;
+}
 
 const char *
 strpbrk_backwards(const char *s, const char *accept, unsigned int s_len)

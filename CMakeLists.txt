@@ -82,6 +82,11 @@ set(headers
 add_library(yang SHARED ${libsrc})
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})
 
+# find pthreads
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+find_package(Threads REQUIRED)
+target_link_libraries(yang ${CMAKE_THREAD_LIBS_INIT})
+
 # find PCRE library
 find_package(PCRE REQUIRED)
 include_directories(${PCRE_INCLUDE_DIRS})
