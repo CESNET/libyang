@@ -1249,7 +1249,7 @@ struct lys_ident_der {
  * @param[in] format Format of the input data (YANG or YIN).
  * @return Pointer to the data model structure or NULL on error.
  */
-const struct lys_module *lys_parse_data(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
+const struct lys_module *lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
 
 /**
  * @brief Read a schema from file descriptor into the specified context.

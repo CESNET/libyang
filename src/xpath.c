@@ -276,7 +276,7 @@ cast_string_recursive(struct lyd_node *node, int fake_cont, enum lyxp_node_type 
 
     case LYS_ANYXML:
         stream = open_memstream(&buf, &buf_size);
-        lyxml_dump_file(stream, ((struct lyd_node_anyxml *)node)->value->child, 0);
+        lyxml_print_file(stream, ((struct lyd_node_anyxml *)node)->value->child, 0);
         fclose(stream);
 
         line = strtok_r(buf, "\n", &ptr);

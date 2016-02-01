@@ -77,11 +77,11 @@ generic_init(char *config_file, char *yang_file, char *yang_folder)
     close(fd);
     fd = -1;
 
-    if (!lys_parse_data(ctx, schema, yang_format)) {
+    if (!lys_parse_mem(ctx, schema, yang_format)) {
         goto error;
     }
 
-    root = lyd_parse_data(ctx, config, in_format, LYD_OPT_STRICT);
+    root = lyd_parse_mem(ctx, config, in_format, LYD_OPT_STRICT);
     if (!root) {
         goto error;
     }

@@ -287,7 +287,7 @@ struct lyd_node_anyxml {
  *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
  *         #ly_errno contains appropriate error code (see #LY_ERR).
  */
-struct lyd_node *lyd_parse_data(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, ...);
+struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, ...);
 
 /**
  * @brief Read data from the given file descriptor.
@@ -339,7 +339,7 @@ struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT
  * The output data tree is parsed from the given XML tree previously parsed by one of the
  * lyxml_read* functions.
  *
- * If there are some sibling elements of the \p root (data were read with #LYXML_READ_MULTIROOT option
+ * If there are some sibling elements of the \p root (data were read with #LYXML_PARSE_MULTIROOT option
  * or the provided root is a root element of a subtree), all the sibling nodes (previous as well as
  * following) are processed as well. The returned data node is a root of the first tree with other
  * trees connected via the next pointer. This behavior can be changed by #LYD_OPT_NOSIBLINGS option.

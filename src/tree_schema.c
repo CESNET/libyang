@@ -1043,7 +1043,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
 }
 
 API const struct lys_module *
-lys_parse_data(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
+lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
     struct lys_module *mod = NULL;
 
@@ -1134,7 +1134,7 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
         LOGERR(LY_EMEM, "Map file into memory failed (%s()).",__func__);
         return NULL;
     }
-    module = lys_parse_data(ctx, addr, format);
+    module = lys_parse_mem(ctx, addr, format);
     munmap(addr, sb.st_size);
 
     return module;

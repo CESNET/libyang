@@ -425,7 +425,7 @@ cmd_data(const char *arg)
             goto cleanup;
         }
 
-        xml = lyxml_read_path(ctx, argv[optind], 0);
+        xml = lyxml_parse_path(ctx, argv[optind], 0);
         if (!xml) {
             fprintf(stderr, "Failed to parse XML data for automatic type detection.\n");
             goto cleanup;

@@ -83,21 +83,21 @@ ly_ctx_new(const char *search_dir)
     ctx->models.module_set_id = 1;
 
     /* load ietf-inet-types */
-    ctx->models.list[0] = (struct lys_module *)lys_parse_data(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN);
+    ctx->models.list[0] = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN);
     if (!ctx->models.list[0]) {
         ly_ctx_destroy(ctx);
         return NULL;
     }
 
     /* load ietf-yang-types */
-    ctx->models.list[1] = (struct lys_module *)lys_parse_data(ctx, (char *)ietf_yang_types_2013_07_15_yin, LYS_IN_YIN);
+    ctx->models.list[1] = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_yang_types_2013_07_15_yin, LYS_IN_YIN);
     if (!ctx->models.list[1]) {
         ly_ctx_destroy(ctx);
         return NULL;
     }
 
     /* load ietf-yang-library */
-    ctx->models.list[2] = (struct lys_module *)lys_parse_data(ctx, (char *)ietf_yang_library_2015_07_03_yin, LYS_IN_YIN);
+    ctx->models.list[2] = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_yang_library_2015_07_03_yin, LYS_IN_YIN);
     if (!ctx->models.list[2]) {
         ly_ctx_destroy(ctx);
         return NULL;
@@ -286,7 +286,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
             LOGERR(LY_EVALID, "User module retrieval callback failed!");
             return NULL;
         }
-        module = lys_parse_data(ctx, module_data, format);
+        module = lys_parse_mem(ctx, module_data, format);
         if (module_data_free) {
             module_data_free(module_data);
         } else {

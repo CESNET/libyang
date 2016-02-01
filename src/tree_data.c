@@ -50,7 +50,7 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
 {
     struct lyxml_elem *xml;
     struct lyd_node *result = NULL;
-    int xmlopt = LYXML_READ_MULTIROOT;
+    int xmlopt = LYXML_PARSE_MULTIROOT;
 
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -64,7 +64,7 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
     switch (format) {
     case LYD_XML:
     case LYD_XML_FORMAT:
-        xml = lyxml_read_data(ctx, data, xmlopt);
+        xml = lyxml_parse_mem(ctx, data, xmlopt);
         result = lyd_parse_xml(ctx, &xml, options, parent);
         lyxml_free(ctx, xml);
         break;
@@ -105,7 +105,7 @@ lyd_parse_data_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int opt
 }
 
 API struct lyd_node *
-lyd_parse_data(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, ...)
+lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, ...)
 {
     va_list ap;
     struct lyd_node *result;
@@ -355,7 +355,7 @@ lyd_create_anyxml(const struct lys_node *schema, const char *val_xml)
 
     /* store the anyxml data together with the anyxml element */
     asprintf(&xml, "<%s>%s</%s>", schema->name, (val_xml ? val_xml : ""), schema->name);
-    root = lyxml_read_data(schema->module->ctx, xml, 0);
+    root = lyxml_parse_mem(schema->module->ctx, xml, 0);
     free(xml);
     if (!root) {
         lyd_free((struct lyd_node *)ret);

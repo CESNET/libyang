@@ -224,7 +224,7 @@ extern "C" {
  *
  * Functions List
  * --------------
- * - lys_parse_data()
+ * - lys_parse_mem()
  * - lys_parse_fd()
  * - lys_parse_path()
  * - ly_ctx_set_module_clb()
@@ -374,7 +374,7 @@ extern "C" {
  *
  * Functions List
  * --------------
- * - lyd_parse_data()
+ * - lyd_parse_mem()
  * - lyd_parse_fd()
  * - lyd_parse_path()
  * - lyd_parse_xml()
@@ -466,14 +466,14 @@ extern "C" {
  *
  * Functions List
  * --------------
- * - lyxml_read_data()
- * - lyxml_read_path()
+ * - lyxml_parse_mem()
+ * - lyxml_parse_path()
  * - lyxml_get_attr()
  * - lyxml_get_ns()
- * - lyxml_dump_mem()
- * - lyxml_dump_fd()
- * - lyxml_dump_file()
- * - lyxml_dump_clb()
+ * - lyxml_print_mem()
+ * - lyxml_print_fd()
+ * - lyxml_print_file()
+ * - lyxml_print_clb()
  * - lyxml_unlink()
  * - lyxml_free()
  */

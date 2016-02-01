@@ -370,7 +370,7 @@ xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int 
 
     /* dump the anyxml into a buffer */
     stream = open_memstream(&buf, &buf_size);
-    lyxml_dump_file(stream, axml->value, LYXML_DUMP_FORMAT);
+    lyxml_print_file(stream, axml->value, LYXML_PRINT_FORMAT);
     fclose(stream);
 
     ly_print(out, "%*s%s", LEVEL, INDENT, buf);
