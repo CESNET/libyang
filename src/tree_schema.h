@@ -24,6 +24,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -167,14 +168,16 @@ extern "C" {
     }
 
 /**
- * @addtogroup schematree
+ * @defgroup schematree Schema Tree
  * @{
+ *
+ * Data structures and functions to manipulate and access schema tree.
  */
 
 #define LY_REV_SIZE 11   /**< revision data string length (including terminating NULL byte) */
 
 /**
- * @brief Schema input formats accepted by libyang [parser functions](@ref parsers).
+ * @brief Schema input formats accepted by libyang [parser functions](@ref howtoschemasparsers).
  */
 typedef enum {
     LYS_IN_UNKNOWN = 0,  /**< unknown format, used as return value in case of error */
@@ -183,14 +186,14 @@ typedef enum {
 } LYS_INFORMAT;
 
 /**
- * @brief Schema output formats accepted by libyang [printer functions](@ref printers).
+ * @brief Schema output formats accepted by libyang [printer functions](@ref howtoschemasprinters).
  */
 typedef enum {
     LYS_OUT_UNKNOWN = 0, /**< unknown format, used as return value in case of error */
     LYS_OUT_YANG = 1,    /**< YANG schema output format */
-    LYS_OUT_YIN = 2,     /**< YIN schema output format, TODO not yet supported */
-    LYS_OUT_TREE,        /**< Tree schema output format, for more information see the [printers](@ref printers) page */
-    LYS_OUT_INFO,        /**< Info schema output format, for more information see the [printers](@ref printers) page */
+    LYS_OUT_YIN = 2,     /**< YIN schema output format, \todo not yet supported */
+    LYS_OUT_TREE,        /**< Tree schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
+    LYS_OUT_INFO,        /**< Info schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
 } LYS_OUTFORMAT;
 
 /* shortcuts for common in and out formats */
@@ -1236,6 +1239,46 @@ struct lys_ident_der {
 };
 
 /**
+ * @brief Load a schema into the specified context.
+ *
+ * LY_IN_YANG (YANG) format is not yet supported.
+ *
+ * @param[in] ctx libyang context where to process the data model.
+ * @param[in] data The string containing the dumped data model in the specified
+ * format.
+ * @param[in] format Format of the input data (YANG or YIN).
+ * @return Pointer to the data model structure or NULL on error.
+ */
+const struct lys_module *lys_parse_data(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
+
+/**
+ * @brief Read a schema from file descriptor into the specified context.
+ *
+ * LY_IN_YANG (YANG) format is not yet supported.
+ *
+ * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
+ *
+ * @param[in] ctx libyang context where to process the data model.
+ * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the schema
+ *            in the specified format.
+ * @param[in] format Format of the input data (YANG or YIN).
+ * @return Pointer to the data model structure or NULL on error.
+ */
+const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
+
+/**
+ * @brief Load a schema into the specified context from a file.
+ *
+ * LY_IN_YANG (YANG) format is not yet supported.
+ *
+ * @param[in] ctx libyang context where to process the data model.
+ * @param[in] path Path to the file with the model in the specified format.
+ * @param[in] format Format of the input data (YANG or YIN).
+ * @return Pointer to the data model structure or NULL on error.
+ */
+const struct lys_module *lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format);
+
+/**
  * @brief Get list of all the defined features in the module and its submodules.
  *
  * @param[in] module Module to explore.
@@ -1315,13 +1358,10 @@ const struct lys_feature *lys_is_disabled(const struct lys_node *node, int recur
 const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys_node *parent,
                                    const struct lys_module *module, int options);
 
-/**
- * @brief options for lys_getnext() to allow returning choice, case, grouping, input and output nodes.
- */
-#define LYS_GETNEXT_WITHCHOICE   0x01
-#define LYS_GETNEXT_WITHCASE     0x02
-#define LYS_GETNEXT_WITHGROUPING 0x04
-#define LYS_GETNEXT_WITHINOUT    0x08
+#define LYS_GETNEXT_WITHCHOICE   0x01 /**< lys_getnext() option to allow returning #LYS_CHOICE nodes */
+#define LYS_GETNEXT_WITHCASE     0x02 /**< lys_getnext() option to allow returning #LYS_CASE nodes */
+#define LYS_GETNEXT_WITHGROUPING 0x04 /**< lys_getnext() option to allow returning #LYS_GROUPING nodes */
+#define LYS_GETNEXT_WITHINOUT    0x08 /**< lys_getnext() option to allow returning #LYS_INPUT and #LYS_OUTPUT nodes */
 
 /**
  * @brief Return parent node in the schema tree.
@@ -1361,6 +1401,65 @@ void lys_set_private(const struct lys_node *node, void *priv);
  * @return Resolved schema node or NULL.
  */
 const struct lys_node *lys_get_node(const struct lys_module *module, const char *nodeid);
+
+/**
+ * @brief Print schema tree in the specified format.
+ *
+ * Same as lys_print(),  but it allocates memory and store the data into it.
+ * It is up to caller to free the returned string by free().
+ *
+ * @param[out] strp Pointer to store the resulting dump.
+ * @param[in] module Schema tree to print.
+ * @param[in] format Schema output format.
+ * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
+ * node in the module will be printed.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+
+/**
+ * @brief Print schema tree in the specified format.
+ *
+ * Same as lys_print(), but output is written into the specified file descriptor.
+ *
+ * @param[in] module Schema tree to print.
+ * @param[in] fd File descriptor where to print the data.
+ * @param[in] format Schema output format.
+ * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
+ * node in the module will be printed.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+
+/**
+ * @brief Print schema tree in the specified format.
+ *
+ * To write data into a file descriptor, use lys_print_fd().
+ *
+ * @param[in] module Schema tree to print.
+ * @param[in] f File stream where to print the schema.
+ * @param[in] format Schema output format.
+ * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
+ * node in the module will be printed.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+
+/**
+ * @brief Print schema tree in the specified format.
+ *
+ * Same as lys_print(), but output is written via provided callback.
+ *
+ * @param[in] module Schema tree to print.
+ * @param[in] writeclb Callback function to write the data (see write(1)).
+ * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
+ * @param[in] format Schema output format.
+ * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
+ * node in the module will be printed.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
+                  const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
 
 /**@} */
 

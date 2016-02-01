@@ -27,6 +27,9 @@
 
 /**
  * @defgroup xmlparser XML Parser
+ *
+ * Simplified libyang XML parser for XML data modeled by YANG.
+ *
  * @{
  */
 

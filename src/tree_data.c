@@ -1213,33 +1213,6 @@ lyd_free_withsiblings(struct lyd_node *node)
     }
 }
 
-API char *
-lyxml_serialize(const struct lyxml_elem *anyxml)
-{
-    FILE *stream;
-    char *buf;
-    size_t buf_size;
-
-    if (!anyxml) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
-    stream = open_memstream(&buf, &buf_size);
-    if (!stream) {
-        ly_errno = LY_ESYS;
-        return NULL;
-    }
-    if (lyxml_dump_file(stream, anyxml, 0) == 0) {
-        free(buf);
-        buf = NULL;
-        ly_errno = LY_EINVAL;
-    }
-    fclose(stream);
-
-    return buf;
-}
-
 int
 lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
 {
