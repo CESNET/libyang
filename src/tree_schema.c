@@ -382,7 +382,7 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
                     return NULL;
                 }
             } else {
-                for (parent = node->parent; parent != stop; parent = parent->parent) {
+                for (parent = node->parent; parent && parent != stop; parent = parent->parent) {
                     if (parent->nodetype != LYS_CONTAINER) {
                         /* 7.6.5, rule 1, checking presence is not needed
                          * since it is done in check_mand_getnext()
