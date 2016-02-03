@@ -159,7 +159,7 @@ module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { yang_read_common(mod
                  module_header_stmts { if (!module->ns) { LOGVAL(LYE_MISSSTMT2,yylineno,"namespace", "module"); YYERROR; }
                                        if (!module->prefix) { LOGVAL(LYE_MISSSTMT2,yylineno,"prefix", "module"); YYERROR; }
                                      }
-                 linkage_stmts
+                 linkage_stmts { module->imp = realloc(module->imp, module->imp_size * sizeof *module->imp); }
                  meta_stmts
                  revision_stmts
                  body_stmts
