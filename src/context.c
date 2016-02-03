@@ -37,7 +37,8 @@
 
 #define IETF_INET_TYPES_PATH "../models/ietf-inet-types@2013-07-15.h"
 #define IETF_YANG_TYPES_PATH "../models/ietf-yang-types@2013-07-15.h"
-#define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2015-07-03.h"
+#define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2016-02-01.h"
+#define IETF_YANG_LIB_REV "2016-02-01"
 
 #include IETF_INET_TYPES_PATH
 #include IETF_YANG_TYPES_PATH
@@ -97,7 +98,7 @@ ly_ctx_new(const char *search_dir)
     }
 
     /* load ietf-yang-library */
-    ctx->models.list[2] = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_yang_library_2015_07_03_yin, LYS_IN_YIN);
+    ctx->models.list[2] = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_yang_library_2016_02_01_yin, LYS_IN_YIN);
     if (!ctx->models.list[2]) {
         ly_ctx_destroy(ctx);
         return NULL;
@@ -483,15 +484,13 @@ ly_ctx_info(struct ly_ctx *ctx)
     const struct lys_module *mod;
     struct lyd_node *root, *cont;
 
-    mod = ly_ctx_get_module(ctx, "ietf-yang-library", NULL);
-    if (!mod) {
-        mod = lyp_search_file(ctx, NULL, "ietf-yang-library", NULL, NULL);
-    }
-    if (!mod || !mod->data || strcmp(mod->data->next->name, "modules")) {
+    mod = ly_ctx_get_module(ctx, "ietf-yang-library", IETF_YANG_LIB_REV);
+    if (!mod || !mod->data) {
+        LOGINT;
         return NULL;
     }
 
-    root = lyd_new(NULL, mod, "modules");
+    root = lyd_new(NULL, mod, "modules-state");
     if (!root) {
         return NULL;
     }
@@ -530,12 +529,12 @@ ly_ctx_info(struct ly_ctx *ctx)
             return NULL;
         }
         if (ctx->models.list[i]->implemented
-                && !lyd_new_leaf(cont, NULL, "conformance", "implement")) {
+                && !lyd_new_leaf(cont, NULL, "conformance-type", "implement")) {
             lyd_free(root);
             return NULL;
         }
         if (!ctx->models.list[i]->implemented
-                && !lyd_new_leaf(cont, NULL, "conformance", "import")) {
+                && !lyd_new_leaf(cont, NULL, "conformance-type", "import")) {
             lyd_free(root);
             return NULL;
         }

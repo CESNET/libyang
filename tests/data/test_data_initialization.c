@@ -192,13 +192,32 @@ test_leaf_list_parameters(void **state)
     assert_string_equal("bar", name_result);
 }
 
+static void
+test_yanglibrary(void **state)
+{
+    (void) state; /* unused */
+    struct lyd_node *yanglib;
+    int rc;
+
+    yanglib = ly_ctx_info(ctx);
+    assert_non_null(yanglib);
+
+    rc = lyd_validate(yanglib, 0);
+
+    /* cleanup */
+    lyd_free(yanglib);
+
+    assert_int_equal(rc, 0);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
                     cmocka_unit_test(test_ctx_new_destroy),
                     cmocka_unit_test_setup_teardown(test_container_name, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_leaf_name, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_leaf_list_parameters, setup_f, teardown_f), };
+                    cmocka_unit_test_setup_teardown(test_leaf_list_parameters, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_yanglibrary, setup_f, teardown_f), };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

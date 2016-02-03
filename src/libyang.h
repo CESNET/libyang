@@ -111,7 +111,7 @@ extern "C" {
  * subsequently used to get the (sub)module structures using ly_ctx_get_module() and ly_ctx_get_submodule().
  * Alternatively, the ly_ctx_info() function can be used to get complex information about the schemas in the context
  * in the form of data tree defined by
- * <a href="https://tools.ietf.org/html/draft-ietf-netconf-yang-library-01">ietf-yang-library</a> schema.
+ * <a href="https://tools.ietf.org/html/draft-ietf-netconf-yang-library-04">ietf-yang-library</a> schema.
  *
  * Modules held by a context cannot be removed one after one. The only way how to \em change modules in the
  * context is to create a new context and remove the old one. To remove a context, there is ly_ctx_destroy()
