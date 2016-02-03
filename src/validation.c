@@ -333,6 +333,16 @@ lyv_data_value(struct lyd_node *node, int options)
             }
         }
         break;
+    case LY_TYPE_INST:
+        if (!(options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) &&
+                ((struct lys_node_leaf *)node->schema)->type.info.inst.req > -1) {
+            /* try to resolve instance-identifier to get know if the target exists */
+            rc = resolve_unres_data_item(node, UNRES_INSTID, 0, 0);
+            if (rc) {
+                return EXIT_FAILURE;
+            }
+        }
+        break;
     default:
         /* do nothing */
         break;

@@ -8,6 +8,10 @@ add_executable(test_leafref_remove data/test_leafref_remove.c)
 target_link_libraries(test_leafref_remove ${CMOCKA_LIBRARIES} yang)
 add_test(NAME test_leafref_remove COMMAND $<TARGET_FILE:test_leafref_remove>)
 
+add_executable(test_instid_remove data/test_instid_remove.c)
+target_link_libraries(test_instid_remove ${CMOCKA_LIBRARIES} yang)
+add_test(NAME test_instid_remove COMMAND $<TARGET_FILE:test_instid_remove>)
+
 add_executable(test_ietf schema/yin/test_ietf.c)
 target_link_libraries(test_ietf ${CMOCKA_LIBRARIES} yang)
 add_test(NAME test_ietf COMMAND $<TARGET_FILE:test_ietf>)
@@ -25,6 +29,8 @@ if(ENABLE_VALGRIND_TESTS)
 			 ${CMAKE_BINARY_DIR}/tests/test_data_initialization)
 		add_test(test_leafref_remove_valgrind valgrind --leak-check=full --show-leak-kinds=all
 			 ${CMAKE_BINARY_DIR}/tests/test_leafref_remove)
+		add_test(test_instid_remove_valgrind valgrind --leak-check=full --show-leak-kinds=all
+			 ${CMAKE_BINARY_DIR}/tests/test_instid_remove)
 	        add_test(test_ietf_valgrind valgrind --leak-check=full --show-leak-kinds=all
 			 ${CMAKE_BINARY_DIR}/tests/test_ietf)
 		add_test(test_augment_valgrind valgrind --leak-check=full --show-leak-kinds=all

@@ -80,7 +80,8 @@ typedef union lyd_value_u {
     int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
     struct lys_type_enum *enm;   /**< pointer to the schema definition of the enumeration value */
     struct lys_ident *ident;     /**< pointer to the schema definition of the identityref value */
-    struct lyd_node *instance;   /**< instance-identifier, pointer to the referenced data tree node */
+    void *instance;              /**< always NULL, to get instance-identifier target, call
+                                      TODO lyd_get_node() accepting xpath query */
     int8_t int8;                 /**< 8-bit signed integer */
     int16_t int16;               /**< 16-bit signed integer */
     int32_t int32;               /**< 32-bit signed integer */

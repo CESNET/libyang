@@ -1,0 +1,8 @@
+<insttests xmlns="urn:libyang:tests:instance" xmlns:i="urn:libyang:tests:instance">
+  <link-req>/i:insttests/i:target[i:id='4']/i:name</link-req>
+  <link>/i:insttests/i:target[i:id='5']/i:name</link>
+  <target><id>1</id><name>jedna</name></target>
+  <target><id>2</id><name>dva</name></target>
+  <target><id>3</id><name>tri</name></target>
+  <target><id>4</id><name>ctyri</name></target>
+</insttests>

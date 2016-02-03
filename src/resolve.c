@@ -4021,7 +4021,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int first, 
                 }
                 return EXIT_FAILURE;
             } else {
-                LOGVRB("There is no instance of \"%s\", but is not required.", leaf->value_str);
+                LOGVRB("There is no instance of \"%s\", but it is not required.", leaf->value_str);
             }
         }
         break;
