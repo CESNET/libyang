@@ -4012,7 +4012,8 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int first, 
     case UNRES_INSTID:
         assert(sleaf->type.base == LY_TYPE_INST);
         ly_errno = 0;
-        if (!resolve_instid(node, leaf->value_str, line)) {
+        leaf->value.instance = resolve_instid(node, leaf->value_str, line);
+        if (!leaf->value.instance) {
             if (ly_errno) {
                 return -1;
             } else if (sleaf->type.info.inst.req > -1) {
