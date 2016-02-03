@@ -53,5 +53,8 @@ int yang_read_description(struct lys_module *module, void *node, char *value, in
 
 int yang_read_reference(struct lys_module *module, void *node, char *value, int type, int line);
 
+void *yang_read_revision(struct lys_module *module, char *value);
+
+
 
 #endif /* LY_PARSER_YANG_H_ */

@@ -161,7 +161,7 @@ module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { yang_read_common(mod
                                      }
                  linkage_stmts { module->imp = realloc(module->imp, module->imp_size * sizeof *module->imp); }
                  meta_stmts
-                 revision_stmts
+                 revision_stmts { module->rev = realloc(module->rev, module->rev_size * sizeof *module->rev); }
                  body_stmts
              '}' optsep
 
@@ -258,20 +258,21 @@ reference_stmt: REFERENCE_KEYWORD sep string stmtend;
 revision_stmts: %empty
   | revision_stmts revision_stmt stmtsep;
 
-revision_stmt: REVISION_KEYWORD sep date_arg_str revision_end;
+revision_stmt: REVISION_KEYWORD sep date_arg_str { if (!(actual=yang_read_revision(module,s))) {YYERROR;} s=NULL; }
+               revision_end;
 
 revision_end: ';'
-  | '{' start_check
-        description_reference_stmt {free_check();}
+  | '{' stmtsep { actual_type = REVISION_KEYWORD; }
+        description_reference_stmt
      '}'
   ;
 
 description_reference_stmt: %empty 
-  |  description_reference_stmt yychecked_1 description_stmt
-  |  description_reference_stmt yychecked_2 reference_stmt
+  |  description_reference_stmt description_stmt { if (yang_read_description(module,actual,s,actual_type,yylineno)) {YYERROR;} s=NULL; }
+  |  description_reference_stmt reference_stmt { if (yang_read_reference(module,actual,s,actual_type,yylineno)) {YYERROR;} s=NULL; }
   ;
 
-date_arg_str: REVISION_DATE optsep
+date_arg_str: REVISION_DATE { s = strdup(yytext); if (!s) { LOGMEM; YYERROR; } } optsep
   | string_1
   ;
 

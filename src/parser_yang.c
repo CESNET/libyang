@@ -93,6 +93,9 @@ yang_elem_of_array(void **ptr, uint8_t *act_size, int type, int sizeof_struct)
     case IMPORT_KEYWORD:
         retval = &((struct lys_import *)(*ptr))[*act_size];
         break;
+    case REVISION_KEYWORD:
+        retval = &((struct lys_revision *)(*ptr))[*act_size];
+        break;
     }
     (*act_size)++;
     memset(retval,0,sizeof_struct);
@@ -176,6 +179,12 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
 
     if (!node) {
         ret = yang_check_string(module, &module->dsc, "description", "module", value, line);
+    } else {
+        switch (type) {
+        case REVISION_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_revision *) node)->dsc, "description", "revision", value, line);
+            break;
+        }
     }
     return ret;
 }
@@ -187,6 +196,40 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
 
     if (!node) {
         ret = yang_check_string(module, &module->ref, "reference", "module", value, line);
+    } else {
+        switch (type) {
+        case REVISION_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_revision *) node)->ref, "reference", "revision", value, line);
+            break;
+        }
     }
     return ret;
+}
+
+void *
+yang_read_revision(struct lys_module *module, char *value)
+{
+    struct lys_revision *retval;
+
+    retval = yang_elem_of_array((void **)&module->rev, &module->rev_size, REVISION_KEYWORD, sizeof *module->rev);
+    if (!retval) {
+        goto end;
+    }
+
+    /* first member of array is last revision */
+    if (module->rev_size - 1 && strcmp(module->rev[0].date, value) < 0) {
+        memcpy(retval->date, module->rev[0].date, LY_REV_SIZE);
+        memcpy(module->rev[0].date, value, LY_REV_SIZE);
+        retval->dsc = module->rev[0].dsc;
+        retval->ref = module->rev[0].ref;
+        retval = module->rev;
+        retval->dsc = NULL;
+        retval->ref = NULL;
+    } else {
+        memcpy(retval->date, value, LY_REV_SIZE);
+    }
+
+end:
+    free(value);
+    return retval;
 }
