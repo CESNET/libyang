@@ -287,7 +287,11 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         prev->next = *result;
 
         /* fix the "last" pointer */
-        for (diter = prev; diter->prev != prev; diter = diter->prev);
+        if (parent) {
+            diter = parent->child;
+        } else {
+            for (diter = prev; diter->prev != prev; diter = diter->prev);
+        }
         diter->prev = *result;
     } else {
         (*result)->prev = *result;
@@ -295,7 +299,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     (*result)->schema = schema;
     (*result)->validity = LYD_VAL_NOT;
 
-    if (lyv_data_context(*result, options, LOGLINE(xml), unres)) {
+    if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(*result, options, LOGLINE(xml), unres)) {
         goto error;
     }
 
@@ -389,7 +393,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
 
     /* rest of validation checks */
     ly_errno = 0;
-    if (lyv_data_content(*result, options, LOGLINE(xml), unres)) {
+    if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(*result, options, LOGLINE(xml), unres)) {
         if (ly_errno) {
             goto error;
         } else {

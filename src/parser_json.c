@@ -867,7 +867,11 @@ attr_repeat:
         prev->next = result;
 
         /* fix the "last" pointer */
-        for (diter = prev; diter->prev != prev; diter = diter->prev);
+        if (*parent) {
+            diter = (*parent)->child;
+        } else {
+            for (diter = prev; diter->prev != prev; diter = diter->prev);
+        }
         diter->prev = result;
     } else {
         result->prev = result;
@@ -875,7 +879,7 @@ attr_repeat:
     result->schema = schema;
     result->validity = LYD_VAL_NOT;
 
-    if (lyv_data_context(result, options, lineno, unres)) {
+    if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(result, options, lineno, unres)) {
         goto error;
     }
 
@@ -999,6 +1003,16 @@ attr_repeat:
             len += skip_ws(&data[len]);
 
             if (data[len] == ',') {
+                /* various validation checks */
+                ly_errno = 0;
+                if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(list, options, lineno, unres)) {
+                    if (ly_errno) {
+                        goto error;
+                    }
+                }
+                /* validation successful */
+                list->validity = LYD_VAL_OK;
+
                 /* another instance of the list */
                 new = calloc(1, sizeof *new);
                 if (!new) {
@@ -1009,18 +1023,14 @@ attr_repeat:
                 list->next = new;
 
                 /* fix the "last" pointer */
-                for (diter = list; diter->prev != list; diter = diter->prev);
+                if (*parent) {
+                    diter = (*parent)->child;
+                } else {
+                    for (diter = prev; diter->prev != prev; diter = diter->prev);
+                }
                 diter->prev = new;
 
                 new->schema = list->schema;
-
-                /* various validation checks */
-                ly_errno = 0;
-                if (lyv_data_content(list, options, lineno, unres)) {
-                    if (ly_errno) {
-                        goto error;
-                    }
-                }
                 list = new;
             }
         } while (data[len] == ',');
@@ -1036,7 +1046,7 @@ attr_repeat:
 
     /* various validation checks */
     ly_errno = 0;
-    if (lyv_data_content(result, options, lineno, unres)) {
+    if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(result, options, lineno, unres)) {
         if (ly_errno) {
             goto error;
         }

@@ -267,6 +267,10 @@ struct lyd_node_anyxml {
 #define LYD_OPT_OBSOLETE   0x0400 /**< Raise an error when an obsolete statement (status set to obsolete) is used. */
 #define LYD_OPT_NOSIBLINGS 0x0800 /**< Parse only a single XML tree from the input. This option applies only to
                                        XML input data. */
+#define LYD_OPT_TRUSTED    0x1000 /**< Data comes from a trusted source and it is not needed to validate them. Data
+                                       are connected with the schema, but the most validation checks (mandatory nodes,
+                                       list instance uniqueness, etc.) are not performed. This option does not make
+                                       sense for lyd_validate() so it is ignored by this function. */
 
 /**@} parseroptions */
 
