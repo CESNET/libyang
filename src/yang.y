@@ -155,15 +155,15 @@ start_check: stmtsep {struct Scheck *new; new=malloc(sizeof(struct Scheck)); if 
                       checked->check=0; }
 
 module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { yang_read_common(module,s,MODULE_KEYWORD,yylineno); s=NULL; }
-              '{' start_check 
-                        module_header_stmts { if (!module->ns) { LOGVAL(LYE_MISSSTMT2,yylineno,"namespace", "module"); YYERROR; } 
-                                              if (!module->prefix) { LOGVAL(LYE_MISSSTMT2,yylineno,"prefix", "module"); YYERROR; }
-                                             }
-                        linkage_stmts
-                        meta_stmts         {free_check();}
-                        revision_stmts 
-                        body_stmts
-                     '}' optsep ;
+             '{' stmtsep
+                 module_header_stmts { if (!module->ns) { LOGVAL(LYE_MISSSTMT2,yylineno,"namespace", "module"); YYERROR; }
+                                       if (!module->prefix) { LOGVAL(LYE_MISSSTMT2,yylineno,"prefix", "module"); YYERROR; }
+                                     }
+                 linkage_stmts
+                 meta_stmts
+                 revision_stmts
+                 body_stmts
+             '}' optsep
 
 module_header_stmts: %empty  { $$ = 0; }
   |  module_header_stmts yang_version_stmt { if ($1) { LOGVAL(LYE_TOOMANY, yylineno, "yang version", "module"); YYERROR; } $$ = 1; }
@@ -241,10 +241,10 @@ belongs_to_stmt: BELONGS_TO_KEYWORD sep identifier_arg_str
 prefix_stmt: PREFIX_KEYWORD sep prefix_arg_str stmtend;
 
 meta_stmts: %empty 
-  |  meta_stmts yychecked_1 organization_stmt 
-  |  meta_stmts yychecked_2 contact_stmt 
-  |  meta_stmts yychecked_3 description_stmt
-  |  meta_stmts yychecked_4 reference_stmt
+  |  meta_stmts organization_stmt { if (yang_read_common(module,s,ORGANIZATION_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
+  |  meta_stmts contact_stmt { if (yang_read_common(module,s,CONTACT_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
+  |  meta_stmts description_stmt { if (yang_read_description(module,NULL,s,MODULE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
+  |  meta_stmts reference_stmt { if (yang_read_reference(module,NULL,s,MODULE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
   ;
 
 organization_stmt: ORGANIZATION_KEYWORD sep string stmtend;

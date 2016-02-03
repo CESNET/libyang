@@ -48,6 +48,12 @@ yang_read_common(struct lys_module *module, char *value, int type, int line)
     case NAMESPACE_KEYWORD:
         ret = yang_check_string(module, &module->ns, "namespace", "module", value, line);
         break;
+    case ORGANIZATION_KEYWORD:
+        ret = yang_check_string(module, &module->org, "organization", "module", value, line);
+        break;
+    case CONTACT_KEYWORD:
+        ret = yang_check_string(module, &module->contact, "contact", "module", value, line);
+        break;
     }
 
     return ret;
@@ -161,4 +167,26 @@ yang_fill_import(struct lys_module *module, struct lys_import *imp, char *value,
 
     free(value);
     return EXIT_FAILURE;
+}
+
+int
+yang_read_description(struct lys_module *module, void *node, char *value, int type, int line)
+{
+    int ret;
+
+    if (!node) {
+        ret = yang_check_string(module, &module->dsc, "description", "module", value, line);
+    }
+    return ret;
+}
+
+int
+yang_read_reference(struct lys_module *module, void *node, char *value, int type, int line)
+{
+    int ret;
+
+    if (!node) {
+        ret = yang_check_string(module, &module->ref, "reference", "module", value, line);
+    }
+    return ret;
 }

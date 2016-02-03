@@ -49,4 +49,9 @@ void *yang_elem_of_array(void **ptr, uint8_t *act_size, int type, int sizeof_str
 
 int yang_fill_import(struct lys_module *module, struct lys_import *imp, char *value, int line);
 
+int yang_read_description(struct lys_module *module, void *node, char *value, int type, int line);
+
+int yang_read_reference(struct lys_module *module, void *node, char *value, int type, int line);
+
+
 #endif /* LY_PARSER_YANG_H_ */
