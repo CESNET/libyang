@@ -2508,7 +2508,7 @@ resolve_predicate(const char *pred, struct unres_data *node_match)
                 mod = ly_ctx_get_module(ctx, str, NULL);
                 free(str);
 
-                if (resolve_data(mod, name, nam_len, node_match->node[j], &target_match)) {
+                if (resolve_data(mod, name, nam_len, node_match->node[j]->child, &target_match)) {
                     goto remove_instid;
                 }
             }
