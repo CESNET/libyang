@@ -21,12 +21,15 @@ void free_check();
 extern char *yytext;
 char *s;
 struct Scheck *checked=NULL;
+void *actual;
+int actual_type;
 %}
 
 %parse-param {struct lys_module *module} {struct unres_schema *unres}
 
 %union {
   int i;
+  char *str;
 }
 
 %token ANYXML_KEYWORD
@@ -126,6 +129,9 @@ struct Scheck *checked=NULL;
 %token USER_KEYWORD
 
 %type <i> module_header_stmts
+%type <str> tmp_identifier_arg_str
+
+%destructor { free($$); } tmp_identifier_arg_str
 
 %%
 
@@ -196,12 +202,16 @@ linkage_stmts: %empty
  |  linkage_stmts include_stmt
  ;
 
-import_stmt: IMPORT_KEYWORD sep identifier_arg_str 
-                     '{' stmtsep
-                         prefix_stmt
-                         revision_date_opt
-                     '}' stmtsep
-  ;
+import_stmt: IMPORT_KEYWORD sep tmp_identifier_arg_str {
+                 if (!(actual=yang_elem_of_array((void **)&module->imp,&module->imp_size,IMPORT_KEYWORD,sizeof *module->imp))) {YYERROR;}
+                 module->imp_size--;
+             }
+             '{' stmtsep
+                 prefix_stmt { if (yang_read_prefix(module,actual,s,IMPORT_KEYWORD,yylineno)) {YYERROR;} s=NULL; actual_type=IMPORT_KEYWORD;}
+                 revision_date_opt
+             '}' stmtsep { if (yang_fill_import(module,actual,$3,yylineno)) {YYERROR;} }
+
+tmp_identifier_arg_str: identifier_arg_str { $$ = s; s = NULL; }
 
 include_stmt: INCLUDE_KEYWORD sep identifier_arg_str include_end stmtsep;
 
@@ -214,7 +224,14 @@ include_end: ';'
 revision_date_opt: %empty 
   | revision_date_stmt;
 
-revision_date_stmt: REVISION_DATE_KEYWORD sep REVISION_DATE optsep stmtend;
+revision_date_stmt: REVISION_DATE_KEYWORD sep revision_date optsep stmtend;
+
+revision_date: REVISION_DATE { if (actual_type==IMPORT_KEYWORD) {
+                                   memcpy(((struct lys_import *)actual)->rev,yytext,LY_REV_SIZE-1);
+                               } else {                              // INCLUDE KEYWORD
+                                   memcpy(((struct lys_include *)actual)->rev,yytext,LY_REV_SIZE-1);
+                               }
+                             }
 
 belongs_to_stmt: BELONGS_TO_KEYWORD sep identifier_arg_str
                  '{' stmtsep

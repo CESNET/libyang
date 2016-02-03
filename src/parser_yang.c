@@ -21,7 +21,7 @@
 
 #include "parser_yang.h"
 #include "parser_yang_bis.h"
-
+#include "parser.h"
 
 static int 
 yang_check_string(struct lys_module *module, const char **target, char *what, char *where, char *value, int line)
@@ -39,7 +39,7 @@ yang_check_string(struct lys_module *module, const char **target, char *what, ch
 int 
 yang_read_common(struct lys_module *module, char *value, int type, int line) 
 {
-    int ret=0;
+    int ret = 0;
 
     switch (type) {
     case MODULE_KEYWORD:
@@ -56,13 +56,109 @@ yang_read_common(struct lys_module *module, char *value, int type, int line)
 int 
 yang_read_prefix(struct lys_module *module, void *save, char *value, int type, int line) 
 {
-    int ret;
+    int ret = 0;
 
+    if (lyp_check_identifier(value, LY_IDENT_PREFIX, line, module, NULL)) {
+        free(value);
+        return EXIT_FAILURE;
+    }
     switch (type){
     case MODULE_KEYWORD:
         ret = yang_check_string(module, &module->prefix, "prefix", "module", value, line);
         break;
+    case IMPORT_KEYWORD:
+        ((struct lys_import *)save)->prefix = lydict_insert_zc(module->ctx, value);
+        break;
     }
-    
+
     return ret;
+}
+
+void *
+yang_elem_of_array(void **ptr, uint8_t *act_size, int type, int sizeof_struct)
+{
+    void *retval;
+
+    if (!(*act_size % LY_ARRAY_SIZE) && !(*ptr = ly_realloc(*ptr, (*act_size + LY_ARRAY_SIZE) * sizeof_struct))) {
+        LOGMEM;
+        return NULL;
+    }
+    switch (type) {
+    case IMPORT_KEYWORD:
+        retval = &((struct lys_import *)(*ptr))[*act_size];
+        break;
+    }
+    (*act_size)++;
+    memset(retval,0,sizeof_struct);
+    return retval;
+}
+
+int
+yang_fill_import(struct lys_module *module, struct lys_import *imp, char *value, int line)
+{
+    int count, i;
+
+    /* check for circular import, store it if passed */
+    if (!module->ctx->models.parsing) {
+        count = 0;
+    } else {
+        for (count = 0; module->ctx->models.parsing[count]; ++count) {
+            if (value == module->ctx->models.parsing[count]) {
+                LOGERR(LY_EVALID, "Circular import dependency on the module \"%s\".", value);
+                goto error;
+            }
+        }
+    }
+    ++count;
+    module->ctx->models.parsing =
+            ly_realloc(module->ctx->models.parsing, (count + 1) * sizeof *module->ctx->models.parsing);
+    if (!module->ctx->models.parsing) {
+        LOGMEM;
+        goto error;
+    }
+    module->ctx->models.parsing[count - 1] = value;
+    module->ctx->models.parsing[count] = NULL;
+
+    /* try to load the module */
+    imp->module = (struct lys_module *)ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
+    if (!imp->module) {
+        /* whether to use a user callback is decided in the function */
+        imp->module = (struct lys_module *)ly_ctx_load_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
+    }
+
+    /* remove the new module name now that its parsing is finished (even if failed) */
+    if (module->ctx->models.parsing[count] || (module->ctx->models.parsing[count - 1] != value)) {
+        LOGINT;
+    }
+    --count;
+    if (count) {
+        module->ctx->models.parsing[count] = NULL;
+    } else {
+        free(module->ctx->models.parsing);
+        module->ctx->models.parsing = NULL;
+    }
+
+    /* check the result */
+    if (!imp->module) {
+        LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
+        goto error;
+    }
+
+    module->imp_size++;
+
+    /* check duplicities in imported modules */
+    for (i = 0; i < module->imp_size - 1; i++) {
+        if (!strcmp(module->imp[i].module->name, module->imp[module->imp_size - 1].module->name)) {
+            LOGVAL(LYE_SPEC, line, "Importing module \"%s\" repeatedly.", module->imp[i].module->name);
+            goto error;
+        }
+    }
+
+    free(value);
+    return EXIT_SUCCESS;
+
+    error:
+
+    free(value);
+    return EXIT_FAILURE;
 }
