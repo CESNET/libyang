@@ -128,7 +128,7 @@ teardown_f(void **state)
 {
     (void) state; /* unused */
     lyd_free(root);
-    ly_ctx_destroy(ctx);
+    ly_ctx_destroy(ctx, NULL);
 
     return 0;
 }
@@ -142,7 +142,7 @@ test_ctx_new_destroy(void **state)
         fail();
     }
 
-    ly_ctx_destroy(ctx);
+    ly_ctx_destroy(ctx, NULL);
 }
 
 static void

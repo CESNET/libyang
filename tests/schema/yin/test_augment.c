@@ -57,7 +57,7 @@ teardown_ctx(void **state)
 {
     (void)state; /* unused */
 
-    ly_ctx_destroy(ctx);
+    ly_ctx_destroy(ctx, NULL);
 
     return 0;
 }

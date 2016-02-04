@@ -55,7 +55,7 @@ setup_ctx(void **state)
 static int
 teardown_ctx(void **state)
 {
-    ly_ctx_destroy((struct ly_ctx *)(*state));
+    ly_ctx_destroy((struct ly_ctx *)(*state), NULL);
     (*state) = NULL;
 
     return 0;

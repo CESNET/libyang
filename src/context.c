@@ -74,7 +74,7 @@ ly_ctx_new(const char *search_dir)
             LOGERR(LY_ESYS, "Unable to use search directory \"%s\" (%s)",
                    search_dir, strerror(errno));
             free(cwd);
-            ly_ctx_destroy(ctx);
+            ly_ctx_destroy(ctx, NULL);
             return NULL;
         }
         ctx->models.search_path = get_current_dir_name();
@@ -86,21 +86,21 @@ ly_ctx_new(const char *search_dir)
     /* load ietf-inet-types */
     ctx->models.list[0] = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN);
     if (!ctx->models.list[0]) {
-        ly_ctx_destroy(ctx);
+        ly_ctx_destroy(ctx, NULL);
         return NULL;
     }
 
     /* load ietf-yang-types */
     ctx->models.list[1] = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_yang_types_2013_07_15_yin, LYS_IN_YIN);
     if (!ctx->models.list[1]) {
-        ly_ctx_destroy(ctx);
+        ly_ctx_destroy(ctx, NULL);
         return NULL;
     }
 
     /* load ietf-yang-library */
     ctx->models.list[2] = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_yang_library_2016_02_01_yin, LYS_IN_YIN);
     if (!ctx->models.list[2]) {
-        ly_ctx_destroy(ctx);
+        ly_ctx_destroy(ctx, NULL);
         return NULL;
     }
 
@@ -142,7 +142,7 @@ ly_ctx_get_searchdir(const struct ly_ctx *ctx)
 }
 
 API void
-ly_ctx_destroy(struct ly_ctx *ctx)
+ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     if (!ctx) {
         return;
@@ -150,7 +150,7 @@ ly_ctx_destroy(struct ly_ctx *ctx)
 
     /* models list */
     while (ctx->models.used) {
-        lys_free(ctx->models.list[0], 1);
+        lys_free(ctx->models.list[0], 1, private_destructor);
     }
     free(ctx->models.search_path);
     free(ctx->models.list);

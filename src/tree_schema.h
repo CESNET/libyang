@@ -1380,8 +1380,11 @@ struct lys_node *lys_parent(const struct lys_node *node);
  *
  * @param[in] node Node, whose private field will be assigned.
  * @param[in] priv Arbitrary user-specified pointer.
+ * @return previous private object of the \p node (NULL if this is the first call on the \p node). Note, that
+ * the caller is in this case responsible (if it is necessary) for freeing the replaced private object. In case
+ * of invalid (NULL) \p node, NULL is returned and #ly_errno is set to #LY_EINVAL.
  */
-void lys_set_private(const struct lys_node *node, void *priv);
+void *lys_set_private(const struct lys_node *node, void *priv);
 
 /**
  * @brief Get schema node according to the given absolute schema node identifier.

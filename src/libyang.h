@@ -689,8 +689,10 @@ const struct lys_submodule *ly_ctx_get_submodule(const struct lys_module *module
  * Data models are destroyed automatically as part of ly_ctx_destroy() call.
  *
  * @param[in] ctx libyang context to destroy
+ * @param[in] private_destructor Optional destructor function for private objects assigned
+ * to the nodes via lys_set_private(). If NULL, the private objects are not freed by libyang.
  */
-void ly_ctx_destroy(struct ly_ctx *ctx);
+void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv));
 
 /**@} context */
 

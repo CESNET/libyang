@@ -1515,14 +1515,14 @@ lys_when_free(struct ly_ctx *ctx, struct lys_when *w)
 }
 
 static void
-lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment aug)
+lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment aug, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     struct lys_node *next, *sub;
 
     /* children from a resolved augment are freed under the target node */
     if (!aug.target) {
         LY_TREE_FOR_SAFE(aug.child, next, sub) {
-            lys_node_free(sub);
+            lys_node_free(sub, private_destructor);
         }
     }
 
@@ -1842,7 +1842,7 @@ lys_deviation_free(struct ly_ctx *ctx, struct lys_deviation *dev)
 }
 
 static void
-lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses)
+lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     int i, j;
 
@@ -1865,7 +1865,7 @@ lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses)
     free(uses->refine);
 
     for (i = 0; i < uses->augment_size; i++) {
-        lys_augment_free(ctx, uses->augment[i]);
+        lys_augment_free(ctx, uses->augment[i], private_destructor);
     }
     free(uses->augment);
 
@@ -1873,7 +1873,7 @@ lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses)
 }
 
 void
-lys_node_free(struct lys_node *node)
+lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     struct ly_ctx *ctx;
     struct lys_node *sub, *next;
@@ -1887,6 +1887,11 @@ lys_node_free(struct lys_node *node)
 
     ctx = node->module->ctx;
 
+    /* remove private object */
+    if (node->private && private_destructor) {
+        private_destructor(node, node->private);
+    }
+
     /* common part */
     if (!(node->nodetype & (LYS_INPUT | LYS_OUTPUT))) {
         free(node->features);
@@ -1897,7 +1902,7 @@ lys_node_free(struct lys_node *node)
 
     if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
         LY_TREE_FOR_SAFE(node->child, next, sub) {
-            lys_node_free(sub);
+            lys_node_free(sub, private_destructor);
         }
     }
 
@@ -1922,7 +1927,7 @@ lys_node_free(struct lys_node *node)
         lys_anyxml_free(ctx, (struct lys_node_anyxml *)node);
         break;
     case LYS_USES:
-        lys_uses_free(ctx, (struct lys_node_uses *)node);
+        lys_uses_free(ctx, (struct lys_node_uses *)node, private_destructor);
         break;
     case LYS_CASE:
         lys_when_free(ctx, ((struct lys_node_case *)node)->when);
@@ -1985,7 +1990,7 @@ lys_get_import_module(const struct lys_module *module, const char *prefix, int p
 
 /* free_int_mods - flag whether to free the internal modules as well */
 static void
-module_free_common(struct lys_module *module, int free_int_mods)
+module_free_common(struct lys_module *module, int free_int_mods, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     struct ly_ctx *ctx;
     struct lys_node *next, *iter;
@@ -2023,7 +2028,7 @@ module_free_common(struct lys_module *module, int free_int_mods)
         l = ctx->models.used;
         for (j = 0; j < l; j++) {
             if (ctx->models.list[j] == module->imp[i].module) {
-                lys_free(module->imp[i].module, free_int_mods);
+                lys_free(module->imp[i].module, free_int_mods, private_destructor);
                 break;
             }
         }
@@ -2034,7 +2039,7 @@ module_free_common(struct lys_module *module, int free_int_mods)
      * are placed in the main module altogether */
     if (!module->type) {
         LY_TREE_FOR_SAFE(module->data, next, iter) {
-            lys_node_free(iter);
+            lys_node_free(iter, private_destructor);
         }
     }
 
@@ -2068,14 +2073,14 @@ module_free_common(struct lys_module *module, int free_int_mods)
         /* complete submodule free is done only from main module since
          * submodules propagate their includes to the main module */
         if (!module->type) {
-            lys_submodule_free(module->inc[i].submodule, free_int_mods);
+            lys_submodule_free(module->inc[i].submodule, free_int_mods, private_destructor);
         }
     }
     free(module->inc);
 
     /* augment */
     for (i = 0; i < module->augment_size; i++) {
-        lys_augment_free(ctx, module->augment[i]);
+        lys_augment_free(ctx, module->augment[i], private_destructor);
     }
     free(module->augment);
 
@@ -2095,14 +2100,14 @@ module_free_common(struct lys_module *module, int free_int_mods)
 }
 
 void
-lys_submodule_free(struct lys_submodule *submodule, int free_int_mods)
+lys_submodule_free(struct lys_submodule *submodule, int free_int_mods, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     if (!submodule) {
         return;
     }
 
     /* common part with struct ly_module */
-    module_free_common((struct lys_module *)submodule, free_int_mods);
+    module_free_common((struct lys_module *)submodule, free_int_mods, private_destructor);
 
     /* no specific items to free */
 
@@ -2474,12 +2479,12 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
 
 error:
 
-    lys_node_free(retval);
+    lys_node_free(retval, NULL);
     return NULL;
 }
 
 void
-lys_free(struct lys_module *module, int free_int_mods)
+lys_free(struct lys_module *module, int free_int_mods, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     struct ly_ctx *ctx;
     int i;
@@ -2504,7 +2509,7 @@ lys_free(struct lys_module *module, int free_int_mods)
     }
 
     /* common part with struct ly_submodule */
-    module_free_common(module, free_int_mods);
+    module_free_common(module, free_int_mods, private_destructor);
 
     /* specific items to free */
     lydict_remove(module->ctx, module->ns);
@@ -2709,14 +2714,20 @@ lys_parent(const struct lys_node *node)
     return node->parent;
 }
 
-API void
+API void *
 lys_set_private(const struct lys_node *node, void *priv)
 {
+    void *prev;
+
     if (!node) {
-        return;
+        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        return NULL;
     }
 
+    prev = node->private;
     ((struct lys_node *)node)->private = priv;
+
+    return prev;
 }
 
 API const struct lys_node *

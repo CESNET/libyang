@@ -891,7 +891,7 @@ cmd_searchpath(const char *arg)
 int
 cmd_clear(const char *UNUSED(arg))
 {
-    ly_ctx_destroy(ctx);
+    ly_ctx_destroy(ctx, NULL);
     ctx = ly_ctx_new(NULL);
     if (!ctx) {
         fprintf(stderr, "Failed to create context.\n");

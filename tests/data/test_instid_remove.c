@@ -74,7 +74,7 @@ teardown_f(void **state)
     struct state *st = (*state);
 
     lyd_free(st->data);
-    ly_ctx_destroy(st->ctx);
+    ly_ctx_destroy(st->ctx, NULL);
     free(st);
     (*state) = NULL;
 
