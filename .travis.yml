@@ -21,7 +21,9 @@ before_install:
   - if [ "${CC}" = "clang" ]; then sudo pip install codecov; fi
 
 script: 
-  - mkdir build && cd build ; cmake .. && make -j2 && make test
+  - mkdir build && cd build && cmake ..
+  - if [ "${CC}" = "clang" ]; then CFLAGS="-coverage" make -j2; else make -j2; fi
+  - make test
 
 after_success:
   - if [ "${CC}" = "clang" ]; then codecov; fi
