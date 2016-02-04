@@ -1,9 +1,7 @@
 # libyang
 
-Travis CI:
+[![BSD license](https://img.shields.io/badge/License-BSD-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Build Status](https://secure.travis-ci.org/CESNET/libyang.png?branch=master)](http://travis-ci.org/CESNET/libyang)
-
-Coverity Scan:
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/5259/badge.svg)](https://scan.coverity.com/projects/5259)
 
 libyang is YANG data modelling language parser and toolkit written (and
