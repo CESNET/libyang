@@ -1444,6 +1444,37 @@ error:
 }
 
 API struct ly_set *
+lyd_get_list_keys(const struct lyd_node *list)
+{
+    struct lyd_node *key;
+    struct lys_node_list *slist;
+    struct ly_set *set;
+    unsigned int i;
+
+    if (!list || (list->schema->nodetype != LYS_LIST)) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    slist = (struct lys_node_list *)list->schema;
+
+    set = ly_set_new();
+    if (!set) {
+        LOGMEM;
+        return NULL;
+    }
+
+    for (i = 0; i < slist->keys_size; ++i) {
+        key = resolve_data_nodeid(slist->keys[i]->name, list->child);
+        if (key) {
+            ly_set_add(set, key);
+        }
+    }
+
+    return set;
+}
+
+API struct ly_set *
 ly_set_new(void)
 {
     return calloc(1, sizeof(struct ly_set));

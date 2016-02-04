@@ -519,6 +519,15 @@ struct ly_set *lyd_get_node(const struct lyd_node *data, const char *expr);
 struct ly_set *lyd_get_node2(const struct lyd_node *data, const struct lys_node *schema);
 
 /**
+ * @brief Get all key nodes of a \p list instance.
+ *
+ * @param[in] list List node, whose keys will be searched for.
+ * @return Set of list keys (use dset member of ::ly_set). If no keys are found/defined, the returned set is empty.
+ * In case of error, NULL is returned.
+ */
+struct ly_set *lyd_get_list_keys(const struct lyd_node *list);
+
+/**
  * @brief Validate \p node data subtree.
  *
  * @param[in] node Data tree to be validated.
