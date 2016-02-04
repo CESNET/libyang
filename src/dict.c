@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #include "common.h"
 #include "context.h"
@@ -36,6 +37,7 @@ lydict_init(struct dict_table *dict)
     }
 
     dict->hash_mask = DICT_SIZE - 1;
+    pthread_mutex_init(&dict->lock, NULL);
 }
 
 void
@@ -62,6 +64,8 @@ lydict_clean(struct dict_table *dict)
             free(rec);
         }
     }
+
+    pthread_mutex_destroy(&dict->lock);
 }
 
 /*
@@ -99,6 +103,8 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
 
     len = strlen(value);
 
+    pthread_mutex_lock(&ctx->dict.lock);
+
     index = dict_hash(value, len) & ctx->dict.hash_mask;
     record = &ctx->dict.recs[index];
 
@@ -109,6 +115,7 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
 
     if (!record) {
         /* record not found */
+        pthread_mutex_unlock(&ctx->dict.lock);
         return;
     }
 
@@ -135,6 +142,8 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
             memset(record, 0, sizeof *record);
         }
     }
+
+    pthread_mutex_unlock(&ctx->dict.lock);
 }
 
 static char *
@@ -218,6 +227,8 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
 API const char *
 lydict_insert(struct ly_ctx *ctx, const char *value, size_t len)
 {
+    const char *result;
+
     if (value && !len) {
         len = strlen(value);
     }
@@ -225,14 +236,26 @@ lydict_insert(struct ly_ctx *ctx, const char *value, size_t len)
     if (!value) {
         return NULL;
     }
-    return dict_insert(ctx, (char *)value, len, 0);
+
+    pthread_mutex_lock(&ctx->dict.lock);
+    result = dict_insert(ctx, (char *)value, len, 0);
+    pthread_mutex_unlock(&ctx->dict.lock);
+
+    return result;
 }
 
 API const char *
 lydict_insert_zc(struct ly_ctx *ctx, char *value)
 {
+    const char *result;
+
     if (!value) {
         return NULL;
     }
-    return dict_insert(ctx, value, strlen(value), 1);
+
+    pthread_mutex_lock(&ctx->dict.lock);
+    result = dict_insert(ctx, value, strlen(value), 1);
+    pthread_mutex_unlock(&ctx->dict.lock);
+
+    return result;
 }

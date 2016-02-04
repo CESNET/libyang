@@ -23,6 +23,7 @@
 #define LY_DICT_PRIVATE_H_
 
 #include <stdint.h>
+#include <pthread.h>
 
 #include "dict.h"
 
@@ -50,6 +51,7 @@ struct dict_table {
     struct dict_rec recs[DICT_SIZE];
     int hash_mask;
     uint32_t used;
+    pthread_mutex_t lock;
 };
 
 /**
