@@ -18,13 +18,11 @@ before_install:
   - cd cmocka-1.0.1 && mkdir build && cd build
   - cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr .. && make -j2 && sudo make install
   - cd ../..
-  - if [ "${CC}" = "clang" ]; then sudo pip install codecov; fi
+  - if [ "${CC}" = "gcc" ]; then pip install --user codecov; fi
 
 script: 
-  - mkdir build && cd build && cmake ..
-  - if [ "${CC}" = "clang" ]; then CFLAGS="-coverage" make -j2; else make -j2; fi
-  - make test
+  - mkdir build && cd build && cmake .. && make -j2 && make test
 
 after_success:
-  - if [ "${CC}" = "clang" ]; then codecov; fi
+  - if [ "${CC}" = "gcc" ]; then codecov; fi
 

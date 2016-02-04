@@ -33,7 +33,7 @@ endif()
 
 set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -fvisibility=hidden")
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
-set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
+set(CMAKE_C_FLAGS_DEBUG   "-coverage -g -O0")
 
 if(CMAKE_BUILD_TYPE STREQUAL debug)
 	option(ENABLE_BUILD_TESTS "Build tests" ON)
