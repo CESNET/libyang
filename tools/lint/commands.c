@@ -78,11 +78,7 @@ cmd_data_help(void)
 void
 cmd_xpath_help(void)
 {
-    printf("xpath -e <XPath-expression> [-c <context-node-path>] <XML-data-file-name>\n\n");
-    printf("\tcontext-node-path: /<node-name>(/<node-name>)*\n\n");
-    printf("\tIf context node is not specififed, data root is used.\n");
-    printf("\tIf context node is explicitly specified, \"when\" and \"must\"\n");
-    printf("\tdata tree access restrictions are applied.\n");
+    printf("xpath -e <XPath-expression> <XML-data-file-name>\n");
 }
 
 void
@@ -509,14 +505,14 @@ cleanup:
 int
 cmd_xpath(const char *arg)
 {
-    int c, argc, option_index, ret = 1, long_str, when_must_eval = 0;
-    char **argv = NULL, *ptr, *ctx_node_path = NULL, *expr = NULL;
-    struct lyd_node *ctx_node, *data = NULL;
-    struct lyxp_set set = {0, {NULL}, NULL, 0, 0, 0};
+    int c, argc, option_index, ret = 1, long_str;
+    char **argv = NULL, *ptr, *expr = NULL;
+    unsigned int i, j;
+    struct lyd_node *data = NULL, *node;
+    struct ly_set *set, *keys;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"expr", required_argument, 0, 'e'},
-        {"ctx-node", required_argument, 0, 'c'},
         {NULL, 0, 0, 0}
     };
 
@@ -555,7 +551,7 @@ cmd_xpath(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "he:c:", long_options, &option_index);
+        c = getopt_long(argc, argv, "he:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -567,15 +563,6 @@ cmd_xpath(const char *arg)
             goto cleanup;
         case 'e':
             expr = optarg;
-            break;
-        case 'c':
-            ctx_node_path = optarg;
-            if ((ctx_node_path[0] != '/') || (strlen(ctx_node_path) < 2)
-                    || (ctx_node_path[strlen(ctx_node_path) - 1] == '/')) {
-                fprintf(stderr, "Invalid context node path \"%s\".\n", ctx_node_path);
-                goto cleanup;
-            }
-            when_must_eval = 1;
             break;
         case '?':
             fprintf(stderr, "Unknown option \"%d\".\n", (char)c);
@@ -600,39 +587,61 @@ cmd_xpath(const char *arg)
         goto cleanup;
     }
 
-    if (ctx_node_path) {
-        ctx_node = data;
-        ptr = strtok(ctx_node_path, "/");
-        do {
-            LY_TREE_FOR(ctx_node, ctx_node) {
-                if (!strcmp(ctx_node->schema->name, ptr)) {
-                    break;
-                }
-            }
-            if (!ctx_node) {
-                break;
-            }
-
-            ptr = strtok(NULL, "/");
-            if (ptr) {
-                ctx_node = ctx_node->child;
-            }
-        } while (ptr && ctx_node);
-
-        if (!ctx_node) {
-            fprintf(stderr, "Context node search failed at \"%s\".\n", ptr);
-            goto cleanup;
-        }
-    } else {
-        ctx_node = data;
-    }
-
-    if (lyxp_eval(expr, ctx_node, &set, when_must_eval, 0)) {
-        fprintf(stderr, "XPath expression invalid.\n");
+    if (!(set = lyd_get_node(data, expr))) {
         goto cleanup;
     }
 
-    lyxp_set_print_xml(stdout, &set);
+    /* print result */
+    printf("Result:\n");
+    if (!set->number) {
+        printf("\tEmpty\n");
+    } else {
+        for (i = 0; i < set->number; ++i) {
+            node = set->dset[i];
+            switch (node->schema->nodetype) {
+            case LYS_CONTAINER:
+                printf("\tContainer ");
+                break;
+            case LYS_LEAF:
+                printf("\tLeaf ");
+                break;
+            case LYS_LEAFLIST:
+                printf("\tLeaflist ");
+                break;
+            case LYS_LIST:
+                printf"\tList ");
+                break;
+            case LYS_ANYXML:
+                printf("\tAnyxml ");
+                break;
+            default:
+                printf("\tUnknown ");
+                break;
+            }
+            printf("\"%s\"", node->schema->name);
+            if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+                printf(" (val: %s)", ((struct lyd_node_leaf_list *)node)->value_str);
+            } else if (node->schema->nodetype == LYS_LIST) {
+                keys = lyd_get_list_keys(node);
+                if (keys && keys->number) {
+                    printf(" (");
+                    for (j = 0; j < keys->number; ++j) {
+                        if (j) {
+                            printf(" ");
+                        }
+                        printf("\"%s\": %s", keys->dset[j]->schema->name,
+                               ((struct lyd_node_leaf_list *)keys->dset[j])->value_str);
+                    }
+                    printf(")");
+                }
+                ly_set_free(keys);
+            }
+            printf("\n");
+        }
+    }
+    printf("\n");
+
+    ly_set_free(set);
     ret = 0;
 
 cleanup:
@@ -974,7 +983,7 @@ COMMAND commands[] = {
         {"add", cmd_add, cmd_add_help, "Add a new model"},
         {"print", cmd_print, cmd_print_help, "Print model"},
         {"data", cmd_data, cmd_data_help, "Load, validate and optionally print instance data"},
-        {"xpath", cmd_xpath, cmd_xpath_help, "Evaluate an XPath expression on a data tree"},
+        {"xpath", cmd_xpath, cmd_xpath_help, "Get data nodes satisfying an XPath expression"},
         {"list", cmd_list, cmd_list_help, "List all the loaded models"},
         {"feature", cmd_feature, cmd_feature_help, "Print/enable/disable all/specific features of models"},
         {"searchpath", cmd_searchpath, cmd_searchpath_help, "Set the search path for models"},
