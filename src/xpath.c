@@ -6458,8 +6458,8 @@ eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, s
     return EXIT_SUCCESS;
 }
 
-API int
-lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set *set, int when_must_eval, uint32_t line)
+int
+lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *set, int when_must_eval, uint32_t line)
 {
     struct lyxp_expr *exp;
     uint16_t exp_idx;
@@ -6488,8 +6488,8 @@ lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set *set, int
 
         exp_idx = 0;
         lyxp_set_cast(set, LYXP_SET_EMPTY, cur_node, when_must_eval);
-        set_insert_node(set, cur_node, LYXP_NODE_ELEM, 0);
-        rc = eval_expr(exp, &exp_idx, cur_node, set, when_must_eval, line);
+        set_insert_node(set, (struct lyd_node *)cur_node, LYXP_NODE_ELEM, 0);
+        rc = eval_expr(exp, &exp_idx, (struct lyd_node *)cur_node, set, when_must_eval, line);
 
         exp_free(exp);
     }
@@ -6497,7 +6497,7 @@ lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set *set, int
     return rc;
 }
 
-API int
+int
 lyxp_syntax_check(const char *expr, uint32_t line)
 {
     struct lyxp_expr *exp;
@@ -6526,7 +6526,7 @@ lyxp_syntax_check(const char *expr, uint32_t line)
 
 void xml_print_node(struct lyout *out, int level, struct lyd_node *node, int toplevel);
 
-API void
+void
 lyxp_set_print_xml(FILE *f, struct lyxp_set *set)
 {
     uint16_t i;
@@ -6609,8 +6609,8 @@ lyxp_set_print_xml(FILE *f, struct lyxp_set *set)
     }
 }
 
-API void
-lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct lyd_node *cur_node, int when_must_eval)
+void
+lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct lyd_node *cur_node, int when_must_eval)
 {
     char *str_num;
     long double num;
@@ -6660,7 +6660,7 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct lyd_node *
         case LYXP_SET_NODE_SET:
             assert(set->used);
 
-            str = cast_node_set_to_string(set, cur_node, when_must_eval);
+            str = cast_node_set_to_string(set, (struct lyd_node *)cur_node, when_must_eval);
             free(set->value.nodes);
             free(set->node_type);
             set->value.str = str;
@@ -6753,7 +6753,7 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct lyd_node *
     }
 }
 
-API void
+void
 lyxp_set_free(struct lyxp_set *set, struct ly_ctx *ctx)
 {
     if (!set) {

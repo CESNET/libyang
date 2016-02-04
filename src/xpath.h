@@ -195,8 +195,8 @@ enum lyxp_node_type {
 };
 
 /**
- * @brief Evaluate the XPath expression \p expr on data. The context must have
- * a single root without configuration meaning, but with schema with nodetype set.
+ * @brief Evaluate the XPath expression \p expr on data. Be careful when using this function, the result can often
+ * be confusing without thorough understanding of XPath evaluation rules defined in RFC 6020.
  *
  * @param[in] expr XPath expression to evaluate. Must be in JSON format (prefixes are model names).
  * @param[in] cur_node Current (context) data node.
@@ -206,7 +206,7 @@ enum lyxp_node_type {
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
-int lyxp_eval(const char *expr, struct lyd_node *cur_node, struct lyxp_set *set, int when_must_eval, uint32_t line);
+int lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *set, int when_must_eval, uint32_t line);
 
 /**
  * @brief Check the syntax of an XPath expression \p expr. Since it's only syntactic,
@@ -236,7 +236,7 @@ void lyxp_set_print_xml(FILE *f, struct lyxp_set *set);
  * @param[in] cur_node Current (context) data node.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
  */
-void lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, struct lyd_node *cur_node, int when_must_eval);
+void lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct lyd_node *cur_node, int when_must_eval);
 
 /**
  * @brief Free contents of an XPath \p set.
