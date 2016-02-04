@@ -609,7 +609,7 @@ cmd_xpath(const char *arg)
                 printf("\tLeaflist ");
                 break;
             case LYS_LIST:
-                printf"\tList ");
+                printf("\tList ");
                 break;
             case LYS_ANYXML:
                 printf("\tAnyxml ");
