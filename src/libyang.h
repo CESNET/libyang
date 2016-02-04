@@ -345,6 +345,7 @@ extern "C" {
  * Functions List (not assigned to above subsections)
  * --------------------------------------------------
  * - lyd_get_node()
+ * - lyd_get_node2()
  */
 
 /**

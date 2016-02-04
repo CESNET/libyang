@@ -494,6 +494,19 @@ int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
 int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
+ * @brief Search in the given data for instances of nodes matching the provided XPath expression.
+ *
+ * The \p data is used to find the data root and function then searches in the whole tree and all sibling trees.
+ *
+ * @param[in] data A node in the data tree considered the context node. If the node is a configuration one,
+ * any state nodes in its tree are not accessible!
+ * @param[in] expr XPath expression filtering the matching nodes.
+ * @return Set of found data nodes (use dset member of ::ly_set). If no nodes are matching \p expr or the result
+ * would be a number, a string, or a boolean, the returned set is empty. In case of an error, NULL is returned.
+ */
+struct ly_set *lyd_get_node(const struct lyd_node *data, const char *expr);
+
+/**
  * @brief Search in the given data for instances of the provided schema node.
  *
  * The \p data is used to find the data root and function then searches in the whole tree and all sibling trees.
@@ -503,7 +516,7 @@ int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
  * @return Set of found data nodes (use dset member of ::ly_set). If no data node is found, the returned set is empty.
  * In case of error, NULL is returned.
  */
-struct ly_set *lyd_get_node(const struct lyd_node *data, const struct lys_node *schema);
+struct ly_set *lyd_get_node2(const struct lyd_node *data, const struct lys_node *schema);
 
 /**
  * @brief Validate \p node data subtree.

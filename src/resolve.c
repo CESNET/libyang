@@ -1674,9 +1674,7 @@ resolve_data_nodeid(const char *id, struct lyd_node *start)
  * continuing with its siblings. Normally skips augments except \p node_type LYS_AUGMENT (augmenting an augment node).
  *
  * ASSUMPTION 1: Module to resolve prefixes (JSON module names) from never changes.
- * ASSUMPTION 2: Submodule belongs-to does not act as an import (main module definitions or anything else is not
- *               available to the submodule).
- * ASSUMPTION 3: Module prefix (name) must be resolved only in absolute-schema-nodeid and only on the first
+ * ASSUMPTION 2: Module prefix (name) must be resolved only in absolute-schema-nodeid and only on the first
  *               node. The prefix cannot further change except for nodes from an augment.
  *
  * @param[in] id Schema-nodeid string.
@@ -1710,9 +1708,16 @@ resolve_schema_nodeid(const char *id, const struct lys_node *start, const struct
     }
 
     /* set options for lys_getnext() */
-    opts = LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT;
-    if (node_type == LYS_USES) {
-        opts |= LYS_GETNEXT_WITHGROUPING;
+    if (node_type == LYS_LEAF) {
+        /* go inside all those schema-only nodes, we're looking for data */
+        opts = 0;
+    } else {
+        /* choice, case, input, output are fine, we're looking for schema nodes */
+        opts = LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT;
+        if (node_type == LYS_USES) {
+            /* grouping is actually what we're looking for, do not look inside */
+            opts |= LYS_GETNEXT_WITHGROUPING;
+        }
     }
 
     /* absolute-schema-nodeid */

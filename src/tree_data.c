@@ -44,6 +44,7 @@
 #include "xml_internal.h"
 #include "tree_internal.h"
 #include "validation.h"
+#include "xpath.h"
 
 static struct lyd_node *
 lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, LYD_FORMAT format, int options)
@@ -843,7 +844,7 @@ lyd_unlink(struct lyd_node *node)
         if ((iter->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && iter->schema->child) {
             set = (struct ly_set *)iter->schema->child;
             for (i = 0; i < set->number; i++) {
-                data = lyd_get_node(iter, set->sset[i]);
+                data = lyd_get_node2(iter, set->sset[i]);
                 if (data) {
                     for (j = 0; j < data->number; j++) {
                         if (((struct lyd_node_leaf_list *)data->dset[j])->value.leafref == iter) {
@@ -1314,7 +1315,47 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
 }
 
 API struct ly_set *
-lyd_get_node(const struct lyd_node *data, const struct lys_node *schema)
+lyd_get_node(const struct lyd_node *data, const char *expr)
+{
+    struct lyxp_set xp_set;
+    struct ly_set *set;
+    uint16_t i;
+
+    if (!data || !expr) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    memset(&xp_set, 0, sizeof xp_set);
+
+    if (lyxp_eval(expr, data, &xp_set, 0, 0) != EXIT_SUCCESS) {
+        return NULL;
+    }
+
+    set = ly_set_new();
+    if (!set) {
+        LOGMEM;
+        return NULL;
+    }
+
+    if (xp_set.type == LYXP_SET_NODE_SET) {
+        for (i = 0; i < xp_set.used; ++i) {
+            if ((xp_set.node_type[i] == LYXP_NODE_ELEM) || (xp_set.node_type[i] == LYXP_NODE_TEXT)) {
+                if (ly_set_add(set, xp_set.value.nodes[i])) {
+                    ly_set_free(set);
+                    set = NULL;
+                    break;
+                }
+            }
+        }
+    }
+    lyxp_set_cast(&xp_set, LYXP_SET_EMPTY, data, 0);
+
+    return set;
+}
+
+API struct ly_set *
+lyd_get_node2(const struct lyd_node *data, const struct lys_node *schema)
 {
     struct ly_set *ret, *ret_aux, *spath;
     const struct lys_node *siter;
