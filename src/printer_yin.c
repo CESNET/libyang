@@ -1105,7 +1105,7 @@ yin_print_rpc(struct lyout *out, int level, const struct lys_node *node)
         }
         level--;
 
-        yin_print_close(out, "rcp", level);
+        yin_print_close(out, "rpc", level);
     }
 }
 
