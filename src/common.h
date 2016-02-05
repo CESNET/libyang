@@ -59,6 +59,14 @@
  */
 #define API __attribute__((visibility("default")))
 
+#ifndef  __USE_GNU
+/*
+ * If we don't have GNU extension, implement these function on your own
+ */
+char *get_current_dir_name(void);
+
+#endif
+
 /*
  * logger
  */
