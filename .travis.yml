@@ -18,7 +18,7 @@ before_install:
   - cd cmocka-1.0.1 && mkdir build && cd build
   - cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr .. && make -j2 && sudo make install
   - cd ../..
-  - if [ "${CC}" = "gcc" ]; then pip install --user codecov; export CMAKE_C_FLAGS="-coverage"; fi
+  - if [ "${CC}" = "gcc" ]; then pip install --user codecov; export CFLAGS="-coverage"; fi
 
 script: 
   - mkdir build && cd build && cmake .. && make -j2 && make test
