@@ -153,15 +153,21 @@ yang_print_snode_common(struct lyout *out, int level, const struct lys_node *nod
 static void
 yang_print_snode_common2(struct lyout *out, int level, const struct lys_node *node, int *flag)
 {
-    if (node->parent && (node->parent->flags & LYS_CONFIG_MASK) != (node->flags & LYS_CONFIG_MASK)) {
-        /* print config only when it differs from the parent */
-        if (node->flags & LYS_CONFIG_W) {
-            yang_print_open(out, flag);
-            ly_print(out, "%*sconfig true;\n", LEVEL, INDENT);
-        } else if (node->flags & LYS_CONFIG_R) {
-            yang_print_open(out, flag);
-            ly_print(out, "%*sconfig false;\n", LEVEL, INDENT);
+    if (node->parent) {
+        if ((node->parent->flags & LYS_CONFIG_MASK) != (node->flags & LYS_CONFIG_MASK)) {
+            /* print config when it differs from the parent ... */
+            if (node->flags & LYS_CONFIG_W) {
+                yang_print_open(out, flag);
+                ly_print(out, "%*sconfig true;\n", LEVEL, INDENT);
+            } else if (node->flags & LYS_CONFIG_R) {
+                yang_print_open(out, flag);
+                ly_print(out, "%*sconfig false;\n", LEVEL, INDENT);
+            }
         }
+    } else if (node->flags & LYS_CONFIG_R) {
+        /* ... or it's a top-level state node */
+        yang_print_open(out, flag);
+        ly_print(out, "%*sconfig false;\n", LEVEL, INDENT);
     }
 
     if (node->flags & LYS_MAND_TRUE) {
