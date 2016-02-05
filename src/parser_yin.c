@@ -591,6 +591,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             goto error;
         }
         GETVAL(value, yin->child, "name");
+        /* store in the JSON format */
+        value = transform_schema2json(module, value, LOGLINE(yin->child));
+        if (!value) {
+            goto error;
+        }
         if (unres_schema_add_str(module, unres, type, UNRES_TYPE_IDENTREF, value, LOGLINE(yin->child)) == -1) {
             goto error;
         }
