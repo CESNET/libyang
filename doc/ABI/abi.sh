@@ -19,7 +19,13 @@ elif test -n "$1"; then
 	l=$1
 fi
 
-test -e gitrepo || git clone https://github.com/CESNET/libyang.git gitrepo
+if [ -e gitrepo ]; then
+	cd gitrepo
+	git pull
+	cd -
+else
+	git clone https://github.com/CESNET/libyang.git gitrepo
+fi
 test -e packages || mkdir packages
 test -e src/libyang || mkdir -p src/libyang
 rm -rf src/libyang/*
