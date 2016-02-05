@@ -276,8 +276,6 @@ extern "C" {
  *   Alternative XML-based format to YANG. The details can be found in
  *   [RFC 6020](http://tools.ietf.org/html/rfc6020#section-11).
  *
- *   \todo YIN output is not yet implemented
- *
  * - Tree
  *
  *   Simple tree structure of the module.

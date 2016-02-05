@@ -142,8 +142,7 @@ lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT for
 {
     switch (format) {
     case LYS_OUT_YIN:
-        LOGERR(LY_EINVAL, "YIN output format not supported yet.");
-        return EXIT_FAILURE;
+        return yin_print_model(out, module);
     case LYS_OUT_YANG:
         return yang_print_model(out, module);
     case LYS_OUT_TREE:
