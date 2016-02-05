@@ -22,10 +22,14 @@
 #define _GNU_SOURCE
 
 #include <assert.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <sys/types.h>
+#include <syscall.h>
+#include <unistd.h>
 
 #include "common.h"
 #include "tree_internal.h"
@@ -35,12 +39,42 @@
 LY_ERR ly_errno_int = LY_EINT;
 static pthread_once_t ly_errno_once = PTHREAD_ONCE_INIT;
 static pthread_key_t ly_errno_key;
+#ifdef __linux__
+LY_ERR ly_errno_main = LY_SUCCESS;
+#endif
+
 static void
 ly_errno_createkey(void)
 {
-    if (pthread_key_create(&ly_errno_key, free)) {
-        LOGMEM;
+    LY_ERR *value;
+    int r;
+    void (*destr) (void *);
+
+    /* prepare ly_errno storage */
+#ifdef __linux__
+    if (getpid() == syscall(SYS_gettid)) {
+        /* main thread - use global variable instead of thread-specific variable.
+         * This is mainly for valgrind, because in case of the main thread the
+         * destructor registered by pthread_key_create() is not called since
+         * the main thread is terminated rather by return or exit than by
+         * pthread_exit(). */
+        value = &ly_errno_main;
+        destr = NULL;
+    } else {
+#else
+    {
+#endif /* __linux__ */
+        destr = free;
+        value = calloc(1, sizeof *value);
     }
+
+    /* initiate */
+    while ((r = pthread_key_create(&ly_errno_key, destr)) == EAGAIN);
+    if (r) {
+        LOGMEM;
+        return;
+    }
+    pthread_setspecific(ly_errno_key, value);
 }
 
 API LY_ERR *
@@ -48,21 +82,11 @@ ly_errno_location(void)
 {
     LY_ERR *retval;
 
-    if (pthread_once(&ly_errno_once, ly_errno_createkey)) {
-        return &ly_errno_int;
-    }
-
+    pthread_once(&ly_errno_once, ly_errno_createkey);
     retval = pthread_getspecific(ly_errno_key);
     if (!retval) {
-        /* first call */
-        retval = calloc(1, sizeof *retval);
-        if (!retval) {
-            return &ly_errno_int;
-        }
-
-        if (pthread_setspecific(ly_errno_key, retval)) {
-            return &ly_errno_int;
-        }
+        /* error */
+        return &ly_errno_int;
     }
 
     return retval;
