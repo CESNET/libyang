@@ -19,7 +19,6 @@
  *    software without specific prior written permission.
  */
 
-#define _GNU_SOURCE
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
@@ -937,7 +936,7 @@ int
 cmd_help(const char *arg)
 {
     int i;
-    char *args = strdupa(arg);
+    char *args = strdup(arg);
     char *cmd = NULL;
 
     strtok(args, " ");
@@ -975,6 +974,7 @@ generic_help:
         }
     }
 
+    free(args);
     return 0;
 }
 
