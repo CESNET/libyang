@@ -92,6 +92,19 @@ ly_errno_location(void)
     return retval;
 }
 
+#ifndef  __USE_GNU
+
+char *get_current_dir_name(void)
+{
+    char tmp[PATH_MAX];
+
+    if (getcwd(tmp, sizeof(tmp)))
+        return strdup(tmp);
+    return NULL;
+}
+
+#endif
+
 const char *
 strpbrk_backwards(const char *s, const char *accept, unsigned int s_len)
 {
