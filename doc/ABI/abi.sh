@@ -31,7 +31,7 @@ test -e src/libyang || mkdir -p src/libyang
 rm -rf src/libyang/*
 
 cd gitrepo
-git checkout devel
+git checkout master
 VERSIONS=`git log --grep=VERSION --oneline | sed 's/ .* /_/'`
 cd -
 for i in $VERSIONS; do
