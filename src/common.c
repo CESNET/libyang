@@ -134,10 +134,28 @@ strnodetype(LYS_NODE type)
 }
 
 const char *
-transform_json2xml(const struct lys_module *module, const char *expr, const char ***prefixes, const char ***namespaces,
-                   uint32_t *ns_count)
+transform_module_name2import_prefix(const struct lys_module *module, const char *module_name)
 {
-    const char *in, *id;
+    uint16_t i;
+
+    if (!strcmp(module->name, module_name)) {
+        return module->prefix;
+    }
+
+    for (i = 0; i < module->imp_size; ++i) {
+        if (!strcmp(module->imp[i].module->name, module_name)) {
+            return module->imp[i].prefix;
+        }
+    }
+
+    return NULL;
+}
+
+static const char *
+_transform_json2xml(const struct lys_module *module, const char *expr, int schema, const char ***prefixes,
+                    const char ***namespaces, uint32_t *ns_count)
+{
+    const char *in, *id, *prefix;
     char *out, *col, *name;
     size_t out_size, out_used, id_len;
     const struct lys_module *mod;
@@ -152,7 +170,7 @@ transform_json2xml(const struct lys_module *module, const char *expr, const char
     }
 
     in = expr;
-    out_size = strlen(in)+1;
+    out_size = strlen(in) + 1;
     out = malloc(out_size);
     if (!out) {
         LOGMEM;
@@ -165,27 +183,38 @@ transform_json2xml(const struct lys_module *module, const char *expr, const char
         /* we're finished, copy the remaining part */
         if (!col) {
             strcpy(&out[out_used], in);
-            out_used += strlen(in)+1;
+            out_used += strlen(in) + 1;
             assert(out_size == out_used);
             return lydict_insert_zc(module->ctx, out);
         }
-        id = strpbrk_backwards(col-1, "/ [", (col-in)-1);
+        id = strpbrk_backwards(col - 1, "/ [", (col - in) - 1);
         if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[')) {
             ++id;
         }
-        id_len = col-id;
+        id_len = col - id;
 
         /* get the module */
-        name = strndup(id, id_len);
-        mod = ly_ctx_get_module(module->ctx, name, NULL);
-        free(name);
-        if (!mod) {
-            LOGVAL(LYE_INMOD_LEN, 0, id_len, id);
-            goto fail;
+        if (!schema) {
+            name = strndup(id, id_len);
+            mod = ly_ctx_get_module(module->ctx, name, NULL);
+            free(name);
+            if (!mod) {
+                LOGVAL(LYE_INMOD_LEN, 0, id_len, id);
+                goto fail;
+            }
+            prefix = mod->prefix;
+        } else {
+            name = strndup(id, id_len);
+            prefix = transform_module_name2import_prefix(module, name);
+            free(name);
+            if (!prefix) {
+                LOGVAL(LYE_INMOD_LEN, 0, id_len, id);
+                goto fail;
+            }
         }
 
         /* remember the namespace definition (only if it's new) */
-        if (ns_count) {
+        if (!schema && ns_count) {
             for (i = 0; i < *ns_count; ++i) {
                 if ((*namespaces)[i] == mod->ns) {
                     break;
@@ -203,13 +232,13 @@ transform_json2xml(const struct lys_module *module, const char *expr, const char
                     LOGMEM;
                     goto fail;
                 }
-                (*prefixes)[*ns_count-1] = mod->prefix;
-                (*namespaces)[*ns_count-1] = mod->ns;
+                (*prefixes)[*ns_count - 1] = mod->prefix;
+                (*namespaces)[*ns_count - 1] = mod->ns;
             }
         }
 
         /* adjust out size */
-        out_size += strlen(mod->prefix)-id_len;
+        out_size += strlen(prefix) - id_len;
         out = ly_realloc(out, out_size);
         if (!out) {
             LOGMEM;
@@ -218,28 +247,43 @@ transform_json2xml(const struct lys_module *module, const char *expr, const char
 
         /* copy the data before prefix */
         strncpy(&out[out_used], in, id-in);
-        out_used += id-in;
+        out_used += id - in;
 
-        /* copy the model name */
-        strcpy(&out[out_used], mod->prefix);
-        out_used += strlen(mod->prefix);
+        /* copy the model prefix */
+        strcpy(&out[out_used], prefix);
+        out_used += strlen(prefix);
 
         /* copy ':' */
         out[out_used] = ':';
         ++out_used;
 
         /* finally adjust in pointer for next round */
-        in = col+1;
+        in = col + 1;
     }
 
     /* unreachable */
     LOGINT;
 
 fail:
-    free(*prefixes);
-    free(*namespaces);
+    if (!schema && ns_count) {
+        free(*prefixes);
+        free(*namespaces);
+    }
     free(out);
     return NULL;
+}
+
+const char *
+transform_json2xml(const struct lys_module *module, const char *expr, const char ***prefixes, const char ***namespaces,
+                   uint32_t *ns_count)
+{
+    return _transform_json2xml(module, expr, 0, prefixes, namespaces, ns_count);
+}
+
+const char *
+transform_json2schema(const struct lys_module *module, const char *expr)
+{
+    return _transform_json2xml(module, expr, 1, NULL, NULL, NULL);
 }
 
 const char *

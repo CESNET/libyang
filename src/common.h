@@ -182,6 +182,18 @@ char *strnchr(const char *s, int c, unsigned int len);
 const char *strnodetype(LYS_NODE type);
 
 /**
+ * @brief Transform a module name (JSON format prefix) to a prefix as defined
+ * in \p module imports. Its own name is transformed to its own prefix.
+ *
+ * @param[in] module Module with imports to use.
+ * @param[in] module_name Module name to transform.
+ *
+ * @return Module import prefix (do not modify, free, or lydict_remove),
+ * NULL on error.
+ */
+const char *transform_module_name2import_prefix(const struct lys_module *module, const char *module_name);
+
+/**
  * @brief Transform expression from JSON format to XML format.
  * Output arrays point to strings in the dictionary, but without
  * correcting their ref_count -> do not touch them. Prefixes of
@@ -202,6 +214,18 @@ const char *strnodetype(LYS_NODE type);
  */
 const char *transform_json2xml(const struct lys_module *module, const char *expr, const char ***prefixes, const char ***namespaces,
                                uint32_t *ns_count);
+
+/**
+ * @brief Transform expression from JSON format to schema format.
+ * Prefixes of the namespaces (models) are those from the main
+ * \p module imports of the corresponding modules. Logs directly.
+ *
+ * @param[in] module Module with imports to use.
+ * @param[in] expr JSON expression.
+ *
+ * @return Transformed XML expression in the dictionary, NULL on error.
+ */
+const char *transform_json2schema(const struct lys_module *module, const char *expr);
 
 /**
  * @brief Transform expression from XML data format (prefixes and separate NS definitions) to
