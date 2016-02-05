@@ -125,7 +125,7 @@ ly_write(struct lyout *out, const char *buf, size_t count)
                 return -1;
             }
             out->method.mem.buf = aux;
-            out->method.mem.size += count + 1;
+            out->method.mem.size = out->method.mem.len + count + 1;
         }
         memcpy(&out->method.mem.buf[out->method.mem.len], buf, count + 1);
         out->method.mem.len += count;
@@ -228,15 +228,23 @@ lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
 }
 
 static int
-lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format)
+lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
+    if (!root) {
+        /* no data to print, but even empty tree is valid */
+        if (out->type == LYOUT_MEMORY || out->type == LYOUT_CALLBACK) {
+            ly_print(out, "");
+        }
+        return EXIT_SUCCESS;
+    }
+
     switch (format) {
     case LYD_XML:
-        return xml_print_data(out, root, 0);
+        return xml_print_data(out, root, 0, options);
     case LYD_XML_FORMAT:
-        return xml_print_data(out, root, 1);
+        return xml_print_data(out, root, 1, options);
     case LYD_JSON:
-        return json_print_data(out, root);
+        return json_print_data(out, root, options);
     default:
         LOGERR(LY_EINVAL, "Unknown output format.");
         return EXIT_FAILURE;
@@ -244,11 +252,11 @@ lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format)
 }
 
 API int
-lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format)
+lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
     struct lyout out;
 
-    if (!f || !root) {
+    if (!f) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
@@ -256,15 +264,15 @@ lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format)
     out.type = LYOUT_STREAM;
     out.method.f = f;
 
-    return lyd_print_(&out, root, format);
+    return lyd_print_(&out, root, format, options);
 }
 
 API int
-lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format)
+lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
     struct lyout out;
 
-    if (fd < 0 || !root) {
+    if (fd < 0) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
@@ -272,16 +280,16 @@ lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format)
     out.type = LYOUT_FD;
     out.method.fd = fd;
 
-    return lyd_print_(&out, root, format);
+    return lyd_print_(&out, root, format, options);
 }
 
 API int
-lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format)
+lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
     struct lyout out;
     int r;
 
-    if (!strp || !root) {
+    if (!strp) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
@@ -291,18 +299,19 @@ lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format)
     out.method.mem.len = 0;
     out.method.mem.size = 0;
 
-    r = lyd_print_(&out, root, format);
+    r = lyd_print_(&out, root, format, options);
 
     *strp = out.method.mem.buf;
     return r;
 }
 
 API int
-lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyd_node *root, LYD_FORMAT format)
+lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyd_node *root,
+              LYD_FORMAT format, int options)
 {
     struct lyout out;
 
-    if (!writeclb || !root) {
+    if (!writeclb) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
@@ -311,5 +320,5 @@ lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
     out.method.clb.f = writeclb;
     out.method.clb.arg = arg;
 
-    return lyd_print_(&out, root, format);
+    return lyd_print_(&out, root, format, options);
 }

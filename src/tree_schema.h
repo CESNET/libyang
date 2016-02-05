@@ -24,6 +24,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -121,10 +122,22 @@ extern "C" {
         }                                                                     \
     }                                                                         \
     if (!(NEXT)) {                                                            \
-        /* no children, so try siblings */                                    \
+        /* no children */                                                     \
+        if ((ELEM) == (START)) {                                              \
+            /* we are done, (START) has no children */                        \
+            break;                                                            \
+        }                                                                     \
+        /* try siblings */                                                    \
         (NEXT) = (ELEM)->next;                                                \
     }                                                                         \
     while (!(NEXT)) {                                                         \
+        /* parent is already processed, go to its sibling */                  \
+        if ((sizeof(typeof(*(START))) == sizeof(struct lys_node))             \
+                && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) {  \
+            (ELEM) = (ELEM)->parent->prev;                                    \
+        } else {                                                              \
+            (ELEM) = (ELEM)->parent;                                          \
+        }                                                                     \
         /* no siblings, go back through parents */                            \
         if (sizeof(typeof(*(START))) == sizeof(struct lys_node)) {            \
             /* lys_node_augment only */                                       \
@@ -151,25 +164,20 @@ extern "C" {
             /* we are done, no next element to process */                     \
             break;                                                            \
         }                                                                     \
-        /* parent is already processed, go to its sibling */                  \
-        if ((sizeof(typeof(*(START))) == sizeof(struct lys_node))             \
-                && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) {  \
-            (ELEM) = (ELEM)->parent->prev;                                    \
-        } else {                                                              \
-            (ELEM) = (ELEM)->parent;                                          \
-        }                                                                     \
         (NEXT) = (ELEM)->next;                                                \
     }
 
 /**
- * @addtogroup schematree
+ * @defgroup schematree Schema Tree
  * @{
+ *
+ * Data structures and functions to manipulate and access schema tree.
  */
 
 #define LY_REV_SIZE 11   /**< revision data string length (including terminating NULL byte) */
 
 /**
- * @brief Schema input formats accepted by libyang [parser functions](@ref parsers).
+ * @brief Schema input formats accepted by libyang [parser functions](@ref howtoschemasparsers).
  */
 typedef enum {
     LYS_IN_UNKNOWN = 0,  /**< unknown format, used as return value in case of error */
@@ -178,14 +186,14 @@ typedef enum {
 } LYS_INFORMAT;
 
 /**
- * @brief Schema output formats accepted by libyang [printer functions](@ref printers).
+ * @brief Schema output formats accepted by libyang [printer functions](@ref howtoschemasprinters).
  */
 typedef enum {
     LYS_OUT_UNKNOWN = 0, /**< unknown format, used as return value in case of error */
     LYS_OUT_YANG = 1,    /**< YANG schema output format */
-    LYS_OUT_YIN = 2,     /**< YIN schema output format, TODO not yet supported */
-    LYS_OUT_TREE,        /**< Tree schema output format, for more information see the [printers](@ref printers) page */
-    LYS_OUT_INFO,        /**< Info schema output format, for more information see the [printers](@ref printers) page */
+    LYS_OUT_YIN = 2,     /**< YIN schema output format, \todo not yet supported */
+    LYS_OUT_TREE,        /**< Tree schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
+    LYS_OUT_INFO,        /**< Info schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
 } LYS_OUTFORMAT;
 
 /* shortcuts for common in and out formats */
@@ -234,14 +242,14 @@ struct lys_module {
     const char *ref;                 /**< cross-reference for the module */
     const char *org;                 /**< party/company responsible for the module */
     const char *contact;             /**< contact information for the module */
+    const char *uri;                 /**< source of this module in URI format (can be NULL) */
+    uint8_t type:1;                  /**< 0 - structure type used to distinguish structure from ::lys_submodule */
     uint8_t version:5;               /**< yang-version:
                                           - 0 = not specified, YANG 1.0 as default,
                                           - 1 = YANG 1.0,
                                           - 2 = YANG 1.1 not yet supported */
-    uint8_t type:1;                  /**< 0 - structure type used to distinguish structure from ::lys_submodule */
     uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
-    const char *uri;                 /**< source of this module in URI format (can be NULL) */
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in #rev array */
@@ -263,9 +271,8 @@ struct lys_module {
     struct lys_node_augment *augment;/**< array of augments */
     struct lys_deviation *deviation; /**< array of specified deviations */
 
-    struct lys_node *data;           /**< first data statement, includes also RPCs and Notifications */
-
     /* specific module's items in comparison to submodules */
+    struct lys_node *data;           /**< first data statement, includes also RPCs and Notifications */
     const char *ns;                  /**< namespace of the module (mandatory) */
 };
 
@@ -273,9 +280,8 @@ struct lys_module {
  * @brief Submodule schema node structure that can be included into a YANG module.
  *
  * Compatible with ::lys_module structure with exception of the last, #belongsto member, which is replaced by
- * ::lys_module#ns member. Sometimes, ::lys_submodule can be provided casted to ::lys_module. Such a thing can
- * be determined via the #type member value.
- *
+ * ::lys_module#data and ::lys_module#ns members. Sometimes, ::lys_submodule can be provided casted to ::lys_module.
+ * Such a thing can be determined via the #type member value.
  *
  */
 struct lys_submodule {
@@ -286,14 +292,9 @@ struct lys_submodule {
     const char *ref;                 /**< cross-reference for the submodule */
     const char *org;                 /**< party responsible for the submodule */
     const char *contact;             /**< contact information for the submodule */
-    uint8_t version:5;               /**< yang-version:
-                                          - 0 = not specified, YANG 1.0 as default,
-                                          - 1 = YANG 1.0,
-                                          - 2 = YANG 1.1 not yet supported */
-    uint8_t type:1;                  /**< 1 - structure type used to distinguish structure from ::lys_module */
-    uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
-    uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
     const char *uri;                 /**< origin URI of the submodule */
+    uint8_t type:1;                  /**< 1 - structure type used to distinguish structure from ::lys_module */
+    uint8_t padding:7;                /**< not used, kept for compatibility with ::lys_module */
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in #rev array */
@@ -314,8 +315,6 @@ struct lys_submodule {
     struct lys_feature *features;    /**< array of feature definitions */
     struct lys_node_augment *augment;/**< array of augments */
     struct lys_deviation *deviation; /**< array of specified deviations */
-
-    struct lys_node *data;           /**< first data statement, includes also RPCs and Notifications */
 
     /* specific submodule's items in comparison to modules */
     struct lys_module *belongsto;    /**< belongs-to (parent module) */
@@ -361,7 +360,7 @@ struct lys_type {
     LY_DATA_TYPE base;               /**< base type */
     struct lys_tpdf *der;            /**< pointer to the superior typedef. If NULL,
                                           structure provides information about one of the built-in types */
-    struct lys_tpdf *parent;         /**< except ::lys_tpdf, it can points also to ::lys_node_ leaf or lys_node_leaflist
+    struct lys_tpdf *parent;         /**< except ::lys_tpdf, it can points also to ::lys_node_leaf or ::lys_node_leaflist
                                           so access only the compatible members! */
 
     union {
@@ -483,6 +482,7 @@ struct lys_type {
 #define LYS_USERORDERED  0x80        /**< ordered-by user lists, applicable only to
                                           ::lys_node_list and ::lys_node_leaflist */
 #define LYS_FENABLED     0x80        /**< feature enabled flag, applicable only to ::lys_feature */
+#define LYS_UNIQUE       0x80        /**< part of the list's unique, applicable only to ::lys_node_leaf */
 /**
  * @}
  */
@@ -627,7 +627,9 @@ struct lys_node_leaf {
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_LEAF */
     struct lys_node *parent;         /**< pointer to the parent node, NULL in case of a top level node */
-    struct lys_node *child;          /**< always NULL */
+    struct lys_node *child;          /**< always NULL except the leaf/leaflist is target of a leafref, in that case
+                                          the pointer stores set of ::lys_node leafref objects with path referencing
+                                          the current ::lys_node_leaf */
     struct lys_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
     struct lys_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
@@ -673,7 +675,9 @@ struct lys_node_leaflist {
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_LEAFLIST */
     struct lys_node *parent;         /**< pointer to the parent node, NULL in case of a top level node */
-    struct lys_node *child;          /**< always NULL */
+    struct lys_node *child;          /**< always NULL except the leaf/leaflist is target of a leafref, in that case
+                                          the pointer stores set of ::lys_node leafref objects with path referencing
+                                          the current ::lys_node_leaflist */
     struct lys_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
     struct lys_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
@@ -1120,6 +1124,7 @@ struct lys_import {
     struct lys_module *module;       /**< link to the imported module (mandatory) */
     const char *prefix;              /**< prefix for the data from the imported schema (mandatory) */
     char rev[LY_REV_SIZE];           /**< revision-date of the imported module (optional) */
+    uint8_t external;                /**< flag for import records from submodules */
 };
 
 /**
@@ -1128,6 +1133,7 @@ struct lys_import {
 struct lys_include {
     struct lys_submodule *submodule; /**< link to the included submodule (mandatory) */
     char rev[LY_REV_SIZE];           /**< revision-date of the included submodule (optional) */
+    uint8_t external;                /**< flag for include records from submodules */
 };
 
 /**
@@ -1162,7 +1168,7 @@ struct lys_tpdf {
  */
 struct lys_unique {
     const char **expr;               /**< array of unique expressions specifying target leafs to be unique */
-    uint8_t expr_size;               /**< size of the #axpr array */
+    uint8_t expr_size;               /**< size of the #expr array */
 };
 
 /**
@@ -1231,6 +1237,46 @@ struct lys_ident_der {
     struct lys_ident *ident;         /**< pointer to the identity */
     struct lys_ident_der *next;      /**< next record, NULL in case of the last record in the list */
 };
+
+/**
+ * @brief Load a schema into the specified context.
+ *
+ * LY_IN_YANG (YANG) format is not yet supported.
+ *
+ * @param[in] ctx libyang context where to process the data model.
+ * @param[in] data The string containing the dumped data model in the specified
+ * format.
+ * @param[in] format Format of the input data (YANG or YIN).
+ * @return Pointer to the data model structure or NULL on error.
+ */
+const struct lys_module *lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
+
+/**
+ * @brief Read a schema from file descriptor into the specified context.
+ *
+ * LY_IN_YANG (YANG) format is not yet supported.
+ *
+ * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
+ *
+ * @param[in] ctx libyang context where to process the data model.
+ * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the schema
+ *            in the specified format.
+ * @param[in] format Format of the input data (YANG or YIN).
+ * @return Pointer to the data model structure or NULL on error.
+ */
+const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
+
+/**
+ * @brief Load a schema into the specified context from a file.
+ *
+ * LY_IN_YANG (YANG) format is not yet supported.
+ *
+ * @param[in] ctx libyang context where to process the data model.
+ * @param[in] path Path to the file with the model in the specified format.
+ * @param[in] format Format of the input data (YANG or YIN).
+ * @return Pointer to the data model structure or NULL on error.
+ */
+const struct lys_module *lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format);
 
 /**
  * @brief Get list of all the defined features in the module and its submodules.
@@ -1312,13 +1358,10 @@ const struct lys_feature *lys_is_disabled(const struct lys_node *node, int recur
 const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys_node *parent,
                                    const struct lys_module *module, int options);
 
-/**
- * @brief options for lys_getnext() to allow returning choice, case, grouping, input and output nodes.
- */
-#define LYS_GETNEXT_WITHCHOICE   0x01
-#define LYS_GETNEXT_WITHCASE     0x02
-#define LYS_GETNEXT_WITHGROUPING 0x04
-#define LYS_GETNEXT_WITHINOUT    0x08
+#define LYS_GETNEXT_WITHCHOICE   0x01 /**< lys_getnext() option to allow returning #LYS_CHOICE nodes */
+#define LYS_GETNEXT_WITHCASE     0x02 /**< lys_getnext() option to allow returning #LYS_CASE nodes */
+#define LYS_GETNEXT_WITHGROUPING 0x04 /**< lys_getnext() option to allow returning #LYS_GROUPING nodes */
+#define LYS_GETNEXT_WITHINOUT    0x08 /**< lys_getnext() option to allow returning #LYS_INPUT and #LYS_OUTPUT nodes */
 
 /**
  * @brief Return parent node in the schema tree.
@@ -1331,6 +1374,95 @@ const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys
  * @return The parent node from the schema tree, NULL in case of top level nodes.
  */
 struct lys_node *lys_parent(const struct lys_node *node);
+
+/**
+ * @brief Set a schema private pointer to a user pointer.
+ *
+ * @param[in] node Node, whose private field will be assigned.
+ * @param[in] priv Arbitrary user-specified pointer.
+ * @return previous private object of the \p node (NULL if this is the first call on the \p node). Note, that
+ * the caller is in this case responsible (if it is necessary) for freeing the replaced private object. In case
+ * of invalid (NULL) \p node, NULL is returned and #ly_errno is set to #LY_EINVAL.
+ */
+void *lys_set_private(const struct lys_node *node, void *priv);
+
+/**
+ * @brief Get schema node according to the given absolute schema node identifier.
+ *
+ * The \p module determines the starting module and the default one for the \p nodeid.
+ * That means if a node is without prefix, this starting module is assumed. In every
+ * other case the prefix of the module must be specified. Here are some examples:
+ *
+ * module - ietf-netconf-monitoring
+ * /get-schema/input/identifier
+ *
+ * module - ietf-interfaces
+ * /interfaces/interface/ietf-ip:ipv4/ietf-ip:address/ietf-ip:ip
+ *
+ * @param[in] module Starting (current) module.
+ * @param[in] nodeid Absolute schema node identifier.
+ * @return Resolved schema node or NULL.
+ */
+const struct lys_node *lys_get_node(const struct lys_module *module, const char *nodeid);
+
+/**
+ * @brief Print schema tree in the specified format.
+ *
+ * Same as lys_print(),  but it allocates memory and store the data into it.
+ * It is up to caller to free the returned string by free().
+ *
+ * @param[out] strp Pointer to store the resulting dump.
+ * @param[in] module Schema tree to print.
+ * @param[in] format Schema output format.
+ * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
+ * node in the module will be printed.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+
+/**
+ * @brief Print schema tree in the specified format.
+ *
+ * Same as lys_print(), but output is written into the specified file descriptor.
+ *
+ * @param[in] module Schema tree to print.
+ * @param[in] fd File descriptor where to print the data.
+ * @param[in] format Schema output format.
+ * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
+ * node in the module will be printed.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+
+/**
+ * @brief Print schema tree in the specified format.
+ *
+ * To write data into a file descriptor, use lys_print_fd().
+ *
+ * @param[in] module Schema tree to print.
+ * @param[in] f File stream where to print the schema.
+ * @param[in] format Schema output format.
+ * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
+ * node in the module will be printed.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+
+/**
+ * @brief Print schema tree in the specified format.
+ *
+ * Same as lys_print(), but output is written via provided callback.
+ *
+ * @param[in] module Schema tree to print.
+ * @param[in] writeclb Callback function to write the data (see write(1)).
+ * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
+ * @param[in] format Schema output format.
+ * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
+ * node in the module will be printed.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
+                  const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
 
 /**@} */
 

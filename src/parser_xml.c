@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
@@ -36,19 +37,25 @@
 
 /* does not log */
 static struct lys_node *
-xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start)
+xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start, int options)
 {
     struct lys_node *result, *aux;
 
     LY_TREE_FOR(start, result) {
-        /* skip groupings */
+        /* skip groupings ... */
         if (result->nodetype == LYS_GROUPING) {
+            continue;
+        /* ... and output in case of RPC ... */
+        } else if (result->nodetype == LYS_OUTPUT && (options & LYD_OPT_RPC)) {
+            continue;
+        /* ... and input in case of RPC reply */
+        } else if (result->nodetype == LYS_INPUT && (options & LYD_OPT_RPCREPLY)) {
             continue;
         }
 
         /* go into cases, choices, uses and in RPCs into input and output */
         if (result->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES | LYS_INPUT | LYS_OUTPUT)) {
-            aux = xml_data_search_schemanode(xml, result->child);
+            aux = xml_data_search_schemanode(xml, result->child, options);
             if (aux) {
                 /* we have matching result */
                 return aux;
@@ -78,17 +85,15 @@ static int
 xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct unres_data *unres)
 {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
-    struct lys_type *type, *stype;
-    int resolve, found;
+    int resolve;
 
     assert(node && (node->schema->nodetype & (LYS_LEAFLIST | LYS_LEAF)) && xml && unres);
 
-    stype = &((struct lys_node_leaf *)node->schema)->type;
     leaf->value_str = xml->content;
     xml->content = NULL;
 
     /* will be changed in case of union */
-    leaf->value_type = stype->base;
+    leaf->value_type = ((struct lys_node_leaf *)node->schema)->type.base;
 
     if ((options & LYD_OPT_FILTER) && !leaf->value_str) {
         /* no value in filter (selection) node -> nothing more is needed */
@@ -101,7 +106,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct
         resolve = 1;
     }
 
-    if ((stype->base == LY_TYPE_IDENT) || (stype->base == LY_TYPE_INST)) {
+    if ((leaf->value_type == LY_TYPE_IDENT) || (leaf->value_type == LY_TYPE_INST)) {
         /* convert the path from the XML form using XML namespaces into the JSON format
          * using module names as namespaces
          */
@@ -114,45 +119,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct
         }
     }
 
-    if (stype->base == LY_TYPE_UNION) {
-        found = 0;
-        type = lyp_get_next_union_type(stype, NULL, &found);
-        while (type) {
-            leaf->value_type = type->base;
-
-            /* in these cases we use JSON format */
-            if ((type->base == LY_TYPE_IDENT) || (type->base == LY_TYPE_INST)) {
-                xml->content = leaf->value_str;
-                leaf->value_str = transform_xml2json(leaf->schema->module->ctx, xml->content, xml, 0);
-                if (!leaf->value_str) {
-                    leaf->value_str = xml->content;
-                    xml->content = NULL;
-
-                    found = 0;
-                    type = lyp_get_next_union_type(stype, type, &found);
-                    continue;
-                }
-            }
-
-            if (!lyp_parse_value(leaf, type, resolve, unres, UINT_MAX)) {
-                break;
-            }
-
-            if ((type->base == LY_TYPE_IDENT) || (type->base == LY_TYPE_INST)) {
-                lydict_remove(leaf->schema->module->ctx, leaf->value_str);
-                leaf->value_str = xml->content;
-                xml->content = NULL;
-            }
-
-            found = 0;
-            type = lyp_get_next_union_type(stype, type, &found);
-        }
-
-        if (!type) {
-            LOGVAL(LYE_INVAL, LOGLINE(xml), (leaf->value_str ? leaf->value_str : ""), xml->name);
-            return EXIT_FAILURE;
-        }
-    } else if (lyp_parse_value(leaf, stype, resolve, unres, LOGLINE(xml))) {
+    if (lyp_parse_value(leaf, xml, resolve, unres, LOGLINE(xml))) {
         return EXIT_FAILURE;
     }
 
@@ -177,13 +144,17 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     *result = NULL;
 
     if (!xml->ns || !xml->ns->value) {
-        LOGVAL(LYE_XML_MISS, LOGLINE(xml), "element's", "namespace");
-        return -1;
+        if (options & LYD_OPT_STRICT) {
+            LOGVAL(LYE_XML_MISS, LOGLINE(xml), "element's", "namespace");
+            return -1;
+        } else {
+            return 0;
+        }
     }
 
     /* find schema node */
     if (schema_parent) {
-        schema = xml_data_search_schemanode(xml, schema_parent->child);
+        schema = xml_data_search_schemanode(xml, schema_parent->child, options);
     } else if (!parent) {
         /* starting in root */
         for (i = 0; i < ctx->models.used; i++) {
@@ -191,6 +162,21 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             if (ctx->models.list[i]->ns == xml->ns->value) {
                 /* get the proper schema node */
                 LY_TREE_FOR(ctx->models.list[i]->data, schema) {
+                    /* skip nodes in module's data which are not expected here according to options' data type */
+                    if (options & LYD_OPT_RPC) {
+                        if (schema->nodetype != LYS_RPC) {
+                            continue;
+                        }
+                    } else if (options & LYD_OPT_NOTIF) {
+                        if (schema->nodetype != LYS_NOTIF) {
+                            continue;
+                        }
+                    } else if (!(options & LYD_OPT_RPCREPLY)) {
+                        /* rest of the data types except RPCREPLY which cannot be here */
+                        if (schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
+                            continue;
+                        }
+                    }
                     if (schema->name == xml->name) {
                         break;
                     }
@@ -200,7 +186,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         }
     } else {
         /* parsing some internal node, we start with parent's schema pointer */
-        schema = xml_data_search_schemanode(xml, parent->schema->child);
+        schema = xml_data_search_schemanode(xml, parent->schema->child, options);
     }
     if (!schema) {
         if ((options & LYD_OPT_STRICT) || ly_ctx_get_module_by_ns(ctx, xml->ns->value, NULL)) {
@@ -301,14 +287,19 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         prev->next = *result;
 
         /* fix the "last" pointer */
-        for (diter = prev; diter->prev != prev; diter = diter->prev);
+        if (parent) {
+            diter = parent->child;
+        } else {
+            for (diter = prev; diter->prev != prev; diter = diter->prev);
+        }
         diter->prev = *result;
     } else {
         (*result)->prev = *result;
     }
     (*result)->schema = schema;
+    (*result)->validity = LYD_VAL_NOT;
 
-    if (lyv_data_context(*result, options, LOGLINE(xml), unres)) {
+    if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(*result, options, LOGLINE(xml), unres)) {
         goto error;
     }
 
@@ -389,11 +380,10 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             } else {
                 r = xml_parse_data(ctx, child, NULL, *result, dlast, options, unres, &diter);
             }
-            if (options & LYD_OPT_DESTRUCT) {
-                lyxml_free(ctx, child);
-            }
             if (r) {
                 goto error;
+            } else if (options & LYD_OPT_DESTRUCT) {
+                lyxml_free(ctx, child);
             }
             if (diter) {
                 dlast = diter;
@@ -403,13 +393,16 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
 
     /* rest of validation checks */
     ly_errno = 0;
-    if (lyv_data_content(*result, options, LOGLINE(xml), unres)) {
+    if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(*result, options, LOGLINE(xml), unres)) {
         if (ly_errno) {
             goto error;
         } else {
             goto clear;
         }
     }
+
+    /* validation successful */
+    (*result)->validity = LYD_VAL_OK;
 
     return ret;
 
@@ -424,37 +417,75 @@ clear:
     return ret;
 }
 
-static struct lyd_node *
-lyd_parse_xml_(struct ly_ctx *ctx, const struct lys_node *parent, struct lyxml_elem *root, int options)
+API struct lyd_node *
+lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 {
-    struct lyd_node *result, *next, *iter, *last;
-    struct lyxml_elem *xmlelem, *xmlaux;
-    struct unres_data *unres = NULL;
+    va_list ap;
     int r;
+    struct unres_data *unres = NULL;
+    const struct lys_node *rpc = NULL;
+    struct lyd_node *result = NULL, *next, *iter, *last;
+    struct lyxml_elem *xmlstart, *xmlelem, *xmlaux;
+
+    ly_errno = LY_SUCCESS;
 
     if (!ctx || !root) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
         return NULL;
     }
 
-    unres = calloc(1, sizeof *unres);
-    if (!unres) {
-        LOGMEM;
+    if (!(*root)) {
+        /* empty tree - no work is needed */
+        lyd_validate(NULL, options);
         return NULL;
     }
 
-    iter = result = last = NULL;
-    LY_TREE_FOR_SAFE(root->child, xmlaux, xmlelem) {
-        r = xml_parse_data(ctx, xmlelem, parent, NULL, last, options, unres, &iter);
-        if (options & LYD_OPT_DESTRUCT) {
-            lyxml_free(ctx, xmlelem);
+    if (lyp_check_options(options)) {
+        LOGERR(LY_EINVAL, "%s: Invalid options (multiple data type flags set).", __func__);
+        return NULL;
+    }
+
+    va_start(ap, options);
+    if (options & LYD_OPT_RPCREPLY) {
+        rpc = va_arg(ap,  struct lys_node*);
+        if (!rpc || (rpc->nodetype != LYS_RPC)) {
+            LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+            goto cleanup;
         }
+    }
+
+    unres = calloc(1, sizeof *unres);
+    if (!unres) {
+        LOGMEM;
+        goto cleanup;
+    }
+
+    if (!(options & LYD_OPT_NOSIBLINGS)) {
+        /* locate the first root to process */
+        if ((*root)->parent) {
+            xmlstart = (*root)->parent->child;
+        } else {
+            xmlstart = *root;
+            while(xmlstart->prev->next) {
+                xmlstart = xmlstart->prev;
+            }
+        }
+    } else {
+        xmlstart = *root;
+    }
+    iter = result = last = NULL;
+
+    LY_TREE_FOR_SAFE(xmlstart, xmlaux, xmlelem) {
+        r = xml_parse_data(ctx, xmlelem, rpc, NULL, last, options, unres, &iter);
         if (r) {
             LY_TREE_FOR_SAFE(result, next, iter) {
                 lyd_free(iter);
             }
             result = NULL;
             goto cleanup;
+        } else if (options & LYD_OPT_DESTRUCT) {
+            lyxml_free(ctx, xmlelem);
+            *root = xmlaux;
         }
         if (iter) {
             last = iter;
@@ -462,11 +493,11 @@ lyd_parse_xml_(struct ly_ctx *ctx, const struct lys_node *parent, struct lyxml_e
         if (!result) {
             result = iter;
         }
-    }
 
-    if (!result) {
-        LOGERR(LY_EVALID, "Model for the data to be linked with not found.");
-        goto cleanup;
+        if (options & LYD_OPT_NOSIBLINGS) {
+            /* stop after the first processed root */
+            break;
+        }
     }
 
     /* check leafrefs and/or instids if any */
@@ -479,29 +510,15 @@ lyd_parse_xml_(struct ly_ctx *ctx, const struct lys_node *parent, struct lyxml_e
     }
 
 cleanup:
-    free(unres->node);
-    free(unres->type);
+    if (unres) {
+        free(unres->node);
+        free(unres->type);
 #ifndef NDEBUG
-    free(unres->line);
+        free(unres->line);
 #endif
-    free(unres);
+        free(unres);
+    }
+    va_end(ap);
 
     return result;
-}
-
-API struct lyd_node *
-lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int options)
-{
-    return lyd_parse_xml_(ctx, NULL, root, options);
-}
-
-API struct lyd_node *
-lyd_parse_output_xml(const struct lys_node *rpc, struct lyxml_elem *root, int options)
-{
-    if (!rpc || (rpc->nodetype != LYS_RPC)) {
-        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
-        return NULL;
-    }
-
-    return lyd_parse_xml_(rpc->module->ctx, rpc, root, options);
 }

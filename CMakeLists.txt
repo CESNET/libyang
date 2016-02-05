@@ -5,8 +5,8 @@ set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and tool
 
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
-set(LIBYANG_MINOR_VERSION 4)
-set(LIBYANG_MICRO_VERSION 20)
+set(LIBYANG_MINOR_VERSION 5)
+set(LIBYANG_MICRO_VERSION 32)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 
@@ -33,7 +33,7 @@ endif()
 
 set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -fvisibility=hidden")
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
-set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
+set(CMAKE_C_FLAGS_DEBUG   "-coverage -g -O0")
 
 if(CMAKE_BUILD_TYPE STREQUAL debug)
 	option(ENABLE_BUILD_TESTS "Build tests" ON)
@@ -81,6 +81,11 @@ set(headers
 
 add_library(yang SHARED ${libsrc})
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})
+
+# find pthreads
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+find_package(Threads REQUIRED)
+target_link_libraries(yang ${CMAKE_THREAD_LIBS_INIT})
 
 # find PCRE library
 find_package(PCRE REQUIRED)

@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief The main libyang public header.
  *
- * Copyright (c) 2015 CESNET, z.s.p.o.
+ * Copyright (c) 2015-2016 CESNET, z.s.p.o.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,11 +34,53 @@ extern "C" {
 #endif
 
 /**
+ * @mainpage About
+ *
+ * libyang is a library implementing processing of the YANG schemas and data modeled by the YANG language. The
+ * library is implemented in C for GNU/Linux and provides C API.
+ *
+ * @section about-features Main Features
+ *
+ * - Parsing (and validating) schemas in YIN format.
+ * - Parsing, validating and printing instance data in XML format.
+ * - Parsing, validating and printing instance data in JSON format.
+ * - Manipulation with the instance data.
+ *
+ * - \todo Parsing (and validating) schemas in YANG format.
+ *
+ * @subsection about-features-others Extra (side-effect) Features
+ *
+ * - XML parser.
+ * - Optimized string storage (dictionary).
+ *
+ * @section about-license License
+ *
+ * Copyright (c) 2015-2016 CESNET, z.s.p.o.
+ *
+ * (The BSD 3-Clause License)
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of the Company nor the names of its contributors
+ *    may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ */
+
+/**
  * @page howto How To ...
  *
  * - @subpage howtocontext
  * - @subpage howtoschemas
  * - @subpage howtodata
+ * - @subpage howtoxml
+ * - @subpage howtothreads
  * - @subpage howtologger
  */
 
@@ -53,10 +95,13 @@ extern "C" {
  * where libyang will automatically search for schemas being imported or included. The search path
  * can be later changed via ly_ctx_set_searchdir() function. Before exploring the specified search
  * dir, libyang tries to get imported and included schemas from the current working directory first.
+ * This automatic searching can be completely avoided when the caller sets module searching callback
+ * (#ly_module_clb) via ly_ctx_set_module_clb().
  *
- * Schemas are added into the context using [parser functions](@ref parsers) - lys_parse() or lys_read().
- * Note, that parser functions for schemas have \b lys_ prefix while instance data parser functions have
- * \b lyd_ prefix.
+ * Schemas are added into the context using [parser functions](@ref howtoschemasparsers) - \b lys_parse_*() or \b lyd_parse_*().
+ * In case of schemas, also ly_ctx_load_module() can be used - in that case the #ly_module_clb or automatic
+ * search in working directory and in the searchpath is used. Note, that functions for schemas have \b lys_
+ * prefix while functions for instance data have \b lyd_ prefix.
  *
  * Context can hold multiple revisons of the same schema.
  *
@@ -64,28 +109,130 @@ extern "C" {
  * provided via ly_ctx_get_module_names() functions. Similarly, caller can get also a list of submodules
  * names of a specific module using ly_ctx_get_submodule_names() function. The returned names can be
  * subsequently used to get the (sub)module structures using ly_ctx_get_module() and ly_ctx_get_submodule().
+ * Alternatively, the ly_ctx_info() function can be used to get complex information about the schemas in the context
+ * in the form of data tree defined by
+ * <a href="https://tools.ietf.org/html/draft-ietf-netconf-yang-library-04">ietf-yang-library</a> schema.
  *
  * Modules held by a context cannot be removed one after one. The only way how to \em change modules in the
  * context is to create a new context and remove the old one. To remove a context, there is ly_ctx_destroy()
  * function.
  *
+ * - @subpage howtocontextdict
+ *
  * \note API for this group of functions is available in the [context module](@ref context).
  *
+ * Functions List
+ * --------------
+ * - ly_ctx_new()
+ * - ly_ctx_set_searchdir()
+ * - ly_ctx_get_searchdir()
+ * - ly_ctx_set_module_clb()
+ * - ly_ctx_get_module_clb()
+ * - ly_ctx_load_module()
+ * - ly_ctx_info()
+ * - ly_ctx_get_module_names()
+ * - ly_ctx_get_module()
+ * - ly_ctx_get_module_by_ns()
+ * - ly_ctx_get_submodule_names()
+ * - ly_ctx_get_submodule()
+ * - ly_ctx_destroy()
+ */
+
+/**
+ * @page howtocontextdict Context Dictionary
+ *
+ * Context includes dictionary to store strings more effectively. The most of strings repeats quite often in schema
+ * as well as data trees. Therefore, instead of allocating those strings each time they appear, libyang stores them
+ * as records in the dictionary. The basic API to the context dictionary is public, so even a caller application can
+ * use the dictionary.
+ *
+ * To insert a string into the dictionary, caller can use lydict_insert() (adding a constant string) or
+ * lydict_insert_zc() (for dynamically allocated strings that won't be used by the caller after its insertion into
+ * the dictionary). Both functions return the pointer to the inserted string in the dictionary record.
+ *
+ * To remove (reference of the) string from the context dictionary, lydict_remove() is supposed to be used.
+ *
+ * \note Incorrect usage of the dictionary can break libyang functionality.
+ *
+ * \note API for this group of functions is described in the [XML Parser module](@ref dict).
+ *
+ * Functions List
+ * --------------
+ * - lydict_insert()
+ * - lydict_insert_zc()
+ * - lydict_remove()
  */
 
 /**
  * @page howtoschemas Schemas
  *
+ *
  * Schema is an internal libyang's representation of a YANG data model. Each schema is connected with
- * its [context](@ref howtocontext) and loaded using [parser functions](@ref parsers). It means, that
- * the schema cannot be created (nor changed) programatically. In libyang, schemas are used only to
+ * its [context](@ref howtocontext) and loaded using [parser functions](@ref howtoschemasparsers). It means, that
+ * the schema cannot be created (nor changed) programmatically. In libyang, schemas are used only to
  * access data model definitions.
+ *
+ * Schema tree nodes are able to hold private objects (via a pointer to a structure, function, variable, ...) used by
+ * a caller application. Such an object can be assigned to a specific node using lys_set_private() function.
+ * Note that the object is not freed by libyang when the context is being destroyed. So the caller is responsible
+ * for freeing the provided structure after the context is destroyed or the private pointer is set to NULL in
+ * appropriate schema nodes where the object was previously set. On the other hand, freeing the object while the schema
+ * tree is still used can lead to a segmentation fault.
+ *
+ * - @subpage howtoschemasparsers
+ * - @subpage howtoschemasfeatures
+ * - @subpage howtoschemasprinters
  *
  * \note There are many functions to access information from the schema trees. Details are available in
  * the [Schema Tree module](@ref schematree).
  *
- * YANG Features Manipulation
- * --------------------------
+ * Functions List (not assigned to above subsections)
+ * --------------------------------------------------
+ * - lys_get_node()
+ * - lys_get_next()
+ * - lys_parent()
+ * - lys_set_private()
+ */
+
+/**
+ * @page howtoschemasparsers Parsing Schemas
+ *
+ * Schema parser allows to read schema from a specific format. libyang supports the following schema formats:
+ *
+ * - YANG
+ *
+ *   Basic YANG schemas format described in [RFC 6020](http://tools.ietf.org/html/rfc6020).
+ *   Currently, only YANG 1.0 is supported.
+ *
+ *   \todo YANG input is not yet implemented
+ *
+ * - YIN
+ *
+ *   Alternative XML-based format to YANG. The details can be found in
+ *   [RFC 6020](http://tools.ietf.org/html/rfc6020#section-11).
+ *
+ * When the [context](@ref howtocontext) is created, it already contains the following three schemas, which
+ * are implemented internally by libyang: *
+ * - ietf-inet-types@2013-07-15
+ * - ietf-yang-types@2013-07-15
+ * - ietf-yang-library@2015-07-03
+ *
+ * Other schemas can be added to the context manually as described in [context page](@ref howtocontext) by the functions
+ * listed below. Besides the schema parser functions, it is also possible to use ly_ctx_load_module() which tries to
+ * find the required schema automatically - using #ly_module_clb or automatic search in working directory and in the
+ * context's searchpath.
+ *
+ * Functions List
+ * --------------
+ * - lys_parse_mem()
+ * - lys_parse_fd()
+ * - lys_parse_path()
+ * - ly_ctx_set_module_clb()
+ * - ly_ctx_load_module()
+ */
+
+/**
+ * @page howtoschemasfeatures YANG Features Manipulation
  *
  * The group of functions prefixed by \b lys_features_ are used to access and manipulate with the schema's
  * features.
@@ -97,16 +244,253 @@ extern "C" {
  * feature.
  *
  * The remaining two functions, lys_features_enable() and lys_features_disable(), are used
- * to enable and disable the specific feature. By default, when the module is loaded by libyang
- * parser, all features are disabled.
+ * to enable and disable the specific feature (or all via \b "*"). By default, when the module
+ * is loaded by libyang parser, all features are disabled.
  *
- * Note, that feature's state can affect some of the output formats (e.g. Tree format).
+ * To get know, if a specific schema node is currently disabled or enable, the lys_is_disabled() function can be used.
  *
+ * Note, that the feature's state can affect some of the output formats (e.g. Tree format).
+ *
+ * Functions List
+ * --------------
+ * - lys_features_list()
+ * - lys_features_enable()
+ * - lys_features_disable()
+ * - lys_features_state()
+ * - lys_is_disabled()
+ */
+
+/**
+ * @page howtoschemasprinters Printing Schemas
+ *
+ * Schema printers allows to serialize internal representation of a schema module in a specific format. libyang
+ * supports the following schema formats for printing:
+ *
+ * - YANG
+ *
+ *   Basic YANG schemas format described in [RFC 6020](http://tools.ietf.org/html/rfc6020).
+ *   Currently, only YANG 1.0 is supported.
+ *
+ * - YIN
+ *
+ *   Alternative XML-based format to YANG. The details can be found in
+ *   [RFC 6020](http://tools.ietf.org/html/rfc6020#section-11).
+ *
+ *   \todo YIN output is not yet implemented
+ *
+ * - Tree
+ *
+ *   Simple tree structure of the module.
+ *
+ * - Info
+ *
+ *   Detailed information about the specific node in the schema tree.
+ *   It allows to print information not only about a specific module, but also about its specific part:
+ *
+ *   - absolute-schema-nodeid
+ *
+ *     e.g. \a `/modules/module-set-id`  in \a `ietf-yang-library` module
+ *
+ *   - <b>typedef/</b>typedef-name
+ *
+ *     e.g. \a `typedef/revision-identifier` in \a `ietf-yang-library` module
+ *
+ *   - <b>feature/</b>feature-name
+ *
+ *     e.g. \a `feature/ssh` in \a `ietf-netconf-server` module
+ *
+ *   - <b>grouping/</b>grouping-name/descendant-schema-nodeid
+ *
+ *     e.g. \a `grouping/module` or \a `grouping/module/module/submodules` in \a `ietf-yang-library` module
+ *
+ *   - <b>type/</b>leaf-or-leaflist
+ *
+ *     e.g. \a `type/modules/module-set-id` in \a `ietf-yang-library` module
+ *
+ * Printer functions allow to print to the different outputs including a callback function which allows caller
+ * to have a full control of the output data - libyang passes to the callback a private argument (some internal
+ * data provided by a caller of lys_print_clb()), string buffer and number of characters to print. Note that the
+ * callback is supposed to be called multiple times during the lys_print_clb() execution.
+ *
+ * Functions List
+ * --------------
+ * - lys_print_mem()
+ * - lys_print_fd()
+ * - lys_print_file()
+ * - lys_print_clb()
  */
 
 /**
  * @page howtodata Data Instances
  *
+ * All data nodes in data trees are connected with their schema node - libyang is not able to represent data of an
+ * unknown schema.
+ *
+ * By default, the represented data are supposed to represent a full YANG datastore content. So if a schema declares
+ * some mandatory nodes, despite configuration or status, the data are supposed to be present in the data tree being
+ * loaded or validated. However, it is possible to specify other kinds of data (see @ref parseroptions) allowing some
+ * exceptions to the validation process.
+ *
+ * Data validation is performed implicitly to the input data processed by the parser (\b lyd_parse_*() functions) and
+ * on demand via the lyd_validate() function. The lyd_validate() is supposed to be used when a (complex or simple)
+ * change is done on the data tree (via a combination of \b lyd_change_*(), \b lyd_insert*(), \b lyd_new*(),
+ * lyd_unlink() and lyd_free() functions).
+ *
+ * - @subpage howtodataparsers
+ * - @subpage howtodatamanipulators
+ * - @subpage howtodataprinters
+ *
+ * \note API for this group of functions is described in the [Data Instances module](@ref datatree).
+ *
+ * Functions List (not assigned to above subsections)
+ * --------------------------------------------------
+ * - lyd_get_node()
+ * - lyd_get_node2()
+ * - lyd_get_list_keys()
+ */
+
+/**
+ * @page howtodataparsers Parsing Data
+ *
+ * Data parser allows to read instances from a specific format. libyang supports the following data formats:
+ *
+ * - XML
+ *
+ *   Original data format used in NETCONF protocol. XML mapping is part of the YANG specification
+ *   ([RFC 6020](http://tools.ietf.org/html/rfc6020)).
+ *
+ * - JSON
+ *
+ *   The alternative data format available in RESTCONF protocol. Specification of JSON encoding of data modeled by YANG
+ *   can be found in [this draft](https://tools.ietf.org/html/draft-ietf-netmod-yang-json-05).
+ *
+ * Besides the format of input data, the parser functions accepts additional [options](@ref parseroptions) to specify
+ * how the input data should be processed.
+ *
+ * In contrast to the schema parser, data parser also accepts empty input data if such an empty data tree is valid
+ * according to the schemas in the libyang context.
+ *
+ * In case of XML input data, there is one additional way to parse input data. Besides parsing the data from a string
+ * in memory or a file, caller is able to build an XML tree using [libyang XML parser](@ref howtoxml) and then use
+ * this tree (or a part of it) as input to the lyd_parse_xml() function.
+ *
+ * Functions List
+ * --------------
+ * - lyd_parse_mem()
+ * - lyd_parse_fd()
+ * - lyd_parse_path()
+ * - lyd_parse_xml()
+ */
+
+/**
+ * @page howtodatamanipulators Manipulating Data
+ *
+ * There are many functions to create or modify an existing data tree. You can add new nodes, reconnect nodes from
+ * one tree to another (or e.g. from one list instance to another) or remove nodes. The functions doesn't allow you
+ * to put a node to a wrong place (by checking the module), but not all validation checks can be made directly
+ * (or you have to make a valid change by multiple tree modifications) when the tree is being changed. Therefore,
+ * there is lyd_validate() function supposed to be called to make sure that the current data tree is valid. Note,
+ * that not calling this function after the performed changes can cause failure of various libyang functions later.
+ *
+ * Also remember, that when you are creating/inserting a node, all the objects in that operation must belong to the
+ * same context.
+ *
+ * Modifying the single data tree in multiple threads is not safe.
+ *
+ * Functions List
+ * --------------
+ * - lyd_dup()
+ * - lyd_change_leaf()
+ * - lyd_insert()
+ * - lyd_insert_before()
+ * - lyd_insert_after()
+ * - lyd_insert_attr()
+ * - lyd_new()
+ * - lyd_new_anyxml()
+ * - lyd_new_leaf()
+ * - lyd_output_new()
+ * - lyd_output_new_anyxml()
+ * - lyd_output_new_leaf()
+ * - lyd_unlink()
+ * - lyd_free()
+ * - lyd_free_attr()
+ * - lyd_free_withsiblings()
+ * - lyd_validate()
+ */
+
+/**
+ * @page howtodataprinters Printing Data
+ *
+ * Schema printers allows to serialize internal representation of a schema module in a specific format. libyang
+ * supports the following schema formats for printing:
+ *
+ * - XML
+ *
+ *   Basic format as specified in rules of mapping YANG modeled data to XML in
+ *   [RFC 6020](http://tools.ietf.org/html/rfc6020). It is possible to specify if
+ *   the indentation will be used.
+ *
+ * - JSON
+ *
+ *   The alternative data format available in RESTCONF protocol. Specification of JSON encoding of data modeled by YANG
+ *   can be found in [this draft](https://tools.ietf.org/html/draft-ietf-netmod-yang-json-05).
+ *
+ * Printer functions allow to print to the different outputs including a callback function which allows caller
+ * to have a full control of the output data - libyang passes to the callback a private argument (some internal
+ * data provided by a caller of lyd_print_clb()), string buffer and number of characters to print. Note that the
+ * callback is supposed to be called multiple times during the lyd_print_clb() execution.
+ *
+ * Functions List
+ * --------------
+ * - lyd_print_mem()
+ * - lyd_print_fd()
+ * - lyd_print_file()
+ * - lyd_print_clb()
+ */
+
+/**
+ * @page howtoxml libyang XML Support
+ *
+ * libyang XML parser is able to parse XML documents used to represent data modeled by YANG. Therefore, there are
+ * some limitations in comparison to a full-featured XML parsers:
+ * - comments are ignored
+ * - Doctype declaration is ignored
+ * - CData sections are ignored
+ * - Process Instructions (PI) are ignored
+ *
+ * The API is designed to almost only read-only access. You can simply load XML document, go through the tree as
+ * you wish and dump the tree to an output. The only "write" functions are lyxml_free() and lyxml_unlink() to remove
+ * part of the tree or to unlink (separate) a subtree.
+ *
+ * XML parser is also used internally by libyang for parsing YIN schemas and data instances in XML format.
+ *
+ * \note API for this group of functions is described in the [XML Parser module](@ref xmlparser).
+ *
+ * Functions List
+ * --------------
+ * - lyxml_parse_mem()
+ * - lyxml_parse_path()
+ * - lyxml_get_attr()
+ * - lyxml_get_ns()
+ * - lyxml_print_mem()
+ * - lyxml_print_fd()
+ * - lyxml_print_file()
+ * - lyxml_print_clb()
+ * - lyxml_unlink()
+ * - lyxml_free()
+ */
+
+/**
+ * @page howtothreads libyang in Threads
+ *
+ * libyang can be used in multithreaded application keeping in mind the following rules:
+ * - libyang context manipulation (adding new schemas) is not thread safe and it is supposed to be done in a main
+ *   thread before any other work with context, schemas or data instances. And destroying the context is supposed to
+ *   be done when no other thread accesses context, schemas nor data trees
+ * - Data parser (\b lyd_parse*() functions) can be used simultaneously in multiple threads (also the returned
+ *   #ly_errno is thread safe).
+ * - Modifying (lyd_new(), lyd_insert(), lyd_unlink(), lyd_free() and many other functions) a single data tree is not
+ *   thread safe.
  */
 
 /**
@@ -121,7 +505,13 @@ extern "C" {
  * code is recorded in extern ly_errno variable. Possible values are of type
  * ::LY_ERR.
  *
- * \note API for this group of functions is available in the [logger module](@ref logger).
+ * \note API for this group of functions is described in the [logger module](@ref logger).
+ *
+ * Functions List
+ * --------------
+ * - ly_verb()
+ * - ly_set_log_clb()
+ * - ly_get_log_clb()
  */
 
 /**
@@ -289,23 +679,6 @@ const struct lys_submodule *ly_ctx_get_submodule(const struct lys_module *module
                                                  const char *revision);
 
 /**
- * @brief Get schema node according to the given absolute schema node identifier.
- *
- * Prefix (module name) must be used in two cases. Firstly, the first node MUST
- * have a prefix, which is treated as the current module. Secondly, every other
- * node MUST have a prefix if its module differs from the current module.
- * Here are some examples:
- *
- * /ietf-netconf-monitoring:get-schema/input/identifier
- * /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/ietf-ip:address/ietf-ip:ip
- *
- * @param[in] ctx Context to work in.
- * @param[in] nodeid Absolute schema node identifier.
- * @return Resolved schema node or NULL.
- */
-const struct lys_node *ly_ctx_get_node(const struct ly_ctx *ctx, const char *nodeid);
-
-/**
  * @brief Free all internal structures of the specified context.
  *
  * The function should be used before terminating the application to destroy
@@ -316,398 +689,102 @@ const struct lys_node *ly_ctx_get_node(const struct ly_ctx *ctx, const char *nod
  * Data models are destroyed automatically as part of ly_ctx_destroy() call.
  *
  * @param[in] ctx libyang context to destroy
+ * @param[in] private_destructor Optional destructor function for private objects assigned
+ * to the nodes via lys_set_private(). If NULL, the private objects are not freed by libyang.
  */
-void ly_ctx_destroy(struct ly_ctx *ctx);
+void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv));
 
 /**@} context */
 
 /**
- * @defgroup parsers Parsers
+ * @defgroup nodeset Tree nodes set
+ * @ingroup datatree
+ * @ingroup schematree
  * @{
  *
- * Parsers allows to read schema and data trees from a specific format.
- *
- * For schemas, the following formats are supported:
- * - YANG
- *
- *   Basic YANG schemas format described in [RFC 6020](http://tools.ietf.org/html/rfc6020).
- *   Currently, only YANG 1.0 is supported.
- *
- *   \todo YANG input is not yet implemented
- *
- * - YIN
- *
- *   Alternative XML-based format to YANG. The details can be found in
- *   [RFC 6020](http://tools.ietf.org/html/rfc6020#section-11).
- *
- * For data instances, the following formats are supported:
- * - \todo TBD
- *
+ * Structure and functions to hold and manipulate with sets of nodes from schema or data trees.
  */
 
 /**
- * @brief Load a schema into the specified context.
+ * @brief Structure to hold a set of (not necessary somehow connected) ::lyd_node or ::lys_node objects.
+ * Caller is supposed to not mix the type of objects added to the set and according to its knowledge about
+ * the set content, it is supposed to access the set via the sset, dset or set members of the structure.
  *
- * LY_IN_YANG (YANG) format is not yet supported.
- *
- * @param[in] ctx libyang context where to process the data model.
- * @param[in] data The string containing the dumped data model in the specified
- * format.
- * @param[in] format Format of the input data (YANG or YIN).
- * @return Pointer to the data model structure or NULL on error.
+ * To free the structure, use ly_set_free() function, to manipulate with the structure, use other
+ * ly_set_* functions.
  */
-const struct lys_module *lys_parse_data(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
+struct ly_set {
+    unsigned int size;               /**< allocated size of the set array */
+    unsigned int number;             /**< number of elements in (used size of) the set array */
+    union {
+        struct lys_node **sset;      /**< array of pointers to a ::lys_node objects */
+        struct lyd_node **dset;      /**< array of pointers to a ::lyd_node objects */
+        void **set;                   /**< dummy array for generic work */
+    };
+};
 
 /**
- * @brief Load a schema into the specified context from a file.
+ * @brief Create and initiate new ::ly_set structure.
  *
- * LY_IN_YANG (YANG) format is not yet supported.
- *
- * @param[in] ctx libyang context where to process the data model.
- * @param[in] path Path to the file with the model in the specified format.
- * @param[in] format Format of the input data (YANG or YIN).
- * @return Pointer to the data model structure or NULL on error.
+ * @return Created ::ly_set structure or NULL in case of error.
  */
-const struct lys_module *lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format);
+struct ly_set *ly_set_new(void);
 
 /**
- * @brief Read a schema from file descriptor into the specified context.
+ * @brief Add a ::lyd_node or ::lys_node object into the set
  *
- * LY_IN_YANG (YANG) format is not yet supported.
- *
- * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
- *
- * @param[in] ctx libyang context where to process the data model.
- * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the schema
- *            in the specified format.
- * @param[in] format Format of the input data (YANG or YIN).
- * @return Pointer to the data model structure or NULL on error.
+ * @param[in] set Set where the \p node will be added.
+ * @param[in] node The ::lyd_node or ::lys_node object to be added into the \p set;
+ * @return 0 on success
  */
-const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
+int ly_set_add(struct ly_set *set, void *node);
 
 /**
- * @defgroup parseroptions Data parser options
- * @ingroup parsers
+ * @brief Remove a ::lyd_node or ::lys_node object from the set.
  *
- * Various options to change the data tree parsers behavior.
+ * Note that after removing a node from a set, indexes of other nodes in the set can change
+ * (the last object is placed instead of the removed object).
  *
- * By default, parser silently ignores the data without a matching node in schema trees. If the caller want to stop
- * parsing in case of presence of unknown data, the #LYD_OPT_STRICT can be used. The strict mode is useful for
- * NETCONF servers, since NETCONF clients should always send data according to the capabilities announced by the server.
- * On the other hand, the default non-strict mode is useful for clients receiving data from NETCONF server since
- * clients are not required to understand everything the server does. Of course, the optimal strategy is to use
- * filtering to get only the required data.
+ * @param[in] set Set from which the \p node will be removed.
+ * @param[in] node The ::lyd_node or ::lys_node object to be removed from the \p set;
+ * @return 0 on success
+ */
+int ly_set_rm(struct ly_set *set, void *node);
+
+/**
+ * @brief Remove a ::lyd_node or ::lys_node object from the set index.
  *
- * The #LYD_OPT_DESTRUCT option is used to optimize memory consumption profile of the parser in case the input
- * data are no more needed after the parser function call. It continuously free the input data whenever it is
- * processed for the output. This option is applicable only in case the input data are in the XML tree format.
+ * Note that after removing a node from a set, indexes of other nodes in the set can change
+ * (the last object is placed instead of the removed object).
  *
- * Parser also expects that the provided data are complete and performs data validation according to all
- * implemented YANG rules. This can be problem in case of representing NETCONF's subtree filter data,
- * edit-config's data or the received data (after get or get-config request) where a filter was applied - such data
- * do not represent a complete data set and different validation rules can fail. Therefore there are other options
- * to make parser to accept such a data.
+ * @param[in] set Set from which a node will be removed.
+ * @param[in] index Index of the ::lyd_node or ::lys_node object in the \p set to be removed from the \p set;
+ * @return 0 on success
+ */
+int ly_set_rm_index(struct ly_set *set, unsigned int index);
+
+/**
+ * @brief Free the ::ly_set data. Frees only the set structure content, not the referred data.
+ *
+ * @param[in] set The set to be freed.
+ */
+void ly_set_free(struct ly_set *set);
+
+/**@} nodeset */
+
+/**
+ * @defgroup printerflags Printer flags
+ * @ingroup datatree
+ *
+ * Validity flags for data nodes.
  *
  * @{
  */
-#define LYD_OPT_STRICT    0x01  /**< instead of silent ignoring data without schema definition, raise an error.
-                                     Having an unknown element of the known namespace is always an error. */
-#define LYD_OPT_DESTRUCT  0x02  /**< safe consumed memory and free the processed XML data continuously.
-                                     On success, only the top level XML element is kept in the end. This
-                                     option is applicable only with lyd_parse_xml(). */
-#define LYD_OPT_EDIT      0x04  /**< make validation to accept NETCONF edit-config's content:
-                                     - mandatory nodes can be omitted
-                                     - leafrefs and instance-identifier are not resolved
-                                     - status data are not allowed */
-#define LYD_OPT_FILTER    0x08  /**< make validation to accept NETCONF subtree filter data:
-                                     - leafs/leaf-lists with no data are allowed (even not allowed e.g. by length restriction)
-                                     - multiple instances of container/leaf/.. are allowed
-                                     - list's keys/unique nodes are not required
-                                     - mandatory nodes can be omitted
-                                     - leafrefs and instance-identifier are not resolved
-                                     - data from different choice's branches are allowed */
-#define LYD_OPT_GETCONFIG 0x10  /**< make validation to accept get-config's result data even with applied filter:
-                                     - mandatory nodes can be omitted
-                                     - leafrefs and instance-identifier are not resolved
-                                     - list's keys/unique nodes are not required (so duplication is not checked)
-                                     - status data are not allowed */
-#define LYD_OPT_GET       0x20  /**< make validation to accept get's result data even with applied filter:
-                                     - same as for #LYD_OPT_GETCONFIG but the status data are allowed */
-#define LYD_OPT_OBSOLETE  0x40  /**< By default, using obsolete statements (status set to obsolete) just generates
-                                     a warning, but the processing continues. With this flag, using such a statement
-                                     raises an error. */
+#define LYP_WITHSIBLINGS 0x01 /**< Flag for printing also the (following) sibling nodes of the data node. */
 
 /**
  * @}
  */
-
-/**
- * @brief Parse (and validate according to appropriate schema from the given context) data.
- *
- * In case of LY_XML format, the data string is expected to contain XML data under a single
- * XML element. The element is not parsed, but it is expected to keep XML data well formed in all
- * cases. There are no restrictions for the element name or its namespace.
- *
- * @param[in] ctx Context to connect with the data tree being built here.
- * @param[in] data Serialized data in the specified format.
- * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions.
- * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
- */
-struct lyd_node *lyd_parse_data(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options);
-
-/**
- * @brief Parse (and validate according to appropriate schema from the given context) RPC output data.
- *
- * In case of LY_XML format, the data string is expected to contain XML data under a single
- * XML element. The element is not parsed, but it is expected to keep XML data well formed in all
- * cases. There are no restrictions for the element name or its namespace.
- *
- * @param[in] rpc RPC structure, whose output should \p data be.
- * @param[in] data Serialized data in the specified format.
- * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions.
- * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
- */
-struct lyd_node *lyd_parse_output_data(const struct lys_node *rpc, const char *data, LYD_FORMAT format, int options);
-
-/**
- * @brief Parse (and validate according to appropriate schema from the given context) XML tree.
- *
- * The output data tree is parsed from the given XML tree previously parsed by one of the
- * lyxml_read* functions. Note, that the parser removes successfully parsed data from the
- * XML tree except the root element (see the note about XML format in lyd_parse()). When
- * the given XML tree is successfully parsed, the given \p root is kept but it has no children
- * which are returned as a top level nodes in the output data tree.
- *
- * The context must be the same as the context used to parse XML tree by lyxml_read* function.
- *
- * @param[in] ctx Context to connect with the data tree being built here.
- * @param[in] root XML tree to parse (convert) to data tree.
- * @param[in] options Parser options, see @ref parseroptions.
- * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
- */
-struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem *root, int options);
-
-/**
- * @brief Parse (and validate according to appropriate schema from the given context) RPC output XML tree.
- *
- * The output data tree is parsed from the given XML tree previously parsed by one of the
- * lyxml_read* functions. Note, that the parser removes successfully parsed data from the
- * XML tree except the root element (see the note about XML format in lyd_parse()). When
- * the given XML tree is successfully parsed, the given \p root is kept but it has no children
- * which are returned as a top level nodes in the output data tree.
- *
- * The context (to which \p rpc belongs) must be the same as the context used to parse XML tree
- * by lyxml_read* function.
- *
- * @param[in] rpc RPC structure, whose output should \p data be.
- * @param[in] root XML tree to parse (convert) to data tree.
- * @param[in] options Parser options, see @ref parseroptions.
- * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
- */
-struct lyd_node *lyd_parse_output_xml(const struct lys_node *rpc, struct lyxml_elem *root, int options);
-
-/**
- * @brief Read data from the given file descriptor.
- *
- * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
- *
- * @param[in] ctx Context to connect with the data tree being built here.
- * @param[in] fd The standard file descriptor of the file containing the data tree in the specified format.
- * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions.
- * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
- */
-struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options);
-
-/**
- * @brief Read data from the given file path.
- *
- * @param[in] ctx Context to connect with the data tree being built here.
- * @param[in] path Path to the file containing the data tree in the specified format.
- * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions.
- * @return Pointer to the built data tree. To free the returned structure, use lyd_free().
- */
-struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options);
-
-/**@} parsers */
-
-/**
- * @defgroup schematree Schema Tree
- * @{
- *
- * Data structures and functions to manipulate and access schema tree.
- *
- * @}
- */
-
-/**
- * @defgroup datatree Data Tree
- * @{
- *
- * Data structures and functions to manipulate and access instance data tree.
- *
- * @}
- */
-
-/**
- * @defgroup printers Printers
- * @{
- *
- * Printers allows to serialize schema and data trees in a specific format.
- *
- * For schemas, the following formats are supported:
- * - YANG
- *
- *   Basic YANG schemas format described in [RFC 6020](http://tools.ietf.org/html/rfc6020).
- *   Currently, only YANG 1.0 is supported.
- *
- * - YIN
- *
- *   Alternative XML-based format to YANG. The details can be found in
- *   [RFC 6020](http://tools.ietf.org/html/rfc6020#section-11).
- *
- *   \todo YIN output is not yet implemented
- *
- * - Tree
- *
- *   Simple tree structure of the module.
- *
- * - Info
- *
- *   Detailed information about the specific node in the schema tree.
- *   The target can be more specific than the module itself:
- *
- *   - absolute-schema-nodeid&nbsp;&nbsp;&nbsp;&nbsp;\a /modules/module-set-id in \a ietf-yang-library
- *   - <b>typedef/</b>typedef-name&nbsp;&nbsp;&nbsp;&nbsp;\a typedef/revision-identifier in \a ietf-yang-library
- *   - <b>feature/</b>feature-name&nbsp;&nbsp;&nbsp;&nbsp;\a feature/ssh in \a ietf-netconf-server
- *   - <b>grouping/</b>grouping-name/descendant-schema-nodeid&nbsp;&nbsp;&nbsp;&nbsp;\a grouping/module or \a grouping/module/module/submodules
- *     in \a ietf-yang-library
- *   - <b>type/</b>leaf-or-leaflist&nbsp;&nbsp;&nbsp;&nbsp;\a type/modules/module-set-id in \a ietf-yang-library
- *
- * For data instances, the following formats are supported:
- * - \todo TBD
- *
- */
-
-/**
- * @brief Print schema tree in the specified format.
- *
- * To write data into a file descriptor, use lys_print_fd().
- *
- * @param[in] module Schema tree to print.
- * @param[in] f File stream where to print the schema.
- * @param[in] format Schema output format.
- * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
- * node in the module will be printed.
- * @return 0 on success, 1 on failure (#ly_errno is set).
- */
-int lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
-
-/**
- * @brief Print schema tree in the specified format.
- *
- * Same as lys_print(), but output is written into the specified file descriptor.
- *
- * @param[in] module Schema tree to print.
- * @param[in] fd File descriptor where to print the data.
- * @param[in] format Schema output format.
- * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
- * node in the module will be printed.
- * @return 0 on success, 1 on failure (#ly_errno is set).
- */
-int lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
-
-/**
- * @brief Print schema tree in the specified format.
- *
- * Same as lys_print(),  but it allocates memory and store the data into it.
- * It is up to caller to free the returned string by free().
- *
- * @param[out] strp Pointer to store the resulting dump.
- * @param[in] module Schema tree to print.
- * @param[in] format Schema output format.
- * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
- * node in the module will be printed.
- * @return 0 on success, 1 on failure (#ly_errno is set).
- */
-int lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
-
-/**
- * @brief Print schema tree in the specified format.
- *
- * Same as lys_print(), but output is written via provided callback.
- *
- * @param[in] module Schema tree to print.
- * @param[in] writeclb Callback function to write the data (see write(1)).
- * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
- * @param[in] format Schema output format.
- * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
- * node in the module will be printed.
- * @return 0 on success, 1 on failure (#ly_errno is set).
- */
-int lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
-                  const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
-
-/**
- * @brief Print data tree in the specified format.
- *
- * To write data into a file descriptor, use lyd_print_fd().
- *
- * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
- * node of the data tree to print the specific subtree.
- * @param[in] f File stream where to print the data.
- * @param[in] format Data output format.
- * @return 0 on success, 1 on failure (#ly_errno is set).
- */
-int lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format);
-
-/**
- * @brief Print data tree in the specified format.
- *
- * Same as lyd_print(), but output is written into the specified file descriptor.
- *
- * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
- * node of the data tree to print the specific subtree.
- * @param[in] fd File descriptor where to print the data.
- * @param[in] format Data output format.
- * @return 0 on success, 1 on failure (#ly_errno is set).
- */
-int lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format);
-
-
- /**
- * @brief Print data tree in the specified format.
- *
- * Same as lyd_print(), but it allocates memory and store the data into it.
- * It is up to caller to free the returned string by free().
- *
- * @param[out] strp Pointer to store the resulting dump.
- * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
- * node of the data tree to print the specific subtree.
- * @param[in] format Data output format.
- * @return 0 on success, 1 on failure (#ly_errno is set).
- */
-int lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format);
-
-/**
- * @brief Print data tree in the specified format.
- *
- * Same as lyd_print(), but output is written via provided callback.
- *
- * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
- * node of the data tree to print the specific subtree.
- * @param[in] writeclb Callback function to write the data (see write(1)).
- * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
- * @param[in] format Data output format.
- * @return 0 on success, 1 on failure (#ly_errno is set).
- */
-int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
-                  const struct lyd_node *root, LYD_FORMAT format);
-
-/**@} printers */
 
 /**
  * @defgroup logger Logger
@@ -759,10 +836,18 @@ typedef enum {
     LY_EINT,       /**< Internal error */
     LY_EVALID      /**< Validation failure */
 } LY_ERR;
+
 /**
- * @brief libyang specific errno.
+ * @cond INTERNAL
+ * Function to get address of global `ly_errno' variable.
  */
-extern LY_ERR ly_errno;
+LY_ERR *ly_errno_location(void);
+
+/**
+ * @endcond INTERNAL
+ * @brief libyang specific (thread-safe) errno (see #LY_ERR for the list of possible values and their meaning).
+ */
+#define ly_errno (*ly_errno_location())
 
 /**@} logger */
 

@@ -664,7 +664,7 @@ static void
 info_print_data_with_include(struct lyout *out, const struct lys_module *mod)
 
 {
-    int first = 1, i;
+    int first = 1;
     struct lys_node *node;
 
     ly_print(out, "%-*s", INDENT_LEN, "Data: ");
@@ -676,22 +676,6 @@ info_print_data_with_include(struct lyout *out, const struct lys_module *mod)
 
         for (; node; node = node->next) {
             ly_print(out, "%*s%s \"%s\"\n", INDENT_LEN, "", strnodetype(node->nodetype), node->name);
-        }
-    }
-
-    for (i = 0; i < mod->inc_size; ++i) {
-        if (mod->inc[i].submodule->data) {
-            if (first) {
-                ly_print(out, "%s \"%s\"\n", strnodetype(mod->inc[i].submodule->data->nodetype), mod->inc[i].submodule->data->name);
-                node = mod->inc[i].submodule->data->next;
-            } else {
-                node = mod->inc[i].submodule->data;
-            }
-            first = 0;
-
-            for (; node; node = node->next) {
-                ly_print(out, "%*s%s \"%s\"\n", INDENT_LEN, "", strnodetype(node->nodetype), node->name);
-            }
         }
     }
 
@@ -785,9 +769,12 @@ info_print_submodule(struct lyout *out, const struct lys_submodule *module)
     info_print_text(out, module->ref, "Reference: ");
     info_print_text(out, module->org, "Org: ");
     info_print_text(out, module->contact, "Contact: ");
-    ly_print(out, "%-*s%s\n", INDENT_LEN, "YANG ver: ", (module->version == 2 ? "1.1" : "1.0"));
-    ly_print(out, "%-*s%s\n", INDENT_LEN, "Deviated: ", (module->deviated ? "yes" : "no"));
-    ly_print(out, "%-*s%s\n", INDENT_LEN, "Implement: ", (module->implemented ? "yes" : "no"));
+
+    /* inherited from main module */
+    ly_print(out, "%-*s%s\n", INDENT_LEN, "YANG ver: ", (module->belongsto->version == 2 ? "1.1" : "1.0"));
+    ly_print(out, "%-*s%s\n", INDENT_LEN, "Deviated: ", (module->belongsto->deviated ? "yes" : "no"));
+    ly_print(out, "%-*s%s\n", INDENT_LEN, "Implement: ", (module->belongsto->implemented ? "yes" : "no"));
+
     info_print_text(out, module->uri, "URI: ");
 
     info_print_revision(out, module->rev, module->rev_size);

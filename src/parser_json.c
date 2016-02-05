@@ -63,42 +63,6 @@ skip_ws(const char *data)
     return len;
 }
 
-int lyjson_dump_string(struct lyout *out, const char *text)
-{
-    unsigned int i, n;
-
-    if (!text) {
-        return 0;
-    }
-
-    ly_write(out, "\"", 1);
-    for (i = n = 0; text[i]; i++) {
-        if (text[i] < 0x20) {
-            /* control character */
-            n += ly_print(out, "\\u%.4X");
-        } else {
-            switch (text[i]) {
-            case '"':
-                n += ly_print(out, "\\\"");
-                break;
-            case '\\':
-                n += ly_print(out, "\\\\");
-                break;
-            case '/':
-                n += ly_print(out, "\\/");
-                break;
-            default:
-                ly_write(out, &text[i], 1);
-                n++;
-            }
-        }
-    }
-    ly_write(out, "\"", 1);
-
-    return n + 2;
-}
-
-
 static char *
 lyjson_parse_text(const char *data, unsigned int *len)
 {
@@ -362,10 +326,10 @@ static unsigned int
 json_get_value(struct lyd_node_leaf_list *leaf, const char *data, int options, struct unres_data *unres)
 {
     struct lyd_node_leaf_list *new, *diter;
-    struct lys_type *stype, *type;
+    struct lys_type *stype;
     struct ly_ctx *ctx;
     unsigned int len = 0, r;
-    int found, resolve;
+    int resolve;
     char *str;
 
     assert(leaf && data && unres);
@@ -444,25 +408,7 @@ repeat:
         return 0;
     }
 
-    if (stype->base == LY_TYPE_UNION) {
-        found = 0;
-        type = lyp_get_next_union_type(stype, NULL, &found);
-        while (type) {
-            leaf->value_type = type->base;
-
-            if (!lyp_parse_value(leaf, type, resolve, unres, UINT_MAX)) {
-                break;
-            }
-
-            found = 0;
-            type = lyp_get_next_union_type(stype, type, &found);
-        }
-
-        if (!type) {
-            LOGVAL(LYE_INVAL, lineno, (leaf->value_str ? leaf->value_str : ""), leaf->schema->name);
-            return 0;
-        }
-    } else if (lyp_parse_value(leaf, stype, resolve, unres, lineno)) {
+    if (lyp_parse_value(leaf, NULL, resolve, unres, lineno)) {
         ly_errno = LY_EVALID;
         return 0;
     }
@@ -769,6 +715,21 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
         if (module) {
             /* get the proper schema node */
             LY_TREE_FOR(module->data, schema) {
+                /* skip nodes in module's data which are not expected here according to options' data type */
+                if (options & LYD_OPT_RPC) {
+                    if (schema->nodetype != LYS_RPC) {
+                        continue;
+                    }
+                } else if (options & LYD_OPT_NOTIF) {
+                    if (schema->nodetype != LYS_NOTIF) {
+                        continue;
+                    }
+                } else if (!(options & LYD_OPT_RPCREPLY)) {
+                    /* rest of the data types except RPCREPLY which cannot be here */
+                    if (schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
+                        continue;
+                    }
+                }
                 if (!strcmp(schema->name, name)) {
                     break;
                 }
@@ -787,6 +748,24 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
                 goto error;
             }
         }
+
+        /* go through RPC's input/output following the options' data type */
+        if ((*parent)->schema->nodetype == LYS_RPC) {
+            while ((schema = (struct lys_node *)lys_getnext(schema, (*parent)->schema, module, LYS_GETNEXT_WITHINOUT))) {
+                if ((options & LYD_OPT_RPC) && schema->nodetype == LYS_INPUT) {
+                    break;
+                } else if ((options & LYD_OPT_RPCREPLY) && schema->nodetype == LYS_OUTPUT) {
+                    break;
+                }
+            }
+            if (!schema) {
+                LOGVAL(LYE_INELEM, lineno, name);
+                goto error;
+            }
+            schema_parent = schema;
+            schema = NULL;
+        }
+
         if (schema_parent) {
             while ((schema = (struct lys_node *)lys_getnext(schema, schema_parent, module, 0))) {
                 if (!strcmp(schema->name, name)) {
@@ -888,16 +867,23 @@ attr_repeat:
         prev->next = result;
 
         /* fix the "last" pointer */
-        for (diter = prev; diter->prev != prev; diter = diter->prev);
+        if (*parent) {
+            diter = (*parent)->child;
+        } else {
+            for (diter = prev; diter->prev != prev; diter = diter->prev);
+        }
         diter->prev = result;
     } else {
         result->prev = result;
     }
     result->schema = schema;
+    result->validity = LYD_VAL_NOT;
 
-    if (lyv_data_context(result, options, lineno, unres)) {
+    if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(result, options, lineno, unres)) {
         goto error;
     }
+
+    /* TODO handle notifications */
 
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
@@ -919,7 +905,7 @@ attr_repeat:
         }
         len += r;
         len += skip_ws(&data[len]);
-    } else if (schema->nodetype == LYS_CONTAINER) {
+    } else if (schema->nodetype & (LYS_CONTAINER | LYS_RPC)) {
         if (data[len] != '{') {
             LOGVAL(LYE_XML_INVAL, lineno, "JSON data (missing begin-object)");
             goto error;
@@ -1017,6 +1003,16 @@ attr_repeat:
             len += skip_ws(&data[len]);
 
             if (data[len] == ',') {
+                /* various validation checks */
+                ly_errno = 0;
+                if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(list, options, lineno, unres)) {
+                    if (ly_errno) {
+                        goto error;
+                    }
+                }
+                /* validation successful */
+                list->validity = LYD_VAL_OK;
+
                 /* another instance of the list */
                 new = calloc(1, sizeof *new);
                 if (!new) {
@@ -1027,18 +1023,14 @@ attr_repeat:
                 list->next = new;
 
                 /* fix the "last" pointer */
-                for (diter = list; diter->prev != list; diter = diter->prev);
+                if (*parent) {
+                    diter = (*parent)->child;
+                } else {
+                    for (diter = prev; diter->prev != prev; diter = diter->prev);
+                }
                 diter->prev = new;
 
                 new->schema = list->schema;
-
-                /* various validation checks */
-                ly_errno = 0;
-                if (lyv_data_content(list, options, lineno, unres)) {
-                    if (ly_errno) {
-                        goto error;
-                    }
-                }
                 list = new;
             }
         } while (data[len] == ',');
@@ -1054,11 +1046,14 @@ attr_repeat:
 
     /* various validation checks */
     ly_errno = 0;
-    if (lyv_data_content(result, options, lineno, unres)) {
+    if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(result, options, lineno, unres)) {
         if (ly_errno) {
             goto error;
         }
     }
+
+    /* validation successful */
+    result->validity = LYD_VAL_OK;
 
     if (!(*parent)) {
         *parent = result;
@@ -1093,6 +1088,8 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
     unsigned int len = 0, r;
     struct attr_cont *attrs = NULL;
 
+    ly_errno = LY_SUCCESS;
+
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
         return NULL;
@@ -1107,7 +1104,6 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
 #ifndef NDEBUG
     lineno = 0;
 #endif
-    ly_errno = 0;
 
     /* skip leading whitespaces */
     len += skip_ws(&data[len]);

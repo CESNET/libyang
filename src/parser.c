@@ -25,6 +25,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -40,14 +41,40 @@
 #include "resolve.h"
 #include "tree_internal.h"
 
+int
+lyp_is_rpc(struct lys_node *node)
+{
+    assert(node);
+
+    while(node->parent) {
+        node = node->parent;
+    }
+
+    if (node->nodetype == LYS_RPC) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+int
+lyp_check_options(int options)
+{
+    int x = options & LYD_OPT_TYPEMASK;
+
+    /* "is power of 2" algorithm, with 0 exception */
+    return x ? !(x && !(x & (x - 1))) : 0;
+}
+
 void
 lyp_set_implemented(struct lys_module *module)
 {
     int i;
 
+    assert(module);
     module->implemented = 1;
 
-    for (i = 0; i < module->inc_size; i++) {
+    for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
         lyp_set_implemented((struct lys_module *)module->inc[i].submodule);
     }
 }
@@ -60,7 +87,6 @@ lyp_set_implemented(struct lys_module *module)
 struct lys_module *
 lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
-    struct unres_schema *unres;
     struct lys_module *module = NULL;
     struct stat sb;
     char *addr;
@@ -70,26 +96,19 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
         return NULL;
     }
 
-    unres = calloc(1, sizeof *unres);
-    if (!unres) {
-        LOGMEM;
-        return NULL;
-    }
 
     if (fstat(fd, &sb) == -1) {
         LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
-        free(unres);
         return NULL;
     }
-    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    addr = mmap(NULL, sb.st_size + 1, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
-        free(unres);
         return NULL;
     }
     switch (format) {
     case LYS_IN_YIN:
-        module = yin_read_module(ctx, addr, 0, unres);
+        module = yin_read_module(ctx, addr, 0);
         break;
     case LYS_IN_YANG:
     default:
@@ -98,19 +117,13 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     }
     munmap(addr, sb.st_size);
 
-    if (module && unres->count && resolve_unres_schema(module, unres)) {
-        unres_schema_free(ctx, unres);
-        lys_free(module, 0);
-        module = NULL;
-    } else {
-        unres_schema_free(ctx, unres);
-    }
-
     return module;
 }
 
+/* if module is !NULL, then the function searches for submodule */
 struct lys_module *
-lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision)
+lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
+                struct unres_schema *unres)
 {
     size_t len, flen;
     int fd;
@@ -120,6 +133,15 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     LYS_INFORMAT format;
     struct lys_module *result = NULL;
     int localsearch = 1;
+
+    if (module) {
+        /* searching for submodule, try if it is already loaded */
+        result = (struct lys_module *)ly_ctx_get_submodule(module, name, revision);
+        if (result) {
+            /* success */
+            return result;
+        }
+    }
 
     len = strlen(name);
     cwd = wd = get_current_dir_name();
@@ -166,7 +188,7 @@ opendir_search:
         }
 
         if (module) {
-            result = (struct lys_module *)lys_submodule_read(module, fd, format, module->implemented);
+            result = (struct lys_module *)lys_submodule_read(module, fd, format, unres);
         } else {
             result = lys_read_import(ctx, fd, format);
         }
@@ -535,8 +557,8 @@ error:
  * resolve - whether resolve identityrefs and leafrefs (which must be in JSON form)
  * unres - whether to try to resolve and on failure store it as unres or fail if resolving fails
  */
-int
-lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve, struct unres_data *unres, uint32_t line)
+static int
+lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve, struct unres_data *unres, uint32_t line)
 {
     #define DECSIZE 21
     struct lys_type *type;
@@ -777,9 +799,10 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
         }
 
         if (!resolve) {
-            do {
-                type = &((struct lys_node_leaf *)node->schema)->type.info.lref.target->type;
-            } while (type->base == LY_TYPE_LEAFREF);
+            type = &((struct lys_node_leaf *)node->schema)->type.info.lref.target->type;
+            while (type->base == LY_TYPE_LEAFREF) {
+                type = &type->info.lref.target->type;
+            }
             node->value_type = type->base | LY_TYPE_LEAFREF_UNRES;
         } else {
             /* validity checking is performed later, right now the data tree
@@ -882,6 +905,66 @@ lyp_parse_value(struct lyd_node_leaf_list *node, struct lys_type *stype, int res
     return EXIT_SUCCESS;
 }
 
+int
+lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int resolve, struct unres_data *unres, int line)
+{
+    int found = 0;
+    struct lys_type *type, *stype;
+
+    assert(leaf);
+
+    stype = &((struct lys_node_leaf *)leaf->schema)->type;
+    if (stype->base == LY_TYPE_UNION) {
+        type = lyp_get_next_union_type(stype, NULL, &found);
+        while (type) {
+            leaf->value_type = type->base;
+            memset(&leaf->value, 0, sizeof leaf->value);
+
+            /* in these cases we use JSON format */
+            if (xml && ((type->base == LY_TYPE_IDENT) || (type->base == LY_TYPE_INST))) {
+                xml->content = leaf->value_str;
+                leaf->value_str = transform_xml2json(leaf->schema->module->ctx, xml->content, xml, 0);
+                if (!leaf->value_str) {
+                    leaf->value_str = xml->content;
+                    xml->content = NULL;
+
+                    found = 0;
+                    type = lyp_get_next_union_type(stype, type, &found);
+                    continue;
+                }
+            }
+
+            if (!lyp_parse_value_(leaf, type, resolve, unres, UINT_MAX)) {
+                /* success */
+                break;
+            }
+
+            if (xml && ((type->base == LY_TYPE_IDENT) || (type->base == LY_TYPE_INST))) {
+                lydict_remove(leaf->schema->module->ctx, leaf->value_str);
+                leaf->value_str = xml->content;
+                xml->content = NULL;
+            }
+
+            found = 0;
+            type = lyp_get_next_union_type(stype, type, &found);
+        }
+
+        if (!type) {
+            /* failure */
+            LOGVAL(LYE_INVAL, line, (leaf->value_str ? leaf->value_str : ""), leaf->schema->name);
+            return EXIT_FAILURE;
+        }
+    } else {
+        memset(&leaf->value, 0, sizeof leaf->value);
+        if (lyp_parse_value_(leaf, stype, resolve, unres, line)) {
+            ly_errno = LY_EVALID;
+            return EXIT_FAILURE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
 /* does not log, cannot fail */
 struct lys_type *
 lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *found)
@@ -915,9 +998,255 @@ lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *
     return ret;
 }
 
+/* does not log */
+static int
+dup_typedef_check(const char *type, struct lys_tpdf *tpdf, int size)
+{
+    int i;
+
+    for (i = 0; i < size; i++) {
+        if (!strcmp(type, tpdf[i].name)) {
+            /* name collision */
+            return EXIT_FAILURE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/* does not log */
+static int
+dup_feature_check(const char *id, struct lys_module *module)
+{
+    int i;
+
+    for (i = 0; i < module->features_size; i++) {
+        if (!strcmp(id, module->features[i].name)) {
+            return EXIT_FAILURE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/* does not log */
 int
-check_status(uint8_t flags1, struct lys_module *mod1, const char *name1,
-             uint8_t flags2, struct lys_module *mod2, const char *name2, unsigned int line)
+dup_prefix_check(const char *prefix, struct lys_module *module)
+{
+    int i;
+
+    if (module->prefix && !strcmp(module->prefix, prefix)) {
+        return EXIT_FAILURE;
+    }
+    for (i = 0; i < module->imp_size; i++) {
+        if (!strcmp(module->imp[i].prefix, prefix)) {
+            return EXIT_FAILURE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/* logs directly */
+int
+lyp_check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
+                     struct lys_module *module, struct lys_node *parent)
+{
+    int i;
+    int size;
+    struct lys_tpdf *tpdf;
+    struct lys_node *node;
+
+    assert(id);
+
+    /* check id syntax */
+    if (!(id[0] >= 'A' && id[0] <= 'Z') && !(id[0] >= 'a' && id[0] <= 'z') && id[0] != '_') {
+        LOGVAL(LYE_INID, line, id, "invalid start character");
+        return EXIT_FAILURE;
+    }
+    for (i = 1; id[i]; i++) {
+        if (!(id[i] >= 'A' && id[i] <= 'Z') && !(id[i] >= 'a' && id[i] <= 'z')
+                && !(id[i] >= '0' && id[i] <= '9') && id[i] != '_' && id[i] != '-' && id[i] != '.') {
+            LOGVAL(LYE_INID, line, id, "invalid character");
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (i > 64) {
+        LOGWRN("Identifier \"%s\" is long, you should use something shorter.", id);
+    }
+
+    switch (type) {
+    case LY_IDENT_NAME:
+        /* check uniqueness of the node within its siblings */
+        if (!parent) {
+            break;
+        }
+
+        LY_TREE_FOR(parent->child, node) {
+            if (node->name == id) {
+                LOGVAL(LYE_INID, line, id, "name duplication");
+                return EXIT_FAILURE;
+            }
+        }
+        break;
+    case LY_IDENT_TYPE:
+        assert(module);
+
+        /* check collision with the built-in types */
+        if (!strcmp(id, "binary") || !strcmp(id, "bits") ||
+                !strcmp(id, "boolean") || !strcmp(id, "decimal64") ||
+                !strcmp(id, "empty") || !strcmp(id, "enumeration") ||
+                !strcmp(id, "identityref") || !strcmp(id, "instance-identifier") ||
+                !strcmp(id, "int8") || !strcmp(id, "int16") ||
+                !strcmp(id, "int32") || !strcmp(id, "int64") ||
+                !strcmp(id, "leafref") || !strcmp(id, "string") ||
+                !strcmp(id, "uint8") || !strcmp(id, "uint16") ||
+                !strcmp(id, "uint32") || !strcmp(id, "uint64") || !strcmp(id, "union")) {
+            LOGVAL(LYE_SPEC, line, "Typedef name duplicates built-in type.");
+            return EXIT_FAILURE;
+        }
+
+        /* check locally scoped typedefs (avoid name shadowing) */
+        for (; parent; parent = parent->parent) {
+            switch (parent->nodetype) {
+            case LYS_CONTAINER:
+                size = ((struct lys_node_container *)parent)->tpdf_size;
+                tpdf = ((struct lys_node_container *)parent)->tpdf;
+                break;
+            case LYS_LIST:
+                size = ((struct lys_node_list *)parent)->tpdf_size;
+                tpdf = ((struct lys_node_list *)parent)->tpdf;
+                break;
+            case LYS_GROUPING:
+                size = ((struct lys_node_grp *)parent)->tpdf_size;
+                tpdf = ((struct lys_node_grp *)parent)->tpdf;
+                break;
+            default:
+                continue;
+            }
+
+            if (dup_typedef_check(id, tpdf, size)) {
+                LOGVAL(LYE_DUPID, line, "typedef", id);
+                return EXIT_FAILURE;
+            }
+        }
+
+        /* check top-level names */
+        if (dup_typedef_check(id, module->tpdf, module->tpdf_size)) {
+            LOGVAL(LYE_DUPID, line, "typedef", id);
+            return EXIT_FAILURE;
+        }
+
+        /* check submodule's top-level names */
+        for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
+            if (dup_typedef_check(id, module->inc[i].submodule->tpdf, module->inc[i].submodule->tpdf_size)) {
+                LOGVAL(LYE_DUPID, line, "typedef", id);
+                return EXIT_FAILURE;
+            }
+        }
+
+        break;
+    case LY_IDENT_PREFIX:
+        assert(module);
+
+        /* check the module itself */
+        if (dup_prefix_check(id, module)) {
+            LOGVAL(LYE_DUPID, line, "prefix", id);
+            return EXIT_FAILURE;
+        }
+
+        /* and all its submodules */
+        for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
+            if (dup_prefix_check(id, (struct lys_module *)module->inc[i].submodule)) {
+                LOGVAL(LYE_DUPID, line, "prefix", id);
+                return EXIT_FAILURE;
+            }
+        }
+        break;
+    case LY_IDENT_FEATURE:
+        assert(module);
+
+        /* check feature name uniqness*/
+        /* check features in the current module */
+        if (dup_feature_check(id, module)) {
+            LOGVAL(LYE_DUPID, line, "feature", id);
+            return EXIT_FAILURE;
+        }
+
+        /* and all its submodules */
+        for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
+            if (dup_feature_check(id, (struct lys_module *)module->inc[i].submodule)) {
+                LOGVAL(LYE_DUPID, line, "feature", id);
+                return EXIT_FAILURE;
+            }
+        }
+        break;
+
+    default:
+        /* no check required */
+        break;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/* logs directly */
+int
+lyp_check_date(const char *date, unsigned int line)
+{
+    int i;
+
+    assert(date);
+
+    if (strlen(date) != LY_REV_SIZE - 1) {
+        goto error;
+    }
+
+    for (i = 0; i < LY_REV_SIZE - 1; i++) {
+        if (i == 4 || i == 7) {
+            if (date[i] != '-') {
+                goto error;
+            }
+        } else if (!isdigit(date[i])) {
+            goto error;
+        }
+    }
+
+    return EXIT_SUCCESS;
+
+error:
+
+    LOGVAL(LYE_INDATE, line, date);
+    return EXIT_FAILURE;
+}
+
+/* does not log */
+int
+lyp_check_mandatory(struct lys_node *node)
+{
+    struct lys_node *child;
+
+    assert(node);
+
+    if (node->flags & LYS_MAND_TRUE) {
+        return EXIT_FAILURE;
+    }
+
+    if (node->nodetype == LYS_CASE || node->nodetype == LYS_CHOICE) {
+        LY_TREE_FOR(node->child, child) {
+            if (lyp_check_mandatory(child)) {
+                return EXIT_FAILURE;
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int
+lyp_check_status(uint8_t flags1, struct lys_module *mod1, const char *name1,
+                 uint8_t flags2, struct lys_module *mod2, const char *name2, unsigned int line)
 {
     uint8_t flg1, flg2;
 

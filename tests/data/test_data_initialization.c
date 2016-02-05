@@ -77,11 +77,11 @@ generic_init(char *config_file, char *yang_file, char *yang_folder)
     close(fd);
     fd = -1;
 
-    if (!lys_parse_data(ctx, schema, yang_format)) {
+    if (!lys_parse_mem(ctx, schema, yang_format)) {
         goto error;
     }
 
-    root = lyd_parse_data(ctx, config, in_format, LYD_OPT_STRICT);
+    root = lyd_parse_mem(ctx, config, in_format, LYD_OPT_STRICT);
     if (!root) {
         goto error;
     }
@@ -128,7 +128,7 @@ teardown_f(void **state)
 {
     (void) state; /* unused */
     lyd_free(root);
-    ly_ctx_destroy(ctx);
+    ly_ctx_destroy(ctx, NULL);
 
     return 0;
 }
@@ -142,7 +142,7 @@ test_ctx_new_destroy(void **state)
         fail();
     }
 
-    ly_ctx_destroy(ctx);
+    ly_ctx_destroy(ctx, NULL);
 }
 
 static void
@@ -192,13 +192,32 @@ test_leaf_list_parameters(void **state)
     assert_string_equal("bar", name_result);
 }
 
+static void
+test_yanglibrary(void **state)
+{
+    (void) state; /* unused */
+    struct lyd_node *yanglib;
+    int rc;
+
+    yanglib = ly_ctx_info(ctx);
+    assert_non_null(yanglib);
+
+    rc = lyd_validate(yanglib, 0);
+
+    /* cleanup */
+    lyd_free(yanglib);
+
+    assert_int_equal(rc, 0);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
                     cmocka_unit_test(test_ctx_new_destroy),
                     cmocka_unit_test_setup_teardown(test_container_name, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_leaf_name, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_leaf_list_parameters, setup_f, teardown_f), };
+                    cmocka_unit_test_setup_teardown(test_leaf_list_parameters, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_yanglibrary, setup_f, teardown_f), };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

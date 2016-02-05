@@ -27,6 +27,9 @@
 
 /**
  * @defgroup xmlparser XML Parser
+ *
+ * Simplified libyang XML parser for XML data modeled by YANG.
+ *
  * @{
  */
 
@@ -113,52 +116,78 @@ struct lyxml_elem {
  */
 
 /**
+ * @defgroup xmlreadoptions XML parser options
+ * @ingroup xmlparser
+ *
+ * Various options to change behavior of XML read functions (lyxml_parse_*()).
+ *
+ * @{
+ */
+#define LYXML_PARSE_MULTIROOT 0x01 /**< By default, XML is supposed to be well-formed so the input file or memory chunk
+                                        contains only a single XML tree. This option make parser to read multiple XML
+                                        trees from a single source (regular file terminated by EOF or memory chunk
+                                        terminated by NULL byte). In such a case, the returned XML element has other
+                                        siblings representing the other XML trees from the source. */
+
+/**
+ * @}
+ */
+
+/**
  * @brief Parse XML from in-memory string
  *
  * @param[in] ctx libyang context to use
  * @param[in] data Pointer to a NULL-terminated string containing XML data to
  * parse.
- * @param[in] options Parser options. Currently ignored, no option defined yet.
- * @return pointer to root of the parsed XML document tree.
+ * @param[in] options Parser options, see @ref xmlreadoptions.
+ * @return Pointer to the root of the parsed XML document tree or NULL in case of empty \p data. To free the
+ *         returned data, use lyxml_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case
+ *         of error, #ly_errno contains appropriate error code (see #LY_ERR).
  */
-struct lyxml_elem *lyxml_read_data(struct ly_ctx *ctx, const char *data, int options);
+struct lyxml_elem *lyxml_parse_mem(struct ly_ctx *ctx, const char *data, int options);
 
 /**
  * @brief Parse XML from filesystem
  *
  * @param[in] ctx libyang context to use
  * @param[in] filename Path to the file where read data to parse
- * @param[in] options Parser options. Currently ignored, no option defined yet.
- * @return pointer to root of the parsed XML document tree.
+ * @param[in] options Parser options, see @ref xmlreadoptions.
+ * @return Pointer to the root of the parsed XML document tree or NULL in case of empty file. To free the
+ *         returned data, use lyxml_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case
+ *         of error, #ly_errno contains appropriate error code (see #LY_ERR).
  */
-struct lyxml_elem *lyxml_read_path(struct ly_ctx *ctx, const char *filename, int options);
+struct lyxml_elem *lyxml_parse_path(struct ly_ctx *ctx, const char *filename, int options);
 
 /**
- * @defgroup xmldumpoptions XML dump options
+ * @defgroup xmldumpoptions XML printer options
  * @ingroup xmlparser
  *
- * Various options to change behavior of XML dump functions (lyxml_dump()).
+ * Various options to change behavior of XML dump functions (lyxml_print_*()).
  *
  * When no option is specified (value 0), dumper prints all the content at once.
  *
  * @{
  */
-#define LYXML_DUMP_OPEN   0x01  /**< print only the open part of the XML element.
-                                     If used in combination with #LYXML_DUMP_CLOSE, it prints the element without
-                                     its children: \<element/\>. If none of these two options is used, the element
-                                     is printed including all its children. */
-#define LYXML_DUMP_FORMAT 0x02  /**< print format output.
-                                     If option is not used, the element and its children are printed without indent.
-                                     If used in combination with #LYXML_DUMP_CLOSE or LYXML_DUMP_ATTRS or LYXML_DUMP_OPEN,
-                                     it has no effect.*/
-#define LYXML_DUMP_CLOSE  0x04  /**< print only the closing part of the XML element.
-                                     If used in combination with #LYXML_DUMP_OPEN, it prints the element without
-                                     its children: \<element/\>. If none of these two options is used, the element
-                                     is printed including all its children. */
-#define LYXML_DUMP_ATTRS  0x08  /**< dump only attributes and namespace declarations of the element (element name
-                                     is not printed). This option cannot be used in combination with
-                                     #LYXML_DUMP_OPEN and/or #LYXML_DUMP_CLOSE */
-
+#define LYXML_PRINT_OPEN   0x01  /**< print only the open part of the XML element.
+                                   If used in combination with #LYXML_PRINT_CLOSE, it prints the element without
+                                   its children: \<element/\>. If none of these two options is used, the element
+                                   is printed including all its children. */
+#define LYXML_PRINT_FORMAT 0x02  /**< format the output.
+                                   If option is not used, the element and its children are printed without indentantion.
+                                   If used in combination with #LYXML_PRINT_CLOSE or LYXML_PRINT_ATTRS or LYXML_PRINT_OPEN,
+                                   it has no effect.*/
+#define LYXML_PRINT_CLOSE  0x04  /**< print only the closing part of the XML element.
+                                   If used in combination with #LYXML_PRINT_OPEN, it prints the element without
+                                   its children: \<element/\>. If none of these two options is used, the element
+                                   is printed including all its children. */
+#define LYXML_PRINT_ATTRS  0x08  /**< dump only attributes and namespace declarations of the element (element name
+                                   is not printed). This option cannot be used in combination with
+                                   #LYXML_PRINT_OPEN and/or #LYXML_PRINT_CLOSE */
+#define LYXML_PRINT_SIBLINGS 0x10/**< dump all top-level siblings. By default, the given XML element is supposed to be
+                                   the only root element (and document is supposed to be well-formed XML). With this
+                                   option the printer consider that the given XML element can has some sibling
+                                   elements and print them all (so the given element is not necessarily printed as
+                                   the first one). */
 
 /**
  * @}
@@ -167,14 +196,14 @@ struct lyxml_elem *lyxml_read_path(struct ly_ctx *ctx, const char *filename, int
 /**
  * @brief Dump XML tree to a IO stream
  *
- * To write data into a file descriptor instead of file stream, use lyxml_dump_fd().
+ * To write data into a file descriptor instead of file stream, use lyxml_print_fd().
  *
  * @param[in] stream IO stream to print out the tree.
  * @param[in] elem Root element of the XML tree to print
  * @param[in] options Dump options, see @ref xmldumpoptions.
  * @return number of printed characters.
  */
-int lyxml_dump_file(FILE * stream, const struct lyxml_elem *elem, int options);
+int lyxml_print_file(FILE * stream, const struct lyxml_elem *elem, int options);
 
 /**
  * @brief Dump XML tree to a IO stream
@@ -186,7 +215,7 @@ int lyxml_dump_file(FILE * stream, const struct lyxml_elem *elem, int options);
  * @param[in] options Dump options, see @ref xmldumpoptions.
  * @return number of printed characters.
  */
-int lyxml_dump_fd(int fd, const struct lyxml_elem *elem, int options);
+int lyxml_print_fd(int fd, const struct lyxml_elem *elem, int options);
 
 /**
  * @brief Dump XML tree to a IO stream
@@ -199,7 +228,7 @@ int lyxml_dump_fd(int fd, const struct lyxml_elem *elem, int options);
  * @param[in] options Dump options, see @ref xmldumpoptions.
  * @return number of printed characters.
  */
-int lyxml_dump_mem(char **strp, const struct lyxml_elem *elem, int options);
+int lyxml_print_mem(char **strp, const struct lyxml_elem *elem, int options);
 
 /**
  * @brief Dump XML tree to a IO stream
@@ -212,7 +241,7 @@ int lyxml_dump_mem(char **strp, const struct lyxml_elem *elem, int options);
  * @param[in] options Dump options, see @ref xmldumpoptions.
  * @return number of printed characters.
  */
-int lyxml_dump_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyxml_elem *elem, int options);
+int lyxml_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyxml_elem *elem, int options);
 
 /**
  * @brief Free (and unlink from the XML tree) the specified element with all

@@ -258,6 +258,7 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
     int i;
     int flag = 0, flag2;
     const char *str;
+    struct lys_module *mod;
 
     if (type->module_name) {
         str = transform_json2xml(module, type->module_name, NULL, NULL, NULL);
@@ -311,11 +312,13 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
         break;
     case LY_TYPE_IDENT:
         yang_print_open(out, &flag);
-        if (module == type->info.ident.ref->module) {
+        mod = type->info.ident.ref->module->type ?
+                        ((struct lys_submodule *)type->info.ident.ref->module)->belongsto :
+                        type->info.ident.ref->module;
+        if (module == mod) {
             ly_print(out, "%*sbase %s;\n", LEVEL, INDENT, type->info.ident.ref->name);
         } else {
-            ly_print(out, "%*sbase %s:%s;\n", LEVEL, INDENT, type->info.ident.ref->module->prefix,
-                    type->info.ident.ref->name);
+            ly_print(out, "%*sbase %s:%s;\n", LEVEL, INDENT, mod->prefix, type->info.ident.ref->name);
         }
         break;
     case LY_TYPE_INST:
@@ -655,8 +658,8 @@ yang_print_container(struct lyout *out, int level, const struct lys_node *node)
     }
 
     LY_TREE_FOR(node->child, sub) {
-        /* augment */
-        if (sub->parent != node) {
+        /* augment and data from submodules */
+        if (sub->module != node->module) {
             continue;
         }
         yang_print_open(out, &flag);
@@ -690,8 +693,8 @@ yang_print_case(struct lyout *out, int level, const struct lys_node *node)
     }
 
     LY_TREE_FOR(node->child, sub) {
-        /* augment */
-        if (sub->parent != node) {
+        /* augment and data from submodules */
+        if (sub->module != node->module) {
             continue;
         }
         yang_print_snode(out, level, sub,
@@ -729,8 +732,8 @@ yang_print_choice(struct lyout *out, int level, const struct lys_node *node)
     }
 
     LY_TREE_FOR(node->child, sub) {
-        /* augment */
-        if (sub->parent != node) {
+        /* augment and data from submodules */
+        if (sub->module != node->module) {
             continue;
         }
         yang_print_snode(out, level, sub,
@@ -890,8 +893,8 @@ yang_print_list(struct lyout *out, int level, const struct lys_node *node)
         yang_print_typedef(out, level, list->module, &list->tpdf[i]);
     }
     LY_TREE_FOR(node->child, sub) {
-        /* augment */
-        if (sub->parent != node) {
+        /* augment and data from submodules */
+        if (sub->module != node->module) {
             continue;
         }
         yang_print_snode(out, level, sub,
@@ -981,8 +984,8 @@ yang_print_input_output(struct lyout *out, int level, const struct lys_node *nod
     }
 
     LY_TREE_FOR(node->child, sub) {
-        /* augment */
-        if (sub->parent != node) {
+        /* augment and data from submodules */
+        if (sub->module != node->module) {
             continue;
         }
         yang_print_snode(out, level, sub,
@@ -1017,6 +1020,10 @@ yang_print_rpc(struct lyout *out, int level, const struct lys_node *node)
     }
 
     LY_TREE_FOR(node->child, sub) {
+        /* augment and data from submodules */
+        if (sub->module != node->module) {
+            continue;
+        }
         yang_print_open(out, &flag);
         yang_print_snode(out, level, sub, LYS_GROUPING | LYS_INPUT | LYS_OUTPUT);
     }
@@ -1048,8 +1055,8 @@ yang_print_notif(struct lyout *out, int level, const struct lys_node *node)
     }
 
     LY_TREE_FOR(node->child, sub) {
-        /* augment */
-        if (sub->parent != node) {
+        /* augment and data from submodules */
+        if (sub->module != node->module) {
             continue;
         }
         yang_print_open(out, &flag);
@@ -1116,7 +1123,8 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
         ly_print(out, "submodule %s {%s\n", module->name, (module->deviated ? " // DEVIATED" : ""));
         level++;
         if (module->version) {
-            ly_print(out, "%*syang-version %s;\n", LEVEL, INDENT, module->version == 1 ? "1" : "1.1");
+            ly_print(out, "%*syang-version %s;\n", LEVEL, INDENT,
+                     ((struct lys_submodule *)module)->belongsto->version == 2 ? "1.1" : "1");
         }
         ly_print(out, "%*sbelongs-to %s {\n", LEVEL, INDENT, ((struct lys_submodule *)module)->belongsto->name);
         level++;
@@ -1127,7 +1135,7 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
         ly_print(out, "module %s {%s\n", module->name, (module->deviated ? " // DEVIATED" : ""));
         level++;
         if (module->version) {
-            ly_print(out, "%*syang-version %s;\n", LEVEL, INDENT, module->version == 1 ? "1" : "1.1");
+            ly_print(out, "%*syang-version %s;\n", LEVEL, INDENT, module->version == 2 ? "1.1" : "1");
         }
         ly_print(out, "%*snamespace \"%s\";\n", LEVEL, INDENT, module->ns);
         ly_print(out, "%*sprefix %s;\n", LEVEL, INDENT, module->prefix);
@@ -1138,6 +1146,9 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
         ly_print(out, "\n");
     }
     for (i = 0; i < module->imp_size; i++) {
+        if (module->imp[i].external) {
+            continue;
+        }
         ly_print(out, "%*simport \"%s\" {\n", LEVEL, INDENT, module->imp[i].module->name);
         level++;
         ly_print(out, "%*sprefix %s;\n", LEVEL, INDENT, module->imp[i].prefix);
@@ -1148,6 +1159,9 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
         ly_print(out, "%*s}", LEVEL, INDENT);
     }
     for (i = 0; i < module->inc_size; i++) {
+        if (module->inc[i].external) {
+            continue;
+        }
         if (module->inc[i].rev[0]) {
             ly_print(out, "%*sinclude \"%s\" {\n", LEVEL, INDENT, module->inc[i].submodule->name);
             level++;
@@ -1219,6 +1233,9 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
     }
 
     LY_TREE_FOR(module->data, node) {
+        if (node->module != module) {
+            continue;
+        }
         ly_print(out, "\n");
         switch(node->nodetype) {
         case LYS_RPC:

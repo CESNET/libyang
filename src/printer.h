@@ -60,8 +60,8 @@ int yang_print_model(struct lyout *out, const struct lys_module *module);
 int tree_print_model(struct lyout *out, const struct lys_module *module);
 int info_print_model(struct lyout *out, const struct lys_module *module, const char *target_node);
 
-int json_print_data(struct lyout *out, const struct lyd_node *root);
-int xml_print_data(struct lyout *out, const struct lyd_node *root, int format);
+int json_print_data(struct lyout *out, const struct lyd_node *root, int options);
+int xml_print_data(struct lyout *out, const struct lyd_node *root, int format, int options);
 
 /* 0 - same, 1 - different */
 int nscmp(const struct lyd_node *node1, const struct lyd_node *node2);

@@ -37,7 +37,8 @@
 
 #define IETF_INET_TYPES_PATH "../models/ietf-inet-types@2013-07-15.h"
 #define IETF_YANG_TYPES_PATH "../models/ietf-yang-types@2013-07-15.h"
-#define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2015-07-03.h"
+#define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2016-02-01.h"
+#define IETF_YANG_LIB_REV "2016-02-01"
 
 #include IETF_INET_TYPES_PATH
 #include IETF_YANG_TYPES_PATH
@@ -73,7 +74,7 @@ ly_ctx_new(const char *search_dir)
             LOGERR(LY_ESYS, "Unable to use search directory \"%s\" (%s)",
                    search_dir, strerror(errno));
             free(cwd);
-            ly_ctx_destroy(ctx);
+            ly_ctx_destroy(ctx, NULL);
             return NULL;
         }
         ctx->models.search_path = get_current_dir_name();
@@ -83,23 +84,23 @@ ly_ctx_new(const char *search_dir)
     ctx->models.module_set_id = 1;
 
     /* load ietf-inet-types */
-    ctx->models.list[0] = (struct lys_module *)lys_parse_data(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN);
+    ctx->models.list[0] = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN);
     if (!ctx->models.list[0]) {
-        ly_ctx_destroy(ctx);
+        ly_ctx_destroy(ctx, NULL);
         return NULL;
     }
 
     /* load ietf-yang-types */
-    ctx->models.list[1] = (struct lys_module *)lys_parse_data(ctx, (char *)ietf_yang_types_2013_07_15_yin, LYS_IN_YIN);
+    ctx->models.list[1] = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_yang_types_2013_07_15_yin, LYS_IN_YIN);
     if (!ctx->models.list[1]) {
-        ly_ctx_destroy(ctx);
+        ly_ctx_destroy(ctx, NULL);
         return NULL;
     }
 
     /* load ietf-yang-library */
-    ctx->models.list[2] = (struct lys_module *)lys_parse_data(ctx, (char *)ietf_yang_library_2015_07_03_yin, LYS_IN_YIN);
+    ctx->models.list[2] = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_yang_library_2016_02_01_yin, LYS_IN_YIN);
     if (!ctx->models.list[2]) {
-        ly_ctx_destroy(ctx);
+        ly_ctx_destroy(ctx, NULL);
         return NULL;
     }
 
@@ -141,7 +142,7 @@ ly_ctx_get_searchdir(const struct ly_ctx *ctx)
 }
 
 API void
-ly_ctx_destroy(struct ly_ctx *ctx)
+ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     if (!ctx) {
         return;
@@ -149,7 +150,7 @@ ly_ctx_destroy(struct ly_ctx *ctx)
 
     /* models list */
     while (ctx->models.used) {
-        lys_free(ctx->models.list[0], 1);
+        lys_free(ctx->models.list[0], 1, private_destructor);
     }
     free(ctx->models.search_path);
     free(ctx->models.list);
@@ -171,15 +172,15 @@ ly_ctx_get_submodule(const struct lys_module *module, const char *name, const ch
         return NULL;
     }
 
-    /* TODO search also for submodules not directly available from the main module */
-
-    /* search in modules included by the main module */
+    /* make sure that the provided module is not submodule */
     if (module->type) {
         module = ((struct lys_submodule *)module)->belongsto;
     }
+
+    /* search in submodules list */
     for (i = 0; i < module->inc_size; i++) {
         result = module->inc[i].submodule;
-        if (strcmp(name, result->name)) {
+        if (!result || strcmp(name, result->name)) {
             continue;
         }
 
@@ -286,14 +287,14 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
             LOGERR(LY_EVALID, "User module retrieval callback failed!");
             return NULL;
         }
-        module = lys_parse_data(ctx, module_data, format);
+        module = lys_parse_mem(ctx, module_data, format);
         if (module_data_free) {
             module_data_free(module_data);
         } else {
             free(module_data);
         }
     } else {
-        module = lyp_search_file(ctx, NULL, name, revision);
+        module = lyp_search_file(ctx, NULL, name, revision, NULL);
     }
 
     return module;
@@ -348,52 +349,12 @@ ly_ctx_get_submodule_names(const struct ly_ctx *ctx, const char *module_name)
         return NULL;
     }
 
-    for (i = 0; i < mod->inc_size; i++) {
+    for (i = 0; i < mod->inc_size && mod->inc[i].submodule; i++) {
         result[i] = mod->inc[i].submodule->name;
     }
     result[i] = NULL;
 
     return result;
-}
-
-API const struct lys_node *
-ly_ctx_get_node(const struct ly_ctx *ctx, const char *nodeid)
-{
-    const struct lys_node *ret;
-    const struct lys_module *module;
-    char *mod_name;
-    int parsed;
-
-    if (!ctx || !nodeid) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
-    if ((nodeid[0] != '/') || ((parsed = parse_identifier(nodeid + 1)) < 1)) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
-    /* get the correct module */
-    mod_name = strndup(nodeid + 1, parsed);
-    if (!mod_name) {
-        LOGMEM;
-        return NULL;
-    }
-    module = ly_ctx_get_module(ctx, mod_name, NULL);
-    free(mod_name);
-    if (!module) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
-    /* now we can parse the whole schema */
-    if (resolve_schema_nodeid(nodeid, NULL, module, LYS_AUGMENT, &ret)) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
-    return ret;
 }
 
 static int
@@ -413,7 +374,7 @@ ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod)
     }
 
     /* submodule features */
-    for (i = 0; i < cur_mod->inc_size; ++i) {
+    for (i = 0; i < cur_mod->inc_size && cur_mod->inc[i].submodule; ++i) {
         for (j = 0; j < cur_mod->inc[i].submodule->features_size; ++j) {
             if (!(cur_mod->inc[i].submodule->features[j].flags & LYS_FENABLED)) {
                 continue;
@@ -438,11 +399,7 @@ ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod, struct ly_ct
     for (i = 0; i < ctx->models.used; ++i) {
         mod_iter = ctx->models.list[i];
         for (k = 0; k < mod_iter->deviation_size; ++k) {
-            if (mod_iter->deviation[k].target->module->type) {
-                target_module = ((struct lys_submodule *)mod_iter->deviation[k].target->module)->belongsto;
-            } else {
-                target_module = mod_iter->deviation[k].target->module;
-            }
+            target_module = mod_iter->deviation[k].target->module;
 
             /* we found a module deviating our module */
             if (target_module == cur_mod) {
@@ -460,14 +417,9 @@ ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod, struct ly_ct
             }
         }
 
-        for (j = 0; j < mod_iter->inc_size; ++j) {
+        for (j = 0; j < mod_iter->inc_size && mod_iter->inc[j].submodule; ++j) {
             for (k = 0; k < mod_iter->inc[j].submodule->deviation_size; ++k) {
-                if (mod_iter->inc[j].submodule->deviation[k].target->module->type) {
-                    target_module = ((struct lys_submodule *)
-                                    mod_iter->inc[j].submodule->deviation[k].target->module)->belongsto;
-                } else {
-                    target_module = mod_iter->inc[j].submodule->deviation[k].target->module;
-                }
+                target_module = mod_iter->inc[j].submodule->deviation[k].target->module;
 
                 /* we found a submodule deviating our module */
                 if (target_module == cur_mod) {
@@ -502,7 +454,7 @@ ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod)
         cont = lyd_new(parent, NULL, "submodules");
     }
 
-    for (i = 0; i < cur_mod->inc_size; ++i) {
+    for (i = 0; i < cur_mod->inc_size && cur_mod->inc[i].submodule; ++i) {
         item = lyd_new(cont, NULL, "submodule");
         if (!item) {
             return EXIT_FAILURE;
@@ -532,15 +484,13 @@ ly_ctx_info(struct ly_ctx *ctx)
     const struct lys_module *mod;
     struct lyd_node *root, *cont;
 
-    mod = ly_ctx_get_module(ctx, "ietf-yang-library", NULL);
-    if (!mod) {
-        mod = lyp_search_file(ctx, NULL, "ietf-yang-library", NULL);
-    }
-    if (!mod || !mod->data || strcmp(mod->data->next->name, "modules")) {
+    mod = ly_ctx_get_module(ctx, "ietf-yang-library", IETF_YANG_LIB_REV);
+    if (!mod || !mod->data) {
+        LOGINT;
         return NULL;
     }
 
-    root = lyd_new(NULL, mod, "modules");
+    root = lyd_new(NULL, mod, "modules-state");
     if (!root) {
         return NULL;
     }
@@ -579,12 +529,12 @@ ly_ctx_info(struct ly_ctx *ctx)
             return NULL;
         }
         if (ctx->models.list[i]->implemented
-                && !lyd_new_leaf(cont, NULL, "conformance", "implement")) {
+                && !lyd_new_leaf(cont, NULL, "conformance-type", "implement")) {
             lyd_free(root);
             return NULL;
         }
         if (!ctx->models.list[i]->implemented
-                && !lyd_new_leaf(cont, NULL, "conformance", "import")) {
+                && !lyd_new_leaf(cont, NULL, "conformance-type", "import")) {
             lyd_free(root);
             return NULL;
         }

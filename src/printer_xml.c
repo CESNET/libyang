@@ -43,7 +43,7 @@ void xml_print_node(struct lyout *out, int level, const struct lyd_node *node, i
 static void
 xml_print_ns(struct lyout *out, const struct lyd_node *node)
 {
-    struct lyd_node *next, *cur;
+    struct lyd_node *next, *cur, *node2;
     struct lyd_attr *attr;
     struct mlist {
         struct mlist *next;
@@ -73,26 +73,29 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node)
     }
 
     if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
-        LY_TREE_DFS_BEGIN(node->child, next, cur) {
-            for (attr = cur->attr; attr; attr = attr->next) {
-                for (mlist_new = mlist; mlist_new; mlist_new = mlist_new->next) {
-                    if (attr->module == mlist_new->module) {
-                        break;
+        node2 = (struct lyd_node *)node;
+        LY_TREE_FOR(node->child, node2) {
+            LY_TREE_DFS_BEGIN(node2, next, cur) {
+                for (attr = cur->attr; attr; attr = attr->next) {
+                    for (mlist_new = mlist; mlist_new; mlist_new = mlist_new->next) {
+                        if (attr->module == mlist_new->module) {
+                            break;
+                        }
                     }
-                }
 
-                if (!mlist_new) {
-                    mlist_new = malloc(sizeof *mlist_new);
                     if (!mlist_new) {
-                        LOGMEM;
-                        goto print;
+                        mlist_new = malloc(sizeof *mlist_new);
+                        if (!mlist_new) {
+                            LOGMEM;
+                            goto print;
+                        }
+                        mlist_new->next = mlist;
+                        mlist_new->module = attr->module;
+                        mlist = mlist_new;
                     }
-                    mlist_new->next = mlist;
-                    mlist_new->module = attr->module;
-                    mlist = mlist_new;
                 }
-            }
-        LY_TREE_DFS_END(node->child, next, cur)}
+            LY_TREE_DFS_END(node2, next, cur)}
+        }
     }
 
 print:
@@ -232,7 +235,9 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
 
     case LY_TYPE_LEAFREF:
         ly_print(out, ">");
-        lyxml_dump_text(out, ((struct lyd_node_leaf_list *)(leaf->value.leafref))->value_str);
+        if (leaf->value.leafref) {
+            lyxml_dump_text(out, ((struct lyd_node_leaf_list *)(leaf->value.leafref))->value_str);
+        }
         ly_print(out, "</%s>", node->schema->name);
         break;
 
@@ -364,7 +369,7 @@ xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int 
 
     /* dump the anyxml into a buffer */
     stream = open_memstream(&buf, &buf_size);
-    lyxml_dump_file(stream, axml->value, LYXML_DUMP_FORMAT);
+    lyxml_print_file(stream, axml->value, LYXML_PRINT_FORMAT);
     fclose(stream);
 
     ly_print(out, "%*s%s", LEVEL, INDENT, buf);
@@ -399,13 +404,16 @@ xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int to
 }
 
 int
-xml_print_data(struct lyout *out, const struct lyd_node *root, int format)
+xml_print_data(struct lyout *out, const struct lyd_node *root, int format, int options)
 {
     const struct lyd_node *node;
 
     /* content */
     LY_TREE_FOR(root, node) {
         xml_print_node(out, format ? 1 : 0, node, 1);
+        if (!(options & LYP_WITHSIBLINGS)) {
+            break;
+        }
     }
 
     return EXIT_SUCCESS;

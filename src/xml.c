@@ -176,39 +176,39 @@ static void
 lyxml_correct_elem_ns(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns, int correct_attrs)
 {
     const struct lyxml_ns *tmp_ns;
-    struct lyxml_elem *elem_root, *ns_root, *tmp;
+    struct lyxml_elem *elem_root, *ns_root, *tmp, *iter;
     struct lyxml_attr *attr;
 
     /* find the root of elem */
     for (elem_root = elem; elem_root->parent; elem_root = elem_root->parent);
 
-    LY_TREE_DFS_BEGIN(elem, tmp, elem) {
-        if (elem->ns) {
+    LY_TREE_DFS_BEGIN(elem, tmp, iter) {
+        if (iter->ns) {
             /* find the root of elem NS */
-            for (ns_root = elem->ns->parent; ns_root->parent; ns_root = ns_root->parent);
+            for (ns_root = iter->ns->parent; ns_root; ns_root = ns_root->parent);
 
             /* elem NS is defined outside elem subtree */
             if (ns_root != elem_root) {
                 if (copy_ns) {
-                    tmp_ns = elem->ns;
+                    tmp_ns = iter->ns;
                     /* we may have already copied the NS over? */
-                    elem->ns = lyxml_get_ns(elem, tmp_ns->prefix);
+                    iter->ns = lyxml_get_ns(iter, tmp_ns->prefix);
 
                     /* we haven't copied it over, copy it now */
-                    if (!elem->ns) {
-                        elem->ns = (struct lyxml_ns *)lyxml_dup_attr(ctx, elem, (struct lyxml_attr *)tmp_ns);
+                    if (!iter->ns) {
+                        iter->ns = (struct lyxml_ns *)lyxml_dup_attr(ctx, iter, (struct lyxml_attr *)tmp_ns);
                     }
                 } else {
-                    elem->ns = NULL;
+                    iter->ns = NULL;
                 }
             }
         }
         if (correct_attrs) {
-            LY_TREE_FOR(elem->attr, attr) {
+            LY_TREE_FOR(iter->attr, attr) {
                 lyxml_correct_attr_ns(ctx, attr, elem_root, copy_ns);
             }
         }
-        LY_TREE_DFS_END(elem, tmp, elem);
+        LY_TREE_DFS_END(elem, tmp, iter);
     }
 }
 
@@ -1122,17 +1122,20 @@ error:
 
 /* logs directly */
 API struct lyxml_elem *
-lyxml_read_data(struct ly_ctx *ctx, const char *data, int UNUSED(options))
+lyxml_parse_mem(struct ly_ctx *ctx, const char *data, int options)
 {
     const char *c = data;
     unsigned int len;
-    struct lyxml_elem *root = NULL;
+    struct lyxml_elem *root, *first = NULL, *next;
+
+    ly_errno = LY_SUCCESS;
 
 #ifndef NDEBUG
     /* TODO: threads support */
     lineno = 1;
 #endif
 
+repeat:
     /* process document */
     while (*c) {
         if (is_xmlws(*c)) {
@@ -1170,7 +1173,18 @@ lyxml_read_data(struct ly_ctx *ctx, const char *data, int UNUSED(options))
 
     root = parse_elem(ctx, c, &len, NULL);
     if (!root) {
+        if (first) {
+            LY_TREE_FOR_SAFE(first, next, root) {
+                lyxml_free(ctx, root);
+            }
+        }
         return NULL;
+    } else if (!first) {
+        first = root;
+    } else {
+        first->prev->next = root;
+        root->prev = first->prev;
+        first->prev = root;
     }
     c += len;
 
@@ -1179,14 +1193,18 @@ lyxml_read_data(struct ly_ctx *ctx, const char *data, int UNUSED(options))
      */
     ign_xmlws(c);
     if (*c) {
-        LOGWRN("There are some not parsed data:\n%s", c);
+        if (options & LYXML_PARSE_MULTIROOT) {
+            goto repeat;
+        } else {
+            LOGWRN("There are some not parsed data:\n%s", c);
+        }
     }
 
-    return root;
+    return first;
 }
 
 API struct lyxml_elem *
-lyxml_read_path(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
+lyxml_parse_path(struct ly_ctx *ctx, const char *filename, int options)
 {
     struct lyxml_elem *elem = NULL;
     struct stat sb;
@@ -1211,13 +1229,13 @@ lyxml_read_path(struct ly_ctx *ctx, const char *filename, int UNUSED(options))
         LOGERR(LY_EINVAL, "File \"%s\" not a file.\n", filename);
         goto error;
     }
-    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    addr = mmap(NULL, sb.st_size + 1, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         LOGERR(LY_EMEM,"Map file into memory failed (%s()).", __func__);
         goto error;
     }
 
-    elem = lyxml_read_data(ctx, addr, 0);
+    elem = lyxml_parse_mem(ctx, addr, options);
     munmap(addr, sb.st_size);
     close(fd);
 
@@ -1279,7 +1297,7 @@ dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options)
         }
     }
 
-    delim = delim_outer = (options & LYXML_DUMP_FORMAT) ? "\n" : "";
+    delim = delim_outer = (options & LYXML_PRINT_FORMAT) ? "\n" : "";
     indent = 2 * level;
     if ((e->flags & LYXML_ELEM_MIXED) || (e->parent && (e->parent->flags & LYXML_ELEM_MIXED))) {
         delim = "";
@@ -1289,14 +1307,14 @@ dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options)
         indent = 0;
     }
 
-    if (!(options & (LYXML_DUMP_OPEN|LYXML_DUMP_CLOSE|LYXML_DUMP_ATTRS)) || (options & LYXML_DUMP_OPEN))  {
+    if (!(options & (LYXML_PRINT_OPEN | LYXML_PRINT_CLOSE | LYXML_PRINT_ATTRS)) || (options & LYXML_PRINT_OPEN))  {
         /* opening tag */
         if (e->ns && e->ns->prefix) {
             size += ly_print(out, "%*s<%s:%s", indent, "", e->ns->prefix, e->name);
         } else {
             size += ly_print(out, "%*s<%s", indent, "", e->name);
         }
-    } else if (options & LYXML_DUMP_CLOSE) {
+    } else if (options & LYXML_PRINT_CLOSE) {
         indent = 0;
         goto close;
     }
@@ -1317,13 +1335,13 @@ dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options)
     }
 
     /* apply options */
-    if ((options & LYXML_DUMP_CLOSE) && (options & LYXML_DUMP_OPEN)) {
+    if ((options & LYXML_PRINT_CLOSE) && (options & LYXML_PRINT_OPEN)) {
         size += ly_print(out, "/>%s", delim);
         return size;
-    } else if (options & LYXML_DUMP_OPEN) {
+    } else if (options & LYXML_PRINT_OPEN) {
         ly_print(out, ">");
         return ++size;
-    } else if (options & LYXML_DUMP_ATTRS) {
+    } else if (options & LYXML_PRINT_ATTRS) {
         return size;
     }
 
@@ -1348,8 +1366,8 @@ dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options)
 
     /* go recursively */
     LY_TREE_FOR(e->child, child) {
-        if (options & LYXML_DUMP_FORMAT) {
-            size += dump_elem(out, child, level + 1, LYXML_DUMP_FORMAT);
+        if (options & LYXML_PRINT_FORMAT) {
+            size += dump_elem(out, child, level + 1, LYXML_PRINT_FORMAT);
         } else {
             size += dump_elem(out, child, level, 0);
         }
@@ -1366,8 +1384,30 @@ close:
     return size;
 }
 
+static int
+dump_siblings(struct lyout *out, const struct lyxml_elem *e, int options)
+{
+    const struct lyxml_elem *start, *iter;
+    int ret = 0;
+
+    if (e->parent) {
+        start = e->parent->child;
+    } else {
+        start = e;
+        while(start->prev && start->prev->next) {
+            start = start->prev;
+        }
+    }
+
+    LY_TREE_FOR(start, iter) {
+        ret += dump_elem(out, iter, 0, options);
+    }
+
+    return ret;
+}
+
 API int
-lyxml_dump_file(FILE *stream, const struct lyxml_elem *elem, int options)
+lyxml_print_file(FILE *stream, const struct lyxml_elem *elem, int options)
 {
     struct lyout out;
 
@@ -1378,11 +1418,15 @@ lyxml_dump_file(FILE *stream, const struct lyxml_elem *elem, int options)
     out.type = LYOUT_STREAM;
     out.method.f = stream;
 
-    return dump_elem(&out, elem, 0, options);
+    if (options & LYXML_PRINT_SIBLINGS) {
+        return dump_siblings(&out, elem, options);
+    } else {
+        return dump_elem(&out, elem, 0, options);
+    }
 }
 
 API int
-lyxml_dump_fd(int fd, const struct lyxml_elem *elem, int options)
+lyxml_print_fd(int fd, const struct lyxml_elem *elem, int options)
 {
     struct lyout out;
 
@@ -1393,11 +1437,15 @@ lyxml_dump_fd(int fd, const struct lyxml_elem *elem, int options)
     out.type = LYOUT_FD;
     out.method.fd = fd;
 
-    return dump_elem(&out, elem, 0, options);
+    if (options & LYXML_PRINT_SIBLINGS) {
+        return dump_siblings(&out, elem, options);
+    } else {
+        return dump_elem(&out, elem, 0, options);
+    }
 }
 
 API int
-lyxml_dump_mem(char **strp, const struct lyxml_elem *elem, int options)
+lyxml_print_mem(char **strp, const struct lyxml_elem *elem, int options)
 {
     struct lyout out;
     int r;
@@ -1411,14 +1459,18 @@ lyxml_dump_mem(char **strp, const struct lyxml_elem *elem, int options)
     out.method.mem.len = 0;
     out.method.mem.size = 0;
 
-    r = dump_elem(&out, elem, 0, options);
+    if (options & LYXML_PRINT_SIBLINGS) {
+        r = dump_siblings(&out, elem, options);
+    } else {
+        r = dump_elem(&out, elem, 0, options);
+    }
 
     *strp = out.method.mem.buf;
     return r;
 }
 
 API int
-lyxml_dump_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyxml_elem *elem, int options)
+lyxml_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyxml_elem *elem, int options)
 {
     struct lyout out;
 
@@ -1430,5 +1482,9 @@ lyxml_dump_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), vo
     out.method.clb.f = writeclb;
     out.method.clb.arg = arg;
 
-    return dump_elem(&out, elem, 0, options);
+    if (options & LYXML_PRINT_SIBLINGS) {
+        return dump_siblings(&out, elem, options);
+    } else {
+        return dump_elem(&out, elem, 0, options);
+    }
 }
