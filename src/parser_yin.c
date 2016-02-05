@@ -41,11 +41,11 @@
 #include "xml_internal.h"
 
 #define GETVAL(value, node, arg)                                    \
-	value = lyxml_get_attr(node, arg, NULL);                        \
-	if (!value) {                                                   \
-		LOGVAL(LYE_MISSARG, LOGLINE(node), arg, node->name);         \
-		goto error;                                                 \
-	}
+    value = lyxml_get_attr(node, arg, NULL);                        \
+    if (!value) {                                                   \
+        LOGVAL(LYE_MISSARG, LOGLINE(node), arg, node->name);         \
+        goto error;                                                 \
+    }
 
 /* parser.c */
 int dup_prefix_check(const char *prefix, struct lys_module *module);
