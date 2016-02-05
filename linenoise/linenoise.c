@@ -358,10 +358,10 @@ static int completeLine(struct linenoiseState *ls) {
         for (i = 1; i < lc.len; ++i) {
             for (j = 0; j < strlen(lc.cvec[i]); ++j) {
                 if (lc.cvec[i][j] != common[j]) {
-                    common[j] = '\0';
                     break;
                 }
             }
+            common[j] = '\0';
         }
 
         /* Path completions have a different hint */
