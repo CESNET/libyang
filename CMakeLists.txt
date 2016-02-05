@@ -60,6 +60,7 @@ set(libsrc
 	src/printer.c
 	src/xpath.c
 	src/printer_yang.c
+	src/printer_yin.c
 	src/printer_xml.c
 	src/printer_tree.c
 	src/printer_info.c

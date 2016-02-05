@@ -41,11 +41,11 @@
 #include "xml_internal.h"
 
 #define GETVAL(value, node, arg)                                    \
-	value = lyxml_get_attr(node, arg, NULL);                        \
-	if (!value) {                                                   \
-		LOGVAL(LYE_MISSARG, LOGLINE(node), arg, node->name);         \
-		goto error;                                                 \
-	}
+    value = lyxml_get_attr(node, arg, NULL);                        \
+    if (!value) {                                                   \
+        LOGVAL(LYE_MISSARG, LOGLINE(node), arg, node->name);         \
+        goto error;                                                 \
+    }
 
 /* parser.c */
 int dup_prefix_check(const char *prefix, struct lys_module *module);
@@ -591,6 +591,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             goto error;
         }
         GETVAL(value, yin->child, "name");
+        /* store in the JSON format */
+        value = transform_schema2json(module, value, LOGLINE(yin->child));
+        if (!value) {
+            goto error;
+        }
         if (unres_schema_add_str(module, unres, type, UNRES_TYPE_IDENTREF, value, LOGLINE(yin->child)) == -1) {
             goto error;
         }
