@@ -49,7 +49,7 @@
 static struct lyd_node *
 lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, LYD_FORMAT format, int options)
 {
-    struct lyxml_elem *xml;
+    struct lyxml_elem *xml, *xmlnext;
     struct lyd_node *result = NULL;
     int xmlopt = LYXML_PARSE_MULTIROOT;
 
@@ -67,7 +67,9 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
     case LYD_XML_FORMAT:
         xml = lyxml_parse_mem(ctx, data, xmlopt);
         result = lyd_parse_xml(ctx, &xml, options, parent);
-        lyxml_free(ctx, xml);
+        LY_TREE_FOR_SAFE(xml, xmlnext, xml) {
+            lyxml_free(ctx, xml);
+        }
         break;
     case LYD_JSON:
         result = lyd_parse_json(ctx, parent, data, options);
