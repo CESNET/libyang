@@ -45,28 +45,24 @@ LY_ERR ly_errno_main = LY_SUCCESS;
 #endif
 
 static void
+ly_errno_free(void *ptr)
+{
+    /* in __linux__ we use static memory in the main thread,
+     * so this check is for programs terminating the main()
+     * function by pthread_exit() :)
+     */
+    if (ptr != &ly_errno_main) {
+        free(ptr);
+    }
+}
+
+static void
 ly_errno_createkey(void)
 {
     int r;
-    void (*destr) (void *);
-
-#ifdef __linux__
-    if (getpid() == syscall(SYS_gettid)) {
-        /* main thread - use global variable instead of thread-specific variable.
-         * This is mainly for valgrind, because in case of the main thread the
-         * destructor registered by pthread_key_create() is not called since
-         * the main thread is terminated rather by return or exit than by
-         * pthread_exit(). */
-        destr = NULL;
-    } else {
-#else
-        {
-#endif /* __linux__ */
-        destr = free;
-    }
 
     /* initiate */
-    while ((r = pthread_key_create(&ly_errno_key, destr)) == EAGAIN);
+    while ((r = pthread_key_create(&ly_errno_key, ly_errno_free)) == EAGAIN);
     pthread_setspecific(ly_errno_key, NULL);
 }
 
