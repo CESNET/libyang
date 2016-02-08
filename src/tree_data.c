@@ -20,7 +20,6 @@
  *    software without specific prior written permission.
  */
 #define _GNU_SOURCE
-#define _XOPEN_SOURCE 700
 
 #include <assert.h>
 #include <ctype.h>

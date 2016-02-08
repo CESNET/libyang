@@ -19,7 +19,6 @@
  *    software without specific prior written permission.
  */
 
-#define _XOPEN_SOURCE 700
 #define _GNU_SOURCE
 
 #include <ctype.h>
@@ -214,11 +213,9 @@ static void
 cast_string_recursive(struct lyd_node *node, int fake_cont, enum lyxp_node_type root_type, uint16_t indent, char **str,
                       uint16_t *used, uint16_t *size)
 {
-    FILE *stream;
     char *buf, *line, *ptr;
     const char *value_str;
     struct lyd_node *child;
-    size_t buf_size;
 
     if ((root_type == LYXP_NODE_ROOT_CONFIG) && (node->schema->flags & LYS_CONFIG_R)) {
         return;
@@ -275,10 +272,7 @@ cast_string_recursive(struct lyd_node *node, int fake_cont, enum lyxp_node_type 
         break;
 
     case LYS_ANYXML:
-        stream = open_memstream(&buf, &buf_size);
-        lyxml_print_file(stream, ((struct lyd_node_anyxml *)node)->value->child, 0);
-        fclose(stream);
-
+        lyxml_print_mem(&buf, ((struct lyd_node_anyxml *)node)->value->child, 0);
         line = strtok_r(buf, "\n", &ptr);
         do {
             cast_string_realloc(indent * 2 + strlen(line) + 1, str, used, size);
