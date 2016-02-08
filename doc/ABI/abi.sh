@@ -60,5 +60,5 @@ done
 cp libyang.json libyang.aux
 abi-monitor -get -build $LIMIT libyang.aux
 abi-tracker -build libyang.aux
-#rm -rf libyang.aux
+rm -rf libyang.aux
 
