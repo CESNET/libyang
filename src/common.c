@@ -46,11 +46,9 @@ LY_ERR ly_errno_main = LY_SUCCESS;
 static void
 ly_errno_createkey(void)
 {
-    LY_ERR *value;
     int r;
     void (*destr) (void *);
 
-    /* prepare ly_errno storage */
 #ifdef __linux__
     if (getpid() == syscall(SYS_gettid)) {
         /* main thread - use global variable instead of thread-specific variable.
@@ -58,23 +56,17 @@ ly_errno_createkey(void)
          * destructor registered by pthread_key_create() is not called since
          * the main thread is terminated rather by return or exit than by
          * pthread_exit(). */
-        value = &ly_errno_main;
         destr = NULL;
     } else {
 #else
-    {
+        {
 #endif /* __linux__ */
         destr = free;
-        value = calloc(1, sizeof *value);
     }
 
     /* initiate */
     while ((r = pthread_key_create(&ly_errno_key, destr)) == EAGAIN);
-    if (r) {
-        LOGMEM;
-        return;
-    }
-    pthread_setspecific(ly_errno_key, value);
+    pthread_setspecific(ly_errno_key, NULL);
 }
 
 API LY_ERR *
@@ -85,8 +77,24 @@ ly_errno_location(void)
     pthread_once(&ly_errno_once, ly_errno_createkey);
     retval = pthread_getspecific(ly_errno_key);
     if (!retval) {
-        /* error */
-        return &ly_errno_int;
+        /* prepare ly_errno storage */
+#ifdef __linux__
+        if (getpid() == syscall(SYS_gettid)) {
+            /* main thread - use global variable instead of thread-specific variable. */
+            retval = &ly_errno_main;
+        } else {
+#else
+        {
+#endif /* __linux__ */
+            retval = calloc(1, sizeof *retval);
+        }
+
+        if (!retval) {
+            /* error */
+            return &ly_errno_int;
+        }
+
+        pthread_setspecific(ly_errno_key, retval);
     }
 
     return retval;
