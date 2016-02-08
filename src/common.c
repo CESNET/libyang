@@ -22,13 +22,14 @@
 #define _GNU_SOURCE
 
 #include <assert.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
 #include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 #include <pthread.h>
+#include <string.h>
+#include <stdlib.h>
+#include <sys/syscall.h>
 #include <sys/types.h>
-#include <syscall.h>
 #include <unistd.h>
 
 #include "common.h"
