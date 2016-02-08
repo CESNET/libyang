@@ -21,6 +21,9 @@
 
 #define _GNU_SOURCE
 
+/* needed by libmath functions isfinite(), isinf(), isnan(), signbit(), ... */
+#define _ISOC99_SOURCE
+
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
