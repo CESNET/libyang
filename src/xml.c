@@ -20,14 +20,17 @@
  */
 
 #include <assert.h>
+#include <errno.h>
 #include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <sys/syscall.h>
 #include <fcntl.h>
 
 #include "common.h"
@@ -37,18 +40,69 @@
 #include "tree_schema.h"
 #include "xml_internal.h"
 
-#ifndef NDEBUG
-static unsigned int lws_lineno = 0;
-#endif
-static unsigned int lineno = 0;
-
 #define ign_xmlws(p)                                                    \
-	while (is_xmlws(*p)) {                                              \
-		COUNTLINE(*p);                                                      \
-		p++;                                                            \
-	}
+    while (is_xmlws(*p)) {                                              \
+        COUNTLINE(*p);                                                  \
+        p++;                                                            \
+    }
 
 static struct lyxml_attr *lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr *attr);
+
+/* lineno functions to support multi-threading apps */
+#ifdef __linux__
+static unsigned int lineno_main = 0;
+#endif
+static pthread_once_t lineno_once = PTHREAD_ONCE_INIT;
+static pthread_key_t lineno_key;
+
+static void
+lineno_free(void *ptr)
+{
+    if (ptr != &lineno_main) {
+        free(ptr);
+    }
+}
+
+static void
+lineno_createkey(void)
+{
+    int r;
+
+    /* initiate */
+    while ((r = pthread_key_create(&lineno_key, lineno_free)) == EAGAIN);
+    pthread_setspecific(lineno_key, NULL);
+}
+
+unsigned int *
+lineno_location(void)
+{
+    unsigned int *retval;
+
+    pthread_once(&lineno_once, lineno_createkey);
+    retval = pthread_getspecific(lineno_key);
+    if (!retval) {
+#ifdef __linux__
+        if (getpid() == syscall(SYS_gettid)) {
+            /* main thread - use global variable instead of thread-specific variable. */
+            retval = &lineno_main;
+        } else {
+#else
+        {
+#endif /* __linux__ */
+            retval = calloc(1, sizeof *retval);
+        }
+
+        if (!retval) {
+            /* error */
+            LOGINT;
+            return NULL;
+        }
+
+        pthread_setspecific(lineno_key, retval);
+    }
+
+    return retval;
+}
 
 API const struct lyxml_ns *
 lyxml_get_ns(const struct lyxml_elem *elem, const char *prefix)
@@ -1038,9 +1092,6 @@ process:
                 c += size;      /* move after processed child element */
             } else if (is_xmlws(*c)) {
                 lws = c;
-#ifndef NDEBUG
-                lws_lineno = lineno;
-#endif
                 ign_xmlws(c);
             } else {
 store_content:
@@ -1048,9 +1099,6 @@ store_content:
                 if (lws) {
                     /* process content including the leading white spaces */
                     c = lws;
-#ifndef NDEBUG
-                    lineno = lws_lineno;
-#endif
                     lws = NULL;
                 }
                 elem->content = lydict_insert_zc(ctx, parse_text(c, '<', &size));

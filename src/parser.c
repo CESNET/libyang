@@ -1274,7 +1274,7 @@ lyp_check_status(uint8_t flags1, struct lys_module *mod1, const char *name1,
  *
  */
 unsigned int
-pututf8(char *dst, int32_t value, uint32_t lineno)
+pututf8(char *dst, int32_t value, uint32_t line)
 {
     if (value < 0x80) {
         /* one byte character */
@@ -1304,7 +1304,7 @@ pututf8(char *dst, int32_t value, uint32_t lineno)
         return 4;
     } else {
         /* out of range */
-        LOGVAL(LYE_SPEC, lineno, "Invalid UTF-8 value 0x%08x", value);
+        LOGVAL(LYE_SPEC, line, "Invalid UTF-8 value 0x%08x", value);
         return 0;
     }
 }

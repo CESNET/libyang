@@ -27,8 +27,11 @@
 #include "tree_internal.h"
 
 #ifndef NDEBUG
+unsigned int *lineno_location(void); /* implemented in xml.c */
+#define lineno (*lineno_location())
 #define COUNTLINE(c) if ((c) == 0xa) {lineno++;}
 #else
+#define lineno 0
 #define COUNTLINE(c)
 #endif
 
@@ -116,6 +119,6 @@ int lyp_check_mandatory(struct lys_node *node);
  * 00010000 -- 001FFFFF:    11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
  *
  */
-unsigned int pututf8(char *dst, int32_t value, uint32_t lineno);
+unsigned int pututf8(char *dst, int32_t value, uint32_t line);
 
 #endif /* LY_PARSER_H_ */

@@ -33,8 +33,6 @@
 #include "tree_internal.h"
 #include "validation.h"
 
-static unsigned int lineno = 0;
-
 static int
 lyjson_isspace(int c)
 {
