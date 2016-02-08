@@ -28,8 +28,12 @@
 #include <ctype.h>
 #include <pthread.h>
 #include <sys/types.h>
-#include <syscall.h>
 #include <unistd.h>
+
+#ifdef __linux__
+#include <limits.h>
+#include <sys/syscall.h>
+#endif
 
 #include "common.h"
 #include "tree_internal.h"
