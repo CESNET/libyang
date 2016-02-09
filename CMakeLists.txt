@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.5)
+cmake_minimum_required(VERSION 2.6)
 project(libyang C)
 
 set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and toolkit written (and providing API) in C.")
@@ -106,8 +106,9 @@ if(PKG_CONFIG_FOUND)
 	# check that pkg-config includes the used path
 	execute_process(COMMAND ${PKG_CONFIG_EXECUTABLE} --variable pc_path pkg-config RESULT_VARIABLE RETURN OUTPUT_VARIABLE PC_PATH ERROR_QUIET)
 	if(RETURN EQUAL 0)
-		string(FIND ${PC_PATH} "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig" PC_PATH_IDX)
-		if(PC_PATH_IDX EQUAL -1)
+		string(REGEX MATCH "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig" SUBSTR ${PC_PATH})
+		string(LENGTH ${SUBSTR} SUBSTR_LEN)
+		if(SUBSTR_LEN EQUAL 0)
 			message(WARNING "pkg-config will not detect the new package after installation, adjust PKG_CONFIG_PATH using \"export PKG_CONFIG_PATH=\${PKG_CONFIG_PATH}:${CMAKE_INSTALL_PREFIX}/lib/pkgconfig\".")
 		endif()
 	endif()
