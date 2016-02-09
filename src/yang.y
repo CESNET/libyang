@@ -325,6 +325,7 @@ date_arg_str: REVISION_DATE { if (read_all) {
 
 body_stmts: %empty { if (read_all) {
                        module->features = calloc(size_arrays->features,sizeof *module->features);
+                       module->ident = calloc(size_arrays->ident,sizeof *module->ident);
                      }
                    }
   | body_stmts body_stmt stmtsep;
@@ -421,19 +422,26 @@ feature_opt_stmt: %empty { if (read_all) {
 
 if_feature_stmt: IF_FEATURE_KEYWORD sep identifier_ref_arg_str stmtend;
 
-identity_stmt: IDENTITY_KEYWORD sep identifier_arg_str identity_end;
+identity_stmt: IDENTITY_KEYWORD sep identifier_arg_str { if (read_all) {
+                                                           if (!(actual = yang_read_identity(module,s))) {YYERROR;}
+                                                           s = NULL;
+                                                         } else {
+                                                           size_arrays->ident++;
+                                                         }
+                                                       }
+               identity_end;
 
 identity_end: ';' 
-  |  '{' start_check
-         identity_opt_stmt {free_check();}
+  |  '{' stmtsep
+         identity_opt_stmt
       '}'
   ;
 
 identity_opt_stmt: %empty 
-  |  identity_opt_stmt yychecked_1 base_stmt
-  |  identity_opt_stmt yychecked_2 status_stmt
-  |  identity_opt_stmt yychecked_3 description_stmt
-  |  identity_opt_stmt yychecked_4 reference_stmt
+  |  identity_opt_stmt base_stmt { if (read_all && yang_read_base(module,actual,s,unres,yylineno)) {YYERROR;} s = NULL; }
+  |  identity_opt_stmt status_stmt { if (read_all && yang_read_status(actual, IDENTITY_KEYWORD, $2,yylineno)) {YYERROR;} }
+  |  identity_opt_stmt description_stmt { if (read_all && yang_read_description(module,actual,s,IDENTITY_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  identity_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,actual,s,IDENTITY_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   ;
 
 base_stmt: BASE_KEYWORD sep identifier_ref_arg_str stmtend;
@@ -1174,11 +1182,11 @@ identifier_arg_str: identifiers optsep
   ;
 
 node_identifier: identifiers 
-  | IDENTIFIERPREFIX 
+  | identifiers_ref
   ; 
 
 identifier_ref_arg_str: identifiers optsep
-  | IDENTIFIERPREFIX optsep
+  | identifiers_ref optsep
   | string_1
   ; 
 
@@ -1191,7 +1199,7 @@ stmtsep: %empty
   | stmtsep unknown_statement
   ;
 
-unknown_statement: IDENTIFIERPREFIX string_opt unknown_statement_end 
+unknown_statement: identifiers_ref string_opt unknown_statement_end
 
 string_opt: %empty //Soptsep
   |  sep string_1;
@@ -1328,6 +1336,15 @@ identifiers: identifier { if (read_all) {
                             }
                           }
                         }
+
+identifiers_ref: IDENTIFIERPREFIX { if (read_all) {
+                                      s = strdup(yytext);
+                                      if (!s) {
+                                        LOGMEM;
+                                        YYERROR;
+                                      }
+                                    }
+                                  }
 
 %%
 

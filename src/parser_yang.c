@@ -187,6 +187,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case FEATURE_KEYWORD:
             ret = yang_check_string(module, &((struct lys_feature *) node)->dsc, "description", "feature", value, line);
             break;
+        case IDENTITY_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_ident *) node)->dsc, "description", "identity", value, line);
+            break;
         }
     }
     return ret;
@@ -203,6 +206,12 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
         switch (type) {
         case REVISION_KEYWORD:
             ret = yang_check_string(module, &((struct lys_revision *) node)->ref, "reference", "revision", value, line);
+            break;
+        case FEATURE_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_feature *) node)->ref, "reference", "feature", value, line);
+            break;
+        case IDENTITY_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_ident *) node)->ref, "reference", "identity", value, line);
             break;
         }
     }
@@ -314,6 +323,44 @@ yang_read_status(void *node, int value, int type, int line)
     case FEATURE_KEYWORD:
         retval = yang_check_flags(&((struct lys_feature *) node)->flags, LYS_STATUS_MASK, "status", "feature", value, line);
         break;
+     case IDENTITY_KEYWORD:
+        retval = yang_check_flags(&((struct lys_ident *) node)->flags, LYS_STATUS_MASK, "status", "identity", value, line);
+        break;
     }
     return retval;
+}
+
+void *
+yang_read_identity(struct lys_module *module, char *value)
+{
+    struct lys_ident *ret;
+
+    ret = &module->ident[module->ident_size];
+    ret->name = lydict_insert_zc(module->ctx, value);
+    ret->module = module;
+    module->ident_size++;
+    return ret;
+}
+
+int
+yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, struct unres_schema *unres, int line)
+{
+    const char *exp;
+
+    if (ident->base) {
+        LOGVAL(LYE_TOOMANY, line, "base", "identity");
+        return EXIT_FAILURE;
+    }
+    printf("%s\n",value);
+    exp = transform_schema2json(module, value, line);
+    free(value);
+    if (!exp) {
+        return EXIT_FAILURE;
+    }
+    if (unres_schema_add_str(module, unres, ident, UNRES_IDENT, exp, line) == -1) {
+        lydict_remove(module->ctx, exp);
+        return EXIT_FAILURE;
+    }
+    lydict_remove(module->ctx, exp);
+    return EXIT_SUCCESS;
 }
