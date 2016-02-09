@@ -101,6 +101,7 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
 {
     struct lyxml_elem *node;
     const char *value;
+    int base_flag = 0;
 
     GETVAL(value, yin, "name");
     ident->name = value;
@@ -116,10 +117,12 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
         }
 
         if (!strcmp(node->name, "base")) {
-            if (ident->base) {
+            if (base_flag) {
                 LOGVAL(LYE_TOOMANY, LOGLINE(node), "base", "identity");
                 return EXIT_FAILURE;
             }
+            base_flag = 1;
+
             GETVAL(value, node, "name");
             value = transform_schema2json(module, value, LOGLINE(node));
             if (!value) {
@@ -913,7 +916,7 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
         }
 
         if (!strcmp(node->name, "type")) {
-            if (tpdf->type.der || has_type) {
+            if (has_type) {
                 LOGVAL(LYE_TOOMANY, LOGLINE(node), node->name, yin->name);
                 goto error;
             }
@@ -3089,7 +3092,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
 
         if (!strcmp(sub->name, "type")) {
-            if (leaf->type.der || has_type) {
+            if (has_type) {
                 LOGVAL(LYE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
                 goto error;
             }
@@ -3270,7 +3273,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
         }
 
         if (!strcmp(sub->name, "type")) {
-            if (llist->type.der || has_type) {
+            if (has_type) {
                 LOGVAL(LYE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
                 goto error;
             }
