@@ -443,3 +443,29 @@ yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, 
     }
     return ret;
 }
+
+int
+yang_read_presence(struct lys_module *module, struct lys_node_container *cont, char *value, int line)
+{
+    if (cont->presence) {
+        LOGVAL(LYE_TOOMANY, line, "presence", "container");
+        free(value);
+        return EXIT_FAILURE;
+    } else {
+        cont->presence = lydict_insert_zc(module->ctx, value);
+        return EXIT_SUCCESS;
+    }
+}
+
+int
+yang_read_config(void *node, int value, int type, int line)
+{
+    int ret;
+
+    switch (type) {
+    case CONTAINER_KEYWORD:
+        ret = yang_check_flags(&((struct lys_node_container *)node)->flags, LYS_CONFIG_MASK, "config", "container", value, line);
+        break;
+    }
+    return ret;
+}

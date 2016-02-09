@@ -136,6 +136,8 @@ int actual_type;
 %type <str> tmp_identifier_arg_str
 %type <i> status_stmt
 %type <i> status_arg_str
+%type <i> config_stmt
+%type <i> config_arg_str
 %type <nodes> container_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
@@ -693,8 +695,8 @@ container_opt_stmt: %empty { if (read_all) {
                                       size_arrays->node[$1.index].must++;
                                     }
                                   }
-  |  container_opt_stmt yychecked_2 presence_stmt
-  |  container_opt_stmt yychecked_3 config_stmt
+  |  container_opt_stmt presence_stmt { if (read_all && yang_read_presence(module,$1.container,s,yylineno)) {YYERROR;} s=NULL; }
+  |  container_opt_stmt config_stmt { if (read_all && yang_read_config($1.container,$2,CONTAINER_KEYWORD,yylineno)) {YYERROR;} }
   |  container_opt_stmt yychecked_4 status_stmt
   |  container_opt_stmt yychecked_5 description_stmt
   |  container_opt_stmt yychecked_6 reference_stmt
@@ -1052,11 +1054,11 @@ when_end: ';'
      '}'
   ;
 
-config_stmt: CONFIG_KEYWORD sep config_arg_str stmtend;
+config_stmt: CONFIG_KEYWORD sep config_arg_str stmtend { $$ = $3; }
 
-config_arg_str: TRUE_KEYWORD optsep
-  |  FALSE_KEYWORD optsep
-  |  string_1
+config_arg_str: TRUE_KEYWORD optsep { $$ = LYS_CONFIG_W; }
+  |  FALSE_KEYWORD optsep { $$ = LYS_CONFIG_R; }
+  |  string_1  //not implement
   ;
 
 mandatory_stmt: MANDATORY_KEYWORD sep mandatory_arg_str stmtend;
