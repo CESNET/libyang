@@ -54,6 +54,7 @@ struct lys_array_size {
     uint8_t features;
     uint8_t augment;
     uint8_t deviation;
+    uint32_t size;
     uint32_t next;
     struct lys_node_array *node;
 };
@@ -90,6 +91,10 @@ int yang_read_reference(struct lys_module *module, void *node, char *value, int 
 
 void *yang_read_revision(struct lys_module *module, char *value);
 
+void *yang_read_feature(struct lys_module *module, char *value, int line);
 
+int yang_read_if_feature(struct lys_module *module, struct lys_feature *f, char *value, struct unres_schema *unres, int line);
+
+int yang_read_status(void *node, int value, int type, int line);
 
 #endif /* LY_PARSER_YANG_H_ */

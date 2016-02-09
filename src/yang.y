@@ -130,6 +130,8 @@ int actual_type;
 
 %type <i> module_header_stmts
 %type <str> tmp_identifier_arg_str
+%type <i> status_stmt
+%type <i> status_arg_str
 
 %destructor { free($$); } tmp_identifier_arg_str
 
@@ -321,8 +323,12 @@ date_arg_str: REVISION_DATE { if (read_all) {
   | string_1
   ;
 
-body_stmts: %empty 
+body_stmts: %empty { if (read_all) {
+                       module->features = calloc(size_arrays->features,sizeof *module->features);
+                     }
+                   }
   | body_stmts body_stmt stmtsep;
+
 
 body_stmt: extension_stmt
   | feature_stmt
@@ -365,27 +371,52 @@ yin_element_arg_str: TRUE_KEYWORD optsep
   | string_1
   ;
 
-status_stmt:  STATUS_KEYWORD sep status_arg_str stmtend ;
+status_stmt:  STATUS_KEYWORD sep status_arg_str stmtend { $$ = $3; }
 
-status_arg_str: CURRENT_KEYWORD optsep
-  | OBSOLETE_KEYWORD optsep
-  | DEPRECATED_KEYWORD optsep
-  | string_1
+status_arg_str: CURRENT_KEYWORD optsep { $$ = LYS_STATUS_CURR; }
+  | OBSOLETE_KEYWORD optsep { $$ = LYS_STATUS_OBSLT; }
+  | DEPRECATED_KEYWORD optsep { $$ = LYS_STATUS_DEPRC; }
+  | string_1 // not implement
   ;
 
-feature_stmt: FEATURE_KEYWORD sep identifier_arg_str feature_end;
+feature_stmt: FEATURE_KEYWORD sep identifier_arg_str { if (read_all) {
+                                                         if (!(actual = yang_read_feature(module,s,yylineno))) {YYERROR;} 
+                                                         s=NULL; 
+                                                       } else {
+                                                         size_arrays->features++;
+                                                         if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                                           LOGMEM;
+                                                           YYERROR;
+                                                         }
+                                                       }
+                                                     }
+              feature_end;
 
 feature_end: ';' 
-  | '{' start_check
-        feature_opt_stmt {free_check();}
-    '}'
+  | '{' stmtsep
+        feature_opt_stmt { if (read_all) { size_arrays->next++; } }
+    '}' 
   ;
 
-feature_opt_stmt: %empty 
-  |  feature_opt_stmt if_feature_stmt
-  |  feature_opt_stmt yychecked_1 status_stmt
-  |  feature_opt_stmt yychecked_2 description_stmt
-  |  feature_opt_stmt yychecked_3 reference_stmt
+feature_opt_stmt: %empty { if (read_all) {
+                             ((struct lys_feature*)actual)->features = calloc(size_arrays->node[size_arrays->next].if_features, 
+                                                                              sizeof *((struct lys_feature*)actual)->features);
+                             if (!((struct lys_feature*)actual)->features) {
+                               LOGMEM;
+                               YYERROR;
+                             }
+                           } 
+                         }
+  |  feature_opt_stmt if_feature_stmt { if (read_all) {
+                                          if (yang_read_if_feature(module,actual,s,unres,yylineno)) {YYERROR;} 
+                                          s=NULL; 
+                                        } else {
+                                          size_arrays->node[size_arrays->size-1].if_features++;
+                                        }
+                                      }
+  |  feature_opt_stmt status_stmt { if (read_all && yang_read_status(actual,$2,FEATURE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
+  |  feature_opt_stmt description_stmt { if (read_all && yang_read_description(module,actual,s,FEATURE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
+  |  feature_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,actual,s,FEATURE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
   ;
 
 if_feature_stmt: IF_FEATURE_KEYWORD sep identifier_ref_arg_str stmtend;

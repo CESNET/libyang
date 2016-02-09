@@ -184,6 +184,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case REVISION_KEYWORD:
             ret = yang_check_string(module, &((struct lys_revision *) node)->dsc, "description", "revision", value, line);
             break;
+        case FEATURE_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_feature *) node)->dsc, "description", "feature", value, line);
+            break;
         }
     }
     return ret;
@@ -243,4 +246,74 @@ yang_add_elem(struct lys_node_array **node, int *size)
     }
     (*size)++;
     return EXIT_SUCCESS;
+}
+
+void *
+yang_read_feature(struct lys_module *module, char *value, int line)
+{
+    struct lys_feature *retval;
+
+    /* check uniqueness of feature's names */
+    if (lyp_check_identifier(value, LY_IDENT_FEATURE, line, module, NULL)) {
+        goto error;
+    }
+    retval = &module->features[module->features_size];
+    retval->name = lydict_insert_zc(module->ctx, value);
+    retval->module = module;
+    module->features_size++;
+    return retval;
+
+error:
+    free(value);
+    return NULL;
+}
+
+int
+yang_read_if_feature(struct lys_module *module, struct lys_feature *f, char *value, struct unres_schema *unres, int line)
+{
+    const char *exp;
+    int ret;
+
+    if (!(exp = transform_schema2json(module, value, line))) {
+        free(value);
+        return EXIT_FAILURE;
+    }
+    free(value);
+
+    /* hack - store pointer to the parent node for later status check */
+    f->features[f->features_size] = f;
+    ret = unres_schema_add_str(module, unres, &f->features[f->features_size], UNRES_IFFEAT, exp, line);
+    f->features_size++;
+
+    lydict_remove(module->ctx, exp);
+    if (ret == -1) {
+
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}
+
+static int 
+yang_check_flags(uint8_t *flags, uint8_t mask, char *what, char *where, int value, int line)
+{
+    if (*flags & mask) {
+        LOGVAL(LYE_TOOMANY, line, what, where);
+        return EXIT_FAILURE;
+    } else {
+        *flags = value;
+        return EXIT_SUCCESS;
+    }
+}
+
+int
+yang_read_status(void *node, int value, int type, int line)
+{
+    int retval;
+
+    switch (type) {
+    case FEATURE_KEYWORD:
+        retval = yang_check_flags(&((struct lys_feature *) node)->flags, LYS_STATUS_MASK, "status", "feature", value, line);
+        break;
+    }
+    return retval;
 }
