@@ -476,18 +476,19 @@ int lyd_insert(struct lyd_node *parent, struct lyd_node *node);
  * siblings (just moving \p node position), skip validation.
  *
  * @param[in] sibling The data tree node before which the \p node will be inserted.
- * @param[in] node The data tree node to be inserted.
+ * @param[in] node The data tree node to be inserted. If the node is connected somewhere, it is unlinked first.
  * @return 0 on success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
  * in the data tree.
  */
 int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
- * @brief Insert the \p node element after the \p sibling element.
+ * @brief Insert the \p node element after the \p sibling element. If \p node and \p siblings are already
+ * siblings (just moving \p node position), skip validation.
  *
  * @param[in] sibling The data tree node before which the \p node will be inserted. If \p node and \p siblings
  * are already siblings (just moving \p node position), skip validation.
- * @param[in] node The data tree node to be inserted.
+ * @param[in] node The data tree node to be inserted. If the node is connected somewhere, it is unlinked first.
  * @return 0 on success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
  * in the data tree.
  */

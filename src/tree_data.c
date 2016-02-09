@@ -577,7 +577,7 @@ static int
 lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
 {
     struct lys_node *par1, *par2;
-    struct lyd_node *iter, *last;
+    struct lyd_node *iter;
     int invalid = 0;
 
     if (sibling == node) {
@@ -602,17 +602,13 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
         invalid = 1;
     }
 
-    if (node->parent || node->prev->next) {
+    if (node->parent || node->next || node->prev->next) {
         lyd_unlink(node);
     }
 
-    LY_TREE_FOR(node, iter) {
-        iter->parent = sibling->parent;
-        last = iter;
-
-        if (invalid) {
-            lyd_insert_setinvalid(iter);
-        }
+    node->parent = sibling->parent;
+    if (invalid) {
+        lyd_insert_setinvalid(node);
     }
 
     if (before) {
@@ -624,20 +620,20 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
             sibling->parent->child = node;
         }
         node->prev = sibling->prev;
-        sibling->prev = last;
-        last->next = sibling;
+        sibling->prev = node;
+        node->next = sibling;
     } else {
         if (sibling->next) {
             /* adding into a middle - fix the prev pointer of the node after inserted nodes */
-            last->next = sibling->next;
-            sibling->next->prev = last;
+            node->next = sibling->next;
+            sibling->next->prev = node;
         } else {
             /* at the end - fix the prev pointer of the first node */
             if (sibling->parent) {
-                sibling->parent->child->prev = last;
+                sibling->parent->child->prev = node;
             } else {
                 for (iter = sibling; iter->prev->next; iter = iter->prev);
-                iter->prev = last;
+                iter->prev = node;
             }
         }
         sibling->next = node;
