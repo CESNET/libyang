@@ -24,7 +24,7 @@ providing API) in C.
 
 ## Requirements
 
-* cmake >= 2.8.5
+* cmake >= 2.6
 * libpcre
 * cmocka >= 1.0.0 (for tests only, see [Tests](#Tests))
 
