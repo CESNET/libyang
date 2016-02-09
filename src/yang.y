@@ -14,7 +14,7 @@ struct Scheck {
 };
 extern int yylineno;
 extern int yyleng;
-void yyerror(struct lys_module *module, struct unres_schema *unres, char *s, ...);   //parameter is in directive parse-param
+void yyerror(struct lys_module *module, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all, char *str, ...);   //parameter is in directive parse-param
 void yychecked(int value);
 int yylex(void);
 void free_check();
@@ -25,7 +25,7 @@ void *actual;
 int actual_type;
 %}
 
-%parse-param {struct lys_module *module} {struct unres_schema *unres}
+%parse-param {struct lys_module *module} {struct unres_schema *unres} {struct lys_array_size *size_arrays} {int read_all}
 
 %union {
   int i;
@@ -139,16 +139,29 @@ start: module_stmt
  |  submodule_stmt 
 
 
-string_1: STRING            { s = strdup(yytext); if (!s) {LOGMEM; YYERROR;} }
-          optsep string_2
+string_1: STRING  { if (read_all) {
+                      s = strdup(yytext);
+                      if (!s) {
+                        LOGMEM;
+                        YYERROR;
+                      }
+                    }
+                  }
+optsep string_2
 
 
 string_2: %empty
   |  string_2 '+' optsep 
-     STRING { s = realloc(s,yyleng+strlen(s)+1); 
-              if (s) { strcat(s,yytext); }
-              else { LOGMEM; YYERROR; } 
-            } 
+     STRING { if (! read_all){
+                s = realloc(s,yyleng+strlen(s)+1);
+                if (s) {
+                  strcat(s,yytext);
+                } else {
+                  LOGMEM;
+                  YYERROR;
+                }
+              }
+            }
      optsep;
 
 start_check: stmtsep {struct Scheck *new; new=malloc(sizeof(struct Scheck)); if (new==NULL) exit(1); new->next=checked; checked=new; 
@@ -156,24 +169,24 @@ start_check: stmtsep {struct Scheck *new; new=malloc(sizeof(struct Scheck)); if 
 
 module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { yang_read_common(module,s,MODULE_KEYWORD,yylineno); s=NULL; }
              '{' stmtsep
-                 module_header_stmts { if (!module->ns) { LOGVAL(LYE_MISSSTMT2,yylineno,"namespace", "module"); YYERROR; }
-                                       if (!module->prefix) { LOGVAL(LYE_MISSSTMT2,yylineno,"prefix", "module"); YYERROR; }
+                 module_header_stmts { if (read_all && !module->ns) { LOGVAL(LYE_MISSSTMT2,yylineno,"namespace", "module"); YYERROR; }
+                                       if (read_all && !module->prefix) { LOGVAL(LYE_MISSSTMT2,yylineno,"prefix", "module"); YYERROR; }
                                      }
-                 linkage_stmts { module->imp = realloc(module->imp, module->imp_size * sizeof *module->imp); }
+                 linkage_stmts
                  meta_stmts
-                 revision_stmts { module->rev = realloc(module->rev, module->rev_size * sizeof *module->rev); }
+                 revision_stmts
                  body_stmts
              '}' optsep
 
 module_header_stmts: %empty  { $$ = 0; }
   |  module_header_stmts yang_version_stmt { if ($1) { LOGVAL(LYE_TOOMANY, yylineno, "yang version", "module"); YYERROR; } $$ = 1; }
-  |  module_header_stmts namespace_stmt { if (yang_read_common(module,s,NAMESPACE_KEYWORD,yylineno)) {YYERROR;} s=NULL; } 
-  |  module_header_stmts prefix_stmt { if (yang_read_prefix(module,NULL,s,MODULE_KEYWORD,yylineno)) {YYERROR;} s=NULL; } 
+  |  module_header_stmts namespace_stmt { if (read_all && yang_read_common(module,s,NAMESPACE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
+  |  module_header_stmts prefix_stmt { if (read_all && yang_read_prefix(module,NULL,s,MODULE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
   ;
 
 submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str
                 '{' start_check
-                    submodule_header_stmts  {  if((checked->check&2)==0) { yyerror(module,unres,"Belong statement missing."); YYERROR; }
+                    submodule_header_stmts  {  if((checked->check&2)==0) { yyerror(module,unres,size_arrays,read_all,"Belong statement missing."); YYERROR; }
                                                checked->check=0;}
                     linkage_stmts
                     meta_stmts         {free_check();}
@@ -197,19 +210,31 @@ uri_str: string_1
   /*|  URI*/
   ;
 
-linkage_stmts: %empty 
+linkage_stmts: %empty { if (read_all) {
+                          module->imp = calloc(size_arrays->imp, sizeof *module->imp);
+                          module->inc = calloc(size_arrays->inc, sizeof *module->inc);
+                        }
+                      }
  |  linkage_stmts import_stmt 
  |  linkage_stmts include_stmt
  ;
 
 import_stmt: IMPORT_KEYWORD sep tmp_identifier_arg_str {
-                 if (!(actual=yang_elem_of_array((void **)&module->imp,&module->imp_size,IMPORT_KEYWORD,sizeof *module->imp))) {YYERROR;}
-                 module->imp_size--;
+                 if (!read_all) {
+                   size_arrays->imp++;
+                 } else {
+                   actual = &module->imp[module->imp_size];
+                 }
              }
              '{' stmtsep
-                 prefix_stmt { if (yang_read_prefix(module,actual,s,IMPORT_KEYWORD,yylineno)) {YYERROR;} s=NULL; actual_type=IMPORT_KEYWORD;}
+                 prefix_stmt { if (read_all) {
+                                 if (yang_read_prefix(module,actual,s,IMPORT_KEYWORD,yylineno)) {YYERROR;}
+                                 s=NULL;
+                                 actual_type=IMPORT_KEYWORD;
+                               }
+                             }
                  revision_date_opt
-             '}' stmtsep { if (yang_fill_import(module,actual,$3,yylineno)) {YYERROR;} }
+             '}' stmtsep { if (read_all && yang_fill_import(module,actual,$3,yylineno)) {YYERROR;} }
 
 tmp_identifier_arg_str: identifier_arg_str { $$ = s; s = NULL; }
 
@@ -226,10 +251,12 @@ revision_date_opt: %empty
 
 revision_date_stmt: REVISION_DATE_KEYWORD sep revision_date optsep stmtend;
 
-revision_date: REVISION_DATE { if (actual_type==IMPORT_KEYWORD) {
-                                   memcpy(((struct lys_import *)actual)->rev,yytext,LY_REV_SIZE-1);
-                               } else {                              // INCLUDE KEYWORD
-                                   memcpy(((struct lys_include *)actual)->rev,yytext,LY_REV_SIZE-1);
+revision_date: REVISION_DATE { if (read_all) {
+                                 if (actual_type==IMPORT_KEYWORD) {
+                                     memcpy(((struct lys_import *)actual)->rev,yytext,LY_REV_SIZE-1);
+                                 } else {                              // INCLUDE KEYWORD
+                                     memcpy(((struct lys_include *)actual)->rev,yytext,LY_REV_SIZE-1);
+                                 }
                                }
                              }
 
@@ -241,10 +268,10 @@ belongs_to_stmt: BELONGS_TO_KEYWORD sep identifier_arg_str
 prefix_stmt: PREFIX_KEYWORD sep prefix_arg_str stmtend;
 
 meta_stmts: %empty 
-  |  meta_stmts organization_stmt { if (yang_read_common(module,s,ORGANIZATION_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
-  |  meta_stmts contact_stmt { if (yang_read_common(module,s,CONTACT_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
-  |  meta_stmts description_stmt { if (yang_read_description(module,NULL,s,MODULE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
-  |  meta_stmts reference_stmt { if (yang_read_reference(module,NULL,s,MODULE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
+  |  meta_stmts organization_stmt { if (read_all && yang_read_common(module,s,ORGANIZATION_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
+  |  meta_stmts contact_stmt { if (read_all && yang_read_common(module,s,CONTACT_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
+  |  meta_stmts description_stmt { if (read_all && yang_read_description(module,NULL,s,MODULE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
+  |  meta_stmts reference_stmt { if (read_all && yang_read_reference(module,NULL,s,MODULE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
   ;
 
 organization_stmt: ORGANIZATION_KEYWORD sep string stmtend;
@@ -255,10 +282,20 @@ description_stmt: DESCRIPTION_KEYWORD sep string stmtend;
 
 reference_stmt: REFERENCE_KEYWORD sep string stmtend;
 
-revision_stmts: %empty
+revision_stmts: %empty { if (read_all) {
+                           module->rev = calloc(size_arrays->rev, sizeof *module->rev);
+                         }
+                       }
   | revision_stmts revision_stmt stmtsep;
 
-revision_stmt: REVISION_KEYWORD sep date_arg_str { if (!(actual=yang_read_revision(module,s))) {YYERROR;} s=NULL; }
+
+revision_stmt: REVISION_KEYWORD sep date_arg_str { if (read_all) {
+                                                     if(!(actual=yang_read_revision(module,s))) {YYERROR;}
+                                                     s=NULL;
+                                                   } else {
+                                                     size_arrays->rev++;
+                                                   }
+                                                 }
                revision_end;
 
 revision_end: ';'
@@ -268,11 +305,19 @@ revision_end: ';'
   ;
 
 description_reference_stmt: %empty 
-  |  description_reference_stmt description_stmt { if (yang_read_description(module,actual,s,actual_type,yylineno)) {YYERROR;} s=NULL; }
-  |  description_reference_stmt reference_stmt { if (yang_read_reference(module,actual,s,actual_type,yylineno)) {YYERROR;} s=NULL; }
+  |  description_reference_stmt description_stmt { if (read_all && yang_read_description(module,actual,s,actual_type,yylineno)) {YYERROR;} s=NULL; }
+  |  description_reference_stmt reference_stmt { if (read_all && yang_read_reference(module,actual,s,actual_type,yylineno)) {YYERROR;} s=NULL; }
   ;
 
-date_arg_str: REVISION_DATE { s = strdup(yytext); if (!s) { LOGMEM; YYERROR; } } optsep
+date_arg_str: REVISION_DATE { if (read_all) {
+                                s = strdup(yytext);
+                                if (!s) {
+                                  LOGMEM;
+                                  YYERROR;
+                                }
+                              }
+                            }
+              optsep
   | string_1
   ;
 
@@ -364,7 +409,7 @@ base_stmt: BASE_KEYWORD sep identifier_ref_arg_str stmtend;
 
 typedef_stmt: TYPEDEF_KEYWORD sep identifier_arg_str 
               '{' start_check
-                  type_opt_stmt { if ((checked->check&1)==0) { yyerror(module,unres,"type statement missing."); YYERROR; }
+                  type_opt_stmt { if ((checked->check&1)==0) { yyerror(module,unres,size_arrays,read_all,"type statement missing."); YYERROR; }
                                   free_check(); } 
                '}' ;
   
@@ -580,7 +625,7 @@ container_opt_stmt: %empty
 
 leaf_stmt: LEAF_KEYWORD sep identifier_arg_str 
            '{' start_check
-               leaf_opt_stmt  { if ((checked->check&2)==0) { yyerror(module,unres,"type statement missingo."); YYERROR; }
+               leaf_opt_stmt  { if ((checked->check&2)==0) { yyerror(module,unres,size_arrays,read_all,"type statement missingo."); YYERROR; }
                                 free_check(); }
            '}' ;
 
@@ -600,7 +645,7 @@ leaf_opt_stmt: %empty
 
 leaf_list_stmt: LEAF_LIST_KEYWORD sep identifier_arg_str 
                 '{' start_check
-                    leaf_list_opt_stmt { if ((checked->check&2)==0) { yyerror(module,unres,"type statement missing."); YYERROR; }
+                    leaf_list_opt_stmt { if ((checked->check&2)==0) { yyerror(module,unres,size_arrays,read_all,"type statement missing."); YYERROR; }
                                          free_check(); }
                 '}' ;
 
@@ -621,7 +666,7 @@ leaf_list_opt_stmt: %empty
 
 list_stmt: LIST_KEYWORD sep identifier_arg_str 
            '{' start_check
-               list_opt_stmt { if ((checked->check&1024)==0) { yyerror(module,unres,"data-def statement missing."); YYERROR; }
+               list_opt_stmt { if ((checked->check&1024)==0) { yyerror(module,unres,size_arrays,read_all,"data-def statement missing."); YYERROR; }
                                free_check(); }
             '}' ;
 
@@ -760,7 +805,7 @@ refine_stmt2: mandatory_stmt
 
 uses_augment_stmt: AUGMENT_KEYWORD sep uses_augment_arg_str 
                    '{' start_check
-                       augment_opt_stmt { if ((checked->check&1024)==0) { yyerror(module,unres,"data-def or case statement missing."); YYERROR; }
+                       augment_opt_stmt { if ((checked->check&1024)==0) { yyerror(module,unres,size_arrays,read_all,"data-def or case statement missing."); YYERROR; }
                                      free_check(); }
                    '}' ;
 
@@ -774,7 +819,7 @@ uses_augment_arg_str: descendant_schema_nodeid optsep
 
 augment_stmt: AUGMENT_KEYWORD sep augment_arg_str 
               '{' start_check
-                  augment_opt_stmt { if ((checked->check&1024)==0) { yyerror(module,unres,"data-def or case statement missing."); YYERROR; }
+                  augment_opt_stmt { if ((checked->check&1024)==0) { yyerror(module,unres,size_arrays,read_all,"data-def or case statement missing."); YYERROR; }
                                      free_check(); }
                '}' ;
 
@@ -810,7 +855,7 @@ rpc_opt_stmt: %empty
 
 input_stmt: INPUT_KEYWORD optsep
             '{' start_check
-                input_output_opt_stmt  { if ((checked->check&1024)==0) { yyerror(module,unres,"data-def or case statement missing."); YYERROR; }
+                input_output_opt_stmt  { if ((checked->check&1024)==0) { yyerror(module,unres,size_arrays,read_all,"data-def or case statement missing."); YYERROR; }
                                          free_check(); }
             '}' stmtsep;
 
@@ -821,7 +866,7 @@ input_output_opt_stmt: %empty
 
 output_stmt: OUTPUT_KEYWORD optsep
                      '{' start_check
-                         input_output_opt_stmt  { if ((checked->check&1024)==0) { yyerror(module,unres,"data-def or case statement missing."); YYERROR; }
+                         input_output_opt_stmt  { if ((checked->check&1024)==0) { yyerror(module,unres,size_arrays,read_all,"data-def or case statement missing."); YYERROR; }
                                                   free_check(); }
                      '}' stmtsep;
 
@@ -843,7 +888,7 @@ notification_opt_stmt: %empty
 
 deviation_stmt: DEVIATION_KEYWORD sep deviation_arg_str 
                 '{' start_check
-                    deviation_opt_stmt  {  if ((checked->check&4)==0) { yyerror(module,unres,"type statement missingo."); YYERROR; }
+                    deviation_opt_stmt  {  if ((checked->check&4)==0) { yyerror(module,unres,size_arrays,read_all,"type statement missingo."); YYERROR; }
                                            free_check(); }
                 '}' ;
 
@@ -1233,22 +1278,29 @@ identifier: IDENTIFIER
   ;
 
 yychecked: %empty {checked->check|=1024;}
-yychecked_1: %empty { if ((checked->check&1)==0) checked->check|=1; else { yyerror(module,unres,"syntax error!"); YYERROR; }	}
-yychecked_2: %empty { if ((checked->check&2)==0) checked->check|=2; else { yyerror(module,unres,"syntax error!"); YYERROR; }	}
-yychecked_3: %empty { if ((checked->check&4)==0) checked->check|=4; else { yyerror(module,unres,"syntax error!"); YYERROR; }	}
-yychecked_4: %empty { if ((checked->check&8)==0) checked->check|=8; else { yyerror(module,unres,"syntax error!"); YYERROR; }	}
-yychecked_5: %empty { if ((checked->check&16)==0) checked->check|=16; else { yyerror(module,unres,"syntax error!"); YYERROR; }	}
-yychecked_6: %empty { if ((checked->check&32)==0) checked->check|=32; else { yyerror(module,unres,"syntax error!"); YYERROR; }	}
-yychecked_7: %empty { if ((checked->check&64)==0) checked->check|=64; else { yyerror(module,unres,"syntax error!"); YYERROR; }	}
-yychecked_8: %empty { if ((checked->check&128)==0) checked->check|=128; else { yyerror(module,unres,"syntax error!"); YYERROR; }	}
-yychecked_9: %empty { if ((checked->check&256)==0) checked->check|=256; else { yyerror(module,unres,"syntax error!"); YYERROR; }	}
-yychecked_10: %empty { if ((checked->check&512)==0) checked->check|=512; else { yyerror(module,unres,"syntax error!"); YYERROR; }	}
+yychecked_1: %empty { if ((checked->check&1)==0) checked->check|=1; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
+yychecked_2: %empty { if ((checked->check&2)==0) checked->check|=2; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
+yychecked_3: %empty { if ((checked->check&4)==0) checked->check|=4; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
+yychecked_4: %empty { if ((checked->check&8)==0) checked->check|=8; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
+yychecked_5: %empty { if ((checked->check&16)==0) checked->check|=16; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
+yychecked_6: %empty { if ((checked->check&32)==0) checked->check|=32; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
+yychecked_7: %empty { if ((checked->check&64)==0) checked->check|=64; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
+yychecked_8: %empty { if ((checked->check&128)==0) checked->check|=128; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
+yychecked_9: %empty { if ((checked->check&256)==0) checked->check|=256; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
+yychecked_10: %empty { if ((checked->check&512)==0) checked->check|=512; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
 
-identifiers: identifier { s = strdup(yytext); if (!s) { LOGMEM; YYERROR; } }
+identifiers: identifier { if (read_all) {
+                            s = strdup(yytext);
+                            if (!s) {
+                              LOGMEM;
+                              YYERROR;
+                            }
+                          }
+                        }
 
 %%
 
-void yyerror(struct lys_module *module, struct unres_schema *unres, char *str, ...){
+void yyerror(struct lys_module *module, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all, char *str, ...){
   va_list ap;
   va_start(ap,str);
 

@@ -30,7 +30,33 @@
 #include "common.h"
 #include "context.h"
 
-#define LY_ARRAY_SIZE 16
+#define LY_ARRAY_SIZE 32
+#define LY_READ_ALL 1
+#define LY_READ_ONLY_SIZE 0
+
+struct lys_node_array{
+    uint8_t if_features;
+    uint8_t must;
+    uint8_t unique;
+    uint8_t tpdf;
+    uint8_t keys;
+    uint8_t expr_size;
+    uint16_t refine;
+    uint16_t augment;
+
+};
+
+struct lys_array_size {
+    uint8_t rev;
+    uint8_t imp;
+    uint8_t inc;
+    uint32_t ident;
+    uint8_t features;
+    uint8_t augment;
+    uint8_t deviation;
+    uint32_t next;
+    struct lys_node_array *node;
+};
 
 int yang_read_common(struct lys_module *module,char *value, int type, int line);
 
@@ -46,6 +72,15 @@ int yang_read_prefix(struct lys_module *module, void *save, char *value,int type
  * @return first free member of array, NULL on error.
  */
 void *yang_elem_of_array(void **ptr, uint8_t *act_size, int type, int sizeof_struct);
+
+/**
+ * @brief Add node to the array
+ *
+ * @param[in/out] node Pointer to the array.
+ * @param[in/out] size Pointer to the current size of array.
+ * @return 1 on success, 0 on error.
+ */
+int yang_add_elem(struct lys_node_array **node, int *size);
 
 int yang_fill_import(struct lys_module *module, struct lys_import *imp, char *value, int line);
 

@@ -211,13 +211,10 @@ yang_read_revision(struct lys_module *module, char *value)
 {
     struct lys_revision *retval;
 
-    retval = yang_elem_of_array((void **)&module->rev, &module->rev_size, REVISION_KEYWORD, sizeof *module->rev);
-    if (!retval) {
-        goto end;
-    }
+    retval = &module->rev[module->rev_size];
 
     /* first member of array is last revision */
-    if (module->rev_size - 1 && strcmp(module->rev[0].date, value) < 0) {
+    if (module->rev_size && strcmp(module->rev[0].date, value) < 0) {
         memcpy(retval->date, module->rev[0].date, LY_REV_SIZE);
         memcpy(module->rev[0].date, value, LY_REV_SIZE);
         retval->dsc = module->rev[0].dsc;
@@ -228,8 +225,22 @@ yang_read_revision(struct lys_module *module, char *value)
     } else {
         memcpy(retval->date, value, LY_REV_SIZE);
     }
-
-end:
+    module->rev_size++;
     free(value);
     return retval;
+}
+
+int
+yang_add_elem(struct lys_node_array **node, int *size)
+{
+    if (!*size % LY_ARRAY_SIZE) {
+        if (!(*node = ly_realloc(*node, (*size + LY_ARRAY_SIZE) * sizeof **node))) {
+            LOGMEM;
+            return EXIT_FAILURE;
+        } else {
+            memset(*node+*size,0,LY_ARRAY_SIZE*sizeof **node);
+        }
+    }
+    (*size)++;
+    return EXIT_SUCCESS;
 }
