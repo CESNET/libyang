@@ -93,12 +93,18 @@ void *yang_read_revision(struct lys_module *module, char *value);
 
 void *yang_read_feature(struct lys_module *module, char *value, int line);
 
-int yang_read_if_feature(struct lys_module *module, struct lys_feature *f, char *value, struct unres_schema *unres, int line);
+int yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct unres_schema *unres, int type, int line);
 
 int yang_read_status(void *node, int value, int type, int line);
 
 void *yang_read_identity(struct lys_module *module, char *value);
 
 int yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, struct unres_schema *unres, int line);
+
+void *yang_read_cont(struct lys_module *module, struct lys_node *parent, char *value);
+
+void *yang_read_must(struct lys_module *module, struct lys_node *node, char *value, int type, int line);
+
+int yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, int type, int message, int line);
 
 #endif /* LY_PARSER_YANG_H_ */

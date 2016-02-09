@@ -30,6 +30,10 @@ int actual_type;
 %union {
   int i;
   char *str;
+  union {
+    uint32_t index;
+    struct lys_node_container *container;
+  } nodes;
 }
 
 %token ANYXML_KEYWORD
@@ -132,6 +136,7 @@ int actual_type;
 %type <str> tmp_identifier_arg_str
 %type <i> status_stmt
 %type <i> status_arg_str
+%type <nodes> container_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 
@@ -328,7 +333,7 @@ body_stmts: %empty { if (read_all) {
                        module->ident = calloc(size_arrays->ident,sizeof *module->ident);
                      }
                    }
-  | body_stmts body_stmt stmtsep;
+  | body_stmts body_stmt stmtsep { actual = NULL; }
 
 
 body_stmt: extension_stmt
@@ -391,11 +396,11 @@ feature_stmt: FEATURE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                          }
                                                        }
                                                      }
-              feature_end;
+              feature_end { if (read_all) { size_arrays->next++; } }
 
 feature_end: ';' 
   | '{' stmtsep
-        feature_opt_stmt { if (read_all) { size_arrays->next++; } }
+        feature_opt_stmt
     '}' 
   ;
 
@@ -409,7 +414,7 @@ feature_opt_stmt: %empty { if (read_all) {
                            } 
                          }
   |  feature_opt_stmt if_feature_stmt { if (read_all) {
-                                          if (yang_read_if_feature(module,actual,s,unres,yylineno)) {YYERROR;} 
+                                          if (yang_read_if_feature(module,actual,s,unres,FEATURE_KEYWORD,yylineno)) {YYERROR;}
                                           s=NULL; 
                                         } else {
                                           size_arrays->node[size_arrays->size-1].if_features++;
@@ -513,10 +518,10 @@ length_end: ';'
   ;    
 
 message_opt_stmt: %empty
-  |  message_opt_stmt yychecked_1 error_message_stmt
-  |  message_opt_stmt yychecked_2 error_app_tag_stmt
-  |  message_opt_stmt yychecked_3 description_stmt
-  |  message_opt_stmt yychecked_4 reference_stmt
+  |  message_opt_stmt error_message_stmt { if (read_all && yang_read_message(module,actual,s,actual_type, ERROR_MESSAGE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
+  |  message_opt_stmt error_app_tag_stmt { if (yang_read_message(module,actual,s,actual_type, ERROR_APP_TAG_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
+  |  message_opt_stmt description_stmt { if (read_all && yang_read_description(module,actual,s,actual_type,yylineno)) {YYERROR;} s = NULL; }
+  |  message_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,actual,s,actual_type,yylineno)) {YYERROR;} s = NULL; }
   ;
 
 pattern_stmt: PATTERN_KEYWORD sep string pattern_end stmtsep;
@@ -641,18 +646,53 @@ data_def_stmt: container_stmt
   |  uses_stmt
   ;
 
-container_stmt: CONTAINER_KEYWORD sep identifier_arg_str container_end;
+container_stmt: CONTAINER_KEYWORD sep identifier_arg_str { if (read_all) {
+                                                             if (!(actual = yang_read_cont(module,actual,s))) {YYERROR;}
+                                                             s=NULL;
+                                                           } else {
+                                                             if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                                               LOGMEM;
+                                                               YYERROR;
+                                                             }
+                                                           }
+                                                         }
+                container_end ;
 
-container_end: ';'
+container_end: ';' { if (read_all) { size_arrays->next++; } }
   |  '{' start_check
          container_opt_stmt  {free_check();}
       '}'
   ;  
 
-container_opt_stmt: %empty 
+container_opt_stmt: %empty { if (read_all) {
+                               $$.container = actual;
+                               actual_type = CONTAINER_KEYWORD;
+                               $$.container->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.container->features);
+                               $$.container->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.container->must);
+                               if (!$$.container->features || !$$.container->must) {
+                                 LOGMEM;
+                                 YYERROR;
+                               }
+                               size_arrays->next++;
+                             } else {
+                               $$.index = size_arrays->size-1;
+                             }
+                           }
   |  container_opt_stmt yychecked_1 when_stmt
-  |  container_opt_stmt if_feature_stmt
-  |  container_opt_stmt must_stmt
+  |  container_opt_stmt if_feature_stmt { if (read_all) {
+                                            if (yang_read_if_feature(module,$1.container,s,unres,CONTAINER_KEYWORD,yylineno)) {YYERROR;}
+                                            s=NULL;
+                                          } else {
+                                            size_arrays->node[$1.index].if_features++;
+                                          }
+                                        }
+  |  container_opt_stmt must_stmt { if (read_all) {
+                                      actual = $1.container;
+                                      actual_type = CONTAINER_KEYWORD;
+                                    } else {
+                                      size_arrays->node[$1.index].must++;
+                                    }
+                                  }
   |  container_opt_stmt yychecked_2 presence_stmt
   |  container_opt_stmt yychecked_3 config_stmt
   |  container_opt_stmt yychecked_4 status_stmt
@@ -1048,7 +1088,13 @@ ordered_by_arg_str: USER_KEYWORD optsep
   |  string_1
   ;
 
-must_stmt: MUST_KEYWORD sep string must_end stmtsep;
+must_stmt: MUST_KEYWORD sep string { if (read_all) {
+                                       if (!(actual=yang_read_must(module,actual,s,actual_type,yylineno))) {YYERROR;}
+                                       s=NULL;
+                                       actual_type=MUST_KEYWORD;
+                                     }
+                                   }
+           must_end stmtsep;
 
 must_end: ';'
   |  '{' start_check

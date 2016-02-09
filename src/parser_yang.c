@@ -22,6 +22,7 @@
 #include "parser_yang.h"
 #include "parser_yang_bis.h"
 #include "parser.h"
+#include "xpath.h"
 
 static int 
 yang_check_string(struct lys_module *module, const char **target, char *what, char *where, char *value, int line)
@@ -190,6 +191,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case IDENTITY_KEYWORD:
             ret = yang_check_string(module, &((struct lys_ident *) node)->dsc, "description", "identity", value, line);
             break;
+        case MUST_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_restr *) node)->dsc, "description", "must", value, line);
+            break;
         }
     }
     return ret;
@@ -212,6 +216,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case IDENTITY_KEYWORD:
             ret = yang_check_string(module, &((struct lys_ident *) node)->ref, "reference", "identity", value, line);
+            break;
+        case MUST_KEYWORD:
+            ret = yang_check_string(module,&((struct lys_restr *) node)->ref, "reference", "must", value, line);
             break;
         }
     }
@@ -278,10 +285,12 @@ error:
 }
 
 int
-yang_read_if_feature(struct lys_module *module, struct lys_feature *f, char *value, struct unres_schema *unres, int line)
+yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct unres_schema *unres, int type, int line)
 {
     const char *exp;
     int ret;
+    struct lys_feature *f;
+    struct lys_node *n;
 
     if (!(exp = transform_schema2json(module, value, line))) {
         free(value);
@@ -290,9 +299,17 @@ yang_read_if_feature(struct lys_module *module, struct lys_feature *f, char *val
     free(value);
 
     /* hack - store pointer to the parent node for later status check */
-    f->features[f->features_size] = f;
-    ret = unres_schema_add_str(module, unres, &f->features[f->features_size], UNRES_IFFEAT, exp, line);
-    f->features_size++;
+    if (type == FEATURE_KEYWORD) {
+        f = (struct lys_feature *) ptr;
+        f->features[f->features_size] = f;
+        ret = unres_schema_add_str(module, unres, &f->features[f->features_size], UNRES_IFFEAT, exp, line);
+        f->features_size++;
+    } else {
+        n = (struct lys_node *) ptr;
+        n->features[n->features_size] = (struct lys_feature *) n;
+        ret = unres_schema_add_str(module, unres, &n->features[n->features_size], UNRES_IFFEAT, exp, line);
+        n->features_size++;
+    }
 
     lydict_remove(module->ctx, exp);
     if (ret == -1) {
@@ -351,7 +368,6 @@ yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, 
         LOGVAL(LYE_TOOMANY, line, "base", "identity");
         return EXIT_FAILURE;
     }
-    printf("%s\n",value);
     exp = transform_schema2json(module, value, line);
     free(value);
     if (!exp) {
@@ -363,4 +379,67 @@ yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, 
     }
     lydict_remove(module->ctx, exp);
     return EXIT_SUCCESS;
+}
+
+void *
+yang_read_cont(struct lys_module *module, struct lys_node *parent, char *value)
+{
+    struct lys_node_container *cont;
+
+    cont = calloc(1, sizeof *cont);
+    if (!cont) {
+        LOGMEM;
+        return NULL;
+    }
+    cont->module = module;
+    cont->name = lydict_insert_zc(module->ctx, value);
+    cont->nodetype = LYS_CONTAINER;
+    cont->prev = (struct lys_node *)cont;
+    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, (struct lys_node *)cont)) {
+        lydict_remove(module->ctx, cont->name);
+        free(cont);
+        return NULL;
+    }
+    return cont;
+}
+
+void *
+yang_read_must(struct lys_module *module, struct lys_node *node, char *value, int type, int line)
+{
+    struct lys_restr *retval;
+
+    switch (type) {
+        case CONTAINER_KEYWORD:
+            retval = &((struct lys_node_container *)node)->must[((struct lys_node_container *)node)->must_size];
+            break;
+    }
+    retval->expr = transform_schema2json(module, value, line);
+    if (!retval->expr || lyxp_syntax_check(retval->expr, line)) {
+        goto error;
+    }
+    free(value);
+    return retval;
+
+error:
+    free(value);
+    return NULL;
+}
+
+int
+yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, int type, int message, int line)
+{
+    int ret;
+    char *exp;
+
+    switch (type) {
+    case MUST_KEYWORD:
+        exp = "must";
+        break;
+    }
+    if (message==ERROR_APP_TAG_KEYWORD) {
+        ret = yang_check_string(module, &save->eapptag, "error_app_tag", exp, value, line);
+    } else {
+        ret = yang_check_string(module, &save->emsg, "error_app_tag", exp, value, line);
+    }
+    return ret;
 }
