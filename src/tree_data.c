@@ -596,10 +596,25 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
         return EXIT_FAILURE;
     }
 
-    if (node->parent != sibling->parent || lyp_is_rpc(node->schema)) {
-        /* it is not just moving under a parent node or it is in an RPC where
-         * nodes order matters, so the validation will be necessary */
-        invalid = 1;
+    if (node->parent != sibling->parent || !node->parent || lyp_is_rpc(node->schema)) {
+        /* a) it is not just moving under a parent node or
+         * b) it is top-level where we don't know if it is the same tree, or
+         * c) it is in an RPC where nodes order matters,
+         * so the validation will be necessary */
+        if (!node->parent) {
+            /* b) search in siblings */
+            for (iter = node->prev; iter != node; iter = iter->prev) {
+                if (iter == sibling) {
+                    break;
+                }
+            }
+            if (iter == node) {
+                /* node and siblings are not currently in the same data tree */
+                invalid = 1;
+            }
+        } else { /* a) and c) */
+            invalid = 1;
+        }
     }
 
     if (node->parent || node->next || node->prev->next) {
