@@ -24,7 +24,7 @@ providing API) in C.
 
 ## Requirements
 
-* cmake >= 2.6
+* cmake >= 2.8.5
 * libpcre
 * cmocka >= 1.0.0 (for tests only, see [Tests](#Tests))
 
@@ -69,7 +69,7 @@ There are two build modes:
 The `Debug` mode is currently used as the default one. to switch to the
 `Release` mode, enter at the command line:
 ```
-$ cmake -D CMAKE_BUILD_TYPE:String="Release" .
+$ cmake -D CMAKE_BUILD_TYPE:String="Release" ..
 ```
 ### CMake Notes
 
