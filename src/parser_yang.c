@@ -194,6 +194,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case MUST_KEYWORD:
             ret = yang_check_string(module, &((struct lys_restr *) node)->dsc, "description", "must", value, line);
             break;
+        case WHEN_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_when *) node)->dsc, "description", "when" , value, line);
+            break;
         }
     }
     return ret;
@@ -218,7 +221,10 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             ret = yang_check_string(module, &((struct lys_ident *) node)->ref, "reference", "identity", value, line);
             break;
         case MUST_KEYWORD:
-            ret = yang_check_string(module,&((struct lys_restr *) node)->ref, "reference", "must", value, line);
+            ret = yang_check_string(module, &((struct lys_restr *) node)->ref, "reference", "must", value, line);
+            break;
+        case WHEN_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_when *) node)->ref, "reference", "when", value, line);
             break;
         }
     }
@@ -468,4 +474,37 @@ yang_read_config(void *node, int value, int type, int line)
         break;
     }
     return ret;
+}
+
+void *
+yang_read_when(struct lys_module *module, struct lys_node *node, int type, char *value, int line)
+{
+    struct lys_when *retval;
+
+    retval = calloc(1, sizeof *retval);
+    if (!retval) {
+        LOGMEM;
+        free(value);
+        return NULL;
+    }
+    retval->cond = transform_schema2json(module, value, line);
+    if (!retval->cond || lyxp_syntax_check(retval->cond, line)) {
+        goto error;
+    }
+    switch (type) {
+    case CONTAINER_KEYWORD:
+        if (((struct lys_node_container *)node)->when) {
+            LOGVAL(LYE_TOOMANY,line,"when","container");
+            goto error;
+        }
+        ((struct lys_node_container *)node)->when = retval;
+        break;
+    }
+    free(value);
+    return retval;
+
+error:
+    free(value);
+    lys_when_free(module->ctx, retval);
+    return NULL;
 }

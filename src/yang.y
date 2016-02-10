@@ -680,7 +680,7 @@ container_opt_stmt: %empty { if (read_all) {
                                $$.index = size_arrays->size-1;
                              }
                            }
-  |  container_opt_stmt yychecked_1 when_stmt
+  |  container_opt_stmt when_stmt { actual = $1.container; actual_type = CONTAINER_KEYWORD; }
   |  container_opt_stmt if_feature_stmt { if (read_all) {
                                             if (yang_read_if_feature(module,$1.container,s,unres,CONTAINER_KEYWORD,yylineno)) {YYERROR;}
                                             s=NULL;
@@ -1046,11 +1046,12 @@ deviate_replace_opt_stmt: %empty
   |  deviate_replace_opt_stmt yychecked_7 max_elements_stmt
   ;
 
-when_stmt: WHEN_KEYWORD sep string when_end stmtsep;
+when_stmt: WHEN_KEYWORD sep string  { if (read_all && !(actual=yang_read_when(module,actual,actual_type,s,yylineno))) {YYERROR;} s=NULL; actual_type=WHEN_KEYWORD;}
+           when_end stmtsep;
 
 when_end: ';'
-  |  '{' start_check
-         description_reference_stmt  {free_check();}
+  |  '{' stmtsep
+         description_reference_stmt
      '}'
   ;
 
