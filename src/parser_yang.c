@@ -391,6 +391,12 @@ yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, 
         lydict_remove(module->ctx, exp);
         return EXIT_FAILURE;
     }
+
+    /* hack - store some address due to detection of unresolved base*/
+    if (!ident->base) {
+        ident->base = (void *)1;
+    }
+
     lydict_remove(module->ctx, exp);
     return EXIT_SUCCESS;
 }
