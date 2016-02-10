@@ -661,8 +661,8 @@ container_stmt: CONTAINER_KEYWORD sep identifier_arg_str { if (read_all) {
                 container_end ;
 
 container_end: ';' { if (read_all) { size_arrays->next++; } }
-  |  '{' start_check
-         container_opt_stmt  {free_check();}
+  |  '{' stmtsep
+         container_opt_stmt
       '}'
   ;  
 
@@ -697,11 +697,11 @@ container_opt_stmt: %empty { if (read_all) {
                                   }
   |  container_opt_stmt presence_stmt { if (read_all && yang_read_presence(module,$1.container,s,yylineno)) {YYERROR;} s=NULL; }
   |  container_opt_stmt config_stmt { if (read_all && yang_read_config($1.container,$2,CONTAINER_KEYWORD,yylineno)) {YYERROR;} }
-  |  container_opt_stmt yychecked_4 status_stmt
-  |  container_opt_stmt yychecked_5 description_stmt
-  |  container_opt_stmt yychecked_6 reference_stmt
+  |  container_opt_stmt status_stmt { if (read_all && yang_read_status($1.container,$2,CONTAINER_KEYWORD,yylineno)) {YYERROR;} }
+  |  container_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.container,s,CONTAINER_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  container_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.container,s,CONTAINER_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   |  container_opt_stmt typedef_grouping_stmt
-  |  container_opt_stmt data_def_stmt stmtsep
+  |  container_opt_stmt data_def_stmt stmtsep { actual = $1.container; actual_type = CONTAINER_KEYWORD; }
   ;
 
 leaf_stmt: LEAF_KEYWORD sep identifier_arg_str 

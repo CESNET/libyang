@@ -197,6 +197,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case WHEN_KEYWORD:
             ret = yang_check_string(module, &((struct lys_when *) node)->dsc, "description", "when" , value, line);
             break;
+        case CONTAINER_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_container *) node)->dsc, "description", "container", value, line);
+            break;
         }
     }
     return ret;
@@ -225,6 +228,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case WHEN_KEYWORD:
             ret = yang_check_string(module, &((struct lys_when *) node)->ref, "reference", "when", value, line);
+            break;
+        case CONTAINER_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_container *) node)->ref, "reference", "container", value, line);
             break;
         }
     }
@@ -346,9 +352,11 @@ yang_read_status(void *node, int value, int type, int line)
     case FEATURE_KEYWORD:
         retval = yang_check_flags(&((struct lys_feature *) node)->flags, LYS_STATUS_MASK, "status", "feature", value, line);
         break;
-     case IDENTITY_KEYWORD:
+    case IDENTITY_KEYWORD:
         retval = yang_check_flags(&((struct lys_ident *) node)->flags, LYS_STATUS_MASK, "status", "identity", value, line);
         break;
+    case CONTAINER_KEYWORD:
+        retval = yang_check_flags(&((struct lys_node_container *) node)->flags, LYS_STATUS_MASK, "status", "container", value, line);
     }
     return retval;
 }
