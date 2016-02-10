@@ -34,6 +34,7 @@ int actual_type;
     uint32_t index;
     struct lys_node_container *container;
     struct lys_node_anyxml *anyxml;
+    struct type_choice choice;
   } nodes;
 }
 
@@ -143,8 +144,10 @@ int actual_type;
 %type <i> mandatory_arg_str
 %type <nodes> container_opt_stmt
 %type <nodes> anyxml_opt_stmt
+%type <nodes> choice_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
+%destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
 
 %%
 
@@ -772,23 +775,77 @@ list_opt_stmt: %empty
   |  list_opt_stmt yychecked data_def_stmt stmtsep
   ;
 
-choice_stmt: CHOICE_KEYWORD sep identifier_arg_str choice_end;
+choice_stmt: CHOICE_KEYWORD sep identifier_arg_str { if (read_all) {
+                                                       if (!(actual = yang_read_choice(module,actual,s))) {YYERROR;}
+                                                       s=NULL;
+                                                     } else {
+                                                       if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                                         LOGMEM;
+                                                         YYERROR;
+                                                       }
+                                                     }
+                                                   }
+             choice_end;
 
-choice_end: ';'
-  |  '{' start_check
-         choice_opt_stmt  {free_check(); }
+choice_end: ';' { if (read_all) { size_arrays->next++; } }
+  |  '{' stmtsep
+         choice_opt_stmt  { if (read_all) {
+                              if ($3.choice.s && ($3.choice.ptr_choice->flags & LYS_MAND_TRUE)) {
+                                LOGVAL(LYE_SPEC, yylineno,"The \"default\" statement MUST NOT be present on choices where \"mandatory\" is true.");
+                                YYERROR;
+                              }
+                              /* link default with the case */
+                              if ($3.choice.s) {
+                                if (unres_schema_add_str(module, unres, $3.choice.ptr_choice, UNRES_CHOICE_DFLT, $3.choice.s, yylineno) == -1) {
+                                  YYERROR;
+                                }
+                                free($3.choice.s);
+                              }
+                            }
+                          }
      '}' ;
 
-choice_opt_stmt: %empty 
-  |  choice_opt_stmt yychecked_1 when_stmt 
-  |  choice_opt_stmt if_feature_stmt
-  |  choice_opt_stmt yychecked_2 default_stmt
-  |  choice_opt_stmt yychecked_3 config_stmt
-  |  choice_opt_stmt yychecked_4 mandatory_stmt
-  |  choice_opt_stmt yychecked_5 status_stmt
-  |  choice_opt_stmt yychecked_6 description_stmt
-  |  choice_opt_stmt yychecked_7 reference_stmt
-  |  choice_opt_stmt  short_case_case_stmt
+choice_opt_stmt: %empty { if (read_all) {
+                            $$.choice.ptr_choice = actual;
+                            $$.choice.s = NULL;
+                            actual_type = CONTAINER_KEYWORD;
+                            $$.choice.ptr_choice->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.choice.ptr_choice->features);
+                            if (!$$.choice.ptr_choice->features) {
+                              LOGMEM;
+                              YYERROR;
+                            }
+                            size_arrays->next++;
+                          } else {
+                            $$.index = size_arrays->size-1;
+                          }
+                        }
+  |  choice_opt_stmt when_stmt { actual = $1.choice.ptr_choice; actual_type = CHOICE_KEYWORD; $$ = $1; }
+  |  choice_opt_stmt if_feature_stmt { if (read_all) {
+                                         if (yang_read_if_feature(module,$1.choice.ptr_choice,s,unres,CHOICE_KEYWORD,yylineno)) {YYERROR;}
+                                         s=NULL;
+                                         $$ = $1;
+                                       } else {
+                                         size_arrays->node[$1.index].if_features++;
+                                       }
+                                     }
+  |  choice_opt_stmt default_stmt { if (read_all) {
+                                      if ($1.choice.s) {
+                                        LOGVAL(LYE_TOOMANY,yylineno,"default","choice");
+                                        free($1.choice.s);
+                                        free(s);
+                                        YYERROR;
+                                      }
+                                      $1.choice.s = s;
+                                      s = NULL;
+                                      $$ = $1;
+                                    }
+                                  }
+  |  choice_opt_stmt config_stmt { if (read_all && yang_read_config($1.choice.ptr_choice,$2,CHOICE_KEYWORD,yylineno)) {YYERROR;} $$ = $1; }
+  |  choice_opt_stmt mandatory_stmt { if (read_all && yang_read_mandatory($1.choice.ptr_choice,$2,CHOICE_KEYWORD,yylineno)) {YYERROR;} $$ = $1; }
+  |  choice_opt_stmt status_stmt { if (read_all && yang_read_status($1.choice.ptr_choice,$2,CHOICE_KEYWORD,yylineno)) {YYERROR;} $$ = $1; }
+  |  choice_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.choice.ptr_choice,s,CHOICE_KEYWORD,yylineno)) {YYERROR;} s = NULL; $$ = $1; }
+  |  choice_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.choice.ptr_choice,s,CHOICE_KEYWORD,yylineno)) {YYERROR;} s = NULL; $$ = $1; }
+  |  choice_opt_stmt short_case_case_stmt { actual = $1.choice.ptr_choice; actual_type = CHOICE_KEYWORD; $$ = $1; }
   ;
 
 short_case_case_stmt:  short_case_stmt stmtsep

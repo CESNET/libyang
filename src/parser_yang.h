@@ -59,6 +59,11 @@ struct lys_array_size {
     struct lys_node_array *node;
 };
 
+struct type_choice {
+  char *s;
+  struct lys_node_choice *ptr_choice;
+};
+
 int yang_read_common(struct lys_module *module,char *value, int type, int line);
 
 int yang_read_prefix(struct lys_module *module, void *save, char *value,int type,int line);
@@ -116,5 +121,7 @@ void *yang_read_when(struct lys_module *module, struct lys_node *node, int type,
 void *yang_read_anyxml(struct lys_module *module, struct lys_node *parent, char *value);
 
 int yang_read_mandatory(void *node, int value, int type, int line);
+
+void *yang_read_choice(struct lys_module *module, struct lys_node *parent, char *value);
 
 #endif /* LY_PARSER_YANG_H_ */

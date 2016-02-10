@@ -203,6 +203,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case ANYXML_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_anyxml *) node)->dsc, "description", "anyxml", value, line);
             break;
+        case CHOICE_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_choice *) node)->dsc, "description", "choice", value, line);
+            break;
         }
     }
     return ret;
@@ -237,6 +240,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case ANYXML_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_anyxml *) node)->ref, "reference", "anyxml", value, line);
+            break;
+        case CHOICE_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_anyxml *) node)->ref, "reference", "choice", value, line);
             break;
         }
     }
@@ -366,6 +372,9 @@ yang_read_status(void *node, int value, int type, int line)
         break;
     case ANYXML_KEYWORD:
         retval = yang_check_flags(&((struct lys_node_anyxml *) node)->flags, LYS_STATUS_MASK, "status", "anyxml", value, line);
+        break;
+    case CHOICE_KEYWORD:
+        retval = yang_check_flags(&((struct lys_node_anyxml *) node)->flags, LYS_STATUS_MASK, "status", "choice", value, line);
         break;
     }
     return retval;
@@ -502,6 +511,9 @@ yang_read_config(void *node, int value, int type, int line)
     case ANYXML_KEYWORD:
         ret = yang_check_flags(&((struct lys_node_anyxml *)node)->flags, LYS_CONFIG_MASK, "config", "anyxml", value, line);
         break;
+    case CHOICE_KEYWORD:
+        ret = yang_check_flags(&((struct lys_node_choice *)node)->flags, LYS_CONFIG_MASK, "config", "choice", value, line);
+        break;
     }
     return ret;
 }
@@ -529,12 +541,19 @@ yang_read_when(struct lys_module *module, struct lys_node *node, int type, char 
         }
         ((struct lys_node_container *)node)->when = retval;
         break;
-     case ANYXML_KEYWORD:
+    case ANYXML_KEYWORD:
         if (((struct lys_node_anyxml *)node)->when) {
             LOGVAL(LYE_TOOMANY,line,"when","anyxml");
             goto error;
         }
         ((struct lys_node_anyxml *)node)->when = retval;
+        break;
+    case CHOICE_KEYWORD:
+        if (((struct lys_node_choice *)node)->when) {
+            LOGVAL(LYE_TOOMANY,line,"when","choice");
+            goto error;
+        }
+        ((struct lys_node_choice *)node)->when = retval;
         break;
     }
     free(value);
@@ -577,6 +596,34 @@ yang_read_mandatory(void *node, int value, int type, int line)
     case ANYXML_KEYWORD:
         ret = yang_check_flags(&((struct lys_node_anyxml *)node)->flags, LYS_MAND_MASK, "mandatory", "anyxml", value, line);
         break;
+    case CHOICE_KEYWORD:
+        ret = yang_check_flags(&((struct lys_node_choice *)node)->flags, LYS_MAND_MASK, "mandatory", "choice", value, line);
+        break;
     }
     return ret;
+}
+
+
+void *
+yang_read_choice(struct lys_module *module, struct lys_node *parent, char *value)
+{
+    struct lys_node_choice *choice;
+
+    choice = calloc(1, sizeof *choice);
+    if (!choice) {
+        LOGMEM;
+        return NULL;
+    }
+    choice->module = module;
+    choice->name = lydict_insert_zc(module->ctx, value);
+    choice->nodetype = LYS_CHOICE;
+    choice->prev = (struct lys_node *)choice;
+
+    /* insert the node into the schema tree */
+    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, (struct lys_node *)choice)) {
+        lydict_remove(module->ctx, choice->name);
+        free(choice);
+        return NULL;
+    }
+    return choice;
 }
