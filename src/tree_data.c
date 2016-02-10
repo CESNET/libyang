@@ -65,6 +65,9 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
     case LYD_XML:
     case LYD_XML_FORMAT:
         xml = lyxml_parse_mem(ctx, data, xmlopt);
+        if (ly_errno) {
+            return NULL;
+        }
         result = lyd_parse_xml(ctx, &xml, options, parent);
         LY_TREE_FOR_SAFE(xml, xmlnext, xml) {
             lyxml_free(ctx, xml);
