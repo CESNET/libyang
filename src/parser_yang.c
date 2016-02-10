@@ -200,6 +200,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case CONTAINER_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_container *) node)->dsc, "description", "container", value, line);
             break;
+        case ANYXML_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_anyxml *) node)->dsc, "description", "anyxml", value, line);
+            break;
         }
     }
     return ret;
@@ -231,6 +234,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case CONTAINER_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_container *) node)->ref, "reference", "container", value, line);
+            break;
+        case ANYXML_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_anyxml *) node)->ref, "reference", "anyxml", value, line);
             break;
         }
     }
@@ -357,6 +363,10 @@ yang_read_status(void *node, int value, int type, int line)
         break;
     case CONTAINER_KEYWORD:
         retval = yang_check_flags(&((struct lys_node_container *) node)->flags, LYS_STATUS_MASK, "status", "container", value, line);
+        break;
+    case ANYXML_KEYWORD:
+        retval = yang_check_flags(&((struct lys_node_anyxml *) node)->flags, LYS_STATUS_MASK, "status", "anyxml", value, line);
+        break;
     }
     return retval;
 }
@@ -429,9 +439,12 @@ yang_read_must(struct lys_module *module, struct lys_node *node, char *value, in
     struct lys_restr *retval;
 
     switch (type) {
-        case CONTAINER_KEYWORD:
-            retval = &((struct lys_node_container *)node)->must[((struct lys_node_container *)node)->must_size];
-            break;
+    case CONTAINER_KEYWORD:
+        retval = &((struct lys_node_container *)node)->must[((struct lys_node_container *)node)->must_size];
+        break;
+    case ANYXML_KEYWORD:
+        retval = &((struct lys_node_anyxml *)node)->must[((struct lys_node_anyxml *)node)->must_size];
+        break;
     }
     retval->expr = transform_schema2json(module, value, line);
     if (!retval->expr || lyxp_syntax_check(retval->expr, line)) {
@@ -486,6 +499,9 @@ yang_read_config(void *node, int value, int type, int line)
     case CONTAINER_KEYWORD:
         ret = yang_check_flags(&((struct lys_node_container *)node)->flags, LYS_CONFIG_MASK, "config", "container", value, line);
         break;
+    case ANYXML_KEYWORD:
+        ret = yang_check_flags(&((struct lys_node_anyxml *)node)->flags, LYS_CONFIG_MASK, "config", "anyxml", value, line);
+        break;
     }
     return ret;
 }
@@ -513,6 +529,13 @@ yang_read_when(struct lys_module *module, struct lys_node *node, int type, char 
         }
         ((struct lys_node_container *)node)->when = retval;
         break;
+     case ANYXML_KEYWORD:
+        if (((struct lys_node_anyxml *)node)->when) {
+            LOGVAL(LYE_TOOMANY,line,"when","anyxml");
+            goto error;
+        }
+        ((struct lys_node_anyxml *)node)->when = retval;
+        break;
     }
     free(value);
     return retval;
@@ -521,4 +544,39 @@ error:
     free(value);
     lys_when_free(module->ctx, retval);
     return NULL;
+}
+
+void *
+yang_read_anyxml(struct lys_module *module, struct lys_node *parent, char *value)
+{
+    struct lys_node_anyxml *anyxml;
+
+    anyxml = calloc(1, sizeof *anyxml);
+    if (!anyxml) {
+        LOGMEM;
+        return NULL;
+    }
+    anyxml->module = module;
+    anyxml->name = lydict_insert_zc(module->ctx, value);
+    anyxml->nodetype = LYS_ANYXML;
+    anyxml->prev = (struct lys_node *)anyxml;
+    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, (struct lys_node *)anyxml)) {
+        lydict_remove(module->ctx, anyxml->name);
+        free(anyxml);
+        return NULL;
+    }
+    return anyxml;
+}
+
+int
+yang_read_mandatory(void *node, int value, int type, int line)
+{
+    int ret;
+
+    switch (type) {
+    case ANYXML_KEYWORD:
+        ret = yang_check_flags(&((struct lys_node_anyxml *)node)->flags, LYS_MAND_MASK, "mandatory", "anyxml", value, line);
+        break;
+    }
+    return ret;
 }

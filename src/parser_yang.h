@@ -113,4 +113,8 @@ int yang_read_config(void *node, int value, int type, int line);
 
 void *yang_read_when(struct lys_module *module, struct lys_node *node, int type, char *value, int line);
 
+void *yang_read_anyxml(struct lys_module *module, struct lys_node *parent, char *value);
+
+int yang_read_mandatory(void *node, int value, int type, int line);
+
 #endif /* LY_PARSER_YANG_H_ */

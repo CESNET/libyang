@@ -33,6 +33,7 @@ int actual_type;
   union {
     uint32_t index;
     struct lys_node_container *container;
+    struct lys_node_anyxml *anyxml;
   } nodes;
 }
 
@@ -138,7 +139,10 @@ int actual_type;
 %type <i> status_arg_str
 %type <i> config_stmt
 %type <i> config_arg_str
+%type <i> mandatory_stmt
+%type <i> mandatory_arg_str
 %type <nodes> container_opt_stmt
+%type <nodes> anyxml_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 
@@ -814,22 +818,57 @@ case_opt_stmt: %empty
   |  case_opt_stmt data_def_stmt stmtsep
   ;
 
-anyxml_stmt: ANYXML_KEYWORD sep identifier_arg_str anyxml_end;
+anyxml_stmt: ANYXML_KEYWORD sep identifier_arg_str { if (read_all) {
+                                                       if (!(actual = yang_read_anyxml(module,actual,s))) {YYERROR;}
+                                                       s=NULL;
+                                                     } else {
+                                                       if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                                         LOGMEM;
+                                                         YYERROR;
+                                                       }
+                                                     }
+                                                   }
+             anyxml_end;
 
-anyxml_end: ';'
-  |  '{' start_check
-         anyxml_opt_stmt  {free_check();}
+anyxml_end: ';' { if (read_all) { size_arrays->next++; } }
+  |  '{' stmtsep
+         anyxml_opt_stmt
      '}' ;
 
-anyxml_opt_stmt: %empty 
-  |  anyxml_opt_stmt yychecked_1 when_stmt
-  |  anyxml_opt_stmt if_feature_stmt
-  |  anyxml_opt_stmt must_stmt
-  |  anyxml_opt_stmt yychecked_2 config_stmt
-  |  anyxml_opt_stmt yychecked_3 mandatory_stmt
-  |  anyxml_opt_stmt yychecked_4 status_stmt
-  |  anyxml_opt_stmt yychecked_5 description_stmt
-  |  anyxml_opt_stmt yychecked_6 reference_stmt
+anyxml_opt_stmt: %empty { if (read_all) {
+                            $$.anyxml = actual;
+                            actual_type = ANYXML_KEYWORD;
+                            $$.anyxml->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.anyxml->features);
+                            $$.anyxml->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.anyxml->must);
+                            if (!$$.anyxml->features || !$$.anyxml->must) {
+                              LOGMEM;
+                              YYERROR;
+                            }
+                            size_arrays->next++;
+                          } else {
+                            $$.index = size_arrays->size-1;
+                          }
+                        }
+  |  anyxml_opt_stmt when_stmt { actual = $1.anyxml; actual_type = ANYXML_KEYWORD; }
+  |  anyxml_opt_stmt if_feature_stmt { if (read_all) {
+                                         if (yang_read_if_feature(module,$1.anyxml,s,unres,ANYXML_KEYWORD,yylineno)) {YYERROR;}
+                                         s=NULL;
+                                       } else {
+                                         size_arrays->node[$1.index].if_features++;
+                                       }
+                                     }
+  |  anyxml_opt_stmt must_stmt { if (read_all) {
+                                   actual = $1.anyxml;
+                                   actual_type = ANYXML_KEYWORD;
+                                 } else {
+                                   size_arrays->node[$1.index].must++;
+                                 }
+                               }
+  |  anyxml_opt_stmt config_stmt { if (read_all && yang_read_config($1.anyxml,$2,ANYXML_KEYWORD,yylineno)) {YYERROR;} }
+  |  anyxml_opt_stmt mandatory_stmt { if (read_all && yang_read_mandatory($1.anyxml,$2,ANYXML_KEYWORD,yylineno)) {YYERROR;} }
+  |  anyxml_opt_stmt status_stmt { if (read_all && yang_read_status($1.anyxml,$2,ANYXML_KEYWORD,yylineno)) {YYERROR;} }
+  |  anyxml_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.anyxml,s,ANYXML_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  anyxml_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.anyxml,s,ANYXML_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   ;
 
 uses_stmt: USES_KEYWORD sep identifier_ref_arg_str uses_end;
@@ -1062,11 +1101,11 @@ config_arg_str: TRUE_KEYWORD optsep { $$ = LYS_CONFIG_W; }
   |  string_1  //not implement
   ;
 
-mandatory_stmt: MANDATORY_KEYWORD sep mandatory_arg_str stmtend;
+mandatory_stmt: MANDATORY_KEYWORD sep mandatory_arg_str stmtend { $$ = $3; }
 
-mandatory_arg_str: TRUE_KEYWORD optsep
-  |  FALSE_KEYWORD optsep
-  |  string_1
+mandatory_arg_str: TRUE_KEYWORD optsep { $$ = LYS_MAND_TRUE; }
+  |  FALSE_KEYWORD optsep { $$ = LYS_MAND_FALSE; }
+  |  string_1 //not implement
   ;
 
 presence_stmt: PRESENCE_KEYWORD sep string stmtend;
@@ -1100,8 +1139,8 @@ must_stmt: MUST_KEYWORD sep string { if (read_all) {
            must_end stmtsep;
 
 must_end: ';'
-  |  '{' start_check
-         message_opt_stmt  {free_check();}
+  |  '{' stmtsep
+         message_opt_stmt
      '}'
   ;
 
