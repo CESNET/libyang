@@ -83,7 +83,7 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
 
     if (!result && !ly_errno) {
         /* is empty data tree really valid ? */
-        lyd_validate(NULL, options);
+        lyd_validate(NULL, options, ctx);
     }
     return result;
 }

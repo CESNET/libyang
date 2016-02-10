@@ -436,7 +436,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 
     if (!(*root)) {
         /* empty tree - no work is needed */
-        lyd_validate(NULL, options);
+        lyd_validate(NULL, options, ctx);
         return NULL;
     }
 
