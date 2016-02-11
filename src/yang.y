@@ -30,6 +30,7 @@ int tmp_line;
 
 %union {
   int i;
+  uint32_t uint;
   char *str;
   union {
     uint32_t index;
@@ -138,6 +139,12 @@ int tmp_line;
 %token UNBOUNDED_KEYWORD
 %token USER_KEYWORD
 
+%type <uint> positive_integer_value
+%type <uint> non_negative_integer_value
+%type <uint> max_value_arg_str
+%type <uint> max_elements_stmt
+%type <uint> min_value_arg_str
+%type <uint> min_elements_stmt
 %type <i> module_header_stmts
 %type <str> tmp_identifier_arg_str
 %type <i> status_stmt
@@ -224,7 +231,7 @@ submodule_header_stmts: %empty
   
 yang_version_stmt: YANG_VERSION_KEYWORD sep yang_version_arg_str stmtend;
 
-yang_version_arg_str: '1' optsep
+yang_version_arg_str: NON_NEGATIVE_INTEGER { if (strlen(yytext)!=1 || yytext[0]!='1') {YYERROR;} } optsep
   | string_1;
 
 namespace_stmt: NAMESPACE_KEYWORD sep uri_str stmtend;
@@ -1267,17 +1274,17 @@ mandatory_arg_str: TRUE_KEYWORD optsep { $$ = LYS_MAND_TRUE; }
 
 presence_stmt: PRESENCE_KEYWORD sep string stmtend;
 
-min_elements_stmt: MIN_ELEMENTS_KEYWORD sep min_value_arg_str stmtend;
+min_elements_stmt: MIN_ELEMENTS_KEYWORD sep min_value_arg_str stmtend { $$ = $3; }
 
-min_value_arg_str: non_negative_integer_value optsep
-  |  string_1 
+min_value_arg_str: non_negative_integer_value optsep { $$ = $1; }
+  |  string_1 // not implement
   ;
 
-max_elements_stmt: MAX_ELEMENTS_KEYWORD sep max_value_arg_str stmtend;
+max_elements_stmt: MAX_ELEMENTS_KEYWORD sep max_value_arg_str stmtend { $$ = $3; }
 
-max_value_arg_str: UNBOUNDED_KEYWORD optsep
-  |  NON_NEGATIVE_INTEGER optsep 
-  |  string_1
+max_value_arg_str: UNBOUNDED_KEYWORD optsep //not implement
+  |  positive_integer_value optsep { $$ = $1; }
+  |  string_1 // not implement
   ;
 
 ordered_by_stmt: ORDERED_BY_KEYWORD sep ordered_by_arg_str stmtend;
@@ -1410,8 +1417,19 @@ rel_path_keyexpr_part2: %empty
 
 current_function_invocation: CURRENT_KEYWORD whitespace_opt "(" whitespace_opt ")"
 
-non_negative_integer_value: ZERO
-  |  NON_NEGATIVE_INTEGER
+positive_integer_value: NON_NEGATIVE_INTEGER { /* convert it to uint32_t */
+                                                unsigned long val;
+
+                                                val = strtoul(yytext, NULL, 10);
+                                                if (val > UINT32_MAX) {
+                                                    LOGVAL(LYE_SPEC, yylineno, "Converted number is very long.");
+                                                    YYERROR;
+                                                }
+                                                $$ = (uint32_t) val;
+                                             }
+
+non_negative_integer_value: ZERO { $$ = 0; }
+  |  positive_integer_value { $$ = $1; }
   ;
 
 integer_value: ZERO
