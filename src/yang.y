@@ -153,6 +153,8 @@ int tmp_line;
 %type <i> config_arg_str
 %type <i> mandatory_stmt
 %type <i> mandatory_arg_str
+%type <i> ordered_by_stmt
+%type <i> ordered_by_arg_str
 %type <nodes> container_opt_stmt
 %type <nodes> anyxml_opt_stmt
 %type <nodes> choice_opt_stmt
@@ -1287,12 +1289,21 @@ max_value_arg_str: UNBOUNDED_KEYWORD optsep //not implement
   |  string_1 // not implement
   ;
 
-ordered_by_stmt: ORDERED_BY_KEYWORD sep ordered_by_arg_str stmtend;
+ordered_by_stmt: ORDERED_BY_KEYWORD sep ordered_by_arg_str stmtend { $$ = $3; }
 
-ordered_by_arg_str: USER_KEYWORD optsep
-  |  SYSTEM_KEYWORD optsep
-  |  string_1
-  ;
+ordered_by_arg_str: USER_KEYWORD optsep { $$ = LYS_USERORDERED; }
+  |  SYSTEM_KEYWORD optsep { $$ = LYS_SYSTEMORDERED; }
+  |  string_1 { if (!strcmp(s, "user")) {
+                  $$ = LYS_USERORDERED;
+                } else if (!strcmp(s, "system")) {
+                  $$ = LYS_SYSTEMORDERED;
+                } else {
+                  free(s);
+                  YYERROR;
+                }
+                free(s);
+                s=NULL;
+              }
 
 must_stmt: MUST_KEYWORD sep string { if (read_all) {
                                        if (!(actual=yang_read_must(module,actual,s,actual_type,yylineno))) {YYERROR;}

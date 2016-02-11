@@ -33,6 +33,8 @@
 #define LY_ARRAY_SIZE 32
 #define LY_READ_ALL 1
 #define LY_READ_ONLY_SIZE 0
+#define LYS_SYSTEMORDERED 0x40
+#define LYS_ORDERED_MASK 0xC0
 
 struct lys_node_array{
     uint8_t if_features;
