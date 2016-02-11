@@ -653,6 +653,7 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
     unsigned int max_child_len;
     int level = 1, have_rpcs = 0, have_notifs = 0;
     char *indent = malloc((level * 4 + 1) * sizeof (char));
+    int i;
 
     if (!indent) {
         LOGMEM;
@@ -688,6 +689,16 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
                              LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST
                              | LYS_ANYXML | LYS_USES, 0);
             break;
+        }
+    }
+
+    /* augment */
+    for (i = 0; i < module->augment_size; i++) {
+        ly_print(out, "augment %s:\n", module->augment[i].target_name);
+        LY_TREE_FOR(module->augment[i].child, node) {
+            tree_print_snode(out, module, level, indent, max_child_len, node,
+                             LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST
+                             | LYS_ANYXML | LYS_USES, 0);
         }
     }
 
