@@ -1952,6 +1952,8 @@ lys_get_import_module(const struct lys_module *module, const char *prefix, int p
     const struct lys_module *main_module;
     int i;
 
+    assert(!prefix || !name);
+
     if (prefix && !pref_len) {
         pref_len = strlen(prefix);
     }
@@ -1960,7 +1962,10 @@ lys_get_import_module(const struct lys_module *module, const char *prefix, int p
     }
 
     main_module = (module->type ? ((struct lys_submodule *)module)->belongsto : module);
-    if ((!prefix || (!strncmp(main_module->prefix, prefix, pref_len) && !main_module->prefix[pref_len]))
+
+    /* module own prefix, submodule own prefix, (sub)module own name */
+    if ((!prefix || (!module->type && !strncmp(main_module->prefix, prefix, pref_len) && !main_module->prefix[pref_len])
+                 || (module->type && !strncmp(module->prefix, prefix, pref_len) && !module->prefix[pref_len]))
             && (!name || (!strncmp(main_module->name, name, name_len) && !main_module->name[name_len]))) {
         return main_module;
     }
