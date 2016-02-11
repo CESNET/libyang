@@ -35,11 +35,13 @@
 #include "parser.h"
 #include "tree_internal.h"
 
+#define YANG_FAKEMODULE_PATH "../models/yang@2016-02-11.h"
 #define IETF_INET_TYPES_PATH "../models/ietf-inet-types@2013-07-15.h"
 #define IETF_YANG_TYPES_PATH "../models/ietf-yang-types@2013-07-15.h"
 #define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2016-02-01.h"
 #define IETF_YANG_LIB_REV "2016-02-01"
 
+#include YANG_FAKEMODULE_PATH
 #include IETF_INET_TYPES_PATH
 #include IETF_YANG_TYPES_PATH
 #include IETF_YANG_LIB_PATH
@@ -83,23 +85,26 @@ ly_ctx_new(const char *search_dir)
     }
     ctx->models.module_set_id = 1;
 
+    /* load (fake) YANG module */
+    if (!lys_parse_mem(ctx, (char *)yang_2016_02_11_yin, LYS_IN_YIN)) {
+        ly_ctx_destroy(ctx, NULL);
+        return NULL;
+    }
+
     /* load ietf-inet-types */
-    ctx->models.list[0] = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN);
-    if (!ctx->models.list[0]) {
+    if (!lys_parse_mem(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN)) {
         ly_ctx_destroy(ctx, NULL);
         return NULL;
     }
 
     /* load ietf-yang-types */
-    ctx->models.list[1] = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_yang_types_2013_07_15_yin, LYS_IN_YIN);
-    if (!ctx->models.list[1]) {
+    if (!lys_parse_mem(ctx, (char *)ietf_yang_types_2013_07_15_yin, LYS_IN_YIN)) {
         ly_ctx_destroy(ctx, NULL);
         return NULL;
     }
 
     /* load ietf-yang-library */
-    ctx->models.list[2] = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_yang_library_2016_02_01_yin, LYS_IN_YIN);
-    if (!ctx->models.list[2]) {
+    if (!lys_parse_mem(ctx, (char *)ietf_yang_library_2016_02_01_yin, LYS_IN_YIN)) {
         ly_ctx_destroy(ctx, NULL);
         return NULL;
     }
