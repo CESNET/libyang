@@ -23,6 +23,7 @@ char *s;
 struct Scheck *checked=NULL;
 void *actual;
 int actual_type;
+int tmp_line;
 %}
 
 %parse-param {struct lys_module *module} {struct unres_schema *unres} {struct lys_array_size *size_arrays} {int read_all}
@@ -37,6 +38,7 @@ int actual_type;
     struct type_choice choice;
     struct lys_node_case *cs;
     struct lys_node_grp *grouping;
+    struct lys_node_leaf *leaf;
   } nodes;
 }
 
@@ -149,6 +151,7 @@ int actual_type;
 %type <nodes> choice_opt_stmt
 %type <nodes> case_opt_stmt
 %type <nodes> grouping_opt_stmt
+%type <nodes> leaf_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
@@ -737,24 +740,67 @@ container_opt_stmt: %empty { if (read_all) {
   |  container_opt_stmt data_def_stmt stmtsep { actual = $1.container; actual_type = CONTAINER_KEYWORD; }
   ;
 
-leaf_stmt: LEAF_KEYWORD sep identifier_arg_str 
+leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
+                                                   if (!(actual = yang_read_node(module,actual,s,LYS_LEAF,sizeof(struct lys_node_leaf)))) {YYERROR;}
+                                                   s=NULL;
+                                                 } else {
+                                                   if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                                     LOGMEM;
+                                                     YYERROR;
+                                                   }
+                                                 }
+                                               }
            '{' start_check
                leaf_opt_stmt  { if ((checked->check&2)==0) { yyerror(module,unres,size_arrays,read_all,"type statement missingo."); YYERROR; }
-                                free_check(); }
+                                if (read_all && $7.leaf->dflt) {
+                                  if (unres_schema_add_str(module, unres, &$7.leaf->type, UNRES_TYPE_DFLT, $7.leaf->dflt, tmp_line) == -1) {
+                                    YYERROR;
+                                  }
+                                }
+                                free_check();
+                              }
            '}' ;
 
-leaf_opt_stmt: %empty 
-  |  leaf_opt_stmt yychecked_1 when_stmt
-  |  leaf_opt_stmt if_feature_stmt
-  |  leaf_opt_stmt yychecked_2 type_stmt
-  |  leaf_opt_stmt yychecked_3 units_stmt
-  |  leaf_opt_stmt must_stmt
-  |  leaf_opt_stmt yychecked_4 default_stmt
-  |  leaf_opt_stmt yychecked_5 config_stmt
-  |  leaf_opt_stmt yychecked_6 mandatory_stmt
-  |  leaf_opt_stmt yychecked_7 status_stmt
-  |  leaf_opt_stmt yychecked_8 description_stmt
-  |  leaf_opt_stmt yychecked_9 reference_stmt
+leaf_opt_stmt: %empty { if (read_all) {
+                          $$.leaf = actual;
+                          actual_type = LEAF_KEYWORD;
+                          $$.leaf->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.leaf->features);
+                          $$.leaf->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.leaf->must);
+                          if (!$$.leaf->features || !$$.leaf->must) {
+                            LOGMEM;
+                            YYERROR;
+                          }
+                          size_arrays->next++;
+                        } else {
+                          $$.index = size_arrays->size-1;
+                        }
+                      }
+  |  leaf_opt_stmt when_stmt { actual = $1.leaf; actual_type = LEAF_KEYWORD; }
+  |  leaf_opt_stmt if_feature_stmt { if (read_all) {
+                                       if (yang_read_if_feature(module,$1.leaf,s,unres,LEAF_KEYWORD,yylineno)) {YYERROR;}
+                                       s=NULL;
+                                     } else {
+                                       size_arrays->node[$1.index].if_features++;
+                                     }
+                                   }
+  |  leaf_opt_stmt yychecked_2 type_stmt // not implement
+  |  leaf_opt_stmt units_stmt { if (read_all && yang_read_units(module,$1.leaf,s,LEAF_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  leaf_opt_stmt must_stmt { if (read_all) {
+                                 actual = $1.leaf;
+                                 actual_type = LEAF_KEYWORD;
+                               } else {
+                                 size_arrays->node[$1.index].must++;
+                               }
+                             }
+  |  leaf_opt_stmt default_stmt { if (read_all && yang_read_default(module,$1.leaf,s,LEAF_KEYWORD,yylineno)) {YYERROR;}
+                                  s = NULL;
+                                  tmp_line = yylineno;
+                                }
+  |  leaf_opt_stmt config_stmt { if (read_all && yang_read_config($1.leaf,$2,LEAF_KEYWORD,yylineno)) {YYERROR;} }
+  |  leaf_opt_stmt mandatory_stmt { if (read_all && yang_read_mandatory($1.leaf,$2,LEAF_KEYWORD,yylineno)) {YYERROR;} }
+  |  leaf_opt_stmt status_stmt { if (read_all && yang_read_status($1.leaf,$2,LEAF_KEYWORD,yylineno)) {YYERROR;} }
+  |  leaf_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.leaf,s,LEAF_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  leaf_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.leaf,s,LEAF_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   ;
 
 leaf_list_stmt: LEAF_LIST_KEYWORD sep identifier_arg_str 

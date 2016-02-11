@@ -130,4 +130,8 @@ int yang_read_mandatory(void *node, int value, int type, int line);
 */
 void * yang_read_node(struct lys_module *module, struct lys_node *parent, char *value, int nodetype, int sizeof_struct);
 
+int yang_read_default(struct lys_module *module, void *node, char *value, int type, int line);
+
+int yang_read_units(struct lys_module *module, void *node, char *value, int type, int line);
+
 #endif /* LY_PARSER_YANG_H_ */

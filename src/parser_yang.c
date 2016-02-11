@@ -212,6 +212,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case GROUPING_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_grp *) node)->dsc, "description", "grouping", value, line);
             break;
+        case LEAF_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_leaf *) node)->dsc, "description", "leaf", value, line);
+            break;
         }
     }
     return ret;
@@ -255,6 +258,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case GROUPING_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_grp *) node)->ref, "reference", "grouping", value, line);
+            break;
+        case LEAF_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_leaf *) node)->ref, "reference", "leaf", value, line);
             break;
         }
     }
@@ -394,6 +400,9 @@ yang_read_status(void *node, int value, int type, int line)
     case GROUPING_KEYWORD:
         retval = yang_check_flags(&((struct lys_node_grp *) node)->flags, LYS_STATUS_MASK, "status", "grouping", value, line);
         break;
+    case LEAF_KEYWORD:
+        retval = yang_check_flags(&((struct lys_node_leaf *) node)->flags, LYS_STATUS_MASK, "status", "leaf", value, line);
+        break;
     }
     return retval;
 }
@@ -445,10 +454,13 @@ yang_read_must(struct lys_module *module, struct lys_node *node, char *value, in
 
     switch (type) {
     case CONTAINER_KEYWORD:
-        retval = &((struct lys_node_container *)node)->must[((struct lys_node_container *)node)->must_size];
+        retval = &((struct lys_node_container *)node)->must[((struct lys_node_container *)node)->must_size++];
         break;
     case ANYXML_KEYWORD:
-        retval = &((struct lys_node_anyxml *)node)->must[((struct lys_node_anyxml *)node)->must_size];
+        retval = &((struct lys_node_anyxml *)node)->must[((struct lys_node_anyxml *)node)->must_size++];
+        break;
+    case LEAF_KEYWORD:
+        retval = &((struct lys_node_leaf *)node)->must[((struct lys_node_leaf *)node)->must_size++];
         break;
     }
     retval->expr = transform_schema2json(module, value, line);
@@ -510,6 +522,9 @@ yang_read_config(void *node, int value, int type, int line)
     case CHOICE_KEYWORD:
         ret = yang_check_flags(&((struct lys_node_choice *)node)->flags, LYS_CONFIG_MASK, "config", "choice", value, line);
         break;
+    case LEAF_KEYWORD:
+        ret = yang_check_flags(&((struct lys_node_leaf *)node)->flags, LYS_CONFIG_MASK, "config", "leaf", value, line);
+        break;
     }
     return ret;
 }
@@ -558,6 +573,13 @@ yang_read_when(struct lys_module *module, struct lys_node *node, int type, char 
         }
         ((struct lys_node_case *)node)->when = retval;
         break;
+    case LEAF_KEYWORD:
+        if (((struct lys_node_leaf *)node)->when) {
+            LOGVAL(LYE_TOOMANY,line,"when","leaf");
+            goto error;
+        }
+        ((struct lys_node_leaf *)node)->when = retval;
+        break;
     }
     free(value);
     return retval;
@@ -604,6 +626,35 @@ yang_read_mandatory(void *node, int value, int type, int line)
     case CHOICE_KEYWORD:
         ret = yang_check_flags(&((struct lys_node_choice *)node)->flags, LYS_MAND_MASK, "mandatory", "choice", value, line);
         break;
+    case LEAF_KEYWORD:
+        ret = yang_check_flags(&((struct lys_node_leaf *)node)->flags, LYS_MAND_MASK, "mandatory", "leaf", value, line);
+        break;
+    }
+    return ret;
+}
+
+int
+yang_read_default(struct lys_module *module, void *node, char *value, int type, int line)
+{
+    int ret;
+
+    switch (type) {
+        case LEAF_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_leaf *) node)->dflt, "default", "leaf", value, line);
+            break;
+    }
+    return ret;
+}
+
+int
+yang_read_units(struct lys_module *module, void *node, char *value, int type, int line)
+{
+    int ret;
+
+    switch (type) {
+        case LEAF_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_leaf *) node)->units, "units", "leaf", value, line);
+            break;
     }
     return ret;
 }
