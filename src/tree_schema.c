@@ -1990,49 +1990,16 @@ lys_get_import_module(const struct lys_module *module, const char *prefix, int p
 
 /* free_int_mods - flag whether to free the internal modules as well */
 static void
-module_free_common(struct lys_module *module, int free_int_mods, void (*private_destructor)(const struct lys_node *node, void *priv))
+module_free_common(struct lys_module *module, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     struct ly_ctx *ctx;
     struct lys_node *next, *iter;
     unsigned int i;
-    int j, l;
 
     assert(module->ctx);
     ctx = module->ctx;
 
-    /* as first step, free the imported modules */
-    for (i = 0; i < module->imp_size; i++) {
-        /* skip external modules from submodules' import */
-        if (module->imp[i].external) {
-            continue;
-        }
-
-        /* do not free internal modules */
-        if (!free_int_mods) {
-            for (j = 0; j < int_mods.count; ++j) {
-                if (module->imp[i].module && !strcmp(int_mods.modules[j].name, module->imp[i].module->name)
-                        && module->imp[i].module->rev
-                        && !strcmp(int_mods.modules[j].revision, module->imp[i].module->rev[0].date)) {
-                    break;
-                }
-            }
-            if (j < int_mods.count) {
-                continue;
-            }
-        }
-
-        /* get the imported module from the context and then free,
-         * this check is necessary because the imported module can
-         * be already removed
-         */
-        l = ctx->models.used;
-        for (j = 0; j < l; j++) {
-            if (ctx->models.list[j] == module->imp[i].module) {
-                lys_free(module->imp[i].module, free_int_mods, private_destructor);
-                break;
-            }
-        }
-    }
+    /* just free the import array, imported modules will stay in the context */
     free(module->imp);
 
     /* submodules don't have data tree, the data nodes
@@ -2073,7 +2040,7 @@ module_free_common(struct lys_module *module, int free_int_mods, void (*private_
         /* complete submodule free is done only from main module since
          * submodules propagate their includes to the main module */
         if (!module->type) {
-            lys_submodule_free(module->inc[i].submodule, free_int_mods, private_destructor);
+            lys_submodule_free(module->inc[i].submodule, private_destructor);
         }
     }
     free(module->inc);
@@ -2100,14 +2067,14 @@ module_free_common(struct lys_module *module, int free_int_mods, void (*private_
 }
 
 void
-lys_submodule_free(struct lys_submodule *submodule, int free_int_mods, void (*private_destructor)(const struct lys_node *node, void *priv))
+lys_submodule_free(struct lys_submodule *submodule, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     if (!submodule) {
         return;
     }
 
     /* common part with struct ly_module */
-    module_free_common((struct lys_module *)submodule, free_int_mods, private_destructor);
+    module_free_common((struct lys_module *)submodule, private_destructor);
 
     /* no specific items to free */
 
@@ -2509,11 +2476,11 @@ lys_free(struct lys_module *module, int free_int_mods, void (*private_destructor
     }
 
     /* common part with struct ly_submodule */
-    module_free_common(module, free_int_mods, private_destructor);
+    module_free_common(module, private_destructor);
 
     /* specific items to free */
-    lydict_remove(module->ctx, module->ns);
-    lydict_remove(module->ctx, module->prefix);
+    lydict_remove(ctx, module->ns);
+    lydict_remove(ctx, module->prefix);
 
     free(module);
 }

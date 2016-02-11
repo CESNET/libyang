@@ -102,12 +102,10 @@ struct lys_submodule *lys_submodule_read(struct lys_module *module, int fd, LYS_
  * @brief Free the submodule structure
  *
  * @param[in] submodule The structure to free. Do not use the pointer after calling this function.
- * @param[in] free_int_mods Whether to remove internal modules or not.
  * @param[in] private_destructor Optional destructor function for private objects assigned
  * to the nodes via lys_set_private(). If NULL, the private objects are not freed by libyang.
  */
-void lys_submodule_free(struct lys_submodule *submodule, int free_int_mods,
-                        void (*private_destructor)(const struct lys_node *node, void *priv));
+void lys_submodule_free(struct lys_submodule *submodule, void (*private_destructor)(const struct lys_node *node, void *priv));
 
 /**
  * @brief Add child schema tree node at the end of the parent's child list.
