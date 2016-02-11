@@ -900,6 +900,9 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
     /* absolute-schema-nodeid */
     } else {
         start_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+        if (!start_mod) {
+            return -1;
+        }
         start = start_mod->data;
     }
 
@@ -1094,6 +1097,9 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
     }
 
     abs_start_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+    if (!abs_start_mod) {
+        return -1;
+    }
 
     while (1) {
         sibling = NULL;

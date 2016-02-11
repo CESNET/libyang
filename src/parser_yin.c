@@ -5109,7 +5109,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             module->imp_size += r;
         }
 
-        /* propagate imports into the main module */
+        /* propagate includes into the main module */
         for (i = r = 0; i < submodule->inc_size; i++) {
             for (j = 0; j < module->inc_size; j++) {
                 if (submodule->inc[i].submodule == module->inc[j].submodule) {
