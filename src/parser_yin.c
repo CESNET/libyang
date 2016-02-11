@@ -1778,7 +1778,8 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         goto error;
                     }
                 } else { /* replace or add */
-                    if (fill_yin_must(dev->target->module, child, &((*trg_must)[*trg_must_size]))) {
+                    memset(&((*trg_must)[*trg_must_size]), 0, sizeof **trg_must);
+                    if (fill_yin_must(module, child, &((*trg_must)[*trg_must_size]))) {
                         goto error;
                     }
                     (*trg_must_size)++;
