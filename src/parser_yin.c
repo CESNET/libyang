@@ -5213,9 +5213,11 @@ error:
 struct lys_submodule *
 yin_read_submodule(struct lys_module *module, const char *data, struct unres_schema *unres)
 {
+    struct lys_node *next, *elem;
     struct lyxml_elem *yin;
     struct lys_submodule *submodule = NULL;
     const char *value;
+    uint8_t i;
 
     assert(module->ctx);
 
@@ -5246,7 +5248,7 @@ yin_read_submodule(struct lys_module *module, const char *data, struct unres_sch
     submodule->type = 1;
     submodule->belongsto = module;
 
-    LOGVRB("Reading submodule %s", submodule->name);
+    LOGVRB("Reading submodule \"%s\".", submodule->name);
     if (read_sub_module(module, submodule, yin, unres)) {
         goto error;
     }
@@ -5254,15 +5256,38 @@ yin_read_submodule(struct lys_module *module, const char *data, struct unres_sch
     /* cleanup */
     lyxml_free(module->ctx, yin);
 
-    LOGVRB("Submodule %s successfully parsed", submodule->name);
+    LOGVRB("Submodule \"%s\" successfully parsed.", submodule->name);
 
     return submodule;
 
 error:
+    LOGERR(ly_errno, "Submodule \"%s\" parsing failed.", submodule->name);
+
     /* cleanup */
     unres_schema_free((struct lys_module *)submodule, &unres);
     lyxml_free(module->ctx, yin);
-    lys_submodule_free(submodule, 0, NULL);
+
+    /* warn about applied deviations */
+    for (i = 0; i < submodule->deviation_size; ++i) {
+        if (submodule->deviation[i].target) {
+            LOGERR(ly_errno, "Submodule parsing failed, but successfully deviated %smodule \"%s\".",
+                   (submodule->deviation[i].target->module->type ? "sub" : ""),
+                   submodule->deviation[i].target->module->name);
+        }
+    }
+
+    /* remove applied augments */
+    for (i = 0; i < submodule->augment_size; ++i) {
+        if (submodule->augment[i].target) {
+            LY_TREE_FOR_SAFE(submodule->augment[i].target->child, next, elem) {
+                if (elem->parent == (struct lys_node *)&submodule->augment[i]) {
+                    lys_node_free(elem, NULL);
+                }
+            }
+        }
+    }
+
+    lys_submodule_free(submodule, NULL);
 
     return NULL;
 }
@@ -5271,6 +5296,7 @@ error:
 struct lys_module *
 yin_read_module(struct ly_ctx *ctx, const char *data, int implement)
 {
+    struct lys_node *next, *elem;
     struct lyxml_elem *yin;
     struct lys_module *module = NULL, **newlist = NULL;
     struct unres_schema *unres;
@@ -5310,7 +5336,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement)
     module->type = 0;
     module->implemented = (implement ? 1 : 0);
 
-    LOGVRB("Reading module %s", module->name);
+    LOGVRB("Reading module \"%s\".", module->name);
     if (read_sub_module(module, NULL, yin, unres)) {
         goto error;
     }
@@ -5341,9 +5367,9 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement)
                 if (!module->rev_size || !strcmp(ctx->models.list[i]->rev[0].date, module->rev[0].date)) {
                     /* both have the same revision -> we already have the same module */
                     /* so free the new one and update the old one's implement flag if needed */
-                    LOGVRB("Module %s already in context", ctx->models.list[i]->name);
+                    LOGVRB("Module \"%s\" already in context.", ctx->models.list[i]->name);
 
-                    lys_free(module, 0, NULL);
+                    lys_free(module, NULL, 1);
                     module = ctx->models.list[i];
                     if (implement && !module->implemented) {
                         lyp_set_implemented(module);
@@ -5356,7 +5382,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement)
              * another revision of an already present schema
              */
         } else if (!strcmp(ctx->models.list[i]->ns, module->ns)) {
-            LOGERR(LY_EINVAL, "Two different modules (\"%s\" and \"%s\") have the same namespace \"%s\"",
+            LOGERR(LY_EINVAL, "Two different modules (\"%s\" and \"%s\") have the same namespace \"%s\".",
                    ctx->models.list[i]->name, module->name, module->ns);
             goto error;
         }
@@ -5370,15 +5396,38 @@ success:
     lyxml_free(ctx, yin);
     unres_schema_free(NULL, &unres);
 
-    LOGVRB("Module %s successfully parsed", module->name);
+    LOGVRB("Module \"%s\" successfully parsed.", module->name);
 
     return module;
 
 error:
+    LOGERR(ly_errno, "Module \"%s\" parsing failed.", module->name);
+
     /* cleanup */
     unres_schema_free(module, &unres);
-    lys_free(module, 0, NULL);
     lyxml_free(ctx, yin);
+
+    /* warn about applied deviations */
+    for (i = 0; i < module->deviation_size; ++i) {
+        if (module->deviation[i].target) {
+            LOGERR(ly_errno, "Module parsing failed, but successfully deviated %smodule \"%s\".",
+                   (module->deviation[i].target->module->type ? "sub" : ""),
+                   module->deviation[i].target->module->name);
+        }
+    }
+
+    /* remove applied augments */
+    for (i = 0; i < module->augment_size; ++i) {
+        if (module->augment[i].target) {
+            LY_TREE_FOR_SAFE(module->augment[i].target->child, next, elem) {
+                if (elem->parent == (struct lys_node *)&module->augment[i]) {
+                    lys_node_free(elem, NULL);
+                }
+            }
+        }
+    }
+
+    lys_free(module, NULL, 1);
 
     return NULL;
 }
