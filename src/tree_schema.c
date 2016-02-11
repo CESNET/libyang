@@ -41,15 +41,6 @@
 #include "tree_internal.h"
 #include "validation.h"
 
-static const struct internal_modules int_mods = {
-    .modules = {
-        {"ietf-yang-types", "2013-07-15"},
-        {"ietf-inet-types", "2013-07-15"},
-        {"ietf-yang-library", "2015-07-03"}
-    },
-    .count = LY_INTERNAL_MODULE_COUNT
-};
-
 API const struct lys_feature *
 lys_is_disabled(const struct lys_node *node, int recursive)
 {
