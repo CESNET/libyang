@@ -206,6 +206,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case CHOICE_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_choice *) node)->dsc, "description", "choice", value, line);
             break;
+        case CASE_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_case *) node)->dsc, "description", "case", value, line);
+            break;
         }
     }
     return ret;
@@ -243,6 +246,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case CHOICE_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_anyxml *) node)->ref, "reference", "choice", value, line);
+            break;
+        case CASE_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_anyxml *) node)->ref, "reference", "case", value, line);
             break;
         }
     }
@@ -375,6 +381,9 @@ yang_read_status(void *node, int value, int type, int line)
         break;
     case CHOICE_KEYWORD:
         retval = yang_check_flags(&((struct lys_node_anyxml *) node)->flags, LYS_STATUS_MASK, "status", "choice", value, line);
+        break;
+    case CASE_KEYWORD:
+        retval = yang_check_flags(&((struct lys_node_case *) node)->flags, LYS_STATUS_MASK, "status", "case", value, line);
         break;
     }
     return retval;
@@ -555,6 +564,13 @@ yang_read_when(struct lys_module *module, struct lys_node *node, int type, char 
         }
         ((struct lys_node_choice *)node)->when = retval;
         break;
+    case CASE_KEYWORD:
+        if (((struct lys_node_case *)node)->when) {
+            LOGVAL(LYE_TOOMANY,line,"when","case");
+            goto error;
+        }
+        ((struct lys_node_case *)node)->when = retval;
+        break;
     }
     free(value);
     return retval;
@@ -626,4 +642,28 @@ yang_read_choice(struct lys_module *module, struct lys_node *parent, char *value
         return NULL;
     }
     return choice;
+}
+
+void *
+yang_read_case(struct lys_module *module, struct lys_node *parent, char *value)
+{
+    struct lys_node_case *cs;
+
+    cs = calloc(1, sizeof *cs);
+    if (!cs) {
+        LOGMEM;
+        return NULL;
+    }
+    cs->module = module;
+    cs->name = lydict_insert_zc(module->ctx, value);
+    cs->nodetype = LYS_CASE;
+    cs->prev = (struct lys_node *)cs;
+
+    /* insert the node into the schema tree */
+    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, (struct lys_node *)cs)) {
+        lydict_remove(module->ctx, cs->name);
+        free(cs);
+        return NULL;
+    }
+    return cs;
 }

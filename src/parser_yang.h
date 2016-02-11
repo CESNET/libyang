@@ -124,4 +124,6 @@ int yang_read_mandatory(void *node, int value, int type, int line);
 
 void *yang_read_choice(struct lys_module *module, struct lys_node *parent, char *value);
 
+void *yang_read_case(struct lys_module *module, struct lys_node *parent, char *value);
+
 #endif /* LY_PARSER_YANG_H_ */

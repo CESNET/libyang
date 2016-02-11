@@ -35,6 +35,7 @@ int actual_type;
     struct lys_node_container *container;
     struct lys_node_anyxml *anyxml;
     struct type_choice choice;
+    struct lys_node_case *cs;
   } nodes;
 }
 
@@ -145,6 +146,7 @@ int actual_type;
 %type <nodes> container_opt_stmt
 %type <nodes> anyxml_opt_stmt
 %type <nodes> choice_opt_stmt
+%type <nodes> case_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
@@ -859,20 +861,48 @@ short_case_stmt: container_stmt
   |  anyxml_stmt
   ;
 
-case_stmt: CASE_KEYWORD sep identifier_arg_str case_end;
+case_stmt: CASE_KEYWORD sep identifier_arg_str { if (read_all) {
+                                                   if (!(actual = yang_read_case(module,actual,s))) {YYERROR;}
+                                                   s=NULL;
+                                                 } else {
+                                                   if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                                     LOGMEM;
+                                                     YYERROR;
+                                                   }
+                                                 }
+                                               }
+           case_end;
 
 case_end: ';'
-  |  '{' start_check
-         case_opt_stmt  {free_check();}
+  |  '{' stmtsep
+         case_opt_stmt
       '}' ;
 
-case_opt_stmt: %empty 
-  |  case_opt_stmt yychecked_1 when_stmt
-  |  case_opt_stmt if_feature_stmt
-  |  case_opt_stmt yychecked_2 status_stmt
-  |  case_opt_stmt yychecked_3 description_stmt
-  |  case_opt_stmt yychecked_4 reference_stmt
-  |  case_opt_stmt data_def_stmt stmtsep
+case_opt_stmt: %empty { if (read_all) {
+                          $$.cs = actual;
+                          actual_type = CASE_KEYWORD;
+                          $$.cs->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.cs->features);
+                          if (!$$.cs->features) {
+                            LOGMEM;
+                            YYERROR;
+                          }
+                          size_arrays->next++;
+                        } else {
+                          $$.index = size_arrays->size-1;
+                        }
+                      }
+  |  case_opt_stmt when_stmt { actual = $1.cs; actual_type = CASE_KEYWORD; }
+  |  case_opt_stmt if_feature_stmt { if (read_all) {
+                                       if (yang_read_if_feature(module,$1.cs,s,unres,CASE_KEYWORD,yylineno)) {YYERROR;}
+                                       s=NULL;
+                                     } else {
+                                       size_arrays->node[$1.index].if_features++;
+                                     }
+                                   }
+  |  case_opt_stmt status_stmt { if (read_all && yang_read_status($1.cs,$2,CASE_KEYWORD,yylineno)) {YYERROR;} }
+  |  case_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.cs,s,CASE_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  case_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.cs,s,CASE_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  case_opt_stmt data_def_stmt stmtsep { actual = $1.cs; actual_type = CASE_KEYWORD; }
   ;
 
 anyxml_stmt: ANYXML_KEYWORD sep identifier_arg_str { if (read_all) {
