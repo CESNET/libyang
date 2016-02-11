@@ -559,3 +559,21 @@ ly_ctx_info(struct ly_ctx *ctx)
 
     return root;
 }
+
+API const struct lys_node *
+ly_ctx_get_node(struct ly_ctx *ctx, const char *nodeid)
+{
+    const struct lys_node *ret;
+
+    if (!ctx || !nodeid) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    if (resolve_json_absolute_schema_nodeid(nodeid, ctx, &ret)) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    return ret;
+}

@@ -1227,7 +1227,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     }
 
     /* resolve target node */
-    rc = resolve_schema_nodeid(dev->target_name, NULL, module, LYS_AUGMENT, (const struct lys_node **)&dev->target);
+    rc = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&dev->target);
     if (rc) {
         LOGVAL(LYE_INARG, LOGLINE(yin), dev->target_name, yin->name);
         goto error;
@@ -1405,8 +1405,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         }
                     }
 
-                    rc = resolve_schema_nodeid(d->dflt, choice->child, choice->module, LYS_CHOICE,
-                                               (const struct lys_node **)&node);
+                    rc = resolve_choice_default_schema_nodeid(d->dflt, choice->child, (const struct lys_node **)&node);
                     if (rc) {
                         LOGVAL(LYE_INARG, LOGLINE(child), value, child->name);
                         goto error;
@@ -1977,7 +1976,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
      * (the grouping was not yet copied into uses).
      */
     if (!parent || (parent->nodetype != LYS_USES)) {
-        if (resolve_augment(aug, aug->child)) {
+        if (resolve_augment(aug, NULL)) {
             LOGVAL(LYE_INRESOLV, LOGLINE(yin), "augment", aug->target_name);
             goto error;
         }
@@ -4950,11 +4949,11 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
              * 2) we cannot pass directly the structure in the array since
              * submodule parser can realloc our array of includes */
             r = fill_yin_include(module, child, &inc, unres);
-            memcpy(&trg->inc[inc_size_aux], &inc, sizeof inc);
-            inc_size_aux++;
             if (r) {
                 goto error;
             }
+            memcpy(&trg->inc[inc_size_aux], &inc, sizeof inc);
+            inc_size_aux++;
 
             /* check duplications in include submodules */
             for (i = 0; i < inc_size_aux - 1; i++) {

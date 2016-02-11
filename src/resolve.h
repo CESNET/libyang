@@ -100,6 +100,21 @@ struct len_ran_intv {
 
 int parse_identifier(const char *id);
 
+struct lyd_node *resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start);
+
+int resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_module *module,
+                                  const struct lys_node **ret);
+
+int resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *start, int ret_nodetype,
+                                     const struct lys_node **ret);
+
+int resolve_choice_default_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_node **ret);
+
+int resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *module, int ret_nodetype,
+                                   const struct lys_node **ret);
+
+int resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node **ret);
+
 int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int superior_restr,
                              struct len_ran_intv **local_intv);
 
@@ -107,10 +122,6 @@ int resolve_superior_type(const char *name, const char *prefix, const struct lys
                           const struct lys_node *parent, struct lys_tpdf **ret);
 
 int resolve_unique(struct lys_node *parent, const char *uniq_str, int first, uint32_t line);
-
-int resolve_schema_nodeid(const char *id, const struct lys_node *start, const struct lys_module *mod,
-                          LYS_NODE node_type, const struct lys_node **ret);
-struct lyd_node *resolve_data_nodeid(const char *id, struct lyd_node *start);
 
 int resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings);
 

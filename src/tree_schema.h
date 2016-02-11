@@ -207,23 +207,26 @@ typedef enum {
  */
 typedef enum lys_nodetype {
     LYS_UNKNOWN = 0x0000,        /**< uninitalized unknown statement node */
-    LYS_AUGMENT = 0x0001,        /**< augment statement node */
-    LYS_CONTAINER = 0x0002,      /**< container statement node */
-    LYS_CHOICE = 0x0004,         /**< choice statement node */
-    LYS_LEAF = 0x0008,           /**< leaf statement node */
-    LYS_LEAFLIST = 0x0010,       /**< leaf-list statement node */
-    LYS_LIST = 0x0020,           /**< list statement node */
-    LYS_ANYXML = 0x0040,         /**< anyxml statement node */
-    LYS_GROUPING = 0x0080,       /**< grouping statement node */
-    LYS_CASE = 0x0100,           /**< case statement node */
+    LYS_CONTAINER = 0x0001,      /**< container statement node */
+    LYS_CHOICE = 0x0002,         /**< choice statement node */
+    LYS_LEAF = 0x0004,           /**< leaf statement node */
+    LYS_LEAFLIST = 0x0008,       /**< leaf-list statement node */
+    LYS_LIST = 0x0010,           /**< list statement node */
+    LYS_ANYXML = 0x0020,         /**< anyxml statement node */
+    LYS_CASE = 0x0040,           /**< case statement node */
+    LYS_NOTIF = 0x0080,          /**< notification statement node */
+    LYS_RPC = 0x0100,            /**< rpc statement node */
     LYS_INPUT = 0x0200,          /**< input statement node */
     LYS_OUTPUT = 0x0400,         /**< output statement node */
-    LYS_NOTIF = 0x0800,          /**< notification statement node */
-    LYS_RPC = 0x1000,            /**< rpc statement node */
-    LYS_USES = 0x2000            /**< uses statement node */
+    LYS_GROUPING = 0x0800,       /**< grouping statement node */
+    LYS_USES = 0x1000,           /**< uses statement node */
+    LYS_AUGMENT = 0x2000         /**< augment statement node */
 } LYS_NODE;
 
-#define LYS_ANY 0x2FFF
+/* all nodes sharing the node namespace except RPCs and notifications */
+#define LYS_NO_RPC_NOTIF_NODE 0x007F
+
+#define LYS_ANY 0x3FFF
 
 /**
  * @brief Main schema node structure representing YANG module.
@@ -1358,10 +1361,10 @@ const struct lys_feature *lys_is_disabled(const struct lys_node *node, int recur
 const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys_node *parent,
                                    const struct lys_module *module, int options);
 
-#define LYS_GETNEXT_WITHCHOICE   0x01 /**< lys_getnext() option to allow returning #LYS_CHOICE nodes */
-#define LYS_GETNEXT_WITHCASE     0x02 /**< lys_getnext() option to allow returning #LYS_CASE nodes */
-#define LYS_GETNEXT_WITHGROUPING 0x04 /**< lys_getnext() option to allow returning #LYS_GROUPING nodes */
-#define LYS_GETNEXT_WITHINOUT    0x08 /**< lys_getnext() option to allow returning #LYS_INPUT and #LYS_OUTPUT nodes */
+#define LYS_GETNEXT_WITHCHOICE   0x01 /**< lys_getnext() option to allow returning #LYS_CHOICE nodes instead of immediately looking into them */
+#define LYS_GETNEXT_WITHCASE     0x02 /**< lys_getnext() option to allow returning #LYS_CASE nodes instead of immediately looking into them */
+#define LYS_GETNEXT_WITHGROUPING 0x04 /**< lys_getnext() option to allow returning #LYS_GROUPING nodes instead of skipping them */
+#define LYS_GETNEXT_WITHINOUT    0x08 /**< lys_getnext() option to allow returning #LYS_INPUT and #LYS_OUTPUT nodes instead of immediately looking into them */
 
 /**
  * @brief Return parent node in the schema tree.
@@ -1385,25 +1388,6 @@ struct lys_node *lys_parent(const struct lys_node *node);
  * of invalid (NULL) \p node, NULL is returned and #ly_errno is set to #LY_EINVAL.
  */
 void *lys_set_private(const struct lys_node *node, void *priv);
-
-/**
- * @brief Get schema node according to the given absolute schema node identifier.
- *
- * The \p module determines the starting module and the default one for the \p nodeid.
- * That means if a node is without prefix, this starting module is assumed. In every
- * other case the prefix of the module must be specified. Here are some examples:
- *
- * module - ietf-netconf-monitoring
- * /get-schema/input/identifier
- *
- * module - ietf-interfaces
- * /interfaces/interface/ietf-ip:ipv4/ietf-ip:address/ietf-ip:ip
- *
- * @param[in] module Starting (current) module.
- * @param[in] nodeid Absolute schema node identifier.
- * @return Resolved schema node or NULL.
- */
-const struct lys_node *lys_get_node(const struct lys_module *module, const char *nodeid);
 
 /**
  * @brief Print schema tree in the specified format.

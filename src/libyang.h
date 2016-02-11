@@ -135,6 +135,7 @@ extern "C" {
  * - ly_ctx_get_module_by_ns()
  * - ly_ctx_get_submodule_names()
  * - ly_ctx_get_submodule()
+ * - ly_ctx_get_node()
  * - ly_ctx_destroy()
  */
 
@@ -188,7 +189,6 @@ extern "C" {
  *
  * Functions List (not assigned to above subsections)
  * --------------------------------------------------
- * - lys_get_node()
  * - lys_get_next()
  * - lys_parent()
  * - lys_set_private()
@@ -675,6 +675,23 @@ const struct lys_module *ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const
  */
 const struct lys_submodule *ly_ctx_get_submodule(const struct lys_module *module, const char *name,
                                                  const char *revision);
+
+/**
+ * @brief Get schema node according to the given absolute schema node identifier
+ * in JSON format.
+ *
+ * The first node identifier must be prefixed with the module name. Then every other
+ * identifier either has an explicit module name or the module name of the previous
+ * node is assumed. Examples:
+ *
+ * /ietf-netconf-monitoring:get-schema/input/identifier
+ * /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/ip
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] nodeid JSON absolute schema node identifier.
+ * @return Resolved schema node or NULL.
+ */
+const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const char *nodeid);
 
 /**
  * @brief Free all internal structures of the specified context.

@@ -813,6 +813,428 @@ parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, co
 }
 
 /**
+ * @brief Resolve (find) a data node based on a schema-nodeid.
+ *
+ * Used for resolving unique statements - so id is expected to be relative and local (without reference to a different
+ * module).
+ *
+ */
+struct lyd_node *
+resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start)
+{
+    char *str, *token, *p;
+    struct lyd_node *result = start, *iter;
+    const struct lys_node *schema = NULL;
+
+    assert(nodeid && start);
+
+    if (nodeid[0] == '/') {
+        return NULL;
+    }
+
+    str = p = strdup(nodeid);
+    if (!str) {
+        LOGMEM;
+        return NULL;
+    }
+    while (p) {
+        token = p;
+        p = strchr(p, '/');
+        if (p) {
+            *p = '\0';
+            p++;
+        }
+
+        schema = NULL;
+        if (resolve_descendant_schema_nodeid(token, result->schema, LYS_LEAF, &schema) || !schema) {
+            free(str);
+            return NULL;
+        }
+
+        LY_TREE_FOR(result, iter) {
+            if (iter->schema == schema) {
+                break;
+            }
+        }
+
+        if (!p) {
+            /* final result */
+            result = iter;
+        } else {
+            result = iter->child;
+        }
+    }
+    free(str);
+
+    return result;
+}
+
+/* start - relative, module - absolute, -1 error, EXIT_SUCCESS ok (but ret can still be NULL), >0 unexpected char on ret - 1 */
+int
+resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_module *module,
+                              const struct lys_node **ret)
+{
+    const char *name, *mod_name, *id;
+    const struct lys_node *sibling;
+    int r, nam_len, mod_name_len, is_relative = -1;
+    /* resolved import module from the start module, it must match the next node-name-match sibling */
+    const struct lys_module *prefix_mod, *start_mod, *node_mod;
+
+    assert(nodeid && (start || module) && !(start && module) && ret);
+
+    id = nodeid;
+
+    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
+        return ((id - nodeid) - r) + 1;
+    }
+    id += r;
+
+    if ((is_relative && !start) || (!is_relative && !module)) {
+        return -1;
+    }
+
+    /* descendant-schema-nodeid */
+    if (is_relative) {
+        start_mod = start->module;
+
+    /* absolute-schema-nodeid */
+    } else {
+        start_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+        start = start_mod->data;
+    }
+
+    while (1) {
+        sibling = NULL;
+        while ((sibling = lys_getnext(sibling, lys_parent(start), start_mod,
+                                      LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT))) {
+            /* name match */
+            if ((sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len])
+                    || (!strncmp(name, "input", 5) && (nam_len == 5) && (sibling->nodetype == LYS_INPUT))
+                    || (!strncmp(name, "output", 6) && (nam_len == 6) && (sibling->nodetype == LYS_OUTPUT))) {
+
+                /* module check */
+                prefix_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+                if (!prefix_mod) {
+                    return -1;
+                }
+                node_mod = (sibling->module->type ? ((struct lys_submodule *)sibling->module)->belongsto : sibling->module);
+                if (prefix_mod != node_mod) {
+                    continue;
+                }
+
+                /* the result node? */
+                if (!id[0]) {
+                    *ret = sibling;
+                    return EXIT_SUCCESS;
+                }
+
+                /* check for shorthand cases - then 'start' does not change */
+                if (!sibling->parent || (sibling->parent->nodetype != LYS_CHOICE)
+                        || (sibling->nodetype == LYS_CASE)) {
+                    start = sibling->child;
+                }
+                break;
+            }
+        }
+
+        /* no match */
+        if (!sibling) {
+            return EXIT_SUCCESS;
+        }
+
+        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
+            return ((id - nodeid) - r) + 1;
+        }
+        id += r;
+    }
+
+    /* cannot get here */
+    LOGINT;
+    return -1;
+}
+
+/* unique, refine, -1 error, EXIT_SUCCESS ok (but ret can still be NULL), >0 unexpected char on ret - 1 */
+int
+resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *start, int ret_nodetype,
+                                 const struct lys_node **ret)
+{
+    const char *name, *mod_name, *id;
+    const struct lys_node *sibling;
+    int r, nam_len, mod_name_len, is_relative = -1;
+    /* resolved import module from the start module, it must match the next node-name-match sibling */
+    const struct lys_module *prefix_mod, *module, *node_mod;
+
+    assert(nodeid && start && ret);
+    assert(!(ret_nodetype & (LYS_USES | LYS_AUGMENT)) && ((ret_nodetype == LYS_GROUPING) || !(ret_nodetype & LYS_GROUPING)));
+
+    id = nodeid;
+    module = start->module;
+
+    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
+        return ((id - nodeid) - r) + 1;
+    }
+    id += r;
+
+    if (!is_relative) {
+        return -1;
+    }
+
+    while (1) {
+        sibling = NULL;
+        while ((sibling = lys_getnext(sibling, lys_parent(start), module,
+                                      LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
+            /* name match */
+            if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
+
+                /* module check */
+                prefix_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+                if (!prefix_mod) {
+                    return -1;
+                }
+                node_mod = (sibling->module->type ? ((struct lys_submodule *)sibling->module)->belongsto : sibling->module);
+                if (prefix_mod != node_mod) {
+                    continue;
+                }
+
+                /* the result node? */
+                if (!id[0]) {
+                    if (!(sibling->nodetype & ret_nodetype)) {
+                        /* wrong node type, too bad */
+                        continue;
+                    }
+                    *ret = sibling;
+                    return EXIT_SUCCESS;
+                }
+
+                /* check for shorthand cases - then 'start' does not change */
+                if (!sibling->parent || (sibling->parent->nodetype != LYS_CHOICE)
+                        || (sibling->nodetype == LYS_CASE)) {
+                    start = sibling->child;
+                }
+                break;
+            }
+        }
+
+        /* no match */
+        if (!sibling) {
+            return EXIT_SUCCESS;
+        }
+
+        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
+            return ((id - nodeid) - r) + 1;
+        }
+        id += r;
+    }
+
+    /* cannot get here */
+    LOGINT;
+    return -1;
+}
+
+/* choice default */
+int
+resolve_choice_default_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_node **ret)
+{
+    /* cannot actually be a path */
+    if (strchr(nodeid, '/')) {
+        return -1;
+    }
+
+    return resolve_descendant_schema_nodeid(nodeid, start, LYS_NO_RPC_NOTIF_NODE, ret);
+}
+
+/* uses, -1 error, EXIT_SUCCESS ok (but ret can still be NULL), >0 unexpected char on ret - 1 */
+static int
+resolve_uses_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_node_grp **ret)
+{
+    const struct lys_module *module;
+    const char *mod_prefix, *name;
+    int i, mod_prefix_len, nam_len;
+
+    /* parse the identifier, it must be parsed on one call */
+    if (((i = parse_node_identifier(nodeid, &mod_prefix, &mod_prefix_len, &name, &nam_len)) < 1) || nodeid[i]) {
+        return -i + 1;
+    }
+
+    module = lys_get_import_module(start->module, mod_prefix, mod_prefix_len, NULL, 0);
+    if (!module) {
+        return -1;
+    }
+    if (module != start->module) {
+        start = module->data;
+    }
+
+    *ret = lys_find_grouping_up(name, (struct lys_node *)start);
+
+    return EXIT_SUCCESS;
+}
+
+int
+resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *module, int ret_nodetype,
+                               const struct lys_node **ret)
+{
+    const char *name, *mod_name, *id;
+    const struct lys_node *sibling, *start;
+    int r, nam_len, mod_name_len, is_relative = -1;
+    const struct lys_module *prefix_mod, *abs_start_mod, *node_mod;
+
+    assert(nodeid && module && ret);
+    assert(!(ret_nodetype & (LYS_USES | LYS_AUGMENT)) && ((ret_nodetype == LYS_GROUPING) || !(ret_nodetype & LYS_GROUPING)));
+
+    id = nodeid;
+    start = module->data;
+
+    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
+        return ((id - nodeid) - r) + 1;
+    }
+    id += r;
+
+    if (is_relative) {
+        return -1;
+    }
+
+    abs_start_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+
+    while (1) {
+        sibling = NULL;
+        while ((sibling = lys_getnext(sibling, lys_parent(start), abs_start_mod, LYS_GETNEXT_WITHCHOICE
+                                      | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT | LYS_GETNEXT_WITHGROUPING))) {
+            /* name match */
+            if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
+
+                /* module check */
+                prefix_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+                if (!prefix_mod) {
+                    return -1;
+                }
+                node_mod = (sibling->module->type ? ((struct lys_submodule *)sibling->module)->belongsto : sibling->module);
+                if (prefix_mod != node_mod) {
+                    continue;
+                }
+
+                /* the result node? */
+                if (!id[0]) {
+                    if (!(sibling->nodetype & ret_nodetype)) {
+                        /* wrong node type, too bad */
+                        continue;
+                    }
+                    *ret = sibling;
+                    return EXIT_SUCCESS;
+                }
+
+                /* check for shorthand cases - then 'start' does not change */
+                if (!sibling->parent || (sibling->parent->nodetype != LYS_CHOICE)
+                        || (sibling->nodetype == LYS_CASE)) {
+                    start = sibling->child;
+                }
+                break;
+            }
+        }
+
+        /* no match */
+        if (!sibling) {
+            return EXIT_SUCCESS;
+        }
+
+        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
+            return ((id - nodeid) - r) + 1;
+        }
+        id += r;
+    }
+
+    /* cannot get here */
+    LOGINT;
+    return -1;
+}
+
+/* cannot return LYS_GROUPING, LYS_AUGMENT, LYS_USES */
+int
+resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node **ret)
+{
+    char *str;
+    const char *name, *mod_name, *id;
+    const struct lys_node *sibling, *start;
+    int r, nam_len, mod_name_len, is_relative = -1;
+    /* resolved import module from the start module, it must match the next node-name-match sibling */
+    const struct lys_module *prefix_mod, *module, *prev_mod = NULL, *node_mod;
+
+    assert(nodeid && ctx && ret);
+
+    id = nodeid;
+
+    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
+        return ((id - nodeid) - r) + 1;
+    }
+    id += r;
+
+    if (is_relative) {
+        return -1;
+    }
+
+    str = strndup(name, nam_len);
+    module = ly_ctx_get_module(ctx, str, NULL);
+    free(str);
+    if (!module) {
+        return -1;
+    }
+    start = module->data;
+
+    while (1) {
+        sibling = NULL;
+        while ((sibling = lys_getnext(sibling, lys_parent(start), module,
+                                      LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT))) {
+            /* name match */
+            if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
+
+                /* module check */
+                if (mod_name) {
+                    prefix_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+                    if (!prefix_mod) {
+                        return -1;
+                    }
+                } else {
+                    prefix_mod = prev_mod;
+                }
+                node_mod = (sibling->module->type ? ((struct lys_submodule *)sibling->module)->belongsto : sibling->module);
+                if (prefix_mod != node_mod) {
+                    continue;
+                }
+
+                /* the result node? */
+                if (!id[0]) {
+                    *ret = sibling;
+                    return EXIT_SUCCESS;
+                }
+
+                /* check for shorthand cases - then 'start' does not change */
+                if (!sibling->parent || (sibling->parent->nodetype != LYS_CHOICE)
+                        || (sibling->nodetype == LYS_CASE)) {
+                    start = sibling->child;
+                }
+
+                /* update prev mod */
+                prev_mod = start->module;
+                break;
+            }
+        }
+
+        /* no match */
+        if (!sibling) {
+            return EXIT_SUCCESS;
+        }
+
+        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
+            return ((id - nodeid) - r) + 1;
+        }
+        id += r;
+    }
+
+    /* cannot get here */
+    LOGINT;
+    return -1;
+}
+
+/**
  * @brief Resolves length or range intervals. Does not log.
  * Syntax is assumed to be correct, *local_intv MUST be NULL.
  *
@@ -1446,7 +1868,7 @@ resolve_unique(struct lys_node *parent, const char *uniq_str, int first, uint32_
     int rc;
     const struct lys_node *leaf = NULL;
 
-    rc = resolve_schema_nodeid(uniq_str, parent->child, parent->module, LYS_LEAF, &leaf);
+    rc = resolve_descendant_schema_nodeid(uniq_str, parent->child, LYS_LEAF, &leaf);
     if (rc) {
         if ((rc == -1) || !first) {
             LOGVAL(LYE_INARG, line, uniq_str, "unique");
@@ -1476,57 +1898,6 @@ resolve_unique(struct lys_node *parent, const char *uniq_str, int first, uint32_
 error:
 
     return rc;
-}
-
-/**
- * @brief Resolve (fill) a grouping in an uses. Logs directly.
- *
- * @param[in] uses The uses to use.
- * @param[in] first Whether this is the first resolution try. Affects logging.
- * @param[in] line The line in the input file.
- *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
- */
-static int
-resolve_grouping(struct lys_node_uses *uses, int first, uint32_t line)
-{
-    const struct lys_module *module;
-    const char *mod_prefix, *name;
-    int i, mod_prefix_len, nam_len;
-    struct lys_node *start;
-
-    /* parse the identifier, it must be parsed on one call */
-    if ((i = parse_node_identifier(uses->name, &mod_prefix, &mod_prefix_len, &name, &nam_len)) < 1) {
-        LOGVAL(LYE_INCHAR, line, uses->name[-i], &uses->name[-i]);
-        return -1;
-    } else if (uses->name[i]) {
-        LOGVAL(LYE_INCHAR, line, uses->name[i], &uses->name[i]);
-        return -1;
-    }
-
-    module = lys_get_import_module(uses->module, mod_prefix, mod_prefix_len, NULL, 0);
-    if (!module) {
-        LOGVAL(LYE_INMOD_LEN, line, mod_prefix_len, mod_prefix);
-        return -1;
-    } else if (module != uses->module) {
-        start = module->data;
-    } else {
-        start = (struct lys_node *)uses;
-    }
-
-    uses->grp = lys_find_grouping_up(name, start);
-    if (uses->grp) {
-        return EXIT_SUCCESS;
-    }
-
-    if (mod_prefix || !first) {
-        LOGVAL(LYE_INRESOLV, line, "grouping", uses->name);
-    }
-    /* import must now be fully resolved */
-    if (mod_prefix) {
-        return -1;
-    }
-    return EXIT_FAILURE;
 }
 
 /**
@@ -1603,210 +1974,6 @@ resolve_feature(const char *id, const struct lys_module *module, int first, uint
         LOGVAL(LYE_INRESOLV, line, "feature", id);
     }
     return EXIT_FAILURE;
-}
-
-/**
- * @brief Resolve (find) a data node based on a schema-nodeid.
- *
- * Used for resolving unique statements - so id is expected to be relative and local (without reference to a different
- * module).
- *
- */
-struct lyd_node *
-resolve_data_nodeid(const char *id, struct lyd_node *start)
-{
-    char *str, *token, *p;
-    struct lyd_node *result = start, *iter;
-    const struct lys_node *schema = NULL;
-
-    assert(start);
-    assert(id);
-
-    if (id[0] == '/') {
-        return NULL;
-    }
-
-    str = p = strdup(id);
-    if (!str) {
-        LOGMEM;
-        return NULL;
-    }
-    while(p) {
-        token = p;
-        p = strchr(p, '/');
-        if (p) {
-            *p = '\0';
-            p++;
-        }
-
-        if (resolve_schema_nodeid(token, result->schema, result->schema->module, LYS_LEAF, &schema)) {
-            free(str);
-            return NULL;
-        }
-
-        LY_TREE_FOR(result, iter) {
-            if (iter->schema == schema) {
-                break;
-            }
-        }
-
-        if (!p) {
-            /* final result */
-            result = iter;
-        } else {
-            result = iter->child;
-        }
-    }
-    free(str);
-
-    return result;
-}
-
-/**
- * @brief Resolve (find) a schema node based on a schema-nodeid. Does not log.
- *
- * node_type - LYS_AUGMENT (searches also RPCs and notifications, augmented nodes are fine, too)
- *           - LYS_USES    (only descendant-schema-nodeid allowed, ".." not allowed, always return a grouping)
- *           - LYS_CHOICE  (search only start->child, only descendant-schema-nodeid allowed)
- *           - LYS_LEAF    (like LYS_USES, but always returns a data node)
- *
- * If \p id is absolute, \p start is ignored. If \p id is relative, \p start must be the first child to be searched
- * continuing with its siblings. Normally skips augments except \p node_type LYS_AUGMENT (augmenting an augment node).
- *
- * ASSUMPTION 1: Module to resolve prefixes (JSON module names) from never changes.
- * ASSUMPTION 2: Module prefix (name) must be resolved only in absolute-schema-nodeid and only on the first
- *               node. The prefix cannot further change except for nodes from an augment.
- *
- * @param[in] id Schema-nodeid string.
- * @param[in] start Start of the relative search.
- * @param[in] mod Module to use.
- * @param[in] node_type Decides how to modify the search.
- * @param[out] ret Pointer to the matching node. Can be NULL.
- *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
- */
-int
-resolve_schema_nodeid(const char *id, const struct lys_node *start, const struct lys_module *mod, LYS_NODE node_type,
-                      const struct lys_node **ret)
-{
-    const char *name, *mod_name;
-    const struct lys_node *sibling;
-    int i, opts, nam_len, mod_name_len, is_relative = -1;
-    /* resolved import module from the start module, it must match the next node-name-match sibling */
-    const struct lys_module *prefix_mod;
-
-    assert(mod);
-    assert(id);
-
-    if ((i = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
-        return -1;
-    }
-    id += i;
-
-    if (!is_relative && (node_type & (LYS_USES | LYS_CHOICE | LYS_LEAF))) {
-        return -1;
-    }
-
-    /* set options for lys_getnext() */
-    if (node_type == LYS_LEAF) {
-        /* go inside all those schema-only nodes, we're looking for data */
-        opts = 0;
-    } else {
-        /* choice, case, input, output are fine, we're looking for schema nodes */
-        opts = LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT;
-        if (node_type == LYS_USES) {
-            /* grouping is actually what we're looking for, do not look inside */
-            opts |= LYS_GETNEXT_WITHGROUPING;
-        }
-    }
-
-    /* absolute-schema-nodeid */
-    if (!is_relative) {
-        prefix_mod = lys_get_import_module(mod, NULL, 0, mod_name, mod_name_len);
-        if (!prefix_mod) {
-            return -1;
-        }
-        start = prefix_mod->data;
-    /* descendant-schema-nodeid */
-    } else if (!start) {
-        /* start must be set in this case */
-        return -1;
-    }
-
-    while (1) {
-        for (sibling = start; sibling; sibling = lys_getnext(sibling, start->parent, NULL, opts)) {
-            /* name match */
-            if (((sibling->nodetype != LYS_GROUPING) || (node_type == LYS_USES))
-                    && (!(sibling->nodetype & (LYS_RPC | LYS_NOTIF)) || (node_type == LYS_AUGMENT))
-                    && ((sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len])
-                    || (!strncmp(name, "input", 5) && (nam_len == 5) && (sibling->nodetype == LYS_INPUT))
-                    || (!strncmp(name, "output", 6) && (nam_len == 6) && (sibling->nodetype == LYS_OUTPUT)))) {
-
-                /* get module for module name match check */
-                prefix_mod = lys_get_import_module(mod, NULL, 0, mod_name, mod_name_len);
-                if (!prefix_mod && (node_type == LYS_AUGMENT)) {
-                    /* we want augment nodes in this case */
-                    prefix_mod = sibling->module;
-                    if (strncmp(prefix_mod->name, mod_name, mod_name_len) || prefix_mod->name[mod_name_len]) {
-                        return -1;
-                    }
-                } else if (!prefix_mod) {
-                    return -1;
-                }
-
-                /* modules need to always be checked, we want to skip augments (no other reason to check them) */
-                if ((!sibling->module->type && prefix_mod != sibling->module) ||
-                       (sibling->module->type && prefix_mod != ((struct lys_submodule *)sibling->module)->belongsto)) {
-                    continue;
-                }
-
-                /* the result node? */
-                if (!id[0]) {
-                    /* we're looking only for groupings, this is a data node */
-                    if ((node_type == LYS_USES) && (sibling->nodetype != LYS_GROUPING)) {
-                        continue;
-                    }
-                    if (ret) {
-                        *ret = sibling;
-                    }
-                    return EXIT_SUCCESS;
-                }
-
-                /* we're looking for a grouping (node_type == LYS_USES),
-                 * but this isn't it, we cannot search inside
-                 */
-                if (sibling->nodetype == LYS_GROUPING) {
-                    continue;
-                }
-
-                /* check for shorthand cases - then 'start' does not change */
-                if (!sibling->parent || (sibling->parent->nodetype != LYS_CHOICE)
-                        || (sibling->nodetype == LYS_CASE)) {
-                    start = sibling->child;
-                }
-                break;
-            }
-        }
-
-        /* we did not find the case in direct siblings */
-        if (node_type == LYS_CHOICE) {
-            return -1;
-        }
-
-        /* no match */
-        if (!sibling) {
-            return EXIT_FAILURE;
-        }
-
-        if ((i = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
-            return -1;
-        }
-        id += i;
-    }
-
-    /* cannot get here */
-    LOGINT;
-    return -1;
 }
 
 /* ignores line */
@@ -2684,7 +2851,7 @@ inherit_config_flag(struct lys_node *node)
  * @brief Resolve augment target. Does not log.
  *
  * @param[in] aug Augment to use.
- * @param[in] siblings Nodes where to start the search in.
+ * @param[in] siblings Nodes where to start the search in. If set, uses augment, if not, standalone augment.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
@@ -2698,9 +2865,12 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
     assert(aug);
 
     /* resolve target node */
-    rc = resolve_schema_nodeid(aug->target_name, siblings, aug->module, LYS_AUGMENT, (const struct lys_node **)&aug->target);
-    if (rc) {
-        return rc;
+    rc = resolve_augment_schema_nodeid(aug->target_name, siblings, (siblings ? NULL : aug->module), (const struct lys_node **)&aug->target);
+    if ((rc == -1) || (rc > 0)) {
+        return -1;
+    }
+    if (!aug->target) {
+        return EXIT_FAILURE;
     }
 
     if (!aug->child) {
@@ -2776,8 +2946,8 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
     /* apply refines */
     for (i = 0; i < uses->refine_size; i++) {
         rfn = &uses->refine[i];
-        rc = resolve_schema_nodeid(rfn->target_name, uses->child, uses->module, LYS_LEAF,
-                                   (const struct lys_node **)&node);
+        rc = resolve_descendant_schema_nodeid(rfn->target_name, uses->child, LYS_NO_RPC_NOTIF_NODE,
+                                              (const struct lys_node **)&node);
         if (rc) {
             LOGVAL(LYE_INARG, line, rfn->target_name, "refine");
             return -1;
@@ -2814,8 +2984,8 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
                 ((struct lys_node_leaf *)node)->dflt = lydict_insert(ctx, rfn->mod.dflt, 0);
             } else if (node->nodetype == LYS_CHOICE) {
                 /* choice */
-                rc = resolve_schema_nodeid(rfn->mod.dflt, node->child, node->module, LYS_CHOICE,
-                                           (const struct lys_node **)&((struct lys_node_choice *)node)->dflt);
+                rc = resolve_choice_default_schema_nodeid(rfn->mod.dflt, node->child,
+                                                          (const struct lys_node **)&((struct lys_node_choice *)node)->dflt);
                 if (rc) {
                     LOGVAL(LYE_INARG, line, rfn->mod.dflt, "default");
                     return -1;
@@ -3179,12 +3349,18 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
     for (parent = uses->parent; parent && (parent->nodetype != LYS_GROUPING); parent = parent->parent);
 
     if (!uses->grp) {
-        rc = resolve_grouping(uses, first, line);
-        if (rc) {
-            if (parent && first && (rc == EXIT_FAILURE)) {
+        rc = resolve_uses_schema_nodeid(uses->name, (const struct lys_node *)uses, (const struct lys_node_grp **)&uses->grp);
+        if (rc == -1) {
+            LOGVAL(LYE_INRESOLV, line, "grouping", uses->name);
+            return -1;
+        } else if (rc > 0) {
+            LOGVAL(LYE_INCHAR, line, uses->name[rc - 1], &uses->name[rc - 1]);
+            return -1;
+        } else if (!uses->grp) {
+            if (parent && first) {
                 ++parent->nacm;
             }
-            return rc;
+            return EXIT_FAILURE;
         }
     }
 

@@ -1260,12 +1260,12 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
             for (i = 0; i < slist->unique_size; i++) {
                 for (j = 0; j < slist->unique[i].expr_size; j++) {
                     /* first */
-                    diter = resolve_data_nodeid(slist->unique[i].expr[j], first->child);
+                    diter = resolve_data_descendant_schema_nodeid(slist->unique[i].expr[j], first->child);
                     if (diter) {
                         val1 = ((struct lyd_node_leaf_list *)diter)->value_str;
                     } else {
                         /* use default value */
-                        if (resolve_schema_nodeid(slist->unique[i].expr[j], first->schema->child, first->schema->module, LYS_LEAF, &snode)) {
+                        if (resolve_descendant_schema_nodeid(slist->unique[i].expr[j], first->schema->child, LYS_LEAF, &snode)) {
                             /* error, but unique expression was checked when the schema was parsed */
                             return -1;
                         }
@@ -1273,12 +1273,12 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                     }
 
                     /* second */
-                    diter = resolve_data_nodeid(slist->unique[i].expr[j], second->child);
+                    diter = resolve_data_descendant_schema_nodeid(slist->unique[i].expr[j], second->child);
                     if (diter) {
                         val2 = ((struct lyd_node_leaf_list *)diter)->value_str;
                     } else {
                         /* use default value */
-                        if (resolve_schema_nodeid(slist->unique[i].expr[j], second->schema->child, second->schema->module, LYS_LEAF, &snode)) {
+                        if (resolve_descendant_schema_nodeid(slist->unique[i].expr[j], second->schema->child, LYS_LEAF, &snode)) {
                             /* error, but unique expression was checked when the schema was parsed */
                             return -1;
                         }
@@ -1480,7 +1480,7 @@ lyd_get_list_keys(const struct lyd_node *list)
     }
 
     for (i = 0; i < slist->keys_size; ++i) {
-        key = resolve_data_nodeid(slist->keys[i]->name, list->child);
+        key = resolve_data_descendant_schema_nodeid(slist->keys[i]->name, list->child);
         if (key) {
             ly_set_add(set, key);
         }

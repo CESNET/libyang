@@ -1006,7 +1006,7 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
 {
     int i, rc;
     char *grouping_target = NULL;
-    struct lys_node *target;
+    struct lys_node *target = NULL;
 
     if (!target_node) {
         if (module->type == 0) {
@@ -1016,21 +1016,21 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
         }
     } else {
         if ((target_node[0] == '/') || !strncmp(target_node, "type/", 5)) {
-            rc = resolve_schema_nodeid((target_node[0] == '/' ? target_node : target_node+4), module->data, module,
-                                       LYS_AUGMENT, (const struct lys_node **)&target);
-            if (rc) {
-                ly_print(out, "Target %s could not be resolved.\n", (target_node[0] == '/' ? target_node : target_node+4));
+            rc = resolve_augment_schema_nodeid((target_node[0] == '/' ? target_node : target_node + 4), NULL, module,
+                                               (const struct lys_node **)&target);
+            if (rc || !target) {
+                ly_print(out, "Target %s could not be resolved.\n", (target_node[0] == '/' ? target_node : target_node + 4));
                 return EXIT_FAILURE;
             }
         } else if (!strncmp(target_node, "grouping/", 9)) {
             /* cut the data part off */
-            if (strchr(target_node+9, '/')) {
+            if (strchr(target_node + 9, '/')) {
                 /* HACK only temporary */
-                *strchr(target_node+9, '/') = '\0';
-                grouping_target = (char *)(target_node+strlen(target_node)+1);
+                *strchr(target_node + 9, '/') = '\0';
+                grouping_target = (char *)(target_node + strlen(target_node) + 1);
             }
-            rc = resolve_schema_nodeid(target_node+9, module->data, module, LYS_USES, (const struct lys_node **)&target);
-            if (rc) {
+            rc = resolve_absolute_schema_nodeid(target_node + 9, module, LYS_GROUPING, (const struct lys_node **)&target);
+            if (rc || !target) {
                 ly_print(out, "Grouping %s not found.\n", target_node+9);
                 return EXIT_FAILURE;
             }
@@ -1097,10 +1097,10 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
 
         /* find the node in the grouping */
         if (grouping_target) {
-            rc = resolve_schema_nodeid(grouping_target, target->child, module, LYS_LEAF,
-                                       (const struct lys_node **)&target);
-            if (rc) {
-                ly_print(out, "Grouping %s child \"%s\" not found.\n", target_node+9, grouping_target);
+            rc = resolve_descendant_schema_nodeid(grouping_target, target->child, LYS_NO_RPC_NOTIF_NODE,
+                                                  (const struct lys_node **)&target);
+            if (rc || !target) {
+                ly_print(out, "Grouping %s child \"%s\" not found.\n", target_node + 9, grouping_target);
                 return EXIT_FAILURE;
             }
             /* HACK return previous hack */

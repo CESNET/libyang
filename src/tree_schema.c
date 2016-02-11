@@ -1554,8 +1554,8 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
         new[i].module = old[i].module;
         new[i].nodetype = old[i].nodetype;
         /* this must succeed, it was already resolved once */
-        if (resolve_schema_nodeid(new[i].target_name, parent->child, new[i].module, LYS_AUGMENT,
-                                  (const struct lys_node **)&new[i].target)) {
+        if (resolve_augment_schema_nodeid(new[i].target_name, parent->child, NULL,
+                                          (const struct lys_node **)&new[i].target)) {
             LOGINT;
             free(new);
             return NULL;
@@ -1950,7 +1950,7 @@ const struct lys_module *
 lys_get_import_module(const struct lys_module *module, const char *prefix, int pref_len, const char *name, int name_len)
 {
     const struct lys_module *main_module;
-    int i, match;
+    int i;
 
     if (prefix && !pref_len) {
         pref_len = strlen(prefix);
@@ -1959,19 +1959,15 @@ lys_get_import_module(const struct lys_module *module, const char *prefix, int p
         name_len = strlen(name);
     }
 
-    main_module = module->type ? ((struct lys_submodule *)module)->belongsto : module;
-    if ((!prefix || (!strncmp(main_module->prefix, prefix, pref_len) && !main_module->prefix[pref_len])) && (!name
-                    || (!strncmp(main_module->name, name, name_len) && !main_module->name[name_len]))) {
+    main_module = (module->type ? ((struct lys_submodule *)module)->belongsto : module);
+    if ((!prefix || (!strncmp(main_module->prefix, prefix, pref_len) && !main_module->prefix[pref_len]))
+            && (!name || (!strncmp(main_module->name, name, name_len) && !main_module->name[name_len]))) {
         return main_module;
     }
 
     for (i = 0; i < module->imp_size; ++i) {
-        match = 0;
-        if (!prefix || (!strncmp(module->imp[i].prefix, prefix, pref_len) && !module->imp[i].prefix[pref_len])) {
-            match = 1;
-        }
-        if (match && (!name
-                || (!strncmp(module->imp[i].module->name, name, name_len) && !module->imp[i].module->name[name_len]))) {
+        if ((!prefix || (!strncmp(module->imp[i].prefix, prefix, pref_len) && !module->imp[i].prefix[pref_len]))
+                && (!name || (!strncmp(module->imp[i].module->name, name, name_len) && !module->imp[i].module->name[name_len]))) {
             return module->imp[i].module;
         }
     }
@@ -2686,27 +2682,4 @@ lys_set_private(const struct lys_node *node, void *priv)
     ((struct lys_node *)node)->private = priv;
 
     return prev;
-}
-
-API const struct lys_node *
-lys_get_node(const struct lys_module *module, const char *nodeid)
-{
-    const struct lys_node *ret;
-
-    if (!module || !nodeid) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
-    if (nodeid[0] != '/') {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
-    if (resolve_schema_nodeid(nodeid, NULL, module, LYS_AUGMENT, &ret)) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
-    return ret;
 }
