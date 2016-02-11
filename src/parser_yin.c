@@ -1208,6 +1208,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     int c_dev = 0, c_must, c_uniq;
     int f_min = 0; /* flags */
     int i, j, rc;
+    struct ly_ctx *ctx;
     struct lys_deviate *d = NULL;
     struct lys_node *node = NULL;
     struct lys_node_choice *choice = NULL;
@@ -1216,6 +1217,8 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     struct lys_type *t = NULL;
     uint8_t *trg_must_size = NULL;
     struct lys_restr **trg_must = NULL;
+
+    ctx = module->ctx;
 
     GETVAL(value, yin, "target-node");
     dev->target_name = transform_schema2json(module, value, LOGLINE(yin));
@@ -1239,7 +1242,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
             /* garbage */
-            lyxml_free(module->ctx, child);
+            lyxml_free(ctx, child);
             continue;
         }
 
@@ -1248,7 +1251,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 LOGVAL(LYE_TOOMANY, LOGLINE(child), child->name, yin->name);
                 goto error;
             }
-            dev->dsc = read_yin_subnode(module->ctx, child, "text");
+            dev->dsc = read_yin_subnode(ctx, child, "text");
             if (!dev->dsc) {
                 goto error;
             }
@@ -1257,7 +1260,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 LOGVAL(LYE_TOOMANY, LOGLINE(child), child->name, yin->name);
                 goto error;
             }
-            dev->ref = read_yin_subnode(module->ctx, child, "text");
+            dev->ref = read_yin_subnode(ctx, child, "text");
             if (!dev->ref) {
                 goto error;
             }
@@ -1274,7 +1277,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             goto error;
         }
 
-        lyxml_free(module->ctx, child);
+        lyxml_free(ctx, child);
     }
 
     if (c_dev) {
@@ -1333,7 +1336,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         LY_TREE_FOR_SAFE(develem->child, next, child) {
             if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
                 /* garbage */
-                lyxml_free(module->ctx, child);
+                lyxml_free(ctx, child);
                 continue;
             }
 
@@ -1388,7 +1391,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     goto error;
                 }
                 GETVAL(value, child, "value");
-                d->dflt = lydict_insert(module->ctx, value, 0);
+                d->dflt = lydict_insert(ctx, value, 0);
 
                 if (dev->target->nodetype == LYS_CHOICE) {
                     choice = (struct lys_node_choice *)dev->target;
@@ -1441,14 +1444,14 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                             goto error;
                         }
                         /* remove value */
-                        lydict_remove(leaf->module->ctx, leaf->dflt);
+                        lydict_remove(ctx, leaf->dflt);
                         leaf->dflt = NULL;
                     } else { /* add (already checked) and replace */
                         /* remove value */
-                        lydict_remove(leaf->module->ctx, leaf->dflt);
+                        lydict_remove(ctx, leaf->dflt);
 
                         /* set new value */
-                        leaf->dflt = lydict_insert(leaf->module->ctx, d->dflt, 0);
+                        leaf->dflt = lydict_insert(ctx, d->dflt, 0);
                     }
                 } else {
                     /* invalid target for default value */
@@ -1558,7 +1561,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
                 /* replace */
                 /* remove current units value of the target ... */
-                lys_type_free(dev->target->module->ctx, t);
+                lys_type_free(ctx, t);
 
                 /* ... and replace it with the value specified in deviation */
                 /* HACK for unres */
@@ -1590,7 +1593,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
                 /* get units value */
                 GETVAL(value, child, "name");
-                d->units = lydict_insert(module->ctx, value, 0);
+                d->units = lydict_insert(ctx, value, 0);
 
                 /* apply to target */
                 if (d->mod == LY_DEVIATE_ADD) {
@@ -1610,13 +1613,13 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         goto error;
                     }
                     /* remove current units value of the target */
-                    lydict_remove(dev->target->module->ctx, *stritem);
+                    lydict_remove(ctx, *stritem);
                 } else { /* add (already checked) and replace */
                     /* remove current units value of the target ... */
-                    lydict_remove(dev->target->module->ctx, *stritem);
+                    lydict_remove(ctx, *stritem);
 
                     /* ... and replace it with the value specified in deviation */
-                    *stritem = lydict_insert(module->ctx, value, 0);
+                    *stritem = lydict_insert(ctx, value, 0);
                 }
             } else {
                 LOGVAL(LYE_INSTMT, LOGLINE(child), child->name);
@@ -1664,7 +1667,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
 
                 for (i = 0; i < list->must_size; i++) {
-                    lys_restr_free(dev->target->module->ctx, &(*trg_must[i]));
+                    lys_restr_free(ctx, &(*trg_must[i]));
                 }
                 free(*trg_must);
                 *trg_must = d->must = calloc(c_must, sizeof *d->must);
@@ -1673,6 +1676,10 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             } else if (d->mod == LY_DEVIATE_ADD) {
                 /* reallocate the must array of the target */
                 d->must = ly_realloc(*trg_must, (c_must + *trg_must_size) * sizeof *d->must);
+                if (!d->must) {
+                    LOGMEM;
+                    goto error;
+                }
                 *trg_must = d->must;
                 d->must = &((*trg_must)[*trg_must_size]);
                 d->must_size = c_must;
@@ -1703,7 +1710,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
                 for (i = 0; i < list->unique_size; i++) {
                     for (j = 0; j < list->unique[i].expr_size; j++) {
-                        lydict_remove(list->module->ctx, list->unique[i].expr[j]);
+                        lydict_remove(ctx, list->unique[i].expr[j]);
                     }
                     free(list->unique[i].expr);
                 }
@@ -1738,7 +1745,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     for (i = 0; i < *trg_must_size; i++) {
                         if (d->must[d->must_size].expr == (*trg_must)[i].expr) {
                             /* we have a match, free the must structure ... */
-                            lys_restr_free(dev->target->module->ctx, &((*trg_must)[i]));
+                            lys_restr_free(ctx, &((*trg_must)[i]));
                             /* ... and maintain the array */
                             (*trg_must_size)--;
                             if (i != *trg_must_size) {
@@ -1798,7 +1805,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         if (j == d->unique[d->unique_size].expr_size) {
                             /* we have a match, free the unique structure ... */
                             for (j = 0; j < list->unique[i].expr_size; j++) {
-                                lydict_remove(list->module->ctx, list->unique[i].expr[j]);
+                                lydict_remove(ctx, list->unique[i].expr[j]);
                             }
                             free(list->unique[i].expr);
                             /* ... and maintain the array */
