@@ -144,13 +144,15 @@ ly_ctx_get_searchdir(const struct ly_ctx *ctx)
 API void
 ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
+    int i;
+
     if (!ctx) {
         return;
     }
 
     /* models list */
-    while (ctx->models.used) {
-        lys_free(ctx->models.list[0], 1, private_destructor);
+    for (i = 0; i < ctx->models.used; ++i) {
+        lys_free(ctx->models.list[i], private_destructor, 0);
     }
     free(ctx->models.search_path);
     free(ctx->models.list);

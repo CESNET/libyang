@@ -2451,7 +2451,7 @@ error:
 }
 
 void
-lys_free(struct lys_module *module, int free_int_mods, void (*private_destructor)(const struct lys_node *node, void *priv))
+lys_free(struct lys_module *module, void (*private_destructor)(const struct lys_node *node, void *priv), int remove_from_ctx)
 {
     struct ly_ctx *ctx;
     int i;
@@ -2462,12 +2462,12 @@ lys_free(struct lys_module *module, int free_int_mods, void (*private_destructor
 
     /* remove schema from the context */
     ctx = module->ctx;
-    if (ctx->models.used) {
+    if (remove_from_ctx && ctx->models.used) {
         for (i = 0; i < ctx->models.used; i++) {
             if (ctx->models.list[i] == module) {
-                /* replace the position in the list by the last module in the list */
+                /* move all the models to not change the order in the list */
                 ctx->models.used--;
-                ctx->models.list[i] = ctx->models.list[ctx->models.used];
+                memmove(&ctx->models.list[i], ctx->models.list[i + 1], (ctx->models.used - i) * sizeof *ctx->models.list);
                 ctx->models.list[ctx->models.used] = NULL;
                 /* we are done */
                 break;

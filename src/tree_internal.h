@@ -230,11 +230,12 @@ void lys_node_free(struct lys_node *node, void (*private_destructor)(const struc
  * list of modules - there can be many references from other modules and data instances.
  *
  * @param[in] module Data model to free.
- * @param[in] free_int_mods Whether to remove internal modules or not.
  * @param[in] private_destructor Optional destructor function for private objects assigned
  * to the nodes via lys_set_private(). If NULL, the private objects are not freed by libyang.
+ * @param[in] remove_from_ctx Whether to remove this model from context. Always use 1 except
+ * when removing all the models (in ly_ctx_destroy()).
  */
-void lys_free(struct lys_module *module, int free_int_mods, void (*private_destructor)(const struct lys_node *node, void *priv));
+void lys_free(struct lys_module *module, void (*private_destructor)(const struct lys_node *node, void *priv), int remove_from_ctx);
 
 /**
  * @brief Check presence of all the mandatory elements in the given data tree subtree
