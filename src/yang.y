@@ -36,6 +36,7 @@ int actual_type;
     struct lys_node_anyxml *anyxml;
     struct type_choice choice;
     struct lys_node_case *cs;
+    struct lys_node_grp *grouping;
   } nodes;
 }
 
@@ -147,6 +148,7 @@ int actual_type;
 %type <nodes> anyxml_opt_stmt
 %type <nodes> choice_opt_stmt
 %type <nodes> case_opt_stmt
+%type <nodes> grouping_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
@@ -627,20 +629,42 @@ units_stmt: UNITS_KEYWORD sep string stmtend;
 
 default_stmt: DEFAULT_KEYWORD sep string stmtend;
 
-grouping_stmt: GROUPING_KEYWORD sep identifier_arg_str grouping_end;
+grouping_stmt: GROUPING_KEYWORD sep identifier_arg_str { if (read_all) {
+                                                           if (!(actual = yang_read_grouping(module,actual,s))) {YYERROR;}
+                                                           s=NULL;
+                                                         } else {
+                                                           if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                                             LOGMEM;
+                                                             YYERROR;
+                                                           }
+                                                         }
+                                                       }
+               grouping_end;
 
 grouping_end: ';'
-  |  '{' start_check
-         grouping_opt_stmt  {free_check();}
+  |  '{' stmtsep
+         grouping_opt_stmt
      '}'
   ;
 
-grouping_opt_stmt: %empty 
-  |  grouping_opt_stmt yychecked_1 status_stmt
-  |  grouping_opt_stmt yychecked_2 description_stmt
-  |  grouping_opt_stmt yychecked_3 reference_stmt
-  |  grouping_opt_stmt typedef_grouping_stmt
-  |  grouping_opt_stmt data_def_stmt stmtsep
+grouping_opt_stmt: %empty { if (read_all) {
+                               $$.grouping = actual;
+                               actual_type = GROUPING_KEYWORD;
+                               $$.grouping->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.grouping->tpdf);
+                               if (!$$.grouping->tpdf) {
+                                 LOGMEM;
+                                 YYERROR;
+                               }
+                               size_arrays->next++;
+                             } else {
+                               $$.index = size_arrays->size-1;
+                             }
+                           }
+  |  grouping_opt_stmt status_stmt { if (read_all && yang_read_status($1.grouping,$2,GROUPING_KEYWORD,yylineno)) {YYERROR;} }
+  |  grouping_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.grouping,s,GROUPING_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  grouping_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.grouping,s,GROUPING_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  grouping_opt_stmt typedef_grouping_stmt { actual = $1.grouping; actual_type = GROUPING_KEYWORD; }
+  |  grouping_opt_stmt data_def_stmt stmtsep { actual = $1.grouping; actual_type = GROUPING_KEYWORD; }
   ;
 
 typedef_grouping_stmt: typedef_stmt stmtsep

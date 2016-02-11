@@ -126,4 +126,6 @@ void *yang_read_choice(struct lys_module *module, struct lys_node *parent, char 
 
 void *yang_read_case(struct lys_module *module, struct lys_node *parent, char *value);
 
+void *yang_read_grouping(struct lys_module *module, struct lys_node *parent, char *value);
+
 #endif /* LY_PARSER_YANG_H_ */

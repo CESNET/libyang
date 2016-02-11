@@ -209,6 +209,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case CASE_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_case *) node)->dsc, "description", "case", value, line);
             break;
+        case GROUPING_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_grp *) node)->dsc, "description", "grouping", value, line);
+            break;
         }
     }
     return ret;
@@ -249,6 +252,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case CASE_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_anyxml *) node)->ref, "reference", "case", value, line);
+            break;
+        case GROUPING_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_grp *) node)->ref, "reference", "grouping", value, line);
             break;
         }
     }
@@ -384,6 +390,9 @@ yang_read_status(void *node, int value, int type, int line)
         break;
     case CASE_KEYWORD:
         retval = yang_check_flags(&((struct lys_node_case *) node)->flags, LYS_STATUS_MASK, "status", "case", value, line);
+        break;
+    case GROUPING_KEYWORD:
+        retval = yang_check_flags(&((struct lys_node_grp *) node)->flags, LYS_STATUS_MASK, "status", "grouping", value, line);
         break;
     }
     return retval;
@@ -666,4 +675,28 @@ yang_read_case(struct lys_module *module, struct lys_node *parent, char *value)
         return NULL;
     }
     return cs;
+}
+
+void *
+yang_read_grouping(struct lys_module *module, struct lys_node *parent, char *value)
+{
+    struct lys_node_grp *grp;
+
+    grp = calloc(1, sizeof *grp);
+    if (!grp) {
+        LOGMEM;
+        return NULL;
+    }
+    grp->module = module;
+    grp->name = lydict_insert_zc(module->ctx, value);
+    grp->nodetype = LYS_GROUPING;
+    grp->prev = (struct lys_node *)grp;
+
+    /* insert the node into the schema tree */
+    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, (struct lys_node *)grp)) {
+        lydict_remove(module->ctx, grp->name);
+        free(grp);
+        return NULL;
+    }
+    return grp;
 }
