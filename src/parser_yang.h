@@ -106,8 +106,6 @@ void *yang_read_identity(struct lys_module *module, char *value);
 
 int yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, struct unres_schema *unres, int line);
 
-void *yang_read_cont(struct lys_module *module, struct lys_node *parent, char *value);
-
 void *yang_read_must(struct lys_module *module, struct lys_node *node, char *value, int type, int line);
 
 int yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, int type, int message, int line);
@@ -118,14 +116,18 @@ int yang_read_config(void *node, int value, int type, int line);
 
 void *yang_read_when(struct lys_module *module, struct lys_node *node, int type, char *value, int line);
 
-void *yang_read_anyxml(struct lys_module *module, struct lys_node *parent, char *value);
-
 int yang_read_mandatory(void *node, int value, int type, int line);
 
-void *yang_read_choice(struct lys_module *module, struct lys_node *parent, char *value);
-
-void *yang_read_case(struct lys_module *module, struct lys_node *parent, char *value);
-
-void *yang_read_grouping(struct lys_module *module, struct lys_node *parent, char *value);
+/**
+ * @brief Allocate memory for node and add to the tree
+ *
+ * @param[in/out] node Pointer to the array.
+ * @param[in] parent Pointer to the parent.
+ * @param[in] value Name of node
+ * @param[in] nodetype Type of node
+ * @param[in] sizeof_struct Size of struct
+ * @return Pointer to the node, NULL on error.
+*/
+void * yang_read_node(struct lys_module *module, struct lys_node *parent, char *value, int nodetype, int sizeof_struct);
 
 #endif /* LY_PARSER_YANG_H_ */

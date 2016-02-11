@@ -630,7 +630,7 @@ units_stmt: UNITS_KEYWORD sep string stmtend;
 default_stmt: DEFAULT_KEYWORD sep string stmtend;
 
 grouping_stmt: GROUPING_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                           if (!(actual = yang_read_grouping(module,actual,s))) {YYERROR;}
+                                                           if (!(actual = yang_read_node(module,actual,s,LYS_GROUPING,sizeof(struct lys_node_grp)))) {YYERROR;}
                                                            s=NULL;
                                                          } else {
                                                            if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
@@ -682,7 +682,7 @@ data_def_stmt: container_stmt
   ;
 
 container_stmt: CONTAINER_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                             if (!(actual = yang_read_cont(module,actual,s))) {YYERROR;}
+                                                             if (!(actual = yang_read_node(module,actual,s,LYS_CONTAINER,sizeof(struct lys_node_container)))) {YYERROR;}
                                                              s=NULL;
                                                            } else {
                                                              if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
@@ -802,7 +802,7 @@ list_opt_stmt: %empty
   ;
 
 choice_stmt: CHOICE_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                       if (!(actual = yang_read_choice(module,actual,s))) {YYERROR;}
+                                                       if (!(actual = yang_read_node(module,actual,s,LYS_CHOICE,sizeof(struct lys_node_choice)))) {YYERROR;}
                                                        s=NULL;
                                                      } else {
                                                        if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
@@ -886,7 +886,7 @@ short_case_stmt: container_stmt
   ;
 
 case_stmt: CASE_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                   if (!(actual = yang_read_case(module,actual,s))) {YYERROR;}
+                                                   if (!(actual = yang_read_node(module,actual,s,LYS_CASE,sizeof(struct lys_node_case)))) {YYERROR;}
                                                    s=NULL;
                                                  } else {
                                                    if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
@@ -930,7 +930,7 @@ case_opt_stmt: %empty { if (read_all) {
   ;
 
 anyxml_stmt: ANYXML_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                       if (!(actual = yang_read_anyxml(module,actual,s))) {YYERROR;}
+                                                       if (!(actual = yang_read_node(module,actual,s,LYS_ANYXML,sizeof(struct lys_node_anyxml)))) {YYERROR;}
                                                        s=NULL;
                                                      } else {
                                                        if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {

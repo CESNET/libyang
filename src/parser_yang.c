@@ -439,28 +439,6 @@ yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, 
 }
 
 void *
-yang_read_cont(struct lys_module *module, struct lys_node *parent, char *value)
-{
-    struct lys_node_container *cont;
-
-    cont = calloc(1, sizeof *cont);
-    if (!cont) {
-        LOGMEM;
-        return NULL;
-    }
-    cont->module = module;
-    cont->name = lydict_insert_zc(module->ctx, value);
-    cont->nodetype = LYS_CONTAINER;
-    cont->prev = (struct lys_node *)cont;
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, (struct lys_node *)cont)) {
-        lydict_remove(module->ctx, cont->name);
-        free(cont);
-        return NULL;
-    }
-    return cont;
-}
-
-void *
 yang_read_must(struct lys_module *module, struct lys_node *node, char *value, int type, int line)
 {
     struct lys_restr *retval;
@@ -591,25 +569,27 @@ error:
 }
 
 void *
-yang_read_anyxml(struct lys_module *module, struct lys_node *parent, char *value)
+yang_read_node(struct lys_module *module, struct lys_node *parent, char *value, int nodetype, int sizeof_struct)
 {
-    struct lys_node_anyxml *anyxml;
+    struct lys_node *node;
 
-    anyxml = calloc(1, sizeof *anyxml);
-    if (!anyxml) {
+    node = calloc(1, sizeof_struct);
+    if (!node) {
         LOGMEM;
         return NULL;
     }
-    anyxml->module = module;
-    anyxml->name = lydict_insert_zc(module->ctx, value);
-    anyxml->nodetype = LYS_ANYXML;
-    anyxml->prev = (struct lys_node *)anyxml;
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, (struct lys_node *)anyxml)) {
-        lydict_remove(module->ctx, anyxml->name);
-        free(anyxml);
+    node->module = module;
+    node->name = lydict_insert_zc(module->ctx, value);
+    node->nodetype = nodetype;
+    node->prev = node;
+
+    /* insert the node into the schema tree */
+    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, node)) {
+        lydict_remove(module->ctx, node->name);
+        free(node);
         return NULL;
     }
-    return anyxml;
+    return node;
 }
 
 int
@@ -626,77 +606,4 @@ yang_read_mandatory(void *node, int value, int type, int line)
         break;
     }
     return ret;
-}
-
-
-void *
-yang_read_choice(struct lys_module *module, struct lys_node *parent, char *value)
-{
-    struct lys_node_choice *choice;
-
-    choice = calloc(1, sizeof *choice);
-    if (!choice) {
-        LOGMEM;
-        return NULL;
-    }
-    choice->module = module;
-    choice->name = lydict_insert_zc(module->ctx, value);
-    choice->nodetype = LYS_CHOICE;
-    choice->prev = (struct lys_node *)choice;
-
-    /* insert the node into the schema tree */
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, (struct lys_node *)choice)) {
-        lydict_remove(module->ctx, choice->name);
-        free(choice);
-        return NULL;
-    }
-    return choice;
-}
-
-void *
-yang_read_case(struct lys_module *module, struct lys_node *parent, char *value)
-{
-    struct lys_node_case *cs;
-
-    cs = calloc(1, sizeof *cs);
-    if (!cs) {
-        LOGMEM;
-        return NULL;
-    }
-    cs->module = module;
-    cs->name = lydict_insert_zc(module->ctx, value);
-    cs->nodetype = LYS_CASE;
-    cs->prev = (struct lys_node *)cs;
-
-    /* insert the node into the schema tree */
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, (struct lys_node *)cs)) {
-        lydict_remove(module->ctx, cs->name);
-        free(cs);
-        return NULL;
-    }
-    return cs;
-}
-
-void *
-yang_read_grouping(struct lys_module *module, struct lys_node *parent, char *value)
-{
-    struct lys_node_grp *grp;
-
-    grp = calloc(1, sizeof *grp);
-    if (!grp) {
-        LOGMEM;
-        return NULL;
-    }
-    grp->module = module;
-    grp->name = lydict_insert_zc(module->ctx, value);
-    grp->nodetype = LYS_GROUPING;
-    grp->prev = (struct lys_node *)grp;
-
-    /* insert the node into the schema tree */
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, (struct lys_node *)grp)) {
-        lydict_remove(module->ctx, grp->name);
-        free(grp);
-        return NULL;
-    }
-    return grp;
 }
