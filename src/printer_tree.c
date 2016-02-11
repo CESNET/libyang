@@ -120,7 +120,7 @@ get_max_name_len(const struct lys_module *module, const struct lys_node *node)
                 (LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST
                 | LYS_ANYXML | LYS_CASE)) {
             mod = lys_mainmodule(sub);
-            name_len = strlen(sub->name) + (module == mod ? 0 : strlen(mod->prefix)+1);
+            name_len = strlen(sub->name) + (module == mod ? 0 : strlen(mod->name)+1);
             if (name_len > max_name_len) {
                 max_name_len = name_len;
             }
@@ -212,7 +212,7 @@ tree_print_container(struct lyout *out, const struct lys_module *module, int lev
 
     nodemod = lys_mainmodule(node);
     if (module != nodemod) {
-        ly_print(out, "%s:", nodemod->prefix);
+        ly_print(out, "%s:", nodemod->name);
     }
 
     ly_print(out, "%s%s", cont->name, (cont->presence ? "!" : ""));
@@ -262,7 +262,7 @@ tree_print_choice(struct lyout *out, const struct lys_module *module, int level,
 
     nodemod = lys_mainmodule(node);
     if (module != nodemod) {
-        ly_print(out, "%s:", nodemod->prefix);
+        ly_print(out, "%s:", nodemod->name);
     }
 
     ly_print(out, "%s)%s", choice->name, (choice->flags & LYS_MAND_TRUE ? "" : "?"));
@@ -303,7 +303,7 @@ tree_print_case(struct lyout *out, const struct lys_module *module, int level, c
 
     nodemod = lys_mainmodule(node);
     if (module != nodemod) {
-        ly_print(out, "%s:", nodemod->prefix);
+        ly_print(out, "%s:", nodemod->name);
     }
 
     ly_print(out, "%s)", cas->name);
@@ -354,8 +354,8 @@ tree_print_anyxml(struct lyout *out, const struct lys_module *module, char *inde
     prefix_len = 0;
     nodemod = lys_mainmodule(node);
     if (module != nodemod) {
-        ly_print(out, "%s:", nodemod->prefix);
-        prefix_len = strlen(nodemod->prefix)+1;
+        ly_print(out, "%s:", nodemod->name);
+        prefix_len = strlen(nodemod->name)+1;
     }
 
     ly_print(out, "%s%s%*sanyxml", anyxml->name, (anyxml->flags & LYS_MAND_TRUE ? " " : "?"),
@@ -406,8 +406,8 @@ tree_print_leaf(struct lyout *out, const struct lys_module *module, char *indent
     prefix_len = 0;
     nodemod = lys_mainmodule(node);
     if (module != nodemod) {
-        ly_print(out, "%s:", nodemod->prefix);
-        prefix_len = strlen(nodemod->prefix)+1;
+        ly_print(out, "%s:", nodemod->name);
+        prefix_len = strlen(nodemod->name)+1;
     }
 
     ly_print(out, "%s%s%*s", leaf->name, ((leaf->flags & LYS_MAND_TRUE) || is_key ? " " : "?"),
@@ -446,7 +446,7 @@ tree_print_leaflist(struct lyout *out, const struct lys_module *module, char *in
 
     nodemod = lys_mainmodule(node);
     if (module != nodemod) {
-        ly_print(out, "%s:", nodemod->prefix);
+        ly_print(out, "%s:", nodemod->name);
     }
 
     ly_print(out, "%s*%*s", leaflist->name, 3 + (int)(max_name_len - strlen(leaflist->name)), "   ");
@@ -482,7 +482,7 @@ tree_print_list(struct lyout *out, const struct lys_module *module, int level, c
 
     nodemod = lys_mainmodule(node);
     if (module != nodemod) {
-        ly_print(out, "%s:", nodemod->prefix);
+        ly_print(out, "%s:", nodemod->name);
     }
 
     ly_print(out, "%s*", list->name);
