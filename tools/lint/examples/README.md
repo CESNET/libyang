@@ -81,23 +81,22 @@ add ietf-netconf-acm.yin
 
 **Malformed XML data**
 
-Comand and its output:
+Command and its output:
 
 ```
 > data -x edit config-missing-key.xml
-libyang[0]: Parser fails around the line 20.
+libyang[0]: Parser fails around the line 19.
 libyang[0]: Mixed opening (nam) and closing (name) element tags.
-libyang[0]: lyd_parse_xml: Invalid parameter.
 Failed to parse data.
 ```
 
-**State information in config XML**
+**State information in edit-config XML**
 
 Comand and its output:
 
 ```
 > data -x edit config-unknown-element.xml
-libyang[0]: Parser fails around the line 25.
+libyang[0]: Parser fails around the line 24.
 libyang[0]: Unknown element "denied-operations".
 Failed to parse data.
 ```
@@ -108,7 +107,7 @@ Comand and its output:
 
 ```
 > data data-missing-key.xml
-libyang[0]: Parser fails around the line 7.
+libyang[0]: Parser fails around the line 6.
 libyang[0]: Missing required element "name" in "rule".
 Failed to parse data.
 ```
@@ -119,9 +118,8 @@ Comand and its output:
 
 ```
 > data data-malformed-xml.xml
-libyang[0]: Parser fails around the line 12.
+libyang[0]: Parser fails around the line 13.
 libyang[0]: Mixed opening (nam) and closing (rule) element tags.
-libyang[0]: lyd_parse_xml: Invalid parameter.
 Failed to parse data.
 ```
 
@@ -129,9 +127,8 @@ Comand and its output:
 
 ```
 > data data-malformed-xml2.xml
-libyang[0]: Parser fails around the line 8.
+libyang[0]: Parser fails around the line 7.
 libyang[0]: Mixed opening (module-name) and closing (name) element tags.
-libyang[0]: lyd_parse_xml: Invalid parameter.
 Failed to parse data.
 ```
 
@@ -141,7 +138,7 @@ Comand and its output:
 
 ```
 > data data-out-of-range-value.xml
-libyang[0]: Parser fails around the line 25.
+libyang[0]: Parser fails around the line 24.
 libyang[0]: Value "-1" is out of range or length.
 Failed to parse data.
 ```
@@ -161,7 +158,7 @@ Comand and its output:
 
 ```
 > data data-acm.xml
-libyang[0]: Parser fails around the line 26.
+libyang[0]: Parser fails around the line 25.
 libyang[0]: When condition "../denied-operations > 0" not satisfied.
 libyang[0]: There are unresolved data items left.
 Failed to parse data.
