@@ -1207,7 +1207,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     struct lyxml_elem *next, *child, *develem;
     int c_dev = 0, c_must, c_uniq;
     int f_min = 0; /* flags */
-    int i, j, k, rc;
+    int i, j, rc;
     struct lys_deviate *d = NULL;
     struct lys_node *node = NULL;
     struct lys_node_choice *choice = NULL;
@@ -1844,29 +1844,6 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     return EXIT_SUCCESS;
 
 error:
-
-    if (dev->deviate) {
-        for (i = 0; i < dev->deviate_size; i++) {
-            lydict_remove(module->ctx, dev->deviate[i].dflt);
-            lydict_remove(module->ctx, dev->deviate[i].units);
-
-            if (dev->deviate[i].mod == LY_DEVIATE_DEL) {
-                for (j = 0; j < dev->deviate[i].must_size; j++) {
-                    lys_restr_free(module->ctx, &dev->deviate[i].must[j]);
-                }
-                free(dev->deviate[i].must);
-
-                for (j = 0; j < dev->deviate[i].unique_size; j++) {
-                    for (k = 0; k < dev->deviate[i].unique[i].expr_size; k++) {
-                        lydict_remove(module->ctx, dev->deviate[i].unique[j].expr[k]);
-                    }
-                    free(dev->deviate[i].unique[j].expr);
-                }
-                free(dev->deviate[i].unique);
-            }
-        }
-        free(dev->deviate);
-    }
 
     return EXIT_FAILURE;
 }
