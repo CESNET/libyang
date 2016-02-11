@@ -350,7 +350,7 @@ yang_check_flags(uint8_t *flags, uint8_t mask, char *what, char *where, int valu
         LOGVAL(LYE_TOOMANY, line, what, where);
         return EXIT_FAILURE;
     } else {
-        *flags = value;
+        *flags |= value;
         return EXIT_SUCCESS;
     }
 }
