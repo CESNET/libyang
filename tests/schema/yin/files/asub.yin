@@ -3,7 +3,7 @@
            xmlns="urn:ietf:params:xml:ns:yang:yin:1"
            xmlns:a="urn:a">
   <belongs-to module="a">
-    <prefix value="a"/>
+    <prefix value="a_pref"/>
   </belongs-to>
   <include module="atop"/>
   <feature name="fox"/>
@@ -13,8 +13,11 @@
   <notification name="fox-notif">
     <if-feature name="fox"/>
   </notification>
-  <augment target-node="/a:top">
+  <augment target-node="/a_pref:top">
     <if-feature name="bar"/>
     <container name="bar-sub"/>
+  </augment>
+  <augment target-node="/top">
+    <container name="bar-sub2"/>
   </augment>
 </submodule>
