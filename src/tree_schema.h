@@ -1098,6 +1098,8 @@ struct lys_deviate {
     const char *dflt;                /**< Properties: default (both type and choice represented as string value */
     uint32_t min;                    /**< Properties: min-elements */
     uint32_t max;                    /**< Properties: max-elements */
+    uint8_t min_set;                 /**< Since min can be 0, this flag says if it is default value or 0 was set */
+    uint8_t max_set;                 /**< Since max can be 0, this flag says if it is default value or 0 (unbounded) was set */
     uint8_t must_size;               /**< Properties: must - number of elements in the #must array */
     uint8_t unique_size;             /**< Properties: unique - number of elements in the #unique array */
     struct lys_restr *must;          /**< Properties: must - array of must constraints */

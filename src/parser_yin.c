@@ -1154,18 +1154,22 @@ deviate_minmax(struct lys_node *target, struct lyxml_elem *node, struct lys_devi
         value++;
     }
 
-    /* convert it to uint32_t */
-    errno = 0;
-    endptr = NULL;
-    val = strtoul(value, &endptr, 10);
-    if (*endptr || value[0] == '-' || errno || val > UINT32_MAX) {
-        LOGVAL(LYE_INARG, LOGLINE(node), value, node->name);
-        goto error;
-    }
-    if (type) {
-        d->max = (uint32_t)val;
+    if (type && !strcmp(value, "unbounded")) {
+        d->max = val = 0;
     } else {
-        d->min = (uint32_t)val;
+        /* convert it to uint32_t */
+        errno = 0;
+        endptr = NULL;
+        val = strtoul(value, &endptr, 10);
+        if (*endptr || value[0] == '-' || errno || val > UINT32_MAX) {
+            LOGVAL(LYE_INARG, LOGLINE(node), value, node->name);
+            goto error;
+        }
+        if (type) {
+            d->max = (uint32_t)val;
+        } else {
+            d->min = (uint32_t)val;
+        }
     }
 
     if (d->mod == LY_DEVIATE_ADD) {
@@ -1206,7 +1210,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     const char *value, **stritem;
     struct lyxml_elem *next, *child, *develem;
     int c_dev = 0, c_must, c_uniq;
-    int f_min = 0; /* flags */
+    int f_min = 0, f_max = 0; /* flags */
     int i, j, rc;
     struct ly_ctx *ctx;
     struct lys_deviate *d = NULL;
@@ -1292,6 +1296,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     LY_TREE_FOR(yin->child, develem) {
         /* init */
         f_min = 0;
+        f_max = 0;
         c_must = 0;
         c_uniq = 0;
 
@@ -1517,10 +1522,11 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     goto error;
                 }
             } else if (!strcmp(child->name, "max-elements")) {
-                if (d->max) {
+                if (f_max) {
                     LOGVAL(LYE_TOOMANY, LOGLINE(child), child->name, yin->name);
                     goto error;
                 }
+                f_max = 1;
 
                 if (deviate_minmax(dev_target, child, d, 1)) {
                     goto error;
@@ -2130,15 +2136,19 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
                 value++;
             }
 
-            /* convert it to uint32_t */
-            errno = 0;
-            endptr = NULL;
-            val = strtoul(value, &endptr, 10);
-            if (*endptr || value[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
-                LOGVAL(LYE_INARG, LOGLINE(sub), value, sub->name);
-                goto error;
+            if (!strcmp(value, "unbounded")) {
+                rfn->mod.list.max = 0;
+            } else {
+                /* convert it to uint32_t */
+                errno = 0;
+                endptr = NULL;
+                val = strtoul(value, &endptr, 10);
+                if (*endptr || value[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
+                    LOGVAL(LYE_INARG, LOGLINE(sub), value, sub->name);
+                    goto error;
+                }
+                rfn->mod.list.max = (uint32_t) val;
             }
-            rfn->mod.list.max = (uint32_t) val;
 
             /* magic - bit 4 in flags means min set */
             rfn->flags |= 0x08;
@@ -3368,15 +3378,19 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
                 value++;
             }
 
-            /* convert it to uint32_t */
-            errno = 0;
-            endptr = NULL;
-            val = strtoul(value, &endptr, 10);
-            if (*endptr || value[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
-                LOGVAL(LYE_INARG, LOGLINE(sub), value, sub->name);
-                goto error;
+            if (!strcmp(value, "unbounded")) {
+                llist->max = 0;
+            } else {
+                /* convert it to uint32_t */
+                errno = 0;
+                endptr = NULL;
+                val = strtoul(value, &endptr, 10);
+                if (*endptr || value[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
+                    LOGVAL(LYE_INARG, LOGLINE(sub), value, sub->name);
+                    goto error;
+                }
+                llist->max = (uint32_t) val;
             }
-            llist->max = (uint32_t) val;
         } else if (!strcmp(sub->name, "when")) {
             if (llist->when) {
                 LOGVAL(LYE_TOOMANY, LOGLINE(sub), sub->name, yin->name);
@@ -3612,15 +3626,19 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 value++;
             }
 
-            /* convert it to uint32_t */
-            errno = 0;
-            auxs = NULL;
-            val = strtoul(value, &auxs, 10);
-            if (*auxs || value[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
-                LOGVAL(LYE_INARG, LOGLINE(sub), value, sub->name);
-                goto error;
+            if (!strcmp(value, "unbounded")) {
+                list->max = 0;;
+            } else {
+                /* convert it to uint32_t */
+                errno = 0;
+                auxs = NULL;
+                val = strtoul(value, &auxs, 10);
+                if (*auxs || value[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
+                    LOGVAL(LYE_INARG, LOGLINE(sub), value, sub->name);
+                    goto error;
+                }
+                list->max = (uint32_t) val;
             }
-            list->max = (uint32_t) val;
             lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "when")) {
             if (list->when) {

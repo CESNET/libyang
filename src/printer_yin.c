@@ -526,11 +526,15 @@ yin_print_refine(struct lyout *out, int level, const struct lys_module *module, 
             yin_print_open(out, "presence", "value", refine->mod.presence, level, 1);
         }
     } else if (refine->target_type & (LYS_LIST | LYS_LEAFLIST)) {
-        if (refine->mod.list.min > 0) {
+        if (refine->flags & 0x04) {
             yin_print_unsigned(out, "min-elements", "value", refine->mod.list.min, level);
         }
-        if (refine->mod.list.max > 0) {
-            yin_print_unsigned(out, "max-elements", "value", refine->mod.list.max, level);
+        if (refine->flags & 0x08) {
+            if (refine->mod.list.max) {
+                yin_print_unsigned(out, "max-elements", "value", refine->mod.list.max, level);
+            } else {
+                yin_print_open(out, "max-elements", "value", "unbounded", level, 1);
+            }
         }
     }
     level--;
@@ -586,11 +590,15 @@ yin_print_deviation(struct lyout *out, int level, const struct lys_module *modul
             yin_print_open(out, "default", "value", deviation->deviate[i].dflt, level, 1);
         }
 
-        if (deviation->deviate[i].min) {
+        if (deviation->deviate[i].min_set) {
             yin_print_unsigned(out, "min-elements", "value", deviation->deviate[i].min, level);
         }
-        if (deviation->deviate[i].max) {
-            yin_print_unsigned(out, "max-elements", "value", deviation->deviate[i].max, level);
+        if (deviation->deviate[i].max_set) {
+            if (deviation->deviate[1].max) {
+                yin_print_unsigned(out, "max-elements", "value", deviation->deviate[1].max, level);
+            } else {
+                yin_print_open(out, "max-elements", "value", "unbounded", level, 1);
+            }
         }
 
         for (j = 0; j < deviation->deviate[i].must_size; ++j) {

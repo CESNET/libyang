@@ -460,11 +460,16 @@ yang_print_refine(struct lyout *out, int level, const struct lys_module *module,
             yang_print_text(out, level, "presence", refine->mod.presence, 1);
         }
     } else if (refine->target_type & (LYS_LIST | LYS_LEAFLIST)) {
-        if (refine->mod.list.min > 0) {
+        /* magic - bit 3 in flags means min set, bit 4 says max set */
+        if (refine->flags & 0x04) {
             ly_print(out, "%*smin-elements %u;\n", LEVEL, INDENT, refine->mod.list.min);
         }
-        if (refine->mod.list.max > 0) {
-            ly_print(out, "%*smax-elements %u;\n", LEVEL, INDENT, refine->mod.list.max);
+        if (refine->flags & 0x08) {
+            if (refine->mod.list.max) {
+                ly_print(out, "%*smax-elements %u;\n", LEVEL, INDENT, refine->mod.list.max);
+            } else {
+                ly_print(out, "%*smax-elements \"unbounded\";\n", LEVEL, INDENT);
+            }
         }
     }
 
@@ -520,11 +525,15 @@ yang_print_deviation(struct lyout *out, int level, const struct lys_module *modu
             ly_print(out, "%*sdefault %s;\n", LEVEL, INDENT, deviation->deviate[i].dflt);
         }
 
-        if (deviation->deviate[i].min) {
+        if (deviation->deviate[i].min_set) {
             ly_print(out, "%*smin-elements %u;\n", LEVEL, INDENT, deviation->deviate[i].min);
         }
-        if (deviation->deviate[i].max) {
-            ly_print(out, "%*smax-elements %u;\n", LEVEL, INDENT, deviation->deviate[i].max);
+        if (deviation->deviate[i].max_set) {
+            if (deviation->deviate[i].max) {
+                ly_print(out, "%*smax-elements %u;\n", LEVEL, INDENT, deviation->deviate[i].max);
+            } else {
+                ly_print(out, "%*smax-elements \"unbounded\";\n", LEVEL, INDENT);
+            }
         }
 
         for (j = 0; j < deviation->deviate[i].must_size; ++j) {
