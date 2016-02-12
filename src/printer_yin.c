@@ -563,7 +563,7 @@ yin_print_deviation(struct lyout *out, int level, const struct lys_module *modul
     int i, j;
     const char *str;
 
-    str = transform_json2xml(module, deviation->target_name, NULL, NULL, NULL);
+    str = transform_json2schema(module, deviation->target_name);
     yin_print_open(out, level, "deviation", "target-node", str, 0);
     lydict_remove(module->ctx, str);
 
@@ -647,7 +647,7 @@ yin_print_augment(struct lyout *out, int level, const struct lys_module *module,
     struct lys_node *sub;
     const char *str;
 
-    str = transform_json2xml(module, augment->target_name, NULL, NULL, NULL);
+    str = transform_json2schema(module, augment->target_name);
     yin_print_open(out, level, "augment", "target-node", str, 0);
     lydict_remove(module->ctx, str);
 

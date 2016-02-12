@@ -509,7 +509,7 @@ yang_print_refine(struct lyout *out, int level, const struct lys_module *module,
     int i;
     const char *str;
 
-    str = transform_json2xml(module, refine->target_name, NULL, NULL, NULL);
+    str = transform_json2schema(module, refine->target_name);
     ly_print(out, "%*srefine \"%s\" {\n", LEVEL, INDENT, str);
     lydict_remove(module->ctx, str);
     level++;
@@ -565,7 +565,7 @@ yang_print_deviation(struct lyout *out, int level, const struct lys_module *modu
     int i, j;
     const char *str;
 
-    str = transform_json2xml(module, deviation->target_name, NULL, NULL, NULL);
+    str = transform_json2schema(module, deviation->target_name);
     ly_print(out, "%*sdeviation \"%s\" {\n", LEVEL, INDENT, str);
     lydict_remove(module->ctx, str);
     level++;
@@ -649,7 +649,7 @@ yang_print_augment(struct lyout *out, int level, const struct lys_module *module
     struct lys_node *sub;
     const char *str;
 
-    str = transform_json2xml(module, augment->target_name, NULL, NULL, NULL);
+    str = transform_json2schema(module, augment->target_name);
     ly_print(out, "%*saugment \"%s\" {\n", LEVEL, INDENT, str);
     lydict_remove(module->ctx, str);
     level++;
