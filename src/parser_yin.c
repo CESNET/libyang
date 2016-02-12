@@ -3724,13 +3724,11 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         lyxml_free(module->ctx, sub);
     }
 
-    if (!key_str) {
-        /* config false list without a key */
-        return retval;
-    }
-    if (unres_schema_add_str(module, unres, list, UNRES_LIST_KEYS, key_str, key_line) == -1) {
-        goto error;
-    }
+    if (key_str) {
+        if (unres_schema_add_str(module, unres, list, UNRES_LIST_KEYS, key_str, key_line) == -1) {
+            goto error;
+        }
+    } /* else config false list without a key, key_str presence in case of config true is checked earlier */
 
     /* process unique statements */
     if (c_uniq) {
@@ -3739,15 +3737,16 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             LOGMEM;
             goto error;
         }
-    }
-    LY_TREE_FOR_SAFE(uniq.child, next, sub) {
-        r = fill_yin_unique(module, retval, sub, &list->unique[list->unique_size], unres);
-        list->unique_size++;
-        if (r) {
-            goto error;
-        }
 
-        lyxml_free(module->ctx, sub);
+        LY_TREE_FOR_SAFE(uniq.child, next, sub) {
+            r = fill_yin_unique(module, retval, sub, &list->unique[list->unique_size], unres);
+            list->unique_size++;
+            if (r) {
+                goto error;
+            }
+
+            lyxml_free(module->ctx, sub);
+        }
     }
 
     return retval;
