@@ -122,13 +122,28 @@ test_target_augment(void **state)
 #undef SCHEMA
 }
 
+static void
+test_unres_augment(void **state)
+{
+    (void)state; /* unused */
+
+    ly_ctx_set_searchdir(ctx, SCHEMA_FOLDER);
+
+#define SCHEMA SCHEMA_FOLDER"/emod.yin"
+    if (!lys_parse_path(ctx, SCHEMA, LYS_IN_YIN)) {
+        fail();
+    }
+#undef SCHEMA
+}
+
 int
 main(void)
 {
     const struct CMUnitTest cmut[] = {
         cmocka_unit_test_setup_teardown(test_target_include_submodule, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_leafref, setup_ctx, teardown_ctx),
-        cmocka_unit_test_setup_teardown(test_target_augment, setup_ctx, teardown_ctx)
+        cmocka_unit_test_setup_teardown(test_target_augment, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_unres_augment, setup_ctx, teardown_ctx)
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
