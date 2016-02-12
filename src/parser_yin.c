@@ -5082,6 +5082,8 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             if (r) {
                 goto error;
             }
+            /* module with deviation - must be implemented (description of /ietf-yang-library:modules-state/module/deviation) */
+            module->implemented = 1;
 
         }
     }
