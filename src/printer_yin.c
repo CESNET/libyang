@@ -298,7 +298,7 @@ yin_print_when(struct lyout *out, int level, const struct lys_module *module, co
 static void
 yin_print_type(struct lyout *out, int level, const struct lys_module *module, const struct lys_type *type)
 {
-    int i, close;
+    int i, close, close2;
     const char *str;
     struct lys_module *mod;
 
@@ -364,14 +364,21 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
             break;
         case LY_TYPE_BITS:
             for (i = 0; i < type->info.bits.count; ++i) {
-                yin_print_open(out, level, "bit", "name", type->info.bits.bit[i].name, 0);
+                close2 = !yin_has_snode_common((struct lys_node *)&type->info.bits.bit[i])
+                    && (type->info.bits.bit[i].flags & LYS_AUTOASSIGNED);
 
-                level++;
-                yin_print_snode_common(out, level, (struct lys_node *)&type->info.bits.bit[i]);
-                yin_print_unsigned(out, level, "position", "value", type->info.bits.bit[i].pos);
-                level--;
+                yin_print_open(out, level, "bit", "name", type->info.bits.bit[i].name, close2);
 
-                yin_print_close(out, level, "bit");
+                if (!close2) {
+                    level++;
+                    yin_print_snode_common(out, level, (struct lys_node *)&type->info.bits.bit[i]);
+                    if (!(type->info.bits.bit[i].flags & LYS_AUTOASSIGNED)) {
+                        yin_print_unsigned(out, level, "position", "value", type->info.bits.bit[i].pos);
+                    }
+                    level--;
+
+                    yin_print_close(out, level, "bit");
+                }
             }
             break;
         case LY_TYPE_DEC64:
@@ -382,14 +389,21 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
             break;
         case LY_TYPE_ENUM:
             for (i = 0; i < type->info.enums.count; i++) {
-                yin_print_open(out, level, "enum", "name", type->info.enums.enm[i].name, 0);
+                close2 = !yin_has_snode_common((struct lys_node *)&type->info.enums.enm[i])
+                    && (type->info.enums.enm[i].flags & LYS_AUTOASSIGNED);
 
-                level++;
-                yin_print_snode_common(out, level, (struct lys_node *)&type->info.enums.enm[i]);
-                ly_print(out, "%*s<value value=\"%d\"/>\n", LEVEL, INDENT, type->info.enums.enm[i].value);
-                level--;
+                yin_print_open(out, level, "enum", "name", type->info.enums.enm[i].name, close2);
 
-                yin_print_close(out, level, "enum");
+                if (!close2) {
+                    level++;
+                    yin_print_snode_common(out, level, (struct lys_node *)&type->info.enums.enm[i]);
+                    if (!(type->info.enums.enm[i].flags & LYS_AUTOASSIGNED)) {
+                        ly_print(out, "%*s<value value=\"%d\"/>\n", LEVEL, INDENT, type->info.enums.enm[i].value);
+                    }
+                    level--;
+
+                    yin_print_close(out, level, "enum");
+                }
             }
             break;
         case LY_TYPE_IDENT:

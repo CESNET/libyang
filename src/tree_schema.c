@@ -1240,7 +1240,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
                 new->info.bits.bit[i].name = lydict_insert(mod->ctx, old->info.bits.bit[i].name, 0);
                 new->info.bits.bit[i].dsc = lydict_insert(mod->ctx, old->info.bits.bit[i].dsc, 0);
                 new->info.bits.bit[i].ref = lydict_insert(mod->ctx, old->info.bits.bit[i].ref, 0);
-                new->info.bits.bit[i].status = old->info.bits.bit[i].status;
+                new->info.bits.bit[i].flags = old->info.bits.bit[i].flags;
                 new->info.bits.bit[i].pos = old->info.bits.bit[i].pos;
             }
         }
@@ -1265,7 +1265,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
                 new->info.enums.enm[i].name = lydict_insert(mod->ctx, old->info.enums.enm[i].name, 0);
                 new->info.enums.enm[i].dsc = lydict_insert(mod->ctx, old->info.enums.enm[i].dsc, 0);
                 new->info.enums.enm[i].ref = lydict_insert(mod->ctx, old->info.enums.enm[i].ref, 0);
-                new->info.enums.enm[i].status = old->info.enums.enm[i].status;
+                new->info.enums.enm[i].flags = old->info.enums.enm[i].flags;
                 new->info.enums.enm[i].value = old->info.enums.enm[i].value;
             }
         }

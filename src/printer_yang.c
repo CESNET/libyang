@@ -289,12 +289,16 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
     case LY_TYPE_BITS:
         for (i = 0; i < type->info.bits.count; ++i) {
             yang_print_open(out, &flag);
-            ly_print(out, "%*sbit %s {\n", LEVEL, INDENT, type->info.bits.bit[i].name);
+            ly_print(out, "%*sbit %s", LEVEL, INDENT, type->info.bits.bit[i].name);
+            flag2 = 0;
             level++;
-            yang_print_snode_common(out, level, (struct lys_node *)&type->info.bits.bit[i], NULL);
-            ly_print(out, "%*sposition %u;\n", LEVEL, INDENT, type->info.bits.bit[i].pos);
+            yang_print_snode_common(out, level, (struct lys_node *)&type->info.bits.bit[i], &flag2);
+            if (!(type->info.bits.bit[i].flags & LYS_AUTOASSIGNED)) {
+                yang_print_open(out, &flag2);
+                ly_print(out, "%*sposition %u;\n", LEVEL, INDENT, type->info.bits.bit[i].pos);
+            }
             level--;
-            ly_print(out, "%*s}\n", LEVEL, INDENT);
+            yang_print_close(out, level, flag2);
         }
         break;
     case LY_TYPE_DEC64:
@@ -310,12 +314,16 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
     case LY_TYPE_ENUM:
         for (i = 0; i < type->info.enums.count; i++) {
             yang_print_open(out, &flag);
-            ly_print(out, "%*senum \"%s\" {\n", LEVEL, INDENT, type->info.enums.enm[i].name);
+            ly_print(out, "%*senum \"%s\"", LEVEL, INDENT, type->info.enums.enm[i].name);
+            flag2 = 0;
             level++;
-            yang_print_snode_common(out, level, (struct lys_node *)&type->info.enums.enm[i], NULL);
-            ly_print(out, "%*svalue %d;\n", LEVEL, INDENT, type->info.enums.enm[i].value);
+            yang_print_snode_common(out, level, (struct lys_node *)&type->info.enums.enm[i], &flag2);
+            if (!(type->info.enums.enm[i].flags & LYS_AUTOASSIGNED)) {
+                yang_print_open(out, &flag2);
+                ly_print(out, "%*svalue %d;\n", LEVEL, INDENT, type->info.enums.enm[i].value);
+            }
             level--;
-            ly_print(out, "%*s}\n", LEVEL, INDENT);
+            yang_print_close(out, level, flag2);
         }
         break;
     case LY_TYPE_IDENT:

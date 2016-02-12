@@ -368,6 +368,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     goto error;
                 }
                 type->info.bits.bit[i].pos = (uint32_t)p;
+                type->info.bits.bit[i].flags |= LYS_AUTOASSIGNED;
                 p++;
             }
 
@@ -560,6 +561,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     goto error;
                 }
                 type->info.enums.enm[i].value = v;
+                type->info.enums.enm[i].flags |= LYS_AUTOASSIGNED;
                 v++;
             }
         }
