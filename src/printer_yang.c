@@ -21,6 +21,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "common.h"
 #include "printer.h"
@@ -30,6 +31,63 @@
 #define LEVEL (level*2)
 
 static void yang_print_snode(struct lyout *out, int level, const struct lys_node *node, int mask);
+
+static void
+yang_encode(struct lyout *out, const char *text, int len)
+{
+    int i, start_len;
+    const char *start;
+    char special = 0;
+
+    if (!len) {
+        return;
+    }
+
+    if (len < 0) {
+        len = strlen(text);
+    }
+
+    start = text;
+    start_len = 0;
+    for (i = 0; i < len; ++i) {
+        switch (text[i]) {
+        case '\n':
+        case '\t':
+        case '\"':
+        case '\\':
+            special = text[i];
+            break;
+        default:
+            ++start_len;
+            break;
+        }
+
+        if (special) {
+            ly_write(out, start, start_len);
+            switch (special) {
+            case '\n':
+                ly_write(out, "\\n", 2);
+                break;
+            case '\t':
+                ly_write(out, "\\t", 2);
+                break;
+            case '\"':
+                ly_write(out, "\\\"", 2);
+                break;
+            case '\\':
+                ly_write(out, "\\\\", 2);
+                break;
+            }
+
+            start += start_len + 1;
+            start_len = 0;
+
+            special = 0;
+        }
+    }
+
+    ly_write(out, start, start_len);
+}
 
 static void
 yang_print_open(struct lyout *out, int *flag)
@@ -65,9 +123,10 @@ yang_print_text(struct lyout *out, int level, const char *name, const char *text
     }
     t = text;
     while ((s = strchr(t, '\n'))) {
-        ly_write(out, t, (s - t) + 1);
+        yang_encode(out, t, s - t);
+        ly_print(out, "\n");
         t = s + 1;
-        ly_print(out, "%*s", LEVEL, INDENT);
+        ly_print(out, "%*s ", LEVEL, INDENT);
     }
 
     ly_print(out, "%s\";\n", t);
@@ -245,7 +304,9 @@ yang_print_when(struct lyout *out, int level, const struct lys_module *module, c
         return;
     }
 
-    ly_print(out, "%*swhen \"%s\"", LEVEL, INDENT, str);
+    ly_print(out, "%*swhen \"", LEVEL, INDENT);
+    yang_encode(out, str, -1);
+    ly_print(out, "\"");
     lydict_remove(module->ctx, str);
 
     level++;
@@ -280,7 +341,9 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
     case LY_TYPE_BINARY:
         if (type->info.binary.length != NULL) {
             yang_print_open(out, &flag);
-            ly_print(out, "%*slength \"%s\" {\n", LEVEL, INDENT, type->info.binary.length->expr);
+            ly_print(out, "%*slength \"", LEVEL, INDENT);
+            yang_encode(out, type->info.binary.length->expr, -1);
+            ly_print(out, "\"");
             flag2 = 0;
             yang_print_restr(out, level + 1, type->info.binary.length, &flag2);
             yang_print_close(out, level, flag2);
@@ -305,7 +368,9 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
         yang_print_open(out, &flag);
         ly_print(out, "%*sfraction-digits %d;\n", LEVEL, INDENT, type->info.dec64.dig);
         if (type->info.dec64.range != NULL) {
-            ly_print(out, "%*srange \"%s\"", LEVEL, INDENT, type->info.dec64.range->expr);
+            ly_print(out, "%*srange \"", LEVEL, INDENT);
+            yang_encode(out, type->info.dec64.range->expr, -1);
+            ly_print(out, "\"");
             flag2 = 0;
             yang_print_restr(out, level + 1, type->info.dec64.range, &flag2);
             yang_print_close(out, level, flag2);
@@ -357,7 +422,9 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
     case LY_TYPE_UINT64:
         if (type->info.num.range != NULL) {
             yang_print_open(out, &flag);
-            ly_print(out, "%*srange \"%s\"", LEVEL, INDENT, type->info.num.range->expr);
+            ly_print(out, "%*srange \"", LEVEL, INDENT);
+            yang_encode(out, type->info.num.range->expr, -1);
+            ly_print(out, "\"");
             flag2 = 0;
             yang_print_restr(out, level + 1, type->info.num.range, &flag2);
             yang_print_close(out, level, flag2);
@@ -372,14 +439,18 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
     case LY_TYPE_STRING:
         if (type->info.str.length) {
             yang_print_open(out, &flag);
-            ly_print(out, "%*slength \"%s\"", LEVEL, INDENT, type->info.str.length->expr);
+            ly_print(out, "%*slength \"", LEVEL, INDENT);
+            yang_encode(out, type->info.str.length->expr, -1);
+            ly_print(out, "\"");
             flag2 = 0;
             yang_print_restr(out, level + 1, type->info.str.length, &flag2);
             yang_print_close(out, level, flag2);
         }
         for (i = 0; i < type->info.str.pat_count; i++) {
             yang_print_open(out, &flag);
-            ly_print(out, "%*spattern \"%s\"", LEVEL, INDENT, type->info.str.patterns[i].expr);
+            ly_print(out, "%*spattern \"", LEVEL, INDENT);
+            yang_encode(out, type->info.str.patterns[i].expr, -1);
+            ly_print(out, "\"");
             flag2 = 0;
             yang_print_restr(out, level + 1, &type->info.str.patterns[i], &flag2);
             yang_print_close(out, level, flag2);
@@ -411,7 +482,9 @@ yang_print_must(struct lyout *out, int level, const struct lys_module *module, c
         return;
     }
 
-    ly_print(out, "%*smust \"%s\"", LEVEL, INDENT, str);
+    ly_print(out, "%*smust \"", LEVEL, INDENT);
+    yang_encode(out, str, -1);
+    ly_print(out, "\"");
     lydict_remove(module->ctx, str);
 
     yang_print_restr(out, level + 1, must, &flag);
