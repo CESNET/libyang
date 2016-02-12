@@ -1110,14 +1110,14 @@ struct lys_deviate {
  * @brief YANG deviation statement structure, see [RFC 6020 sec. 7.18.3](http://tools.ietf.org/html/rfc6020#section-7.18.3)
  */
 struct lys_deviation {
-    const char *target_name;         /**< schema node identifier of the node where the deviation is supposed to be
-                                          applied (mandatory). */
-    const char *dsc;                 /**< description (optional) */
-    const char *ref;                 /**< reference (optional) */
-    struct lys_node *target;         /**< pointer to the target node TODO refer to deviation description */
+    const char *target_name;          /**< schema node identifier of the node where the deviation is supposed to be
+                                           applied (mandatory). */
+    const char *dsc;                  /**< description (optional) */
+    const char *ref;                  /**< reference (optional) */
+    struct lys_module *target_module; /**< pointer to the target node module */
 
-    uint8_t deviate_size;            /**< number of elements in the #deviate array */
-    struct lys_deviate *deviate;     /**< deviate information */
+    uint8_t deviate_size;             /**< number of elements in the #deviate array */
+    struct lys_deviate *deviate;      /**< deviate information */
 };
 
 /**

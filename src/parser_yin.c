@@ -1210,7 +1210,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     int i, j, rc;
     struct ly_ctx *ctx;
     struct lys_deviate *d = NULL;
-    struct lys_node *node = NULL;
+    struct lys_node *node = NULL, *dev_target = NULL;
     struct lys_node_choice *choice = NULL;
     struct lys_node_leaf *leaf = NULL;
     struct lys_node_list *list = NULL;
@@ -1227,17 +1227,18 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     }
 
     /* resolve target node */
-    rc = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&dev->target);
-    if (rc || !dev->target) {
+    rc = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&dev_target);
+    if (rc || !dev_target) {
         LOGVAL(LYE_INARG, LOGLINE(yin), dev->target_name, yin->name);
         goto error;
     }
-    if (dev->target->module == module) {
+    if (dev_target->module == module) {
         LOGVAL(LYE_SPEC, LOGLINE(yin), "Deviating own module is not allowed.");
         goto error;
     }
+    dev->target_module = dev_target->module;
     /* mark the target module as deviated */
-    dev->target->module->deviated = 1;
+    dev->target_module->deviated = 1;
 
     LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
@@ -1315,8 +1316,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
 
             /* remove target node */
-            lys_node_free(dev->target, NULL);
-            dev->target = NULL;
+            lys_node_free(dev_target, NULL);
 
             dev->deviate_size = 1;
             return EXIT_SUCCESS;
@@ -1363,27 +1363,27 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
                 if (d->mod == LY_DEVIATE_DEL) {
                     /* check values */
-                    if ((d->flags & LYS_CONFIG_MASK) != (dev->target->flags & LYS_CONFIG_MASK)) {
+                    if ((d->flags & LYS_CONFIG_MASK) != (dev_target->flags & LYS_CONFIG_MASK)) {
                         LOGVAL(LYE_INARG, LOGLINE(child), value, child->name);
                         LOGVAL(LYE_SPEC, 0, "Value differs from the target being deleted.");
                         goto error;
                     }
                     /* remove current config value of the target ... */
-                    dev->target->flags &= ~LYS_CONFIG_MASK;
+                    dev_target->flags &= ~LYS_CONFIG_MASK;
 
                     /* ... and inherit config value from the target's parent */
-                    if (dev->target->parent) {
-                        dev->target->flags |= dev->target->parent->flags & LYS_CONFIG_MASK;
+                    if (dev_target->parent) {
+                        dev_target->flags |= dev_target->parent->flags & LYS_CONFIG_MASK;
                     } else {
                         /* default config is true */
-                        dev->target->flags |= LYS_CONFIG_W;
+                        dev_target->flags |= LYS_CONFIG_W;
                     }
                 } else { /* add and replace are the same in this case */
                     /* remove current config value of the target ... */
-                    dev->target->flags &= ~LYS_CONFIG_MASK;
+                    dev_target->flags &= ~LYS_CONFIG_MASK;
 
                     /* ... and replace it with the value specified in deviation */
-                    dev->target->flags |= d->flags & LYS_CONFIG_MASK;
+                    dev_target->flags |= d->flags & LYS_CONFIG_MASK;
                 }
             } else if (!strcmp(child->name, "default")) {
                 if (d->dflt) {
@@ -1393,8 +1393,8 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 GETVAL(value, child, "value");
                 d->dflt = lydict_insert(ctx, value, 0);
 
-                if (dev->target->nodetype == LYS_CHOICE) {
-                    choice = (struct lys_node_choice *)dev->target;
+                if (dev_target->nodetype == LYS_CHOICE) {
+                    choice = (struct lys_node_choice *)dev_target;
 
                     if (d->mod == LY_DEVIATE_ADD) {
                         /* check that there is no current value */
@@ -1411,7 +1411,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         goto error;
                     }
                     if (d->mod == LY_DEVIATE_DEL) {
-                        if (!choice->dflt || choice->dflt != node) {
+                        if (!choice->dflt || (choice->dflt != node)) {
                             LOGVAL(LYE_INARG, LOGLINE(child), value, child->name);
                             LOGVAL(LYE_SPEC, 0, "Value differs from the target being deleted.");
                             goto error;
@@ -1424,8 +1424,8 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                             goto error;
                         }
                     }
-                } else if (dev->target->nodetype == LYS_LEAF) {
-                    leaf = (struct lys_node_leaf *)dev->target;
+                } else if (dev_target->nodetype == LYS_LEAF) {
+                    leaf = (struct lys_node_leaf *)dev_target;
 
                     if (d->mod == LY_DEVIATE_ADD) {
                         /* check that there is no current value */
@@ -1437,7 +1437,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     }
 
                     if (d->mod == LY_DEVIATE_DEL) {
-                        if (!leaf->dflt || leaf->dflt != d->dflt) {
+                        if (!leaf->dflt || (leaf->dflt != d->dflt)) {
                             LOGVAL(LYE_INARG, LOGLINE(child), value, child->name);
                             LOGVAL(LYE_SPEC, 0, "Value differs from the target being deleted.");
                             goto error;
@@ -1465,7 +1465,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
 
                 /* check target node type */
-                if (!(dev->target->nodetype &= (LYS_LEAF | LYS_CHOICE | LYS_ANYXML))) {
+                if (!(dev_target->nodetype & (LYS_LEAF | LYS_CHOICE | LYS_ANYXML))) {
                     LOGVAL(LYE_INSTMT, LOGLINE(child), child->name);
                     LOGVAL(LYE_SPEC, 0, "Target node does not allow \"%s\" property.", child->name);
                     goto error;
@@ -1483,7 +1483,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
                 if (d->mod == LY_DEVIATE_ADD) {
                     /* check that there is no current value */
-                    if (dev->target->flags & LYS_MAND_MASK) {
+                    if (dev_target->flags & LYS_MAND_MASK) {
                         LOGVAL(LYE_INSTMT, LOGLINE(child), child->name);
                         LOGVAL(LYE_SPEC, 0, "Adding property that already exists.");
                         goto error;
@@ -1492,19 +1492,19 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
                 if (d->mod == LY_DEVIATE_DEL) {
                     /* check values */
-                    if ((d->flags & LYS_MAND_MASK) != (dev->target->flags & LYS_MAND_MASK)) {
+                    if ((d->flags & LYS_MAND_MASK) != (dev_target->flags & LYS_MAND_MASK)) {
                         LOGVAL(LYE_INARG, LOGLINE(child), value, child->name);
                         LOGVAL(LYE_SPEC, 0, "Value differs from the target being deleted.");
                         goto error;
                     }
                     /* remove current mandatory value of the target */
-                    dev->target->flags &= ~LYS_MAND_MASK;
+                    dev_target->flags &= ~LYS_MAND_MASK;
                 } else { /* add (already checked) and replace */
                     /* remove current mandatory value of the target ... */
-                    dev->target->flags &= ~LYS_MAND_MASK;
+                    dev_target->flags &= ~LYS_MAND_MASK;
 
                     /* ... and replace it with the value specified in deviation */
-                    dev->target->flags |= d->flags & LYS_MAND_MASK;
+                    dev_target->flags |= d->flags & LYS_MAND_MASK;
                 }
             } else if (!strcmp(child->name, "min-elements")) {
                 if (f_min) {
@@ -1513,7 +1513,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
                 f_min = 1;
 
-                if (deviate_minmax(dev->target, child, d, 0)) {
+                if (deviate_minmax(dev_target, child, d, 0)) {
                     goto error;
                 }
             } else if (!strcmp(child->name, "max-elements")) {
@@ -1522,7 +1522,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     goto error;
                 }
 
-                if (deviate_minmax(dev->target, child, d, 1)) {
+                if (deviate_minmax(dev_target, child, d, 1)) {
                     goto error;
                 }
             } else if (!strcmp(child->name, "must")) {
@@ -1536,10 +1536,10 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
 
                 /* check target node type */
-                if (dev->target->nodetype == LYS_LEAF) {
-                    t = &((struct lys_node_leaf *)dev->target)->type;
-                } else if (dev->target->nodetype == LYS_LEAFLIST) {
-                    t = &((struct lys_node_leaflist *)dev->target)->type;
+                if (dev_target->nodetype == LYS_LEAF) {
+                    t = &((struct lys_node_leaf *)dev_target)->type;
+                } else if (dev_target->nodetype == LYS_LEAFLIST) {
+                    t = &((struct lys_node_leaflist *)dev_target)->type;
                 } else {
                     LOGVAL(LYE_INSTMT, LOGLINE(child), child->name);
                     LOGVAL(LYE_SPEC, 0, "Target node does not allow \"%s\" property.", child->name);
@@ -1565,7 +1565,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 /* ... and replace it with the value specified in deviation */
                 /* HACK for unres */
                 t->der = (struct lys_tpdf *)child;
-                if (unres_schema_add_node(module, unres, t, UNRES_TYPE_DER, dev->target, LOGLINE(child))) {
+                if (unres_schema_add_node(module, unres, t, UNRES_TYPE_DER, dev_target, LOGLINE(child))) {
                     goto error;
                 }
                 d->type = t;
@@ -1580,10 +1580,10 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
 
                 /* check target node type */
-                if (dev->target->nodetype == LYS_LEAFLIST) {
-                    stritem = &((struct lys_node_leaflist *)dev->target)->units;
-                } else if (dev->target->nodetype == LYS_LEAF) {
-                    stritem = &((struct lys_node_leaf *)dev->target)->units;
+                if (dev_target->nodetype == LYS_LEAFLIST) {
+                    stritem = &((struct lys_node_leaflist *)dev_target)->units;
+                } else if (dev_target->nodetype == LYS_LEAF) {
+                    stritem = &((struct lys_node_leaf *)dev_target)->units;
                 } else {
                     LOGVAL(LYE_INSTMT, LOGLINE(child), child->name);
                     LOGVAL(LYE_SPEC, 0, "Target node does not allow \"%s\" property.", child->name);
@@ -1630,26 +1630,26 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
         if (c_must) {
             /* check target node type */
-            switch (dev->target->nodetype) {
+            switch (dev_target->nodetype) {
             case LYS_LEAF:
-                trg_must = &((struct lys_node_leaf *)dev->target)->must;
-                trg_must_size = &((struct lys_node_leaf *)dev->target)->must_size;
+                trg_must = &((struct lys_node_leaf *)dev_target)->must;
+                trg_must_size = &((struct lys_node_leaf *)dev_target)->must_size;
                 break;
             case LYS_CONTAINER:
-                trg_must = &((struct lys_node_container *)dev->target)->must;
-                trg_must_size = &((struct lys_node_container *)dev->target)->must_size;
+                trg_must = &((struct lys_node_container *)dev_target)->must;
+                trg_must_size = &((struct lys_node_container *)dev_target)->must_size;
                 break;
             case LYS_LEAFLIST:
-                trg_must = &((struct lys_node_leaflist *)dev->target)->must;
-                trg_must_size = &((struct lys_node_leaflist *)dev->target)->must_size;
+                trg_must = &((struct lys_node_leaflist *)dev_target)->must;
+                trg_must_size = &((struct lys_node_leaflist *)dev_target)->must_size;
                 break;
             case LYS_LIST:
-                trg_must = &((struct lys_node_list *)dev->target)->must;
-                trg_must_size = &((struct lys_node_list *)dev->target)->must_size;
+                trg_must = &((struct lys_node_list *)dev_target)->must;
+                trg_must_size = &((struct lys_node_list *)dev_target)->must_size;
                 break;
             case LYS_ANYXML:
-                trg_must = &((struct lys_node_anyxml *)dev->target)->must;
-                trg_must_size = &((struct lys_node_anyxml *)dev->target)->must_size;
+                trg_must = &((struct lys_node_anyxml *)dev_target)->must;
+                trg_must_size = &((struct lys_node_anyxml *)dev_target)->must_size;
                 break;
             default:
                 LOGVAL(LYE_INSTMT, LOGLINE(child), child->name);
@@ -1692,13 +1692,13 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         }
         if (c_uniq) {
             /* check target node type */
-            if (dev->target->nodetype != LYS_LIST) {
+            if (dev_target->nodetype != LYS_LIST) {
                 LOGVAL(LYE_INSTMT, LOGLINE(child), child->name);
                 LOGVAL(LYE_SPEC, 0, "Target node does not allow \"%s\" property.", child->name);
                 goto error;
             }
 
-            list = (struct lys_node_list *)dev->target;
+            list = (struct lys_node_list *)dev_target;
             if (d->mod == LY_DEVIATE_RPL) {
                 /* remove target's unique and allocate new array for it */
                 if (!list->unique) {
@@ -1785,7 +1785,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
             } else if (!strcmp(child->name, "unique")) {
                 if (d->mod == LY_DEVIATE_DEL) {
-                    if (fill_yin_unique(module, dev->target, child, &d->unique[d->unique_size], NULL)) {
+                    if (fill_yin_unique(module, dev_target, child, &d->unique[d->unique_size], NULL)) {
                         d->unique_size++;
                         goto error;
                     }
@@ -1836,7 +1836,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         goto error;
                     }
                 } else { /* replace or add */
-                    i = fill_yin_unique(module, dev->target, child, &list->unique[list->unique_size], NULL);
+                    i = fill_yin_unique(module, dev_target, child, &list->unique[list->unique_size], NULL);
                     list->unique_size++;
                     if (i) {
                         goto error;
@@ -5301,10 +5301,10 @@ error:
 
     /* warn about applied deviations */
     for (i = 0; i < submodule->deviation_size; ++i) {
-        if (submodule->deviation[i].target) {
+        if (submodule->deviation[i].target_module) {
             LOGERR(ly_errno, "Submodule parsing failed, but successfully deviated %smodule \"%s\".",
-                   (submodule->deviation[i].target->module->type ? "sub" : ""),
-                   submodule->deviation[i].target->module->name);
+                   (submodule->deviation[i].target_module->type ? "sub" : ""),
+                   submodule->deviation[i].target_module->name);
         }
     }
 
@@ -5441,10 +5441,10 @@ error:
 
     /* warn about applied deviations */
     for (i = 0; i < module->deviation_size; ++i) {
-        if (module->deviation[i].target) {
+        if (module->deviation[i].target_module) {
             LOGERR(ly_errno, "Module parsing failed, but successfully deviated %smodule \"%s\".",
-                   (module->deviation[i].target->module->type ? "sub" : ""),
-                   module->deviation[i].target->module->name);
+                   (module->deviation[i].target_module->type ? "sub" : ""),
+                   module->deviation[i].target_module->name);
         }
     }
 

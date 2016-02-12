@@ -406,10 +406,11 @@ ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod, struct ly_ct
     for (i = 0; i < ctx->models.used; ++i) {
         mod_iter = ctx->models.list[i];
         for (k = 0; k < mod_iter->deviation_size; ++k) {
-            target_module = mod_iter->deviation[k].target->module;
 
             /* we found a module deviating our module */
-            if (target_module == cur_mod) {
+            if (mod_iter->deviation[k].target_module == cur_mod) {
+                revision = (mod_iter->rev_size ? mod_iter->rev[0].date : "");
+
                 cont = lyd_new(parent, NULL, "deviation");
                 if (!cont) {
                     return EXIT_FAILURE;
@@ -429,7 +430,10 @@ ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod, struct ly_ct
                 target_module = mod_iter->inc[j].submodule->deviation[k].target->module;
 
                 /* we found a submodule deviating our module */
-                if (target_module == cur_mod) {
+                if (mod_iter->inc[j].submodule->deviation[k].target_module == cur_mod) {
+                    /* the entries are defined for modules, not submodules */
+                    main_mod = ((struct lys_submodule *)mod_iter->inc[j].submodule)->belongsto;
+
                     cont = lyd_new(parent, NULL, "deviation");
                     if (!cont) {
                         return EXIT_FAILURE;
