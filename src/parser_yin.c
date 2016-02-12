@@ -1228,7 +1228,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
     /* resolve target node */
     rc = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&dev->target);
-    if (rc) {
+    if (rc || !dev->target) {
         LOGVAL(LYE_INARG, LOGLINE(yin), dev->target_name, yin->name);
         goto error;
     }
@@ -1406,7 +1406,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     }
 
                     rc = resolve_choice_default_schema_nodeid(d->dflt, choice->child, (const struct lys_node **)&node);
-                    if (rc) {
+                    if (rc || !node) {
                         LOGVAL(LYE_INARG, LOGLINE(child), value, child->name);
                         goto error;
                     }

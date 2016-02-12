@@ -1875,7 +1875,7 @@ resolve_unique(struct lys_node *parent, const char *uniq_str, int first, uint32_
     const struct lys_node *leaf = NULL;
 
     rc = resolve_descendant_schema_nodeid(uniq_str, parent->child, LYS_LEAF, &leaf);
-    if (rc) {
+    if (rc || !leaf) {
         if ((rc == -1) || !first) {
             LOGVAL(LYE_INARG, line, uniq_str, "unique");
             if (rc == EXIT_FAILURE) {
@@ -1884,7 +1884,7 @@ resolve_unique(struct lys_node *parent, const char *uniq_str, int first, uint32_
         }
         goto error;
     }
-    if (!leaf || leaf->nodetype != LYS_LEAF) {
+    if (leaf->nodetype != LYS_LEAF) {
         LOGVAL(LYE_INARG, line, uniq_str, "unique");
         LOGVAL(LYE_SPEC, 0, "Target is not a leaf.");
         rc = -1;
@@ -2958,7 +2958,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
         rfn = &uses->refine[i];
         rc = resolve_descendant_schema_nodeid(rfn->target_name, uses->child, LYS_NO_RPC_NOTIF_NODE,
                                               (const struct lys_node **)&node);
-        if (rc) {
+        if (rc || !node) {
             LOGVAL(LYE_INARG, line, rfn->target_name, "refine");
             return -1;
         }
@@ -2996,7 +2996,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
                 /* choice */
                 rc = resolve_choice_default_schema_nodeid(rfn->mod.dflt, node->child,
                                                           (const struct lys_node **)&((struct lys_node_choice *)node)->dflt);
-                if (rc) {
+                if (rc || !((struct lys_node_choice *)node)->dflt) {
                     LOGVAL(LYE_INARG, line, rfn->mod.dflt, "default");
                     return -1;
                 }
