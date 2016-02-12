@@ -4982,9 +4982,9 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
 
             /* check duplications in include submodules */
             for (i = 0; i < inc_size_aux - 1; i++) {
-                if (!strcmp(trg->inc[i].submodule->name, trg->inc[inc_size_aux - 1].submodule->name)) {
+                if (trg->inc[i].submodule && !strcmp(trg->inc[i].submodule->name, trg->inc[inc_size_aux - 1].submodule->name)) {
                     LOGVAL(LYE_SPEC, LOGLINE(child), "Including submodule \"%s\" repeatedly.",
-                           trg->inc[i].submodule->name);
+                        trg->inc[i].submodule->name);
                     goto error;
                 }
             }
