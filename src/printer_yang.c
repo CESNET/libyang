@@ -1182,14 +1182,14 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
         if (module->imp[i].external) {
             continue;
         }
-        ly_print(out, "%*simport \"%s\" {\n", LEVEL, INDENT, module->imp[i].module->name);
+        ly_print(out, "%*simport %s {\n", LEVEL, INDENT, module->imp[i].module->name);
         level++;
         ly_print(out, "%*sprefix %s;\n", LEVEL, INDENT, module->imp[i].prefix);
         if (module->imp[i].rev[0]) {
             ly_print(out, "%*srevision-date %s;", LEVEL, INDENT, module->imp[i].rev);
         }
         level--;
-        ly_print(out, "%*s}", LEVEL, INDENT);
+        ly_print(out, "%*s}\n", LEVEL, INDENT);
     }
     for (i = 0; i < module->inc_size; i++) {
         if (module->inc[i].external) {
