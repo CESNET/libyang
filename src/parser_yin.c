@@ -2312,7 +2312,8 @@ error:
 
 /* logs directly */
 static int
-fill_yin_include(struct lys_module *module, struct lyxml_elem *yin, struct lys_include *inc, struct unres_schema *unres)
+fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, struct lyxml_elem *yin,
+                 struct lys_include *inc, struct unres_schema *unres)
 {
     struct lyxml_elem *child;
     const char *value;
@@ -2347,13 +2348,22 @@ fill_yin_include(struct lys_module *module, struct lyxml_elem *yin, struct lys_i
     /* check that the submodule was not included yet (previous submodule could have included it) */
     for (i = 0; i < module->inc_size; ++i) {
         if (module->inc[i].submodule && (module->inc[i].submodule->name == value)) {
-            /* let's fake we included it now */
+            /* copy the duplicate into the result */
             memcpy(inc, &module->inc[i], sizeof *inc);
-            inc->external = 0;
 
-            /* remove the include we are going to add again in a moment */
-            --module->inc_size;
-            memmove(&module->inc[i], &module->inc[i + 1], (module->inc_size - i) * sizeof *module->inc);
+            if (submodule) {
+                /* we don't care if it was external or not */
+                inc->external = 0;
+            } else if (inc->external) {
+                /* remove the duplicate */
+                --module->inc_size;
+                memmove(&module->inc[i], &module->inc[i + 1], (module->inc_size - i) * sizeof *inc);
+                module->inc = ly_realloc(module->inc, module->inc_size * sizeof *module->inc);
+
+                /* it is no longer external */
+                inc->external = 0;
+            }
+            /* if !submodule && !inc->external, we just create a duplicate so it is detected and ended with error */
 
             return EXIT_SUCCESS;
         }
@@ -4963,7 +4973,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             /* 1) pass module, not trg, since we want to pass the main module
              * 2) we cannot pass directly the structure in the array since
              * submodule parser can realloc our array of includes */
-            r = fill_yin_include(module, child, &inc, unres);
+            r = fill_yin_include(module, submodule, child, &inc, unres);
             memcpy(&trg->inc[inc_size_aux], &inc, sizeof inc);
             inc_size_aux++;
             if (r) {
