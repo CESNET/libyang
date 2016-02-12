@@ -1964,7 +1964,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
             if (!(value = transform_schema2json(module, value, LOGLINE(child)))) {
                 goto error;
             }
-            /* hack - store pointer to the parent node for later status check */
+            /* HACK - store pointer to the parent node for later status check */
             aug->features[aug->features_size] = (struct lys_feature *)aug;
             ret = unres_schema_add_str(module, unres, &aug->features[aug->features_size], UNRES_IFFEAT, value,
                                        LOGLINE(child));
@@ -1984,8 +1984,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
      * (the grouping was not yet copied into uses).
      */
     if (!parent || (parent->nodetype != LYS_USES)) {
-        if (resolve_augment(aug, NULL)) {
-            LOGVAL(LYE_INRESOLV, LOGLINE(yin), "augment", aug->target_name);
+        if (unres_schema_add_node(module, unres, aug, UNRES_AUGMENT, NULL, LOGLINE(yin)) == -1) {
             goto error;
         }
     }

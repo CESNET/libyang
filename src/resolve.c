@@ -2858,15 +2858,17 @@ inherit_config_flag(struct lys_node *node)
 }
 
 /**
- * @brief Resolve augment target. Does not log.
+ * @brief Resolve augment target. Logs directly.
  *
  * @param[in] aug Augment to use.
  * @param[in] siblings Nodes where to start the search in. If set, uses augment, if not, standalone augment.
+ * @param[in] first Whether this is the first resolution try.
+ * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
-int
-resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
+static int
+resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, int first, uint32_t line)
 {
     int rc;
     struct lys_node *sub;
@@ -2876,10 +2878,17 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
 
     /* resolve target node */
     rc = resolve_augment_schema_nodeid(aug->target_name, siblings, (siblings ? NULL : aug->module), (const struct lys_node **)&aug->target);
-    if ((rc == -1) || (rc > 0)) {
+    if (rc == -1) {
+        return -1;
+    }
+    if (rc > 0) {
+        LOGVAL(LYE_INCHAR, line, aug->target_name[rc - 1], &aug->target_name[rc - 1]);
         return -1;
     }
     if (!aug->target) {
+        if (!first) {
+            LOGVAL(LYE_INRESOLV, line, "augment", aug->target_name);
+        }
         return EXIT_FAILURE;
     }
 
@@ -3087,9 +3096,8 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
 
     /* apply augments */
     for (i = 0; i < uses->augment_size; i++) {
-        rc = resolve_augment(&uses->augment[i], uses->child);
+        rc = resolve_augment(&uses->augment[i], uses->child, 0, line);
         if (rc) {
-            LOGVAL(LYE_INRESOLV, line, "augment", uses->augment[i].target_name);
             return -1;
         }
     }
@@ -3792,6 +3800,10 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         rc = resolve_unique(item, str_snode, first, line);
         has_str = 1;
         break;
+    case UNRES_AUGMENT:
+        rc = resolve_augment(item, NULL, first, line);
+        has_str = 0;
+        break;
     default:
         LOGINT;
         break;
@@ -3847,6 +3859,9 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node, u
         break;
     case UNRES_LIST_UNIQ:
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later%s.", "list unique", (char *)str_node, line_str);
+        break;
+    case UNRES_AUGMENT:
+        LOGVRB("Resovling %s \"%s\" failed, it will be attemted later%s.", "augment target", ((struct lys_node_augment *)item)->target_name, line_str);
         break;
     default:
         LOGINT;

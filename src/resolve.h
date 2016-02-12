@@ -41,6 +41,7 @@ enum UNRES_ITEM {
     UNRES_CHOICE_DFLT,   /* check choice default case */
     UNRES_LIST_KEYS,     /* list keys */
     UNRES_LIST_UNIQ,     /* list uniques */
+    UNRES_AUGMENT,       /* unresolved augment targets */
 
     /* DATA */
     UNRES_LEAFREF,       /* unresolved leafref reference */
@@ -122,8 +123,6 @@ int resolve_superior_type(const char *name, const char *prefix, const struct lys
                           const struct lys_node *parent, struct lys_tpdf **ret);
 
 int resolve_unique(struct lys_node *parent, const char *uniq_str, int first, uint32_t line);
-
-int resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings);
 
 struct lys_ident *resolve_identref(struct lys_ident *base, const char *ident_name, uint32_t line);
 
