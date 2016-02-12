@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 
 cleanup:
 	lyd_free_withsiblings(data);
-	ly_ctx_destroy(ctx);
+	ly_ctx_destroy(ctx, NULL);
 
 	return 0;
 }
