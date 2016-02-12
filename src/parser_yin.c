@@ -5453,11 +5453,15 @@ success:
     return module;
 
 error:
-    LOGERR(ly_errno, "Module \"%s\" parsing failed.", module->name);
-
     /* cleanup */
-    unres_schema_free(module, &unres);
     lyxml_free(ctx, yin);
+    unres_schema_free(module, &unres);
+
+    if (!module) {
+        return NULL;
+    }
+
+    LOGERR(ly_errno, "Module \"%s\" parsing failed.", module->name);
 
     /* warn about applied deviations */
     for (i = 0; i < module->deviation_size; ++i) {
