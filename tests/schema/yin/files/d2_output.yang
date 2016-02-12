@@ -2,9 +2,10 @@ module d2 {
   namespace "urn:d2";
   prefix d2_mod;
 
-  import "d1" {
+  import d1 {
     prefix d1_pref;
   }
+
   feature d2_feat {
     if-feature d1_pref:d1_feat;
   }

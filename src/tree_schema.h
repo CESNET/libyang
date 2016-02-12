@@ -379,7 +379,8 @@ struct lys_type {
                 const char *name;    /**< bit's name (mandatory) */
                 const char *dsc;     /**< bit's description (optional) */
                 const char *ref;     /**< bit's reference (optional) */
-                uint8_t status;      /**< bit's status, one of LYS_NODE_STATUS_* values (or 0 for default) */
+                uint8_t flags;       /**< bit's flags, whether the position was auto-assigned
+                                          and the status(one of LYS_NODE_STATUS_* values or 0 for default) */
                 uint32_t pos;        /**< bit's position (mandatory) */
             } *bit;                  /**< array of bit definitions */
             int count;               /**< number of bit definitions in the bit array */
@@ -398,7 +399,8 @@ struct lys_type {
                 const char *name;    /**< enum's name (mandatory) */
                 const char *dsc;     /**< enum's description (optional) */
                 const char *ref;     /**< enum's reference (optional) */
-                uint8_t status;      /**< enum's status, one of LYS_NODE_STATUS_* values (or 0 for default) */
+                uint8_t flags;       /**< enum's flags, whether the value was auto-assigned
+                                          and the status(one of LYS_NODE_STATUS_* values or 0 for default) */
                 int32_t value;       /**< enum's value (mandatory) */
             } *enm;                  /**< array of enum definitions */
             int count;               /**< number of enum definitions in the enm array */
@@ -486,6 +488,8 @@ struct lys_type {
                                           ::lys_node_list and ::lys_node_leaflist */
 #define LYS_FENABLED     0x80        /**< feature enabled flag, applicable only to ::lys_feature */
 #define LYS_UNIQUE       0x80        /**< part of the list's unique, applicable only to ::lys_node_leaf */
+#define LYS_AUTOASSIGNED 0x80        /**< value was auto-assigned, applicable only to
+                                          ::lys_type enum and bits flags */
 /**
  * @}
  */
