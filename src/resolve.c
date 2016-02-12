@@ -3861,7 +3861,7 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node, u
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later%s.", "list unique", (char *)str_node, line_str);
         break;
     case UNRES_AUGMENT:
-        LOGVRB("Resovling %s \"%s\" failed, it will be attemted later%s.", "augment target", ((struct lys_node_augment *)item)->target_name, line_str);
+        LOGVRB("Resolving %s \"%s\" failed, it will be attempted later%s.", "augment target", ((struct lys_node_augment *)item)->target_name, line_str);
         break;
     default:
         LOGINT;
