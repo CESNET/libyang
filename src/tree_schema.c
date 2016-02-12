@@ -470,7 +470,8 @@ ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema)
     if (!data) { /* !data && schema */
         siter = schema;
     } else { /* data && !schema */
-        schema = siter = data->schema->child;
+        schema = data->schema;
+        siter = data->schema->child;
     }
 
 repeat:
