@@ -229,8 +229,8 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
             assert(out_size == out_used);
             return lydict_insert_zc(module->ctx, out);
         }
-        id = strpbrk_backwards(col - 1, "/ [", (col - in) - 1);
-        if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[')) {
+        id = strpbrk_backwards(col - 1, "/ [\'\"", (col - in) - 1);
+        if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[') || (id[0] == '\'') || (id[0] == '\"')) {
             ++id;
         }
         id_len = col - id;
@@ -357,8 +357,8 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
             assert(out_size == out_used);
             return lydict_insert_zc(ctx, out);
         }
-        id = strpbrk_backwards(col-1, "/ [", (col-in)-1);
-        if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[')) {
+        id = strpbrk_backwards(col-1, "/ [\'\"", (col-in)-1);
+        if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[') || (id[0] == '\'') || (id[0] == '\"')) {
             ++id;
         }
         id_len = col-id;
@@ -456,7 +456,7 @@ transform_schema2json(const struct lys_module *module, const char *expr, uint32_
             return lydict_insert_zc(module->ctx, out);
         }
         id = strpbrk_backwards(col-1, "/ [\'\"", (col-in)-1);
-        if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[') || (id[0] == '\'') || (id[0] == '"')) {
+        if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[') || (id[0] == '\'') || (id[0] == '\"')) {
             ++id;
         }
         id_len = col-id;
