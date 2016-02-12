@@ -40,6 +40,7 @@ int tmp_line;
     struct lys_node_case *cs;
     struct lys_node_grp *grouping;
     struct lys_node_leaf *leaf;
+    struct type_leaflist leaflist;
   } nodes;
 }
 
@@ -161,6 +162,7 @@ int tmp_line;
 %type <nodes> case_opt_stmt
 %type <nodes> grouping_opt_stmt
 %type <nodes> leaf_opt_stmt
+%type <nodes> leaf_list_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
@@ -812,25 +814,102 @@ leaf_opt_stmt: %empty { if (read_all) {
   |  leaf_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.leaf,s,LEAF_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   ;
 
-leaf_list_stmt: LEAF_LIST_KEYWORD sep identifier_arg_str 
+leaf_list_stmt: LEAF_LIST_KEYWORD sep identifier_arg_str { if (read_all) {
+                                                             if (!(actual = yang_read_node(module,actual,s,LYS_LEAFLIST,sizeof(struct lys_node_leaflist)))) {YYERROR;}
+                                                             s=NULL;
+                                                           } else {
+                                                             if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                                               LOGMEM;
+                                                               YYERROR;
+                                                             }
+                                                           }
+                                                         }
                 '{' start_check
                     leaf_list_opt_stmt { if ((checked->check&2)==0) { yyerror(module,unres,size_arrays,read_all,"type statement missing."); YYERROR; }
-                                         free_check(); }
+                                         free_check();
+                                         if (read_all) {
+                                           if ($7.leaflist.ptr_leaflist->flags & LYS_CONFIG_R) {
+                                             /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
+                                              * ignore oredering MASK - 0x7F
+                                              */
+                                             $7.leaflist.ptr_leaflist->flags &= 0x7F;
+                                           }
+                                           if ($7.leaflist.ptr_leaflist->max && $7.leaflist.ptr_leaflist->min > $7.leaflist.ptr_leaflist->max) {
+                                             LOGVAL(LYE_SPEC, yylineno, "\"min-elements\" is bigger than \"max-elements\".");
+                                             YYERROR;
+                                           }
+                                         }
+                                       }
                 '}' ;
 
-leaf_list_opt_stmt: %empty 
-  |  leaf_list_opt_stmt yychecked_1 when_stmt
-  |  leaf_list_opt_stmt if_feature_stmt
-  |  leaf_list_opt_stmt yychecked_2 type_stmt
-  |  leaf_list_opt_stmt yychecked_3 units_stmt
-  |  leaf_list_opt_stmt must_stmt
-  |  leaf_list_opt_stmt yychecked_4 config_stmt
-  |  leaf_list_opt_stmt yychecked_5 min_elements_stmt
-  |  leaf_list_opt_stmt yychecked_6 max_elements_stmt
-  |  leaf_list_opt_stmt yychecked_7 ordered_by_stmt
-  |  leaf_list_opt_stmt yychecked_8 status_stmt
-  |  leaf_list_opt_stmt yychecked_9 description_stmt
-  |  leaf_list_opt_stmt yychecked_10 reference_stmt
+leaf_list_opt_stmt: %empty { if (read_all) {
+                               $$.leaflist.ptr_leaflist = actual;
+                               $$.leaflist.flag = 0;
+                               actual_type = LEAF_LIST_KEYWORD;
+                               $$.leaflist.ptr_leaflist->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.leaflist.ptr_leaflist->features);
+                               $$.leaflist.ptr_leaflist->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.leaflist.ptr_leaflist->must);
+                               if (!$$.leaflist.ptr_leaflist->features || !$$.leaflist.ptr_leaflist->must) {
+                                 LOGMEM;
+                                 YYERROR;
+                               }
+                               size_arrays->next++;
+                             } else {
+                               $$.index = size_arrays->size-1;
+                             }
+                           }
+  |  leaf_list_opt_stmt when_stmt { actual = $1.leaflist.ptr_leaflist; actual_type = LEAF_LIST_KEYWORD; }
+  |  leaf_list_opt_stmt if_feature_stmt { if (read_all) {
+                                            if (yang_read_if_feature(module,$1.leaflist.ptr_leaflist,s,unres,LEAF_LIST_KEYWORD,yylineno)) {YYERROR;}
+                                            s=NULL;
+                                          } else {
+                                            size_arrays->node[$1.index].if_features++;
+                                          }
+                                        }
+  |  leaf_list_opt_stmt yychecked_2 type_stmt // not implement
+  |  leaf_list_opt_stmt units_stmt { if (read_all && yang_read_units(module,$1.leaflist.ptr_leaflist,s,LEAF_LIST_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  leaf_list_opt_stmt must_stmt { if (read_all) {
+                                      actual = $1.leaflist.ptr_leaflist;
+                                      actual_type = LEAF_LIST_KEYWORD;
+                                    } else {
+                                      size_arrays->node[$1.index].must++;
+                                    }
+                                  }
+  |  leaf_list_opt_stmt config_stmt { if (read_all && yang_read_config($1.leaflist.ptr_leaflist,$2,LEAF_LIST_KEYWORD,yylineno)) {YYERROR;} }
+  |  leaf_list_opt_stmt min_elements_stmt { if (read_all) {
+                                              if ($1.leaflist.flag & LYS_MIN_ELEMENTS) {
+                                                LOGVAL(LYE_TOOMANY, yylineno, "min-elements", "leaflist");
+                                                YYERROR;
+                                              }
+                                              $1.leaflist.ptr_leaflist->min = $2;
+                                              $1.leaflist.flag |= LYS_MIN_ELEMENTS;
+                                              $$ = $1;
+                                            }
+                                          }
+  |  leaf_list_opt_stmt max_elements_stmt { if (read_all) {
+                                              if ($1.leaflist.flag & LYS_MAX_ELEMENTS) {
+                                                LOGVAL(LYE_TOOMANY, yylineno, "max-elements", "leaflist");
+                                                YYERROR;
+                                              }
+                                              $1.leaflist.ptr_leaflist->max = $2;
+                                              $1.leaflist.flag |= LYS_MAX_ELEMENTS;
+                                              $$ = $1;
+                                            }
+                                          }
+  |  leaf_list_opt_stmt ordered_by_stmt { if (read_all) {
+                                            if ($1.leaflist.flag & LYS_ORDERED_MASK) {
+                                              LOGVAL(LYE_TOOMANY, yylineno, "ordered by", "leaflist");
+                                              YYERROR;
+                                            }
+                                            if ($2 & LYS_USERORDERED) {
+                                              $1.leaflist.ptr_leaflist->flags |= LYS_USERORDERED;
+                                            }
+                                            $1.leaflist.flag = $2;
+                                            $$ = $1;
+                                          }
+                                        }
+  |  leaf_list_opt_stmt status_stmt { if (read_all && yang_read_status($1.leaflist.ptr_leaflist,$2,LEAF_LIST_KEYWORD,yylineno)) {YYERROR;} }
+  |  leaf_list_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.leaflist.ptr_leaflist,s,LEAF_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  leaf_list_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.leaflist.ptr_leaflist,s,LEAF_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   ;
 
 list_stmt: LIST_KEYWORD sep identifier_arg_str 
@@ -889,7 +968,7 @@ choice_end: ';' { if (read_all) { size_arrays->next++; } }
 choice_opt_stmt: %empty { if (read_all) {
                             $$.choice.ptr_choice = actual;
                             $$.choice.s = NULL;
-                            actual_type = CONTAINER_KEYWORD;
+                            actual_type = CHOICE_KEYWORD;
                             $$.choice.ptr_choice->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.choice.ptr_choice->features);
                             if (!$$.choice.ptr_choice->features) {
                               LOGMEM;

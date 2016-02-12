@@ -215,6 +215,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case LEAF_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_leaf *) node)->dsc, "description", "leaf", value, line);
             break;
+        case LEAF_LIST_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_leaflist *) node)->dsc, "description", "leaflist", value, line);
+            break;
         }
     }
     return ret;
@@ -261,6 +264,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case LEAF_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_leaf *) node)->ref, "reference", "leaf", value, line);
+            break;
+        case LEAF_LIST_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_leaflist *) node)->ref, "reference", "leaflist", value, line);
             break;
         }
     }
@@ -403,6 +409,9 @@ yang_read_status(void *node, int value, int type, int line)
     case LEAF_KEYWORD:
         retval = yang_check_flags(&((struct lys_node_leaf *) node)->flags, LYS_STATUS_MASK, "status", "leaf", value, line);
         break;
+    case LEAF_LIST_KEYWORD:
+        retval = yang_check_flags(&((struct lys_node_leaflist *) node)->flags, LYS_STATUS_MASK, "status", "leaflist", value, line);
+        break;
     }
     return retval;
 }
@@ -461,6 +470,9 @@ yang_read_must(struct lys_module *module, struct lys_node *node, char *value, in
         break;
     case LEAF_KEYWORD:
         retval = &((struct lys_node_leaf *)node)->must[((struct lys_node_leaf *)node)->must_size++];
+        break;
+    case LEAF_LIST_KEYWORD:
+        retval = &((struct lys_node_leaflist *)node)->must[((struct lys_node_leaflist *)node)->must_size++];
         break;
     }
     retval->expr = transform_schema2json(module, value, line);
@@ -525,6 +537,9 @@ yang_read_config(void *node, int value, int type, int line)
     case LEAF_KEYWORD:
         ret = yang_check_flags(&((struct lys_node_leaf *)node)->flags, LYS_CONFIG_MASK, "config", "leaf", value, line);
         break;
+    case LEAF_LIST_KEYWORD:
+        ret = yang_check_flags(&((struct lys_node_leaf *)node)->flags, LYS_CONFIG_MASK, "config", "leaflist", value, line);
+        break;
     }
     return ret;
 }
@@ -579,6 +594,13 @@ yang_read_when(struct lys_module *module, struct lys_node *node, int type, char 
             goto error;
         }
         ((struct lys_node_leaf *)node)->when = retval;
+        break;
+    case LEAF_LIST_KEYWORD:
+        if (((struct lys_node_leaflist *)node)->when) {
+            LOGVAL(LYE_TOOMANY,line,"when","leaflist");
+            goto error;
+        }
+        ((struct lys_node_leaflist *)node)->when = retval;
         break;
     }
     free(value);
@@ -639,9 +661,9 @@ yang_read_default(struct lys_module *module, void *node, char *value, int type, 
     int ret;
 
     switch (type) {
-        case LEAF_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_node_leaf *) node)->dflt, "default", "leaf", value, line);
-            break;
+    case LEAF_KEYWORD:
+        ret = yang_check_string(module, &((struct lys_node_leaf *) node)->dflt, "default", "leaf", value, line);
+        break;
     }
     return ret;
 }
@@ -652,9 +674,12 @@ yang_read_units(struct lys_module *module, void *node, char *value, int type, in
     int ret;
 
     switch (type) {
-        case LEAF_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_node_leaf *) node)->units, "units", "leaf", value, line);
-            break;
+    case LEAF_KEYWORD:
+        ret = yang_check_string(module, &((struct lys_node_leaf *) node)->units, "units", "leaf", value, line);
+        break;
+    case LEAF_LIST_KEYWORD:
+        ret = yang_check_string(module, &((struct lys_node_leaflist *) node)->units, "units", "leaflist", value, line);
+        break;
     }
     return ret;
 }

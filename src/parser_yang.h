@@ -35,6 +35,8 @@
 #define LY_READ_ONLY_SIZE 0
 #define LYS_SYSTEMORDERED 0x40
 #define LYS_ORDERED_MASK 0xC0
+#define LYS_MIN_ELEMENTS 0x01
+#define LYS_MAX_ELEMENTS 0x02
 
 struct lys_node_array{
     uint8_t if_features;
@@ -64,6 +66,11 @@ struct lys_array_size {
 struct type_choice {
   char *s;
   struct lys_node_choice *ptr_choice;
+};
+
+struct type_leaflist {
+    struct lys_node_leaflist *ptr_leaflist;
+    uint8_t flag;
 };
 
 int yang_read_common(struct lys_module *module,char *value, int type, int line);
