@@ -254,7 +254,7 @@ repeat:
     }
 
     if (!next) {
-        if (lys_parent(last) == parent) {
+        if (!last || lys_parent(last) == parent) {
             /* no next element */
             return NULL;
         }
