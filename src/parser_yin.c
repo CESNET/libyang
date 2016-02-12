@@ -2312,14 +2312,15 @@ error:
 
 /* logs directly */
 static int
-fill_yin_include(struct lys_module *module, struct lyxml_elem *yin, struct lys_include *inc, struct unres_schema *unres)
+fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, struct lyxml_elem *yin,
+                 struct lys_include *inc, struct unres_schema *unres)
 {
     struct lyxml_elem *child;
     const char *value;
     char *module_data;
     void (*module_data_free)(char *module_data) = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
-    int count;
+    int count, i;
 
     LY_TREE_FOR(yin->child, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
@@ -2343,6 +2344,30 @@ fill_yin_include(struct lys_module *module, struct lyxml_elem *yin, struct lys_i
     }
 
     GETVAL(value, yin, "module");
+
+    /* check that the submodule was not included yet (previous submodule could have included it) */
+    for (i = 0; i < module->inc_size; ++i) {
+        if (module->inc[i].submodule && (module->inc[i].submodule->name == value)) {
+            /* copy the duplicate into the result */
+            memcpy(inc, &module->inc[i], sizeof *inc);
+
+            if (submodule) {
+                /* we don't care if it was external or not */
+                inc->external = 0;
+            } else if (inc->external) {
+                /* remove the duplicate */
+                --module->inc_size;
+                memmove(&module->inc[i], &module->inc[i + 1], (module->inc_size - i) * sizeof *inc);
+                module->inc = ly_realloc(module->inc, module->inc_size * sizeof *module->inc);
+
+                /* it is no longer external */
+                inc->external = 0;
+            }
+            /* if !submodule && !inc->external, we just create a duplicate so it is detected and ended with error */
+
+            return EXIT_SUCCESS;
+        }
+    }
 
     /* check for circular include, store it if passed */
     if (!module->ctx->models.parsing) {
@@ -4948,18 +4973,18 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             /* 1) pass module, not trg, since we want to pass the main module
              * 2) we cannot pass directly the structure in the array since
              * submodule parser can realloc our array of includes */
-            r = fill_yin_include(module, child, &inc, unres);
+            r = fill_yin_include(module, submodule, child, &inc, unres);
+            memcpy(&trg->inc[inc_size_aux], &inc, sizeof inc);
+            inc_size_aux++;
             if (r) {
                 goto error;
             }
-            memcpy(&trg->inc[inc_size_aux], &inc, sizeof inc);
-            inc_size_aux++;
 
             /* check duplications in include submodules */
             for (i = 0; i < inc_size_aux - 1; i++) {
-                if (!strcmp(trg->inc[i].submodule->name, trg->inc[inc_size_aux - 1].submodule->name)) {
+                if (trg->inc[i].submodule && !strcmp(trg->inc[i].submodule->name, trg->inc[inc_size_aux - 1].submodule->name)) {
                     LOGVAL(LYE_SPEC, LOGLINE(child), "Including submodule \"%s\" repeatedly.",
-                           trg->inc[i].submodule->name);
+                        trg->inc[i].submodule->name);
                     goto error;
                 }
             }
@@ -5109,7 +5134,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             module->imp_size += r;
         }
 
-        /* propagate imports into the main module */
+        /* propagate includes into the main module */
         for (i = r = 0; i < submodule->inc_size; i++) {
             for (j = 0; j < module->inc_size; j++) {
                 if (submodule->inc[i].submodule == module->inc[j].submodule) {

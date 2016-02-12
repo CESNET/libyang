@@ -900,6 +900,9 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
     /* absolute-schema-nodeid */
     } else {
         start_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+        if (!start_mod) {
+            return -1;
+        }
         start = start_mod->data;
     }
 
@@ -1094,6 +1097,9 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
     }
 
     abs_start_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+    if (!abs_start_mod) {
+        return -1;
+    }
 
     while (1) {
         sibling = NULL;
@@ -1950,7 +1956,11 @@ resolve_feature(const char *id, const struct lys_module *module, int first, uint
         }
     }
     /* ... and all its submodules */
-    for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
+    for (i = 0; i < module->inc_size; i++) {
+        if (!module->inc[i].submodule) {
+            /* not yet resolved */
+            continue;
+        }
         for (j = 0; j < module->inc[i].submodule->features_size; j++) {
             if (!strcmp(name, module->inc[i].submodule->features[j].name)) {
                 if (ret) {
