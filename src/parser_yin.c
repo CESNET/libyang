@@ -1063,11 +1063,13 @@ fill_yin_must(struct lys_module *module, struct lyxml_elem *yin, struct lys_rest
     if (!must->expr) {
         goto error;
     }
+    if (lyxp_syntax_check(must->expr, LOGLINE(yin))) {
+        goto error;
+    }
 
     return read_restr_substmt(module->ctx, must, yin);
 
-error: /* GETVAL requires this label */
-
+error:
     return EXIT_FAILURE;
 }
 
@@ -1923,9 +1925,6 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
                 lyxml_free(module->ctx, child);
                 goto error;
             }
-            if (lyxp_syntax_check(aug->when->cond, LOGLINE(child))) {
-                goto error;
-            }
             lyxml_free(module->ctx, child);
             continue;
 
@@ -2218,9 +2217,6 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
         r = fill_yin_must(module, sub, &rfn->must[rfn->must_size]);
         rfn->must_size++;
         if (r) {
-            goto error;
-        }
-        if (lyxp_syntax_check(rfn->must[rfn->must_size-1].expr, LOGLINE(sub))) {
             goto error;
         }
     }
@@ -2605,6 +2601,9 @@ read_yin_when(struct lys_module *module, struct lyxml_elem *yin)
     if (!retval->cond) {
         goto error;
     }
+    if (lyxp_syntax_check(retval->cond, LOGLINE(yin))) {
+        goto error;
+    }
 
     LY_TREE_FOR(yin->child, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
@@ -2707,9 +2706,6 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
             cs->when = read_yin_when(module, sub);
             if (!cs->when) {
-                goto error;
-            }
-            if (lyxp_syntax_check(cs->when->cond, LOGLINE(sub))) {
                 goto error;
             }
 
@@ -2870,9 +2866,6 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
             if (!choice->when) {
                 goto error;
             }
-            if (lyxp_syntax_check(choice->when->cond, LOGLINE(sub))) {
-                goto error;
-            }
         } else if (!strcmp(sub->name, "if-feature")) {
             c_ftrs++;
 
@@ -2998,9 +2991,6 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
                 lyxml_free(module->ctx, sub);
                 goto error;
             }
-            if (lyxp_syntax_check(anyxml->when->cond, LOGLINE(sub))) {
-                goto error;
-            }
             lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "must")) {
             c_must++;
@@ -3034,9 +3024,6 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
             r = fill_yin_must(module, sub, &anyxml->must[anyxml->must_size]);
             anyxml->must_size++;
             if (r) {
-                goto error;
-            }
-            if (lyxp_syntax_check(anyxml->must[anyxml->must_size-1].expr, LOGLINE(sub))) {
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
@@ -3153,9 +3140,6 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             if (!leaf->when) {
                 goto error;
             }
-            if (lyxp_syntax_check(leaf->when->cond, LOGLINE(sub))) {
-                goto error;
-            }
 
         } else if (!strcmp(sub->name, "must")) {
             c_must++;
@@ -3204,9 +3188,6 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             r = fill_yin_must(module, sub, &leaf->must[leaf->must_size]);
             leaf->must_size++;
             if (r) {
-                goto error;
-            }
-            if (lyxp_syntax_check(leaf->must[leaf->must_size-1].expr, LOGLINE(sub))) {
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
@@ -3378,9 +3359,6 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             if (!llist->when) {
                 goto error;
             }
-            if (lyxp_syntax_check(llist->when->cond, LOGLINE(sub))) {
-                goto error;
-            }
         } else {
             LOGVAL(LYE_INSTMT, LOGLINE(sub), sub->name);
             goto error;
@@ -3420,9 +3398,6 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             r = fill_yin_must(module, sub, &llist->must[llist->must_size]);
             llist->must_size++;
             if (r) {
-                goto error;
-            }
-            if (lyxp_syntax_check(llist->must[llist->must_size-1].expr, LOGLINE(sub))) {
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
@@ -3620,9 +3595,6 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 lyxml_free(module->ctx, sub);
                 goto error;
             }
-            if (lyxp_syntax_check(list->when->cond, LOGLINE(sub))) {
-                goto error;
-            }
             lyxml_free(module->ctx, sub);
         } else {
             LOGVAL(LYE_INSTMT, LOGLINE(sub), sub->name);
@@ -3679,9 +3651,6 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             r = fill_yin_must(module, sub, &list->must[list->must_size]);
             list->must_size++;
             if (r) {
-                goto error;
-            }
-            if (lyxp_syntax_check(list->must[list->must_size-1].expr, LOGLINE(sub))) {
                 goto error;
             }
         }
@@ -3820,9 +3789,6 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
                 lyxml_free(module->ctx, sub);
                 goto error;
             }
-            if (lyxp_syntax_check(cont->when->cond, LOGLINE(sub))) {
-                goto error;
-            }
             lyxml_free(module->ctx, sub);
 
             /* data statements */
@@ -3884,9 +3850,6 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
             r = fill_yin_must(module, sub, &cont->must[cont->must_size]);
             cont->must_size++;
             if (r) {
-                goto error;
-            }
-            if (lyxp_syntax_check(cont->must[cont->must_size-1].expr, LOGLINE(sub))) {
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
@@ -4514,9 +4477,6 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             uses->when = read_yin_when(module, sub);
             if (!uses->when) {
                 lyxml_free(module->ctx, sub);
-                goto error;
-            }
-            if (lyxp_syntax_check(uses->when->cond, LOGLINE(sub))) {
                 goto error;
             }
             lyxml_free(module->ctx, sub);
