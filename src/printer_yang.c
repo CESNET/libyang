@@ -1260,7 +1260,7 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
         level++;
         ly_print(out, "%*sprefix %s;\n", LEVEL, INDENT, module->imp[i].prefix);
         if (module->imp[i].rev[0]) {
-            ly_print(out, "%*srevision-date %s;", LEVEL, INDENT, module->imp[i].rev);
+            ly_print(out, "%*srevision-date %s;\n", LEVEL, INDENT, module->imp[i].rev);
         }
         level--;
         ly_print(out, "%*s}\n", LEVEL, INDENT);
@@ -1272,7 +1272,7 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
         if (module->inc[i].rev[0]) {
             ly_print(out, "%*sinclude \"%s\" {\n", LEVEL, INDENT, module->inc[i].submodule->name);
             level++;
-            ly_print(out, "%*srevision-date %s;", LEVEL, INDENT, module->inc[i].rev);
+            ly_print(out, "%*srevision-date %s\n;", LEVEL, INDENT, module->inc[i].rev);
             level--;
             ly_print(out, "%*s}\n", LEVEL, INDENT);
         } else {
@@ -1314,7 +1314,7 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
             level--;
             ly_print(out, "%*s}\n", LEVEL, INDENT);
         } else {
-            ly_print(out, "%*srevision %s;", LEVEL, INDENT, module->rev[i].date);
+            ly_print(out, "%*srevision %s;\n", LEVEL, INDENT, module->rev[i].date);
         }
     }
 
