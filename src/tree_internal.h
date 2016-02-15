@@ -175,7 +175,18 @@ struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent
  * @param[in] node Schema tree node to be examined
  * @return pointer to the main module (schema structure), NULL in case of error.
  */
-struct lys_module *lys_mainmodule(const struct lys_node *node);
+struct lys_module *lys_node_module(const struct lys_node *node);
+
+/**
+ * @brief Return main module of the module.
+ *
+ * In case of regular YANG module, it returns itself,
+ * but in case of submodule, it returns pointer to the main module.
+ *
+ * @param[in] module Module to be examined
+ * @return pointer to the main module (schema structure).
+ */
+struct lys_module *lys_module(const struct lys_module *module);
 
 /**
  * @brief Free a schema when condition
@@ -280,9 +291,7 @@ const struct lys_module *lys_get_import_module(const struct lys_module *module, 
 /**
  * @brief Find a specific sibling. Does not log.
  *
- * Includes module comparison (handles augments if \p type & LYS_AUGMENT).
- * Module is adjusted based on the \p mod_name. Includes are also searched
- * if \p siblings are top-level nodes.
+ * Since \p mod_name is mandatory, augments are handled.
  *
  * @param[in] siblings Siblings to consider. They are first adjusted to
  *                     point to the first sibling.
@@ -301,9 +310,6 @@ int lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int m
 
 /**
  * @brief Find a specific sibling that can appear in the data. Does not log.
- *
- * Includes are also searched if siblings are
- * top-level nodes.
  *
  * @param[in] mod Main module with the node.
  * @param[in] siblings Siblings to consider. They are first adjusted to

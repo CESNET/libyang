@@ -666,6 +666,10 @@ yang_print_augment(struct lyout *out, int level, const struct lys_module *module
     }
 
     LY_TREE_FOR(augment->child, sub) {
+        /* only our augment */
+        if (sub->parent != (struct lys_node *)augment) {
+            continue;
+        }
         yang_print_snode(out, level, sub,
                          LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
                          LYS_USES | LYS_ANYXML | LYS_CASE);
@@ -759,8 +763,8 @@ yang_print_container(struct lyout *out, int level, const struct lys_node *node)
     }
 
     LY_TREE_FOR(node->child, sub) {
-        /* augment and data from submodules */
-        if (sub->module != node->module) {
+        /* augments */
+        if (sub->parent != node) {
             continue;
         }
         yang_print_open(out, &flag);
@@ -794,8 +798,8 @@ yang_print_case(struct lyout *out, int level, const struct lys_node *node)
     }
 
     LY_TREE_FOR(node->child, sub) {
-        /* augment and data from submodules */
-        if (sub->module != node->module) {
+        /* augments */
+        if (sub->parent != node) {
             continue;
         }
         yang_print_snode(out, level, sub,
@@ -833,8 +837,8 @@ yang_print_choice(struct lyout *out, int level, const struct lys_node *node)
     }
 
     LY_TREE_FOR(node->child, sub) {
-        /* augment and data from submodules */
-        if (sub->module != node->module) {
+        /* augments */
+        if (sub->parent != node) {
             continue;
         }
         yang_print_snode(out, level, sub,
@@ -994,8 +998,8 @@ yang_print_list(struct lyout *out, int level, const struct lys_node *node)
         yang_print_typedef(out, level, list->module, &list->tpdf[i]);
     }
     LY_TREE_FOR(node->child, sub) {
-        /* augment and data from submodules */
-        if (sub->module != node->module) {
+        /* augments */
+        if (sub->parent != node) {
             continue;
         }
         yang_print_snode(out, level, sub,
@@ -1010,7 +1014,7 @@ static void
 yang_print_grouping(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
-    struct lys_node *child;
+    struct lys_node *sub;
     struct lys_node_grp *grp = (struct lys_node_grp *)node;
 
     ly_print(out, "%*sgrouping %s {\n", LEVEL, INDENT, node->name);
@@ -1022,8 +1026,8 @@ yang_print_grouping(struct lyout *out, int level, const struct lys_node *node)
         yang_print_typedef(out, level, node->module, &grp->tpdf[i]);
     }
 
-    LY_TREE_FOR(node->child, child) {
-        yang_print_snode(out, level, child,
+    LY_TREE_FOR(node->child, sub) {
+        yang_print_snode(out, level, sub,
                          LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
                          LYS_USES | LYS_GROUPING | LYS_ANYXML);
     }
@@ -1090,8 +1094,8 @@ yang_print_input_output(struct lyout *out, int level, const struct lys_node *nod
     }
 
     LY_TREE_FOR(node->child, sub) {
-        /* augment and data from submodules */
-        if (sub->module != node->module) {
+        /* augments */
+        if (sub->parent != node) {
             continue;
         }
         yang_print_snode(out, level, sub,
@@ -1126,8 +1130,8 @@ yang_print_rpc(struct lyout *out, int level, const struct lys_node *node)
     }
 
     LY_TREE_FOR(node->child, sub) {
-        /* augment and data from submodules */
-        if (sub->module != node->module) {
+        /* augments */
+        if (sub->parent != node) {
             continue;
         }
         yang_print_open(out, &flag);
@@ -1161,8 +1165,8 @@ yang_print_notif(struct lyout *out, int level, const struct lys_node *node)
     }
 
     LY_TREE_FOR(node->child, sub) {
-        /* augment and data from submodules */
-        if (sub->module != node->module) {
+        /* augments */
+        if (sub->parent != node) {
             continue;
         }
         yang_print_open(out, &flag);
@@ -1338,8 +1342,9 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
         yang_print_deviation(out, level, module, &module->deviation[i]);
     }
 
-    LY_TREE_FOR(module->data, node) {
+    LY_TREE_FOR(lys_module(module)->data, node) {
         if (node->module != module) {
+            /* data from submodules */
             continue;
         }
         ly_print(out, "\n");
