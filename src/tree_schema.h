@@ -1189,6 +1189,7 @@ struct lys_feature {
     const char *ref;                 /**< reference statement (optional) */
     uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values and
                                           #LYS_FENABLED value are allowed */
+    uint8_t padding;
     struct lys_module *module;       /**< link to the features's data model (mandatory) */
 
     uint8_t features_size;           /**< number of elements in the #features array */
