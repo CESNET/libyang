@@ -3946,7 +3946,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
         }
     }
 
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, retval)) {
+    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto : module, retval)) {
         goto error;
     }
 
@@ -5208,23 +5208,23 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
     LY_TREE_FOR_SAFE(root.child, next, child) {
 
         if (!strcmp(child->name, "container")) {
-            node = read_yin_container(module, NULL, child, 1, unres);
+            node = read_yin_container(trg, NULL, child, 1, unres);
         } else if (!strcmp(child->name, "leaf-list")) {
-            node = read_yin_leaflist(module, NULL, child, 1, unres);
+            node = read_yin_leaflist(trg, NULL, child, 1, unres);
         } else if (!strcmp(child->name, "leaf")) {
-            node = read_yin_leaf(module, NULL, child, 1, unres);
+            node = read_yin_leaf(trg, NULL, child, 1, unres);
         } else if (!strcmp(child->name, "list")) {
-            node = read_yin_list(module, NULL, child, 1, unres);
+            node = read_yin_list(trg, NULL, child, 1, unres);
         } else if (!strcmp(child->name, "choice")) {
-            node = read_yin_choice(module, NULL, child, 1, unres);
+            node = read_yin_choice(trg, NULL, child, 1, unres);
         } else if (!strcmp(child->name, "uses")) {
-            node = read_yin_uses(module, NULL, child, 1, unres);
+            node = read_yin_uses(trg, NULL, child, 1, unres);
         } else if (!strcmp(child->name, "anyxml")) {
-            node = read_yin_anyxml(module, NULL, child, 1, unres);
+            node = read_yin_anyxml(trg, NULL, child, 1, unres);
         } else if (!strcmp(child->name, "rpc")) {
-            node = read_yin_rpc(module, NULL, child, 0, unres);
+            node = read_yin_rpc(trg, NULL, child, 0, unres);
         } else if (!strcmp(child->name, "notification")) {
-            node = read_yin_notif(module, NULL, child, 0, unres);
+            node = read_yin_notif(trg, NULL, child, 0, unres);
         }
         if (!node) {
             goto error;
