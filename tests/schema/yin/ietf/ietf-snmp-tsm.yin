@@ -68,9 +68,7 @@ Transport Security Model for SNMP.</text>
     </reference>
   </feature>
   <augment target-node="/snmp:snmp">
-    <if-feature name="tsm">
-      <if-feature name="tsm"/>
-    </if-feature>
+    <if-feature name="tsm"/>
     <container name="tsm">
       <description>
         <text>Configuration of the Transport Security Model.</text>
@@ -84,7 +82,6 @@ Transport Security Model for SNMP.</text>
   SNMP-TSM-MIB.snmpTsmConfigurationUsePrefix</text>
         </reference>
       </leaf>
-      <if-feature name="tsm"/>
     </container>
   </augment>
   <grouping name="tsm-target-params">
@@ -116,12 +113,9 @@ snmpTargetParamsSecurityModel '4'.</text>
     </container>
   </grouping>
   <augment target-node="/snmp:snmp/snmp:target-params/snmp:params">
-    <if-feature name="tsm">
-      <if-feature name="tsm"/>
-    </if-feature>
+    <if-feature name="tsm"/>
     <case name="tsm">
       <uses name="tsm-target-params"/>
-      <if-feature name="tsm"/>
     </case>
   </augment>
 </submodule>

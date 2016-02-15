@@ -76,9 +76,7 @@ Transport Layer Security Transport Model for SNMP.</text>
     </reference>
   </feature>
   <augment target-node="/snmp:snmp/snmp:engine/snmp:listen/snmp:transport">
-    <if-feature name="tlstm">
-      <if-feature name="tlstm"/>
-    </if-feature>
+    <if-feature name="tlstm"/>
     <case name="tls">
       <container name="tls">
         <description>
@@ -106,7 +104,6 @@ uses port 10162.</text>
           </description>
         </leaf>
       </container>
-      <if-feature name="tlstm"/>
     </case>
     <case name="dtls">
       <container name="dtls">
@@ -135,13 +132,10 @@ uses port 10162.</text>
           </description>
         </leaf>
       </container>
-      <if-feature name="tlstm"/>
     </case>
   </augment>
   <augment target-node="/snmp:snmp">
-    <if-feature name="tlstm">
-      <if-feature name="tlstm"/>
-    </if-feature>
+    <if-feature name="tlstm"/>
     <container name="tlstm">
       <uses name="x509c2n:cert-to-name">
         <description>
@@ -159,7 +153,6 @@ conditional based on the map-type.</text>
           </description>
         </refine>
       </uses>
-      <if-feature name="tlstm"/>
     </container>
   </augment>
   <grouping name="tls-transport">
@@ -213,9 +206,7 @@ RFC 6353: Transport Layer Security (TLS) Transport Model
     </leaf>
   </grouping>
   <augment target-node="/snmp:snmp/snmp:target/snmp:transport">
-    <if-feature name="tlstm">
-      <if-feature name="tlstm"/>
-    </if-feature>
+    <if-feature name="tlstm"/>
     <case name="tls">
       <reference>
         <text>RFC 6353: Transport Layer Security (TLS) Transport Model
@@ -225,13 +216,10 @@ RFC 6353: Transport Layer Security (TLS) Transport Model
       <container name="tls">
         <uses name="tls-transport"/>
       </container>
-      <if-feature name="tlstm"/>
     </case>
   </augment>
   <augment target-node="/snmp:snmp/snmp:target/snmp:transport">
-    <if-feature name="tlstm">
-      <if-feature name="tlstm"/>
-    </if-feature>
+    <if-feature name="tlstm"/>
     <case name="dtls">
       <reference>
         <text>RFC 6353: Transport Layer Security (TLS) Transport Model
@@ -241,7 +229,6 @@ RFC 6353: Transport Layer Security (TLS) Transport Model
       <container name="dtls">
         <uses name="tls-transport"/>
       </container>
-      <if-feature name="tlstm"/>
     </case>
   </augment>
 </submodule>
