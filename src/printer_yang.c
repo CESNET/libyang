@@ -1272,7 +1272,7 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
         if (module->inc[i].rev[0]) {
             ly_print(out, "%*sinclude \"%s\" {\n", LEVEL, INDENT, module->inc[i].submodule->name);
             level++;
-            ly_print(out, "%*srevision-date %s\n;", LEVEL, INDENT, module->inc[i].rev);
+            ly_print(out, "%*srevision-date %s;\n", LEVEL, INDENT, module->inc[i].rev);
             level--;
             ly_print(out, "%*s}\n", LEVEL, INDENT);
         } else {
