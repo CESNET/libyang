@@ -166,12 +166,7 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
 
     if (!node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
-        if (node->schema->module->type) {
-            /* submodule, get module */
-            ns = ((struct lys_submodule *)node->schema->module)->belongsto->ns;
-        } else {
-            ns = node->schema->module->ns;
-        }
+        ns = lys_node_module(node->schema)->ns;
         ly_print(out, "%*s<%s xmlns=\"%s\"", LEVEL, INDENT, node->schema->name, ns);
     } else {
         ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
@@ -263,12 +258,7 @@ xml_print_container(struct lyout *out, int level, const struct lyd_node *node, i
 
     if (!node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
-        if (node->schema->module->type) {
-            /* submodule, get module */
-            ns = ((struct lys_submodule *)node->schema->module)->belongsto->ns;
-        } else {
-            ns = node->schema->module->ns;
-        }
+        ns = lys_node_module(node->schema)->ns;
         ly_print(out, "%*s<%s xmlns=\"%s\"", LEVEL, INDENT, node->schema->name, ns);
     } else {
         ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
@@ -303,12 +293,7 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
         /* list print */
         if (!node->parent || nscmp(node, node->parent)) {
             /* print "namespace" */
-            if (node->schema->module->type) {
-                /* submodule, get module */
-                ns = ((struct lys_submodule *)node->schema->module)->belongsto->ns;
-            } else {
-                ns = node->schema->module->ns;
-            }
+            ns = lys_node_module(node->schema)->ns;
             ly_print(out, "%*s<%s xmlns=\"%s\"", LEVEL, INDENT, node->schema->name, ns);
         } else {
             ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
@@ -349,12 +334,7 @@ xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int 
 
     /*if (!node->parent || nscmp(node, node->parent)) {
         * print "namespace" *
-        if (node->schema->module->type) {
-            * submodule, get module *
-            ns = ((struct lys_submodule *)node->schema->module)->belongsto->ns;
-        } else {
-            ns = node->schema->module->ns;
-        }
+        ns = lys_node_module(node->schema)->ns;
         ly_print(out, "%*s<%s xmlns=\"%s\"", LEVEL, INDENT, node->schema->name, ns);
     } else {
         ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);

@@ -878,7 +878,7 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
     const struct lys_node *sibling;
     int r, nam_len, mod_name_len, is_relative = -1;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
-    const struct lys_module *prefix_mod, *start_mod, *node_mod;
+    const struct lys_module *prefix_mod, *start_mod;
 
     assert(nodeid && (start || module) && !(start && module) && ret);
 
@@ -920,8 +920,7 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
                 if (!prefix_mod) {
                     return -1;
                 }
-                node_mod = (sibling->module->type ? ((struct lys_submodule *)sibling->module)->belongsto : sibling->module);
-                if (prefix_mod != node_mod) {
+                if (prefix_mod != lys_node_module(sibling)) {
                     continue;
                 }
 
@@ -965,7 +964,7 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
     const struct lys_node *sibling;
     int r, nam_len, mod_name_len, is_relative = -1;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
-    const struct lys_module *prefix_mod, *module, *node_mod;
+    const struct lys_module *prefix_mod, *module;
 
     assert(nodeid && start && ret);
     assert(!(ret_nodetype & (LYS_USES | LYS_AUGMENT)) && ((ret_nodetype == LYS_GROUPING) || !(ret_nodetype & LYS_GROUPING)));
@@ -994,8 +993,7 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
                 if (!prefix_mod) {
                     return -1;
                 }
-                node_mod = (sibling->module->type ? ((struct lys_submodule *)sibling->module)->belongsto : sibling->module);
-                if (prefix_mod != node_mod) {
+                if (prefix_mod != lys_node_module(sibling)) {
                     continue;
                 }
 
@@ -1079,7 +1077,7 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
     const char *name, *mod_name, *id;
     const struct lys_node *sibling, *start;
     int r, nam_len, mod_name_len, is_relative = -1;
-    const struct lys_module *prefix_mod, *abs_start_mod, *node_mod;
+    const struct lys_module *prefix_mod, *abs_start_mod;
 
     assert(nodeid && module && ret);
     assert(!(ret_nodetype & (LYS_USES | LYS_AUGMENT)) && ((ret_nodetype == LYS_GROUPING) || !(ret_nodetype & LYS_GROUPING)));
@@ -1113,8 +1111,7 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
                 if (!prefix_mod) {
                     return -1;
                 }
-                node_mod = (sibling->module->type ? ((struct lys_submodule *)sibling->module)->belongsto : sibling->module);
-                if (prefix_mod != node_mod) {
+                if (prefix_mod != lys_node_module(sibling)) {
                     continue;
                 }
 
@@ -1162,7 +1159,7 @@ resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, cons
     const struct lys_node *sibling, *start;
     int r, nam_len, mod_name_len, is_relative = -1;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
-    const struct lys_module *prefix_mod, *module, *prev_mod = NULL, *node_mod;
+    const struct lys_module *prefix_mod, *module, *prev_mod = NULL;
 
     assert(nodeid && ctx && ret);
 
@@ -1201,8 +1198,7 @@ resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, cons
                 } else {
                     prefix_mod = prev_mod;
                 }
-                node_mod = (sibling->module->type ? ((struct lys_submodule *)sibling->module)->belongsto : sibling->module);
-                if (prefix_mod != node_mod) {
+                if (prefix_mod != lys_node_module(sibling)) {
                     continue;
                 }
 
@@ -2576,17 +2572,13 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent_node, int pare
                 return -1;
             }
 
-            if (!prefix) {
-                mod = parent_node->module;
-                prefix = mod->type ? ((struct lys_submodule *)mod)->belongsto->name : mod->name;
-            }
             first_iter = 0;
         } else {
-            if (!prefix) {
-                mod = parent_node->module;
-                prefix = mod->type ? ((struct lys_submodule *)mod)->belongsto->name : mod->name;
-            }
             node = node->child;
+        }
+
+        if (!prefix) {
+            prefix = lys_node_module(parent_node)->name;
         }
 
         rc = lys_get_sibling(node, prefix, pref_len, name, nam_len, LYS_ANY & ~(LYS_USES | LYS_GROUPING), &node);
@@ -2872,7 +2864,6 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, int fir
 {
     int rc;
     struct lys_node *sub;
-    struct lys_module *mm;
 
     assert(aug);
 
@@ -2907,9 +2898,8 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, int fir
     }
 
     /* check identifier uniqueness as in lys_node_addchild() */
-    mm = aug->module->type ? ((struct lys_submodule *)aug->module)->belongsto : aug->module;
     LY_TREE_FOR(aug->child, sub) {
-        if (lys_check_id(sub, aug->parent, mm)) {
+        if (lys_check_id(sub, aug->parent, lys_module(aug->module))) {
             return -1;
         }
     }
@@ -3429,7 +3419,7 @@ static int
 resolve_list_keys(struct lys_node_list *list, const char *keys_str, int first, uint32_t line)
 {
     int i, len, rc;
-    const char *value, *modname;
+    const char *value;
 
     for (i = 0; i < list->keys_size; ++i) {
         /* get the key name */
@@ -3442,8 +3432,7 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str, int first, u
             len = strlen(keys_str);
         }
 
-        modname = list->module->type ? ((struct lys_submodule *)list->module)->belongsto->name : list->module->name;
-        rc = lys_get_sibling(list->child, modname, 0, keys_str, len, LYS_LEAF, (const struct lys_node **)&list->keys[i]);
+        rc = lys_get_sibling(list->child, lys_module(list->module)->name, 0, keys_str, len, LYS_LEAF, (const struct lys_node **)&list->keys[i]);
         if (rc) {
             if ((rc == -1) || !first) {
                 LOGVAL(LYE_INRESOLV, line, "list keys", keys_str);

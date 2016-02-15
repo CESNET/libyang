@@ -180,9 +180,7 @@ ly_ctx_get_submodule(const struct lys_module *module, const char *name, const ch
     }
 
     /* make sure that the provided module is not submodule */
-    if (module->type) {
-        module = ((struct lys_submodule *)module)->belongsto;
-    }
+    module = lys_module(module);
 
     /* search in submodules list */
     for (i = 0; i < module->inc_size; i++) {

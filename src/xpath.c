@@ -2668,12 +2668,9 @@ xpath_namespace_uri(struct lyxp_set *args, uint16_t arg_count, struct lyd_node *
             module = ((struct lyd_attr *)node)->module;
         }
 
-        if (module->type) {
-            set_fill_string(set, ((struct lys_submodule *)module)->belongsto->ns,
-                            strlen(((struct lys_submodule *)module)->belongsto->ns), ctx);
-        } else {
-            set_fill_string(set, module->ns, strlen(module->ns), ctx);
-        }
+        module = lys_module(module);
+
+        set_fill_string(set, module->ns, strlen(module->ns), ctx);
         break;
     }
 
@@ -3614,15 +3611,9 @@ static void
 moveto_node_check(struct lyd_node *node, struct lyxp_set *set, uint16_t i, enum lyxp_node_type root_type,
                   const char *qname, uint16_t qname_len, struct lys_module *moveto_mod, int *replaced)
 {
-    struct lys_module *cur_mod;
-
     /* module check */
     if (moveto_mod) {
-        cur_mod = node->schema->module;
-        if (cur_mod->type) {
-            cur_mod = ((struct lys_submodule *)cur_mod)->belongsto;
-        }
-        if (cur_mod != moveto_mod) {
+        if (lys_node_module(node->schema) != moveto_mod) {
             return;
         }
     }
@@ -3752,7 +3743,7 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
     uint16_t i;
     int pref_len, all = 0, replace, match;
     struct lyd_node *next, *elem, *start;
-    struct lys_module *moveto_mod, *cur_mod;
+    struct lys_module *moveto_mod;
     struct ly_ctx *ctx;
     enum lyxp_node_type root_type;
 
@@ -3810,11 +3801,7 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
 
             /* module check */
             if (moveto_mod) {
-                cur_mod = elem->schema->module;
-                if (cur_mod->type) {
-                    cur_mod = ((struct lys_submodule *)cur_mod)->belongsto;
-                }
-                if (cur_mod != moveto_mod) {
+                if (lys_node_module(elem->schema) != moveto_mod) {
                     /* no match */
                     match = 0;
                 }

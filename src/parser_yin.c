@@ -2672,7 +2672,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, retval)) {
+    if (lys_node_addchild(parent, lys_module(module), retval)) {
         goto error;
     }
 
@@ -2795,7 +2795,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, retval)) {
+    if (lys_node_addchild(parent, lys_module(module), retval)) {
         goto error;
     }
 
@@ -2948,7 +2948,7 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, retval)) {
+    if (lys_node_addchild(parent, lys_module(module), retval)) {
         goto error;
     }
 
@@ -3072,7 +3072,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, retval)) {
+    if (lys_node_addchild(parent, lys_module(module), retval)) {
         goto error;
     }
 
@@ -3239,7 +3239,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, retval)) {
+    if (lys_node_addchild(parent, lys_module(module), retval)) {
         goto error;
     }
 
@@ -3656,7 +3656,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
     }
 
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, retval)) {
+    if (lys_node_addchild(parent, lys_module(module), retval)) {
         goto error;
     }
 
@@ -3861,7 +3861,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
         }
     }
 
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto : module, retval)) {
+    if (lys_node_addchild(parent, lys_module(module), retval)) {
         goto error;
     }
 
@@ -3977,7 +3977,7 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
         }
     }
 
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, retval)) {
+    if (lys_node_addchild(parent, lys_module(module), retval)) {
         goto error;
     }
 
@@ -4105,7 +4105,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
         }
     }
 
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, retval)) {
+    if (lys_node_addchild(parent, lys_module(module), retval)) {
         goto error;
     }
 
@@ -4239,7 +4239,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
         }
     }
 
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, retval)) {
+    if (lys_node_addchild(parent, lys_module(module), retval)) {
         goto error;
     }
 
@@ -4386,7 +4386,7 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
         }
     }
 
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, retval)) {
+    if (lys_node_addchild(parent, lys_module(module), retval)) {
         goto error;
     }
 
@@ -4509,7 +4509,7 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
     }
 
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, retval)) {
+    if (lys_node_addchild(parent, lys_module(module), retval)) {
         goto error;
     }
 

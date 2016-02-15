@@ -230,10 +230,10 @@ yin_print_snode_common2(struct lyout *out, int level, const struct lys_node *nod
 static void
 yin_print_iffeature(struct lyout *out, int level, const struct lys_module *module, const struct lys_feature *feat)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
 
     ly_print(out, "%*s<if-feature name=\"", LEVEL, INDENT);
-    mod = (feat->module->type ? ((struct lys_submodule *)feat->module)->belongsto : feat->module);
+    mod = lys_module(feat->module);
     if (module != mod) {
         ly_print(out, "%s:", transform_module_name2import_prefix(module, mod->name));
     }
@@ -407,9 +407,7 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
             }
             break;
         case LY_TYPE_IDENT:
-            mod = type->info.ident.ref->module->type ?
-                            ((struct lys_submodule *)type->info.ident.ref->module)->belongsto :
-                            type->info.ident.ref->module;
+            mod = lys_module(type->info.ident.ref->module);
             if (module == mod) {
                 ly_print(out, "%*s<base name=\"%s\"/>\n", LEVEL, INDENT, type->info.ident.ref->name);
             } else {
@@ -700,7 +698,7 @@ static void
 yin_print_identity(struct lyout *out, int level, const struct lys_ident *ident)
 {
     int close;
-    const struct lys_module *mod;
+    struct lys_module *mod;
 
     close = (yin_has_snode_common((struct lys_node *)ident) || ident->base ? 0 : 1);
 
@@ -711,7 +709,7 @@ yin_print_identity(struct lyout *out, int level, const struct lys_ident *ident)
         yin_print_snode_common(out, level, (struct lys_node *)ident);
         if (ident->base) {
             ly_print(out, "%*s<base name=\"", LEVEL, INDENT);
-            mod = (ident->base->module->type ? ((struct lys_submodule *)ident->base->module)->belongsto : ident->base->module);
+            mod = lys_module(ident->base->module);
             if (ident->module != mod) {
                 ly_print(out, "%s:", transform_module_name2import_prefix(ident->module, mod->name));
             }
@@ -1033,14 +1031,14 @@ yin_print_uses(struct lyout *out, int level, const struct lys_node *node)
 {
     int i, close;
     struct lys_node_uses *uses = (struct lys_node_uses *)node;
-    const struct lys_module *mod;
+    struct lys_module *mod;
 
     close = (yin_has_nacmext(node) || yin_has_snode_common(node) || uses->features_size || uses->when
             || uses->refine_size || uses->augment_size ? 0 : 1);
 
     ly_print(out, "%*s<uses name=\"", LEVEL, INDENT);
     if (node->child) {
-        mod = (node->child->module->type ? ((struct lys_submodule *)node->child->module)->belongsto : node->child->module);
+        mod = lys_node_module(node->child);
         if (node->module != mod) {
             ly_print(out, "%s:", transform_module_name2import_prefix(node->module, mod->name));
         }

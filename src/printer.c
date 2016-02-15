@@ -35,20 +35,8 @@
 int
 nscmp(const struct lyd_node *node1, const struct lyd_node *node2)
 {
-    struct lys_module *m1, *m2;
-
     /* we have to cover submodules belonging to the same module */
-    if (node1->schema->module->type) {
-        m1 = ((struct lys_submodule *)node1->schema->module)->belongsto;
-    } else {
-        m1 = node1->schema->module;
-    }
-    if (node2->schema->module->type) {
-        m2 = ((struct lys_submodule *)node2->schema->module)->belongsto;
-    } else {
-        m2 = node2->schema->module;
-    }
-    if (m1 == m2) {
+    if (lys_node_module(node1->schema) == lys_node_module(node2->schema)) {
         /* belongs to the same module */
         return 0;
     } else {
