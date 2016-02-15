@@ -38,63 +38,82 @@
 
 /* libyang errno */
 LY_ERR ly_errno_int = LY_EINT;
-static pthread_once_t ly_errno_once = PTHREAD_ONCE_INIT;
-static pthread_key_t ly_errno_key;
+static pthread_once_t ly_err_once = PTHREAD_ONCE_INIT;
+static pthread_key_t ly_err_key;
 #ifdef __linux__
-LY_ERR ly_errno_main = LY_SUCCESS;
+struct ly_err ly_err_main = {LY_SUCCESS, {0}};
 #endif
 
 static void
-ly_errno_free(void *ptr)
+ly_err_free(void *ptr)
 {
     /* in __linux__ we use static memory in the main thread,
      * so this check is for programs terminating the main()
      * function by pthread_exit() :)
      */
-    if (ptr != &ly_errno_main) {
+    if (ptr != &ly_err_main) {
         free(ptr);
     }
 }
 
 static void
-ly_errno_createkey(void)
+ly_err_createkey(void)
 {
     int r;
 
     /* initiate */
-    while ((r = pthread_key_create(&ly_errno_key, ly_errno_free)) == EAGAIN);
-    pthread_setspecific(ly_errno_key, NULL);
+    while ((r = pthread_key_create(&ly_err_key, ly_err_free)) == EAGAIN);
+    pthread_setspecific(ly_err_key, NULL);
+}
+
+struct ly_err *
+ly_err_location(void)
+{
+    struct ly_err *e;
+
+    pthread_once(&ly_err_once, ly_err_createkey);
+    e = pthread_getspecific(ly_err_key);
+    if (!e) {
+        /* prepare ly_err storage */
+#ifdef __linux__
+        if (getpid() == syscall(SYS_gettid)) {
+            /* main thread - use global variable instead of thread-specific variable. */
+            e = &ly_err_main;
+        } else {
+#else
+        {
+#endif /* __linux__ */
+            e = calloc(1, sizeof *e);
+        }
+        pthread_setspecific(ly_err_key, e);
+    }
+
+    return e;
 }
 
 API LY_ERR *
 ly_errno_location(void)
 {
-    LY_ERR *retval;
+    struct ly_err *e;
 
-    pthread_once(&ly_errno_once, ly_errno_createkey);
-    retval = pthread_getspecific(ly_errno_key);
-    if (!retval) {
-        /* prepare ly_errno storage */
-#ifdef __linux__
-        if (getpid() == syscall(SYS_gettid)) {
-            /* main thread - use global variable instead of thread-specific variable. */
-            retval = &ly_errno_main;
-        } else {
-#else
-        {
-#endif /* __linux__ */
-            retval = calloc(1, sizeof *retval);
-        }
-
-        if (!retval) {
-            /* error */
-            return &ly_errno_int;
-        }
-
-        pthread_setspecific(ly_errno_key, retval);
+    e = ly_err_location();
+    if (!e) {
+        return &ly_errno_int;
     }
+    return &(e->no);
+}
 
-    return retval;
+API const char *
+ly_errmsg(void)
+{
+    struct ly_err *e;
+
+    e = ly_err_location();
+    if (!e) {
+        return NULL;
+    }
+    return e->msg;
+
 }
 
 #ifndef  __USE_GNU

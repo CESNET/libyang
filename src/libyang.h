@@ -854,7 +854,7 @@ typedef enum {
 
 /**
  * @cond INTERNAL
- * Function to get address of global `ly_errno' variable.
+ * Get address of (thread-specific) `ly_errno' variable.
  */
 LY_ERR *ly_errno_location(void);
 
@@ -863,6 +863,12 @@ LY_ERR *ly_errno_location(void);
  * @brief libyang specific (thread-safe) errno (see #LY_ERR for the list of possible values and their meaning).
  */
 #define ly_errno (*ly_errno_location())
+
+/**
+ * @brief Get the last (thread-specific) error message.
+ * @return Text of the last error message.
+ */
+const char *ly_errmsg(void);
 
 /**@} logger */
 

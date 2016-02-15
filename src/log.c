@@ -26,6 +26,7 @@
 
 #include "common.h"
 
+extern LY_ERR ly_errno_int;
 volatile uint8_t ly_log_level = LY_LLERR;
 static void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg);
 
@@ -50,15 +51,20 @@ API void
 static void
 log_vprintf(LY_LOG_LEVEL level, const char *format, va_list args)
 {
-#define PRV_MSG_SIZE 4096
-    char prv_msg[PRV_MSG_SIZE];
+    char *msg;
 
-    vsnprintf(prv_msg, PRV_MSG_SIZE - 1, format, args);
-    prv_msg[PRV_MSG_SIZE - 1] = '\0';
-    if (ly_log_clb) {
-        ly_log_clb(level, prv_msg);
+    if (&ly_errno == &ly_errno_int) {
+        msg = "Internal logger error";
     } else {
-        fprintf(stderr, "libyang[%d]: %s\n", level, prv_msg);
+        msg = ((char*)(&ly_errno) + offsetof(struct ly_err, msg));
+        vsnprintf(msg, LY_ERR_MSG_SIZE - 1, format, args);
+        msg[LY_ERR_MSG_SIZE - 1] = '\0';
+    }
+
+    if (ly_log_clb) {
+        ly_log_clb(level, msg);
+    } else {
+        fprintf(stderr, "libyang[%d]: %s\n", level, msg);
     }
 #undef PRV_MSG_SIZE
 }
