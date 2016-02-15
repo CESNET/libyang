@@ -94,12 +94,7 @@ json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int o
     if (!onlyvalue) {
         if (!node->parent || nscmp(node, node->parent)) {
             /* print "namespace" */
-            if (node->schema->module->type) {
-                /* submodule, get module */
-                schema = ((struct lys_submodule *)node->schema->module)->belongsto->name;
-            } else {
-                schema = node->schema->module->name;
-            }
+            schema = lys_node_module(node->schema)->name;
             ly_print(out, "%*s\"%s:%s\": ", LEVEL, INDENT, schema, node->schema->name);
         } else {
             ly_print(out, "%*s\"%s\": ", LEVEL, INDENT, node->schema->name);
@@ -167,12 +162,7 @@ json_print_container(struct lyout *out, int level, const struct lyd_node *node)
 
     if (!node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
-        if (node->schema->module->type) {
-            /* submodule, get module */
-            schema = ((struct lys_submodule *)node->schema->module)->belongsto->name;
-        } else {
-            schema = node->schema->module->name;
-        }
+        schema = lys_node_module(node->schema)->name;
         ly_print(out, "%*s\"%s:%s\": {\n", LEVEL, INDENT, schema, node->schema->name);
     } else {
         ly_print(out, "%*s\"%s\": {\n", LEVEL, INDENT, node->schema->name);
@@ -202,12 +192,7 @@ json_print_leaf_list(struct lyout *out, int level, const struct lyd_node *node, 
 
     if (!node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
-        if (node->schema->module->type) {
-            /* submodule, get module */
-            schema = ((struct lys_submodule *)node->schema->module)->belongsto->name;
-        } else {
-            schema = node->schema->module->name;
-        }
+        schema = lys_node_module(node->schema)->name;
         ly_print(out, "%*s\"%s:%s\":", LEVEL, INDENT, schema, node->schema->name);
     } else {
         ly_print(out, "%*s\"%s\":", LEVEL, INDENT, node->schema->name);
@@ -293,12 +278,7 @@ json_print_anyxml(struct lyout *out, int level, const struct lyd_node *node)
 
     if (!node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
-        if (node->schema->module->type) {
-            /* submodule, get module */
-            schema = ((struct lys_submodule *)node->schema->module)->belongsto->name;
-        } else {
-            schema = node->schema->module->name;
-        }
+        schema = lys_node_module(node->schema)->name;
         ly_print(out, "%*s\"%s:%s\": [null]", LEVEL, INDENT, schema, node->schema->name);
     } else {
         ly_print(out, "%*s\"%s\": [null]", LEVEL, INDENT, node->schema->name);
