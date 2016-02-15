@@ -737,8 +737,8 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
 
     /* augment */
     for (i = 0; i < module->augment_size; i++) {
-        if ((module->type && (module->augment[i].child->module == module))
-                || (!module->type && (lys_node_module(module->augment[i].child) == module))) {
+        if ((module->type && (module->augment[i].target->module == module))
+                || (!module->type && (lys_node_module(module->augment[i].target) == module))) {
             /* submodule, target is our submodule or module, target is in our module or any submodules */
             continue;
         }
