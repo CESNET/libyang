@@ -677,6 +677,10 @@ tree_print_snode(struct lyout *out, const struct lys_module *module, int level, 
     case LYS_USES:
         tree_print_uses(out, module, level, indent, max_name_len, node, spec_config);
         break;
+    case LYS_CASE:
+        /* a very special case of cases in an augment */
+        tree_print_case(out, module, level, indent, max_name_len, node, 0, spec_config);
+        break;
     default:
         break;
     }
@@ -745,9 +749,13 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
 
         ly_print(out, "augment %s:\n", module->augment[i].target_name);
         LY_TREE_FOR(module->augment[i].child, node) {
+            /* submodule, foreign augments */
+            if (module->type && (node->module != module)) {
+                continue;
+            }
             tree_print_snode(out, module, level, indent, max_child_len, node,
-                             LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST
-                             | LYS_ANYXML | LYS_USES, 0);
+                             LYS_CHOICE | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST
+                             | LYS_LIST | LYS_ANYXML | LYS_USES, 0);
         }
     }
 
