@@ -98,6 +98,31 @@ read_yin_subnode(struct ly_ctx *ctx, struct lyxml_elem *node, const char *name)
 
 /* logs directly */
 static int
+fill_yin_iffeature(struct lys_node *parent, struct lyxml_elem *yin, struct lys_feature **iffeat, struct unres_schema *unres)
+{
+    int r;
+    const char *value;
+
+    GETVAL(value, yin, "name");
+    if (!(value = transform_schema2json(parent->module, value, LOGLINE(yin)))) {
+        return EXIT_FAILURE;
+    }
+
+    /* HACK - store pointer to the parent node for later status check */
+    *iffeat = (struct lys_feature *)parent;
+    r = unres_schema_add_str(parent->module, unres, iffeat, UNRES_IFFEAT, value,
+                             LOGLINE(yin));
+    lydict_remove(parent->module->ctx, value);
+    if (!r) {
+        return EXIT_SUCCESS;
+    }
+
+error:
+    return EXIT_FAILURE;
+}
+
+/* logs directly */
+static int
 fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_ident *ident, struct unres_schema *unres)
 {
     struct lyxml_elem *node;
@@ -1013,17 +1038,9 @@ fill_yin_feature(struct lys_module *module, struct lyxml_elem *yin, struct lys_f
         }
     }
     LY_TREE_FOR(yin->child, child) {
-        GETVAL(value, child, "name");
-        if (!(value = transform_schema2json(module, value, LOGLINE(child)))) {
-            goto error;
-        }
-        /* hack - store pointer to the parent node for later status check */
-        f->features[f->features_size] = f;
-        ret = unres_schema_add_str(module, unres, &f->features[f->features_size], UNRES_IFFEAT, value,
-                                   LOGLINE(child));
+        ret = fill_yin_iffeature((struct lys_node *)f, child, &f->features[f->features_size], unres);
         f->features_size++;
-        lydict_remove(module->ctx, value);
-        if (ret == -1) {
+        if (ret) {
             goto error;
         }
     }
@@ -1960,17 +1977,9 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
 
     LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!strcmp(child->name, "if-feature")) {
-            GETVAL(value, child, "name");
-            if (!(value = transform_schema2json(module, value, LOGLINE(child)))) {
-                goto error;
-            }
-            /* HACK - store pointer to the parent node for later status check */
-            aug->features[aug->features_size] = (struct lys_feature *)aug;
-            ret = unres_schema_add_str(module, unres, &aug->features[aug->features_size], UNRES_IFFEAT, value,
-                                       LOGLINE(child));
+            ret = fill_yin_iffeature((struct lys_node *)aug, child, &aug->features[aug->features_size], unres);
             aug->features_size++;
-            lydict_remove(module->ctx, value);
-            if (ret == -1) {
+            if (ret) {
                 goto error;
             }
             lyxml_free(module->ctx, child);
@@ -2644,7 +2653,6 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     struct lys_node_case *cs;
     struct lys_node *retval, *node = NULL;
     int c_ftrs = 0, ret;
-    const char *value;
 
     /* init */
     memset(&root, 0, sizeof root);
@@ -2720,17 +2728,9 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
     }
     LY_TREE_FOR(yin->child, sub) {
-        GETVAL(value, sub, "name");
-        if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
-            goto error;
-        }
-        /* hack - store pointer to the parent node for later status check */
-        cs->features[cs->features_size] = (struct lys_feature *)cs;
-        ret = unres_schema_add_str(module, unres, &cs->features[cs->features_size], UNRES_IFFEAT, value,
-                                   LOGLINE(sub));
+        ret = fill_yin_iffeature(retval, sub, &cs->features[cs->features_size], unres);
         cs->features_size++;
-        lydict_remove(module->ctx, value);
-        if (ret == -1) {
+        if (ret) {
             goto error;
         }
     }
@@ -2896,17 +2896,9 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
     }
 
     LY_TREE_FOR(yin->child, sub) {
-        GETVAL(value, sub, "name");
-        if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
-            goto error;
-        }
-        /* hack - store pointer to the parent node for later status check */
-        choice->features[choice->features_size] = (struct lys_feature *)choice;
-        ret = unres_schema_add_str(module, unres, &choice->features[choice->features_size], UNRES_IFFEAT, value,
-                                   LOGLINE(sub));
+        ret = fill_yin_iffeature(retval, sub, &choice->features[choice->features_size], unres);
         choice->features_size++;
-        lydict_remove(module->ctx, value);
-        if (ret == -1) {
+        if (ret) {
             goto error;
         }
     }
@@ -3048,17 +3040,9 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
-            GETVAL(value, sub, "name");
-            if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
-                goto error;
-            }
-            /* hack - store pointer to the parent node for later status check */
-            anyxml->features[anyxml->features_size] = (struct lys_feature *)anyxml;
-            r = unres_schema_add_str(module, unres, &anyxml->features[anyxml->features_size], UNRES_IFFEAT, value,
-                                     LOGLINE(sub));
+            r = fill_yin_iffeature(retval, sub, &anyxml->features[anyxml->features_size], unres);
             anyxml->features_size++;
-            lydict_remove(module->ctx, value);
-            if (r == -1) {
+            if (r) {
                 goto error;
             }
         }
@@ -3226,17 +3210,9 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
-            GETVAL(value, sub, "name");
-            if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
-                goto error;
-            }
-            /* hack - store pointer to the parent node for later status check */
-            leaf->features[leaf->features_size] = (struct lys_feature *)leaf;
-            r = unres_schema_add_str(module, unres, &leaf->features[leaf->features_size], UNRES_IFFEAT, value,
-                                     LOGLINE(sub));
+            r = fill_yin_iffeature(retval, sub, &leaf->features[leaf->features_size], unres);
             leaf->features_size++;
-            lydict_remove(module->ctx, value);
-            if (r == -1) {
+            if (r) {
                 goto error;
             }
         }
@@ -3450,17 +3426,9 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
-            GETVAL(value, sub, "name");
-            if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
-                goto error;
-            }
-            /* hack - store pointer to the parent node for later status check */
-            llist->features[llist->features_size] = (struct lys_feature *)llist;
-            r = unres_schema_add_str(module, unres, &llist->features[llist->features_size], UNRES_IFFEAT, value,
-                                     LOGLINE(sub));
+            r = fill_yin_iffeature(retval, sub, &llist->features[llist->features_size], unres);
             llist->features_size++;
-            lydict_remove(module->ctx, value);
-            if (r == -1) {
+            if (r) {
                 goto error;
             }
         }
@@ -3702,17 +3670,9 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
-            GETVAL(value, sub, "name");
-            if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
-                goto error;
-            }
-            /* hack - store pointer to the parent node for later status check */
-            list->features[list->features_size] = (struct lys_feature *)list;
-            r = unres_schema_add_str(module, unres, &list->features[list->features_size], UNRES_IFFEAT, value,
-                                     LOGLINE(sub));
+            r = fill_yin_iffeature(retval, sub, &list->features[list->features_size], unres);
             list->features_size++;
-            lydict_remove(module->ctx, value);
-            if (r == -1) {
+            if (r) {
                 goto error;
             }
         } else if (!strcmp(sub->name, "must")) {
@@ -3930,17 +3890,9 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
-            GETVAL(value, sub, "name");
-            if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
-                goto error;
-            }
-            /* hack - store pointer to the parent node for later status check */
-            cont->features[cont->features_size] = (struct lys_feature *)cont;
-            r = unres_schema_add_str(module, unres, &cont->features[cont->features_size], UNRES_IFFEAT, value,
-                                     LOGLINE(sub));
+            r = fill_yin_iffeature(retval, sub, &cont->features[cont->features_size], unres);
             cont->features_size++;
-            lydict_remove(module->ctx, value);
-            if (r == -1) {
+            if (r) {
                 goto error;
             }
         }
@@ -4241,7 +4193,6 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
     struct lys_node *node = NULL;
     struct lys_node *retval;
     struct lys_node_notif *notif;
-    const char *value;
     int r;
     int c_tpdf = 0, c_ftrs = 0;
 
@@ -4317,17 +4268,9 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-features")) {
-            GETVAL(value, sub, "name");
-            if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
-                goto error;
-            }
-            /* hack - store pointer to the parent node for later status check */
-            notif->features[notif->features_size] = (struct lys_feature *)notif;
-            r = unres_schema_add_str(module, unres, &notif->features[notif->features_size], UNRES_IFFEAT, value,
-                                     LOGLINE(sub));
+            r = fill_yin_iffeature(retval, sub, &notif->features[notif->features_size], unres);
             notif->features_size++;
-            lydict_remove(module->ctx, value);
-            if (r == -1) {
+            if (r) {
                 goto error;
             }
         }
@@ -4384,7 +4327,6 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
     struct lys_node *node = NULL;
     struct lys_node *retval;
     struct lys_node_rpc *rpc;
-    const char *value;
     int r;
     int c_tpdf = 0, c_ftrs = 0;
 
@@ -4473,17 +4415,9 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
-            GETVAL(value, sub, "name");
-            if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
-                goto error;
-            }
-            /* hack - store pointer to the parent node for later status check */
-            rpc->features[rpc->features_size] = (struct lys_feature *)rpc;
-            r = unres_schema_add_str(module, unres, &rpc->features[rpc->features_size], UNRES_IFFEAT, value,
-                                     LOGLINE(sub));
+            r = fill_yin_iffeature(retval, sub, &rpc->features[rpc->features_size], unres);
             rpc->features_size++;
-            lydict_remove(module->ctx, value);
-            if (r == -1) {
+            if (r) {
                 goto error;
             }
         }
@@ -4633,17 +4567,9 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
-            GETVAL(value, sub, "name");
-            if (!(value = transform_schema2json(module, value, LOGLINE(sub)))) {
-                goto error;
-            }
-            /* hack - store pointer to the parent node for later status check */
-            uses->features[uses->features_size] = (struct lys_feature *)uses;
-            r = unres_schema_add_str(module, unres, &uses->features[uses->features_size], UNRES_IFFEAT, value,
-                                     LOGLINE(sub));
+            r = fill_yin_iffeature(retval, sub, &uses->features[uses->features_size], unres);
             uses->features_size++;
-            lydict_remove(module->ctx, value);
-            if (r == -1) {
+            if (r) {
                 goto error;
             }
         }
