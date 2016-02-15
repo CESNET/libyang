@@ -78,10 +78,12 @@ extern struct ly_types ly_types[LY_DATA_TYPE_COUNT];
  * @param[in] data String containing the submodule specification in the given \p format.
  * @param[in] format Format of the data to read.
  * @param[in] unres TODO provide description
- * @return Created submodule structure or NULL in case of error.
+ * @param[out] submodule Parsed submodule.
+ * @return EXIT_SUCCESS on success, -1 on error, EXIT_FAILURE on error and submodule returned
+ * (to give chance to module to free submodule data and then free the submodule).
  */
-struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT format,
-                                          struct unres_schema *unres);
+int lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT format,
+                        struct unres_schema *unres, struct lys_submodule **submodule);
 
 /**
  * @brief Create submodule structure by reading data from file descriptor.
@@ -93,10 +95,12 @@ struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char 
  *            specification in the given \p format.
  * @param[in] format Format of the data to read.
  * @param[in] unres TODO provide description
- * @return Created submodule structure or NULL in case of error.
+ * @param[out] submodule Parsed submodule.
+ * @return EXIT_SUCCESS on success, -1 on error, EXIT_FAILURE on error and submodule returned
+ * (to give chance to module to free submodule data and then free the submodule).
  */
-struct lys_submodule *lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format,
-                                         struct unres_schema *unres);
+int lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format,
+                       struct unres_schema *unres, struct lys_submodule **submodule);
 
 /**
  * @brief Free the submodule structure

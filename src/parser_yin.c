@@ -2336,7 +2336,7 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
     char *module_data;
     void (*module_data_free)(char *module_data) = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
-    int count, i;
+    int count, i, ret;
 
     LY_TREE_FOR(yin->child, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
@@ -2413,7 +2413,7 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
             module_data = module->ctx->module_clb(value, inc->rev[0] ? inc->rev : NULL, module->ctx->module_clb_data,
                                                   &format, &module_data_free);
             if (module_data) {
-                inc->submodule = lys_submodule_parse(module, module_data, format, unres);
+                ret = lys_submodule_parse(module, module_data, format, unres, &inc->submodule);
                 if (module_data_free) {
                     module_data_free(module_data);
                 } else {
@@ -2423,8 +2423,8 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
                 LOGERR(LY_EVALID, "User module retrieval callback failed!");
             }
         } else {
-            inc->submodule = (struct lys_submodule *)lyp_search_file(module->ctx, module, value,
-                                                                     inc->rev[0] ? inc->rev : NULL, unres);
+            ret = lyp_search_file(module->ctx, module, value, inc->rev[0] ? inc->rev : NULL, unres,
+                                  (struct lys_module **)&inc->submodule);
         }
     }
 
@@ -2441,7 +2441,7 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
     }
 
     /* check the result */
-    if (!inc->submodule) {
+    if (ret) {
         LOGVAL(LYE_INARG, LOGLINE(yin), value, yin->name);
         LOGERR(LY_EVALID, "Including \"%s\" module into \"%s\" failed.", value, module->name);
         goto error;
@@ -5148,20 +5148,19 @@ error:
 }
 
 /* logs directly */
-struct lys_submodule *
-yin_read_submodule(struct lys_module *module, const char *data, struct unres_schema *unres)
+int
+yin_read_submodule(struct lys_module *module, const char *data, struct unres_schema *unres, struct lys_submodule **submodule)
 {
     struct lys_node *next, *elem;
     struct lyxml_elem *yin;
-    struct lys_submodule *submodule = NULL;
     const char *value;
     uint8_t i;
 
-    assert(module->ctx);
+    assert(module->ctx && data && submodule);
 
     yin = lyxml_parse_mem(module->ctx, data, 0);
     if (!yin) {
-        return NULL;
+        return -1;
     }
 
     /* check root element */
@@ -5175,64 +5174,62 @@ yin_read_submodule(struct lys_module *module, const char *data, struct unres_sch
         goto error;
     }
 
-    submodule = calloc(1, sizeof *submodule);
-    if (!submodule) {
+    *submodule = calloc(1, sizeof **submodule);
+    if (!(*submodule)) {
         LOGMEM;
         goto error;
     }
 
-    submodule->ctx = module->ctx;
-    submodule->name = lydict_insert(submodule->ctx, value, strlen(value));
-    submodule->type = 1;
-    submodule->belongsto = module;
+    (*submodule)->ctx = module->ctx;
+    (*submodule)->name = lydict_insert(module->ctx, value, strlen(value));
+    (*submodule)->type = 1;
+    (*submodule)->belongsto = module;
 
-    LOGVRB("Reading submodule \"%s\".", submodule->name);
-    if (read_sub_module(module, submodule, yin, unres)) {
+    LOGVRB("Reading submodule \"%s\".", (*submodule)->name);
+    if (read_sub_module(module, *submodule, yin, unres)) {
         goto error;
     }
 
     /* cleanup */
     lyxml_free(module->ctx, yin);
 
-    LOGVRB("Submodule \"%s\" successfully parsed.", submodule->name);
+    LOGVRB("Submodule \"%s\" successfully parsed.", (*submodule)->name);
 
-    return submodule;
+    return EXIT_SUCCESS;
 
 error:
     /* cleanup */
-    unres_schema_free((struct lys_module *)submodule, &unres);
     lyxml_free(module->ctx, yin);
 
-    if (!submodule) {
+    if (!(*submodule)) {
         LOGERR(ly_errno, "Submodule parsing failed.");
-        return NULL;
+        return -1;
     }
 
-    LOGERR(ly_errno, "Submodule \"%s\" parsing failed.", submodule->name);
+    LOGERR(ly_errno, "Submodule \"%s\" parsing failed.", (*submodule)->name);
 
     /* warn about applied deviations */
-    for (i = 0; i < submodule->deviation_size; ++i) {
-        if (submodule->deviation[i].target_module) {
+    for (i = 0; i < (*submodule)->deviation_size; ++i) {
+        if ((*submodule)->deviation[i].target_module) {
             LOGERR(ly_errno, "Submodule parsing failed, but successfully deviated %smodule \"%s\".",
-                   (submodule->deviation[i].target_module->type ? "sub" : ""),
-                   submodule->deviation[i].target_module->name);
+                   ((*submodule)->deviation[i].target_module->type ? "sub" : ""),
+                   (*submodule)->deviation[i].target_module->name);
         }
     }
 
     /* remove applied augments */
-    for (i = 0; i < submodule->augment_size; ++i) {
-        if (submodule->augment[i].target) {
-            LY_TREE_FOR_SAFE(submodule->augment[i].target->child, next, elem) {
-                if (elem->parent == (struct lys_node *)&submodule->augment[i]) {
+    for (i = 0; i < (*submodule)->augment_size; ++i) {
+        if ((*submodule)->augment[i].target) {
+            LY_TREE_FOR_SAFE((*submodule)->augment[i].target->child, next, elem) {
+                if (elem->parent == (struct lys_node *)&(*submodule)->augment[i]) {
                     lys_node_free(elem, NULL);
                 }
             }
         }
     }
 
-    lys_submodule_free(submodule, NULL);
-
-    return NULL;
+    /* leave unres and (*submodule) allocated for now */
+    return EXIT_FAILURE;
 }
 
 /* logs directly */

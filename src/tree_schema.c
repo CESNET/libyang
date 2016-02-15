@@ -1012,10 +1012,10 @@ lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
     return mod;
 }
 
-struct lys_submodule *
-lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT format, struct unres_schema *unres)
+int
+lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT format, struct unres_schema *unres, struct lys_submodule **submodule)
 {
-    struct lys_submodule *submod = NULL;
+    int ret;
 
     assert(module);
     assert(data);
@@ -1025,7 +1025,7 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
 
     switch (format) {
     case LYS_IN_YIN:
-        submod = yin_read_submodule(module, data, unres);
+        ret = yin_read_submodule(module, data, unres, submodule);
         break;
     case LYS_IN_YANG:
     default:
@@ -1033,7 +1033,7 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
         break;
     }
 
-    return submod;
+    return ret;
 }
 
 API const struct lys_module *
@@ -1085,10 +1085,10 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     return module;
 }
 
-struct lys_submodule *
-lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format, struct unres_schema *unres)
+int
+lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format, struct unres_schema *unres, struct lys_submodule **submodule)
 {
-    struct lys_submodule *submodule;
+    int ret;
     struct stat sb;
     char *addr;
 
@@ -1097,18 +1097,17 @@ lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format, struc
 
     if (fstat(fd, &sb) == -1) {
         LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
-        return NULL;
+        return -1;
     }
     addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
-        return NULL;
+        return -1;
     }
-    submodule = lys_submodule_parse(module, addr, format, unres);
+    ret = lys_submodule_parse(module, addr, format, unres, submodule);
     munmap(addr, sb.st_size);
 
-    return submodule;
-
+    return ret;
 }
 
 static struct lys_restr *
