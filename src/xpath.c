@@ -6503,7 +6503,7 @@ lyxp_syntax_check(const char *expr, uint32_t line)
 
     if (!expr) {
         ly_errno = LY_EINVAL;
-        return EXIT_FAILURE;
+        return -1;
     }
 
     exp = parse_expr(expr, line);
