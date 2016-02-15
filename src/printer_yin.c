@@ -234,7 +234,7 @@ yin_print_iffeature(struct lyout *out, int level, const struct lys_module *modul
 
     ly_print(out, "%*s<if-feature name=\"", LEVEL, INDENT);
     mod = lys_module(feat->module);
-    if (module != mod) {
+    if (lys_module(module) != mod) {
         ly_print(out, "%s:", transform_module_name2import_prefix(module, mod->name));
     }
     ly_print(out, "%s\"/>\n", feat->name);
@@ -408,7 +408,7 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
             break;
         case LY_TYPE_IDENT:
             mod = lys_module(type->info.ident.ref->module);
-            if (module == mod) {
+            if (lys_module(module) == mod) {
                 ly_print(out, "%*s<base name=\"%s\"/>\n", LEVEL, INDENT, type->info.ident.ref->name);
             } else {
                 ly_print(out, "%*s<base name=\"%s:%s\"/>\n", LEVEL, INDENT,
@@ -710,7 +710,7 @@ yin_print_identity(struct lyout *out, int level, const struct lys_ident *ident)
         if (ident->base) {
             ly_print(out, "%*s<base name=\"", LEVEL, INDENT);
             mod = lys_module(ident->base->module);
-            if (ident->module != mod) {
+            if (lys_module(ident->module) != mod) {
                 ly_print(out, "%s:", transform_module_name2import_prefix(ident->module, mod->name));
             }
             ly_print(out, "%s\"/>\n", ident->base->name);
@@ -1039,7 +1039,7 @@ yin_print_uses(struct lyout *out, int level, const struct lys_node *node)
     ly_print(out, "%*s<uses name=\"", LEVEL, INDENT);
     if (node->child) {
         mod = lys_node_module(node->child);
-        if (node->module != mod) {
+        if (lys_node_module(node) != mod) {
             ly_print(out, "%s:", transform_module_name2import_prefix(node->module, mod->name));
         }
     }

@@ -247,7 +247,7 @@ yang_print_iffeature(struct lyout *out, int level, const struct lys_module *modu
 
     ly_print(out, "%*sif-feature ", LEVEL, INDENT);
     mod = lys_module(feat->module);
-    if (module != mod) {
+    if (lys_module(module) != mod) {
         ly_print(out, "%s:", transform_module_name2import_prefix(module, mod->name));
     }
     ly_print(out, "%s;\n", feat->name);
@@ -394,7 +394,7 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
     case LY_TYPE_IDENT:
         yang_print_open(out, &flag);
         mod = lys_module(type->info.ident.ref->module);
-        if (module == mod) {
+        if (lys_module(module) == mod) {
             ly_print(out, "%*sbase %s;\n", LEVEL, INDENT, type->info.ident.ref->name);
         } else {
             ly_print(out, "%*sbase %s:%s;\n", LEVEL, INDENT, transform_module_name2import_prefix(module, mod->name),
@@ -710,7 +710,7 @@ yang_print_identity(struct lyout *out, int level, const struct lys_ident *ident)
         yang_print_open(out, &flag);
         ly_print(out, "%*sbase ", LEVEL, INDENT);
         mod = lys_module(ident->base->module);
-        if (ident->module != mod) {
+        if (lys_module(ident->module) != mod) {
             ly_print(out, "%s:", transform_module_name2import_prefix(ident->module, mod->name));
         }
         ly_print(out, "%s;\n", ident->base->name);
@@ -1044,7 +1044,7 @@ yang_print_uses(struct lyout *out, int level, const struct lys_node *node)
     ly_print(out, "%*suses ", LEVEL, INDENT);
     if (node->child) {
         mod = lys_node_module(node->child);
-        if (node->module != mod) {
+        if (lys_node_module(node) != mod) {
             ly_print(out, "%s:", transform_module_name2import_prefix(node->module, mod->name));
         }
     }
