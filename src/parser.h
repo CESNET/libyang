@@ -40,7 +40,7 @@ unsigned int *lineno_location(void); /* implemented in xml.c */
  * @{
  */
 struct lys_module *yin_read_module(struct ly_ctx *ctx, const char *data, int implement);
-struct lys_submodule *yin_read_submodule(struct lys_module *module, const char *data, struct unres_schema *unres);
+int yin_read_submodule(struct lys_module *module, const char *data, struct unres_schema *unres, struct lys_submodule **submodule);
 
 /**@} yin */
 
@@ -70,8 +70,8 @@ enum LY_IDENT {
     LY_IDENT_PREFIX
 };
 
-struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
-                                   const char *revision, struct unres_schema *unres);
+int lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
+                    const char *revision, struct unres_schema *unres, struct lys_module **result);
 
 void lyp_set_implemented(struct lys_module *module);
 
