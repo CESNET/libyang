@@ -5313,11 +5313,16 @@ yin_read_submodule(struct lys_module *module, const char *data, struct unres_sch
     return submodule;
 
 error:
-    LOGERR(ly_errno, "Submodule \"%s\" parsing failed.", submodule->name);
-
     /* cleanup */
     unres_schema_free((struct lys_module *)submodule, &unres);
     lyxml_free(module->ctx, yin);
+
+    if (!submodule) {
+        LOGERR(ly_errno, "Submodule parsing failed.");
+        return NULL;
+    }
+
+    LOGERR(ly_errno, "Submodule \"%s\" parsing failed.", submodule->name);
 
     /* warn about applied deviations */
     for (i = 0; i < submodule->deviation_size; ++i) {
@@ -5458,6 +5463,7 @@ error:
     unres_schema_free(module, &unres);
 
     if (!module) {
+        LOGERR(ly_errno, "Module parsing failed.");
         return NULL;
     }
 
