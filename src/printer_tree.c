@@ -710,6 +710,12 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
 
     /* augment */
     for (i = 0; i < module->augment_size; i++) {
+        if ((module->type && (module->augment[i].child->module == module))
+                || (!module->type && (lys_node_module(module->augment[i].child) == module))) {
+            /* submodule, target is our submodule or module, target is in our module or any submodules */
+            continue;
+        }
+
         ly_print(out, "augment %s:\n", module->augment[i].target_name);
         LY_TREE_FOR(module->augment[i].child, node) {
             tree_print_snode(out, module, level, indent, max_child_len, node,
