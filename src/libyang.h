@@ -829,14 +829,19 @@ void ly_verb(LY_LOG_LEVEL level);
 /**
  * @brief Set logger callback.
  * @param[in] clb Logging callback.
+ * @param[in] path flag to resolve and provide path as the third parameter of the callback function. In case of
+ *            validation and some other errors, it can be useful to get the path to the problematic element. Note,
+ *            that according to the tree type and the specific situation, the path can slightly differs (keys
+ *            presence) or it can be NULL, so consider it as an optional parameter. If the flag is 0, libyang will
+ *            not bother with resolving the path.
  */
-void ly_set_log_clb(void (*clb)(LY_LOG_LEVEL, const char *));
+void ly_set_log_clb(void (*clb)(LY_LOG_LEVEL level, const char *msg, const char *path), int path);
 
 /**
  * @brief Get logger callback.
  * @return Logger callback (can be NULL).
  */
-void (*ly_get_log_clb(void))(LY_LOG_LEVEL, const char *);
+void (*ly_get_log_clb(void))(LY_LOG_LEVEL, const char *, const char *);
 
 /**
  * @typedef LY_ERR

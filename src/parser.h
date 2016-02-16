@@ -85,7 +85,8 @@ int fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyx
                   struct unres_schema *unres);
 
 int lyp_check_status(uint8_t flags1, struct lys_module *mod1, const char *name1,
-                     uint8_t flags2, struct lys_module *mod2, const char *name2, unsigned int line);
+                     uint8_t flags2, struct lys_module *mod2, const char *name2,
+                     unsigned int line, const struct lys_node *node);
 
 /**
  * @brief Get know if the node is part of the RPC's input/output
