@@ -72,10 +72,12 @@ char *get_current_dir_name(void);
  */
 extern volatile uint8_t ly_log_level;
 
-#define LY_ERR_MSG_SIZE 4092
+#define LY_ERR_MSG_SIZE 2044
 struct ly_err {
     LY_ERR no;
+    int path_index;
     char msg[LY_ERR_MSG_SIZE];
+    char path[LY_ERR_MSG_SIZE];
 };
 
 void ly_log(LY_LOG_LEVEL level, const char *format, ...);

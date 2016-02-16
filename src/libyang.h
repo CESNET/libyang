@@ -871,9 +871,23 @@ LY_ERR *ly_errno_location(void);
 
 /**
  * @brief Get the last (thread-specific) error message.
+ *
+ * Sometimes, the error message is extended with path of the element where is the problem.
+ * The path is available via ly_errpath().
+ *
  * @return Text of the last error message.
  */
 const char *ly_errmsg(void);
+
+/**
+ * @brief Get the last (thread-specific) path of the element where was an error.
+ *
+ * The path always corresponds to the error message available via ly_errmsg(), so
+ * whenever a subsequent error message is printed, the path is erased or rewritten.
+ *
+ * @return Path of the error element.
+ */
+const char *ly_errpath(void);
 
 /**@} logger */
 

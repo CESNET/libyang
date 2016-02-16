@@ -60,13 +60,18 @@ log_vprintf(LY_LOG_LEVEL level, const char *format, const char *path, va_list ar
         msg = "Internal logger error";
     } else if (!format) {
         /* postpone print of path related to the previous error */
-        msg = ((char*)(&ly_errno) + offsetof(struct ly_err, msg));
+        msg = ((struct ly_err *)&ly_errno)->msg;
         snprintf(msg, LY_ERR_MSG_SIZE - 1, "Path related to the last error: \"%s\".", path);
         msg[LY_ERR_MSG_SIZE - 1] = '\0';
     } else {
-        msg = ((char*)(&ly_errno) + offsetof(struct ly_err, msg));
+        msg = ((struct ly_err *)&ly_errno)->msg;
         vsnprintf(msg, LY_ERR_MSG_SIZE - 1, format, args);
         msg[LY_ERR_MSG_SIZE - 1] = '\0';
+    }
+
+    if (!path) {
+        /* erase previous path */
+        ((struct ly_err *)&ly_errno)->path_index = LY_ERR_MSG_SIZE - 1;
     }
 
     if (ly_log_clb) {
@@ -154,8 +159,9 @@ ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const 
     va_list ap;
     const char *fmt;
     char line_msg[41];
-    char path[PATH_MAX];
-    int index = PATH_MAX - 1, i;
+    char* path;
+    int *index;
+    int i;
     const void *iter = elem;
     struct lys_node_list *slist;
     struct lyd_node *dlist, *diter;
@@ -181,11 +187,14 @@ ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const 
     }
 
     /* resolve path */
-    path[index] = '\0';
+    path = ((struct ly_err *)&ly_errno)->path;
+    index = &((struct ly_err *)&ly_errno)->path_index;
+    (*index) = LY_ERR_MSG_SIZE - 1;
+    path[(*index)] = '\0';
     if (path_flag && elem_type) { /* != LY_VLOG_NONE */
         if (!iter) {
             /* top-level */
-            path[--index] = '/';
+            path[--(*index)] = '/';
         } else while (iter) {
             switch (elem_type) {
             case LY_VLOG_XML:
@@ -210,17 +219,17 @@ ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const 
                             }
                         }
                         if (diter && ((struct lyd_node_leaf_list *)diter)->value_str) {
-                            index -= 2;
-                            memcpy(&path[index], "']", 2);
+                            (*index) -= 2;
+                            memcpy(&path[(*index)], "']", 2);
                             len = strlen(((struct lyd_node_leaf_list *)diter)->value_str);
-                            index -= len;
-                            memcpy(&path[index], ((struct lyd_node_leaf_list *)diter)->value_str, len);
-                            index -=2;
-                            memcpy(&path[index], "='", 2);
+                            (*index) -= len;
+                            memcpy(&path[(*index)], ((struct lyd_node_leaf_list *)diter)->value_str, len);
+                            (*index) -=2;
+                            memcpy(&path[(*index)], "='", 2);
                             len = strlen(diter->schema->name);
-                            index -= len;
-                            memcpy(&path[index], diter->schema->name, len);
-                            path[--index] = '[';
+                            (*index) -= len;
+                            memcpy(&path[(*index)], diter->schema->name, len);
+                            path[--(*index)] = '[';
                         }
                     }
                 }
@@ -233,9 +242,9 @@ ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const 
                 continue;
             }
             len = strlen(name);
-            index = index - len;
-            memcpy(&path[index], name, len);
-            path[--index] = '/';
+            (*index) = (*index) - len;
+            memcpy(&path[(*index)], name, len);
+            path[--(*index)] = '/';
         }
     }
 
@@ -243,13 +252,13 @@ ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const 
     switch (code) {
     case LYE_SPEC:
         fmt = va_arg(ap, char *);
-        log_vprintf(LY_LLERR, fmt, path[index] ? &path[index] : NULL, ap);
+        log_vprintf(LY_LLERR, fmt, path[(*index)] ? &path[(*index)] : NULL, ap);
         break;
     case LYE_PATH:
-        log_vprintf(LY_LLERR, NULL, &path[index], ap);
+        log_vprintf(LY_LLERR, NULL, &path[(*index)], ap);
         break;
     default:
-        log_vprintf(LY_LLERR, ly_errs[code], path[index] ? &path[index] : NULL, ap);
+        log_vprintf(LY_LLERR, ly_errs[code], path[(*index)] ? &path[(*index)] : NULL, ap);
         break;
     }
     va_end(ap);
