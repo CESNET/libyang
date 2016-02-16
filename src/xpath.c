@@ -5191,7 +5191,7 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
  * @param[in] line Line in the input file.
  *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
+ * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
@@ -5210,7 +5210,9 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
     ++(*exp_idx);
 
     if (!set) {
-        eval_expr(exp, exp_idx, cur_node, NULL, when_must_eval, line);
+        if (eval_expr(exp, exp_idx, cur_node, NULL, when_must_eval, line)) {
+            return -1;
+        }
     } else if (set->type == LYXP_SET_NODE_SET) {
         orig_set = set_copy(set, ctx);
         orig_exp = *exp_idx;
