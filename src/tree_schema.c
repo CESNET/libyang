@@ -1229,8 +1229,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
             new->info.ident.ref = old->info.ident.ref;
         } else {
             i = unres_schema_find(unres, old, UNRES_TYPE_IDENTREF);
-            assert(i != -1);
-            if (unres_schema_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i], 0)) {
+            if (i > -1 && unres_schema_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i], 0)) {
                 return -1;
             }
         }
@@ -1254,9 +1253,11 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
         break;
 
     case LY_TYPE_LEAFREF:
-        new->info.lref.path = lydict_insert(mod->ctx, old->info.lref.path, 0);
-        if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent, 0)) {
-            return -1;
+        if (old->info.lref.path) {
+            new->info.lref.path = lydict_insert(mod->ctx, old->info.lref.path, 0);
+            if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent, 0)) {
+                return -1;
+            }
         }
         break;
 
@@ -1467,7 +1468,7 @@ lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment aug, void (*private
     /* children from a resolved augment are freed under the target node */
     if (!aug.target) {
         LY_TREE_FOR_SAFE(aug.child, next, sub) {
-            lys_node_free(sub, private_destructor);
+            lys_node_free(sub, private_destructor, 0);
         }
     }
 
@@ -1507,6 +1508,7 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
         new[i].flags = old[i].flags;
         new[i].module = old[i].module;
         new[i].nodetype = old[i].nodetype;
+
         /* this must succeed, it was already resolved once */
         if (resolve_augment_schema_nodeid(new[i].target_name, parent->child, NULL,
                                           (const struct lys_node **)&new[i].target)) {
@@ -1818,7 +1820,7 @@ lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses, void (*private_des
 }
 
 void
-lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys_node *node, void *priv))
+lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys_node *node, void *priv), int shallow)
 {
     struct ly_ctx *ctx;
     struct lys_node *sub, *next;
@@ -1845,9 +1847,9 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
         lydict_remove(ctx, node->ref);
     }
 
-    if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+    if (!shallow && !(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
         LY_TREE_FOR_SAFE(node->child, next, sub) {
-            lys_node_free(sub, private_destructor);
+            lys_node_free(sub, private_destructor, 0);
         }
     }
 
@@ -1952,7 +1954,7 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
      * are placed in the main module altogether */
     if (!module->type) {
         LY_TREE_FOR_SAFE(module->data, next, iter) {
-            lys_node_free(iter, private_destructor);
+            lys_node_free(iter, private_destructor, 0);
         }
     }
 
@@ -2029,7 +2031,7 @@ lys_submodule_free(struct lys_submodule *submodule, void (*private_destructor)(c
 
 struct lys_node *
 lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct lys_node *node, uint8_t flags,
-             uint8_t nacm, struct unres_schema *unres)
+             uint8_t nacm, struct unres_schema *unres, int shallow)
 {
     struct lys_node *retval = NULL, *child;
     struct ly_ctx *ctx = module->ctx;
@@ -2167,16 +2169,18 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
         }
     }
 
-    /* connect it to the parent */
-    if (lys_node_addchild(parent, retval->module, retval)) {
-        goto error;
-    }
+    if (!shallow) {
+        /* connect it to the parent */
+        if (lys_node_addchild(parent, retval->module, retval)) {
+            goto error;
+        }
 
-    /* go recursively */
-    if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-        LY_TREE_FOR(node->child, child) {
-            if (!lys_node_dup(module, retval, child, retval->flags, retval->nacm, unres)) {
-                goto error;
+        /* go recursively */
+        if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+            LY_TREE_FOR(node->child, child) {
+                if (!lys_node_dup(module, retval, child, retval->flags, retval->nacm, unres, 0)) {
+                    goto error;
+                }
             }
         }
     }
@@ -2203,22 +2207,26 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
             choice->when = lys_when_dup(ctx, choice_orig->when);
         }
 
-        if (choice_orig->dflt) {
-            rc = lys_get_sibling(choice->child, lys_node_module(retval)->name, 0, choice_orig->dflt->name, 0, LYS_ANYXML
-                                         | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST
-                                         | LYS_LIST, (const struct lys_node **)&choice->dflt);
-            if (rc) {
-                if (rc == EXIT_FAILURE) {
-                    LOGINT;
+        if (!shallow) {
+            if (choice_orig->dflt) {
+                rc = lys_get_sibling(choice->child, lys_node_module(retval)->name, 0, choice_orig->dflt->name, 0, LYS_ANYXML
+                                            | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST
+                                            | LYS_LIST, (const struct lys_node **)&choice->dflt);
+                if (rc) {
+                    if (rc == EXIT_FAILURE) {
+                        LOGINT;
+                    }
+                    goto error;
                 }
-                goto error;
+            } else {
+                /* useless to check return value, we don't know whether
+                * there really wasn't any default defined or it just hasn't
+                * been resolved, we just hope for the best :)
+                */
+                unres_schema_dup(module, unres, choice_orig, UNRES_CHOICE_DFLT, choice);
             }
         } else {
-            /* useless to check return value, we don't know whether
-             * there really wasn't any default defined or it just hasn't
-             * been resolved, we just hope for the best :)
-             */
-            unres_schema_dup(module, unres, choice_orig, UNRES_CHOICE_DFLT, choice);
+            choice->dflt = choice_orig->dflt;
         }
         break;
 
@@ -2278,24 +2286,28 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
                 goto error;
             }
 
-            /* we managed to resolve it before, resolve it again manually */
-            if (list_orig->keys[0]) {
-                for (i = 0; i < list->keys_size; ++i) {
-                    rc = lys_get_sibling(list->child, lys_node_module(retval)->name, 0, list_orig->keys[i]->name, 0, LYS_LEAF,
-                                         (const struct lys_node **)&list->keys[i]);
-                    if (rc) {
-                        if (rc == EXIT_FAILURE) {
-                            LOGINT;
+            if (!shallow) {
+                /* we managed to resolve it before, resolve it again manually */
+                if (list_orig->keys[0]) {
+                    for (i = 0; i < list->keys_size; ++i) {
+                        rc = lys_get_sibling(list->child, lys_node_module(retval)->name, 0, list_orig->keys[i]->name, 0, LYS_LEAF,
+                                            (const struct lys_node **)&list->keys[i]);
+                        if (rc) {
+                            if (rc == EXIT_FAILURE) {
+                                LOGINT;
+                            }
+                            goto error;
                         }
+                    }
+                /* it was not resolved yet, add unres copy */
+                } else {
+                    if (unres_schema_dup(module, unres, list_orig, UNRES_LIST_KEYS, list)) {
+                        LOGINT;
                         goto error;
                     }
                 }
-            /* it was not resolved yet, add unres copy */
             } else {
-                if (unres_schema_dup(module, unres, list_orig, UNRES_LIST_KEYS, list)) {
-                    LOGINT;
-                    goto error;
-                }
+                memcpy(list->keys, list_orig->keys, list->keys_size * sizeof *list->keys);
             }
         }
 
@@ -2344,11 +2356,15 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
         uses->refine_size = uses_orig->refine_size;
         uses->refine = lys_refine_dup(module, uses_orig->refine, uses_orig->refine_size);
         uses->augment_size = uses_orig->augment_size;
-        uses->augment = lys_augment_dup(module, (struct lys_node *)uses, uses_orig->augment, uses_orig->augment_size);
-        if (!uses->child) {
-            if (unres_schema_add_node(module, unres, uses, UNRES_USES, NULL, 0) == -1) {
-                goto error;
+        if (!shallow) {
+            uses->augment = lys_augment_dup(module, (struct lys_node *)uses, uses_orig->augment, uses_orig->augment_size);
+            if (!uses->child) {
+                if (unres_schema_add_node(module, unres, uses, UNRES_USES, NULL, 0) == -1) {
+                    goto error;
+                }
             }
+        } else {
+            memcpy(uses->augment, uses_orig->augment, uses->augment_size * sizeof *uses->augment);
         }
         break;
 
@@ -2389,7 +2405,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
 
 error:
 
-    lys_node_free(retval, NULL);
+    lys_node_free(retval, NULL, 0);
     return NULL;
 }
 

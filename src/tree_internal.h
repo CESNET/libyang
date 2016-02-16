@@ -161,10 +161,11 @@ int lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_modu
  * @param[in] flags Config flag to be inherited in case the origin node does not specify config flag
  * @param[in] nacm NACM flags to be inherited from the parent
  * @param[in] unres TODO provide description
+ * @param[in] shallow Whether to copy children and connect to parent/module too.
  * @return Created copy of the provided schema \p node.
  */
 struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct lys_node *node,
-                              uint8_t flags, uint8_t nacm, struct unres_schema *unres);
+                              uint8_t flags, uint8_t nacm, struct unres_schema *unres, int shallow);
 
 /**
  * @brief Return main module of the schema tree node.
@@ -231,8 +232,9 @@ void lys_node_unlink(struct lys_node *node);
  * @param[in] node Schema tree node to free. Do not use the pointer after calling this function.
  * @param[in] private_destructor Optional destructor function for private objects assigned
  * to the nodes via lys_set_private(). If NULL, the private objects are not freed by libyang.
+ * @param[in] shallow Whether to do a shallow free only (on a shallow copy of a node).
  */
-void lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys_node *node, void *priv));
+void lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys_node *node, void *priv), int shallow);
 
 /**
  * @brief Free (and unlink it from the context) the specified schema.
