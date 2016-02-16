@@ -276,8 +276,7 @@ ly_ctx_get_module_clb(const struct ly_ctx *ctx, void **user_data)
 API const struct lys_module *
 ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
 {
-    int ret;
-    struct lys_module *module = NULL;
+    const struct lys_module *module;
     char *module_data;
     void (*module_data_free)(char *module_data) = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
@@ -293,22 +292,17 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
             LOGERR(LY_EVALID, "User module retrieval callback failed!");
             return NULL;
         }
-        module = (struct lys_module *)lys_parse_mem(ctx, module_data, format);
+        module = lys_parse_mem(ctx, module_data, format);
         if (module_data_free) {
             module_data_free(module_data);
         } else {
             free(module_data);
         }
     } else {
-        ret = lyp_search_file(ctx, NULL, name, revision, NULL, &module);
-        if (ret && module) {
-            LOGINT;
-            lys_free(module, NULL, 1);
-            module = NULL;
-        }
+        module = lyp_search_file(ctx, NULL, name, revision, NULL);
     }
 
-    return (const struct lys_module *)module;
+    return module;
 }
 
 API const char **

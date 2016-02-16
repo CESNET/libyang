@@ -746,9 +746,6 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
             /* submodule, target is our submodule or module, target is in our module or any submodules */
             continue;
         }
-        if (lys_is_disabled((struct lys_node *)&module->augment[i], 0)) {
-            continue;
-        }
 
         ly_print(out, "augment %s:\n", module->augment[i].target_name);
         LY_TREE_FOR(module->augment[i].child, node) {
@@ -769,9 +766,6 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
             if (!have_rpcs) {
                 break;
             }
-            if (lys_is_disabled(node, 0)) {
-                continue;
-            }
             if (node->nodetype == LYS_RPC) {
                 tree_print_rpc(out, module, level, indent, node);
                 have_rpcs--;
@@ -785,9 +779,6 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
         LY_TREE_FOR(data, node) {
             if (!have_notifs) {
                 break;
-            }
-            if (lys_is_disabled(node, 0)) {
-                continue;
             }
             if (node->nodetype == LYS_NOTIF) {
                 tree_print_notif(out, module, level, indent, node);
