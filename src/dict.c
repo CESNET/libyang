@@ -141,6 +141,7 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
             /* clean the static record content */
             memset(record, 0, sizeof *record);
         }
+        ctx->dict.used--;
     }
 
     pthread_mutex_unlock(&ctx->dict.lock);
@@ -170,6 +171,8 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
         }
         record->refcount = 1;
         record->next = NULL;
+
+        ctx->dict.used++;
 
         LOGDBG("DICT: inserting \"%s\"", record->value);
         return record->value;
@@ -219,6 +222,8 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
     new->next = NULL;
 
     record->next = new;
+
+    ctx->dict.used++;
 
     LOGDBG("DICT: inserting \"%s\" with collision ", new->value);
     return new->value;
