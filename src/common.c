@@ -38,63 +38,82 @@
 
 /* libyang errno */
 LY_ERR ly_errno_int = LY_EINT;
-static pthread_once_t ly_errno_once = PTHREAD_ONCE_INIT;
-static pthread_key_t ly_errno_key;
+static pthread_once_t ly_err_once = PTHREAD_ONCE_INIT;
+static pthread_key_t ly_err_key;
 #ifdef __linux__
-LY_ERR ly_errno_main = LY_SUCCESS;
+struct ly_err ly_err_main = {LY_SUCCESS, {0}};
 #endif
 
 static void
-ly_errno_free(void *ptr)
+ly_err_free(void *ptr)
 {
     /* in __linux__ we use static memory in the main thread,
      * so this check is for programs terminating the main()
      * function by pthread_exit() :)
      */
-    if (ptr != &ly_errno_main) {
+    if (ptr != &ly_err_main) {
         free(ptr);
     }
 }
 
 static void
-ly_errno_createkey(void)
+ly_err_createkey(void)
 {
     int r;
 
     /* initiate */
-    while ((r = pthread_key_create(&ly_errno_key, ly_errno_free)) == EAGAIN);
-    pthread_setspecific(ly_errno_key, NULL);
+    while ((r = pthread_key_create(&ly_err_key, ly_err_free)) == EAGAIN);
+    pthread_setspecific(ly_err_key, NULL);
+}
+
+struct ly_err *
+ly_err_location(void)
+{
+    struct ly_err *e;
+
+    pthread_once(&ly_err_once, ly_err_createkey);
+    e = pthread_getspecific(ly_err_key);
+    if (!e) {
+        /* prepare ly_err storage */
+#ifdef __linux__
+        if (getpid() == syscall(SYS_gettid)) {
+            /* main thread - use global variable instead of thread-specific variable. */
+            e = &ly_err_main;
+        } else {
+#else
+        {
+#endif /* __linux__ */
+            e = calloc(1, sizeof *e);
+        }
+        pthread_setspecific(ly_err_key, e);
+    }
+
+    return e;
 }
 
 API LY_ERR *
 ly_errno_location(void)
 {
-    LY_ERR *retval;
+    struct ly_err *e;
 
-    pthread_once(&ly_errno_once, ly_errno_createkey);
-    retval = pthread_getspecific(ly_errno_key);
-    if (!retval) {
-        /* prepare ly_errno storage */
-#ifdef __linux__
-        if (getpid() == syscall(SYS_gettid)) {
-            /* main thread - use global variable instead of thread-specific variable. */
-            retval = &ly_errno_main;
-        } else {
-#else
-        {
-#endif /* __linux__ */
-            retval = calloc(1, sizeof *retval);
-        }
-
-        if (!retval) {
-            /* error */
-            return &ly_errno_int;
-        }
-
-        pthread_setspecific(ly_errno_key, retval);
+    e = ly_err_location();
+    if (!e) {
+        return &ly_errno_int;
     }
+    return &(e->no);
+}
 
-    return retval;
+API const char *
+ly_errmsg(void)
+{
+    struct ly_err *e;
+
+    e = ly_err_location();
+    if (!e) {
+        return NULL;
+    }
+    return e->msg;
+
 }
 
 #ifndef  __USE_GNU
@@ -242,7 +261,7 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
             mod = ly_ctx_get_module(module->ctx, name, NULL);
             free(name);
             if (!mod) {
-                LOGVAL(LYE_INMOD_LEN, 0, id_len, id);
+                LOGVAL(LYE_INMOD_LEN, 0, 0, NULL, id_len, id);
                 goto fail;
             }
             prefix = mod->prefix;
@@ -251,7 +270,7 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
             prefix = transform_module_name2import_prefix(module, name);
             free(name);
             if (!prefix) {
-                LOGVAL(LYE_INMOD_LEN, 0, id_len, id);
+                LOGVAL(LYE_INMOD_LEN, 0, 0, NULL, id_len, id);
                 goto fail;
             }
         }
@@ -366,7 +385,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
         rc = parse_identifier(id);
         if (rc < id_len) {
             if (log) {
-                LOGVAL(LYE_INCHAR, LOGLINE(xml), id[rc], &id[rc]);
+                LOGVAL(LYE_INCHAR, LOGLINE(xml), LY_VLOG_XML, xml, id[rc], &id[rc]);
             }
             free(out);
             return NULL;
@@ -385,7 +404,8 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
         free(prefix);
         if (!ns) {
             if (log) {
-                LOGVAL(LYE_SPEC, LOGLINE(xml), "XML namespace with prefix \"%.*s\" not defined.", id_len, id);
+                LOGVAL(LYE_SPEC, LOGLINE(xml), LY_VLOG_XML, xml,
+                       "XML namespace with prefix \"%.*s\" not defined.", id_len, id);
             }
             free(out);
             return NULL;
@@ -393,7 +413,8 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
         mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
         if (!mod) {
             if (log) {
-                LOGVAL(LYE_SPEC, LOGLINE(xml), "Module with the namespace \"%s\" could not be found.", ns->value);
+                LOGVAL(LYE_SPEC, LOGLINE(xml), LY_VLOG_XML, xml,
+                       "Module with the namespace \"%s\" could not be found.", ns->value);
             }
             free(out);
             return NULL;
@@ -463,7 +484,7 @@ transform_schema2json(const struct lys_module *module, const char *expr, uint32_
         id_len = col-id;
         rc = parse_identifier(id);
         if (rc < id_len) {
-            LOGVAL(LYE_INCHAR, line, id[rc], &id[rc]);
+            LOGVAL(LYE_INCHAR, line, 0, NULL, id[rc], &id[rc]);
             free(out);
             return NULL;
         }
@@ -471,7 +492,7 @@ transform_schema2json(const struct lys_module *module, const char *expr, uint32_
         /* get the module */
         mod = lys_get_import_module(module, id, id_len, NULL, 0);
         if (!mod) {
-            LOGVAL(LYE_INMOD_LEN, line, id_len, id);
+            LOGVAL(LYE_INMOD_LEN, line, 0, NULL, id_len, id);
             free(out);
             return NULL;
         }

@@ -71,6 +71,13 @@ char *get_current_dir_name(void);
  * logger
  */
 extern volatile uint8_t ly_log_level;
+
+#define LY_ERR_MSG_SIZE 4092
+struct ly_err {
+    LY_ERR no;
+    char msg[LY_ERR_MSG_SIZE];
+};
+
 void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 
 #define LOGERR(errno, str, args...)                                 \
@@ -101,6 +108,7 @@ void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 #define LOGINT LOGERR(LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 
 enum LY_ERR {
+    LYE_PATH = -3,
     LYE_SPEC = -2,
     LYE_LINE = -1,
 
@@ -160,9 +168,14 @@ enum LY_ERR {
     LYE_XPATH_INARGCOUNT,
     LYE_XPATH_INARGTYPE
 };
-void ly_vlog(enum LY_ERR code, unsigned int line, ...);
-
-#define LOGVAL(code, line, args...) ly_vlog(code, line, ##args)
+enum LY_VLOG_ELEM {
+    LY_VLOG_NONE,
+    LY_VLOG_XML,
+    LY_VLOG_LYS,
+    LY_VLOG_LYD
+};
+void ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
+#define LOGVAL(code, line, elem_type, elem, args...) ly_vlog(code, line, elem_type, elem, ##args)
 
 #ifdef NDEBUG
 #    define LOGLINE(node) 0

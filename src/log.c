@@ -23,11 +23,14 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <limits.h>
+#include <string.h>
 
 #include "common.h"
 
+extern LY_ERR ly_errno_int;
 volatile uint8_t ly_log_level = LY_LLERR;
-static void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg);
+static void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg, const char *path);
+volatile static int path_flag = 1;
 
 API void
 ly_verb(LY_LOG_LEVEL level)
@@ -36,29 +39,43 @@ ly_verb(LY_LOG_LEVEL level)
 }
 
 API void
-ly_set_log_clb(void (*clb)(LY_LOG_LEVEL, const char *))
+ly_set_log_clb(void (*clb)(LY_LOG_LEVEL level, const char *msg, const char *path), int path)
 {
     ly_log_clb = clb;
+    path_flag = path;
 }
 
 API void
-(*ly_get_log_clb(void))(LY_LOG_LEVEL, const char *)
+(*ly_get_log_clb(void))(LY_LOG_LEVEL, const char *, const char *)
 {
     return ly_log_clb;
 }
 
 static void
-log_vprintf(LY_LOG_LEVEL level, const char *format, va_list args)
+log_vprintf(LY_LOG_LEVEL level, const char *format, const char *path, va_list args)
 {
-#define PRV_MSG_SIZE 4096
-    char prv_msg[PRV_MSG_SIZE];
+    char *msg;
 
-    vsnprintf(prv_msg, PRV_MSG_SIZE - 1, format, args);
-    prv_msg[PRV_MSG_SIZE - 1] = '\0';
-    if (ly_log_clb) {
-        ly_log_clb(level, prv_msg);
+    if (&ly_errno == &ly_errno_int) {
+        msg = "Internal logger error";
+    } else if (!format) {
+        /* postpone print of path related to the previous error */
+        msg = ((char*)(&ly_errno) + offsetof(struct ly_err, msg));
+        snprintf(msg, LY_ERR_MSG_SIZE - 1, "Path related to the last error: \"%s\".", path);
+        msg[LY_ERR_MSG_SIZE - 1] = '\0';
     } else {
-        fprintf(stderr, "libyang[%d]: %s\n", level, prv_msg);
+        msg = ((char*)(&ly_errno) + offsetof(struct ly_err, msg));
+        vsnprintf(msg, LY_ERR_MSG_SIZE - 1, format, args);
+        msg[LY_ERR_MSG_SIZE - 1] = '\0';
+    }
+
+    if (ly_log_clb) {
+        ly_log_clb(level, msg, path);
+    } else {
+        fprintf(stderr, "libyang[%d]: %s%s", level, msg, path ? " " : "\n");
+        if (path) {
+            fprintf(stderr, "(path: %s)\n", path);
+        }
     }
 #undef PRV_MSG_SIZE
 }
@@ -69,7 +86,7 @@ ly_log(LY_LOG_LEVEL level, const char *format, ...)
     va_list ap;
 
     va_start(ap, format);
-    log_vprintf(level, format, ap);
+    log_vprintf(level, format, NULL, ap);
     va_end(ap);
 }
 
@@ -132,11 +149,18 @@ const char *ly_errs[] = {
 };
 
 void
-ly_vlog(enum LY_ERR code, uint32_t line, ...)
+ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
 {
     va_list ap;
     const char *fmt;
     char line_msg[41];
+    char path[PATH_MAX];
+    int index = PATH_MAX - 1, i;
+    const void *iter = elem;
+    struct lys_node_list *slist;
+    struct lyd_node *dlist, *diter;
+    const char *name;
+    size_t len;
 
     if (line == UINT_MAX) {
         return;
@@ -146,22 +170,87 @@ ly_vlog(enum LY_ERR code, uint32_t line, ...)
     if (line) {
         if (ly_log_clb) {
             sprintf(line_msg, "Parser fails around the line %u.", line);
-            ly_log_clb(LY_LLERR, line_msg);
+            ly_log_clb(LY_LLERR, line_msg, NULL);
         } else {
             fprintf(stderr, "libyang[%d]: Parser fails around the line %u.\n", LY_LLERR, line);
         }
     }
 
-    if (code == LYE_LINE) {
+    if (code == LYE_LINE || (code == LYE_PATH && !path_flag)) {
         return;
     }
 
-    va_start(ap, line);
-    if (code == LYE_SPEC) {
+    /* resolve path */
+    path[index] = '\0';
+    if (path_flag && elem_type) { /* != LY_VLOG_NONE */
+        if (!iter) {
+            /* top-level */
+            path[--index] = '/';
+        } else while (iter) {
+            switch (elem_type) {
+            case LY_VLOG_XML:
+                name = ((struct lyxml_elem *)iter)->name;
+                iter = ((struct lyxml_elem *)iter)->parent;
+                break;
+            case LY_VLOG_LYS:
+                name = ((struct lys_node *)iter)->name;
+                iter = ((struct lys_node *)iter)->parent;
+                break;
+            case LY_VLOG_LYD:
+                name = ((struct lyd_node *)iter)->schema->name;
+
+                /* handle predicates (keys) in case of lists */
+                if (((struct lyd_node *)iter)->schema->nodetype == LYS_LIST) {
+                    dlist = (struct lyd_node *)iter;
+                    slist = (struct lys_node_list *)((struct lyd_node *)iter)->schema;
+                    for (i = 0; i < slist->keys_size; i++) {
+                        LY_TREE_FOR(dlist->child, diter) {
+                            if (diter->schema == (struct lys_node *)slist->keys[i]) {
+                                break;
+                            }
+                        }
+                        if (diter && ((struct lyd_node_leaf_list *)diter)->value_str) {
+                            index -= 2;
+                            memcpy(&path[index], "']", 2);
+                            len = strlen(((struct lyd_node_leaf_list *)diter)->value_str);
+                            index -= len;
+                            memcpy(&path[index], ((struct lyd_node_leaf_list *)diter)->value_str, len);
+                            index -=2;
+                            memcpy(&path[index], "='", 2);
+                            len = strlen(diter->schema->name);
+                            index -= len;
+                            memcpy(&path[index], diter->schema->name, len);
+                            path[--index] = '[';
+                        }
+                    }
+                }
+
+                iter = ((struct lyd_node *)iter)->parent;
+                break;
+            default:
+                /* shouldn't be here */
+                iter = NULL;
+                continue;
+            }
+            len = strlen(name);
+            index = index - len;
+            memcpy(&path[index], name, len);
+            path[--index] = '/';
+        }
+    }
+
+    va_start(ap, elem);
+    switch (code) {
+    case LYE_SPEC:
         fmt = va_arg(ap, char *);
-        log_vprintf(LY_LLERR, fmt, ap);
-    } else {
-        log_vprintf(LY_LLERR, ly_errs[code], ap);
+        log_vprintf(LY_LLERR, fmt, path[index] ? &path[index] : NULL, ap);
+        break;
+    case LYE_PATH:
+        log_vprintf(LY_LLERR, NULL, &path[index], ap);
+        break;
+    default:
+        log_vprintf(LY_LLERR, ly_errs[code], path[index] ? &path[index] : NULL, ap);
+        break;
     }
     va_end(ap);
 }

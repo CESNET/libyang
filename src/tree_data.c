@@ -718,10 +718,12 @@ lyd_validate(struct lyd_node *node, int options, ...)
             schema = ly_check_mandatory(NULL, ctx->models.list[i]->data);
             if (schema) {
                 if (schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-                    LOGVAL(LYE_SPEC, 0, "Number of \"%s\" instances in \"%s\" does not follow min-elements constraint.",
+                    LOGVAL(LYE_SPEC, 0, LY_VLOG_LYS, schema,
+                           "Number of \"%s\" instances in \"%s\" does not follow min-elements constraint.",
                            schema->name, schema->parent ? schema->parent->name : ctx->models.list[i]->name);
                 } else {
-                    LOGVAL(LYE_MISSELEM, 0, schema->name, schema->parent ? schema->parent->name : ctx->models.list[i]->name);
+                    LOGVAL(LYE_MISSELEM, 0, LY_VLOG_LYS, schema,
+                           schema->name, schema->parent ? schema->parent->name : ctx->models.list[i]->name);
                 }
                 va_end(ap);
                 return EXIT_FAILURE;
