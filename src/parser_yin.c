@@ -2421,11 +2421,14 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
                 }
             } else {
                 LOGERR(LY_EVALID, "User module retrieval callback failed!");
+                ret = -1;
             }
         } else {
             ret = lyp_search_file(module->ctx, module, value, inc->rev[0] ? inc->rev : NULL, unres,
                                   (struct lys_module **)&inc->submodule);
         }
+    } else {
+        ret = 0;
     }
 
     /* remove the new submodule name now that its parsing is finished (even if failed) */
