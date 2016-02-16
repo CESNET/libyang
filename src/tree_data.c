@@ -1200,7 +1200,7 @@ lyd_free(struct lyd_node *node)
             }
             break;
         default:
-            /* TODO nothing needed : LY_TYPE_BOOL, LY_TYPE_DEC64*/
+            lydict_remove(node->schema->module->ctx, ((struct lyd_node_leaf_list *)node)->value_str);
             break;
         }
     }

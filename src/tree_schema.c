@@ -1946,6 +1946,9 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
     ctx = module->ctx;
 
     /* just free the import array, imported modules will stay in the context */
+    for (i = 0; i < module->imp_size; i++) {
+        lydict_remove(ctx, module->imp[i].prefix);
+    }
     free(module->imp);
 
     /* submodules don't have data tree, the data nodes

@@ -258,18 +258,19 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         goto error;
     }
     /* module name */
+    name = value;
     if (value[i]) {
         type->module_name = lydict_insert(module->ctx, value, i);
-        value += i;
-        if ((value[0] != ':') || (parse_identifier(value + 1) < 1)) {
-            LOGVAL(LYE_INCHAR, LOGLINE(yin), LY_VLOG_XML, yin, value[0], value);
+        name += i;
+        if ((name[0] != ':') || (parse_identifier(name + 1) < 1)) {
+            LOGVAL(LYE_INCHAR, LOGLINE(yin), LY_VLOG_XML, yin, name[0], name);
             lydict_remove(module->ctx, value);
             goto error;
         }
-        ++value;
+        ++name;
     }
 
-    rc = resolve_superior_type(value, type->module_name, module, parent, &type->der);
+    rc = resolve_superior_type(name, type->module_name, module, parent, &type->der);
     lydict_remove(module->ctx, value);
     if (rc == -1) {
         LOGVAL(LYE_INMOD, LOGLINE(yin), LY_VLOG_XML, yin, type->module_name);
@@ -937,7 +938,7 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
     tpdf->name = lydict_insert(module->ctx, value, strlen(value));
 
     /* generic part - status, description, reference */
-    if (read_yin_common(module, NULL, (struct lys_node *)tpdf, yin, OPT_IDENT | OPT_MODULE)) {
+    if (read_yin_common(module, NULL, (struct lys_node *)tpdf, yin, OPT_MODULE)) {
         goto error;
     }
 

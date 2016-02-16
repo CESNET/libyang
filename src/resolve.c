@@ -3683,7 +3683,7 @@ static int
 resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, void *str_snode,
                           struct unres_schema *unres, int first, uint32_t line)
 {
-    int rc = -1, has_str = 0, tpdf_flag = 0;
+    int rc = -1, tpdf_flag = 0;
     struct lys_node *node;
     const char *base_name;
 
@@ -3699,14 +3699,12 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         ident = item;
 
         rc = resolve_base_ident(mod, ident, base_name, "ident", first, line, NULL);
-        has_str = 1;
         break;
     case UNRES_TYPE_IDENTREF:
         base_name = str_snode;
         stype = item;
 
         rc = resolve_base_ident(mod, NULL, base_name, "type", first, line, stype);
-        has_str = 1;
         break;
     case UNRES_TYPE_LEAFREF:
         node = str_snode;
@@ -3716,7 +3714,6 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
          * case, the path has to contain absolute path, so we let the resolve_path_arg_schema()
          * know it via tpdf_flag */
         if (!node) {
-            tpdf_flag = 1;
             node = (struct lys_node *)stype->parent;
         }
 
@@ -3734,7 +3731,6 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
             ly_set_add((struct ly_set *)stype->info.lref.target->child, stype->parent);
         }
 
-        has_str = 0;
         break;
     case UNRES_TYPE_DER:
         /* parent */
@@ -3753,18 +3749,15 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
             /* may try again later, put all back how it was */
             stype->der = (struct lys_tpdf *)yin;
         }
-        has_str = 0;
         break;
     case UNRES_IFFEAT:
         base_name = str_snode;
         feat_ptr = item;
 
         rc = resolve_feature(base_name, mod, first, line, feat_ptr);
-        has_str = 1;
         break;
     case UNRES_USES:
         rc = resolve_unres_schema_uses(item, unres, first, line);
-        has_str = 0;
         break;
     case UNRES_TYPE_DFLT:
         base_name = str_snode;
@@ -3772,7 +3765,6 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
 
         rc = check_default(stype, base_name, first, line);
         /* do not remove base_name (dflt), it's in a typedef */
-        has_str = 0;
         break;
     case UNRES_CHOICE_DFLT:
         base_name = str_snode;
@@ -3784,27 +3776,19 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         } else {
             rc = EXIT_FAILURE;
         }
-        has_str = 1;
         break;
     case UNRES_LIST_KEYS:
         rc = resolve_list_keys(item, str_snode, first, line);
-        has_str = 1;
         break;
     case UNRES_LIST_UNIQ:
         rc = resolve_unique(item, str_snode, first, line);
-        has_str = 1;
         break;
     case UNRES_AUGMENT:
         rc = resolve_augment(item, NULL, first, line);
-        has_str = 0;
         break;
     default:
         LOGINT;
         break;
-    }
-
-    if (has_str && !rc) {
-        lydict_remove(mod->ctx, str_snode);
     }
 
     return rc;
@@ -3952,7 +3936,6 @@ int
 unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, const char *str,
                      uint32_t line)
 {
-    str = lydict_insert(mod->ctx, str, 0);
     return unres_schema_add_node(mod, unres, item, type, (struct lys_node *)str, line);
 }
 
