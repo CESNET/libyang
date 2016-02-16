@@ -339,7 +339,7 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
     level++;
     switch (type->base) {
     case LY_TYPE_BINARY:
-        if (type->info.binary.length != NULL) {
+        if (type->info.binary.length) {
             yang_print_open(out, &flag);
             ly_print(out, "%*slength \"", LEVEL, INDENT);
             yang_encode(out, type->info.binary.length->expr, -1);
@@ -365,9 +365,12 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
         }
         break;
     case LY_TYPE_DEC64:
-        yang_print_open(out, &flag);
-        ly_print(out, "%*sfraction-digits %d;\n", LEVEL, INDENT, type->info.dec64.dig);
+        if (type->info.dec64.dig) {
+            yang_print_open(out, &flag);
+            ly_print(out, "%*sfraction-digits %d;\n", LEVEL, INDENT, type->info.dec64.dig);
+        }
         if (type->info.dec64.range != NULL) {
+            yang_print_open(out, &flag);
             ly_print(out, "%*srange \"", LEVEL, INDENT);
             yang_encode(out, type->info.dec64.range->expr, -1);
             ly_print(out, "\"");
@@ -392,13 +395,15 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
         }
         break;
     case LY_TYPE_IDENT:
-        yang_print_open(out, &flag);
-        mod = lys_module(type->info.ident.ref->module);
-        if (lys_module(module) == mod) {
-            ly_print(out, "%*sbase %s;\n", LEVEL, INDENT, type->info.ident.ref->name);
-        } else {
-            ly_print(out, "%*sbase %s:%s;\n", LEVEL, INDENT, transform_module_name2import_prefix(module, mod->name),
-                     type->info.ident.ref->name);
+        if (type->info.ident.ref) {
+            yang_print_open(out, &flag);
+            mod = lys_module(type->info.ident.ref->module);
+            if (lys_module(module) == mod) {
+                ly_print(out, "%*sbase %s;\n", LEVEL, INDENT, type->info.ident.ref->name);
+            } else {
+                ly_print(out, "%*sbase %s:%s;\n", LEVEL, INDENT, transform_module_name2import_prefix(module, mod->name),
+                        type->info.ident.ref->name);
+            }
         }
         break;
     case LY_TYPE_INST:
@@ -418,7 +423,7 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
     case LY_TYPE_UINT16:
     case LY_TYPE_UINT32:
     case LY_TYPE_UINT64:
-        if (type->info.num.range != NULL) {
+        if (type->info.num.range) {
             yang_print_open(out, &flag);
             ly_print(out, "%*srange \"", LEVEL, INDENT);
             yang_encode(out, type->info.num.range->expr, -1);
@@ -429,10 +434,12 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
         }
         break;
     case LY_TYPE_LEAFREF:
-        yang_print_open(out, &flag);
-        str = transform_json2schema(module, type->info.lref.path);
-        ly_print(out, "%*spath \"%s\";\n", LEVEL, INDENT, str);
-        lydict_remove(module->ctx, str);
+        if (type->info.lref.path) {
+            yang_print_open(out, &flag);
+            str = transform_json2schema(module, type->info.lref.path);
+            ly_print(out, "%*spath \"%s\";\n", LEVEL, INDENT, str);
+            lydict_remove(module->ctx, str);
+        }
         break;
     case LY_TYPE_STRING:
         if (type->info.str.length) {

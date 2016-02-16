@@ -302,23 +302,45 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
     const char *str;
     struct lys_module *mod;
 
+    /* decide whether the type will have any substatements */
+    close = 1;
     switch (type->base) {
     case LY_TYPE_BINARY:
-        close = 1;
         if (type->info.binary.length) {
             close = 0;
         }
         break;
     case LY_TYPE_DEC64:
+        if (type->info.dec64.dig || type->info.dec64.range) {
+            close = 0;
+        }
+        break;
     case LY_TYPE_ENUM:
+        if (type->info.enums.count) {
+            close = 0;
+        }
+        break;
     case LY_TYPE_IDENT:
+        if (type->info.ident.ref) {
+            close = 0;
+        }
+        break;
     case LY_TYPE_BITS:
+        if (type->info.bits.count) {
+            close = 0;
+        }
+        break;
     case LY_TYPE_UNION:
+        if (type->info.uni.count) {
+            close = 0;
+        }
+        break;
     case LY_TYPE_LEAFREF:
-        close = 0;
+        if (type->info.lref.path) {
+            close = 0;
+        }
         break;
     case LY_TYPE_INST:
-        close = 1;
         if (type->info.inst.req) {
             close = 0;
         }
@@ -331,19 +353,16 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
     case LY_TYPE_UINT16:
     case LY_TYPE_UINT32:
     case LY_TYPE_UINT64:
-        close = 1;
         if (type->info.num.range) {
             close = 0;
         }
         break;
     case LY_TYPE_STRING:
-        close = 1;
         if (type->info.str.length || type->info.str.pat_count) {
             close = 0;
         }
         break;
     default:
-        close = 1;
         break;
     }
 
@@ -382,7 +401,9 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
             }
             break;
         case LY_TYPE_DEC64:
-            yin_print_unsigned(out, level, "fraction-digits", "value", type->info.dec64.dig);
+            if (type->info.dec64.dig) {
+                yin_print_unsigned(out, level, "fraction-digits", "value", type->info.dec64.dig);
+            }
             if (type->info.dec64.range) {
                 yin_print_restr(out, level, "range", type->info.dec64.range);
             }
@@ -407,12 +428,14 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
             }
             break;
         case LY_TYPE_IDENT:
-            mod = lys_module(type->info.ident.ref->module);
-            if (lys_module(module) == mod) {
-                ly_print(out, "%*s<base name=\"%s\"/>\n", LEVEL, INDENT, type->info.ident.ref->name);
-            } else {
-                ly_print(out, "%*s<base name=\"%s:%s\"/>\n", LEVEL, INDENT,
-                         transform_module_name2import_prefix(module, mod->name), type->info.ident.ref->name);
+            if (type->info.ident.ref) {
+                mod = lys_module(type->info.ident.ref->module);
+                if (lys_module(module) == mod) {
+                    ly_print(out, "%*s<base name=\"%s\"/>\n", LEVEL, INDENT, type->info.ident.ref->name);
+                } else {
+                    ly_print(out, "%*s<base name=\"%s:%s\"/>\n", LEVEL, INDENT,
+                            transform_module_name2import_prefix(module, mod->name), type->info.ident.ref->name);
+                }
             }
             break;
         case LY_TYPE_INST:
@@ -435,9 +458,11 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
             }
             break;
         case LY_TYPE_LEAFREF:
-            str = transform_json2schema(module, type->info.lref.path);
-            yin_print_open(out, level, "path", "value", str, 1);
-            lydict_remove(module->ctx, str);
+            if (type->info.lref.path) {
+                str = transform_json2schema(module, type->info.lref.path);
+                yin_print_open(out, level, "path", "value", str, 1);
+                lydict_remove(module->ctx, str);
+            }
             break;
         case LY_TYPE_STRING:
             if (type->info.str.length) {
