@@ -1262,7 +1262,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         LOGVAL(LYE_INARG, LOGLINE(yin), LY_VLOG_XML, yin, dev->target_name, yin->name);
         goto error;
     }
-    if (dev_target->module == module) {
+    if (dev_target->module == lys_module(module)) {
         LOGVAL(LYE_SPEC, LOGLINE(yin), LY_VLOG_XML, yin, "Deviating own module is not allowed.");
         goto error;
     }
