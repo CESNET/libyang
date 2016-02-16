@@ -1030,7 +1030,6 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
     case LYS_IN_YANG:
     default:
         /* TODO */
-        ret = EXIT_FAILURE;
         break;
     }
 
