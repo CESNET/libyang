@@ -126,7 +126,7 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
                 struct unres_schema *unres, struct lys_module **result)
 {
     size_t len, flen;
-    int fd, ret = -1;
+    int fd, ret;
     char *wd, *cwd, *model_path;
     DIR *dir;
     struct dirent *file;
@@ -193,6 +193,8 @@ opendir_search:
             *result = lys_read_import(ctx, fd, format);
             if (*result) {
                 ret = EXIT_SUCCESS;
+            } else {
+                ret = -1;
             }
         }
         close(fd);
@@ -215,7 +217,7 @@ opendir_search:
 searchpath:
     if (!ctx->models.search_path) {
         LOGWRN("No search path defined for the current context.");
-    } else if (ret && localsearch) {
+    } else if (!result && localsearch) {
         /* search in local directory done, try context's search_path */
         if (dir) {
             closedir(dir);
