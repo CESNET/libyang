@@ -2228,8 +2228,8 @@ resolve_path_predicate_data(const char *pred, int first, uint32_t line,struct ly
                 goto remove_leafref;
             }
 
-            if (((struct lyd_node_leaf_list *)source_match.node[0])->value_str
-                    != ((struct lyd_node_leaf_list *)dest_match.node[0])->value_str) {
+            if (!ly_strequal(((struct lyd_node_leaf_list *)source_match.node[0])->value_str,
+                             ((struct lyd_node_leaf_list *)dest_match.node[0])->value_str)) {
                 goto remove_leafref;
             }
 
@@ -3331,7 +3331,7 @@ resolve_choice_dflt(struct lys_node_choice *choic, const char *dflt)
             }
         }
 
-        if ((child->name == dflt) && (child->nodetype & (LYS_ANYXML | LYS_CASE
+        if (ly_strequal(child->name, dflt) && (child->nodetype & (LYS_ANYXML | LYS_CASE
                 | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST))) {
             return child;
         }
@@ -3696,17 +3696,17 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
     switch (type) {
     case UNRES_IDENT:
         base_name = str_snode;
+        has_str = 1;
         ident = item;
 
         rc = resolve_base_ident(mod, ident, base_name, "ident", first, line, NULL);
-        has_str = 1;
         break;
     case UNRES_TYPE_IDENTREF:
         base_name = str_snode;
+        has_str = 1;
         stype = item;
 
         rc = resolve_base_ident(mod, NULL, base_name, "type", first, line, stype);
-        has_str = 1;
         break;
     case UNRES_TYPE_LEAFREF:
         node = str_snode;
@@ -3734,7 +3734,6 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
             ly_set_add((struct ly_set *)stype->info.lref.target->child, stype->parent);
         }
 
-        has_str = 0;
         break;
     case UNRES_TYPE_DER:
         /* parent */
@@ -3753,29 +3752,27 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
             /* may try again later, put all back how it was */
             stype->der = (struct lys_tpdf *)yin;
         }
-        has_str = 0;
         break;
     case UNRES_IFFEAT:
         base_name = str_snode;
+        has_str = 1;
         feat_ptr = item;
 
         rc = resolve_feature(base_name, mod, first, line, feat_ptr);
-        has_str = 1;
         break;
     case UNRES_USES:
         rc = resolve_unres_schema_uses(item, unres, first, line);
-        has_str = 0;
         break;
     case UNRES_TYPE_DFLT:
         base_name = str_snode;
+        has_str = 1;
         stype = item;
 
         rc = check_default(stype, base_name, first, line);
-        /* do not remove base_name (dflt), it's in a typedef */
-        has_str = 0;
         break;
     case UNRES_CHOICE_DFLT:
         base_name = str_snode;
+        has_str = 1;
         choic = item;
 
         choic->dflt = resolve_choice_dflt(choic, base_name);
@@ -3784,19 +3781,17 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         } else {
             rc = EXIT_FAILURE;
         }
-        has_str = 1;
         break;
     case UNRES_LIST_KEYS:
-        rc = resolve_list_keys(item, str_snode, first, line);
         has_str = 1;
+        rc = resolve_list_keys(item, str_snode, first, line);
         break;
     case UNRES_LIST_UNIQ:
-        rc = resolve_unique(item, str_snode, first, line);
         has_str = 1;
+        rc = resolve_unique(item, str_snode, first, line);
         break;
     case UNRES_AUGMENT:
         rc = resolve_augment(item, NULL, first, line);
-        has_str = 0;
         break;
     default:
         LOGINT;
@@ -3952,8 +3947,7 @@ int
 unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, const char *str,
                      uint32_t line)
 {
-    str = lydict_insert(mod->ctx, str, 0);
-    return unres_schema_add_node(mod, unres, item, type, (struct lys_node *)str, line);
+    return unres_schema_add_node(mod, unres, item, type, (struct lys_node *)lydict_insert(mod->ctx, str, 0), line);
 }
 
 /**
@@ -4190,7 +4184,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int first, 
 
         /* check that value matches */
         for (i = 0; i < matches.count; ++i) {
-            if (leaf->value_str == ((struct lyd_node_leaf_list *)matches.node[i])->value_str) {
+            if (ly_strequal(leaf->value_str, ((struct lyd_node_leaf_list *)matches.node[i])->value_str)) {
                 leaf->value.leafref = matches.node[i];
                 break;
             }

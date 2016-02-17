@@ -1200,7 +1200,7 @@ lyd_free(struct lyd_node *node)
             }
             break;
         default:
-            /* TODO nothing needed : LY_TYPE_BOOL, LY_TYPE_DEC64*/
+            lydict_remove(node->schema->module->ctx, ((struct lyd_node_leaf_list *)node)->value_str);
             break;
         }
     }
@@ -1250,7 +1250,8 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
     switch (first->schema->nodetype) {
     case LYS_LEAFLIST:
         /* compare values */
-        if (((struct lyd_node_leaf_list *)first)->value_str == ((struct lyd_node_leaf_list *)second)->value_str) {
+        if (ly_strequal(((struct lyd_node_leaf_list *)first)->value_str,
+                        ((struct lyd_node_leaf_list *)second)->value_str)) {
             return 0;
         }
         return 1;
@@ -1287,7 +1288,7 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                         val2 = ((struct lys_node_leaf *)snode)->dflt;
                     }
 
-                    if (val1 != val2) {
+                    if (!ly_strequal(val1, val2)) {
                         break;
                     }
                 }
@@ -1319,7 +1320,7 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                     break;
                 }
             }
-            if (val1 != val2) {
+            if (!ly_strequal(val1, val2)) {
                 return 1;
             }
         }

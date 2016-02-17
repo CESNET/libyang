@@ -157,7 +157,7 @@ lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblin
             }
 
             /* direct name check */
-            if ((node->name == name) || !strcmp(node->name, name)) {
+            if (ly_strequal(node->name, name)) {
                 if (ret) {
                     *ret = node;
                 }
@@ -767,7 +767,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
 
                 grp = NULL;
                 while ((grp = lys_get_next_grouping(grp, iter))) {
-                    if (node->name == grp->name) {
+                    if (ly_strequal(node->name, grp->name)) {
                         LOGVAL(LYE_DUPID, 0, LY_VLOG_LYS, node, "grouping", node->name);
                         return EXIT_FAILURE;
                     }
@@ -805,7 +805,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
             }
 
             if (iter->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CONTAINER | LYS_CHOICE | LYS_ANYXML)) {
-                if (iter->module == node->module && iter->name == node->name) {
+                if (iter->module == node->module && ly_strequal(iter->name, node->name)) {
                     LOGVAL(LYE_SPEC, 0, LY_VLOG_LYS, node, "Duplicated child identifier \"%s\" in \"%s\".", node->name,
                            stop ? stop->name : "(sub)module");
                     return EXIT_FAILURE;
@@ -850,7 +850,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
                 continue;
             }
 
-            if (iter->module == node->module && iter->name == node->name) {
+            if (iter->module == node->module && ly_strequal(iter->name, node->name)) {
                 LOGVAL(LYE_DUPID, 0, LY_VLOG_LYS, node, "case", node->name);
                 return EXIT_FAILURE;
             }
@@ -1528,7 +1528,7 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
          * so we just correct it.
          */
         LY_TREE_FOR(new[i].target->child, new_child) {
-            if (new_child->name == old[i].child->name) {
+            if (ly_strequal(new_child->name, old[i].child->name)) {
                 break;
             }
         }
@@ -1540,7 +1540,7 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
                 break;
             }
 
-            assert(old_child->name == new_child->name);
+            assert(ly_strequal(old_child->name, new_child->name));
 
             new_child->parent = (struct lys_node *)&new[i];
             new_child = new_child->next;
@@ -1967,6 +1967,11 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
     ctx = module->ctx;
 
     /* just free the import array, imported modules will stay in the context */
+    for (i = 0; i < module->imp_size; i++) {
+        if (!module->imp[i].external) {
+            lydict_remove(ctx, module->imp[i].prefix);
+        }
+    }
     free(module->imp);
 
     /* submodules don't have data tree, the data nodes
@@ -1981,6 +1986,7 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
     lydict_remove(ctx, module->ref);
     lydict_remove(ctx, module->org);
     lydict_remove(ctx, module->contact);
+    lydict_remove(ctx, module->uri);
 
     /* revisions */
     for (i = 0; i < module->rev_size; i++) {
@@ -2031,6 +2037,7 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
     free(module->deviation);
 
     lydict_remove(ctx, module->name);
+    lydict_remove(ctx, module->prefix);
 }
 
 void
@@ -2514,7 +2521,6 @@ lys_free(struct lys_module *module, void (*private_destructor)(const struct lys_
 
     /* specific items to free */
     lydict_remove(ctx, module->ns);
-    lydict_remove(ctx, module->prefix);
 
     free(module);
 }
