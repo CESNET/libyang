@@ -286,4 +286,12 @@ const char *transform_schema2json(const struct lys_module *module, const char *e
  */
 void *ly_realloc(void *ptr, size_t size);
 
+/**
+ * @brief Compare strings
+ * @param[in] s1 First string to compare
+ * @param[in] s2 Second string to compare
+ * @return 1 if both strings are the same, 0 if they differ.
+ */
+int ly_strequal(const char *s1, const char *s2);
+
 #endif /* LY_COMMON_H_ */
