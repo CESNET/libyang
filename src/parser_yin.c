@@ -242,6 +242,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     struct lys_type_bit bit;
     pcre *precomp;
     int i, j, rc, err_offset;
+    int ret = -1;
     int64_t v, v_;
     int64_t p, p_;
 
@@ -278,8 +279,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     /* the type could not be resolved or it was resolved to an unresolved typedef */
     } else if (rc == EXIT_FAILURE) {
-        lydict_remove(module->ctx, type->module_name);
-        return EXIT_FAILURE;
+        ret = EXIT_FAILURE;
+        goto error;
     }
     type->base = type->der->type.base;
 
@@ -897,8 +898,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 type->info.uni.count = 0;
 
                 if (rc == EXIT_FAILURE) {
-                    lydict_remove(module->ctx, type->module_name);
-                    return EXIT_FAILURE;
+                    ret = EXIT_FAILURE;
+                    goto error;
                 }
                 goto error;
             }
@@ -924,8 +925,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     return EXIT_SUCCESS;
 
 error:
-    lydict_remove(module->ctx, type->module_name);
-    return -1;
+    if (type->module_name) {
+        lydict_remove(module->ctx, type->module_name);
+        type->module_name = NULL;
+    }
+    return ret;
 }
 
 /* logs directly */
