@@ -1345,6 +1345,16 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 goto error;
             }
 
+            /* you cannot remove a key leaf */
+            if ((dev_target->nodetype == LYS_LEAF) && dev_target->parent && (dev_target->parent->nodetype == LYS_LIST)) {
+                for (i = 0; i < ((struct lys_node_list *)dev_target->parent)->keys_size; ++i) {
+                    if (((struct lys_node_list *)dev_target->parent)->keys[i] == (struct lys_node_leaf *)dev_target) {
+                        LOGVAL(LYE_INARG, LOGLINE(develem), LY_VLOG_XML, develem, value, develem->name);
+                        LOGVAL(LYE_SPEC, 0, 0, NULL, "\"not-supported\" deviation cannot remove a list key.");
+                        goto error;
+                    }
+                }
+            }
 
             /* remove target node */
             lys_node_free(dev_target, NULL, 0);
