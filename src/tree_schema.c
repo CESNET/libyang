@@ -1947,7 +1947,9 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
 
     /* just free the import array, imported modules will stay in the context */
     for (i = 0; i < module->imp_size; i++) {
-        lydict_remove(ctx, module->imp[i].prefix);
+        if (!module->imp[i].external) {
+            lydict_remove(ctx, module->imp[i].prefix);
+        }
     }
     free(module->imp);
 
@@ -2014,6 +2016,7 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
     free(module->deviation);
 
     lydict_remove(ctx, module->name);
+    lydict_remove(ctx, module->prefix);
 }
 
 void
@@ -2427,7 +2430,6 @@ lys_free(struct lys_module *module, void (*private_destructor)(const struct lys_
 
     /* specific items to free */
     lydict_remove(ctx, module->ns);
-    lydict_remove(ctx, module->prefix);
 
     free(module);
 }
