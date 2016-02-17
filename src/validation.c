@@ -94,8 +94,8 @@ filter_compare(const struct lyd_node *first, const struct lyd_node *second)
             LY_TREE_FOR(second->child, diter2) {
                 if (diter2->schema != diter1->schema) {
                     continue;
-                } else if (((struct lyd_node_leaf_list *)diter1)->value_str !=
-                        ((struct lyd_node_leaf_list *)diter2)->value_str) {
+                } else if (!ly_strequal(((struct lyd_node_leaf_list *)diter1)->value_str,
+                                        ((struct lyd_node_leaf_list *)diter2)->value_str)) {
                     continue;
                 }
                 match = 1;
@@ -124,7 +124,8 @@ filter_compare(const struct lyd_node *first, const struct lyd_node *second)
         break;
     case LYS_LEAF:
     case LYS_LEAFLIST:
-        if (((struct lyd_node_leaf_list *)first)->value_str != ((struct lyd_node_leaf_list *)second)->value_str) {
+        if (!ly_strequal(((struct lyd_node_leaf_list *)first)->value_str,
+                         ((struct lyd_node_leaf_list *)second)->value_str)) {
             return 1;
         }
         break;

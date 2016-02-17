@@ -1288,7 +1288,7 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                         val2 = ((struct lys_node_leaf *)snode)->dflt;
                     }
 
-                    if (val1 != val2) {
+                    if (!ly_strequal(val1, val2)) {
                         break;
                     }
                 }
@@ -1320,7 +1320,7 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                     break;
                 }
             }
-            if (val1 != val2) {
+            if (!ly_strequal(val1, val2)) {
                 return 1;
             }
         }

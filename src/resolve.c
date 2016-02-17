@@ -2228,8 +2228,8 @@ resolve_path_predicate_data(const char *pred, int first, uint32_t line,struct ly
                 goto remove_leafref;
             }
 
-            if (((struct lyd_node_leaf_list *)source_match.node[0])->value_str
-                    != ((struct lyd_node_leaf_list *)dest_match.node[0])->value_str) {
+            if (!ly_strequal(((struct lyd_node_leaf_list *)source_match.node[0])->value_str,
+                             ((struct lyd_node_leaf_list *)dest_match.node[0])->value_str)) {
                 goto remove_leafref;
             }
 

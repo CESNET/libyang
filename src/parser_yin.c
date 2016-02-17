@@ -1837,7 +1837,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         }
 
                         for (j = 0; j < d->unique[d->unique_size].expr_size; j++) {
-                            if (list->unique[i].expr[j] != d->unique[d->unique_size].expr[j]) {
+                            if (!ly_strequal(list->unique[i].expr[j], d->unique[d->unique_size].expr[j])) {
                                 break;
                             }
                         }
@@ -2317,7 +2317,7 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
     }
 
     /* remove the new module name now that its parsing is finished (even if failed) */
-    if (module->ctx->models.parsing[count] || (module->ctx->models.parsing[count - 1] != value)) {
+    if (module->ctx->models.parsing[count] || !ly_strequal(module->ctx->models.parsing[count - 1], value)) {
         LOGINT;
     }
     --count;
@@ -2449,7 +2449,7 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
     }
 
     /* remove the new submodule name now that its parsing is finished (even if failed) */
-    if (module->ctx->models.parsing[count] || (module->ctx->models.parsing[count - 1] != value)) {
+    if (module->ctx->models.parsing[count] || !ly_strequal(module->ctx->models.parsing[count - 1], value)) {
         LOGINT;
     }
     --count;
@@ -4649,7 +4649,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 goto error;
             }
             GETVAL(value, child, "module");
-            if (value != submodule->belongsto->name) {
+            if (!ly_strequal(value, submodule->belongsto->name)) {
                 LOGVAL(LYE_INARG, LOGLINE(child), LY_VLOG_XML, child, value, child->name);
                 goto error;
             }
@@ -4969,13 +4969,13 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 memcpy(trg->rev[trg->rev_size].date, value, LY_REV_SIZE - 1);
                 free((char *)value);
 
-                if (trg->rev[0].dsc != trg->rev[trg->rev_size].dsc) {
+                if (!ly_strequal(trg->rev[0].dsc, trg->rev[trg->rev_size].dsc)) {
                     value = trg->rev[0].dsc;
                     trg->rev[0].dsc = trg->rev[trg->rev_size].dsc;
                     trg->rev[trg->rev_size].dsc = value;
                 }
 
-                if (trg->rev[0].ref != trg->rev[trg->rev_size].ref) {
+                if (!ly_strequal(trg->rev[0].ref, trg->rev[trg->rev_size].ref)) {
                     value = trg->rev[0].ref;
                     trg->rev[0].ref = trg->rev[trg->rev_size].ref;
                     trg->rev[trg->rev_size].ref = value;
@@ -5024,7 +5024,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 if (submodule->imp[i].module == module->imp[j].module &&
                         !strcmp(submodule->imp[i].rev, module->imp[j].rev)) {
                     /* check prefix match */
-                    if (submodule->imp[i].prefix != module->imp[j].prefix) {
+                    if (!ly_strequal(submodule->imp[i].prefix, module->imp[j].prefix)) {
                         LOGVAL(LYE_INID, LOGLINE(yin), LY_VLOG_XML, yin, submodule->imp[i].prefix,
                                "non-matching prefixes of imported module in main module and submodule");
                         goto error;
