@@ -1174,7 +1174,7 @@ resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, cons
         return -1;
     }
 
-    str = strndup(name, nam_len);
+    str = strndup(mod_name, mod_name_len);
     module = ly_ctx_get_module(ctx, str, NULL);
     free(str);
     if (!module) {
