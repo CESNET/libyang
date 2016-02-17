@@ -1120,7 +1120,7 @@ struct lys_deviation {
                                            applied (mandatory). */
     const char *dsc;                  /**< description (optional) */
     const char *ref;                  /**< reference (optional) */
-    struct lys_module *target_module; /**< pointer to the target node module */
+    struct lys_node *orig_node;       /**< original (non-deviated) node (mandatory) */
 
     uint8_t deviate_size;             /**< number of elements in the #deviate array */
     struct lys_deviate *deviate;      /**< deviate information */
@@ -1133,7 +1133,7 @@ struct lys_import {
     struct lys_module *module;       /**< link to the imported module (mandatory) */
     const char *prefix;              /**< prefix for the data from the imported schema (mandatory) */
     char rev[LY_REV_SIZE];           /**< revision-date of the imported module (optional) */
-    uint8_t external;                /**< flag for import records from submodules */
+    uint8_t external;                /**< 0 - normal import, 1 import record from a submodule or a deviating module, 2 for a deviating module */
 };
 
 /**

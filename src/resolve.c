@@ -1174,7 +1174,7 @@ resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, cons
         return -1;
     }
 
-    str = strndup(name, nam_len);
+    str = strndup(mod_name, mod_name_len);
     module = ly_ctx_get_module(ctx, str, NULL);
     free(str);
     if (!module) {
@@ -2943,7 +2943,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
 
     /* copy the data nodes from grouping into the uses context */
     LY_TREE_FOR(uses->grp->child, node_aux) {
-        node = lys_node_dup(uses->module, (struct lys_node *)uses, node_aux, uses->flags, uses->nacm, unres);
+        node = lys_node_dup(uses->module, (struct lys_node *)uses, node_aux, uses->flags, uses->nacm, unres, 0);
         if (!node) {
             LOGVAL(LYE_SPEC, line, LY_VLOG_LYS, uses, "Copying data from grouping failed.");
             return -1;
@@ -3521,7 +3521,7 @@ resolve_must(struct lyd_node *node, int first, uint32_t line)
 
         if (!set.value.bool) {
             if (!first) {
-                LOGVAL(LYE_NOCOND, line, LY_VLOG_LYS, node, "Must", must[i].expr);
+                LOGVAL(LYE_NOCOND, line, LY_VLOG_LYD, node, "Must", must[i].expr);
             }
             return 1;
         }

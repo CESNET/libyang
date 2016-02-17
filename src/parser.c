@@ -121,24 +121,25 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 }
 
 /* if module is !NULL, then the function searches for submodule */
-int
+struct lys_module *
 lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
-                struct unres_schema *unres, struct lys_module **result)
+                struct unres_schema *unres)
 {
     size_t len, flen;
-    int fd, ret = -1;
+    int fd;
     char *wd, *cwd, *model_path;
     DIR *dir;
     struct dirent *file;
     LYS_INFORMAT format;
+    struct lys_module *result = NULL;
     int localsearch = 1;
 
     if (module) {
         /* searching for submodule, try if it is already loaded */
-        *result = (struct lys_module *)ly_ctx_get_submodule(module, name, revision);
-        if (*result) {
+        result = (struct lys_module *)ly_ctx_get_submodule(module, name, revision);
+        if (result) {
             /* success */
-            return EXIT_SUCCESS;
+            return result;
         }
     }
 
@@ -183,30 +184,26 @@ opendir_search:
         if (fd < 0) {
             LOGERR(LY_ESYS, "Unable to open data model file \"%s\" (%s).",
                    file->d_name, strerror(errno));
-            ret = -1;
             goto cleanup;
         }
 
         if (module) {
-            ret = lys_submodule_read(module, fd, format, unres, (struct lys_submodule **)result);
+            result = (struct lys_module *)lys_submodule_read(module, fd, format, unres);
         } else {
-            *result = lys_read_import(ctx, fd, format);
-            if (*result) {
-                ret = EXIT_SUCCESS;
-            }
+            result = lys_read_import(ctx, fd, format);
         }
         close(fd);
 
-        if (ret) {
+        if (!result) {
             goto cleanup;
         }
 
         if (asprintf(&model_path, "file://%s/%s", wd, file->d_name) == -1) {
             LOGMEM;
-            ret = -1;
+            result = NULL;
             goto cleanup;
         }
-        (*result)->uri = lydict_insert(ctx, model_path, 0);
+        result->uri = lydict_insert(ctx, model_path, 0);
         free(model_path);
         /* success */
         goto cleanup;
@@ -215,16 +212,15 @@ opendir_search:
 searchpath:
     if (!ctx->models.search_path) {
         LOGWRN("No search path defined for the current context.");
-    } else if (ret && localsearch) {
+    } else if (!result && localsearch) {
         /* search in local directory done, try context's search_path */
         if (dir) {
             closedir(dir);
         }
         wd = strdup(ctx->models.search_path);
         if (!wd) {
-            LOGMEM;
             dir = NULL;
-            ret = -1;
+            LOGMEM;
             goto cleanup;
         }
         localsearch = 0;
@@ -243,7 +239,7 @@ cleanup:
         closedir(dir);
     }
 
-    return ret;
+    return result;
 }
 
 /* logs directly */

@@ -78,12 +78,10 @@ extern struct ly_types ly_types[LY_DATA_TYPE_COUNT];
  * @param[in] data String containing the submodule specification in the given \p format.
  * @param[in] format Format of the data to read.
  * @param[in] unres TODO provide description
- * @param[out] submodule Parsed submodule.
- * @return EXIT_SUCCESS on success, -1 on error, EXIT_FAILURE on error and submodule returned
- * (to give chance to module to free submodule data and then free the submodule).
+ * @return Created submodule structure or NULL in case of error.
  */
-int lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT format,
-                        struct unres_schema *unres, struct lys_submodule **submodule);
+struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT format,
+                                          struct unres_schema *unres);
 
 /**
  * @brief Create submodule structure by reading data from file descriptor.
@@ -95,12 +93,10 @@ int lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMA
  *            specification in the given \p format.
  * @param[in] format Format of the data to read.
  * @param[in] unres TODO provide description
- * @param[out] submodule Parsed submodule.
- * @return EXIT_SUCCESS on success, -1 on error, EXIT_FAILURE on error and submodule returned
- * (to give chance to module to free submodule data and then free the submodule).
+ * @return Created submodule structure or NULL in case of error.
  */
-int lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format,
-                       struct unres_schema *unres, struct lys_submodule **submodule);
+struct lys_submodule *lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format,
+                                         struct unres_schema *unres);
 
 /**
  * @brief Free the submodule structure
@@ -165,10 +161,20 @@ int lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_modu
  * @param[in] flags Config flag to be inherited in case the origin node does not specify config flag
  * @param[in] nacm NACM flags to be inherited from the parent
  * @param[in] unres TODO provide description
+ * @param[in] shallow Whether to copy children and connect to parent/module too.
  * @return Created copy of the provided schema \p node.
  */
 struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct lys_node *node,
-                              uint8_t flags, uint8_t nacm, struct unres_schema *unres);
+                              uint8_t flags, uint8_t nacm, struct unres_schema *unres, int shallow);
+
+/**
+ * @brief Switch two same schema nodes. \p src must be a shallow copy
+ * of \p dst.
+ *
+ * @param[in] dst Destination node that will be replaced with \p src.
+ * @param[in] src Source node that will replace \p dst.
+ */
+void lys_node_switch(struct lys_node *dst, struct lys_node *src);
 
 /**
  * @brief Return main module of the schema tree node.
@@ -235,8 +241,9 @@ void lys_node_unlink(struct lys_node *node);
  * @param[in] node Schema tree node to free. Do not use the pointer after calling this function.
  * @param[in] private_destructor Optional destructor function for private objects assigned
  * to the nodes via lys_set_private(). If NULL, the private objects are not freed by libyang.
+ * @param[in] shallow Whether to do a shallow free only (on a shallow copy of a node).
  */
-void lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys_node *node, void *priv));
+void lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys_node *node, void *priv), int shallow);
 
 /**
  * @brief Free (and unlink it from the context) the specified schema.
