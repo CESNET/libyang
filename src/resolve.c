@@ -895,7 +895,7 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
 
     /* descendant-schema-nodeid */
     if (is_relative) {
-        start_mod = start->module;
+        module = start_mod = start->module;
 
     /* absolute-schema-nodeid */
     } else {
