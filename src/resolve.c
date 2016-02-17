@@ -3331,7 +3331,7 @@ resolve_choice_dflt(struct lys_node_choice *choic, const char *dflt)
             }
         }
 
-        if ((child->name == dflt) && (child->nodetype & (LYS_ANYXML | LYS_CASE
+        if (ly_strequal(child->name, dflt) && (child->nodetype & (LYS_ANYXML | LYS_CASE
                 | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST))) {
             return child;
         }
@@ -4173,7 +4173,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int first, 
 
         /* check that value matches */
         for (i = 0; i < matches.count; ++i) {
-            if (leaf->value_str == ((struct lyd_node_leaf_list *)matches.node[i])->value_str) {
+            if (ly_strequal(leaf->value_str, ((struct lyd_node_leaf_list *)matches.node[i])->value_str)) {
                 leaf->value.leafref = matches.node[i];
                 break;
             }

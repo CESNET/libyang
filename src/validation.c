@@ -533,8 +533,8 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
                                 /* return success to keep the node in the tree */
                                 return EXIT_SUCCESS;
                             } else if (!((struct lyd_node_leaf_list *)node)->value_str
-                                    || ((struct lyd_node_leaf_list *)diter)->value_str ==
-                                    ((struct lyd_node_leaf_list *)node)->value_str) {
+                                    || ly_strequal(((struct lyd_node_leaf_list *)diter)->value_str,
+                                                   ((struct lyd_node_leaf_list *)node)->value_str)) {
                                 /* keep the previous instance and remove the current one ->
                                  * return failure but do not set ly_errno */
                                 return EXIT_FAILURE;

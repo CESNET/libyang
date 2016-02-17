@@ -1116,7 +1116,7 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
 
         /* check that the expression does not repeat */
         for (j = 0; j < i; j++) {
-            if (unique->expr[j] == unique->expr[i]) {
+            if (ly_strequal(unique->expr[j], unique->expr[i])) {
                 LOGVAL(LYE_INARG, LOGLINE(yin), LY_VLOG_XML, yin, unique->expr[i], "unique");
                 LOGVAL(LYE_SPEC, 0, 0, NULL, "The identifier is not unique");
                 goto error;
@@ -1775,7 +1775,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
                     /* find must to delete, we are ok with just matching conditions */
                     for (i = 0; i < *trg_must_size; i++) {
-                        if (d->must[d->must_size].expr == (*trg_must)[i].expr) {
+                        if (ly_strequal(d->must[d->must_size].expr, (*trg_must)[i].expr)) {
                             /* we have a match, free the must structure ... */
                             lys_restr_free(ctx, &((*trg_must)[i]));
                             /* ... and maintain the array */
@@ -2287,7 +2287,7 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
         count = 0;
     } else {
         for (count = 0; module->ctx->models.parsing[count]; ++count) {
-            if (value == module->ctx->models.parsing[count]) {
+            if (ly_strequal(value, module->ctx->models.parsing[count])) {
                 LOGERR(LY_EVALID, "Circular import dependency on the module \"%s\".", value);
                 goto error;
             }
@@ -2374,7 +2374,7 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
 
     /* check that the submodule was not included yet (previous submodule could have included it) */
     for (i = 0; i < module->inc_size; ++i) {
-        if (module->inc[i].submodule && (module->inc[i].submodule->name == value)) {
+        if (module->inc[i].submodule && (ly_strequal(module->inc[i].submodule->name, value))) {
             /* copy the duplicate into the result */
             memcpy(inc, &module->inc[i], sizeof *inc);
 
@@ -2401,7 +2401,7 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
         count = 0;
     } else {
         for (count = 0; module->ctx->models.parsing[count]; ++count) {
-            if (value == module->ctx->models.parsing[count]) {
+            if (ly_strequal(value, module->ctx->models.parsing[count])) {
                 LOGERR(LY_EVALID, "Circular include dependency on the submodule \"%s\".", value);
                 goto error;
             }

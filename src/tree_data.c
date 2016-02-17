@@ -1250,7 +1250,8 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
     switch (first->schema->nodetype) {
     case LYS_LEAFLIST:
         /* compare values */
-        if (((struct lyd_node_leaf_list *)first)->value_str == ((struct lyd_node_leaf_list *)second)->value_str) {
+        if (ly_strequal(((struct lyd_node_leaf_list *)first)->value_str,
+                        ((struct lyd_node_leaf_list *)second)->value_str)) {
             return 0;
         }
         return 1;
