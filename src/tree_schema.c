@@ -1123,6 +1123,7 @@ lys_restr_dup(struct ly_ctx *ctx, struct lys_restr *old, int size)
 
     result = calloc(size, sizeof *result);
     if (!result) {
+        LOGMEM;
         return NULL;
     }
     for (i = 0; i < size; i++) {
@@ -1266,6 +1267,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
             new->info.str.length = lys_restr_dup(mod->ctx, old->info.str.length, 1);
         }
         new->info.str.patterns = lys_restr_dup(mod->ctx, old->info.str.patterns, old->info.str.pat_count);
+        new->info.str.pat_count = old->info.str.pat_count;
         break;
 
     case LY_TYPE_UNION:
