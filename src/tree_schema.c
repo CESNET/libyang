@@ -1963,6 +1963,7 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
     lydict_remove(ctx, module->ref);
     lydict_remove(ctx, module->org);
     lydict_remove(ctx, module->contact);
+    lydict_remove(ctx, module->uri);
 
     /* revisions */
     for (i = 0; i < module->rev_size; i++) {

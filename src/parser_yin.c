@@ -278,6 +278,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     /* the type could not be resolved or it was resolved to an unresolved typedef */
     } else if (rc == EXIT_FAILURE) {
+        lydict_remove(module->ctx, type->module_name);
         return EXIT_FAILURE;
     }
     type->base = type->der->type.base;
@@ -631,7 +632,10 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         if (!value) {
             goto error;
         }
-        if (unres_schema_add_str(module, unres, type, UNRES_TYPE_IDENTREF, value, LOGLINE(yin->child)) == -1) {
+        rc = unres_schema_add_str(module, unres, type, UNRES_TYPE_IDENTREF, value, LOGLINE(yin->child));
+        lydict_remove(module->ctx, value);
+
+        if (rc == -1) {
             goto error;
         }
         break;
@@ -893,6 +897,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 type->info.uni.count = 0;
 
                 if (rc == EXIT_FAILURE) {
+                    lydict_remove(module->ctx, type->module_name);
                     return EXIT_FAILURE;
                 }
                 goto error;
@@ -919,6 +924,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     return EXIT_SUCCESS;
 
 error:
+    lydict_remove(module->ctx, type->module_name);
     return -1;
 }
 
