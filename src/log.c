@@ -165,7 +165,7 @@ ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const 
     const void *iter = elem;
     struct lys_node_list *slist;
     struct lyd_node *dlist, *diter;
-    const char *name;
+    const char *name, *prefix = NULL;
     size_t len;
 
     if (line == UINT_MAX) {
@@ -199,6 +199,7 @@ ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const 
             switch (elem_type) {
             case LY_VLOG_XML:
                 name = ((struct lyxml_elem *)iter)->name;
+                prefix = ((struct lyxml_elem *)iter)->ns ? ((struct lyxml_elem *)iter)->ns->prefix : NULL;
                 iter = ((struct lyxml_elem *)iter)->parent;
                 break;
             case LY_VLOG_LYS:
@@ -207,6 +208,10 @@ ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const 
                 break;
             case LY_VLOG_LYD:
                 name = ((struct lyd_node *)iter)->schema->name;
+                if (!((struct lyd_node *)iter)->parent ||
+                        ((struct lyd_node *)iter)->schema->module != ((struct lyd_node *)iter)->parent->schema->module) {
+                    prefix = ((struct lyd_node *)iter)->schema->module->name;
+                }
 
                 /* handle predicates (keys) in case of lists */
                 if (((struct lyd_node *)iter)->schema->nodetype == LYS_LIST) {
@@ -229,6 +234,12 @@ ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const 
                             len = strlen(diter->schema->name);
                             (*index) -= len;
                             memcpy(&path[(*index)], diter->schema->name, len);
+                            if (dlist->schema->module != diter->schema->module) {
+                                path[--(*index)] = ':';
+                                len = strlen(diter->schema->module->name);
+                                (*index) -= len;
+                                memcpy(&path[(*index)], diter->schema->module->name, len);
+                            }
                             path[--(*index)] = '[';
                         }
                     }
@@ -244,6 +255,12 @@ ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const 
             len = strlen(name);
             (*index) = (*index) - len;
             memcpy(&path[(*index)], name, len);
+            if (prefix) {
+                path[--(*index)] = ':';
+                len = strlen(prefix);
+                (*index) = (*index) - len;
+                memcpy(&path[(*index)], prefix, len);
+            }
             path[--(*index)] = '/';
         }
     }
