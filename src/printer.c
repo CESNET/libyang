@@ -125,22 +125,123 @@ ly_write(struct lyout *out, const char *buf, size_t count)
     return 0;
 }
 
+/* removes or applies deviations, updates module deviation flag accordingly */
+static void
+lys_switch_deviations(struct lys_module *module)
+{
+    uint8_t i, j, changes = 0;
+    struct lys_deviation *dev;
+    struct lys_node *target;
+    const struct lys_module *target_module;
+    char *parent_path;
+    const char *ptr;
+    int ret;
+
+    for (i = 0; i < module->imp_size; ++i) {
+        if (module->imp[i].external == 2) {
+            for (j = 0; j < module->imp[i].module->deviation_size; ++j) {
+                dev = &module->imp[i].module->deviation[j];
+                if (dev->deviate[0].mod == LY_DEVIATE_NO) {
+                    if (dev->orig_node) {
+                        /* removing not-supported deviation ... */
+                        if (strrchr(dev->target_name, '/') != dev->target_name) {
+                            /* ... from a parent */
+                            parent_path = strndup(dev->target_name, strrchr(dev->target_name, '/') - dev->target_name);
+
+                            target = NULL;
+                            ret = resolve_augment_schema_nodeid(parent_path, NULL, module, (const struct lys_node **)&target);
+                            free(parent_path);
+                            if (ret || !target) {
+                                LOGINT;
+                                continue;
+                            }
+
+                            lys_node_addchild(target, NULL, dev->orig_node);
+                        } else {
+                            /* ... from top-level data */
+                            ptr = strchr(dev->target_name, ':');
+                            if (!ptr) {
+                                LOGINT;
+                                continue;
+                            }
+
+                            target_module = lys_get_import_module(module, NULL, 0, dev->target_name + 1, (ptr - dev->target_name) - 1);
+                            if (!target_module) {
+                                LOGINT;
+                                continue;
+                            }
+
+                            lys_node_addchild(NULL, (struct lys_module *)target_module, dev->orig_node);
+                        }
+
+                        dev->orig_node = NULL;
+                    } else {
+                        /* adding not-supported deviation */
+                        target = NULL;
+                        ret = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&target);
+                        if (ret || !target) {
+                            LOGINT;
+                            continue;
+                        }
+
+                        lys_node_unlink(target);
+                        dev->orig_node = target;
+                    }
+                } else {
+                    target = NULL;
+                    ret = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&target);
+                    if (ret || !target) {
+                        LOGINT;
+                        continue;
+                    }
+
+                    lys_node_switch(target, dev->orig_node);
+                    dev->orig_node = target;
+                }
+            }
+
+            changes = 1;
+        }
+    }
+
+    if (changes) {
+        if (module->deviated) {
+            module->deviated = 0;
+        } else {
+            module->deviated = 1;
+        }
+    }
+}
+
 static int
 lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
 {
+    int ret;
+
     switch (format) {
     case LYS_OUT_YIN:
-        return yin_print_model(out, module);
+        lys_switch_deviations((struct lys_module *)module);
+        ret = yin_print_model(out, module);
+        lys_switch_deviations((struct lys_module *)module);
+        break;
     case LYS_OUT_YANG:
-        return yang_print_model(out, module);
+        lys_switch_deviations((struct lys_module *)module);
+        ret = yang_print_model(out, module);
+        lys_switch_deviations((struct lys_module *)module);
+        break;
     case LYS_OUT_TREE:
-        return tree_print_model(out, module);
+        ret = tree_print_model(out, module);
+        break;
     case LYS_OUT_INFO:
-        return info_print_model(out, module, target_node);
+        ret = info_print_model(out, module, target_node);
+        break;
     default:
         LOGERR(LY_EINVAL, "Unknown output format.");
-        return EXIT_FAILURE;
+        ret = EXIT_FAILURE;
+        break;
     }
+
+    return ret;
 }
 
 API int

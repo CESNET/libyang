@@ -168,6 +168,15 @@ struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent
                               uint8_t flags, uint8_t nacm, struct unres_schema *unres, int shallow);
 
 /**
+ * @brief Switch two same schema nodes. \p src must be a shallow copy
+ * of \p dst.
+ *
+ * @param[in] dst Destination node that will be replaced with \p src.
+ * @param[in] src Source node that will replace \p dst.
+ */
+void lys_node_switch(struct lys_node *dst, struct lys_node *src);
+
+/**
  * @brief Return main module of the schema tree node.
  *
  * In case of regular YANG module, it returns ::lys_node#module pointer,

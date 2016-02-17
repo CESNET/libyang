@@ -1758,13 +1758,32 @@ lys_feature_free(struct ly_ctx *ctx, struct lys_feature *f)
 }
 
 static void
-lys_deviation_free(struct ly_ctx *ctx, struct lys_deviation *dev)
+lys_deviation_free(struct lys_module *module, struct lys_deviation *dev)
 {
     int i, j, k;
+    struct ly_ctx *ctx;
+    struct lys_node *next, *elem;
+
+    ctx = module->ctx;
 
     lydict_remove(ctx, dev->target_name);
     lydict_remove(ctx, dev->dsc);
     lydict_remove(ctx, dev->ref);
+
+    /* the module was freed, but we only need the context from orig_node, use ours */
+    if (dev->deviate[0].mod == LY_DEVIATE_NO) {
+        /* it's actually a node subtree, we need to update modules on all the nodes :-/ */
+        LY_TREE_DFS_BEGIN(dev->orig_node, next, elem) {
+            elem->module = module;
+
+            LY_TREE_DFS_END(dev->orig_node, next, elem);
+        }
+        lys_node_free(dev->orig_node, NULL, 0);
+    } else {
+        /* it's just a shallow copy, freeing one node */
+        dev->orig_node->module = module;
+        lys_node_free(dev->orig_node, NULL, 1);
+    }
 
     for (i = 0; i < dev->deviate_size; i++) {
         lydict_remove(ctx, dev->deviate[i].dflt);
@@ -2007,7 +2026,7 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
 
     /* deviations */
     for (i = 0; i < module->deviation_size; i++) {
-        lys_deviation_free(ctx, &module->deviation[i]);
+        lys_deviation_free(module, &module->deviation[i]);
     }
     free(module->deviation);
 
@@ -2162,14 +2181,15 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
         LOGMEM;
         goto error;
     }
-    for (i = 0; i < node->features_size; ++i) {
-        retval->features[i] = (struct lys_feature *)retval;
-        if (unres_schema_dup(module, unres, &node->features[i], UNRES_IFFEAT, &retval->features[i])) {
-            retval->features[i] = node->features[i];
-        }
-    }
 
     if (!shallow) {
+        for (i = 0; i < node->features_size; ++i) {
+            retval->features[i] = (struct lys_feature *)retval;
+            if (unres_schema_dup(module, unres, &node->features[i], UNRES_IFFEAT, &retval->features[i])) {
+                retval->features[i] = node->features[i];
+            }
+        }
+
         /* connect it to the parent */
         if (lys_node_addchild(parent, retval->module, retval)) {
             goto error;
@@ -2183,6 +2203,8 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
                 }
             }
         }
+    } else {
+        memcpy(retval->features, node->features, retval->features_size * sizeof *retval->features);
     }
 
     /*
@@ -2407,6 +2429,59 @@ error:
 
     lys_node_free(retval, NULL, 0);
     return NULL;
+}
+
+void
+lys_node_switch(struct lys_node *dst, struct lys_node *src)
+{
+    struct lys_node *child;
+
+    assert((dst->module == src->module) && (dst->name == src->name) && (dst->nodetype == src->nodetype));
+
+    /* sibling next */
+    if (dst->prev != dst) {
+        dst->prev->next = src;
+    }
+
+    /* sibling prev */
+    if (dst->next) {
+        dst->next->prev = src;
+    }
+
+    /* parent child prev */
+    if (!dst->next && dst->parent) {
+        dst->parent->child->prev = src;
+    }
+
+    /* next */
+    src->next = dst->next;
+    dst->next = NULL;
+
+    /* prev */
+    if (dst->prev != dst) {
+        src->prev = dst->prev;
+    }
+    dst->prev = dst;
+
+    /* parent child */
+    if (dst->parent && (dst->parent->child == dst)) {
+        dst->parent->child = src;
+    }
+
+    /* parent */
+    src->parent = dst->parent;
+    dst->parent = NULL;
+
+    /* child parent */
+    LY_TREE_FOR(dst->child, child) {
+        if (child->parent == dst) {
+            child->parent = src;
+        }
+    }
+
+    /* child */
+    src->child = dst->child;
+    dst->child = NULL;
 }
 
 void

@@ -395,105 +395,27 @@ ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod)
 }
 
 static int
-ylib_deviation_check_duplicate(struct lyd_node *parent, const char *name, const char *revision)
+ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod)
 {
-    struct lyd_node *dev_node, *node;
-    struct lyd_node_leaf_list *name_node, *rev_node;
-
-    LY_TREE_FOR(parent->child, dev_node) {
-        if (!strcmp(dev_node->schema->name, "deviation")) {
-            name_node = NULL;
-            rev_node = NULL;
-
-            LY_TREE_FOR(dev_node->child, node) {
-                if (!strcmp(node->schema->name, "name")) {
-                    if (name_node) {
-                        LOGINT;
-                        continue;
-                    }
-                    name_node = (struct lyd_node_leaf_list *)node;
-                } else if (!strcmp(node->schema->name, "revision")) {
-                    if (rev_node) {
-                        LOGINT;
-                        continue;
-                    }
-                    rev_node = (struct lyd_node_leaf_list *)node;
-                }
-            }
-
-            if (!name_node || !rev_node) {
-                LOGINT;
-                continue;
-            }
-
-            if (!strcmp(name_node->value_str, name) && !strcmp(rev_node->value_str, revision)) {
-                return 1;
-            }
-        }
-    }
-
-    return 0;
-}
-
-static int
-ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod, struct ly_ctx *ctx)
-{
-    int i, j, k;
+    int i;
     const char *revision;
-    struct lys_module *mod_iter, *main_mod;
     struct lyd_node *cont;
 
-    for (i = 0; i < ctx->models.used; ++i) {
-        mod_iter = ctx->models.list[i];
-        for (k = 0; k < mod_iter->deviation_size; ++k) {
+    for (i = 0; i < cur_mod->imp_size; ++i) {
+        /* marks a deviating module */
+        if (cur_mod->imp[i].external == 2) {
+            revision = (cur_mod->imp[i].module->rev_size ? cur_mod->imp[i].module->rev[0].date : "");
 
-            /* we found a module deviating our module */
-            if (mod_iter->deviation[k].target_module == cur_mod) {
-                revision = (mod_iter->rev_size ? mod_iter->rev[0].date : "");
-
-                if (ylib_deviation_check_duplicate(parent, mod_iter->name, revision)) {
-                    continue;
-                }
-
-                cont = lyd_new(parent, NULL, "deviation");
-                if (!cont) {
-                    return EXIT_FAILURE;
-                }
-
-                if (!lyd_new_leaf(cont, NULL, "name", mod_iter->name)) {
-                    return EXIT_FAILURE;
-                }
-                if (!lyd_new_leaf(cont, NULL, "revision", revision)) {
-                    return EXIT_FAILURE;
-                }
+            cont = lyd_new(parent, NULL, "deviation");
+            if (!cont) {
+                return EXIT_FAILURE;
             }
-        }
 
-        for (j = 0; j < mod_iter->inc_size && mod_iter->inc[j].submodule; ++j) {
-            for (k = 0; k < mod_iter->inc[j].submodule->deviation_size; ++k) {
-
-                /* we found a submodule deviating our module */
-                if (mod_iter->inc[j].submodule->deviation[k].target_module == cur_mod) {
-                    /* the entries are defined for modules, not submodules */
-                    main_mod = ((struct lys_submodule *)mod_iter->inc[j].submodule)->belongsto;
-                    revision = (main_mod->rev_size ? main_mod->rev[0].date : "");
-
-                    if (ylib_deviation_check_duplicate(parent, main_mod->name, revision)) {
-                        continue;
-                    }
-
-                    cont = lyd_new(parent, NULL, "deviation");
-                    if (!cont) {
-                        return EXIT_FAILURE;
-                    }
-
-                    if (!lyd_new_leaf(cont, NULL, "name", main_mod->name)) {
-                        return EXIT_FAILURE;
-                    }
-                    if (!lyd_new_leaf(cont, NULL, "revision", revision)) {
-                        return EXIT_FAILURE;
-                    }
-                }
+            if (!lyd_new_leaf(cont, NULL, "name", cur_mod->imp[i].module->name)) {
+                return EXIT_FAILURE;
+            }
+            if (!lyd_new_leaf(cont, NULL, "revision", revision)) {
+                return EXIT_FAILURE;
             }
         }
     }
@@ -581,7 +503,7 @@ ly_ctx_info(struct ly_ctx *ctx)
             lyd_free(root);
             return NULL;
         }
-        if (ylib_deviation(cont, ctx->models.list[i], ctx)) {
+        if (ylib_deviation(cont, ctx->models.list[i])) {
             lyd_free(root);
             return NULL;
         }

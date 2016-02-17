@@ -1247,6 +1247,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     struct lys_type *t = NULL;
     uint8_t *trg_must_size = NULL;
     struct lys_restr **trg_must = NULL;
+    struct unres_schema tmp_unres;
 
     ctx = module->ctx;
 
@@ -1266,9 +1267,61 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         LOGVAL(LYE_SPEC, LOGLINE(yin), LY_VLOG_XML, yin, "Deviating own module is not allowed.");
         goto error;
     }
-    dev->target_module = dev_target->module;
     /* mark the target module as deviated */
-    dev->target_module->deviated = 1;
+    dev_target->module->deviated = 1;
+
+    /* copy our imports to the deviated module (deviations may need them to work) */
+    for (i = 0; i < module->imp_size; ++i) {
+        for (j = 0; j < dev_target->module->imp_size; ++j) {
+            if (module->imp[i].module == dev_target->module->imp[j].module) {
+                break;
+            }
+        }
+
+        if (j < dev_target->module->imp_size) {
+            /* import is already there */
+            continue;
+        }
+
+        /* copy the import, mark it as external */
+        ++dev_target->module->imp_size;
+        dev_target->module->imp = ly_realloc(dev_target->module->imp, dev_target->module->imp_size * sizeof *dev_target->module->imp);
+        if (!dev_target->module->imp) {
+            LOGMEM;
+            goto error;
+        }
+        dev_target->module->imp[dev_target->module->imp_size - 1].module = module->imp[i].module;
+        dev_target->module->imp[dev_target->module->imp_size - 1].prefix = lydict_insert(module->ctx, module->imp[i].prefix, 0);
+        memcpy(dev_target->module->imp[dev_target->module->imp_size - 1].rev, module->imp[i].rev, LY_REV_SIZE);
+        dev_target->module->imp[dev_target->module->imp_size - 1].external = 1;
+    }
+
+    /* copy ourselves to the deviated module as a special import (if we haven't yet, there could be more deviations of the same module) */
+    for (i = 0; i < dev_target->module->imp_size; ++i) {
+        if (dev_target->module->imp[i].module == module) {
+            break;
+        }
+    }
+
+    if (i == dev_target->module->imp_size) {
+        ++dev_target->module->imp_size;
+        dev_target->module->imp = ly_realloc(dev_target->module->imp, dev_target->module->imp_size * sizeof *dev_target->module->imp);
+        if (!dev_target->module->imp) {
+            LOGMEM;
+            goto error;
+        }
+        dev_target->module->imp[dev_target->module->imp_size - 1].module = module;
+        dev_target->module->imp[dev_target->module->imp_size - 1].prefix = lydict_insert(module->ctx, module->prefix, 0);
+        if (module->rev_size) {
+            memcpy(dev_target->module->imp[dev_target->module->imp_size - 1].rev, module->rev[0].date, LY_REV_SIZE);
+        } else {
+            memset(dev_target->module->imp[dev_target->module->imp_size - 1].rev, 0, LY_REV_SIZE);
+        }
+        dev_target->module->imp[dev_target->module->imp_size - 1].external = 2;
+    } else {
+        /* it could have been added by another deviating module that imported this deviating module */
+        dev_target->module->imp[i].external = 2;
+    }
 
     LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
@@ -1356,8 +1409,9 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
             }
 
-            /* remove target node */
-            lys_node_free(dev_target, NULL, 0);
+            /* unlink and store the original node */
+            lys_node_unlink(dev_target);
+            dev->orig_node = dev_target;
 
             dev->deviate_size = 1;
             return EXIT_SUCCESS;
@@ -1372,6 +1426,17 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             goto error;
         }
         d = &dev->deviate[dev->deviate_size];
+
+        /* store a shallow copy of the original node */
+        if (!dev->orig_node) {
+            memset(&tmp_unres, 0, sizeof tmp_unres);
+            dev->orig_node = lys_node_dup(dev_target->module, NULL, dev_target, 0, 0, &tmp_unres, 1);
+            /* just to be safe */
+            if (tmp_unres.count) {
+                LOGINT;
+                goto error;
+            }
+        }
 
         /* process deviation properties */
         LY_TREE_FOR_SAFE(develem->child, next, child) {
@@ -5236,12 +5301,18 @@ error:
 
     LOGERR(ly_errno, "Submodule \"%s\" parsing failed.", submodule->name);
 
-    /* warn about applied deviations */
+    /* remove parsed data */
+    LY_TREE_FOR_SAFE(module->data, next, elem) {
+        if (elem->module == (struct lys_module *)submodule) {
+            lys_node_free(elem, NULL, 0);
+        }
+    }
+
+    /* remove applied deviations */
     for (i = 0; i < submodule->deviation_size; ++i) {
-        if (submodule->deviation[i].target_module) {
-            LOGERR(ly_errno, "Submodule parsing failed, but successfully deviated %smodule \"%s\".",
-                   (submodule->deviation[i].target_module->type ? "sub" : ""),
-                   submodule->deviation[i].target_module->name);
+        if (submodule->deviation[i].orig_node) {
+            resolve_augment_schema_nodeid(submodule->deviation[i].target_name, NULL, module, (const struct lys_node **)&elem);
+            lys_node_switch(elem, submodule->deviation[i].orig_node);
         }
     }
 
@@ -5382,12 +5453,11 @@ error:
 
     LOGERR(ly_errno, "Module \"%s\" parsing failed.", module->name);
 
-    /* warn about applied deviations */
+    /* remove applied deviations */
     for (i = 0; i < module->deviation_size; ++i) {
-        if (module->deviation[i].target_module) {
-            LOGERR(ly_errno, "Module parsing failed, but successfully deviated %smodule \"%s\".",
-                   (module->deviation[i].target_module->type ? "sub" : ""),
-                   module->deviation[i].target_module->name);
+        if (module->deviation[i].orig_node) {
+            resolve_augment_schema_nodeid(module->deviation[i].target_name, NULL, module, (const struct lys_node **)&elem);
+            lys_node_switch(elem, module->deviation[i].orig_node);
         }
     }
 
