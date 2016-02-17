@@ -3521,7 +3521,7 @@ resolve_must(struct lyd_node *node, int first, uint32_t line)
 
         if (!set.value.bool) {
             if (!first) {
-                LOGVAL(LYE_NOCOND, line, LY_VLOG_LYS, node, "Must", must[i].expr);
+                LOGVAL(LYE_NOCOND, line, LY_VLOG_LYD, node, "Must", must[i].expr);
             }
             return 1;
         }
