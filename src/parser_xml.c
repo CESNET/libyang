@@ -65,9 +65,9 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start, int o
         }
 
         /* match data nodes */
-        if (ly_strequal(result->name, xml->name)) {
+        if (ly_strequal(result->name, xml->name, 1)) {
             /* names matches, what about namespaces? */
-            if (ly_strequal(result->module->ns, xml->ns->value)) {
+            if (ly_strequal(result->module->ns, xml->ns->value, 1)) {
                 /* we have matching result */
                 return result;
             }
@@ -159,7 +159,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         /* starting in root */
         for (i = 0; i < ctx->models.used; i++) {
             /* match data model based on namespace */
-            if (ly_strequal(ctx->models.list[i]->ns, xml->ns->value)) {
+            if (ly_strequal(ctx->models.list[i]->ns, xml->ns->value, 1)) {
                 /* get the proper schema node */
                 LY_TREE_FOR(ctx->models.list[i]->data, schema) {
                     /* skip nodes in module's data which are not expected here according to options' data type */
@@ -177,7 +177,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
                             continue;
                         }
                     }
-                    if (ly_strequal(schema->name, xml->name)) {
+                    if (ly_strequal(schema->name, xml->name, 1)) {
                         break;
                     }
                 }

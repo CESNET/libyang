@@ -290,8 +290,10 @@ void *ly_realloc(void *ptr, size_t size);
  * @brief Compare strings
  * @param[in] s1 First string to compare
  * @param[in] s2 Second string to compare
+ * @param[in] both_in_dictionary Flag for optimization, 1 if it is sure that \p s1 and \p s2 were stored in dictionary.
  * @return 1 if both strings are the same, 0 if they differ.
  */
-int ly_strequal(const char *s1, const char *s2);
+int ly_strequal_(const char *s1, const char *s2);
+#define ly_strequal(s1, s2, d) ((d) ? (s1 == s2) : ly_strequal_(s1, s2))
 
 #endif /* LY_COMMON_H_ */

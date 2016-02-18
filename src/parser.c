@@ -1085,7 +1085,7 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
         }
 
         LY_TREE_FOR(parent->child, node) {
-            if (ly_strequal(node->name, id)) {
+            if (ly_strequal(node->name, id, 1)) {
                 LOGVAL(LYE_INID, line, 0, NULL, id, "name duplication");
                 return EXIT_FAILURE;
             }

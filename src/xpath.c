@@ -4411,7 +4411,7 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
             } else if (set1->type == LYXP_SET_NUMBER) {
                 result = (set1->value.num == set2->value.num);
             } else {
-                result = (ly_strequal(set1->value.str, set2->value.str));
+                result = (ly_strequal(set1->value.str, set2->value.str, 1));
             }
         } else if (op[0] == '!') {
             if (set1->type == LYXP_SET_BOOLEAN) {
@@ -4419,7 +4419,7 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
             } else if (set1->type == LYXP_SET_NUMBER) {
                 result = (set1->value.num != set2->value.num);
             } else {
-                result = (!ly_strequal(set1->value.str, set2->value.str));
+                result = (!ly_strequal(set1->value.str, set2->value.str, 1));
             }
         } else {
             if (set1->type != LYXP_SET_NUMBER) {

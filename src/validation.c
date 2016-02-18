@@ -95,7 +95,7 @@ filter_compare(const struct lyd_node *first, const struct lyd_node *second)
                 if (diter2->schema != diter1->schema) {
                     continue;
                 } else if (!ly_strequal(((struct lyd_node_leaf_list *)diter1)->value_str,
-                                        ((struct lyd_node_leaf_list *)diter2)->value_str)) {
+                                        ((struct lyd_node_leaf_list *)diter2)->value_str, 1)) {
                     continue;
                 }
                 match = 1;
@@ -125,7 +125,7 @@ filter_compare(const struct lyd_node *first, const struct lyd_node *second)
     case LYS_LEAF:
     case LYS_LEAFLIST:
         if (!ly_strequal(((struct lyd_node_leaf_list *)first)->value_str,
-                         ((struct lyd_node_leaf_list *)second)->value_str)) {
+                         ((struct lyd_node_leaf_list *)second)->value_str, 1)) {
             return 1;
         }
         break;
@@ -535,7 +535,7 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
                                 return EXIT_SUCCESS;
                             } else if (!((struct lyd_node_leaf_list *)node)->value_str
                                     || ly_strequal(((struct lyd_node_leaf_list *)diter)->value_str,
-                                                   ((struct lyd_node_leaf_list *)node)->value_str)) {
+                                                   ((struct lyd_node_leaf_list *)node)->value_str, 1)) {
                                 /* keep the previous instance and remove the current one ->
                                  * return failure but do not set ly_errno */
                                 return EXIT_FAILURE;

@@ -1251,7 +1251,7 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
     case LYS_LEAFLIST:
         /* compare values */
         if (ly_strequal(((struct lyd_node_leaf_list *)first)->value_str,
-                        ((struct lyd_node_leaf_list *)second)->value_str)) {
+                        ((struct lyd_node_leaf_list *)second)->value_str, 1)) {
             return 0;
         }
         return 1;
@@ -1288,7 +1288,7 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                         val2 = ((struct lys_node_leaf *)snode)->dflt;
                     }
 
-                    if (!ly_strequal(val1, val2)) {
+                    if (!ly_strequal(val1, val2, 1)) {
                         break;
                     }
                 }
@@ -1320,7 +1320,7 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                     break;
                 }
             }
-            if (!ly_strequal(val1, val2)) {
+            if (!ly_strequal(val1, val2, 1)) {
                 return 1;
             }
         }

@@ -551,7 +551,7 @@ ly_realloc(void *ptr, size_t size)
 }
 
 int
-ly_strequal(const char *s1, const char *s2)
+ly_strequal_(const char *s1, const char *s2)
 {
     if (s1 == s2) {
         return 1;
