@@ -3122,45 +3122,33 @@ resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident,
 
             if (!ident) {
                 /* just search for type, so do not modify anything, just return
-                 * the base identity pointer
-                 */
+                 * the base identity pointer */
                 *ret = &module->ident[i];
                 return EXIT_SUCCESS;
-            } else if (ident == &module->ident[i]) {
-                /* circular reference */
-                LOGVAL(LYE_SPEC, 0, 0, NULL, "Circular reference of \"%s\" identity", basename);
-                return EXIT_FAILURE;
             }
 
-            /* we are resolving identity definition, so now update structures */
-            ident->base = base = &module->ident[i];
-
-            break;
+            base = &module->ident[i];
+            goto matchfound;
         }
     }
 
     /* search submodules */
-    if (!base) {
-        for (j = 0; j < module->inc_size && module->inc[j].submodule; j++) {
-            for (i = 0; i < module->inc[j].submodule->ident_size; i++) {
-                if (!strcmp(basename, module->inc[j].submodule->ident[i].name)) {
+    for (j = 0; j < module->inc_size && module->inc[j].submodule; j++) {
+        for (i = 0; i < module->inc[j].submodule->ident_size; i++) {
+            if (!strcmp(basename, module->inc[j].submodule->ident[i].name)) {
 
-                    if (!ident) {
-                        *ret = &module->inc[j].submodule->ident[i];
-                        return EXIT_SUCCESS;
-                    } else if (ident == &module->inc[j].submodule->ident[i]) {
-                        /* circular reference */
-                        LOGVAL(LYE_SPEC, 0, 0, NULL, "Circular reference of \"%s\" identity", basename);
-                        return EXIT_FAILURE;
-                    }
-
-                    ident->base = base = &module->inc[j].submodule->ident[i];
-                    break;
+                if (!ident) {
+                    *ret = &module->inc[j].submodule->ident[i];
+                    return EXIT_SUCCESS;
                 }
+
+                base = &module->inc[j].submodule->ident[i];
+                goto matchfound;
             }
         }
     }
 
+matchfound:
     /* we found it somewhere */
     if (base) {
         /* check for circular reference */
