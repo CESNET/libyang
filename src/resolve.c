@@ -3111,7 +3111,7 @@ resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident,
                        struct lys_ident **ret)
 {
     uint32_t i, j;
-    struct lys_ident *base_iter = NULL;
+    struct lys_ident *base = NULL, *base_iter;
     struct lys_ident_der *der;
 
     assert(ret);
@@ -3126,17 +3126,21 @@ resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident,
                  */
                 *ret = &module->ident[i];
                 return EXIT_SUCCESS;
+            } else if (ident == &module->ident[i]) {
+                /* circular reference */
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "Circular reference of \"%s\" identity", basename);
+                return EXIT_FAILURE;
             }
 
             /* we are resolving identity definition, so now update structures */
-            ident->base = base_iter = &module->ident[i];
+            ident->base = base = &module->ident[i];
 
             break;
         }
     }
 
     /* search submodules */
-    if (!base_iter) {
+    if (!base) {
         for (j = 0; j < module->inc_size && module->inc[j].submodule; j++) {
             for (i = 0; i < module->inc[j].submodule->ident_size; i++) {
                 if (!strcmp(basename, module->inc[j].submodule->ident[i].name)) {
@@ -3144,9 +3148,13 @@ resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident,
                     if (!ident) {
                         *ret = &module->inc[j].submodule->ident[i];
                         return EXIT_SUCCESS;
+                    } else if (ident == &module->inc[j].submodule->ident[i]) {
+                        /* circular reference */
+                        LOGVAL(LYE_SPEC, 0, 0, NULL, "Circular reference of \"%s\" identity", basename);
+                        return EXIT_FAILURE;
                     }
 
-                    ident->base = base_iter = &module->inc[j].submodule->ident[i];
+                    ident->base = base = &module->inc[j].submodule->ident[i];
                     break;
                 }
             }
@@ -3154,9 +3162,20 @@ resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident,
     }
 
     /* we found it somewhere */
-    if (base_iter) {
-        while (base_iter) {
-            for (der = base_iter->der; der && der->next; der = der->next);
+    if (base) {
+        /* check for circular reference */
+        for (base_iter = base; base_iter; base_iter = base_iter->base) {
+            if (ident == base_iter) {
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "Circular reference of \"%s\" identity", basename);
+                return EXIT_FAILURE;
+            }
+        }
+        /* checks done, store the result */
+        ident->base = base;
+
+        /* maintain backlinks to the derived identitise */
+        while (base) {
+            for (der = base->der; der && der->next; der = der->next);
             if (der) {
                 der->next = malloc(sizeof *der);
                 der = der->next;
@@ -3170,7 +3189,7 @@ resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident,
             der->next = NULL;
             der->ident = ident;
 
-            base_iter = base_iter->base;
+            base = base->base;
         }
         *ret = ident->base;
         return EXIT_SUCCESS;
@@ -3185,7 +3204,7 @@ resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident,
  * @param[in] module Main module.
  * @param[in] ident Identity to use.
  * @param[in] basename Base name of the identity.
- * @param[in] parent Either "type" or "ident".
+ * @param[in] parent Either "type" or "identity".
  * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line Line in the input file.
  * @param[in,out] type Type structure where we want to resolve identity. Can be NULL.
@@ -3242,11 +3261,17 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
     /* search in the identified module ... */
     if (!resolve_base_ident_sub(module, ident, name, ret)) {
         goto success;
+    } else if (ly_errno) {
+        LOGVAL(LYE_LINE, line, 0, NULL);
+        return EXIT_FAILURE;
     }
     /* and all its submodules */
     for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
         if (!resolve_base_ident_sub((struct lys_module *)module->inc[i].submodule, ident, name, ret)) {
             goto success;
+        } else if (ly_errno) {
+            LOGVAL(LYE_LINE, line, 0, NULL);
+            return EXIT_FAILURE;
         }
     }
 
@@ -3699,7 +3724,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         has_str = 1;
         ident = item;
 
-        rc = resolve_base_ident(mod, ident, base_name, "ident", first, line, NULL);
+        rc = resolve_base_ident(mod, ident, base_name, "identity", first, line, NULL);
         break;
     case UNRES_TYPE_IDENTREF:
         base_name = str_snode;
