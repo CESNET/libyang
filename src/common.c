@@ -47,11 +47,15 @@ struct ly_err ly_err_main = {LY_SUCCESS, 0, {0}, {0}};
 static void
 ly_err_free(void *ptr)
 {
+#ifdef __linux__
     /* in __linux__ we use static memory in the main thread,
      * so this check is for programs terminating the main()
      * function by pthread_exit() :)
      */
     if (ptr != &ly_err_main) {
+#else
+    {
+#endif
         free(ptr);
     }
 }
