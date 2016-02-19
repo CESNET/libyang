@@ -135,6 +135,7 @@ extern "C" {
  * - ly_ctx_get_module_by_ns()
  * - ly_ctx_get_submodule_names()
  * - ly_ctx_get_submodule()
+ * - ly_ctx_get_node()
  * - ly_ctx_destroy()
  */
 
@@ -188,7 +189,6 @@ extern "C" {
  *
  * Functions List (not assigned to above subsections)
  * --------------------------------------------------
- * - lys_get_node()
  * - lys_get_next()
  * - lys_parent()
  * - lys_set_private()
@@ -275,8 +275,6 @@ extern "C" {
  *
  *   Alternative XML-based format to YANG. The details can be found in
  *   [RFC 6020](http://tools.ietf.org/html/rfc6020#section-11).
- *
- *   \todo YIN output is not yet implemented
  *
  * - Tree
  *
@@ -679,6 +677,23 @@ const struct lys_submodule *ly_ctx_get_submodule(const struct lys_module *module
                                                  const char *revision);
 
 /**
+ * @brief Get schema node according to the given absolute schema node identifier
+ * in JSON format.
+ *
+ * The first node identifier must be prefixed with the module name. Then every other
+ * identifier either has an explicit module name or the module name of the previous
+ * node is assumed. Examples:
+ *
+ * /ietf-netconf-monitoring:get-schema/input/identifier
+ * /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/ip
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] nodeid JSON absolute schema node identifier.
+ * @return Resolved schema node or NULL.
+ */
+const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const char *nodeid);
+
+/**
  * @brief Free all internal structures of the specified context.
  *
  * The function should be used before terminating the application to destroy
@@ -814,14 +829,19 @@ void ly_verb(LY_LOG_LEVEL level);
 /**
  * @brief Set logger callback.
  * @param[in] clb Logging callback.
+ * @param[in] path flag to resolve and provide path as the third parameter of the callback function. In case of
+ *            validation and some other errors, it can be useful to get the path to the problematic element. Note,
+ *            that according to the tree type and the specific situation, the path can slightly differs (keys
+ *            presence) or it can be NULL, so consider it as an optional parameter. If the flag is 0, libyang will
+ *            not bother with resolving the path.
  */
-void ly_set_log_clb(void (*clb)(LY_LOG_LEVEL, const char *));
+void ly_set_log_clb(void (*clb)(LY_LOG_LEVEL level, const char *msg, const char *path), int path);
 
 /**
  * @brief Get logger callback.
  * @return Logger callback (can be NULL).
  */
-void (*ly_get_log_clb(void))(LY_LOG_LEVEL, const char *);
+void (*ly_get_log_clb(void))(LY_LOG_LEVEL, const char *, const char *);
 
 /**
  * @typedef LY_ERR
@@ -839,7 +859,7 @@ typedef enum {
 
 /**
  * @cond INTERNAL
- * Function to get address of global `ly_errno' variable.
+ * Get address of (thread-specific) `ly_errno' variable.
  */
 LY_ERR *ly_errno_location(void);
 
@@ -848,6 +868,26 @@ LY_ERR *ly_errno_location(void);
  * @brief libyang specific (thread-safe) errno (see #LY_ERR for the list of possible values and their meaning).
  */
 #define ly_errno (*ly_errno_location())
+
+/**
+ * @brief Get the last (thread-specific) error message.
+ *
+ * Sometimes, the error message is extended with path of the element where is the problem.
+ * The path is available via ly_errpath().
+ *
+ * @return Text of the last error message.
+ */
+const char *ly_errmsg(void);
+
+/**
+ * @brief Get the last (thread-specific) path of the element where was an error.
+ *
+ * The path always corresponds to the error message available via ly_errmsg(), so
+ * whenever a subsequent error message is printed, the path is erased or rewritten.
+ *
+ * @return Path of the error element.
+ */
+const char *ly_errpath(void);
 
 /**@} logger */
 

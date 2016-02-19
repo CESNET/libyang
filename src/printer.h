@@ -57,6 +57,7 @@ int ly_print(struct lyout *out, const char *format, ...);
 int ly_write(struct lyout *out, const char *buf, size_t count);
 
 int yang_print_model(struct lyout *out, const struct lys_module *module);
+int yin_print_model(struct lyout *out, const struct lys_module *module);
 int tree_print_model(struct lyout *out, const struct lys_module *module);
 int info_print_model(struct lyout *out, const struct lys_module *module, const char *target_node);
 

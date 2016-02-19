@@ -65,9 +65,9 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start, int o
         }
 
         /* match data nodes */
-        if (result->name == xml->name) {
+        if (ly_strequal(result->name, xml->name, 1)) {
             /* names matches, what about namespaces? */
-            if (result->module->ns == xml->ns->value) {
+            if (ly_strequal(result->module->ns, xml->ns->value, 1)) {
                 /* we have matching result */
                 return result;
             }
@@ -145,7 +145,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
 
     if (!xml->ns || !xml->ns->value) {
         if (options & LYD_OPT_STRICT) {
-            LOGVAL(LYE_XML_MISS, LOGLINE(xml), "element's", "namespace");
+            LOGVAL(LYE_XML_MISS, LOGLINE(xml), LY_VLOG_XML, xml, "element's", "namespace");
             return -1;
         } else {
             return 0;
@@ -159,7 +159,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         /* starting in root */
         for (i = 0; i < ctx->models.used; i++) {
             /* match data model based on namespace */
-            if (ctx->models.list[i]->ns == xml->ns->value) {
+            if (ly_strequal(ctx->models.list[i]->ns, xml->ns->value, 1)) {
                 /* get the proper schema node */
                 LY_TREE_FOR(ctx->models.list[i]->data, schema) {
                     /* skip nodes in module's data which are not expected here according to options' data type */
@@ -177,7 +177,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
                             continue;
                         }
                     }
-                    if (schema->name == xml->name) {
+                    if (ly_strequal(schema->name, xml->name, 1)) {
                         break;
                     }
                 }
@@ -190,68 +190,14 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     }
     if (!schema) {
         if ((options & LYD_OPT_STRICT) || ly_ctx_get_module_by_ns(ctx, xml->ns->value, NULL)) {
-            LOGVAL(LYE_INELEM, LOGLINE(xml), xml->name);
+            LOGVAL(LYE_INELEM, LOGLINE(xml), LY_VLOG_LYD, parent, xml->name);
             return -1;
         } else {
             return 0;
         }
     }
 
-    /* check insert attribute and its values */
-    if (options & LYD_OPT_EDIT) {
-        i = 0;
-        for (attr = xml->attr; attr; attr = attr->next) {
-            if (attr->type != LYXML_ATTR_STD || !attr->ns ||
-                    strcmp(attr->name, "insert") || strcmp(attr->ns->value, LY_NSYANG)) {
-                continue;
-            }
-
-            /* insert attribute present */
-            if (!(schema->flags & LYS_USERORDERED)) {
-                /* ... but it is not expected */
-                LOGVAL(LYE_INATTR, LOGLINE(xml), "insert", schema->name);
-                return -1;
-            }
-
-            if (i) {
-                LOGVAL(LYE_TOOMANY, LOGLINE(xml), "insert attributes", xml->name);
-                return -1;
-            }
-            if (!strcmp(attr->value, "first") || !strcmp(attr->value, "last")) {
-                i = 1;
-            } else if (!strcmp(attr->value, "before") || !strcmp(attr->value, "after")) {
-                i = 2;
-            } else {
-                LOGVAL(LYE_INARG, LOGLINE(xml), attr->value, attr->name);
-                return -1;
-            }
-        }
-
-        for (attr = xml->attr; attr; attr = attr->next) {
-            if (attr->type != LYXML_ATTR_STD || !attr->ns ||
-                    strcmp(attr->name, "value") || strcmp(attr->ns->value, LY_NSYANG)) {
-                continue;
-            }
-
-            /* the value attribute is present */
-            if (i < 2) {
-                /* but it shouldn't */
-                LOGVAL(LYE_INATTR, LOGLINE(xml), "value", schema->name);
-                return -1;
-            }
-            i++;
-        }
-        if (i == 2) {
-            /* missing value attribute for "before" or "after" */
-            LOGVAL(LYE_MISSATTR, LOGLINE(xml), "value", xml->name);
-            return -1;
-        } else if (i > 3) {
-            /* more than one instance of the value attribute */
-            LOGVAL(LYE_TOOMANY, LOGLINE(xml), "value attributes", xml->name);
-            return -1;
-        }
-    }
-
+    /* create the element structure */
     switch (schema->nodetype) {
     case LYS_CONTAINER:
     case LYS_LIST:
@@ -299,6 +245,62 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     (*result)->schema = schema;
     (*result)->validity = LYD_VAL_NOT;
 
+    /* check insert attribute and its values */
+    if (options & LYD_OPT_EDIT) {
+        i = 0;
+        for (attr = xml->attr; attr; attr = attr->next) {
+            if (attr->type != LYXML_ATTR_STD || !attr->ns ||
+                    strcmp(attr->name, "insert") || strcmp(attr->ns->value, LY_NSYANG)) {
+                continue;
+            }
+
+            /* insert attribute present */
+            if (!(schema->flags & LYS_USERORDERED)) {
+                /* ... but it is not expected */
+                LOGVAL(LYE_INATTR, LOGLINE(xml), LY_VLOG_LYD, (*result), "insert", schema->name);
+                return -1;
+            }
+
+            if (i) {
+                LOGVAL(LYE_TOOMANY, LOGLINE(xml), LY_VLOG_LYD, (*result), "insert attributes", xml->name);
+                return -1;
+            }
+            if (!strcmp(attr->value, "first") || !strcmp(attr->value, "last")) {
+                i = 1;
+            } else if (!strcmp(attr->value, "before") || !strcmp(attr->value, "after")) {
+                i = 2;
+            } else {
+                LOGVAL(LYE_INARG, LOGLINE(xml), LY_VLOG_LYD, (*result), attr->value, attr->name);
+                return -1;
+            }
+        }
+
+        for (attr = xml->attr; attr; attr = attr->next) {
+            if (attr->type != LYXML_ATTR_STD || !attr->ns ||
+                    strcmp(attr->name, "value") || strcmp(attr->ns->value, LY_NSYANG)) {
+                continue;
+            }
+
+            /* the value attribute is present */
+            if (i < 2) {
+                /* but it shouldn't */
+                LOGVAL(LYE_INATTR, LOGLINE(xml), LY_VLOG_LYD, (*result), "value", schema->name);
+                return -1;
+            }
+            i++;
+        }
+        if (i == 2) {
+            /* missing value attribute for "before" or "after" */
+            LOGVAL(LYE_MISSATTR, LOGLINE(xml), LY_VLOG_LYD, (*result), "value", xml->name);
+            return -1;
+        } else if (i > 3) {
+            /* more than one instance of the value attribute */
+            LOGVAL(LYE_TOOMANY, LOGLINE(xml), LY_VLOG_LYD, (*result), "value attributes", xml->name);
+            return -1;
+        }
+    }
+
+    /* first part of validation checks */
     if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(*result, options, LOGLINE(xml), unres)) {
         goto error;
     }

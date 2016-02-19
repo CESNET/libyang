@@ -66,9 +66,7 @@ SNMP proxy.</text>
     </reference>
   </feature>
   <augment target-node="/snmp:snmp">
-    <if-feature name="snmp:proxy">
-      <if-feature name="snmp:proxy"/>
-    </if-feature>
+    <if-feature name="snmp:proxy"/>
     <list name="proxy">
       <key value="name"/>
       <description>
@@ -172,7 +170,6 @@ a valid configuration.</text>
   SNMP-PROXY-MIB.snmpProxyMultipleTargetOut</text>
         </reference>
       </leaf>
-      <if-feature name="snmp:proxy"/>
     </list>
   </augment>
 </submodule>

@@ -41,6 +41,7 @@ enum UNRES_ITEM {
     UNRES_CHOICE_DFLT,   /* check choice default case */
     UNRES_LIST_KEYS,     /* list keys */
     UNRES_LIST_UNIQ,     /* list uniques */
+    UNRES_AUGMENT,       /* unresolved augment targets */
 
     /* DATA */
     UNRES_LEAFREF,       /* unresolved leafref reference */
@@ -100,6 +101,21 @@ struct len_ran_intv {
 
 int parse_identifier(const char *id);
 
+struct lyd_node *resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start);
+
+int resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_module *module,
+                                  const struct lys_node **ret);
+
+int resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *start, int ret_nodetype,
+                                     const struct lys_node **ret);
+
+int resolve_choice_default_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_node **ret);
+
+int resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *module, int ret_nodetype,
+                                   const struct lys_node **ret);
+
+int resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node **ret);
+
 int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int superior_restr,
                              struct len_ran_intv **local_intv);
 
@@ -108,13 +124,7 @@ int resolve_superior_type(const char *name, const char *prefix, const struct lys
 
 int resolve_unique(struct lys_node *parent, const char *uniq_str, int first, uint32_t line);
 
-int resolve_schema_nodeid(const char *id, const struct lys_node *start, const struct lys_module *mod,
-                          LYS_NODE node_type, const struct lys_node **ret);
-struct lyd_node *resolve_data_nodeid(const char *id, struct lyd_node *start);
-
-int resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings);
-
-struct lys_ident *resolve_identref(struct lys_ident *base, const char *ident_name, uint32_t line);
+struct lys_ident *resolve_identref(struct lys_ident *base, const char *ident_name, uint32_t line, struct lyd_node *node);
 
 int resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres);
 

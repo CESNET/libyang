@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 ABI_MON=abi-monitor
 ABI_TRK=abi-tracker
 
@@ -31,7 +31,7 @@ test -e src/libyang || mkdir -p src/libyang
 rm -rf src/libyang/*
 
 cd gitrepo
-git checkout master
+git checkout devel
 VERSIONS=`git log --grep=VERSION --oneline | sed 's/ .* /_/'`
 cd -
 for i in $VERSIONS; do
@@ -60,5 +60,5 @@ done
 cp libyang.json libyang.aux
 abi-monitor -get -build $LIMIT libyang.aux
 abi-tracker -build libyang.aux
-#rm -rf libyang.aux
+rm -rf libyang.aux
 

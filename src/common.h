@@ -71,6 +71,15 @@ char *get_current_dir_name(void);
  * logger
  */
 extern volatile uint8_t ly_log_level;
+
+#define LY_ERR_MSG_SIZE 2044
+struct ly_err {
+    LY_ERR no;
+    int path_index;
+    char msg[LY_ERR_MSG_SIZE];
+    char path[LY_ERR_MSG_SIZE];
+};
+
 void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 
 #define LOGERR(errno, str, args...)                                 \
@@ -101,6 +110,7 @@ void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 #define LOGINT LOGERR(LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 
 enum LY_ERR {
+    LYE_PATH = -3,
     LYE_SPEC = -2,
     LYE_LINE = -1,
 
@@ -160,9 +170,14 @@ enum LY_ERR {
     LYE_XPATH_INARGCOUNT,
     LYE_XPATH_INARGTYPE
 };
-void ly_vlog(enum LY_ERR code, unsigned int line, ...);
-
-#define LOGVAL(code, line, args...) ly_vlog(code, line, ##args)
+enum LY_VLOG_ELEM {
+    LY_VLOG_NONE,
+    LY_VLOG_XML,
+    LY_VLOG_LYS,
+    LY_VLOG_LYD
+};
+void ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
+#define LOGVAL(code, line, elem_type, elem, args...) ly_vlog(code, line, elem_type, elem, ##args)
 
 #ifdef NDEBUG
 #    define LOGLINE(node) 0
@@ -190,6 +205,18 @@ char *strnchr(const char *s, int c, unsigned int len);
 const char *strnodetype(LYS_NODE type);
 
 /**
+ * @brief Transform a module name (JSON format prefix) to a prefix as defined
+ * in \p module imports. Its own name is transformed to its own prefix.
+ *
+ * @param[in] module Module with imports to use.
+ * @param[in] module_name Module name to transform.
+ *
+ * @return Module import prefix (do not modify, free, or lydict_remove),
+ * NULL on error.
+ */
+const char *transform_module_name2import_prefix(const struct lys_module *module, const char *module_name);
+
+/**
  * @brief Transform expression from JSON format to XML format.
  * Output arrays point to strings in the dictionary, but without
  * correcting their ref_count -> do not touch them. Prefixes of
@@ -210,6 +237,18 @@ const char *strnodetype(LYS_NODE type);
  */
 const char *transform_json2xml(const struct lys_module *module, const char *expr, const char ***prefixes, const char ***namespaces,
                                uint32_t *ns_count);
+
+/**
+ * @brief Transform expression from JSON format to schema format.
+ * Prefixes of the namespaces (models) are those from the main
+ * \p module imports of the corresponding modules. Logs directly.
+ *
+ * @param[in] module Module with imports to use.
+ * @param[in] expr JSON expression.
+ *
+ * @return Transformed XML expression in the dictionary, NULL on error.
+ */
+const char *transform_json2schema(const struct lys_module *module, const char *expr);
 
 /**
  * @brief Transform expression from XML data format (prefixes and separate NS definitions) to
@@ -246,5 +285,15 @@ const char *transform_schema2json(const struct lys_module *module, const char *e
  * @return Pointer to the new memory, NULL on error.
  */
 void *ly_realloc(void *ptr, size_t size);
+
+/**
+ * @brief Compare strings
+ * @param[in] s1 First string to compare
+ * @param[in] s2 Second string to compare
+ * @param[in] both_in_dictionary Flag for optimization, 1 if it is sure that \p s1 and \p s2 were stored in dictionary.
+ * @return 1 if both strings are the same, 0 if they differ.
+ */
+int ly_strequal_(const char *s1, const char *s2);
+#define ly_strequal(s1, s2, d) ((d) ? (s1 == s2) : ly_strequal_(s1, s2))
 
 #endif /* LY_COMMON_H_ */

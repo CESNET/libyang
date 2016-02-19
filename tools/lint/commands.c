@@ -48,7 +48,7 @@ cmd_add_help(void)
 void
 cmd_print_help(void)
 {
-    printf("print [-f (yang | tree | info)] [-t <info-target-node>] [-o <output-file>] <model-name>[@<revision>]\n\n");
+    printf("print [-f (yang | yin | tree | info)] [-t <info-target-node>] [-o <output-file>] <model-name>[@<revision>]\n\n");
     printf("\tinfo-target-node: <absolute-schema-node> | typedef/<typedef-name> |\n");
     printf("\t                  | identity/<identity-name> | feature/<feature-name> |\n");
     printf("\t                  | grouping/<grouping-name>(<absolute-schema-nodeid>) |\n");
@@ -219,6 +219,8 @@ cmd_print(const char *arg)
         case 'f':
             if (!strcmp(optarg, "yang")) {
                 format = LYS_OUT_YANG;
+            } else if (!strcmp(optarg, "yin")) {
+                format = LYS_OUT_YIN;
             } else if (!strcmp(optarg, "tree")) {
                 format = LYS_OUT_TREE;
             } else if (!strcmp(optarg, "info")) {

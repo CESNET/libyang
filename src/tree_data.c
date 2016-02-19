@@ -718,10 +718,12 @@ lyd_validate(struct lyd_node *node, int options, ...)
             schema = ly_check_mandatory(NULL, ctx->models.list[i]->data);
             if (schema) {
                 if (schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-                    LOGVAL(LYE_SPEC, 0, "Number of \"%s\" instances in \"%s\" does not follow min-elements constraint.",
+                    LOGVAL(LYE_SPEC, 0, LY_VLOG_LYS, schema,
+                           "Number of \"%s\" instances in \"%s\" does not follow min-elements constraint.",
                            schema->name, schema->parent ? schema->parent->name : ctx->models.list[i]->name);
                 } else {
-                    LOGVAL(LYE_MISSELEM, 0, schema->name, schema->parent ? schema->parent->name : ctx->models.list[i]->name);
+                    LOGVAL(LYE_MISSELEM, 0, LY_VLOG_LYS, schema,
+                           schema->name, schema->parent ? schema->parent->name : ctx->models.list[i]->name);
                 }
                 va_end(ap);
                 return EXIT_FAILURE;
@@ -1198,7 +1200,7 @@ lyd_free(struct lyd_node *node)
             }
             break;
         default:
-            /* TODO nothing needed : LY_TYPE_BOOL, LY_TYPE_DEC64*/
+            lydict_remove(node->schema->module->ctx, ((struct lyd_node_leaf_list *)node)->value_str);
             break;
         }
     }
@@ -1248,7 +1250,8 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
     switch (first->schema->nodetype) {
     case LYS_LEAFLIST:
         /* compare values */
-        if (((struct lyd_node_leaf_list *)first)->value_str == ((struct lyd_node_leaf_list *)second)->value_str) {
+        if (ly_strequal(((struct lyd_node_leaf_list *)first)->value_str,
+                        ((struct lyd_node_leaf_list *)second)->value_str, 1)) {
             return 0;
         }
         return 1;
@@ -1260,12 +1263,12 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
             for (i = 0; i < slist->unique_size; i++) {
                 for (j = 0; j < slist->unique[i].expr_size; j++) {
                     /* first */
-                    diter = resolve_data_nodeid(slist->unique[i].expr[j], first->child);
+                    diter = resolve_data_descendant_schema_nodeid(slist->unique[i].expr[j], first->child);
                     if (diter) {
                         val1 = ((struct lyd_node_leaf_list *)diter)->value_str;
                     } else {
                         /* use default value */
-                        if (resolve_schema_nodeid(slist->unique[i].expr[j], first->schema->child, first->schema->module, LYS_LEAF, &snode)) {
+                        if (resolve_descendant_schema_nodeid(slist->unique[i].expr[j], first->schema->child, LYS_LEAF, &snode)) {
                             /* error, but unique expression was checked when the schema was parsed */
                             return -1;
                         }
@@ -1273,19 +1276,19 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                     }
 
                     /* second */
-                    diter = resolve_data_nodeid(slist->unique[i].expr[j], second->child);
+                    diter = resolve_data_descendant_schema_nodeid(slist->unique[i].expr[j], second->child);
                     if (diter) {
                         val2 = ((struct lyd_node_leaf_list *)diter)->value_str;
                     } else {
                         /* use default value */
-                        if (resolve_schema_nodeid(slist->unique[i].expr[j], second->schema->child, second->schema->module, LYS_LEAF, &snode)) {
+                        if (resolve_descendant_schema_nodeid(slist->unique[i].expr[j], second->schema->child, LYS_LEAF, &snode)) {
                             /* error, but unique expression was checked when the schema was parsed */
                             return -1;
                         }
                         val2 = ((struct lys_node_leaf *)snode)->dflt;
                     }
 
-                    if (val1 != val2) {
+                    if (!ly_strequal(val1, val2, 1)) {
                         break;
                     }
                 }
@@ -1317,7 +1320,7 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                     break;
                 }
             }
-            if (val1 != val2) {
+            if (!ly_strequal(val1, val2, 1)) {
                 return 1;
             }
         }
@@ -1480,7 +1483,7 @@ lyd_get_list_keys(const struct lyd_node *list)
     }
 
     for (i = 0; i < slist->keys_size; ++i) {
-        key = resolve_data_nodeid(slist->keys[i]->name, list->child);
+        key = resolve_data_descendant_schema_nodeid(slist->keys[i]->name, list->child);
         if (key) {
             ly_set_add(set, key);
         }

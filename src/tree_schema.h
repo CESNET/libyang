@@ -191,7 +191,7 @@ typedef enum {
 typedef enum {
     LYS_OUT_UNKNOWN = 0, /**< unknown format, used as return value in case of error */
     LYS_OUT_YANG = 1,    /**< YANG schema output format */
-    LYS_OUT_YIN = 2,     /**< YIN schema output format, \todo not yet supported */
+    LYS_OUT_YIN = 2,     /**< YIN schema output format */
     LYS_OUT_TREE,        /**< Tree schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
     LYS_OUT_INFO,        /**< Info schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
 } LYS_OUTFORMAT;
@@ -207,23 +207,26 @@ typedef enum {
  */
 typedef enum lys_nodetype {
     LYS_UNKNOWN = 0x0000,        /**< uninitalized unknown statement node */
-    LYS_AUGMENT = 0x0001,        /**< augment statement node */
-    LYS_CONTAINER = 0x0002,      /**< container statement node */
-    LYS_CHOICE = 0x0004,         /**< choice statement node */
-    LYS_LEAF = 0x0008,           /**< leaf statement node */
-    LYS_LEAFLIST = 0x0010,       /**< leaf-list statement node */
-    LYS_LIST = 0x0020,           /**< list statement node */
-    LYS_ANYXML = 0x0040,         /**< anyxml statement node */
-    LYS_GROUPING = 0x0080,       /**< grouping statement node */
-    LYS_CASE = 0x0100,           /**< case statement node */
+    LYS_CONTAINER = 0x0001,      /**< container statement node */
+    LYS_CHOICE = 0x0002,         /**< choice statement node */
+    LYS_LEAF = 0x0004,           /**< leaf statement node */
+    LYS_LEAFLIST = 0x0008,       /**< leaf-list statement node */
+    LYS_LIST = 0x0010,           /**< list statement node */
+    LYS_ANYXML = 0x0020,         /**< anyxml statement node */
+    LYS_CASE = 0x0040,           /**< case statement node */
+    LYS_NOTIF = 0x0080,          /**< notification statement node */
+    LYS_RPC = 0x0100,            /**< rpc statement node */
     LYS_INPUT = 0x0200,          /**< input statement node */
     LYS_OUTPUT = 0x0400,         /**< output statement node */
-    LYS_NOTIF = 0x0800,          /**< notification statement node */
-    LYS_RPC = 0x1000,            /**< rpc statement node */
-    LYS_USES = 0x2000            /**< uses statement node */
+    LYS_GROUPING = 0x0800,       /**< grouping statement node */
+    LYS_USES = 0x1000,           /**< uses statement node */
+    LYS_AUGMENT = 0x2000         /**< augment statement node */
 } LYS_NODE;
 
-#define LYS_ANY 0x2FFF
+/* all nodes sharing the node namespace except RPCs and notifications */
+#define LYS_NO_RPC_NOTIF_NODE 0x007F
+
+#define LYS_ANY 0x3FFF
 
 /**
  * @brief Main schema node structure representing YANG module.
@@ -376,7 +379,8 @@ struct lys_type {
                 const char *name;    /**< bit's name (mandatory) */
                 const char *dsc;     /**< bit's description (optional) */
                 const char *ref;     /**< bit's reference (optional) */
-                uint8_t status;      /**< bit's status, one of LYS_NODE_STATUS_* values (or 0 for default) */
+                uint8_t flags;       /**< bit's flags, whether the position was auto-assigned
+                                          and the status(one of LYS_NODE_STATUS_* values or 0 for default) */
                 uint32_t pos;        /**< bit's position (mandatory) */
             } *bit;                  /**< array of bit definitions */
             int count;               /**< number of bit definitions in the bit array */
@@ -395,7 +399,8 @@ struct lys_type {
                 const char *name;    /**< enum's name (mandatory) */
                 const char *dsc;     /**< enum's description (optional) */
                 const char *ref;     /**< enum's reference (optional) */
-                uint8_t status;      /**< enum's status, one of LYS_NODE_STATUS_* values (or 0 for default) */
+                uint8_t flags;       /**< enum's flags, whether the value was auto-assigned
+                                          and the status(one of LYS_NODE_STATUS_* values or 0 for default) */
                 int32_t value;       /**< enum's value (mandatory) */
             } *enm;                  /**< array of enum definitions */
             int count;               /**< number of enum definitions in the enm array */
@@ -483,6 +488,8 @@ struct lys_type {
                                           ::lys_node_list and ::lys_node_leaflist */
 #define LYS_FENABLED     0x80        /**< feature enabled flag, applicable only to ::lys_feature */
 #define LYS_UNIQUE       0x80        /**< part of the list's unique, applicable only to ::lys_node_leaf */
+#define LYS_AUTOASSIGNED 0x80        /**< value was auto-assigned, applicable only to
+                                          ::lys_type enum and bits flags */
 /**
  * @}
  */
@@ -1095,6 +1102,8 @@ struct lys_deviate {
     const char *dflt;                /**< Properties: default (both type and choice represented as string value */
     uint32_t min;                    /**< Properties: min-elements */
     uint32_t max;                    /**< Properties: max-elements */
+    uint8_t min_set;                 /**< Since min can be 0, this flag says if it is default value or 0 was set */
+    uint8_t max_set;                 /**< Since max can be 0, this flag says if it is default value or 0 (unbounded) was set */
     uint8_t must_size;               /**< Properties: must - number of elements in the #must array */
     uint8_t unique_size;             /**< Properties: unique - number of elements in the #unique array */
     struct lys_restr *must;          /**< Properties: must - array of must constraints */
@@ -1107,14 +1116,14 @@ struct lys_deviate {
  * @brief YANG deviation statement structure, see [RFC 6020 sec. 7.18.3](http://tools.ietf.org/html/rfc6020#section-7.18.3)
  */
 struct lys_deviation {
-    const char *target_name;         /**< schema node identifier of the node where the deviation is supposed to be
-                                          applied (mandatory). */
-    const char *dsc;                 /**< description (optional) */
-    const char *ref;                 /**< reference (optional) */
-    struct lys_node *target;         /**< pointer to the target node TODO refer to deviation description */
+    const char *target_name;          /**< schema node identifier of the node where the deviation is supposed to be
+                                           applied (mandatory). */
+    const char *dsc;                  /**< description (optional) */
+    const char *ref;                  /**< reference (optional) */
+    struct lys_node *orig_node;       /**< original (non-deviated) node (mandatory) */
 
-    uint8_t deviate_size;            /**< number of elements in the #deviate array */
-    struct lys_deviate *deviate;     /**< deviate information */
+    uint8_t deviate_size;             /**< number of elements in the #deviate array */
+    struct lys_deviate *deviate;      /**< deviate information */
 };
 
 /**
@@ -1124,7 +1133,7 @@ struct lys_import {
     struct lys_module *module;       /**< link to the imported module (mandatory) */
     const char *prefix;              /**< prefix for the data from the imported schema (mandatory) */
     char rev[LY_REV_SIZE];           /**< revision-date of the imported module (optional) */
-    uint8_t external;                /**< flag for import records from submodules */
+    uint8_t external;                /**< 0 - normal import, 1 import record from a submodule or a deviating module, 2 for a deviating module */
 };
 
 /**
@@ -1180,6 +1189,7 @@ struct lys_feature {
     const char *ref;                 /**< reference statement (optional) */
     uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values and
                                           #LYS_FENABLED value are allowed */
+    uint8_t padding;
     struct lys_module *module;       /**< link to the features's data model (mandatory) */
 
     uint8_t features_size;           /**< number of elements in the #features array */
@@ -1358,10 +1368,10 @@ const struct lys_feature *lys_is_disabled(const struct lys_node *node, int recur
 const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys_node *parent,
                                    const struct lys_module *module, int options);
 
-#define LYS_GETNEXT_WITHCHOICE   0x01 /**< lys_getnext() option to allow returning #LYS_CHOICE nodes */
-#define LYS_GETNEXT_WITHCASE     0x02 /**< lys_getnext() option to allow returning #LYS_CASE nodes */
-#define LYS_GETNEXT_WITHGROUPING 0x04 /**< lys_getnext() option to allow returning #LYS_GROUPING nodes */
-#define LYS_GETNEXT_WITHINOUT    0x08 /**< lys_getnext() option to allow returning #LYS_INPUT and #LYS_OUTPUT nodes */
+#define LYS_GETNEXT_WITHCHOICE   0x01 /**< lys_getnext() option to allow returning #LYS_CHOICE nodes instead of immediately looking into them */
+#define LYS_GETNEXT_WITHCASE     0x02 /**< lys_getnext() option to allow returning #LYS_CASE nodes instead of immediately looking into them */
+#define LYS_GETNEXT_WITHGROUPING 0x04 /**< lys_getnext() option to allow returning #LYS_GROUPING nodes instead of skipping them */
+#define LYS_GETNEXT_WITHINOUT    0x08 /**< lys_getnext() option to allow returning #LYS_INPUT and #LYS_OUTPUT nodes instead of immediately looking into them */
 
 /**
  * @brief Return parent node in the schema tree.
@@ -1385,25 +1395,6 @@ struct lys_node *lys_parent(const struct lys_node *node);
  * of invalid (NULL) \p node, NULL is returned and #ly_errno is set to #LY_EINVAL.
  */
 void *lys_set_private(const struct lys_node *node, void *priv);
-
-/**
- * @brief Get schema node according to the given absolute schema node identifier.
- *
- * The \p module determines the starting module and the default one for the \p nodeid.
- * That means if a node is without prefix, this starting module is assumed. In every
- * other case the prefix of the module must be specified. Here are some examples:
- *
- * module - ietf-netconf-monitoring
- * /get-schema/input/identifier
- *
- * module - ietf-interfaces
- * /interfaces/interface/ietf-ip:ipv4/ietf-ip:address/ietf-ip:ip
- *
- * @param[in] module Starting (current) module.
- * @param[in] nodeid Absolute schema node identifier.
- * @return Resolved schema node or NULL.
- */
-const struct lys_node *lys_get_node(const struct lys_module *module, const char *nodeid);
 
 /**
  * @brief Print schema tree in the specified format.

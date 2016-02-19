@@ -27,8 +27,11 @@
 #include "tree_internal.h"
 
 #ifndef NDEBUG
+unsigned int *lineno_location(void); /* implemented in xml.c */
+#define lineno (*lineno_location())
 #define COUNTLINE(c) if ((c) == 0xa) {lineno++;}
 #else
+#define lineno 0
 #define COUNTLINE(c)
 #endif
 
@@ -82,7 +85,8 @@ int fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyx
                   struct unres_schema *unres);
 
 int lyp_check_status(uint8_t flags1, struct lys_module *mod1, const char *name1,
-                     uint8_t flags2, struct lys_module *mod2, const char *name2, unsigned int line);
+                     uint8_t flags2, struct lys_module *mod2, const char *name2,
+                     unsigned int line, const struct lys_node *node);
 
 /**
  * @brief Get know if the node is part of the RPC's input/output
@@ -116,6 +120,6 @@ int lyp_check_mandatory(struct lys_node *node);
  * 00010000 -- 001FFFFF:    11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
  *
  */
-unsigned int pututf8(char *dst, int32_t value, uint32_t lineno);
+unsigned int pututf8(char *dst, int32_t value, uint32_t line);
 
 #endif /* LY_PARSER_H_ */

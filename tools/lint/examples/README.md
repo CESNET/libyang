@@ -79,6 +79,53 @@ clear
 add ietf-netconf-acm.yin
 ```
 
+**Unknown data**
+
+By default, yanglint ignores unknown data and no error is printed (you can
+compare real content of the `datastore.xml` file and what yanglint prints
+in the following command if you add `-f xml` option).
+
+Command and its output:
+
+```
+> data datastore.xml
+```
+
+To handle unknown data as error, use strict mode (`-s` option).
+
+Command and its output:
+
+```
+> data -s datastore.xml
+libyang[0]: Parser fails around the line 22.
+libyang[0]: Unknown element "interfaces".
+Failed to parse data.
+```
+
+**Multiple top-level elements in a single document**
+
+In contrast to standard XML parsers, yanglint accepts not a well-formed
+XML documents with multiple top-level element. In YANG/NETCONF, this
+represents data defined by multiple data models.
+
+Preparation:
+
+Command and its output:
+
+```
+> clear
+> add ietf-netconf-acm.yin
+> add ietf-interfaces.yin
+> add ietf-ip.yin
+> add iana-if-type.yin
+```
+
+Command and its ouput:
+
+```
+> data -s datastore.xml
+```
+
 **Malformed XML data**
 
 Command and its output:

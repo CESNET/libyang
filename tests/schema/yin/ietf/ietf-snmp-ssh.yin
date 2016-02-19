@@ -72,9 +72,7 @@ Secure Shell Transport Model for SNMP.</text>
     </reference>
   </feature>
   <augment target-node="/snmp:snmp/snmp:engine/snmp:listen/snmp:transport">
-    <if-feature name="sshtm">
-      <if-feature name="sshtm"/>
-    </if-feature>
+    <if-feature name="sshtm"/>
     <case name="ssh">
       <container name="ssh">
         <description>
@@ -102,13 +100,10 @@ uses port 5162.</text>
           </description>
         </leaf>
       </container>
-      <if-feature name="sshtm"/>
     </case>
   </augment>
   <augment target-node="/snmp:snmp/snmp:target/snmp:transport">
-    <if-feature name="sshtm">
-      <if-feature name="sshtm"/>
-    </if-feature>
+    <if-feature name="sshtm"/>
     <case name="ssh">
       <reference>
         <text>RFC 5592: Secure Shell Transport Model for the
@@ -152,7 +147,6 @@ RFC 5592: Secure Shell Transport Model for the
           </reference>
         </leaf>
       </container>
-      <if-feature name="sshtm"/>
     </case>
   </augment>
 </submodule>

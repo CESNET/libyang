@@ -1,0 +1,24 @@
+module yang {
+  namespace "urn:ietf:params:xml:ns:yang:1";
+  prefix yang;
+
+  organization
+    "libyang";
+
+  contact
+    "Web:    <https://github.com/CESNET/libyang/>
+     Author: Radek Krejci <rkrejci@cesnet.cz>";
+
+  description
+    "This is a kind of fake model with no data, typedefs or anything
+     else. libyang uses this module to implement various YANG attributes
+     defined in RFC 6020.";
+
+  revision 2016-02-11 {
+    description
+      "Initial revision";
+    reference
+      "RFC 6020: YANG - A Data Modeling Language for
+       the Network Configuration Protocol (NETCONF)";
+  }
+}

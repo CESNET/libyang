@@ -5,8 +5,8 @@ set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and tool
 
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
-set(LIBYANG_MINOR_VERSION 5)
-set(LIBYANG_MICRO_VERSION 45)
+set(LIBYANG_MINOR_VERSION 6)
+set(LIBYANG_MICRO_VERSION 44)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 
@@ -60,6 +60,7 @@ set(libsrc
 	src/printer.c
 	src/xpath.c
 	src/printer_yang.c
+	src/printer_yin.c
 	src/printer_xml.c
 	src/printer_tree.c
 	src/printer_info.c

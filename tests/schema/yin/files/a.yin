@@ -3,9 +3,9 @@
         xmlns="urn:ietf:params:xml:ns:yang:yin:1"
         xmlns:a="urn:a">
   <namespace uri="urn:a"/>
-  <prefix value="a"/>
-  <include module="atop"/>
+  <prefix value="a_mod"/>
   <include module="asub"/>
+  <include module="atop"/>
   <feature name="foo"/>
   <grouping name="gg">
     <leaf name="bar-gggg">

@@ -102,12 +102,10 @@ struct lys_submodule *lys_submodule_read(struct lys_module *module, int fd, LYS_
  * @brief Free the submodule structure
  *
  * @param[in] submodule The structure to free. Do not use the pointer after calling this function.
- * @param[in] free_int_mods Whether to remove internal modules or not.
  * @param[in] private_destructor Optional destructor function for private objects assigned
  * to the nodes via lys_set_private(). If NULL, the private objects are not freed by libyang.
  */
-void lys_submodule_free(struct lys_submodule *submodule, int free_int_mods,
-                        void (*private_destructor)(const struct lys_node *node, void *priv));
+void lys_submodule_free(struct lys_submodule *submodule, void (*private_destructor)(const struct lys_node *node, void *priv));
 
 /**
  * @brief Add child schema tree node at the end of the parent's child list.
@@ -163,10 +161,20 @@ int lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_modu
  * @param[in] flags Config flag to be inherited in case the origin node does not specify config flag
  * @param[in] nacm NACM flags to be inherited from the parent
  * @param[in] unres TODO provide description
+ * @param[in] shallow Whether to copy children and connect to parent/module too.
  * @return Created copy of the provided schema \p node.
  */
 struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct lys_node *node,
-                              uint8_t flags, uint8_t nacm, struct unres_schema *unres);
+                              uint8_t flags, uint8_t nacm, struct unres_schema *unres, int shallow);
+
+/**
+ * @brief Switch two same schema nodes. \p src must be a shallow copy
+ * of \p dst.
+ *
+ * @param[in] dst Destination node that will be replaced with \p src.
+ * @param[in] src Source node that will replace \p dst.
+ */
+void lys_node_switch(struct lys_node *dst, struct lys_node *src);
 
 /**
  * @brief Return main module of the schema tree node.
@@ -177,7 +185,18 @@ struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent
  * @param[in] node Schema tree node to be examined
  * @return pointer to the main module (schema structure), NULL in case of error.
  */
-struct lys_module *lys_mainmodule(const struct lys_node *node);
+struct lys_module *lys_node_module(const struct lys_node *node);
+
+/**
+ * @brief Return main module of the module.
+ *
+ * In case of regular YANG module, it returns itself,
+ * but in case of submodule, it returns pointer to the main module.
+ *
+ * @param[in] module Module to be examined
+ * @return pointer to the main module (schema structure).
+ */
+struct lys_module *lys_module(const struct lys_module *module);
 
 /**
  * @brief Free a schema when condition
@@ -222,8 +241,9 @@ void lys_node_unlink(struct lys_node *node);
  * @param[in] node Schema tree node to free. Do not use the pointer after calling this function.
  * @param[in] private_destructor Optional destructor function for private objects assigned
  * to the nodes via lys_set_private(). If NULL, the private objects are not freed by libyang.
+ * @param[in] shallow Whether to do a shallow free only (on a shallow copy of a node).
  */
-void lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys_node *node, void *priv));
+void lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys_node *node, void *priv), int shallow);
 
 /**
  * @brief Free (and unlink it from the context) the specified schema.
@@ -232,11 +252,12 @@ void lys_node_free(struct lys_node *node, void (*private_destructor)(const struc
  * list of modules - there can be many references from other modules and data instances.
  *
  * @param[in] module Data model to free.
- * @param[in] free_int_mods Whether to remove internal modules or not.
  * @param[in] private_destructor Optional destructor function for private objects assigned
  * to the nodes via lys_set_private(). If NULL, the private objects are not freed by libyang.
+ * @param[in] remove_from_ctx Whether to remove this model from context. Always use 1 except
+ * when removing all the models (in ly_ctx_destroy()).
  */
-void lys_free(struct lys_module *module, int free_int_mods, void (*private_destructor)(const struct lys_node *node, void *priv));
+void lys_free(struct lys_module *module, void (*private_destructor)(const struct lys_node *node, void *priv), int remove_from_ctx);
 
 /**
  * @brief Check presence of all the mandatory elements in the given data tree subtree
@@ -281,9 +302,7 @@ const struct lys_module *lys_get_import_module(const struct lys_module *module, 
 /**
  * @brief Find a specific sibling. Does not log.
  *
- * Includes module comparison (handles augments if \p type & LYS_AUGMENT).
- * Module is adjusted based on the \p mod_name. Includes are also searched
- * if \p siblings are top-level nodes.
+ * Since \p mod_name is mandatory, augments are handled.
  *
  * @param[in] siblings Siblings to consider. They are first adjusted to
  *                     point to the first sibling.
@@ -302,9 +321,6 @@ int lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int m
 
 /**
  * @brief Find a specific sibling that can appear in the data. Does not log.
- *
- * Includes are also searched if siblings are
- * top-level nodes.
  *
  * @param[in] mod Main module with the node.
  * @param[in] siblings Siblings to consider. They are first adjusted to
