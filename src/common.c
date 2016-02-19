@@ -47,11 +47,15 @@ LY_ERR ly_errno_main = LY_SUCCESS;
 static void
 ly_errno_free(void *ptr)
 {
+#ifdef __linux__
     /* in __linux__ we use static memory in the main thread,
      * so this check is for programs terminating the main()
      * function by pthread_exit() :)
      */
     if (ptr != &ly_errno_main) {
+#else
+    {
+#endif
         free(ptr);
     }
 }
