@@ -28,7 +28,7 @@ static int
 yang_check_string(struct lys_module *module, const char **target, char *what, char *where, char *value, int line)
 {
     if (*target) {
-        LOGVAL(LYE_TOOMANY, line, what, where);
+        LOGVAL(LYE_TOOMANY, line, LY_VLOG_NONE, NULL, what, where);
         free(value);
         return 1;
     } else {
@@ -159,7 +159,7 @@ yang_fill_import(struct lys_module *module, struct lys_import *imp, char *value,
     /* check duplicities in imported modules */
     for (i = 0; i < module->imp_size - 1; i++) {
         if (!strcmp(module->imp[i].module->name, module->imp[module->imp_size - 1].module->name)) {
-            LOGVAL(LYE_SPEC, line, "Importing module \"%s\" repeatedly.", module->imp[i].module->name);
+            LOGVAL(LYE_SPEC, line, LY_VLOG_NONE, NULL, "Importing module \"%s\" repeatedly.", module->imp[i].module->name);
             goto error;
         }
     }
@@ -371,7 +371,7 @@ static int
 yang_check_flags(uint8_t *flags, uint8_t mask, char *what, char *where, int value, int line)
 {
     if (*flags & mask) {
-        LOGVAL(LYE_TOOMANY, line, what, where);
+        LOGVAL(LYE_TOOMANY, line, LY_VLOG_NONE, NULL, what, where);
         return EXIT_FAILURE;
     } else {
         *flags |= value;
@@ -434,7 +434,7 @@ yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, 
     const char *exp;
 
     if (ident->base) {
-        LOGVAL(LYE_TOOMANY, line, "base", "identity");
+        LOGVAL(LYE_TOOMANY, line, LY_VLOG_NONE, NULL, "base", "identity");
         return EXIT_FAILURE;
     }
     exp = transform_schema2json(module, value, line);
@@ -510,7 +510,7 @@ int
 yang_read_presence(struct lys_module *module, struct lys_node_container *cont, char *value, int line)
 {
     if (cont->presence) {
-        LOGVAL(LYE_TOOMANY, line, "presence", "container");
+        LOGVAL(LYE_TOOMANY, line, LY_VLOG_LYS, cont, "presence", "container");
         free(value);
         return EXIT_FAILURE;
     } else {
@@ -562,42 +562,42 @@ yang_read_when(struct lys_module *module, struct lys_node *node, int type, char 
     switch (type) {
     case CONTAINER_KEYWORD:
         if (((struct lys_node_container *)node)->when) {
-            LOGVAL(LYE_TOOMANY,line,"when","container");
+            LOGVAL(LYE_TOOMANY, line, LY_VLOG_LYS, node, "when", "container");
             goto error;
         }
         ((struct lys_node_container *)node)->when = retval;
         break;
     case ANYXML_KEYWORD:
         if (((struct lys_node_anyxml *)node)->when) {
-            LOGVAL(LYE_TOOMANY,line,"when","anyxml");
+            LOGVAL(LYE_TOOMANY, line, LY_VLOG_LYS, node, "when", "anyxml");
             goto error;
         }
         ((struct lys_node_anyxml *)node)->when = retval;
         break;
     case CHOICE_KEYWORD:
         if (((struct lys_node_choice *)node)->when) {
-            LOGVAL(LYE_TOOMANY,line,"when","choice");
+            LOGVAL(LYE_TOOMANY, line, LY_VLOG_LYS, node, "when", "choice");
             goto error;
         }
         ((struct lys_node_choice *)node)->when = retval;
         break;
     case CASE_KEYWORD:
         if (((struct lys_node_case *)node)->when) {
-            LOGVAL(LYE_TOOMANY,line,"when","case");
+            LOGVAL(LYE_TOOMANY, line, LY_VLOG_LYS, node, "when", "case");
             goto error;
         }
         ((struct lys_node_case *)node)->when = retval;
         break;
     case LEAF_KEYWORD:
         if (((struct lys_node_leaf *)node)->when) {
-            LOGVAL(LYE_TOOMANY,line,"when","leaf");
+            LOGVAL(LYE_TOOMANY, line, LY_VLOG_LYS, node, "when", "leaf");
             goto error;
         }
         ((struct lys_node_leaf *)node)->when = retval;
         break;
     case LEAF_LIST_KEYWORD:
         if (((struct lys_node_leaflist *)node)->when) {
-            LOGVAL(LYE_TOOMANY,line,"when","leaflist");
+            LOGVAL(LYE_TOOMANY, line, LY_VLOG_LYS, node, "when", "leaflist");
             goto error;
         }
         ((struct lys_node_leaflist *)node)->when = retval;

@@ -203,8 +203,8 @@ start_check: stmtsep {struct Scheck *new; new=malloc(sizeof(struct Scheck)); if 
 
 module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { yang_read_common(module,s,MODULE_KEYWORD,yylineno); s=NULL; }
              '{' stmtsep
-                 module_header_stmts { if (read_all && !module->ns) { LOGVAL(LYE_MISSSTMT2,yylineno,"namespace", "module"); YYERROR; }
-                                       if (read_all && !module->prefix) { LOGVAL(LYE_MISSSTMT2,yylineno,"prefix", "module"); YYERROR; }
+                 module_header_stmts { if (read_all && !module->ns) { LOGVAL(LYE_MISSSTMT2,yylineno,LY_VLOG_NONE,NULL,"namespace", "module"); YYERROR; }
+                                       if (read_all && !module->prefix) { LOGVAL(LYE_MISSSTMT2,yylineno,LY_VLOG_NONE,NULL,"prefix", "module"); YYERROR; }
                                      }
                  linkage_stmts
                  meta_stmts
@@ -213,7 +213,7 @@ module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { yang_read_common(mod
              '}' optsep
 
 module_header_stmts: %empty  { $$ = 0; }
-  |  module_header_stmts yang_version_stmt { if ($1) { LOGVAL(LYE_TOOMANY, yylineno, "yang version", "module"); YYERROR; } $$ = 1; }
+  |  module_header_stmts yang_version_stmt { if ($1) { LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "yang version", "module"); YYERROR; } $$ = 1; }
   |  module_header_stmts namespace_stmt { if (read_all && yang_read_common(module,s,NAMESPACE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
   |  module_header_stmts prefix_stmt { if (read_all && yang_read_prefix(module,NULL,s,MODULE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
   ;
@@ -835,7 +835,7 @@ leaf_list_stmt: LEAF_LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                              $7.leaflist.ptr_leaflist->flags &= 0x7F;
                                            }
                                            if ($7.leaflist.ptr_leaflist->max && $7.leaflist.ptr_leaflist->min > $7.leaflist.ptr_leaflist->max) {
-                                             LOGVAL(LYE_SPEC, yylineno, "\"min-elements\" is bigger than \"max-elements\".");
+                                             LOGVAL(LYE_SPEC, yylineno, LY_VLOG_LYS, $7.leaflist.ptr_leaflist, "\"min-elements\" is bigger than \"max-elements\".");
                                              YYERROR;
                                            }
                                          }
@@ -877,7 +877,7 @@ leaf_list_opt_stmt: %empty { if (read_all) {
   |  leaf_list_opt_stmt config_stmt { if (read_all && yang_read_config($1.leaflist.ptr_leaflist,$2,LEAF_LIST_KEYWORD,yylineno)) {YYERROR;} }
   |  leaf_list_opt_stmt min_elements_stmt { if (read_all) {
                                               if ($1.leaflist.flag & LYS_MIN_ELEMENTS) {
-                                                LOGVAL(LYE_TOOMANY, yylineno, "min-elements", "leaflist");
+                                                LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_LYS, $1.leaflist.ptr_leaflist, "min-elements", "leaflist");
                                                 YYERROR;
                                               }
                                               $1.leaflist.ptr_leaflist->min = $2;
@@ -887,7 +887,7 @@ leaf_list_opt_stmt: %empty { if (read_all) {
                                           }
   |  leaf_list_opt_stmt max_elements_stmt { if (read_all) {
                                               if ($1.leaflist.flag & LYS_MAX_ELEMENTS) {
-                                                LOGVAL(LYE_TOOMANY, yylineno, "max-elements", "leaflist");
+                                                LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_LYS, $1.leaflist.ptr_leaflist, "max-elements", "leaflist");
                                                 YYERROR;
                                               }
                                               $1.leaflist.ptr_leaflist->max = $2;
@@ -897,7 +897,7 @@ leaf_list_opt_stmt: %empty { if (read_all) {
                                           }
   |  leaf_list_opt_stmt ordered_by_stmt { if (read_all) {
                                             if ($1.leaflist.flag & LYS_ORDERED_MASK) {
-                                              LOGVAL(LYE_TOOMANY, yylineno, "ordered by", "leaflist");
+                                              LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_LYS, $1.leaflist.ptr_leaflist, "ordered by", "leaflist");
                                               YYERROR;
                                             }
                                             if ($2 & LYS_USERORDERED) {
@@ -951,7 +951,7 @@ choice_end: ';' { if (read_all) { size_arrays->next++; } }
   |  '{' stmtsep
          choice_opt_stmt  { if (read_all) {
                               if ($3.choice.s && ($3.choice.ptr_choice->flags & LYS_MAND_TRUE)) {
-                                LOGVAL(LYE_SPEC, yylineno,"The \"default\" statement MUST NOT be present on choices where \"mandatory\" is true.");
+                                LOGVAL(LYE_SPEC, yylineno, LY_VLOG_LYS, $3.choice.ptr_choice, "The \"default\" statement MUST NOT be present on choices where \"mandatory\" is true.");
                                 YYERROR;
                               }
                               /* link default with the case */
@@ -990,7 +990,7 @@ choice_opt_stmt: %empty { if (read_all) {
                                      }
   |  choice_opt_stmt default_stmt { if (read_all) {
                                       if ($1.choice.s) {
-                                        LOGVAL(LYE_TOOMANY,yylineno,"default","choice");
+                                        LOGVAL(LYE_TOOMANY,yylineno,LY_VLOG_LYS,$1.choice.ptr_choice,"default","choice");
                                         free($1.choice.s);
                                         free(s);
                                         YYERROR;
@@ -1512,7 +1512,7 @@ positive_integer_value: NON_NEGATIVE_INTEGER { /* convert it to uint32_t */
 
                                                 val = strtoul(yytext, NULL, 10);
                                                 if (val > UINT32_MAX) {
-                                                    LOGVAL(LYE_SPEC, yylineno, "Converted number is very long.");
+                                                    LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "Converted number is very long.");
                                                     YYERROR;
                                                 }
                                                 $$ = (uint32_t) val;
