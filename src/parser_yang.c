@@ -19,6 +19,7 @@
  *    software without specific prior written permission.
  */
 
+#include <ctype.h>
 #include "parser_yang.h"
 #include "parser_yang_bis.h"
 #include "parser.h"
@@ -218,6 +219,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case LEAF_LIST_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_leaflist *) node)->dsc, "description", "leaflist", value, line);
             break;
+        case LIST_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_list *) node)->dsc, "description", "list", value, line);
+            break;
         }
     }
     return ret;
@@ -267,6 +271,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case LEAF_LIST_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_leaflist *) node)->ref, "reference", "leaflist", value, line);
+            break;
+        case LIST_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_list *) node)->ref, "reference", "list", value, line);
             break;
         }
     }
@@ -412,6 +419,9 @@ yang_read_status(void *node, int value, int type, int line)
     case LEAF_LIST_KEYWORD:
         retval = yang_check_flags(&((struct lys_node_leaflist *) node)->flags, LYS_STATUS_MASK, "status", "leaflist", value, line);
         break;
+    case LIST_KEYWORD:
+        retval = yang_check_flags(&((struct lys_node_list *) node)->flags, LYS_STATUS_MASK, "status", "list", value, line);
+        break;
     }
     return retval;
 }
@@ -473,6 +483,9 @@ yang_read_must(struct lys_module *module, struct lys_node *node, char *value, in
         break;
     case LEAF_LIST_KEYWORD:
         retval = &((struct lys_node_leaflist *)node)->must[((struct lys_node_leaflist *)node)->must_size++];
+        break;
+    case LIST_KEYWORD:
+        retval = &((struct lys_node_list *)node)->must[((struct lys_node_list *)node)->must_size++];
         break;
     }
     retval->expr = transform_schema2json(module, value, line);
@@ -538,7 +551,10 @@ yang_read_config(void *node, int value, int type, int line)
         ret = yang_check_flags(&((struct lys_node_leaf *)node)->flags, LYS_CONFIG_MASK, "config", "leaf", value, line);
         break;
     case LEAF_LIST_KEYWORD:
-        ret = yang_check_flags(&((struct lys_node_leaf *)node)->flags, LYS_CONFIG_MASK, "config", "leaflist", value, line);
+        ret = yang_check_flags(&((struct lys_node_leaflist *)node)->flags, LYS_CONFIG_MASK, "config", "leaflist", value, line);
+        break;
+    case LIST_KEYWORD:
+        ret = yang_check_flags(&((struct lys_node_list *)node)->flags, LYS_CONFIG_MASK, "config", "list", value, line);
         break;
     }
     return ret;
@@ -601,6 +617,13 @@ yang_read_when(struct lys_module *module, struct lys_node *node, int type, char 
             goto error;
         }
         ((struct lys_node_leaflist *)node)->when = retval;
+        break;
+    case LIST_KEYWORD:
+        if (((struct lys_node_list *)node)->when) {
+            LOGVAL(LYE_TOOMANY, line, LY_VLOG_LYS, node, "when", "list");
+            goto error;
+        }
+        ((struct lys_node_list *)node)->when = retval;
         break;
     }
     free(value);
@@ -682,4 +705,104 @@ yang_read_units(struct lys_module *module, void *node, char *value, int type, in
         break;
     }
     return ret;
+}
+
+int
+yang_read_key(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres, int line)
+{
+    char *exp, *value;
+
+    exp = value = (char *) list->keys;
+    while ((value = strpbrk(value, " \t\n"))) {
+        list->keys_size++;
+        while (isspace(*value)) {
+            value++;
+        }
+    }
+    list->keys_size++;
+    list->keys = calloc(list->keys_size, sizeof *list->keys);
+    if (!list->keys) {
+        LOGMEM;
+        goto error;
+    }
+    if (unres_schema_add_str(module, unres, list, UNRES_LIST_KEYS, exp, line) == -1) {
+        goto error;
+    }
+    free(exp);
+    return EXIT_SUCCESS;
+
+error:
+    free(exp);
+    return EXIT_FAILURE;
+}
+
+int
+yang_read_unique(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres)
+{
+    uint8_t k;
+    int i, j;
+    char *value, *vaux;
+    struct lys_unique *unique;
+    struct type_ident *ident;
+
+    for(k=0; k<list->unique_size; k++) {
+        unique = &list->unique[k];
+        ident = (struct type_ident *)list->unique[k].expr;
+
+        /* count the number of unique leafs in the value */
+        vaux = value = ident->s;
+        while ((vaux = strpbrk(vaux, " \t\n"))) {
+           unique->expr_size++;
+            while (isspace(*vaux)) {
+                vaux++;
+            }
+        }
+        unique->expr_size++;
+        unique->expr = calloc(unique->expr_size, sizeof *unique->expr);
+        if (!unique->expr) {
+            LOGMEM;
+            goto error;
+        }
+
+        for (i = 0; i < unique->expr_size; i++) {
+            vaux = strpbrk(value, " \t\n");
+            if (!vaux) {
+                /* the last token, lydict_insert() will count its size on its own */
+                vaux = value;
+            }
+
+            /* store token into unique structure */
+            unique->expr[i] = lydict_insert(module->ctx, value, vaux - value);
+
+            /* check that the expression does not repeat */
+            for (j = 0; j < i; j++) {
+                if (ly_strequal(unique->expr[j], unique->expr[i], 1)) {
+                    LOGVAL(LYE_INARG, ident->line, LY_VLOG_LYS, list, unique->expr[i], "unique");
+                    LOGVAL(LYE_SPEC, 0, 0, NULL, "The identifier is not unique");
+                    goto error;
+                }
+            }
+
+            /* try to resolve leaf */
+            if (unres) {
+                unres_schema_add_str(module, unres, (struct lys_node *)list, UNRES_LIST_UNIQ, unique->expr[i], ident->line);
+            } else {
+                if (resolve_unique((struct lys_node *)list, value, 0, ident->line)) {
+                    goto error;
+                }
+            }
+
+            /* move to next token */
+            value = vaux;
+            while(isspace(*value)) {
+                value++;
+            }
+        }
+        free(ident);
+    }
+    return EXIT_SUCCESS;
+
+error:
+    free(ident);
+    return EXIT_FAILURE;
 }

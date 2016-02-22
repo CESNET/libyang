@@ -37,6 +37,7 @@
 #define LYS_ORDERED_MASK 0xC0
 #define LYS_MIN_ELEMENTS 0x01
 #define LYS_MAX_ELEMENTS 0x02
+#define LYS_DATADEF 0x04
 
 struct lys_node_array{
     uint8_t if_features;
@@ -71,6 +72,17 @@ struct type_choice {
 struct type_leaflist {
     struct lys_node_leaflist *ptr_leaflist;
     uint8_t flag;
+};
+
+struct type_list {
+    struct lys_node_list *ptr_list;
+    uint8_t flag;
+    int line;
+};
+
+struct type_ident {
+    int line;
+    char s[0];
 };
 
 int yang_read_common(struct lys_module *module,char *value, int type, int line);
@@ -142,5 +154,9 @@ void * yang_read_node(struct lys_module *module, struct lys_node *parent, char *
 int yang_read_default(struct lys_module *module, void *node, char *value, int type, int line);
 
 int yang_read_units(struct lys_module *module, void *node, char *value, int type, int line);
+
+int yang_read_key(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres, int line);
+
+int yang_read_unique(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres);
 
 #endif /* LY_PARSER_YANG_H_ */
