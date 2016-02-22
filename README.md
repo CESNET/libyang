@@ -21,7 +21,6 @@ providing API) in C.
 
 * parsing (and validating) data models in YANG format
 
-
 ## Requirements
 
 * cmake >= 2.6
@@ -35,6 +34,14 @@ $ mkdir build; cd build
 $ cmake ..
 $ make 
 # make install
+```
+
+### Documentation
+
+The library documentation can be generated directly from the source codes using
+Doxygen tool:
+```
+$ make doc
 ```
 
 ### Useful CMake Options
