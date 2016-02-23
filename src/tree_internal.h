@@ -27,6 +27,9 @@
 #include "tree_data.h"
 #include "resolve.h"
 
+/* this is used to distinguish lyxml_elem * from a YANG temporary parsing structure, the first byte is compared */
+#define LY_YANG_STRUCTURE_FLAG 0x80
+
 #define LY_INTERNAL_MODULE_COUNT 3
 
 /**
