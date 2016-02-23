@@ -356,8 +356,8 @@ lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
             first = parent->child;
         } else {
             first = elem;
-            while (elem->prev->next) {
-                first = elem->prev;
+            while (first->prev->next) {
+                first = first->prev;
             }
         }
         first->prev = elem->prev;
