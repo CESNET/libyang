@@ -349,8 +349,7 @@ lyv_data_value(struct lyd_node *node, int options)
 int
 lyv_data_context(const struct lyd_node *node, int options, unsigned int line, struct unres_data *unres)
 {
-    struct lyd_node *iter;
-    struct lys_node *siter = NULL;
+    const struct lys_node *siter = NULL;
 
     assert(node);
 
@@ -379,21 +378,18 @@ lyv_data_context(const struct lyd_node *node, int options, unsigned int line, st
 
     /* check elements order in case of RPC's input and output */
     if (node->validity && lyp_is_rpc(node->schema)) {
-        siter = node->schema->prev;
-        for (iter = node->prev; iter->next; iter = iter->prev) {
-            while (siter->next) {
-                if (siter == iter->schema) {
-                    break;
+        if (node->prev != node) {
+            for (siter = lys_getnext(node->schema, node->schema->parent, node->schema->module, 0);
+                    siter;
+                    siter = lys_getnext(siter, siter->parent, siter->module, 0)) {
+                if (siter == node->prev->schema) {
+                    /* data predecessor has the schema node after
+                     * the schema node of the data node being checked */
+                    LOGVAL(LYE_INORDER, line, LY_VLOG_LYD, node, node->schema->name, siter->name);
+                    return EXIT_FAILURE;
                 }
-                siter = siter->prev;
             }
 
-            if (!siter->next) {
-                /* schema node of the node's predecessors not found in node's schema node predecessors
-                 * so the elements are in wrong order */
-                LOGVAL(LYE_INORDER, line, LY_VLOG_LYD, node, node->schema->name, iter->schema->name);
-                return EXIT_FAILURE;
-            }
         }
     }
 
