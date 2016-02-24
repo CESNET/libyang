@@ -32,6 +32,7 @@
 #include "common.h"
 #include "xpath.h"
 #include "parser.h"
+#include "parser_yang.h"
 #include "xml_internal.h"
 #include "dict_private.h"
 #include "tree_internal.h"
@@ -3705,6 +3706,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
     struct lys_feature **feat_ptr;
     struct lys_node_choice *choic;
     struct lyxml_elem *yin;
+    struct yang_type *yang;
 
     switch (type) {
     case UNRES_IDENT:
@@ -3757,13 +3759,24 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         yin = (struct lyxml_elem *)stype->der;
         stype->der = NULL;
 
-        rc = fill_yin_type(mod, node, yin, stype, unres);
-        if (!rc) {
-            /* we need to always be able to free this, it's safe only in this case */
-            lyxml_free(mod->ctx, yin);
+        if (yin->flags & LY_YANG_STRUCTURE_FLAG) {
+            yang = (struct yang_type *)yin;
+            rc = yang_check_type(mod, node, yang, unres);
+
+            if (rc) {
+                /* may try again later */
+                stype->der = (struct lys_tpdf *)yang;
+            }
+
         } else {
-            /* may try again later, put all back how it was */
-            stype->der = (struct lys_tpdf *)yin;
+            rc = fill_yin_type(mod, node, yin, stype, unres);
+            if (!rc) {
+                /* we need to always be able to free this, it's safe only in this case */
+                lyxml_free(mod->ctx, yin);
+            } else {
+                /* may try again later, put all back how it was */
+                stype->der = (struct lys_tpdf *)yin;
+            }
         }
         break;
     case UNRES_IFFEAT:
@@ -3995,8 +4008,10 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
     /* HACK unlinking is performed here so that we do not do any (NS) copying in vain */
     if (type == UNRES_TYPE_DER) {
         yin = (struct lyxml_elem *)((struct lys_type *)item)->der;
-        lyxml_unlink_elem(mod->ctx, yin, 1);
-        ((struct lys_type *)item)->der = (struct lys_tpdf *)yin;
+        if (!(yin->flags & LY_YANG_STRUCTURE_FLAG)) {
+            lyxml_unlink_elem(mod->ctx, yin, 1);
+            ((struct lys_type *)item)->der = (struct lys_tpdf *)yin;
+        }
     }
 
     unres->count++;
