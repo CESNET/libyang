@@ -332,7 +332,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         }
         /* children are correct now */
 
+        /* unlink manually */
         tmp_xml->parent = NULL;
+        tmp_xml->next = NULL;
+        tmp_xml->prev = tmp_xml;
+
+        /* just to correct namespaces */
         lyxml_unlink_elem(ctx, tmp_xml, 1);
         /* tmp_xml is correct now */
 
