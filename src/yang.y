@@ -161,6 +161,7 @@ int tmp_line;
 %type <i> ordered_by_arg_str
 %type <v> length_arg_str
 %type <v> pattern_arg_str
+%type <v> range_arg_str
 %type <nodes> container_opt_stmt
 %type <nodes> anyxml_opt_stmt
 %type <nodes> choice_opt_stmt
@@ -642,12 +643,14 @@ integer_value_arg_str: integer_value optsep
   |  string_1
   ;
 
-range_stmt: RANGE_KEYWORD sep range_arg_str range_end; 
+range_stmt: RANGE_KEYWORD sep range_arg_str range_end { actual = $3;
+                                                        actual_type = RANGE_KEYWORD;
+                                                      }
 
 
 range_end: ';'
-  |  '{' start_check
-         message_opt_stmt  {free_check();}
+  |  '{' stmtsep
+         message_opt_stmt
       '}'
    ;
 
@@ -1659,23 +1662,15 @@ key_opt: sep node_identifier { if (read_all) {
   | stmtend 
   ;
 
-range_arg_str: range_part1 range_part_opt;
-  |  string_1
-  ;
-
-range_part_opt: %empty 
-  | range_part_opt '|' optsep range_part1 ;
-
-range_part1: range_boundary range_part2;
-
-range_part2: %empty 
-  | DOUBLEDOT optsep range_boundary;
-
-range_boundary: MIN_KEYWORD optsep
-  | MAX_KEYWORD optsep
-  | integer_value optsep
-  | DECIMAL optsep
-  ;
+range_arg_str: string { if (read_all) {
+                          $$ = actual;
+                          if (!(actual = yang_read_range(module, actual, s, yylineno))) {
+                             YYERROR;
+                          }
+                          actual_type = RANGE_KEYWORD;
+                          s = NULL;
+                        }
+                      }
 
 absolute_schema_nodeid: "/" node_identifier { if (read_all) {
                                                 if (s) {

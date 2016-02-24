@@ -186,4 +186,6 @@ int yang_check_type(struct lys_module *module, struct lys_node *parent, struct y
 
 void *yang_read_pattern(struct lys_module *module, struct yang_type *typ, char *value, int line);
 
+void *yang_read_range(struct  lys_module *module, struct yang_type *typ, char *value, int line);
+
 #endif /* LY_PARSER_YANG_H_ */

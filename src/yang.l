@@ -65,7 +65,7 @@
 "position" { return POSITION_KEYWORD; }
 "prefix" { return PREFIX_KEYWORD; }
 "presence" { return PRESENCE_KEYWORD; }
-"range" { BEGIN RANGE; return RANGE_KEYWORD; }
+"range" { return RANGE_KEYWORD; }
 "reference" { return REFERENCE_KEYWORD; }
 "refine" { BEGIN PATH; return REFINE_KEYWORD; }
 "require-instance" { return REQUIRE_INSTANCE_KEYWORD; }

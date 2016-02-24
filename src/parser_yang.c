@@ -229,6 +229,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case PATTERN_KEYWORD:
             ret = yang_check_string(module, &((struct lys_restr *) node)->dsc, "description", "pattern", value, line);
             break;
+        case RANGE_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_restr *) node)->dsc, "description", "range", value, line);
+            break;
         }
     }
     return ret;
@@ -287,6 +290,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case PATTERN_KEYWORD:
             ret = yang_check_string(module, &((struct lys_restr *) node)->ref, "reference", "pattern", value, line);
+            break;
+        case RANGE_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_restr *) node)->ref, "reference", "range", value, line);
             break;
         }
     }
@@ -528,6 +534,9 @@ yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, 
         break;
     case PATTERN_KEYWORD:
         exp = "pattern";
+        break;
+    case RANGE_KEYWORD:
+        exp = "range";
         break;
     }
     if (message==ERROR_APP_TAG_KEYWORD) {
@@ -880,12 +889,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         if (typ->type->base == LY_TYPE_BINARY) {
             if (typ->type->info.str.pat_count) {
                 LOGVAL(LYE_SPEC, typ->line, LY_VLOG_NONE, NULL, "Binary type could not include pattern statement.");
-
-                /* clean patterns */
-                for (i = 0; i < typ->type->info.str.pat_count; ++i) {
-                    lys_restr_free(module->ctx, &(typ->type->info.str.patterns[i]));
-                }
-                free(typ->type->info.str.patterns);
+                typ->type->base = base;
                 goto error;
             }
             typ->type->info.binary.length = typ->type->info.str.length;
@@ -898,7 +902,33 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 LOGVAL(LYE_INARG, typ->line, LY_VLOG_NONE, NULL, typ->type->info.str.length->expr, "length");
                 goto error;
             }
+        } else {
+            LOGVAL(LYE_SPEC, typ->line, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", parent->name);
+            goto error;
         }
+        break;
+    case LY_TYPE_DEC64:
+        if (typ->type->base == LY_TYPE_DEC64) {
+            if (lyp_check_length_range(typ->type->info.dec64.range->expr, typ->type)) {
+                LOGVAL(LYE_INARG, typ->line, LY_VLOG_NONE, NULL, typ->type->info.dec64.range->expr, "range");
+                goto error;
+            }
+        } else if (typ->type->base >= LY_TYPE_INT8 && typ->type->base <=LY_TYPE_UINT64) {
+            if (typ->type->info.dec64.dig) {
+                LOGVAL(LYE_SPEC, typ->line, LY_VLOG_NONE, NULL, "Numerical type could not include fraction statement.");
+                typ->type->base = base;
+                goto error;
+            }
+            typ->type->info.num.range = typ->type->info.dec64.range;
+            if (lyp_check_length_range(typ->type->info.num.range->expr, typ->type)) {
+                LOGVAL(LYE_INARG, typ->line, LY_VLOG_NONE, NULL, typ->type->info.num.range->expr, "range");
+                goto error;
+            }
+        } else {
+            LOGVAL(LYE_SPEC, typ->line, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", parent->name);
+            goto error;
+        }
+        break;
     }
     return EXIT_SUCCESS;
 
@@ -994,4 +1024,29 @@ yang_read_pattern(struct lys_module *module, struct yang_type *typ, char *value,
     typ->type->info.str.patterns[typ->type->info.str.pat_count].expr = lydict_insert_zc(module->ctx, value);
     typ->type->info.str.pat_count++;
     return &typ->type->info.str.patterns[typ->type->info.str.pat_count-1];
+}
+
+void *
+yang_read_range(struct  lys_module *module, struct yang_type *typ, char *value, int line)
+{
+    if (typ->type->base != 0 && typ->type->base != LY_TYPE_DEC64) {
+        LOGVAL(LYE_SPEC, line, LY_VLOG_NONE, NULL, "Unexpected range statement.");
+        goto error;
+    }
+    typ->type->base = LY_TYPE_DEC64;
+    if (typ->type->info.dec64.range) {
+        LOGVAL(LYE_TOOMANY, line, LY_VLOG_NONE, NULL, "range", "type");
+        goto error;
+    }
+    typ->type->info.dec64.range = calloc(1, sizeof *typ->type->info.dec64.range);
+    if (!typ->type->info.dec64.range) {
+        LOGMEM;
+        goto error;
+    }
+    typ->type->info.dec64.range->expr = lydict_insert_zc(module->ctx, value);
+    return typ->type->info.dec64.range;
+
+error:
+    free(value);
+    return NULL;
 }
