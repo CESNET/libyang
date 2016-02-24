@@ -222,6 +222,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case LIST_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_list *) node)->dsc, "description", "list", value, line);
             break;
+        case LENGTH_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_restr *) node)->dsc, "description", "length", value, line);
+            break;
         }
     }
     return ret;
@@ -274,6 +277,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case LIST_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_list *) node)->ref, "reference", "list", value, line);
+            break;
+        case LENGTH_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_restr *) node)->ref, "reference", "length", value, line);
             break;
         }
     }
@@ -509,6 +515,9 @@ yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, 
     switch (type) {
     case MUST_KEYWORD:
         exp = "must";
+        break;
+    case LENGTH_KEYWORD:
+        exp = "length";
         break;
     }
     if (message==ERROR_APP_TAG_KEYWORD) {
@@ -805,4 +814,147 @@ yang_read_unique(struct lys_module *module, struct lys_node_list *list, struct u
 error:
     free(ident);
     return EXIT_FAILURE;
+}
+
+int
+yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, struct unres_schema *unres)
+{
+    int i, rc;
+    int ret = -1;
+    const char *name, *value;
+    LY_DATA_TYPE base;
+
+    value = transform_schema2json(module, typ->name, typ->line);
+    if (!value) {
+        goto error;
+    }
+
+    i = parse_identifier(value);
+    if (i < 1) {
+        LOGVAL(LYE_INCHAR, typ->line, LY_VLOG_NONE, NULL, value[-i], &value[-i]);
+        lydict_remove(module->ctx, value);
+        goto error;
+    }
+    /* module name*/
+    name = value;
+    if (value[i]) {
+        typ->type->module_name = lydict_insert(module->ctx, value, i);
+        name += i;
+        if ((name[0] != ':') || (parse_identifier(name + 1) < 1)) {
+            LOGVAL(LYE_INCHAR, typ->line, LY_VLOG_NONE, NULL, name[0], name);
+            lydict_remove(module->ctx, value);
+            goto error;
+        }
+        ++name;
+    }
+
+    rc = resolve_superior_type(name, typ->type->module_name, module, parent, &typ->type->der);
+    lydict_remove(module->ctx, value);
+    if (rc == -1) {
+        LOGVAL(LYE_INMOD, typ->line, LY_VLOG_NONE, NULL, typ->type->module_name);
+        goto error;
+
+    /* the type could not be resolved or it was resolved to an unresolved typedef*/
+    } else if (rc == EXIT_FAILURE) {
+        ret = EXIT_FAILURE;
+        goto error;
+    }
+    base = typ->type->base;
+    typ->type->base = typ->type->der->type.base;
+    if (base == 0) {
+        /* nothing restriction*/
+        return EXIT_SUCCESS;
+    }
+    switch (base) {
+    case LY_TYPE_STRING:
+        if (typ->type->base == LY_TYPE_BINARY) {
+            if (typ->type->info.str.pat_count) {
+                LOGVAL(LYE_SPEC, typ->line, LY_VLOG_NONE, NULL, "Binary type could not include pattern statement.");
+                goto error;
+            }
+            typ->type->info.binary.length = typ->type->info.str.length;
+            if (lyp_check_length_range(typ->type->info.binary.length->expr, typ->type)) {
+                LOGVAL(LYE_INARG, typ->line, LY_VLOG_NONE, NULL, typ->type->info.binary.length->expr, "length");
+                goto error;
+            }
+        } else if (typ->type->base == LY_TYPE_STRING) {
+            if (lyp_check_length_range(typ->type->info.str.length->expr, typ->type)) {
+                LOGVAL(LYE_INARG, typ->line, LY_VLOG_NONE, NULL, typ->type->info.str.length->expr, "length");
+                goto error;
+            }
+        }
+    }
+    return EXIT_SUCCESS;
+
+error:
+    if (typ->type->module_name) {
+        lydict_remove(module->ctx, typ->type->module_name);
+        typ->type->module_name = NULL;
+    }
+    return ret;
+}
+
+void *
+yang_read_type(void *parent, struct yang_schema *yang, char *value, int type, int line)
+{
+    struct yang_type *typ;
+    struct yang_schema *new, *tmp;
+
+    /* linear list */
+    new = calloc(1, sizeof *new);
+    if (!new) {
+        LOGMEM;
+        return NULL;
+    }
+    tmp = yang;
+    while (tmp->next) {
+        tmp = tmp->next;
+    }
+    tmp->next = new;
+    typ = &new->type;
+
+    typ->flags = LY_YANG_STRUCTURE_FLAG;
+    switch (type) {
+    case LEAF_KEYWORD:
+        ((struct lys_node_leaf *)parent)->type.der = (struct lys_tpdf *)typ;
+        ((struct lys_node_leaf *)parent)->type.parent = (struct lys_tpdf *)parent;
+        typ->type = &((struct lys_node_leaf *)parent)->type;
+        break;
+    }
+    typ->name = value;
+    typ->line = line;
+    typ->parent = parent;
+    return typ;
+}
+
+void *
+yang_read_length(struct lys_module *module, struct yang_type *typ, char *value, int line)
+{
+    struct lys_restr **length;
+
+    if (typ->type->base == 0 || typ->type->base == LY_TYPE_STRING) {
+        length = &typ->type->info.str.length;
+        typ->type->base = LY_TYPE_STRING;
+    } else if (typ->type->base == LY_TYPE_BINARY) {
+        length = &typ->type->info.binary.length;
+    } else {
+        LOGVAL(LYE_SPEC, line, LY_VLOG_NONE, NULL, "Unexpected length statement.");
+        goto error;
+    }
+
+    if (*length) {
+        LOGVAL(LYE_TOOMANY, line, LY_VLOG_NONE, NULL, "length", "type");
+    }
+    *length = calloc(1, sizeof **length);
+    if (!*length) {
+        LOGMEM;
+        goto error;
+    }
+    (*length)->expr = lydict_insert_zc(module->ctx, value);
+    return *length;
+
+error:
+    free(value);
+    return NULL;
+
 }

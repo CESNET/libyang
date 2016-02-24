@@ -38,6 +38,7 @@
 #define LYS_MIN_ELEMENTS 0x01
 #define LYS_MAX_ELEMENTS 0x02
 #define LYS_DATADEF 0x04
+#define LYS_TYPE_DEF 0x08
 
 struct lys_node_array{
     uint8_t if_features;
@@ -80,9 +81,27 @@ struct type_list {
     int line;
 };
 
+struct type_leaf {
+    struct lys_node_leaf *ptr_leaf;
+    uint8_t flag;
+};
+
 struct type_ident {
     int line;
     char s[0];
+};
+
+struct yang_type {
+    char flags;       /**< this is used to distinguish lyxml_elem * from a YANG temporary parsing structure */
+    char *name;
+    void *parent;
+    struct lys_type *type;
+    int line;
+};
+
+struct yang_schema {
+    struct yang_type type;
+    struct yang_schema *next;
 };
 
 int yang_read_common(struct lys_module *module,char *value, int type, int line);
@@ -158,5 +177,11 @@ int yang_read_units(struct lys_module *module, void *node, char *value, int type
 int yang_read_key(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres, int line);
 
 int yang_read_unique(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres);
+
+void *yang_read_type(void *parent, struct yang_schema *yang, char *value, int type, int line);
+
+void *yang_read_length(struct lys_module *module, struct yang_type *typ, char *value, int line);
+
+int yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, struct unres_schema *unres);
 
 #endif /* LY_PARSER_YANG_H_ */

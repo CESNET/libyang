@@ -48,7 +48,7 @@
 "key" { return KEY_KEYWORD; }
 "leaf" { return LEAF_KEYWORD; }
 "leaf-list" { return LEAF_LIST_KEYWORD; }
-"length" {BEGIN RANGE; return LENGTH_KEYWORD; }
+"length" { return LENGTH_KEYWORD; }
 "list" { return LIST_KEYWORD; }
 "mandatory" { return MANDATORY_KEYWORD; }
 "max-elements" { return MAX_ELEMENTS_KEYWORD; }

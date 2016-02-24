@@ -14,7 +14,7 @@ struct Scheck {
 };
 extern int yylineno;
 extern int yyleng;
-void yyerror(struct lys_module *module, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all, char *str, ...);   //parameter is in directive parse-param
+void yyerror(struct lys_module *module, struct unres_schema *unres, struct yang_schema *yang, struct lys_array_size *size_arrays, int read_all, char *str, ...);   //parameter is in directive parse-param
 void yychecked(int value);
 int yylex(void);
 void free_check();
@@ -26,12 +26,13 @@ int actual_type;
 int tmp_line;
 %}
 
-%parse-param {struct lys_module *module} {struct unres_schema *unres} {struct lys_array_size *size_arrays} {int read_all}
+%parse-param {struct lys_module *module} {struct unres_schema *unres} {struct yang_schema *yang} {struct lys_array_size *size_arrays} {int read_all}
 
 %union {
   int i;
   uint32_t uint;
   char *str;
+  void *v;
   union {
     uint32_t index;
     struct lys_node_container *container;
@@ -39,7 +40,7 @@ int tmp_line;
     struct type_choice choice;
     struct lys_node_case *cs;
     struct lys_node_grp *grouping;
-    struct lys_node_leaf *leaf;
+    struct type_leaf leaf;
     struct type_leaflist leaflist;
     struct type_list list;
   } nodes;
@@ -157,6 +158,7 @@ int tmp_line;
 %type <i> mandatory_arg_str
 %type <i> ordered_by_stmt
 %type <i> ordered_by_arg_str
+%type <v> length_arg_str
 %type <nodes> container_opt_stmt
 %type <nodes> anyxml_opt_stmt
 %type <nodes> choice_opt_stmt
@@ -222,7 +224,7 @@ module_header_stmts: %empty  { $$ = 0; }
 
 submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str
                 '{' start_check
-                    submodule_header_stmts  {  if((checked->check&2)==0) { yyerror(module,unres,size_arrays,read_all,"Belong statement missing."); YYERROR; }
+                    submodule_header_stmts  {  if((checked->check&2)==0) { yyerror(module,unres,yang,size_arrays,read_all,"Belong statement missing."); YYERROR; }
                                                checked->check=0;}
                     linkage_stmts
                     meta_stmts         {free_check();}
@@ -483,11 +485,16 @@ base_stmt: BASE_KEYWORD sep identifier_ref_arg_str stmtend;
 
 typedef_stmt: TYPEDEF_KEYWORD sep identifier_arg_str 
               '{' start_check
-                  type_opt_stmt { if ((checked->check&1)==0) { yyerror(module,unres,size_arrays,read_all,"type statement missing."); YYERROR; }
+                  type_opt_stmt { if ((checked->check&1)==0) { yyerror(module,unres,yang,size_arrays,read_all,"type statement missing."); YYERROR; }
                                   free_check(); } 
                '}' ;
   
-type_stmt: TYPE_KEYWORD sep identifier_ref_arg_str type_end stmtsep;
+type_stmt: TYPE_KEYWORD sep identifier_ref_arg_str { if (read_all && !(actual = yang_read_type(actual,yang,s,actual_type,yylineno))) {
+                                                       YYERROR;
+                                                     }
+                                                     s = NULL;
+                                                   }
+           type_end stmtsep;
 
 type_opt_stmt: %empty
   |  type_opt_stmt yychecked_1 type_stmt 
@@ -505,9 +512,9 @@ type_end: ';'
   ;
 
 
-type_body_stmts: string_restrictions /* may be finished is OK, but it doesn't test*/
+type_body_stmts: decimal_string_restrictions /* may be finished is OK, but it doesn't test*/
   //| numerical_restrictions
-  | decimal64_specification  /*it shuold be semantic control for numerical_restrictions*/
+  //| decimal /*it shuold be semantic control for numerical_restrictions*/
   | enum_specification 
   | path_stmt  /*leafref_specification */
   | base_stmt  /*identityref_specification */
@@ -517,21 +524,21 @@ type_body_stmts: string_restrictions /* may be finished is OK, but it doesn't te
   ;
 
 
-string_restrictions: %empty  /*string_restrictions and binary_specification  //ambiguity grammar maybe*/
-  |  string_restrictions yychecked_1 length_stmt
-  |  string_restrictions pattern_stmt
+decimal_string_restrictions: %empty  /*string_restrictions and binary_specification  //ambiguity grammar maybe*/
+  |  decimal_string_restrictions length_stmt
+  |  decimal_string_restrictions pattern_stmt
+  |  decimal_string_restrictions fraction_digits_stmt
+  |  decimal_string_restrictions range_stmt stmtsep
   ;
 
 //numerical_restrictions: range_stmt stmtsep 
 
-decimal64_specification: fraction_digits_stmt range_stmt_opt;
-  |  range_stmt stmtsep fraction_digits_stmt_opt
+//decimal: decimal64_specification
 
-fraction_digits_stmt_opt: %empty 
-  |  fraction_digits_stmt ; 
-
-range_stmt_opt: %empty 
-  |  range_stmt stmtsep;
+/*decimal64_specification: %empty
+  |  fraction_digits_stmt
+  |  decimal64_specification range_stmt stmtsep
+*/
 
 fraction_digits_stmt: FRACTION_DIGITS_KEYWORD sep fraction_digits_arg_str stmtend;
 
@@ -539,11 +546,22 @@ fraction_digits_arg_str: FRACTION_DIGITS optsep
   | string_1
   ;
 
-length_stmt: LENGTH_KEYWORD sep length_arg_str length_end stmtsep;
+length_stmt: LENGTH_KEYWORD sep length_arg_str length_end stmtsep { actual = $3;
+                                                                    actual_type = TYPE_KEYWORD;
+                                                                  }
+
+length_arg_str: string { if (read_all) {
+                           $$ = actual;
+                           if (!(actual = yang_read_length(module, actual, s, yylineno))) {
+                             YYERROR;
+                           }
+                           actual_type = LENGTH_KEYWORD;
+                         }
+                       }
 
 length_end: ';' 
-  |  '{' start_check
-         message_opt_stmt  {free_check();}        
+  |  '{' stmtsep
+         message_opt_stmt
       '}'
   ;    
 
@@ -764,57 +782,81 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                                    }
                                                  }
                                                }
-           '{' start_check
-               leaf_opt_stmt  { if ((checked->check&2)==0) { yyerror(module,unres,size_arrays,read_all,"type statement missingo."); YYERROR; }
-                                if (read_all && $7.leaf->dflt) {
-                                  if (unres_schema_add_str(module, unres, &$7.leaf->type, UNRES_TYPE_DFLT, $7.leaf->dflt, tmp_line) == -1) {
+           '{' stmtsep
+               leaf_opt_stmt  { if (read_all && !($7.leaf.flag & LYS_TYPE_DEF)) {
+                                  LOGVAL(LYE_SPEC, yylineno, LY_VLOG_LYS, $7.leaf.ptr_leaf, "type statement missing.");
+                                  YYERROR;
+                                }
+                                if (read_all && $7.leaf.ptr_leaf->dflt) {
+                                  if (unres_schema_add_str(module, unres, &$7.leaf.ptr_leaf->type, UNRES_TYPE_DFLT, $7.leaf.ptr_leaf->dflt, tmp_line) == -1) {
                                     YYERROR;
                                   }
                                 }
-                                free_check();
                               }
            '}' ;
 
 leaf_opt_stmt: %empty { if (read_all) {
-                          $$.leaf = actual;
+                          $$.leaf.ptr_leaf = actual;
+                          $$.leaf.flag = 0;
                           actual_type = LEAF_KEYWORD;
-                          $$.leaf->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.leaf->features);
-                          $$.leaf->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.leaf->must);
-                          if (!$$.leaf->features || !$$.leaf->must) {
-                            LOGMEM;
-                            YYERROR;
+                          if (size_arrays->node[size_arrays->next].if_features) {
+                            $$.leaf.ptr_leaf->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.leaf.ptr_leaf->features);
+                            if (!$$.leaf.ptr_leaf->features) {
+                              LOGMEM;
+                              YYERROR;
+                            }
+                          }
+                          if (size_arrays->node[size_arrays->next].must) {
+                            $$.leaf.ptr_leaf->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.leaf.ptr_leaf->must);
+                            if (!$$.leaf.ptr_leaf->must) {
+                              LOGMEM;
+                              YYERROR;
+                            }
                           }
                           size_arrays->next++;
                         } else {
                           $$.index = size_arrays->size-1;
                         }
                       }
-  |  leaf_opt_stmt when_stmt { actual = $1.leaf; actual_type = LEAF_KEYWORD; }
+  |  leaf_opt_stmt when_stmt { actual = $1.leaf.ptr_leaf; actual_type = LEAF_KEYWORD; }
   |  leaf_opt_stmt if_feature_stmt { if (read_all) {
-                                       if (yang_read_if_feature(module,$1.leaf,s,unres,LEAF_KEYWORD,yylineno)) {YYERROR;}
+                                       if (yang_read_if_feature(module,$1.leaf.ptr_leaf,s,unres,LEAF_KEYWORD,yylineno)) {YYERROR;}
                                        s=NULL;
                                      } else {
                                        size_arrays->node[$1.index].if_features++;
                                      }
                                    }
-  |  leaf_opt_stmt yychecked_2 type_stmt // not implement
-  |  leaf_opt_stmt units_stmt { if (read_all && yang_read_units(module,$1.leaf,s,LEAF_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  leaf_opt_stmt { if (read_all && ($1.leaf.flag & LYS_TYPE_DEF)) {
+                       LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_LYS, $1.leaf.ptr_leaf, "type", "leaf");
+                       YYERROR;
+                     }
+                   }
+     type_stmt { if (read_all && unres_schema_add_node(module, unres, &$1.leaf.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *) $1.leaf.ptr_leaf, yylineno)) {
+                   $1.leaf.ptr_leaf->type.der = NULL;
+                   YYERROR;
+                 }
+                 actual = $1.leaf.ptr_leaf;
+                 actual_type = LEAF_KEYWORD;
+                 $1.leaf.flag |= LYS_TYPE_DEF;
+                 $$ = $1;
+               }
+  |  leaf_opt_stmt units_stmt { if (read_all && yang_read_units(module,$1.leaf.ptr_leaf,s,LEAF_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   |  leaf_opt_stmt must_stmt { if (read_all) {
-                                 actual = $1.leaf;
+                                 actual = $1.leaf.ptr_leaf;
                                  actual_type = LEAF_KEYWORD;
                                } else {
                                  size_arrays->node[$1.index].must++;
                                }
                              }
-  |  leaf_opt_stmt default_stmt { if (read_all && yang_read_default(module,$1.leaf,s,LEAF_KEYWORD,yylineno)) {YYERROR;}
+  |  leaf_opt_stmt default_stmt { if (read_all && yang_read_default(module,$1.leaf.ptr_leaf,s,LEAF_KEYWORD,yylineno)) {YYERROR;}
                                   s = NULL;
                                   tmp_line = yylineno;
                                 }
-  |  leaf_opt_stmt config_stmt { if (read_all && yang_read_config($1.leaf,$2,LEAF_KEYWORD,yylineno)) {YYERROR;} }
-  |  leaf_opt_stmt mandatory_stmt { if (read_all && yang_read_mandatory($1.leaf,$2,LEAF_KEYWORD,yylineno)) {YYERROR;} }
-  |  leaf_opt_stmt status_stmt { if (read_all && yang_read_status($1.leaf,$2,LEAF_KEYWORD,yylineno)) {YYERROR;} }
-  |  leaf_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.leaf,s,LEAF_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
-  |  leaf_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.leaf,s,LEAF_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  leaf_opt_stmt config_stmt { if (read_all && yang_read_config($1.leaf.ptr_leaf,$2,LEAF_KEYWORD,yylineno)) {YYERROR;} }
+  |  leaf_opt_stmt mandatory_stmt { if (read_all && yang_read_mandatory($1.leaf.ptr_leaf,$2,LEAF_KEYWORD,yylineno)) {YYERROR;} }
+  |  leaf_opt_stmt status_stmt { if (read_all && yang_read_status($1.leaf.ptr_leaf,$2,LEAF_KEYWORD,yylineno)) {YYERROR;} }
+  |  leaf_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.leaf.ptr_leaf,s,LEAF_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  leaf_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.leaf.ptr_leaf,s,LEAF_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   ;
 
 leaf_list_stmt: LEAF_LIST_KEYWORD sep identifier_arg_str { if (read_all) {
@@ -828,7 +870,7 @@ leaf_list_stmt: LEAF_LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                                            }
                                                          }
                 '{' start_check
-                    leaf_list_opt_stmt { if ((checked->check&2)==0) { yyerror(module,unres,size_arrays,read_all,"type statement missing."); YYERROR; }
+                    leaf_list_opt_stmt { if ((checked->check&2)==0) { yyerror(module,unres,yang,size_arrays,read_all,"type statement missing."); YYERROR; }
                                          free_check();
                                          if (read_all) {
                                            if ($7.leaflist.ptr_leaflist->flags & LYS_CONFIG_R) {
@@ -1318,7 +1360,7 @@ refine_stmt2: mandatory_stmt
 
 uses_augment_stmt: AUGMENT_KEYWORD sep uses_augment_arg_str 
                    '{' start_check
-                       augment_opt_stmt { if ((checked->check&1024)==0) { yyerror(module,unres,size_arrays,read_all,"data-def or case statement missing."); YYERROR; }
+                       augment_opt_stmt { if ((checked->check&1024)==0) { yyerror(module,unres,yang,size_arrays,read_all,"data-def or case statement missing."); YYERROR; }
                                      free_check(); }
                    '}' ;
 
@@ -1332,7 +1374,7 @@ uses_augment_arg_str: descendant_schema_nodeid optsep
 
 augment_stmt: AUGMENT_KEYWORD sep augment_arg_str 
               '{' start_check
-                  augment_opt_stmt { if ((checked->check&1024)==0) { yyerror(module,unres,size_arrays,read_all,"data-def or case statement missing."); YYERROR; }
+                  augment_opt_stmt { if ((checked->check&1024)==0) { yyerror(module,unres,yang,size_arrays,read_all,"data-def or case statement missing."); YYERROR; }
                                      free_check(); }
                '}' ;
 
@@ -1368,7 +1410,7 @@ rpc_opt_stmt: %empty
 
 input_stmt: INPUT_KEYWORD optsep
             '{' start_check
-                input_output_opt_stmt  { if ((checked->check&1024)==0) { yyerror(module,unres,size_arrays,read_all,"data-def or case statement missing."); YYERROR; }
+                input_output_opt_stmt  { if ((checked->check&1024)==0) { yyerror(module,unres,yang,size_arrays,read_all,"data-def or case statement missing."); YYERROR; }
                                          free_check(); }
             '}' stmtsep;
 
@@ -1379,7 +1421,7 @@ input_output_opt_stmt: %empty
 
 output_stmt: OUTPUT_KEYWORD optsep
                      '{' start_check
-                         input_output_opt_stmt  { if ((checked->check&1024)==0) { yyerror(module,unres,size_arrays,read_all,"data-def or case statement missing."); YYERROR; }
+                         input_output_opt_stmt  { if ((checked->check&1024)==0) { yyerror(module,unres,yang,size_arrays,read_all,"data-def or case statement missing."); YYERROR; }
                                                   free_check(); }
                      '}' stmtsep;
 
@@ -1401,7 +1443,7 @@ notification_opt_stmt: %empty
 
 deviation_stmt: DEVIATION_KEYWORD sep deviation_arg_str 
                 '{' start_check
-                    deviation_opt_stmt  {  if ((checked->check&4)==0) { yyerror(module,unres,size_arrays,read_all,"type statement missingo."); YYERROR; }
+                    deviation_opt_stmt  {  if ((checked->check&4)==0) { yyerror(module,unres,yang,size_arrays,read_all,"type statement missingo."); YYERROR; }
                                            free_check(); }
                 '}' ;
 
@@ -1600,23 +1642,6 @@ range_boundary: MIN_KEYWORD optsep
   | DECIMAL optsep
   ;
 
-length_arg_str: length_part1 length_part_opt;
-  |  string_1
-  ;
-
-length_part_opt: %empty 
-  | length_part_opt '|' optsep length_part1;
-
-length_part1: length_boundary length_part2;
-
-length_part2: %empty 
-  |  DOUBLEDOT optsep length_boundary;
-
-length_boundary: MIN_KEYWORD optsep
-  |  MAX_KEYWORD optsep
-  |  non_negative_integer_value optsep
-  ;
-
 absolute_schema_nodeid: "/" node_identifier { if (read_all) {
                                                 if (s) {
                                                   s = ly_realloc(s,strlen(s) + yyleng + 2);
@@ -1783,8 +1808,24 @@ whitespace_opt: %empty
   ;
 
 
-string: STRINGS optsep
-  | REVISION_DATE optsep
+string: STRINGS { if (read_all){
+                    s = strdup(yytext);
+                    if (!s) {
+                      LOGMEM;
+                      YYERROR;
+                    }
+                  }
+                }
+        optsep
+  | REVISION_DATE { if (read_all){
+                    s = strdup(yytext);
+                    if (!s) {
+                      LOGMEM;
+                      YYERROR;
+                    }
+                  }
+                }
+    optsep
   | identifiers optsep
   | string_1
   ;
@@ -1872,14 +1913,14 @@ identifier: IDENTIFIER
   ;
 
 yychecked: %empty {checked->check|=1024;}
-yychecked_1: %empty { if ((checked->check&1)==0) checked->check|=1; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
-yychecked_2: %empty { if ((checked->check&2)==0) checked->check|=2; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
-yychecked_3: %empty { if ((checked->check&4)==0) checked->check|=4; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
-yychecked_4: %empty { if ((checked->check&8)==0) checked->check|=8; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
-yychecked_5: %empty { if ((checked->check&16)==0) checked->check|=16; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
-yychecked_6: %empty { if ((checked->check&32)==0) checked->check|=32; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
-yychecked_7: %empty { if ((checked->check&64)==0) checked->check|=64; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
-yychecked_8: %empty { if ((checked->check&128)==0) checked->check|=128; else { yyerror(module,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
+yychecked_1: %empty { if ((checked->check&1)==0) checked->check|=1; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
+yychecked_2: %empty { if ((checked->check&2)==0) checked->check|=2; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
+yychecked_3: %empty { if ((checked->check&4)==0) checked->check|=4; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
+yychecked_4: %empty { if ((checked->check&8)==0) checked->check|=8; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
+yychecked_5: %empty { if ((checked->check&16)==0) checked->check|=16; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
+yychecked_6: %empty { if ((checked->check&32)==0) checked->check|=32; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
+yychecked_7: %empty { if ((checked->check&64)==0) checked->check|=64; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
+yychecked_8: %empty { if ((checked->check&128)==0) checked->check|=128; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
 
 identifiers: identifier { if (read_all) {
                             s = strdup(yytext);
@@ -1901,7 +1942,7 @@ identifiers_ref: IDENTIFIERPREFIX { if (read_all) {
 
 %%
 
-void yyerror(struct lys_module *module, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all, char *str, ...){
+void yyerror(struct lys_module *module, struct unres_schema *unres, struct yang_schema *yang, struct lys_array_size *size_arrays, int read_all, char *str, ...){
   va_list ap;
   va_start(ap,str);
 
