@@ -371,7 +371,7 @@ lyv_data_context(const struct lyd_node *node, int options, unsigned int line, st
 
     /* check elements order in case of RPC's input and output */
     if (node->validity && lyp_is_rpc(node->schema)) {
-        if (node->prev != node) {
+        if ((node->prev != node) && node->prev->next) {
             for (siter = lys_getnext(node->schema, node->schema->parent, node->schema->module, 0);
                     siter;
                     siter = lys_getnext(siter, siter->parent, siter->module, 0)) {
