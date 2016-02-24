@@ -148,6 +148,7 @@ int tmp_line;
 %type <uint> max_elements_stmt
 %type <uint> min_value_arg_str
 %type <uint> min_elements_stmt
+%type <uint> decimal_string_restrictions
 %type <i> module_header_stmts
 %type <str> tmp_identifier_arg_str
 %type <i> status_stmt
@@ -159,6 +160,7 @@ int tmp_line;
 %type <i> ordered_by_stmt
 %type <i> ordered_by_arg_str
 %type <v> length_arg_str
+%type <v> pattern_arg_str
 %type <nodes> container_opt_stmt
 %type <nodes> anyxml_opt_stmt
 %type <nodes> choice_opt_stmt
@@ -190,7 +192,7 @@ optsep string_2
 
 string_2: %empty
   |  string_2 '+' optsep 
-     STRING { if (! read_all){
+     STRING { if (read_all){
                 s = realloc(s,yyleng+strlen(s)+1);
                 if (s) {
                   strcat(s,yytext);
@@ -506,8 +508,8 @@ type_opt_stmt: %empty
   ;
 
 type_end: ';' 
-  |  '{' start_check
-         type_body_stmts /*maybe OK*/  { free_check(); }
+  |  '{' stmtsep
+         type_body_stmts
       '}'
   ;
 
@@ -524,9 +526,29 @@ type_body_stmts: decimal_string_restrictions /* may be finished is OK, but it do
   ;
 
 
-decimal_string_restrictions: %empty  /*string_restrictions and binary_specification  //ambiguity grammar maybe*/
+decimal_string_restrictions: %empty  { if (read_all) {
+                                         if ( size_arrays->node[size_arrays->next].refine) {
+                                           ((struct yang_type *)actual)->type->info.str.patterns = calloc(size_arrays->node[size_arrays->next].refine, sizeof(struct lys_restr));
+                                           if (!((struct yang_type *)actual)->type->info.str.patterns) {
+                                             LOGMEM;
+                                             YYERROR;
+                                           }
+                                           ((struct yang_type *)actual)->type->base = LY_TYPE_STRING;
+                                           size_arrays->next++;
+                                         }
+                                       } else {
+                                         if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                           LOGMEM;
+                                           YYERROR;
+                                         }
+                                         $$ = size_arrays->size-1;
+                                       }
+                                     }
   |  decimal_string_restrictions length_stmt
-  |  decimal_string_restrictions pattern_stmt
+  |  decimal_string_restrictions pattern_stmt { if (!read_all) {
+                                                  size_arrays->node[$1].refine++; /* count of pattern*/
+                                                }
+                                              }
   |  decimal_string_restrictions fraction_digits_stmt
   |  decimal_string_restrictions range_stmt stmtsep
   ;
@@ -556,6 +578,7 @@ length_arg_str: string { if (read_all) {
                              YYERROR;
                            }
                            actual_type = LENGTH_KEYWORD;
+                           s = NULL;
                          }
                        }
 
@@ -572,11 +595,23 @@ message_opt_stmt: %empty
   |  message_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,actual,s,actual_type,yylineno)) {YYERROR;} s = NULL; }
   ;
 
-pattern_stmt: PATTERN_KEYWORD sep string pattern_end stmtsep;
+pattern_stmt: PATTERN_KEYWORD sep pattern_arg_str pattern_end stmtsep { actual = $3;
+                                                                        actual_type = TYPE_KEYWORD;
+                                                                      }
+
+pattern_arg_str: string { if (read_all) {
+                            $$ = actual;
+                            if (!(actual = yang_read_pattern(module, actual, s, yylineno))) {
+                              YYERROR;
+                            }
+                            actual_type = PATTERN_KEYWORD;
+                            s = NULL;
+                          }
+                        }
 
 pattern_end: ';'
-  |  '{' start_check
-         message_opt_stmt  {free_check();}
+  |  '{' stmtsep
+         message_opt_stmt
      '}'
   ;  
 

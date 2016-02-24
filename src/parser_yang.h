@@ -184,4 +184,6 @@ void *yang_read_length(struct lys_module *module, struct yang_type *typ, char *v
 
 int yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, struct unres_schema *unres);
 
+void *yang_read_pattern(struct lys_module *module, struct yang_type *typ, char *value, int line);
+
 #endif /* LY_PARSER_YANG_H_ */

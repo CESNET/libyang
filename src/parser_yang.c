@@ -20,6 +20,7 @@
  */
 
 #include <ctype.h>
+#include <pcre.h>
 #include "parser_yang.h"
 #include "parser_yang_bis.h"
 #include "parser.h"
@@ -225,6 +226,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case LENGTH_KEYWORD:
             ret = yang_check_string(module, &((struct lys_restr *) node)->dsc, "description", "length", value, line);
             break;
+        case PATTERN_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_restr *) node)->dsc, "description", "pattern", value, line);
+            break;
         }
     }
     return ret;
@@ -280,6 +284,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case LENGTH_KEYWORD:
             ret = yang_check_string(module, &((struct lys_restr *) node)->ref, "reference", "length", value, line);
+            break;
+        case PATTERN_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_restr *) node)->ref, "reference", "pattern", value, line);
             break;
         }
     }
@@ -518,6 +525,9 @@ yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, 
         break;
     case LENGTH_KEYWORD:
         exp = "length";
+        break;
+    case PATTERN_KEYWORD:
+        exp = "pattern";
         break;
     }
     if (message==ERROR_APP_TAG_KEYWORD) {
@@ -870,6 +880,12 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         if (typ->type->base == LY_TYPE_BINARY) {
             if (typ->type->info.str.pat_count) {
                 LOGVAL(LYE_SPEC, typ->line, LY_VLOG_NONE, NULL, "Binary type could not include pattern statement.");
+
+                /* clean patterns */
+                for (i = 0; i < typ->type->info.str.pat_count; ++i) {
+                    lys_restr_free(module->ctx, &(typ->type->info.str.patterns[i]));
+                }
+                free(typ->type->info.str.patterns);
                 goto error;
             }
             typ->type->info.binary.length = typ->type->info.str.length;
@@ -957,4 +973,25 @@ error:
     free(value);
     return NULL;
 
+}
+
+void *
+yang_read_pattern(struct lys_module *module, struct yang_type *typ, char *value, int line)
+{
+    pcre *precomp;
+    int err_offset;
+    const char *err_ptr;
+
+    /* check that the regex is valid */
+    precomp = pcre_compile(value, PCRE_NO_AUTO_CAPTURE, &err_ptr, &err_offset, NULL);
+    if (!precomp) {
+        LOGVAL(LYE_INREGEX, line, LY_VLOG_NONE, NULL, value, err_ptr);
+        free(value);
+        return NULL;
+    }
+    free(precomp);
+
+    typ->type->info.str.patterns[typ->type->info.str.pat_count].expr = lydict_insert_zc(module->ctx, value);
+    typ->type->info.str.pat_count++;
+    return &typ->type->info.str.patterns[typ->type->info.str.pat_count-1];
 }
