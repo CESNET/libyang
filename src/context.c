@@ -445,8 +445,10 @@ ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod)
                 LOGMEM;
                 return EXIT_FAILURE;
             } else if (!lyd_new_leaf(cont, NULL, "schema", str)) {
+                free(str);
                 return EXIT_FAILURE;
             }
+            free(str);
         }
     }
 
@@ -495,9 +497,11 @@ ly_ctx_info(struct ly_ctx *ctx)
                 lyd_free(root);
                 return NULL;
             } else if (!lyd_new_leaf(cont, NULL, "schema", str)) {
+                free(str);
                 lyd_free(root);
                 return NULL;
             }
+            free(str);
         }
         if (!lyd_new_leaf(cont, NULL, "namespace", ctx->models.list[i]->ns)) {
             lyd_free(root);
