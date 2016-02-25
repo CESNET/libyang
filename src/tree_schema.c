@@ -1050,9 +1050,9 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
     ret = lys_parse_fd(ctx, fd, format);
     close(fd);
 
-    if (ret && !ret->uri) {
+    if (ret && !ret->filepath) {
         /* store URI */
-        ((struct lys_module *)ret)->uri = lydict_insert(ctx, path, 0);
+        ((struct lys_module *)ret)->filepath = lydict_insert(ctx, path, 0);
     }
 
     return ret;
@@ -1089,12 +1089,12 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     module = lys_parse_mem(ctx, addr, format);
     munmap(addr, sb.st_size);
 
-    if (module && !module->uri) {
+    if (module && !module->filepath) {
         /* get URI if there is /proc */
         addr = NULL;
         asprintf(&addr, "/proc/self/fd/%d", fd);
         if ((len = readlink(addr, buf, PATH_MAX - 1)) > 0) {
-            ((struct lys_module *)module)->uri = lydict_insert(ctx, buf, len);
+            ((struct lys_module *)module)->filepath = lydict_insert(ctx, buf, len);
         }
         free(addr);
     }
@@ -2005,7 +2005,7 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
     lydict_remove(ctx, module->ref);
     lydict_remove(ctx, module->org);
     lydict_remove(ctx, module->contact);
-    lydict_remove(ctx, module->uri);
+    lydict_remove(ctx, module->filepath);
 
     /* revisions */
     for (i = 0; i < module->rev_size; i++) {

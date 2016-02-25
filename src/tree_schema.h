@@ -238,7 +238,7 @@ struct lys_module {
     const char *ref;                 /**< cross-reference for the module */
     const char *org;                 /**< party/company responsible for the module */
     const char *contact;             /**< contact information for the module */
-    const char *uri;                 /**< source of this module in URI format (can be NULL) */
+    const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
     uint8_t type:1;                  /**< 0 - structure type used to distinguish structure from ::lys_submodule */
     uint8_t version:5;               /**< yang-version:
                                           - 0 = not specified, YANG 1.0 as default,
@@ -288,9 +288,9 @@ struct lys_submodule {
     const char *ref;                 /**< cross-reference for the submodule */
     const char *org;                 /**< party responsible for the submodule */
     const char *contact;             /**< contact information for the submodule */
-    const char *uri;                 /**< origin URI of the submodule */
+    const char *filepath;            /**< path to the file from which the submodule was read */
     uint8_t type:1;                  /**< 1 - structure type used to distinguish structure from ::lys_module */
-    uint8_t padding:7;                /**< not used, kept for compatibility with ::lys_module */
+    uint8_t padding:7;               /**< not used, kept for compatibility with ::lys_module */
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in #rev array */

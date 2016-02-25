@@ -738,7 +738,7 @@ info_print_module(struct lyout *out, const struct lys_module *module)
     ly_print(out, "%-*s%s\n", INDENT_LEN, "YANG ver: ", (module->version == 2 ? "1.1" : "1.0"));
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Deviated: ", (module->deviated ? "yes" : "no"));
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Implement: ", (module->implemented ? "yes" : "no"));
-    info_print_text(out, module->uri, "URI: ");
+    info_print_text(out, module->filepath, "URI: file://");
 
     info_print_revision(out, module->rev, module->rev_size);
     info_print_include(out, module);
@@ -768,7 +768,7 @@ info_print_submodule(struct lyout *out, const struct lys_submodule *module)
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Deviated: ", (module->belongsto->deviated ? "yes" : "no"));
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Implement: ", (module->belongsto->implemented ? "yes" : "no"));
 
-    info_print_text(out, module->uri, "URI: ");
+    info_print_text(out, module->filepath, "URI: file://");
 
     info_print_revision(out, module->rev, module->rev_size);
     info_print_include(out, (struct lys_module *)module);

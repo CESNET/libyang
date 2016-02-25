@@ -191,12 +191,12 @@ opendir_search:
             goto cleanup;
         }
 
-        if (asprintf(&model_path, "file://%s/%s", wd, file->d_name) == -1) {
+        if (asprintf(&model_path, "%s/%s", wd, file->d_name) == -1) {
             LOGMEM;
             result = NULL;
             goto cleanup;
         }
-        result->uri = lydict_insert(ctx, model_path, 0);
+        result->filepath = lydict_insert(ctx, model_path, 0);
         free(model_path);
         /* success */
         goto cleanup;

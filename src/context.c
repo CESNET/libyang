@@ -420,6 +420,7 @@ static int
 ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod)
 {
     int i;
+    char *str;
     struct lyd_node *cont, *item;
 
     if (cur_mod->inc_size) {
@@ -439,9 +440,13 @@ ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod)
                           cur_mod->inc[i].submodule->rev[0].date : ""))) {
             return EXIT_FAILURE;
         }
-        if (cur_mod->inc[i].submodule->uri
-                && !lyd_new_leaf(item, NULL, "schema", cur_mod->inc[i].submodule->uri)) {
-            return EXIT_FAILURE;
+        if (cur_mod->inc[i].submodule->filepath) {
+            if (asprintf(&str, "file://%s", cur_mod->inc[i].submodule->filepath) < 0) {
+                LOGMEM;
+                return EXIT_FAILURE;
+            } else if (!lyd_new_leaf(cont, NULL, "schema", str)) {
+                return EXIT_FAILURE;
+            }
         }
     }
 
@@ -453,6 +458,7 @@ ly_ctx_info(struct ly_ctx *ctx)
 {
     int i;
     char id[8];
+    char *str;
     const struct lys_module *mod;
     struct lyd_node *root, *cont;
 
@@ -483,10 +489,15 @@ ly_ctx_info(struct ly_ctx *ctx)
             lyd_free(root);
             return NULL;
         }
-        if (ctx->models.list[i]->uri
-                && !lyd_new_leaf(cont, NULL, "schema", ctx->models.list[i]->uri)) {
-            lyd_free(root);
-            return NULL;
+        if (ctx->models.list[i]->filepath) {
+            if (asprintf(&str, "file://%s", ctx->models.list[i]->filepath) < 0) {
+                LOGMEM;
+                lyd_free(root);
+                return NULL;
+            } else if (!lyd_new_leaf(cont, NULL, "schema", str)) {
+                lyd_free(root);
+                return NULL;
+            }
         }
         if (!lyd_new_leaf(cont, NULL, "namespace", ctx->models.list[i]->ns)) {
             lyd_free(root);
