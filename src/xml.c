@@ -1269,7 +1269,7 @@ lyxml_parse_path(struct ly_ctx *ctx, const char *filename, int options)
         goto error;
     }
     if (!S_ISREG(sb.st_mode)) {
-        LOGERR(LY_EINVAL, "File \"%s\" not a file.\n", filename);
+        LOGERR(LY_EINVAL, "%s: Invalid parameter, input file is not a regular file", __func__);
         goto error;
     }
     addr = mmap(NULL, sb.st_size + 1, PROT_READ, MAP_PRIVATE, fd, 0);

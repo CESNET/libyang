@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -1057,6 +1058,8 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     const struct lys_module *module;
     struct stat sb;
     char *addr;
+    char buf[PATH_MAX];
+    int len;
 
     if (!ctx || fd < 0) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -1067,6 +1070,11 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
         LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
         return NULL;
     }
+    if (!S_ISREG(sb.st_mode)) {
+        LOGERR(LY_EINVAL, "Invalid parameter, input file is not a regular file");
+        return NULL;
+    }
+
     addr = mmap(NULL, sb.st_size + 1, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         LOGERR(LY_EMEM, "Map file into memory failed (%s()).",__func__);
@@ -1074,6 +1082,16 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     }
     module = lys_parse_mem(ctx, addr, format);
     munmap(addr, sb.st_size);
+
+    if (module && ! module->uri) {
+        /* get URI if there is /proc */
+        addr = NULL;
+        asprintf(&addr, "/proc/self/fd/%d", fd);
+        if ((len = readlink(addr, buf, PATH_MAX - 1)) > 0) {
+            ((struct lys_module *)module)->uri = lydict_insert(ctx, buf, len);
+        }
+        free(addr);
+    }
 
     return module;
 }
