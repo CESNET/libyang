@@ -1049,6 +1049,12 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
 
     ret = lys_parse_fd(ctx, fd, format);
     close(fd);
+
+    if (ret && !ret->uri) {
+        /* store URI */
+        ((struct lys_module *)ret)->uri = lydict_insert(ctx, path, 0);
+    }
+
     return ret;
 }
 
@@ -1083,7 +1089,7 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     module = lys_parse_mem(ctx, addr, format);
     munmap(addr, sb.st_size);
 
-    if (module && ! module->uri) {
+    if (module && !module->uri) {
         /* get URI if there is /proc */
         addr = NULL;
         asprintf(&addr, "/proc/self/fd/%d", fd);
