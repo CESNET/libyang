@@ -719,6 +719,7 @@ cmd_list(const char *arg)
 
     if (outformat != LYD_UNKNOWN) {
         lyd_print_file(stdout, ylib, outformat, LYP_WITHSIBLINGS);
+        lyd_free(ylib);
         return 0;
     }
 
