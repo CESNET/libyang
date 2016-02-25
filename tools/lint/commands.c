@@ -76,7 +76,7 @@ cmd_xpath_help(void)
 void
 cmd_list_help(void)
 {
-    printf("list\n");
+    printf("list [-f (xml | json)]\n");
 }
 
 void
@@ -648,15 +648,78 @@ cleanup:
 }
 
 int
-cmd_list(const char *UNUSED(arg))
+cmd_list(const char *arg)
 {
     struct lyd_node *ylib, *module, *submodule, *node;
     int has_modules = 0, flag;
+    char **argv = NULL, *ptr;
+    int c, argc, option_index;
+    LYD_FORMAT outformat = LYD_UNKNOWN;
+    static struct option long_options[] = {
+        {"help", no_argument, 0, 'h'},
+        {"format", required_argument, 0, 'f'},
+        {NULL, 0, 0, 0}
+    };
+
+    argc = 1;
+    argv = malloc(2*sizeof *argv);
+    *argv = strdup(arg);
+    ptr = strtok(*argv, " ");
+    while ((ptr = strtok(NULL, " "))) {
+        argv = realloc(argv, (argc+2)*sizeof *argv);
+        argv[argc++] = ptr;
+    }
+    argv[argc] = NULL;
+
+    optind = 0;
+    while (1) {
+        option_index = 0;
+        c = getopt_long(argc, argv, "hf:", long_options, &option_index);
+        if (c == -1) {
+            break;
+        }
+
+        switch (c) {
+        case 'h':
+            cmd_data_help();
+            free(*argv);
+            free(argv);
+            return 0;
+        case 'f':
+            if (!strcmp(optarg, "xml")) {
+                outformat = LYD_XML_FORMAT;
+            } else if (!strcmp(optarg, "json")) {
+                outformat = LYD_JSON;
+            } else {
+                fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
+                free(*argv);
+                free(argv);
+                return 1;
+            }
+            break;
+        case '?':
+            free(*argv);
+            free(argv);
+            return 1;
+        }
+    }
+    free(*argv);
+    free(argv);
+
+    if (optind != argc) {
+        fprintf(stderr, "Unknown parameter \"%s\"\n", argv[optind]);
+        return 1;
+    }
 
     ylib = ly_ctx_info(ctx);
     if (!ylib) {
         fprintf(stderr, "Getting context info (ietf-yang-library data) failed.\n");
         return 1;
+    }
+
+    if (outformat != LYD_UNKNOWN) {
+        lyd_print_file(stdout, ylib, outformat, LYP_WITHSIBLINGS);
+        return 0;
     }
 
     LY_TREE_FOR(ylib->child, node) {
