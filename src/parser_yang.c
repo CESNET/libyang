@@ -881,8 +881,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     base = typ->type->base;
     typ->type->base = typ->type->der->type.base;
     if (base == 0) {
-        /* nothing restriction*/
-        return EXIT_SUCCESS;
+        base = typ->type->der->type.base;
     }
     switch (base) {
     case LY_TYPE_STRING:
@@ -893,12 +892,12 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 goto error;
             }
             typ->type->info.binary.length = typ->type->info.str.length;
-            if (lyp_check_length_range(typ->type->info.binary.length->expr, typ->type)) {
+            if (typ->type->info.binary.length && lyp_check_length_range(typ->type->info.binary.length->expr, typ->type)) {
                 LOGVAL(LYE_INARG, typ->line, LY_VLOG_NONE, NULL, typ->type->info.binary.length->expr, "length");
                 goto error;
             }
         } else if (typ->type->base == LY_TYPE_STRING) {
-            if (lyp_check_length_range(typ->type->info.str.length->expr, typ->type)) {
+            if (typ->type->info.str.length && lyp_check_length_range(typ->type->info.str.length->expr, typ->type)) {
                 LOGVAL(LYE_INARG, typ->line, LY_VLOG_NONE, NULL, typ->type->info.str.length->expr, "length");
                 goto error;
             }
@@ -909,8 +908,19 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         break;
     case LY_TYPE_DEC64:
         if (typ->type->base == LY_TYPE_DEC64) {
-            if (lyp_check_length_range(typ->type->info.dec64.range->expr, typ->type)) {
+            if (typ->type->info.dec64.range && lyp_check_length_range(typ->type->info.dec64.range->expr, typ->type)) {
                 LOGVAL(LYE_INARG, typ->line, LY_VLOG_NONE, NULL, typ->type->info.dec64.range->expr, "range");
+                goto error;
+            }
+            /* mandatory sub-statement(s) check */
+            if (!typ->type->info.dec64.dig && !typ->type->der->type.der) {
+                /* decimal64 type directly derived from built-in type requires fraction-digits */
+                LOGVAL(LYE_MISSSTMT2, typ->line, LY_VLOG_NONE, NULL, "fraction-digits", "type");
+                goto error;
+            }
+            if (typ->type->info.dec64.dig && typ->type->der->type.der) {
+                /* type is not directly derived from buit-in type and fraction-digits statement is prohibited */
+                LOGVAL(LYE_INSTMT, typ->line, LY_VLOG_NONE, NULL, "fraction-digits");
                 goto error;
             }
         } else if (typ->type->base >= LY_TYPE_INT8 && typ->type->base <=LY_TYPE_UINT64) {
@@ -920,7 +930,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 goto error;
             }
             typ->type->info.num.range = typ->type->info.dec64.range;
-            if (lyp_check_length_range(typ->type->info.num.range->expr, typ->type)) {
+            if (typ->type->info.num.range && lyp_check_length_range(typ->type->info.num.range->expr, typ->type)) {
                 LOGVAL(LYE_INARG, typ->line, LY_VLOG_NONE, NULL, typ->type->info.num.range->expr, "range");
                 goto error;
             }
@@ -1049,4 +1059,29 @@ yang_read_range(struct  lys_module *module, struct yang_type *typ, char *value, 
 error:
     free(value);
     return NULL;
+}
+
+int
+yang_read_fraction(struct yang_type *typ, uint32_t value, int line)
+{
+    if (typ->type->base == 0 || typ->type->base == LY_TYPE_DEC64) {
+        typ->type->base = LY_TYPE_DEC64;
+    } else {
+        LOGVAL(LYE_SPEC, line, LY_VLOG_NONE, NULL, "Unexpected fraction-digits statement.");
+        goto error;
+    }
+    if (typ->type->info.dec64.dig) {
+        LOGVAL(LYE_TOOMANY, line, LY_VLOG_NONE, NULL, "fraction-digits", "type");
+        goto error;
+    }
+    /* range check */
+    if (value < 1 || value > 18) {
+        LOGVAL(LYE_SPEC, line, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", value, "fraction-digits");
+        goto error;
+    }
+    typ->type->info.dec64.dig = value;
+    return EXIT_SUCCESS;
+
+error:
+    return EXIT_FAILURE;
 }

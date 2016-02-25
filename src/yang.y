@@ -62,7 +62,6 @@ int tmp_line;
 %token NON_NEGATIVE_INTEGER
 %token ZERO
 %token DECIMAL
-%token FRACTION_DIGITS
 %token ARGUMENT_KEYWORD
 %token AUGMENT_KEYWORD
 %token BASE_KEYWORD
@@ -149,6 +148,7 @@ int tmp_line;
 %type <uint> min_value_arg_str
 %type <uint> min_elements_stmt
 %type <uint> decimal_string_restrictions
+%type <uint> fraction_digits_arg_str
 %type <i> module_header_stmts
 %type <str> tmp_identifier_arg_str
 %type <i> status_stmt
@@ -563,10 +563,30 @@ decimal_string_restrictions: %empty  { if (read_all) {
   |  decimal64_specification range_stmt stmtsep
 */
 
-fraction_digits_stmt: FRACTION_DIGITS_KEYWORD sep fraction_digits_arg_str stmtend;
+fraction_digits_stmt: FRACTION_DIGITS_KEYWORD sep fraction_digits_arg_str
+                      stmtend { if (read_all && yang_read_fraction(actual, $3, yylineno)) {
+                                  YYERROR;
+                                }
+                              }
 
-fraction_digits_arg_str: FRACTION_DIGITS optsep
-  | string_1
+fraction_digits_arg_str: positive_integer_value optsep { $$ = $1; }
+  | string_1 { if (read_all) {
+                 int errno = 0;
+                 char *endptr = NULL;
+                 unsigned long val;
+
+                 val = strtoul(s, &endptr, 10);
+                 if (*endptr || s[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
+                   LOGVAL(LYE_INARG, yylineno, LY_VLOG_NONE, NULL, s, "fraction-digits");
+                   free(s);
+                   s = NULL;
+                   YYERROR;
+                 }
+                 $$ = (uint32_t) val;
+                 free(s);
+                 s =NULL;
+               }
+             }
   ;
 
 length_stmt: LENGTH_KEYWORD sep length_arg_str length_end stmtsep { actual = $3;

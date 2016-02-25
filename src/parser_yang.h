@@ -188,4 +188,6 @@ void *yang_read_pattern(struct lys_module *module, struct yang_type *typ, char *
 
 void *yang_read_range(struct  lys_module *module, struct yang_type *typ, char *value, int line);
 
+int yang_read_fraction(struct yang_type *typ, uint32_t value, int line);
+
 #endif /* LY_PARSER_YANG_H_ */

@@ -140,8 +140,6 @@
 <PATH>"/*" {BEGIN COMMENT1;}
 <PATH>[A-Za-z_][-A-Za-z0-9_\.]* {return IDENTIFIER;}
 <PATH>[A-Za-z_][-A-Za-z0-9_\.]*:[A-Za-z_][-A-Za-z0-9_\.]*   {return IDENTIFIERPREFIX;}
-
-1[0-8]?|[2-9] {return FRACTION_DIGITS;}
 [0-9]{4}[-][0-9]{2}[-][0-9]{2} {return REVISION_DATE;}
 [A-Za-z_][-A-Za-z0-9_\.]* {return IDENTIFIER;}
 [A-Za-z_][-A-Za-z0-9_\.]*:[A-Za-z_][-A-Za-z0-9_\.]*   {return IDENTIFIERPREFIX;}
