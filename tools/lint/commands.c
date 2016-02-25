@@ -650,7 +650,7 @@ cleanup:
 int
 cmd_list(const char *arg)
 {
-    struct lyd_node *ylib, *module, *submodule, *node;
+    struct lyd_node *ylib = NULL, *module, *submodule, *node;
     int has_modules = 0, flag;
     char **argv = NULL, *ptr;
     int c, argc, option_index;
@@ -692,24 +692,23 @@ cmd_list(const char *arg)
                 outformat = LYD_JSON;
             } else {
                 fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
-                free(*argv);
-                free(argv);
-                return 1;
+                goto error;
             }
             break;
         case '?':
-            free(*argv);
-            free(argv);
-            return 1;
+            /* getopt_long() prints message */
+            goto error;
         }
+    }
+    if (optind != argc) {
+        fprintf(stderr, "Unknown parameter \"%s\"\n", argv[optind]);
+error:
+        free(*argv);
+        free(argv);
+        return 1;
     }
     free(*argv);
     free(argv);
-
-    if (optind != argc) {
-        fprintf(stderr, "Unknown parameter \"%s\"\n", argv[optind]);
-        return 1;
-    }
 
     ylib = ly_ctx_info(ctx);
     if (!ylib) {
