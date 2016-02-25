@@ -232,6 +232,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case RANGE_KEYWORD:
             ret = yang_check_string(module, &((struct lys_restr *) node)->dsc, "description", "range", value, line);
             break;
+        case ENUM_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_type_enum *) node)->dsc, "description", "enum", value, line);
+            break;
         }
     }
     return ret;
@@ -293,6 +296,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case RANGE_KEYWORD:
             ret = yang_check_string(module, &((struct lys_restr *) node)->ref, "reference", "range", value, line);
+            break;
+        case ENUM_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_type_enum *) node)->ref, "reference", "enum", value, line);
             break;
         }
     }
@@ -441,6 +447,8 @@ yang_read_status(void *node, int value, int type, int line)
     case LIST_KEYWORD:
         retval = yang_check_flags(&((struct lys_node_list *) node)->flags, LYS_STATUS_MASK, "status", "list", value, line);
         break;
+    case ENUM_KEYWORD:
+        retval = yang_check_flags(&((struct lys_type_enum *) node)->flags, LYS_STATUS_MASK, "status", "enum", value, line);
     }
     return retval;
 }
@@ -939,6 +947,21 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             goto error;
         }
         break;
+    case LY_TYPE_ENUM:
+        if (typ->type->base != LY_TYPE_ENUM) {
+            LOGVAL(LYE_SPEC, typ->line, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", parent->name);
+            goto error;
+        }
+        if (!typ->type->der->type.der && !typ->type->info.enums.count) {
+            /* type is derived directly from buit-in enumeartion type and enum statement is required */
+            LOGVAL(LYE_MISSSTMT2, typ->line, LY_VLOG_NONE, NULL, "enum", "type");
+            goto error;
+        }
+        if (typ->type->der->type.der && typ->type->info.enums.count) {
+            /* type is not directly derived from buit-in enumeration type and enum statement is prohibited */
+            LOGVAL(LYE_INSTMT, typ->line, LY_VLOG_NONE, NULL, "enum");
+            goto error;
+        }
     }
     return EXIT_SUCCESS;
 
@@ -1080,6 +1103,69 @@ yang_read_fraction(struct yang_type *typ, uint32_t value, int line)
         goto error;
     }
     typ->type->info.dec64.dig = value;
+    return EXIT_SUCCESS;
+
+error:
+    return EXIT_FAILURE;
+}
+
+void *
+yang_read_enum(struct lys_module *module, struct yang_type *typ, char *value, int line)
+{
+    struct lys_type_enum *enm;
+    int i;
+
+    enm = &typ->type->info.enums.enm[typ->type->info.enums.count];
+    enm->name = lydict_insert_zc(module->ctx, value);
+
+    /* the assigned name MUST NOT have any leading or trailing whitespace characters */
+    if (isspace(enm->name[0]) || isspace(enm->name[strlen(enm->name) - 1])) {
+        LOGVAL(LYE_ENUM_WS, line, LY_VLOG_NONE, NULL, enm->name);
+        goto error;
+    }
+
+    /* check the name uniqueness */
+    for (i = 0; i < typ->type->info.enums.count; i++) {
+        if (!strcmp(typ->type->info.enums.enm[i].name, typ->type->info.enums.enm[typ->type->info.enums.count].name)) {
+            LOGVAL(LYE_ENUM_DUPNAME, line, LY_VLOG_NONE, NULL, typ->type->info.enums.enm[i].name);
+            goto error;
+        }
+    }
+
+    typ->type->info.enums.count++;
+    return enm;
+
+error:
+    typ->type->info.enums.count++;
+    return NULL;
+}
+
+int
+yang_check_enum(struct yang_type *typ, struct lys_type_enum *enm, int64_t *value, int assign, int line)
+{
+    int i, j;
+
+    if (!assign) {
+        /* assign value automatically */
+        if (*value > INT32_MAX) {
+            LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, "2147483648", "enum/value");
+            goto error;
+        }
+        enm->value = *value;
+        enm->flags |= LYS_AUTOASSIGNED;
+        (*value)++;
+    }
+
+    /* check that the value is unique */
+    j = typ->type->info.enums.count-1;
+    for (i = 0; i < j; i++) {
+        if (typ->type->info.enums.enm[i].value == typ->type->info.enums.enm[j].value) {
+            LOGVAL(LYE_ENUM_DUPVAL, line, LY_VLOG_NONE, NULL,
+                   typ->type->info.enums.enm[j].value, typ->type->info.enums.enm[j].name);
+            goto error;
+        }
+    }
+
     return EXIT_SUCCESS;
 
 error:

@@ -24,12 +24,13 @@ struct Scheck *checked=NULL;
 void *actual;
 int actual_type;
 int tmp_line;
+int64_t enm_val;
 %}
 
 %parse-param {struct lys_module *module} {struct unres_schema *unres} {struct yang_schema *yang} {struct lys_array_size *size_arrays} {int read_all}
 
 %union {
-  int i;
+  int32_t i;
   uint32_t uint;
   char *str;
   void *v;
@@ -159,9 +160,12 @@ int tmp_line;
 %type <i> mandatory_arg_str
 %type <i> ordered_by_stmt
 %type <i> ordered_by_arg_str
+%type <i> integer_value_arg_str
+%type <i> integer_value
 %type <v> length_arg_str
 %type <v> pattern_arg_str
 %type <v> range_arg_str
+%type <v> enum_arg_str
 %type <nodes> container_opt_stmt
 %type <nodes> anyxml_opt_stmt
 %type <nodes> choice_opt_stmt
@@ -636,31 +640,98 @@ pattern_end: ';'
      '}'
   ;  
 
-enum_specification: enum_stmt enum_stmts;
+enum_specification: { if (read_all) {
+                        ((struct yang_type *)actual)->type->info.enums.enm = calloc(size_arrays->node[size_arrays->next++].refine, sizeof(struct lys_type_enum));
+                        if (!((struct yang_type *)actual)->type->info.enums.enm) {
+                          LOGMEM;
+                          YYERROR;
+                        }
+                        ((struct yang_type *)actual)->type->base = LY_TYPE_ENUM;
+                        enm_val = 0;
+                      } else {
+                        if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                          LOGMEM;
+                          YYERROR;
+                        }
+                      }
+                    } enum_stmt stmtsep enum_stmts;
 
 enum_stmts: %empty
-  | enum_stmts enum_stmt;
+  | enum_stmts enum_stmt stmtsep;
 
 
-enum_stmt: ENUM_KEYWORD sep string enum_end stmtsep;
+enum_stmt: ENUM_KEYWORD sep enum_arg_str enum_end
+           { if (read_all) {
+               if (yang_check_enum($3, actual, &enm_val, actual_type, yylineno)) {
+                 YYERROR;
+               }
+               actual = $3;
+               actual_type = TYPE_KEYWORD;
+             } else {
+               size_arrays->node[size_arrays->size-1].refine++; /* count of enum*/
+             }
+           }
+
+enum_arg_str: string { if (read_all) {
+                         $$ = actual;
+                         if (!(actual = yang_read_enum(module, actual, s, yylineno))) {
+                           YYERROR;
+                         }
+                         s = NULL;
+                         actual_type = 0;
+                       }
+                     }
 
 enum_end: ';'
-  |  '{' start_check
-         enum_opt_stmt  {free_check();}
+  |  '{' stmtsep
+         enum_opt_stmt
      '}'
   ;
 
 enum_opt_stmt: %empty 
-  |  enum_opt_stmt yychecked_1 value_stmt
-  |  enum_opt_stmt yychecked_2 status_stmt
-  |  enum_opt_stmt yychecked_3 description_stmt
-  |  enum_opt_stmt yychecked_4 reference_stmt
+  |  enum_opt_stmt value_stmt { /* actual_type - it is used to check value of enum statement*/
+                                if (read_all) {
+                                  if (actual_type) {
+                                    LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "value", "enum");
+                                    YYERROR;
+                                  }
+                                  actual_type = 1;
+                                }
+                              }
+  |  enum_opt_stmt status_stmt { if (read_all && yang_read_status(actual,$2,ENUM_KEYWORD,yylineno)) {YYERROR;} }
+  |  enum_opt_stmt description_stmt { if (read_all && yang_read_description(module,actual,s,ENUM_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  enum_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,actual,s,ENUM_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   ;
 
-value_stmt: VALUE_KEYWORD sep integer_value_arg_str stmtend;
+value_stmt: VALUE_KEYWORD sep integer_value_arg_str
+            stmtend { if (read_all) {
+                        ((struct lys_type_enum *)actual)->value = $3;
 
-integer_value_arg_str: integer_value optsep
-  |  string_1
+                        /* keep the highest enum value for automatic increment */
+                        if ($3 > enm_val) {
+                          enm_val = $3;
+                        }
+                        enm_val++;
+                      }
+                    }
+
+integer_value_arg_str: integer_value optsep { $$ = $1; }
+  |  string_1 { if (read_all) {
+                  /* convert it to int32_t */
+                  int64_t val;
+                  char *endptr;
+
+                  val = strtoll(s, &endptr, 10);
+                  if (val < INT32_MIN || val > INT32_MAX || *endptr) {
+                      LOGVAL(LYE_INARG, yylineno, LY_VLOG_NONE, NULL, s, "value");
+                      free(s);
+                      YYERROR;
+                  }
+                  free(s);
+                  s = NULL;
+                  $$ = (int32_t) val;
+               }
+             }
   ;
 
 range_stmt: RANGE_KEYWORD sep range_arg_str range_end { actual = $3;
@@ -1799,10 +1870,21 @@ non_negative_integer_value: ZERO { $$ = 0; }
   |  positive_integer_value { $$ = $1; }
   ;
 
-integer_value: ZERO
-  |  INTEGER
-  |  NON_NEGATIVE_INTEGER
+integer_value: ZERO { $$ = 0; }
+  |  integer_value_convert { /* convert it to int32_t */
+               int64_t val;
+
+               val = strtoll(yytext, NULL, 10);
+               if (val < INT32_MIN || val > INT32_MAX) {
+                   LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "The number is not in the correct range (INT32_MIN..INT32_MAX): \"%d\"",val);
+                   YYERROR;
+               }
+               $$ = (int32_t) val;
+             }
   ;
+
+integer_value_convert: INTEGER
+  |  NON_NEGATIVE_INTEGER
 
 prefix_arg_str: string_1
   |  identifiers optsep;

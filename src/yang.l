@@ -111,7 +111,7 @@
 <RANGE>".." {return DOUBLEDOT;}
 <RANGE>"|" {return yytext[0];}
 "0" {return ZERO;}
-<RANGE>"-"[1-9][0-9]* {return INTEGER;}
+"-"[1-9][0-9]* {return INTEGER;}
 [1-9][0-9]* {return NON_NEGATIVE_INTEGER;}
 <RANGE>[-]?[1-9][0-9]*\.[0-9]+ {return DECIMAL;}
 <RANGE>";"  {BEGIN INITIAL; return yytext[0]; }
