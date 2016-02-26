@@ -164,7 +164,7 @@ enum LY_ERR {
     LYE_XPATH_INARGTYPE
 };
 enum LY_VLOG_ELEM {
-    LY_VLOG_NONE,
+    LY_VLOG_NONE = 0,
     LY_VLOG_XML,
     LY_VLOG_LYS,
     LY_VLOG_LYD

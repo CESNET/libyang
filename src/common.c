@@ -393,7 +393,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
         rc = parse_identifier(id);
         if (rc < id_len) {
             if (log) {
-                LOGVAL(LYE_INCHAR, LOGLINE(xml), LY_VLOG_XML, xml, id[rc], &id[rc]);
+                LOGVAL(LYE_INCHAR, LOGLINE(xml), LY_VLOG_NONE, NULL, id[rc], &id[rc]);
             }
             free(out);
             return NULL;
@@ -412,7 +412,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
         free(prefix);
         if (!ns) {
             if (log) {
-                LOGVAL(LYE_SPEC, LOGLINE(xml), LY_VLOG_XML, xml,
+                LOGVAL(LYE_SPEC, LOGLINE(xml), LY_VLOG_NONE, NULL,
                        "XML namespace with prefix \"%.*s\" not defined.", id_len, id);
             }
             free(out);
@@ -421,7 +421,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
         mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
         if (!mod) {
             if (log) {
-                LOGVAL(LYE_SPEC, LOGLINE(xml), LY_VLOG_XML, xml,
+                LOGVAL(LYE_SPEC, LOGLINE(xml), LY_VLOG_NONE, NULL,
                        "Module with the namespace \"%s\" could not be found.", ns->value);
             }
             free(out);
