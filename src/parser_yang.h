@@ -39,6 +39,7 @@
 #define LYS_MAX_ELEMENTS 0x02
 #define LYS_DATADEF 0x04
 #define LYS_TYPE_DEF 0x08
+#define LYS_TYPE_BASE 0x40
 
 struct lys_node_array{
     uint8_t if_features;

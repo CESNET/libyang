@@ -843,6 +843,32 @@ error:
     return EXIT_FAILURE;
 }
 
+static int
+yang_read_identyref(struct lys_module *module, struct lys_type *type, struct unres_schema *unres, int line)
+{
+    const char *value, *tmp;
+    int rc, ret = EXIT_FAILURE;
+
+    value = tmp = type->info.lref.path;
+    /* store in the JSON format */
+    value = transform_schema2json(module, value, line);
+    if (!value) {
+        goto end;
+    }
+    rc = unres_schema_add_str(module, unres, type, UNRES_TYPE_IDENTREF, value, line);
+    lydict_remove(module->ctx, value);
+
+    if (rc == -1) {
+        goto end;
+    }
+
+    ret = EXIT_SUCCESS;
+
+end:
+    lydict_remove(module->ctx, tmp);
+    return ret;
+}
+
 int
 yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, struct unres_schema *unres)
 {
@@ -962,6 +988,26 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             LOGVAL(LYE_INSTMT, typ->line, LY_VLOG_NONE, NULL, "enum");
             goto error;
         }
+        break;
+    case LY_TYPE_LEAFREF:
+        if (typ->type->base == LY_TYPE_IDENT && typ->flags & LYS_TYPE_BASE) {
+            if (yang_read_identyref(module, typ->type, unres, typ->line)) {
+                goto error;
+            }
+        } else {
+            LOGVAL(LYE_SPEC, typ->line, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", parent->name);
+            goto error;
+        }
+        break;
+    case LY_TYPE_IDENT:
+        if (typ->type->der->type.der) {
+            /* this is just a derived type with no base specified/required */
+            break;
+        } else {
+            LOGVAL(LYE_MISSSTMT2, typ->line, LY_VLOG_NONE, NULL, "base", "type");
+            goto error;
+        }
+        break;
     }
     return EXIT_SUCCESS;
 

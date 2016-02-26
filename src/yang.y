@@ -524,7 +524,14 @@ type_body_stmts: decimal_string_restrictions /* may be finished is OK, but it do
   //| decimal /*it shuold be semantic control for numerical_restrictions*/
   | enum_specification 
   | path_stmt  /*leafref_specification */
-  | base_stmt  /*identityref_specification */
+  | base_stmt  { /*identityref_specification */
+                 if (read_all) {
+                   ((struct yang_type *)actual)->flags |= LYS_TYPE_BASE;
+                   ((struct yang_type *)actual)->type->base = LY_TYPE_LEAFREF;
+                   ((struct yang_type *)actual)->type->info.lref.path = lydict_insert_zc(module->ctx, s);
+                   s = NULL;
+                 }
+               }
   | require_instance_stmt  /*instance_identifier_specification */
   | bits_specification 
   | union_specification
