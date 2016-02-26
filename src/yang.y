@@ -1774,7 +1774,7 @@ range_arg_str: string { if (read_all) {
                         }
                       }
 
-absolute_schema_nodeid: "/" node_identifier { if (read_all) {
+absolute_schema_nodeid: '/' node_identifier { if (read_all) {
                                                 if (s) {
                                                   s = ly_realloc(s,strlen(s) + yyleng + 2);
                                                   if (!s) {
@@ -1825,7 +1825,7 @@ path_arg_str: absolute_paths
   |  string_1
   ;
 
-absolute_path: "/" node_identifier path_predicate
+absolute_path: '/' node_identifier path_predicate
 
 absolute_paths: absolute_path absolute_path_opt
 
@@ -1834,7 +1834,7 @@ absolute_path_opt: %empty
 
 relative_path: relative_path_part1 relative_path_part1_opt descendant_path
 
-relative_path_part1: ".." "/" ;
+relative_path_part1: DOUBLEDOT '/';
 
 relative_path_part1_opt: %empty 
   |  relative_path_part1_opt relative_path_part1;
@@ -1845,26 +1845,26 @@ descendant_path_opt: %empty
   |  path_predicate absolute_paths;
 
 path_predicate: %empty 
-  | path_predicate "[" whitespace_opt path_equality_expr whitespace_opt "]"
+  | path_predicate '[' whitespace_opt path_equality_expr whitespace_opt ']'
 
-path_equality_expr: node_identifier whitespace_opt "=" whitespace_opt path_key_expr
+path_equality_expr: node_identifier whitespace_opt '=' whitespace_opt path_key_expr
 
-path_key_expr: current_function_invocation whitespace_opt "/" whitespace_opt
+path_key_expr: current_function_invocation whitespace_opt '/' whitespace_opt
                      rel_path_keyexpr
 
 rel_path_keyexpr: rel_path_keyexpr_part1 rel_path_keyexpr_part1_opt
                     node_identifier rel_path_keyexpr_part2
                      node_identifier
 
-rel_path_keyexpr_part1: ".." whitespace_opt "/" whitespace_opt;
+rel_path_keyexpr_part1: DOUBLEDOT whitespace_opt '/' whitespace_opt;
 
 rel_path_keyexpr_part1_opt: %empty 
   |  rel_path_keyexpr_part1_opt rel_path_keyexpr_part1;
 
 rel_path_keyexpr_part2: %empty 
-  | rel_path_keyexpr_part2 whitespace_opt "/" whitespace_opt node_identifier;
+  | rel_path_keyexpr_part2 whitespace_opt '/' whitespace_opt node_identifier;
 
-current_function_invocation: CURRENT_KEYWORD whitespace_opt "(" whitespace_opt ")"
+current_function_invocation: CURRENT_KEYWORD whitespace_opt '(' whitespace_opt ')'
 
 positive_integer_value: NON_NEGATIVE_INTEGER { /* convert it to uint32_t */
                                                 unsigned long val;
