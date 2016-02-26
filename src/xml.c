@@ -58,7 +58,15 @@ static pthread_key_t lineno_key;
 static void
 lineno_free(void *ptr)
 {
+#ifdef __linux__
+    /* in __linux__ we use static memory in the main thread,
+     * so this check is for programs terminating the main()
+     * function by pthread_exit() :)
+     */
     if (ptr != &lineno_main) {
+#else
+    {
+#endif
         free(ptr);
     }
 }
