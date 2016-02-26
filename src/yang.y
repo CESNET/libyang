@@ -538,7 +538,11 @@ type_body_stmts: decimal_string_restrictions /* may be finished is OK, but it do
                    s = NULL;
                  }
                }
-  | require_instance_stmt  /*instance_identifier_specification */
+  | require_instance_stmt  { /*instance_identifier_specification */
+                             if (read_all) {
+                               ((struct yang_type *)actual)->type->base = LY_TYPE_INST;
+                             }
+                           }
   | bits_specification 
   | union_specification
   ;
@@ -762,9 +766,27 @@ path_stmt: PATH_KEYWORD sep path_arg_str stmtend;
 
 require_instance_stmt: REQUIRE_INSTANCE_KEYWORD sep require_instance_arg_str stmtend;
 
-require_instance_arg_str: TRUE_KEYWORD optsep
-  |  FALSE_KEYWORD optsep
-  |  string_1
+require_instance_arg_str: TRUE_KEYWORD optsep { if (read_all) {
+                                                  ((struct yang_type *)actual)->type->info.inst.req = 1;
+                                                }
+                                              }
+  |  FALSE_KEYWORD optsep { if (read_all) {
+                              ((struct yang_type *)actual)->type->info.inst.req = -1;
+                            }
+                          }
+  |  string_1 { if (read_all) {
+                  if (!strcmp(s,"true")) {
+                    ((struct yang_type *)actual)->type->info.inst.req = 1;
+                  } else if (!strcmp(s,"false")) {
+                    ((struct yang_type *)actual)->type->info.inst.req = -1;
+                  } else {
+                    LOGVAL(LYE_INARG, yylineno, LY_VLOG_NONE, NULL, s, "require-instance");
+                    free(s);
+                    YYERROR;
+                  }
+                  free(s);
+                }
+              }
   ;
 
 bits_specification: bit_stmt bit_stmts
