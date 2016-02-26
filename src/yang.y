@@ -483,7 +483,7 @@ identity_end: ';'
 
 identity_opt_stmt: %empty 
   |  identity_opt_stmt base_stmt { if (read_all && yang_read_base(module,actual,s,unres,yylineno)) {YYERROR;} s = NULL; }
-  |  identity_opt_stmt status_stmt { if (read_all && yang_read_status(actual, IDENTITY_KEYWORD, $2,yylineno)) {YYERROR;} }
+  |  identity_opt_stmt status_stmt { if (read_all && yang_read_status(actual,$2,IDENTITY_KEYWORD,yylineno)) {YYERROR;} }
   |  identity_opt_stmt description_stmt { if (read_all && yang_read_description(module,actual,s,IDENTITY_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   |  identity_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,actual,s,IDENTITY_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   ;
@@ -919,12 +919,17 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                                  }
                                                }
            '{' stmtsep
-               leaf_opt_stmt  { if (read_all && !($7.leaf.flag & LYS_TYPE_DEF)) {
-                                  LOGVAL(LYE_SPEC, yylineno, LY_VLOG_LYS, $7.leaf.ptr_leaf, "type statement missing.");
-                                  YYERROR;
-                                }
-                                if (read_all && $7.leaf.ptr_leaf->dflt) {
-                                  if (unres_schema_add_str(module, unres, &$7.leaf.ptr_leaf->type, UNRES_TYPE_DFLT, $7.leaf.ptr_leaf->dflt, tmp_line) == -1) {
+               leaf_opt_stmt  { if (read_all) {
+                                  if (!($7.leaf.flag & LYS_TYPE_DEF)) {
+                                    LOGVAL(LYE_SPEC, yylineno, LY_VLOG_LYS, $7.leaf.ptr_leaf, "type statement missing.");
+                                    YYERROR;
+                                  } else {
+                                      if (unres_schema_add_node(module, unres, &$7.leaf.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *) $7.leaf.ptr_leaf, $7.leaf.line)) {
+                                        $7.leaf.ptr_leaf->type.der = NULL;
+                                        YYERROR;
+                                      }
+                                  }
+                                  if ($7.leaf.ptr_leaf->dflt && unres_schema_add_str(module, unres, &$7.leaf.ptr_leaf->type, UNRES_TYPE_DFLT, $7.leaf.ptr_leaf->dflt, tmp_line) == -1) {
                                     YYERROR;
                                   }
                                 }
@@ -967,14 +972,13 @@ leaf_opt_stmt: %empty { if (read_all) {
                        YYERROR;
                      }
                    }
-     type_stmt { if (read_all && unres_schema_add_node(module, unres, &$1.leaf.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *) $1.leaf.ptr_leaf, yylineno)) {
-                   $1.leaf.ptr_leaf->type.der = NULL;
-                   YYERROR;
+     type_stmt { if (read_all) {
+                   actual = $1.leaf.ptr_leaf;
+                   actual_type = LEAF_KEYWORD;
+                   $1.leaf.flag |= LYS_TYPE_DEF;
+                   $1.leaf.line = yylineno;
+                   $$ = $1;
                  }
-                 actual = $1.leaf.ptr_leaf;
-                 actual_type = LEAF_KEYWORD;
-                 $1.leaf.flag |= LYS_TYPE_DEF;
-                 $$ = $1;
                }
   |  leaf_opt_stmt units_stmt { if (read_all && yang_read_units(module,$1.leaf.ptr_leaf,s,LEAF_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   |  leaf_opt_stmt must_stmt { if (read_all) {

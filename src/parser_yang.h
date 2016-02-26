@@ -84,6 +84,7 @@ struct type_list {
 
 struct type_leaf {
     struct lys_node_leaf *ptr_leaf;
+    int line;
     uint8_t flag;
 };
 
