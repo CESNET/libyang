@@ -19,7 +19,7 @@ void yychecked(int value);
 int yylex(void);
 void free_check();
 extern char *yytext;
-char *s;
+char *s, *tmp_s;
 struct Scheck *checked=NULL;
 void *actual;
 int actual_type;
@@ -523,7 +523,13 @@ type_body_stmts: decimal_string_restrictions /* may be finished is OK, but it do
   //| numerical_restrictions
   //| decimal /*it shuold be semantic control for numerical_restrictions*/
   | enum_specification 
-  | path_stmt  /*leafref_specification */
+  | path_stmt  { /*leafref_specification */
+                 if (read_all) {
+                   ((struct yang_type *)actual)->type->base = LY_TYPE_LEAFREF;
+                   ((struct yang_type *)actual)->type->info.lref.path = lydict_insert_zc(module->ctx, s);
+                   s = NULL;
+                 }
+               }
   | base_stmt  { /*identityref_specification */
                  if (read_all) {
                    ((struct yang_type *)actual)->flags |= LYS_TYPE_BASE;
@@ -1820,8 +1826,24 @@ descendant_schema_nodeid: node_identifier { if (read_all)  {
                                           }
                           absolute_schema_nodeid_opt;
 
-path_arg_str: absolute_paths
-  |  relative_path
+path_arg_str: { tmp_s = yytext; } absolute_paths { if (read_all) {
+                                                     s = strdup(tmp_s);
+                                                     if (!s) {
+                                                       LOGMEM;
+                                                       YYERROR;
+                                                     }
+                                                     s[strlen(s) - 1] = '\0';
+                                                   }
+                                                 }
+  |  { tmp_s = yytext; } relative_path { if (read_all) {
+                                           s = strdup(tmp_s);
+                                           if (!s) {
+                                             LOGMEM;
+                                             YYERROR;
+                                           }
+                                           s[strlen(s) - 1] = '\0';
+                                         }
+                                       }
   |  string_1
   ;
 
