@@ -47,6 +47,7 @@ int64_t cnt_val;
   } nodes;
 }
 
+%token UNION_KEYWORD
 %token ANYXML_KEYWORD
 %token WHITESPACE
 %token ERROR
@@ -168,6 +169,7 @@ int64_t cnt_val;
 %type <v> range_arg_str
 %type <v> enum_arg_str
 %type <v> bit_arg_str
+%type <v> union_spec
 %type <nodes> container_opt_stmt
 %type <nodes> anyxml_opt_stmt
 %type <nodes> choice_opt_stmt
@@ -521,9 +523,7 @@ type_end: ';'
   ;
 
 
-type_body_stmts: decimal_string_restrictions /* may be finished is OK, but it doesn't test*/
-  //| numerical_restrictions
-  //| decimal /*it shuold be semantic control for numerical_restrictions*/
+type_body_stmts: decimal_string_restrictions
   | enum_specification 
   | path_stmt  { /*leafref_specification */
                  if (read_all) {
@@ -546,20 +546,32 @@ type_body_stmts: decimal_string_restrictions /* may be finished is OK, but it do
                              }
                            }
   | bits_specification 
-  | union_specification
   ;
 
 
 decimal_string_restrictions: %empty  { if (read_all) {
-                                         if ( size_arrays->node[size_arrays->next].refine) {
+                                         if (size_arrays->node[size_arrays->next].refine && size_arrays->node[size_arrays->next].augment) {
+                                           LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", ((struct yang_type *)actual)->type->parent->name);
+                                           YYERROR;
+                                         }
+                                         if (size_arrays->node[size_arrays->next].refine) {
                                            ((struct yang_type *)actual)->type->info.str.patterns = calloc(size_arrays->node[size_arrays->next].refine, sizeof(struct lys_restr));
                                            if (!((struct yang_type *)actual)->type->info.str.patterns) {
                                              LOGMEM;
                                              YYERROR;
                                            }
                                            ((struct yang_type *)actual)->type->base = LY_TYPE_STRING;
-                                           size_arrays->next++;
                                          }
+                                         /* augment - count of union*/
+                                         if (size_arrays->node[size_arrays->next].augment) {
+                                           ((struct yang_type *)actual)->type->info.uni.types = calloc(size_arrays->node[size_arrays->next].augment, sizeof(struct lys_type));
+                                           if (!((struct yang_type *)actual)->type->info.uni.types) {
+                                             LOGMEM;
+                                             YYERROR;
+                                           }
+                                           ((struct yang_type *)actual)->type->base = LY_TYPE_UNION;
+                                         }
+                                         size_arrays->next++;
                                        } else {
                                          if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
                                            LOGMEM;
@@ -575,16 +587,26 @@ decimal_string_restrictions: %empty  { if (read_all) {
                                               }
   |  decimal_string_restrictions fraction_digits_stmt
   |  decimal_string_restrictions range_stmt stmtsep
+  |  decimal_string_restrictions union_spec type_stmt { if (read_all) {
+                                                          actual = $2;
+                                                        } else {
+                                                          size_arrays->node[$1].augment++; /* count of union*/
+                                                        }
+                                                      }
   ;
 
-//numerical_restrictions: range_stmt stmtsep 
+  union_spec: %empty { if (read_all) {
+                         struct yang_type *typ;
+                         struct lys_type *type;
 
-//decimal: decimal64_specification
-
-/*decimal64_specification: %empty
-  |  fraction_digits_stmt
-  |  decimal64_specification range_stmt stmtsep
-*/
+                         typ = (struct yang_type *)actual;
+                         $$ = actual;
+                         type = &typ->type->info.uni.types[typ->type->info.uni.count++];
+                         type->parent = typ->type->parent;
+                         actual = type;
+                         actual_type = UNION_KEYWORD;
+                       }
+                     }
 
 fraction_digits_stmt: FRACTION_DIGITS_KEYWORD sep fraction_digits_arg_str
                       stmtend { if (read_all && yang_read_fraction(actual, $3, yylineno)) {
@@ -879,11 +901,6 @@ position_value_arg_str: non_negative_integer_value optsep { $$ = $1; }
                 s = NULL;
                 $$ = (uint32_t) val;
               }
-
-union_specification: type_stmt type_stmts
-
-type_stmts: %empty 
-  |  type_stmts type_stmt;
 
 error_message_stmt: ERROR_MESSAGE_KEYWORD sep string stmtend;
 

@@ -886,6 +886,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     int ret = -1;
     const char *name, *value;
     LY_DATA_TYPE base;
+    struct yang_type *typ_tmp;
 
     value = transform_schema2json(module, typ->name, typ->line);
     if (!value) {
@@ -1037,6 +1038,34 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             goto error;
         }
         break;
+    case LY_TYPE_UNION:
+        if (typ->type->base != LY_TYPE_UNION) {
+            typ->type->base = LY_TYPE_UNION;
+            LOGVAL(LYE_SPEC, typ->line, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", parent->name);
+            goto error;
+        }
+        if (!typ->type->info.uni.types) {
+            if (typ->type->der->type.der) {
+                /* this is just a derived type with no additional type specified/required */
+                break;
+            }
+            LOGVAL(LYE_MISSSTMT2, typ->line, LY_VLOG_NONE, NULL, "type", "(union) type");
+            goto error;
+        }
+        for (i = 0; i < typ->type->info.uni.count; i++) {
+            typ_tmp = (struct yang_type *)typ->type->info.uni.types[i].der;
+            if (unres_schema_add_node(module, unres, &typ->type->info.uni.types[i], UNRES_TYPE_DER, parent, typ_tmp->line)) {
+                goto error;
+            }
+            if (typ->type->info.uni.types[i].base == LY_TYPE_EMPTY) {
+                LOGVAL(LYE_INARG, typ->line, LY_VLOG_NONE, NULL, "empty", typ->name);
+                goto error;
+            } else if (typ->type->info.uni.types[i].base == LY_TYPE_LEAFREF) {
+                LOGVAL(LYE_INARG, typ->line, LY_VLOG_NONE, NULL, "leafref", typ->name);
+                goto error;
+            }
+        }
+        break;
     }
     return EXIT_SUCCESS;
 
@@ -1073,6 +1102,10 @@ yang_read_type(void *parent, struct yang_schema *yang, char *value, int type, in
         ((struct lys_node_leaf *)parent)->type.der = (struct lys_tpdf *)typ;
         ((struct lys_node_leaf *)parent)->type.parent = (struct lys_tpdf *)parent;
         typ->type = &((struct lys_node_leaf *)parent)->type;
+        break;
+    case UNION_KEYWORD:
+        ((struct lys_type *)parent)->der = (struct lys_tpdf *)typ;
+        typ->type = (struct lys_type *)parent;
         break;
     }
     typ->name = value;
