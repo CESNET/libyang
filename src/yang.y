@@ -24,7 +24,7 @@ struct Scheck *checked=NULL;
 void *actual;
 int actual_type;
 int tmp_line;
-int64_t enm_val;
+int64_t cnt_val;
 %}
 
 %parse-param {struct lys_module *module} {struct unres_schema *unres} {struct yang_schema *yang} {struct lys_array_size *size_arrays} {int read_all}
@@ -150,6 +150,7 @@ int64_t enm_val;
 %type <uint> min_elements_stmt
 %type <uint> decimal_string_restrictions
 %type <uint> fraction_digits_arg_str
+%type <uint> position_value_arg_str
 %type <i> module_header_stmts
 %type <str> tmp_identifier_arg_str
 %type <i> status_stmt
@@ -166,6 +167,7 @@ int64_t enm_val;
 %type <v> pattern_arg_str
 %type <v> range_arg_str
 %type <v> enum_arg_str
+%type <v> bit_arg_str
 %type <nodes> container_opt_stmt
 %type <nodes> anyxml_opt_stmt
 %type <nodes> choice_opt_stmt
@@ -664,7 +666,7 @@ enum_specification: { if (read_all) {
                           YYERROR;
                         }
                         ((struct yang_type *)actual)->type->base = LY_TYPE_ENUM;
-                        enm_val = 0;
+                        cnt_val = 0;
                       } else {
                         if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
                           LOGMEM;
@@ -679,7 +681,7 @@ enum_stmts: %empty
 
 enum_stmt: ENUM_KEYWORD sep enum_arg_str enum_end
            { if (read_all) {
-               if (yang_check_enum($3, actual, &enm_val, actual_type, yylineno)) {
+               if (yang_check_enum($3, actual, &cnt_val, actual_type, yylineno)) {
                  YYERROR;
                }
                actual = $3;
@@ -725,10 +727,10 @@ value_stmt: VALUE_KEYWORD sep integer_value_arg_str
                         ((struct lys_type_enum *)actual)->value = $3;
 
                         /* keep the highest enum value for automatic increment */
-                        if ($3 > enm_val) {
-                          enm_val = $3;
+                        if ($3 > cnt_val) {
+                          cnt_val = $3;
                         }
-                        enm_val++;
+                        cnt_val++;
                       }
                     }
 
@@ -789,12 +791,45 @@ require_instance_arg_str: TRUE_KEYWORD optsep { if (read_all) {
               }
   ;
 
-bits_specification: bit_stmt bit_stmts
+bits_specification: { if (read_all) {
+                        ((struct yang_type *)actual)->type->info.bits.bit = calloc(size_arrays->node[size_arrays->next++].refine, sizeof(struct lys_type_bit));
+                        if (!((struct yang_type *)actual)->type->info.bits.bit) {
+                          LOGMEM;
+                          YYERROR;
+                        }
+                        ((struct yang_type *)actual)->type->base = LY_TYPE_BITS;
+                        cnt_val = 0;
+                      } else {
+                        if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                          LOGMEM;
+                          YYERROR;
+                        }
+                      }
+                    } bit_stmt bit_stmts
 
 bit_stmts: %empty 
   | bit_stmts bit_stmt;
 
-bit_stmt: BIT_KEYWORD sep identifier_arg_str bit_end stmtsep;
+bit_stmt: BIT_KEYWORD sep bit_arg_str bit_end
+          stmtsep { if (read_all) {
+                      if (yang_check_bit($3, actual, &cnt_val, actual_type, yylineno)) {
+                        YYERROR;
+                      }
+                      actual = $3;
+                    } else {
+                      size_arrays->node[size_arrays->size-1].refine++; /* count of bit*/
+                    }
+                  }
+
+bit_arg_str: identifier_arg_str { if (read_all) {
+                                    $$ = actual;
+                                    if (!(actual = yang_read_bit(module, actual, s, yylineno))) {
+                                      YYERROR;
+                                    }
+                                    s = NULL;
+                                    actual_type = 0;
+                                  }
+                                }
 
 bit_end: ';'
   |  '{' start_check
@@ -803,17 +838,47 @@ bit_end: ';'
   ;
 
 bit_opt_stmt: %empty 
-  |  bit_opt_stmt yychecked_1 position_stmt
-  |  bit_opt_stmt yychecked_2 status_stmt
-  |  bit_opt_stmt yychecked_3 description_stmt
-  |  bit_opt_stmt yychecked_4 reference_stmt
+  |  bit_opt_stmt position_stmt { /* actual_type - it is used to check position of bit statement*/
+                                  if (read_all) {
+                                    if (actual_type) {
+                                      LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "position", "bit");
+                                      YYERROR;
+                                    }
+                                    actual_type = 1;
+                                  }
+                                }
+  |  bit_opt_stmt status_stmt { if (read_all && yang_read_status(actual,$2,BIT_KEYWORD,yylineno)) {YYERROR;} }
+  |  bit_opt_stmt description_stmt { if (read_all && yang_read_description(module,actual,s,BIT_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  bit_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,actual,s,BIT_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   ;
 
-position_stmt: POSITION_KEYWORD sep position_value_arg_str stmtend;
+position_stmt: POSITION_KEYWORD sep position_value_arg_str
+               stmtend { if (read_all) {
+                           ((struct lys_type_bit *)actual)->pos = $3;
 
-position_value_arg_str: non_negative_integer_value optsep
-  |  string_1
-  ;
+                           /* keep the highest position value for automatic increment */
+                           if ($3 > cnt_val) {
+                             cnt_val = $3;
+                           }
+                           cnt_val++;
+                         }
+                       }
+
+position_value_arg_str: non_negative_integer_value optsep { $$ = $1; }
+  |  string_1 { /* convert it to uint32_t */
+                unsigned long val;
+                char *endptr;
+
+                val = strtoul(s, &endptr, 10);
+                if (val > UINT32_MAX || s[0] == '-' || *endptr) {
+                    LOGVAL(LYE_INARG, yylineno, LY_VLOG_NONE, NULL, s, "position");
+                    free(s);
+                    YYERROR;
+                }
+                free(s);
+                s = NULL;
+                $$ = (uint32_t) val;
+              }
 
 union_specification: type_stmt type_stmts
 

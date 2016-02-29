@@ -196,4 +196,8 @@ void *yang_read_enum(struct lys_module *module, struct yang_type *typ, char *val
 
 int yang_check_enum(struct yang_type *typ, struct lys_type_enum *enm, int64_t *value, int assign, int line);
 
+void *yang_read_bit(struct lys_module *module, struct yang_type *typ, char *value, int line);
+
+int yang_check_bit(struct yang_type *typ, struct lys_type_bit *bit, int64_t *value, int assign, int line);
+
 #endif /* LY_PARSER_YANG_H_ */

@@ -235,6 +235,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case ENUM_KEYWORD:
             ret = yang_check_string(module, &((struct lys_type_enum *) node)->dsc, "description", "enum", value, line);
             break;
+        case BIT_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_type_bit *) node)->dsc, "description", "bit", value, line);
+            break;
         }
     }
     return ret;
@@ -299,6 +302,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case ENUM_KEYWORD:
             ret = yang_check_string(module, &((struct lys_type_enum *) node)->ref, "reference", "enum", value, line);
+            break;
+        case BIT_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_type_bit *) node)->ref, "reference", "bit", value, line);
             break;
         }
     }
@@ -449,6 +455,10 @@ yang_read_status(void *node, int value, int type, int line)
         break;
     case ENUM_KEYWORD:
         retval = yang_check_flags(&((struct lys_type_enum *) node)->flags, LYS_STATUS_MASK, "status", "enum", value, line);
+        break;
+    case BIT_KEYWORD:
+        retval = yang_check_flags(&((struct lys_type_bit *) node)->flags, LYS_STATUS_MASK, "status", "bit", value, line);
+        break;
     }
     return retval;
 }
@@ -1229,6 +1239,76 @@ yang_check_enum(struct yang_type *typ, struct lys_type_enum *enm, int64_t *value
                    typ->type->info.enums.enm[j].value, typ->type->info.enums.enm[j].name);
             goto error;
         }
+    }
+
+    return EXIT_SUCCESS;
+
+error:
+    return EXIT_FAILURE;
+}
+
+void *
+yang_read_bit(struct lys_module *module, struct yang_type *typ, char *value, int line)
+{
+    int i;
+    struct lys_type_bit *bit;
+
+    bit = &typ->type->info.bits.bit[typ->type->info.bits.count];
+    if (lyp_check_identifier(value, LY_IDENT_SIMPLE, line, NULL, NULL)) {
+        LOGVAL(LYE_PATH, 0, LY_VLOG_NONE, NULL);
+        free(value);
+        goto error;
+    }
+    bit->name = lydict_insert_zc(module->ctx, value);
+
+    /* check the name uniqueness */
+    for (i = 0; i < typ->type->info.bits.count; i++) {
+        if (!strcmp(typ->type->info.bits.bit[i].name, bit->name)) {
+            LOGVAL(LYE_BITS_DUPNAME, line, LY_VLOG_NONE, NULL, bit->name);
+            typ->type->info.bits.count++;
+            goto error;
+        }
+    }
+    typ->type->info.bits.count++;
+    return bit;
+
+error:
+    return NULL;
+}
+
+int
+yang_check_bit(struct yang_type *typ, struct lys_type_bit *bit, int64_t *value, int assign, int line)
+{
+    int i,j;
+    struct lys_type_bit bit_tmp;
+
+    if (!assign) {
+        /* assign value automatically */
+        if (*value > UINT32_MAX) {
+            LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, "4294967295", "bit/position");
+            goto error;
+        }
+        bit->pos = (uint32_t)*value;
+        bit->flags |= LYS_AUTOASSIGNED;
+        (*value)++;
+    }
+
+    j = typ->type->info.bits.count - 1;
+    /* check that the value is unique */
+    for (i = 0; i < j; i++) {
+        if (typ->type->info.bits.bit[i].pos == bit->pos) {
+            LOGVAL(LYE_BITS_DUPVAL, line, LY_VLOG_NONE, NULL, bit->pos, bit->name);
+            goto error;
+        }
+    }
+
+    /* keep them ordered by position */
+    while (j && typ->type->info.bits.bit[j - 1].pos > typ->type->info.bits.bit[j].pos) {
+        /* switch them */
+        memcpy(&bit_tmp, &typ->type->info.bits.bit[j], sizeof bit);
+        memcpy(&typ->type->info.bits.bit[j], &typ->type->info.bits.bit[j - 1], sizeof bit);
+        memcpy(&typ->type->info.bits.bit[j - 1], &bit, sizeof bit);
+        j--;
     }
 
     return EXIT_SUCCESS;
