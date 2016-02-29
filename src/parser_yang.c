@@ -1338,9 +1338,9 @@ yang_check_bit(struct yang_type *typ, struct lys_type_bit *bit, int64_t *value, 
     /* keep them ordered by position */
     while (j && typ->type->info.bits.bit[j - 1].pos > typ->type->info.bits.bit[j].pos) {
         /* switch them */
-        memcpy(&bit_tmp, &typ->type->info.bits.bit[j], sizeof bit);
-        memcpy(&typ->type->info.bits.bit[j], &typ->type->info.bits.bit[j - 1], sizeof bit);
-        memcpy(&typ->type->info.bits.bit[j - 1], &bit, sizeof bit);
+        memcpy(&bit_tmp, &typ->type->info.bits.bit[j], sizeof bit_tmp);
+        memcpy(&typ->type->info.bits.bit[j], &typ->type->info.bits.bit[j - 1], sizeof bit_tmp);
+        memcpy(&typ->type->info.bits.bit[j - 1], &bit_tmp, sizeof bit_tmp);
         j--;
     }
 
