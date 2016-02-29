@@ -317,9 +317,7 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
 static void
 xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int UNUSED(toplevel))
 {
-    FILE *stream;
     char *buf;
-    size_t buf_size;
     struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
     /*const char *ns;*/
 
@@ -341,9 +339,7 @@ xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int 
     ly_print(out, ">%s", level ? "\n" : "");*/
 
     /* dump the anyxml into a buffer */
-    stream = open_memstream(&buf, &buf_size);
-    lyxml_print_file(stream, axml->value, LYXML_PRINT_FORMAT);
-    fclose(stream);
+    lyxml_print_mem(&buf, axml->value, LYXML_PRINT_FORMAT);
 
     ly_print(out, "%*s%s", LEVEL, INDENT, buf);
     free(buf);
