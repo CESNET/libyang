@@ -359,11 +359,7 @@ lyd_create_anyxml(const struct lys_node *schema, const char *val_xml)
         lyd_free((struct lyd_node *)ret);
         return NULL;
     }
-
-    /* remove the root */
-    ret->value = root->child;
-    lyxml_unlink_elem(schema->module->ctx, root->child, 1);
-    lyxml_free(schema->module->ctx, root);
+    ret->value = root;
 
     return (struct lyd_node *)ret;
 }
