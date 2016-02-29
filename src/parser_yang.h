@@ -128,7 +128,7 @@ void *yang_elem_of_array(void **ptr, uint8_t *act_size, int type, int sizeof_str
  * @param[in/out] size Pointer to the current size of array.
  * @return 1 on success, 0 on error.
  */
-int yang_add_elem(struct lys_node_array **node, int *size);
+int yang_add_elem(struct lys_node_array **node, uint32_t *size);
 
 int yang_fill_import(struct lys_module *module, struct lys_import *imp, char *value, int line);
 

@@ -336,7 +336,7 @@ yang_read_revision(struct lys_module *module, char *value)
 }
 
 int
-yang_add_elem(struct lys_node_array **node, int *size)
+yang_add_elem(struct lys_node_array **node, uint32_t *size)
 {
     if (!*size % LY_ARRAY_SIZE) {
         if (!(*node = ly_realloc(*node, (*size + LY_ARRAY_SIZE) * sizeof **node))) {
@@ -1066,10 +1066,22 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             }
         }
         break;
+
+    default:
+        if (base >= LY_TYPE_BINARY && base <= LY_TYPE_UINT64) {
+            if (typ->type->base != base) {
+                LOGVAL(LYE_SPEC, typ->line, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", parent->name);
+                goto error;
+            }
+        } else {
+            LOGINT;
+            goto error;
+        }
     }
     return EXIT_SUCCESS;
 
 error:
+    typ->type->base = base;
     if (typ->type->module_name) {
         lydict_remove(module->ctx, typ->type->module_name);
         typ->type->module_name = NULL;
