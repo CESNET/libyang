@@ -315,16 +315,14 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
 }
 
 static void
-xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int UNUSED(toplevel))
+xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
 {
     char *buf;
     struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
-    /*const char *ns;*/
+    const char *ns;
 
-    /* anyxml with it's namespace is saved in the value, may change later */
-
-    /*if (!node->parent || nscmp(node, node->parent)) {
-        * print "namespace" *
+    if (!node->parent || nscmp(node, node->parent)) {
+        /* print "namespace" */
         ns = lys_node_module(node->schema)->ns;
         ly_print(out, "%*s<%s xmlns=\"%s\"", LEVEL, INDENT, node->schema->name, ns);
     } else {
@@ -335,14 +333,22 @@ xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int 
         xml_print_ns(out, node);
     }
     xml_print_attrs(out, node);
+    ly_print(out, ">");
 
-    ly_print(out, ">%s", level ? "\n" : "");*/
+    /* print content */
+    if (axml->value->content) {
+        ly_print(out, "%s", axml->value->content);
+    }
 
-    /* dump the anyxml into a buffer */
-    lyxml_print_mem(&buf, axml->value, LYXML_PRINT_FORMAT);
+    /* print children */
+    if (axml->value->child) {
+        lyxml_print_mem(&buf, axml->value->child, LYXML_PRINT_FORMAT | LYXML_PRINT_SIBLINGS);
+        ly_print(out, "%*s%s", LEVEL, INDENT, buf);
+        free(buf);
+    }
 
-    ly_print(out, "%*s%s", LEVEL, INDENT, buf);
-    free(buf);
+    /* closing tag */
+    ly_print(out, "%*s</%s>%s", LEVEL, INDENT, node->schema->name, level ? "\n" : "");
 }
 
 void
