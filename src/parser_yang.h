@@ -61,6 +61,7 @@ struct lys_array_size {
     uint8_t features;
     uint8_t augment;
     uint8_t deviation;
+    uint8_t tpdf;
     uint32_t size;
     uint32_t next;
     struct lys_node_array *node;
@@ -84,6 +85,12 @@ struct type_list {
 
 struct type_leaf {
     struct lys_node_leaf *ptr_leaf;
+    int line;
+    uint8_t flag;
+};
+
+struct type_tpdf {
+    struct lys_tpdf *ptr_tpdf;
     int line;
     uint8_t flag;
 };
@@ -199,5 +206,7 @@ int yang_check_enum(struct yang_type *typ, struct lys_type_enum *enm, int64_t *v
 void *yang_read_bit(struct lys_module *module, struct yang_type *typ, char *value, int line);
 
 int yang_check_bit(struct yang_type *typ, struct lys_type_bit *bit, int64_t *value, int assign, int line);
+
+void *yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *value, int line);
 
 #endif /* LY_PARSER_YANG_H_ */

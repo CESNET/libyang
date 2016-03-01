@@ -238,6 +238,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case BIT_KEYWORD:
             ret = yang_check_string(module, &((struct lys_type_bit *) node)->dsc, "description", "bit", value, line);
             break;
+        case TYPEDEF_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_tpdf *) node)->dsc, "description", "typedef", value, line);
+            break;
         }
     }
     return ret;
@@ -305,6 +308,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case BIT_KEYWORD:
             ret = yang_check_string(module, &((struct lys_type_bit *) node)->ref, "reference", "bit", value, line);
+            break;
+        case TYPEDEF_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_tpdf *) node)->ref, "reference", "typedef", value, line);
             break;
         }
     }
@@ -458,6 +464,9 @@ yang_read_status(void *node, int value, int type, int line)
         break;
     case BIT_KEYWORD:
         retval = yang_check_flags(&((struct lys_type_bit *) node)->flags, LYS_STATUS_MASK, "status", "bit", value, line);
+        break;
+    case TYPEDEF_KEYWORD:
+        retval = yang_check_flags(&((struct lys_tpdf *) node)->flags, LYS_STATUS_MASK, "status", "typedef", value, line);
         break;
     }
     return retval;
@@ -733,6 +742,9 @@ yang_read_default(struct lys_module *module, void *node, char *value, int type, 
     case LEAF_KEYWORD:
         ret = yang_check_string(module, &((struct lys_node_leaf *) node)->dflt, "default", "leaf", value, line);
         break;
+    case TYPEDEF_KEYWORD:
+        ret = yang_check_string(module, &((struct lys_tpdf *) node)->dflt, "default", "typedef", value, line);
+        break;
     }
     return ret;
 }
@@ -748,6 +760,9 @@ yang_read_units(struct lys_module *module, void *node, char *value, int type, in
         break;
     case LEAF_LIST_KEYWORD:
         ret = yang_check_string(module, &((struct lys_node_leaflist *) node)->units, "units", "leaflist", value, line);
+        break;
+    case TYPEDEF_KEYWORD:
+        ret = yang_check_string(module, &((struct lys_tpdf *) node)->units, "units", "typedef", value, line);
         break;
     }
     return ret;
@@ -888,6 +903,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     LY_DATA_TYPE base;
     struct yang_type *typ_tmp;
 
+    base = typ->type->base;
     value = transform_schema2json(module, typ->name, typ->line);
     if (!value) {
         goto error;
@@ -923,7 +939,6 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         ret = EXIT_FAILURE;
         goto error;
     }
-    base = typ->type->base;
     typ->type->base = typ->type->der->type.base;
     if (base == 0) {
         base = typ->type->der->type.base;
@@ -1119,6 +1134,9 @@ yang_read_type(void *parent, struct yang_schema *yang, char *value, int type, in
         ((struct lys_type *)parent)->der = (struct lys_tpdf *)typ;
         typ->type = (struct lys_type *)parent;
         break;
+    case TYPEDEF_KEYWORD:
+        ((struct lys_tpdf *)parent)->type.der = (struct lys_tpdf *)typ;
+        typ->type = &((struct lys_tpdf *)parent)->type;
     }
     typ->name = value;
     typ->line = line;
@@ -1360,4 +1378,24 @@ yang_check_bit(struct yang_type *typ, struct lys_type_bit *bit, int64_t *value, 
 
 error:
     return EXIT_FAILURE;
+}
+
+void *
+yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *value, int line)
+{
+    struct lys_tpdf *ret;
+
+    if (lyp_check_identifier(value, LY_IDENT_TYPE, line, module, parent)) {
+        free(value);
+        return NULL;
+    }
+    if (!parent) {
+        ret = &module->tpdf[module->tpdf_size];
+        ret->type.parent = NULL;
+        module->tpdf_size++;
+    }
+
+    ret->name = lydict_insert_zc(module->ctx, value);
+    ret->module = module;
+    return ret;
 }

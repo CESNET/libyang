@@ -44,6 +44,7 @@ int64_t cnt_val;
     struct type_leaf leaf;
     struct type_leaflist leaflist;
     struct type_list list;
+    struct type_tpdf tpdf;
   } nodes;
 }
 
@@ -170,6 +171,7 @@ int64_t cnt_val;
 %type <v> enum_arg_str
 %type <v> bit_arg_str
 %type <v> union_spec
+%type <v> typedef_arg_str
 %type <nodes> container_opt_stmt
 %type <nodes> anyxml_opt_stmt
 %type <nodes> choice_opt_stmt
@@ -178,6 +180,7 @@ int64_t cnt_val;
 %type <nodes> leaf_opt_stmt
 %type <nodes> leaf_list_opt_stmt
 %type <nodes> list_opt_stmt
+%type <nodes> type_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
@@ -373,6 +376,13 @@ date_arg_str: REVISION_DATE { if (read_all) {
 body_stmts: %empty { if (read_all) {
                        module->features = calloc(size_arrays->features,sizeof *module->features);
                        module->ident = calloc(size_arrays->ident,sizeof *module->ident);
+                       if (size_arrays->tpdf) {
+                         module->tpdf = calloc(size_arrays->tpdf, sizeof *module->tpdf);
+                         if (!module->tpdf) {
+                           LOGMEM;
+                           YYERROR;
+                         }
+                       }
                        actual = NULL;
                      }
                    }
@@ -382,7 +392,7 @@ body_stmts: %empty { if (read_all) {
 body_stmt: extension_stmt
   | feature_stmt
   | identity_stmt
-  | typedef_stmt
+  | typedef_stmt { if (!read_all) { size_arrays->tpdf++; } }
   | grouping_stmt
   | data_def_stmt
   | augment_stmt
@@ -494,11 +504,37 @@ identity_opt_stmt: %empty
 
 base_stmt: BASE_KEYWORD sep identifier_ref_arg_str stmtend;
 
-typedef_stmt: TYPEDEF_KEYWORD sep identifier_arg_str 
-              '{' start_check
-                  type_opt_stmt { if ((checked->check&1)==0) { yyerror(module,unres,yang,size_arrays,read_all,"type statement missing."); YYERROR; }
-                                  free_check(); } 
+typedef_stmt: TYPEDEF_KEYWORD sep typedef_arg_str
+              '{' stmtsep
+                  type_opt_stmt { if (read_all) {
+                                    if (!($6.tpdf.flag & LYS_TYPE_DEF)) {
+                                      LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_NONE, NULL, "type", "typedef");
+                                      YYERROR;
+                                    }
+                                    if (unres_schema_add_node(module, unres, &$6.tpdf.ptr_tpdf->type, UNRES_TYPE_DER,(struct lys_node *) $3, 0)) {
+                                      YYERROR;
+                                    }
+                                    actual = $3;
+
+                                    /* check default value */
+                                    if ($6.tpdf.ptr_tpdf->dflt) {
+                                      if (unres_schema_add_str(module, unres, &$6.tpdf.ptr_tpdf->type, UNRES_TYPE_DFLT, $6.tpdf.ptr_tpdf->dflt, $6.tpdf.line) == -1) {
+                                        YYERROR;
+                                      }
+                                    }
+                                  }
+                                }
                '}' ;
+
+typedef_arg_str: identifier_arg_str { if (read_all) {
+                                        $$ = actual;
+                                        if (!(actual = yang_read_typedef(module, actual, s, yylineno))) {
+                                          YYERROR;
+                                        }
+                                        s = NULL;
+                                        actual_type = TYPEDEF_KEYWORD;
+                                      }
+                                    }
   
 type_stmt: TYPE_KEYWORD sep identifier_ref_arg_str { if (read_all && !(actual = yang_read_type(actual,yang,s,actual_type,yylineno))) {
                                                        YYERROR;
@@ -507,13 +543,30 @@ type_stmt: TYPE_KEYWORD sep identifier_ref_arg_str { if (read_all && !(actual = 
                                                    }
            type_end stmtsep;
 
-type_opt_stmt: %empty
-  |  type_opt_stmt yychecked_1 type_stmt 
-  |  type_opt_stmt yychecked_2 units_stmt
-  |  type_opt_stmt yychecked_3 default_stmt
-  |  type_opt_stmt yychecked_4 status_stmt
-  |  type_opt_stmt yychecked_5 description_stmt
-  |  type_opt_stmt yychecked_6 reference_stmt
+type_opt_stmt: %empty { $$.tpdf.ptr_tpdf = actual; }
+  |  type_opt_stmt { if (read_all && ($1.tpdf.flag & LYS_TYPE_DEF)) {
+                       LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, $1.tpdf.ptr_tpdf, "type", "typedef");
+                       YYERROR;
+                     }
+                   }
+     type_stmt { if (read_all) {
+                   actual = $1.tpdf.ptr_tpdf;
+                   actual_type = TYPEDEF_KEYWORD;
+                   $1.tpdf.flag |= LYS_TYPE_DEF;
+                   $$ = $1;
+                 }
+               }
+  |  type_opt_stmt units_stmt { if (read_all && yang_read_units(module, $1.tpdf.ptr_tpdf, s, TYPEDEF_KEYWORD, yylineno)) {YYERROR;} s = NULL; }
+  |  type_opt_stmt default_stmt { if (read_all && yang_read_default(module, $1.tpdf.ptr_tpdf, s, TYPEDEF_KEYWORD, yylineno)) {
+                                    YYERROR;
+                                  }
+                                  s = NULL;
+                                  $1.tpdf.line = yylineno;
+                                  $$ = $1;
+                                }
+  |  type_opt_stmt status_stmt { if (read_all && yang_read_status($1.tpdf.ptr_tpdf, $2, TYPEDEF_KEYWORD, yylineno)) {YYERROR;} }
+  |  type_opt_stmt description_stmt { if (read_all && yang_read_description(module, $1.tpdf.ptr_tpdf, s, TYPEDEF_KEYWORD, yylineno)) {YYERROR;} s = NULL; }
+  |  type_opt_stmt reference_stmt { if (read_all && yang_read_reference(module, $1.tpdf.ptr_tpdf, s, TYPEDEF_KEYWORD, yylineno)) {YYERROR;} s = NULL; }
   ;
 
 type_end: ';' 
