@@ -1388,10 +1388,14 @@ yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *valu
         switch (parent->nodetype) {
         case LYS_GROUPING:
             ret = &((struct lys_node_grp *)parent)->tpdf[((struct lys_node_grp *)parent)->tpdf_size];
-            ret->type.parent = (struct lys_tpdf *)parent;
             ((struct lys_node_grp *)parent)->tpdf_size++;
             break;
+        case LYS_CONTAINER:
+            ret = &((struct lys_node_container *)parent)->tpdf[((struct lys_node_container *)parent)->tpdf_size];
+            ((struct lys_node_container *)parent)->tpdf_size++;
+            break;
         }
+        ret->type.parent = (struct lys_tpdf *)parent;
     }
 
     ret->name = lydict_insert_zc(module->ctx, value);

@@ -1043,11 +1043,26 @@ container_end: ';' { if (read_all) { size_arrays->next++; } }
 container_opt_stmt: %empty { if (read_all) {
                                $$.container = actual;
                                actual_type = CONTAINER_KEYWORD;
-                               $$.container->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.container->features);
-                               $$.container->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.container->must);
-                               if (!$$.container->features || !$$.container->must) {
-                                 LOGMEM;
-                                 YYERROR;
+                               if (size_arrays->node[size_arrays->next].if_features) {
+                                 $$.container->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.container->features);
+                                 if (!$$.container->features) {
+                                   LOGMEM;
+                                   YYERROR;
+                                 }
+                               }
+                               if (size_arrays->node[size_arrays->next].must) {
+                                 $$.container->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.container->must);
+                                 if (!$$.container->must) {
+                                   LOGMEM;
+                                   YYERROR;
+                                 }
+                               }
+                               if (size_arrays->node[size_arrays->next].tpdf) {
+                                 $$.container->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.container->tpdf);
+                                 if (!$$.container->tpdf) {
+                                   LOGMEM;
+                                   YYERROR;
+                                 }
                                }
                                size_arrays->next++;
                              } else {
@@ -1074,7 +1089,14 @@ container_opt_stmt: %empty { if (read_all) {
   |  container_opt_stmt status_stmt { if (read_all && yang_read_status($1.container,$2,CONTAINER_KEYWORD,yylineno)) {YYERROR;} }
   |  container_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.container,s,CONTAINER_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   |  container_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.container,s,CONTAINER_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
-  |  container_opt_stmt typedef_grouping_stmt
+  |  container_opt_stmt grouping_stmt stmtsep { actual = $1.container; actual_type = CONTAINER_KEYWORD; }
+  |  container_opt_stmt typedef_stmt stmtsep { if (read_all) {
+                                                 actual = $1.container;
+                                                 actual_type = CONTAINER_KEYWORD;
+                                               } else {
+                                                 size_arrays->node[$1.index].tpdf++;
+                                               }
+                                             }
   |  container_opt_stmt data_def_stmt stmtsep { actual = $1.container; actual_type = CONTAINER_KEYWORD; }
   ;
 
