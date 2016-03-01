@@ -1399,6 +1399,10 @@ yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *valu
             ret = &((struct lys_node_container *)parent)->tpdf[((struct lys_node_container *)parent)->tpdf_size];
             ((struct lys_node_container *)parent)->tpdf_size++;
             break;
+        case LYS_LIST:
+            ret = &((struct lys_node_list *)parent)->tpdf[((struct lys_node_list *)parent)->tpdf_size];
+            ((struct lys_node_list *)parent)->tpdf_size++;
+            break;
         }
         ret->type.parent = (struct lys_tpdf *)parent;
     }

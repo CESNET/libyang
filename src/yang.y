@@ -1342,7 +1342,7 @@ list_stmt: LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                    LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_LYS, $7.list.ptr_list, "key", "list");
                                    YYERROR;
                                  }
-                                 if (yang_read_key(module, $7.list.ptr_list, unres, $7.list.line)) {
+                                 if ($7.list.ptr_list->keys && yang_read_key(module, $7.list.ptr_list, unres, $7.list.line)) {
                                    YYERROR;
                                  }
                                  if (!($7.list.flag & LYS_DATADEF)) {
@@ -1413,6 +1413,7 @@ list_opt_stmt: %empty { if (read_all) {
                                   YYERROR;
                                 }
                                 $1.list.ptr_list->keys = (struct lys_node_leaf **)s;
+                                $1.list.line = yylineno;
                                 $$ = $1;
                                 s=NULL;
                               }
@@ -1471,7 +1472,8 @@ list_opt_stmt: %empty { if (read_all) {
   |  list_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.list.ptr_list,s,LIST_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   |  list_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.list.ptr_list,s,LIST_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   |  list_opt_stmt typedef_stmt stmtsep { if (read_all) {
-
+                                            actual = $1.list.ptr_list;
+                                            actual_type = LIST_KEYWORD;
                                           } else {
                                             size_arrays->node[$1.index].tpdf++;
                                           }
