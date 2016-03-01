@@ -110,22 +110,22 @@ Tests can be run by the make's `test` target:
 $ make test
 ```
 
-## node binding
+## Bindings
 
-Requirements
-
-* swig
-* node
-* node-gyp
-
+We provide bindings for high-level languages using [SWIG](http://www.swig.org/)
+generator. The bindings are optional and to enable building of the specific
+binding, the appropriate cmake option must be enabled, for example:
 ```
 $ cmake -DJAVASCRIPT_BINDING=ON ..
-$ make npmpkg
-$ cd javascript
-$ node-gyp configure build
 ```
 
-There is also [README](./swig/javascript/README.md) describing this more in detail.
+More information about the specific binding can be found in their README files.
+
+Currently supported bindings are:
+
+* JavaScript
+ * cmake option: `JAVASCRIPT_BINDING`
+ * [README](./swig/javascript/README.md)
 
 ## yanglint
 
