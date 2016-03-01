@@ -3618,8 +3618,8 @@ moveto_node_check(struct lyd_node *node, struct lyxp_set *set, uint16_t i, enum 
     /* context check */
     if (((root_type == LYXP_NODE_ROOT_CONFIG) && (node->schema->flags & LYS_CONFIG_R))
             || ((root_type == LYXP_NODE_ROOT_OUTPUT) && (node->schema->parent->nodetype == LYS_INPUT))
-            || ((root_type != LYXP_NODE_ROOT_NOTIF) && (node->schema->nodetype == LYS_NOTIF))
-            || ((root_type != LYXP_NODE_ROOT_RPC) && (node->schema->nodetype == LYS_RPC))) {
+            || ((root_type != LYXP_NODE_ROOT_NOTIF) && (root_type != LYXP_NODE_ROOT_STATE) && (node->schema->nodetype == LYS_NOTIF))
+            || ((root_type != LYXP_NODE_ROOT_RPC) && (root_type != LYXP_NODE_ROOT_STATE) && (node->schema->nodetype == LYS_RPC))) {
         return;
     }
 
