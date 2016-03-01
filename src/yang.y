@@ -1532,7 +1532,12 @@ choice_opt_stmt: %empty { if (read_all) {
                         }
   |  choice_opt_stmt when_stmt { actual = $1.choice.ptr_choice; actual_type = CHOICE_KEYWORD; $$ = $1; }
   |  choice_opt_stmt if_feature_stmt { if (read_all) {
-                                         if (yang_read_if_feature(module,$1.choice.ptr_choice,s,unres,CHOICE_KEYWORD,yylineno)) {YYERROR;}
+                                         if (yang_read_if_feature(module,$1.choice.ptr_choice,s,unres,CHOICE_KEYWORD,yylineno)) {
+                                           if ($1.choice.s) {
+                                             free($1.choice.s);
+                                           }
+                                           YYERROR;
+                                         }
                                          s=NULL;
                                          $$ = $1;
                                        } else {
@@ -1551,11 +1556,48 @@ choice_opt_stmt: %empty { if (read_all) {
                                       $$ = $1;
                                     }
                                   }
-  |  choice_opt_stmt config_stmt { if (read_all && yang_read_config($1.choice.ptr_choice,$2,CHOICE_KEYWORD,yylineno)) {YYERROR;} $$ = $1; }
-  |  choice_opt_stmt mandatory_stmt { if (read_all && yang_read_mandatory($1.choice.ptr_choice,$2,CHOICE_KEYWORD,yylineno)) {YYERROR;} $$ = $1; }
-  |  choice_opt_stmt status_stmt { if (read_all && yang_read_status($1.choice.ptr_choice,$2,CHOICE_KEYWORD,yylineno)) {YYERROR;} $$ = $1; }
-  |  choice_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.choice.ptr_choice,s,CHOICE_KEYWORD,yylineno)) {YYERROR;} s = NULL; $$ = $1; }
-  |  choice_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.choice.ptr_choice,s,CHOICE_KEYWORD,yylineno)) {YYERROR;} s = NULL; $$ = $1; }
+  |  choice_opt_stmt config_stmt { if (read_all && yang_read_config($1.choice.ptr_choice,$2,CHOICE_KEYWORD,yylineno)) {
+                                     if ($1.choice.s) {
+                                       free($1.choice.s);
+                                     }
+                                     YYERROR;
+                                     $$ = $1;
+                                   }
+                                 }
+|  choice_opt_stmt mandatory_stmt { if (read_all && yang_read_mandatory($1.choice.ptr_choice,$2,CHOICE_KEYWORD,yylineno)) {
+                                      if ($1.choice.s) {
+                                        free($1.choice.s);
+                                      }
+                                      YYERROR;
+                                      $$ = $1;
+                                    }
+                                  }
+  |  choice_opt_stmt status_stmt { if (read_all && yang_read_status($1.choice.ptr_choice,$2,CHOICE_KEYWORD,yylineno)) {
+                                     if ($1.choice.s) {
+                                       free($1.choice.s);
+                                       YYERROR;
+                                     }
+                                     $$ = $1;
+                                   }
+                                 }
+  |  choice_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.choice.ptr_choice,s,CHOICE_KEYWORD,yylineno)) {
+                                          if ($1.choice.s) {
+                                            free($1.choice.s);
+                                            YYERROR;
+                                          }
+                                          s = NULL;
+                                          $$ = $1;
+                                        }
+                                      }
+  |  choice_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.choice.ptr_choice,s,CHOICE_KEYWORD,yylineno)) {
+                                        if ($1.choice.s) {
+                                          free($1.choice.s);
+                                          YYERROR;
+                                        }
+                                        s = NULL;
+                                        $$ = $1;
+                                      }
+                                    }
   |  choice_opt_stmt short_case_case_stmt { actual = $1.choice.ptr_choice; actual_type = CHOICE_KEYWORD; $$ = $1; }
   ;
 
