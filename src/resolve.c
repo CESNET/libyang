@@ -3766,6 +3766,12 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
             if (rc) {
                 /* may try again later */
                 stype->der = (struct lys_tpdf *)yang;
+            } else {
+                /* we need to always be able to free this, it's safe only in this case */
+                if (yang->name) {
+                    free(yang->name);
+                }
+                free(yang);
             }
 
         } else {
@@ -4111,6 +4117,8 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres)
 {
     uint32_t i;
     unsigned int unresolved = 0;
+    struct lyxml_elem *yin;
+    struct yang_type *yang;
 
     if (!unres || !(*unres)) {
         return;
@@ -4126,7 +4134,16 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres)
             continue;
         }
         if ((*unres)->type[i] == UNRES_TYPE_DER) {
-            lyxml_free(module->ctx, (struct lyxml_elem *)((struct lys_type *)(*unres)->item[i])->der);
+            yin = (struct lyxml_elem *)((struct lys_type *)(*unres)->item[i])->der;
+            if (yin->flags & LY_YANG_STRUCTURE_FLAG) {
+                yang =(struct yang_type *)yin;
+                if (yang->name) {
+                    free(yang->name);
+                }
+                free(yang);
+            } else {
+                lyxml_free(module->ctx, yin);
+            }
         }
         (*unres)->type[i] = UNRES_RESOLVED;
     }

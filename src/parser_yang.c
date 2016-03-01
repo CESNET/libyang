@@ -1105,23 +1105,15 @@ error:
 }
 
 void *
-yang_read_type(void *parent, struct yang_schema *yang, char *value, int type, int line)
+yang_read_type(void *parent, char *value, int type, int line)
 {
     struct yang_type *typ;
-    struct yang_schema *new, *tmp;
 
-    /* linear list */
-    new = calloc(1, sizeof *new);
-    if (!new) {
+    typ = calloc(1, sizeof *typ);
+    if (!typ) {
         LOGMEM;
         return NULL;
     }
-    tmp = yang;
-    while (tmp->next) {
-        tmp = tmp->next;
-    }
-    tmp->next = new;
-    typ = &new->type;
 
     typ->flags = LY_YANG_STRUCTURE_FLAG;
     switch (type) {
@@ -1140,7 +1132,6 @@ yang_read_type(void *parent, struct yang_schema *yang, char *value, int type, in
     }
     typ->name = value;
     typ->line = line;
-    typ->parent = parent;
     return typ;
 }
 

@@ -103,7 +103,6 @@ struct type_ident {
 struct yang_type {
     char flags;       /**< this is used to distinguish lyxml_elem * from a YANG temporary parsing structure */
     char *name;
-    void *parent;
     struct lys_type *type;
     int line;
 };
@@ -187,7 +186,7 @@ int yang_read_key(struct lys_module *module, struct lys_node_list *list, struct 
 
 int yang_read_unique(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres);
 
-void *yang_read_type(void *parent, struct yang_schema *yang, char *value, int type, int line);
+void *yang_read_type(void *parent, char *value, int type, int line);
 
 void *yang_read_length(struct lys_module *module, struct yang_type *typ, char *value, int line);
 

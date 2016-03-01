@@ -536,7 +536,7 @@ typedef_arg_str: identifier_arg_str { if (read_all) {
                                       }
                                     }
   
-type_stmt: TYPE_KEYWORD sep identifier_ref_arg_str { if (read_all && !(actual = yang_read_type(actual,yang,s,actual_type,yylineno))) {
+type_stmt: TYPE_KEYWORD sep identifier_ref_arg_str { if (read_all && !(actual = yang_read_type(actual,s,actual_type,yylineno))) {
                                                        YYERROR;
                                                      }
                                                      s = NULL;
