@@ -975,7 +975,7 @@ grouping_stmt: GROUPING_KEYWORD sep identifier_arg_str { if (read_all) {
                                                        }
                grouping_end;
 
-grouping_end: ';'
+grouping_end: ';' { if (read_all) { size_arrays->next++; } }
   |  '{' stmtsep
          grouping_opt_stmt
      '}'
@@ -997,7 +997,14 @@ grouping_opt_stmt: %empty { if (read_all) {
   |  grouping_opt_stmt status_stmt { if (read_all && yang_read_status($1.grouping,$2,GROUPING_KEYWORD,yylineno)) {YYERROR;} }
   |  grouping_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.grouping,s,GROUPING_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   |  grouping_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.grouping,s,GROUPING_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
-  |  grouping_opt_stmt typedef_grouping_stmt { actual = $1.grouping; actual_type = GROUPING_KEYWORD; }
+  |  grouping_opt_stmt grouping_stmt stmtsep { actual = $1.grouping; actual_type = GROUPING_KEYWORD; }
+  |  grouping_opt_stmt typedef_stmt stmtsep { if (read_all) {
+                                                actual = $1.grouping;
+                                                actual_type = GROUPING_KEYWORD;
+                                              } else {
+                                                size_arrays->node[$1.index].tpdf++;
+                                              }
+                                            }
   |  grouping_opt_stmt data_def_stmt stmtsep { actual = $1.grouping; actual_type = GROUPING_KEYWORD; }
   ;
 
