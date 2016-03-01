@@ -241,6 +241,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case TYPEDEF_KEYWORD:
             ret = yang_check_string(module, &((struct lys_tpdf *) node)->dsc, "description", "typedef", value, line);
             break;
+        case USES_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_uses *) node)->dsc, "description", "uses", value, line);
+            break;
         }
     }
     return ret;
@@ -311,6 +314,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case TYPEDEF_KEYWORD:
             ret = yang_check_string(module, &((struct lys_tpdf *) node)->ref, "reference", "typedef", value, line);
+            break;
+        case USES_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_uses *) node)->ref, "reference", "uses", value, line);
             break;
         }
     }
@@ -467,6 +473,9 @@ yang_read_status(void *node, int value, int type, int line)
         break;
     case TYPEDEF_KEYWORD:
         retval = yang_check_flags(&((struct lys_tpdf *) node)->flags, LYS_STATUS_MASK, "status", "typedef", value, line);
+        break;
+    case USES_KEYWORD:
+        retval = yang_check_flags(&((struct lys_node_uses *) node)->flags, LYS_STATUS_MASK, "status", "uses", value, line);
         break;
     }
     return retval;
@@ -679,6 +688,13 @@ yang_read_when(struct lys_module *module, struct lys_node *node, int type, char 
             goto error;
         }
         ((struct lys_node_list *)node)->when = retval;
+        break;
+    case USES_KEYWORD:
+        if (((struct lys_node_uses *)node)->when) {
+            LOGVAL(LYE_TOOMANY, line, LY_VLOG_LYS, node, "when", "uses");
+            goto error;
+        }
+        ((struct lys_node_uses *)node)->when = retval;
         break;
     }
     free(value);

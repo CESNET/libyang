@@ -45,6 +45,7 @@ int64_t cnt_val;
     struct type_leaflist leaflist;
     struct type_list list;
     struct type_tpdf tpdf;
+    struct lys_node_uses *uses;
   } nodes;
 }
 
@@ -181,6 +182,7 @@ int64_t cnt_val;
 %type <nodes> leaf_list_opt_stmt
 %type <nodes> list_opt_stmt
 %type <nodes> type_opt_stmt
+%type <nodes> uses_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
@@ -1709,21 +1711,82 @@ anyxml_opt_stmt: %empty { if (read_all) {
   |  anyxml_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.anyxml,s,ANYXML_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   ;
 
-uses_stmt: USES_KEYWORD sep identifier_ref_arg_str uses_end;
+uses_stmt: USES_KEYWORD sep identifier_ref_arg_str { if (read_all) {
+                                                       if (!(actual = yang_read_node(module,actual,s,LYS_USES,sizeof(struct lys_node_uses)))) {YYERROR;}
+                                                       s=NULL;
+                                                     } else {
+                                                       if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                                         LOGMEM;
+                                                         YYERROR;
+                                                       }
+                                                     }
+                                                   }
+           uses_end { if (read_all) {
+                        if (unres_schema_add_node(module, unres, actual, UNRES_USES, NULL, yylineno) == -1) {
+                          YYERROR;
+                        }
+                      }
+                    }
 
-uses_end: ';'
-  |  '{' start_check
-         uses_opt_stmt  {free_check();}
+uses_end: ';' { if (read_all) { size_arrays->next++; } }
+  |  '{' stmtsep
+         uses_opt_stmt
      '}' ;
 
-uses_opt_stmt: %empty 
-  |  uses_opt_stmt yychecked_1 when_stmt
-  |  uses_opt_stmt if_feature_stmt
-  |  uses_opt_stmt yychecked_2 status_stmt
-  |  uses_opt_stmt yychecked_3 description_stmt
-  |  uses_opt_stmt yychecked_4 reference_stmt
-  |  uses_opt_stmt refine_stmt stmtsep
-  |  uses_opt_stmt uses_augment_stmt stmtsep
+uses_opt_stmt: %empty { if (read_all) {
+                          $$.uses = actual;
+                          actual_type = USES_KEYWORD;
+                          if (size_arrays->node[size_arrays->next].if_features) {
+                            $$.uses->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.uses->features);
+                            if (!$$.uses->features) {
+                              LOGMEM;
+                              YYERROR;
+                            }
+                          }
+                          if (size_arrays->node[size_arrays->next].refine) {
+                            $$.uses->refine = calloc(size_arrays->node[size_arrays->next].refine, sizeof *$$.uses->refine);
+                            if (!$$.uses->refine) {
+                              LOGMEM;
+                              YYERROR;
+                            }
+                          }
+                          if (size_arrays->node[size_arrays->next].augment) {
+                            $$.uses->augment = calloc(size_arrays->node[size_arrays->next].augment, sizeof *$$.uses->augment);
+                            if (!$$.uses->augment) {
+                              LOGMEM;
+                              YYERROR;
+                            }
+                          }
+                          size_arrays->next++;
+                        } else {
+                          $$.index = size_arrays->size-1;
+                        }
+                      }
+  |  uses_opt_stmt when_stmt { actual = $1.uses; actual_type = USES_KEYWORD; }
+  |  uses_opt_stmt if_feature_stmt { if (read_all) {
+                                       if (yang_read_if_feature(module,$1.uses,s,unres,USES_KEYWORD,yylineno)) {YYERROR;}
+                                       s=NULL;
+                                     } else {
+                                       size_arrays->node[$1.index].if_features++;
+                                     }
+                                   }
+  |  uses_opt_stmt status_stmt { if (read_all && yang_read_status($1.uses,$2,USES_KEYWORD,yylineno)) {YYERROR;} }
+  |  uses_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.uses,s,USES_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  uses_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.uses,s,USES_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  uses_opt_stmt refine_stmt stmtsep { if (read_all) {
+                                           actual = $1.uses;
+                                           actual_type = USES_KEYWORD;
+                                         } else {
+                                           size_arrays->node[$1.index].refine++;
+                                         }
+                                       }
+  |  uses_opt_stmt uses_augment_stmt stmtsep { if (read_all) {
+                                                 actual = $1.uses;
+                                                 actual_type = USES_KEYWORD;
+                                               } else {
+                                                 size_arrays->node[$1.index].augment++;
+                                               }
+                                             }
   ;
 
 refine_stmt: REFINE_KEYWORD sep refine_arg_str refine_end;
