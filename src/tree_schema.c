@@ -1873,8 +1873,8 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
     ctx = node->module->ctx;
 
     /* remove private object */
-    if (node->private && private_destructor) {
-        private_destructor(node, node->private);
+    if (node->priv && private_destructor) {
+        private_destructor(node, node->priv);
     }
 
     /* common part */
@@ -2756,8 +2756,8 @@ lys_set_private(const struct lys_node *node, void *priv)
         return NULL;
     }
 
-    prev = node->private;
-    ((struct lys_node *)node)->private = priv;
+    prev = node->priv;
+    ((struct lys_node *)node)->priv = priv;
 
     return prev;
 }

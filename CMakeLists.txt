@@ -146,3 +146,7 @@ if(ENABLE_BUILD_TESTS)
 		add_subdirectory(tests)
 	endif(CMOCKA_FOUND)
 endif(ENABLE_BUILD_TESTS)
+
+if(JAVASCRIPT_BINDING)
+	include(swig/javascript/CMakeLists.txt)
+endif()

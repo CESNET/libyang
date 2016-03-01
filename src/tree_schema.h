@@ -523,7 +523,7 @@ struct lys_node {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
-    void *private;                   /**< private caller's data, not used by libyang */
+    void *priv;                      /**< private caller's data, not used by libyang */
 };
 
 /**
@@ -555,7 +555,7 @@ struct lys_node_container {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
-    void *private;                   /**< private caller's data, not used by libyang */
+    void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific container's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -597,7 +597,7 @@ struct lys_node_choice {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
-    void *private;                   /**< private caller's data, not used by libyang */
+    void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific choice's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -639,7 +639,7 @@ struct lys_node_leaf {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
-    void *private;                   /**< private caller's data, not used by libyang */
+    void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific leaf's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -687,7 +687,7 @@ struct lys_node_leaflist {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
-    void *private;                   /**< private caller's data, not used by libyang */
+    void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific leaf-list's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -731,7 +731,7 @@ struct lys_node_list {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
-    void *private;                   /**< private caller's data, not used by libyang */
+    void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific list's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -781,7 +781,7 @@ struct lys_node_anyxml {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
-    void *private;                   /**< private caller's data, not used by libyang */
+    void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific anyxml's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -821,7 +821,7 @@ struct lys_node_uses {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
-    void *private;                   /**< private caller's data, not used by libyang */
+    void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific uses's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -865,7 +865,7 @@ struct lys_node_grp {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
-    void *private;                   /**< private caller's data, not used by libyang */
+    void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific grouping's data */
     uint8_t tpdf_size;               /**< number of elements in #tpdf array */
@@ -900,7 +900,7 @@ struct lys_node_case {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
-    void *private;                   /**< private caller's data, not used by libyang */
+    void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific case's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -936,7 +936,7 @@ struct lys_node_rpc_inout {
     struct lys_tpdf *tpdf;            /**< array of typedefs */
 
     /* again ::lys_node compatible data */
-    void *private;                   /**< private caller's data, not used by libyang */
+    void *priv;                       /**< private caller's data, not used by libyang */
 };
 
 /**
@@ -965,7 +965,7 @@ struct lys_node_notif {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
-    void *private;                   /**< private caller's data, not used by libyang */
+    void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific rpc's data */
     uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
@@ -998,7 +998,7 @@ struct lys_node_rpc {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
-    void *private;                   /**< private caller's data, not used by libyang */
+    void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific rpc's data */
     uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
@@ -1043,7 +1043,7 @@ struct lys_node_augment {
     uint8_t features_size;           /**< number of elements in the #features array */
     struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
                                           definitions themselves, but the array of if-feature references */
-    void *private;                   /**< private caller's data, not used by libyang */
+    void *priv;                      /**< private caller's data, not used by libyang */
 
 };
 

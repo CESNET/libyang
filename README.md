@@ -110,6 +110,23 @@ Tests can be run by the make's `test` target:
 $ make test
 ```
 
+## node binding
+
+Requirements
+
+* swig
+* node
+* node-gyp
+
+```
+$ cmake -DJAVASCRIPT_BINDING=ON ..
+$ make npmpkg
+$ cd javascript
+$ node-gyp configure build
+```
+
+There is also [README](./swig/javascript/README.md) describing this more in detail.
+
 ## yanglint
 
 libyang source codes include a simple example tool to demanstrate how an application
