@@ -74,6 +74,7 @@ struct type_choice {
 
 struct type_leaflist {
     struct lys_node_leaflist *ptr_leaflist;
+    int line;
     uint8_t flag;
 };
 

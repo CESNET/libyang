@@ -1201,10 +1201,8 @@ leaf_list_stmt: LEAF_LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                                              }
                                                            }
                                                          }
-                '{' start_check
-                    leaf_list_opt_stmt { if ((checked->check&2)==0) { yyerror(module,unres,yang,size_arrays,read_all,"type statement missing."); YYERROR; }
-                                         free_check();
-                                         if (read_all) {
+                '{' stmtsep
+                    leaf_list_opt_stmt { if (read_all) {
                                            if ($7.leaflist.ptr_leaflist->flags & LYS_CONFIG_R) {
                                              /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
                                               * ignore oredering MASK - 0x7F
@@ -1215,6 +1213,15 @@ leaf_list_stmt: LEAF_LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                              LOGVAL(LYE_SPEC, yylineno, LY_VLOG_LYS, $7.leaflist.ptr_leaflist, "\"min-elements\" is bigger than \"max-elements\".");
                                              YYERROR;
                                            }
+                                           if (!($7.leaflist.flag & LYS_TYPE_DEF)) {
+                                             LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_LYS, $7.leaflist.ptr_leaflist, "type", "leaflist");
+                                             YYERROR;
+                                           } else {
+                                             if (unres_schema_add_node(module, unres, &$7.leaflist.ptr_leaflist->type, UNRES_TYPE_DER,
+                                                                      (struct lys_node *) $7.leaflist.ptr_leaflist, $7.leaflist.line)) {
+                                               YYERROR;
+                                             }
+                                           }
                                          }
                                        }
                 '}' ;
@@ -1223,11 +1230,19 @@ leaf_list_opt_stmt: %empty { if (read_all) {
                                $$.leaflist.ptr_leaflist = actual;
                                $$.leaflist.flag = 0;
                                actual_type = LEAF_LIST_KEYWORD;
-                               $$.leaflist.ptr_leaflist->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.leaflist.ptr_leaflist->features);
-                               $$.leaflist.ptr_leaflist->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.leaflist.ptr_leaflist->must);
-                               if (!$$.leaflist.ptr_leaflist->features || !$$.leaflist.ptr_leaflist->must) {
-                                 LOGMEM;
-                                 YYERROR;
+                               if (size_arrays->node[size_arrays->next].if_features) {
+                                 $$.leaflist.ptr_leaflist->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.leaflist.ptr_leaflist->features);
+                                 if (!$$.leaflist.ptr_leaflist->features) {
+                                   LOGMEM;
+                                   YYERROR;
+                                 }
+                               }
+                               if (size_arrays->node[size_arrays->next].must) {
+                                 $$.leaflist.ptr_leaflist->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.leaflist.ptr_leaflist->must);
+                                 if (!$$.leaflist.ptr_leaflist->must) {
+                                   LOGMEM;
+                                   YYERROR;
+                                 }
                                }
                                size_arrays->next++;
                              } else {
@@ -1242,7 +1257,19 @@ leaf_list_opt_stmt: %empty { if (read_all) {
                                             size_arrays->node[$1.index].if_features++;
                                           }
                                         }
-  |  leaf_list_opt_stmt yychecked_2 type_stmt // not implement
+  |  leaf_list_opt_stmt { if (read_all && ($1.leaflist.flag & LYS_TYPE_DEF)) {
+                            LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_LYS, $1.leaflist.ptr_leaflist, "type", "leaflist");
+                            YYERROR;
+                          }
+                        }
+     type_stmt { if (read_all) {
+                   actual = $1.leaflist.ptr_leaflist;
+                   actual_type = LEAF_LIST_KEYWORD;
+                   $1.leaflist.flag |= LYS_TYPE_DEF;
+                   $1.leaflist.line = yylineno;
+                   $$ = $1;
+                 }
+               }
   |  leaf_list_opt_stmt units_stmt { if (read_all && yang_read_units(module,$1.leaflist.ptr_leaflist,s,LEAF_LIST_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   |  leaf_list_opt_stmt must_stmt { if (read_all) {
                                       actual = $1.leaflist.ptr_leaflist;

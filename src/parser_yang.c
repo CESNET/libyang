@@ -1122,6 +1122,11 @@ yang_read_type(void *parent, char *value, int type, int line)
         ((struct lys_node_leaf *)parent)->type.parent = (struct lys_tpdf *)parent;
         typ->type = &((struct lys_node_leaf *)parent)->type;
         break;
+    case LEAF_LIST_KEYWORD:
+        ((struct lys_node_leaflist *)parent)->type.der = (struct lys_tpdf *)typ;
+        ((struct lys_node_leaflist *)parent)->type.parent = (struct lys_tpdf *)parent;
+        typ->type = &((struct lys_node_leaflist *)parent)->type;
+        break;
     case UNION_KEYWORD:
         ((struct lys_type *)parent)->der = (struct lys_tpdf *)typ;
         typ->type = (struct lys_type *)parent;
