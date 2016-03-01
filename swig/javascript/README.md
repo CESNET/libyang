@@ -4,7 +4,7 @@
 * node
 * node-gyp
 
-## Istall
+## Install
 
 ```
 $ cmake -DJAVASCRIPT_BINDING=ON ..
