@@ -1,4 +1,3 @@
-
 /**
  * @file tree_schema.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
@@ -6,23 +5,18 @@
  *
  * Copyright (c) 2015 CESNET, z.s.p.o.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name of the Company nor the names of its contributors
- *    may be used to endorse or promote products derived from this
- *    software without specific prior written permission.
+ * This source code is licensed under BSD 3-Clause License (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/BSD-3-Clause
  */
+
 #define _GNU_SOURCE
 
 #include <assert.h>
 #include <ctype.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -1055,6 +1049,12 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
 
     ret = lys_parse_fd(ctx, fd, format);
     close(fd);
+
+    if (ret && !ret->filepath) {
+        /* store URI */
+        ((struct lys_module *)ret)->filepath = lydict_insert(ctx, path, 0);
+    }
+
     return ret;
 }
 
@@ -1064,6 +1064,8 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     const struct lys_module *module;
     struct stat sb;
     char *addr;
+    char buf[PATH_MAX];
+    int len;
 
     if (!ctx || fd < 0) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -1074,6 +1076,11 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
         LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
         return NULL;
     }
+    if (!S_ISREG(sb.st_mode)) {
+        LOGERR(LY_EINVAL, "Invalid parameter, input file is not a regular file");
+        return NULL;
+    }
+
     addr = mmap(NULL, sb.st_size + 1, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         LOGERR(LY_EMEM, "Map file into memory failed (%s()).",__func__);
@@ -1081,6 +1088,16 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     }
     module = lys_parse_mem(ctx, addr, format);
     munmap(addr, sb.st_size);
+
+    if (module && !module->filepath) {
+        /* get URI if there is /proc */
+        addr = NULL;
+        asprintf(&addr, "/proc/self/fd/%d", fd);
+        if ((len = readlink(addr, buf, PATH_MAX - 1)) > 0) {
+            ((struct lys_module *)module)->filepath = lydict_insert(ctx, buf, len);
+        }
+        free(addr);
+    }
 
     return module;
 }
@@ -1856,8 +1873,8 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
     ctx = node->module->ctx;
 
     /* remove private object */
-    if (node->private && private_destructor) {
-        private_destructor(node, node->private);
+    if (node->priv && private_destructor) {
+        private_destructor(node, node->priv);
     }
 
     /* common part */
@@ -1988,7 +2005,7 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
     lydict_remove(ctx, module->ref);
     lydict_remove(ctx, module->org);
     lydict_remove(ctx, module->contact);
-    lydict_remove(ctx, module->uri);
+    lydict_remove(ctx, module->filepath);
 
     /* revisions */
     for (i = 0; i < module->rev_size; i++) {
@@ -2739,8 +2756,8 @@ lys_set_private(const struct lys_node *node, void *priv)
         return NULL;
     }
 
-    prev = node->private;
-    ((struct lys_node *)node)->private = priv;
+    prev = node->priv;
+    ((struct lys_node *)node)->priv = priv;
 
     return prev;
 }

@@ -1,4 +1,3 @@
-
 /**
  * @file printer_xml.c
  * @author Michal Vasko <mvasko@cesnet.cz>
@@ -6,19 +5,13 @@
  *
  * Copyright (c) 2015 CESNET, z.s.p.o.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name of the Company nor the names of its contributors
- *    may be used to endorse or promote products derived from this
- *    software without specific prior written permission.
+ * This source code is licensed under BSD 3-Clause License (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/BSD-3-Clause
  */
+
 #define _GNU_SOURCE
 
 #include <stdlib.h>
@@ -322,18 +315,14 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
 }
 
 static void
-xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int UNUSED(toplevel))
+xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
 {
-    FILE *stream;
     char *buf;
-    size_t buf_size;
     struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
-    /*const char *ns;*/
+    const char *ns;
 
-    /* anyxml with it's namespace is saved in the value, may change later */
-
-    /*if (!node->parent || nscmp(node, node->parent)) {
-        * print "namespace" *
+    if (!node->parent || nscmp(node, node->parent)) {
+        /* print "namespace" */
         ns = lys_node_module(node->schema)->ns;
         ly_print(out, "%*s<%s xmlns=\"%s\"", LEVEL, INDENT, node->schema->name, ns);
     } else {
@@ -344,16 +333,22 @@ xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int 
         xml_print_ns(out, node);
     }
     xml_print_attrs(out, node);
+    ly_print(out, ">");
 
-    ly_print(out, ">%s", level ? "\n" : "");*/
+    /* print content */
+    if (axml->value->content) {
+        ly_print(out, "%s", axml->value->content);
+    }
 
-    /* dump the anyxml into a buffer */
-    stream = open_memstream(&buf, &buf_size);
-    lyxml_print_file(stream, axml->value, LYXML_PRINT_FORMAT);
-    fclose(stream);
+    /* print children */
+    if (axml->value->child) {
+        lyxml_print_mem(&buf, axml->value->child, LYXML_PRINT_FORMAT | LYXML_PRINT_SIBLINGS);
+        ly_print(out, "%*s%s", LEVEL, INDENT, buf);
+        free(buf);
+    }
 
-    ly_print(out, "%*s%s", LEVEL, INDENT, buf);
-    free(buf);
+    /* closing tag */
+    ly_print(out, "%*s</%s>%s", LEVEL, INDENT, node->schema->name, level ? "\n" : "");
 }
 
 void

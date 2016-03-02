@@ -5,18 +5,11 @@
  *
  * Copyright (c) 2015 CESNET, z.s.p.o.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name of the Company nor the names of its contributors
- *    may be used to endorse or promote products derived from this
- *    software without specific prior written permission.
+ * This source code is licensed under BSD 3-Clause License (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/BSD-3-Clause
  */
 
 #include <assert.h>
@@ -364,8 +357,8 @@ lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
             first = parent->child;
         } else {
             first = elem;
-            while (elem->prev->next) {
-                first = elem->prev;
+            while (first->prev->next) {
+                first = first->prev;
             }
         }
         first->prev = elem->prev;
@@ -1284,7 +1277,7 @@ lyxml_parse_path(struct ly_ctx *ctx, const char *filename, int options)
         goto error;
     }
     if (!S_ISREG(sb.st_mode)) {
-        LOGERR(LY_EINVAL, "File \"%s\" not a file.\n", filename);
+        LOGERR(LY_EINVAL, "%s: Invalid parameter, input file is not a regular file", __func__);
         goto error;
     }
     addr = mmap(NULL, sb.st_size + 1, PROT_READ, MAP_PRIVATE, fd, 0);

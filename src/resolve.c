@@ -5,18 +5,11 @@
  *
  * Copyright (c) 2015 CESNET, z.s.p.o.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name of the Company nor the names of its contributors
- *    may be used to endorse or promote products derived from this
- *    software without specific prior written permission.
+ * This source code is licensed under BSD 3-Clause License (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/BSD-3-Clause
  */
 
 #define _GNU_SOURCE
@@ -1739,13 +1732,14 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
  *
  * @param[in] type Type definition to use.
  * @param[in] value Default value to check.
+ * @param[in] module Type module.
  * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-check_default(struct lys_type *type, const char *value, int first, uint32_t line)
+check_default(struct lys_type *type, const char *value, struct lys_module *module, int first, uint32_t line)
 {
     struct lyd_node_leaf_list node;
     int ret = EXIT_SUCCESS;
@@ -1763,6 +1757,7 @@ check_default(struct lys_type *type, const char *value, int first, uint32_t line
         LOGMEM;
         return -1;
     }
+    node.schema->module = module;
     memcpy(&((struct lys_node_leaf *)node.schema)->type, type, sizeof *type);
 
     if (type->base == LY_TYPE_LEAFREF) {
@@ -1770,7 +1765,7 @@ check_default(struct lys_type *type, const char *value, int first, uint32_t line
             ret = EXIT_FAILURE;
             goto finish;
         }
-        ret = check_default(&type->info.lref.target->type, value, first, line);
+        ret = check_default(&type->info.lref.target->type, value, module, first, line);
 
     } else if ((type->base == LY_TYPE_INST) || (type->base == LY_TYPE_IDENT)) {
         /* it was converted to JSON format before, nothing else sensible we can do */
@@ -3781,7 +3776,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         has_str = 1;
         stype = item;
 
-        rc = check_default(stype, base_name, first, line);
+        rc = check_default(stype, base_name, mod, first, line);
         break;
     case UNRES_CHOICE_DFLT:
         base_name = str_snode;

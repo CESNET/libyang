@@ -110,6 +110,23 @@ Tests can be run by the make's `test` target:
 $ make test
 ```
 
+## Bindings
+
+We provide bindings for high-level languages using [SWIG](http://www.swig.org/)
+generator. The bindings are optional and to enable building of the specific
+binding, the appropriate cmake option must be enabled, for example:
+```
+$ cmake -DJAVASCRIPT_BINDING=ON ..
+```
+
+More information about the specific binding can be found in their README files.
+
+Currently supported bindings are:
+
+* JavaScript
+ * cmake option: `JAVASCRIPT_BINDING`
+ * [README](./swig/javascript/README.md)
+
 ## yanglint
 
 libyang source codes include a simple example tool to demanstrate how an application
