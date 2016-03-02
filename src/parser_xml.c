@@ -129,7 +129,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     struct lyd_attr *dattr, *dattr_iter;
     struct lyxml_attr *attr;
     struct lyxml_elem *tmp_xml, *child, *next;
-    int i, havechildren, r;
+    int i, havechildren, r, flag;
     int ret = 0;
 
     assert(xml);
@@ -339,11 +339,19 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     }
 
     for (attr = xml->attr; attr; attr = attr->next) {
+        flag = 0;
         if (attr->type != LYXML_ATTR_STD) {
             continue;
         } else if (!attr->ns) {
-            LOGWRN("Ignoring \"%s\" attribute in \"%s\" element.", attr->name, xml->name);
-            continue;
+            if ((*result)->schema->nodetype != LYS_ANYXML ||
+                    !ly_strequal((*result)->schema->name, "filter", 0) ||
+                    !ly_strequal((*result)->schema->module->name, "ietf-netconf", 0)) {
+                LOGWRN("Ignoring \"%s\" attribute in \"%s\" element.", attr->name, xml->name);
+                continue;
+            } else {
+                /* exception for filter's attributes */
+                flag = 1;
+            }
         }
 
         dattr = malloc(sizeof *dattr);
@@ -352,11 +360,25 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         }
         dattr->next = NULL;
         dattr->name = attr->name;
-        dattr->value = attr->value;
+        if (flag && ly_strequal(attr->name, "select", 0)) {
+            dattr->value = transform_xml2json(ctx, attr->value, xml, 1);
+            if (!dattr->value) {
+                free(dattr);
+                goto error;
+            }
+            lydict_remove(ctx, attr->value);
+        } else {
+            dattr->value = attr->value;
+        }
         attr->name = NULL;
         attr->value = NULL;
 
-        dattr->module = (struct lys_module *)ly_ctx_get_module_by_ns(ctx, attr->ns->value, NULL);
+        if (!attr->ns) {
+            /* filter's attributes, it actually has no namespace, but we need some for internal representation */
+            dattr->module = (*result)->schema->module;
+        } else {
+            dattr->module = (struct lys_module *)ly_ctx_get_module_by_ns(ctx, attr->ns->value, NULL);
+        }
         if (!dattr->module) {
             LOGWRN("Attribute \"%s\" from unknown schema (\"%s\") - skipping.", attr->name, attr->ns->value);
             free(dattr);

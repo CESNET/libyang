@@ -890,8 +890,8 @@ error:
 }
 
 /* logs directly */
-static struct lyxml_elem *
-parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml_elem *parent)
+struct lyxml_elem *
+lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml_elem *parent)
 {
     const char *c = data, *start, *e;
     const char *lws;    /* leading white space for handling mixed content */
@@ -1088,7 +1088,7 @@ process:
                     lyxml_add_child(ctx, elem, child);
                     elem->flags |= LYXML_ELEM_MIXED;
                 }
-                child = parse_elem(ctx, c, &size, elem);
+                child = lyxml_parse_elem(ctx, c, &size, elem);
                 if (!child) {
                     goto error;
                 }
@@ -1222,7 +1222,7 @@ repeat:
         }
     }
 
-    root = parse_elem(ctx, c, &len, NULL);
+    root = lyxml_parse_elem(ctx, c, &len, NULL);
     if (!root) {
         if (first) {
             LY_TREE_FOR_SAFE(first, next, root) {
