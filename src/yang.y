@@ -381,8 +381,27 @@ date_arg_str: REVISION_DATE { if (read_all) {
   ;
 
 body_stmts: %empty { if (read_all) {
-                       module->features = calloc(size_arrays->features,sizeof *module->features);
-                       module->ident = calloc(size_arrays->ident,sizeof *module->ident);
+                       if (size_arrays->features) {
+                         module->features = calloc(size_arrays->features,sizeof *module->features);
+                         if (!module->features) {
+                           LOGMEM;
+                           YYERROR;
+                         }
+                       }
+                       if (size_arrays->ident) {
+                         module->ident = calloc(size_arrays->ident,sizeof *module->ident);
+                         if (!module->ident) {
+                           LOGMEM;
+                           YYERROR;
+                         }
+                       }
+                       if (size_arrays->augment) {
+                         module->augment = calloc(size_arrays->augment,sizeof *module->augment);
+                         if (!module->augment) {
+                           LOGMEM;
+                           YYERROR;
+                         }
+                       }
                        if (size_arrays->tpdf) {
                          module->tpdf = calloc(size_arrays->tpdf, sizeof *module->tpdf);
                          if (!module->tpdf) {
@@ -402,7 +421,7 @@ body_stmt: extension_stmt
   | typedef_stmt { if (!read_all) { size_arrays->tpdf++; } }
   | grouping_stmt
   | data_def_stmt
-  | augment_stmt
+  | augment_stmt { if (!read_all) { size_arrays->augment++; } }
   | rpc_stmt 
   | notification_stmt 
   | deviation_stmt;
@@ -1999,10 +2018,29 @@ uses_augment_arg_str: descendant_schema_nodeid optsep
   |  string_1 
   ; 
 
-augment_stmt: AUGMENT_KEYWORD sep augment_arg_str 
-              '{' start_check
-                  augment_opt_stmt { if ((checked->check&1024)==0) { yyerror(module,unres,yang,size_arrays,read_all,"data-def or case statement missing."); YYERROR; }
-                                     free_check(); }
+augment_stmt: AUGMENT_KEYWORD sep augment_arg_str { if (read_all) {
+                                                      if (!(actual = yang_read_augment(module, NULL, s, yylineno))) {
+                                                        YYERROR;
+                                                      }
+                                                      s = NULL;
+                                                    } else {
+                                                      if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                                        LOGMEM;
+                                                        YYERROR;
+                                                      }
+                                                    }
+                                                  }
+              '{' stmtsep
+                  augment_opt_stmt { if (read_all) {
+                                       if (!($7.augment.flag & LYS_DATADEF)){
+                                         LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_NONE, NULL, "data-def or case", "augment");
+                                         YYERROR;
+                                       }
+                                       if (unres_schema_add_node(module, unres, actual, UNRES_AUGMENT, NULL, yylineno) == -1) {
+                                         YYERROR;
+                                       }
+                                     }
+                                   }
                '}' ;
 
 augment_opt_stmt: %empty { if (read_all) {
