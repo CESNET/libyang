@@ -2885,6 +2885,15 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, int fir
         return EXIT_SUCCESS;
     }
 
+    /* check for mandatory nodes - if the target node is in another module
+     * the added nodes cannot be mandatory
+     */
+    if (!aug->parent && (lys_node_module((struct lys_node *)aug) != lys_node_module(aug->target))
+            && lyp_check_mandatory((struct lys_node *)aug)) {
+        LOGVAL(LYE_SPEC, line, LY_VLOG_LYS, aug, "When augmenting data in another module, mandatory nodes are not allowed.");
+        return -1;
+    }
+
     /* inherit config information from parent, augment does not have
      * config property, but we need to keep the information for subelements
      */
