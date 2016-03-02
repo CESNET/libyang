@@ -96,6 +96,11 @@ struct type_tpdf {
     uint8_t flag;
 };
 
+struct type_augment {
+    struct lys_node_augment *ptr_augment;
+    uint8_t flag;
+};
+
 struct type_ident {
     int line;
     char s[0];
@@ -210,5 +215,7 @@ int yang_check_bit(struct yang_type *typ, struct lys_type_bit *bit, int64_t *val
 void *yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *value, int line);
 
 void *yang_read_refine(struct lys_module *module, struct lys_node_uses *uses, char *value, int line);
+
+void *yang_read_augment(struct lys_module *module, struct lys_node *parent, char *value, int line);
 
 #endif /* LY_PARSER_YANG_H_ */

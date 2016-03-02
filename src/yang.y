@@ -7,6 +7,7 @@
 #include "resolve.h"
 #include "common.h"
 #include "parser_yang.h"
+#include "parser.h"
 
 struct Scheck {
 	int check;
@@ -47,6 +48,7 @@ int64_t cnt_val;
     struct type_tpdf tpdf;
     struct lys_node_uses *uses;
     struct lys_refine *refine;
+    struct type_augment augment;
   } nodes;
 }
 
@@ -185,6 +187,7 @@ int64_t cnt_val;
 %type <nodes> type_opt_stmt
 %type <nodes> uses_opt_stmt
 %type <nodes> refine_body_opt_stmts
+%type <nodes> augment_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
@@ -1972,15 +1975,25 @@ refine_body_opt_stmts: %empty { if (read_all) {
   |  refine_body_opt_stmts reference_stmt { if (read_all && yang_read_reference(module,$1.refine,s,REFINE_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   ;
 
-uses_augment_stmt: AUGMENT_KEYWORD sep uses_augment_arg_str 
-                   '{' start_check
-                       augment_opt_stmt { if ((checked->check&1024)==0) { yyerror(module,unres,yang,size_arrays,read_all,"data-def or case statement missing."); YYERROR; }
-                                     free_check(); }
+uses_augment_stmt: AUGMENT_KEYWORD sep uses_augment_arg_str { if (read_all) {
+                                                                if (!(actual = yang_read_augment(module, actual, s, yylineno))) {
+                                                                  YYERROR;
+                                                                }
+                                                                s = NULL;
+                                                              } else {
+                                                                if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                                                  LOGMEM;
+                                                                  YYERROR;
+                                                                }
+                                                              }
+                                                            }
+                   '{' stmtsep
+                       augment_opt_stmt { if (read_all && !($7.augment.flag & LYS_DATADEF)){
+                                            LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_NONE, NULL, "data-def or case", "uses/augment");
+                                            YYERROR;
+                                          }
+                                        }
                    '}' ;
-
-data_def_case_stmt: data_def_stmt stmtsep
-  | case_stmt stmtsep
-  ;
 
 uses_augment_arg_str: descendant_schema_nodeid optsep 
   |  string_1 
@@ -1992,13 +2005,47 @@ augment_stmt: AUGMENT_KEYWORD sep augment_arg_str
                                      free_check(); }
                '}' ;
 
-augment_opt_stmt: %empty 
-  |  augment_opt_stmt yychecked_1 when_stmt
-  |  augment_opt_stmt if_feature_stmt
-  |  augment_opt_stmt yychecked_2 status_stmt
-  |  augment_opt_stmt yychecked_3 description_stmt
-  |  augment_opt_stmt yychecked_4 reference_stmt
-  |  augment_opt_stmt yychecked data_def_case_stmt
+augment_opt_stmt: %empty { if (read_all) {
+                             $$.augment.ptr_augment = actual;
+                             $$.augment.flag = 0;
+                             actual_type = AUGMENT_KEYWORD;
+                             if (size_arrays->node[size_arrays->next].if_features) {
+                               $$.augment.ptr_augment->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.augment.ptr_augment->features);
+                               if (!$$.augment.ptr_augment->features) {
+                                 LOGMEM;
+                                 YYERROR;
+                               }
+                             }
+                             size_arrays->next++;
+                           } else {
+                             $$.index = size_arrays->size-1;
+                           }
+                         }
+  |  augment_opt_stmt when_stmt { actual = $1.augment.ptr_augment; actual_type = AUGMENT_KEYWORD; }
+  |  augment_opt_stmt if_feature_stmt { if (read_all) {
+                                          if (yang_read_if_feature(module,$1.augment.ptr_augment,s,unres,AUGMENT_KEYWORD,yylineno)) {YYERROR;}
+                                          s=NULL;
+                                        } else {
+                                          size_arrays->node[$1.index].if_features++;
+                                        }
+                                      }
+  |  augment_opt_stmt status_stmt { if (read_all && yang_read_status($1.augment.ptr_augment,$2,AUGMENT_KEYWORD,yylineno)) {YYERROR;} }
+  |  augment_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.augment.ptr_augment,s,AUGMENT_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  augment_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.augment.ptr_augment,s,AUGMENT_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  augment_opt_stmt data_def_stmt stmtsep { if (read_all) {
+                                                actual = $1.augment.ptr_augment;
+                                                actual_type = AUGMENT_KEYWORD;
+                                                $1.augment.flag |= LYS_DATADEF;
+                                                $$ = $1;
+                                              }
+                                            }
+  |  augment_opt_stmt case_stmt stmtsep { if (read_all) {
+                                            actual = $1.augment.ptr_augment;
+                                            actual_type = AUGMENT_KEYWORD;
+                                            $1.augment.flag |= LYS_DATADEF;
+                                            $$ = $1;
+                                          }
+                                        }
   ;
 
 augment_arg_str: absolute_schema_nodeids optsep

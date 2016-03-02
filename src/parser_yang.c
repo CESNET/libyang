@@ -247,6 +247,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case REFINE_KEYWORD:
             ret = yang_check_string(module, &((struct lys_refine *) node)->dsc, "description", "refine", value, line);
             break;
+        case AUGMENT_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_augment *) node)->dsc, "description", "augment", value, line);
+            break;
         }
     }
     return ret;
@@ -323,6 +326,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case REFINE_KEYWORD:
             ret = yang_check_string(module, &((struct lys_refine *) node)->ref, "reference", "refine", value, line);
+            break;
+        case AUGMENT_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_augment *) node)->ref, "reference", "augment", value, line);
             break;
         }
     }
@@ -482,6 +488,9 @@ yang_read_status(void *node, int value, int type, int line)
         break;
     case USES_KEYWORD:
         retval = yang_check_flags(&((struct lys_node_uses *) node)->flags, LYS_STATUS_MASK, "status", "uses", value, line);
+        break;
+    case AUGMENT_KEYWORD:
+        retval = yang_check_flags(&((struct lys_node_augment *) node)->flags, LYS_STATUS_MASK, "status", "augment", value, line);
         break;
     }
     return retval;
@@ -707,6 +716,13 @@ yang_read_when(struct lys_module *module, struct lys_node *node, int type, char 
             goto error;
         }
         ((struct lys_node_uses *)node)->when = retval;
+        break;
+    case AUGMENT_KEYWORD:
+        if (((struct lys_node_augment *)node)->when) {
+            LOGVAL(LYE_TOOMANY, line, LY_VLOG_LYS, node, "when", "augment");
+            goto error;
+        }
+        ((struct lys_node_augment *)node)->when = retval;
         break;
     }
     free(value);
@@ -1456,4 +1472,31 @@ yang_read_refine(struct lys_module *module, struct lys_node_uses *uses, char *va
         return NULL;
     }
     return rfn;
+}
+
+void *
+yang_read_augment(struct lys_module *module, struct lys_node *parent, char *value, int line)
+{
+    struct lys_node_augment *aug;
+    uint16_t *size;
+
+    if (parent) {
+        aug = &((struct lys_node_uses *)parent)->augment[((struct lys_node_uses *)parent)->augment_size];
+    } else {
+        aug = &module->augment[module->augment_size];
+    }
+    aug->nodetype = LYS_AUGMENT;
+    aug->target_name = transform_schema2json(module, value, line);
+    free(value);
+    if (!aug->target_name) {
+        return NULL;
+    }
+    aug->parent = parent;
+    aug->module = module;
+    if (parent) {
+        ((struct lys_node_uses *)parent)->augment_size++;
+    } else {
+        module->augment_size++;
+    }
+    return aug;
 }
