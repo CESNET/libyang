@@ -89,6 +89,9 @@ struct lyxml_elem {
 #define LYXML_ELEM_MIXED 0x01 /* element contains mixed content */
 /* 0x80 is reserved and cannot be set! */
 
+#ifndef NDEBUG
+    unsigned int line;               /**< input line number */
+#endif
     struct lyxml_elem *parent;       /**< parent node */
     struct lyxml_attr *attr;         /**< first attribute declared in the element */
     struct lyxml_elem *child;        /**< first children element */
@@ -98,10 +101,6 @@ struct lyxml_elem {
     const char *name;                /**< name of the element */
     const struct lyxml_ns *ns;       /**< namespace of the element */
     const char *content;             /**< text content of the node if any */
-
-#ifndef NDEBUG
-    unsigned int line;               /**< input line number */
-#endif
 };
 
 /*
