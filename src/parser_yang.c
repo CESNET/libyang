@@ -250,6 +250,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case AUGMENT_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_augment *) node)->dsc, "description", "augment", value, line);
             break;
+        case RPC_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_rpc *) node)->dsc, "description", "rpc", value, line);
+            break;
         }
     }
     return ret;
@@ -329,6 +332,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case AUGMENT_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_augment *) node)->ref, "reference", "augment", value, line);
+            break;
+        case RPC_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_node_rpc *) node)->ref, "reference", "rpc", value, line);
             break;
         }
     }
@@ -491,6 +497,9 @@ yang_read_status(void *node, int value, int type, int line)
         break;
     case AUGMENT_KEYWORD:
         retval = yang_check_flags(&((struct lys_node_augment *) node)->flags, LYS_STATUS_MASK, "status", "augment", value, line);
+        break;
+    case RPC_KEYWORD:
+        retval = yang_check_flags(&((struct lys_node_rpc *) node)->flags, LYS_STATUS_MASK, "status", "rpc", value, line);
         break;
     }
     return retval;
@@ -1449,6 +1458,10 @@ yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *valu
         case LYS_LIST:
             ret = &((struct lys_node_list *)parent)->tpdf[((struct lys_node_list *)parent)->tpdf_size];
             ((struct lys_node_list *)parent)->tpdf_size++;
+            break;
+        case LYS_RPC:
+            ret = &((struct lys_node_rpc *)parent)->tpdf[((struct lys_node_rpc *)parent)->tpdf_size];
+            ((struct lys_node_rpc *)parent)->tpdf_size++;
             break;
         }
         ret->type.parent = (struct lys_tpdf *)parent;

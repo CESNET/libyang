@@ -37,6 +37,8 @@
 #define LYS_ORDERED_MASK 0xC0
 #define LYS_MIN_ELEMENTS 0x01
 #define LYS_MAX_ELEMENTS 0x02
+#define LYS_RPC_INPUT 0x01
+#define LYS_RPC_OUTPUT 0x02
 #define LYS_DATADEF 0x04
 #define LYS_TYPE_DEF 0x08
 #define LYS_TYPE_BASE 0x40
@@ -98,6 +100,11 @@ struct type_tpdf {
 
 struct type_augment {
     struct lys_node_augment *ptr_augment;
+    uint8_t flag;
+};
+
+struct type_rpc {
+    struct lys_node_rpc *ptr_rpc;
     uint8_t flag;
 };
 

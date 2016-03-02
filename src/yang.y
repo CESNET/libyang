@@ -49,6 +49,7 @@ int64_t cnt_val;
     struct lys_node_uses *uses;
     struct lys_refine *refine;
     struct type_augment augment;
+    struct type_rpc rpc;
   } nodes;
 }
 
@@ -188,6 +189,7 @@ int64_t cnt_val;
 %type <nodes> uses_opt_stmt
 %type <nodes> refine_body_opt_stmts
 %type <nodes> augment_opt_stmt
+%type <nodes> rpc_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
@@ -2090,22 +2092,84 @@ augment_arg_str: absolute_schema_nodeids optsep
   |  string_1
   ; 
 
-rpc_stmt: RPC_KEYWORD sep identifier_arg_str rpc_end;
+rpc_stmt: RPC_KEYWORD sep identifier_arg_str { if (read_all) {
+                                                 if (!(actual = yang_read_node(module, NULL, s, LYS_RPC, sizeof(struct lys_node_rpc)))) {
+                                                   YYERROR;
+                                                 }
+                                                 s = NULL;
+                                               } else {
+                                                 if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                                   LOGMEM;
+                                                   YYERROR;
+                                                 }
+                                               }
+                                             }
+          rpc_end;
 
-rpc_end: ';'
-  |  '{' start_check
-         rpc_opt_stmt  {free_check();}
-      '}' ;
+rpc_end: ';' { if (read_all) {
+                 size_arrays->next++;
+               }
+             }
+  |  '{' stmtsep
+         rpc_opt_stmt
+      '}'
 
-rpc_opt_stmt: %empty 
-  |  rpc_opt_stmt if_feature_stmt
-  |  rpc_opt_stmt yychecked_1 status_stmt
-  |  rpc_opt_stmt yychecked_2 description_stmt
-  |  rpc_opt_stmt yychecked_3 reference_stmt
-  |  rpc_opt_stmt typedef_grouping_stmt
-  |  rpc_opt_stmt yychecked_4 input_stmt
-  |  rpc_opt_stmt yychecked_5 output_stmt
-  ;
+
+rpc_opt_stmt: %empty { if (read_all) {
+                         $$.rpc.ptr_rpc = actual;
+                         $$.rpc.flag = 0;
+                         actual_type = RPC_KEYWORD;
+                         if (size_arrays->node[size_arrays->next].if_features) {
+                           $$.rpc.ptr_rpc->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.rpc.ptr_rpc->features);
+                           if (!$$.rpc.ptr_rpc->features) {
+                             LOGMEM;
+                             YYERROR;
+                           }
+                         }
+                         if (size_arrays->node[size_arrays->next].tpdf) {
+                           $$.rpc.ptr_rpc->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.rpc.ptr_rpc->tpdf);
+                           if (!$$.rpc.ptr_rpc->tpdf) {
+                             LOGMEM;
+                             YYERROR;
+                           }
+                         }
+                         size_arrays->next++;
+                       } else {
+                         $$.index = size_arrays->size-1;
+                       }
+                     }
+  |  rpc_opt_stmt if_feature_stmt { if (read_all) {
+                                      if (yang_read_if_feature(module,$1.rpc.ptr_rpc,s,unres,RPC_KEYWORD,yylineno)) {YYERROR;}
+                                      s=NULL;
+                                    } else {
+                                      size_arrays->node[$1.index].if_features++;
+                                    }
+                                  }
+  |  rpc_opt_stmt status_stmt { if (read_all && yang_read_status($1.rpc.ptr_rpc,$2,RPC_KEYWORD,yylineno)) {YYERROR;} }
+  |  rpc_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.rpc.ptr_rpc,s,RPC_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  rpc_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.rpc.ptr_rpc,s,RPC_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  rpc_opt_stmt typedef_stmt stmtsep { if (read_all) {
+                                           actual = $1.rpc.ptr_rpc;
+                                           actual_type = RPC_KEYWORD;
+                                         } else {
+                                           size_arrays->node[$1.index].tpdf++;
+                                         }
+                                       }
+  |  rpc_opt_stmt grouping_stmt stmtsep { actual = $1.rpc.ptr_rpc; actual_type = RPC_KEYWORD; }
+  |  rpc_opt_stmt input_stmt { if ($1.rpc.flag & LYS_RPC_INPUT) {
+                                 LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_LYS, $1.rpc.ptr_rpc, "input", "rpc");
+                                 YYERROR;
+                               }
+                               $1.rpc.flag |= LYS_RPC_INPUT;
+                               $$ = $1;
+                             }
+  |  rpc_opt_stmt output_stmt { if ($1.rpc.flag & LYS_RPC_OUTPUT) {
+                                  LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_LYS, $1.rpc.ptr_rpc, "output", "rpc");
+                                  YYERROR;
+                                }
+                                $1.rpc.flag |= LYS_RPC_OUTPUT;
+                                $$ = $1;
+                              }
 
 input_stmt: INPUT_KEYWORD optsep
             '{' start_check
