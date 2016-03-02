@@ -5,18 +5,11 @@
  *
  * Copyright (c) 2015 CESNET, z.s.p.o.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name of the Company nor the names of its contributors
- *    may be used to endorse or promote products derived from this
- *    software without specific prior written permission.
+ * This source code is licensed under BSD 3-Clause License (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/BSD-3-Clause
  */
 
 #ifndef LY_TREE_DATA_H_
@@ -498,8 +491,13 @@ int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
  * @brief Search in the given data for instances of nodes matching the provided XPath expression.
  *
  * The \p data is used to find the data root and function then searches in the whole tree and all sibling trees.
+ * The XPath expression is evaluated on data -> skip all non-data nodes (input, output, choice, case).
  *
- * @param[in] data A node in the data tree considered the context node. If the node is a configuration one,
+ * Expr examples:
+ *      "/ietf-yang-library:modules-state/module[name = 'ietf-yang-library']/namespace"
+ *      "/ietf-netconf:get-config/source"
+ *
+ * @param[in] data Node in the data tree considered the context node. If the node is a configuration one,
  * any state nodes in its tree are not accessible!
  * @param[in] expr XPath expression filtering the matching nodes.
  * @return Set of found data nodes (use dset member of ::ly_set). If no nodes are matching \p expr or the result

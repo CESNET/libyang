@@ -5,18 +5,11 @@
  *
  * Copyright (c) 2015 CESNET, z.s.p.o.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name of the Company nor the names of its contributors
- *    may be used to endorse or promote products derived from this
- *    software without specific prior written permission.
+ * This source code is licensed under BSD 3-Clause License (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/BSD-3-Clause
  */
 
 #ifndef LY_XML_H_
@@ -96,6 +89,9 @@ struct lyxml_elem {
 #define LYXML_ELEM_MIXED 0x01 /* element contains mixed content */
 /* 0x80 is reserved and cannot be set! */
 
+#ifndef NDEBUG
+    unsigned int line;               /**< input line number */
+#endif
     struct lyxml_elem *parent;       /**< parent node */
     struct lyxml_attr *attr;         /**< first attribute declared in the element */
     struct lyxml_elem *child;        /**< first children element */
@@ -105,10 +101,6 @@ struct lyxml_elem {
     const char *name;                /**< name of the element */
     const struct lyxml_ns *ns;       /**< namespace of the element */
     const char *content;             /**< text content of the node if any */
-
-#ifndef NDEBUG
-    unsigned int line;               /**< input line number */
-#endif
 };
 
 /*
