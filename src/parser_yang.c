@@ -244,6 +244,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case USES_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_uses *) node)->dsc, "description", "uses", value, line);
             break;
+        case REFINE_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_refine *) node)->dsc, "description", "refine", value, line);
+            break;
         }
     }
     return ret;
@@ -317,6 +320,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case USES_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_uses *) node)->ref, "reference", "uses", value, line);
+            break;
+        case REFINE_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_refine *) node)->ref, "reference", "refine", value, line);
             break;
         }
     }
@@ -542,6 +548,9 @@ yang_read_must(struct lys_module *module, struct lys_node *node, char *value, in
     case LIST_KEYWORD:
         retval = &((struct lys_node_list *)node)->must[((struct lys_node_list *)node)->must_size++];
         break;
+    case REFINE_KEYWORD:
+        retval = &((struct lys_refine *)node)->must[((struct lys_refine *)node)->must_size++];
+        break;
     }
     retval->expr = transform_schema2json(module, value, line);
     if (!retval->expr || lyxp_syntax_check(retval->expr, line)) {
@@ -619,6 +628,9 @@ yang_read_config(void *node, int value, int type, int line)
         break;
     case LIST_KEYWORD:
         ret = yang_check_flags(&((struct lys_node_list *)node)->flags, LYS_CONFIG_MASK, "config", "list", value, line);
+        break;
+    case REFINE_KEYWORD:
+        ret = yang_check_flags(&((struct lys_refine *)node)->flags, LYS_CONFIG_MASK, "config", "refine", value, line);
         break;
     }
     return ret;
@@ -744,6 +756,9 @@ yang_read_mandatory(void *node, int value, int type, int line)
         break;
     case LEAF_KEYWORD:
         ret = yang_check_flags(&((struct lys_node_leaf *)node)->flags, LYS_MAND_MASK, "mandatory", "leaf", value, line);
+        break;
+    case REFINE_KEYWORD:
+        ret = yang_check_flags(&((struct lys_refine *)node)->flags, LYS_MAND_MASK, "mandatory", "refine", value, line);
         break;
     }
     return ret;
@@ -1426,4 +1441,19 @@ yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *valu
     ret->name = lydict_insert_zc(module->ctx, value);
     ret->module = module;
     return ret;
+}
+
+void *
+yang_read_refine(struct lys_module *module, struct lys_node_uses *uses, char *value, int line)
+{
+    struct lys_refine *rfn;
+
+    rfn = &uses->refine[uses->refine_size];
+    uses->refine_size++;
+    rfn->target_name = transform_schema2json(module, value, line);
+    free(value);
+    if (!rfn->target_name) {
+        return NULL;
+    }
+    return rfn;
 }

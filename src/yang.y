@@ -46,6 +46,7 @@ int64_t cnt_val;
     struct type_list list;
     struct type_tpdf tpdf;
     struct lys_node_uses *uses;
+    struct lys_refine *refine;
   } nodes;
 }
 
@@ -183,6 +184,7 @@ int64_t cnt_val;
 %type <nodes> list_opt_stmt
 %type <nodes> type_opt_stmt
 %type <nodes> uses_opt_stmt
+%type <nodes> refine_body_opt_stmts
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
@@ -1789,11 +1791,23 @@ uses_opt_stmt: %empty { if (read_all) {
                                              }
   ;
 
-refine_stmt: REFINE_KEYWORD sep refine_arg_str refine_end;
+refine_stmt: REFINE_KEYWORD sep refine_arg_str { if (read_all) {
+                                                   if (!(actual = yang_read_refine(module, actual, s, yylineno))) {
+                                                     YYERROR;
+                                                   }
+                                                   s = NULL;
+                                                 } else {
+                                                   if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                                     LOGMEM;
+                                                     YYERROR;
+                                                   }
+                                                 }
+                                               }
+             refine_end;
 
 refine_end: ';'
-  |  '{' start_check
-         refine_body_opt_stmts {free_check();}
+  |  '{' stmtsep
+         refine_body_opt_stmts
      '}' ;
 
 
@@ -1801,28 +1815,162 @@ refine_arg_str: descendant_schema_nodeid optsep
   | string_1
   ;
 
-refine_body_opt_stmts: %empty 
-  |  refine_body_opt_stmts must_stmt 
-  |  refine_body_opt_stmts yychecked_1 presence_stmt  
-  |  refine_body_opt_stmts yychecked_2 default_stmt 
-  |  refine_body_opt_stmts yychecked_3 config_stmt 
-  |  refine_body_opt_stmts yychecked_4 mandatory_stmt 
-  |  refine_body_opt_stmts yychecked_5 min_elements_stmt 
-  |  refine_body_opt_stmts yychecked_6 max_elements_stmt 
-  |  refine_body_opt_stmts yychecked_7 description_stmt 
-  |  refine_body_opt_stmts yychecked_8 reference_stmt
+refine_body_opt_stmts: %empty { if (read_all) {
+                                  $$.refine = actual;
+                                  actual_type = REFINE_KEYWORD;
+                                  if (size_arrays->node[size_arrays->next].must) {
+                                    $$.refine->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.refine->must);
+                                    if (!$$.refine->must) {
+                                      LOGMEM;
+                                      YYERROR;
+                                    }
+                                    $$.refine->target_type = LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML;
+                                  }
+                                  size_arrays->next++;
+                                } else {
+                                  $$.index = size_arrays->size-1;
+                                }
+                              }
+  |  refine_body_opt_stmts must_stmt { if (read_all) {
+                                         actual = $1.refine;
+                                         actual_type = REFINE_KEYWORD;
+                                       } else {
+                                         size_arrays->node[$1.index].must++;
+                                       }
+                                     }
+  |  refine_body_opt_stmts presence_stmt { if (read_all) {
+                                             if ($1.refine->target_type) {
+                                               if ($1.refine->target_type & LYS_CONTAINER) {
+                                                 if ($1.refine->mod.presence) {
+                                                   LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "presence", "refine");
+                                                   free(s);
+                                                   YYERROR;
+                                                 }
+                                                 $1.refine->target_type = LYS_CONTAINER;
+                                                 $1.refine->mod.presence = lydict_insert_zc(module->ctx, s);
+                                               } else {
+                                                 free(s);
+                                                 LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                                                 YYERROR;
+                                               }
+                                             } else {
+                                               $1.refine->target_type = LYS_CONTAINER;
+                                               $1.refine->mod.presence = lydict_insert_zc(module->ctx, s);
+                                             }
+                                             s = NULL;
+                                             $$ = $1;
+                                           }
+                                         }
+  |  refine_body_opt_stmts default_stmt { if (read_all) {
+                                            if ($1.refine->target_type) {
+                                              if ($1.refine->target_type & (LYS_LEAF | LYS_CHOICE)) {
+                                                $1.refine->target_type &= (LYS_LEAF | LYS_CHOICE);
+                                                if ($1.refine->mod.dflt) {
+                                                  LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "default", "refine");
+                                                  free(s);
+                                                  YYERROR;
+                                                }
+                                                $1.refine->mod.dflt = lydict_insert_zc(module->ctx, s);
+                                              } else {
+                                                free(s);
+                                                LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                                                YYERROR;
+                                              }
+                                            } else {
+                                              $1.refine->target_type = LYS_LEAF | LYS_CHOICE;
+                                              $1.refine->mod.dflt = lydict_insert_zc(module->ctx, s);
+                                            }
+                                            s = NULL;
+                                            $$ = $1;
+                                          }
+                                        }
+  |  refine_body_opt_stmts config_stmt { if (read_all) {
+                                           if ($1.refine->target_type) {
+                                             if ($1.refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST)) {
+                                               $1.refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST);
+                                               if (yang_read_config($1.refine, $2, REFINE_KEYWORD, yylineno)) {
+                                                 YYERROR;
+                                               }
+                                             } else {
+                                               LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                                               YYERROR;
+                                             }
+                                           } else {
+                                             $1.refine->target_type = LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST;
+                                             $1.refine->flags |= $2;
+                                           }
+                                           $$ = $1;
+                                         }
+                                       }
+  |  refine_body_opt_stmts mandatory_stmt { if (read_all) {
+                                              if ($1.refine->target_type) {
+                                                if ($1.refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_ANYXML)) {
+                                                  $1.refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_ANYXML);
+                                                  if (yang_read_mandatory($1.refine, $2, REFINE_KEYWORD, yylineno)) {
+                                                    YYERROR;
+                                                  }
+                                                } else {
+                                                  LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                                                  YYERROR;
+                                                }
+                                              } else {
+                                                $1.refine->target_type = LYS_LEAF | LYS_CHOICE | LYS_ANYXML;
+                                                $1.refine->flags |= $2;
+                                              }
+                                              $$ = $1;
+                                            }
+                                          }
+  |  refine_body_opt_stmts min_elements_stmt { if (read_all) {
+                                                 if ($1.refine->target_type) {
+                                                   if ($1.refine->target_type & (LYS_LIST | LYS_LEAFLIST)) {
+                                                     $1.refine->target_type &= (LYS_LIST | LYS_LEAFLIST);
+                                                     /* magic - bit 3 in flags means min set */
+                                                     if ($1.refine->flags & 0x04) {
+                                                       LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "min-elements", "refine");
+                                                       YYERROR;
+                                                     }
+                                                     $1.refine->flags |= 0x04;
+                                                     $1.refine->mod.list.min = $2;
+                                                   } else {
+                                                     LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                                                     YYERROR;
+                                                   }
+                                                 } else {
+                                                   $1.refine->target_type = LYS_LIST | LYS_LEAFLIST;
+                                                   /* magic - bit 3 in flags means min set */
+                                                   $1.refine->flags |= 0x04;
+                                                   $1.refine->mod.list.min = $2;
+                                                 }
+                                                 $$ = $1;
+                                               }
+                                             }
+  |  refine_body_opt_stmts max_elements_stmt { if (read_all) {
+                                                 if ($1.refine->target_type) {
+                                                   if ($1.refine->target_type & (LYS_LIST | LYS_LEAFLIST)) {
+                                                     $1.refine->target_type &= (LYS_LIST | LYS_LEAFLIST);
+                                                     /* magic - bit 4 in flags means max set */
+                                                     if ($1.refine->flags & 0x08) {
+                                                       LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "max-elements", "refine");
+                                                       YYERROR;
+                                                     }
+                                                     $1.refine->flags |= 0x08;
+                                                     $1.refine->mod.list.max = $2;
+                                                   } else {
+                                                     LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                                                     YYERROR;
+                                                   }
+                                                 } else {
+                                                   $1.refine->target_type = LYS_LIST | LYS_LEAFLIST;
+                                                   /* magic - bit 4 in flags means max set */
+                                                   $1.refine->flags |= 0x08;
+                                                   $1.refine->mod.list.max = $2;
+                                                 }
+                                                 $$ = $1;
+                                               }
+                                             }
+  |  refine_body_opt_stmts description_stmt { if (read_all && yang_read_description(module,$1.refine,s,REFINE_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  refine_body_opt_stmts reference_stmt { if (read_all && yang_read_reference(module,$1.refine,s,REFINE_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
   ;
-
-/*original grammar has rules for every node, but I have 20 reduce conflicts. I think it should be checked semantic analysis*/
-/*
-refine_stmt1: presence_stmt
-  |  default_stmt
-  ;
-/*
-refine_stmt2: mandatory_stmt
-  |  min_elements_stmt max_elements_stmt
-  ;
-*/
 
 uses_augment_stmt: AUGMENT_KEYWORD sep uses_augment_arg_str 
                    '{' start_check
@@ -2405,7 +2553,6 @@ yychecked_4: %empty { if ((checked->check&8)==0) checked->check|=8; else { yyerr
 yychecked_5: %empty { if ((checked->check&16)==0) checked->check|=16; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
 yychecked_6: %empty { if ((checked->check&32)==0) checked->check|=32; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
 yychecked_7: %empty { if ((checked->check&64)==0) checked->check|=64; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
-yychecked_8: %empty { if ((checked->check&128)==0) checked->check|=128; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
 
 identifiers: identifier { if (read_all) {
                             s = strdup(yytext);
