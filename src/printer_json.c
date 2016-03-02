@@ -268,13 +268,32 @@ static void
 json_print_anyxml(struct lyout *out, int level, const struct lyd_node *node)
 {
     const char *schema = NULL;
+    struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
+    char *xml;
 
     if (!node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
         schema = lys_node_module(node->schema)->name;
-        ly_print(out, "%*s\"%s:%s\": [null]", LEVEL, INDENT, schema, node->schema->name);
+        ly_print(out, "%*s\"%s:%s\": ", LEVEL, INDENT, schema, node->schema->name);
     } else {
-        ly_print(out, "%*s\"%s\": [null]", LEVEL, INDENT, node->schema->name);
+        ly_print(out, "%*s\"%s\": ", LEVEL, INDENT, node->schema->name);
+    }
+
+    if (axml->value) {
+        /* print content */
+        if (axml->value->content) {
+            json_print_string(out, axml->value->content);
+        }
+
+        /* print children */
+        if (axml->value->child) {
+            lyxml_print_mem(&xml, axml->value->child, LYXML_PRINT_SIBLINGS);
+            json_print_string(out, xml);
+            free(xml);
+        }
+    }
+    if (!axml->value || (!axml->value->content && !axml->value->child)) {
+        ly_print(out, "[null]");
     }
 
     /* print attributes as sibling leaf */
