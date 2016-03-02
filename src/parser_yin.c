@@ -2037,15 +2037,6 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
             goto error;
         }
 
-        /* check for mandatory nodes - if the target node is in another module
-         * the added nodes cannot be mandatory
-         */
-        if ((!parent || (parent->nodetype != LYS_USES)) && lyp_check_mandatory(node)) {
-            LOGVAL(LYE_SPEC, LOGLINE(child), LY_VLOG_NONE, NULL,
-                   "When augmenting data in another module, mandatory statement is not allowed.");
-            goto error;
-        }
-
         node = NULL;
         lyxml_free(module->ctx, child);
     }
