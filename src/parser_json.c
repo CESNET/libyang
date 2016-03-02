@@ -272,6 +272,7 @@ json_get_anyxml(struct lyd_node_anyxml *axml, const char *data)
     case '"':
         start = 0;
         stop = '"';
+        len++;
         level = 1;
         break;
     case '[':
@@ -301,7 +302,6 @@ json_get_anyxml(struct lyd_node_anyxml *axml, const char *data)
                 level--;
             }
         }
-        stop = len;
         len++;
         if (!level) {
             /* we are done */
