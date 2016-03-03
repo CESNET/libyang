@@ -294,8 +294,6 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
         module = lys_parse_mem(ctx, module_data, format);
         if (module_data_free) {
             module_data_free(module_data);
-        } else {
-            free(module_data);
         }
     } else {
         module = lyp_search_file(ctx, NULL, name, revision, NULL);

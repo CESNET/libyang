@@ -621,7 +621,7 @@ const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name
  * @param[in] revision Optional missing module revision.
  * @param[in] user_data User-supplied callback data.
  * @param[out] format Format of the returned module data.
- * @param[out] free_module_data Optional callback for freeing the returned module data. If not set, free() is used.
+ * @param[out] free_module_data Callback for freeing the returned module data. If not set, the data will be left untouched.
  * @return Requested module data or NULL on error.
  */
 typedef char *(*ly_module_clb)(const char *name, const char *revision, void *user_data, LYS_INFORMAT *format,
