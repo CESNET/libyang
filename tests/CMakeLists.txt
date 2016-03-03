@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 
-set(data_tests test_data_initialization test_leafref_remove test_instid_remove)
+set(data_tests test_data_initialization test_leafref_remove test_instid_remove test_libyang)
 set(schema_yin_tests test_ietf test_augment test_print_transform)
 
 foreach(test_name IN LISTS data_tests)
