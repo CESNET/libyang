@@ -2409,7 +2409,7 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
     struct lyxml_elem *child;
     const char *value;
     char *module_data;
-    void (*module_data_free)(char *module_data) = NULL;
+    void (*module_data_free)(void *module_data) = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
     int count, i;
 

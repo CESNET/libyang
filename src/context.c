@@ -277,7 +277,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
 {
     const struct lys_module *module;
     char *module_data;
-    void (*module_data_free)(char *module_data) = NULL;
+    void (*module_data_free)(void *module_data) = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
     if (!ctx || !name) {

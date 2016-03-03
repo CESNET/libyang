@@ -625,7 +625,7 @@ const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name
  * @return Requested module data or NULL on error.
  */
 typedef char *(*ly_module_clb)(const char *name, const char *revision, void *user_data, LYS_INFORMAT *format,
-                               void (**free_module_data)(char *model_data));
+                               void (**free_module_data)(void *model_data));
 
 /**
  * @brief Set missing include or import model callback.
