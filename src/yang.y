@@ -2386,6 +2386,10 @@ deviation_arg_str: absolute_schema_nodeids optsep
   | string_1
 
 deviate_body_stmt: deviate_not_supported_stmt
+                   { if (read_all && yang_read_deviate_unsupported(actual, yylineno)) {
+                       YYERROR;
+                     }
+                   }
   |  deviate_stmts
 
 deviate_stmts: deviate_add_stmt

@@ -1641,3 +1641,32 @@ error:
     lydict_remove(module->ctx, dev->target_name);
     return NULL;
 }
+
+int
+yang_read_deviate_unsupported(struct type_deviation *dev, int line)
+{
+    int i;
+
+    if (dev->deviation->deviate_size) {
+        LOGVAL(LYE_SPEC, line, LY_VLOG_NONE, NULL, "\"not-supported\" deviation cannot be combined with any other deviation.");
+        return EXIT_FAILURE;
+    }
+    dev->deviation->deviate[dev->deviation->deviate_size].mod = LY_DEVIATE_NO;
+
+    /* you cannot remove a key leaf */
+    if ((dev->target->nodetype == LYS_LEAF) && dev->target->parent && (dev->target->parent->nodetype == LYS_LIST)) {
+        for (i = 0; i < ((struct lys_node_list *)dev->target->parent)->keys_size; ++i) {
+            if (((struct lys_node_list *)dev->target->parent)->keys[i] == (struct lys_node_leaf *)dev->target) {
+                LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, "not-supported", "deviation");
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "\"not-supported\" deviation cannot remove a list key.");
+                return EXIT_FAILURE;
+            }
+        }
+    }
+ 
+    /* unlink and store the original node */
+    dev->deviation->orig_node = dev->target;
+
+    dev->deviation->deviate_size = 1;
+    return EXIT_SUCCESS;
+}

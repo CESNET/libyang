@@ -238,4 +238,6 @@ void *yang_read_augment(struct lys_module *module, struct lys_node *parent, char
 
 void *yang_read_deviation(struct lys_module *module, char *value, int line);
 
+int yang_read_deviate_unsupported(struct type_deviation *dev, int line);
+
 #endif /* LY_PARSER_YANG_H_ */
