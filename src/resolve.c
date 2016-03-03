@@ -2894,6 +2894,28 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, int fir
         return -1;
     }
 
+    /* check augment target type and then augment nodes type */
+    if (aug->target->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF)) {
+        LY_TREE_FOR(aug->child, sub) {
+            if (!(sub->nodetype & (LYS_ANYXML | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES | LYS_CHOICE))) {
+                LOGVAL(LYE_SPEC, line, LY_VLOG_LYS, aug, "Cannot augment \"%s\" with a \"%s\".",
+                       strnodetype(aug->target->nodetype), strnodetype(sub->nodetype));
+                return -1;
+            }
+        }
+    } else if (aug->target->nodetype == LYS_CHOICE) {
+        LY_TREE_FOR(aug->child, sub) {
+            if (!(sub->nodetype & (LYS_CASE | LYS_ANYXML | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST))) {
+                LOGVAL(LYE_SPEC, line, LY_VLOG_LYS, aug, "Cannot augment \"%s\" with a \"%s\".",
+                       strnodetype(aug->target->nodetype), strnodetype(sub->nodetype));
+                return -1;
+            }
+        }
+    } else {
+        LOGVAL(LYE_SPEC, line, LY_VLOG_LYS, aug, "Invalid augment target node type \"%s\".", strnodetype(aug->target->nodetype));
+        return -1;
+    }
+
     /* inherit config information from parent, augment does not have
      * config property, but we need to keep the information for subelements
      */
