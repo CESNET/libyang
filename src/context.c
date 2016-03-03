@@ -73,7 +73,10 @@ ly_ctx_new(const char *search_dir)
             return NULL;
         }
         ctx->models.search_path = get_current_dir_name();
-        chdir(cwd);
+        if (chdir(cwd)) {
+            LOGWRN("Unable to return back to working directory \"%s\" (%s)",
+                   cwd, strerror(errno));
+        }
         free(cwd);
     }
     ctx->models.module_set_id = 1;
@@ -125,7 +128,10 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
         free(ctx->models.search_path);
         ctx->models.search_path = get_current_dir_name();
 
-        chdir(cwd);
+        if (chdir(cwd)) {
+            LOGWRN("Unable to return back to working directory \"%s\" (%s)",
+                   cwd, strerror(errno));
+        }
         free(cwd);
     } else {
         free(ctx->models.search_path);
@@ -441,7 +447,7 @@ ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod)
             return EXIT_FAILURE;
         }
         if (cur_mod->inc[i].submodule->filepath) {
-            if (asprintf(&str, "file://%s", cur_mod->inc[i].submodule->filepath) < 0) {
+            if (asprintf(&str, "file://%s", cur_mod->inc[i].submodule->filepath) == -1< 0) {
                 LOGMEM;
                 return EXIT_FAILURE;
             } else if (!lyd_new_leaf(cont, NULL, "schema", str)) {
@@ -492,7 +498,7 @@ ly_ctx_info(struct ly_ctx *ctx)
             return NULL;
         }
         if (ctx->models.list[i]->filepath) {
-            if (asprintf(&str, "file://%s", ctx->models.list[i]->filepath) < 0) {
+            if (asprintf(&str, "file://%s", ctx->models.list[i]->filepath) == -1) {
                 LOGMEM;
                 lyd_free(root);
                 return NULL;

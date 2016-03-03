@@ -829,9 +829,13 @@ print_set_debug(struct lyxp_set *set)
         } else if (isinf(set->value.num) && signbit(set->value.num)) {
             str_num = strdup("-Infinity");
         } else if ((long long)set->value.num == set->value.num) {
-            asprintf(&str_num, "%lld", (long long)set->value.num);
+            if (asprintf(&str_num, "%lld", (long long)set->value.num) == -1) {
+                str_num = NULL;
+            }
         } else {
-            asprintf(&str_num, "%03.1Lf", set->value.num);
+            if (asprintf(&str_num, "%03.1Lf", set->value.num) == -1) {
+                str_num = NULL;
+            }
         }
 
         if (!str_num) {
@@ -6549,9 +6553,13 @@ lyxp_set_print_xml(FILE *f, struct lyxp_set *set)
         } else if (isinf(set->value.num) && signbit(set->value.num)) {
             str_num = strdup("-Infinity");
         } else if ((long long)set->value.num == set->value.num) {
-            asprintf(&str_num, "%lld", (long long)set->value.num);
+            if (asprintf(&str_num, "%lld", (long long)set->value.num) == -1) {
+                str_num = NULL;
+            }
         } else {
-            asprintf(&str_num, "%03.1Lf", set->value.num);
+            if (asprintf(&str_num, "%03.1Lf", set->value.num) == -1) {
+                str_num = NULL;
+            }
         }
         if (!str_num) {
             LOGMEM;
@@ -6632,10 +6640,16 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct lyd_
             } else if (isinf(set->value.num) && signbit(set->value.num)) {
                 set->value.str = lydict_insert(ctx, "-Infinity", 0);
             } else if ((long long)set->value.num == set->value.num) {
-                asprintf(&str_num, "%lld", (long long)set->value.num);
+                if (asprintf(&str_num, "%lld", (long long)set->value.num) == -1) {
+                    LOGMEM;
+                    return;
+                }
                 set->value.str = lydict_insert_zc(ctx, str_num);
             } else {
-                asprintf(&str_num, "%03.1Lf", set->value.num);
+                if (asprintf(&str_num, "%03.1Lf", set->value.num) == -1) {
+                    LOGMEM;
+                    return;
+                }
                 set->value.str = lydict_insert_zc(ctx, str_num);
             }
             break;

@@ -1092,11 +1092,12 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     if (module && !module->filepath) {
         /* get URI if there is /proc */
         addr = NULL;
-        asprintf(&addr, "/proc/self/fd/%d", fd);
-        if ((len = readlink(addr, buf, PATH_MAX - 1)) > 0) {
-            ((struct lys_module *)module)->filepath = lydict_insert(ctx, buf, len);
+        if (asprintf(&addr, "/proc/self/fd/%d", fd) != -1) {
+            if ((len = readlink(addr, buf, PATH_MAX - 1)) > 0) {
+                ((struct lys_module *)module)->filepath = lydict_insert(ctx, buf, len);
+            }
+            free(addr);
         }
-        free(addr);
     }
 
     return module;

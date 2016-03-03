@@ -310,7 +310,10 @@ json_get_anyxml(struct lyd_node_anyxml *axml, const char *data)
             /* we are done */
             if (!start) {
                 /* XML in string as we print it */
-                asprintf(&xmlstr, "<%s xmlns=\"%s\"/>", axml->schema->name, axml->schema->module->ns);
+                if (asprintf(&xmlstr, "<%s xmlns=\"%s\"/>", axml->schema->name, axml->schema->module->ns) == -1) {
+                    LOGMEM;
+                    return 0;
+                }
                 axml->value = lyxml_parse_elem(axml->schema->module->ctx, xmlstr, &x, NULL);
                 free(xmlstr);
 

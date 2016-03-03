@@ -352,7 +352,11 @@ lyd_create_anyxml(const struct lys_node *schema, const char *val_xml)
     ret->prev = (struct lyd_node *)ret;
 
     /* store the anyxml data together with the anyxml element */
-    asprintf(&xml, "<%s>%s</%s>", schema->name, (val_xml ? val_xml : ""), schema->name);
+    if (asprintf(&xml, "<%s>%s</%s>", schema->name, (val_xml ? val_xml : ""), schema->name) == -1) {
+        LOGMEM;
+        lyd_free((struct lyd_node *)ret);
+        return NULL;
+    }
     root = lyxml_parse_mem(schema->module->ctx, xml, 0);
     free(xml);
     if (!root) {
