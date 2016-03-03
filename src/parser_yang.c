@@ -256,6 +256,9 @@ yang_read_description(struct lys_module *module, void *node, char *value, int ty
         case NOTIFICATION_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_notif *) node)->dsc, "description", "notification", value, line);
             break;
+        case DEVIATION_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_deviation *) node)->dsc, "description", "deviation", value, line);
+            break;
         }
     }
     return ret;
@@ -341,6 +344,9 @@ yang_read_reference(struct lys_module *module, void *node, char *value, int type
             break;
         case NOTIFICATION_KEYWORD:
             ret = yang_check_string(module, &((struct lys_node_notif *) node)->ref, "reference", "notification", value, line);
+            break;
+        case DEVIATION_KEYWORD:
+            ret = yang_check_string(module, &((struct lys_deviation *) node)->ref, "reference", "deviation", value, line);
             break;
         }
     }
@@ -1534,4 +1540,104 @@ yang_read_augment(struct lys_module *module, struct lys_node *parent, char *valu
         module->augment_size++;
     }
     return aug;
+}
+
+void *
+yang_read_deviation(struct lys_module *module, char *value, int line)
+{
+    struct lys_node *dev_target = NULL;
+    struct lys_deviation *dev;
+    struct type_deviation *deviation = NULL;
+    int i, j, rc;
+
+    deviation = calloc(1, sizeof *deviation);
+    if (!deviation) {
+        LOGMEM;
+        goto error;
+    }
+
+    dev = &module->deviation[module->deviation_size];
+    dev->target_name = transform_schema2json(module, value, line);
+    free(value);
+    if (!dev->target_name) {
+        goto error;
+    }
+
+    /* resolve target node */
+    rc = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&dev_target);
+    if (rc || !dev_target) {
+        LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, dev->target_name, "deviations");
+        goto error;
+    }
+    if (dev_target->module == lys_module(module)) {
+        LOGVAL(LYE_SPEC, line, LY_VLOG_NONE, NULL, "Deviating own module is not allowed.");
+        goto error;
+    }
+    /*save pointer to the deviation and deviated target*/
+    deviation->deviation = dev;
+    deviation->target = dev_target;
+
+    /* mark the target module as deviated */
+    dev_target->module->deviated = 1;
+
+    /* copy our imports to the deviated module (deviations may need them to work) */
+    for (i = 0; i < module->imp_size; ++i) {
+        for (j = 0; j < dev_target->module->imp_size; ++j) {
+            if (module->imp[i].module == dev_target->module->imp[j].module) {
+                break;
+            }
+        }
+
+        if (j < dev_target->module->imp_size) {
+            /* import is already there */
+            continue;
+        }
+
+        /* copy the import, mark it as external */
+        ++dev_target->module->imp_size;
+        dev_target->module->imp = ly_realloc(dev_target->module->imp, dev_target->module->imp_size * sizeof *dev_target->module->imp);
+        if (!dev_target->module->imp) {
+            LOGMEM;
+            goto error;
+        }
+        dev_target->module->imp[dev_target->module->imp_size - 1].module = module->imp[i].module;
+        dev_target->module->imp[dev_target->module->imp_size - 1].prefix = lydict_insert(module->ctx, module->imp[i].prefix, 0);
+        memcpy(dev_target->module->imp[dev_target->module->imp_size - 1].rev, module->imp[i].rev, LY_REV_SIZE);
+        dev_target->module->imp[dev_target->module->imp_size - 1].external = 1;
+    }
+
+    /* copy ourselves to the deviated module as a special import (if we haven't yet, there could be more deviations of the same module) */
+    for (i = 0; i < dev_target->module->imp_size; ++i) {
+        if (dev_target->module->imp[i].module == module) {
+            break;
+        }
+    }
+
+    if (i == dev_target->module->imp_size) {
+        ++dev_target->module->imp_size;
+        dev_target->module->imp = ly_realloc(dev_target->module->imp, dev_target->module->imp_size * sizeof *dev_target->module->imp);
+        if (!dev_target->module->imp) {
+            LOGMEM;
+            goto error;
+        }
+        dev_target->module->imp[dev_target->module->imp_size - 1].module = module;
+        dev_target->module->imp[dev_target->module->imp_size - 1].prefix = lydict_insert(module->ctx, module->prefix, 0);
+        if (module->rev_size) {
+            memcpy(dev_target->module->imp[dev_target->module->imp_size - 1].rev, module->rev[0].date, LY_REV_SIZE);
+        } else {
+            memset(dev_target->module->imp[dev_target->module->imp_size - 1].rev, 0, LY_REV_SIZE);
+        }
+        dev_target->module->imp[dev_target->module->imp_size - 1].external = 2;
+    } else {
+        /* it could have been added by another deviating module that imported this deviating module */
+        dev_target->module->imp[i].external = 2;
+    }
+
+
+    return deviation;
+
+error:
+    free(deviation);
+    lydict_remove(module->ctx, dev->target_name);
+    return NULL;
 }

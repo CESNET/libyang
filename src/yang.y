@@ -52,6 +52,7 @@ int64_t cnt_val;
     struct type_rpc rpc;
     struct type_inout inout;
     struct lys_node_notif *notif;
+    struct type_deviation *deviation;
   } nodes;
 }
 
@@ -194,9 +195,14 @@ int64_t cnt_val;
 %type <nodes> rpc_opt_stmt
 %type <nodes> input_output_opt_stmt
 %type <nodes> notification_opt_stmt
+%type <nodes> deviation_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
+%destructor { if (read_all) {
+                free($$.deviation);
+              }
+            } deviation_opt_stmt
 
 %%
 
@@ -415,6 +421,13 @@ body_stmts: %empty { if (read_all) {
                            YYERROR;
                          }
                        }
+                       if (size_arrays->deviation) {
+                         module->deviation = calloc(size_arrays->deviation, sizeof *module->deviation);
+                         if (!module->deviation) {
+                           LOGMEM;
+                           YYERROR;
+                         }
+                       }
                        actual = NULL;
                      }
                    }
@@ -430,7 +443,7 @@ body_stmt: extension_stmt
   | augment_stmt { if (!read_all) { size_arrays->augment++; } }
   | rpc_stmt 
   | notification_stmt 
-  | deviation_stmt;
+  | deviation_stmt { if (!read_all) { size_arrays->deviation++; } }
 
 extension_stmt: EXTENSION_KEYWORD sep identifier_arg_str  extension_end;
 
@@ -2306,28 +2319,74 @@ notification_opt_stmt: %empty { if (read_all) {
   |  notification_opt_stmt data_def_stmt stmtsep { actual = $1.notif; actual_type = NOTIFICATION_KEYWORD; }
   ;
 
-deviation_stmt: DEVIATION_KEYWORD sep deviation_arg_str 
-                '{' start_check
-                    deviation_opt_stmt  {  if ((checked->check&4)==0) { yyerror(module,unres,yang,size_arrays,read_all,"type statement missingo."); YYERROR; }
-                                           free_check(); }
+deviation_stmt: DEVIATION_KEYWORD sep deviation_arg_str { if (read_all) {
+                                                            if (!(actual = yang_read_deviation(module, s, yylineno))) {
+                                                              YYERROR;
+                                                            }
+                                                            s = NULL;
+                                                            module->deviation_size++;
+                                                            } else {
+                                                              if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                                                LOGMEM;
+                                                                YYERROR;
+                                                              }
+                                                            }
+                                                        }
+                '{' stmtsep
+                    deviation_opt_stmt  { if (read_all) {
+                                            if (actual_type == DEVIATION_KEYWORD) {
+                                              LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_NONE, NULL, "deviate", "deviation");
+                                              YYERROR;
+                                            }
+                                            free($7.deviation);
+                                          }
+                                        }
                 '}' ;
 
-deviation_opt_stmt: %empty 
-  |  deviation_opt_stmt yychecked_1 description_stmt
-  |  deviation_opt_stmt yychecked_2 reference_stmt
-  |  deviation_opt_stmt yychecked_3 DEVIATE_KEYWORD sep deviate_body_stmt
-  ;
+deviation_opt_stmt: %empty { if (read_all) {
+                               $$.deviation = actual;
+                               actual_type = DEVIATION_KEYWORD;
+                               if (size_arrays->node[size_arrays->next].unique) {
+                                 $$.deviation->deviation->deviate = calloc(size_arrays->node[size_arrays->next].unique, sizeof *$$.deviation->deviation->deviate);
+                                 if (!$$.deviation->deviation->deviate) {
+                                   LOGMEM;
+                                   YYERROR;
+                                 }
+                               }
+                               size_arrays->next++;
+                             } else {
+                               $$.index = size_arrays->size -1;
+                             }
+                           }
+  |  deviation_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.deviation->deviation,s,DEVIATION_KEYWORD,yylineno)) {
+                                             free($1.deviation);
+                                             YYERROR;
+                                           }
+                                           s = NULL;
+                                           $$ = $1;
+                                         }
+  |  deviation_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.deviation->deviation,s,DEVIATION_KEYWORD,yylineno)) {
+                                           free($1.deviation);
+                                           YYERROR;
+                                         }
+                                         s = NULL;
+                                         $$ = $1;
+                                       }
+  |  deviation_opt_stmt DEVIATE_KEYWORD sep deviate_body_stmt { if (read_all) {
+                                                                  actual = $1.deviation;
+                                                                  actual_type = DEVIATE_KEYWORD;
+                                                                  $$ = $1;
+                                                                } else {
+                                                                  /* count of deviate statemenet */
+                                                                  size_arrays->node[$1.index].unique++;
+                                                                }
+                                                              }
 
 deviation_arg_str: absolute_schema_nodeids optsep
   | string_1
-; 
 
 deviate_body_stmt: deviate_not_supported_stmt
-  |  deviate_stmt_opt deviate_stmts;
-
-
-deviate_stmt_opt: %empty 
-  |  deviate_stmt_opt DEVIATE_KEYWORD sep deviate_stmts DEVIATE_KEYWORD sep;
+  |  deviate_stmts
 
 deviate_stmts: deviate_add_stmt
   |  deviate_replace_stmt

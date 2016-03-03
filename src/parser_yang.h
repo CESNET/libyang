@@ -113,6 +113,12 @@ struct type_inout {
     uint8_t flag;
 };
 
+struct type_deviation {
+    struct lys_deviation *deviation;
+    struct lys_node *target;
+    struct lys_deviate *deviate;
+};
+
 struct type_ident {
     int line;
     char s[0];
@@ -229,5 +235,7 @@ void *yang_read_typedef(struct lys_module *module, struct lys_node *parent, char
 void *yang_read_refine(struct lys_module *module, struct lys_node_uses *uses, char *value, int line);
 
 void *yang_read_augment(struct lys_module *module, struct lys_node *parent, char *value, int line);
+
+void *yang_read_deviation(struct lys_module *module, char *value, int line);
 
 #endif /* LY_PARSER_YANG_H_ */
