@@ -50,6 +50,7 @@ int64_t cnt_val;
     struct lys_refine *refine;
     struct type_augment augment;
     struct type_rpc rpc;
+    struct type_inout inout;
   } nodes;
 }
 
@@ -190,6 +191,7 @@ int64_t cnt_val;
 %type <nodes> refine_body_opt_stmts
 %type <nodes> augment_opt_stmt
 %type <nodes> rpc_opt_stmt
+%type <nodes> input_output_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
@@ -2171,22 +2173,76 @@ rpc_opt_stmt: %empty { if (read_all) {
                                 $$ = $1;
                               }
 
-input_stmt: INPUT_KEYWORD optsep
-            '{' start_check
-                input_output_opt_stmt  { if ((checked->check&1024)==0) { yyerror(module,unres,yang,size_arrays,read_all,"data-def or case statement missing."); YYERROR; }
-                                         free_check(); }
+input_stmt: INPUT_KEYWORD optsep { if (read_all) {
+                                     if (!(actual = yang_read_node(module, actual, NULL, LYS_INPUT, sizeof(struct lys_node_rpc_inout)))) {
+                                      YYERROR;
+                                     }
+                                   } else {
+                                     if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                       LOGMEM;
+                                       YYERROR;
+                                     }
+                                   }
+                                 }
+            '{' stmtsep
+                input_output_opt_stmt { if (read_all && !($6.inout.flag & LYS_DATADEF)) {
+                                          LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_NONE, "data-def", "input");
+                                          YYERROR;
+                                        }
+                                      }
             '}' stmtsep;
 
-input_output_opt_stmt: %empty 
-  |  input_output_opt_stmt typedef_grouping_stmt
-  |  input_output_opt_stmt yychecked data_def_stmt stmtsep
+input_output_opt_stmt: %empty { if (read_all) {
+                                  $$.inout.ptr_inout = actual;
+                                  $$.inout.flag = 0;
+                                  actual_type = INPUT_KEYWORD;
+                                  if (size_arrays->node[size_arrays->next].tpdf) {
+                                    $$.inout.ptr_inout->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.inout.ptr_inout->tpdf);
+                                    if (!$$.inout.ptr_inout->tpdf) {
+                                      LOGMEM;
+                                      YYERROR;
+                                    }
+                                  }
+                                  size_arrays->next++;
+                                } else {
+                                  $$.index = size_arrays->size-1;
+                                }
+                              }
+  |  input_output_opt_stmt typedef_stmt stmtsep { if (read_all) {
+                                                    actual = $1.inout.ptr_inout;
+                                                    actual_type = INPUT_KEYWORD;
+                                                  } else {
+                                                    size_arrays->node[$1.index].tpdf++;
+                                                  }
+                                                }
+  |  input_output_opt_stmt grouping_stmt stmtsep { actual = $1.inout.ptr_inout; actual_type = INPUT_KEYWORD; }
+  |  input_output_opt_stmt data_def_stmt stmtsep { if (read_all) {
+                                                     actual = $1.inout.ptr_inout;
+                                                     actual_type = INPUT_KEYWORD;
+                                                     $1.inout.flag |= LYS_DATADEF;
+                                                     $$ = $1;
+                                                   }
+                                                 }
   ;
 
-output_stmt: OUTPUT_KEYWORD optsep
-                     '{' start_check
-                         input_output_opt_stmt  { if ((checked->check&1024)==0) { yyerror(module,unres,yang,size_arrays,read_all,"data-def or case statement missing."); YYERROR; }
-                                                  free_check(); }
-                     '}' stmtsep;
+output_stmt: OUTPUT_KEYWORD optsep { if (read_all) {
+                                       if (!(actual = yang_read_node(module, actual, NULL, LYS_OUTPUT, sizeof(struct lys_node_rpc_inout)))) {
+                                        YYERROR;
+                                       }
+                                     } else {
+                                       if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                         LOGMEM;
+                                         YYERROR;
+                                       }
+                                     }
+                                   }
+             '{' stmtsep
+                 input_output_opt_stmt { if (read_all && !($6.inout.flag & LYS_DATADEF)) {
+                                           LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_NONE, "data-def", "output");
+                                           YYERROR;
+                                         }
+                                       }
+             '}' stmtsep;
 
 notification_stmt: NOTIFICATION_KEYWORD sep identifier_arg_str notification_end;
 
@@ -2694,7 +2750,6 @@ identifier: IDENTIFIER
   |  USER_KEYWORD
   ;
 
-yychecked: %empty {checked->check|=1024;}
 yychecked_1: %empty { if ((checked->check&1)==0) checked->check|=1; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
 yychecked_2: %empty { if ((checked->check&2)==0) checked->check|=2; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
 yychecked_3: %empty { if ((checked->check&4)==0) checked->check|=4; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}

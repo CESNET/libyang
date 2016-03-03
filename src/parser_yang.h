@@ -108,6 +108,11 @@ struct type_rpc {
     uint8_t flag;
 };
 
+struct type_inout {
+    struct lys_node_rpc_inout *ptr_inout;
+    uint8_t flag;
+};
+
 struct type_ident {
     int line;
     char s[0];

@@ -753,14 +753,18 @@ yang_read_node(struct lys_module *module, struct lys_node *parent, char *value, 
         LOGMEM;
         return NULL;
     }
+    if (value) {
+        node->name = lydict_insert_zc(module->ctx, value);
+    }
     node->module = module;
-    node->name = lydict_insert_zc(module->ctx, value);
     node->nodetype = nodetype;
     node->prev = node;
 
     /* insert the node into the schema tree */
     if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, node)) {
-        lydict_remove(module->ctx, node->name);
+        if (value) {
+            lydict_remove(module->ctx, node->name);
+        }
         free(node);
         return NULL;
     }
@@ -1462,6 +1466,11 @@ yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *valu
         case LYS_RPC:
             ret = &((struct lys_node_rpc *)parent)->tpdf[((struct lys_node_rpc *)parent)->tpdf_size];
             ((struct lys_node_rpc *)parent)->tpdf_size++;
+            break;
+        case LYS_INPUT:
+        case LYS_OUTPUT:
+            ret = &((struct lys_node_rpc_inout *)parent)->tpdf[((struct lys_node_rpc_inout *)parent)->tpdf_size];
+            ((struct lys_node_rpc_inout *)parent)->tpdf_size++;
             break;
         }
         ret->type.parent = (struct lys_tpdf *)parent;
