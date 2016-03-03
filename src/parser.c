@@ -140,7 +140,15 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     cwd = wd = get_current_dir_name();
 
 opendir_search:
-    chdir(wd);
+    if (cwd != wd) {
+        if (chdir(wd)) {
+            LOGERR(LY_ESYS, "Unable to use search directory \"%s\" (%s)",
+                   wd, strerror(errno));
+            free(wd);
+            wd = cwd;
+            goto cleanup;
+        }
+    }
     dir = opendir(wd);
     LOGVRB("Searching for \"%s\" in %s.", name, wd);
     if (!dir) {
@@ -223,8 +231,11 @@ searchpath:
     LOGERR(LY_ESYS, "Data model \"%s\" not found (search path is \"%s\")", name, ctx->models.search_path);
 
 cleanup:
-    chdir(cwd);
     if (cwd != wd) {
+        if (chdir(cwd)) {
+            LOGWRN("Unable to return back to working directory \"%s\" (%s)",
+                   cwd, strerror(errno));
+        }
         free(wd);
     }
     free(cwd);
