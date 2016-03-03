@@ -51,6 +51,7 @@ int64_t cnt_val;
     struct type_augment augment;
     struct type_rpc rpc;
     struct type_inout inout;
+    struct lys_node_notif *notif;
   } nodes;
 }
 
@@ -192,6 +193,7 @@ int64_t cnt_val;
 %type <nodes> augment_opt_stmt
 %type <nodes> rpc_opt_stmt
 %type <nodes> input_output_opt_stmt
+%type <nodes> notification_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
@@ -1037,11 +1039,6 @@ grouping_opt_stmt: %empty { if (read_all) {
                                             }
   |  grouping_opt_stmt data_def_stmt stmtsep { actual = $1.grouping; actual_type = GROUPING_KEYWORD; }
   ;
-
-typedef_grouping_stmt: typedef_stmt stmtsep
-  | grouping_stmt stmtsep
-  ;
-
 
 data_def_stmt: container_stmt
   |  leaf_stmt
@@ -2244,20 +2241,69 @@ output_stmt: OUTPUT_KEYWORD optsep { if (read_all) {
                                        }
              '}' stmtsep;
 
-notification_stmt: NOTIFICATION_KEYWORD sep identifier_arg_str notification_end;
+notification_stmt: NOTIFICATION_KEYWORD sep identifier_arg_str { if (read_all) {
+                                                                   if (!(actual = yang_read_node(module, NULL, s, LYS_NOTIF, sizeof(struct lys_node_notif)))) {
+                                                                    YYERROR;
+                                                                   }
+                                                                 } else {
+                                                                   if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                                                     LOGMEM;
+                                                                     YYERROR;
+                                                                   }
+                                                                 }
+                                                               }
+                   notification_end;
 
-notification_end: ';'
-  |  '{' start_check
-         notification_opt_stmt  {free_check();}
+notification_end: ';' { if (read_all) {
+                          size_arrays->next++;
+                        }
+                      }
+  |  '{' stmtsep
+         notification_opt_stmt
       '}' ;
 
-notification_opt_stmt: %empty 
-  |  notification_opt_stmt if_feature_stmt 
-  |  notification_opt_stmt yychecked_1 status_stmt
-  |  notification_opt_stmt yychecked_2 description_stmt
-  |  notification_opt_stmt yychecked_3 reference_stmt
-  |  notification_opt_stmt typedef_grouping_stmt
-  |  notification_opt_stmt data_def_stmt stmtsep
+
+notification_opt_stmt: %empty { if (read_all) {
+                                  $$.notif = actual;
+                                  actual_type = NOTIFICATION_KEYWORD;
+                                  if (size_arrays->node[size_arrays->next].if_features) {
+                                    $$.notif->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.notif->features);
+                                    if (!$$.notif->features) {
+                                      LOGMEM;
+                                      YYERROR;
+                                    }
+                                  }
+                                  if (size_arrays->node[size_arrays->next].tpdf) {
+                                    $$.notif->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.notif->tpdf);
+                                    if (!$$.notif->tpdf) {
+                                      LOGMEM;
+                                      YYERROR;
+                                    }
+                                  }
+                                  size_arrays->next++;
+                                } else {
+                                  $$.index = size_arrays->size-1;
+                                }
+                              }
+  |  notification_opt_stmt if_feature_stmt { if (read_all) {
+                                               if (yang_read_if_feature(module,$1.notif,s,unres,NOTIFICATION_KEYWORD,yylineno)) {YYERROR;}
+                                               s=NULL;
+                                             } else {
+                                               size_arrays->node[$1.index].if_features++;
+                                             }
+                                           }
+  |  notification_opt_stmt status_stmt { if (read_all && yang_read_status($1.notif,$2,NOTIFICATION_KEYWORD,yylineno)) {YYERROR;} }
+  |  notification_opt_stmt description_stmt { if (read_all && yang_read_description(module,$1.notif,s,NOTIFICATION_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  notification_opt_stmt reference_stmt { if (read_all && yang_read_reference(module,$1.notif,s,NOTIFICATION_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  notification_opt_stmt typedef_stmt stmtsep { if (read_all) {
+                                                    actual = $1.notif;
+                                                    actual_type = NOTIFICATION_KEYWORD;
+                                                  } else {
+                                                    size_arrays->node[$1.index].tpdf++;
+                                                  }
+                                                }
+  |  notification_opt_stmt grouping_stmt stmtsep { actual = $1.notif; actual_type = NOTIFICATION_KEYWORD; }
+  |  notification_opt_stmt data_def_stmt stmtsep { actual = $1.notif; actual_type = NOTIFICATION_KEYWORD; }
   ;
 
 deviation_stmt: DEVIATION_KEYWORD sep deviation_arg_str 
