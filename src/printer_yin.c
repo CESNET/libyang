@@ -1320,7 +1320,7 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
         }
 
         close = (module->inc[i].rev[0] ? 0 : 1);
-        yin_print_open(out, level, "include", "value", module->inc[i].submodule->name, close);
+        yin_print_open(out, level, "include", "module", module->inc[i].submodule->name, close);
 
         if (!close) {
             level++;
