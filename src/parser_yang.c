@@ -584,6 +584,10 @@ yang_read_must(struct lys_module *module, struct lys_node *node, char *value, in
     case REFINE_KEYWORD:
         retval = &((struct lys_refine *)node)->must[((struct lys_refine *)node)->must_size++];
         break;
+    case ADD_KEYWORD:
+        retval = &(*((struct type_deviation *)node)->trg_must)[(*((struct type_deviation *)node)->trg_must_size)++];
+        memset(retval, 0, sizeof *retval);
+        break;
     }
     retval->expr = transform_schema2json(module, value, line);
     if (!retval->expr || lyxp_syntax_check(retval->expr, line)) {
@@ -873,66 +877,76 @@ error:
 }
 
 int
+yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct lys_unique *unique, char *value, struct unres_schema *unres, int line)
+{
+    int i, j;
+    char *vaux;
+
+    /* count the number of unique leafs in the value */
+    vaux = value;
+    while ((vaux = strpbrk(vaux, " \t\n"))) {
+       unique->expr_size++;
+        while (isspace(*vaux)) {
+            vaux++;
+        }
+    }
+    unique->expr_size++;
+    unique->expr = calloc(unique->expr_size, sizeof *unique->expr);
+    if (!unique->expr) {
+        LOGMEM;
+        goto error;
+    }
+
+    for (i = 0; i < unique->expr_size; i++) {
+        vaux = strpbrk(value, " \t\n");
+        if (!vaux) {
+            /* the last token, lydict_insert() will count its size on its own */
+            vaux = value;
+        }
+
+        /* store token into unique structure */
+        unique->expr[i] = lydict_insert(module->ctx, value, vaux - value);
+
+        /* check that the expression does not repeat */
+        for (j = 0; j < i; j++) {
+            if (ly_strequal(unique->expr[j], unique->expr[i], 1)) {
+                LOGVAL(LYE_INARG, line, LY_VLOG_LYS, list, unique->expr[i], "unique");
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "The identifier is not unique");
+                goto error;
+            }
+        }
+        /* try to resolve leaf */
+        if (unres) {
+            unres_schema_add_str(module, unres, (struct lys_node *)list, UNRES_LIST_UNIQ, unique->expr[i], line);
+        } else {
+            if (resolve_unique((struct lys_node *)list, unique->expr[i], 0, line)) {
+                goto error;
+            }
+        }
+
+        /* move to next token */
+        value = vaux;
+        while(isspace(*value)) {
+            value++;
+        }
+    }
+
+    return EXIT_SUCCESS;
+
+error:
+    return EXIT_FAILURE;
+}
+
+int
 yang_read_unique(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres)
 {
     uint8_t k;
-    int i, j;
-    char *value, *vaux;
-    struct lys_unique *unique;
     struct type_ident *ident;
 
     for(k=0; k<list->unique_size; k++) {
-        unique = &list->unique[k];
         ident = (struct type_ident *)list->unique[k].expr;
-
-        /* count the number of unique leafs in the value */
-        vaux = value = ident->s;
-        while ((vaux = strpbrk(vaux, " \t\n"))) {
-           unique->expr_size++;
-            while (isspace(*vaux)) {
-                vaux++;
-            }
-        }
-        unique->expr_size++;
-        unique->expr = calloc(unique->expr_size, sizeof *unique->expr);
-        if (!unique->expr) {
-            LOGMEM;
+        if (yang_fill_unique(module, list, &list->unique[k], ident->s, unres, ident->line)) {
             goto error;
-        }
-
-        for (i = 0; i < unique->expr_size; i++) {
-            vaux = strpbrk(value, " \t\n");
-            if (!vaux) {
-                /* the last token, lydict_insert() will count its size on its own */
-                vaux = value;
-            }
-
-            /* store token into unique structure */
-            unique->expr[i] = lydict_insert(module->ctx, value, vaux - value);
-
-            /* check that the expression does not repeat */
-            for (j = 0; j < i; j++) {
-                if (ly_strequal(unique->expr[j], unique->expr[i], 1)) {
-                    LOGVAL(LYE_INARG, ident->line, LY_VLOG_LYS, list, unique->expr[i], "unique");
-                    LOGVAL(LYE_SPEC, 0, 0, NULL, "The identifier is not unique");
-                    goto error;
-                }
-            }
-
-            /* try to resolve leaf */
-            if (unres) {
-                unres_schema_add_str(module, unres, (struct lys_node *)list, UNRES_LIST_UNIQ, unique->expr[i], ident->line);
-            } else {
-                if (resolve_unique((struct lys_node *)list, value, 0, ident->line)) {
-                    goto error;
-                }
-            }
-
-            /* move to next token */
-            value = vaux;
-            while(isspace(*value)) {
-                value++;
-            }
         }
         free(ident);
     }
@@ -1669,4 +1683,349 @@ yang_read_deviate_unsupported(struct type_deviation *dev, int line)
 
     dev->deviation->deviate_size = 1;
     return EXIT_SUCCESS;
+}
+
+int
+yang_read_deviate(struct type_deviation *dev, LYS_DEVIATE_TYPE mod, int line)
+{
+    struct unres_schema tmp_unres;
+
+    dev->deviation->deviate[dev->deviation->deviate_size].mod = mod;
+    dev->deviate = &dev->deviation->deviate[dev->deviation->deviate_size];
+    dev->deviation->deviate_size++;
+    if (dev->deviation->deviate[0].mod == LY_DEVIATE_NO) {
+        LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "not-supported");
+        LOGVAL(LYE_SPEC, 0, 0, NULL, "\"not-supported\" deviation cannot be combined with any other deviation.");
+        return EXIT_FAILURE;
+    }
+
+    /* store a shallow copy of the original node */
+    if (!dev->deviation->orig_node) {
+        memset(&tmp_unres, 0, sizeof tmp_unres);
+        dev->deviation->orig_node = lys_node_dup(dev->target->module, NULL, dev->target, 0, 0, &tmp_unres, 1);
+        /* just to be safe */
+        if (tmp_unres.count) {
+            LOGINT;
+            return EXIT_FAILURE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int
+yang_read_deviate_units(struct ly_ctx *ctx, struct type_deviation *dev, char *value, int line)
+{
+    const char **stritem;
+
+    if (dev->deviate->units) {
+        LOGVAL(LYE_TOOMANY, line, LY_VLOG_NONE, NULL, "units", "deviate");
+        free(value);
+        goto error;
+    }
+
+    /* check target node type */
+    if (dev->target->nodetype == LYS_LEAFLIST) {
+        stritem = &((struct lys_node_leaflist *)dev->target)->units;
+    } else if (dev->target->nodetype == LYS_LEAF) {
+        stritem = &((struct lys_node_leaf *)dev->target)->units;
+    } else {
+        LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "units");
+        LOGVAL(LYE_SPEC, 0, 0, NULL, "Target node does not allow \"units\" property.");
+        free(value);
+        goto error;
+    }
+
+    dev->deviate->units = lydict_insert_zc(ctx, value);
+
+    /* apply to target */
+    if (dev->deviate->mod == LY_DEVIATE_ADD) {
+        /* check that there is no current value */
+        if (*stritem) {
+            LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "units");
+            LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
+            goto error;
+        }
+    }
+
+    return EXIT_SUCCESS;
+
+error:
+    return EXIT_FAILURE;
+}
+
+int
+yang_read_deviate_must(struct ly_ctx *ctx, struct type_deviation *dev, uint8_t c_must, int line)
+{
+    uint8_t i;
+
+    /* check target node type */
+    switch (dev->target->nodetype) {
+    case LYS_LEAF:
+        dev->trg_must = &((struct lys_node_leaf *)dev->target)->must;
+        dev->trg_must_size = &((struct lys_node_leaf *)dev->target)->must_size;
+        break;
+    case LYS_CONTAINER:
+        dev->trg_must = &((struct lys_node_container *)dev->target)->must;
+        dev->trg_must_size = &((struct lys_node_container *)dev->target)->must_size;
+        break;
+    case LYS_LEAFLIST:
+        dev->trg_must = &((struct lys_node_leaflist *)dev->target)->must;
+        dev->trg_must_size = &((struct lys_node_leaflist *)dev->target)->must_size;
+        break;
+    case LYS_LIST:
+        dev->trg_must = &((struct lys_node_list *)dev->target)->must;
+        dev->trg_must_size = &((struct lys_node_list *)dev->target)->must_size;
+        break;
+    case LYS_ANYXML:
+        dev->trg_must = &((struct lys_node_anyxml *)dev->target)->must;
+        dev->trg_must_size = &((struct lys_node_anyxml *)dev->target)->must_size;
+        break;
+    default:
+        LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "must");
+        LOGVAL(LYE_SPEC, 0, 0, NULL, "Target node does not allow \"must\" property.");
+        goto error;
+    }
+
+    if (dev->deviate->mod == LY_DEVIATE_ADD) {
+        /* reallocate the must array of the target */
+        dev->deviate->must = ly_realloc(*dev->trg_must, (c_must + *dev->trg_must_size) * sizeof *dev->deviate->must);
+        if (!dev->deviate->must) {
+            LOGMEM;
+            goto error;
+        }
+        *dev->trg_must = dev->deviate->must;
+        dev->deviate->must = &((*dev->trg_must)[*dev->trg_must_size]);
+        dev->deviate->must_size = c_must;
+    }
+
+    if (!dev->deviate->must) {
+        LOGMEM;
+        goto error;
+    }
+
+    return EXIT_SUCCESS;
+
+error:
+    return EXIT_FAILURE;
+}
+
+int
+yang_read_deviate_unique(struct ly_ctx *ctx, struct type_deviation *dev, uint8_t c_uniq, int line)
+{
+    int i, j;
+    struct lys_node_list *list;
+
+    /* check target node type */
+    if (dev->target->nodetype != LYS_LIST) {
+        LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "unique");
+        LOGVAL(LYE_SPEC, 0, 0, NULL, "Target node does not allow \"unique\" property.");
+        goto error;
+    }
+
+    list = (struct lys_node_list *)dev->target;
+    if (dev->deviate->mod == LY_DEVIATE_ADD) {
+        /* reallocate the unique array of the target */
+        dev->deviate->unique = ly_realloc(list->unique, (c_uniq + list->unique_size) * sizeof *dev->deviate->unique);
+        if (!dev->deviate->unique) {
+            LOGMEM;
+            goto error;
+        }
+        list->unique = dev->deviate->unique;
+        dev->deviate->unique = &list->unique[list->unique_size];
+        dev->deviate->unique_size = c_uniq;
+        memset(dev->deviate->unique, 0, c_uniq * sizeof *dev->deviate->unique);
+    }
+
+    return EXIT_SUCCESS;
+
+error:
+    return EXIT_FAILURE;
+}
+
+int
+yang_read_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *value, int line)
+{
+    int rc;
+    struct lys_node_choice *choice;
+    struct lys_node_leaf *leaf;
+    struct lys_node *node;
+
+    if (dev->deviate->dflt) {
+        LOGVAL(LYE_TOOMANY, line, LY_VLOG_NONE, NULL, "default", "deviate");
+        free(value);
+        goto error;
+    }
+
+    dev->deviate->dflt = lydict_insert_zc(ctx, value);
+
+    if (dev->target->nodetype == LYS_CHOICE) {
+        choice = (struct lys_node_choice *)dev->target;
+
+        if (dev->deviate->mod == LY_DEVIATE_ADD) {
+            /* check that there is no current value */
+            if (choice->dflt) {
+                LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "default");
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
+                goto error;
+            }
+        }
+
+        rc = resolve_choice_default_schema_nodeid(dev->deviate->dflt, choice->child, (const struct lys_node **)&node);
+        if (rc || !node) {
+            LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, dev->deviate->dflt, "default");
+            goto error;
+        }
+        /* add (already checked) and replace */
+        choice->dflt = node;
+        if (!choice->dflt) {
+            /* default branch not found */
+            LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, dev->deviate->dflt, "default");
+            goto error;
+        }
+    } else if (dev->target->nodetype == LYS_LEAF) {
+        leaf = (struct lys_node_leaf *)dev->target;
+
+        if (dev->deviate->mod == LY_DEVIATE_ADD) {
+            /* check that there is no current value */
+            if (leaf->dflt) {
+                LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "default");
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
+                goto error;
+            }
+        }
+
+        /* add (already checked) and replace */
+        /* remove value */
+        lydict_remove(ctx, leaf->dflt);
+
+        /* set new value */
+        leaf->dflt = lydict_insert(ctx, dev->deviate->dflt, 0);
+    } else {
+        /* invalid target for default value */
+        LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "default");
+        LOGVAL(LYE_SPEC, 0, 0, NULL, "Target node does not allow \"default\" property.");
+        goto error;
+    }
+
+    return EXIT_SUCCESS;
+
+error:
+    return EXIT_FAILURE;
+}
+
+int
+yang_read_deviate_config(struct type_deviation *dev, uint8_t value, int line)
+{
+    if (dev->deviate->flags & LYS_CONFIG_MASK) {
+        LOGVAL(LYE_TOOMANY, line, LY_VLOG_NONE, NULL, "config", "deviate");
+        goto error;
+    }
+
+    /* for we deviate from RFC 6020 and allow config property even it is/is not
+     * specified in the target explicitly since config property inherits. So we expect
+     * that config is specified in every node. But for delete, we check that the value
+     * is the same as here in deviation
+     */
+    dev->deviate->flags |= value;
+
+    /* add and replace are the same in this case */
+    /* remove current config value of the target ... */
+    dev->target->flags &= ~LYS_CONFIG_MASK;
+
+    /* ... and replace it with the value specified in deviation */
+    dev->target->flags |= dev->deviate->flags & LYS_CONFIG_MASK;
+
+    return EXIT_SUCCESS;
+
+error:
+    return EXIT_FAILURE;
+}
+
+int
+yang_read_deviate_mandatory(struct type_deviation *dev, uint8_t value, int line)
+{
+    if (dev->deviate->flags & LYS_MAND_MASK) {
+        LOGVAL(LYE_TOOMANY, line, LY_VLOG_NONE, NULL, "mandatory", "deviate");
+        goto error;
+    }
+
+    /* check target node type */
+    if (!(dev->target->nodetype & (LYS_LEAF | LYS_CHOICE | LYS_ANYXML))) {
+        LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "mandatory");
+        LOGVAL(LYE_SPEC, 0, 0, NULL, "Target node does not allow \"mandatory\" property.");
+        goto error;
+    }
+
+    dev->deviate->flags |= value;
+
+    if (dev->deviate->mod == LY_DEVIATE_ADD) {
+        /* check that there is no current value */
+        if (dev->target->flags & LYS_MAND_MASK) {
+            LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "mandatory");
+            LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
+            goto error;
+        }
+    }
+
+    /* add (already checked) and replace */
+    /* remove current mandatory value of the target ... */
+    dev->target->flags &= ~LYS_MAND_MASK;
+
+    /* ... and replace it with the value specified in deviation */
+    dev->target->flags |= dev->deviate->flags & LYS_MAND_MASK;
+
+    return EXIT_SUCCESS;
+
+error:
+    return EXIT_FAILURE;
+}
+
+int
+yang_read_deviate_minmax(struct type_deviation *dev, uint32_t value, int type, int line)
+{
+    uint32_t *ui32val;
+
+    /* check target node type */
+    if (dev->target->nodetype == LYS_LEAFLIST) {
+        if (type) {
+            ui32val = &((struct lys_node_leaflist *)dev->target)->max;
+        } else {
+            ui32val = &((struct lys_node_leaflist *)dev->target)->min;
+        }
+    } else if (dev->target->nodetype == LYS_LIST) {
+        if (type) {
+            ui32val = &((struct lys_node_list *)dev->target)->max;
+        } else {
+            ui32val = &((struct lys_node_list *)dev->target)->min;
+        }
+    } else {
+        LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, (type) ? "max-elements" : "min-elements");
+        LOGVAL(LYE_SPEC, 0, 0, NULL, "Target node does not allow \"%s\" property.", (type) ? "max-elements" : "min-elements");
+        goto error;
+    }
+
+    if (type) {
+        dev->deviate->max = value;
+    } else {
+        dev->deviate->min = value;
+    }
+
+    if (dev->deviate->mod == LY_DEVIATE_ADD) {
+        /* check that there is no current value */
+        if (*ui32val) {
+            LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, (type) ? "max-elements" : "min-elements");
+            LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
+            goto error;
+        }
+    }
+
+    /* add (already checked) and replace */
+    /* set new value specified in deviation */
+    *ui32val = value;
+
+    return EXIT_SUCCESS;
+
+error:
+    return EXIT_FAILURE;
 }

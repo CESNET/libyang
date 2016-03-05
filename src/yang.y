@@ -196,6 +196,7 @@ int64_t cnt_val;
 %type <nodes> input_output_opt_stmt
 %type <nodes> notification_opt_stmt
 %type <nodes> deviation_opt_stmt
+%type <nodes> deviate_add_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
@@ -2331,6 +2332,7 @@ deviation_stmt: DEVIATION_KEYWORD sep deviation_arg_str { if (read_all) {
                                                                 YYERROR;
                                                               }
                                                             }
+
                                                         }
                 '{' stmtsep
                     deviation_opt_stmt  { if (read_all) {
@@ -2341,7 +2343,7 @@ deviation_stmt: DEVIATION_KEYWORD sep deviation_arg_str { if (read_all) {
                                             free($7.deviation);
                                           }
                                         }
-                '}' ;
+                '}'
 
 deviation_opt_stmt: %empty { if (read_all) {
                                $$.deviation = actual;
@@ -2390,7 +2392,7 @@ deviate_body_stmt: deviate_not_supported_stmt
                        YYERROR;
                      }
                    }
-  |  deviate_stmts
+  |  deviate_stmts optsep
 
 deviate_stmts: deviate_add_stmt
   |  deviate_replace_stmt
@@ -2399,23 +2401,115 @@ deviate_stmts: deviate_add_stmt
 
 deviate_not_supported_stmt: NOT_SUPPORTED_KEYWORD optsep stmtend;
 
-deviate_add_stmt: ADD_KEYWORD optsep deviate_add_end;
+deviate_add_stmt: ADD_KEYWORD optsep { if (read_all && yang_read_deviate(actual, LY_DEVIATE_ADD, yylineno)) {
+                                         YYERROR;
+                                       }
+                                     }
+                  deviate_add_end
 
 deviate_add_end: ';'
-  |  '{' start_check
-         deviate_add_opt_stmt  {free_check();}
-     '}' ;
+  |  '{' stmtsep
+         deviate_add_opt_stmt
+     '}'
 
-deviate_add_opt_stmt: %empty 
-  |  deviate_add_opt_stmt yychecked_1 units_stmt
-  |  deviate_add_opt_stmt must_stmt
-  |  deviate_add_opt_stmt unique_stmt
-  |  deviate_add_opt_stmt yychecked_2 default_stmt
-  |  deviate_add_opt_stmt yychecked_3 config_stmt
-  |  deviate_add_opt_stmt yychecked_4 mandatory_stmt
-  |  deviate_add_opt_stmt yychecked_5 min_elements_stmt
-  |  deviate_add_opt_stmt yychecked_6 max_elements_stmt
-  ;
+deviate_add_opt_stmt: %empty { if (read_all) {
+                                 $$.deviation = actual;
+                                 actual_type = ADD_KEYWORD;
+                                 if (size_arrays->node[size_arrays->next].must) {
+                                    if (yang_read_deviate_must(module->ctx, actual, size_arrays->node[size_arrays->next].must, yylineno)) {
+                                      YYERROR;
+                                    }
+                                  }
+                                  if (size_arrays->node[size_arrays->next].unique) {
+                                    if (yang_read_deviate_unique(module->ctx, actual, size_arrays->node[size_arrays->next].unique, yylineno)) {
+                                      YYERROR;
+                                    }
+                                  }
+                                  size_arrays->next++;
+                               } else {
+                                 $$.index = size_arrays->size;
+                                 if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                   LOGMEM;
+                                   YYERROR;
+                                 }
+                               }
+                             }
+  |  deviate_add_opt_stmt units_stmt { if (read_all) {
+                                         if (yang_read_deviate_units(module->ctx, $1.deviation, s, yylineno)) {
+                                           YYERROR;
+                                         }
+                                         s = NULL;
+                                         $$ = $1;
+                                       }
+                                     }
+  |  deviate_add_opt_stmt must_stmt { if (read_all) {
+                                        actual = $1.deviation;
+                                        actual_type = ADD_KEYWORD;
+                                        $$ = $1;
+                                      } else {
+                                        size_arrays->node[$1.index].must++;
+                                      }
+                                    }
+  |  deviate_add_opt_stmt unique_stmt { if (read_all) {
+                                          struct lys_node_list *list;
+
+                                          list = (struct lys_node_list *)$1.deviation->target;
+                                          if (yang_fill_unique(module, list, &list->unique[list->unique_size], s, NULL, yylineno)) {
+                                            list->unique_size++;
+                                            YYERROR;
+                                          }
+                                          list->unique_size++;
+                                          free(s);
+                                          s = NULL;
+                                          $$ = $1;
+                                        } else {
+                                          size_arrays->node[$1.index].unique++;
+                                        }
+                                      }
+  |  deviate_add_opt_stmt default_stmt { if (read_all) {
+                                           if (yang_read_deviate_default(module->ctx, $1.deviation, s, yylineno)) {
+                                             YYERROR;
+                                           }
+                                           s = NULL;
+                                           $$ = $1;
+                                         }
+                                       }
+  |  deviate_add_opt_stmt config_stmt { if (read_all) {
+                                          if (yang_read_deviate_config($1.deviation, $2, yylineno)) {
+                                            YYERROR;
+                                          }
+                                          $$ = $1;
+                                        }
+                                      }
+  |  deviate_add_opt_stmt mandatory_stmt { if (read_all) {
+                                             if (yang_read_deviate_mandatory($1.deviation, $2, yylineno)) {
+                                               YYERROR;
+                                             }
+                                             $$ = $1;
+                                           }
+                                         }
+  |  deviate_add_opt_stmt min_elements_stmt { if (read_all) {
+                                                if ($1.deviation->deviate->min_set) {
+                                                  LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "min-elements", "deviation");
+                                                  YYERROR;
+                                                }
+                                                if (yang_read_deviate_minmax($1.deviation, $2, 0, yylineno)) {
+                                                  YYERROR;
+                                                }
+                                                $$ =  $1;
+                                              }
+                                            }
+  |  deviate_add_opt_stmt max_elements_stmt { if (read_all) {
+                                                if ($1.deviation->deviate->max_set) {
+                                                  LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "max-elements", "deviation");
+                                                  YYERROR;
+                                                }
+                                                if (yang_read_deviate_minmax($1.deviation, $2, 1, yylineno)) {
+                                                  YYERROR;
+                                                }
+                                                $$ =  $1;
+                                              }
+                                            }
 
 deviate_delete_stmt: DELETE_KEYWORD optsep deviate_delete_end;
 

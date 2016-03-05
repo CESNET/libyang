@@ -117,6 +117,8 @@ struct type_deviation {
     struct lys_deviation *deviation;
     struct lys_node *target;
     struct lys_deviate *deviate;
+    struct lys_restr **trg_must;
+    uint8_t *trg_must_size;
 };
 
 struct type_ident {
@@ -239,5 +241,26 @@ void *yang_read_augment(struct lys_module *module, struct lys_node *parent, char
 void *yang_read_deviation(struct lys_module *module, char *value, int line);
 
 int yang_read_deviate_unsupported(struct type_deviation *dev, int line);
+
+int yang_read_deviate(struct type_deviation *dev, LYS_DEVIATE_TYPE mod, int line);
+
+int yang_read_deviate_units(struct ly_ctx *ctx, struct type_deviation *dev, char *value, int line);
+
+int yang_read_deviate_must(struct ly_ctx *ctx, struct type_deviation *dev, uint8_t c_must, int line);
+
+int yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct lys_unique *unique, char *value, struct unres_schema *unres, int line);
+
+int yang_read_deviate_unique(struct ly_ctx *ctx, struct type_deviation *dev, uint8_t c_uniq, int line);
+
+int yang_read_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *value, int line);
+
+int yang_read_deviate_config(struct type_deviation *dev, uint8_t value, int line);
+
+int yang_read_deviate_mandatory(struct type_deviation *dev, uint8_t value, int line);
+
+/*
+ * type: 0 - min, 1 - max
+ */
+int yang_read_deviate_minmax(struct type_deviation *dev, uint32_t value, int type, int line);
 
 #endif /* LY_PARSER_YANG_H_ */
