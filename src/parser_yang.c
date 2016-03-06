@@ -588,6 +588,9 @@ yang_read_must(struct lys_module *module, struct lys_node *node, char *value, in
         retval = &(*((struct type_deviation *)node)->trg_must)[(*((struct type_deviation *)node)->trg_must_size)++];
         memset(retval, 0, sizeof *retval);
         break;
+    case DELETE_KEYWORD:
+        retval = &((struct type_deviation *)node)->deviate->must[((struct type_deviation *)node)->deviate->must_size++];
+        break;
     }
     retval->expr = transform_schema2json(module, value, line);
     if (!retval->expr || lyxp_syntax_check(retval->expr, line)) {
@@ -1748,6 +1751,23 @@ yang_read_deviate_units(struct ly_ctx *ctx, struct type_deviation *dev, char *va
         }
     }
 
+    if (dev->deviate->mod == LY_DEVIATE_DEL) {
+        /* check values */
+        if (*stritem != dev->deviate->units) {
+            LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, dev->deviate->units, "units");
+            LOGVAL(LYE_SPEC, 0, 0, NULL, "Value differs from the target being deleted.");
+            goto error;
+        }
+        /* remove current units value of the target */
+        lydict_remove(ctx, *stritem);
+    } else { /* add (already checked) and replace */
+        /* remove current units value of the target ... */
+        lydict_remove(ctx, *stritem);
+
+        /* ... and replace it with the value specified in deviation */
+        *stritem = lydict_insert(ctx, dev->deviate->units, 0);
+    }
+
     return EXIT_SUCCESS;
 
 error:
@@ -1797,11 +1817,13 @@ yang_read_deviate_must(struct ly_ctx *ctx, struct type_deviation *dev, uint8_t c
         *dev->trg_must = dev->deviate->must;
         dev->deviate->must = &((*dev->trg_must)[*dev->trg_must_size]);
         dev->deviate->must_size = c_must;
-    }
-
-    if (!dev->deviate->must) {
-        LOGMEM;
-        goto error;
+    } else {
+        /* LY_DEVIATE_DEL */
+        dev->deviate->must = calloc(c_must, sizeof *dev->deviate->must);
+        if (!dev->deviate->must) {
+            LOGMEM;
+            goto error;
+        }
     }
 
     return EXIT_SUCCESS;
@@ -1835,6 +1857,13 @@ yang_read_deviate_unique(struct ly_ctx *ctx, struct type_deviation *dev, uint8_t
         dev->deviate->unique = &list->unique[list->unique_size];
         dev->deviate->unique_size = c_uniq;
         memset(dev->deviate->unique, 0, c_uniq * sizeof *dev->deviate->unique);
+    } else {
+        /* LY_DEVIATE_DEL */
+        dev->deviate->unique = calloc(c_uniq, sizeof *dev->deviate->unique);
+        if (!dev->deviate->unique) {
+            LOGMEM;
+            goto error;
+        }
     }
 
     return EXIT_SUCCESS;
@@ -1876,12 +1905,20 @@ yang_read_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *
             LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, dev->deviate->dflt, "default");
             goto error;
         }
-        /* add (already checked) and replace */
-        choice->dflt = node;
-        if (!choice->dflt) {
-            /* default branch not found */
-            LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, dev->deviate->dflt, "default");
-            goto error;
+        if (dev->deviate->mod == LY_DEVIATE_DEL) {
+            if (!choice->dflt || (choice->dflt != node)) {
+                LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, dev->deviate->dflt, "default");
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "Value differs from the target being deleted.");
+                goto error;
+            }
+            choice->dflt = NULL;
+        } else { /* add (already checked) and replace */
+            choice->dflt = node;
+            if (!choice->dflt) {
+                /* default branch not found */
+                LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, dev->deviate->dflt, "default");
+                goto error;
+            }
         }
     } else if (dev->target->nodetype == LYS_LEAF) {
         leaf = (struct lys_node_leaf *)dev->target;
@@ -1894,13 +1931,22 @@ yang_read_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *
                 goto error;
             }
         }
+        if (dev->deviate->mod == LY_DEVIATE_DEL) {
+            if (!leaf->dflt || (leaf->dflt != dev->deviate->dflt)) {
+                LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, dev->deviate->dflt, "default");
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "Value differs from the target being deleted.");
+                goto error;
+            }
+            /* remove value */
+            lydict_remove(ctx, leaf->dflt);
+            leaf->dflt = NULL;
+        } else { /* add (already checked) and replace */
+            /* remove value */
+            lydict_remove(ctx, leaf->dflt);
 
-        /* add (already checked) and replace */
-        /* remove value */
-        lydict_remove(ctx, leaf->dflt);
-
-        /* set new value */
-        leaf->dflt = lydict_insert(ctx, dev->deviate->dflt, 0);
+            /* set new value */
+            leaf->dflt = lydict_insert(ctx, dev->deviate->dflt, 0);
+        }
     } else {
         /* invalid target for default value */
         LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "default");
@@ -2027,5 +2073,115 @@ yang_read_deviate_minmax(struct type_deviation *dev, uint32_t value, int type, i
     return EXIT_SUCCESS;
 
 error:
+    return EXIT_FAILURE;
+}
+
+int
+yang_check_deviate_must(struct ly_ctx *ctx, struct type_deviation *dev, int line)
+{
+    int i;
+
+    /* find must to delete, we are ok with just matching conditions */
+    for (i = 0; i < *dev->trg_must_size; i++) {
+        if (ly_strequal(dev->deviate->must[dev->deviate->must_size - 1].expr, (*dev->trg_must)[i].expr, 1)) {
+            /* we have a match, free the must structure ... */
+            lys_restr_free(ctx, &((*dev->trg_must)[i]));
+            /* ... and maintain the array */
+            (*dev->trg_must_size)--;
+            if (i != *dev->trg_must_size) {
+                (*dev->trg_must)[i].expr = (*dev->trg_must)[*dev->trg_must_size].expr;
+                (*dev->trg_must)[i].dsc = (*dev->trg_must)[*dev->trg_must_size].dsc;
+                (*dev->trg_must)[i].ref = (*dev->trg_must)[*dev->trg_must_size].ref;
+                (*dev->trg_must)[i].eapptag = (*dev->trg_must)[*dev->trg_must_size].eapptag;
+                (*dev->trg_must)[i].emsg = (*dev->trg_must)[*dev->trg_must_size].emsg;
+            }
+            if (!(*dev->trg_must_size)) {
+                free(*dev->trg_must);
+                *dev->trg_must = NULL;
+            } else {
+                (*dev->trg_must)[*dev->trg_must_size].expr = NULL;
+                (*dev->trg_must)[*dev->trg_must_size].dsc = NULL;
+                (*dev->trg_must)[*dev->trg_must_size].ref = NULL;
+                (*dev->trg_must)[*dev->trg_must_size].eapptag = NULL;
+                (*dev->trg_must)[*dev->trg_must_size].emsg = NULL;
+            }
+
+            i = -1; /* set match flag */
+            break;
+        }
+    }
+    if (i != -1) {
+        /* no match found */
+        LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, dev->deviate->must[dev->deviate->must_size - 1].expr, "must");
+        LOGVAL(LYE_SPEC, 0, 0, NULL, "Value does not match any must from the target.");
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int
+yang_check_deviate_unique(struct lys_module *module, struct type_deviation *dev, char *value, int line)
+{
+    struct lys_node_list *list;
+    int i, j;
+
+    list = (struct lys_node_list *)dev->target;
+    if (yang_fill_unique(module, list, &dev->deviate->unique[dev->deviate->unique_size], value, NULL, line)) {
+        dev->deviate->unique_size++;
+        goto error;
+    }
+
+    /* find unique structures to delete */
+    for (i = 0; i < list->unique_size; i++) {
+        if (list->unique[i].expr_size != dev->deviate->unique[dev->deviate->unique_size].expr_size) {
+            continue;
+        }
+
+        for (j = 0; j < dev->deviate->unique[dev->deviate->unique_size].expr_size; j++) {
+            if (!ly_strequal(list->unique[i].expr[j], dev->deviate->unique[dev->deviate->unique_size].expr[j], 1)) {
+                break;
+            }
+        }
+
+        if (j == dev->deviate->unique[dev->deviate->unique_size].expr_size) {
+            /* we have a match, free the unique structure ... */
+            for (j = 0; j < list->unique[i].expr_size; j++) {
+                lydict_remove(module->ctx, list->unique[i].expr[j]);
+            }
+            free(list->unique[i].expr);
+            /* ... and maintain the array */
+            list->unique_size--;
+            if (i != list->unique_size) {
+                list->unique[i].expr_size = list->unique[list->unique_size].expr_size;
+                list->unique[i].expr = list->unique[list->unique_size].expr;
+            }
+
+            if (!list->unique_size) {
+                free(list->unique);
+                list->unique = NULL;
+            } else {
+                list->unique[list->unique_size].expr_size = 0;
+                list->unique[list->unique_size].expr = NULL;
+            }
+
+            i = -1; /* set match flag */
+            break;
+        }
+    }
+    dev->deviate->unique_size++;
+
+    if (i != -1) {
+        /* no match found */
+        LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, value, "unique");
+        LOGVAL(LYE_SPEC, 0, 0, NULL, "Value differs from the target being deleted.");
+        goto error;
+    }
+
+    free(value);
+    return EXIT_SUCCESS;
+
+error:
+    free(value);
     return EXIT_FAILURE;
 }

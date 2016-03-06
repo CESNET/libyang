@@ -263,4 +263,9 @@ int yang_read_deviate_mandatory(struct type_deviation *dev, uint8_t value, int l
  */
 int yang_read_deviate_minmax(struct type_deviation *dev, uint32_t value, int type, int line);
 
+int yang_check_deviate_must(struct ly_ctx *ctx, struct type_deviation *dev, int line);
+
+int yang_check_deviate_unique(struct lys_module *module, struct type_deviation *dev, char *value, int line);
+
+
 #endif /* LY_PARSER_YANG_H_ */

@@ -197,6 +197,7 @@ int64_t cnt_val;
 %type <nodes> notification_opt_stmt
 %type <nodes> deviation_opt_stmt
 %type <nodes> deviate_add_opt_stmt
+%type <nodes> deviate_delete_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
@@ -2511,19 +2512,76 @@ deviate_add_opt_stmt: %empty { if (read_all) {
                                               }
                                             }
 
-deviate_delete_stmt: DELETE_KEYWORD optsep deviate_delete_end;
+deviate_delete_stmt: DELETE_KEYWORD optsep { if (read_all && yang_read_deviate(actual, LY_DEVIATE_DEL, yylineno)) {
+                                               YYERROR;
+                                             }
+                                           }
+                     deviate_delete_end
 
 deviate_delete_end: ';'
-  |  '{' start_check
-         deviate_delete_opt_stmt  {free_check();}
+  |  '{' stmtsep
+         deviate_delete_opt_stmt
       '}' ;
 
-deviate_delete_opt_stmt: %empty 
-  |  deviate_delete_opt_stmt yychecked_1 units_stmt
-  |  deviate_delete_opt_stmt must_stmt
-  |  deviate_delete_opt_stmt unique_stmt
-  |  deviate_delete_opt_stmt yychecked_2 default_stmt
-  ;
+deviate_delete_opt_stmt: %empty { if (read_all) {
+                                    $$.deviation = actual;
+                                    actual_type = DELETE_KEYWORD;
+                                    if (size_arrays->node[size_arrays->next].must) {
+                                      if (yang_read_deviate_must(module->ctx, actual, size_arrays->node[size_arrays->next].must, yylineno)) {
+                                        YYERROR;
+                                      }
+                                    }
+                                    if (size_arrays->node[size_arrays->next].unique) {
+                                      if (yang_read_deviate_unique(module->ctx, actual, size_arrays->node[size_arrays->next].unique, yylineno)) {
+                                        YYERROR;
+                                      }
+                                    }
+                                    size_arrays->next++;
+                                  } else {
+                                    $$.index = size_arrays->size;
+                                    if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                      LOGMEM;
+                                      YYERROR;
+                                    }
+                                  }
+                                }
+  |  deviate_delete_opt_stmt units_stmt { if (read_all) {
+                                            if (yang_read_deviate_units(module->ctx, $1.deviation, s, yylineno)) {
+                                              YYERROR;
+                                            }
+                                            s = NULL;
+                                            $$ = $1;
+                                          }
+                                        }
+  |  deviate_delete_opt_stmt must_stmt { if (read_all) {
+                                           if (yang_check_deviate_must(module->ctx, $1.deviation, yylineno)) {
+                                             YYERROR;
+                                           }
+                                           actual = $1.deviation;
+                                           actual_type = DELETE_KEYWORD;
+                                           $$ = $1;
+                                         } else {
+                                           size_arrays->node[$1.index].must++;
+                                         }
+                                       }
+  |  deviate_delete_opt_stmt unique_stmt { if (read_all) {
+                                             if (yang_check_deviate_unique(module, $1.deviation, s, yylineno)) {
+                                               YYERROR;
+                                             }
+                                             s = NULL;
+                                             $$ = $1;
+                                           } else {
+                                             size_arrays->node[$1.index].unique++;
+                                           }
+                                         }
+  |  deviate_delete_opt_stmt default_stmt { if (read_all) {
+                                              if (yang_read_deviate_default(module->ctx, $1.deviation, s, yylineno)) {
+                                                YYERROR;
+                                              }
+                                              s = NULL;
+                                              $$ = $1;
+                                            }
+                                          }
 
 deviate_replace_stmt: REPLACE_KEYWORD optsep deviate_replace_end;
 
