@@ -1158,6 +1158,12 @@ deviate_minmax(struct lys_node *target, struct lyxml_elem *node, struct lys_devi
     unsigned long val;
     uint32_t *ui32val;
 
+    /* del min/max is forbidden */
+    if (d->mod == LY_DEVIATE_DEL) {
+        LOGVAL(LYE_INCHILDSTMT, LOGLINE(node), LY_VLOG_NONE, NULL, (type ? "max-elements" : "min-elements"), "deviate delete");
+        goto error;
+    }
+
     /* check target node type */
     if (target->nodetype == LYS_LEAFLIST) {
         if (type) {
@@ -1209,19 +1215,9 @@ deviate_minmax(struct lys_node *target, struct lyxml_elem *node, struct lys_devi
         }
     }
 
-    if (d->mod == LY_DEVIATE_DEL) {
-        /* check values */
-        if ((uint32_t)val != *ui32val) {
-            LOGVAL(LYE_INARG, LOGLINE(node), LY_VLOG_NONE, NULL, value, node->name);
-            LOGVAL(LYE_SPEC, 0, 0, NULL, "Value differs from the target being deleted.");
-            goto error;
-        }
-        /* remove current min-elements value of the target */
-        *ui32val = 0;
-    } else { /* add (already checked) and replace */
-        /* set new value specified in deviation */
-        *ui32val = (uint32_t)val;
-    }
+    /* add (already checked) and replace */
+    /* set new value specified in deviation */
+    *ui32val = (uint32_t)val;
 
     return EXIT_SUCCESS;
 
@@ -1470,22 +1466,9 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
 
                 if (d->mod == LY_DEVIATE_DEL) {
-                    /* check values */
-                    if ((d->flags & LYS_CONFIG_MASK) != (dev_target->flags & LYS_CONFIG_MASK)) {
-                        LOGVAL(LYE_INARG, LOGLINE(child), LY_VLOG_NONE, NULL, value, child->name);
-                        LOGVAL(LYE_SPEC, 0, 0, NULL, "Value differs from the target being deleted.");
-                        goto error;
-                    }
-                    /* remove current config value of the target ... */
-                    dev_target->flags &= ~LYS_CONFIG_MASK;
-
-                    /* ... and inherit config value from the target's parent */
-                    if (dev_target->parent) {
-                        dev_target->flags |= dev_target->parent->flags & LYS_CONFIG_MASK;
-                    } else {
-                        /* default config is true */
-                        dev_target->flags |= LYS_CONFIG_W;
-                    }
+                    /* del config is forbidden */
+                    LOGVAL(LYE_INCHILDSTMT, LOGLINE(child), LY_VLOG_NONE, NULL, "config", "deviate delete");
+                    goto error;
                 } else { /* add and replace are the same in this case */
                     /* remove current config value of the target ... */
                     dev_target->flags &= ~LYS_CONFIG_MASK;
@@ -1599,14 +1582,9 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
 
                 if (d->mod == LY_DEVIATE_DEL) {
-                    /* check values */
-                    if ((d->flags & LYS_MAND_MASK) != (dev_target->flags & LYS_MAND_MASK)) {
-                        LOGVAL(LYE_INARG, LOGLINE(child), LY_VLOG_NONE, NULL, value, child->name);
-                        LOGVAL(LYE_SPEC, 0, 0, NULL, "Value differs from the target being deleted.");
-                        goto error;
-                    }
-                    /* remove current mandatory value of the target */
-                    dev_target->flags &= ~LYS_MAND_MASK;
+                    /* del mandatory is forbidden */
+                    LOGVAL(LYE_INCHILDSTMT, LOGLINE(child), LY_VLOG_NONE, NULL, "mandatory", "deviate delete");
+                    goto error;
                 } else { /* add (already checked) and replace */
                     /* remove current mandatory value of the target ... */
                     dev_target->flags &= ~LYS_MAND_MASK;
@@ -1644,6 +1622,15 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     goto error;
                 }
 
+                /* add, del type is forbidden */
+                if (d->mod == LY_DEVIATE_ADD) {
+                    LOGVAL(LYE_INCHILDSTMT, LOGLINE(child), LY_VLOG_NONE, NULL, "type", "deviate add");
+                    goto error;
+                } else if (d->mod == LY_DEVIATE_DEL) {
+                    LOGVAL(LYE_INCHILDSTMT, LOGLINE(child), LY_VLOG_NONE, NULL, "type", "deviate delete");
+                    goto error;
+                }
+
                 /* check target node type */
                 if (dev_target->nodetype == LYS_LEAF) {
                     t = &((struct lys_node_leaf *)dev_target)->type;
@@ -1652,18 +1639,6 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 } else {
                     LOGVAL(LYE_INSTMT, LOGLINE(child), LY_VLOG_NONE, NULL, child->name);
                     LOGVAL(LYE_SPEC, 0, 0, NULL, "Target node does not allow \"%s\" property.", child->name);
-                    goto error;
-                }
-
-                if (d->mod == LY_DEVIATE_ADD) {
-                    /* not allowed, type is always present at the target */
-                    LOGVAL(LYE_INSTMT, LOGLINE(child), LY_VLOG_NONE, NULL, child->name);
-                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
-                    goto error;
-                } else if (d->mod == LY_DEVIATE_DEL) {
-                    /* not allowed, type cannot be deleted from the target */
-                    LOGVAL(LYE_INARG, LOGLINE(child), LY_VLOG_NONE, NULL, value, child->name);
-                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Deleteing type from the target is not allowed.");
                     goto error;
                 }
 
@@ -1764,20 +1739,9 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             }
 
             if (d->mod == LY_DEVIATE_RPL) {
-                /* remove target's musts and allocate new array for it */
-                if (!*trg_must) {
-                    LOGVAL(LYE_INARG, LOGLINE(develem), LY_VLOG_NONE, NULL, "replace", "deviate");
-                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Property \"must\" to replace does not exists in target.");
-                    goto error;
-                }
-
-                for (i = 0; i < list->must_size; i++) {
-                    lys_restr_free(ctx, &(*trg_must[i]));
-                }
-                free(*trg_must);
-                *trg_must = d->must = calloc(c_must, sizeof *d->must);
-                d->must_size = c_must;
-                *trg_must_size = 0;
+                /* replace must is forbidden */
+                LOGVAL(LYE_INCHILDSTMT, LOGLINE(develem), LY_VLOG_NONE, NULL, "must", "deviate replace");
+                goto error;
             } else if (d->mod == LY_DEVIATE_ADD) {
                 /* reallocate the must array of the target */
                 d->must = ly_realloc(*trg_must, (c_must + *trg_must_size) * sizeof *d->must);
@@ -1797,6 +1761,12 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             }
         }
         if (c_uniq) {
+            /* replace unique is forbidden */
+            if (d->mod == LY_DEVIATE_RPL) {
+                LOGVAL(LYE_INCHILDSTMT, LOGLINE(develem), LY_VLOG_NONE, NULL, "unique", "deviate replace");
+                goto error;
+            }
+
             /* check target node type */
             if (dev_target->nodetype != LYS_LIST) {
                 LOGVAL(LYE_INSTMT, LOGLINE(child), LY_VLOG_NONE, NULL, child->name);
@@ -1805,25 +1775,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             }
 
             list = (struct lys_node_list *)dev_target;
-            if (d->mod == LY_DEVIATE_RPL) {
-                /* remove target's unique and allocate new array for it */
-                if (!list->unique) {
-                    LOGVAL(LYE_INARG, LOGLINE(develem), LY_VLOG_NONE, NULL, "replace", "deviate");
-                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Property \"unique\" to replace does not exists in target.");
-                    goto error;
-                }
-
-                for (i = 0; i < list->unique_size; i++) {
-                    for (j = 0; j < list->unique[i].expr_size; j++) {
-                        lydict_remove(ctx, list->unique[i].expr[j]);
-                    }
-                    free(list->unique[i].expr);
-                }
-                free(list->unique);
-                list->unique = d->unique = calloc(c_uniq, sizeof *d->unique);
-                d->unique_size = c_uniq;
-                list->unique_size = 0;
-            } else if (d->mod == LY_DEVIATE_ADD) {
+            if (d->mod == LY_DEVIATE_ADD) {
                 /* reallocate the unique array of the target */
                 d->unique = ly_realloc(list->unique, (c_uniq + list->unique_size) * sizeof *d->unique);
                 list->unique = d->unique;
