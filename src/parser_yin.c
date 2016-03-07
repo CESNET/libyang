@@ -1190,6 +1190,7 @@ deviate_minmax(struct lys_node *target, struct lyxml_elem *node, struct lys_devi
 
     if (type && !strcmp(value, "unbounded")) {
         d->max = val = 0;
+        d->max_set = 1;
     } else {
         /* convert it to uint32_t */
         errno = 0;
@@ -1201,8 +1202,10 @@ deviate_minmax(struct lys_node *target, struct lyxml_elem *node, struct lys_devi
         }
         if (type) {
             d->max = (uint32_t)val;
+            d->max_set = 1;
         } else {
             d->min = (uint32_t)val;
+            d->min_set = 1;
         }
     }
 
