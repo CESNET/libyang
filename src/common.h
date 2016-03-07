@@ -113,6 +113,7 @@ enum LY_ERR {
 
     LYE_EOF,
     LYE_INSTMT,
+    LYE_INCHILDSTMT,
     LYE_INID,
     LYE_INDATE,
     LYE_INARG,

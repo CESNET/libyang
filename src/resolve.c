@@ -934,6 +934,7 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
 
         /* no match */
         if (!sibling) {
+            *ret = NULL;
             return EXIT_SUCCESS;
         }
 
@@ -1011,6 +1012,7 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
 
         /* no match */
         if (!sibling) {
+            *ret = NULL;
             return EXIT_SUCCESS;
         }
 
@@ -1129,6 +1131,7 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
 
         /* no match */
         if (!sibling) {
+            *ret = NULL;
             return EXIT_SUCCESS;
         }
 
@@ -1215,6 +1218,7 @@ resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, cons
 
         /* no match */
         if (!sibling) {
+            *ret = NULL;
             return EXIT_SUCCESS;
         }
 
