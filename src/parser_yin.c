@@ -1240,10 +1240,10 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     struct lys_deviate *d = NULL;
     struct lys_node *node = NULL, *dev_target = NULL;
     struct lys_node_choice *choice = NULL;
-    struct lys_node_leaf *leaf = NULL;
+    struct lys_node_leaf *leaf = NULL, **leaf_dflt_check = NULL;
     struct lys_node_list *list = NULL;
     struct lys_type *t = NULL;
-    uint8_t *trg_must_size = NULL;
+    uint8_t *trg_must_size = NULL, leaf_dflt_check_count = 0;
     struct lys_restr **trg_must = NULL;
     struct unres_schema tmp_unres;
 
@@ -1542,6 +1542,14 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
                         /* set new value */
                         leaf->dflt = lydict_insert(ctx, d->dflt, 0);
+
+                        /* remember to check it later (it may not fit now, but the type can be deviated too) */
+                        leaf_dflt_check = ly_realloc(leaf_dflt_check, ++leaf_dflt_check_count * sizeof *leaf_dflt_check);
+                        if (!leaf_dflt_check) {
+                            LOGMEM;
+                            goto error;
+                        }
+                        leaf_dflt_check[leaf_dflt_check_count - 1] = leaf;
                     }
                 } else {
                     /* invalid target for default value */
@@ -1650,6 +1658,16 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     goto error;
                 }
                 d->type = t;
+
+                /* check leaf default later (type may not fit now, but default can be deviated later too) */
+                if (dev_target->nodetype == LYS_LEAF) {
+                    leaf_dflt_check = ly_realloc(leaf_dflt_check, ++leaf_dflt_check_count * sizeof *leaf_dflt_check);
+                    if (!leaf_dflt_check) {
+                        LOGMEM;
+                        goto error;
+                    }
+                    leaf_dflt_check[leaf_dflt_check_count - 1] = (struct lys_node_leaf *)dev_target;
+                }
             } else if (!strcmp(child->name, "unique")) {
                 c_uniq++;
                 /* skip lyxml_free() at the end of the loop, this node will be processed later */
@@ -1906,6 +1924,20 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
         dev->deviate_size++;
     }
+
+    /* now check whether default value, if any, matches the type */
+    for (i = 0; i < leaf_dflt_check_count; ++i) {
+        if (leaf_dflt_check[i]->dflt) {
+            rc = unres_schema_add_str(module, unres, &leaf_dflt_check[i]->type, UNRES_TYPE_DFLT, leaf_dflt_check[i]->dflt, 0);
+            if (rc == -1) {
+                goto error;
+            } else if (rc == EXIT_FAILURE) {
+                LOGVAL(LYE_SPEC, LOGLINE(yin), 0, NULL, "Leaf \"%s\" default value no longer matches its type.", dev->target_name);
+                goto error;
+            }
+        }
+    }
+    free(leaf_dflt_check);
 
     return EXIT_SUCCESS;
 
