@@ -168,31 +168,32 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_n
 }
 
 API const struct lys_submodule *
-ly_ctx_get_submodule(const struct lys_module *module, const char *name, const char *revision)
+ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *revision, const char *submodule)
 {
+    struct lys_module *main;
     struct lys_submodule *result;
     int i;
 
-    if (!module || !name) {
+    if (!module || !submodule) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
 
-    /* make sure that the provided module is not submodule */
-    module = lys_module(module);
+    main = ly_ctx_get_module(ctx, module, revision);
+    if (!main) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
 
     /* search in submodules list */
-    for (i = 0; i < module->inc_size; i++) {
-        result = module->inc[i].submodule;
-        if (!result || strcmp(name, result->name)) {
-            continue;
-        }
-
-        if (!revision || (result->rev_size && !strcmp(revision, result->rev[0].date))) {
+    for (i = 0; i < main->inc_size; i++) {
+        result = main->inc[i].submodule;
+        if (ly_strequal(submodule, result->name, 0)) {
             return result;
         }
     }
 
+    ly_errno = LY_EINVAL;
     return NULL;
 }
 
