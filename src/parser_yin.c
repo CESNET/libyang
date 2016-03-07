@@ -1213,6 +1213,9 @@ deviate_minmax(struct lys_node *target, struct lyxml_elem *node, struct lys_devi
             LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
             goto error;
         }
+    } else if (d->mod == LY_DEVIATE_RPL) {
+        /* unfortunately, there is no way to check reliably that there
+         * was a value before, it could have been the default */
     }
 
     /* add (already checked) and replace */
@@ -1494,6 +1497,13 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                             LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
                             goto error;
                         }
+                    } else if (d->mod == LY_DEVIATE_RPL) {
+                        /* check that there was a value before */
+                        if (!choice->dflt) {
+                            LOGVAL(LYE_INSTMT, LOGLINE(child), LY_VLOG_NONE, NULL, child->name);
+                            LOGVAL(LYE_SPEC, 0, 0, NULL, "Replacing a property that does not exist.");
+                            goto error;
+                        }
                     }
 
                     rc = resolve_choice_default_schema_nodeid(d->dflt, choice->child, (const struct lys_node **)&node);
@@ -1587,18 +1597,22 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
                         goto error;
                     }
-                }
 
-                if (d->mod == LY_DEVIATE_DEL) {
+                    dev_target->flags |= d->flags & LYS_MAND_MASK;
+                } else if (d->mod == LY_DEVIATE_RPL) {
+                    /* check that there was a value before */
+                    if (!(dev_target->flags & LYS_MAND_MASK)) {
+                        LOGVAL(LYE_INSTMT, LOGLINE(child), LY_VLOG_NONE, NULL, child->name);
+                        LOGVAL(LYE_SPEC, 0, 0, NULL, "Replacing a property that does not exist.");
+                        goto error;
+                    }
+
+                    dev_target->flags &= ~LYS_MAND_MASK;
+                    dev_target->flags |= d->flags & LYS_MAND_MASK;
+                } else if (d->mod == LY_DEVIATE_DEL) {
                     /* del mandatory is forbidden */
                     LOGVAL(LYE_INCHILDSTMT, LOGLINE(child), LY_VLOG_NONE, NULL, "mandatory", "deviate delete");
                     goto error;
-                } else { /* add (already checked) and replace */
-                    /* remove current mandatory value of the target ... */
-                    dev_target->flags &= ~LYS_MAND_MASK;
-
-                    /* ... and replace it with the value specified in deviation */
-                    dev_target->flags |= d->flags & LYS_MAND_MASK;
                 }
             } else if (!strcmp(child->name, "min-elements")) {
                 if (f_min) {
@@ -1701,9 +1715,19 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
                         goto error;
                     }
-                }
 
-                if (d->mod == LY_DEVIATE_DEL) {
+                    *stritem = lydict_insert(ctx, value, 0);
+                } else if (d->mod == LY_DEVIATE_RPL) {
+                    /* check that there was a value before */
+                    if (!*stritem) {
+                        LOGVAL(LYE_INSTMT, LOGLINE(child), LY_VLOG_NONE, NULL, child->name);
+                        LOGVAL(LYE_SPEC, 0, 0, NULL, "Replacing a property that does not exist.");
+                        goto error;
+                    }
+
+                    lydict_remove(ctx, *stritem);
+                    *stritem = lydict_insert(ctx, value, 0);
+                } else if (d->mod == LY_DEVIATE_DEL) {
                     /* check values */
                     if (*stritem != d->units) {
                         LOGVAL(LYE_INARG, LOGLINE(child), LY_VLOG_NONE, NULL, value, child->name);
@@ -1712,12 +1736,6 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     }
                     /* remove current units value of the target */
                     lydict_remove(ctx, *stritem);
-                } else { /* add (already checked) and replace */
-                    /* remove current units value of the target ... */
-                    lydict_remove(ctx, *stritem);
-
-                    /* ... and replace it with the value specified in deviation */
-                    *stritem = lydict_insert(ctx, value, 0);
                 }
             } else {
                 LOGVAL(LYE_INSTMT, LOGLINE(child), LY_VLOG_NONE, NULL, child->name);
