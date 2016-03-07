@@ -1668,10 +1668,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
 
                 /* replace */
-                /* remove current units value of the target ... */
                 lys_type_free(ctx, t);
-
-                /* ... and replace it with the value specified in deviation */
                 /* HACK for unres */
                 t->der = (struct lys_tpdf *)child;
                 if (unres_schema_add_node(module, unres, t, UNRES_TYPE_DER, dev_target, LOGLINE(child))) {
