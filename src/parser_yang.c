@@ -1197,9 +1197,11 @@ error:
 }
 
 void *
-yang_read_type(void *parent, char *value, int type, int line)
+yang_read_type(struct lys_module *module, void *parent, char *value, int type, int line)
 {
     struct yang_type *typ;
+    struct type_deviation *dev;
+    struct lys_tpdf *tmp_parent;
 
     typ = calloc(1, sizeof *typ);
     if (!typ) {
@@ -1226,10 +1228,44 @@ yang_read_type(void *parent, char *value, int type, int line)
     case TYPEDEF_KEYWORD:
         ((struct lys_tpdf *)parent)->type.der = (struct lys_tpdf *)typ;
         typ->type = &((struct lys_tpdf *)parent)->type;
+        break;
+    case REPLACE_KEYWORD:
+        /* deviation replace type*/
+        dev = (struct type_deviation *)parent;
+        if (dev->deviate->type) {
+            LOGVAL(LYE_TOOMANY, line, LY_VLOG_NONE, NULL, "type", "deviation");
+            goto error;
+        }
+        /* check target node type */
+        if (dev->target->nodetype == LYS_LEAF) {
+            typ->type = &((struct lys_node_leaf *)dev->target)->type;
+        } else if (dev->target->nodetype == LYS_LEAFLIST) {
+            typ->type = &((struct lys_node_leaflist *)dev->target)->type;
+        } else {
+            LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "type");
+            LOGVAL(LYE_SPEC, 0, 0, NULL, "Target node does not allow \"type\" property.");
+            goto error;
+        }
+
+        /* remove type and initialize it */
+        lys_type_free(module->ctx, typ->type);
+        tmp_parent = typ->type->parent;
+        memset(typ->type, 0, sizeof *typ->type);
+        typ->type->parent = tmp_parent;
+
+        /* replace it with the value specified in deviation */
+        /* HACK for unres */
+        typ->type->der = (struct lys_tpdf *)typ;
+        dev->deviate->type = typ->type;
+        break;
     }
     typ->name = value;
     typ->line = line;
     return typ;
+
+error:
+    free(typ);
+    return NULL;
 }
 
 void *
@@ -1741,16 +1777,6 @@ yang_read_deviate_units(struct ly_ctx *ctx, struct type_deviation *dev, char *va
 
     dev->deviate->units = lydict_insert_zc(ctx, value);
 
-    /* apply to target */
-    if (dev->deviate->mod == LY_DEVIATE_ADD) {
-        /* check that there is no current value */
-        if (*stritem) {
-            LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "units");
-            LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
-            goto error;
-        }
-    }
-
     if (dev->deviate->mod == LY_DEVIATE_DEL) {
         /* check values */
         if (*stritem != dev->deviate->units) {
@@ -1760,7 +1786,21 @@ yang_read_deviate_units(struct ly_ctx *ctx, struct type_deviation *dev, char *va
         }
         /* remove current units value of the target */
         lydict_remove(ctx, *stritem);
-    } else { /* add (already checked) and replace */
+    } else {
+        if (dev->deviate->mod == LY_DEVIATE_ADD) {
+            /* check that there is no current value */
+            if (*stritem) {
+                LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "units");
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
+                goto error;
+            }
+        } else { /* replace */
+            if (!*stritem) {
+                LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "units");
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "Replacing a property that does not exist.");
+                goto error;
+            }
+        }
         /* remove current units value of the target ... */
         lydict_remove(ctx, *stritem);
 
@@ -1891,15 +1931,6 @@ yang_read_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *
     if (dev->target->nodetype == LYS_CHOICE) {
         choice = (struct lys_node_choice *)dev->target;
 
-        if (dev->deviate->mod == LY_DEVIATE_ADD) {
-            /* check that there is no current value */
-            if (choice->dflt) {
-                LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "default");
-                LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
-                goto error;
-            }
-        }
-
         rc = resolve_choice_default_schema_nodeid(dev->deviate->dflt, choice->child, (const struct lys_node **)&node);
         if (rc || !node) {
             LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, dev->deviate->dflt, "default");
@@ -1912,7 +1943,22 @@ yang_read_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *
                 goto error;
             }
             choice->dflt = NULL;
-        } else { /* add (already checked) and replace */
+        } else {
+            if (dev->deviate->mod == LY_DEVIATE_ADD) {
+                /* check that there is no current value */
+                if (choice->dflt) {
+                    LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "default");
+                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
+                    goto error;
+                }
+            } else { /* replace*/
+                if (!choice->dflt) {
+                    LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "default");
+                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Replacing a property that does not exist.");
+                    goto error;
+                }
+            }
+
             choice->dflt = node;
             if (!choice->dflt) {
                 /* default branch not found */
@@ -1923,14 +1969,6 @@ yang_read_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *
     } else if (dev->target->nodetype == LYS_LEAF) {
         leaf = (struct lys_node_leaf *)dev->target;
 
-        if (dev->deviate->mod == LY_DEVIATE_ADD) {
-            /* check that there is no current value */
-            if (leaf->dflt) {
-                LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "default");
-                LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
-                goto error;
-            }
-        }
         if (dev->deviate->mod == LY_DEVIATE_DEL) {
             if (!leaf->dflt || (leaf->dflt != dev->deviate->dflt)) {
                 LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, dev->deviate->dflt, "default");
@@ -1940,7 +1978,21 @@ yang_read_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *
             /* remove value */
             lydict_remove(ctx, leaf->dflt);
             leaf->dflt = NULL;
-        } else { /* add (already checked) and replace */
+        } else {
+            if (dev->deviate->mod == LY_DEVIATE_ADD) {
+                /* check that there is no current value */
+                if (leaf->dflt) {
+                    LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "default");
+                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
+                    goto error;
+                }
+            } else { /* replace*/
+                if (!leaf->dflt) {
+                    LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "default");
+                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Replacing a property that does not exist.");
+                    goto error;
+                }
+            }
             /* remove value */
             lydict_remove(ctx, leaf->dflt);
 
@@ -2012,9 +2064,14 @@ yang_read_deviate_mandatory(struct type_deviation *dev, uint8_t value, int line)
             LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
             goto error;
         }
+    } else { /* replace */
+        if (!(dev->target->flags & LYS_MAND_MASK)) {
+            LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, "mandatory");
+            LOGVAL(LYE_SPEC, 0, 0, NULL, "Replacing a property that does not exist.");
+            goto error;
+        }
     }
 
-    /* add (already checked) and replace */
     /* remove current mandatory value of the target ... */
     dev->target->flags &= ~LYS_MAND_MASK;
 
@@ -2053,8 +2110,10 @@ yang_read_deviate_minmax(struct type_deviation *dev, uint32_t value, int type, i
 
     if (type) {
         dev->deviate->max = value;
+        dev->deviate->max_set = 1;
     } else {
         dev->deviate->min = value;
+        dev->deviate->min_set = 1;
     }
 
     if (dev->deviate->mod == LY_DEVIATE_ADD) {
@@ -2064,6 +2123,9 @@ yang_read_deviate_minmax(struct type_deviation *dev, uint32_t value, int type, i
             LOGVAL(LYE_SPEC, 0, 0, NULL, "Adding property that already exists.");
             goto error;
         }
+    } else if (dev->deviate->mod == LY_DEVIATE_RPL) {
+        /* unfortunately, there is no way to check reliably that there
+         * was a value before, it could have been the default */
     }
 
     /* add (already checked) and replace */

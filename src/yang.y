@@ -198,6 +198,7 @@ int64_t cnt_val;
 %type <nodes> deviation_opt_stmt
 %type <nodes> deviate_add_opt_stmt
 %type <nodes> deviate_delete_opt_stmt
+%type <nodes> deviate_replace_opt_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
@@ -583,7 +584,7 @@ typedef_arg_str: identifier_arg_str { if (read_all) {
                                       }
                                     }
   
-type_stmt: TYPE_KEYWORD sep identifier_ref_arg_str { if (read_all && !(actual = yang_read_type(actual,s,actual_type,yylineno))) {
+type_stmt: TYPE_KEYWORD sep identifier_ref_arg_str { if (read_all && !(actual = yang_read_type(module, actual, s, actual_type, yylineno))) {
                                                        YYERROR;
                                                      }
                                                      s = NULL;
@@ -2583,22 +2584,80 @@ deviate_delete_opt_stmt: %empty { if (read_all) {
                                             }
                                           }
 
-deviate_replace_stmt: REPLACE_KEYWORD optsep deviate_replace_end;
+deviate_replace_stmt: REPLACE_KEYWORD optsep { if (read_all && yang_read_deviate(actual, LY_DEVIATE_RPL, yylineno)) {
+                                                 YYERROR;
+                                               }
+                                             }
+                      deviate_replace_end
 
 deviate_replace_end: ';'
-  |  '{' start_check
-         deviate_replace_opt_stmt {free_check();}
+  |  '{' stmtsep
+         deviate_replace_opt_stmt
      '}' ;
 
-deviate_replace_opt_stmt: %empty 
-  |  deviate_replace_opt_stmt yychecked_1 type_stmt
-  |  deviate_replace_opt_stmt yychecked_2 units_stmt
-  |  deviate_replace_opt_stmt yychecked_3 default_stmt
-  |  deviate_replace_opt_stmt yychecked_4 config_stmt
-  |  deviate_replace_opt_stmt yychecked_5 mandatory_stmt
-  |  deviate_replace_opt_stmt yychecked_6 min_elements_stmt
-  |  deviate_replace_opt_stmt yychecked_7 max_elements_stmt
-  ;
+deviate_replace_opt_stmt: %empty { if (read_all) {
+                                    $$.deviation = actual;
+                                    actual_type = REPLACE_KEYWORD;
+                                  }
+                                }
+  |  deviate_replace_opt_stmt type_stmt { if (read_all) {
+                                            if (unres_schema_add_node(module, unres, $1.deviation->deviate->type, UNRES_TYPE_DER, $1.deviation->target, yylineno)) {
+                                              YYERROR;
+                                            }
+                                          }
+                                        }
+  |  deviate_replace_opt_stmt units_stmt { if (read_all) {
+                                             if (yang_read_deviate_units(module->ctx, $1.deviation, s, yylineno)) {
+                                               YYERROR;
+                                             }
+                                             s = NULL;
+                                             $$ = $1;
+                                           }
+                                         }
+  |  deviate_replace_opt_stmt default_stmt { if (read_all) {
+                                               if (yang_read_deviate_default(module->ctx, $1.deviation, s, yylineno)) {
+                                                 YYERROR;
+                                               }
+                                               s = NULL;
+                                               $$ = $1;
+                                             }
+                                           }
+  |  deviate_replace_opt_stmt config_stmt { if (read_all) {
+                                              if (yang_read_deviate_config($1.deviation, $2, yylineno)) {
+                                                YYERROR;
+                                              }
+                                              $$ = $1;
+                                            }
+                                          }
+  |  deviate_replace_opt_stmt mandatory_stmt { if (read_all) {
+                                                 if (yang_read_deviate_mandatory($1.deviation, $2, yylineno)) {
+                                                   YYERROR;
+                                                 }
+                                                 $$ = $1;
+                                               }
+                                             }
+  |  deviate_replace_opt_stmt min_elements_stmt { if (read_all) {
+                                                    if ($1.deviation->deviate->min_set) {
+                                                      LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "min-elements", "deviate");
+                                                      YYERROR;
+                                                    }
+                                                    if (yang_read_deviate_minmax($1.deviation, $2, 0, yylineno)) {
+                                                      YYERROR;
+                                                    }
+                                                    $$ =  $1;
+                                                  }
+                                                }
+  |  deviate_replace_opt_stmt max_elements_stmt { if (read_all) {
+                                                    if ($1.deviation->deviate->max_set) {
+                                                      LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "max-elements", "deviate");
+                                                      YYERROR;
+                                                    }
+                                                    if (yang_read_deviate_minmax($1.deviation, $2, 1, yylineno)) {
+                                                      YYERROR;
+                                                    }
+                                                    $$ =  $1;
+                                                  }
+                                                }
 
 when_stmt: WHEN_KEYWORD sep string  { if (read_all && !(actual=yang_read_when(module,actual,actual_type,s,yylineno))) {YYERROR;} s=NULL; actual_type=WHEN_KEYWORD;}
            when_end stmtsep;
@@ -3015,9 +3074,6 @@ yychecked_1: %empty { if ((checked->check&1)==0) checked->check|=1; else { yyerr
 yychecked_2: %empty { if ((checked->check&2)==0) checked->check|=2; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
 yychecked_3: %empty { if ((checked->check&4)==0) checked->check|=4; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
 yychecked_4: %empty { if ((checked->check&8)==0) checked->check|=8; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
-yychecked_5: %empty { if ((checked->check&16)==0) checked->check|=16; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
-yychecked_6: %empty { if ((checked->check&32)==0) checked->check|=32; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
-yychecked_7: %empty { if ((checked->check&64)==0) checked->check|=64; else { yyerror(module,unres,yang,size_arrays,read_all,"syntax error!"); YYERROR; }	}
 
 identifiers: identifier { if (read_all) {
                             s = strdup(yytext);
