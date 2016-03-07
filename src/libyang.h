@@ -658,7 +658,9 @@ ly_module_clb ly_ctx_get_module_clb(const struct ly_ctx *ctx, void **user_data);
 const struct lys_module *ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const char *ns, const char *revision);
 
 /**
- * @brief Get submodule from the context's search dir.
+ * @brief Get submodule of a main module.
+ *
+ * If you already have the pointer to the submodule's main module, use ly_ctx_get_submodule2() instead.
  *
  * @param[in] ctx Context to work in.
  * @param[in] module Name of the main (belongs-to) module.
@@ -668,6 +670,18 @@ const struct lys_module *ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const
  */
 const struct lys_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *revision,
                                                  const char *submodule);
+
+/**
+ * @brief Get submodule of a main module.
+ *
+ * If you have only the name (and optionally revision) of the submodule's main module, use ly_ctx_get_submodule()
+ * instead.
+ *
+ * @param[in] main_module Main module (belongs to) of the searched submodule.
+ * @param[in] submodule Name of the submodule to get.
+ * @return Pointer to the data model structure.
+ */
+const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodule);
 
 /**
  * @brief Get schema node according to the given absolute schema node identifier
