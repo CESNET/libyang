@@ -1879,8 +1879,8 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     (*trg_must_size)++;
                 }
             } else if (!strcmp(child->name, "unique")) {
-                memset(&d->unique[d->unique_size], 0, sizeof *d->unique);
                 if (d->mod == LY_DEVIATE_DEL) {
+                    memset(&d->unique[d->unique_size], 0, sizeof *d->unique);
                     if (fill_yin_unique(module, dev_target, child, &d->unique[d->unique_size], NULL)) {
                         d->unique_size++;
                         goto error;
@@ -1932,6 +1932,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         goto error;
                     }
                 } else { /* replace or add */
+                    memset(&list->unique[list->unique_size], 0, sizeof *list->unique);
                     i = fill_yin_unique(module, dev_target, child, &list->unique[list->unique_size], NULL);
                     list->unique_size++;
                     if (i) {
