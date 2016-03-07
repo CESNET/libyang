@@ -176,6 +176,7 @@ cmd_print(const char *arg)
     char **argv = NULL, *ptr, *target_node = NULL, *model_name, *revision;
     const char **names, *out_path = NULL;
     const struct lys_module *model;
+    const struct lys_submodule *submod;
     LYS_OUTFORMAT format = LYS_OUT_TREE;
     FILE *output = stdout;
     static struct option long_options[] = {
@@ -256,15 +257,24 @@ cmd_print(const char *arg)
 
     model = ly_ctx_get_module(ctx, model_name, revision);
     if (model == NULL) {
+        /* not a model, try to find it as a submodel */
         names = ly_ctx_get_module_names(ctx);
         for (i = 0; names[i]; i++) {
-            if (!model) {
-                model = (struct lys_module *)ly_ctx_get_submodule(ctx, names[i], NULL, model_name);
-                if (model && revision) {
-                    if (!model->rev_size || strcmp(model->rev[0].date, revision)) {
-                        model = NULL;
+            /* go through all main modules */
+            for (model = ly_ctx_get_module(ctx, names[i], NULL); model; model = ly_ctx_get_module_older(ctx, model)) {
+                /* and all its submodules */
+                submod = ly_ctx_get_submodule2(model, model_name);
+                if (submod && revision) {
+                    /* if revision was also specified, check that we have found the correct revision */
+                    if (submod->rev_size && !strcmp(model->rev[0].date, revision)) {
+                        break;
                     }
                 }
+                submod = NULL;
+            }
+            if (submod) {
+                model = (const struct lys_module *)submod;
+                break;
             }
         }
         free(names);
