@@ -306,7 +306,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
 API const char **
 ly_ctx_get_module_names(const struct ly_ctx *ctx)
 {
-    int i;
+    int i, j, k;
     const char **result = NULL;
 
     if (!ctx) {
@@ -320,10 +320,20 @@ ly_ctx_get_module_names(const struct ly_ctx *ctx)
         return NULL;
     }
 
-    for (i = 0; i < ctx->models.used; i++) {
-        result[i] = ctx->models.list[i]->name;
+    for (i = j = 0; i < ctx->models.used; i++) {
+        /* avoid duplicities when multiple revisions of the same module are present */
+        for (k = j - 1; k >= 0; k--) {
+            if (ly_strequal(result[k], ctx->models.list[i]->name, 1)) {
+                break;
+            }
+        }
+        if (k < 0) {
+            /* no duplication found */
+            result[j] = ctx->models.list[i]->name;
+            j++;
+        }
     }
-    result[i] = NULL;
+    result[j] = NULL;
 
     return result;
 }
