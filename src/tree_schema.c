@@ -995,7 +995,7 @@ lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 
     switch (format) {
     case LYS_IN_YIN:
-        mod = yin_read_module(ctx, data, 1);
+        mod = yin_read_module(ctx, data, NULL, 1);
         break;
     case LYS_IN_YANG:
     default:

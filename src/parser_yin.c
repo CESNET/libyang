@@ -2482,17 +2482,16 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
     module->ctx->models.parsing[count] = NULL;
 
     /* try to load the submodule */
-    inc->submodule = (struct lys_submodule *)ly_ctx_get_submodule(module->ctx, module->name,
-                                                                  module->rev_size ? module->rev[0].date : NULL, value);
+    inc->submodule = (struct lys_submodule *)ly_ctx_get_submodule2(module, value);
     if (inc->submodule) {
         if (inc->rev[0]) {
             if (!inc->submodule->rev_size || !ly_strequal(inc->rev, inc->submodule->rev[0].date, 1)) {
                 LOGVAL(LYE_SPEC, LOGLINE(yin), LY_VLOG_NONE, NULL,
-                       "Multiple revisions of the same submodule referenced.");
+                       "Multiple revisions of the same submodule included.");
                 goto error;
             }
         }
-    } else if (!inc->submodule) {
+    } else {
         if (module->ctx->module_clb) {
             module_data = module->ctx->module_clb(value, inc->rev[0] ? inc->rev : NULL, module->ctx->module_clb_data,
                                                   &format, &module_data_free);
@@ -5328,7 +5327,7 @@ error:
 
 /* logs directly */
 struct lys_module *
-yin_read_module(struct ly_ctx *ctx, const char *data, int implement)
+yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int implement)
 {
     struct lys_node *next, *elem;
     struct lyxml_elem *yin;
@@ -5378,6 +5377,14 @@ yin_read_module(struct ly_ctx *ctx, const char *data, int implement)
     /* resolve rest of unres items */
     if (unres->count && resolve_unres_schema(module, unres)) {
         goto error;
+    }
+
+    if (revision) {
+        /* check revision of the parsed model */
+        if (!module->rev_size || strcmp(revision, module->rev[0].date)) {
+            lys_free(module, NULL, 0);
+            goto error;
+        }
     }
 
     /* add to the context's list of modules */
