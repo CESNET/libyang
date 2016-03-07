@@ -1879,6 +1879,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     (*trg_must_size)++;
                 }
             } else if (!strcmp(child->name, "unique")) {
+                memset(&d->unique[d->unique_size], 0, sizeof *d->unique);
                 if (d->mod == LY_DEVIATE_DEL) {
                     if (fill_yin_unique(module, dev_target, child, &d->unique[d->unique_size], NULL)) {
                         d->unique_size++;
