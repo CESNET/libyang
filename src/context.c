@@ -508,7 +508,7 @@ ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod)
             if (asprintf(&str, "file://%s", cur_mod->inc[i].submodule->filepath) == -1) {
                 LOGMEM;
                 return EXIT_FAILURE;
-            } else if (!lyd_new_leaf(cont, NULL, "schema", str)) {
+            } else if (!lyd_new_leaf(item, NULL, "schema", str)) {
                 free(str);
                 return EXIT_FAILURE;
             }
