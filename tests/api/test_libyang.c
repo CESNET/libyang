@@ -303,18 +303,12 @@ static void
 test_ly_ctx_get_submodule(void **state)
 {
     (void) state; /* unused */
-    const struct lys_module *module;
     const struct lys_submodule *submodule;
     const char *mod_name = "a";
     const char *sub_name = "asub";
     const char *revision = NULL;
 
-    module = ly_ctx_get_module(ctx, mod_name, revision);
-    if (!module) {
-        fail();
-    }
-
-    submodule = ly_ctx_get_submodule(module, sub_name, revision);
+    submodule = ly_ctx_get_submodule(ctx, mod_name, revision, sub_name);
     if (!submodule) {
         fail();
     }

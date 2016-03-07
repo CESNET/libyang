@@ -2482,8 +2482,17 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
     module->ctx->models.parsing[count] = NULL;
 
     /* try to load the submodule */
-    inc->submodule = (struct lys_submodule *)ly_ctx_get_submodule(module, value, inc->rev[0] ? inc->rev : NULL);
-    if (!inc->submodule) {
+    inc->submodule = (struct lys_submodule *)ly_ctx_get_submodule(module->ctx, module->name,
+                                                                  module->rev_size ? module->rev[0].date : NULL, value);
+    if (inc->submodule) {
+        if (inc->rev[0]) {
+            if (!inc->submodule->rev_size || !ly_strequal(inc->rev, inc->submodule->rev[0].date, 1)) {
+                LOGVAL(LYE_SPEC, LOGLINE(yin), LY_VLOG_NONE, NULL,
+                       "Multiple revisions of the same submodule referenced.");
+                goto error;
+            }
+        }
+    } else if (!inc->submodule) {
         if (module->ctx->module_clb) {
             module_data = module->ctx->module_clb(value, inc->rev[0] ? inc->rev : NULL, module->ctx->module_clb_data,
                                                   &format, &module_data_free);
