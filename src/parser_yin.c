@@ -1093,7 +1093,7 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
     /* count the number of unique leafs in the value */
     vaux = value;
     while ((vaux = strpbrk(vaux, " \t\n"))) {
-       unique->expr_size++;
+        unique->expr_size++;
         while (isspace(*vaux)) {
             vaux++;
         }
@@ -1128,7 +1128,7 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
         if (unres) {
             unres_schema_add_str(module, unres, parent, UNRES_LIST_UNIQ, unique->expr[i], LOGLINE(yin));
         } else {
-            if (resolve_unique(parent, value, 0, LOGLINE(yin))) {
+            if (resolve_unique(parent, unique->expr[i], 0, LOGLINE(yin))) {
                 goto error;
             }
         }
