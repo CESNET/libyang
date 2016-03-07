@@ -164,7 +164,7 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_n
 API const struct lys_submodule *
 ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *revision, const char *submodule)
 {
-    struct lys_module *main;
+    const struct lys_module *mainmod;
     struct lys_submodule *result;
     int i;
 
@@ -173,15 +173,15 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *r
         return NULL;
     }
 
-    main = ly_ctx_get_module(ctx, module, revision);
-    if (!main) {
+    mainmod = ly_ctx_get_module(ctx, module, revision);
+    if (!mainmod) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
 
     /* search in submodules list */
-    for (i = 0; i < main->inc_size; i++) {
-        result = main->inc[i].submodule;
+    for (i = 0; i < mainmod->inc_size; i++) {
+        result = mainmod->inc[i].submodule;
         if (ly_strequal(submodule, result->name, 0)) {
             return result;
         }

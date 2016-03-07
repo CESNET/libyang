@@ -129,8 +129,9 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
 
     if (module) {
         /* searching for submodule, try if it is already loaded */
-        result = (struct lys_module *)ly_ctx_get_submodule(module, name, revision);
-        if (result) {
+        result = (struct lys_module *)ly_ctx_get_submodule(ctx, module->name,
+                                                           module->rev_size ? module->rev[0].date : NULL, name);
+        if (result && (!revision || (result->rev_size && ly_strequal(result->rev[0].date, revision, 0)))) {
             /* success */
             return result;
         }
