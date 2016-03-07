@@ -660,14 +660,14 @@ const struct lys_module *ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const
 /**
  * @brief Get submodule from the context's search dir.
  *
- * @param[in] module Parent (belongs-to) module.
- * @param[in] name Name of the YANG submodule to get.
- * @param[in] revision Optional revision date of the YANG submodule to get. If
- * not specified, the newest revision is returned (TODO).
+ * @param[in] ctx Context to work in.
+ * @param[in] module Name of the main (belongs-to) module.
+ * @param[in] revision Optional revision date of the main module. If not specified, the newist revision is used.
+ * @param[in] submodule Name of the submodule to get.
  * @return Pointer to the data model structure.
  */
-const struct lys_submodule *ly_ctx_get_submodule(const struct lys_module *module, const char *name,
-                                                 const char *revision);
+const struct lys_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *revision,
+                                                 const char *submodule);
 
 /**
  * @brief Get schema node according to the given absolute schema node identifier
