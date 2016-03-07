@@ -115,7 +115,7 @@ int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int s
 int resolve_superior_type(const char *name, const char *prefix, const struct lys_module *module,
                           const struct lys_node *parent, struct lys_tpdf **ret);
 
-int resolve_unique(struct lys_node *parent, const char *uniq_str, int first, uint32_t line);
+int resolve_unique(struct lys_node *parent, const char *uniq_str_path, int first, uint32_t line);
 
 struct lys_ident *resolve_identref(struct lys_ident *base, const char *ident_name, uint32_t line, struct lyd_node *node);
 
