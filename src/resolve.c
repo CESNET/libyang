@@ -935,6 +935,7 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
 
         /* no match */
         if (!sibling) {
+            *ret = NULL;
             return EXIT_SUCCESS;
         }
 
@@ -1012,6 +1013,7 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
 
         /* no match */
         if (!sibling) {
+            *ret = NULL;
             return EXIT_SUCCESS;
         }
 
@@ -1130,6 +1132,7 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
 
         /* no match */
         if (!sibling) {
+            *ret = NULL;
             return EXIT_SUCCESS;
         }
 
@@ -1216,6 +1219,7 @@ resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, cons
 
         /* no match */
         if (!sibling) {
+            *ret = NULL;
             return EXIT_SUCCESS;
         }
 
@@ -1854,30 +1858,37 @@ check_key(struct lys_node_list *list, int index, const char *name, int len, uint
  * @brief Resolve (test the target exists) unique. Logs directly.
  *
  * @param[in] parent The parent node of the unique structure.
- * @param[in] uniq_str The value of the unique node.
+ * @param[in] uniq_str_path One path from the unique string.
  * @param[in] first Whether this is the first resolution try. Affects logging.
  * @param[in] line The line in the input file.
  *
  * @return EXIT_SUCCESS on succes, EXIT_FAILURE on forward reference, -1 on error.
  */
 int
-resolve_unique(struct lys_node *parent, const char *uniq_str, int first, uint32_t line)
+resolve_unique(struct lys_node *parent, const char *uniq_str_path, int first, uint32_t line)
 {
     int rc;
     const struct lys_node *leaf = NULL;
 
-    rc = resolve_descendant_schema_nodeid(uniq_str, parent->child, LYS_LEAF, &leaf);
+    rc = resolve_descendant_schema_nodeid(uniq_str_path, parent->child, LYS_LEAF, &leaf);
     if (rc || !leaf) {
-        if ((rc == -1) || !first) {
-            LOGVAL(LYE_INARG, line, LY_VLOG_LYS, parent, uniq_str, "unique");
-            if (rc == EXIT_FAILURE) {
-                LOGVAL(LYE_SPEC, 0, 0, NULL, "Target leaf not found.");
+        if (rc) {
+            LOGVAL(LYE_INARG, line, LY_VLOG_LYS, parent, uniq_str_path, "unique");
+            if (rc > 0) {
+                LOGVAL(LYE_INCHAR, 0, 0, NULL, uniq_str_path[rc - 1], &uniq_str_path[rc - 1]);
             }
+            rc = -1;
+        } else if (!first) {
+            LOGVAL(LYE_INARG, line, LY_VLOG_LYS, parent, uniq_str_path, "unique");
+            LOGVAL(LYE_SPEC, 0, 0, NULL, "Target leaf not found.");
+            rc = -1;
+        } else {
+            rc = EXIT_FAILURE;
         }
         goto error;
     }
     if (leaf->nodetype != LYS_LEAF) {
-        LOGVAL(LYE_INARG, line, LY_VLOG_LYS, parent, uniq_str, "unique");
+        LOGVAL(LYE_INARG, line, LY_VLOG_LYS, parent, uniq_str_path, "unique");
         LOGVAL(LYE_SPEC, 0, 0, NULL, "Target is not a leaf.");
         rc = -1;
         goto error;
@@ -2892,6 +2903,28 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, int fir
     if (!aug->parent && (lys_node_module((struct lys_node *)aug) != lys_node_module(aug->target))
             && lyp_check_mandatory((struct lys_node *)aug)) {
         LOGVAL(LYE_SPEC, line, LY_VLOG_LYS, aug, "When augmenting data in another module, mandatory nodes are not allowed.");
+        return -1;
+    }
+
+    /* check augment target type and then augment nodes type */
+    if (aug->target->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF)) {
+        LY_TREE_FOR(aug->child, sub) {
+            if (!(sub->nodetype & (LYS_ANYXML | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES | LYS_CHOICE))) {
+                LOGVAL(LYE_SPEC, line, LY_VLOG_LYS, aug, "Cannot augment \"%s\" with a \"%s\".",
+                       strnodetype(aug->target->nodetype), strnodetype(sub->nodetype));
+                return -1;
+            }
+        }
+    } else if (aug->target->nodetype == LYS_CHOICE) {
+        LY_TREE_FOR(aug->child, sub) {
+            if (!(sub->nodetype & (LYS_CASE | LYS_ANYXML | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST))) {
+                LOGVAL(LYE_SPEC, line, LY_VLOG_LYS, aug, "Cannot augment \"%s\" with a \"%s\".",
+                       strnodetype(aug->target->nodetype), strnodetype(sub->nodetype));
+                return -1;
+            }
+        }
+    } else {
+        LOGVAL(LYE_SPEC, line, LY_VLOG_LYS, aug, "Invalid augment target node type \"%s\".", strnodetype(aug->target->nodetype));
         return -1;
     }
 

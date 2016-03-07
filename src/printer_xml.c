@@ -335,16 +335,18 @@ xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int 
     xml_print_attrs(out, node);
     ly_print(out, ">");
 
-    /* print content */
-    if (axml->value->content) {
-        ly_print(out, "%s", axml->value->content);
-    }
+    if (axml->value) {
+        /* print content */
+        if (axml->value->content) {
+            ly_print(out, "%s", axml->value->content);
+        }
 
-    /* print children */
-    if (axml->value->child) {
-        lyxml_print_mem(&buf, axml->value->child, LYXML_PRINT_FORMAT | LYXML_PRINT_SIBLINGS);
-        ly_print(out, "%*s%s", LEVEL, INDENT, buf);
-        free(buf);
+        /* print children */
+        if (axml->value->child) {
+            lyxml_print_mem(&buf, axml->value->child, LYXML_PRINT_FORMAT | LYXML_PRINT_SIBLINGS);
+            ly_print(out, "%*s%s", LEVEL, INDENT, buf);
+            free(buf);
+        }
     }
 
     /* closing tag */

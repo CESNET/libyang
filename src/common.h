@@ -113,6 +113,7 @@ enum LY_ERR {
 
     LYE_EOF,
     LYE_INSTMT,
+    LYE_INCHILDSTMT,
     LYE_INID,
     LYE_INDATE,
     LYE_INARG,
@@ -284,9 +285,12 @@ void *ly_realloc(void *ptr, size_t size);
  * @param[in] s1 First string to compare
  * @param[in] s2 Second string to compare
  * @param[in] both_in_dictionary Flag for optimization, 1 if it is sure that \p s1 and \p s2 were stored in dictionary.
+ * This parameter is supposed to be a number (digit) known in compile time, not a variable or expression!
  * @return 1 if both strings are the same, 0 if they differ.
  */
 int ly_strequal_(const char *s1, const char *s2);
-#define ly_strequal(s1, s2, d) ((d) ? (s1 == s2) : ly_strequal_(s1, s2))
+#define ly_strequal0(s1, s2) ly_strequal_(s1, s2)
+#define ly_strequal1(s1, s2) (s1 == s2)
+#define ly_strequal(s1, s2, d) ly_strequal##d(s1, s2)
 
 #endif /* LY_COMMON_H_ */

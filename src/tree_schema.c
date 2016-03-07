@@ -995,7 +995,7 @@ lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 
     switch (format) {
     case LYS_IN_YIN:
-        mod = yin_read_module(ctx, data, 1);
+        mod = yin_read_module(ctx, data, NULL, 1);
         break;
     case LYS_IN_YANG:
     default:
@@ -1092,11 +1092,12 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     if (module && !module->filepath) {
         /* get URI if there is /proc */
         addr = NULL;
-        asprintf(&addr, "/proc/self/fd/%d", fd);
-        if ((len = readlink(addr, buf, PATH_MAX - 1)) > 0) {
-            ((struct lys_module *)module)->filepath = lydict_insert(ctx, buf, len);
+        if (asprintf(&addr, "/proc/self/fd/%d", fd) != -1) {
+            if ((len = readlink(addr, buf, PATH_MAX - 1)) > 0) {
+                ((struct lys_module *)module)->filepath = lydict_insert(ctx, buf, len);
+            }
+            free(addr);
         }
-        free(addr);
     }
 
     return module;

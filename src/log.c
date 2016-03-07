@@ -95,6 +95,7 @@ const char *ly_errs[] = {
 
 /* LYE_EOF */          "Unexpected end of input data.",
 /* LYE_INSTMT */       "Invalid keyword \"%s\".",
+/* LYE_INCHILDSTMT */  "Invalid keyword \"%s\" in \"%s\".",
 /* LYE_INID */         "Invalid identifier \"%s\" (%s).",
 /* LYE_INDATE */       "Invalid date format of \"%s\", \"YYYY-MM-DD\" expected.",
 /* LYE_INARG */        "Invalid value \"%s\" of \"%s\".",

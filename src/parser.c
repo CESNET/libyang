@@ -78,7 +78,7 @@ lyp_set_implemented(struct lys_module *module)
  * @param[in] fd MUST be a regular file (will be used by mmap)
  */
 struct lys_module *
-lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
+lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *revision)
 {
     struct lys_module *module = NULL;
     struct stat sb;
@@ -101,7 +101,7 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     }
     switch (format) {
     case LYS_IN_YIN:
-        module = yin_read_module(ctx, addr, 0);
+        module = yin_read_module(ctx, addr, revision, 0);
         break;
     case LYS_IN_YANG:
     default:
@@ -129,10 +129,16 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
 
     if (module) {
         /* searching for submodule, try if it is already loaded */
-        result = (struct lys_module *)ly_ctx_get_submodule(module, name, revision);
+        result = (struct lys_module *)ly_ctx_get_submodule2(module, name);
         if (result) {
-            /* success */
-            return result;
+            if (!revision || (result->rev_size && ly_strequal(result->rev[0].date, revision, 0))) {
+                /* success */
+                return result;
+            } else {
+                /* there is already another revision of the submodule */
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "Multiple revisions of a submodule included.");
+                return NULL;
+            }
         }
     }
 
@@ -140,7 +146,15 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     cwd = wd = get_current_dir_name();
 
 opendir_search:
-    chdir(wd);
+    if (cwd != wd) {
+        if (chdir(wd)) {
+            LOGERR(LY_ESYS, "Unable to use search directory \"%s\" (%s)",
+                   wd, strerror(errno));
+            free(wd);
+            wd = cwd;
+            goto cleanup;
+        }
+    }
     dir = opendir(wd);
     LOGVRB("Searching for \"%s\" in %s.", name, wd);
     if (!dir) {
@@ -156,13 +170,16 @@ opendir_search:
             continue;
         }
 
-        flen = strlen(file->d_name);
-        if (revision && flen > len + 5) {
+        if (revision && file->d_name[len] == '@') {
             /* check revision from the filename */
-            /* TODO */
+            if (strncmp(revision, &file->d_name[len + 1], strlen(revision))) {
+                /* another revision */
+                continue;
+            }
         }
 
         /* get type according to filename suffix */
+        flen = strlen(file->d_name);
         if (!strcmp(&file->d_name[flen - 4], ".yin")) {
             format = LYS_IN_YIN;
         /*TODO } else if (!strcmp(&file->d_name[flen - 5], ".yang")) {
@@ -183,7 +200,7 @@ opendir_search:
         if (module) {
             result = (struct lys_module *)lys_submodule_read(module, fd, format, unres);
         } else {
-            result = lys_read_import(ctx, fd, format);
+            result = lys_read_import(ctx, fd, format, revision);
         }
         close(fd);
 
@@ -223,8 +240,11 @@ searchpath:
     LOGERR(LY_ESYS, "Data model \"%s\" not found (search path is \"%s\")", name, ctx->models.search_path);
 
 cleanup:
-    chdir(cwd);
     if (cwd != wd) {
+        if (chdir(cwd)) {
+            LOGWRN("Unable to return back to working directory \"%s\" (%s)",
+                   cwd, strerror(errno));
+        }
         free(wd);
     }
     free(cwd);

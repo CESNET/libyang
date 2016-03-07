@@ -602,6 +602,25 @@ const char **ly_ctx_get_submodule_names(const struct ly_ctx *ctx, const char *mo
 const struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision);
 
 /**
+ * @brief Get pointer to the older schema tree to the specified one in the provided context.
+ *
+ * The module is not necessarily from the provided \p ctx. If there are multiple schemas older than the
+ * provided one, the newest of them is returned.
+ *
+ * The function can be used in combination with ly_ctx_get_module() to get all revisions of a module in a context:
+ * \code{.c}
+ * for (mod = ly_ctx_get_module(ctx, name, NULL); mod; mod = ly_ctx_get_module_older(ctx, mod)) {
+ *     ...
+ * }
+ * \endcode
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] module YANG module to compare with
+ * @return Pointer to the data model structure, NULL if no older schema is present in the context.
+ */
+const struct lys_module *ly_ctx_get_module_older(const struct ly_ctx *ctx, const struct lys_module *module);
+
+/**
  * @brief Try to find the model in the searchpath of \p ctx and load it into it. If custom missing
  * module callback is set, it is used instead.
  *
@@ -621,11 +640,11 @@ const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name
  * @param[in] revision Optional missing module revision.
  * @param[in] user_data User-supplied callback data.
  * @param[out] format Format of the returned module data.
- * @param[out] free_module_data Optional callback for freeing the returned module data. If not set, free() is used.
+ * @param[out] free_module_data Callback for freeing the returned module data. If not set, the data will be left untouched.
  * @return Requested module data or NULL on error.
  */
 typedef char *(*ly_module_clb)(const char *name, const char *revision, void *user_data, LYS_INFORMAT *format,
-                               void (**free_module_data)(char *model_data));
+                               void (**free_module_data)(void *model_data));
 
 /**
  * @brief Set missing include or import model callback.
@@ -658,16 +677,30 @@ ly_module_clb ly_ctx_get_module_clb(const struct ly_ctx *ctx, void **user_data);
 const struct lys_module *ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const char *ns, const char *revision);
 
 /**
- * @brief Get submodule from the context's search dir.
+ * @brief Get submodule of a main module.
  *
- * @param[in] module Parent (belongs-to) module.
- * @param[in] name Name of the YANG submodule to get.
- * @param[in] revision Optional revision date of the YANG submodule to get. If
- * not specified, the newest revision is returned (TODO).
+ * If you already have the pointer to the submodule's main module, use ly_ctx_get_submodule2() instead.
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] module Name of the main (belongs-to) module.
+ * @param[in] revision Optional revision date of the main module. If not specified, the newist revision is used.
+ * @param[in] submodule Name of the submodule to get.
  * @return Pointer to the data model structure.
  */
-const struct lys_submodule *ly_ctx_get_submodule(const struct lys_module *module, const char *name,
-                                                 const char *revision);
+const struct lys_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *revision,
+                                                 const char *submodule);
+
+/**
+ * @brief Get submodule of a main module.
+ *
+ * If you have only the name (and optionally revision) of the submodule's main module, use ly_ctx_get_submodule()
+ * instead.
+ *
+ * @param[in] main_module Main module (belongs to) of the searched submodule.
+ * @param[in] submodule Name of the submodule to get.
+ * @return Pointer to the data model structure.
+ */
+const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodule);
 
 /**
  * @brief Get schema node according to the given absolute schema node identifier
