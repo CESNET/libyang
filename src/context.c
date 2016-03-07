@@ -268,6 +268,44 @@ ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revisi
     return ly_ctx_get_module_by(ctx, name, offsetof(struct lys_module, name), revision);
 }
 
+API const struct lys_module *
+ly_ctx_get_module_older(const struct ly_ctx *ctx, const struct lys_module *module)
+{
+    int i;
+    const struct lys_module *result = NULL, *iter;
+
+    if (!ctx || !module || !module->rev_size) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+
+    for (i = 0; i < ctx->models.used; i++) {
+        iter = ctx->models.list[i];
+        if (iter == module || !iter->rev_size) {
+            /* iter is the module itself or iter has no revision */
+            continue;
+        }
+        if (!ly_strequal(module->name, iter->name, 0)) {
+            /* different module */
+            continue;
+        }
+        if (strcmp(iter->rev[0].date, module->rev[0].date) < 0) {
+            /* iter is older than module */
+            if (result) {
+                if (strcmp(iter->rev[0].date, result->rev[0].date) > 0) {
+                    /* iter is newer than current result */
+                    result = iter;
+                }
+            } else {
+                result = iter;
+            }
+        }
+    }
+
+    return result;
+}
+
 API void
 ly_ctx_set_module_clb(struct ly_ctx *ctx, ly_module_clb clb, void *user_data)
 {
