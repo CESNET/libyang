@@ -213,8 +213,7 @@ opendir_search:
             result = NULL;
             goto cleanup;
         }
-        result->filepath = lydict_insert(ctx, model_path, 0);
-        free(model_path);
+        result->filepath = lydict_insert_zc(ctx, model_path);
         /* success */
         goto cleanup;
     }
