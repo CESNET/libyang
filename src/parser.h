@@ -102,6 +102,9 @@ int lyp_check_identifier(const char *id, enum LY_IDENT type, unsigned int line, 
 int lyp_check_date(const char *date, unsigned int line);
 int lyp_check_mandatory(struct lys_node *node);
 
+int lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, const char *value,
+                      int line, struct lys_include *inc, struct unres_schema *unres);
+
 /**
  * Store UTF-8 character specified as 4byte integer into the dst buffer.
  * Returns number of written bytes (4 max), expects that dst has enough space.

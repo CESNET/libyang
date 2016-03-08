@@ -2412,10 +2412,6 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
 {
     struct lyxml_elem *child;
     const char *value;
-    char *module_data;
-    void (*module_data_free)(void *module_data) = NULL;
-    LYS_INFORMAT format = LYS_IN_UNKNOWN;
-    int count, i;
 
     LY_TREE_FOR(yin->child, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
@@ -2440,101 +2436,7 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
 
     GETVAL(value, yin, "module");
 
-    /* check that the submodule was not included yet (previous submodule could have included it) */
-    for (i = 0; i < module->inc_size; ++i) {
-        if (module->inc[i].submodule && (ly_strequal(module->inc[i].submodule->name, value, 1))) {
-            /* copy the duplicate into the result */
-            memcpy(inc, &module->inc[i], sizeof *inc);
-
-            if (submodule) {
-                /* we don't care if it was external or not */
-                inc->external = 0;
-            } else if (inc->external) {
-                /* remove the duplicate */
-                --module->inc_size;
-                memmove(&module->inc[i], &module->inc[i + 1], (module->inc_size - i) * sizeof *inc);
-                module->inc = ly_realloc(module->inc, module->inc_size * sizeof *module->inc);
-
-                /* it is no longer external */
-                inc->external = 0;
-            }
-            /* if !submodule && !inc->external, we just create a duplicate so it is detected and ended with error */
-
-            return EXIT_SUCCESS;
-        }
-    }
-
-    /* check for circular include, store it if passed */
-    if (!module->ctx->models.parsing) {
-        count = 0;
-    } else {
-        for (count = 0; module->ctx->models.parsing[count]; ++count) {
-            if (ly_strequal(value, module->ctx->models.parsing[count], 1)) {
-                LOGERR(LY_EVALID, "Circular include dependency on the submodule \"%s\".", value);
-                goto error;
-            }
-        }
-    }
-    ++count;
-    module->ctx->models.parsing =
-        ly_realloc(module->ctx->models.parsing, (count + 1) * sizeof *module->ctx->models.parsing);
-    if (!module->ctx->models.parsing) {
-        LOGMEM;
-        goto error;
-    }
-    module->ctx->models.parsing[count - 1] = value;
-    module->ctx->models.parsing[count] = NULL;
-
-    /* try to load the submodule */
-    inc->submodule = (struct lys_submodule *)ly_ctx_get_submodule2(module, value);
-    if (inc->submodule) {
-        if (inc->rev[0]) {
-            if (!inc->submodule->rev_size || !ly_strequal(inc->rev, inc->submodule->rev[0].date, 1)) {
-                LOGVAL(LYE_SPEC, LOGLINE(yin), LY_VLOG_NONE, NULL,
-                       "Multiple revisions of the same submodule included.");
-                goto error;
-            }
-        }
-    } else {
-        if (module->ctx->module_clb) {
-            module_data = module->ctx->module_clb(value, inc->rev[0] ? inc->rev : NULL, module->ctx->module_clb_data,
-                                                  &format, &module_data_free);
-            if (module_data) {
-                inc->submodule = lys_submodule_parse(module, module_data, format, unres);
-                if (module_data_free) {
-                    module_data_free(module_data);
-                } else {
-                    free(module_data);
-                }
-            } else {
-                LOGERR(LY_EVALID, "User module retrieval callback failed!");
-            }
-        } else {
-            inc->submodule = (struct lys_submodule *)lyp_search_file(module->ctx, module, value,
-                                                                     inc->rev[0] ? inc->rev : NULL, unres);
-        }
-    }
-
-    /* remove the new submodule name now that its parsing is finished (even if failed) */
-    if (module->ctx->models.parsing[count] || !ly_strequal(module->ctx->models.parsing[count - 1], value, 1)) {
-        LOGINT;
-    }
-    --count;
-    if (count) {
-        module->ctx->models.parsing[count] = NULL;
-    } else {
-        free(module->ctx->models.parsing);
-        module->ctx->models.parsing = NULL;
-    }
-
-    /* check the result */
-    if (!inc->submodule) {
-        LOGVAL(LYE_INARG, LOGLINE(yin), LY_VLOG_NONE, NULL, value, yin->name);
-        LOGERR(LY_EVALID, "Including \"%s\" module into \"%s\" failed.", value, module->name);
-        goto error;
-    }
-
-    return EXIT_SUCCESS;
+    return lyp_check_include(module, submodule, value, LOGLINE(yin), inc, unres);
 
 error:
 
