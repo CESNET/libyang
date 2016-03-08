@@ -2247,3 +2247,27 @@ error:
     free(value);
     return EXIT_FAILURE;
 }
+
+int
+yang_check_deviation(struct lys_module *module, struct type_deviation *dev, struct unres_schema *unres, int line)
+{
+    int i, rc;
+
+    if (dev->target->nodetype == LYS_LEAF) {
+        for(i = 0; i < dev->deviation->deviate_size; ++i) {
+            if (dev->deviation->deviate[i].mod != LY_DEVIATE_DEL) {
+                if (dev->deviation->deviate[i].dflt || dev->deviation->deviate[i].type) {
+                    rc = unres_schema_add_str(module, unres, &((struct lys_node_leaf *)dev->target)->type, UNRES_TYPE_DFLT, ((struct lys_node_leaf *)dev->target)->dflt, 0);
+                    if (rc == -1) {
+                      return EXIT_FAILURE;
+                    } else if (rc == EXIT_FAILURE) {
+                        LOGVAL(LYE_SPEC, line, LY_VLOG_NONE, NULL, "Leaf \"%s\" default value no longer matches its type.", dev->deviation->target_name);
+                        return EXIT_FAILURE;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    return EXIT_SUCCESS;
+}

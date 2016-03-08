@@ -267,5 +267,6 @@ int yang_check_deviate_must(struct ly_ctx *ctx, struct type_deviation *dev, int 
 
 int yang_check_deviate_unique(struct lys_module *module, struct type_deviation *dev, char *value, int line);
 
+int yang_check_deviation(struct lys_module *module, struct type_deviation *dev, struct unres_schema *unres, int line);
 
 #endif /* LY_PARSER_YANG_H_ */

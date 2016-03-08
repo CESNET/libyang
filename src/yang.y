@@ -2342,6 +2342,9 @@ deviation_stmt: DEVIATION_KEYWORD sep deviation_arg_str { if (read_all) {
                                               LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_NONE, NULL, "deviate", "deviation");
                                               YYERROR;
                                             }
+                                            if (yang_check_deviation(module, actual, unres, yylineno)) {
+                                              YYERROR;
+                                            }
                                             free($7.deviation);
                                           }
                                         }
