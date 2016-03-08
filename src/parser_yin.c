@@ -1430,6 +1430,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             goto error;
         }
         d = &dev->deviate[dev->deviate_size];
+        dev->deviate_size++;
 
         /* store a shallow copy of the original node */
         if (!dev->orig_node) {
@@ -1944,8 +1945,6 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
             }
         }
-
-        dev->deviate_size++;
     }
 
     /* now check whether default value, if any, matches the type */
