@@ -5241,8 +5241,9 @@ yin_read_submodule(struct lys_module *module, const char *data, struct unres_sch
     struct lys_node *next, *elem;
     struct lyxml_elem *yin;
     struct lys_submodule *submodule = NULL;
+    struct lys_module *orig_mod;
     const char *value;
-    uint8_t i;
+    uint8_t i, j, flag;
 
     assert(module->ctx);
 
@@ -5311,6 +5312,29 @@ error:
             lys_node_switch(elem, submodule->deviation[i].orig_node);
             submodule->deviation[i].orig_node = elem;
         }
+
+        /* remove our deviation import, clear deviated flag is possible */
+        orig_mod = lys_node_module(submodule->deviation[i].orig_node);
+        flag = 0;
+        for (j = 0; j < orig_mod->imp_size; ++j) {
+            if (orig_mod->imp[j].external == 2) {
+                if (orig_mod->imp[j].module == submodule->belongsto) {
+                    /* our deviation import, remove it */
+                    --orig_mod->imp_size;
+                    if (j < orig_mod->imp_size) {
+                        memcpy(&orig_mod->imp[j], &orig_mod->imp[j + 1], (orig_mod->imp_size - j) * sizeof *orig_mod->imp);
+                    }
+                    --j;
+                } else {
+                    /* some other deviation, we cannot clear the deviated flag */
+                    flag = 1;
+                }
+            }
+        }
+        if (!flag) {
+            /* it's safe to clear the deviated flag */
+            orig_mod->deviated = 0;
+        }
     }
 
     /* remove applied augments */
@@ -5335,10 +5359,10 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
 {
     struct lys_node *next, *elem;
     struct lyxml_elem *yin;
-    struct lys_module *module = NULL, **newlist = NULL;
+    struct lys_module *module = NULL, **newlist = NULL, *orig_mod;
     struct unres_schema *unres;
     const char *value;
-    int i;
+    int i, j, flag;
 
     unres = calloc(1, sizeof *unres);
     if (!unres) {
@@ -5463,6 +5487,29 @@ error:
             resolve_augment_schema_nodeid(module->deviation[i].target_name, NULL, module, (const struct lys_node **)&elem);
             lys_node_switch(elem, module->deviation[i].orig_node);
             module->deviation[i].orig_node = elem;
+        }
+
+        /* remove our deviation import, clear deviated flag is possible */
+        orig_mod = lys_node_module(module->deviation[i].orig_node);
+        flag = 0;
+        for (j = 0; j < orig_mod->imp_size; ++j) {
+            if (orig_mod->imp[j].external == 2) {
+                if (orig_mod->imp[j].module == module) {
+                    /* our deviation import, remove it */
+                    --orig_mod->imp_size;
+                    if (j < orig_mod->imp_size) {
+                        memcpy(&orig_mod->imp[j], &orig_mod->imp[j + 1], (orig_mod->imp_size - j) * sizeof *orig_mod->imp);
+                    }
+                    --j;
+                } else {
+                    /* some other deviation, we cannot clear the deviated flag */
+                    flag = 1;
+                }
+            }
+        }
+        if (!flag) {
+            /* it's safe to clear the deviated flag */
+            orig_mod->deviated = 0;
         }
     }
 
