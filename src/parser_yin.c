@@ -5309,6 +5309,7 @@ error:
         if (submodule->deviation[i].orig_node) {
             resolve_augment_schema_nodeid(submodule->deviation[i].target_name, NULL, module, (const struct lys_node **)&elem);
             lys_node_switch(elem, submodule->deviation[i].orig_node);
+            submodule->deviation[i].orig_node = elem;
         }
     }
 
@@ -5461,6 +5462,7 @@ error:
         if (module->deviation[i].orig_node) {
             resolve_augment_schema_nodeid(module->deviation[i].target_name, NULL, module, (const struct lys_node **)&elem);
             lys_node_switch(elem, module->deviation[i].orig_node);
+            module->deviation[i].orig_node = elem;
         }
     }
 
