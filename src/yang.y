@@ -22,6 +22,7 @@ void free_check();
 extern char *yytext;
 char *s, *tmp_s;
 struct Scheck *checked=NULL;
+char rev[LY_REV_SIZE];
 struct lys_module *trg;
 void *actual;
 int actual_type;
@@ -36,6 +37,7 @@ int64_t cnt_val;
   uint32_t uint;
   char *str;
   void *v;
+  struct lys_module *inc;
   union {
     uint32_t index;
     struct lys_node_container *container;
@@ -200,6 +202,7 @@ int64_t cnt_val;
 %type <nodes> deviate_add_opt_stmt
 %type <nodes> deviate_delete_opt_stmt
 %type <nodes> deviate_replace_opt_stmt
+%type <inc> include_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
@@ -297,8 +300,26 @@ uri_str: string_1
   ;
 
 linkage_stmts: %empty { if (read_all) {
-                          trg->imp = calloc(size_arrays->imp, sizeof *trg->imp);
-                          trg->inc = calloc(size_arrays->inc, sizeof *trg->inc);
+                          if (size_arrays->imp) {
+                            trg->imp = calloc(size_arrays->imp, sizeof *trg->imp);
+                            if (!trg->imp) {
+                              LOGMEM;
+                              YYERROR;
+                            }
+                          }
+                          if (size_arrays->inc) {
+                            trg->inc = calloc(size_arrays->inc, sizeof *trg->inc);
+                            if (!trg->inc) {
+                              LOGMEM;
+                              YYERROR;
+                            }
+                            trg->inc_size = size_arrays->inc;
+                            size_arrays->inc = 0;
+                            /* trg->inc_size can be updated by the included submodules,
+                             * so we will use size_arrays->inc here, trg->inc_size stores the
+                             * target size of the array
+                             */
+                          }
                         }
                       }
  |  linkage_stmts import_stmt 
@@ -324,7 +345,25 @@ import_stmt: IMPORT_KEYWORD sep tmp_identifier_arg_str {
 
 tmp_identifier_arg_str: identifier_arg_str { $$ = s; s = NULL; }
 
-include_stmt: INCLUDE_KEYWORD sep identifier_arg_str include_end stmtsep;
+include_stmt: INCLUDE_KEYWORD sep tmp_identifier_arg_str { if (read_all) {
+                                                             memset(rev, 0, LY_REV_SIZE);
+                                                             actual_type = INCLUDE_KEYWORD;
+                                                           }
+                                                           else {
+                                                             size_arrays->inc++;
+                                                           }
+                                                         }
+              include_end stmtsep { if (read_all) {
+                                      $$ = trg;
+                                      if (yang_fill_include(module, submodule, $3, rev, size_arrays->inc, unres, yylineno)) {
+                                        free($3);
+                                        YYERROR;
+                                      }
+                                      size_arrays->inc++;
+                                      free($3);
+                                      trg = $$;
+                                    }
+                                  }
 
 include_end: ';'
   | '{' stmtsep
@@ -341,7 +380,7 @@ revision_date: REVISION_DATE { if (read_all) {
                                  if (actual_type==IMPORT_KEYWORD) {
                                      memcpy(((struct lys_import *)actual)->rev,yytext,LY_REV_SIZE-1);
                                  } else {                              // INCLUDE KEYWORD
-                                     memcpy(((struct lys_include *)actual)->rev,yytext,LY_REV_SIZE-1);
+                                     memcpy(rev,yytext,LY_REV_SIZE - 1);
                                  }
                                }
                              }

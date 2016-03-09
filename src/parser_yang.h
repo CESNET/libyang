@@ -133,11 +133,6 @@ struct yang_type {
     int line;
 };
 
-struct yang_schema {
-    struct yang_type type;
-    struct yang_schema *next;
-};
-
 int yang_read_common(struct lys_module *module,char *value, int type, int line);
 
 int yang_read_prefix(struct lys_module *module, void *save, char *value,int type,int line);
@@ -268,5 +263,8 @@ int yang_check_deviate_must(struct ly_ctx *ctx, struct type_deviation *dev, int 
 int yang_check_deviate_unique(struct lys_module *module, struct type_deviation *dev, char *value, int line);
 
 int yang_check_deviation(struct lys_module *module, struct type_deviation *dev, struct unres_schema *unres, int line);
+
+int yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, char *value,
+                      char *rev, int inc_size, struct unres_schema *unres, int line);
 
 #endif /* LY_PARSER_YANG_H_ */
