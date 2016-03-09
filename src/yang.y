@@ -3067,7 +3067,7 @@ whitespace_opt: %empty
   ;
 
 
-string: STRINGS { if (read_all){
+string: strings { if (read_all){
                     s = strdup(yytext);
                     if (!s) {
                       LOGMEM;
@@ -3076,18 +3076,15 @@ string: STRINGS { if (read_all){
                   }
                 }
         optsep
-  | REVISION_DATE { if (read_all){
-                    s = strdup(yytext);
-                    if (!s) {
-                      LOGMEM;
-                      YYERROR;
-                    }
-                  }
-                }
-    optsep
-  | identifiers optsep
-  | string_1
-  ;
+  |  string_1
+
+strings: STRINGS
+  |  REVISION_DATE
+  |  identifier
+  |  IDENTIFIERPREFIX
+  |  ZERO
+  |  INTEGER
+  |  NON_NEGATIVE_INTEGER
 
 identifier: IDENTIFIER
   |  ANYXML_KEYWORD
