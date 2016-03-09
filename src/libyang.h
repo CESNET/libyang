@@ -884,16 +884,94 @@ typedef enum {
 } LY_ERR;
 
 /**
+ * @typedef LY_EVCODE
+ * @brief libyang's codes of validation error. Whenever ly_errno is set to LY_EVALID, the ly_evcode is also set
+ * to the appropriate LY_EVCODE value.
+ * @ingroup logger
+ */
+typedef enum {
+    LYE_PATH = -3,    /**< error path set */
+    LYE_SPEC = -2,    /**< generic error */
+    LYE_LINE = -1,    /**< error line set */
+
+    LYE_UNK = 0,      /**< nothing */
+
+    LYE_XML_MISS,     /**< missing XML object */
+    LYE_XML_INVAL,    /**< invalid XML object */
+    LYE_XML_INCHAR,   /**< invalid XML character */
+
+    LYE_EOF,          /**< unexpected end of input data */
+    LYE_INSTMT,       /**< invalid statement (schema) */
+    LYE_INCHILDSTMT,  /**< invalid statement (schema) */
+    LYE_INID,         /**< invalid identifier (schema) */
+    LYE_INDATE,       /**< invalid date format */
+    LYE_INARG,        /**< invalid value of a statement argument (schema) */
+    LYE_MISSSTMT1,    /**< missing required statement (schema) */
+    LYE_MISSSTMT2,    /**< missing required statement (schema) */
+    LYE_MISSARG,      /**< missing required statement argument (schema) */
+    LYE_TOOMANY,      /**< too many instances of some object */
+    LYE_DUPID,        /**< duplicated identifier (schema) */
+    LYE_DUPLEAFLIST,  /**< multiple instances of leaf-list */
+    LYE_DUPLIST,      /**< multiple instances of list */
+    LYE_ENUM_DUPVAL,  /**< duplicated enum value (schema) */
+    LYE_ENUM_DUPNAME, /**< duplicated enum name (schema) */
+    LYE_ENUM_WS,      /**< enum name with leading/trailing whitespaces (schema) */
+    LYE_BITS_DUPVAL,  /**< duplicated bits value (schema) */
+    LYE_BITS_DUPNAME,
+    LYE_INMOD,
+    LYE_INMOD_LEN,
+    LYE_KEY_NLEAF,
+    LYE_KEY_TYPE,
+    LYE_KEY_CONFIG,
+    LYE_KEY_MISS,
+    LYE_KEY_DUP,
+    LYE_INREGEX,
+    LYE_INRESOLV,
+    LYE_INSTATUS,
+    LYE_OBSDATA,
+    LYE_OBSTYPE,
+
+    LYE_NORESOLV,
+    LYE_INELEM,
+    LYE_INELEM_LEN,
+    LYE_MISSELEM,
+    LYE_INVAL,
+    LYE_INATTR,
+    LYE_MISSATTR,
+    LYE_OORVAL,
+    LYE_INCHAR,
+    LYE_INPRED,
+    LYE_MCASEDATA,
+    LYE_NOCOND,
+    LYE_INORDER,
+
+    LYE_XPATH_INTOK,
+    LYE_XPATH_EOF,
+    LYE_XPATH_INOP_1,
+    LYE_XPATH_INOP_2,
+    LYE_XPATH_INCTX,
+    LYE_XPATH_INARGCOUNT,
+    LYE_XPATH_INARGTYPE
+} LY_EVCODE;
+
+/**
  * @cond INTERNAL
  * Get address of (thread-specific) `ly_errno' variable.
  */
 LY_ERR *ly_errno_location(void);
+
+LY_EVCODE *ly_evcode_location(void);
 
 /**
  * @endcond INTERNAL
  * @brief libyang specific (thread-safe) errno (see #LY_ERR for the list of possible values and their meaning).
  */
 #define ly_errno (*ly_errno_location())
+
+/**
+ * @brief libyang's validation error code
+ */
+#define ly_evcode (*ly_evcode_location())
 
 /**
  * @brief Get the last (thread-specific) error message.

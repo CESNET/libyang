@@ -31,10 +31,11 @@
 
 /* libyang errno */
 LY_ERR ly_errno_int = LY_EINT;
+LY_EVCODE ly_evcode_unkn = LYE_UNK;
 static pthread_once_t ly_err_once = PTHREAD_ONCE_INIT;
 static pthread_key_t ly_err_key;
 #ifdef __linux__
-struct ly_err ly_err_main = {LY_SUCCESS, 0, {0}, {0}};
+struct ly_err ly_err_main = {LY_SUCCESS, 0, 0, {0}, {0}};
 #endif
 
 static void
@@ -98,6 +99,18 @@ ly_errno_location(void)
         return &ly_errno_int;
     }
     return &(e->no);
+}
+
+API LY_EVCODE *
+ly_evcode_location(void)
+{
+    struct ly_err *e;
+
+    e = ly_err_location();
+    if (!e) {
+        return &ly_evcode_unkn;
+    }
+    return &(e->code);
 }
 
 API const char *
