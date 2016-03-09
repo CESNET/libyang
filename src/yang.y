@@ -217,7 +217,10 @@ int64_t cnt_val;
 /* to simplify code, store the module/submodule being processed as trg */
 
 start: module_stmt 
- |  submodule_stmt 
+ |  submodule_stmt { if (read_all && lyp_propagate_submodule(module, submodule, 1)) {
+                       YYERROR;
+                     }
+                   }
 
 
 string_1: STRING  { if (read_all) {
@@ -274,7 +277,16 @@ module_header_stmts: %empty  { $$ = 0; }
   |  module_header_stmts prefix_stmt { if (read_all && yang_read_prefix(module,NULL,s,MODULE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
   ;
 
-submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str
+submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str { if (read_all) {
+                                                                    if (!submodule) {
+                                                                      LOGVAL(LYE_INSTMT, yylineno, LY_VLOG_NONE, NULL, "submodule");
+                                                                      YYERROR;
+                                                                    }
+                                                                    trg = (struct lys_module *)submodule;
+                                                                    yang_read_common(trg,s,MODULE_KEYWORD,0);
+                                                                    s = NULL;
+                                                                  }
+                                                                }
                 '{' stmtsep
                     submodule_header_stmts  { if (read_all && !submodule->prefix) {
                                                 LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
@@ -282,7 +294,7 @@ submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str
                                               }
                                             }
                     linkage_stmts
-                    meta_stmts         {free_check();}
+                    meta_stmts
                     revision_stmts
                     body_stmts
                 '}' optsep
