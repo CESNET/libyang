@@ -431,7 +431,7 @@ belongs_to_stmt: BELONGS_TO_KEYWORD sep identifier_arg_str { if (read_all) {
                                      s = NULL;
                                    }
                                  }
-                 '}'
+                 '}' stmtsep
 
 prefix_stmt: PREFIX_KEYWORD sep prefix_arg_str stmtend;
 
@@ -524,6 +524,8 @@ body_stmts: %empty { if (read_all) {
                            LOGMEM;
                            YYERROR;
                          }
+                         /* module with deviation - must be implemented (description of /ietf-yang-library:modules-state/module/deviation) */
+                         module->implemented = 1;
                        }
                        actual = NULL;
                      }
