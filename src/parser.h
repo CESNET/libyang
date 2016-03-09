@@ -106,6 +106,16 @@ int lyp_check_include(struct lys_module *module, struct lys_submodule *submodule
                       int line, struct lys_include *inc, struct unres_schema *unres);
 
 /**
+ * @brief Propagate imports and includes into the main module
+ *
+ * @param module Main module
+ * @param submodule
+ * @param line
+ * @return 0 for success, 1 for failure
+ */
+int lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodule, int line);
+
+/**
  * Store UTF-8 character specified as 4byte integer into the dst buffer.
  * Returns number of written bytes (4 max), expects that dst has enough space.
  *
