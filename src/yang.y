@@ -2270,6 +2270,8 @@ rpc_opt_stmt: %empty { if (read_all) {
                                  YYERROR;
                                }
                                $1.rpc.flag |= LYS_RPC_INPUT;
+                               actual = $1.rpc.ptr_rpc;
+                               actual_type = RPC_KEYWORD;
                                $$ = $1;
                              }
   |  rpc_opt_stmt output_stmt { if ($1.rpc.flag & LYS_RPC_OUTPUT) {
@@ -2277,6 +2279,8 @@ rpc_opt_stmt: %empty { if (read_all) {
                                   YYERROR;
                                 }
                                 $1.rpc.flag |= LYS_RPC_OUTPUT;
+                                actual = $1.rpc.ptr_rpc;
+                                actual_type = RPC_KEYWORD;
                                 $$ = $1;
                               }
 

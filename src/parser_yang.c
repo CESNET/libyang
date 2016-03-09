@@ -380,12 +380,12 @@ yang_read_revision(struct lys_module *module, char *value)
 int
 yang_add_elem(struct lys_node_array **node, uint32_t *size)
 {
-    if (!*size % LY_ARRAY_SIZE) {
+    if (!(*size % LY_ARRAY_SIZE)) {
         if (!(*node = ly_realloc(*node, (*size + LY_ARRAY_SIZE) * sizeof **node))) {
             LOGMEM;
             return EXIT_FAILURE;
         } else {
-            memset(*node+*size,0,LY_ARRAY_SIZE*sizeof **node);
+            memset(*node + *size, 0, LY_ARRAY_SIZE * sizeof **node);
         }
     }
     (*size)++;
