@@ -385,10 +385,26 @@ revision_date: REVISION_DATE { if (read_all) {
                                }
                              }
 
-belongs_to_stmt: BELONGS_TO_KEYWORD sep identifier_arg_str
+belongs_to_stmt: BELONGS_TO_KEYWORD sep identifier_arg_str { if (read_all) {
+                                                               if (!ly_strequal(s, submodule->belongsto->name, 1)) {
+                                                                 LOGVAL(LYE_INARG, yylineno, LY_VLOG_NONE, NULL, s, "belongs-to");
+                                                                 free(s);
+                                                                 YYERROR;
+                                                               }
+                                                               free(s);
+                                                               s = NULL;
+                                                             }
+                                                           }
                  '{' stmtsep
-                     prefix_stmt 
-                 '}' ;
+                     prefix_stmt { if (read_all) {
+                                     if (lyp_check_identifier(s, LY_IDENT_NAME, yylineno, NULL, NULL)) {
+                                       YYERROR;
+                                     }
+                                     submodule->prefix = lydict_insert_zc(module->ctx, s);
+                                     s = NULL;
+                                   }
+                                 }
+                 '}'
 
 prefix_stmt: PREFIX_KEYWORD sep prefix_arg_str stmtend;
 
