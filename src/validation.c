@@ -25,27 +25,26 @@
 #include "tree_internal.h"
 #include "xml_internal.h"
 
-static struct lys_node_leaf *
-lyv_keys_present(const struct lyd_node *list)
+static int
+lyv_keys(const struct lyd_node *list, unsigned int line)
 {
-    struct lyd_node *aux;
-    struct lys_node_list *schema;
+    struct lyd_node *child;
+    struct lys_node_list *schema = (struct lys_node_list *)list->schema; /* shortcut */
     int i;
 
-    schema = (struct lys_node_list *)list->schema;
-
-    for (i = 0; i < schema->keys_size; i++) {
-        for (aux = list->child; aux; aux = aux->next) {
-            if (aux->schema == (struct lys_node *)schema->keys[i]) {
-                break;
+    for (i = 0, child = list->child; i < schema->keys_size; i++, child = child->next) {
+        if (!child || child->schema != (struct lys_node *)schema->keys[i]) {
+            /* key not found on the correct place */
+            LOGVAL(LYE_MISSELEM, line, LY_VLOG_LYD, list, schema->keys[i]->name, schema->name);
+            for ( ; child; child = child->next) {
+                if (child->schema == (struct lys_node *)schema->keys[i]) {
+                    LOGVAL(LYE_SPEC, 0, LY_VLOG_LYD, child, "Invalid position of the key element.");
+                    break;
+                }
             }
-        }
-        if (!aux) {
-            /* key not found in the data */
-            return schema->keys[i];
+            return EXIT_FAILURE;
         }
     }
-
     return EXIT_SUCCESS;
 }
 
@@ -404,12 +403,9 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
     schema = node->schema; /* shortcut */
 
     if (node->validity) {
-        /* check presence of all keys in case of list */
+        /* check presence and correct order of all keys in case of list */
         if (schema->nodetype == LYS_LIST && !(options & (LYD_OPT_FILTER | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
-            siter = (struct lys_node *)lyv_keys_present(node);
-            if (siter) {
-                /* key not found in the data */
-                LOGVAL(LYE_MISSELEM, line, LY_VLOG_LYD, node, siter->name, schema->name);
+            if (lyv_keys(node, line)) {
                 return EXIT_FAILURE;
             }
         }
