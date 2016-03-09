@@ -165,6 +165,7 @@ int64_t cnt_val;
 %type <uint> fraction_digits_arg_str
 %type <uint> position_value_arg_str
 %type <i> module_header_stmts
+%type <i> submodule_header_stmts
 %type <str> tmp_identifier_arg_str
 %type <i> status_stmt
 %type <i> status_arg_str
@@ -274,19 +275,33 @@ module_header_stmts: %empty  { $$ = 0; }
   ;
 
 submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str
-                '{' start_check
-                    submodule_header_stmts  {  if((checked->check&2)==0) { yyerror(module,submodule,unres,size_arrays,read_all,"Belong statement missing."); YYERROR; }
-                                               checked->check=0;}
+                '{' stmtsep
+                    submodule_header_stmts  { if (read_all && !submodule->prefix) {
+                                                LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
+                                                YYERROR;
+                                              }
+                                            }
                     linkage_stmts
                     meta_stmts         {free_check();}
                     revision_stmts
                     body_stmts
                 '}' optsep
 
-submodule_header_stmts: %empty 
-  |  submodule_header_stmts yychecked_1 yang_version_stmt
-  |  submodule_header_stmts yychecked_2 belongs_to_stmt
-  ;
+submodule_header_stmts: %empty { $$ = 0; }
+  |  submodule_header_stmts yang_version_stmt { if ($1) {
+                                                  LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "yang version", "submodule");
+                                                  YYERROR;
+                                                }
+                                                $$ = 1;
+                                              }
+  |  submodule_header_stmts { if (read_all) {
+                                if (submodule->prefix) {
+                                  LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
+                                  YYERROR;
+                                }
+                              }
+                            }
+     belongs_to_stmt
   
 yang_version_stmt: YANG_VERSION_KEYWORD sep yang_version_arg_str stmtend;
 
