@@ -1819,7 +1819,7 @@ lys_deviation_free(struct lys_module *module, struct lys_deviation *dev)
                 for (k = 0; k < dev->deviate[i].unique[j].expr_size; k++) {
                     lydict_remove(ctx, dev->deviate[i].unique[j].expr[k]);
                 }
-                free(dev->deviate[j].unique[j].expr);
+                free(dev->deviate[i].unique[j].expr);
             }
             free(dev->deviate[i].unique);
         }
