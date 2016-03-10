@@ -297,7 +297,7 @@ lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const cha
 
 }
 
-int
+API int
 lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
 {
     const char *backup;
