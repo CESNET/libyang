@@ -65,9 +65,10 @@ char *get_current_dir_name(void);
  */
 extern volatile uint8_t ly_log_level;
 
-#define LY_ERR_MSG_SIZE 2044
+#define LY_ERR_MSG_SIZE 2042
 struct ly_err {
     LY_ERR no;
+    LY_EVCODE code;
     int path_index;
     char msg[LY_ERR_MSG_SIZE];
     char path[LY_ERR_MSG_SIZE];
@@ -102,75 +103,13 @@ void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 
 #define LOGINT LOGERR(LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 
-enum LY_ERR {
-    LYE_PATH = -3,
-    LYE_SPEC = -2,
-    LYE_LINE = -1,
-
-    LYE_XML_MISS,
-    LYE_XML_INVAL,
-    LYE_XML_INCHAR,
-
-    LYE_EOF,
-    LYE_INSTMT,
-    LYE_INCHILDSTMT,
-    LYE_INID,
-    LYE_INDATE,
-    LYE_INARG,
-    LYE_MISSSTMT1,
-    LYE_MISSSTMT2,
-    LYE_MISSARG,
-    LYE_TOOMANY,
-    LYE_DUPID,
-    LYE_DUPLEAFLIST,
-    LYE_DUPLIST,
-    LYE_ENUM_DUPVAL,
-    LYE_ENUM_DUPNAME,
-    LYE_ENUM_WS,
-    LYE_BITS_DUPVAL,
-    LYE_BITS_DUPNAME,
-    LYE_INMOD,
-    LYE_INMOD_LEN,
-    LYE_KEY_NLEAF,
-    LYE_KEY_TYPE,
-    LYE_KEY_CONFIG,
-    LYE_KEY_MISS,
-    LYE_KEY_DUP,
-    LYE_INREGEX,
-    LYE_INRESOLV,
-    LYE_INSTATUS,
-    LYE_OBSDATA,
-    LYE_OBSTYPE,
-
-    LYE_NORESOLV,
-    LYE_INELEM,
-    LYE_INELEM_LEN,
-    LYE_MISSELEM,
-    LYE_INVAL,
-    LYE_INATTR,
-    LYE_MISSATTR,
-    LYE_OORVAL,
-    LYE_INCHAR,
-    LYE_INPRED,
-    LYE_MCASEDATA,
-    LYE_NOCOND,
-    LYE_INORDER,
-
-    LYE_XPATH_INTOK,
-    LYE_XPATH_EOF,
-    LYE_XPATH_INOP_1,
-    LYE_XPATH_INOP_2,
-    LYE_XPATH_INCTX,
-    LYE_XPATH_INARGCOUNT,
-    LYE_XPATH_INARGTYPE
-};
 enum LY_VLOG_ELEM {
     LY_VLOG_NONE = 0,
     LY_VLOG_XML,
     LY_VLOG_LYS,
     LY_VLOG_LYD
 };
-void ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
+void ly_vlog(LY_EVCODE code, unsigned int line, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
 #define LOGVAL(code, line, elem_type, elem, args...) ly_vlog(code, line, elem_type, elem, ##args)
 
 #ifdef NDEBUG

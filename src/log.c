@@ -89,6 +89,7 @@ ly_log(LY_LOG_LEVEL level, const char *format, ...)
 }
 
 const char *ly_errs[] = {
+/* LYE_UNK */          "",
 /* LYE_XML_MISS */     "Missing %s \"%s\".",
 /* LYE_XML_INVAL */    "Invalid %s.",
 /* LYE_XML_INCHAR */   "Encountered invalid character sequence \"%.10s\".",
@@ -148,7 +149,7 @@ const char *ly_errs[] = {
 };
 
 void
-ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
+ly_vlog(LY_EVCODE code, unsigned int line, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
 {
     va_list ap;
     const char *fmt;
@@ -179,6 +180,7 @@ ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const 
     if (code == LYE_LINE || (code == LYE_PATH && !path_flag)) {
         return;
     }
+    ly_evcode = code;
 
     /* resolve path */
     path = ((struct ly_err *)&ly_errno)->path;
