@@ -2279,12 +2279,14 @@ yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, ch
     struct lys_include inc;
     struct lys_module *trg;
     int i;
+    const char *str;
 
+    str = lydict_insert_zc(module->ctx, value);
     trg = (submodule) ? (struct lys_module *)submodule : module;
     inc.submodule = NULL;
     inc.external = 0;
     memcpy(inc.rev, rev, LY_REV_SIZE);
-    if (lyp_check_include(module, submodule, value, line, &inc, unres)) {
+    if (lyp_check_include(module, submodule, str, line, &inc, unres)) {
         goto error;
     }
     memcpy(&trg->inc[inc_size], &inc, sizeof inc);
@@ -2294,11 +2296,14 @@ yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, ch
         if (trg->inc[i].submodule && !strcmp(trg->inc[i].submodule->name, trg->inc[inc_size].submodule->name)) {
             LOGVAL(LYE_SPEC, line, LY_VLOG_NONE, NULL, "Including submodule \"%s\" repeatedly.",
                 trg->inc[i].submodule->name);
+            trg->inc[inc_size].submodule = NULL;
             goto error;
         }
     }
+    lydict_remove(module->ctx, str);
     return EXIT_SUCCESS;
 
 error:
+    lydict_remove(module->ctx, str);
     return EXIT_FAILURE;
 }

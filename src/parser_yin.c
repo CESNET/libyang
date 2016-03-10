@@ -4878,6 +4878,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 if (trg->inc[i].submodule && !strcmp(trg->inc[i].submodule->name, trg->inc[inc_size_aux - 1].submodule->name)) {
                     LOGVAL(LYE_SPEC, LOGLINE(child), LY_VLOG_NONE, NULL, "Including submodule \"%s\" repeatedly.",
                         trg->inc[i].submodule->name);
+                    trg->inc[inc_size_aux - 1].submodule = NULL;
                     goto error;
                 }
             }

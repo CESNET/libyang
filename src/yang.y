@@ -369,7 +369,7 @@ import_stmt: IMPORT_KEYWORD sep tmp_identifier_arg_str {
 
 tmp_identifier_arg_str: identifier_arg_str { $$ = s; s = NULL; }
 
-include_stmt: INCLUDE_KEYWORD sep tmp_identifier_arg_str { if (read_all) {
+include_stmt: INCLUDE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                              memset(rev, 0, LY_REV_SIZE);
                                                              actual_type = INCLUDE_KEYWORD;
                                                            }
@@ -379,12 +379,11 @@ include_stmt: INCLUDE_KEYWORD sep tmp_identifier_arg_str { if (read_all) {
                                                          }
               include_end stmtsep { if (read_all) {
                                       $$ = trg;
-                                      if (yang_fill_include(module, submodule, $3, rev, size_arrays->inc, unres, yylineno)) {
-                                        free($3);
+                                      if (yang_fill_include(module, submodule, s, rev, size_arrays->inc, unres, yylineno)) {
                                         YYERROR;
                                       }
                                       size_arrays->inc++;
-                                      free($3);
+                                      s = NULL;
                                       trg = $$;
                                     }
                                   }
