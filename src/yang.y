@@ -9,19 +9,18 @@
 #include "parser_yang.h"
 #include "parser.h"
 
-struct Scheck {
-	int check;
-	struct Scheck *next;
-};
+/* only syntax rules */
+#define EXTENSION_ARG 0x01
+#define EXTENSION_STA 0x02
+#define EXTENSION_DSC 0x04
+#define EXTENSION_REF 0x08
+
 extern int yylineno;
 extern int yyleng;
 void yyerror(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all, char *str, ...);   //parameter is in directive parse-param
-void yychecked(int value);
 int yylex(void);
-void free_check();
 extern char *yytext;
 char *s, *tmp_s;
-struct Scheck *checked=NULL;
 char rev[LY_REV_SIZE];
 struct lys_module *trg;
 void *actual;
@@ -164,6 +163,7 @@ int64_t cnt_val;
 %type <uint> decimal_string_restrictions
 %type <uint> fraction_digits_arg_str
 %type <uint> position_value_arg_str
+%type <uint> extension_opt_stmt
 %type <i> module_header_stmts
 %type <i> submodule_header_stmts
 %type <str> tmp_identifier_arg_str
@@ -247,9 +247,6 @@ string_2: %empty
               }
             }
      optsep;
-
-start_check: stmtsep {struct Scheck *new; new=malloc(sizeof(struct Scheck)); if (new==NULL) exit(1); new->next=checked; checked=new; 
-                      checked->check=0; }
 
 module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                               if (submodule) {
@@ -544,43 +541,111 @@ body_stmt: extension_stmt
   | notification_stmt 
   | deviation_stmt { if (!read_all) { size_arrays->deviation++; } }
 
-extension_stmt: EXTENSION_KEYWORD sep identifier_arg_str  extension_end;
+extension_stmt: EXTENSION_KEYWORD sep identifier_arg_str { if (read_all) {
+                                                             /* we have the following supported (hardcoded) extensions: */
+                                                             /* ietf-netconf's get-filter-element-attributes */
+                                                             if (!strcmp(module->ns, LY_NSNC) && !strcmp(s, "get-filter-element-attributes")) {
+                                                               LOGDBG("NETCONF filter extension found");
+                                                              /* NACM's default-deny-write and default-deny-all */
+                                                             } else if (!strcmp(module->ns, LY_NSNACM) &&
+                                                                        (!strcmp(s, "default-deny-write") || !strcmp(s, "default-deny-all"))) {
+                                                               LOGDBG("NACM extension found");
+                                                               /* other extensions are not supported, so inform about such an extension */
+                                                             } else {
+                                                               LOGWRN("Not supported \"%s\" extension statement found, ignoring.", s);
+                                                             }
+                                                             free(s);
+                                                             s = NULL;
+                                                           }
+                                                         }
+                extension_end
 
 extension_end: ';' 
-  | '{' start_check
-        extension_opt_stmt  {free_check();}
+  | '{' stmtsep
+        extension_opt_stmt
     '}'
-  ;
 
-extension_opt_stmt: %empty
-  |  extension_opt_stmt yychecked_1 argument_stmt
-  |  extension_opt_stmt yychecked_2 status_stmt
-  |  extension_opt_stmt yychecked_3 description_stmt
-  |  extension_opt_stmt yychecked_4 reference_stmt
-  ;
+extension_opt_stmt: %empty { $$ = 0; }
+  |  extension_opt_stmt argument_stmt { if ($1 & EXTENSION_ARG) {
+                                          LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "argument", "extension");
+                                          YYERROR;
+                                        }
+                                        $1 |= EXTENSION_ARG;
+                                        $$ = $1;
+                                      }
+  |  extension_opt_stmt status_stmt { if ($1 & EXTENSION_STA) {
+                                        LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "status", "extension");
+                                        YYERROR;
+                                      }
+                                      $1 |= EXTENSION_STA;
+                                      $$ = $1;
+                                    }
+  |  extension_opt_stmt description_stmt { if (read_all) {
+                                             free(s);
+                                             s= NULL;
+                                           }
+                                           if ($1 & EXTENSION_DSC) {
+                                             LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "description", "extension");
+                                             YYERROR;
+                                           }
+                                           $1 |= EXTENSION_DSC;
+                                           $$ = $1;
+                                         }
+  |  extension_opt_stmt reference_stmt { if (read_all) {
+                                           free(s);
+                                           s = NULL;
+                                         }
+                                         if ($1 & EXTENSION_REF) {
+                                           LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "reference", "extension");
+                                           YYERROR;
+                                         }
+                                         $1 |= EXTENSION_REF;
+                                         $$ = $1;
+                                       }
 
-argument_stmt: ARGUMENT_KEYWORD sep identifier_arg_str argument_end stmtsep;
+argument_stmt: ARGUMENT_KEYWORD sep identifier_arg_str { free(s); s = NULL; } argument_end stmtsep;
                      
 argument_end: ';'
   | '{' stmtsep
         yin_element_stmt
     '}'
-  ;  
 
 yin_element_stmt: YIN_ELEMENT_KEYWORD sep yin_element_arg_str stmtend;
 
 yin_element_arg_str: TRUE_KEYWORD optsep
   | FALSE_KEYWORD optsep
-  | string_1
-  ;
+  | string_1 { if (read_all) {
+                 if (strcmp(s, "true") && strcmp(s, "false")) {
+                    LOGVAL(LYE_INSTMT, yylineno, LY_VLOG_NONE, NULL, s);
+                    free(s);
+                    YYERROR;
+                 }
+                 free(s);
+                 s = NULL;
+               }
+             }
 
 status_stmt:  STATUS_KEYWORD sep status_arg_str stmtend { $$ = $3; }
 
 status_arg_str: CURRENT_KEYWORD optsep { $$ = LYS_STATUS_CURR; }
   | OBSOLETE_KEYWORD optsep { $$ = LYS_STATUS_OBSLT; }
   | DEPRECATED_KEYWORD optsep { $$ = LYS_STATUS_DEPRC; }
-  | string_1 // not implement
-  ;
+  | string_1 { if (read_all) {
+                 if (!strcmp(s, "current")) {
+                   $$ = LYS_STATUS_CURR;
+                 } else if (!strcmp(s, "obsolete")) {
+                   $$ = LYS_STATUS_OBSLT;
+                 } else if (!strcmp(s, "deprecated")) {
+                   $$ = LYS_STATUS_DEPRC;
+                 } else {
+                   LOGVAL(LYE_INSTMT, yylineno, LY_VLOG_NONE, NULL, s);
+                   free(s);
+                   YYERROR;
+                 }
+                 free(s);
+                 s = NULL;
+               }
+             }
 
 feature_stmt: FEATURE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                          if (!(actual = yang_read_feature(trg,s,yylineno))) {YYERROR;}
@@ -1051,8 +1116,8 @@ bit_arg_str: identifier_arg_str { if (read_all) {
                                 }
 
 bit_end: ';'
-  |  '{' start_check
-         bit_opt_stmt  {free_check();}
+  |  '{' stmtsep
+         bit_opt_stmt
      '}'
   ;
 
@@ -3170,11 +3235,6 @@ identifier: IDENTIFIER
   |  USER_KEYWORD
   ;
 
-yychecked_1: %empty { if ((checked->check&1)==0) checked->check|=1; else { yyerror(module,submodule,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
-yychecked_2: %empty { if ((checked->check&2)==0) checked->check|=2; else { yyerror(module,submodule,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
-yychecked_3: %empty { if ((checked->check&4)==0) checked->check|=4; else { yyerror(module,submodule,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
-yychecked_4: %empty { if ((checked->check&8)==0) checked->check|=8; else { yyerror(module,submodule,unres,size_arrays,read_all,"syntax error!"); YYERROR; }	}
-
 identifiers: identifier { if (read_all) {
                             s = strdup(yytext);
                             if (!s) {
@@ -3196,21 +3256,7 @@ identifiers_ref: IDENTIFIERPREFIX { if (read_all) {
 %%
 
 void yyerror(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all, char *str, ...){
-  va_list ap;
-  va_start(ap,str);
 
-  fprintf(stderr,"%d: error: ", yylineno);
-  vfprintf(stderr,str,ap);
-  //fprintf(stderr," Given %s.",yytext);
-  fprintf(stderr,"\n");
-  if (s) {
-    free(s);
-  }
-}
-
-void free_check(){
-
-	struct Scheck *old=checked;
-	checked=old->next;
-	free(old);
+  LOGVAL(LYE_INSTMT, yylineno, LY_VLOG_NONE, NULL, yytext);
+  free(s);
 }
