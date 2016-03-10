@@ -131,6 +131,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     struct lyxml_elem *tmp_xml, *child, *next;
     int i, havechildren, r, flag;
     int ret = 0;
+    const char *str;
 
     assert(xml);
     assert(result);
@@ -266,23 +267,32 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
                 LOGVAL(LYE_INARG, LOGLINE(xml), LY_VLOG_LYD, (*result), attr->value, attr->name);
                 return -1;
             }
+            str = attr->name;
         }
 
         for (attr = xml->attr; attr; attr = attr->next) {
             if (attr->type != LYXML_ATTR_STD || !attr->ns ||
-                    strcmp(attr->name, "value") || strcmp(attr->ns->value, LY_NSYANG)) {
+                    (strcmp(attr->name, "value") && strcmp(attr->name, "key")) ||
+                    strcmp(attr->ns->value, LY_NSYANG)) {
                 continue;
             }
 
-            /* the value attribute is present */
-            if (i < 2) {
+            /* the value or key attribute is present */
+            if (i < 2 ||
+                    ((schema->nodetype & LYS_LIST) && !strcmp(attr->name, "value")) ||
+                    ((schema->nodetype & LYS_LEAFLIST) && !strcmp(attr->name, "key"))) {
                 /* but it shouldn't */
-                LOGVAL(LYE_INATTR, LOGLINE(xml), LY_VLOG_LYD, (*result), "value", schema->name);
+                LOGVAL(LYE_INATTR, LOGLINE(xml), LY_VLOG_LYD, (*result), attr->name, schema->name);
                 return -1;
             }
             i++;
+            str = attr->name;
         }
-        if (i == 2) {
+        if (i && !(schema->nodetype & (LYS_LEAFLIST | LYS_LIST))) {
+            /* attributes in wrong elements */
+            LOGVAL(LYE_INATTR, LOGLINE(xml), LY_VLOG_LYD, (*result), str, xml->name);
+            return -1;
+        } else if (i == 2) {
             /* missing value attribute for "before" or "after" */
             LOGVAL(LYE_MISSATTR, LOGLINE(xml), LY_VLOG_LYD, (*result), "value", xml->name);
             return -1;
