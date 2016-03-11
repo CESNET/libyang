@@ -948,7 +948,16 @@ typedef enum {
     /* */
     LYVE_XPATH_INCTX,  /**< invalid XPath context type */
     LYVE_XPATH_INARGCOUNT, /**< invalid number of arguments for an XPath function */
-    LYVE_XPATH_INARGTYPE /**< invalid type of arguments for an XPath function */
+    LYVE_XPATH_INARGTYPE, /**< invalid type of arguments for an XPath function */
+
+    LYVE_PATH_INCHAR,  /**< invalid characters (path) */
+    LYVE_PATH_INPREF,  /**< invalid module name - prefix (path) */
+    LYVE_PATH_INNODE,  /**< invalid node name (path) */
+    LYVE_PATH_NLIST,   /**< node with predicates is not list (path) */
+    LYVE_PATH_INKEY,   /**< invalid key name (path) */
+    LYVE_PATH_MISSKEY, /**< missing some list keys (path) */
+    LYVE_PATH_EXISTS,  /**< target node already exists (path) */
+    LYVE_PATH_MISSPAR, /**< some parent of the target node is missing (path) */
 } LY_VECODE;
 
 /**
