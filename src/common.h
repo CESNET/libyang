@@ -103,13 +103,79 @@ void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 
 #define LOGINT LOGERR(LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 
+typedef enum {
+    LYE_PATH = -3,    /**< error path set */
+    LYE_SPEC = -2,    /**< generic error */
+    LYE_LINE = -1,    /**< error line set */
+
+    LYE_SUCCESS = 0,
+
+    LYE_XML_MISS,
+    LYE_XML_INVAL,
+    LYE_XML_INCHAR,
+
+    LYE_EOF,
+    LYE_INSTMT,
+    LYE_INCHILDSTMT,
+    LYE_INID,
+    LYE_INDATE,
+    LYE_INARG,
+    LYE_MISSCHILDSTMT,
+    LYE_MISSSTMT,
+    LYE_MISSARG,
+    LYE_TOOMANY,
+    LYE_DUPID,
+    LYE_DUPLEAFLIST,
+    LYE_DUPLIST,
+    LYE_ENUM_DUPVAL,
+    LYE_ENUM_DUPNAME,
+    LYE_ENUM_WS,
+    LYE_BITS_DUPVAL,
+    LYE_BITS_DUPNAME,
+    LYE_INMOD,
+    LYE_INMOD_LEN,
+    LYE_KEY_NLEAF,
+    LYE_KEY_TYPE,
+    LYE_KEY_CONFIG,
+    LYE_KEY_MISS,
+    LYE_KEY_DUP,
+    LYE_INREGEX,
+    LYE_INRESOLV,
+    LYE_INSTATUS,
+    LYE_OBSDATA,
+    LYE_OBSTYPE,
+
+    LYE_NORESOLV,
+    LYE_INELEM,
+    LYE_INELEM_LEN,
+    LYE_MISSELEM,
+    LYE_INVAL,
+    LYE_INATTR,
+    LYE_MISSATTR,
+    LYE_OORVAL,
+    LYE_INCHAR,
+    LYE_INPRED,
+    LYE_MCASEDATA,
+    LYE_NOCOND,
+    LYE_INORDER,
+    LYE_INCOUNT,
+
+    LYE_XPATH_INTOK,
+    LYE_XPATH_EOF,
+    LYE_XPATH_INOP_1,
+    LYE_XPATH_INOP_2,
+    LYE_XPATH_INCTX,
+    LYE_XPATH_INARGCOUNT,
+    LYE_XPATH_INARGTYPE
+} LY_ECODE;
+
 enum LY_VLOG_ELEM {
     LY_VLOG_NONE = 0,
     LY_VLOG_XML,
     LY_VLOG_LYS,
     LY_VLOG_LYD
 };
-void ly_vlog(LY_EVCODE code, unsigned int line, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
+void ly_vlog(LY_ECODE code, unsigned int line, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
 #define LOGVAL(code, line, elem_type, elem, args...) ly_vlog(code, line, elem_type, elem, ##args)
 
 #ifdef NDEBUG
