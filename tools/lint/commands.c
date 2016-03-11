@@ -397,6 +397,10 @@ cmd_data(const char *arg)
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
             } else if (!strcmp(optarg, "filter")) {
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_FILTER;
+            } else {
+                fprintf(stderr, "Invalid parser option \"%s\".\n", optarg);
+                cmd_data_help();
+                goto cleanup;
             }
             break;
         case '?':
