@@ -1966,7 +1966,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     return EXIT_SUCCESS;
 
 error:
-
+    free(leaf_dflt_check);
     return EXIT_FAILURE;
 }
 
