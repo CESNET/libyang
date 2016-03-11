@@ -759,13 +759,15 @@ parse_predicate(const char *id, const char **model, int *mod_len, const char **n
  * @param[out] nam_len Length of the node name.
  * @param[out] is_relative Flag to mark whether the nodeid is absolute or descendant. Must be -1
  *                         on the first call, must not be changed between consecutive calls.
+ * @param[out] has_predicate Flag to mark whether there is a predicate specified. It cannot be
+ *                           based on the grammar, in those cases use NULL.
  *
  * @return Number of characters successfully parsed,
  *         positive on success, negative on failure.
  */
 static int
 parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, const char **name, int *nam_len,
-                    int *is_relative)
+                    int *is_relative, int *has_predicate)
 {
     int parsed = 0, ret;
 
@@ -782,6 +784,9 @@ parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, co
     }
     if (nam_len) {
         *nam_len = 0;
+    }
+    if (has_predicate) {
+        *has_predicate = 0;
     }
 
     if (id[0] != '/') {
@@ -802,7 +807,141 @@ parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, co
         return -parsed+ret;
     }
 
-    return parsed+ret;
+    parsed += ret;
+    id += ret;
+
+    if ((id[0] == '[') && has_predicate) {
+        *has_predicate = 1;
+    }
+
+    return parsed;
+}
+
+/**
+ * @brief Parse schema predicate (special format internally used).
+ *
+ * predicate           = "[" *WSP predicate-expr *WSP "]"
+ * predicate-expr      = identifier / key-with-value
+ * key-with-value      = identifier *WSP "=" *WSP
+ *                       ((DQUOTE string DQUOTE) /
+ *                        (SQUOTE string SQUOTE))
+ *
+ * @param[in] id Identifier to use.
+ * @param[out] name Points to the list key name.
+ * @param[out] nam_len Length of \p name.
+ * @param[out] value Points to the key value.
+ * @param[out] val_len Length of \p value.
+ * @param[out] has_predicate Flag to mark whether there is another predicate specified.
+ */
+static int
+parse_schema_predicate(const char *id, const char **name, int *nam_len, const char **value, int *val_len,
+                       int *has_predicate)
+{
+    const char *ptr;
+    int parsed = 0, ret;
+    char quote;
+
+    assert(id);
+    if (name) {
+        *name = NULL;
+    }
+    if (nam_len) {
+        *nam_len = 0;
+    }
+    if (value) {
+        *value = NULL;
+    }
+    if (val_len) {
+        *val_len = 0;
+    }
+    if (has_predicate) {
+        *has_predicate = 0;
+    }
+
+    if (id[0] != '[') {
+        return -parsed;
+    }
+
+    ++parsed;
+    ++id;
+
+    while (isspace(id[0])) {
+        ++parsed;
+        ++id;
+    }
+
+    /* node-identifier */
+    if ((ret = parse_identifier(id)) < 1) {
+        return -parsed + ret;
+    }
+    if (name) {
+        *name = id;
+    }
+    if (nam_len) {
+        *nam_len = ret;
+    }
+
+    parsed += ret;
+    id += ret;
+
+    while (isspace(id[0])) {
+        ++parsed;
+        ++id;
+    }
+
+    /* there is value as well */
+    if (id[0] == '=') {
+        ++parsed;
+        ++id;
+
+        while (isspace(id[0])) {
+            ++parsed;
+            ++id;
+        }
+
+        /* ((DQUOTE string DQUOTE) / (SQUOTE string SQUOTE)) */
+        if ((id[0] == '\"') || (id[0] == '\'')) {
+            quote = id[0];
+
+            ++parsed;
+            ++id;
+
+            if ((ptr = strchr(id, quote)) == NULL) {
+                return -parsed;
+            }
+            ret = ptr - id;
+
+            if (value) {
+                *value = id;
+            }
+            if (val_len) {
+                *val_len = ret;
+            }
+
+            parsed += ret + 1;
+            id += ret + 1;
+        } else {
+            return -parsed;
+        }
+
+        while (isspace(id[0])) {
+            ++parsed;
+            ++id;
+        }
+    }
+
+    if (id[0] != ']') {
+        return -parsed;
+    }
+
+    ++parsed;
+    ++id;
+
+    if ((id[0] == '[') && has_predicate) {
+        *has_predicate = 1;
+    }
+
+    return parsed;
 }
 
 /**
@@ -877,7 +1016,7 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
 
     id = nodeid;
 
-    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
+    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
         return ((id - nodeid) - r) + 1;
     }
     id += r;
@@ -938,7 +1077,7 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
             return EXIT_SUCCESS;
         }
 
-        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
+        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
             return ((id - nodeid) - r) + 1;
         }
         id += r;
@@ -966,7 +1105,7 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
     id = nodeid;
     module = start->module;
 
-    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
+    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
         return ((id - nodeid) - r) + 1;
     }
     id += r;
@@ -1016,7 +1155,7 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
             return EXIT_SUCCESS;
         }
 
-        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
+        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
             return ((id - nodeid) - r) + 1;
         }
         id += r;
@@ -1080,7 +1219,7 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
     id = nodeid;
     start = module->data;
 
-    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
+    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
         return ((id - nodeid) - r) + 1;
     }
     id += r;
@@ -1135,7 +1274,7 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
             return EXIT_SUCCESS;
         }
 
-        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
+        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
             return ((id - nodeid) - r) + 1;
         }
         id += r;
@@ -1161,7 +1300,7 @@ resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, cons
 
     id = nodeid;
 
-    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
+    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
         return ((id - nodeid) - r) + 1;
     }
     id += r;
@@ -1222,7 +1361,7 @@ resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, cons
             return EXIT_SUCCESS;
         }
 
-        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative)) < 1) {
+        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
             return ((id - nodeid) - r) + 1;
         }
         id += r;
