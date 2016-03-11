@@ -1850,6 +1850,13 @@ check_key(struct lys_node_list *list, int index, const char *name, int len, uint
         return -1;
     }
 
+    /* key is not placed from augment */
+    if (key->parent->nodetype == LYS_AUGMENT) {
+        LOGVAL(LYE_KEY_MISS, line, 0, NULL, key->name);
+        LOGVAL(LYE_SPEC, 0, LY_VLOG_LYS, key, "Key inserted from augment.");
+        return -1;
+    }
+
     return EXIT_SUCCESS;
 }
 
