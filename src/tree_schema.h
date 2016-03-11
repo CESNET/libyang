@@ -500,7 +500,7 @@ struct lys_type {
  * To cover all possible schema nodes, the ::lys_node type is used in ::lyd_node#schema for referencing schema
  * definition for a specific data node instance.
  *
- * The #private member is completely out of libyang control. It is just a pointer to allow libyang
+ * The #priv member is completely out of libyang control. It is just a pointer to allow libyang
  * caller to store some proprietary data (e.g. callbacks) connected with the specific schema tree node.
  */
 struct lys_node {
