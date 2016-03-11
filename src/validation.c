@@ -416,9 +416,7 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
             siter = ly_check_mandatory(node, NULL);
             if (siter) {
                 if (siter->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-                    LOGVAL(LYE_SPEC, line, LY_VLOG_LYD, node,
-                           "Number of \"%s\" instances in \"%s\" does not follow min/max constraints.",
-                           siter->name, siter->parent->name);
+                    LOGVAL(LYE_INCOUNT, line, LY_VLOG_LYD, node, siter->name, siter->parent->name);
                 } else {
                     LOGVAL(LYE_MISSELEM, line, LY_VLOG_LYD, node, siter->name, siter->parent->name);
                 }

@@ -2901,7 +2901,8 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, int fir
      */
     if (!aug->parent && (lys_node_module((struct lys_node *)aug) != lys_node_module(aug->target))
             && lyp_check_mandatory((struct lys_node *)aug)) {
-        LOGVAL(LYE_SPEC, line, LY_VLOG_LYS, aug, "When augmenting data in another module, mandatory nodes are not allowed.");
+        LOGVAL(LYE_INCHILDSTMT, line, LY_VLOG_LYS, aug, "mandatory", "augment node");
+        LOGVAL(LYE_SPEC, 0, 0, NULL, "When augmenting data in another module, mandatory nodes are not allowed.");
         return -1;
     }
 
@@ -2909,7 +2910,8 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, int fir
     if (aug->target->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF)) {
         LY_TREE_FOR(aug->child, sub) {
             if (!(sub->nodetype & (LYS_ANYXML | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES | LYS_CHOICE))) {
-                LOGVAL(LYE_SPEC, line, LY_VLOG_LYS, aug, "Cannot augment \"%s\" with a \"%s\".",
+                LOGVAL(LYE_INCHILDSTMT, line, LY_VLOG_LYS, aug, strnodetype(sub->nodetype), "augment");
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "Cannot augment \"%s\" with a \"%s\".",
                        strnodetype(aug->target->nodetype), strnodetype(sub->nodetype));
                 return -1;
             }
@@ -2917,13 +2919,15 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, int fir
     } else if (aug->target->nodetype == LYS_CHOICE) {
         LY_TREE_FOR(aug->child, sub) {
             if (!(sub->nodetype & (LYS_CASE | LYS_ANYXML | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST))) {
-                LOGVAL(LYE_SPEC, line, LY_VLOG_LYS, aug, "Cannot augment \"%s\" with a \"%s\".",
+                LOGVAL(LYE_INCHILDSTMT, line, LY_VLOG_LYS, aug, strnodetype(sub->nodetype), "augment");
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "Cannot augment \"%s\" with a \"%s\".",
                        strnodetype(aug->target->nodetype), strnodetype(sub->nodetype));
                 return -1;
             }
         }
     } else {
-        LOGVAL(LYE_SPEC, line, LY_VLOG_LYS, aug, "Invalid augment target node type \"%s\".", strnodetype(aug->target->nodetype));
+        LOGVAL(LYE_INARG, line, LY_VLOG_LYS, aug, aug->target_name, "target-node");
+        LOGVAL(LYE_SPEC, 0, 0, NULL, "Invalid augment target node type \"%s\".", strnodetype(aug->target->nodetype));
         return -1;
     }
 
@@ -2982,7 +2986,8 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
     LY_TREE_FOR(uses->grp->child, node_aux) {
         node = lys_node_dup(uses->module, (struct lys_node *)uses, node_aux, uses->flags, uses->nacm, unres, 0);
         if (!node) {
-            LOGVAL(LYE_SPEC, line, LY_VLOG_LYS, uses, "Copying data from grouping failed.");
+            LOGVAL(LYE_INARG, line, LY_VLOG_LYS, uses, uses->grp->name, "uses");
+            LOGVAL(LYE_SPEC, 0, 0, NULL, "Copying data from grouping failed.");
             return -1;
         }
     }
@@ -3001,7 +3006,8 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
         }
 
         if (rfn->target_type && !(node->nodetype & rfn->target_type)) {
-            LOGVAL(LYE_SPEC, line, LY_VLOG_LYS, uses, "Refine substatements not applicable to the target-node.");
+            LOGVAL(LYE_INARG, line, LY_VLOG_LYS, uses, rfn->target_name, "refine");
+            LOGVAL(LYE_SPEC, 0, 0, NULL, "Refine substatements not applicable to the target-node.");
             return -1;
         }
 
@@ -3191,7 +3197,8 @@ matchfound:
         /* check for circular reference */
         for (base_iter = base; base_iter; base_iter = base_iter->base) {
             if (ident == base_iter) {
-                LOGVAL(LYE_SPEC, 0, 0, NULL, "Circular reference of \"%s\" identity", basename);
+                LOGVAL(LYE_INARG, 0, LY_VLOG_NONE, NULL, base_iter->name, "base");
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "Circular reference of \"%s\" identity.", basename);
                 return EXIT_FAILURE;
             }
         }
@@ -3952,7 +3959,6 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
     } while (res_count && (res_count < unres_count));
 
     if (res_count < unres_count) {
-        LOGVAL(LYE_SPEC, 0, 0, NULL, "There are unresolved uses left.");
         return -1;
     }
 
@@ -3973,7 +3979,6 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
     }
 
     if (resolved < unres->count) {
-        LOGVAL(LYE_SPEC, 0, 0, NULL, "There are unresolved schema items left.");
         return -1;
     }
 
@@ -4246,8 +4251,8 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int first, 
         if (!leaf->value.leafref) {
             /* reference not found */
             if (!first) {
-                LOGVAL(LYE_SPEC, line, LY_VLOG_LYD, leaf, "Leafref \"%s\" value \"%s\" did not match any node value.",
-                       sleaf->type.info.lref.path, leaf->value_str);
+                LOGVAL(LYE_NORESOLV, line, LY_VLOG_LYD, leaf, sleaf->type.info.lref.path);
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "Leafref value \"%s\" did not match any node value.", leaf->value_str);
             }
             return EXIT_FAILURE;
         }
@@ -4262,7 +4267,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int first, 
                 return -1;
             } else if (sleaf->type.info.inst.req > -1) {
                 if (!first) {
-                    LOGVAL(LYE_SPEC, line, LY_VLOG_LYD, leaf, "There is no instance of \"%s\".", leaf->value_str);
+                    LOGVAL(LYE_NORESOLV, line, LY_VLOG_LYD, leaf, leaf->value_str);
                 }
                 return EXIT_FAILURE;
             } else {
@@ -4355,7 +4360,6 @@ resolve_unres_data(struct unres_data *unres)
     for (i = 0; i < unres->count; ++i) {
         rc = resolve_unres_data_item(unres->node[i], unres->type[i], 0, LOGLINE_IDX(unres, i));
         if (rc) {
-            LOGVAL(LYE_SPEC, 0, 0, NULL, "There are unresolved data items left.");
             return -1;
         }
     }

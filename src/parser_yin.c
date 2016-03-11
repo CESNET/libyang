@@ -304,7 +304,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
         if (!type->der->type.der && !type->info.bits.count) {
             /* type is derived directly from buit-in bits type and bit statement is required */
-            LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), LY_VLOG_NONE, NULL, "bit", "type");
+            LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(yin), LY_VLOG_NONE, NULL, "bit", "type");
             goto error;
         }
         if (type->der->type.der && type->info.bits.count) {
@@ -325,7 +325,6 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
             GETVAL(value, next, "name");
             if (lyp_check_identifier(value, LY_IDENT_SIMPLE, LOGLINE(next), NULL, NULL)) {
-                LOGVAL(LYE_PATH, 0, LY_VLOG_NONE, NULL);
                 goto error;
             }
 
@@ -460,7 +459,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         /* mandatory sub-statement(s) check */
         if (!type->info.dec64.dig && !type->der->type.der) {
             /* decimal64 type directly derived from built-in type requires fraction-digits */
-            LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), LY_VLOG_NONE, NULL, "fraction-digits", "type");
+            LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(yin), LY_VLOG_NONE, NULL, "fraction-digits", "type");
             goto error;
         }
         if (type->info.dec64.dig && type->der->type.der) {
@@ -490,7 +489,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
         if (!type->der->type.der && !type->info.enums.count) {
             /* type is derived directly from buit-in enumeartion type and enum statement is required */
-            LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), LY_VLOG_NONE, NULL, "enum", "type");
+            LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(yin), LY_VLOG_NONE, NULL, "enum", "type");
             goto error;
         }
         if (type->der->type.der && type->info.enums.count) {
@@ -511,7 +510,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
             GETVAL(value, next, "name");
             if (!value[0]) {
-                LOGVAL(LYE_SPEC, LOGLINE(next), LY_VLOG_NONE, NULL, "Enum name must not be empty.");
+                LOGVAL(LYE_INARG, LOGLINE(next), LY_VLOG_NONE, NULL, value, "enum name");
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "Enum name must not be empty.");
                 goto error;
             }
             type->info.enums.enm[i].name = lydict_insert(module->ctx, value, strlen(value));
@@ -612,7 +612,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 /* this is just a derived type with no base specified/required */
                 break;
             }
-            LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), LY_VLOG_NONE, NULL, "base", "type");
+            LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(yin), LY_VLOG_NONE, NULL, "base", "type");
             goto error;
         }
         if (yin->child->next) {
@@ -754,7 +754,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
 
         if (!type->info.lref.path && !type->der->type.der) {
-            LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), LY_VLOG_NONE, NULL, "path", "type");
+            LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(yin), LY_VLOG_NONE, NULL, "path", "type");
             goto error;
         }
         break;
@@ -855,7 +855,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 /* this is just a derived type with no additional type specified/required */
                 break;
             }
-            LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), LY_VLOG_NONE, NULL, "type", "(union) type");
+            LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(yin), LY_VLOG_NONE, NULL, "type", "(union) type");
             goto error;
         }
 
@@ -985,7 +985,7 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
 
     /* check mandatory value */
     if (!has_type) {
-        LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), LY_VLOG_NONE, NULL, "type", yin->name);
+        LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(yin), LY_VLOG_NONE, NULL, "type", yin->name);
         goto error;
     }
 
@@ -1268,7 +1268,8 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         goto error;
     }
     if (dev_target->module == lys_module(module)) {
-        LOGVAL(LYE_SPEC, LOGLINE(yin), LY_VLOG_NONE, NULL, "Deviating own module is not allowed.");
+        LOGVAL(LYE_INARG, LOGLINE(yin), LY_VLOG_NONE, NULL, dev->target_name, yin->name);
+        LOGVAL(LYE_SPEC, 0, 0, NULL, "Deviating own module is not allowed.");
         goto error;
     }
     /* mark the target module as deviated */
@@ -1954,7 +1955,8 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             if (rc == -1) {
                 goto error;
             } else if (rc == EXIT_FAILURE) {
-                LOGVAL(LYE_SPEC, LOGLINE(yin), 0, NULL, "Leaf \"%s\" default value no longer matches its type.", dev->target_name);
+                LOGVAL(LYE_INARG, LOGLINE(yin), LY_VLOG_NONE, NULL, leaf_dflt_check[i]->dflt, "default");
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "Leaf \"%s\" default value no longer matches its type.", dev->target_name);
                 goto error;
             }
         }
@@ -2123,7 +2125,8 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
             if (rfn->target_type) {
                 rfn->target_type &= (LYS_LEAF | LYS_CHOICE);
                 if (!rfn->target_type) {
-                    LOGVAL(LYE_SPEC, LOGLINE(sub), LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                    LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(sub), LY_VLOG_NONE, NULL, sub->name, yin->name);
+                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Invalid refine target nodetype for the substatements.");
                     goto error;
                 }
             } else {
@@ -2147,7 +2150,8 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
             if (rfn->target_type) {
                 rfn->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_ANYXML);
                 if (!rfn->target_type) {
-                    LOGVAL(LYE_SPEC, LOGLINE(sub), LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                    LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(sub), LY_VLOG_NONE, NULL, sub->name, yin->name);
+                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Invalid refine target nodetype for the substatements.");
                     goto error;
                 }
             } else {
@@ -2175,7 +2179,8 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
             if (rfn->target_type) {
                 rfn->target_type &= (LYS_LIST | LYS_LEAFLIST);
                 if (!rfn->target_type) {
-                    LOGVAL(LYE_SPEC, LOGLINE(sub), LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                    LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(sub), LY_VLOG_NONE, NULL, sub->name, yin->name);
+                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Invalid refine target nodetype for the substatements.");
                     goto error;
                 }
             } else {
@@ -2211,7 +2216,8 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
             if (rfn->target_type) {
                 rfn->target_type &= (LYS_LIST | LYS_LEAFLIST);
                 if (!rfn->target_type) {
-                    LOGVAL(LYE_SPEC, LOGLINE(sub), LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                    LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(sub), LY_VLOG_NONE, NULL, sub->name, yin->name);
+                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Invalid refine target nodetype for the substatements.");
                     goto error;
                 }
             } else {
@@ -2250,7 +2256,8 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
             if (rfn->target_type) {
                 rfn->target_type &= LYS_CONTAINER;
                 if (!rfn->target_type) {
-                    LOGVAL(LYE_SPEC, LOGLINE(sub), LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                    LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(sub), LY_VLOG_NONE, NULL, sub->name, yin->name);
+                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Invalid refine target nodetype for the substatements.");
                     goto error;
                 }
             } else {
@@ -2265,7 +2272,8 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
             if (rfn->target_type) {
                 rfn->target_type &= (LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML);
                 if (!rfn->target_type) {
-                    LOGVAL(LYE_SPEC, LOGLINE(sub), LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                    LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(sub), LY_VLOG_NONE, NULL, sub->name, yin->name);
+                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Invalid refine target nodetype for the substatements.");
                     goto error;
                 }
             } else {
@@ -2344,7 +2352,7 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
 
     /* check mandatory information */
     if (!imp->prefix) {
-        LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), LY_VLOG_NONE, NULL, "prefix", yin->name);
+        LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(yin), LY_VLOG_NONE, NULL, "prefix", yin->name);
         goto error;
     }
 
@@ -2489,8 +2497,8 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
     if (inc->submodule) {
         if (inc->rev[0]) {
             if (!inc->submodule->rev_size || !ly_strequal(inc->rev, inc->submodule->rev[0].date, 1)) {
-                LOGVAL(LYE_SPEC, LOGLINE(yin), LY_VLOG_NONE, NULL,
-                       "Multiple revisions of the same submodule included.");
+                LOGVAL(LYE_INARG, LOGLINE(yin), LY_VLOG_NONE, NULL, inc->rev[0], "revision");
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "Multiple revisions of the same submodule included.");
                 goto error;
             }
         }
@@ -2984,8 +2992,8 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
 
     /* check - default is prohibited in combination with mandatory */
     if (dflt_str && (choice->flags & LYS_MAND_TRUE)) {
-        LOGVAL(LYE_SPEC, LOGLINE(yin), LY_VLOG_NONE, NULL,
-               "The \"default\" statement MUST NOT be present on choices where \"mandatory\" is true.");
+        LOGVAL(LYE_INCHILDSTMT, LOGLINE(yin), LY_VLOG_NONE, NULL, "default", "choice");
+        LOGVAL(LYE_SPEC, 0, 0, NULL, "The \"default\" statement is forbidden on choices with \"mandatory\".");
         goto error;
     }
 
@@ -3244,7 +3252,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     /* check mandatory parameters */
     if (!has_type) {
-        LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), LY_VLOG_NONE, NULL, "type", yin->name);
+        LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(yin), LY_VLOG_NONE, NULL, "type", yin->name);
         goto error;
     }
     if (leaf->dflt) {
@@ -3410,6 +3418,11 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
                 goto error;
             }
             llist->min = (uint32_t) val;
+            if (llist->max && (llist->min > llist->max)) {
+                LOGVAL(LYE_INARG, LOGLINE(sub), LY_VLOG_NONE, NULL, value, sub->name);
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+                goto error;
+            }
         } else if (!strcmp(sub->name, "max-elements")) {
             if (f_max) {
                 LOGVAL(LYE_TOOMANY, LOGLINE(sub), LY_VLOG_NONE, NULL, sub->name, yin->name);
@@ -3434,6 +3447,11 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
                     goto error;
                 }
                 llist->max = (uint32_t) val;
+                if (llist->min > llist->max) {
+                    LOGVAL(LYE_INARG, LOGLINE(sub), LY_VLOG_NONE, NULL, value, sub->name);
+                    LOGVAL(LYE_SPEC, 0, 0, NULL, "\"max-elements\" is smaller than \"min-elements\".");
+                    goto error;
+                }
             }
         } else if (!strcmp(sub->name, "when")) {
             if (llist->when) {
@@ -3455,11 +3473,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
 
     /* check constraints */
     if (!has_type) {
-        LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), LY_VLOG_NONE, NULL, "type", yin->name);
-        goto error;
-    }
-    if (llist->max && llist->min > llist->max) {
-        LOGVAL(LYE_SPEC, LOGLINE(yin), LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+        LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(yin), LY_VLOG_NONE, NULL, "type", yin->name);
         goto error;
     }
 
@@ -3643,6 +3657,12 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
             list->min = (uint32_t) val;
+            if (list->max && (list->min > list->max)) {
+                LOGVAL(LYE_INARG, LOGLINE(sub), LY_VLOG_NONE, NULL, value, sub->name);
+                LOGVAL(LYE_SPEC, 0, 0, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+                lyxml_free(module->ctx, sub);
+                goto error;
+            }
             lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "max-elements")) {
             if (f_max) {
@@ -3668,6 +3688,11 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     goto error;
                 }
                 list->max = (uint32_t) val;
+                if (list->min > list->max) {
+                    LOGVAL(LYE_INARG, LOGLINE(sub), LY_VLOG_NONE, NULL, value, sub->name);
+                    LOGVAL(LYE_SPEC, 0, 0, NULL, "\"max-elements\" is smaller than \"min-elements\".");
+                    goto error;
+                }
             }
             lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "when")) {
@@ -3690,11 +3715,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     /* check - if list is configuration, key statement is mandatory */
     if ((list->flags & LYS_CONFIG_W) && !key_str) {
-        LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), LY_VLOG_NONE, NULL, "key", "list");
-        goto error;
-    }
-    if (list->max && list->min > list->max) {
-        LOGVAL(LYE_SPEC, LOGLINE(yin), LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+        LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(yin), LY_VLOG_NONE, NULL, "key", "list");
         goto error;
     }
 
@@ -4720,7 +4741,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
 
             /* get the prefix substatement, start with checks */
             if (!child->child) {
-                LOGVAL(LYE_MISSSTMT2, LOGLINE(child), LY_VLOG_NONE, NULL, "prefix", child->name);
+                LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(child), LY_VLOG_NONE, NULL, "prefix", child->name);
                 goto error;
             } else if (strcmp(child->child->name, "prefix")) {
                 LOGVAL(LYE_INSTMT, LOGLINE(child->child), LY_VLOG_NONE, NULL, child->child->name);
@@ -4866,15 +4887,15 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
 
     /* check for mandatory statements */
     if (submodule && !submodule->prefix) {
-        LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), LY_VLOG_NONE, NULL, "belongs-to", "submodule");
+        LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(yin), LY_VLOG_NONE, NULL, "belongs-to", "submodule");
         goto error;
     } else if (!submodule) {
         if (!module->ns) {
-            LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), LY_VLOG_NONE, NULL, "namespace", "module");
+            LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(yin), LY_VLOG_NONE, NULL, "namespace", "module");
             goto error;
         }
         if (!module->prefix) {
-            LOGVAL(LYE_MISSSTMT2, LOGLINE(yin), LY_VLOG_NONE, NULL, "prefix", "module");
+            LOGVAL(LYE_MISSCHILDSTMT, LOGLINE(yin), LY_VLOG_NONE, NULL, "prefix", "module");
             goto error;
         }
     }
@@ -4954,7 +4975,8 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             /* check duplicities in imported modules */
             for (i = 0; i < trg->imp_size - 1; i++) {
                 if (!strcmp(trg->imp[i].module->name, trg->imp[trg->imp_size - 1].module->name)) {
-                    LOGVAL(LYE_SPEC, LOGLINE(child), LY_VLOG_NONE, NULL, "Importing module \"%s\" repeatedly.", trg->imp[i].module->name);
+                    LOGVAL(LYE_INARG, LOGLINE(child), LY_VLOG_NONE, NULL, trg->imp[i].module->name, "import");
+                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Importing module \"%s\" repeatedly.", trg->imp[i].module->name);
                     goto error;
                 }
             }
@@ -4974,8 +4996,8 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             /* check duplications in include submodules */
             for (i = 0; i < inc_size_aux - 1; i++) {
                 if (trg->inc[i].submodule && !strcmp(trg->inc[i].submodule->name, trg->inc[inc_size_aux - 1].submodule->name)) {
-                    LOGVAL(LYE_SPEC, LOGLINE(child), LY_VLOG_NONE, NULL, "Including submodule \"%s\" repeatedly.",
-                        trg->inc[i].submodule->name);
+                    LOGVAL(LYE_INARG, LOGLINE(child), LY_VLOG_NONE, NULL, trg->inc[i].submodule->name, "include");
+                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Including submodule \"%s\" repeatedly.", trg->inc[i].submodule->name);
                     goto error;
                 }
             }

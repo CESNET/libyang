@@ -136,6 +136,7 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
                 return result;
             } else {
                 /* there is already another revision of the submodule */
+                LOGVAL(LYE_INARG, 0, LY_VLOG_NONE, NULL, result->rev[0].date, "revision");
                 LOGVAL(LYE_SPEC, 0, 0, NULL, "Multiple revisions of a submodule included.");
                 return NULL;
             }
@@ -1116,7 +1117,8 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
                 !strcmp(id, "leafref") || !strcmp(id, "string") ||
                 !strcmp(id, "uint8") || !strcmp(id, "uint16") ||
                 !strcmp(id, "uint32") || !strcmp(id, "uint64") || !strcmp(id, "union")) {
-            LOGVAL(LYE_SPEC, line, 0, NULL, "Typedef name duplicates built-in type.");
+            LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, id, "typedef");
+            LOGVAL(LYE_SPEC, 0, 0, NULL, "Typedef name duplicates a built-in type.");
             return EXIT_FAILURE;
         }
 
@@ -1319,7 +1321,8 @@ pututf8(char *dst, int32_t value, uint32_t line)
         return 4;
     } else {
         /* out of range */
-        LOGVAL(LYE_SPEC, line, 0, NULL, "Invalid UTF-8 value 0x%08x", value);
+        LOGVAL(LYE_XML_INCHAR, line, LY_VLOG_NONE, NULL, value);
+        LOGVAL(LYE_SPEC, 0, 0, NULL, "Invalid UTF-8 value 0x%08x", value);
         return 0;
     }
 }

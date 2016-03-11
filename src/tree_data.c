@@ -711,7 +711,8 @@ lyd_validate(struct lyd_node *node, int options, ...)
             schema = ly_check_mandatory(NULL, ctx->models.list[i]->data);
             if (schema) {
                 if (schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-                    LOGVAL(LYE_SPEC, 0, LY_VLOG_LYS, schema,
+                    LOGVAL(LYE_TOOMANY, 0, LY_VLOG_LYS, schema, schema->name, schema->parent ? schema->parent->name : "module");
+                    LOGVAL(LYE_SPEC, 0, 0, NULL,
                            "Number of \"%s\" instances in \"%s\" does not follow min-elements constraint.",
                            schema->name, schema->parent ? schema->parent->name : ctx->models.list[i]->name);
                 } else {
