@@ -68,7 +68,7 @@ extern volatile uint8_t ly_log_level;
 #define LY_ERR_MSG_SIZE 2042
 struct ly_err {
     LY_ERR no;
-    LY_EVCODE code;
+    LY_VECODE code;
     int path_index;
     char msg[LY_ERR_MSG_SIZE];
     char path[LY_ERR_MSG_SIZE];

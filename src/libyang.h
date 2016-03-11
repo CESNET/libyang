@@ -884,75 +884,72 @@ typedef enum {
 } LY_ERR;
 
 /**
- * @typedef LY_EVCODE
- * @brief libyang's codes of validation error. Whenever ly_errno is set to LY_EVALID, the ly_evcode is also set
- * to the appropriate LY_EVCODE value.
+ * @typedef LY_VECODE
+ * @brief libyang's codes of validation error. Whenever ly_errno is set to LY_EVALID, the ly_vecode is also set
+ * to the appropriate LY_VECODE value.
  * @ingroup logger
  */
 typedef enum {
-    LYE_PATH = -3,    /**< error path set */
-    LYE_SPEC = -2,    /**< generic error */
-    LYE_LINE = -1,    /**< error line set */
+    LYVE_SUCCESS = 0,  /**< no error */
 
-    LYE_UNK = 0,      /**< nothing */
+    LYVE_XML_MISS,     /**< missing XML object */
+    LYVE_XML_INVAL,    /**< invalid XML object */
+    LYVE_XML_INCHAR,   /**< invalid XML character */
 
-    LYE_XML_MISS,     /**< missing XML object */
-    LYE_XML_INVAL,    /**< invalid XML object */
-    LYE_XML_INCHAR,   /**< invalid XML character */
+    LYVE_EOF,          /**< unexpected end of input data */
+    LYVE_INSTMT,       /**< invalid statement (schema) */
+    /* */
+    LYVE_INID,         /**< invalid identifier (schema) */
+    LYVE_INDATE,       /**< invalid date format */
+    LYVE_INARG,        /**< invalid value of a statement argument (schema) */
+    LYVE_MISSSTMT,     /**< missing required statement (schema) */
+    /* */
+    LYVE_MISSARG,      /**< missing required statement argument (schema) */
+    LYVE_TOOMANY,      /**< too many instances of some object */
+    LYVE_DUPID,        /**< duplicated identifier (schema) */
+    LYVE_DUPLEAFLIST,  /**< multiple instances of leaf-list */
+    LYVE_DUPLIST,      /**< multiple instances of list */
+    LYVE_ENUM_DUPVAL,  /**< duplicated enum value (schema) */
+    LYVE_ENUM_DUPNAME, /**< duplicated enum name (schema) */
+    LYVE_ENUM_WS,      /**< enum name with leading/trailing whitespaces (schema) */
+    LYVE_BITS_DUPVAL,  /**< duplicated bits value (schema) */
+    LYVE_BITS_DUPNAME, /**< duplicated bits name (schema) */
+    LYVE_INMOD,        /**< invalid module name */
+    /* */
+    LYVE_KEY_NLEAF,    /**< list key is not a leaf (schema) */
+    LYVE_KEY_TYPE,     /**< invalid list key type (schema) */
+    LYVE_KEY_CONFIG,   /**< key config value differs from the list config value */
+    LYVE_KEY_MISS,     /**< list key not found (schema) */
+    LYVE_KEY_DUP,      /**< duplicated key identifier (schema) */
+    LYVE_INREGEX,      /**< invalid regular expression (schema) */
+    LYVE_INRESOLV,     /**< no resolvents found (schema) */
+    LYVE_INSTATUS,     /**< invalid derivation because of status (schema) */
 
-    LYE_EOF,          /**< unexpected end of input data */
-    LYE_INSTMT,       /**< invalid statement (schema) */
-    LYE_INCHILDSTMT,  /**< invalid statement (schema) */
-    LYE_INID,         /**< invalid identifier (schema) */
-    LYE_INDATE,       /**< invalid date format */
-    LYE_INARG,        /**< invalid value of a statement argument (schema) */
-    LYE_MISSSTMT1,    /**< missing required statement (schema) */
-    LYE_MISSSTMT2,    /**< missing required statement (schema) */
-    LYE_MISSARG,      /**< missing required statement argument (schema) */
-    LYE_TOOMANY,      /**< too many instances of some object */
-    LYE_DUPID,        /**< duplicated identifier (schema) */
-    LYE_DUPLEAFLIST,  /**< multiple instances of leaf-list */
-    LYE_DUPLIST,      /**< multiple instances of list */
-    LYE_ENUM_DUPVAL,  /**< duplicated enum value (schema) */
-    LYE_ENUM_DUPNAME, /**< duplicated enum name (schema) */
-    LYE_ENUM_WS,      /**< enum name with leading/trailing whitespaces (schema) */
-    LYE_BITS_DUPVAL,  /**< duplicated bits value (schema) */
-    LYE_BITS_DUPNAME,
-    LYE_INMOD,
-    LYE_INMOD_LEN,
-    LYE_KEY_NLEAF,
-    LYE_KEY_TYPE,
-    LYE_KEY_CONFIG,
-    LYE_KEY_MISS,
-    LYE_KEY_DUP,
-    LYE_INREGEX,
-    LYE_INRESOLV,
-    LYE_INSTATUS,
-    LYE_OBSDATA,
-    LYE_OBSTYPE,
+    LYVE_OBSDATA,      /**< obsolete data instantiation (data) */
+    /* */
+    LYVE_NORESOLV,     /**< no resolvents found for an expression (data) */
+    LYVE_INELEM,       /**< invalid element (data) */
+    /* */
+    LYVE_MISSELEM,     /**< missing required element (data) */
+    LYVE_INVAL,        /**< invalid value of an element (data) */
+    LYVE_INATTR,       /**< invalid attribute in an element (data) */
+    LYVE_MISSATTR,     /**< missing attribute in an element (data) */
+    LYVE_OORVAL,       /**< value out of range/length (data) */
+    LYVE_INCHAR,       /**< unexpected characters (data) */
+    LYVE_INPRED,       /**< predicate resolution fail (data) */
+    LYVE_MCASEDATA,    /**< data for more cases of a choice (data) */
+    LYVE_NOCOND,       /**< unsatisfied must/when condition (data) */
+    LYVE_INORDER,      /**< invalid order of elements (data) */
+    LYVE_INCOUNT,      /**< invalid number of elements (data) */
 
-    LYE_NORESOLV,
-    LYE_INELEM,
-    LYE_INELEM_LEN,
-    LYE_MISSELEM,
-    LYE_INVAL,
-    LYE_INATTR,
-    LYE_MISSATTR,
-    LYE_OORVAL,
-    LYE_INCHAR,
-    LYE_INPRED,
-    LYE_MCASEDATA,
-    LYE_NOCOND,
-    LYE_INORDER,
-
-    LYE_XPATH_INTOK,
-    LYE_XPATH_EOF,
-    LYE_XPATH_INOP_1,
-    LYE_XPATH_INOP_2,
-    LYE_XPATH_INCTX,
-    LYE_XPATH_INARGCOUNT,
-    LYE_XPATH_INARGTYPE
-} LY_EVCODE;
+    LYVE_XPATH_INTOK,  /**< unexpected XPath token */
+    LYVE_XPATH_EOF,    /**< unexpected end of an XPath expression */
+    LYVE_XPATH_INOP,   /**< invalid XPath operation operands */
+    /* */
+    LYVE_XPATH_INCTX,  /**< invalid XPath context type */
+    LYVE_XPATH_INARGCOUNT, /**< invalid number of arguments for an XPath function */
+    LYVE_XPATH_INARGTYPE /**< invalid type of arguments for an XPath function */
+} LY_VECODE;
 
 /**
  * @cond INTERNAL
@@ -960,7 +957,7 @@ typedef enum {
  */
 LY_ERR *ly_errno_location(void);
 
-LY_EVCODE *ly_evcode_location(void);
+LY_VECODE *ly_vecode_location(void);
 
 /**
  * @endcond INTERNAL
@@ -971,7 +968,7 @@ LY_EVCODE *ly_evcode_location(void);
 /**
  * @brief libyang's validation error code
  */
-#define ly_evcode (*ly_evcode_location())
+#define ly_vecode (*ly_vecode_location())
 
 /**
  * @brief Get the last (thread-specific) error message.

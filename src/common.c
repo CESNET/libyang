@@ -31,7 +31,7 @@
 
 /* libyang errno */
 LY_ERR ly_errno_int = LY_EINT;
-LY_EVCODE ly_evcode_unkn = LYE_UNK;
+LY_VECODE ly_vecode_unkn = LYVE_SUCCESS;
 static pthread_once_t ly_err_once = PTHREAD_ONCE_INIT;
 static pthread_key_t ly_err_key;
 #ifdef __linux__
@@ -101,14 +101,14 @@ ly_errno_location(void)
     return &(e->no);
 }
 
-API LY_EVCODE *
-ly_evcode_location(void)
+API LY_VECODE *
+ly_vecode_location(void)
 {
     struct ly_err *e;
 
     e = ly_err_location();
     if (!e) {
-        return &ly_evcode_unkn;
+        return &ly_vecode_unkn;
     }
     return &(e->code);
 }
