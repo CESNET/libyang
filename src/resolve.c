@@ -2979,7 +2979,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres, uint32_t li
     uint8_t size, *old_size;
 
     assert(uses->grp);
-    /* HACK just check that the grouing is resolved */
+    /* HACK just check that the grouping is resolved */
     assert(!uses->grp->nacm);
 
     /* copy the data nodes from grouping into the uses context */
