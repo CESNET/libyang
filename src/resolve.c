@@ -834,8 +834,8 @@ parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, co
  * @param[out] has_predicate Flag to mark whether there is another predicate specified.
  */
 static int
-parse_schema_predicate(const char *id, const char **name, int *nam_len, const char **value, int *val_len,
-                       int *has_predicate)
+parse_schema_list_predicate(const char *id, const char **name, int *nam_len, const char **value, int *val_len,
+                            int *has_predicate)
 {
     const char *ptr;
     int parsed = 0, ret;
@@ -1286,12 +1286,12 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
 }
 
 static int
-resolve_json_schema_predicate(const char *predicate, const struct lys_node_list *list, int *parsed)
+resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_list *list, int *parsed)
 {
     const char *name;
     int nam_len, has_predicate, i;
 
-    if ((i = parse_schema_predicate(predicate, &name, &nam_len, NULL, NULL, &has_predicate)) < 1) {
+    if ((i = parse_schema_list_predicate(predicate, &name, &nam_len, NULL, NULL, &has_predicate)) < 1) {
         LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, predicate[-i], &predicate[-i]);
         return -1;
     }
@@ -1312,7 +1312,7 @@ resolve_json_schema_predicate(const char *predicate, const struct lys_node_list 
 
     /* more predicates? */
     if (has_predicate) {
-        return resolve_json_schema_predicate(predicate, list, parsed);
+        return resolve_json_schema_list_predicate(predicate, list, parsed);
     }
 
     return 0;
@@ -1320,16 +1320,19 @@ resolve_json_schema_predicate(const char *predicate, const struct lys_node_list 
 
 /* cannot return LYS_GROUPING, LYS_AUGMENT, LYS_USES, logs directly */
 const struct lys_node *
-resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx)
+resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start)
 {
     char *str;
     const char *name, *mod_name, *id;
-    const struct lys_node *sibling, *start;
+    const struct lys_node *sibling;
     int r, nam_len, mod_name_len, is_relative = -1, has_predicate;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
     const struct lys_module *prefix_mod, *module, *prev_mod;
 
-    assert(nodeid && ctx);
+    assert(nodeid && (ctx || start));
+    if (!ctx) {
+        ctx = start->module->ctx;
+    }
 
     id = nodeid;
 
@@ -1340,29 +1343,35 @@ resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx)
     id += r;
 
     if (is_relative) {
-        /* TODO it's fine? */
-        LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, nodeid[0], nodeid);
-        return NULL;
+        assert(start);
+        start = start->child;
+        if (!start) {
+            /* no descendants, fail for sure */
+            LOGVAL(LYE_PATH_INNODE, 0, LY_VLOG_NONE, NULL, name);
+            return NULL;
+        }
+        module = start->module;
+    } else {
+        if (!mod_name) {
+            LOGVAL(LYE_PATH_MISSMOD, 0, LY_VLOG_NONE, NULL, name);
+            return NULL;
+        }
+
+        str = strndup(mod_name, mod_name_len);
+        module = ly_ctx_get_module(ctx, str, NULL);
+        free(str);
+        if (!module) {
+            LOGVAL(LYE_PATH_INMOD, 0, LY_VLOG_NONE, NULL, mod_name);
+            return NULL;
+        }
+        start = module->data;
+
+        /* now it's as if there was no module name */
+        mod_name = NULL;
+        mod_name_len = 0;
     }
 
-    if (!mod_name) {
-        LOGVAL(LYE_PATH_MISSMOD, 0, LY_VLOG_NONE, NULL, name);
-        return NULL;
-    }
-
-    str = strndup(mod_name, mod_name_len);
-    module = ly_ctx_get_module(ctx, str, NULL);
-    free(str);
-    if (!module) {
-        LOGVAL(LYE_PATH_INMOD, 0, LY_VLOG_NONE, NULL, mod_name);
-        return NULL;
-    }
-    start = module->data;
     prev_mod = module;
-
-    /* now it's as if there was no module name */
-    mod_name = NULL;
-    mod_name_len = 0;
 
     while (1) {
         sibling = NULL;
@@ -1391,7 +1400,7 @@ resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx)
                     if (sibling->nodetype != LYS_LIST) {
                         LOGVAL(LYE_PATH_NLIST, 0, LY_VLOG_NONE, NULL, name);
                         return NULL;
-                    } else if (resolve_json_schema_predicate(id, (const struct lys_node_list *)sibling, &r)) {
+                    } else if (resolve_json_schema_list_predicate(id, (const struct lys_node_list *)sibling, &r)) {
                         return NULL;
                     }
                     id += r;

@@ -703,21 +703,25 @@ const struct lys_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const
 const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodule);
 
 /**
- * @brief Get schema node according to the given absolute schema node identifier
- * in JSON format.
+ * @brief Get schema node according to the given schema node identifier in JSON format.
  *
- * The first node identifier must be prefixed with the module name. Then every other
- * identifier either has an explicit module name or the module name of the previous
- * node is assumed. Examples:
+ * If the \p nodeid is absolute, the first node identifier must be prefixed with
+ * the module name. Then every other identifier either has an explicit module name or
+ * the module name of the previous node is assumed. Examples:
  *
  * /ietf-netconf-monitoring:get-schema/input/identifier
  * /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/ip
  *
+ * If the \p nodeid is relative, \p start is mandatory and is the starting point
+ * for the resolution. The first node identifier does not need a module name.
+ *
  * @param[in] ctx Context to work in.
- * @param[in] nodeid JSON absolute schema node identifier.
+ * @param[in] start Starting node for a relative schema node identifier, in which
+ * case it is mandatory.
+ * @param[in] nodeid JSON schema node identifier.
  * @return Resolved schema node or NULL.
  */
-const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const char *nodeid);
+const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid);
 
 /**
  * @brief Free all internal structures of the specified context.

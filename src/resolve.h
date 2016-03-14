@@ -107,7 +107,7 @@ int resolve_choice_default_schema_nodeid(const char *nodeid, const struct lys_no
 int resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *module, int ret_nodetype,
                                    const struct lys_node **ret);
 
-const struct lys_node *resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx);
+const struct lys_node *resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start);
 
 int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int superior_restr,
                              struct len_ran_intv **local_intv);
