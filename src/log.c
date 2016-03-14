@@ -149,7 +149,8 @@ const char *ly_errs[] = {
 /* LYE_XPATH_INARGTYPE */ "Wrong type of argument #%d (%s) for the XPath function %s.",
 
 /* LYE_PATH_INCHAR */  "Unexpected character(s) '%c' (%s).",
-/* LYE_PATH_INPREF */  "Module not found (%s).",
+/* LYE_PATH_INMOD */   "Module not found (%s).",
+/* LYE_PATH_MISSMOD */ "Missing module name (%s).",
 /* LYE_PATH_INNODE */  "Schema node not found (%s).",
 /* LYE_PATH_NLIST */   "Predicate used on a node type other than a list (%s).",
 /* LYE_PATH_INKEY */   "List key not found (%s).",
@@ -220,7 +221,8 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_XPATH_INARGTYPE, /* LYE_XPATH_INARGTYPE */
 
     LYVE_PATH_INCHAR,  /* LYE_PATH_INCHAR */
-    LYVE_PATH_INPREF,  /* LYE_PATH_INPREF */
+    LYVE_PATH_INMOD,   /* LYE_PATH_INMOD */
+    LYVE_PATH_MISSMOD, /* LYE_PATH_MISSMOD */
     LYVE_PATH_INNODE,  /* LYE_PATH_INNODE */
     LYVE_PATH_NLIST,   /* LYE_PATH_NLIST */
     LYVE_PATH_INKEY,   /* LYE_PATH_INKEY */

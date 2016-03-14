@@ -1285,37 +1285,84 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
     return -1;
 }
 
-/* cannot return LYS_GROUPING, LYS_AUGMENT, LYS_USES */
-int
-resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node **ret)
+static int
+resolve_json_schema_predicate(const char *predicate, const struct lys_node_list *list, int *parsed)
+{
+    const char *name;
+    int nam_len, has_predicate, i;
+
+    if ((i = parse_schema_predicate(predicate, &name, &nam_len, NULL, NULL, &has_predicate)) < 1) {
+        LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, predicate[-i], &predicate[-i]);
+        return -1;
+    }
+
+    predicate += i;
+    *parsed += i;
+
+    for (i = 0; i < list->keys_size; ++i) {
+        if (!strncmp(list->keys[i]->name, name, nam_len) && !list->keys[i]->name[nam_len]) {
+            break;
+        }
+    }
+
+    if (i == list->keys_size) {
+        LOGVAL(LYE_PATH_INKEY, 0, LY_VLOG_NONE, NULL, name);
+        return -1;
+    }
+
+    /* more predicates? */
+    if (has_predicate) {
+        return resolve_json_schema_predicate(predicate, list, parsed);
+    }
+
+    return 0;
+}
+
+/* cannot return LYS_GROUPING, LYS_AUGMENT, LYS_USES, logs directly */
+const struct lys_node *
+resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx)
 {
     char *str;
     const char *name, *mod_name, *id;
     const struct lys_node *sibling, *start;
-    int r, nam_len, mod_name_len, is_relative = -1;
+    int r, nam_len, mod_name_len, is_relative = -1, has_predicate;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
-    const struct lys_module *prefix_mod, *module, *prev_mod = NULL;
+    const struct lys_module *prefix_mod, *module, *prev_mod;
 
-    assert(nodeid && ctx && ret);
+    assert(nodeid && ctx);
 
     id = nodeid;
 
-    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
-        return ((id - nodeid) - r) + 1;
+    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate)) < 1) {
+        LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
+        return NULL;
     }
     id += r;
 
     if (is_relative) {
-        return -1;
+        /* TODO it's fine? */
+        LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, nodeid[0], nodeid);
+        return NULL;
+    }
+
+    if (!mod_name) {
+        LOGVAL(LYE_PATH_MISSMOD, 0, LY_VLOG_NONE, NULL, name);
+        return NULL;
     }
 
     str = strndup(mod_name, mod_name_len);
     module = ly_ctx_get_module(ctx, str, NULL);
     free(str);
     if (!module) {
-        return -1;
+        LOGVAL(LYE_PATH_INMOD, 0, LY_VLOG_NONE, NULL, mod_name);
+        return NULL;
     }
     start = module->data;
+    prev_mod = module;
+
+    /* now it's as if there was no module name */
+    mod_name = NULL;
+    mod_name_len = 0;
 
     while (1) {
         sibling = NULL;
@@ -1328,7 +1375,8 @@ resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, cons
                 if (mod_name) {
                     prefix_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
                     if (!prefix_mod) {
-                        return -1;
+                        LOGVAL(LYE_PATH_INMOD, 0, LY_VLOG_NONE, NULL, mod_name);
+                        return NULL;
                     }
                 } else {
                     prefix_mod = prev_mod;
@@ -1337,10 +1385,21 @@ resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, cons
                     continue;
                 }
 
+                /* do we have some predicates on it? */
+                if (has_predicate) {
+                    r = 0;
+                    if (sibling->nodetype != LYS_LIST) {
+                        LOGVAL(LYE_PATH_NLIST, 0, LY_VLOG_NONE, NULL, name);
+                        return NULL;
+                    } else if (resolve_json_schema_predicate(id, (const struct lys_node_list *)sibling, &r)) {
+                        return NULL;
+                    }
+                    id += r;
+                }
+
                 /* the result node? */
                 if (!id[0]) {
-                    *ret = sibling;
-                    return EXIT_SUCCESS;
+                    return sibling;
                 }
 
                 /* check for shorthand cases - then 'start' does not change */
@@ -1357,19 +1416,20 @@ resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, cons
 
         /* no match */
         if (!sibling) {
-            *ret = NULL;
-            return EXIT_SUCCESS;
+            LOGVAL(LYE_PATH_INNODE, 0, LY_VLOG_NONE, NULL, name);
+            return NULL;
         }
 
-        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
-            return ((id - nodeid) - r) + 1;
+        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate)) < 1) {
+            LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
+            return NULL;
         }
         id += r;
     }
 
     /* cannot get here */
     LOGINT;
-    return -1;
+    return NULL;
 }
 
 /**

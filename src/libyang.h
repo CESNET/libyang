@@ -951,7 +951,8 @@ typedef enum {
     LYVE_XPATH_INARGTYPE, /**< invalid type of arguments for an XPath function */
 
     LYVE_PATH_INCHAR,  /**< invalid characters (path) */
-    LYVE_PATH_INPREF,  /**< invalid module name - prefix (path) */
+    LYVE_PATH_INMOD,   /**< invalid module name (path) */
+    LYVE_PATH_MISSMOD, /**< missing module name (path) */
     LYVE_PATH_INNODE,  /**< invalid node name (path) */
     LYVE_PATH_NLIST,   /**< node with predicates is not list (path) */
     LYVE_PATH_INKEY,   /**< invalid key name (path) */
