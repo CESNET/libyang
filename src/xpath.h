@@ -198,6 +198,12 @@ enum lyxp_node_type {
  * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
+ *
+ * TODO
+ * - change when_must_eval to options and separate when and must
+ * - except when, add another option to take WHEN flag in data nodes into account
+ * - return 0 on success, -1 on error, 1 when the option from the previous point is used and WHEN flag is the same as
+ *   in the cur_node
  */
 int lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *set, int when_must_eval, uint32_t line);
 
