@@ -45,9 +45,11 @@ parse_identifier(const char *id)
 {
     int parsed = 0;
 
+    assert(id);
+
     if (((id[0] == 'x') || (id[0] == 'X'))
-            && ((id[1] == 'm') || (id[0] == 'M'))
-            && ((id[2] == 'l') || (id[2] == 'L'))) {
+            && (id[0] && ((id[1] == 'm') || (id[0] == 'M')))
+            && (id[1] && ((id[2] == 'l') || (id[2] == 'L')))) {
         return -parsed;
     }
 
