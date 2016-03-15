@@ -2766,7 +2766,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
 
     do {
         if ((i = parse_path_arg(id, &prefix, &pref_len, &name, &nam_len, &parent_times, &has_predicate)) < 1) {
-            LOGVAL(LYE_INCHAR, line, parent_tpdf ? 0 : LY_VLOG_LYS, parent_tpdf ? NULL : parent, id[-i], &id[-i]);
+            LOGVAL(LYE_INCHAR, line, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, id[-i], &id[-i]);
             return -1;
         }
         id += i;
