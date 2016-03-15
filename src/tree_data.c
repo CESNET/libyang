@@ -521,8 +521,8 @@ nextsibling:
 API int
 lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 {
-    struct lys_node *sparent;
-    struct lyd_node *iter;
+    struct lys_node *sparent, *schoice, *scase;
+    struct lyd_node *iter, *next;
     int invalid = 0;
 
     if (!node || !parent) {
@@ -546,6 +546,31 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 
     if (node->parent || node->prev->next) {
         lyd_unlink(node);
+    }
+
+    if (parent->child && ((sparent = lys_parent(node->schema))->nodetype & (LYS_CHOICE | LYS_CASE))) {
+        /* auto delete nodes from other cases */
+
+        /* remember which case to skip in which choice */
+        if (sparent->nodetype == LYS_CHOICE) {
+            schoice = sparent;
+            scase = node->schema;
+        } else {
+            schoice = lys_parent(sparent);
+            scase = sparent;
+        }
+
+        /* remove all nodes from other cases than 'sparent' */
+        LY_TREE_FOR_SAFE(parent->child, next, iter) {
+            sparent = lys_parent(iter->schema);
+            if (sparent->nodetype == LYS_CHOICE && sparent == schoice) {
+                /* another implicit case */
+                lyd_free(iter);
+            } else if (sparent->nodetype == LYS_CASE && sparent != scase && lys_parent(sparent) == schoice) {
+                /* another case */
+                lyd_free(iter);
+            }
+        }
     }
 
     if (!parent->child) {
@@ -572,8 +597,8 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 static int
 lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
 {
-    struct lys_node *par1, *par2;
-    struct lyd_node *iter;
+    struct lys_node *par1, *par2, *sparent, *schoice, *scase;
+    struct lyd_node *iter, *next, *start = NULL;
     int invalid = 0;
 
     if (sibling == node) {
@@ -592,10 +617,10 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
         return EXIT_FAILURE;
     }
 
-    if (node->parent != sibling->parent || !node->parent || lyp_is_rpc(node->schema)) {
-        /* a) it is not just moving under a parent node or
-         * b) it is top-level where we don't know if it is the same tree, or
-         * c) it is in an RPC where nodes order matters,
+    if (node->parent != sibling->parent || !node->parent || (invalid = lyp_is_rpc(node->schema))) {
+        /* a) it is not just moving under a parent node (invalid = 1) or
+         * b) it is top-level where we don't know if it is the same tree (invalid = 1), or
+         * c) it is in an RPC where nodes order matters (invalid = 2),
          * so the validation will be necessary */
         if (!node->parent) {
             /* b) search in siblings */
@@ -606,10 +631,48 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
             }
             if (iter == node) {
                 /* node and siblings are not currently in the same data tree */
-                invalid = 1;
+                invalid++;
             }
         } else { /* a) and c) */
-            invalid = 1;
+            invalid++;
+        }
+    }
+
+    if (invalid == 1 && ((sparent = lys_parent(node->schema))->nodetype & (LYS_CHOICE | LYS_CASE))) {
+        /* auto delete nodes from other cases */
+
+        /* remember which case to skip in which choice */
+        if (sparent->nodetype == LYS_CHOICE) {
+            schoice = sparent;
+            scase = node->schema;
+        } else {
+            schoice = lys_parent(sparent);
+            scase = sparent;
+        }
+
+        /* find first node */
+        if (sibling->parent) {
+            start = sibling->parent->child;
+        } else {
+            for (start = sibling; start->prev->next; start = start->prev);
+        }
+
+        /* remove all nodes from other cases than 'sparent' */
+        LY_TREE_FOR_SAFE(start, next, iter) {
+            sparent = lys_parent(iter->schema);
+            if ((sparent->nodetype == LYS_CHOICE && sparent == schoice) ||
+                    (sparent->nodetype == LYS_CASE && sparent != scase && lys_parent(sparent) == schoice)) {
+                /* another case */
+                if (iter == sibling) {
+                    LOGVAL(LYE_MCASEDATA, 0, LY_VLOG_LYD, iter, schoice->name);
+                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Insert request refers node (%s) that is going to be auto-deleted.",
+                           ly_errpath());
+                    return EXIT_FAILURE;
+                } else if (iter == start) {
+                    start = iter->next;
+                }
+                lyd_free(iter);
+            }
         }
     }
 
@@ -640,11 +703,13 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
             sibling->next->prev = node;
         } else {
             /* at the end - fix the prev pointer of the first node */
-            if (sibling->parent) {
+            if (start) {
+                start->prev = node;
+            } else if (sibling->parent) {
                 sibling->parent->child->prev = node;
             } else {
-                for (iter = sibling; iter->prev->next; iter = iter->prev);
-                iter->prev = node;
+                for (start = sibling; start->prev->next; start = start->prev);
+                start->prev = node;
             }
         }
         sibling->next = node;
