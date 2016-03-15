@@ -29,6 +29,8 @@
 #include "dict_private.h"
 #include "tree_internal.h"
 
+#define LY_MODULE_NAME_MAX_LEN 255
+
 /**
  * @brief Parse an identifier.
  *
@@ -1324,7 +1326,7 @@ resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_
 const struct lys_node *
 resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start)
 {
-    char *str;
+    char *str, module_name[LY_MODULE_NAME_MAX_LEN - 1];
     const char *name, *mod_name, *id;
     const struct lys_node *sibling;
     int r, nam_len, mod_name_len, is_relative = -1, has_predicate;
@@ -1384,7 +1386,14 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
 
                 /* module check */
                 if (mod_name) {
-                    prefix_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+                    if (mod_name_len > LY_MODULE_NAME_MAX_LEN) {
+                        LOGINT;
+                        return NULL;
+                    }
+                    strncpy(module_name, mod_name, mod_name_len);
+                    module_name[mod_name_len] = '\0';
+                    /* will also find an augment module */
+                    prefix_mod = ly_ctx_get_module(ctx, module_name, NULL);
                     if (!prefix_mod) {
                         LOGVAL(LYE_PATH_INMOD, 0, LY_VLOG_NONE, NULL, mod_name);
                         return NULL;
