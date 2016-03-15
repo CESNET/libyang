@@ -1069,6 +1069,10 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
                 /* check for shorthand cases - then 'start' does not change */
                 if (!sibling->parent || (sibling->parent->nodetype != LYS_CHOICE)
                         || (sibling->nodetype == LYS_CASE)) {
+                    /* move down the tree, if possible */
+                    if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                        return -1;
+                    }
                     start = sibling->child;
                 }
                 break;
@@ -1147,6 +1151,10 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
                 /* check for shorthand cases - then 'start' does not change */
                 if (!sibling->parent || (sibling->parent->nodetype != LYS_CHOICE)
                         || (sibling->nodetype == LYS_CASE)) {
+                    /* move down the tree, if possible */
+                    if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                        return -1;
+                    }
                     start = sibling->child;
                 }
                 break;
@@ -1266,6 +1274,10 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
                 /* check for shorthand cases - then 'start' does not change */
                 if (!sibling->parent || (sibling->parent->nodetype != LYS_CHOICE)
                         || (sibling->nodetype == LYS_CASE)) {
+                    /* move down the tree, if possible */
+                    if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                        return -1;
+                    }
                     start = sibling->child;
                 }
                 break;
@@ -1425,6 +1437,11 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
                 /* check for shorthand cases - then 'start' does not change */
                 if (!sibling->parent || (sibling->parent->nodetype != LYS_CHOICE)
                         || (sibling->nodetype == LYS_CASE)) {
+                    /* move down the tree, if possible */
+                    if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                        LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, id[0], id);
+                        return NULL;
+                    }
                     start = sibling->child;
                 }
 
@@ -2807,6 +2824,11 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
 
             first_iter = 0;
         } else {
+            /* move down the tree, if possible */
+            if (node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                LOGVAL(LYE_INCHAR, line, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, name[0], name);
+                return -1;
+            }
             node = node->child;
         }
 
