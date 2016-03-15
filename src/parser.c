@@ -799,7 +799,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
                     return EXIT_FAILURE;
                 }
             } else {
-                if (resolve_unres_data_item((struct lyd_node *)node, UNRES_INSTID, 0, line)) {
+                if (resolve_unres_data_item((struct lyd_node *)node, UNRES_INSTID, line)) {
                     return EXIT_FAILURE;
                 }
             }
@@ -827,7 +827,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
                     return EXIT_FAILURE;
                 }
             } else {
-                if (resolve_unres_data_item((struct lyd_node *)node, UNRES_LEAFREF, 0, line)) {
+                if (resolve_unres_data_item((struct lyd_node *)node, UNRES_LEAFREF, line)) {
                     return EXIT_FAILURE;
                 }
             }

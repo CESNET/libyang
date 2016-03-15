@@ -69,7 +69,8 @@ extern volatile uint8_t ly_log_level;
 struct ly_err {
     LY_ERR no;
     LY_VECODE code;
-    int path_index;
+    uint8_t vlog_hide;
+    uint16_t path_index;
     char msg[LY_ERR_MSG_SIZE];
     char path[LY_ERR_MSG_SIZE];
 };
@@ -175,6 +176,7 @@ enum LY_VLOG_ELEM {
     LY_VLOG_LYS,
     LY_VLOG_LYD
 };
+void ly_vlog_hide(int hide);
 void ly_vlog(LY_ECODE code, unsigned int line, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
 #define LOGVAL(code, line, elem_type, elem, args...) ly_vlog(code, line, elem_type, elem, ##args)
 

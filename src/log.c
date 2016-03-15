@@ -45,7 +45,7 @@ API void
 }
 
 static void
-log_vprintf(LY_LOG_LEVEL level, const char *format, const char *path, va_list args)
+log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *path, va_list args)
 {
     char *msg;
 
@@ -67,6 +67,10 @@ log_vprintf(LY_LOG_LEVEL level, const char *format, const char *path, va_list ar
         ((struct ly_err *)&ly_errno)->path_index = LY_ERR_MSG_SIZE - 1;
     }
 
+    if (hide) {
+        return;
+    }
+
     if (ly_log_clb) {
         ly_log_clb(level, msg, path);
     } else {
@@ -84,7 +88,7 @@ ly_log(LY_LOG_LEVEL level, const char *format, ...)
     va_list ap;
 
     va_start(ap, format);
-    log_vprintf(level, format, NULL, ap);
+    log_vprintf(level, 0, format, NULL, ap);
     va_end(ap);
 }
 
@@ -211,6 +215,14 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_XPATH_INARGTYPE /* LYE_XPATH_INARGTYPE */
 };
 
+
+uint8_t *ly_vlog_hide_location(void);
+void
+ly_vlog_hide(int hide)
+{
+    (*ly_vlog_hide_location()) = hide ? 1 : 0;
+}
+
 void
 ly_vlog(LY_ECODE code, unsigned int line, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
 {
@@ -218,7 +230,7 @@ ly_vlog(LY_ECODE code, unsigned int line, enum LY_VLOG_ELEM elem_type, const voi
     const char *fmt;
     char line_msg[41];
     char* path;
-    int *index;
+    uint16_t *index;
     int i;
     const void *iter = elem;
     struct lys_node_list *slist;
@@ -231,7 +243,7 @@ ly_vlog(LY_ECODE code, unsigned int line, enum LY_VLOG_ELEM elem_type, const voi
     }
 
     ly_errno = LY_EVALID;
-    if (line) {
+    if (line && ! (*ly_vlog_hide_location())) {
         if (ly_log_clb) {
             sprintf(line_msg, "Parser fails around the line %u.", line);
             ly_log_clb(LY_LLERR, line_msg, NULL);
@@ -330,13 +342,14 @@ ly_vlog(LY_ECODE code, unsigned int line, enum LY_VLOG_ELEM elem_type, const voi
     switch (code) {
     case LYE_SPEC:
         fmt = va_arg(ap, char *);
-        log_vprintf(LY_LLERR, fmt, path[(*index)] ? &path[(*index)] : NULL, ap);
+        log_vprintf(LY_LLERR, (*ly_vlog_hide_location()), fmt, path[(*index)] ? &path[(*index)] : NULL, ap);
         break;
     case LYE_PATH:
-        log_vprintf(LY_LLERR, NULL, &path[(*index)], ap);
+        log_vprintf(LY_LLERR, (*ly_vlog_hide_location()), NULL, &path[(*index)], ap);
         break;
     default:
-        log_vprintf(LY_LLERR, ly_errs[code], path[(*index)] ? &path[(*index)] : NULL, ap);
+        log_vprintf(LY_LLERR, (*ly_vlog_hide_location()), ly_errs[code],
+                    path[(*index)] ? &path[(*index)] : NULL, ap);
         break;
     }
     va_end(ap);

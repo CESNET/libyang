@@ -313,7 +313,7 @@ lyv_data_value(struct lyd_node *node, int options)
         if (!((struct lyd_node_leaf_list *)node)->value.leafref) {
             if (!(options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
                 /* try to resolve leafref */
-                rc = resolve_unres_data_item(node, UNRES_LEAFREF, 0, 0);
+                rc = resolve_unres_data_item(node, UNRES_LEAFREF, 0);
                 if (rc) {
                     return EXIT_FAILURE;
                 }
@@ -324,7 +324,7 @@ lyv_data_value(struct lyd_node *node, int options)
         if (!(options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) &&
                 ((struct lys_node_leaf *)node->schema)->type.info.inst.req > -1) {
             /* try to resolve instance-identifier to get know if the target exists */
-            rc = resolve_unres_data_item(node, UNRES_INSTID, 0, 0);
+            rc = resolve_unres_data_item(node, UNRES_INSTID, 0);
             if (rc) {
                 return EXIT_FAILURE;
             }
@@ -357,7 +357,7 @@ lyv_data_context(const struct lyd_node *node, int options, unsigned int line, st
             return EXIT_FAILURE;
         }
     } else {
-        if (resolve_unres_data_item((struct lyd_node *)node, UNRES_WHEN, 0, line)) {
+        if (resolve_unres_data_item((struct lyd_node *)node, UNRES_WHEN, line)) {
             return EXIT_FAILURE;
         }
     }
@@ -651,7 +651,7 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
             return EXIT_FAILURE;
         }
     } else {
-        if (resolve_unres_data_item(node, UNRES_MUST, 0, line)) {
+        if (resolve_unres_data_item(node, UNRES_MUST, line)) {
             return EXIT_FAILURE;
         }
     }
