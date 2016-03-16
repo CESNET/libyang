@@ -29,8 +29,6 @@
 #include "dict_private.h"
 #include "tree_internal.h"
 
-#define LY_MODULE_NAME_MAX_LEN 255
-
 /**
  * @brief Parse an identifier.
  *

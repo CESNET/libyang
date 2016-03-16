@@ -60,6 +60,8 @@ char *get_current_dir_name(void);
 
 #endif
 
+#define LY_MODULE_NAME_MAX_LEN 255
+
 /*
  * logger
  */
