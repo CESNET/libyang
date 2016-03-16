@@ -152,8 +152,7 @@ const char *ly_errs[] = {
 /* LYE_PATH_INMOD */   "Module not found (%s).",
 /* LYE_PATH_MISSMOD */ "Missing module name (%s).",
 /* LYE_PATH_INNODE */  "Schema node not found (%s).",
-/* LYE_PATH_NLIST */   "Predicate used on a node type other than a list (%s).",
-/* LYE_PATH_INKEY */   "List key not found (%s).",
+/* LYE_PATH_INKEY */   "List key not found or on incorrect position (%s).",
 /* LYE_PATH_MISSKEY */ "Not all list keys specified (%s).",
 /* LYE_PATH_EXISTS */  "Node already exists.",
 /* LYE_PATH_MISSPAR */ "Parent does not exist (%s).",
@@ -224,7 +223,6 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_PATH_INMOD,   /* LYE_PATH_INMOD */
     LYVE_PATH_MISSMOD, /* LYE_PATH_MISSMOD */
     LYVE_PATH_INNODE,  /* LYE_PATH_INNODE */
-    LYVE_PATH_NLIST,   /* LYE_PATH_NLIST */
     LYVE_PATH_INKEY,   /* LYE_PATH_INKEY */
     LYVE_PATH_MISSKEY, /* LYE_PATH_MISSKEY */
     LYVE_PATH_EXISTS,  /* LYE_PATH_EXISTS */

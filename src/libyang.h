@@ -958,7 +958,6 @@ typedef enum {
     LYVE_PATH_INMOD,   /**< invalid module name (path) */
     LYVE_PATH_MISSMOD, /**< missing module name (path) */
     LYVE_PATH_INNODE,  /**< invalid node name (path) */
-    LYVE_PATH_NLIST,   /**< node with predicates is not list (path) */
     LYVE_PATH_INKEY,   /**< invalid key name (path) */
     LYVE_PATH_MISSKEY, /**< missing some list keys (path) */
     LYVE_PATH_EXISTS,  /**< target node already exists (path) */

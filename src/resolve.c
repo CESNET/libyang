@@ -1419,7 +1419,7 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
                 if (has_predicate) {
                     r = 0;
                     if (sibling->nodetype != LYS_LIST) {
-                        LOGVAL(LYE_PATH_NLIST, 0, LY_VLOG_NONE, NULL, name);
+                        LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, id[0], id);
                         return NULL;
                     } else if (resolve_json_schema_list_predicate(id, (const struct lys_node_list *)sibling, &r)) {
                         return NULL;
