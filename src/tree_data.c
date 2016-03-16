@@ -175,10 +175,32 @@ lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int opti
     return ret;
 }
 
+static struct lyd_node *
+_lyd_new(struct lyd_node *parent, const struct lys_node *schema)
+{
+    struct lyd_node *ret;
+
+    ret = calloc(1, sizeof *ret);
+    if (!ret) {
+        LOGMEM;
+        return NULL;
+    }
+    ret->schema = (struct lys_node *)schema;
+    ret->validity = LYD_VAL_NOT;
+    ret->prev = ret;
+    if (parent) {
+        if (lyd_insert(parent, ret)) {
+            lyd_free(ret);
+            return NULL;
+        }
+    }
+
+    return ret;
+}
+
 API struct lyd_node *
 lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *name)
 {
-    struct lyd_node *ret;
     const struct lys_node *snode = NULL, *siblings;
 
     if ((!parent && !module) || !name) {
@@ -200,22 +222,7 @@ lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *na
         return NULL;
     }
 
-    ret = calloc(1, sizeof *ret);
-    if (!ret) {
-        LOGMEM;
-        return NULL;
-    }
-    ret->schema = (struct lys_node *)snode;
-    ret->validity = LYD_VAL_NOT;
-    ret->prev = ret;
-    if (parent) {
-        if (lyd_insert(parent, ret)) {
-            lyd_free(ret);
-            return NULL;
-        }
-    }
-
-    return ret;
+    return _lyd_new(parent, snode);
 }
 
 static struct lyd_node *
@@ -244,33 +251,12 @@ lyd_create_leaf(const struct lys_node *schema, const char *val_str)
     return (struct lyd_node *)ret;
 }
 
-API struct lyd_node *
-lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str)
+static struct lyd_node *
+_lyd_new_leaf(struct lyd_node *parent, const struct lys_node *schema, const char *val_str)
 {
     struct lyd_node *ret;
-    const struct lys_node *snode = NULL, *siblings;
 
-    if ((!parent && !module) || !name) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
-    if (!parent) {
-        siblings = module->data;
-    } else {
-        if (!parent->schema) {
-            ly_errno = LY_EINVAL;
-            return NULL;
-        }
-        siblings = parent->schema->child;
-    }
-
-    if (lys_get_data_sibling(module, siblings, name, LYS_LEAFLIST | LYS_LEAF, &snode) || !snode) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
-    ret = lyd_create_leaf(snode, val_str);
+    ret = lyd_create_leaf(schema, val_str);
     if (!ret) {
         return NULL;
     }
@@ -294,6 +280,34 @@ lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const cha
     }
 
     return ret;
+}
+
+API struct lyd_node *
+lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str)
+{
+    const struct lys_node *snode = NULL, *siblings;
+
+    if ((!parent && !module) || !name) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    if (!parent) {
+        siblings = module->data;
+    } else {
+        if (!parent->schema) {
+            ly_errno = LY_EINVAL;
+            return NULL;
+        }
+        siblings = parent->schema->child;
+    }
+
+    if (lys_get_data_sibling(module, siblings, name, LYS_LEAFLIST | LYS_LEAF, &snode) || !snode) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    return _lyd_new_leaf(parent, snode, val_str);
 
 }
 
@@ -368,10 +382,30 @@ lyd_create_anyxml(const struct lys_node *schema, const char *val_xml)
     return (struct lyd_node *)ret;
 }
 
+static struct lyd_node *
+_lyd_new_anyxml(struct lyd_node *parent, const struct lys_node *schema, const char *val_xml)
+{
+    struct lyd_node *ret;
+
+    ret = lyd_create_anyxml(schema, val_xml);
+    if (!ret) {
+        return NULL;
+    }
+
+    /* connect to parent */
+    if (parent) {
+        if (lyd_insert(parent, ret)) {
+            lyd_free(ret);
+            return NULL;
+        }
+    }
+
+    return ret;
+}
+
 API struct lyd_node *
 lyd_new_anyxml(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_xml)
 {
-    struct lyd_node *ret;
     const struct lys_node *siblings, *snode;
 
     if ((!parent && !module) || !name) {
@@ -392,20 +426,7 @@ lyd_new_anyxml(struct lyd_node *parent, const struct lys_module *module, const c
         return NULL;
     }
 
-    ret = lyd_create_anyxml(snode, val_xml);
-    if (!ret) {
-        return NULL;
-    }
-
-    /* connect to parent */
-    if (parent) {
-        if (lyd_insert(parent, ret)) {
-            lyd_free(ret);
-            return NULL;
-        }
-    }
-
-    return ret;
+    return _lyd_new_anyxml(parent, snode, val_xml);
 }
 
 API struct lyd_node *
