@@ -3209,8 +3209,16 @@ unknown_statement: identifiers_ref { if (read_all ) {
                                    }
                    string_opt unknown_statement_end
 
-string_opt: %empty //Soptsep
-  |  sep string_1;
+string_opt: string_opt_part1 string_opt_part2
+
+string_opt_part1: %empty
+  |  sep
+
+string_opt_part2: %empty
+  |  STRING optsep string_opt_part3
+
+string_opt_part3: %empty
+  |  string_opt_part3 '+' optsep STRING optsep
 
 unknown_statement_end: ';' 
   |  '{' optsep unknown_statement2_opt '}'
