@@ -2307,3 +2307,67 @@ error:
     lydict_remove(module->ctx, str);
     return EXIT_FAILURE;
 }
+
+int
+yang_use_extension(struct lys_module *module, struct lys_node *data_node, void *actual, char *value, int line)
+{
+    char *prefix;
+    char *identif;
+    const char *ns = NULL;
+    int i;
+
+    prefix = value;
+    identif = strchr(value, ':');
+    *identif = '\0';
+    identif++;
+
+    /* check to the same pointer */
+    if (data_node != actual) {
+        return EXIT_SUCCESS;
+    }
+
+    for(i = 0; i < module->imp_size; ++i) {
+        if (!strcmp(module->imp[i].prefix, prefix)) {
+            ns = module->imp[i].module->ns;
+            break;
+        }
+    }
+    if (ns && !strcmp(ns, LY_NSNACM)) {
+        if (!strcmp(identif, "default-deny-write")) {
+            data_node->nacm |= LYS_NACM_DENYW;
+        } else if (!strcmp(identif, "default-deny-all")) {
+            data_node->nacm |= LYS_NACM_DENYA;
+        } else {
+            LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, identif);
+            return EXIT_FAILURE;
+        }
+    }
+    return EXIT_SUCCESS;
+}
+
+void
+nacm_inherit(struct lys_module *module)
+{
+    struct lys_node *next, *elem;
+
+    LY_TREE_DFS_BEGIN(module->data, next, elem) {
+        if (elem->parent) {
+            switch (elem->nodetype) {
+            case LYS_GROUPING:
+                /* extension nacm not inherited*/
+                break;
+            case LYS_CHOICE:
+            case LYS_ANYXML:
+            case LYS_USES:
+                if (elem->parent->nodetype != LYS_GROUPING) {
+                   elem->nacm |= elem->parent->nacm;
+                }
+                break;
+            default:
+                elem->nacm |= elem->parent->nacm;
+                break;
+            }
+        }
+        LY_TREE_DFS_END(module->data, next, elem);
+    }
+}
