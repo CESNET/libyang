@@ -399,6 +399,7 @@ extern "C" {
  * - lyd_new()
  * - lyd_new_anyxml()
  * - lyd_new_leaf()
+ * - lyd_new_path()
  * - lyd_output_new()
  * - lyd_output_new_anyxml()
  * - lyd_output_new_leaf()

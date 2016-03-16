@@ -440,6 +440,37 @@ struct lyd_node *lyd_output_new_leaf(const struct lys_node *schema, const char *
 struct lyd_node *lyd_output_new_anyxml(const struct lys_node *schema, const char *val_xml);
 
 /**
+ * @defgroup pathoptions Data path creation options
+ * @ingroup datatree
+ *
+ * Various options to change lyd_new_path() behavior.
+ *
+ * Default behavior:
+ * - only the last node in the path is to be created. If any parents do not exist, returns an error.
+ * - if the target node already exists, an error is returned.
+ * @{
+ */
+
+#define LYD_PATH_OPT_UPDATE    0x01 /**< If the target node exists and is a leaf, it is updated with the new value. */
+#define LYD_PATH_OPT_RECURSIVE 0x02 /**< If any parents of the target node do not exist, create them, too. */
+
+/** @} pathoptions */
+
+/**
+ * @brief Create a new data node based on a simple XPath.
+ *
+ * @param[in] data_tree Existing data tree to add to/modify. Can be NULL.
+ * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
+ * @param[in] path Simple schema XPath of the new node. It can contain only simple node addressing with optional
+ * module names as prefixes. List nodes must have predicates, one for each list key in the correct order and
+ * with it's value as well. Example: /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision='']/submodules
+ * @param[in] value Value of the new leaf/lealf-list. If creating other nodes of other types, set to NULL.
+ * @param[in] options Bitmask of options flags, see @ref pathoptions.
+ * @return First created node, NULL on error.
+ */
+struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, const char *value, int options);
+
+/**
  * @brief Create a copy of the specified data tree \p node. Namespaces are copied as needed,
  * schema references are kept the same.
  *
