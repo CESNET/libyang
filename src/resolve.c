@@ -767,7 +767,7 @@ parse_predicate(const char *id, const char **model, int *mod_len, const char **n
  * @return Number of characters successfully parsed,
  *         positive on success, negative on failure.
  */
-static int
+int
 parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, const char **name, int *nam_len,
                     int *is_relative, int *has_predicate)
 {
@@ -831,11 +831,11 @@ parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, co
  * @param[in] id Identifier to use.
  * @param[out] name Points to the list key name.
  * @param[out] nam_len Length of \p name.
- * @param[out] value Points to the key value.
+ * @param[out] value Points to the key value. If specified, key-with-value is expected.
  * @param[out] val_len Length of \p value.
  * @param[out] has_predicate Flag to mark whether there is another predicate specified.
  */
-static int
+int
 parse_schema_list_predicate(const char *id, const char **name, int *nam_len, const char **value, int *val_len,
                             int *has_predicate)
 {
@@ -872,7 +872,7 @@ parse_schema_list_predicate(const char *id, const char **name, int *nam_len, con
         ++id;
     }
 
-    /* node-identifier */
+    /* identifier */
     if ((ret = parse_identifier(id)) < 1) {
         return -parsed + ret;
     }
@@ -930,6 +930,9 @@ parse_schema_list_predicate(const char *id, const char **name, int *nam_len, con
             ++parsed;
             ++id;
         }
+    } else if (value) {
+        /* if value was expected, it's mandatory */
+        return -parsed;
     }
 
     if (id[0] != ']') {
@@ -1460,6 +1463,174 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
             return NULL;
         }
         id += r;
+    }
+
+    /* cannot get here */
+    LOGINT;
+    return NULL;
+}
+
+static int
+resolve_partial_json_data_list_predicate(const char *predicate, const char *node_name, struct lyd_node *node, int *parsed)
+{
+    const char *name, *value;
+    int nam_len, val_len, has_predicate = 1, r;
+    uint16_t i;
+    struct ly_set *keys;
+
+    assert(node->schema->nodetype == LYS_LIST);
+
+    keys = lyd_get_list_keys(node);
+
+    for (i = 0; i < keys->number; ++i) {
+        if (!has_predicate) {
+            LOGVAL(LYE_PATH_MISSKEY, 0, LY_VLOG_NONE, NULL, node_name);
+            return -1;
+        }
+
+        if ((r = parse_schema_list_predicate(predicate, &name, &nam_len, &value, &val_len, &has_predicate)) < 1) {
+            LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
+            return -1;
+        }
+
+        predicate += r;
+        *parsed += r;
+
+        if (strncmp(keys->dset[i]->schema->name, name, nam_len) || keys->dset[i]->schema->name[nam_len]) {
+            LOGVAL(LYE_PATH_INKEY, 0, LY_VLOG_NONE, NULL, name);
+            return -1;
+        }
+
+        /* value does not match */
+        if (strncmp(((struct lyd_node_leaf_list *)keys->dset[i])->value_str, value, val_len)
+                || ((struct lyd_node_leaf_list *)keys->dset[i])->value_str[val_len]) {
+            return 1;
+        }
+    }
+
+    if (has_predicate) {
+        LOGVAL(LYE_PATH_INKEY, 0, LY_VLOG_NONE, NULL, name);
+        return -1;
+    }
+
+    return 0;
+}
+
+struct lyd_node *
+resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int *parsed)
+{
+    char module_name[LY_MODULE_NAME_MAX_LEN - 1];
+    const char *id, *mod_name, *name;
+    int r, ret, mod_name_len, nam_len, is_relative = -1, has_predicate, last_parsed;
+    struct lyd_node *sibling, *last_match;
+    const struct lys_module *prefix_mod, *prev_mod;
+    struct ly_ctx *ctx;
+
+    assert(nodeid && start && parsed);
+
+    ctx = start->schema->module->ctx;
+    id = nodeid;
+
+    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate)) < 1) {
+        LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
+        return NULL;
+    }
+    id += r;
+    /* add it to parsed only after the data node was actually found */
+    last_parsed = r;
+
+    if (is_relative) {
+        prev_mod = start->schema->module;
+        last_match = start;
+        start = start->child;
+    } else {
+        for (; start->parent; start = start->parent);
+        last_match = start;
+        prev_mod = start->schema->module;
+    }
+
+    while (1) {
+        LY_TREE_FOR(start, sibling) {
+            /* name match */
+            if (!strncmp(name, sibling->schema->name, nam_len) && !sibling->schema->name[nam_len]) {
+
+                /* module check */
+                if (mod_name) {
+                    if (mod_name_len > LY_MODULE_NAME_MAX_LEN) {
+                        LOGINT;
+                        return NULL;
+                    }
+                    strncpy(module_name, mod_name, mod_name_len);
+                    module_name[mod_name_len] = '\0';
+                    /* will also find an augment module */
+                    prefix_mod = ly_ctx_get_module(ctx, module_name, NULL);
+                    if (!prefix_mod) {
+                        LOGVAL(LYE_PATH_INMOD, 0, LY_VLOG_NONE, NULL, mod_name);
+                        return NULL;
+                    }
+                } else {
+                    prefix_mod = prev_mod;
+                }
+                if (prefix_mod != lys_node_module(sibling->schema)) {
+                    continue;
+                }
+
+                /* leaf-list never matches, it does not make sense */
+                if (sibling->schema->nodetype == LYS_LEAFLIST) {
+                    sibling = NULL;
+                    break;
+                }
+
+                /* is it a list? we need predicates'n'stuff then */
+                if (sibling->schema->nodetype == LYS_LIST) {
+                    r = 0;
+                    if (!has_predicate) {
+                        LOGVAL(LYE_PATH_MISSKEY, 0, LY_VLOG_NONE, NULL, name);
+                        return NULL;
+                    }
+                    ret = resolve_partial_json_data_list_predicate(id, name, sibling, &r);
+                    if (ret == -1) {
+                        return NULL;
+                    } else if (ret == 1) {
+                        /* this list instance does not match */
+                        continue;
+                    }
+                    id += r;
+                    last_parsed += r;
+                }
+
+                *parsed += last_parsed;
+
+                /* the result node? */
+                if (!id[0]) {
+                    return sibling;
+                }
+
+                /* move down the tree, if possible */
+                if (start->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                    LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, id[0], id);
+                    return NULL;
+                }
+                last_match = start;
+                start = sibling->child;
+                if (start) {
+                    prev_mod = start->schema->module;
+                }
+                break;
+            }
+        }
+
+        /* no match, return last match */
+        if (!sibling) {
+            return last_match;
+        }
+
+        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate)) < 1) {
+            LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
+            return NULL;
+        }
+        id += r;
+        last_parsed = r;
     }
 
     /* cannot get here */
