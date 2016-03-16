@@ -601,7 +601,7 @@ ly_ctx_info(struct ly_ctx *ctx)
         return NULL;
     }
 
-    if (lyd_validate(root, 0)) {
+    if (lyd_validate(&root, 0)) {
         lyd_free(root);
         return NULL;
     }

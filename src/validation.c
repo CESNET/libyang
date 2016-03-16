@@ -344,6 +344,7 @@ lyv_data_context(const struct lyd_node *node, int options, unsigned int line, st
     const struct lys_node *siter = NULL;
 
     assert(node);
+    assert(unres);
 
     /* check if the node instance is enabled by if-feature */
     if (lys_is_disabled(node->schema, 2)) {
@@ -352,12 +353,8 @@ lyv_data_context(const struct lyd_node *node, int options, unsigned int line, st
     }
 
     /* check all relevant when conditions */
-    if (unres) {
-        if (unres_data_add(unres, (struct lyd_node *)node, UNRES_WHEN, line) == -1) {
-            return EXIT_FAILURE;
-        }
-    } else {
-        if (resolve_unres_data_item((struct lyd_node *)node, UNRES_WHEN, line)) {
+    if ((!(options & LYD_OPT_TYPEMASK) || (options & LYD_OPT_CONFIG)) && resolve_applies_when(node)) {
+        if (unres_data_addonly(unres, (struct lyd_node *)node, UNRES_WHEN, line)) {
             return EXIT_FAILURE;
         }
     }

@@ -533,7 +533,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     }
 
     /* check leafrefs and/or instids if any */
-    if (result && resolve_unres_data(unres)) {
+    if (result && resolve_unres_data(unres, (options & LYD_OPT_NOAUTODEL) ? NULL : &result)) {
         /* leafref & instid checking failed */
         LY_TREE_FOR_SAFE(result, next, iter) {
             lyd_free(iter);

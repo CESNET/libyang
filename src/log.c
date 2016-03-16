@@ -79,7 +79,6 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
             fprintf(stderr, "(path: %s)\n", path);
         }
     }
-#undef PRV_MSG_SIZE
 }
 
 void
@@ -143,6 +142,7 @@ const char *ly_errs[] = {
 /* LYE_NOCOND */       "%s condition \"%s\" not satisfied.",
 /* LYE_INORDER */      "Invalid order of elements \"%s\" and \"%s\".",
 /* LYE_INCOUNT */      "Wrong number of \"%s\" elements.",
+/* LYE_INWHEN */       "Irresolvable when condition \"%s\".",
 
 /* LYE_XPATH_INTOK */  "Unexpected XPath token %s (%.15s).",
 /* LYE_XPATH_EOF */    "Unexpected XPath expression end.",
@@ -205,6 +205,7 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_NOCOND,       /* LYE_NOCOND */
     LYVE_INORDER,      /* LYE_INORDER */
     LYVE_INCOUNT,      /* LYE_INCOUNT */
+    LYVE_INWHEN,      /* LYE_INWHEN */
 
     LYVE_XPATH_INTOK,  /* LYE_XPATH_INTOK */
     LYVE_XPATH_EOF,    /* LYE_XPATH_EOF */

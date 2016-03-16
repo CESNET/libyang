@@ -98,7 +98,7 @@ typedef union lyd_value_u {
  */
 #define LYD_VAL_OK       0x00    /**< node is successfully validated including whole subtree */
 #define LYD_VAL_UNIQUE   0x01    /**< Unique value(s) changed, applicable only to ::lys_node_list data nodes */
-#define LYD_VAL_NOT      0xff    /**< node was not validated yet */
+#define LYD_VAL_NOT      0x7f    /**< node was not validated yet */
 /**
  * @}
  */
@@ -117,7 +117,9 @@ typedef union lyd_value_u {
  */
 struct lyd_node {
     struct lys_node *schema;         /**< pointer to the schema definition of this node */
-    uint8_t validity;                /**< [validity flags](@ref validityflags) */
+    uint8_t validity:7;              /**< [validity flags](@ref validityflags) */
+    uint8_t when_status:1;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
+                                          do not use this value! */
 
     struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
     struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
@@ -146,7 +148,9 @@ struct lyd_node {
 struct lyd_node_leaf_list {
     struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_leaflist
                                           structure */
-    uint8_t validity;                /**< [validity flags](@ref validityflags) */
+    uint8_t validity:7;              /**< [validity flags](@ref validityflags) */
+    uint8_t when_status:1;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
+                                          do not use this value! */
 
     struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
     struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
@@ -175,7 +179,9 @@ struct lyd_node_leaf_list {
 struct lyd_node_anyxml {
     struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_anyxml
                                           structure */
-    uint8_t validity;                /**< [validity flags](@ref validityflags) */
+    uint8_t validity:7;              /**< [validity flags](@ref validityflags) */
+    uint8_t when_status:1;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
+                                          do not use this value! */
 
     struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
     struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
@@ -264,6 +270,10 @@ struct lyd_node_anyxml {
                                        are connected with the schema, but the most validation checks (mandatory nodes,
                                        list instance uniqueness, etc.) are not performed. This option does not make
                                        sense for lyd_validate() so it is ignored by this function. */
+#define LYD_OPT_NOAUTODEL  0x2000 /**< Avoid automatic delete of subtrees with false when-stmt condition. The flag is
+                                       applicable only in combination with LYD_OPT_DATA and LYD_OPT_CONFIG flags.
+                                       If used, libyang generates validation error instead of silently removing the
+                                       constrained subtree. */
 
 /**@} parseroptions */
 
@@ -529,14 +539,15 @@ struct ly_set *lyd_get_list_keys(const struct lyd_node *list);
 /**
  * @brief Validate \p node data subtree.
  *
- * @param[in] node Data tree to be validated.
+ * @param[in, out] node Data tree to be validated. In case the options includes #LYD_OPT_AUTODEL, libyang can modify the
+ *                 provided tree including the root \p node.
  * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
  * @param[in] ... libyang context for the data (used only in case the \p node is NULL, so in case of checking empty data tree)
  * @return 0 on success (if options include #LYD_OPT_FILTER, some nodes can be deleted as an
  * optimization, which can have a bad consequences when the \p node stores a subtree instead of a tree with
  * a top-level node(s)), nonzero in case of an error.
  */
-int lyd_validate(struct lyd_node *node, int options, ...);
+int lyd_validate(struct lyd_node **node, int options, ...);
 
 /**
  * @brief Unlink the specified data subtree. All referenced namespaces are copied.

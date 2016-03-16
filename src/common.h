@@ -160,6 +160,7 @@ typedef enum {
     LYE_NOCOND,
     LYE_INORDER,
     LYE_INCOUNT,
+    LYE_INWHEN,
 
     LYE_XPATH_INTOK,
     LYE_XPATH_EOF,

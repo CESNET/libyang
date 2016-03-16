@@ -443,7 +443,7 @@ cmd_data(const char *arg)
 
         if (!strcmp(xml->name, "data")) {
             fprintf(stdout, "Parsing %s as complete datastore.\n", argv[optind]);
-            options = options & ~LYD_OPT_TYPEMASK;
+            options = (options & ~LYD_OPT_TYPEMASK);
         } else if (!strcmp(xml->name, "config")) {
             fprintf(stdout, "Parsing %s as config data.\n", argv[optind]);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_CONFIG;

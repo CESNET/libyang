@@ -117,6 +117,9 @@ int resolve_superior_type(const char *name, const char *prefix, const struct lys
 
 int resolve_unique(struct lys_node *parent, const char *uniq_str_path, uint32_t line);
 
+/* get know if resolve_when() is applicable to the node (there is when condition connected with this node) */
+int resolve_applies_when(const struct lyd_node *node);
+
 struct lys_ident *resolve_identref(struct lys_ident *base, const char *ident_name, uint32_t line, struct lyd_node *node);
 
 int resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres);
@@ -136,8 +139,9 @@ void unres_schema_free(struct lys_module *module, struct unres_schema **unres);
 
 int resolve_unres_data_item(struct lyd_node *dnode, enum UNRES_ITEM type, uint32_t line);
 
+int unres_data_addonly(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type, uint32_t line);
 int unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type, uint32_t line);
 
-int resolve_unres_data(struct unres_data *unres);
+int resolve_unres_data(struct unres_data *unres, struct lyd_node **root);
 
 #endif /* _RESOLVE_H */

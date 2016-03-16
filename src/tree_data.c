@@ -742,20 +742,32 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 }
 
 API int
-lyd_validate(struct lyd_node *node, int options, ...)
+lyd_validate(struct lyd_node **node, int options, ...)
 {
     struct lyd_node *root, *next1, *next2, *iter, *to_free = NULL;
     const struct lys_node *schema;
     struct ly_ctx *ctx;
-    int i;
+    int i, ret = EXIT_FAILURE;
     va_list ap;
+    struct unres_data *unres = NULL;
+
+    if (!node) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    unres = calloc(1, sizeof *unres);
+    if (!unres) {
+        LOGMEM;
+        return EXIT_FAILURE;
+    }
 
     ly_errno = 0;
 
-    if (!node) {
+    if (!(*node)) {
         /* TODO what about LYD_OPT_NOTIF, LYD_OPT_RPC and LYD_OPT_RPCREPLY ? */
         if (options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
-            return EXIT_SUCCESS;
+            goto success;
         }
         /* LYD_OPT_DATA || LYD_OPT_CONFIG */
 
@@ -765,7 +777,7 @@ lyd_validate(struct lyd_node *node, int options, ...)
         if (!ctx) {
             LOGERR(LY_EINVAL, "%s: Invalid variable argument.", __func__);
             va_end(ap);
-            return EXIT_FAILURE;
+            goto error;
         }
 
         /* check for missing mandatory elements according to schemas in context */
@@ -785,38 +797,38 @@ lyd_validate(struct lyd_node *node, int options, ...)
                            schema->name, schema->parent ? schema->parent->name : ctx->models.list[i]->name);
                 }
                 va_end(ap);
-                return EXIT_FAILURE;
+                goto error;
 
             }
         }
 
         va_end(ap);
-        return EXIT_SUCCESS;
+        goto success;
     }
 
     if (!(options & LYD_OPT_NOSIBLINGS)) {
         /* check that the node is the first sibling */
-        while(node->prev->next) {
-            node = node->prev;
+        while((*node)->prev->next) {
+            *node = (*node)->prev;
         }
     }
 
-    LY_TREE_FOR_SAFE(node, next1, root) {
+    LY_TREE_FOR_SAFE(*node, next1, root) {
         LY_TREE_DFS_BEGIN(root, next2, iter) {
             if (to_free) {
                 lyd_free(to_free);
                 to_free = NULL;
             }
 
-            if (lyv_data_context(iter, options, 0, NULL)) {
-                return EXIT_FAILURE;
+            if (lyv_data_context(iter, options, 0, unres)) {
+                goto error;
             }
             if (lyv_data_value(iter, options)) {
-                return EXIT_FAILURE;
+                goto error;
             }
-            if (lyv_data_content(iter, options, 0, NULL)) {
+            if (lyv_data_content(iter, options, 0, unres)) {
                 if (ly_errno) {
-                    return EXIT_FAILURE;
+                    goto error;
                 } else {
                     /* safe deferred removal */
                     to_free = iter;
@@ -856,7 +868,7 @@ nextsiblings:
         }
 
         if (to_free) {
-            if (node == to_free) {
+            if ((*node) == to_free) {
                 /* we shouldn't be here */
                 assert(0);
             }
@@ -869,8 +881,26 @@ nextsiblings:
         }
     }
 
+    /* check unresolved checks (when-stmt) */
+    if (resolve_unres_data(unres,  (options & LYD_OPT_NOAUTODEL) ? NULL : node)) {
+        goto error;
+    }
 
-    return EXIT_SUCCESS;
+success:
+    ret = EXIT_SUCCESS;
+
+error:
+
+    if (unres) {
+        free(unres->node);
+        free(unres->type);
+#ifndef NDEBUG
+        free(unres->line);
+#endif
+        free(unres);
+    }
+
+    return ret;
 }
 
 /* create an attribute copy */

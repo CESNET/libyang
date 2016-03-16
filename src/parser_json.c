@@ -1187,7 +1187,7 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
     }
 
     /* check leafrefs and/or instids if any */
-    if (result && resolve_unres_data(unres)) {
+    if (result && resolve_unres_data(unres, (options & LYD_OPT_NOAUTODEL) ? NULL : &result)) {
         /* leafref & instid checking failed */
         LY_TREE_FOR_SAFE(result, next, iter) {
             lyd_free(iter);

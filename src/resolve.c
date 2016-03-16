@@ -3616,6 +3616,36 @@ resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema)
     return node;
 }
 
+int
+resolve_applies_when(const struct lyd_node *node)
+{
+    struct lys_node *parent;
+
+    assert(node);
+
+    if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC)) && (((struct lys_node_container *)node->schema)->when)) {
+        return 1;
+    }
+
+    parent = node->schema;
+    goto check_augment;
+
+    while (parent && (parent->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE))) {
+        if (((struct lys_node_uses *)parent)->when) {
+            return 1;
+        }
+check_augment:
+
+        if ((parent->parent && (parent->parent->nodetype == LYS_AUGMENT) &&
+                (((struct lys_node_augment *)parent->parent)->when))) {
+
+        }
+        parent = lys_parent(parent);
+    }
+
+    return 0;
+}
+
 /**
  * @brief Resolve (check) all when conditions relevant for \p node.
  * Logs directly.
@@ -3623,7 +3653,11 @@ resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema)
  * @param[in] node Data node, whose conditional reference, if such, is being decided.
  * @param[in] line Line in the input file.
  *
- * @return EXIT_SUCCESS on pass, EXIT_FAILURE on fail, -1 on error.
+ * @return
+ *  -1 - error, ly_errno is set
+ *   0 - true "when" statement
+ *   0, ly_vecode = LYVE_NOCOND - false "when" statement
+ *   1, ly_vecode = LYVE_INWHEN - nodes needed to resolve are conditional and not yet resolved (under another "when")
  */
 static int
 resolve_when(struct lyd_node *node, uint32_t line)
@@ -3631,20 +3665,27 @@ resolve_when(struct lyd_node *node, uint32_t line)
     struct lyd_node *ctx_node = NULL;
     struct lys_node *parent;
     struct lyxp_set set;
+    int rc;
 
     assert(node);
     memset(&set, 0, sizeof set);
 
     if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC)) && (((struct lys_node_container *)node->schema)->when)) {
-        if (lyxp_eval(((struct lys_node_container *)node->schema)->when->cond, node, &set, 1, line)) {
-            return -1;
+        rc = lyxp_eval(((struct lys_node_container *)node->schema)->when->cond, node, &set, 1, line);
+        if (rc) {
+            if (rc == 1) {
+                LOGVAL(LYE_INWHEN, line, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
+            }
+            return rc;
         }
 
+        /* set boolean result of the condition */
         lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, 1);
         if (!set.value.bool) {
-            /* TODO auto-delete */
+            ly_vlog_hide(1);
             LOGVAL(LYE_NOCOND, line, LY_VLOG_LYD, node, "When", ((struct lys_node_container *)node->schema)->when->cond);
-            return 1;
+            ly_vlog_hide(0);
+            goto success;
         }
     }
 
@@ -3661,15 +3702,20 @@ resolve_when(struct lyd_node *node, uint32_t line)
                     return -1;
                 }
             }
-            if (lyxp_eval(((struct lys_node_uses *)parent)->when->cond, ctx_node, &set, 1, line)) {
-                return -1;
+            rc = lyxp_eval(((struct lys_node_uses *)parent)->when->cond, ctx_node, &set, 1, line);
+            if (rc) {
+                if (rc == 1) {
+                    LOGVAL(LYE_INWHEN, line, LY_VLOG_LYD, node, ((struct lys_node_uses *)parent)->when->cond);
+                }
+                return rc;
             }
 
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, 1);
             if (!set.value.bool) {
-                /* TODO auto-delete */
+                ly_vlog_hide(1);
                 LOGVAL(LYE_NOCOND, line, LY_VLOG_LYD, node, "When", ((struct lys_node_uses *)parent)->when->cond);
-                return 1;
+                ly_vlog_hide(0);
+                goto success;
             }
         }
 
@@ -3682,21 +3728,30 @@ check_augment:
                     return -1;
                 }
             }
-            if (lyxp_eval(((struct lys_node_augment *)parent->parent)->when->cond, ctx_node, &set, 1, line)) {
-                return -1;
+            rc = lyxp_eval(((struct lys_node_augment *)parent->parent)->when->cond, ctx_node, &set, 1, line);
+            if (rc) {
+                if (rc == 1) {
+                    LOGVAL(LYE_INWHEN, line, LY_VLOG_LYD, node, ((struct lys_node_augment *)parent->parent)->when->cond);
+                }
+                return rc;
             }
 
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, 1);
 
             if (!set.value.bool) {
-                /* TODO auto-delete */
+                ly_vlog_hide(1);
                 LOGVAL(LYE_NOCOND, line, LY_VLOG_LYD, node, "When", ((struct lys_node_augment *)parent->parent)->when->cond);
-                return 1;
+                ly_vlog_hide(0);
+                goto success;
             }
         }
 
         parent = lys_parent(parent);
     }
+
+success:
+    /* mark the node as node with resolved when-stmt condition */
+    node->when_status = ~node->when_status;
 
     return 0;
 }
@@ -4295,40 +4350,13 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, uint32_t li
     return EXIT_SUCCESS;
 }
 
-/**
- * @brief Try to resolve an unres data item. Logs indirectly.
- *
- * @param[in] unres Unres data structure to use.
- * @param[in] node Data node to use.
- * @param[in] line Line in the input file.
- *
- * @return EXIT_SUCCESS on success or storing the item in unres, -1 on error.
- */
 int
-unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type, uint32_t line)
+unres_data_addonly(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type, uint32_t line)
 {
-    int rc;
-    char *path, *msg;
+    assert(unres && node);
+    assert((type == UNRES_LEAFREF) || (type == UNRES_INSTID) || (type == UNRES_WHEN) || (type == UNRES_MUST));
 
-    assert(unres && node && ((type == UNRES_LEAFREF) || (type == UNRES_INSTID) || (type == UNRES_WHEN) || (type == UNRES_MUST)));
-
-    ly_vlog_hide(1);
-    rc = resolve_unres_data_item(node, type, line);
-    ly_vlog_hide(0);
-    if (rc != EXIT_FAILURE) {
-        if (rc == -1 && ly_errno == LY_EVALID) {
-            path = strdup(ly_errpath());
-            LOGERR(LY_EVALID, "%s%s%s%s", msg = strdup(ly_errmsg()),
-                   path[0] ? " (path: " : "", path[0] ? path : "", path[0] ? ")" : "");
-            free(path);
-            free(msg);
-        }
-        return rc;
-    }
-
-    print_unres_data_item_fail(node, type, line);
-
-    ++unres->count;
+    unres->count++;
     unres->node = ly_realloc(unres->node, unres->count * sizeof *unres->node);
     if (!unres->node) {
         LOGMEM;
@@ -4354,22 +4382,71 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
 }
 
 /**
+ * @brief Try to resolve an unres data item. Logs indirectly.
+ *
+ * @param[in] unres Unres data structure to use.
+ * @param[in] node Data node to use.
+ * @param[in] line Line in the input file.
+ *
+ * @return EXIT_SUCCESS on success or storing the item in unres, -1 on error.
+ */
+int
+unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type, uint32_t line)
+{
+    int rc;
+    char *path, *msg;
+
+    assert(unres && node);
+    assert((type == UNRES_LEAFREF) || (type == UNRES_INSTID) || (type == UNRES_WHEN) || (type == UNRES_MUST));
+
+    ly_vlog_hide(1);
+    rc = resolve_unres_data_item(node, type, line);
+    ly_vlog_hide(0);
+    if (rc != EXIT_FAILURE) {
+        if (rc == -1 && ly_errno == LY_EVALID) {
+            path = strdup(ly_errpath());
+            LOGERR(LY_EVALID, "%s%s%s%s", msg = strdup(ly_errmsg()),
+                   path[0] ? " (path: " : "", path[0] ? path : "", path[0] ? ")" : "");
+            free(path);
+            free(msg);
+        }
+        return rc;
+    }
+
+    print_unres_data_item_fail(node, type, line);
+
+    return unres_data_addonly(unres, node, type, line);
+}
+
+/**
  * @brief Resolve every unres data item in the structure. Logs directly.
  *
  * @param[in] unres Unres data structure to use.
+ * @param[in,out] root Root node of the data tree. If not NULL, auto-delete is performed on false when condition. If
+ * NULL and when condition is false the error is raised.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 int
-resolve_unres_data(struct unres_data *unres)
+resolve_unres_data(struct unres_data *unres, struct lyd_node **root)
 {
     uint32_t i, resolved = 0;
     int rc, progress;
+    char *msg, *path;
+
+    assert(unres);
+    assert(root && (*root));
+
+    if (!unres->count) {
+        return EXIT_SUCCESS;
+    }
 
     LOGVRB("Resolving unresolved data nodes and their constraints.");
     ly_vlog_hide(1);
 
     /* when */
+    ly_errno = LY_SUCCESS;
+    ly_vecode = LYVE_SUCCESS;
     do {
         progress = 0;
         for(i = 0; i < unres->count; i++) {
@@ -4379,6 +4456,28 @@ resolve_unres_data(struct unres_data *unres)
 
             rc = resolve_unres_data_item(unres->node[i], unres->type[i], LOGLINE_IDX(unres, i));
             if (!rc) {
+                if (ly_vecode == LYVE_NOCOND) {
+                    if (root) {
+                        /* auto-delete */
+                        LOGVRB("auto-delete node \"%s\" due to when condition (%s)", ly_errpath(),
+                               ((struct lys_node_leaf *)unres->node[i]->schema)->when->cond);
+                        if (*root == unres->node[i]) {
+                            *root = (*root)->next;
+                        }
+                        lyd_free(unres->node[i]);
+                        ly_errno = LY_SUCCESS;
+                        ly_vecode = LYVE_SUCCESS;
+                    } else {
+                        /* false when condition */
+                        ly_vlog_hide(0);
+                        path = strdup(ly_errpath());
+                        LOGERR(LY_EVALID, "%s%s%s%s", msg = strdup(ly_errmsg()), path[0] ? " (path: " : "",
+                               path[0] ? path : "", path[0] ? ")" : "");
+                        free(path);
+                        free(msg);
+                        return -1;
+                    }
+                }
                 unres->type[i] = UNRES_RESOLVED;
                 resolved++;
                 progress = 1;

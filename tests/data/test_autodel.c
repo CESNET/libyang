@@ -93,14 +93,14 @@ test_atob(void **state)
     node = lyd_new_leaf(st->dt, NULL, "a", "x");
     assert_ptr_not_equal(node, NULL);
     assert_ptr_equal(st->dt->child, node);
-    assert_int_equal(lyd_validate(st->dt, 0), 0);
+    assert_int_equal(lyd_validate(&(st->dt), 0), 0);
 
     lyd_print_mem(&(st->xml), st->dt, LYD_XML, 0);
     assert_string_equal(st->xml, "<c xmlns=\"urn:autodel\"><a>x</a></c>");
 
     node = lyd_new(st->dt, NULL, "b1");
     assert_ptr_not_equal(node, NULL);
-    assert_int_equal(lyd_validate(st->dt, 0), 0);
+    assert_int_equal(lyd_validate(&(st->dt), 0), 0);
 
     free(st->xml);
     lyd_print_mem(&(st->xml), st->dt, LYD_XML, 0);
@@ -117,14 +117,14 @@ test_btoa(void **state)
     assert_ptr_not_equal(node, NULL);
     node = lyd_new_leaf(st->dt, NULL, "b2", "z");
     assert_ptr_not_equal(node, NULL);
-    assert_int_equal(lyd_validate(st->dt, 0), 0);
+    assert_int_equal(lyd_validate(&(st->dt), 0), 0);
 
     lyd_print_mem(&(st->xml), st->dt, LYD_XML, 0);
     assert_string_equal(st->xml, "<c xmlns=\"urn:autodel\"><b1/><b2>z</b2></c>");
 
     node = lyd_new_leaf(st->dt, NULL, "a", "x");
     assert_ptr_not_equal(node, NULL);
-    assert_int_equal(lyd_validate(st->dt, 0), 0);
+    assert_int_equal(lyd_validate(&(st->dt), 0), 0);
 
     free(st->xml);
     lyd_print_mem(&(st->xml), st->dt, LYD_XML, 0);
@@ -146,7 +146,7 @@ test_insert_fail(void **state)
     assert_ptr_not_equal(root, NULL);
     node = lyd_new(root, NULL, "b1");
     assert_ptr_not_equal(node, NULL);
-    assert_int_equal(lyd_validate(root, 0), 0);
+    assert_int_equal(lyd_validate(&root, 0), 0);
 
     assert_int_not_equal(lyd_insert_after(st->dt->child, node), 0);
     assert_string_equal(ly_errmsg(), "Insert request refers node (/autodel:c/a) that is going to be auto-deleted.");
@@ -171,12 +171,12 @@ test_insert_correct(void **state)
     assert_ptr_not_equal(root, NULL);
     node = lyd_new(root, NULL, "b1");
     assert_ptr_not_equal(node, NULL);
-    assert_int_equal(lyd_validate(root, 0), 0);
+    assert_int_equal(lyd_validate(&root, 0), 0);
 
     assert_int_equal(lyd_insert_after(node2, node), 0);
     lyd_print_mem(&(st->xml), st->dt, LYD_XML, 0);
     assert_string_equal(st->xml, "<c xmlns=\"urn:autodel\"><x>node</x><b1/></c>");
-    assert_int_equal(lyd_validate(st->dt, 0), 0);
+    assert_int_equal(lyd_validate(&(st->dt), 0), 0);
 
     lyd_free(root);
 }

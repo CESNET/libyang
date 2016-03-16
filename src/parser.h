@@ -93,7 +93,7 @@ int lyp_is_rpc(struct lys_node *node);
  * @brief Check validity of parser options.
  *
  * @param options Parser options to be checked.
- * @retrun 0 for ok, 1 when multiple data types bits are set.
+ * @retrun 0 for ok, 1 when multiple data types bits are set, or incompatible options are used together.
  */
 int lyp_check_options(int options);
 
