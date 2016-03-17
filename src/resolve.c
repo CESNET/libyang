@@ -1747,6 +1747,7 @@ check_default(struct lys_type *type, const char *value, struct lys_module *modul
     int ret = EXIT_SUCCESS;
 
     /* dummy leaf */
+    memset(&node, 0, sizeof node);
     node.value_str = value;
     node.value_type = type->base;
     node.schema = calloc(1, sizeof (struct lys_node_leaf));
