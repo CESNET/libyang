@@ -447,8 +447,11 @@ meta_stmts: %empty
                                    }
                                    s = NULL;
                                  }
-  |  meta_stmts reference_stmt { if (read_all && yang_read_reference(trg,NULL,s,MODULE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
-  ;
+  |  meta_stmts reference_stmt { if (read_all && yang_read_reference(trg, NULL, s, NULL, yylineno)) {
+                                   YYERROR;
+                                 }
+                                 s=NULL;
+                               }
 
 organization_stmt: ORGANIZATION_KEYWORD sep string stmtend;
 
@@ -486,7 +489,11 @@ revision_opt_stmt: %empty
                                           }
                                           s = NULL;
                                         }
-  |  revision_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,actual,s,actual_type,yylineno)) {YYERROR;} s=NULL; }
+  |  revision_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, "revision", yylineno)) {
+                                          YYERROR;
+                                        }
+                                        s = NULL;
+                                      }
   ;
 
 date_arg_str: REVISION_DATE { if (read_all) {
@@ -708,8 +715,11 @@ feature_opt_stmt: %empty { if (read_all) {
                                          }
                                          s = NULL;
                                        }
-  |  feature_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,actual,s,FEATURE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
-  ;
+  |  feature_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, "feature", yylineno)) {
+                                         YYERROR;
+                                       }
+                                       s = NULL;
+                                     }
 
 if_feature_stmt: IF_FEATURE_KEYWORD sep identifier_ref_arg_str stmtend;
 
@@ -736,8 +746,11 @@ identity_opt_stmt: %empty
                                           }
                                           s = NULL;
                                         }
-  |  identity_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,actual,s,IDENTITY_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
-  ;
+  |  identity_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, "identity", yylineno)) {
+                                          YYERROR;
+                                        }
+                                        s = NULL;
+                                      }
 
 base_stmt: BASE_KEYWORD sep identifier_ref_arg_str stmtend;
 
@@ -807,8 +820,11 @@ type_opt_stmt: %empty { $$.tpdf.ptr_tpdf = actual; }
                                       }
                                       s = NULL;
                                     }
-  |  type_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.tpdf.ptr_tpdf, s, TYPEDEF_KEYWORD, yylineno)) {YYERROR;} s = NULL; }
-  ;
+  |  type_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.tpdf.ptr_tpdf, s, "typedef", yylineno)) {
+                                      YYERROR;
+                                    }
+                                    s = NULL;
+                                  }
 
 type_end: ';' 
   |  '{' stmtsep
@@ -970,8 +986,11 @@ message_opt_stmt: %empty { switch (actual_type) {
                                           }
                                           s = NULL;
                                         }
-  |  message_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,actual,s,actual_type,yylineno)) {YYERROR;} s = NULL; }
-  ;
+  |  message_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, $1, yylineno)) {
+                                         YYERROR;
+                                       }
+                                       s = NULL;
+                                     }
 
 pattern_stmt: PATTERN_KEYWORD sep pattern_arg_str pattern_end stmtsep { actual = $3;
                                                                         actual_type = TYPE_KEYWORD;
@@ -1057,8 +1076,11 @@ enum_opt_stmt: %empty
                                       }
                                       s = NULL;
                                     }
-  |  enum_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,actual,s,ENUM_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
-  ;
+  |  enum_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, "enum", yylineno)) {
+                                      YYERROR;
+                                    }
+                                    s = NULL;
+                                  }
 
 value_stmt: VALUE_KEYWORD sep integer_value_arg_str
             stmtend { if (read_all) {
@@ -1191,8 +1213,11 @@ bit_opt_stmt: %empty
                                      }
                                      s = NULL;
                                    }
-  |  bit_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,actual,s,BIT_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
-  ;
+  |  bit_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, "bit", yylineno)) {
+                                     YYERROR;
+                                   }
+                                   s = NULL;
+                                 }
 
 position_stmt: POSITION_KEYWORD sep position_value_arg_str
                stmtend { if (read_all) {
@@ -1267,7 +1292,11 @@ grouping_opt_stmt: %empty { if (read_all) {
                                           }
                                           s = NULL;
                                         }
-  |  grouping_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,$1.grouping,s,GROUPING_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  grouping_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.grouping, s, "grouping", yylineno)) {
+                                          YYERROR;
+                                        }
+                                        s = NULL;
+                                      }
   |  grouping_opt_stmt grouping_stmt stmtsep { actual = $1.grouping; actual_type = GROUPING_KEYWORD; }
   |  grouping_opt_stmt typedef_stmt stmtsep { if (read_all) {
                                                 actual = $1.grouping;
@@ -1367,7 +1396,11 @@ container_opt_stmt: %empty { if (read_all) {
                                            }
                                            s = NULL;
                                          }
-  |  container_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,$1.container,s,CONTAINER_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  container_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.container, s, "container", yylineno)) {
+                                           YYERROR;
+                                         }
+                                         s = NULL;
+                                       }
   |  container_opt_stmt grouping_stmt { actual = $1.container;
                                         actual_type = CONTAINER_KEYWORD;
                                         data_node = actual;
@@ -1489,8 +1522,11 @@ leaf_opt_stmt: %empty { if (read_all) {
                                       }
                                       s = NULL;
                                     }
-  |  leaf_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,$1.leaf.ptr_leaf,s,LEAF_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
-  ;
+  |  leaf_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.leaf.ptr_leaf, s, "leaf", yylineno)) {
+                                      YYERROR;
+                                    }
+                                    s = NULL;
+                                  }
 
 leaf_list_stmt: LEAF_LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                                              if (!(actual = yang_read_node(trg,actual,s,LYS_LEAFLIST,sizeof(struct lys_node_leaflist)))) {YYERROR;}
@@ -1627,8 +1663,11 @@ leaf_list_opt_stmt: %empty { if (read_all) {
                                            }
                                            s = NULL;
                                          }
-  |  leaf_list_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,$1.leaflist.ptr_leaflist,s,LEAF_LIST_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
-  ;
+  |  leaf_list_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.leaflist.ptr_leaflist, s, "leaf-list", yylineno)) {
+                                           YYERROR;
+                                         }
+                                         s = NULL;
+                                       }
 
 list_stmt: LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                                    if (!(actual = yang_read_node(trg,actual,s,LYS_LIST,sizeof(struct lys_node_list)))) {YYERROR;}
@@ -1797,7 +1836,11 @@ list_opt_stmt: %empty { if (read_all) {
                                       }
                                       s = NULL;
                                     }
-  |  list_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,$1.list.ptr_list,s,LIST_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  list_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.list.ptr_list, s, "list", yylineno)) {
+                                      YYERROR;
+                                    }
+                                    s = NULL;
+                                  }
   |  list_opt_stmt typedef_stmt { if (read_all) {
                                             actual = $1.list.ptr_list;
                                             actual_type = LIST_KEYWORD;
@@ -1928,7 +1971,7 @@ choice_opt_stmt: %empty { if (read_all) {
                                           $$ = $1;
                                         }
                                       }
-  |  choice_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,$1.choice.ptr_choice,s,CHOICE_KEYWORD,yylineno)) {
+  |  choice_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.choice.ptr_choice, s, "choice", yylineno)) {
                                         if ($1.choice.s) {
                                           free($1.choice.s);
                                           YYERROR;
@@ -2005,7 +2048,11 @@ case_opt_stmt: %empty { if (read_all) {
                                       }
                                       s = NULL;
                                     }
-  |  case_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,$1.cs,s,CASE_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  case_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.cs, s, "case", yylineno)) {
+                                      YYERROR;
+                                    }
+                                    s = NULL;
+                                  }
   |  case_opt_stmt data_def_stmt { actual = $1.cs;
                                    actual_type = CASE_KEYWORD;
                                    data_node = actual;
@@ -2079,8 +2126,11 @@ anyxml_opt_stmt: %empty { if (read_all) {
                                         }
                                         s = NULL;
                                       }
-  |  anyxml_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,$1.anyxml,s,ANYXML_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
-  ;
+  |  anyxml_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.anyxml, s, "anyxml", yylineno)) {
+                                        YYERROR;
+                                      }
+                                      s = NULL;
+                                    }
 
 uses_stmt: USES_KEYWORD sep identifier_ref_arg_str { if (read_all) {
                                                        if (!(actual = yang_read_node(trg,actual,s,LYS_USES,sizeof(struct lys_node_uses)))) {YYERROR;}
@@ -2154,7 +2204,11 @@ uses_opt_stmt: %empty { if (read_all) {
                                       }
                                       s = NULL;
                                     }
-  |  uses_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,$1.uses.ptr_uses,s,USES_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  uses_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.uses.ptr_uses, s, USES_KEYWORD, yylineno)) {
+                                      YYERROR;
+                                    }
+                                    s = NULL;
+                                  }
   |  uses_opt_stmt refine_stmt { if (read_all) {
                                    actual = $1.uses.ptr_uses;
                                    actual_type = USES_KEYWORD;
@@ -2360,8 +2414,11 @@ refine_body_opt_stmts: %empty { if (read_all) {
                                               }
                                               s = NULL;
                                             }
-  |  refine_body_opt_stmts reference_stmt { if (read_all && yang_read_reference(trg,$1.refine,s,REFINE_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
-  ;
+  |  refine_body_opt_stmts reference_stmt { if (read_all && yang_read_reference(trg, $1.refine, s, "refine", yylineno)) {
+                                              YYERROR;
+                                            }
+                                            s = NULL;
+                                          }
 
 uses_augment_stmt: AUGMENT_KEYWORD sep uses_augment_arg_str { if (read_all) {
                                                                 if (!(actual = yang_read_augment(trg, actual, s, yylineno))) {
@@ -2446,7 +2503,11 @@ augment_opt_stmt: %empty { if (read_all) {
                                          }
                                          s = NULL;
                                        }
-  |  augment_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,$1.augment.ptr_augment,s,AUGMENT_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  augment_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.augment.ptr_augment, s, "augment", yylineno)) {
+                                         YYERROR;
+                                       }
+                                       s = NULL;
+                                     }
   |  augment_opt_stmt data_def_stmt { if (read_all) {
                                         actual = $1.augment.ptr_augment;
                                         actual_type = AUGMENT_KEYWORD;
@@ -2529,7 +2590,11 @@ rpc_opt_stmt: %empty { if (read_all) {
                                      }
                                      s = NULL;
                                    }
-  |  rpc_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,$1.rpc.ptr_rpc,s,RPC_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  rpc_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.rpc.ptr_rpc, s, "rpc", yylineno)) {
+                                     YYERROR;
+                                   }
+                                   s = NULL;
+                                 }
   |  rpc_opt_stmt typedef_stmt { if (read_all) {
                                            actual = $1.rpc.ptr_rpc;
                                            actual_type = RPC_KEYWORD;
@@ -2701,7 +2766,11 @@ notification_opt_stmt: %empty { if (read_all) {
                                               }
                                               s = NULL;
                                             }
-  |  notification_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,$1.notif,s,NOTIFICATION_KEYWORD,yylineno)) {YYERROR;} s = NULL; }
+  |  notification_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.notif, s, "notification", yylineno)) {
+                                              YYERROR;
+                                            }
+                                            s = NULL;
+                                          }
   |  notification_opt_stmt typedef_stmt { if (read_all) {
                                                     actual = $1.notif;
                                                     actual_type = NOTIFICATION_KEYWORD;
@@ -2772,7 +2841,7 @@ deviation_opt_stmt: %empty { if (read_all) {
                                            s = NULL;
                                            $$ = $1;
                                          }
-  |  deviation_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,$1.deviation->deviation,s,DEVIATION_KEYWORD,yylineno)) {
+  |  deviation_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.deviation->deviation, s, "deviation", yylineno)) {
                                            free($1.deviation);
                                            YYERROR;
                                          }
@@ -3076,7 +3145,11 @@ when_opt_stmt: %empty
                                       }
                                       s = NULL;
                                     }
-  |  when_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg,actual,s,actual_type,yylineno)) {YYERROR;} s=NULL; }
+  |  when_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, "when", yylineno)) {
+                                      YYERROR;
+                                    }
+                                    s = NULL;
+                                  }
 
 config_stmt: CONFIG_KEYWORD sep config_arg_str stmtend { $$ = $3; }
 

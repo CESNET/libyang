@@ -166,7 +166,7 @@ int yang_fill_import(struct lys_module *module, struct lys_import *imp, char *va
 
 int yang_read_description(struct lys_module *module, void *node, char *value, char *where, int line);
 
-int yang_read_reference(struct lys_module *module, void *node, char *value, int type, int line);
+int yang_read_reference(struct lys_module *module, void *node, char *value, char *where, int line);
 
 void *yang_read_revision(struct lys_module *module, char *value);
 
