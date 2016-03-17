@@ -1856,6 +1856,13 @@ check_key(struct lys_node_list *list, int index, const char *name, int len, uint
         return -1;
     }
 
+    /* key is not when-conditional */
+    if (key->when) {
+        LOGVAL(LYE_INCHILDSTMT, line, 0, NULL, "when", "leaf");
+        LOGVAL(LYE_SPEC, 0, LY_VLOG_LYS, key, "Key definition cannot depend on a \"when\" condition.");
+        return -1;
+    }
+
     return EXIT_SUCCESS;
 }
 
