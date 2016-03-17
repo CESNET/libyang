@@ -39,9 +39,9 @@
 #include "dict_private.h"
 
 static struct lyd_node *moveto_get_root(struct lyd_node *cur_node, int when_must_eval, enum lyxp_node_type *root_type);
-static int reparse_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line);
+static int reparse_expr(struct lyxp_expr *exp, uint16_t *exp_idx);
 static int eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
-                     int when_must_eval, uint32_t line);
+                     int when_must_eval);
 
 /**
  * @brief Frees a parsed XPath expression. \p exp should not be used afterwards.
@@ -1181,21 +1181,20 @@ exp_add_token(struct lyxp_expr *exp, enum lyxp_token token, uint16_t expr_pos, u
  * @param[in] exp Expression to use.
  * @param[in] exp_idx Position in the expression \p exp.
  * @param[in] want_tok Expected token.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS if the current token matches the expected one,
  *         -1 otherwise.
  */
 static int
-exp_check_token(struct lyxp_expr *exp, uint16_t exp_idx, enum lyxp_token want_tok, uint32_t line)
+exp_check_token(struct lyxp_expr *exp, uint16_t exp_idx, enum lyxp_token want_tok)
 {
     if (exp->used == exp_idx) {
-        LOGVAL(LYE_XPATH_EOF, line, 0, NULL);
+        LOGVAL(LYE_XPATH_EOF, LY_VLOG_NONE, NULL);
         return -1;
     }
 
     if (want_tok && (exp->tokens[exp_idx] != want_tok)) {
-        LOGVAL(LYE_XPATH_INTOK, line, 0, NULL,
+        LOGVAL(LYE_XPATH_INTOK, LY_VLOG_NONE, NULL,
                print_token(exp->tokens[exp_idx]), &exp->expr[exp->expr_pos[exp_idx]]);
         return -1;
     }
@@ -1284,23 +1283,22 @@ exp_repeat_push(struct lyxp_expr *exp, uint16_t exp_idx, uint16_t repeat_op_idx)
  *
  * @param[in] exp Parsed XPath expression.
  * @param[in] exp_idx Position in the expression \p exp.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-reparse_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
+reparse_predicate(struct lyxp_expr *exp, uint16_t *exp_idx)
 {
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_BRACK1, line)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_BRACK1)) {
         return -1;
     }
     ++(*exp_idx);
 
-    if (reparse_expr(exp, exp_idx, line)) {
+    if (reparse_expr(exp, exp_idx)) {
         return -1;
     }
 
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_BRACK2, line)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_BRACK2)) {
         return -1;
     }
     ++(*exp_idx);
@@ -1317,14 +1315,13 @@ reparse_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
  *
  * @param[in] exp Parsed XPath expression.
  * @param[in] exp_idx Position in the expression \p exp.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-reparse_relative_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
+reparse_relative_location_path(struct lyxp_expr *exp, uint16_t *exp_idx)
 {
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE, line)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE)) {
         return -1;
     }
 
@@ -1333,7 +1330,7 @@ reparse_relative_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_
         /* '/' or '//' */
         ++(*exp_idx);
 
-        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE, line)) {
+        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE)) {
             return -1;
         }
 step:
@@ -1350,11 +1347,11 @@ step:
         case LYXP_TOKEN_AT:
             ++(*exp_idx);
 
-            if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE, line)) {
+            if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE)) {
                 return -1;
             }
             if ((exp->tokens[*exp_idx] != LYXP_TOKEN_NAMETEST) && (exp->tokens[*exp_idx] != LYXP_TOKEN_NODETYPE)) {
-                LOGVAL(LYE_XPATH_INTOK, line, 0, NULL,
+                LOGVAL(LYE_XPATH_INTOK, LY_VLOG_NONE, NULL,
                        print_token(exp->tokens[*exp_idx]), &exp->expr[exp->expr_pos[*exp_idx]]);
                 return -1;
             }
@@ -1368,13 +1365,13 @@ step:
             ++(*exp_idx);
 
             /* '(' */
-            if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR1, line)) {
+            if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR1)) {
                 return -1;
             }
             ++(*exp_idx);
 
             /* ')' */
-            if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR2, line)) {
+            if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR2)) {
                 return -1;
             }
             ++(*exp_idx);
@@ -1382,13 +1379,13 @@ step:
 reparse_predicate:
             /* Predicate* */
             while ((exp->used > *exp_idx) && (exp->tokens[*exp_idx] == LYXP_TOKEN_BRACK1)) {
-                if (reparse_predicate(exp, exp_idx, line)) {
+                if (reparse_predicate(exp, exp_idx)) {
                     return -1;
                 }
             }
             break;
         default:
-            LOGVAL(LYE_XPATH_INTOK, line, 0, NULL,
+            LOGVAL(LYE_XPATH_INTOK, LY_VLOG_NONE, NULL,
                    print_token(exp->tokens[*exp_idx]), &exp->expr[exp->expr_pos[*exp_idx]]);
             return -1;
         }
@@ -1404,14 +1401,13 @@ reparse_predicate:
  *
  * @param[in] exp Parsed XPath expression.
  * @param[in] exp_idx Position in the expression \p exp.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-reparse_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
+reparse_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx)
 {
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_PATH, line)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_PATH)) {
         return -1;
     }
 
@@ -1420,7 +1416,7 @@ reparse_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_
         /* '/' */
         ++(*exp_idx);
 
-        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE, UINT_MAX)) {
+        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE)) {
             return EXIT_SUCCESS;
         }
         switch (exp->tokens[*exp_idx]) {
@@ -1429,7 +1425,7 @@ reparse_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_
         case LYXP_TOKEN_AT:
         case LYXP_TOKEN_NAMETEST:
         case LYXP_TOKEN_NODETYPE:
-            if (reparse_relative_location_path(exp, exp_idx, line)) {
+            if (reparse_relative_location_path(exp, exp_idx)) {
                 return -1;
             }
             /* fall through */
@@ -1442,7 +1438,7 @@ reparse_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_
         /* '//' */
         ++(*exp_idx);
 
-        if (reparse_relative_location_path(exp, exp_idx, line)) {
+        if (reparse_relative_location_path(exp, exp_idx)) {
             return -1;
         }
     }
@@ -1457,43 +1453,42 @@ reparse_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_
  *
  * @param[in] exp Parsed XPath expression.
  * @param[in] exp_idx Position in the expression \p exp.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-reparse_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
+reparse_function_call(struct lyxp_expr *exp, uint16_t *exp_idx)
 {
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_FUNCNAME, line)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_FUNCNAME)) {
         return -1;
     }
     ++(*exp_idx);
 
     /* '(' */
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR1, line)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR1)) {
         return -1;
     }
     ++(*exp_idx);
 
     /* ( Expr ( ',' Expr )* )? */
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE, line)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE)) {
         return -1;
     }
     if (exp->tokens[*exp_idx] != LYXP_TOKEN_PAR2) {
-        if (reparse_expr(exp, exp_idx, line)) {
+        if (reparse_expr(exp, exp_idx)) {
             return -1;
         }
     }
     while ((exp->used > *exp_idx) && (exp->tokens[*exp_idx] == LYXP_TOKEN_COMMA)) {
         ++(*exp_idx);
 
-        if (reparse_expr(exp, exp_idx, line)) {
+        if (reparse_expr(exp, exp_idx)) {
             return -1;
         }
     }
 
     /* ')' */
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR2, line)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR2)) {
         return -1;
     }
     ++(*exp_idx);
@@ -1512,14 +1507,13 @@ reparse_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
  *
  * @param[in] exp Parsed XPath expression.
  * @param[in] exp_idx Position in the expression \p exp.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-reparse_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
+reparse_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
 {
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE, line)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE)) {
         return -1;
     }
 
@@ -1528,11 +1522,11 @@ reparse_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
         /* '(' Expr ')' Predicate* */
         ++(*exp_idx);
 
-        if (reparse_expr(exp, exp_idx, line)) {
+        if (reparse_expr(exp, exp_idx)) {
             return -1;
         }
 
-        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR2, line)) {
+        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR2)) {
             return -1;
         }
         ++(*exp_idx);
@@ -1544,20 +1538,20 @@ reparse_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
     case LYXP_TOKEN_NAMETEST:
     case LYXP_TOKEN_NODETYPE:
         /* RelativeLocationPath */
-        if (reparse_relative_location_path(exp, exp_idx, line)) {
+        if (reparse_relative_location_path(exp, exp_idx)) {
             return -1;
         }
         break;
     case LYXP_TOKEN_FUNCNAME:
         /* FunctionCall */
-        if (reparse_function_call(exp, exp_idx, line)) {
+        if (reparse_function_call(exp, exp_idx)) {
             return -1;
         }
         goto predicate;
         break;
     case LYXP_TOKEN_OPERATOR_PATH:
         /* AbsoluteLocationPath */
-        if (reparse_absolute_location_path(exp, exp_idx, line)) {
+        if (reparse_absolute_location_path(exp, exp_idx)) {
             return -1;
         }
         break;
@@ -1572,7 +1566,7 @@ reparse_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
         goto predicate;
         break;
     default:
-        LOGVAL(LYE_XPATH_INTOK, line, 0, NULL,
+        LOGVAL(LYE_XPATH_INTOK, LY_VLOG_NONE, NULL,
                print_token(exp->tokens[*exp_idx]), &exp->expr[exp->expr_pos[*exp_idx]]);
         return -1;
     }
@@ -1582,7 +1576,7 @@ reparse_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
 predicate:
     /* Predicate* */
     while ((exp->used > *exp_idx) && (exp->tokens[*exp_idx] == LYXP_TOKEN_BRACK1)) {
-        if (reparse_predicate(exp, exp_idx, line)) {
+        if (reparse_predicate(exp, exp_idx)) {
             return -1;
         }
     }
@@ -1593,7 +1587,7 @@ predicate:
         /* '/' or '//' */
         ++(*exp_idx);
 
-        if (reparse_relative_location_path(exp, exp_idx, line)) {
+        if (reparse_relative_location_path(exp, exp_idx)) {
             return -1;
         }
     }
@@ -1609,34 +1603,33 @@ predicate:
  *
  * @param[in] exp Parsed XPath expression.
  * @param[in] exp_idx Position in the expression \p exp.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-reparse_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
+reparse_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
 {
     uint16_t prev_exp;
 
     /* ('-')* */
-    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH, UINT_MAX)
+    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH)
             && (exp->expr[exp->expr_pos[*exp_idx]] == '-')) {
         ++(*exp_idx);
     }
 
     /* PathExpr */
     prev_exp = *exp_idx;
-    if (reparse_path_expr(exp, exp_idx, line)) {
+    if (reparse_path_expr(exp, exp_idx)) {
         return -1;
     }
 
     /* ('|' PathExpr)* */
-    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_UNI, UINT_MAX)) {
+    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_UNI)) {
         exp_repeat_push(exp, prev_exp, *exp_idx);
         ++(*exp_idx);
 
         prev_exp = *exp_idx;
-        if (reparse_path_expr(exp, exp_idx, line)) {
+        if (reparse_path_expr(exp, exp_idx)) {
             return -1;
         }
     }
@@ -1658,19 +1651,18 @@ reparse_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
  *
  * @param[in] exp Parsed XPath expression.
  * @param[in] exp_idx Position in the expression \p exp.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-reparse_additive_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
+reparse_additive_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
 {
     uint16_t prev_add_exp, prev_mul_exp;
 
     goto reparse_multiplicative_expr;
 
     /* ('+' / '-' MultiplicativeExpr)* */
-    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH, UINT_MAX)
+    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH)
             && ((exp->expr[exp->expr_pos[*exp_idx]] == '+') || (exp->expr[exp->expr_pos[*exp_idx]] == '-'))) {
         exp_repeat_push(exp, prev_add_exp, *exp_idx);
         ++(*exp_idx);
@@ -1680,18 +1672,18 @@ reparse_multiplicative_expr:
         prev_mul_exp = *exp_idx;
 
         /* UnaryExpr */
-        if (reparse_unary_expr(exp, exp_idx, line)) {
+        if (reparse_unary_expr(exp, exp_idx)) {
             return -1;
         }
 
         /* ('*' / 'div' / 'mod' UnaryExpr)* */
-        while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH, UINT_MAX)
+        while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH)
                 && ((exp->expr[exp->expr_pos[*exp_idx]] == '*') || (exp->tok_len[*exp_idx] == 3))) {
             exp_repeat_push(exp, prev_mul_exp, *exp_idx);
             ++(*exp_idx);
 
             prev_mul_exp = *exp_idx;
-            if (reparse_unary_expr(exp, exp_idx, line)) {
+            if (reparse_unary_expr(exp, exp_idx)) {
                 return -1;
             }
         }
@@ -1713,19 +1705,18 @@ reparse_multiplicative_expr:
  *
  * @param[in] exp Parsed XPath expression.
  * @param[in] exp_idx Position in the expression \p exp.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-reparse_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
+reparse_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
 {
     uint16_t prev_eq_exp, prev_rel_exp;
 
     goto reparse_additive_expr;
 
     /* ('=' / '!=' RelationalExpr)* */
-    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_COMP, UINT_MAX)
+    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_COMP)
             && ((exp->expr[exp->expr_pos[*exp_idx]] == '=') || (exp->expr[exp->expr_pos[*exp_idx]] == '!'))) {
         exp_repeat_push(exp, prev_eq_exp, *exp_idx);
         ++(*exp_idx);
@@ -1735,18 +1726,18 @@ reparse_additive_expr:
         prev_rel_exp = *exp_idx;
 
         /* AdditiveExpr */
-        if (reparse_additive_expr(exp, exp_idx, line)) {
+        if (reparse_additive_expr(exp, exp_idx)) {
             return -1;
         }
 
         /* ('<' / '>' / '<=' / '>=' AdditiveExpr)* */
-        while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_COMP, UINT_MAX)
+        while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_COMP)
                 && ((exp->expr[exp->expr_pos[*exp_idx]] == '<') || (exp->expr[exp->expr_pos[*exp_idx]] == '>'))) {
             exp_repeat_push(exp, prev_rel_exp, *exp_idx);
             ++(*exp_idx);
 
             prev_rel_exp = *exp_idx;
-            if (reparse_additive_expr(exp, exp_idx, line)) {
+            if (reparse_additive_expr(exp, exp_idx)) {
                 return -1;
             }
         }
@@ -1763,19 +1754,18 @@ reparse_additive_expr:
  *
  * @param[in] exp Parsed XPath expression.
  * @param[in] exp_idx Position in the expression \p exp.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-reparse_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint32_t line)
+reparse_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
 {
     uint16_t prev_or_exp, prev_and_exp;
 
     goto reparse_equality_expr;
 
     /* ('or' AndExpr)* */
-    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_LOG, UINT_MAX) && (exp->tok_len[*exp_idx] == 2)) {
+    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_LOG) && (exp->tok_len[*exp_idx] == 2)) {
         exp_repeat_push(exp, prev_or_exp, *exp_idx);
         ++(*exp_idx);
 
@@ -1784,17 +1774,17 @@ reparse_equality_expr:
         prev_and_exp = *exp_idx;
 
         /* EqualityExpr */
-        if (reparse_equality_expr(exp, exp_idx, line)) {
+        if (reparse_equality_expr(exp, exp_idx)) {
             return -1;
         }
 
         /* ('and' EqualityExpr)* */
-        while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_LOG, UINT_MAX) && (exp->tok_len[*exp_idx] == 3)) {
+        while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_LOG) && (exp->tok_len[*exp_idx] == 3)) {
             exp_repeat_push(exp, prev_and_exp, *exp_idx);
             ++(*exp_idx);
 
             prev_and_exp = *exp_idx;
-            if (reparse_equality_expr(exp, exp_idx, line)) {
+            if (reparse_equality_expr(exp, exp_idx)) {
                 return -1;
             }
         }
@@ -1817,7 +1807,7 @@ parse_ncname(const char *ncname)
     int uc;
     unsigned int size;
 
-    uc = lyxml_getutf8(&ncname[parsed], &size, UINT_MAX);
+    uc = lyxml_getutf8(&ncname[parsed], &size);
     if (!is_xmlnamestartchar(uc) || (uc == ':')) {
        return parsed;
     }
@@ -1827,7 +1817,7 @@ parse_ncname(const char *ncname)
         if (!ncname[parsed]) {
             break;
         }
-        uc = lyxml_getutf8(&ncname[parsed], &size, UINT_MAX);
+        uc = lyxml_getutf8(&ncname[parsed], &size);
     } while (is_xmlnamechar(uc) && (uc != ':'));
 
     return parsed;
@@ -1840,12 +1830,11 @@ parse_ncname(const char *ncname)
  * http://www.w3.org/TR/1999/REC-xpath-19991116/ section 3.7
  *
  * @param[in] expr XPath expression to parse.
- * @param[in] line Line of the expression in the input file.
  *
  * @return Filled expression structure or NULL on error.
  */
 static struct lyxp_expr *
-parse_expr(const char *expr, uint32_t line)
+parse_expr(const char *expr)
 {
     struct lyxp_expr *ret;
     uint16_t parsed = 0, tok_len, ncname_len;
@@ -2037,7 +2026,7 @@ parse_expr(const char *expr, uint32_t line)
                 tok_type = LYXP_TOKEN_OPERATOR_MATH;
 
             } else {
-                LOGVAL(LYE_INCHAR, line, 0, NULL, expr[parsed], &expr[parsed]);
+                LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, expr[parsed], &expr[parsed]);
                 goto error;
             }
         } else if (expr[parsed] == '*') {
@@ -2051,7 +2040,7 @@ parse_expr(const char *expr, uint32_t line)
             /* NameTest (NCName ':' '*' | QName) or NodeType/FunctionName */
             ncname_len = parse_ncname(&expr[parsed]);
             if (!ncname_len) {
-                LOGVAL(LYE_INCHAR, line, 0, NULL, expr[parsed], &expr[parsed]);
+                LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, expr[parsed], &expr[parsed]);
                 goto error;
             }
             tok_len = ncname_len;
@@ -2063,7 +2052,7 @@ parse_expr(const char *expr, uint32_t line)
                 } else {
                     ncname_len = parse_ncname(&expr[parsed + tok_len]);
                     if (!ncname_len) {
-                        LOGVAL(LYE_INCHAR, line, 0, NULL, expr[parsed], &expr[parsed]);
+                        LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, expr[parsed], &expr[parsed]);
                         goto error;
                     }
                     tok_len += ncname_len;
@@ -2118,18 +2107,17 @@ error:
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_boolean(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-              int when_must_eval, uint32_t line)
+              int when_must_eval)
 {
     struct ly_ctx *ctx;
 
     if (arg_count != 1) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "boolean(object)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "boolean(object)");
         return -1;
     }
 
@@ -2150,18 +2138,17 @@ xpath_boolean(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_n
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_ceiling(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-              int when_must_eval, uint32_t line)
+              int when_must_eval)
 {
     struct ly_ctx *ctx;
 
     if (arg_count != 1) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "ceiling(number)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "ceiling(number)");
         return -1;
     }
 
@@ -2186,13 +2173,12 @@ xpath_ceiling(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_n
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_concat(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-             int when_must_eval, uint32_t line)
+             int when_must_eval)
 {
     uint16_t i;
     char *str = NULL;
@@ -2200,7 +2186,7 @@ xpath_concat(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_no
     struct ly_ctx *ctx;
 
     if (arg_count < 2) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "concat(string, string, string*)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "concat(string, string, string*)");
         return -1;
     }
 
@@ -2236,18 +2222,17 @@ xpath_concat(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_no
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_contains(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-               int when_must_eval, uint32_t line)
+               int when_must_eval)
 {
     struct ly_ctx *ctx;
 
     if (arg_count != 2) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "contains(string, string)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "contains(string, string)");
         return -1;
     }
 
@@ -2274,18 +2259,17 @@ xpath_contains(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_count(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-            int UNUSED(when_must_eval), uint32_t line)
+            int UNUSED(when_must_eval))
 {
     struct ly_ctx *ctx;
 
     if (arg_count != 1) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "count(node-set)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "count(node-set)");
         return -1;
     }
 
@@ -2297,7 +2281,7 @@ xpath_count(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_nod
     }
 
     if (args[0]->type != LYXP_SET_NODE_SET) {
-        LOGVAL(LYE_XPATH_INARGTYPE, line, 0, NULL, 1, print_set_type(args[0]), "count(node-set)");
+        LOGVAL(LYE_XPATH_INARGTYPE, LY_VLOG_NONE, NULL, 1, print_set_type(args[0]), "count(node-set)");
         return -1;
     }
 
@@ -2314,16 +2298,15 @@ xpath_count(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_nod
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_current(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-              int when_must_eval, uint32_t line)
+              int when_must_eval)
 {
     if (arg_count || args) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "current()");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "current()");
         return -1;
     }
 
@@ -2341,18 +2324,17 @@ xpath_current(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_n
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_false(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-            int UNUSED(when_must_eval), uint32_t line)
+            int UNUSED(when_must_eval))
 {
     struct ly_ctx *ctx;
 
     if (arg_count || args) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "false()");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "false()");
         return -1;
     }
 
@@ -2371,18 +2353,17 @@ xpath_false(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_nod
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_floor(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-            int when_must_eval, uint32_t line)
+            int when_must_eval)
 {
     struct ly_ctx *ctx;
 
     if (arg_count != 1) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "floor(number)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "floor(number)");
         return -1;
     }
 
@@ -2405,13 +2386,12 @@ xpath_floor(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_nod
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_lang(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-           int when_must_eval, uint32_t line)
+           int when_must_eval)
 {
     struct lyd_node *node;
     struct lyd_attr *attr = NULL;
@@ -2419,7 +2399,7 @@ xpath_lang(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node
     struct ly_ctx *ctx;
 
     if (arg_count != 1) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "lang(string)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "lang(string)");
         return -1;
     }
 
@@ -2432,7 +2412,7 @@ xpath_lang(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node
         return EXIT_SUCCESS;
     }
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(LYE_XPATH_INCTX, line, 0, NULL, print_set_type(set), "lang(string)");
+        LOGVAL(LYE_XPATH_INCTX, LY_VLOG_NONE, NULL, print_set_type(set), "lang(string)");
         return -1;
     }
 
@@ -2487,18 +2467,17 @@ xpath_lang(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_last(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-           int UNUSED(when_must_eval), uint32_t line)
+           int UNUSED(when_must_eval))
 {
     struct ly_ctx *ctx;
 
     if (arg_count || args) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "last()");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "last()");
         return -1;
     }
 
@@ -2509,7 +2488,7 @@ xpath_last(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node
         return EXIT_SUCCESS;
     }
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(LYE_XPATH_INCTX, line, 0, NULL, print_set_type(set), "last()");
+        LOGVAL(LYE_XPATH_INCTX, LY_VLOG_NONE, NULL, print_set_type(set), "last()");
         return -1;
     }
 
@@ -2526,20 +2505,19 @@ xpath_last(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_local_name(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-                 int UNUSED(when_must_eval), uint32_t line)
+                 int UNUSED(when_must_eval))
 {
     struct lyd_node *node;
     enum lyxp_node_type type;
     struct ly_ctx *ctx;
 
     if (arg_count > 1) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "local-name(node-set?)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "local-name(node-set?)");
         return -1;
     }
 
@@ -2551,7 +2529,7 @@ xpath_local_name(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cu
             return EXIT_SUCCESS;
         }
         if (args[0]->type != LYXP_SET_NODE_SET) {
-            LOGVAL(LYE_XPATH_INARGTYPE, line, 0, NULL, 1, print_set_type(args[0]), "local-name(node-set?)");
+            LOGVAL(LYE_XPATH_INARGTYPE, LY_VLOG_NONE, NULL, 1, print_set_type(args[0]), "local-name(node-set?)");
             return -1;
         }
 
@@ -2563,7 +2541,7 @@ xpath_local_name(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cu
             return EXIT_SUCCESS;
         }
         if (set->type != LYXP_SET_NODE_SET) {
-            LOGVAL(LYE_XPATH_INCTX, line, 0, NULL, print_set_type(set), "local-name(node-set?)");
+            LOGVAL(LYE_XPATH_INCTX, LY_VLOG_NONE, NULL, print_set_type(set), "local-name(node-set?)");
             return -1;
         }
 
@@ -2606,13 +2584,12 @@ xpath_local_name(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cu
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-                    int UNUSED(when_must_eval), uint32_t line)
+                    int UNUSED(when_must_eval))
 {
     struct lyd_node *node;
     struct lys_module *module;
@@ -2620,7 +2597,7 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyd_node 
     struct ly_ctx *ctx;
 
     if (arg_count > 1) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "namespace-uri(node-set?)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "namespace-uri(node-set?)");
         return -1;
     }
 
@@ -2632,7 +2609,7 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyd_node 
             return EXIT_SUCCESS;
         }
         if (args[0]->type != LYXP_SET_NODE_SET) {
-            LOGVAL(LYE_XPATH_INARGTYPE, line, 0, NULL, 1, print_set_type(args[0]), "namespace-uri(node-set?)");
+            LOGVAL(LYE_XPATH_INARGTYPE, LY_VLOG_NONE, NULL, 1, print_set_type(args[0]), "namespace-uri(node-set?)");
             return -1;
         }
 
@@ -2644,7 +2621,7 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyd_node 
             return EXIT_SUCCESS;
         }
         if (set->type != LYXP_SET_NODE_SET) {
-            LOGVAL(LYE_XPATH_INCTX, line, 0, NULL, print_set_type(set), "namespace-uri(node-set?)");
+            LOGVAL(LYE_XPATH_INCTX, LY_VLOG_NONE, NULL, print_set_type(set), "namespace-uri(node-set?)");
             return -1;
         }
 
@@ -2694,16 +2671,15 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyd_node 
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_node(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-           int when_must_eval, uint32_t line)
+           int when_must_eval)
 {
     if (arg_count || args) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "node()");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "node()");
         return -1;
     }
 
@@ -2723,13 +2699,12 @@ xpath_node(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_normalize_space(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-                      int when_must_eval, uint32_t line)
+                      int when_must_eval)
 {
     uint16_t i, new_used;
     char *new;
@@ -2737,7 +2712,7 @@ xpath_normalize_space(struct lyxp_set **args, uint16_t arg_count, struct lyd_nod
     struct ly_ctx *ctx;
 
     if (arg_count > 2) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "normalize-space(string?)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "normalize-space(string?)");
         return -1;
     }
 
@@ -2816,18 +2791,17 @@ xpath_normalize_space(struct lyxp_set **args, uint16_t arg_count, struct lyd_nod
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_not(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-          int when_must_eval, uint32_t line)
+          int when_must_eval)
 {
     struct ly_ctx *ctx;
 
     if (arg_count != 1) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "not(boolean)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "not(boolean)");
         return -1;
     }
 
@@ -2852,18 +2826,17 @@ xpath_not(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node,
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_number(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-             int when_must_eval, uint32_t line)
+             int when_must_eval)
 {
     struct ly_ctx *ctx;
 
     if (arg_count > 1) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "number(object?)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "number(object?)");
         return -1;
     }
 
@@ -2888,18 +2861,17 @@ xpath_number(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_no
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_position(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-               int UNUSED(when_must_eval), uint32_t line)
+               int UNUSED(when_must_eval))
 {
     struct ly_ctx *ctx;
 
     if (arg_count || args) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "position()");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "position()");
         return -1;
     }
 
@@ -2910,7 +2882,7 @@ xpath_position(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_
         return EXIT_SUCCESS;
     }
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(LYE_XPATH_INCTX, line, 0, NULL, print_set_type(set), "position()");
+        LOGVAL(LYE_XPATH_INCTX, LY_VLOG_NONE, NULL, print_set_type(set), "position()");
         return -1;
     }
 
@@ -2928,18 +2900,17 @@ xpath_position(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_round(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-            int when_must_eval, uint32_t line)
+            int when_must_eval)
 {
     struct ly_ctx *ctx;
 
     if (arg_count != 1) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "round(number)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "round(number)");
         return -1;
     }
 
@@ -2952,7 +2923,7 @@ xpath_round(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_nod
         set_fill_number(set, -0, ctx);
     } else {
         args[0]->value.num += 0.5;
-        if (xpath_floor(args, 1, cur_node, args[0], when_must_eval, line)) {
+        if (xpath_floor(args, 1, cur_node, args[0], when_must_eval)) {
             return -1;
         }
         set_fill_number(set, args[0]->value.num, ctx);
@@ -2971,18 +2942,17 @@ xpath_round(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_nod
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_starts_with(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-                  int when_must_eval, uint32_t line)
+                  int when_must_eval)
 {
     struct ly_ctx *ctx;
 
     if (arg_count != 2) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "starts-with(string, string)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "starts-with(string, string)");
         return -1;
     }
 
@@ -3009,18 +2979,17 @@ xpath_starts_with(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *c
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_string(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-             int when_must_eval, uint32_t line)
+             int when_must_eval)
 {
     struct ly_ctx *ctx;
 
     if (arg_count > 1) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "string(object?)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "string(object?)");
         return -1;
     }
 
@@ -3045,18 +3014,17 @@ xpath_string(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_no
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_string_length(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-                    int when_must_eval, uint32_t line)
+                    int when_must_eval)
 {
     struct ly_ctx *ctx;
 
     if (arg_count > 2) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "string-length(string?)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "string-length(string?)");
         return -1;
     }
 
@@ -3085,20 +3053,19 @@ xpath_string_length(struct lyxp_set **args, uint16_t arg_count, struct lyd_node 
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_substring(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-                int when_must_eval, uint32_t line)
+                int when_must_eval)
 {
     int start, len;
     uint16_t str_start, str_len, pos;
     struct ly_ctx *ctx;
 
     if ((arg_count < 2) || (arg_count > 3)) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "substring(string, number, number?)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "substring(string, number, number?)");
         return -1;
     }
 
@@ -3107,7 +3074,7 @@ xpath_substring(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur
     lyxp_set_cast(args[0], LYXP_SET_STRING, cur_node, when_must_eval);
 
     /* start */
-    if (xpath_round(&args[1], 1, cur_node, args[1], when_must_eval, line)) {
+    if (xpath_round(&args[1], 1, cur_node, args[1], when_must_eval)) {
         return -1;
     }
     if (isfinite(args[1]->value.num)) {
@@ -3120,7 +3087,7 @@ xpath_substring(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur
 
     /* len */
     if (arg_count == 3) {
-        if (xpath_round(&args[2], 1, cur_node, args[2], when_must_eval, line)) {
+        if (xpath_round(&args[2], 1, cur_node, args[2], when_must_eval)) {
             return -1;
         }
         if (isfinite(args[2]->value.num)) {
@@ -3161,19 +3128,18 @@ xpath_substring(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_substring_after(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-                      int when_must_eval, uint32_t line)
+                      int when_must_eval)
 {
     char *ptr;
     struct ly_ctx *ctx;
 
     if (arg_count != 2) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "substring-after(string, string)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "substring-after(string, string)");
         return -1;
     }
 
@@ -3202,19 +3168,18 @@ xpath_substring_after(struct lyxp_set **args, uint16_t arg_count, struct lyd_nod
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_substring_before(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-                       int when_must_eval, uint32_t line)
+                       int when_must_eval)
 {
     char *ptr;
     struct ly_ctx *ctx;
 
     if (arg_count != 2) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "substring-before(string, string)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "substring-before(string, string)");
         return -1;
     }
 
@@ -3242,13 +3207,12 @@ xpath_substring_before(struct lyxp_set **args, uint16_t arg_count, struct lyd_no
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_sum(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-          int when_must_eval, uint32_t line)
+          int when_must_eval)
 {
     long double num;
     const char *str;
@@ -3257,7 +3221,7 @@ xpath_sum(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node,
     struct ly_ctx *ctx;
 
     if (arg_count != 1) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "sum(node-set)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "sum(node-set)");
         return -1;
     }
 
@@ -3269,7 +3233,7 @@ xpath_sum(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node,
     }
 
     if (args[0]->type != LYXP_SET_NODE_SET) {
-        LOGVAL(LYE_XPATH_INARGTYPE, line, 0, NULL, 1, print_set_type(args[0]), "sum(node-set)");
+        LOGVAL(LYE_XPATH_INARGTYPE, LY_VLOG_NONE, NULL, 1, print_set_type(args[0]), "sum(node-set)");
         return -1;
     }
 
@@ -3314,25 +3278,24 @@ xpath_sum(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node,
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_text(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *UNUSED(cur_node), struct lyxp_set *set,
-           int UNUSED(when_must_eval), uint32_t line)
+           int UNUSED(when_must_eval))
 {
     uint16_t i;
 
     if (arg_count || args) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "text()");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "text()");
         return -1;
     }
     if (set->type == LYXP_SET_EMPTY) {
         return EXIT_SUCCESS;
     }
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(LYE_XPATH_INCTX, line, 0, NULL, print_set_type(set), "text()");
+        LOGVAL(LYE_XPATH_INCTX, LY_VLOG_NONE, NULL, print_set_type(set), "text()");
         return -1;
     }
 
@@ -3373,13 +3336,12 @@ xpath_text(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *UNUSED(c
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_translate(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-                int when_must_eval, uint32_t line)
+                int when_must_eval)
 {
     uint16_t i, j, new_used;
     char *new;
@@ -3387,7 +3349,7 @@ xpath_translate(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur
     struct ly_ctx *ctx;
 
     if (arg_count != 3) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "translate(string, string, string)");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "translate(string, string, string)");
         return -1;
     }
 
@@ -3456,18 +3418,17 @@ xpath_translate(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur
  * @param[in] cur_node Original context node.
  * @param[in,out] set Context and result set at the same time.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 xpath_true(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
-           int UNUSED(when_must_eval), uint32_t line)
+           int UNUSED(when_must_eval))
 {
     struct ly_ctx *ctx;
 
     if (arg_count || args) {
-        LOGVAL(LYE_XPATH_INARGCOUNT, line, 0, NULL, arg_count, "true()");
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "true()");
         return -1;
     }
 
@@ -3657,13 +3618,11 @@ moveto_node_check(struct lyd_node *node, struct lyxp_set *set, uint16_t i, enum 
  * @param[in] qname Qualified node name to move to.
  * @param[in] qname_len Length of \p qname.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, uint16_t qname_len, int when_must_eval,
-            uint32_t line)
+moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, uint16_t qname_len, int when_must_eval)
 {
     uint16_t i, orig_used;
     int replaced, pref_len;
@@ -3677,7 +3636,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(LYE_XPATH_INOP_1, line, 0, NULL, "path operator", print_set_type(set));
+        LOGVAL(LYE_XPATH_INOP_1, LY_VLOG_NONE, NULL, "path operator", print_set_type(set));
         return -1;
     }
 
@@ -3742,13 +3701,12 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
  * @param[in] qname Qualified node name to move to.
  * @param[in] qname_len Length of \p qname.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, uint16_t qname_len,
-                    int when_must_eval, uint32_t line)
+                    int when_must_eval)
 {
     uint16_t i;
     int pref_len, all = 0, replace, match;
@@ -3762,7 +3720,7 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(LYE_XPATH_INOP_1, line, 0, NULL, "path operator", print_set_type(set));
+        LOGVAL(LYE_XPATH_INOP_1, LY_VLOG_NONE, NULL, "path operator", print_set_type(set));
         return -1;
     }
 
@@ -3783,7 +3741,7 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
     }
 
     /* replace the original nodes (and throws away all text and attr nodes, root is replaced by a child) */
-    if (moveto_node(set, cur_node, "*", 1, when_must_eval, line)) {
+    if (moveto_node(set, cur_node, "*", 1, when_must_eval)) {
         return -1;
     }
 
@@ -3891,13 +3849,11 @@ skip_children:
  * @param[in] qname Qualified node name to move to.
  * @param[in] qname_len Length of \p qname.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-moveto_attr(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, uint16_t qname_len, int when_must_eval,
-            uint32_t line)
+moveto_attr(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, uint16_t qname_len, int when_must_eval)
 {
     uint16_t i;
     int replaced, all = 0, pref_len;
@@ -3910,7 +3866,7 @@ moveto_attr(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(LYE_XPATH_INOP_1, line, 0, NULL, "path operator", print_set_type(set));
+        LOGVAL(LYE_XPATH_INOP_1, LY_VLOG_NONE, NULL, "path operator", print_set_type(set));
         return -1;
     }
 
@@ -3985,17 +3941,15 @@ moveto_attr(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
  * @param[in] set2 Set that is copied to \p set1.
  * @param[in] cur_node Original context node.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-moveto_union(struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *cur_node, int when_must_eval,
-             uint32_t line)
+moveto_union(struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *cur_node, int when_must_eval)
 {
     if (((set1->type != LYXP_SET_NODE_SET) && (set1->type != LYXP_SET_EMPTY))
             || ((set2->type != LYXP_SET_NODE_SET) && (set2->type != LYXP_SET_EMPTY))) {
-        LOGVAL(LYE_XPATH_INOP_2, line, 0, NULL, "union", print_set_type(set1), print_set_type(set2));
+        LOGVAL(LYE_XPATH_INOP_2, LY_VLOG_NONE, NULL, "union", print_set_type(set1), print_set_type(set2));
         return -1;
     }
 
@@ -4059,13 +4013,12 @@ moveto_union(struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *cur_
  * @param[in] qname Qualified node name to move to.
  * @param[in] qname_len Length of \p qname.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, uint16_t qname_len,
-                    int when_must_eval, uint32_t line)
+                    int when_must_eval)
 {
     uint16_t i;
     int pref_len, replaced, all = 0;
@@ -4079,7 +4032,7 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(LYE_XPATH_INOP_1, line, 0, NULL, "path operator", print_set_type(set));
+        LOGVAL(LYE_XPATH_INOP_1, LY_VLOG_NONE, NULL, "path operator", print_set_type(set));
         return -1;
     }
 
@@ -4103,12 +4056,12 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
     /* copy the context */
     set_all_desc = set_copy(set, ctx);
     /* get all descendant nodes (the original context nodes are removed) */
-    if (moveto_node_alldesc(set_all_desc, cur_node, "*", 1, when_must_eval, line)) {
+    if (moveto_node_alldesc(set_all_desc, cur_node, "*", 1, when_must_eval)) {
         lyxp_set_free(set_all_desc, ctx);
         return -1;
     }
     /* prepend the original context nodes */
-    if (moveto_union(set, set_all_desc, cur_node, when_must_eval, line)) {
+    if (moveto_union(set, set_all_desc, cur_node, when_must_eval)) {
         lyxp_set_free(set_all_desc, ctx);
         return -1;
     }
@@ -4168,12 +4121,11 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
  * @param[in] cur_node Original context node.
  * @param[in] all_desc Whether to go to all descendants ('//') or not ('/').
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-moveto_self(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int when_must_eval, uint32_t line)
+moveto_self(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int when_must_eval)
 {
     struct lyd_node *sub;
     uint16_t i, cont_i;
@@ -4184,7 +4136,7 @@ moveto_self(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int w
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(LYE_XPATH_INOP_1, line, 0, NULL, "path operator", print_set_type(set));
+        LOGVAL(LYE_XPATH_INOP_1, LY_VLOG_NONE, NULL, "path operator", print_set_type(set));
         return -1;
     }
 
@@ -4252,12 +4204,11 @@ moveto_self(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int w
  * @param[in] cur_node Original context node.
  * @param[in] all_desc Whether to go to all descendants ('//') or not ('/').
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-moveto_parent(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int when_must_eval, uint32_t line)
+moveto_parent(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int when_must_eval)
 {
     uint16_t i;
     struct lyd_node *node, *new_node, *root;
@@ -4268,13 +4219,13 @@ moveto_parent(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(LYE_XPATH_INOP_1, line, 0, NULL, "path operator", print_set_type(set));
+        LOGVAL(LYE_XPATH_INOP_1, LY_VLOG_NONE, NULL, "path operator", print_set_type(set));
         return -1;
     }
 
     if (all_desc) {
         /* <path>//.. == <path>//./.. */
-        if (moveto_self(set, cur_node, 1, when_must_eval, line)) {
+        if (moveto_self(set, cur_node, 1, when_must_eval)) {
             return -1;
         }
     }
@@ -4643,8 +4594,7 @@ moveto_schema_node_check(struct lys_node *node, struct lyxp_set *set, uint16_t i
 }
 
 static int
-moveto_schema_node(struct lyxp_set *set, struct lys_node *cur_node, const char *qname, uint16_t qname_len,
-                   uint32_t line)
+moveto_schema_node(struct lyxp_set *set, struct lys_node *cur_node, const char *qname, uint16_t qname_len)
 {
     uint16_t i, orig_used, j;
     int replaced, pref_len;
@@ -4657,7 +4607,7 @@ moveto_schema_node(struct lyxp_set *set, struct lys_node *cur_node, const char *
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(LYE_XPATH_INOP_1, line, "path operator", print_set_type(set));
+        LOGVAL(LYE_XPATH_INOP_1, "path operator", print_set_type(set));
         return -1;
     }
 
@@ -4714,8 +4664,7 @@ moveto_schema_node(struct lyxp_set *set, struct lys_node *cur_node, const char *
 }
 
 static int
-moveto_schema_node_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char *qname, uint16_t qname_len,
-                           uint32_t line)
+moveto_schema_node_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char *qname, uint16_t qname_len)
 {
     uint16_t i;
     int pref_len, all = 0, replace, match;
@@ -4728,7 +4677,7 @@ moveto_schema_node_alldesc(struct lyxp_set *set, struct lys_node *cur_node, cons
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(LYE_XPATH_INOP_1, line, "path operator", print_set_type(set));
+        LOGVAL(LYE_XPATH_INOP_1, "path operator", print_set_type(set));
         return -1;
     }
 
@@ -4748,7 +4697,7 @@ moveto_schema_node_alldesc(struct lyxp_set *set, struct lys_node *cur_node, cons
     }
 
     * replace the original nodes (and throw away all text nodes, root nodes are replaced by their children) *
-    if (moveto_schema_node(set, cur_node, "*", 1, line)) {
+    if (moveto_schema_node(set, cur_node, "*", 1)) {
         return -1;
     }
 
@@ -4857,11 +4806,11 @@ skip_children:
 }
 
 static int
-moveto_schema_union(struct lyxp_set *set1, struct lyxp_set *set2, uint32_t line)
+moveto_schema_union(struct lyxp_set *set1, struct lyxp_set *set2)
 {
     if (((set1->type != LYXP_SET_NODE_SET) && (set1->type != LYXP_SET_EMPTY))
             || ((set2->type != LYXP_SET_NODE_SET) && (set2->type != LYXP_SET_EMPTY))) {
-        LOGVAL(LYE_XPATH_INOP_2, line, "union", print_set_type(set1), print_set_type(set2));
+        LOGVAL(LYE_XPATH_INOP_2, "union", print_set_type(set1), print_set_type(set2));
         return -1;
     }
 
@@ -4944,7 +4893,7 @@ moveto_schema_self_check(struct lys_node *node, struct lyxp_set *set, uint16_t i
 }
 
 static int
-moveto_schema_self(struct lyxp_set *set, struct lys_node *cur_node, int all_desc, uint32_t line)
+moveto_schema_self(struct lyxp_set *set, struct lys_node *cur_node, int all_desc)
 {
     struct lys_node *sub;
     struct ly_ctx *ctx;
@@ -4955,7 +4904,7 @@ moveto_schema_self(struct lyxp_set *set, struct lys_node *cur_node, int all_desc
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(LYE_XPATH_INOP_1, line, "path operator", print_set_type(set));
+        LOGVAL(LYE_XPATH_INOP_1, "path operator", print_set_type(set));
         return -1;
     }
 
@@ -4999,7 +4948,7 @@ moveto_schema_self(struct lyxp_set *set, struct lys_node *cur_node, int all_desc
 }
 
 static int
-moveto_schema_parent(struct lyxp_set *set, struct lys_node *cur_node, int all_desc, uint32_t line)
+moveto_schema_parent(struct lyxp_set *set, struct lys_node *cur_node, int all_desc)
 {
     uint16_t i;
     int is_output;
@@ -5010,13 +4959,13 @@ moveto_schema_parent(struct lyxp_set *set, struct lys_node *cur_node, int all_de
     }
 
     if (set->type != LYXP_SET_NODE_SET) {
-        LOGVAL(LYE_XPATH_INOP_1, line, "path operator", print_set_type(set));
+        LOGVAL(LYE_XPATH_INOP_1, "path operator", print_set_type(set));
         return -1;
     }
 
     if (all_desc) {
         * <path>//.. == <path>//./.. *
-        if (moveto_schema_self(set, cur_node, 1, line)) {
+        if (moveto_schema_self(set, cur_node, 1)) {
             return -1;
         }
     }
@@ -5116,13 +5065,12 @@ eval_literal(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyxp_set *set, str
  * @param[in] all_desc Whether to search all the descendants or children only.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, int attr_axis, int all_desc,
-               struct lyxp_set *set, int when_must_eval, uint32_t line)
+               struct lyxp_set *set, int when_must_eval)
 {
     int rc = 0;
 
@@ -5131,18 +5079,18 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         if (attr_axis) {
             if (all_desc) {
                 rc = moveto_attr_alldesc(set, cur_node, &exp->expr[exp->expr_pos[*exp_idx]],
-                                         exp->tok_len[*exp_idx], when_must_eval, line);
+                                         exp->tok_len[*exp_idx], when_must_eval);
             } else {
                 rc = moveto_attr(set, cur_node, &exp->expr[exp->expr_pos[*exp_idx]], exp->tok_len[*exp_idx],
-                                 when_must_eval, line);
+                                 when_must_eval);
             }
         } else {
             if (all_desc) {
                 rc = moveto_node_alldesc(set, cur_node, &exp->expr[exp->expr_pos[*exp_idx]],
-                                         exp->tok_len[*exp_idx], when_must_eval, line);
+                                         exp->tok_len[*exp_idx], when_must_eval);
             } else {
                 rc = moveto_node(set, cur_node, &exp->expr[exp->expr_pos[*exp_idx]], exp->tok_len[*exp_idx],
-                                 when_must_eval, line);
+                                 when_must_eval);
             }
         }
         if (rc) {
@@ -5158,12 +5106,12 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         if (set) {
             assert(exp->tok_len[*exp_idx] == 4);
             if (!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "node", 4)) {
-                if (xpath_node(NULL, 0, cur_node, set, when_must_eval, line)) {
+                if (xpath_node(NULL, 0, cur_node, set, when_must_eval)) {
                     return -1;
                 }
             } else {
                 assert(!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "text", 4));
-                if (xpath_text(NULL, 0, cur_node, set, when_must_eval, line)) {
+                if (xpath_text(NULL, 0, cur_node, set, when_must_eval)) {
                     return -1;
                 }
             }
@@ -5201,13 +5149,12 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
-               int when_must_eval, uint32_t line)
+               int when_must_eval)
 {
     uint16_t i, j, orig_i, orig_exp, brack2_exp;
     uint8_t **pred_repeat, rep_size;
@@ -5222,7 +5169,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
     ++(*exp_idx);
 
     if (!set) {
-        if (eval_expr(exp, exp_idx, cur_node, NULL, when_must_eval, line)) {
+        if (eval_expr(exp, exp_idx, cur_node, NULL, when_must_eval)) {
             return -1;
         }
     } else if (set->type == LYXP_SET_NODE_SET) {
@@ -5272,7 +5219,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
                 }
             }
 
-            if (eval_expr(exp, exp_idx, cur_node, set2, when_must_eval, line)) {
+            if (eval_expr(exp, exp_idx, cur_node, set2, when_must_eval)) {
                 for (j = 0; j < brack2_exp - orig_exp; ++j) {
                     free(pred_repeat[j]);
                 }
@@ -5311,7 +5258,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
     } else {
         set2 = set_copy(set, ctx);
 
-        if (eval_expr(exp, exp_idx, cur_node, set2, when_must_eval, line)) {
+        if (eval_expr(exp, exp_idx, cur_node, set2, when_must_eval)) {
             lyxp_set_free(set2, ctx);
             return -1;
         }
@@ -5343,13 +5290,12 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
  * @param[in] all_desc Whether to search all the descendants or children only.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
 eval_relative_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, int all_desc,
-                            struct lyxp_set *set, int when_must_eval, uint32_t line)
+                            struct lyxp_set *set, int when_must_eval)
 {
     int attr_axis;
 
@@ -5372,7 +5318,7 @@ step:
         switch (exp->tokens[*exp_idx]) {
         case LYXP_TOKEN_DOT:
             /* evaluate '.' */
-            if (moveto_self(set, cur_node, all_desc, when_must_eval, line)) {
+            if (moveto_self(set, cur_node, all_desc, when_must_eval)) {
                 return -1;
             }
             LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
@@ -5381,7 +5327,7 @@ step:
             break;
         case LYXP_TOKEN_DDOT:
             /* evaluate '..' */
-            if (moveto_parent(set, cur_node, all_desc, when_must_eval, line)) {
+            if (moveto_parent(set, cur_node, all_desc, when_must_eval)) {
                 return -1;
             }
             LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
@@ -5399,11 +5345,11 @@ step:
             /* fall through */
         case LYXP_TOKEN_NAMETEST:
         case LYXP_TOKEN_NODETYPE:
-            if (eval_node_test(exp, exp_idx, cur_node, attr_axis, all_desc, set, when_must_eval, line)) {
+            if (eval_node_test(exp, exp_idx, cur_node, attr_axis, all_desc, set, when_must_eval)) {
                 return -1;
             }
             while ((exp->used > *exp_idx) && (exp->tokens[*exp_idx] == LYXP_TOKEN_BRACK1)) {
-                if (eval_predicate(exp, exp_idx, cur_node, set, when_must_eval, line)) {
+                if (eval_predicate(exp, exp_idx, cur_node, set, when_must_eval)) {
                     return -1;
                 }
             }
@@ -5427,13 +5373,12 @@ step:
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node,
-                            struct lyxp_set *set, int when_must_eval, uint32_t line)
+                            struct lyxp_set *set, int when_must_eval)
 {
     int all_desc;
 
@@ -5450,7 +5395,7 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
-        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE, UINT_MAX)) {
+        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE)) {
             return EXIT_SUCCESS;
         }
         switch (exp->tokens[*exp_idx]) {
@@ -5459,7 +5404,7 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd
         case LYXP_TOKEN_AT:
         case LYXP_TOKEN_NAMETEST:
         case LYXP_TOKEN_NODETYPE:
-            if (eval_relative_location_path(exp, exp_idx, cur_node, all_desc, set, when_must_eval, line)) {
+            if (eval_relative_location_path(exp, exp_idx, cur_node, all_desc, set, when_must_eval)) {
                 return -1;
             }
         default:
@@ -5474,7 +5419,7 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
-        if (eval_relative_location_path(exp, exp_idx, cur_node, all_desc, set, when_must_eval, line)) {
+        if (eval_relative_location_path(exp, exp_idx, cur_node, all_desc, set, when_must_eval)) {
             return -1;
         }
     }
@@ -5492,16 +5437,15 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
-                   int when_must_eval, uint32_t line)
+                   int when_must_eval)
 {
     int rc = EXIT_FAILURE;
-    int (*xpath_func)(struct lyxp_set **, uint16_t, struct lyd_node *, struct lyxp_set *, int, uint32_t) = NULL;
+    int (*xpath_func)(struct lyxp_set **, uint16_t, struct lyd_node *, struct lyxp_set *, int) = NULL;
     uint16_t arg_count = 0, i;
     struct lyxp_set **args = NULL;
     struct ly_ctx *ctx;
@@ -5602,8 +5546,8 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
         }
 
         if (!xpath_func) {
-            LOGVAL(LYE_XPATH_INTOK, line, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[*exp_idx]]);
-            LOGVAL(LYE_SPEC, 0, 0, NULL,
+            LOGVAL(LYE_XPATH_INTOK, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[*exp_idx]]);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
                    "Unknown XPath function \"%.*s\".", exp->tok_len[*exp_idx], &exp->expr[exp->expr_pos[*exp_idx]]);
             return -1;
         }
@@ -5632,7 +5576,7 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
                 goto cleanup;
             }
         }
-        if ((rc = eval_expr(exp, exp_idx, cur_node, args[0], when_must_eval, line))) {
+        if ((rc = eval_expr(exp, exp_idx, cur_node, args[0], when_must_eval))) {
             goto cleanup;
         }
     }
@@ -5653,11 +5597,11 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
                 goto cleanup;
             }
 
-            if ((rc = eval_expr(exp, exp_idx, cur_node, args[arg_count - 1], when_must_eval, line))) {
+            if ((rc = eval_expr(exp, exp_idx, cur_node, args[arg_count - 1], when_must_eval))) {
                 goto cleanup;
             }
         } else {
-            if ((rc = eval_expr(exp, exp_idx, cur_node, NULL, when_must_eval, line))) {
+            if ((rc = eval_expr(exp, exp_idx, cur_node, NULL, when_must_eval))) {
                 goto cleanup;
             }
         }
@@ -5670,7 +5614,7 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
 
     if (set) {
         /* evaluate function */
-        rc = xpath_func(args, arg_count, cur_node, set, when_must_eval, line);
+        rc = xpath_func(args, arg_count, cur_node, set, when_must_eval);
     } else {
         rc = EXIT_SUCCESS;
     }
@@ -5691,12 +5635,11 @@ cleanup:
  * @param[in] exp_idx Position in the expression \p exp.
  * @param[in] any_node Any node from the data.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-eval_number(struct lyxp_expr *exp, uint16_t *exp_idx, struct ly_ctx *ctx, struct lyxp_set *set, uint32_t line)
+eval_number(struct lyxp_expr *exp, uint16_t *exp_idx, struct ly_ctx *ctx, struct lyxp_set *set)
 {
     long double num;
     char *endptr;
@@ -5705,13 +5648,13 @@ eval_number(struct lyxp_expr *exp, uint16_t *exp_idx, struct ly_ctx *ctx, struct
         errno = 0;
         num = strtold(&exp->expr[exp->expr_pos[*exp_idx]], &endptr);
         if (errno) {
-            LOGVAL(LYE_XPATH_INTOK, line, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[*exp_idx]]);
-            LOGVAL(LYE_SPEC, 0, 0, NULL, "Failed to convert \"%.*s\" into a long double (%s).",
+            LOGVAL(LYE_XPATH_INTOK, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[*exp_idx]]);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Failed to convert \"%.*s\" into a long double (%s).",
                    exp->tok_len[*exp_idx], &exp->expr[exp->expr_pos[*exp_idx]], strerror(errno));
             return -1;
         } else if (endptr - &exp->expr[exp->expr_pos[*exp_idx]] != exp->tok_len[*exp_idx]) {
-            LOGVAL(LYE_XPATH_INTOK, line, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[*exp_idx]]);
-            LOGVAL(LYE_SPEC, 0, 0, NULL, "Failed to convert \"%.*s\" into a long double.",
+            LOGVAL(LYE_XPATH_INTOK, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[*exp_idx]]);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Failed to convert \"%.*s\" into a long double.",
                    exp->tok_len[*exp_idx], &exp->expr[exp->expr_pos[*exp_idx]]);
             return -1;
         }
@@ -5739,13 +5682,12 @@ eval_number(struct lyxp_expr *exp, uint16_t *exp_idx, struct ly_ctx *ctx, struct
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
-               int when_must_eval, uint32_t line)
+               int when_must_eval)
 {
     int all_desc;
     struct ly_ctx *ctx;
@@ -5762,7 +5704,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         ++(*exp_idx);
 
         /* Expr */
-        if (eval_expr(exp, exp_idx, cur_node, set, when_must_eval, line)) {
+        if (eval_expr(exp, exp_idx, cur_node, set, when_must_eval)) {
             return -1;
         }
 
@@ -5780,14 +5722,14 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
     case LYXP_TOKEN_NAMETEST:
     case LYXP_TOKEN_NODETYPE:
         /* RelativeLocationPath */
-        if (eval_relative_location_path(exp, exp_idx, cur_node, 0, set, when_must_eval, line)) {
+        if (eval_relative_location_path(exp, exp_idx, cur_node, 0, set, when_must_eval)) {
             return -1;
         }
         break;
 
     case LYXP_TOKEN_FUNCNAME:
         /* FunctionCall */
-        if (eval_function_call(exp, exp_idx, cur_node, set, when_must_eval, line)) {
+        if (eval_function_call(exp, exp_idx, cur_node, set, when_must_eval)) {
             return -1;
         }
 
@@ -5796,7 +5738,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
 
     case LYXP_TOKEN_OPERATOR_PATH:
         /* AbsoluteLocationPath */
-        if (eval_absolute_location_path(exp, exp_idx, cur_node, set, when_must_eval, line)) {
+        if (eval_absolute_location_path(exp, exp_idx, cur_node, set, when_must_eval)) {
             return -1;
         }
         break;
@@ -5810,7 +5752,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
 
     case LYXP_TOKEN_NUMBER:
         /* Number */
-        if (eval_number(exp, exp_idx, ctx, set, line)) {
+        if (eval_number(exp, exp_idx, ctx, set)) {
             return -1;
         }
 
@@ -5818,7 +5760,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         break;
 
     default:
-        LOGVAL(LYE_XPATH_INTOK, line, 0, NULL,
+        LOGVAL(LYE_XPATH_INTOK, LY_VLOG_NONE, NULL,
                print_token(exp->tokens[*exp_idx]), &exp->expr[exp->expr_pos[*exp_idx]]);
         return -1;
     }
@@ -5828,7 +5770,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
 predicate:
     /* Predicate* */
     while ((exp->used > *exp_idx) && (exp->tokens[*exp_idx] == LYXP_TOKEN_BRACK1)) {
-        if (eval_predicate(exp, exp_idx, cur_node, set, when_must_eval, line)) {
+        if (eval_predicate(exp, exp_idx, cur_node, set, when_must_eval)) {
             return -1;
         }
     }
@@ -5848,7 +5790,7 @@ predicate:
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
-        if (eval_relative_location_path(exp, exp_idx, cur_node, all_desc, set, when_must_eval, line)) {
+        if (eval_relative_location_path(exp, exp_idx, cur_node, all_desc, set, when_must_eval)) {
             return -1;
         }
     }
@@ -5867,13 +5809,12 @@ predicate:
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
-                int when_must_eval, uint32_t line)
+                int when_must_eval)
 {
     int unary_minus;
     uint16_t op_exp;
@@ -5884,7 +5825,7 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_n
 
     /* ('-')* */
     unary_minus = -1;
-    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH, UINT_MAX)
+    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH)
             && (exp->expr[exp->expr_pos[*exp_idx]] == '-')) {
         if (unary_minus == -1) {
             unary_minus = *exp_idx;
@@ -5910,7 +5851,7 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_n
     }
 
     /* PathExpr */
-    if (eval_path_expr(exp, exp_idx, cur_node, set, when_must_eval, line)) {
+    if (eval_path_expr(exp, exp_idx, cur_node, set, when_must_eval)) {
         lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, when_must_eval);
         return -1;
     }
@@ -5930,21 +5871,21 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_n
         }
 
         if (!set) {
-            if (eval_path_expr(exp, exp_idx, cur_node, NULL, when_must_eval, line)) {
+            if (eval_path_expr(exp, exp_idx, cur_node, NULL, when_must_eval)) {
                 return -1;
             }
             continue;
         }
 
         set_fill_set(&set2, &orig_set, ctx);
-        if (eval_path_expr(exp, exp_idx, cur_node, &set2, when_must_eval, line)) {
+        if (eval_path_expr(exp, exp_idx, cur_node, &set2, when_must_eval)) {
             lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, when_must_eval);
             lyxp_set_cast(&set2, LYXP_SET_EMPTY, cur_node, when_must_eval);
             return -1;
         }
 
         /* eval */
-        if (moveto_union(set, &set2, cur_node, when_must_eval, line)) {
+        if (moveto_union(set, &set2, cur_node, when_must_eval)) {
             lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, when_must_eval);
             lyxp_set_cast(&set2, LYXP_SET_EMPTY, cur_node, when_must_eval);
             return -1;
@@ -5974,13 +5915,12 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_n
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
-                         int when_must_eval, uint32_t line)
+                         int when_must_eval)
 {
     uint16_t this_op, op_exp;
     struct lyxp_set orig_set, set2;
@@ -6002,7 +5942,7 @@ eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_no
     }
 
     /* UnaryExpr */
-    if (eval_unary_expr(exp, exp_idx, cur_node, set, when_must_eval, line)) {
+    if (eval_unary_expr(exp, exp_idx, cur_node, set, when_must_eval)) {
         lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, when_must_eval);
         return -1;
     }
@@ -6025,14 +5965,14 @@ eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_no
         }
 
         if (!set) {
-            if (eval_unary_expr(exp, exp_idx, cur_node, NULL, when_must_eval, line)) {
+            if (eval_unary_expr(exp, exp_idx, cur_node, NULL, when_must_eval)) {
                 return -1;
             }
             continue;
         }
 
         set_fill_set(&set2, &orig_set, ctx);
-        if (eval_unary_expr(exp, exp_idx, cur_node, &set2, when_must_eval, line)) {
+        if (eval_unary_expr(exp, exp_idx, cur_node, &set2, when_must_eval)) {
             lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, when_must_eval);
             lyxp_set_cast(&set2, LYXP_SET_EMPTY, cur_node, when_must_eval);
             return -1;
@@ -6059,13 +5999,12 @@ eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_no
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 eval_additive_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
-                   int when_must_eval, uint32_t line)
+                   int when_must_eval)
 {
     uint16_t this_op, op_exp;
     struct lyxp_set orig_set, set2;
@@ -6087,7 +6026,7 @@ eval_additive_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
     }
 
     /* MultiplicativeExpr */
-    if (eval_multiplicative_expr(exp, exp_idx, cur_node, set, when_must_eval, line)) {
+    if (eval_multiplicative_expr(exp, exp_idx, cur_node, set, when_must_eval)) {
         lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, when_must_eval);
         return -1;
     }
@@ -6110,14 +6049,14 @@ eval_additive_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
         }
 
         if (!set) {
-            if (eval_multiplicative_expr(exp, exp_idx, cur_node, NULL, when_must_eval, line)) {
+            if (eval_multiplicative_expr(exp, exp_idx, cur_node, NULL, when_must_eval)) {
                 return -1;
             }
             continue;
         }
 
         set_fill_set(&set2, &orig_set, ctx);
-        if (eval_multiplicative_expr(exp, exp_idx, cur_node, &set2, when_must_eval, line)) {
+        if (eval_multiplicative_expr(exp, exp_idx, cur_node, &set2, when_must_eval)) {
             lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, when_must_eval);
             lyxp_set_cast(&set2, LYXP_SET_EMPTY, cur_node, when_must_eval);
             return -1;
@@ -6146,13 +6085,12 @@ eval_additive_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 eval_relational_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
-                     int when_must_eval, uint32_t line)
+                     int when_must_eval)
 {
     uint16_t this_op, op_exp;
     struct lyxp_set orig_set, set2;
@@ -6174,7 +6112,7 @@ eval_relational_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *
     }
 
     /* AdditiveExpr */
-    if (eval_additive_expr(exp, exp_idx, cur_node, set, when_must_eval, line)) {
+    if (eval_additive_expr(exp, exp_idx, cur_node, set, when_must_eval)) {
         lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, when_must_eval);
         return -1;
     }
@@ -6197,14 +6135,14 @@ eval_relational_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *
         }
 
         if (!set) {
-            if (eval_relational_expr(exp, exp_idx, cur_node, NULL, when_must_eval, line)) {
+            if (eval_relational_expr(exp, exp_idx, cur_node, NULL, when_must_eval)) {
                 return -1;
             }
             continue;
         }
 
         set_fill_set(&set2, &orig_set, ctx);
-        if (eval_additive_expr(exp, exp_idx, cur_node, &set2, when_must_eval, line)) {
+        if (eval_additive_expr(exp, exp_idx, cur_node, &set2, when_must_eval)) {
             lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, when_must_eval);
             lyxp_set_cast(&set2, LYXP_SET_EMPTY, cur_node, when_must_eval);
             return -1;
@@ -6230,13 +6168,12 @@ eval_relational_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 eval_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
-                   int when_must_eval, uint32_t line)
+                   int when_must_eval)
 {
     uint16_t this_op, op_exp;
     struct lyxp_set orig_set, set2;
@@ -6258,7 +6195,7 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
     }
 
     /* RelationalExpr */
-    if (eval_relational_expr(exp, exp_idx, cur_node, set, when_must_eval, line)) {
+    if (eval_relational_expr(exp, exp_idx, cur_node, set, when_must_eval)) {
         lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, when_must_eval);
         return -1;
     }
@@ -6281,14 +6218,14 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
         }
 
         if (!set) {
-            if (eval_relational_expr(exp, exp_idx, cur_node, NULL, when_must_eval, line)) {
+            if (eval_relational_expr(exp, exp_idx, cur_node, NULL, when_must_eval)) {
                 return -1;
             }
             continue;
         }
 
         set_fill_set(&set2, &orig_set, ctx);
-        if (eval_relational_expr(exp, exp_idx, cur_node, &set2, when_must_eval, line)) {
+        if (eval_relational_expr(exp, exp_idx, cur_node, &set2, when_must_eval)) {
             lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, when_must_eval);
             lyxp_set_cast(&set2, LYXP_SET_EMPTY, cur_node, when_must_eval);
             return -1;
@@ -6313,13 +6250,12 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
 eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
-              int when_must_eval, uint32_t line)
+              int when_must_eval)
 {
     int is_false = 0;
     uint16_t op_exp;
@@ -6340,7 +6276,7 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_nod
     }
 
     /* EqualityExpr */
-    if (eval_equality_expr(exp, exp_idx, cur_node, set, when_must_eval, line)) {
+    if (eval_equality_expr(exp, exp_idx, cur_node, set, when_must_eval)) {
         lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, when_must_eval);
         return -1;
     }
@@ -6373,7 +6309,7 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_nod
         }
 
         set_fill_set(set, &orig_set, ctx);
-        if (eval_equality_expr(exp, exp_idx, cur_node, set, when_must_eval, line)) {
+        if (eval_equality_expr(exp, exp_idx, cur_node, set, when_must_eval)) {
             lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, when_must_eval);
             return -1;
         }
@@ -6399,13 +6335,11 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_nod
  * @param[in] cur_node Start node for the expression \p exp.
  * @param[in,out] set Context and result set. On NULL the rule is only parsed.
  * @param[in] when_must_eval Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 static int
-eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set, int when_must_eval,
-          uint32_t line)
+eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set, int when_must_eval)
 {
     int is_true = 0;
     uint16_t op_exp;
@@ -6426,7 +6360,7 @@ eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, s
     }
 
     /* AndExpr */
-    if (eval_and_expr(exp, exp_idx, cur_node, set, when_must_eval, line)) {
+    if (eval_and_expr(exp, exp_idx, cur_node, set, when_must_eval)) {
         lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, when_must_eval);
         return -1;
     }
@@ -6459,7 +6393,7 @@ eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, s
         }
 
         set_fill_set(set, &orig_set, ctx);
-        if (eval_and_expr(exp, exp_idx, cur_node, set, when_must_eval, line)) {
+        if (eval_and_expr(exp, exp_idx, cur_node, set, when_must_eval)) {
             lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, when_must_eval);
             return -1;
         }
@@ -6476,7 +6410,7 @@ eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, s
 }
 
 int
-lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *set, int when_must_eval, uint32_t line)
+lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *set, int when_must_eval)
 {
     struct lyxp_expr *exp;
     uint16_t exp_idx;
@@ -6487,13 +6421,13 @@ lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *se
         return EXIT_FAILURE;
     }
 
-    exp = parse_expr(expr, line);
+    exp = parse_expr(expr);
     if (exp) {
         exp_idx = 0;
-        rc = reparse_expr(exp, &exp_idx, line);
+        rc = reparse_expr(exp, &exp_idx);
         if (!rc && (exp->used > exp_idx)) {
-            LOGVAL(LYE_XPATH_INTOK, line, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[exp_idx]]);
-            LOGVAL(LYE_SPEC, 0, 0, NULL, "Unparsed characters \"%s\" left at the end of an XPath expression.",
+            LOGVAL(LYE_XPATH_INTOK, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[exp_idx]]);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unparsed characters \"%s\" left at the end of an XPath expression.",
                    &exp->expr[exp->expr_pos[exp_idx]]);
             rc = -1;
         }
@@ -6507,20 +6441,20 @@ lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *se
         exp_idx = 0;
         lyxp_set_cast(set, LYXP_SET_EMPTY, cur_node, when_must_eval);
         set_insert_node(set, (struct lyd_node *)cur_node, LYXP_NODE_ELEM, 0);
-        rc = eval_expr(exp, &exp_idx, (struct lyd_node *)cur_node, set, when_must_eval, line);
+        rc = eval_expr(exp, &exp_idx, (struct lyd_node *)cur_node, set, when_must_eval);
 
         exp_free(exp);
     }
 
     if (exp && rc) {
-        LOGVAL(LYE_PATH, 0, LY_VLOG_LYD, cur_node);
+        LOGPATH(LY_VLOG_LYD, cur_node);
     }
 
     return rc;
 }
 
 int
-lyxp_syntax_check(const char *expr, uint32_t line)
+lyxp_syntax_check(const char *expr)
 {
     struct lyxp_expr *exp;
     uint16_t exp_idx;
@@ -6531,13 +6465,13 @@ lyxp_syntax_check(const char *expr, uint32_t line)
         return -1;
     }
 
-    exp = parse_expr(expr, line);
+    exp = parse_expr(expr);
     if (exp) {
         exp_idx = 0;
-        rc = reparse_expr(exp, &exp_idx, line);
+        rc = reparse_expr(exp, &exp_idx);
         if (!rc && (exp->used > exp_idx)) {
-            LOGVAL(LYE_XPATH_INTOK, line, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[exp_idx]]);
-            LOGVAL(LYE_SPEC, 0, 0, NULL, "Unparsed characters \"%s\" left at the end of an XPath expression.",
+            LOGVAL(LYE_XPATH_INTOK, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[exp_idx]]);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unparsed characters \"%s\" left at the end of an XPath expression.",
                    &exp->expr[exp->expr_pos[exp_idx]]);
             rc = -1;
         }

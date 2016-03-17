@@ -112,7 +112,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct
         }
     }
 
-    if (lyp_parse_value(leaf, xml, resolve, unres, LOGLINE(xml))) {
+    if (lyp_parse_value(leaf, xml, resolve, unres)) {
         return EXIT_FAILURE;
     }
 
@@ -139,7 +139,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
 
     if (!xml->ns || !xml->ns->value) {
         if (options & LYD_OPT_STRICT) {
-            LOGVAL(LYE_XML_MISS, LOGLINE(xml), LY_VLOG_XML, xml, "element's", "namespace");
+            LOGVAL(LYE_XML_MISS, LY_VLOG_XML, xml, "element's", "namespace");
             return -1;
         } else {
             return 0;
@@ -184,7 +184,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     }
     if (!schema) {
         if ((options & LYD_OPT_STRICT) || ly_ctx_get_module_by_ns(ctx, xml->ns->value, NULL)) {
-            LOGVAL(LYE_INELEM, LOGLINE(xml), LY_VLOG_LYD, parent, xml->name);
+            LOGVAL(LYE_INELEM, LY_VLOG_LYD, parent, xml->name);
             return -1;
         } else {
             return 0;
@@ -251,12 +251,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             /* insert attribute present */
             if (!(schema->flags & LYS_USERORDERED)) {
                 /* ... but it is not expected */
-                LOGVAL(LYE_INATTR, LOGLINE(xml), LY_VLOG_LYD, (*result), "insert", schema->name);
+                LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), "insert", schema->name);
                 return -1;
             }
 
             if (i) {
-                LOGVAL(LYE_TOOMANY, LOGLINE(xml), LY_VLOG_LYD, (*result), "insert attributes", xml->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "insert attributes", xml->name);
                 return -1;
             }
             if (!strcmp(attr->value, "first") || !strcmp(attr->value, "last")) {
@@ -264,7 +264,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             } else if (!strcmp(attr->value, "before") || !strcmp(attr->value, "after")) {
                 i = 2;
             } else {
-                LOGVAL(LYE_INARG, LOGLINE(xml), LY_VLOG_LYD, (*result), attr->value, attr->name);
+                LOGVAL(LYE_INARG, LY_VLOG_LYD, (*result), attr->value, attr->name);
                 return -1;
             }
             str = attr->name;
@@ -282,7 +282,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
                     ((schema->nodetype & LYS_LIST) && !strcmp(attr->name, "value")) ||
                     ((schema->nodetype & LYS_LEAFLIST) && !strcmp(attr->name, "key"))) {
                 /* but it shouldn't */
-                LOGVAL(LYE_INATTR, LOGLINE(xml), LY_VLOG_LYD, (*result), attr->name, schema->name);
+                LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, schema->name);
                 return -1;
             }
             i++;
@@ -290,21 +290,21 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         }
         if (i && !(schema->nodetype & (LYS_LEAFLIST | LYS_LIST))) {
             /* attributes in wrong elements */
-            LOGVAL(LYE_INATTR, LOGLINE(xml), LY_VLOG_LYD, (*result), str, xml->name);
+            LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), str, xml->name);
             return -1;
         } else if (i == 2) {
             /* missing value attribute for "before" or "after" */
-            LOGVAL(LYE_MISSATTR, LOGLINE(xml), LY_VLOG_LYD, (*result), "value", xml->name);
+            LOGVAL(LYE_MISSATTR, LY_VLOG_LYD, (*result), "value", xml->name);
             return -1;
         } else if (i > 3) {
             /* more than one instance of the value attribute */
-            LOGVAL(LYE_TOOMANY, LOGLINE(xml), LY_VLOG_LYD, (*result), "value attributes", xml->name);
+            LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "value attributes", xml->name);
             return -1;
         }
     }
 
     /* first part of validation checks */
-    if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(*result, options, LOGLINE(xml), unres)) {
+    if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(*result, options, unres)) {
         goto error;
     }
 
@@ -425,7 +425,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
 
     /* rest of validation checks */
     ly_errno = 0;
-    if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(*result, options, LOGLINE(xml), unres)) {
+    if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(*result, options, unres)) {
         if (ly_errno) {
             goto error;
         } else {
@@ -545,9 +545,6 @@ cleanup:
     if (unres) {
         free(unres->node);
         free(unres->type);
-#ifndef NDEBUG
-        free(unres->line);
-#endif
         free(unres);
     }
     va_end(ap);

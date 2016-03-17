@@ -200,7 +200,6 @@ enum lyxp_node_type {
  * @param[in] cur_node Current (context) data node.
  * @param[out] set Result set. Must be valid (zeroed usually).
  * @param[in] options Whether to apply some evaluation restrictions.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on unresolved when dependency, -1 on error.
  *
@@ -210,18 +209,17 @@ enum lyxp_node_type {
  * - return 0 on success, -1 on error, 1 when the option from the previous point is used and WHEN flag is the same as
  *   in the cur_node
  */
-int lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *set, int options, uint32_t line);
+int lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *set, int options);
 
 /**
  * @brief Check the syntax of an XPath expression \p expr. Since it's only syntactic,
  * node and function names may still be invalid.
  *
  * @param[in] expr XPath expression to check.
- * @param[in] line Line in the input file.
  *
  * @return EXIT_SUCCESS on pass, -1 on failure.
  */
-int lyxp_syntax_check(const char *expr, uint32_t line);
+int lyxp_syntax_check(const char *expr);
 
 /**
  * @brief Print \p set contents.

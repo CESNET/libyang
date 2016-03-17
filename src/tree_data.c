@@ -235,7 +235,7 @@ lyd_create_leaf(const struct lys_node *schema, const char *val_str)
     ret->value_str = lydict_insert(schema->module->ctx, val_str, 0);
 
     /* resolve the type correctly */
-    if (lyp_parse_value(ret, NULL, 1, NULL, 0)) {
+    if (lyp_parse_value(ret, NULL, 1, NULL)) {
         lyd_free((struct lyd_node *)ret);
         ly_errno = LY_EINVAL;
         return NULL;
@@ -312,7 +312,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     leaf->value_str = val_str;
 
     /* resolve the type correctly */
-    if (lyp_parse_value(leaf, NULL, 1, NULL, 0)) {
+    if (lyp_parse_value(leaf, NULL, 1, NULL)) {
         leaf->value_str = backup;
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
@@ -664,8 +664,8 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
                     (sparent->nodetype == LYS_CASE && sparent != scase && lys_parent(sparent) == schoice)) {
                 /* another case */
                 if (iter == sibling) {
-                    LOGVAL(LYE_MCASEDATA, 0, LY_VLOG_LYD, iter, schoice->name);
-                    LOGVAL(LYE_SPEC, 0, 0, NULL, "Insert request refers node (%s) that is going to be auto-deleted.",
+                    LOGVAL(LYE_MCASEDATA, LY_VLOG_LYD, iter, schoice->name);
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, iter, NULL, "Insert request refers node (%s) that is going to be auto-deleted.",
                            ly_errpath());
                     return EXIT_FAILURE;
                 } else if (iter == start) {
@@ -788,12 +788,12 @@ lyd_validate(struct lyd_node **node, int options, ...)
             schema = ly_check_mandatory(NULL, ctx->models.list[i]->data);
             if (schema) {
                 if (schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-                    LOGVAL(LYE_TOOMANY, 0, LY_VLOG_LYS, schema, schema->name, schema->parent ? schema->parent->name : "module");
-                    LOGVAL(LYE_SPEC, 0, 0, NULL,
+                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, schema, schema->name, schema->parent ? schema->parent->name : "module");
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, schema, NULL,
                            "Number of \"%s\" instances in \"%s\" does not follow min-elements constraint.",
                            schema->name, schema->parent ? schema->parent->name : ctx->models.list[i]->name);
                 } else {
-                    LOGVAL(LYE_MISSELEM, 0, LY_VLOG_LYS, schema,
+                    LOGVAL(LYE_MISSELEM, LY_VLOG_LYS, schema,
                            schema->name, schema->parent ? schema->parent->name : ctx->models.list[i]->name);
                 }
                 va_end(ap);
@@ -820,13 +820,13 @@ lyd_validate(struct lyd_node **node, int options, ...)
                 to_free = NULL;
             }
 
-            if (lyv_data_context(iter, options, 0, unres)) {
+            if (lyv_data_context(iter, options, unres)) {
                 goto error;
             }
             if (lyv_data_value(iter, options)) {
                 goto error;
             }
-            if (lyv_data_content(iter, options, 0, unres)) {
+            if (lyv_data_content(iter, options, unres)) {
                 if (ly_errno) {
                     goto error;
                 } else {
@@ -894,9 +894,6 @@ error:
     if (unres) {
         free(unres->node);
         free(unres->type);
-#ifndef NDEBUG
-        free(unres->line);
-#endif
         free(unres);
     }
 
@@ -1435,7 +1432,7 @@ lyd_get_node(const struct lyd_node *data, const char *expr)
 
     memset(&xp_set, 0, sizeof xp_set);
 
-    if (lyxp_eval(expr, data, &xp_set, 0, 0) != EXIT_SUCCESS) {
+    if (lyxp_eval(expr, data, &xp_set, 0) != EXIT_SUCCESS) {
         return NULL;
     }
 
