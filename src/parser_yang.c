@@ -2285,15 +2285,20 @@ yang_use_extension(struct lys_module *module, struct lys_node *data_node, void *
     const char *ns = NULL;
     int i;
 
-    prefix = value;
-    identif = strchr(value, ':');
-    *identif = '\0';
-    identif++;
-
     /* check to the same pointer */
     if (data_node != actual) {
         return EXIT_SUCCESS;
     }
+
+    prefix = strdup(value);
+    if (!prefix) {
+        LOGMEM;
+        goto error;
+    }
+    /* find prefix anf identificator*/
+    identif = strchr(prefix, ':');
+    *identif = '\0';
+    identif++;
 
     for(i = 0; i < module->imp_size; ++i) {
         if (!strcmp(module->imp[i].prefix, prefix)) {
@@ -2308,10 +2313,15 @@ yang_use_extension(struct lys_module *module, struct lys_node *data_node, void *
             data_node->nacm |= LYS_NACM_DENYA;
         } else {
             LOGVAL(LYE_INSTMT, line, LY_VLOG_NONE, NULL, identif);
-            return EXIT_FAILURE;
+            goto error;
         }
     }
+    free(prefix);
     return EXIT_SUCCESS;
+
+error:
+    free(prefix);
+    return EXIT_FAILURE;
 }
 
 void

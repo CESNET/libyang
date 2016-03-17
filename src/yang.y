@@ -3261,13 +3261,10 @@ stmtsep: %empty
   | stmtsep unknown_statement
   ;
 
-unknown_statement: identifiers_ref { if (read_all ) {
-                                       if (yang_use_extension(trg, data_node, actual, s, yylineno)) {
-                                         free(s);
+unknown_statement: IDENTIFIERPREFIX { if (read_all ) {
+                                       if (yang_use_extension(trg, data_node, actual, yytext, yylineno)) {
                                          YYERROR;
                                        }
-                                       free(s);
-                                       s = NULL;
                                      }
                                    }
                    string_opt unknown_statement_end
