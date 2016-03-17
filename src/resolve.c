@@ -3333,8 +3333,11 @@ resolve_identref(struct lys_ident *base, const char *ident_name, uint32_t line, 
     }
 
     rc = parse_node_identifier(ident_name, &mod_name, &mod_name_len, &name, NULL);
-    if (rc < (signed)strlen(ident_name)) {
+    if (rc < 1) {
         LOGVAL(LYE_INCHAR, line, LY_VLOG_LYD, node, ident_name[-rc], &ident_name[-rc]);
+        return NULL;
+    } else if (rc < (signed)strlen(ident_name)) {
+        LOGVAL(LYE_INCHAR, line, LY_VLOG_LYD, node, ident_name[rc], &ident_name[rc]);
         return NULL;
     }
 
