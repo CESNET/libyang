@@ -665,7 +665,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
                 /* another case */
                 if (iter == sibling) {
                     LOGVAL(LYE_MCASEDATA, LY_VLOG_LYD, iter, schoice->name);
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, iter, NULL, "Insert request refers node (%s) that is going to be auto-deleted.",
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, iter, "Insert request refers node (%s) that is going to be auto-deleted.",
                            ly_errpath());
                     return EXIT_FAILURE;
                 } else if (iter == start) {
