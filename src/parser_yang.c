@@ -176,89 +176,18 @@ yang_fill_import(struct lys_module *module, struct lys_import *imp, char *value,
 }
 
 int
-yang_read_description(struct lys_module *module, void *node, char *value, int type, int line)
+yang_read_description(struct lys_module *module, void *node, char *value, char *where, int line)
 {
     int ret;
+    char *dsc = "description";
 
     if (!node) {
-        ret = yang_check_string(module, &module->dsc, "description", "module", value, line);
+        ret = yang_check_string(module, &module->dsc, dsc, "module", value, line);
     } else {
-        switch (type) {
-        case REVISION_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_revision *) node)->dsc, "description", "revision", value, line);
-            break;
-        case FEATURE_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_feature *) node)->dsc, "description", "feature", value, line);
-            break;
-        case IDENTITY_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_ident *) node)->dsc, "description", "identity", value, line);
-            break;
-        case MUST_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_restr *) node)->dsc, "description", "must", value, line);
-            break;
-        case WHEN_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_when *) node)->dsc, "description", "when" , value, line);
-            break;
-        case CONTAINER_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_node_container *) node)->dsc, "description", "container", value, line);
-            break;
-        case ANYXML_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_node_anyxml *) node)->dsc, "description", "anyxml", value, line);
-            break;
-        case CHOICE_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_node_choice *) node)->dsc, "description", "choice", value, line);
-            break;
-        case CASE_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_node_case *) node)->dsc, "description", "case", value, line);
-            break;
-        case GROUPING_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_node_grp *) node)->dsc, "description", "grouping", value, line);
-            break;
-        case LEAF_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_node_leaf *) node)->dsc, "description", "leaf", value, line);
-            break;
-        case LEAF_LIST_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_node_leaflist *) node)->dsc, "description", "leaflist", value, line);
-            break;
-        case LIST_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_node_list *) node)->dsc, "description", "list", value, line);
-            break;
-        case LENGTH_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_restr *) node)->dsc, "description", "length", value, line);
-            break;
-        case PATTERN_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_restr *) node)->dsc, "description", "pattern", value, line);
-            break;
-        case RANGE_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_restr *) node)->dsc, "description", "range", value, line);
-            break;
-        case ENUM_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_type_enum *) node)->dsc, "description", "enum", value, line);
-            break;
-        case BIT_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_type_bit *) node)->dsc, "description", "bit", value, line);
-            break;
-        case TYPEDEF_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_tpdf *) node)->dsc, "description", "typedef", value, line);
-            break;
-        case USES_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_node_uses *) node)->dsc, "description", "uses", value, line);
-            break;
-        case REFINE_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_refine *) node)->dsc, "description", "refine", value, line);
-            break;
-        case AUGMENT_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_node_augment *) node)->dsc, "description", "augment", value, line);
-            break;
-        case RPC_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_node_rpc *) node)->dsc, "description", "rpc", value, line);
-            break;
-        case NOTIFICATION_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_node_notif *) node)->dsc, "description", "notification", value, line);
-            break;
-        case DEVIATION_KEYWORD:
-            ret = yang_check_string(module, &((struct lys_deviation *) node)->dsc, "description", "deviation", value, line);
-            break;
+        if (!strcmp("revision", where)) {
+            ret = yang_check_string(module, &((struct lys_revision *)node)->dsc, dsc, where, value, line);
+        } else {
+            ret = yang_check_string(module, &((struct lys_node *)node)->dsc, dsc, where, value, line);
         }
     }
     return ret;
