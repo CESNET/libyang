@@ -610,19 +610,17 @@ ly_ctx_info(struct ly_ctx *ctx)
 }
 
 API const struct lys_node *
-ly_ctx_get_node(struct ly_ctx *ctx, const char *nodeid)
+ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid)
 {
-    const struct lys_node *ret;
+    const struct lys_node *node;
 
-    if (!ctx || !nodeid) {
+    if (!ctx || !nodeid || ((nodeid[0] != '/') && !start)) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
 
-    if (resolve_json_absolute_schema_nodeid(nodeid, ctx, &ret)) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
+    /* sets error and everything */
+    node = resolve_json_schema_nodeid(nodeid, ctx, start);
 
-    return ret;
+    return node;
 }

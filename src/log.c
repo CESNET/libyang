@@ -146,7 +146,16 @@ const char *ly_errs[] = {
 /* LYE_XPATH_INOP_2 */ "Cannot apply XPath operation %s on %s and %s.",
 /* LYE_XPATH_INCTX */  "Invalid context type %s in %s.",
 /* LYE_XPATH_INARGCOUNT */ "Invalid number of arguments (%d) for the XPath function %s.",
-/* LYE_XPATH_INARGTYPE */ "Wrong type of argument #%d (%s) for the XPath function %s."
+/* LYE_XPATH_INARGTYPE */ "Wrong type of argument #%d (%s) for the XPath function %s.",
+
+/* LYE_PATH_INCHAR */  "Unexpected character(s) '%c' (%s).",
+/* LYE_PATH_INMOD */   "Module not found (%s).",
+/* LYE_PATH_MISSMOD */ "Missing module name (%s).",
+/* LYE_PATH_INNODE */  "Schema node not found (%s).",
+/* LYE_PATH_INKEY */   "List key not found or on incorrect position (%s).",
+/* LYE_PATH_MISSKEY */ "Not all list keys specified (%s).",
+/* LYE_PATH_EXISTS */  "Node already exists.",
+/* LYE_PATH_MISSPAR */ "Parent does not exist (%s).",
 };
 
 static const LY_VECODE ecode2vecode[] = {
@@ -208,7 +217,16 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_XPATH_INOP,   /* LYE_XPATH_INOP_2 */
     LYVE_XPATH_INCTX,  /* LYE_XPATH_INCTX */
     LYVE_XPATH_INARGCOUNT, /* LYE_XPATH_INARGCOUNT */
-    LYVE_XPATH_INARGTYPE /* LYE_XPATH_INARGTYPE */
+    LYVE_XPATH_INARGTYPE, /* LYE_XPATH_INARGTYPE */
+
+    LYVE_PATH_INCHAR,  /* LYE_PATH_INCHAR */
+    LYVE_PATH_INMOD,   /* LYE_PATH_INMOD */
+    LYVE_PATH_MISSMOD, /* LYE_PATH_MISSMOD */
+    LYVE_PATH_INNODE,  /* LYE_PATH_INNODE */
+    LYVE_PATH_INKEY,   /* LYE_PATH_INKEY */
+    LYVE_PATH_MISSKEY, /* LYE_PATH_MISSKEY */
+    LYVE_PATH_EXISTS,  /* LYE_PATH_EXISTS */
+    LYVE_PATH_MISSPAR, /* LYE_PATH_MISSPAR */
 };
 
 void

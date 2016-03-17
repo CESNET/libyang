@@ -399,6 +399,7 @@ extern "C" {
  * - lyd_new()
  * - lyd_new_anyxml()
  * - lyd_new_leaf()
+ * - lyd_new_path()
  * - lyd_output_new()
  * - lyd_output_new_anyxml()
  * - lyd_output_new_leaf()
@@ -703,21 +704,25 @@ const struct lys_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const
 const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodule);
 
 /**
- * @brief Get schema node according to the given absolute schema node identifier
- * in JSON format.
+ * @brief Get schema node according to the given schema node identifier in JSON format.
  *
- * The first node identifier must be prefixed with the module name. Then every other
- * identifier either has an explicit module name or the module name of the previous
- * node is assumed. Examples:
+ * If the \p nodeid is absolute, the first node identifier must be prefixed with
+ * the module name. Then every other identifier either has an explicit module name or
+ * the module name of the previous node is assumed. Examples:
  *
  * /ietf-netconf-monitoring:get-schema/input/identifier
  * /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/ip
  *
+ * If the \p nodeid is relative, \p start is mandatory and is the starting point
+ * for the resolution. The first node identifier does not need a module name.
+ *
  * @param[in] ctx Context to work in.
- * @param[in] nodeid JSON absolute schema node identifier.
+ * @param[in] start Starting node for a relative schema node identifier, in which
+ * case it is mandatory.
+ * @param[in] nodeid JSON schema node identifier.
  * @return Resolved schema node or NULL.
  */
-const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const char *nodeid);
+const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid);
 
 /**
  * @brief Free all internal structures of the specified context.
@@ -948,7 +953,16 @@ typedef enum {
     /* */
     LYVE_XPATH_INCTX,  /**< invalid XPath context type */
     LYVE_XPATH_INARGCOUNT, /**< invalid number of arguments for an XPath function */
-    LYVE_XPATH_INARGTYPE /**< invalid type of arguments for an XPath function */
+    LYVE_XPATH_INARGTYPE, /**< invalid type of arguments for an XPath function */
+
+    LYVE_PATH_INCHAR,  /**< invalid characters (path) */
+    LYVE_PATH_INMOD,   /**< invalid module name (path) */
+    LYVE_PATH_MISSMOD, /**< missing module name (path) */
+    LYVE_PATH_INNODE,  /**< invalid node name (path) */
+    LYVE_PATH_INKEY,   /**< invalid key name (path) */
+    LYVE_PATH_MISSKEY, /**< missing some list keys (path) */
+    LYVE_PATH_EXISTS,  /**< target node already exists (path) */
+    LYVE_PATH_MISSPAR, /**< some parent of the target node is missing (path) */
 } LY_VECODE;
 
 /**
