@@ -419,7 +419,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
         rc = parse_identifier(id);
         if (rc < id_len) {
             if (log) {
-                LOGVAL(LYE_INCHAR, LOGLINE(xml), LY_VLOG_NONE, NULL, id[rc], &id[rc]);
+                LOGVAL(LYE_INCHAR, LY_VLOG_XML, xml, id[rc], &id[rc]);
             }
             free(out);
             return NULL;
@@ -438,7 +438,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
         free(prefix);
         if (!ns) {
             if (log) {
-                LOGVAL(LYE_SPEC, LOGLINE(xml), LY_VLOG_NONE, NULL,
+                LOGVAL(LYE_SPEC, LY_VLOG_XML, xml,
                        "XML namespace with prefix \"%.*s\" not defined.", id_len, id);
             }
             free(out);
@@ -447,7 +447,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
         mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
         if (!mod) {
             if (log) {
-                LOGVAL(LYE_SPEC, LOGLINE(xml), LY_VLOG_NONE, NULL,
+                LOGVAL(LYE_SPEC, LY_VLOG_XML, xml,
                        "Module with the namespace \"%s\" could not be found.", ns->value);
             }
             free(out);
@@ -486,7 +486,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
 }
 
 const char *
-transform_schema2json(const struct lys_module *module, const char *expr, uint32_t line)
+transform_schema2json(const struct lys_module *module, const char *expr)
 {
     const char *in, *id;
     char *out, *col;
@@ -518,7 +518,7 @@ transform_schema2json(const struct lys_module *module, const char *expr, uint32_
         id_len = col-id;
         rc = parse_identifier(id);
         if (rc < id_len) {
-            LOGVAL(LYE_INCHAR, line, 0, NULL, id[rc], &id[rc]);
+            LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, id[rc], &id[rc]);
             free(out);
             return NULL;
         }
@@ -526,7 +526,7 @@ transform_schema2json(const struct lys_module *module, const char *expr, uint32_
         /* get the module */
         mod = lys_get_import_module(module, id, id_len, NULL, 0);
         if (!mod) {
-            LOGVAL(LYE_INMOD_LEN, line, 0, NULL, id_len, id);
+            LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, id_len, id);
             free(out);
             return NULL;
         }

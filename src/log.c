@@ -12,9 +12,11 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#define _GNU_SOURCE
 #define _BSD_SOURCE
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <limits.h>
 #include <string.h>
 
@@ -48,14 +50,15 @@ static void
 log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *path, va_list args)
 {
     char *msg;
+    int free_flag = 0;
 
     if (&ly_errno == &ly_errno_int) {
         msg = "Internal logger error";
     } else if (!format) {
-        /* postpone print of path related to the previous error */
-        msg = ((struct ly_err *)&ly_errno)->msg;
-        snprintf(msg, LY_ERR_MSG_SIZE - 1, "Path related to the last error: \"%s\".", path);
-        msg[LY_ERR_MSG_SIZE - 1] = '\0';
+        /* postponed print of path related to the previous error, do not rewrite stored original message */
+        msg = NULL;
+        asprintf(&msg, "Path related to the last error: \"%s\".", path);
+        free_flag = 1;
     } else {
         msg = ((struct ly_err *)&ly_errno)->msg;
         vsnprintf(msg, LY_ERR_MSG_SIZE - 1, format, args);
@@ -78,6 +81,10 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         if (path) {
             fprintf(stderr, "(path: %s)\n", path);
         }
+    }
+
+    if (free_flag) {
+        free(msg);
     }
 }
 
@@ -225,11 +232,10 @@ ly_vlog_hide(int hide)
 }
 
 void
-ly_vlog(LY_ECODE code, unsigned int line, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
+ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
 {
     va_list ap;
     const char *fmt;
-    char line_msg[41];
     char* path;
     uint16_t *index;
     int i;
@@ -239,19 +245,7 @@ ly_vlog(LY_ECODE code, unsigned int line, enum LY_VLOG_ELEM elem_type, const voi
     const char *name, *prefix = NULL;
     size_t len;
 
-    if (line == UINT_MAX) {
-        return;
-    }
-
     ly_errno = LY_EVALID;
-    if (line && ! (*ly_vlog_hide_location())) {
-        if (ly_log_clb) {
-            sprintf(line_msg, "Parser fails around the line %u.", line);
-            ly_log_clb(LY_LLERR, line_msg, NULL);
-        } else {
-            fprintf(stderr, "libyang[%d]: Parser fails around the line %u.\n", LY_LLERR, line);
-        }
-    }
 
     if (code == LYE_LINE || (code == LYE_PATH && !path_flag)) {
         return;

@@ -26,7 +26,7 @@
 #include "xml_internal.h"
 
 static int
-lyv_keys(const struct lyd_node *list, unsigned int line)
+lyv_keys(const struct lyd_node *list)
 {
     struct lyd_node *child;
     struct lys_node_list *schema = (struct lys_node_list *)list->schema; /* shortcut */
@@ -35,10 +35,10 @@ lyv_keys(const struct lyd_node *list, unsigned int line)
     for (i = 0, child = list->child; i < schema->keys_size; i++, child = child->next) {
         if (!child || child->schema != (struct lys_node *)schema->keys[i]) {
             /* key not found on the correct place */
-            LOGVAL(LYE_MISSELEM, line, LY_VLOG_LYD, list, schema->keys[i]->name, schema->name);
+            LOGVAL(LYE_MISSELEM, LY_VLOG_LYD, list, schema->keys[i]->name, schema->name);
             for ( ; child; child = child->next) {
                 if (child->schema == (struct lys_node *)schema->keys[i]) {
-                    LOGVAL(LYE_SPEC, 0, LY_VLOG_LYD, child, "Invalid position of the key element.");
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, child, "Invalid position of the key element.");
                     break;
                 }
             }
@@ -313,7 +313,7 @@ lyv_data_value(struct lyd_node *node, int options)
         if (!((struct lyd_node_leaf_list *)node)->value.leafref) {
             if (!(options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
                 /* try to resolve leafref */
-                rc = resolve_unres_data_item(node, UNRES_LEAFREF, 0);
+                rc = resolve_unres_data_item(node, UNRES_LEAFREF);
                 if (rc) {
                     return EXIT_FAILURE;
                 }
@@ -324,7 +324,7 @@ lyv_data_value(struct lyd_node *node, int options)
         if (!(options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) &&
                 ((struct lys_node_leaf *)node->schema)->type.info.inst.req > -1) {
             /* try to resolve instance-identifier to get know if the target exists */
-            rc = resolve_unres_data_item(node, UNRES_INSTID, 0);
+            rc = resolve_unres_data_item(node, UNRES_INSTID);
             if (rc) {
                 return EXIT_FAILURE;
             }
@@ -339,7 +339,7 @@ lyv_data_value(struct lyd_node *node, int options)
 }
 
 int
-lyv_data_context(const struct lyd_node *node, int options, unsigned int line, struct unres_data *unres)
+lyv_data_context(const struct lyd_node *node, int options, struct unres_data *unres)
 {
     const struct lys_node *siter = NULL;
 
@@ -348,20 +348,20 @@ lyv_data_context(const struct lyd_node *node, int options, unsigned int line, st
 
     /* check if the node instance is enabled by if-feature */
     if (lys_is_disabled(node->schema, 2)) {
-        LOGVAL(LYE_INELEM, line, LY_VLOG_LYD, node, node->schema->name);
+        LOGVAL(LYE_INELEM, LY_VLOG_LYD, node, node->schema->name);
         return EXIT_FAILURE;
     }
 
     /* check all relevant when conditions */
     if ((!(options & LYD_OPT_TYPEMASK) || (options & LYD_OPT_CONFIG)) && resolve_applies_when(node)) {
-        if (unres_data_addonly(unres, (struct lyd_node *)node, UNRES_WHEN, line)) {
+        if (unres_data_addonly(unres, (struct lyd_node *)node, UNRES_WHEN)) {
             return EXIT_FAILURE;
         }
     }
 
     /* check for (non-)presence of status data in edit-config data */
     if ((options & (LYD_OPT_EDIT | LYD_OPT_GETCONFIG | LYD_OPT_CONFIG)) && (node->schema->flags & LYS_CONFIG_R)) {
-        LOGVAL(LYE_INELEM, line, LY_VLOG_LYD, node, node->schema->name);
+        LOGVAL(LYE_INELEM, LY_VLOG_LYD, node, node->schema->name);
         return EXIT_FAILURE;
     }
 
@@ -374,7 +374,7 @@ lyv_data_context(const struct lyd_node *node, int options, unsigned int line, st
                 if (siter == node->prev->schema) {
                     /* data predecessor has the schema node after
                      * the schema node of the data node being checked */
-                    LOGVAL(LYE_INORDER, line, LY_VLOG_LYD, node, node->schema->name, siter->name);
+                    LOGVAL(LYE_INORDER, LY_VLOG_LYD, node, node->schema->name, siter->name);
                     return EXIT_FAILURE;
                 }
             }
@@ -386,7 +386,7 @@ lyv_data_context(const struct lyd_node *node, int options, unsigned int line, st
 }
 
 int
-lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct unres_data *unres)
+lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
 {
     const struct lys_node *schema, *siter;
     const struct lys_node *cs, *ch;
@@ -402,7 +402,7 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
     if (node->validity) {
         /* check presence and correct order of all keys in case of list */
         if (schema->nodetype == LYS_LIST && !(options & (LYD_OPT_FILTER | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
-            if (lyv_keys(node, line)) {
+            if (lyv_keys(node)) {
                 return EXIT_FAILURE;
             }
         }
@@ -413,9 +413,9 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
             siter = ly_check_mandatory(node, NULL);
             if (siter) {
                 if (siter->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-                    LOGVAL(LYE_INCOUNT, line, LY_VLOG_LYD, node, siter->name, siter->parent->name);
+                    LOGVAL(LYE_INCOUNT, LY_VLOG_LYD, node, siter->name, siter->parent->name);
                 } else {
-                    LOGVAL(LYE_MISSELEM, line, LY_VLOG_LYD, node, siter->name, siter->parent->name);
+                    LOGVAL(LYE_MISSELEM, LY_VLOG_LYD, node, siter->name, siter->parent->name);
                 }
                 return EXIT_FAILURE;
             }
@@ -451,7 +451,7 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
                     for (siter = diter->schema->parent; siter; siter = siter->parent) {
                         if (siter->nodetype == LYS_CHOICE) {
                             if (siter == ch) {
-                                LOGVAL(LYE_MCASEDATA, line, LY_VLOG_LYD, node, ch->name);
+                                LOGVAL(LYE_MCASEDATA, LY_VLOG_LYD, node, ch->name);
                                 return EXIT_FAILURE;
                             } else {
                                 continue;
@@ -462,7 +462,7 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
                             if (siter->parent != ch) {
                                 continue;
                             } else if (!cs || cs != siter) {
-                                LOGVAL(LYE_MCASEDATA, line, LY_VLOG_LYD, node, ch->name);
+                                LOGVAL(LYE_MCASEDATA, LY_VLOG_LYD, node, ch->name);
                                 return EXIT_FAILURE;
                             }
                         }
@@ -535,7 +535,7 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
                         /* we are done */
                         break;
                     } else {
-                        LOGVAL(LYE_TOOMANY, line, LY_VLOG_LYD, node, schema->name,
+                        LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, node, schema->name,
                                schema->parent ? schema->parent->name : "data tree");
                         return EXIT_FAILURE;
                     }
@@ -602,7 +602,7 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
                         }
                     }
                 } else if (!lyd_compare(diter, node, 1)) { /* comparing keys and unique combinations */
-                    LOGVAL(LYE_DUPLIST, line, LY_VLOG_LYD, node, schema->name);
+                    LOGVAL(LYE_DUPLIST, LY_VLOG_LYD, node, schema->name);
                     return EXIT_FAILURE;
                 }
             }
@@ -613,7 +613,7 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
         siter = node->schema;
         do {
             if (((siter->flags & LYS_STATUS_MASK) == LYS_STATUS_OBSLT) && (options & LYD_OPT_OBSOLETE)) {
-                LOGVAL(LYE_OBSDATA, line, LY_VLOG_LYD, node, schema->name);
+                LOGVAL(LYE_OBSDATA, LY_VLOG_LYD, node, schema->name);
                 return EXIT_FAILURE;
             }
             siter = siter->parent;
@@ -626,7 +626,7 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
                 tpdf = ((struct lys_node_leaf *)node->schema)->type.der;
                 while(tpdf) {
                     if ((tpdf->flags & LYS_STATUS_MASK) == LYS_STATUS_OBSLT) {
-                        LOGVAL(LYE_OBSTYPE, line, LY_VLOG_LYD, node, schema->name, tpdf->name);
+                        LOGVAL(LYE_OBSTYPE, LY_VLOG_LYD, node, schema->name, tpdf->name);
                         return EXIT_FAILURE;
                     }
                     tpdf = tpdf->type.der;
@@ -635,7 +635,7 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
             if (((struct lyd_node_leaf_list *)node)->value_type == LY_TYPE_IDENT) {
                 ident = ((struct lyd_node_leaf_list *)node)->value.ident;
                 if (lyp_check_status(schema->flags, schema->module, schema->name,
-                                 ident->flags, ident->module, ident->name, line, schema)) {
+                                 ident->flags, ident->module, ident->name, schema)) {
                     return EXIT_FAILURE;
                 }
             }
@@ -644,11 +644,11 @@ lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct u
 
     /* check must conditions */
     if (unres) {
-        if (unres_data_add(unres, node, UNRES_MUST, line) == -1) {
+        if (unres_data_add(unres, node, UNRES_MUST) == -1) {
             return EXIT_FAILURE;
         }
     } else {
-        if (resolve_unres_data_item(node, UNRES_MUST, line)) {
+        if (resolve_unres_data_item(node, UNRES_MUST)) {
             return EXIT_FAILURE;
         }
     }
