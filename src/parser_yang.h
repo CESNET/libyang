@@ -48,7 +48,7 @@ struct lys_node_array{
     uint8_t must;
     uint8_t unique;
     uint8_t tpdf;
-    uint8_t keys;
+    uint8_t flags;
     uint8_t expr_size;
     uint16_t refine;
     uint16_t augment;
@@ -126,6 +126,11 @@ struct type_ident {
     char s[0];
 };
 
+struct type_uses {
+    struct lys_node_uses *ptr_uses;
+    int config_inherit;
+};
+
 struct yang_type {
     char flags;       /**< this is used to distinguish lyxml_elem * from a YANG temporary parsing structure */
     char *name;
@@ -182,6 +187,8 @@ int yang_read_message(struct lys_module *module,struct lys_restr *save,char *val
 int yang_read_presence(struct lys_module *module, struct lys_node_container *cont, char *value, int line);
 
 int yang_read_config(void *node, int value, int type, int line);
+
+void store_flags(struct lys_node *node, uint8_t flags, int config_inherit);
 
 void *yang_read_when(struct lys_module *module, struct lys_node *node, int type, char *value, int line);
 
@@ -268,5 +275,7 @@ int yang_fill_include(struct lys_module *module, struct lys_submodule *submodule
                       char *rev, int inc_size, struct unres_schema *unres, int line);
 
 int yang_use_extension(struct lys_module *module, struct lys_node *data_node, void *actual, char *value, int line);
+
+int yang_check_flags(uint8_t *flags, uint8_t mask, char *what, char *where, int value, int line);
 
 #endif /* LY_PARSER_YANG_H_ */

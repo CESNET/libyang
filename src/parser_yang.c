@@ -447,7 +447,7 @@ yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct u
     return EXIT_SUCCESS;
 }
 
-static int 
+int
 yang_check_flags(uint8_t *flags, uint8_t mask, char *what, char *where, int value, int line)
 {
     if (*flags & mask) {
@@ -643,37 +643,6 @@ yang_read_presence(struct lys_module *module, struct lys_node_container *cont, c
         cont->presence = lydict_insert_zc(module->ctx, value);
         return EXIT_SUCCESS;
     }
-}
-
-int
-yang_read_config(void *node, int value, int type, int line)
-{
-    int ret;
-
-    switch (type) {
-    case CONTAINER_KEYWORD:
-        ret = yang_check_flags(&((struct lys_node_container *)node)->flags, LYS_CONFIG_MASK, "config", "container", value, line);
-        break;
-    case ANYXML_KEYWORD:
-        ret = yang_check_flags(&((struct lys_node_anyxml *)node)->flags, LYS_CONFIG_MASK, "config", "anyxml", value, line);
-        break;
-    case CHOICE_KEYWORD:
-        ret = yang_check_flags(&((struct lys_node_choice *)node)->flags, LYS_CONFIG_MASK, "config", "choice", value, line);
-        break;
-    case LEAF_KEYWORD:
-        ret = yang_check_flags(&((struct lys_node_leaf *)node)->flags, LYS_CONFIG_MASK, "config", "leaf", value, line);
-        break;
-    case LEAF_LIST_KEYWORD:
-        ret = yang_check_flags(&((struct lys_node_leaflist *)node)->flags, LYS_CONFIG_MASK, "config", "leaflist", value, line);
-        break;
-    case LIST_KEYWORD:
-        ret = yang_check_flags(&((struct lys_node_list *)node)->flags, LYS_CONFIG_MASK, "config", "list", value, line);
-        break;
-    case REFINE_KEYWORD:
-        ret = yang_check_flags(&((struct lys_refine *)node)->flags, LYS_CONFIG_MASK, "config", "refine", value, line);
-        break;
-    }
-    return ret;
 }
 
 void *
@@ -2369,5 +2338,20 @@ nacm_inherit(struct lys_module *module)
             }
         }
         LY_TREE_DFS_END(module->data, next, elem);
+    }
+}
+
+void
+store_flags(struct lys_node *node, uint8_t flags, int config_inherit)
+{
+    node->flags |= flags;
+    if (!(node->flags & LYS_CONFIG_MASK) && config_inherit) {
+        /* get config flag from parent */
+        if (node->parent) {
+            node->flags |= node->parent->flags & LYS_CONFIG_MASK;
+        } else {
+            /* default config is true */
+            node->flags |= LYS_CONFIG_W;
+        }
     }
 }
