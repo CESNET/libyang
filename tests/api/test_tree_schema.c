@@ -333,7 +333,7 @@ static void
 test_lys_parse_mem(void **state)
 {
     (void) state; /* unused */
-    const struct lys_module *module;
+    const struct lys_module *module = NULL;
     char *yang_folder = TESTS_DIR"/api/files";
 
     LYS_INFORMAT yang_format = LYS_IN_YIN;
@@ -748,14 +748,14 @@ static void
 test_lys_print_fd_tree(void **state)
 {
     (void) state; /* unused */
-    const struct lys_module *module;
+    const struct lys_module *module = NULL;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     struct stat sb;
     char *target = "top";
     char file_name[19];
     char *result;
     int rc;
-    int fd;
+    int fd = -1;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     if (!module) {
@@ -801,14 +801,14 @@ static void
 test_lys_print_fd_yang(void **state)
 {
     (void) state; /* unused */
-    const struct lys_module *module;
+    const struct lys_module *module = NULL;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     struct stat sb;
     char *target = "top";
     char file_name[19];
     char *result;
     int rc;
-    int fd;
+    int fd = -1;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     if (!module) {
@@ -853,14 +853,14 @@ static void
 test_lys_print_fd_yin(void **state)
 {
     (void) state; /* unused */
-    const struct lys_module *module;
+    const struct lys_module *module = NULL;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     struct stat sb;
     char *target = "top";
     char file_name[19];
     char *result;
     int rc;
-    int fd;
+    int fd = -1;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     if (!module) {
@@ -905,14 +905,14 @@ static void
 test_lys_print_fd_info(void **state)
 {
     (void) state; /* unused */
-    const struct lys_module *module;
+    const struct lys_module *module = NULL;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     struct stat sb;
     char *target = "feature/foo";
     char file_name[19];
     char *result;
     int rc;
-    int fd;
+    int fd = -1;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     if (!module) {
@@ -957,7 +957,7 @@ static void
 test_lys_print_file_tree(void **state)
 {
     (void) state; /* unused */
-    const struct lys_module *module;
+    const struct lys_module *module = NULL;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     struct stat sb;
     char *target = "top";
@@ -965,7 +965,7 @@ test_lys_print_file_tree(void **state)
     char *result;
     FILE *f = NULL;
     int rc;
-    int fd;
+    int fd = -1;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     if (!module) {
@@ -1021,7 +1021,7 @@ static void
 test_lys_print_file_yin(void **state)
 {
     (void) state; /* unused */
-    const struct lys_module *module;
+    const struct lys_module *module = NULL;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     struct stat sb;
     char *target = "top";
@@ -1029,7 +1029,7 @@ test_lys_print_file_yin(void **state)
     char *result;
     FILE *f = NULL;
     int rc;
-    int fd;
+    int fd = -1;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     if (!module) {
@@ -1085,7 +1085,7 @@ static void
 test_lys_print_file_yang(void **state)
 {
     (void) state; /* unused */
-    const struct lys_module *module;
+    const struct lys_module *module = NULL;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     struct stat sb;
     char *target = "top";
@@ -1093,7 +1093,7 @@ test_lys_print_file_yang(void **state)
     char *result;
     FILE *f = NULL;
     int rc;
-    int fd;
+    int fd = -1;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     if (!module) {
@@ -1149,7 +1149,7 @@ static void
 test_lys_print_file_info(void **state)
 {
     (void) state; /* unused */
-    const struct lys_module *module;
+    const struct lys_module *module = NULL;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     struct stat sb;
     char *target = "feature/foo";
@@ -1157,7 +1157,7 @@ test_lys_print_file_info(void **state)
     char *result;
     FILE *f = NULL;
     int rc;
-    int fd;
+    int fd = -1;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     if (!module) {
