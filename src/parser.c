@@ -575,10 +575,9 @@ error:
  * logs directly
  *
  * resolve - whether resolve identityrefs and leafrefs (which must be in JSON form)
- * unres - whether to try to resolve and on failure store it as unres or fail if resolving fails
  */
 static int
-lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve, struct unres_data *unres)
+lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve)
 {
     #define DECSIZE 21
     struct lys_type *type;
@@ -797,19 +796,6 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
 
         if (!resolve) {
             node->value_type |= LY_TYPE_INST_UNRES;
-        } else {
-            /* validity checking is performed later, right now the data tree
-             * is not complete, so many instanceids cannot be resolved
-             */
-            if (unres) {
-                if (unres_data_add(unres, (struct lyd_node *)node, UNRES_INSTID)) {
-                    return EXIT_FAILURE;
-                }
-            } else {
-                if (resolve_unres_data_item((struct lyd_node *)node, UNRES_INSTID)) {
-                    return EXIT_FAILURE;
-                }
-            }
         }
         break;
 
@@ -825,19 +811,6 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
                 type = &type->info.lref.target->type;
             }
             node->value_type = type->base | LY_TYPE_LEAFREF_UNRES;
-        } else {
-            /* validity checking is performed later, right now the data tree
-             * is not complete, so many noderefs cannot be resolved
-             */
-            if (unres) {
-                if (unres_data_add(unres, (struct lyd_node *)node, UNRES_LEAFREF)) {
-                    return EXIT_FAILURE;
-                }
-            } else {
-                if (resolve_unres_data_item((struct lyd_node *)node, UNRES_LEAFREF)) {
-                    return EXIT_FAILURE;
-                }
-            }
         }
         break;
 
@@ -927,7 +900,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
 }
 
 int
-lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int resolve, struct unres_data *unres)
+lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int resolve)
 {
     int found = 0;
     struct lys_type *type, *stype;
@@ -955,7 +928,7 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
                 }
             }
 
-            if (!lyp_parse_value_(leaf, type, resolve, unres)) {
+            if (!lyp_parse_value_(leaf, type, resolve)) {
                 /* success */
                 break;
             }
@@ -977,7 +950,7 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
         }
     } else {
         memset(&leaf->value, 0, sizeof leaf->value);
-        if (lyp_parse_value_(leaf, stype, resolve, unres)) {
+        if (lyp_parse_value_(leaf, stype, resolve)) {
             ly_errno = LY_EVALID;
             return EXIT_FAILURE;
         }

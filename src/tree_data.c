@@ -207,6 +207,10 @@ lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *na
     }
     ret->schema = (struct lys_node *)snode;
     ret->validity = LYD_VAL_NOT;
+    if (resolve_applies_when(ret)) {
+        ret->when_status = LYD_WHEN;
+    }
+
     ret->prev = ret;
     if (parent) {
         if (lyd_insert(parent, ret)) {
@@ -235,7 +239,7 @@ lyd_create_leaf(const struct lys_node *schema, const char *val_str)
     ret->value_str = lydict_insert(schema->module->ctx, val_str, 0);
 
     /* resolve the type correctly */
-    if (lyp_parse_value(ret, NULL, 1, NULL)) {
+    if (lyp_parse_value(ret, NULL, 1)) {
         lyd_free((struct lyd_node *)ret);
         ly_errno = LY_EINVAL;
         return NULL;
@@ -312,7 +316,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     leaf->value_str = val_str;
 
     /* resolve the type correctly */
-    if (lyp_parse_value(leaf, NULL, 1, NULL)) {
+    if (lyp_parse_value(leaf, NULL, 1)) {
         leaf->value_str = backup;
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
@@ -426,6 +430,10 @@ lyd_output_new(const struct lys_node *schema)
     }
     ret->schema = (struct lys_node *)schema;
     ret->validity = LYD_VAL_NOT;
+    if (resolve_applies_when(ret)) {
+        ret->when_status = LYD_WHEN;
+    }
+
     ret->prev = ret;
 
     return ret;
@@ -823,9 +831,6 @@ lyd_validate(struct lyd_node **node, int options, ...)
             if (lyv_data_context(iter, options, unres)) {
                 goto error;
             }
-            if (lyv_data_value(iter, options)) {
-                goto error;
-            }
             if (lyv_data_content(iter, options, unres)) {
                 if (ly_errno) {
                     goto error;
@@ -1093,6 +1098,7 @@ lyd_dup(const struct lyd_node *node, int recursive)
         new_node->prev = new_node;
         new_node->parent = NULL;
         new_node->validity = LYD_VAL_NOT;
+        new_node->when_status = elem->when_status & LYD_WHEN;
 
         if (!ret) {
             ret = new_node;

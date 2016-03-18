@@ -334,7 +334,7 @@ json_get_anyxml(struct lyd_node_anyxml *axml, const char *data)
 }
 
 static unsigned int
-json_get_value(struct lyd_node_leaf_list *leaf, const char *data, int options, struct unres_data *unres)
+json_get_value(struct lyd_node_leaf_list *leaf, const char *data, int options)
 {
     struct lyd_node_leaf_list *new, *diter;
     struct lys_type *stype;
@@ -343,7 +343,7 @@ json_get_value(struct lyd_node_leaf_list *leaf, const char *data, int options, s
     int resolve;
     char *str;
 
-    assert(leaf && data && unres);
+    assert(leaf && data);
     ctx = leaf->schema->module->ctx;
 
     if (options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
@@ -424,7 +424,7 @@ repeat:
         return 0;
     }
 
-    if (lyp_parse_value(leaf, NULL, resolve, unres)) {
+    if (lyp_parse_value(leaf, NULL, resolve)) {
         ly_errno = LY_EVALID;
         return 0;
     }
@@ -899,6 +899,9 @@ attr_repeat:
     }
     result->schema = schema;
     result->validity = LYD_VAL_NOT;
+    if (resolve_applies_when(result)) {
+        result->when_status = LYD_WHEN;
+    }
 
     if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(result, options, unres)) {
         goto error;
@@ -909,7 +912,7 @@ attr_repeat:
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
-        r = json_get_value((struct lyd_node_leaf_list *)result, &data[len], options, unres);
+        r = json_get_value((struct lyd_node_leaf_list *)result, &data[len], options);
         if (!r) {
             goto error;
         }

@@ -98,7 +98,7 @@ typedef union lyd_value_u {
  */
 #define LYD_VAL_OK       0x00    /**< node is successfully validated including whole subtree */
 #define LYD_VAL_UNIQUE   0x01    /**< Unique value(s) changed, applicable only to ::lys_node_list data nodes */
-#define LYD_VAL_NOT      0x7f    /**< node was not validated yet */
+#define LYD_VAL_NOT      0x1f    /**< node was not validated yet */
 /**
  * @}
  */
@@ -117,8 +117,8 @@ typedef union lyd_value_u {
  */
 struct lyd_node {
     struct lys_node *schema;         /**< pointer to the schema definition of this node */
-    uint8_t validity:7;              /**< [validity flags](@ref validityflags) */
-    uint8_t when_status:1;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
+    uint8_t validity:5;              /**< [validity flags](@ref validityflags) */
+    uint8_t when_status:3;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
                                           do not use this value! */
 
     struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
@@ -148,8 +148,8 @@ struct lyd_node {
 struct lyd_node_leaf_list {
     struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_leaflist
                                           structure */
-    uint8_t validity:7;              /**< [validity flags](@ref validityflags) */
-    uint8_t when_status:1;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
+    uint8_t validity:5;              /**< [validity flags](@ref validityflags) */
+    uint8_t when_status:3;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
                                           do not use this value! */
 
     struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
@@ -179,8 +179,8 @@ struct lyd_node_leaf_list {
 struct lyd_node_anyxml {
     struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_anyxml
                                           structure */
-    uint8_t validity:7;              /**< [validity flags](@ref validityflags) */
-    uint8_t when_status:1;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
+    uint8_t validity:5;              /**< [validity flags](@ref validityflags) */
+    uint8_t when_status:3;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
                                           do not use this value! */
 
     struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */

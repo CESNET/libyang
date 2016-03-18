@@ -75,12 +75,12 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start, int o
 
 /* logs directly */
 static int
-xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct unres_data *unres)
+xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options)
 {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
     int resolve;
 
-    assert(node && (node->schema->nodetype & (LYS_LEAFLIST | LYS_LEAF)) && xml && unres);
+    assert(node && (node->schema->nodetype & (LYS_LEAFLIST | LYS_LEAF)) && xml);
 
     leaf->value_str = xml->content;
     xml->content = NULL;
@@ -112,7 +112,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, struct
         }
     }
 
-    if (lyp_parse_value(leaf, xml, resolve, unres)) {
+    if (lyp_parse_value(leaf, xml, resolve)) {
         return EXIT_FAILURE;
     }
 
@@ -238,6 +238,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     }
     (*result)->schema = schema;
     (*result)->validity = LYD_VAL_NOT;
+    if (resolve_applies_when(*result)) {
+        (*result)->when_status = LYD_WHEN;
+    }
 
     /* check insert attribute and its values */
     if (options & LYD_OPT_EDIT) {
@@ -311,7 +314,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
-        if (xml_get_value(*result, xml, options, unres)) {
+        if (xml_get_value(*result, xml, options)) {
             goto error;
         }
     } else if (schema->nodetype == LYS_ANYXML && !(options & LYD_OPT_FILTER)) {

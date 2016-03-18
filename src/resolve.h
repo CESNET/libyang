@@ -22,6 +22,7 @@
  */
 enum UNRES_ITEM {
     UNRES_RESOLVED,      /* a resolved item */
+    UNRES_DELETE,        /* prepared for auto-delete */
 
     /* SCHEMA */
     UNRES_IDENT,         /* unresolved derived identities */

@@ -1774,7 +1774,7 @@ check_default(struct lys_type *type, const char *value, struct lys_module *modul
         /* it was converted to JSON format before, nothing else sensible we can do */
 
     } else {
-        ret = lyp_parse_value(&node, NULL, 1, NULL);
+        ret = lyp_parse_value(&node, NULL, 1);
     }
 
 finish:
@@ -3664,6 +3664,7 @@ resolve_when(struct lyd_node *node)
             ly_vlog_hide(1);
             LOGVAL(LYE_NOCOND, LY_VLOG_LYD, node, "When", ((struct lys_node_container *)node->schema)->when->cond);
             ly_vlog_hide(0);
+            node->when_status |= LYD_WHEN_FALSE;
             goto success;
         }
     }
@@ -3694,6 +3695,7 @@ resolve_when(struct lyd_node *node)
                 ly_vlog_hide(1);
                 LOGVAL(LYE_NOCOND, LY_VLOG_LYD, node, "When", ((struct lys_node_uses *)parent)->when->cond);
                 ly_vlog_hide(0);
+                node->when_status |= LYD_WHEN_FALSE;
                 goto success;
             }
         }
@@ -3721,6 +3723,7 @@ check_augment:
                 ly_vlog_hide(1);
                 LOGVAL(LYE_NOCOND, LY_VLOG_LYD, node, "When", ((struct lys_node_augment *)parent->parent)->when->cond);
                 ly_vlog_hide(0);
+                node->when_status |= LYD_WHEN_FALSE;
                 goto success;
             }
         }
@@ -3728,10 +3731,9 @@ check_augment:
         parent = lys_parent(parent);
     }
 
-success:
-    /* mark the node as node with resolved when-stmt condition */
-    node->when_status = ~node->when_status;
+    node->when_status |= LYD_WHEN_TRUE;
 
+success:
     return 0;
 }
 
@@ -4186,35 +4188,6 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres)
     }
 }
 
-/* logs directly */
-static void
-print_unres_data_item_fail(struct lyd_node *node, enum UNRES_ITEM type)
-{
-    struct lys_node_leaf *sleaf;
-
-    sleaf = (struct lys_node_leaf *)node->schema;
-
-    switch (type) {
-    case UNRES_LEAFREF:
-        LOGVRB("Leafref \"%s\" could not be resolved, it will be attempted later.",
-               sleaf->type.info.lref.path);
-        break;
-    case UNRES_INSTID:
-        LOGVRB("Instance-identifier \"%s\" could not be resolved, it will be attempted later.",
-               ((struct lyd_node_leaf_list *)node)->value_str);
-        break;
-    case UNRES_WHEN:
-        LOGVRB("There was an unsatisfied when condition, evaluation will be attempted later.");
-        break;
-    case UNRES_MUST:
-        LOGVRB("There was an unsatisfied must condition, evaluation will be attempted later.");
-        break;
-    default:
-        LOGINT;
-        break;
-    }
-}
-
 /**
  * @brief Resolve a single unres data item. Logs directly.
  *
@@ -4298,8 +4271,16 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
     return EXIT_SUCCESS;
 }
 
+/**
+ * @brief add data unres item
+ *
+ * @param[in] unres Unres data structure to use.
+ * @param[in] node Data node to use.
+ *
+ * @return 0 on success, -1 on error.
+ */
 int
-unres_data_addonly(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type)
+unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type)
 {
     assert(unres && node);
     assert((type == UNRES_LEAFREF) || (type == UNRES_INSTID) || (type == UNRES_WHEN) || (type == UNRES_MUST));
@@ -4318,43 +4299,12 @@ unres_data_addonly(struct unres_data *unres, struct lyd_node *node, enum UNRES_I
     }
     unres->type[unres->count - 1] = type;
 
-    return EXIT_SUCCESS;
-}
-
-/**
- * @brief Try to resolve an unres data item. Logs indirectly.
- *
- * @param[in] unres Unres data structure to use.
- * @param[in] node Data node to use.
- *
- * @return EXIT_SUCCESS on success or storing the item in unres, -1 on error.
- */
-int
-unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type)
-{
-    int rc;
-    char *path, *msg;
-
-    assert(unres && node);
-    assert((type == UNRES_LEAFREF) || (type == UNRES_INSTID) || (type == UNRES_WHEN) || (type == UNRES_MUST));
-
-    ly_vlog_hide(1);
-    rc = resolve_unres_data_item(node, type);
-    ly_vlog_hide(0);
-    if (rc != EXIT_FAILURE) {
-        if (rc == -1 && ly_errno == LY_EVALID) {
-            path = strdup(ly_errpath());
-            LOGERR(LY_EVALID, "%s%s%s%s", msg = strdup(ly_errmsg()),
-                   path[0] ? " (path: " : "", path[0] ? path : "", path[0] ? ")" : "");
-            free(path);
-            free(msg);
-        }
-        return rc;
+    if (type == UNRES_WHEN) {
+        /* remove previous result */
+        node->when_status = LYD_WHEN;
     }
 
-    print_unres_data_item_fail(node, type);
-
-    return unres_data_addonly(unres, node, type);
+    return EXIT_SUCCESS;
 }
 
 /**
@@ -4369,9 +4319,10 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
 int
 resolve_unres_data(struct unres_data *unres, struct lyd_node **root)
 {
-    uint32_t i, resolved = 0;
+    uint32_t i, j = 0, resolved = 0, del_items = 0, when_stmt = 0;
     int rc, progress;
     char *msg, *path;
+    struct lyd_node *parent;
 
     assert(unres);
     assert(root && (*root));
@@ -4383,7 +4334,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root)
     LOGVRB("Resolving unresolved data nodes and their constraints.");
     ly_vlog_hide(1);
 
-    /* when */
+    /* when-stmt first */
     ly_errno = LY_SUCCESS;
     ly_vecode = LYVE_SUCCESS;
     do {
@@ -4392,21 +4343,33 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root)
             if (unres->type[i] != UNRES_WHEN) {
                 continue;
             }
+            if (!j) {
+                /* count when-stmt nodes in unres list */
+                when_stmt++;
+            }
+
+            /* resolve when condition only when all parent when conditions are already resolved */
+            for (parent = unres->node[i]->parent;
+                 parent && LYD_WHEN_DONE(parent->when_status);
+                 parent = parent->parent) {
+                if (!parent->parent && (parent->when_status & LYD_WHEN_FALSE)) {
+                    /* the parent node was already unlinked, do not resolve this node,
+                     *  it will be removed anyway, so just mark it as resolved
+                     */
+                    unres->node[i]->when_status |= LYD_WHEN_FALSE;
+                    unres->type[i] = UNRES_RESOLVED;
+                    resolved++;
+                    break;
+                }
+            }
+            if (parent) {
+                continue;
+            }
 
             rc = resolve_unres_data_item(unres->node[i], unres->type[i]);
             if (!rc) {
-                if (ly_vecode == LYVE_NOCOND) {
-                    if (root) {
-                        /* auto-delete */
-                        LOGVRB("auto-delete node \"%s\" due to when condition (%s)", ly_errpath(),
-                               ((struct lys_node_leaf *)unres->node[i]->schema)->when->cond);
-                        if (*root == unres->node[i]) {
-                            *root = (*root)->next;
-                        }
-                        lyd_free(unres->node[i]);
-                        ly_errno = LY_SUCCESS;
-                        ly_vecode = LYVE_SUCCESS;
-                    } else {
+                if (unres->node[i]->when_status & LYD_WHEN_FALSE) {
+                    if (!root) {
                         /* false when condition */
                         ly_vlog_hide(0);
                         path = strdup(ly_errpath());
@@ -4415,9 +4378,24 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root)
                         free(path);
                         free(msg);
                         return -1;
+                    } /* follows else */
+
+                    /* auto-delete */
+                    LOGVRB("auto-delete node \"%s\" due to when condition (%s)", ly_errpath(),
+                                    ((struct lys_node_leaf *)unres->node[i]->schema)->when->cond);
+                    if (*root == unres->node[i]) {
+                        *root = (*root)->next;
                     }
+
+                    /* only unlink now, the subtree can contain another nodes stored in the unres list */
+                    lyd_unlink(unres->node[i]);
+                    unres->type[i] = UNRES_DELETE;
+                    del_items++;
+                } else {
+                    unres->type[i] = UNRES_RESOLVED;
                 }
-                unres->type[i] = UNRES_RESOLVED;
+                ly_errno = LY_SUCCESS;
+                ly_vecode = LYVE_SUCCESS;
                 resolved++;
                 progress = 1;
             } else if (rc == -1) {
@@ -4425,8 +4403,47 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root)
                 return -1;
             }
         }
+        j = 1;
+    } while (progress && resolved < when_stmt);
 
-    } while (progress);
+    /* do we have some unresolved when-stmt? */
+    if (when_stmt != resolved) {
+        ly_vlog_hide(0);
+        path = strdup(ly_errpath());
+        LOGERR(LY_EVALID, "%s%s%s%s", msg = strdup(ly_errmsg()), path[0] ? " (path: " : "",
+               path[0] ? path : "", path[0] ? ")" : "");
+        free(path);
+        free(msg);
+        return -1;
+    }
+
+    for (i = 0; del_items && i < unres->count; i++) {
+        /* we had some when-stmt resulted to false, so now we have to sanitize the unres list */
+        if (unres->type[i] != UNRES_DELETE) {
+            continue;
+        }
+
+        for (j = 0; j < unres->count; j++) {
+            if (unres->type[j] == UNRES_RESOLVED || unres->type[j] == UNRES_DELETE) {
+                continue;
+            }
+
+            /* test if the node is in subtree to be deleted */
+            for (parent = unres->node[j]; parent; parent = parent->parent) {
+                if (parent == unres->node[i]) {
+                    /* yes, it is */
+                    unres->type[j] = UNRES_RESOLVED;
+                    resolved++;
+                    break;
+                }
+            }
+        }
+
+        /* really remove the complete subtree */
+        lyd_free(unres->node[i]);
+        unres->type[i] = UNRES_RESOLVED;
+        del_items--;
+    }
 
     /* rest */
     for (i = 0; i < unres->count; ++i) {

@@ -44,7 +44,7 @@ int lyv_data_context(const struct lyd_node *node, int options, struct unres_data
  *
  * @param[in] node Data tree node to be checked.
  * @param[in] options Parser options, see @ref parseroptions.
- * @param[out] unres Structure to store unresolved items into. Can be NULL.
+ * @param[out] unres Structure to store unresolved items into. Cannot be NULL.
  * @return EXIT_SUCCESS or EXIT_FAILURE with set ly_errno. If EXIT_FAILURE is returned
  * but ly_errno is not set, the issue was internally resolved and caller is supposed to
  * unlink and free the node and continue;

@@ -68,6 +68,21 @@ struct ly_types {
 extern struct ly_types ly_types[LY_DATA_TYPE_COUNT];
 
 /**
+ * Macros to work with ::lys_node#when_status
+ * +--- bit 1 - some when-stmt connected with the node (resolve_applies_when() is true)
+ * |+-- bit 2 - when-stmt's condition is resolved and it is true
+ * ||+- bit 3 - when-stmt's condition is resolved and it is false
+ * XXX
+ *
+ * bit 1 is set when the node is created
+ * if none of bits 2 and 3 is set, the when condition is not yet resolved
+ */
+#define LYD_WHEN       0x04
+#define LYD_WHEN_TRUE  0x02
+#define LYD_WHEN_FALSE 0x01
+#define LYD_WHEN_DONE(status) (!((status) & LYD_WHEN) || ((status) & (LYD_WHEN_TRUE | LYD_WHEN_FALSE)))
+
+/**
  * @brief Create submodule structure by reading data from memory.
  *
  * @param[in] module Schema tree where to connect the submodule, belongs-to value must match.

@@ -205,9 +205,9 @@ enum lyxp_node_type {
  *
  * TODO
  * - change when_must_eval to options and separate when and must
- * - except when, add another option to take WHEN flag in data nodes into account
- * - return 0 on success, -1 on error, 1 when the option from the previous point is used and WHEN flag is the same as
- *   in the cur_node
+ * - with the WHEN option, take ::lyd_node#when_status into account
+ * - return 0 on success, -1 on error, 1 when the option from the previous point is used and LYD_WHEN_DONE is false on
+ *   a node referenced in the expr
  */
 int lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *set, int options);
 

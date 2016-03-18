@@ -352,9 +352,27 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
         return EXIT_FAILURE;
     }
 
+    /* check leafref/instance-identifier */
+    if ((node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) &&
+            !(options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
+        /* remove possible unres flags from type */
+        ((struct lyd_node_leaf_list *)node)->value_type &= LY_DATA_TYPE_MASK;
+
+        /* if leafref or instance-identifier, store the node for later resolving */
+        if (((struct lyd_node_leaf_list *)node)->value_type == LY_TYPE_LEAFREF) {
+            if (unres_data_add(unres, (struct lyd_node *)node, UNRES_LEAFREF)) {
+                return EXIT_FAILURE;
+            }
+        } else if (((struct lyd_node_leaf_list *)node)->value_type == LY_TYPE_INST) {
+            if (unres_data_add(unres, (struct lyd_node *)node, UNRES_INSTID)) {
+                return EXIT_FAILURE;
+            }
+        }
+    }
+
     /* check all relevant when conditions */
-    if ((!(options & LYD_OPT_TYPEMASK) || (options & LYD_OPT_CONFIG)) && resolve_applies_when(node)) {
-        if (unres_data_addonly(unres, (struct lyd_node *)node, UNRES_WHEN)) {
+    if ((!(options & LYD_OPT_TYPEMASK) || (options & LYD_OPT_CONFIG)) && (node->when_status & LYD_WHEN)) {
+        if (unres_data_add(unres, (struct lyd_node *)node, UNRES_WHEN)) {
             return EXIT_FAILURE;
         }
     }
@@ -396,6 +414,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
 
     assert(node);
     assert(node->schema);
+    assert(unres);
 
     schema = node->schema; /* shortcut */
 
@@ -643,14 +662,8 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
     }
 
     /* check must conditions */
-    if (unres) {
-        if (unres_data_add(unres, node, UNRES_MUST) == -1) {
-            return EXIT_FAILURE;
-        }
-    } else {
-        if (resolve_unres_data_item(node, UNRES_MUST)) {
-            return EXIT_FAILURE;
-        }
+    if (unres_data_add(unres, node, UNRES_MUST) == -1) {
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
