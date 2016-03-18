@@ -3597,6 +3597,25 @@ resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema)
 }
 
 int
+resolve_applies_must(const struct lyd_node *node)
+{
+    switch (node->schema->nodetype) {
+    case LYS_CONTAINER:
+        return ((struct lys_node_container *)node->schema)->must_size;
+    case LYS_LEAF:
+        return ((struct lys_node_leaf *)node->schema)->must_size;
+    case LYS_LEAFLIST:
+        return ((struct lys_node_leaflist *)node->schema)->must_size;
+    case LYS_LIST:
+        return ((struct lys_node_list *)node->schema)->must_size;
+    case LYS_ANYXML:
+        return ((struct lys_node_anyxml *)node->schema)->must_size;
+    default:
+        return 0;
+    }
+}
+
+int
 resolve_applies_when(const struct lyd_node *node)
 {
     struct lys_node *parent;

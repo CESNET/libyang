@@ -114,6 +114,7 @@ int resolve_unique(struct lys_node *parent, const char *uniq_str_path);
 
 /* get know if resolve_when() is applicable to the node (there is when condition connected with this node) */
 int resolve_applies_when(const struct lyd_node *node);
+int resolve_applies_must(const struct lyd_node *node);
 
 struct lys_ident *resolve_identref(struct lys_ident *base, const char *ident_name, struct lyd_node *node);
 

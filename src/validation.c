@@ -662,7 +662,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
     }
 
     /* check must conditions */
-    if (unres_data_add(unres, node, UNRES_MUST) == -1) {
+    if (resolve_applies_must(node) && unres_data_add(unres, node, UNRES_MUST) == -1) {
         return EXIT_FAILURE;
     }
 
