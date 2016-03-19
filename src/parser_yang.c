@@ -395,9 +395,9 @@ yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, 
 {
     const char *exp;
 
-    if (ident->base) {
-        LOGVAL(LYE_TOOMANY, line, LY_VLOG_NONE, NULL, "base", "identity");
-        return EXIT_FAILURE;
+    if (!value) {
+        /* base statement not found */
+        return EXIT_SUCCESS;
     }
     exp = transform_schema2json(module, value, line);
     free(value);
@@ -407,11 +407,6 @@ yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, 
     if (unres_schema_add_str(module, unres, ident, UNRES_IDENT, exp, line) == -1) {
         lydict_remove(module->ctx, exp);
         return EXIT_FAILURE;
-    }
-
-    /* hack - store some address due to detection of unresolved base*/
-    if (!ident->base) {
-        ident->base = (void *)1;
     }
 
     lydict_remove(module->ctx, exp);

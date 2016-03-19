@@ -172,6 +172,7 @@ int64_t cnt_val;
 %type <i> submodule_header_stmts
 %type <str> tmp_identifier_arg_str
 %type <str> message_opt_stmt
+%type <str> identity_opt_stmt
 %type <i> status_stmt
 %type <i> status_arg_str
 %type <i> config_stmt
@@ -735,19 +736,38 @@ identity_stmt: IDENTITY_KEYWORD sep identifier_arg_str { if (read_all) {
 
 identity_end: ';' 
   |  '{' stmtsep
-         identity_opt_stmt
+         identity_opt_stmt { if (read_all && yang_read_base(module, actual, $3, unres, tmp_line)) {
+                               YYERROR;
+                             }
+                           }
       '}'
   ;
 
-identity_opt_stmt: %empty 
-  |  identity_opt_stmt base_stmt { if (read_all && yang_read_base(trg,actual,s,unres,yylineno)) {YYERROR;} s = NULL; }
-  |  identity_opt_stmt status_stmt { if (read_all && yang_read_status(actual,$2,IDENTITY_KEYWORD,yylineno)) {YYERROR;} }
+identity_opt_stmt: %empty { $$ = NULL; }
+  |  identity_opt_stmt base_stmt { if (read_all) {
+                                     if ($1) {
+                                       LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_NONE, NULL, "base", "identity");
+                                       free(s);
+                                       free($1);
+                                       YYERROR;
+                                     }
+                                     $$ = s;
+                                     tmp_line = yylineno;
+                                     s = NULL;
+                                   }
+                                 }
+  |  identity_opt_stmt status_stmt { if (read_all && yang_read_status(actual,$2,IDENTITY_KEYWORD,yylineno)) {
+                                       YYERROR;
+                                     }
+                                   }
   |  identity_opt_stmt description_stmt { if (read_all && yang_read_description(trg, actual, s, "identity", yylineno)) {
+                                            free($1);
                                             YYERROR;
                                           }
                                           s = NULL;
                                         }
   |  identity_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, "identity", yylineno)) {
+                                          free($1);
                                           YYERROR;
                                         }
                                         s = NULL;
