@@ -178,6 +178,7 @@ int64_t cnt_val;
 %type <i> config_read_stmt
 %type <i> config_arg_str
 %type <i> mandatory_stmt
+%type <i> mandatory_read_stmt
 %type <i> mandatory_arg_str
 %type <i> ordered_by_stmt
 %type <i> ordered_by_arg_str
@@ -1515,7 +1516,12 @@ leaf_opt_stmt: %empty { if (read_all) {
                                              }
                                            }
                                          }
-  |  leaf_opt_stmt mandatory_stmt { if (read_all && yang_read_mandatory($1.leaf.ptr_leaf,$2,LEAF_KEYWORD,yylineno)) {YYERROR;} }
+  |  leaf_opt_stmt mandatory_read_stmt { if (!read_all) {
+                                           if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_MAND_MASK, "mandatory", "leaf", $2, yylineno)) {
+                                             YYERROR;
+                                           }
+                                         }
+                                       }
   |  leaf_opt_stmt status_stmt { if (read_all && yang_read_status($1.leaf.ptr_leaf,$2,LEAF_KEYWORD,yylineno)) {YYERROR;} }
   |  leaf_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.leaf.ptr_leaf, s, "leaf", yylineno)) {
                                         YYERROR;
@@ -1946,11 +1952,11 @@ choice_opt_stmt: %empty { if (read_all) {
                                           $$ = $1;
                                          }
                                        }
-|  choice_opt_stmt mandatory_stmt { if (read_all && yang_read_mandatory($1.choice.ptr_choice,$2,CHOICE_KEYWORD,yylineno)) {
-                                      if ($1.choice.s) {
-                                        free($1.choice.s);
+|  choice_opt_stmt mandatory_read_stmt { if (!read_all) {
+                                      if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_MAND_MASK, "mandatory", "choice", $2, yylineno)) {
+                                        YYERROR;
                                       }
-                                      YYERROR;
+                                    } else {
                                       $$ = $1;
                                     }
                                   }
@@ -2119,7 +2125,12 @@ anyxml_opt_stmt: %empty { if (read_all) {
                                           }
                                         }
                                       }
-  |  anyxml_opt_stmt mandatory_stmt { if (read_all && yang_read_mandatory($1.anyxml,$2,ANYXML_KEYWORD,yylineno)) {YYERROR;} }
+  |  anyxml_opt_stmt mandatory_read_stmt { if (!read_all) {
+                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_MAND_MASK, "mandatory", "anyxml", $2, yylineno)) {
+                                               YYERROR;
+                                             }
+                                           }
+                                         }
   |  anyxml_opt_stmt status_stmt { if (read_all && yang_read_status($1.anyxml,$2,ANYXML_KEYWORD,yylineno)) {YYERROR;} }
   |  anyxml_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.anyxml, s, "anyxml", yylineno)) {
                                           YYERROR;
@@ -2204,7 +2215,7 @@ uses_opt_stmt: %empty { if (read_all) {
                                       }
                                       s = NULL;
                                     }
-  |  uses_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.uses.ptr_uses, s, USES_KEYWORD, yylineno)) {
+  |  uses_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.uses.ptr_uses, s, "uses", yylineno)) {
                                       YYERROR;
                                     }
                                     s = NULL;
@@ -2347,7 +2358,7 @@ refine_body_opt_stmts: %empty { if (read_all) {
                                               if ($1.refine->target_type) {
                                                 if ($1.refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_ANYXML)) {
                                                   $1.refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_ANYXML);
-                                                  if (yang_read_mandatory($1.refine, $2, REFINE_KEYWORD, yylineno)) {
+                                                  if (yang_check_flags(&$1.refine->flags, LYS_MAND_MASK, "mandatory", "refine", $2, yylineno)) {
                                                     YYERROR;
                                                   }
                                                 } else {
@@ -3153,8 +3164,8 @@ when_opt_stmt: %empty
 
 config_stmt: CONFIG_KEYWORD sep config_arg_str stmtend { $$ = $3; }
 
-config_read_stmt: CONFIG_KEYWORD sep { read_all = (read_all) ? 0 : 1; }
-                  config_arg_str { read_all = (read_all) ? 0 : 1; }
+config_read_stmt: CONFIG_KEYWORD sep { read_all = (read_all) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
+                  config_arg_str { read_all = (read_all) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
                   stmtend { $$ = $4; }
 
 config_arg_str: TRUE_KEYWORD optsep { $$ = LYS_CONFIG_W; }
@@ -3176,10 +3187,26 @@ config_arg_str: TRUE_KEYWORD optsep { $$ = LYS_CONFIG_W; }
 
 mandatory_stmt: MANDATORY_KEYWORD sep mandatory_arg_str stmtend { $$ = $3; }
 
+mandatory_read_stmt: MANDATORY_KEYWORD sep { read_all = (read_all) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
+                     mandatory_arg_str { read_all = (read_all) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
+                     stmtend { $$ = $4; }
+
 mandatory_arg_str: TRUE_KEYWORD optsep { $$ = LYS_MAND_TRUE; }
   |  FALSE_KEYWORD optsep { $$ = LYS_MAND_FALSE; }
-  |  string_1 //not implement
-  ;
+  |  string_1 { if (read_all) {
+                  if (!strcmp(s, "true")) {
+                    $$ = LYS_MAND_TRUE;
+                  } else if (!strcmp(s, "false")) {
+                    $$ = LYS_MAND_FALSE;
+                  } else {
+                    LOGVAL(LYE_INARG, yylineno, LY_VLOG_NONE, NULL, s, "mandatory");
+                    free(s);
+                    YYERROR;
+                  }
+                  free(s);
+                  s = NULL;
+                }
+              }
 
 presence_stmt: PRESENCE_KEYWORD sep string stmtend;
 

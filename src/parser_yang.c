@@ -621,28 +621,6 @@ yang_read_node(struct lys_module *module, struct lys_node *parent, char *value, 
 }
 
 int
-yang_read_mandatory(void *node, int value, int type, int line)
-{
-    int ret;
-
-    switch (type) {
-    case ANYXML_KEYWORD:
-        ret = yang_check_flags(&((struct lys_node_anyxml *)node)->flags, LYS_MAND_MASK, "mandatory", "anyxml", value, line);
-        break;
-    case CHOICE_KEYWORD:
-        ret = yang_check_flags(&((struct lys_node_choice *)node)->flags, LYS_MAND_MASK, "mandatory", "choice", value, line);
-        break;
-    case LEAF_KEYWORD:
-        ret = yang_check_flags(&((struct lys_node_leaf *)node)->flags, LYS_MAND_MASK, "mandatory", "leaf", value, line);
-        break;
-    case REFINE_KEYWORD:
-        ret = yang_check_flags(&((struct lys_refine *)node)->flags, LYS_MAND_MASK, "mandatory", "refine", value, line);
-        break;
-    }
-    return ret;
-}
-
-int
 yang_read_default(struct lys_module *module, void *node, char *value, int type, int line)
 {
     int ret;

@@ -192,8 +192,6 @@ void store_flags(struct lys_node *node, uint8_t flags, int config_inherit);
 
 void *yang_read_when(struct lys_module *module, struct lys_node *node, int type, char *value, int line);
 
-int yang_read_mandatory(void *node, int value, int type, int line);
-
 /**
  * @brief Allocate memory for node and add to the tree
  *
