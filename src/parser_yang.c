@@ -317,67 +317,6 @@ yang_check_flags(uint8_t *flags, uint8_t mask, char *what, char *where, int valu
     }
 }
 
-int
-yang_read_status(void *node, int value, int type, int line)
-{
-    int retval;
-
-    switch (type) {
-    case FEATURE_KEYWORD:
-        retval = yang_check_flags(&((struct lys_feature *) node)->flags, LYS_STATUS_MASK, "status", "feature", value, line);
-        break;
-    case IDENTITY_KEYWORD:
-        retval = yang_check_flags(&((struct lys_ident *) node)->flags, LYS_STATUS_MASK, "status", "identity", value, line);
-        break;
-    case CONTAINER_KEYWORD:
-        retval = yang_check_flags(&((struct lys_node_container *) node)->flags, LYS_STATUS_MASK, "status", "container", value, line);
-        break;
-    case ANYXML_KEYWORD:
-        retval = yang_check_flags(&((struct lys_node_anyxml *) node)->flags, LYS_STATUS_MASK, "status", "anyxml", value, line);
-        break;
-    case CHOICE_KEYWORD:
-        retval = yang_check_flags(&((struct lys_node_anyxml *) node)->flags, LYS_STATUS_MASK, "status", "choice", value, line);
-        break;
-    case CASE_KEYWORD:
-        retval = yang_check_flags(&((struct lys_node_case *) node)->flags, LYS_STATUS_MASK, "status", "case", value, line);
-        break;
-    case GROUPING_KEYWORD:
-        retval = yang_check_flags(&((struct lys_node_grp *) node)->flags, LYS_STATUS_MASK, "status", "grouping", value, line);
-        break;
-    case LEAF_KEYWORD:
-        retval = yang_check_flags(&((struct lys_node_leaf *) node)->flags, LYS_STATUS_MASK, "status", "leaf", value, line);
-        break;
-    case LEAF_LIST_KEYWORD:
-        retval = yang_check_flags(&((struct lys_node_leaflist *) node)->flags, LYS_STATUS_MASK, "status", "leaflist", value, line);
-        break;
-    case LIST_KEYWORD:
-        retval = yang_check_flags(&((struct lys_node_list *) node)->flags, LYS_STATUS_MASK, "status", "list", value, line);
-        break;
-    case ENUM_KEYWORD:
-        retval = yang_check_flags(&((struct lys_type_enum *) node)->flags, LYS_STATUS_MASK, "status", "enum", value, line);
-        break;
-    case BIT_KEYWORD:
-        retval = yang_check_flags(&((struct lys_type_bit *) node)->flags, LYS_STATUS_MASK, "status", "bit", value, line);
-        break;
-    case TYPEDEF_KEYWORD:
-        retval = yang_check_flags(&((struct lys_tpdf *) node)->flags, LYS_STATUS_MASK, "status", "typedef", value, line);
-        break;
-    case USES_KEYWORD:
-        retval = yang_check_flags(&((struct lys_node_uses *) node)->flags, LYS_STATUS_MASK, "status", "uses", value, line);
-        break;
-    case AUGMENT_KEYWORD:
-        retval = yang_check_flags(&((struct lys_node_augment *) node)->flags, LYS_STATUS_MASK, "status", "augment", value, line);
-        break;
-    case RPC_KEYWORD:
-        retval = yang_check_flags(&((struct lys_node_rpc *) node)->flags, LYS_STATUS_MASK, "status", "rpc", value, line);
-        break;
-    case NOTIFICATION_KEYWORD:
-        retval = yang_check_flags(&((struct lys_node_notif *) node)->flags, LYS_STATUS_MASK, "status", "notification", value, line);
-        break;
-    }
-    return retval;
-}
-
 void *
 yang_read_identity(struct lys_module *module, char *value)
 {

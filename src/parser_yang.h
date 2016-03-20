@@ -174,8 +174,6 @@ void *yang_read_feature(struct lys_module *module, char *value, int line);
 
 int yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct unres_schema *unres, int type, int line);
 
-int yang_read_status(void *node, int value, int type, int line);
-
 void *yang_read_identity(struct lys_module *module, char *value);
 
 int yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, struct unres_schema *unres, int line);
