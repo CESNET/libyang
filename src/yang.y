@@ -2049,8 +2049,8 @@ choice_opt_stmt: %empty { if (read_all) {
                                           $$ = $1;
                                         }
                                       }
-  |  choice_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.choice.ptr_choice, s, "choice", yylineno)) {
-                                          if ($1.choice.s) {
+  |  choice_opt_stmt description_stmt { if (read_all) {
+                                          if (yang_read_description(trg, $1.choice.ptr_choice, s, "choice", yylineno)) {
                                             free($1.choice.s);
                                             YYERROR;
                                           }
@@ -2058,8 +2058,8 @@ choice_opt_stmt: %empty { if (read_all) {
                                           $$ = $1;
                                         }
                                       }
-  |  choice_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.choice.ptr_choice, s, "choice", yylineno)) {
-                                        if ($1.choice.s) {
+  |  choice_opt_stmt reference_stmt { if (read_all) {
+                                        if (yang_read_reference(trg, $1.choice.ptr_choice, s, "choice", yylineno)) {
                                           free($1.choice.s);
                                           YYERROR;
                                         }
