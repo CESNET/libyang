@@ -1387,6 +1387,65 @@ error:
     return EXIT_FAILURE;
 }
 
+int
+lyp_check_import(struct lys_module *module, const char *value, int line, struct lys_import *imp)
+{
+    int count;
+
+    /* check for circular import, store it if passed */
+    if (!module->ctx->models.parsing) {
+        count = 0;
+    } else {
+        for (count = 0; module->ctx->models.parsing[count]; ++count) {
+            if (ly_strequal(value, module->ctx->models.parsing[count], 1)) {
+                LOGERR(LY_EVALID, "Circular import dependency on the module \"%s\".", value);
+                goto error;
+            }
+        }
+    }
+    ++count;
+    module->ctx->models.parsing =
+        ly_realloc(module->ctx->models.parsing, (count + 1) * sizeof *module->ctx->models.parsing);
+    if (!module->ctx->models.parsing) {
+        LOGMEM;
+        goto error;
+    }
+    module->ctx->models.parsing[count - 1] = value;
+    module->ctx->models.parsing[count] = NULL;
+
+    /* try to load the module */
+    imp->module = (struct lys_module *)ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
+    if (!imp->module) {
+        /* whether to use a user callback is decided in the function */
+        imp->module = (struct lys_module *)ly_ctx_load_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
+    }
+
+    /* remove the new module name now that its parsing is finished (even if failed) */
+    if (module->ctx->models.parsing[count] || !ly_strequal(module->ctx->models.parsing[count - 1], value, 1)) {
+        LOGINT;
+    }
+    --count;
+    if (count) {
+        module->ctx->models.parsing[count] = NULL;
+    } else {
+        free(module->ctx->models.parsing);
+        module->ctx->models.parsing = NULL;
+    }
+
+    /* check the result */
+    if (!imp->module) {
+        LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, value, "import");
+        LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
+        goto error;
+    }
+
+    return EXIT_SUCCESS;
+
+error:
+
+    return EXIT_FAILURE;
+}
+
 /* Propagate imports and includes into the main module */
 int
 lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodule, int line)

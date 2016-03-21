@@ -105,6 +105,8 @@ int lyp_check_mandatory(struct lys_node *node);
 int lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, const char *value,
                       int line, struct lys_include *inc, struct unres_schema *unres);
 
+int lyp_check_import(struct lys_module *module, const char *value, int line, struct lys_import *imp);
+
 /**
  * @brief Propagate imports and includes into the main module
  *

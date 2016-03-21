@@ -3656,7 +3656,7 @@ identifier_ref_arg_str: identifiers optsep
                    }
                    *tmp = ':';
                  } else {
-                   /* check */
+                   /* check identifier */
                    if (lyp_check_identifier(s, LY_IDENT_SIMPLE, yylineno, trg, NULL)) {
                      free(s);
                      YYERROR;

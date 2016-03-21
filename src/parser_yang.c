@@ -108,70 +108,28 @@ yang_elem_of_array(void **ptr, uint8_t *act_size, int type, int sizeof_struct)
 int
 yang_fill_import(struct lys_module *module, struct lys_import *imp, char *value, int line)
 {
-    int count, i;
+    const char *exp;
+    int rc, i;
 
-    /* check for circular import, store it if passed */
-    if (!module->ctx->models.parsing) {
-        count = 0;
-    } else {
-        for (count = 0; module->ctx->models.parsing[count]; ++count) {
-            if (value == module->ctx->models.parsing[count]) {
-                LOGERR(LY_EVALID, "Circular import dependency on the module \"%s\".", value);
-                goto error;
-            }
-        }
-    }
-    ++count;
-    module->ctx->models.parsing =
-            ly_realloc(module->ctx->models.parsing, (count + 1) * sizeof *module->ctx->models.parsing);
-    if (!module->ctx->models.parsing) {
-        LOGMEM;
+    exp = lydict_insert_zc(module->ctx, value);
+    rc = lyp_check_import(module, exp, line, imp);
+    lydict_remove(module->ctx, exp);
+    if (rc) {
         goto error;
     }
-    module->ctx->models.parsing[count - 1] = value;
-    module->ctx->models.parsing[count] = NULL;
-
-    /* try to load the module */
-    imp->module = (struct lys_module *)ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
-    if (!imp->module) {
-        /* whether to use a user callback is decided in the function */
-        imp->module = (struct lys_module *)ly_ctx_load_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
-    }
-
-    /* remove the new module name now that its parsing is finished (even if failed) */
-    if (module->ctx->models.parsing[count] || (module->ctx->models.parsing[count - 1] != value)) {
-        LOGINT;
-    }
-    --count;
-    if (count) {
-        module->ctx->models.parsing[count] = NULL;
-    } else {
-        free(module->ctx->models.parsing);
-        module->ctx->models.parsing = NULL;
-    }
-
-    /* check the result */
-    if (!imp->module) {
-        LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
-        goto error;
-    }
-
-    module->imp_size++;
 
     /* check duplicities in imported modules */
-    for (i = 0; i < module->imp_size - 1; i++) {
-        if (!strcmp(module->imp[i].module->name, module->imp[module->imp_size - 1].module->name)) {
+    for (i = 0; i < module->imp_size; i++) {
+        if (!strcmp(module->imp[i].module->name, module->imp[module->imp_size].module->name)) {
             LOGVAL(LYE_SPEC, line, LY_VLOG_NONE, NULL, "Importing module \"%s\" repeatedly.", module->imp[i].module->name);
             goto error;
         }
     }
-
-    free(value);
+    module->imp_size++;
     return EXIT_SUCCESS;
 
-    error:
-
-    free(value);
+error:
+    module->imp_size++;
     return EXIT_FAILURE;
 }
 
