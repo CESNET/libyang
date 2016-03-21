@@ -270,8 +270,8 @@ module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                             }
                                                           }
              '{' stmtsep
-                 module_header_stmts { if (read_all && !module->ns) { LOGVAL(LYE_MISSSTMT2,yylineno,LY_VLOG_NONE,NULL,"namespace", "module"); YYERROR; }
-                                       if (read_all && !module->prefix) { LOGVAL(LYE_MISSSTMT2,yylineno,LY_VLOG_NONE,NULL,"prefix", "module"); YYERROR; }
+                 module_header_stmts { if (read_all && !module->ns) { LOGVAL(LYE_MISSCHILDSTMT,yylineno,LY_VLOG_NONE,NULL,"namespace", "module"); YYERROR; }
+                                       if (read_all && !module->prefix) { LOGVAL(LYE_MISSCHILDSTMT,yylineno,LY_VLOG_NONE,NULL,"prefix", "module"); YYERROR; }
                                      }
                  linkage_stmts
                  meta_stmts
@@ -298,7 +298,7 @@ submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str { if (read_all) 
                                                                 }
                 '{' stmtsep
                     submodule_header_stmts  { if (read_all && !submodule->prefix) {
-                                                LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
+                                                LOGVAL(LYE_MISSCHILDSTMT, yylineno, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
                                                 YYERROR;
                                               }
                                             }
@@ -809,7 +809,7 @@ typedef_stmt: TYPEDEF_KEYWORD sep typedef_arg_str
               '{' stmtsep
                   type_opt_stmt { if (read_all) {
                                     if (!($6.tpdf.flag & LYS_TYPE_DEF)) {
-                                      LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_NONE, NULL, "type", "typedef");
+                                      LOGVAL(LYE_MISSCHILDSTMT, yylineno, LY_VLOG_NONE, NULL, "type", "typedef");
                                       YYERROR;
                                     }
                                     if (unres_schema_add_node(trg, unres, &$6.tpdf.ptr_tpdf->type, UNRES_TYPE_DER,(struct lys_node *) $3, 0)) {
@@ -1653,7 +1653,7 @@ leaf_list_stmt: LEAF_LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                              YYERROR;
                                            }
                                            if (!($7.leaflist.flag & LYS_TYPE_DEF)) {
-                                             LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_LYS, $7.leaflist.ptr_leaflist, "type", "leaflist");
+                                             LOGVAL(LYE_MISSCHILDSTMT, yylineno, LY_VLOG_LYS, $7.leaflist.ptr_leaflist, "type", "leaf-list");
                                              YYERROR;
                                            } else {
                                              if (unres_schema_add_node(trg, unres, &$7.leaflist.ptr_leaflist->type, UNRES_TYPE_DER,
@@ -1699,7 +1699,7 @@ leaf_list_opt_stmt: %empty { if (read_all) {
                                           }
                                         }
   |  leaf_list_opt_stmt { if (read_all && ($1.leaflist.flag & LYS_TYPE_DEF)) {
-                            LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_LYS, $1.leaflist.ptr_leaflist, "type", "leaflist");
+                            LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_LYS, $1.leaflist.ptr_leaflist, "type", "leaf-list");
                             YYERROR;
                           }
                         }
@@ -1728,27 +1728,35 @@ leaf_list_opt_stmt: %empty { if (read_all) {
                                          }
   |  leaf_list_opt_stmt min_elements_stmt { if (read_all) {
                                               if ($1.leaflist.flag & LYS_MIN_ELEMENTS) {
-                                                LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_LYS, $1.leaflist.ptr_leaflist, "min-elements", "leaflist");
+                                                LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_LYS, $1.leaflist.ptr_leaflist, "min-elements", "leaf-list");
                                                 YYERROR;
                                               }
                                               $1.leaflist.ptr_leaflist->min = $2;
                                               $1.leaflist.flag |= LYS_MIN_ELEMENTS;
                                               $$ = $1;
+                                              if ($1.leaflist.ptr_leaflist->max && ($1.leaflist.ptr_leaflist->min > $1.leaflist.ptr_leaflist->max)) {
+                                                LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "min-elements");
+                                                LOGVAL(LYE_SPEC, 0, 0, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+                                              }
                                             }
                                           }
   |  leaf_list_opt_stmt max_elements_stmt { if (read_all) {
                                               if ($1.leaflist.flag & LYS_MAX_ELEMENTS) {
-                                                LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_LYS, $1.leaflist.ptr_leaflist, "max-elements", "leaflist");
+                                                LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_LYS, $1.leaflist.ptr_leaflist, "max-elements", "leaf-list");
                                                 YYERROR;
                                               }
                                               $1.leaflist.ptr_leaflist->max = $2;
                                               $1.leaflist.flag |= LYS_MAX_ELEMENTS;
                                               $$ = $1;
+                                              if ($1.leaflist.ptr_leaflist->min > $1.leaflist.ptr_leaflist->max) {
+                                                LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "max-elements");
+                                                LOGVAL(LYE_SPEC, 0, 0, NULL, "\"max-elements\" is smaller than \"min-elements\".");
+                                              }
                                             }
                                           }
   |  leaf_list_opt_stmt ordered_by_stmt { if (read_all) {
                                             if ($1.leaflist.flag & LYS_ORDERED_MASK) {
-                                              LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_LYS, $1.leaflist.ptr_leaflist, "ordered by", "leaflist");
+                                              LOGVAL(LYE_TOOMANY, yylineno, LY_VLOG_LYS, $1.leaflist.ptr_leaflist, "ordered by", "leaf-list");
                                               YYERROR;
                                             }
                                             if ($2 & LYS_USERORDERED) {
@@ -1794,12 +1802,8 @@ list_stmt: LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                     */
                                    $7.list.ptr_list->flags &= 0x7F;
                                  }
-                                 if ($7.list.ptr_list->max && $7.list.ptr_list->min > $7.list.ptr_list->max) {
-                                   LOGVAL(LYE_SPEC, yylineno, LY_VLOG_LYS, $7.list.ptr_list, "\"min-elements\" is bigger than \"max-elements\".");
-                                   YYERROR;
-                                 }
                                  if (($7.list.ptr_list->flags & LYS_CONFIG_W) && !$7.list.ptr_list->keys) {
-                                   LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_LYS, $7.list.ptr_list, "key", "list");
+                                   LOGVAL(LYE_MISSCHILDSTMT, yylineno, LY_VLOG_LYS, $7.list.ptr_list, "key", "list");
                                    YYERROR;
                                  }
                                  if ($7.list.ptr_list->keys && yang_read_key(trg, $7.list.ptr_list, unres, $7.list.line)) {
@@ -1912,6 +1916,10 @@ list_opt_stmt: %empty { if (read_all) {
                                          $1.list.ptr_list->min = $2;
                                          $1.list.flag |= LYS_MIN_ELEMENTS;
                                          $$ = $1;
+                                         if ($1.list.ptr_list->max && ($1.list.ptr_list->min > $1.list.ptr_list->max)) {
+                                           LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "min-elements");
+                                           LOGVAL(LYE_SPEC, 0, 0, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+                                         }
                                        }
                                      }
   |  list_opt_stmt max_elements_stmt { if (read_all) {
@@ -1922,6 +1930,10 @@ list_opt_stmt: %empty { if (read_all) {
                                          $1.list.ptr_list->max = $2;
                                          $1.list.flag |= LYS_MAX_ELEMENTS;
                                          $$ = $1;
+                                         if ($1.list.ptr_list->min > $1.list.ptr_list->max) {
+                                           LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "min-elements");
+                                           LOGVAL(LYE_SPEC, 0, 0, NULL, "\"max-elements\" is smaller than \"min-elements\".");
+                                         }
                                        }
                                      }
   |  list_opt_stmt ordered_by_stmt { if (read_all) {
@@ -1993,7 +2005,8 @@ choice_end: ';' { if (read_all) { size_arrays->next++; } }
   |  '{' stmtsep
          choice_opt_stmt  { if (read_all) {
                               if ($3.choice.s && ($3.choice.ptr_choice->flags & LYS_MAND_TRUE)) {
-                                LOGVAL(LYE_SPEC, yylineno, LY_VLOG_LYS, $3.choice.ptr_choice, "The \"default\" statement MUST NOT be present on choices where \"mandatory\" is true.");
+                                LOGVAL(LYE_INCHILDSTMT, yylineno, LY_VLOG_NONE, NULL, "default", "choice");
+                                LOGVAL(LYE_SPEC, 0, 0, NULL, "The \"default\" statement is forbidden on choices with \"mandatory\".");
                                 YYERROR;
                               }
                               /* link default with the case */
@@ -2434,7 +2447,8 @@ refine_body_opt_stmts: %empty { if (read_all) {
                                                  $1.refine->mod.presence = lydict_insert_zc(trg->ctx, s);
                                                } else {
                                                  free(s);
-                                                 LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                                                 LOGVAL(LYE_MISSCHILDSTMT, yylineno, LY_VLOG_NONE, NULL, "presence", "refine");
+                                                 LOGVAL(LYE_SPEC, 0, 0, NULL, "Invalid refine target nodetype for the substatements.");
                                                  YYERROR;
                                                }
                                              } else {
@@ -2457,7 +2471,8 @@ refine_body_opt_stmts: %empty { if (read_all) {
                                                 $1.refine->mod.dflt = lydict_insert_zc(trg->ctx, s);
                                               } else {
                                                 free(s);
-                                                LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                                                LOGVAL(LYE_MISSCHILDSTMT, yylineno, LY_VLOG_NONE, NULL, "default", "refine");
+                                                LOGVAL(LYE_SPEC, 0, 0, NULL, "Invalid refine target nodetype for the substatements.");
                                                 YYERROR;
                                               }
                                             } else {
@@ -2476,7 +2491,8 @@ refine_body_opt_stmts: %empty { if (read_all) {
                                                  YYERROR;
                                                }
                                              } else {
-                                               LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                                               LOGVAL(LYE_MISSCHILDSTMT, yylineno, LY_VLOG_NONE, NULL, "config", "refine");
+                                               LOGVAL(LYE_SPEC, 0, 0, NULL, "Invalid refine target nodetype for the substatements.");
                                                YYERROR;
                                              }
                                            } else {
@@ -2494,7 +2510,8 @@ refine_body_opt_stmts: %empty { if (read_all) {
                                                     YYERROR;
                                                   }
                                                 } else {
-                                                  LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                                                  LOGVAL(LYE_MISSCHILDSTMT, yylineno, LY_VLOG_NONE, NULL, "mandatory", "refine");
+                                                  LOGVAL(LYE_SPEC, 0, 0, NULL, "Invalid refine target nodetype for the substatements.");
                                                   YYERROR;
                                                 }
                                               } else {
@@ -2516,7 +2533,8 @@ refine_body_opt_stmts: %empty { if (read_all) {
                                                      $1.refine->flags |= 0x04;
                                                      $1.refine->mod.list.min = $2;
                                                    } else {
-                                                     LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                                                     LOGVAL(LYE_MISSCHILDSTMT, yylineno, LY_VLOG_NONE, NULL, "min-elements", "refine");
+                                                     LOGVAL(LYE_SPEC, 0, 0, NULL, "Invalid refine target nodetype for the substatements.");
                                                      YYERROR;
                                                    }
                                                  } else {
@@ -2540,7 +2558,8 @@ refine_body_opt_stmts: %empty { if (read_all) {
                                                      $1.refine->flags |= 0x08;
                                                      $1.refine->mod.list.max = $2;
                                                    } else {
-                                                     LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "invalid combination of refine substatements");
+                                                     LOGVAL(LYE_MISSCHILDSTMT, yylineno, LY_VLOG_NONE, NULL, "max-elements", "refine");
+                                                     LOGVAL(LYE_SPEC, 0, 0, NULL, "Invalid refine target nodetype for the substatements.");
                                                      YYERROR;
                                                    }
                                                  } else {
@@ -2578,7 +2597,7 @@ uses_augment_stmt: AUGMENT_KEYWORD sep uses_augment_arg_str { if (read_all) {
                                                             }
                    '{' stmtsep
                        augment_opt_stmt { if (read_all && !($7.augment.flag & LYS_DATADEF)){
-                                            LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_NONE, NULL, "data-def or case", "uses/augment");
+                                            LOGVAL(LYE_MISSCHILDSTMT, yylineno, LY_VLOG_NONE, NULL, "data-def or case", "uses/augment");
                                             YYERROR;
                                           }
                                         }
@@ -2604,7 +2623,7 @@ augment_stmt: AUGMENT_KEYWORD sep augment_arg_str { if (read_all) {
               '{' stmtsep
                   augment_opt_stmt { if (read_all) {
                                        if (!($7.augment.flag & LYS_DATADEF)){
-                                         LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_NONE, NULL, "data-def or case", "augment");
+                                         LOGVAL(LYE_MISSCHILDSTMT, yylineno, LY_VLOG_NONE, NULL, "data-def or case", "augment");
                                          YYERROR;
                                        }
                                        if (unres_schema_add_node(trg, unres, actual, UNRES_AUGMENT, NULL, yylineno) == -1) {
@@ -2797,7 +2816,7 @@ input_stmt: INPUT_KEYWORD optsep { if (read_all) {
                                  }
             '{' stmtsep
                 input_output_opt_stmt { if (read_all && !($6.inout.flag & LYS_DATADEF)) {
-                                          LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_NONE, "data-def", "input");
+                                          LOGVAL(LYE_MISSCHILDSTMT, yylineno, LY_VLOG_NONE, "data-def", "input");
                                           YYERROR;
                                         }
                                       }
@@ -2856,7 +2875,7 @@ output_stmt: OUTPUT_KEYWORD optsep { if (read_all) {
                                    }
              '{' stmtsep
                  input_output_opt_stmt { if (read_all && !($6.inout.flag & LYS_DATADEF)) {
-                                           LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_NONE, "data-def", "output");
+                                           LOGVAL(LYE_MISSCHILDSTMT, yylineno, LY_VLOG_NONE, "data-def", "output");
                                            YYERROR;
                                          }
                                        }
@@ -2968,7 +2987,7 @@ deviation_stmt: DEVIATION_KEYWORD sep deviation_arg_str { if (read_all) {
                 '{' stmtsep
                     deviation_opt_stmt  { if (read_all) {
                                             if (actual_type == DEVIATION_KEYWORD) {
-                                              LOGVAL(LYE_MISSSTMT2, yylineno, LY_VLOG_NONE, NULL, "deviate", "deviation");
+                                              LOGVAL(LYE_MISSCHILDSTMT, yylineno, LY_VLOG_NONE, NULL, "deviate", "deviation");
                                               YYERROR;
                                             }
                                             if (yang_check_deviation(trg, actual, unres, yylineno)) {

@@ -1338,7 +1338,7 @@ lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, co
     if (inc->submodule) {
         if (inc->rev[0]) {
             if (!inc->submodule->rev_size || !ly_strequal(inc->rev, inc->submodule->rev[0].date, 1)) {
-                LOGVAL(LYE_INARG, LOGLINE(yin), LY_VLOG_NONE, NULL, inc->rev[0], "revision");
+                LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, inc->rev[0], "revision");
                 LOGVAL(LYE_SPEC, 0, 0, NULL, "Multiple revisions of the same submodule included.");
                 goto error;
             }

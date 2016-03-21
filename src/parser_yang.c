@@ -121,7 +121,8 @@ yang_fill_import(struct lys_module *module, struct lys_import *imp, char *value,
     /* check duplicities in imported modules */
     for (i = 0; i < module->imp_size; i++) {
         if (!strcmp(module->imp[i].module->name, module->imp[module->imp_size].module->name)) {
-            LOGVAL(LYE_SPEC, line, LY_VLOG_NONE, NULL, "Importing module \"%s\" repeatedly.", module->imp[i].module->name);
+            LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, module->imp[i].module->name, "import");
+            LOGVAL(LYE_SPEC, 0, 0, NULL, "Importing module \"%s\" repeatedly.", module->imp[i].module->name);
             goto error;
         }
     }
@@ -750,7 +751,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             /* mandatory sub-statement(s) check */
             if (!typ->type->info.dec64.dig && !typ->type->der->type.der) {
                 /* decimal64 type directly derived from built-in type requires fraction-digits */
-                LOGVAL(LYE_MISSSTMT2, typ->line, LY_VLOG_NONE, NULL, "fraction-digits", "type");
+                LOGVAL(LYE_MISSCHILDSTMT, typ->line, LY_VLOG_NONE, NULL, "fraction-digits", "type");
                 goto error;
             }
             if (typ->type->info.dec64.dig && typ->type->der->type.der) {
@@ -781,7 +782,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         }
         if (!typ->type->der->type.der && !typ->type->info.enums.count) {
             /* type is derived directly from buit-in enumeartion type and enum statement is required */
-            LOGVAL(LYE_MISSSTMT2, typ->line, LY_VLOG_NONE, NULL, "enum", "type");
+            LOGVAL(LYE_MISSCHILDSTMT, typ->line, LY_VLOG_NONE, NULL, "enum", "type");
             goto error;
         }
         if (typ->type->der->type.der && typ->type->info.enums.count) {
@@ -808,7 +809,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                     goto error;
                 }
             } else if (!typ->type->info.lref.path && !typ->type->der->type.der) {
-                LOGVAL(LYE_MISSSTMT2, typ->line, LY_VLOG_NONE, NULL, "path", "type");
+                LOGVAL(LYE_MISSCHILDSTMT, typ->line, LY_VLOG_NONE, NULL, "path", "type");
                 goto error;
             } else {
                 LOGVAL(LYE_INSTMT, typ->line, LY_VLOG_NONE, NULL, "path");
@@ -824,7 +825,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             /* this is just a derived type with no base specified/required */
             break;
         } else {
-            LOGVAL(LYE_MISSSTMT2, typ->line, LY_VLOG_NONE, NULL, "base", "type");
+            LOGVAL(LYE_MISSCHILDSTMT, typ->line, LY_VLOG_NONE, NULL, "base", "type");
             goto error;
         }
         break;
@@ -839,7 +840,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 /* this is just a derived type with no additional type specified/required */
                 break;
             }
-            LOGVAL(LYE_MISSSTMT2, typ->line, LY_VLOG_NONE, NULL, "type", "(union) type");
+            LOGVAL(LYE_MISSCHILDSTMT, typ->line, LY_VLOG_NONE, NULL, "type", "(union) type");
             goto error;
         }
         for (i = 0; i < typ->type->info.uni.count; i++) {
@@ -1125,7 +1126,6 @@ yang_read_bit(struct lys_module *module, struct yang_type *typ, char *value, int
 
     bit = &typ->type->info.bits.bit[typ->type->info.bits.count];
     if (lyp_check_identifier(value, LY_IDENT_SIMPLE, line, NULL, NULL)) {
-        LOGVAL(LYE_PATH, 0, LY_VLOG_NONE, NULL);
         free(value);
         goto error;
     }
@@ -1311,7 +1311,8 @@ yang_read_deviation(struct lys_module *module, char *value, int line)
         goto error;
     }
     if (dev_target->module == lys_module(module)) {
-        LOGVAL(LYE_SPEC, line, LY_VLOG_NONE, NULL, "Deviating own module is not allowed.");
+        LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, dev->target_name, "deviation");
+        LOGVAL(LYE_SPEC, 0, 0, NULL, "Deviating own module is not allowed.");
         goto error;
     }
     /*save pointer to the deviation and deviated target*/
@@ -1982,8 +1983,8 @@ yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, ch
     /* check duplications in include submodules */
     for (i = 0; i < inc_size; ++i) {
         if (trg->inc[i].submodule && !strcmp(trg->inc[i].submodule->name, trg->inc[inc_size].submodule->name)) {
-            LOGVAL(LYE_SPEC, line, LY_VLOG_NONE, NULL, "Including submodule \"%s\" repeatedly.",
-                trg->inc[i].submodule->name);
+            LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, trg->inc[i].submodule->name, "include");
+            LOGVAL(LYE_SPEC, 0, 0, NULL, "Including submodule \"%s\" repeatedly.", trg->inc[i].submodule->name);
             trg->inc[inc_size].submodule = NULL;
             goto error;
         }
