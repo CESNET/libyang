@@ -780,7 +780,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             LOGVAL(LYE_SPEC, typ->line, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", parent->name);
             goto error;
         }
-        if (!typ->type->der->type.der && !typ->type->info.enums.count) {
+        if (!typ->type->der->type.der && !typ->type->info.bits.count) {
             /* type is derived directly from buit-in enumeartion type and enum statement is required */
             LOGVAL(LYE_MISSCHILDSTMT, typ->line, LY_VLOG_NONE, NULL, "enum", "type");
             goto error;
@@ -788,6 +788,22 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         if (typ->type->der->type.der && typ->type->info.enums.count) {
             /* type is not directly derived from buit-in enumeration type and enum statement is prohibited */
             LOGVAL(LYE_INSTMT, typ->line, LY_VLOG_NONE, NULL, "enum");
+            goto error;
+        }
+        break;
+    case LY_TYPE_BITS:
+        if (typ->type->base != LY_TYPE_BITS) {
+            LOGVAL(LYE_SPEC, typ->line, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", parent->name);
+            goto error;
+        }
+        if (!typ->type->der->type.der && !typ->type->info.bits.count) {
+            /* type is derived directly from buit-in bits type and bit statement is required */
+            LOGVAL(LYE_MISSCHILDSTMT, typ->line, LY_VLOG_NONE, NULL, "bit", "type");
+            goto error;
+        }
+        if (typ->type->der->type.der && typ->type->info.bits.count) {
+            /* type is not directly derived from buit-in bits type and bit statement is prohibited */
+            LOGVAL(LYE_INSTMT, typ->line, LY_VLOG_NONE, NULL, "bit");
             goto error;
         }
         break;
