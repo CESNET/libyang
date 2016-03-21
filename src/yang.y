@@ -470,8 +470,12 @@ description_stmt: DESCRIPTION_KEYWORD sep string stmtend;
 
 reference_stmt: REFERENCE_KEYWORD sep string stmtend;
 
-revision_stmts: %empty { if (read_all) {
+revision_stmts: %empty { if (read_all && size_arrays->rev) {
                            trg->rev = calloc(size_arrays->rev, sizeof *trg->rev);
+                           if (!trg->rev) {
+                             LOGMEM;
+                             YYERROR;
+                           }
                          }
                        }
   | revision_stmts revision_stmt stmtsep;
@@ -1073,10 +1077,12 @@ pattern_end: ';'
   ;  
 
 enum_specification: { if (read_all) {
-                        ((struct yang_type *)actual)->type->info.enums.enm = calloc(size_arrays->node[size_arrays->next++].refine, sizeof(struct lys_type_enum));
-                        if (!((struct yang_type *)actual)->type->info.enums.enm) {
-                          LOGMEM;
-                          YYERROR;
+                        if (size_arrays->node[size_arrays->next].refine) {
+                          ((struct yang_type *)actual)->type->info.enums.enm = calloc(size_arrays->node[size_arrays->next++].refine, sizeof(struct lys_type_enum));
+                          if (!((struct yang_type *)actual)->type->info.enums.enm) {
+                            LOGMEM;
+                            YYERROR;
+                          }
                         }
                         ((struct yang_type *)actual)->type->base = LY_TYPE_ENUM;
                         cnt_val = 0;
@@ -1217,10 +1223,12 @@ require_instance_arg_str: TRUE_KEYWORD optsep { if (read_all) {
   ;
 
 bits_specification: { if (read_all) {
-                        ((struct yang_type *)actual)->type->info.bits.bit = calloc(size_arrays->node[size_arrays->next++].refine, sizeof(struct lys_type_bit));
-                        if (!((struct yang_type *)actual)->type->info.bits.bit) {
-                          LOGMEM;
-                          YYERROR;
+                        if (size_arrays->node[size_arrays->next].refine) {
+                          ((struct yang_type *)actual)->type->info.bits.bit = calloc(size_arrays->node[size_arrays->next++].refine, sizeof(struct lys_type_bit));
+                          if (!((struct yang_type *)actual)->type->info.bits.bit) {
+                            LOGMEM;
+                            YYERROR;
+                          }
                         }
                         ((struct yang_type *)actual)->type->base = LY_TYPE_BITS;
                         cnt_val = 0;
@@ -2003,10 +2011,12 @@ choice_opt_stmt: %empty { if (read_all) {
                             $$.choice.ptr_choice = actual;
                             $$.choice.s = NULL;
                             actual_type = CHOICE_KEYWORD;
-                            $$.choice.ptr_choice->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.choice.ptr_choice->features);
-                            if (!$$.choice.ptr_choice->features) {
-                              LOGMEM;
-                              YYERROR;
+                            if (size_arrays->node[size_arrays->next].if_features) {
+                              $$.choice.ptr_choice->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.choice.ptr_choice->features);
+                              if (!$$.choice.ptr_choice->features) {
+                                LOGMEM;
+                                YYERROR;
+                              }
                             }
                             store_flags((struct lys_node *)$$.choice.ptr_choice, size_arrays->node[size_arrays->next].flags, config_inherit);
                             size_arrays->next++;
@@ -2125,10 +2135,12 @@ case_end: ';'
 case_opt_stmt: %empty { if (read_all) {
                           $$.cs = actual;
                           actual_type = CASE_KEYWORD;
-                          $$.cs->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.cs->features);
-                          if (!$$.cs->features) {
-                            LOGMEM;
-                            YYERROR;
+                          if (size_arrays->node[size_arrays->next].if_features) {
+                            $$.cs->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.cs->features);
+                            if (!$$.cs->features) {
+                              LOGMEM;
+                              YYERROR;
+                            }
                           }
                           store_flags((struct lys_node *)$$.cs, size_arrays->node[size_arrays->next].flags, 1);
                           size_arrays->next++;
@@ -2192,11 +2204,19 @@ anyxml_end: ';' { if (read_all) { size_arrays->next++; } }
 anyxml_opt_stmt: %empty { if (read_all) {
                             $$.anyxml = actual;
                             actual_type = ANYXML_KEYWORD;
-                            $$.anyxml->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.anyxml->features);
-                            $$.anyxml->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.anyxml->must);
-                            if (!$$.anyxml->features || !$$.anyxml->must) {
-                              LOGMEM;
-                              YYERROR;
+                            if (size_arrays->node[size_arrays->next].if_features) {
+                              $$.anyxml->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.anyxml->features);
+                              if (!$$.anyxml->features) {
+                                LOGMEM;
+                                YYERROR;
+                              }
+                            }
+                            if (size_arrays->node[size_arrays->next].must) {
+                              $$.anyxml->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.anyxml->must);
+                              if (!$$.anyxml->features || !$$.anyxml->must) {
+                                LOGMEM;
+                                YYERROR;
+                              }
                             }
                             store_flags((struct lys_node *)$$.anyxml, size_arrays->node[size_arrays->next].flags, config_inherit);
                             size_arrays->next++;
