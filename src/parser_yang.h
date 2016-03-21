@@ -48,8 +48,16 @@ struct lys_node_array{
     uint8_t must;
     uint8_t unique;
     uint8_t tpdf;
-    uint8_t flags;
-    uint8_t expr_size;
+    union {
+        uint8_t uni;
+        uint8_t flags;
+    };
+    union {
+        uint8_t enm;
+        uint8_t pattern;
+        uint8_t bit;
+        uint8_t deviate;
+    };
     uint16_t refine;
     uint16_t augment;
 

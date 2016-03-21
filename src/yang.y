@@ -699,13 +699,9 @@ feature_stmt: FEATURE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                          s=NULL; 
                                                        } else {
                                                          size_arrays->features++;
-                                                         if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                                           LOGMEM;
-                                                           YYERROR;
-                                                         }
                                                        }
                                                      }
-              feature_end { if (read_all) { size_arrays->next++; } }
+              feature_end
 
 feature_end: ';' 
   | '{' stmtsep
@@ -723,8 +719,13 @@ feature_opt_stmt: %empty { if (read_all) {
                                }
                              }
                              store_flags((struct lys_node *)actual, size_arrays->node[size_arrays->next].flags, 0);
+                             size_arrays->next++;
                            } else {
-                              $$ = size_arrays->size - 1;
+                             $$ = size_arrays->size;
+                             if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                               LOGMEM;
+                               YYERROR;
+                             }
                            } 
                          }
   |  feature_opt_stmt if_feature_stmt { if (read_all) {
@@ -916,21 +917,20 @@ type_body_stmts: decimal_string_restrictions
 
 
 decimal_string_restrictions: %empty  { if (read_all) {
-                                         if (size_arrays->node[size_arrays->next].refine && size_arrays->node[size_arrays->next].augment) {
+                                         if (size_arrays->node[size_arrays->next].uni && size_arrays->node[size_arrays->next].pattern) {
                                            LOGVAL(LYE_SPEC, yylineno, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", ((struct yang_type *)actual)->type->parent->name);
                                            YYERROR;
                                          }
-                                         if (size_arrays->node[size_arrays->next].refine) {
-                                           ((struct yang_type *)actual)->type->info.str.patterns = calloc(size_arrays->node[size_arrays->next].refine, sizeof(struct lys_restr));
+                                         if (size_arrays->node[size_arrays->next].pattern) {
+                                           ((struct yang_type *)actual)->type->info.str.patterns = calloc(size_arrays->node[size_arrays->next].pattern, sizeof(struct lys_restr));
                                            if (!((struct yang_type *)actual)->type->info.str.patterns) {
                                              LOGMEM;
                                              YYERROR;
                                            }
                                            ((struct yang_type *)actual)->type->base = LY_TYPE_STRING;
                                          }
-                                         /* augment - count of union*/
-                                         if (size_arrays->node[size_arrays->next].augment) {
-                                           ((struct yang_type *)actual)->type->info.uni.types = calloc(size_arrays->node[size_arrays->next].augment, sizeof(struct lys_type));
+                                         if (size_arrays->node[size_arrays->next].uni) {
+                                           ((struct yang_type *)actual)->type->info.uni.types = calloc(size_arrays->node[size_arrays->next].uni, sizeof(struct lys_type));
                                            if (!((struct yang_type *)actual)->type->info.uni.types) {
                                              LOGMEM;
                                              YYERROR;
@@ -948,17 +948,17 @@ decimal_string_restrictions: %empty  { if (read_all) {
                                      }
   |  decimal_string_restrictions length_stmt
   |  decimal_string_restrictions pattern_stmt { if (!read_all) {
-                                                  size_arrays->node[$1].refine++; /* count of pattern*/
+                                                  size_arrays->node[$1].pattern++; /* count of pattern*/
                                                 }
                                               }
   |  decimal_string_restrictions fraction_digits_stmt
   |  decimal_string_restrictions range_stmt stmtsep
   |  decimal_string_restrictions union_spec type_stmt stmtsep { if (read_all) {
-                                                          actual = $2;
-                                                        } else {
-                                                          size_arrays->node[$1].augment++; /* count of union*/
-                                                        }
-                                                      }
+                                                                  actual = $2;
+                                                                } else {
+                                                                  size_arrays->node[$1].uni++; /* count of union*/
+                                                                }
+                                                              }
   ;
 
   union_spec: %empty { if (read_all) {
@@ -1077,8 +1077,8 @@ pattern_end: ';'
   ;  
 
 enum_specification: { if (read_all) {
-                        if (size_arrays->node[size_arrays->next].refine) {
-                          ((struct yang_type *)actual)->type->info.enums.enm = calloc(size_arrays->node[size_arrays->next++].refine, sizeof(struct lys_type_enum));
+                        if (size_arrays->node[size_arrays->next].enm) {
+                          ((struct yang_type *)actual)->type->info.enums.enm = calloc(size_arrays->node[size_arrays->next++].enm, sizeof(struct lys_type_enum));
                           if (!((struct yang_type *)actual)->type->info.enums.enm) {
                             LOGMEM;
                             YYERROR;
@@ -1106,7 +1106,7 @@ enum_stmt: ENUM_KEYWORD sep enum_arg_str enum_end
                actual = $3;
                actual_type = TYPE_KEYWORD;
              } else {
-               size_arrays->node[size_arrays->size-1].refine++; /* count of enum*/
+               size_arrays->node[size_arrays->size-1].enm++; /* count of enum*/
              }
            }
 
@@ -1223,8 +1223,8 @@ require_instance_arg_str: TRUE_KEYWORD optsep { if (read_all) {
   ;
 
 bits_specification: { if (read_all) {
-                        if (size_arrays->node[size_arrays->next].refine) {
-                          ((struct yang_type *)actual)->type->info.bits.bit = calloc(size_arrays->node[size_arrays->next++].refine, sizeof(struct lys_type_bit));
+                        if (size_arrays->node[size_arrays->next].bit) {
+                          ((struct yang_type *)actual)->type->info.bits.bit = calloc(size_arrays->node[size_arrays->next++].bit, sizeof(struct lys_type_bit));
                           if (!((struct yang_type *)actual)->type->info.bits.bit) {
                             LOGMEM;
                             YYERROR;
@@ -1250,7 +1250,7 @@ bit_stmt: BIT_KEYWORD sep bit_arg_str bit_end
                       }
                       actual = $3;
                     } else {
-                      size_arrays->node[size_arrays->size-1].refine++; /* count of bit*/
+                      size_arrays->node[size_arrays->size-1].bit++; /* count of bit*/
                     }
                   }
 
@@ -1336,16 +1336,11 @@ default_stmt: DEFAULT_KEYWORD sep string stmtend;
 grouping_stmt: GROUPING_KEYWORD sep identifier_arg_str { if (read_all) {
                                                            if (!(actual = yang_read_node(trg,actual,s,LYS_GROUPING,sizeof(struct lys_node_grp)))) {YYERROR;}
                                                            s=NULL;
-                                                         } else {
-                                                           if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                                             LOGMEM;
-                                                             YYERROR;
-                                                           }
                                                          }
                                                        }
                grouping_end;
 
-grouping_end: ';' { if (read_all) { size_arrays->next++; } }
+grouping_end: ';'
   |  '{' stmtsep
          grouping_opt_stmt
      '}'
@@ -1364,7 +1359,11 @@ grouping_opt_stmt: %empty { if (read_all) {
                                store_flags((struct lys_node *)$$.grouping, size_arrays->node[size_arrays->next].flags, 0);
                                size_arrays->next++;
                              } else {
-                               $$.index = size_arrays->size-1;
+                               $$.index = size_arrays->size;
+                               if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                 LOGMEM;
+                                 YYERROR;
+                               }
                              }
                            }
   |  grouping_opt_stmt status_read_stmt { if (!read_all) {
@@ -1407,16 +1406,11 @@ container_stmt: CONTAINER_KEYWORD sep identifier_arg_str { if (read_all) {
                                                              if (!(actual = yang_read_node(trg,actual,s,LYS_CONTAINER,sizeof(struct lys_node_container)))) {YYERROR;}
                                                              data_node = actual;
                                                              s=NULL;
-                                                           } else {
-                                                             if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                                               LOGMEM;
-                                                               YYERROR;
-                                                             }
                                                            }
                                                          }
                 container_end ;
 
-container_end: ';' { if (read_all) { size_arrays->next++; } }
+container_end: ';'
   |  '{' stmtsep
          container_opt_stmt
       '}'
@@ -1449,7 +1443,11 @@ container_opt_stmt: %empty { if (read_all) {
                                store_flags((struct lys_node *)$$.container, size_arrays->node[size_arrays->next].flags, config_inherit);
                                size_arrays->next++;
                              } else {
-                               $$.index = size_arrays->size-1;
+                               $$.index = size_arrays->size;
+                               if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                 LOGMEM;
+                                 YYERROR;
+                               }
                              }
                            }
   |  container_opt_stmt when_stmt { actual = $1.container; actual_type = CONTAINER_KEYWORD; }
@@ -1516,11 +1514,6 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                                    if (!(actual = yang_read_node(trg,actual,s,LYS_LEAF,sizeof(struct lys_node_leaf)))) {YYERROR;}
                                                    data_node = actual;
                                                    s=NULL;
-                                                 } else {
-                                                   if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                                     LOGMEM;
-                                                     YYERROR;
-                                                   }
                                                  }
                                                }
            '{' stmtsep
@@ -1562,7 +1555,11 @@ leaf_opt_stmt: %empty { if (read_all) {
                           store_flags((struct lys_node *)$$.leaf.ptr_leaf, size_arrays->node[size_arrays->next].flags, config_inherit);
                           size_arrays->next++;
                         } else {
-                          $$.index = size_arrays->size-1;
+                          $$.index = size_arrays->size;
+                          if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                            LOGMEM;
+                            YYERROR;
+                          }
                         }
                       }
   |  leaf_opt_stmt when_stmt { actual = $1.leaf.ptr_leaf; actual_type = LEAF_KEYWORD; }
@@ -1633,11 +1630,6 @@ leaf_list_stmt: LEAF_LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                                              if (!(actual = yang_read_node(trg,actual,s,LYS_LEAFLIST,sizeof(struct lys_node_leaflist)))) {YYERROR;}
                                                              data_node = actual;
                                                              s=NULL;
-                                                           } else {
-                                                             if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                                               LOGMEM;
-                                                               YYERROR;
-                                                             }
                                                            }
                                                          }
                 '{' stmtsep
@@ -1686,7 +1678,11 @@ leaf_list_opt_stmt: %empty { if (read_all) {
                                store_flags((struct lys_node *)$$.leaflist.ptr_leaflist, size_arrays->node[size_arrays->next].flags, config_inherit);
                                size_arrays->next++;
                              } else {
-                               $$.index = size_arrays->size-1;
+                               $$.index = size_arrays->size;
+                               if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                 LOGMEM;
+                                 YYERROR;
+                               }
                              }
                            }
   |  leaf_list_opt_stmt when_stmt { actual = $1.leaflist.ptr_leaflist; actual_type = LEAF_LIST_KEYWORD; }
@@ -1787,11 +1783,6 @@ list_stmt: LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                                    if (!(actual = yang_read_node(trg,actual,s,LYS_LIST,sizeof(struct lys_node_list)))) {YYERROR;}
                                                    data_node = actual;
                                                    s=NULL;
-                                                 } else {
-                                                   if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                                     LOGMEM;
-                                                     YYERROR;
-                                                   }
                                                  }
                                                }
            '{' stmtsep
@@ -1854,7 +1845,11 @@ list_opt_stmt: %empty { if (read_all) {
                           store_flags((struct lys_node *)$$.list.ptr_list, size_arrays->node[size_arrays->next].flags, config_inherit);
                           size_arrays->next++;
                         } else {
-                          $$.index = size_arrays->size-1;
+                          $$.index = size_arrays->size;
+                          if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                            LOGMEM;
+                            YYERROR;
+                          }
                         }
                       }
   |  list_opt_stmt when_stmt { actual = $1.list.ptr_list; actual_type = LIST_KEYWORD; }
@@ -1992,16 +1987,11 @@ choice_stmt: CHOICE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                          data_node = NULL;
                                                        }
                                                        s=NULL;
-                                                     } else {
-                                                       if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                                         LOGMEM;
-                                                         YYERROR;
-                                                       }
                                                      }
                                                    }
              choice_end;
 
-choice_end: ';' { if (read_all) { size_arrays->next++; } }
+choice_end: ';'
   |  '{' stmtsep
          choice_opt_stmt  { if (read_all) {
                               if ($3.choice.s && ($3.choice.ptr_choice->flags & LYS_MAND_TRUE)) {
@@ -2034,7 +2024,11 @@ choice_opt_stmt: %empty { if (read_all) {
                             store_flags((struct lys_node *)$$.choice.ptr_choice, size_arrays->node[size_arrays->next].flags, config_inherit);
                             size_arrays->next++;
                           } else {
-                            $$.index = size_arrays->size-1;
+                            $$.index = size_arrays->size;
+                            if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                              LOGMEM;
+                              YYERROR;
+                            }
                           }
                         }
   |  choice_opt_stmt when_stmt { actual = $1.choice.ptr_choice; actual_type = CHOICE_KEYWORD; }
@@ -2131,11 +2125,6 @@ case_stmt: CASE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                    if (!(actual = yang_read_node(trg,actual,s,LYS_CASE,sizeof(struct lys_node_case)))) {YYERROR;}
                                                    data_node = actual;
                                                    s=NULL;
-                                                 } else {
-                                                   if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                                     LOGMEM;
-                                                     YYERROR;
-                                                   }
                                                  }
                                                }
            case_end;
@@ -2158,7 +2147,11 @@ case_opt_stmt: %empty { if (read_all) {
                           store_flags((struct lys_node *)$$.cs, size_arrays->node[size_arrays->next].flags, 1);
                           size_arrays->next++;
                         } else {
-                          $$.index = size_arrays->size-1;
+                          $$.index = size_arrays->size;
+                          if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                            LOGMEM;
+                            YYERROR;
+                          }
                         }
                       }
   |  case_opt_stmt when_stmt { actual = $1.cs; actual_type = CASE_KEYWORD; }
@@ -2200,16 +2193,11 @@ anyxml_stmt: ANYXML_KEYWORD sep identifier_arg_str { if (read_all) {
                                                          data_node = NULL;
                                                        }
                                                        s=NULL;
-                                                     } else {
-                                                       if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                                         LOGMEM;
-                                                         YYERROR;
-                                                       }
                                                      }
                                                    }
              anyxml_end;
 
-anyxml_end: ';' { if (read_all) { size_arrays->next++; } }
+anyxml_end: ';'
   |  '{' stmtsep
          anyxml_opt_stmt
      '}' ;
@@ -2234,7 +2222,11 @@ anyxml_opt_stmt: %empty { if (read_all) {
                             store_flags((struct lys_node *)$$.anyxml, size_arrays->node[size_arrays->next].flags, config_inherit);
                             size_arrays->next++;
                           } else {
-                            $$.index = size_arrays->size-1;
+                            $$.index = size_arrays->size;
+                            if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                              LOGMEM;
+                              YYERROR;
+                            }
                           }
                         }
   |  anyxml_opt_stmt when_stmt { actual = $1.anyxml; actual_type = ANYXML_KEYWORD; }
@@ -2290,11 +2282,6 @@ uses_stmt: USES_KEYWORD sep identifier_ref_arg_str { if (read_all) {
                                                          data_node = NULL;
                                                        }
                                                        s=NULL;
-                                                     } else {
-                                                       if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                                         LOGMEM;
-                                                         YYERROR;
-                                                       }
                                                      }
                                                    }
            uses_end { if (read_all) {
@@ -2304,7 +2291,7 @@ uses_stmt: USES_KEYWORD sep identifier_ref_arg_str { if (read_all) {
                       }
                     }
 
-uses_end: ';' { if (read_all) { size_arrays->next++; } }
+uses_end: ';'
   |  '{' stmtsep
          uses_opt_stmt
      '}' ;
@@ -2337,7 +2324,11 @@ uses_opt_stmt: %empty { if (read_all) {
                           store_flags((struct lys_node *)$$.uses.ptr_uses, size_arrays->node[size_arrays->next].flags, config_inherit);
                           size_arrays->next++;
                         } else {
-                          $$.index = size_arrays->size-1;
+                          $$.index = size_arrays->size;
+                          if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                            LOGMEM;
+                            YYERROR;
+                          }
                         }
                       }
   |  uses_opt_stmt when_stmt { actual = $1.uses.ptr_uses; actual_type = USES_KEYWORD; }
@@ -2393,11 +2384,6 @@ refine_stmt: REFINE_KEYWORD sep refine_arg_str { if (read_all) {
                                                      YYERROR;
                                                    }
                                                    s = NULL;
-                                                 } else {
-                                                   if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                                     LOGMEM;
-                                                     YYERROR;
-                                                   }
                                                  }
                                                }
              refine_end;
@@ -2425,7 +2411,11 @@ refine_body_opt_stmts: %empty { if (read_all) {
                                   }
                                   size_arrays->next++;
                                 } else {
-                                  $$.index = size_arrays->size-1;
+                                  $$.index = size_arrays->size;
+                                  if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                    LOGMEM;
+                                    YYERROR;
+                                  }
                                 }
                               }
   |  refine_body_opt_stmts must_stmt stmtsep { if (read_all) {
@@ -2588,11 +2578,6 @@ uses_augment_stmt: AUGMENT_KEYWORD sep uses_augment_arg_str { if (read_all) {
                                                                 }
                                                                 data_node = actual;
                                                                 s = NULL;
-                                                              } else {
-                                                                if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                                                  LOGMEM;
-                                                                  YYERROR;
-                                                                }
                                                               }
                                                             }
                    '{' stmtsep
@@ -2613,11 +2598,6 @@ augment_stmt: AUGMENT_KEYWORD sep augment_arg_str { if (read_all) {
                                                       }
                                                       data_node = actual;
                                                       s = NULL;
-                                                    } else {
-                                                      if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                                        LOGMEM;
-                                                        YYERROR;
-                                                      }
                                                     }
                                                   }
               '{' stmtsep
@@ -2647,7 +2627,11 @@ augment_opt_stmt: %empty { if (read_all) {
                              config_inherit = DISABLE_INHERIT;
                              size_arrays->next++;
                            } else {
-                             $$.index = size_arrays->size-1;
+                             $$.index = size_arrays->size;
+                             if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                               LOGMEM;
+                               YYERROR;
+                             }
                            }
                          }
   |  augment_opt_stmt when_stmt { actual = $1.augment.ptr_augment; actual_type = AUGMENT_KEYWORD; }
@@ -2703,19 +2687,11 @@ rpc_stmt: RPC_KEYWORD sep identifier_arg_str { if (read_all) {
                                                  }
                                                  data_node = actual;
                                                  s = NULL;
-                                               } else {
-                                                 if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                                   LOGMEM;
-                                                   YYERROR;
-                                                 }
                                                }
                                              }
           rpc_end;
 
-rpc_end: ';' { if (read_all) {
-                 size_arrays->next++;
-               }
-             }
+rpc_end: ';'
   |  '{' stmtsep
          rpc_opt_stmt
       '}'
@@ -2742,7 +2718,11 @@ rpc_opt_stmt: %empty { if (read_all) {
                          store_flags((struct lys_node *)$$.rpc.ptr_rpc, size_arrays->node[size_arrays->next].flags, 0);
                          size_arrays->next++;
                        } else {
-                         $$.index = size_arrays->size-1;
+                         $$.index = size_arrays->size;
+                         if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                           LOGMEM;
+                           YYERROR;
+                         }
                        }
                      }
   |  rpc_opt_stmt if_feature_stmt { if (read_all) {
@@ -2807,11 +2787,6 @@ input_stmt: INPUT_KEYWORD optsep { if (read_all) {
                                       YYERROR;
                                      }
                                      data_node = actual;
-                                   } else {
-                                     if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                       LOGMEM;
-                                       YYERROR;
-                                     }
                                    }
                                  }
             '{' stmtsep
@@ -2835,7 +2810,11 @@ input_output_opt_stmt: %empty { if (read_all) {
                                   }
                                   size_arrays->next++;
                                 } else {
-                                  $$.index = size_arrays->size-1;
+                                  $$.index = size_arrays->size;
+                                  if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                    LOGMEM;
+                                    YYERROR;
+                                  }
                                 }
                               }
   |  input_output_opt_stmt typedef_stmt { if (read_all) {
@@ -2866,11 +2845,6 @@ output_stmt: OUTPUT_KEYWORD optsep { if (read_all) {
                                         YYERROR;
                                        }
                                        data_node = actual;
-                                     } else {
-                                       if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                         LOGMEM;
-                                         YYERROR;
-                                       }
                                      }
                                    }
              '{' stmtsep
@@ -2886,11 +2860,6 @@ notification_stmt: NOTIFICATION_KEYWORD sep identifier_arg_str { if (read_all) {
                                                                     YYERROR;
                                                                    }
                                                                    data_node = actual;
-                                                                 } else {
-                                                                   if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                                                     LOGMEM;
-                                                                     YYERROR;
-                                                                   }
                                                                  }
                                                                }
                    notification_end;
@@ -2924,7 +2893,11 @@ notification_opt_stmt: %empty { if (read_all) {
                                   store_flags((struct lys_node *)$$.notif, size_arrays->node[size_arrays->next].flags, 0);
                                   size_arrays->next++;
                                 } else {
-                                  $$.index = size_arrays->size-1;
+                                  $$.index = size_arrays->size;
+                                  if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                    LOGMEM;
+                                    YYERROR;
+                                  }
                                 }
                               }
   |  notification_opt_stmt if_feature_stmt { if (read_all) {
@@ -2976,13 +2949,7 @@ deviation_stmt: DEVIATION_KEYWORD sep deviation_arg_str { if (read_all) {
                                                             }
                                                             s = NULL;
                                                             trg->deviation_size++;
-                                                            } else {
-                                                              if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                                                LOGMEM;
-                                                                YYERROR;
-                                                              }
                                                             }
-
                                                         }
                 '{' stmtsep
                     deviation_opt_stmt  { if (read_all) {
@@ -3001,8 +2968,8 @@ deviation_stmt: DEVIATION_KEYWORD sep deviation_arg_str { if (read_all) {
 deviation_opt_stmt: %empty { if (read_all) {
                                $$.deviation = actual;
                                actual_type = DEVIATION_KEYWORD;
-                               if (size_arrays->node[size_arrays->next].unique) {
-                                 $$.deviation->deviation->deviate = calloc(size_arrays->node[size_arrays->next].unique, sizeof *$$.deviation->deviation->deviate);
+                               if (size_arrays->node[size_arrays->next].deviate) {
+                                 $$.deviation->deviation->deviate = calloc(size_arrays->node[size_arrays->next].deviate, sizeof *$$.deviation->deviation->deviate);
                                  if (!$$.deviation->deviation->deviate) {
                                    LOGMEM;
                                    YYERROR;
@@ -3010,7 +2977,11 @@ deviation_opt_stmt: %empty { if (read_all) {
                                }
                                size_arrays->next++;
                              } else {
-                               $$.index = size_arrays->size -1;
+                               $$.index = size_arrays->size;
+                               if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                 LOGMEM;
+                                 YYERROR;
+                               }
                              }
                            }
   |  deviation_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.deviation->deviation, s, "deviation", yylineno)) {
@@ -3033,7 +3004,7 @@ deviation_opt_stmt: %empty { if (read_all) {
                                                                   $$ = $1;
                                                                 } else {
                                                                   /* count of deviate statemenet */
-                                                                  size_arrays->node[$1.index].unique++;
+                                                                  size_arrays->node[$1.index].deviate++;
                                                                 }
                                                               }
 
