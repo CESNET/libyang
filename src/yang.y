@@ -327,7 +327,13 @@ submodule_header_stmts: %empty { $$ = 0; }
 yang_version_stmt: YANG_VERSION_KEYWORD sep yang_version_arg_str stmtend;
 
 yang_version_arg_str: NON_NEGATIVE_INTEGER { if (strlen(yytext)!=1 || yytext[0]!='1') {YYERROR;} } optsep
-  | string_1;
+  | string_1 { if (read_all) {
+                 if (strlen(s)!=1 || s[0]!='1') {
+                   free(s);
+                   YYERROR;
+                 }
+               }
+             }
 
 namespace_stmt: NAMESPACE_KEYWORD sep uri_str stmtend;
 
@@ -509,8 +515,11 @@ date_arg_str: REVISION_DATE { if (read_all) {
                               }
                             }
               optsep
-  | string_1
-  ;
+  | string_1 { if (read_all && lyp_check_date(s, yylineno)) {
+                   free(s);
+                   YYERROR;
+               }
+             }
 
 body_stmts: %empty { if (read_all) {
                        if (size_arrays->features) {
@@ -3326,15 +3335,51 @@ presence_stmt: PRESENCE_KEYWORD sep string stmtend;
 min_elements_stmt: MIN_ELEMENTS_KEYWORD sep min_value_arg_str stmtend { $$ = $3; }
 
 min_value_arg_str: non_negative_integer_value optsep { $$ = $1; }
-  |  string_1 // not implement
-  ;
+  |  string_1 { if (read_all) {
+                  if (strlen(s) == 1 && s[0] == '0') {
+                    $$ = 0;
+                  } else {
+                    /* convert it to uint32_t */
+                    uint64_t val;
+                    char *endptr;
+
+                    val = strtoul(yytext, &endptr, 10);
+                    if (val > UINT32_MAX || *endptr) {
+                        LOGVAL(LYE_INARG, yylineno, LY_VLOG_NONE, NULL, s, "min-elements");
+                        free(s);
+                        YYERROR;
+                    }
+                    $$ = (uint32_t) val;
+                  }
+                  free(s);
+                  s = NULL;
+                }
+              }
 
 max_elements_stmt: MAX_ELEMENTS_KEYWORD sep max_value_arg_str stmtend { $$ = $3; }
 
-max_value_arg_str: UNBOUNDED_KEYWORD optsep //not implement
+max_value_arg_str: UNBOUNDED_KEYWORD optsep { $$ = 0; }
   |  positive_integer_value optsep { $$ = $1; }
-  |  string_1 // not implement
-  ;
+  |  string_1 { if (read_all) {
+                  if (!strcmp(s, "unbounded")) {
+                    $$ = 0;
+                  } else {
+                    /* convert it to uint32_t */
+                    uint64_t val;
+                    char *endptr;
+
+                    val = strtoul(yytext, &endptr, 10);
+                    if (val > UINT32_MAX || *endptr) {
+                        LOGVAL(LYE_INARG, yylineno, LY_VLOG_NONE, NULL, s, "max-elements");
+                        free(s);
+                        YYERROR;
+                    }
+                    $$ = (uint32_t) val;
+                  }
+                  free(s);
+                  s = NULL;
+                }
+              }
 
 ordered_by_stmt: ORDERED_BY_KEYWORD sep ordered_by_arg_str stmtend { $$ = $3; }
 
@@ -3555,8 +3600,11 @@ prefix_arg_str: string_1
   |  identifiers optsep;
 
 identifier_arg_str: identifiers optsep 
-  |  string_1 
-  ;
+  |  string_1 { if (read_all && lyp_check_identifier(s, LY_IDENT_SIMPLE, yylineno, trg, NULL)) {
+                    free(s);
+                    YYERROR;
+                }
+              }
 
 node_identifier: identifier
   |  IDENTIFIERPREFIX
@@ -3564,8 +3612,31 @@ node_identifier: identifier
 
 identifier_ref_arg_str: identifiers optsep
   | identifiers_ref optsep
-  | string_1
-  ; 
+  | string_1 { if (read_all) {
+                 char *tmp;
+
+                 if ((tmp = strchr(s, ':'))) {
+                   *tmp = '\0';
+                   /* check prefix */
+                   if (lyp_check_identifier(s, LY_IDENT_SIMPLE, yylineno, trg, NULL)) {
+                     free(s);
+                     YYERROR;
+                   }
+                   /* check identifier */
+                   if (lyp_check_identifier(tmp + 1, LY_IDENT_SIMPLE, yylineno, trg, NULL)) {
+                     free(s);
+                     YYERROR;
+                   }
+                   *tmp = ':';
+                 } else {
+                   /* check */
+                   if (lyp_check_identifier(s, LY_IDENT_SIMPLE, yylineno, trg, NULL)) {
+                     free(s);
+                     YYERROR;
+                   }
+                 }
+               }
+             }
 
 stmtend: ';' stmtsep
   | '{' stmtsep '}' stmtsep
