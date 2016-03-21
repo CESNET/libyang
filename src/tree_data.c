@@ -234,6 +234,9 @@ lyd_create_leaf(const struct lys_node *schema, const char *val_str)
     }
     ret->schema = (struct lys_node *)schema;
     ret->validity = LYD_VAL_NOT;
+    if (resolve_applies_when((struct lyd_node *)ret)) {
+        ret->when_status = LYD_WHEN;
+    }
     ret->prev = (struct lyd_node *)ret;
     ret->value_type = ((struct lys_node_leaf *)schema)->type.base;
     ret->value_str = lydict_insert(schema->module->ctx, val_str, 0);
@@ -353,6 +356,9 @@ lyd_create_anyxml(const struct lys_node *schema, const char *val_xml)
     }
     ret->schema = (struct lys_node *)schema;
     ret->validity = LYD_VAL_NOT;
+    if (resolve_applies_when((struct lyd_node *)ret)) {
+        ret->when_status = LYD_WHEN;
+    }
     ret->prev = (struct lyd_node *)ret;
 
     /* store the anyxml data together with the anyxml element */
