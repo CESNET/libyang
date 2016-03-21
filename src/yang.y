@@ -427,7 +427,7 @@ revision_date: REVISION_DATE { if (read_all) {
                              }
 
 belongs_to_stmt: BELONGS_TO_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                               if (!ly_strequal(s, submodule->belongsto->name, 1)) {
+                                                               if (!ly_strequal(s, submodule->belongsto->name, 0)) {
                                                                  LOGVAL(LYE_INARG, yylineno, LY_VLOG_NONE, NULL, s, "belongs-to");
                                                                  free(s);
                                                                  YYERROR;
@@ -438,10 +438,9 @@ belongs_to_stmt: BELONGS_TO_KEYWORD sep identifier_arg_str { if (read_all) {
                                                            }
                  '{' stmtsep
                      prefix_stmt { if (read_all) {
-                                     if (lyp_check_identifier(s, LY_IDENT_NAME, yylineno, NULL, NULL)) {
+                                     if (yang_read_prefix(trg, NULL, s, MODULE_KEYWORD, yylineno)) {
                                        YYERROR;
                                      }
-                                     submodule->prefix = lydict_insert_zc(module->ctx, s);
                                      s = NULL;
                                    }
                                  }
