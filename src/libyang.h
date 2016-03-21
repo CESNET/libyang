@@ -399,6 +399,7 @@ extern "C" {
  * - lyd_new()
  * - lyd_new_anyxml()
  * - lyd_new_leaf()
+ * - lyd_new_path()
  * - lyd_output_new()
  * - lyd_output_new_anyxml()
  * - lyd_output_new_leaf()
@@ -703,21 +704,25 @@ const struct lys_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const
 const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodule);
 
 /**
- * @brief Get schema node according to the given absolute schema node identifier
- * in JSON format.
+ * @brief Get schema node according to the given schema node identifier in JSON format.
  *
- * The first node identifier must be prefixed with the module name. Then every other
- * identifier either has an explicit module name or the module name of the previous
- * node is assumed. Examples:
+ * If the \p nodeid is absolute, the first node identifier must be prefixed with
+ * the module name. Then every other identifier either has an explicit module name or
+ * the module name of the previous node is assumed. Examples:
  *
  * /ietf-netconf-monitoring:get-schema/input/identifier
  * /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/ip
  *
+ * If the \p nodeid is relative, \p start is mandatory and is the starting point
+ * for the resolution. The first node identifier does not need a module name.
+ *
  * @param[in] ctx Context to work in.
- * @param[in] nodeid JSON absolute schema node identifier.
+ * @param[in] start Starting node for a relative schema node identifier, in which
+ * case it is mandatory.
+ * @param[in] nodeid JSON schema node identifier.
  * @return Resolved schema node or NULL.
  */
-const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const char *nodeid);
+const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid);
 
 /**
  * @brief Free all internal structures of the specified context.
@@ -884,16 +889,100 @@ typedef enum {
 } LY_ERR;
 
 /**
+ * @typedef LY_VECODE
+ * @brief libyang's codes of validation error. Whenever ly_errno is set to LY_EVALID, the ly_vecode is also set
+ * to the appropriate LY_VECODE value.
+ * @ingroup logger
+ */
+typedef enum {
+    LYVE_SUCCESS = 0,  /**< no error */
+
+    LYVE_XML_MISS,     /**< missing XML object */
+    LYVE_XML_INVAL,    /**< invalid XML object */
+    LYVE_XML_INCHAR,   /**< invalid XML character */
+
+    LYVE_EOF,          /**< unexpected end of input data */
+    LYVE_INSTMT,       /**< invalid statement (schema) */
+    /* */
+    LYVE_INID,         /**< invalid identifier (schema) */
+    LYVE_INDATE,       /**< invalid date format */
+    LYVE_INARG,        /**< invalid value of a statement argument (schema) */
+    LYVE_MISSSTMT,     /**< missing required statement (schema) */
+    /* */
+    LYVE_MISSARG,      /**< missing required statement argument (schema) */
+    LYVE_TOOMANY,      /**< too many instances of some object */
+    LYVE_DUPID,        /**< duplicated identifier (schema) */
+    LYVE_DUPLEAFLIST,  /**< multiple instances of leaf-list */
+    LYVE_DUPLIST,      /**< multiple instances of list */
+    LYVE_ENUM_DUPVAL,  /**< duplicated enum value (schema) */
+    LYVE_ENUM_DUPNAME, /**< duplicated enum name (schema) */
+    LYVE_ENUM_WS,      /**< enum name with leading/trailing whitespaces (schema) */
+    LYVE_BITS_DUPVAL,  /**< duplicated bits value (schema) */
+    LYVE_BITS_DUPNAME, /**< duplicated bits name (schema) */
+    LYVE_INMOD,        /**< invalid module name */
+    /* */
+    LYVE_KEY_NLEAF,    /**< list key is not a leaf (schema) */
+    LYVE_KEY_TYPE,     /**< invalid list key type (schema) */
+    LYVE_KEY_CONFIG,   /**< key config value differs from the list config value */
+    LYVE_KEY_MISS,     /**< list key not found (schema) */
+    LYVE_KEY_DUP,      /**< duplicated key identifier (schema) */
+    LYVE_INREGEX,      /**< invalid regular expression (schema) */
+    LYVE_INRESOLV,     /**< no resolvents found (schema) */
+    LYVE_INSTATUS,     /**< invalid derivation because of status (schema) */
+
+    LYVE_OBSDATA,      /**< obsolete data instantiation (data) */
+    /* */
+    LYVE_NORESOLV,     /**< no resolvents found for an expression (data) */
+    LYVE_INELEM,       /**< invalid element (data) */
+    /* */
+    LYVE_MISSELEM,     /**< missing required element (data) */
+    LYVE_INVAL,        /**< invalid value of an element (data) */
+    LYVE_INATTR,       /**< invalid attribute in an element (data) */
+    LYVE_MISSATTR,     /**< missing attribute in an element (data) */
+    LYVE_OORVAL,       /**< value out of range/length (data) */
+    LYVE_INCHAR,       /**< unexpected characters (data) */
+    LYVE_INPRED,       /**< predicate resolution fail (data) */
+    LYVE_MCASEDATA,    /**< data for more cases of a choice (data) */
+    LYVE_NOCOND,       /**< unsatisfied must/when condition (data) */
+    LYVE_INORDER,      /**< invalid order of elements (data) */
+    LYVE_INCOUNT,      /**< invalid number of elements (data) */
+
+    LYVE_XPATH_INTOK,  /**< unexpected XPath token */
+    LYVE_XPATH_EOF,    /**< unexpected end of an XPath expression */
+    LYVE_XPATH_INOP,   /**< invalid XPath operation operands */
+    /* */
+    LYVE_XPATH_INCTX,  /**< invalid XPath context type */
+    LYVE_XPATH_INARGCOUNT, /**< invalid number of arguments for an XPath function */
+    LYVE_XPATH_INARGTYPE, /**< invalid type of arguments for an XPath function */
+
+    LYVE_PATH_INCHAR,  /**< invalid characters (path) */
+    LYVE_PATH_INMOD,   /**< invalid module name (path) */
+    LYVE_PATH_MISSMOD, /**< missing module name (path) */
+    LYVE_PATH_INNODE,  /**< invalid node name (path) */
+    LYVE_PATH_INKEY,   /**< invalid key name (path) */
+    LYVE_PATH_MISSKEY, /**< missing some list keys (path) */
+    LYVE_PATH_EXISTS,  /**< target node already exists (path) */
+    LYVE_PATH_MISSPAR, /**< some parent of the target node is missing (path) */
+} LY_VECODE;
+
+/**
  * @cond INTERNAL
  * Get address of (thread-specific) `ly_errno' variable.
  */
 LY_ERR *ly_errno_location(void);
+
+LY_VECODE *ly_vecode_location(void);
 
 /**
  * @endcond INTERNAL
  * @brief libyang specific (thread-safe) errno (see #LY_ERR for the list of possible values and their meaning).
  */
 #define ly_errno (*ly_errno_location())
+
+/**
+ * @brief libyang's validation error code
+ */
+#define ly_vecode (*ly_vecode_location())
 
 /**
  * @brief Get the last (thread-specific) error message.

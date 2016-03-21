@@ -94,6 +94,12 @@ struct len_ran_intv {
 
 int parse_identifier(const char *id);
 
+int parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, const char **name, int *nam_len,
+                        int *is_relative, int *has_predicate);
+
+int parse_schema_list_predicate(const char *id, const char **name, int *nam_len, const char **value, int *val_len,
+                                int *has_predicate);
+
 struct lyd_node *resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start);
 
 int resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_module *module,
@@ -107,7 +113,9 @@ int resolve_choice_default_schema_nodeid(const char *nodeid, const struct lys_no
 int resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *module, int ret_nodetype,
                                    const struct lys_node **ret);
 
-int resolve_json_absolute_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node **ret);
+const struct lys_node *resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start);
+
+struct lyd_node *resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int *parsed);
 
 int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int superior_restr,
                              struct len_ran_intv **local_intv);

@@ -5584,7 +5584,8 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
         }
 
         if (!xpath_func) {
-            LOGVAL(LYE_SPEC, line, 0, NULL,
+            LOGVAL(LYE_XPATH_INTOK, line, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[*exp_idx]]);
+            LOGVAL(LYE_SPEC, 0, 0, NULL,
                    "Unknown XPath function \"%.*s\".", exp->tok_len[*exp_idx], &exp->expr[exp->expr_pos[*exp_idx]]);
             return -1;
         }
@@ -5679,11 +5680,13 @@ eval_number(struct lyxp_expr *exp, uint16_t *exp_idx, struct ly_ctx *ctx, struct
         errno = 0;
         num = strtold(&exp->expr[exp->expr_pos[*exp_idx]], &endptr);
         if (errno) {
-            LOGVAL(LYE_SPEC, line, 0, NULL, "Failed to convert \"%.*s\" into a long double (%s).",
+            LOGVAL(LYE_XPATH_INTOK, line, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[*exp_idx]]);
+            LOGVAL(LYE_SPEC, 0, 0, NULL, "Failed to convert \"%.*s\" into a long double (%s).",
                    exp->tok_len[*exp_idx], &exp->expr[exp->expr_pos[*exp_idx]], strerror(errno));
             return -1;
         } else if (endptr - &exp->expr[exp->expr_pos[*exp_idx]] != exp->tok_len[*exp_idx]) {
-            LOGVAL(LYE_SPEC, line, 0, NULL, "Failed to convert \"%.*s\" into a long double.",
+            LOGVAL(LYE_XPATH_INTOK, line, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[*exp_idx]]);
+            LOGVAL(LYE_SPEC, 0, 0, NULL, "Failed to convert \"%.*s\" into a long double.",
                    exp->tok_len[*exp_idx], &exp->expr[exp->expr_pos[*exp_idx]]);
             return -1;
         }
@@ -6464,7 +6467,8 @@ lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *se
         exp_idx = 0;
         rc = reparse_expr(exp, &exp_idx, line);
         if (!rc && (exp->used > exp_idx)) {
-            LOGVAL(LYE_SPEC, line, 0, NULL, "Unparsed characters \"%s\" left at the end of an XPath expression.",
+            LOGVAL(LYE_XPATH_INTOK, line, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[exp_idx]]);
+            LOGVAL(LYE_SPEC, 0, 0, NULL, "Unparsed characters \"%s\" left at the end of an XPath expression.",
                    &exp->expr[exp->expr_pos[exp_idx]]);
             rc = -1;
         }
@@ -6507,7 +6511,8 @@ lyxp_syntax_check(const char *expr, uint32_t line)
         exp_idx = 0;
         rc = reparse_expr(exp, &exp_idx, line);
         if (!rc && (exp->used > exp_idx)) {
-            LOGVAL(LYE_SPEC, line, 0, NULL, "Unparsed characters \"%s\" left at the end of an XPath expression.",
+            LOGVAL(LYE_XPATH_INTOK, line, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[exp_idx]]);
+            LOGVAL(LYE_SPEC, 0, 0, NULL, "Unparsed characters \"%s\" left at the end of an XPath expression.",
                    &exp->expr[exp->expr_pos[exp_idx]]);
             rc = -1;
         }

@@ -89,18 +89,19 @@ ly_log(LY_LOG_LEVEL level, const char *format, ...)
 }
 
 const char *ly_errs[] = {
+/* LYE_SUCCESS */      "",
 /* LYE_XML_MISS */     "Missing %s \"%s\".",
 /* LYE_XML_INVAL */    "Invalid %s.",
 /* LYE_XML_INCHAR */   "Encountered invalid character sequence \"%.10s\".",
 
 /* LYE_EOF */          "Unexpected end of input data.",
 /* LYE_INSTMT */       "Invalid keyword \"%s\".",
-/* LYE_INCHILDSTMT */  "Invalid keyword \"%s\" in \"%s\".",
+/* LYE_INCHILDSTMT */  "Invalid keyword \"%s\" as a child to \"%s\".",
 /* LYE_INID */         "Invalid identifier \"%s\" (%s).",
 /* LYE_INDATE */       "Invalid date format of \"%s\", \"YYYY-MM-DD\" expected.",
 /* LYE_INARG */        "Invalid value \"%s\" of \"%s\".",
-/* LYE_MISSSTMT1 */    "Missing keyword \"%s\".",
-/* LYE_MISSSTMT2 */    "Missing keyword \"%s\" as child to \"%s\".",
+/* LYE_MISSSTMT */     "Missing keyword \"%s\".",
+/* LYE_MISSCHILDSTMT */ "Missing keyword \"%s\" as a child to \"%s\".",
 /* LYE_MISSARG */      "Missing argument \"%s\" to keyword \"%s\".",
 /* LYE_TOOMANY */      "Too many instances of \"%s\" in \"%s\".",
 /* LYE_DUPID */        "Duplicated %s identifier \"%s\".",
@@ -111,7 +112,7 @@ const char *ly_errs[] = {
 /* LYE_ENUM_WS */      "The enum name \"%s\" includes invalid leading or trailing whitespaces.",
 /* LYE_BITS_DUPVAL */  "The position \"%d\" of \"%s\" bits has already been used to another named bit.",
 /* LYE_BITS_DUPNAME */ "The bit name \"%s\" has already been assigned to another bit.",
-/* LYE_INMOD */        "Module name in \"%s\" refers to an unknown module.",
+/* LYE_INMOD */        "Module name \"%s\" refers to an unknown module.",
 /* LYE_INMOD_LEN */    "Module name \"%.*s\" refers to an unknown module.",
 /* LYE_KEY_NLEAF */    "Key \"%s\" is not a leaf.",
 /* LYE_KEY_TYPE */     "Key \"%s\" must not be the built-in type \"empty\".",
@@ -121,9 +122,9 @@ const char *ly_errs[] = {
 /* LYE_INREGEX */      "Regular expression \"%s\" is not valid (%s).",
 /* LYE_INRESOLV */     "Failed to resolve %s \"%s\".",
 /* LYE_INSTATUS */     "A \"%s\" definition %s references \"%s\" definition %s.",
+
 /* LYE_OBSDATA */      "Obsolete data \"%s\" instantiated.",
 /* LYE_OBSTYPE */      "Data node \"%s\" with obsolete type \"%s\" instantiated.",
-
 /* LYE_NORESOLV */     "No resolvents found for \"%s\".",
 /* LYE_INELEM */       "Unknown element \"%s\".",
 /* LYE_INELEM_LEN */   "Unknown element \"%.*s\".",
@@ -137,6 +138,7 @@ const char *ly_errs[] = {
 /* LYE_MCASEDATA */    "Data for more than one case branch of \"%s\" choice present.",
 /* LYE_NOCOND */       "%s condition \"%s\" not satisfied.",
 /* LYE_INORDER */      "Invalid order of elements \"%s\" and \"%s\".",
+/* LYE_INCOUNT */      "Wrong number of \"%s\" elements.",
 
 /* LYE_XPATH_INTOK */  "Unexpected XPath token %s (%.15s).",
 /* LYE_XPATH_EOF */    "Unexpected XPath expression end.",
@@ -144,11 +146,91 @@ const char *ly_errs[] = {
 /* LYE_XPATH_INOP_2 */ "Cannot apply XPath operation %s on %s and %s.",
 /* LYE_XPATH_INCTX */  "Invalid context type %s in %s.",
 /* LYE_XPATH_INARGCOUNT */ "Invalid number of arguments (%d) for the XPath function %s.",
-/* LYE_XPATH_INARGTYPE */ "Wrong type of argument #%d (%s) for the XPath function %s."
+/* LYE_XPATH_INARGTYPE */ "Wrong type of argument #%d (%s) for the XPath function %s.",
+
+/* LYE_PATH_INCHAR */  "Unexpected character(s) '%c' (%s).",
+/* LYE_PATH_INMOD */   "Module not found (%s).",
+/* LYE_PATH_MISSMOD */ "Missing module name (%s).",
+/* LYE_PATH_INNODE */  "Schema node not found (%s).",
+/* LYE_PATH_INKEY */   "List key not found or on incorrect position (%s).",
+/* LYE_PATH_MISSKEY */ "Not all list keys specified (%s).",
+/* LYE_PATH_EXISTS */  "Node already exists.",
+/* LYE_PATH_MISSPAR */ "Parent does not exist (%s).",
+};
+
+static const LY_VECODE ecode2vecode[] = {
+    LYVE_SUCCESS,      /* LYE_SUCCESS */
+
+    LYVE_XML_MISS,     /* LYE_XML_MISS */
+    LYVE_XML_INVAL,    /* LYE_XML_INVAL */
+    LYVE_XML_INCHAR,   /* LYE_XML_INCHAR */
+
+    LYVE_EOF,          /* LYE_EOF */
+    LYVE_INSTMT,       /* LYE_INSTMT */
+    LYVE_INSTMT,       /* LYE_INCHILDSTMT */
+    LYVE_INID,         /* LYE_INID */
+    LYVE_INDATE,       /* LYE_INDATE */
+    LYVE_INARG,        /* LYE_INARG */
+    LYVE_MISSSTMT,     /* LYE_MISSCHILDSTMT */
+    LYVE_MISSSTMT,     /* LYE_MISSSTMT */
+    LYVE_MISSARG,      /* LYE_MISSARG */
+    LYVE_TOOMANY,      /* LYE_TOOMANY */
+    LYVE_DUPID,        /* LYE_DUPID */
+    LYVE_DUPLEAFLIST,  /* LYE_DUPLEAFLIST */
+    LYVE_DUPLIST,      /* LYE_DUPLIST */
+    LYVE_ENUM_DUPVAL,  /* LYE_ENUM_DUPVAL */
+    LYVE_ENUM_DUPNAME, /* LYE_ENUM_DUPNAME */
+    LYVE_ENUM_WS,      /* LYE_ENUM_WS */
+    LYVE_BITS_DUPVAL,  /* LYE_BITS_DUPVAL */
+    LYVE_BITS_DUPNAME, /* LYE_BITS_DUPNAME */
+    LYVE_INMOD,        /* LYE_INMOD */
+    LYVE_INMOD,        /* LYE_INMOD_LEN */
+    LYVE_KEY_NLEAF,    /* LYE_KEY_NLEAF */
+    LYVE_KEY_TYPE,     /* LYE_KEY_TYPE */
+    LYVE_KEY_CONFIG,   /* LYE_KEY_CONFIG */
+    LYVE_KEY_MISS,     /* LYE_KEY_MISS */
+    LYVE_KEY_DUP,      /* LYE_KEY_DUP */
+    LYVE_INREGEX,      /* LYE_INREGEX */
+    LYVE_INRESOLV,     /* LYE_INRESOLV */
+    LYVE_INSTATUS,     /* LYE_INSTATUS */
+
+    LYVE_OBSDATA,      /* LYE_OBSDATA */
+    LYVE_OBSDATA,      /* LYE_OBSTYPE */
+    LYVE_NORESOLV,     /* LYE_NORESOLV */
+    LYVE_INELEM,       /* LYE_INELEM */
+    LYVE_INELEM,       /* LYE_INELEM_LEN */
+    LYVE_MISSELEM,     /* LYE_MISSELEM */
+    LYVE_INVAL,        /* LYE_INVAL */
+    LYVE_INATTR,       /* LYE_INATTR */
+    LYVE_MISSATTR,     /* LYE_MISSATTR */
+    LYVE_OORVAL,       /* LYE_OORVAL */
+    LYVE_INCHAR,       /* LYE_INCHAR */
+    LYVE_INPRED,       /* LYE_INPRED */
+    LYVE_MCASEDATA,    /* LYE_MCASEDATA */
+    LYVE_NOCOND,       /* LYE_NOCOND */
+    LYVE_INORDER,      /* LYE_INORDER */
+    LYVE_INCOUNT,      /* LYE_INCOUNT */
+
+    LYVE_XPATH_INTOK,  /* LYE_XPATH_INTOK */
+    LYVE_XPATH_EOF,    /* LYE_XPATH_EOF */
+    LYVE_XPATH_INOP,   /* LYE_XPATH_INOP_1 */
+    LYVE_XPATH_INOP,   /* LYE_XPATH_INOP_2 */
+    LYVE_XPATH_INCTX,  /* LYE_XPATH_INCTX */
+    LYVE_XPATH_INARGCOUNT, /* LYE_XPATH_INARGCOUNT */
+    LYVE_XPATH_INARGTYPE, /* LYE_XPATH_INARGTYPE */
+
+    LYVE_PATH_INCHAR,  /* LYE_PATH_INCHAR */
+    LYVE_PATH_INMOD,   /* LYE_PATH_INMOD */
+    LYVE_PATH_MISSMOD, /* LYE_PATH_MISSMOD */
+    LYVE_PATH_INNODE,  /* LYE_PATH_INNODE */
+    LYVE_PATH_INKEY,   /* LYE_PATH_INKEY */
+    LYVE_PATH_MISSKEY, /* LYE_PATH_MISSKEY */
+    LYVE_PATH_EXISTS,  /* LYE_PATH_EXISTS */
+    LYVE_PATH_MISSPAR, /* LYE_PATH_MISSPAR */
 };
 
 void
-ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
+ly_vlog(LY_ECODE code, unsigned int line, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
 {
     va_list ap;
     const char *fmt;
@@ -178,6 +260,9 @@ ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const 
 
     if (code == LYE_LINE || (code == LYE_PATH && !path_flag)) {
         return;
+    }
+    if (code > 0) {
+        ly_vecode = ecode2vecode[code];
     }
 
     /* resolve path */
