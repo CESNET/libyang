@@ -1154,6 +1154,25 @@ struct lys_node_augment {
 };
 
 /**
+ * @brief Container for list modifications in ::lys_refine_mod.
+ */
+struct lys_refine_mod_list {
+    uint32_t min;            /**< new min-elements value. Applicable to #LYS_LIST and #LYS_LEAFLIST target nodes */
+    uint32_t max;            /**< new max-elements value. Applicable to #LYS_LIST and #LYS_LEAFLIST target nodes */
+};
+
+/**
+ * @brief Union to hold target modification in ::lys_refine.
+ */
+union lys_refine_mod {
+    const char *dflt;            /**< new default value. Applicable to #LYS_LEAF and #LYS_CHOICE target nodes. In case of
+                                      #LYS_CHOICE, it must be possible to resolve the value to the default branch node */
+    const char *presence;        /**< presence description. Applicable to #LYS_CONTAINER target node */
+    struct lys_refine_mod_list list;  /**< container for list's attributes,
+                                      applicable to #LYS_LIST and #LYS_LEAFLIST target nodes */
+};
+
+/**
  * @brief YANG uses's refine substatement structure, see [RFC 6020 sec. 7.12.2](http://tools.ietf.org/html/rfc6020#section-7.12.2)
  */
 struct lys_refine {
@@ -1169,15 +1188,7 @@ struct lys_refine {
     uint8_t must_size;               /**< number of elements in the #must array */
     struct lys_restr *must;          /**< array of additional must restrictions to be added to the target */
 
-    union {
-        const char *dflt;            /**< new default value. Applicable to #LYS_LEAF and #LYS_CHOICE target nodes. In case of
-                                          #LYS_CHOICE, it must be possible to resolve the value to the default branch node */
-        const char *presence;        /**< presence description. Applicable to #LYS_CONTAINER target node */
-        struct {
-            uint32_t min;            /**< new min-elements value. Applicable to #LYS_LIST and #LYS_LEAFLIST target nodes */
-            uint32_t max;            /**< new max-elements value. Applicable to #LYS_LIST and #LYS_LEAFLIST target nodes */
-        } list;                      /**< container for list's attributes - applicable to #LYS_LIST and #LYS_LEAFLIST target nodes */
-    } mod;                           /**< mutually exclusive target modifications according to the possible target_type */
+    union lys_refine_mod mod;        /**< mutually exclusive target modifications according to the possible target_type */
 };
 
 
