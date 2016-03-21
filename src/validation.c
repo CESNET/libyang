@@ -213,7 +213,7 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
                  * removing all selection and containment nodes
                  */
                 for (i = 0; i < s1->number; i++) {
-                    lyd_free(s1->dset[i]);
+                    lyd_free(s1->set.d[i]);
                 }
                 break;
             } else {
@@ -221,26 +221,26 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
                 for (j = 0; j < s2->number; j++) { /* from */
                     copy = 0;
                     for (i = 0; i < s1->number; i++) { /* to */
-                        if (s1->dset[i]->schema != s2->dset[j]->schema) {
+                        if (s1->set.d[i]->schema != s2->set.d[j]->schema) {
                             continue;
                         }
 
                         /* we have something similar to diter1, explore it more */
-                        switch (s2->dset[j]->schema->nodetype) {
+                        switch (s2->set.d[j]->schema->nodetype) {
                         case LYS_LIST:
                         case LYS_CONTAINER:
-                            if (!filter_compare(s2->dset[j], s1->dset[i])) {
+                            if (!filter_compare(s2->set.d[j], s1->set.d[i])) {
                                 /* merge the two containers into the to */
-                                filter_merge(s1->dset[i], s2->dset[j]);
+                                filter_merge(s1->set.d[i], s2->set.d[j]);
                             } else {
                                 /* check that some of them is not a selection node */
-                                if (!s2->dset[j]->child) {
+                                if (!s2->set.d[j]->child) {
                                     /* from is selection node, so keep only it because to selects subset */
-                                    lyd_free(s1->dset[i]);
+                                    lyd_free(s1->set.d[i]);
                                     /* set the flag to copy the from child at the end */
                                     copy = 1;
                                     continue;
-                                } else if (!s1->dset[i]->child) {
+                                } else if (!s1->set.d[i]->child) {
                                     /* to is already selection node, so ignore the from child */
                                 } else {
                                     /* they are different so keep trying to search for some other matching instance */
@@ -266,15 +266,15 @@ filter_merge(struct lyd_node *to, struct lyd_node *from)
 
                     if (copy || i == s1->number) {
                         /* the node is not yet present in to, so move it there */
-                        lyd_unlink(s2->dset[j]);
+                        lyd_unlink(s2->set.d[j]);
                         if (to->child) {
-                            to->child->prev->next = s2->dset[j];
-                            s2->dset[j]->prev = to->child->prev;
-                            to->child->prev = s2->dset[j];
+                            to->child->prev->next = s2->set.d[j];
+                            s2->set.d[j]->prev = to->child->prev;
+                            to->child->prev = s2->set.d[j];
                         } else {
-                            to->child = s2->dset[j];
+                            to->child = s2->set.d[j];
                         }
-                        s2->dset[j]->parent = to;
+                        s2->set.d[j]->parent = to;
                     }
                 }
             }
