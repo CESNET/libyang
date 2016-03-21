@@ -579,12 +579,20 @@ void lyd_free_withsiblings(struct lyd_node *node);
  * @brief Insert attribute into the data node.
  *
  * @param[in] parent Data node where to place the attribute
- * @param[in] name Attribute name including the prefix (prefix:name). Prefix must be the name of one of the
- *            schema in the \p parent's context.
+ * @param[in] mod An alternative way to specify attribute's module (namespace) used in case the \p name does
+ *            not include prefix. If neither prefix in the \p name nor mod is specified, the attribute's
+ *            module is inherited from the \p parent node. It is not allowed to have attributes with no
+ *            module (namespace).
+ * @param[in] name Attribute name. The string can include the attribute's module (namespace) as the name's
+ *            prefix (prefix:name). Prefix must be the name of one of the schema in the \p parent's context.
+ *            If the prefix is not specified, the \p mod parameter is used. If neither of these parameters is
+ *            usable, attribute inherits module (namespace) from the \p parent node. It is not allowed to
+ *            have attributes with no module (namespace).
  * @param[in] value Attribute value
  * @return pointer to the created attribute (which is already connected in \p parent) or NULL on error.
  */
-struct lyd_attr *lyd_insert_attr(struct lyd_node *parent, const char *name, const char *value);
+struct lyd_attr *lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const char *name,
+                                 const char *value);
 
 /**
  * @brief Destroy data attribute

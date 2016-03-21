@@ -1209,7 +1209,7 @@ lyd_attr_parent(struct lyd_node *root, struct lyd_attr *attr)
 }
 
 API struct lyd_attr *
-lyd_insert_attr(struct lyd_node *parent, const char *name, const char *value)
+lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const char *name, const char *value)
 {
     struct lyd_attr *a, *iter;
     struct ly_ctx *ctx;
@@ -1238,6 +1238,8 @@ lyd_insert_attr(struct lyd_node *parent, const char *name, const char *value)
             LOGERR(LY_EINVAL, "Attribute prefix does not match any schema in the context.");
             return NULL;
         }
+    } else if (mod) {
+        module = mod;
     } else {
         /* no prefix -> module is the same as for the parent */
         module = parent->schema->module;
