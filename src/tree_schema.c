@@ -344,13 +344,13 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
             if (set) {
                 for (i = 0; i < set->number; i++) {
                     LY_TREE_FOR(data->child, diter) {
-                        if (diter->schema == set->sset[i]) {
+                        if (diter->schema == set->set.s[i]) {
                             break;
                         }
                     }
                     if (!diter) {
                         /* instance not found */
-                        node = set->sset[i];
+                        node = set->set.s[i];
                         ly_set_free(set);
                         return node;
                     }

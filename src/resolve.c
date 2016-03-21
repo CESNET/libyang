@@ -1496,14 +1496,14 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
         predicate += r;
         *parsed += r;
 
-        if (strncmp(keys->dset[i]->schema->name, name, nam_len) || keys->dset[i]->schema->name[nam_len]) {
+        if (strncmp(keys->set.d[i]->schema->name, name, nam_len) || keys->set.d[i]->schema->name[nam_len]) {
             LOGVAL(LYE_PATH_INKEY, 0, LY_VLOG_NONE, NULL, name);
             return -1;
         }
 
         /* value does not match */
-        if (strncmp(((struct lyd_node_leaf_list *)keys->dset[i])->value_str, value, val_len)
-                || ((struct lyd_node_leaf_list *)keys->dset[i])->value_str[val_len]) {
+        if (strncmp(((struct lyd_node_leaf_list *)keys->set.d[i])->value_str, value, val_len)
+                || ((struct lyd_node_leaf_list *)keys->set.d[i])->value_str[val_len]) {
             return 1;
         }
     }

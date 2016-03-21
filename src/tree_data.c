@@ -1124,12 +1124,12 @@ lyd_unlink(struct lyd_node *node)
         if ((iter->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && iter->schema->child) {
             set = (struct ly_set *)iter->schema->child;
             for (i = 0; i < set->number; i++) {
-                data = lyd_get_node2(iter, set->sset[i]);
+                data = lyd_get_node2(iter, set->set.s[i]);
                 if (data) {
                     for (j = 0; j < data->number; j++) {
-                        if (((struct lyd_node_leaf_list *)data->dset[j])->value.leafref == iter) {
+                        if (((struct lyd_node_leaf_list *)data->set.d[j])->value.leafref == iter) {
                             /* remove reference to the node we are going to replace */
-                            ((struct lyd_node_leaf_list *)data->dset[j])->value.leafref = NULL;
+                            ((struct lyd_node_leaf_list *)data->set.d[j])->value.leafref = NULL;
                         }
                     }
                     ly_set_free(data);
@@ -1688,7 +1688,7 @@ lyd_get_node2(const struct lyd_node *data, const struct lys_node *schema)
 
     /* start searching */
     LY_TREE_FOR((struct lyd_node *)data, iter) {
-        if (iter->schema == spath->sset[spath->number - 1]) {
+        if (iter->schema == spath->set.s[spath->number - 1]) {
             ly_set_add(ret, iter);
         }
     }
@@ -1704,8 +1704,8 @@ lyd_get_node2(const struct lyd_node *data, const struct lys_node *schema)
             goto error;
         }
         for (j = 0; j < ret->number; j++) {
-            LY_TREE_FOR(ret->dset[j]->child, iter) {
-                if (iter->schema == spath->sset[i - 1]) {
+            LY_TREE_FOR(ret->set.d[j]->child, iter) {
+                if (iter->schema == spath->set.s[i - 1]) {
                     ly_set_add(ret_aux, iter);
                 }
             }
@@ -1768,7 +1768,7 @@ ly_set_free(struct ly_set *set)
         return;
     }
 
-    free(set->set);
+    free(set->set.g);
     free(set);
 }
 
@@ -1785,23 +1785,23 @@ ly_set_add(struct ly_set *set, void *node)
 
     /* search for duplication */
     for (i = 0; i < set->number; i++) {
-        if (set->set[i] == node) {
+        if (set->set.g[i] == node) {
             /* already in set */
             return EXIT_SUCCESS;
         }
     }
 
     if (set->size == set->number) {
-        new = realloc(set->set, (set->size + 8) * sizeof *(set->set));
+        new = realloc(set->set.g, (set->size + 8) * sizeof *(set->set.g));
         if (!new) {
             LOGMEM;
             return EXIT_FAILURE;
         }
         set->size += 8;
-        set->set = new;
+        set->set.g = new;
     }
 
-    set->set[set->number++] = node;
+    set->set.g[set->number++] = node;
 
     return EXIT_SUCCESS;
 }
@@ -1816,11 +1816,11 @@ ly_set_rm_index(struct ly_set *set, unsigned int index)
 
     if (index == set->number - 1) {
         /* removing last item in set */
-        set->set[index] = NULL;
+        set->set.g[index] = NULL;
     } else {
         /* removing item somewhere in a middle, so put there the last item */
-        set->set[index] = set->set[set->number - 1];
-        set->set[set->number - 1] = NULL;
+        set->set.g[index] = set->set.g[set->number - 1];
+        set->set.g[set->number - 1] = NULL;
     }
     set->number--;
 
@@ -1839,7 +1839,7 @@ ly_set_rm(struct ly_set *set, void *node)
 
     /* get index */
     for (i = 0; i < set->number; i++) {
-        if (set->set[i] == node) {
+        if (set->set.g[i] == node) {
             break;
         }
     }

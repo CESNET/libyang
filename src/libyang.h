@@ -752,6 +752,16 @@ void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct 
  */
 
 /**
+ * @brief set array of ::ly_set
+ * It is kept in union to keep ::ly_set generic for data as well as schema trees
+ */
+union ly_set_set {
+    struct lys_node **s;         /**< array of pointers to a ::lys_node objects */
+    struct lyd_node **d;         /**< array of pointers to a ::lyd_node objects */
+    void **g;                    /**< dummy array for generic work */
+};
+
+/**
  * @brief Structure to hold a set of (not necessary somehow connected) ::lyd_node or ::lys_node objects.
  * Caller is supposed to not mix the type of objects added to the set and according to its knowledge about
  * the set content, it is supposed to access the set via the sset, dset or set members of the structure.
@@ -762,11 +772,7 @@ void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct 
 struct ly_set {
     unsigned int size;               /**< allocated size of the set array */
     unsigned int number;             /**< number of elements in (used size of) the set array */
-    union {
-        struct lys_node **sset;      /**< array of pointers to a ::lys_node objects */
-        struct lyd_node **dset;      /**< array of pointers to a ::lyd_node objects */
-        void **set;                   /**< dummy array for generic work */
-    };
+    union ly_set_set set;            /**< set array - union to keep ::ly_set generic for data as well as schema trees */
 };
 
 /**
