@@ -3946,11 +3946,11 @@ resolve_must(struct lyd_node *node)
     }
 
     for (i = 0; i < must_size; ++i) {
-        if (lyxp_eval(must[i].expr, node, &set, 1)) {
+        if (lyxp_eval(must[i].expr, node, &set, LYXP_MUST)) {
             return -1;
         }
 
-        lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, 1);
+        lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, LYXP_MUST);
 
         if (!set.value.bool) {
             LOGVAL(LYE_NOCOND, LY_VLOG_LYD, node, "Must", must[i].expr);
@@ -4079,7 +4079,7 @@ resolve_when(struct lyd_node *node)
     memset(&set, 0, sizeof set);
 
     if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC)) && (((struct lys_node_container *)node->schema)->when)) {
-        rc = lyxp_eval(((struct lys_node_container *)node->schema)->when->cond, node, &set, 1);
+        rc = lyxp_eval(((struct lys_node_container *)node->schema)->when->cond, node, &set, LYXP_WHEN);
         if (rc) {
             if (rc == 1) {
                 LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
@@ -4088,7 +4088,7 @@ resolve_when(struct lyd_node *node)
         }
 
         /* set boolean result of the condition */
-        lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, 1);
+        lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, LYXP_WHEN);
         if (!set.value.bool) {
             ly_vlog_hide(1);
             LOGVAL(LYE_NOCOND, LY_VLOG_LYD, node, "When", ((struct lys_node_container *)node->schema)->when->cond);
@@ -4111,7 +4111,7 @@ resolve_when(struct lyd_node *node)
                     return -1;
                 }
             }
-            rc = lyxp_eval(((struct lys_node_uses *)parent)->when->cond, ctx_node, &set, 1);
+            rc = lyxp_eval(((struct lys_node_uses *)parent)->when->cond, ctx_node, &set, LYXP_WHEN);
             if (rc) {
                 if (rc == 1) {
                     LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)parent)->when->cond);
@@ -4119,7 +4119,7 @@ resolve_when(struct lyd_node *node)
                 return rc;
             }
 
-            lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, 1);
+            lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, LYXP_WHEN);
             if (!set.value.bool) {
                 ly_vlog_hide(1);
                 LOGVAL(LYE_NOCOND, LY_VLOG_LYD, node, "When", ((struct lys_node_uses *)parent)->when->cond);
@@ -4138,7 +4138,7 @@ check_augment:
                     return -1;
                 }
             }
-            rc = lyxp_eval(((struct lys_node_augment *)parent->parent)->when->cond, ctx_node, &set, 1);
+            rc = lyxp_eval(((struct lys_node_augment *)parent->parent)->when->cond, ctx_node, &set, LYXP_WHEN);
             if (rc) {
                 if (rc == 1) {
                     LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)parent->parent)->when->cond);
@@ -4146,7 +4146,7 @@ check_augment:
                 return rc;
             }
 
-            lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, 1);
+            lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, LYXP_WHEN);
 
             if (!set.value.bool) {
                 ly_vlog_hide(1);

@@ -68,7 +68,7 @@ struct ly_types {
 extern struct ly_types ly_types[LY_DATA_TYPE_COUNT];
 
 /**
- * Macros to work with ::lys_node#when_status
+ * Macros to work with ::lyd_node#when_status
  * +--- bit 1 - some when-stmt connected with the node (resolve_applies_when() is true)
  * |+-- bit 2 - when-stmt's condition is resolved and it is true
  * ||+- bit 3 - when-stmt's condition is resolved and it is false

@@ -188,9 +188,8 @@ enum lyxp_node_type {
     LYXP_NODE_ATTR
 };
 
-#define LYXP_MUST     0x01 /* apply must data tree access restrictions */
-#define LYXP_WHEN     0x02 /* apply when data tree access restrictions */
-#define LYXP_WHEN_BIT 0x04 /* apply when data tree access restrictions and consider WHEN flags in data nodes */
+#define LYXP_MUST 0x01 /* apply must data tree access restrictions */
+#define LYXP_WHEN 0x02 /* apply when data tree access restrictions and consider LYD_WHEN flags in data nodes */
 
 /**
  * @brief Evaluate the XPath expression \p expr on data. Be careful when using this function, the result can often
@@ -202,12 +201,6 @@ enum lyxp_node_type {
  * @param[in] options Whether to apply some evaluation restrictions.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on unresolved when dependency, -1 on error.
- *
- * TODO
- * - change when_must_eval to options and separate when and must
- * - with the WHEN option, take ::lyd_node#when_status into account
- * - return 0 on success, -1 on error, 1 when the option from the previous point is used and LYD_WHEN_DONE is false on
- *   a node referenced in the expr
  */
 int lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *set, int options);
 
