@@ -1181,21 +1181,27 @@ exp_add_token(struct lyxp_expr *exp, enum lyxp_token token, uint16_t expr_pos, u
  * @param[in] exp Expression to use.
  * @param[in] exp_idx Position in the expression \p exp.
  * @param[in] want_tok Expected token.
+ * @param[in] strict Whether the token is strictly required (print error if
+ * not the next one) or we simply want to check whether it is the next or not.
  *
  * @return EXIT_SUCCESS if the current token matches the expected one,
  *         -1 otherwise.
  */
 static int
-exp_check_token(struct lyxp_expr *exp, uint16_t exp_idx, enum lyxp_token want_tok)
+exp_check_token(struct lyxp_expr *exp, uint16_t exp_idx, enum lyxp_token want_tok, int strict)
 {
     if (exp->used == exp_idx) {
-        LOGVAL(LYE_XPATH_EOF, LY_VLOG_NONE, NULL);
+        if (strict) {
+            LOGVAL(LYE_XPATH_EOF, LY_VLOG_NONE, NULL);
+        }
         return -1;
     }
 
     if (want_tok && (exp->tokens[exp_idx] != want_tok)) {
-        LOGVAL(LYE_XPATH_INTOK, LY_VLOG_NONE, NULL,
-               print_token(exp->tokens[exp_idx]), &exp->expr[exp->expr_pos[exp_idx]]);
+        if (strict) {
+            LOGVAL(LYE_XPATH_INTOK, LY_VLOG_NONE, NULL,
+                   print_token(exp->tokens[exp_idx]), &exp->expr[exp->expr_pos[exp_idx]]);
+        }
         return -1;
     }
 
@@ -1289,7 +1295,7 @@ exp_repeat_push(struct lyxp_expr *exp, uint16_t exp_idx, uint16_t repeat_op_idx)
 static int
 reparse_predicate(struct lyxp_expr *exp, uint16_t *exp_idx)
 {
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_BRACK1)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_BRACK1, 1)) {
         return -1;
     }
     ++(*exp_idx);
@@ -1298,7 +1304,7 @@ reparse_predicate(struct lyxp_expr *exp, uint16_t *exp_idx)
         return -1;
     }
 
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_BRACK2)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_BRACK2, 1)) {
         return -1;
     }
     ++(*exp_idx);
@@ -1321,7 +1327,7 @@ reparse_predicate(struct lyxp_expr *exp, uint16_t *exp_idx)
 static int
 reparse_relative_location_path(struct lyxp_expr *exp, uint16_t *exp_idx)
 {
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE, 1)) {
         return -1;
     }
 
@@ -1330,7 +1336,7 @@ reparse_relative_location_path(struct lyxp_expr *exp, uint16_t *exp_idx)
         /* '/' or '//' */
         ++(*exp_idx);
 
-        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE)) {
+        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE, 1)) {
             return -1;
         }
 step:
@@ -1347,7 +1353,7 @@ step:
         case LYXP_TOKEN_AT:
             ++(*exp_idx);
 
-            if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE)) {
+            if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE, 1)) {
                 return -1;
             }
             if ((exp->tokens[*exp_idx] != LYXP_TOKEN_NAMETEST) && (exp->tokens[*exp_idx] != LYXP_TOKEN_NODETYPE)) {
@@ -1365,13 +1371,13 @@ step:
             ++(*exp_idx);
 
             /* '(' */
-            if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR1)) {
+            if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR1, 1)) {
                 return -1;
             }
             ++(*exp_idx);
 
             /* ')' */
-            if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR2)) {
+            if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR2, 1)) {
                 return -1;
             }
             ++(*exp_idx);
@@ -1407,7 +1413,7 @@ reparse_predicate:
 static int
 reparse_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx)
 {
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_PATH)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_PATH, 1)) {
         return -1;
     }
 
@@ -1416,7 +1422,7 @@ reparse_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx)
         /* '/' */
         ++(*exp_idx);
 
-        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE)) {
+        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE, 0)) {
             return EXIT_SUCCESS;
         }
         switch (exp->tokens[*exp_idx]) {
@@ -1459,19 +1465,19 @@ reparse_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx)
 static int
 reparse_function_call(struct lyxp_expr *exp, uint16_t *exp_idx)
 {
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_FUNCNAME)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_FUNCNAME, 1)) {
         return -1;
     }
     ++(*exp_idx);
 
     /* '(' */
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR1)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR1, 1)) {
         return -1;
     }
     ++(*exp_idx);
 
     /* ( Expr ( ',' Expr )* )? */
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE, 1)) {
         return -1;
     }
     if (exp->tokens[*exp_idx] != LYXP_TOKEN_PAR2) {
@@ -1488,7 +1494,7 @@ reparse_function_call(struct lyxp_expr *exp, uint16_t *exp_idx)
     }
 
     /* ')' */
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR2)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR2, 1)) {
         return -1;
     }
     ++(*exp_idx);
@@ -1513,7 +1519,7 @@ reparse_function_call(struct lyxp_expr *exp, uint16_t *exp_idx)
 static int
 reparse_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
 {
-    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE)) {
+    if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE, 1)) {
         return -1;
     }
 
@@ -1526,7 +1532,7 @@ reparse_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
             return -1;
         }
 
-        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR2)) {
+        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_PAR2, 1)) {
             return -1;
         }
         ++(*exp_idx);
@@ -1612,7 +1618,7 @@ reparse_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
     uint16_t prev_exp;
 
     /* ('-')* */
-    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH)
+    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH, 0)
             && (exp->expr[exp->expr_pos[*exp_idx]] == '-')) {
         ++(*exp_idx);
     }
@@ -1624,7 +1630,7 @@ reparse_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
     }
 
     /* ('|' PathExpr)* */
-    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_UNI)) {
+    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_UNI, 0)) {
         exp_repeat_push(exp, prev_exp, *exp_idx);
         ++(*exp_idx);
 
@@ -1662,7 +1668,7 @@ reparse_additive_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
     goto reparse_multiplicative_expr;
 
     /* ('+' / '-' MultiplicativeExpr)* */
-    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH)
+    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH, 0)
             && ((exp->expr[exp->expr_pos[*exp_idx]] == '+') || (exp->expr[exp->expr_pos[*exp_idx]] == '-'))) {
         exp_repeat_push(exp, prev_add_exp, *exp_idx);
         ++(*exp_idx);
@@ -1677,7 +1683,7 @@ reparse_multiplicative_expr:
         }
 
         /* ('*' / 'div' / 'mod' UnaryExpr)* */
-        while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH)
+        while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH, 0)
                 && ((exp->expr[exp->expr_pos[*exp_idx]] == '*') || (exp->tok_len[*exp_idx] == 3))) {
             exp_repeat_push(exp, prev_mul_exp, *exp_idx);
             ++(*exp_idx);
@@ -1716,7 +1722,7 @@ reparse_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
     goto reparse_additive_expr;
 
     /* ('=' / '!=' RelationalExpr)* */
-    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_COMP)
+    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_COMP, 0)
             && ((exp->expr[exp->expr_pos[*exp_idx]] == '=') || (exp->expr[exp->expr_pos[*exp_idx]] == '!'))) {
         exp_repeat_push(exp, prev_eq_exp, *exp_idx);
         ++(*exp_idx);
@@ -1731,7 +1737,7 @@ reparse_additive_expr:
         }
 
         /* ('<' / '>' / '<=' / '>=' AdditiveExpr)* */
-        while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_COMP)
+        while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_COMP, 0)
                 && ((exp->expr[exp->expr_pos[*exp_idx]] == '<') || (exp->expr[exp->expr_pos[*exp_idx]] == '>'))) {
             exp_repeat_push(exp, prev_rel_exp, *exp_idx);
             ++(*exp_idx);
@@ -1765,7 +1771,7 @@ reparse_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
     goto reparse_equality_expr;
 
     /* ('or' AndExpr)* */
-    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_LOG) && (exp->tok_len[*exp_idx] == 2)) {
+    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_LOG, 0) && (exp->tok_len[*exp_idx] == 2)) {
         exp_repeat_push(exp, prev_or_exp, *exp_idx);
         ++(*exp_idx);
 
@@ -1779,7 +1785,7 @@ reparse_equality_expr:
         }
 
         /* ('and' EqualityExpr)* */
-        while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_LOG) && (exp->tok_len[*exp_idx] == 3)) {
+        while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_LOG, 0) && (exp->tok_len[*exp_idx] == 3)) {
             exp_repeat_push(exp, prev_and_exp, *exp_idx);
             ++(*exp_idx);
 
@@ -5395,7 +5401,7 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
-        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE)) {
+        if (exp_check_token(exp, *exp_idx, LYXP_TOKEN_NONE, 0)) {
             return EXIT_SUCCESS;
         }
         switch (exp->tokens[*exp_idx]) {
@@ -5825,7 +5831,7 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_n
 
     /* ('-')* */
     unary_minus = -1;
-    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH)
+    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH, 0)
             && (exp->expr[exp->expr_pos[*exp_idx]] == '-')) {
         if (unary_minus == -1) {
             unary_minus = *exp_idx;
