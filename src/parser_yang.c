@@ -518,6 +518,7 @@ yang_read_node(struct lys_module *module, struct lys_node *parent, char *value, 
 
     node = calloc(1, sizeof_struct);
     if (!node) {
+        free(value);
         LOGMEM;
         return NULL;
     }
@@ -1268,6 +1269,11 @@ yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *valu
             ret = &((struct lys_node_notif *)parent)->tpdf[((struct lys_node_notif *)parent)->tpdf_size];
             ((struct lys_node_notif *)parent)->tpdf_size++;
             break;
+        default:
+            /* another type of nodetype is error*/
+            LOGINT;
+            free(value);
+            return NULL;
         }
         ret->type.parent = (struct lys_tpdf *)parent;
     }
