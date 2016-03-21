@@ -180,7 +180,7 @@ int yang_read_base(struct lys_module *module, struct lys_ident *ident, char *val
 
 void *yang_read_must(struct lys_module *module, struct lys_node *node, char *value, int type, int line);
 
-int yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, int type, int message, int line);
+int yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, char *what, int message, int line);
 
 int yang_read_presence(struct lys_module *module, struct lys_node_container *cont, char *value, int line);
 

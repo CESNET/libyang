@@ -1031,8 +1031,16 @@ message_opt_stmt: %empty { switch (actual_type) {
                              break;
                            }
                          }
-  |  message_opt_stmt error_message_stmt { if (read_all && yang_read_message(trg,actual,s,actual_type, ERROR_MESSAGE_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
-  |  message_opt_stmt error_app_tag_stmt { if (yang_read_message(trg,actual,s,actual_type, ERROR_APP_TAG_KEYWORD,yylineno)) {YYERROR;} s=NULL; }
+  |  message_opt_stmt error_message_stmt { if (read_all && yang_read_message(trg, actual, s, $1, ERROR_MESSAGE_KEYWORD, yylineno)) {
+                                             YYERROR;
+                                           }
+                                           s = NULL;
+                                         }
+  |  message_opt_stmt error_app_tag_stmt { if (yang_read_message(trg, actual, s, $1, ERROR_APP_TAG_KEYWORD, yylineno)) {
+                                             YYERROR;
+                                           }
+                                           s = NULL;
+                                         }
   |  message_opt_stmt description_stmt { if (read_all && yang_read_description(trg, actual, s, $1, yylineno)) {
                                            YYERROR;
                                           }

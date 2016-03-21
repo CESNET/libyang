@@ -397,29 +397,14 @@ error:
 }
 
 int
-yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, int type, int message, int line)
+yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, char *what, int message, int line)
 {
     int ret;
-    char *exp;
 
-    switch (type) {
-    case MUST_KEYWORD:
-        exp = "must";
-        break;
-    case LENGTH_KEYWORD:
-        exp = "length";
-        break;
-    case PATTERN_KEYWORD:
-        exp = "pattern";
-        break;
-    case RANGE_KEYWORD:
-        exp = "range";
-        break;
-    }
     if (message==ERROR_APP_TAG_KEYWORD) {
-        ret = yang_check_string(module, &save->eapptag, "error_app_tag", exp, value, line);
+        ret = yang_check_string(module, &save->eapptag, "error_app_tag", what, value, line);
     } else {
-        ret = yang_check_string(module, &save->emsg, "error_app_tag", exp, value, line);
+        ret = yang_check_string(module, &save->emsg, "error_app_tag", what, value, line);
     }
     return ret;
 }
