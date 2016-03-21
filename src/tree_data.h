@@ -463,7 +463,7 @@ struct lyd_node *lyd_output_new_anyxml(const struct lys_node *schema, const char
  * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
  * @param[in] path Simple schema XPath of the new node. It can contain only simple node addressing with optional
  * module names as prefixes. List nodes must have predicates, one for each list key in the correct order and
- * with it's value as well. Example: /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision='']/submodules
+ * with it's value as well, see @ref howtoxpath.
  * @param[in] value Value of the new leaf/lealf-list. If creating other nodes of other types, set to NULL.
  * @param[in] options Bitmask of options flags, see @ref pathoptions.
  * @return First created node, NULL on error.

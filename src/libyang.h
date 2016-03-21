@@ -72,6 +72,7 @@ extern "C" {
  * - @subpage howtocontext
  * - @subpage howtoschemas
  * - @subpage howtodata
+ * - @subpage howtoxpath
  * - @subpage howtoxml
  * - @subpage howtothreads
  * - @subpage howtologger
@@ -341,6 +342,40 @@ extern "C" {
  */
 
 /**
+ * @page howtoxpath XPath Addressing
+ *
+ * Internally, XPath evaluation is performed on \b when and \b must conditions in the schema. For that almost
+ * a full XPath 1.0 evaluator was implemented. This XPath implementation is available on data trees by calling
+ * lyd_get_node() except that only node sets are returned. This XPath conforms to the YANG specification
+ * (RFC 6020 section 6.4).
+ *
+ * A very small subset of this full XPath is recognized by lyd_new_path(). Basically, only a relative or absolute
+ * path can be specified to identify a new data node. However, lists must be identified by all their keys and created
+ * with all of them, so for those cases predicates are allowed. Predicates must be ordered the way the keys are ordered
+ * and all the keys must be specified. Every predicate includes a single key with its value. These paths are valid XPath
+ * expressions. Example:
+ *
+ * - /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision='']/submodules
+ *
+ * Almost the same XPath is accepted by ly_ctx_get_node(). The difference is that it is not used on data, but schema,
+ * which means there are no key values and only one node for one path. In effect, lists do not have to have any
+ * predicates. If they do, they do not need to have all the keys specified and if values are included, they are ignored.
+ * Nevertheless, any such expression is still a valid XPath, but can return more nodes if executed on a data tree.
+ * Examples (all returning the same node):
+ *
+ * - /ietf-yang-library:modules-state/module/submodules
+ * - /ietf-yang-library:modules-state/module[name]/submodules
+ * - /ietf-yang-library:modules-state/module[name][revision]/submodules
+ * - /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision]/submodules
+ *
+ * Functions List
+ * --------------
+ * - lyd_get_node()
+ * - lyd_new_path()
+ * - ly_ctx_get_node()
+ */
+
+/**
  * @page howtodataparsers Parsing Data
  *
  * Data parser allows to read instances from a specific format. libyang supports the following data formats:
@@ -382,6 +417,11 @@ extern "C" {
  * (or you have to make a valid change by multiple tree modifications) when the tree is being changed. Therefore,
  * there is lyd_validate() function supposed to be called to make sure that the current data tree is valid. Note,
  * that not calling this function after the performed changes can cause failure of various libyang functions later.
+ *
+ * Creating data is generally possible in two ways, they can be combined. You can add nodes one-by-one based on
+ * the node name and/or its parent (lyd_new(), lyd_new_anyxml(), lyd_new_leaf()) or address the nodes using
+ * a simple XPath addressing (lyd_new_path()). The latter enables to create a whole path of nodes and requires
+ * less information about the modified data. The path format specifics can be found [here](@ref howtoxpath).
  *
  * Also remember, that when you are creating/inserting a node, all the objects in that operation must belong to the
  * same context.
