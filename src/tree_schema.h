@@ -349,6 +349,133 @@ typedef enum {
 #define LY_TYPE_INST_UNRES 0x80      /**< flag for unresolved instance-identifier, always use in conjunction with LY_TYPE_INST */
 
 /**
+ *
+ */
+struct lys_type_info_binary {
+    struct lys_restr *length;    /**< length restriction (optional), see
+                                      [RFC 6020 sec. 9.4.4](http://tools.ietf.org/html/rfc6020#section-9.4.4) */
+};
+
+/**
+ * @brief Single bit value specification for ::lys_type_info_bits.
+ */
+struct lys_type_bit {
+    const char *name;    /**< bit's name (mandatory) */
+    const char *dsc;     /**< bit's description (optional) */
+    const char *ref;     /**< bit's reference (optional) */
+    uint8_t flags;       /**< bit's flags, whether the position was auto-assigned
+                              and the status(one of LYS_NODE_STATUS_* values or 0 for default) */
+    uint32_t pos;        /**< bit's position (mandatory) */
+};
+
+/**
+ * @brief Container for information about bits types (#LY_TYPE_BINARY), used in ::lys_type_info.
+ */
+struct lys_type_info_bits {
+    struct lys_type_bit *bit;/**< array of bit definitions */
+    int count;               /**< number of bit definitions in the bit array */
+} bits;                      /**< part for #LY_TYPE_BITS */
+
+/**
+ * @brief Container for information about decimal64 types (#LY_TYPE_DEC64), used in ::lys_type_info.
+ */
+struct lys_type_info_dec64 {
+    struct lys_restr *range; /**< range restriction (optional), see
+                                  [RFC 6020 sec. 9.2.4](http://tools.ietf.org/html/rfc6020#section-9.2.4) */
+    uint8_t dig;             /**< fraction-digits restriction (mandatory) */
+};
+
+/**
+ * @brief Single enumeration value specification for ::lys_type_info_enums.
+ */
+struct lys_type_enum {
+    const char *name;        /**< enum's name (mandatory) */
+    const char *dsc;         /**< enum's description (optional) */
+    const char *ref;         /**< enum's reference (optional) */
+    uint8_t flags;           /**< enum's flags, whether the value was auto-assigned
+                                  and the status(one of LYS_NODE_STATUS_* values or 0 for default) */
+    int32_t value;           /**< enum's value (mandatory) */
+};
+
+/**
+ * @brief Container for information about enumeration types (#LY_TYPE_ENUM), used in ::lys_type_info.
+ */
+struct lys_type_info_enums {
+    struct lys_type_enum *enm;/**< array of enum definitions */
+    int count;               /**< number of enum definitions in the enm array */
+};
+
+/**
+ * @brief Container for information about identity types (#LY_TYPE_IDENT), used in ::lys_type_info.
+ */
+struct lys_type_info_ident {
+    struct lys_ident *ref;   /**< pointer (reference) to the identity definition (mandatory) */
+};
+
+/**
+ * @brief Container for information about instance-identifier types (#LY_TYPE_INST), used in ::lys_type_info.
+ */
+struct lys_type_info_inst {
+    int8_t req;              /**< require-identifier restriction, see
+                                  [RFC 6020 sec. 9.13.2](http://tools.ietf.org/html/rfc6020#section-9.13.2):
+                                  - -1 = false,
+                                  - 0 not defined,
+                                  - 1 = true */
+};
+
+/**
+ * @brief Container for information about integer types, used in ::lys_type_info.
+ */
+struct lys_type_info_num {
+    struct lys_restr *range; /**< range restriction (optional), see
+                                  [RFC 6020 sec. 9.2.4](http://tools.ietf.org/html/rfc6020#section-9.2.4) */
+};
+
+/**
+ * @brief Container for information about leafref types (#LY_TYPE_LEAFREF), used in ::lys_type_info.
+ */
+struct lys_type_info_lref {
+    const char *path;        /**< path to the referred leaf or leaf-list node (mandatory), see
+                                  [RFC 6020 sec. 9.9.2](http://tools.ietf.org/html/rfc6020#section-9.9.2) */
+    struct lys_node_leaf* target; /**< target schema node according to path */
+};
+
+/**
+ * @brief Container for information about string types (#LY_TYPE_STRING), used in ::lys_type_info.
+ */
+struct lys_type_info_str {
+    struct lys_restr *length;/**< length restriction (optional), see
+                                  [RFC 6020 sec. 9.4.4](http://tools.ietf.org/html/rfc6020#section-9.4.4) */
+    struct lys_restr *patterns; /**< array of pattern restrictions (optional), see
+                                  [RFC 6020 sec. 9.4.6](http://tools.ietf.org/html/rfc6020#section-9.4.6) */
+    int pat_count;           /**< number of pattern definitions in the patterns array */
+};
+
+/**
+ * @brief Container for information about union types (#LY_TYPE_UNION), used in ::lys_type_info.
+ */
+struct lys_type_info_union {
+    struct lys_type *types;  /**< array of union's subtypes */
+    int count;               /**< number of subtype definitions in types array */
+};
+
+/**
+ * @brief Union for holding type-specific information in ::lys_type.
+ */
+union lys_type_info {
+    struct lys_type_info_binary binary; /**< part for #LY_TYPE_BINARY */
+    struct lys_type_info_bits bits;     /**< part for #LY_TYPE_BITS */
+    struct lys_type_info_dec64 dec64;   /**< part for #LY_TYPE_DEC64 */
+    struct lys_type_info_enums enums;   /**< part for #LY_TYPE_ENUM */
+    struct lys_type_info_ident ident;   /**< part for #LY_TYPE_IDENT */
+    struct lys_type_info_inst inst;     /**< part for #LY_TYPE_INST */
+    struct lys_type_info_num num;       /**< part for integer types */
+    struct lys_type_info_lref lref;     /**< part for #LY_TYPE_LEAFREF */
+    struct lys_type_info_str str;       /**< part for #LY_TYPE_STRING */
+    struct lys_type_info_union uni;     /**< part for #LY_TYPE_UNION */
+};
+
+/**
  * @brief YANG type structure providing information from the schema
  */
 struct lys_type {
@@ -358,89 +485,68 @@ struct lys_type {
                                           structure provides information about one of the built-in types */
     struct lys_tpdf *parent;         /**< except ::lys_tpdf, it can points also to ::lys_node_leaf or ::lys_node_leaflist
                                           so access only the compatible members! */
-
-    union {
-        /* LY_TYPE_BINARY */
-        struct {
-            struct lys_restr *length;/**< length restriction (optional), see
-                                          [RFC 6020 sec. 9.4.4](http://tools.ietf.org/html/rfc6020#section-9.4.4) */
-        } binary;                    /**< part for #LY_TYPE_BINARY */
-
-        /* LY_TYPE_BITS */
-        struct {
-            struct lys_type_bit {
-                const char *name;    /**< bit's name (mandatory) */
-                const char *dsc;     /**< bit's description (optional) */
-                const char *ref;     /**< bit's reference (optional) */
-                uint8_t flags;       /**< bit's flags, whether the position was auto-assigned
-                                          and the status(one of LYS_NODE_STATUS_* values or 0 for default) */
-                uint32_t pos;        /**< bit's position (mandatory) */
-            } *bit;                  /**< array of bit definitions */
-            int count;               /**< number of bit definitions in the bit array */
-        } bits;                      /**< part for #LY_TYPE_BITS */
-
-        /* LY_TYPE_DEC64 */
-        struct {
-            struct lys_restr *range; /**< range restriction (optional), see
-                                          [RFC 6020 sec. 9.2.4](http://tools.ietf.org/html/rfc6020#section-9.2.4) */
-            uint8_t dig;             /**< fraction-digits restriction (mandatory) */
-        } dec64;                     /**< part for #LY_TYPE_DEC64 */
-
-        /* LY_TYPE_ENUM */
-        struct {
-            struct lys_type_enum {
-                const char *name;    /**< enum's name (mandatory) */
-                const char *dsc;     /**< enum's description (optional) */
-                const char *ref;     /**< enum's reference (optional) */
-                uint8_t flags;       /**< enum's flags, whether the value was auto-assigned
-                                          and the status(one of LYS_NODE_STATUS_* values or 0 for default) */
-                int32_t value;       /**< enum's value (mandatory) */
-            } *enm;                  /**< array of enum definitions */
-            int count;               /**< number of enum definitions in the enm array */
-        } enums;                     /**< part for #LY_TYPE_ENUM */
-
-        /* LY_TYPE_IDENT */
-        struct {
-            struct lys_ident *ref;   /**< pointer (reference) to the identity definition (mandatory) */
-        } ident;                     /**< part for #LY_TYPE_IDENT */
-
-        /* LY_TYPE_INST */
-        struct {
-            int8_t req;              /**< require-identifier restriction, see
-                                          [RFC 6020 sec. 9.13.2](http://tools.ietf.org/html/rfc6020#section-9.13.2):
-                                          - -1 = false,
-                                          - 0 not defined,
-                                          - 1 = true */
-        } inst;                      /**< part for #LY_TYPE_INST */
-
-        /* LY_TYPE_*INT* */
-        struct {
-            struct lys_restr *range; /**< range restriction (optional), see
-                                          [RFC 6020 sec. 9.2.4](http://tools.ietf.org/html/rfc6020#section-9.2.4) */
-        } num;                       /**< part for integer types */
-
-        /* LY_TYPE_LEAFREF */
-        struct {
-            const char *path;        /**< path to the referred leaf or leaf-list node (mandatory), see
-                                          [RFC 6020 sec. 9.9.2](http://tools.ietf.org/html/rfc6020#section-9.9.2) */
-            struct lys_node_leaf* target; /**< target schema node according to path */
-        } lref;                      /**< part for #LY_TYPE_LEAFREF */
-
-        /* LY_TYPE_STRING */
-        struct {
-            struct lys_restr *length;/**< length restriction (optional), see
-                                          [RFC 6020 sec. 9.4.4](http://tools.ietf.org/html/rfc6020#section-9.4.4) */
-            struct lys_restr *patterns;   /**< array of pattern restrictions (optional), see
-                                          [RFC 6020 sec. 9.4.6](http://tools.ietf.org/html/rfc6020#section-9.4.6) */
-            int pat_count;                /**< number of pattern definitions in the patterns array */
-        } str;                       /**< part for #LY_TYPE_STRING */
-
-        /* LY_TYPE_UNION */
-        struct {
-            struct lys_type *types;  /**< array of union's subtypes */
-            int count;               /**< number of subtype definitions in types array */
-        } uni;                       /**< part for #LY_TYPE_UNION */
-    } info;                          /**< detailed type-specific information */
+    union lys_type_info info;        /**< detailed type-specific information */
+    /*
+     * here is an overview of the info union:
+     * LY_TYPE_BINARY (binary)
+     * struct lys_restr *binary.length;   length restriction (optional), see
+     *                                    [RFC 6020 sec. 9.4.4](http://tools.ietf.org/html/rfc6020#section-9.4.4)
+     * -----------------------------------------------------------------------------------------------------------------
+     * LY_TYPE_BITS (bits)
+     * struct lys_type_bit bits.bit;      array of bit definitions
+     *   const char *bits.bit[i].name;    bit's name (mandatory)
+     *   const char *bits.bit[i].dsc;     bit's description (optional)
+     *   const char *bits.bit[i].ref;     bit's reference (optional)
+     *   uint8_t bits.bit[i].flags;       bit's flags, whether the position was auto-assigned
+     *                                    and the status(one of LYS_NODE_STATUS_* values or 0 for default)
+     *   uint32_t bits.bit[i].pos;        bit's position (mandatory)
+     * int bits.count;                    number of bit definitions in the bit array
+     * -----------------------------------------------------------------------------------------------------------------
+     * LY_TYPE_DEC64 (dec64)
+     * struct lys_restr *dec64.range;     range restriction (optional), see
+     *                                    [RFC 6020 sec. 9.2.4](http://tools.ietf.org/html/rfc6020#section-9.2.4)
+     * uint8_t dec64.dig;                 fraction-digits restriction (mandatory)
+     * -----------------------------------------------------------------------------------------------------------------
+     * LY_TYPE_ENUM (enums)
+     * struct lys_type_enum *enums.enm;   array of enum definitions
+     *   const char *enums.enm[i].name;   enum's name (mandatory)
+     *   const char *enums.enm[i].dsc;    enum's description (optional)
+     *   const char *enums.enm[i].ref;    enum's reference (optional)
+     *   uint8_t enums.enm[i].flags;      enum's flags, whether the value was auto-assigned
+     *                                    and the status(one of LYS_NODE_STATUS_* values or 0 for default)
+     *   int32_t enums.enm[i].value;      enum's value (mandatory)
+     * int enums.count;                   number of enum definitions in the enm array
+     * -----------------------------------------------------------------------------------------------------------------
+     * LY_TYPE_IDENT (ident)
+     * struct lys_ident *ident.ref;       pointer (reference) to the identity definition (mandatory)
+     * -----------------------------------------------------------------------------------------------------------------
+     * LY_TYPE_INST (inst)
+     * int8_t inst.req;                   require-identifier restriction, see
+     *                                    [RFC 6020 sec. 9.13.2](http://tools.ietf.org/html/rfc6020#section-9.13.2):
+     *                                    - -1 = false,
+     *                                    - 0 not defined,
+     *                                    - 1 = true
+     * -----------------------------------------------------------------------------------------------------------------
+     * LY_TYPE_*INT* (num)
+     * struct lys_restr *num.range;       range restriction (optional), see
+     *                                    [RFC 6020 sec. 9.2.4](http://tools.ietf.org/html/rfc6020#section-9.2.4)
+     * -----------------------------------------------------------------------------------------------------------------
+     * LY_TYPE_LEAFREF (lref)
+     * const char *lref.path;             path to the referred leaf or leaf-list node (mandatory), see
+     *                                    [RFC 6020 sec. 9.9.2](http://tools.ietf.org/html/rfc6020#section-9.9.2)
+     * struct lys_node_leaf *lref.target; target schema node according to path
+     * -----------------------------------------------------------------------------------------------------------------
+     * LY_TYPE_STRING (str)
+     * struct lys_restr *str.length;      length restriction (optional), see
+     *                                    [RFC 6020 sec. 9.4.4](http://tools.ietf.org/html/rfc6020#section-9.4.4)
+     * struct lys_restr *str.patterns;    array of pattern restrictions (optional), see
+     *                                    [RFC 6020 sec. 9.4.6](http://tools.ietf.org/html/rfc6020#section-9.4.6)
+     * int str.pat_count;                 number of pattern definitions in the patterns array
+     * -----------------------------------------------------------------------------------------------------------------
+     * LY_TYPE_UNION (uni)
+     * struct lys_type *uni.types;        array of union's subtypes
+     * int uni.count;                     number of subtype definitions in types array
+     */
 };
 
 /**
