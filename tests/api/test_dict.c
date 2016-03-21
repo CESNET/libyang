@@ -1,0 +1,228 @@
+/*
+ * @file test_dict.c
+ * @author: Mislav Novakovic <mislav.novakovic@sartura.hr>
+ * @brief unit tests for functions from dict.h header
+ *
+ * Copyright (C) 2016 Deutsche Telekom AG.
+ *
+ * Author: Mislav Novakovic <mislav.novakovic@sartura.hr>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *	http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#include <string.h>
+
+#include "../config.h"
+#include "../../src/libyang.h"
+
+struct ly_ctx *ctx = NULL;
+
+const char *a_data_xml = "\
+<x xmlns=\"urn:a\">\n\
+  <bubba>test</bubba>\n\
+  </x>\n";
+
+int
+generic_init(char *yang_file, char *yang_folder)
+{
+    LYS_INFORMAT yang_format;
+    char *schema = NULL;
+    struct stat sb_schema;
+    int fd = -1;
+
+    if (!yang_file || !yang_folder) {
+        goto error;
+    }
+
+    yang_format = LYS_IN_YIN;
+
+    ctx = ly_ctx_new(yang_folder);
+    if (!ctx) {
+        goto error;
+    }
+
+    fd = open(yang_file, O_RDONLY);
+    if (fd == -1 || fstat(fd, &sb_schema) == -1 || !S_ISREG(sb_schema.st_mode)) {
+        goto error;
+    }
+
+    schema = mmap(NULL, sb_schema.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    close(fd);
+
+    if (!lys_parse_mem(ctx, schema, yang_format)) {
+        goto error;
+    }
+
+    /* cleanup */
+    munmap(schema, sb_schema.st_size);
+
+    return 0;
+
+error:
+    if (schema) {
+        munmap(schema, sb_schema.st_size);
+    }
+    if (fd != -1) {
+        close(fd);
+    }
+
+    return -1;
+}
+
+static int
+setup_f(void **state)
+{
+    (void) state; /* unused */
+    char *yang_file = TESTS_DIR"/api/files/a.yin";
+    char *yang_folder = TESTS_DIR"/api/files";
+    int rc;
+
+    rc = generic_init(yang_file, yang_folder);
+
+    if (rc) {
+        return -1;
+    }
+
+    return 0;
+}
+
+static int
+teardown_f(void **state)
+{
+    (void) state; /* unused */
+    if (ctx)
+        ly_ctx_destroy(ctx, NULL);
+
+    return 0;
+}
+
+static void
+test_lydict_insert(void **state)
+{
+    (void) state; /* unused */
+    const char *value = "x";
+    const char *string;
+    size_t len = 1;
+
+    string = lydict_insert(ctx, value, len);
+    if (!string) {
+        fail();
+    }
+
+    assert_string_equal(value, string);
+    value = "bubba";
+    len = 5;
+
+    string = lydict_insert(ctx, value, len);
+    if (!string) {
+        fail();
+    }
+
+    assert_string_equal(value, string);
+}
+
+static void
+test_lydict_insert_zc(void **state)
+{
+    (void) state; /* unused */
+    char *value = NULL;
+    value = malloc(sizeof(char) * 1);
+    strcpy(value, "x");
+    if (!value) {
+        fail();
+    }
+    const char *string;
+    string = lydict_insert_zc(ctx, value);
+    if (!string) {
+        free(value);
+        fail();
+    }
+
+    assert_string_equal("x", string);
+
+    value = NULL;
+    value = malloc(sizeof(char) * 5);
+    strcpy(value, "bubba");
+    if (!value) {
+        free(value);
+        fail();
+    }
+
+    string = lydict_insert_zc(ctx, value);
+    if (!string) {
+        fail();
+    }
+
+    assert_string_equal("bubba", string);
+}
+
+static void
+test_lydict_remove(void **state)
+{
+    (void) state; /* unused */
+    char *value = NULL;
+    value = malloc(sizeof(char) * 1);
+    strcpy(value, "new_name");
+    if (!value) {
+        fail();
+    }
+    const char *string;
+    string = lydict_insert_zc(ctx, value);
+    if (!string) {
+        free(value);
+        fail();
+    }
+
+    assert_string_equal("new_name", string);
+    lydict_remove(ctx, string);
+    assert_string_not_equal("bubba", string);
+
+    value = NULL;
+    value = malloc(sizeof(char) * 5);
+    strcpy(value, "bubba");
+    if (!value) {
+        fail();
+    }
+
+    string = lydict_insert_zc(ctx, value);
+    if (!string) {
+        free(value);
+        fail();
+    }
+
+    assert_string_equal("bubba", string);
+    lydict_remove(ctx, string);
+    assert_string_equal("bubba", string);
+}
+
+int main(void)
+{
+    const struct CMUnitTest tests[] = {
+        cmocka_unit_test_setup_teardown(test_lydict_insert, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lydict_insert_zc, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lydict_remove, setup_f, teardown_f),
+    };
+
+    return cmocka_run_group_tests(tests, NULL, NULL);
+}
