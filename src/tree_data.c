@@ -646,7 +646,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
         }
     }
 
-    if (invalid == 1 && ((sparent = lys_parent(node->schema))->nodetype & (LYS_CHOICE | LYS_CASE))) {
+    if (invalid == 1 && (sparent = lys_parent(node->schema)) && (sparent->nodetype & (LYS_CHOICE | LYS_CASE))) {
         /* auto delete nodes from other cases */
 
         /* remember which case to skip in which choice */
