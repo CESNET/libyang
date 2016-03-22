@@ -23,6 +23,7 @@
 #include <pcre.h>
 #include "parser_yang.h"
 #include "parser_yang_bis.h"
+#include "parser_yang_lex.h"
 #include "parser.h"
 #include "xpath.h"
 
@@ -2099,4 +2100,157 @@ store_flags(struct lys_node *node, uint8_t flags, int config_inherit)
             node->flags |= LYS_CONFIG_W;
         }
     }
+}
+
+int
+yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, char *data, int size_data)
+{
+    YY_BUFFER_STATE bp;
+    struct lys_array_size *size_arrays=NULL;
+    int size;
+
+    size_arrays = calloc(1, sizeof *size_arrays);
+    if (!size_arrays) {
+        LOGMEM;
+        goto error;
+    }
+
+    size = (size_data) ? size_data : strlen(data) + 2;
+    bp = yy_scan_buffer(data, size);
+    yy_switch_to_buffer(bp);
+
+    if (yyparse(module, submodule, unres, size_arrays, LY_READ_ONLY_SIZE)) {
+        yy_delete_buffer(bp);
+        goto error;
+    }
+    yy_delete_buffer(bp);
+    bp = yy_scan_buffer(data, size);
+    yy_switch_to_buffer(bp);
+
+    if (yyparse(module, submodule, unres, size_arrays, LY_READ_ALL)) {
+        yy_delete_buffer(bp);
+        goto error;
+    }
+    yy_delete_buffer(bp);
+
+    nacm_inherit(module);
+
+    free(size_arrays->node);
+    free(size_arrays);
+    yylex_destroy();
+    return EXIT_SUCCESS;
+
+error:
+    if (size_arrays) {
+        free(size_arrays->node);
+        free(size_arrays);
+    }
+    yylex_destroy();
+    return EXIT_FAILURE;
+}
+
+struct lys_module *
+yang_read_module(struct ly_ctx *ctx, char* data, int size, const char *revision, int implement)
+{
+
+    struct lys_module *module = NULL;
+    struct unres_schema *unres = NULL;
+
+    unres = calloc(1, sizeof *unres);
+    if (!unres) {
+        LOGMEM;
+        goto error;
+    }
+
+    module = calloc(1, sizeof *module);
+    if (!module) {
+        LOGMEM;
+        return NULL;
+    }
+
+    /* initiale module */
+    module->ctx=ctx;
+    module->type = 0;
+    module->implemented = (implement ? 1 : 0);
+
+    if (yang_parse_mem(module, NULL, unres, data, size)) {
+        goto error;
+    }
+
+    if (module && unres->count && resolve_unres_schema(module, unres)) {
+        goto error;
+    }
+
+    if (revision) {
+        /* check revision of the parsed model */
+        if (!module->rev_size || strcmp(revision, module->rev[0].date)) {
+            LOGVRB("Module \"%s\" parsed with the wrong revision (\"%s\" instead \"%s\").",
+                   module->name, module->rev[0].date, revision);
+            goto error;
+        }
+    }
+
+    if (lyp_add_module(module, implement)) {
+        goto error;
+    }
+
+    unres_schema_free(NULL, &unres);
+    LOGVRB("Module \"%s\" successfully parsed.", module->name);
+    return module;
+
+error:
+    unres_schema_free(module, &unres);
+    if (!module || !module->name) {
+        free(module);
+        LOGERR(ly_errno, "Module parsing failed.");
+        return NULL;
+    }
+
+    LOGERR(ly_errno, "Module \"%s\" parsing failed.", module->name);
+    lyp_fail_module(module);
+    lys_free(module,NULL,1);
+    return NULL;
+}
+
+struct lys_submodule *
+yang_read_submodule(struct lys_module *module, char *data, int size, struct unres_schema *unres)
+{
+    struct lys_submodule *submodule;
+
+    submodule = calloc(1, sizeof *submodule);
+    if (!submodule) {
+        LOGMEM;
+        goto error;
+    }
+
+    submodule->ctx = module->ctx;
+    submodule->type = 1;
+    submodule->belongsto = module;
+
+    if (yang_parse_mem(module, submodule, unres, data, size)) {
+        goto error;
+    }
+
+    /* cleanup */
+
+    LOGVRB("Submodule \"%s\" successfully parsed.", submodule->name);
+
+    return submodule;
+
+error:
+    /* cleanup */
+    unres_schema_free((struct lys_module *)submodule, &unres);
+
+    if (!submodule || !submodule->name) {
+        free(submodule);
+        LOGERR(ly_errno, "Submodule parsing failed.");
+        return NULL;
+    }
+
+    LOGERR(ly_errno, "Submodule \"%s\" parsing failed.", submodule->name);
+
+    lyp_fail_submodule(submodule);
+    lys_submodule_free(submodule, NULL);
+
+    return NULL;
 }

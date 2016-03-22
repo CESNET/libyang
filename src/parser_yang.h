@@ -272,4 +272,10 @@ int yang_use_extension(struct lys_module *module, struct lys_node *data_node, vo
 
 int yang_check_flags(uint8_t *flags, uint8_t mask, char *what, char *where, int value);
 
+int yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, char *data, int size_data);
+
+struct lys_module *yang_read_module(struct ly_ctx *ctx, char* data, int size, const char *revision, int implement);
+
+struct lys_submodule *yang_read_submodule(struct lys_module *module, char *data, int size, struct unres_schema *unres);
+
 #endif /* LY_PARSER_YANG_H_ */
