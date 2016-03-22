@@ -909,6 +909,9 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
 
     stype = &((struct lys_node_leaf *)leaf->schema)->type;
     if (stype->base == LY_TYPE_UNION) {
+        /* turn logging off, we are going to try to validate the value with all the types in order */
+        ly_vlog_hide(1);
+
         type = lyp_get_next_union_type(stype, NULL, &found);
         while (type) {
             leaf->value_type = type->base;
@@ -942,6 +945,8 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
             found = 0;
             type = lyp_get_next_union_type(stype, type, &found);
         }
+
+        ly_vlog_hide(0);
 
         if (!type) {
             /* failure */
