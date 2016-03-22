@@ -589,6 +589,7 @@ struct lys_type {
 #define LYS_UNIQUE       0x80        /**< part of the list's unique, applicable only to ::lys_node_leaf */
 #define LYS_AUTOASSIGNED 0x80        /**< value was auto-assigned, applicable only to
                                           ::lys_type enum and bits flags */
+#define LYS_USESGRP      0x80        /**< flag for resolving uses in groupings, applicable only to ::lys_node_uses */
 /**
  * @}
  */
@@ -911,7 +912,8 @@ struct lys_node_uses {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* and LYS_USESGRP
+                                          values are allowed */
     uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 

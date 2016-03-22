@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 
 set(api_tests test_libyang test_tree_schema test_xml test_dict)
-set(data_tests test_data_initialization test_leafref_remove test_instid_remove test_keys)
+set(data_tests test_data_initialization test_leafref_remove test_instid_remove test_keys test_autodel test_when)
 set(schema_yin_tests test_ietf test_augment test_print_transform)
 
 foreach(test_name IN LISTS api_tests)

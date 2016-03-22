@@ -71,7 +71,8 @@ extern volatile uint8_t ly_log_level;
 struct ly_err {
     LY_ERR no;
     LY_VECODE code;
-    int path_index;
+    uint8_t vlog_hide;
+    uint16_t path_index;
     char msg[LY_ERR_MSG_SIZE];
     char path[LY_ERR_MSG_SIZE];
 };
@@ -161,6 +162,7 @@ typedef enum {
     LYE_NOCOND,
     LYE_INORDER,
     LYE_INCOUNT,
+    LYE_INWHEN,
 
     LYE_XPATH_INTOK,
     LYE_XPATH_EOF,
@@ -186,16 +188,10 @@ enum LY_VLOG_ELEM {
     LY_VLOG_LYS,
     LY_VLOG_LYD
 };
-void ly_vlog(LY_ECODE code, unsigned int line, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
-#define LOGVAL(code, line, elem_type, elem, args...) ly_vlog(code, line, elem_type, elem, ##args)
-
-#ifdef NDEBUG
-#    define LOGLINE(node) 0
-#    define LOGLINE_IDX(node, idx) 0
-#else
-#    define LOGLINE(node) (node)->line
-#    define LOGLINE_IDX(node, idx) (node)->line[idx]
-#endif
+void ly_vlog_hide(int hide);
+void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
+#define LOGVAL(code, elem_type, elem, args...) ly_vlog(code, elem_type, elem, ##args)
+#define LOGPATH(elem_type, elem) ly_vlog(LYE_PATH, elem_type, elem)
 
 /**
  * @brief Basic functionality like strpbrk(3). However, it searches string \p s
@@ -279,11 +275,10 @@ const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxm
  *
  * @param[in] module Module (schema) with imports to search.
  * @param[in] expr Expression from \p module.
- * @param[in] line Line in the input file.
  *
  * @return Transformed JSON expression in the dictionary, NULL on error.
  */
-const char *transform_schema2json(const struct lys_module *module, const char *expr, uint32_t line);
+const char *transform_schema2json(const struct lys_module *module, const char *expr);
 
 /**
  * @brief Wrapper for realloc() call. The only difference is that if it fails to

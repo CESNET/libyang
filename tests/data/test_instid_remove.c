@@ -83,11 +83,11 @@ test_instid_unlink(void **state)
 
     node = st->data->child->prev;
     lyd_unlink(node);
-    r = lyd_validate(st->data, 0);
+    r = lyd_validate(&(st->data), 0);
     assert_int_not_equal(r, 0);
 
     lyd_insert(st->data, node);
-    r = lyd_validate(st->data, 0);
+    r = lyd_validate(&(st->data), 0);
     assert_int_equal(r, 0);
 }
 

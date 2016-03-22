@@ -187,6 +187,9 @@ _lyd_new(struct lyd_node *parent, const struct lys_node *schema)
     }
     ret->schema = (struct lys_node *)schema;
     ret->validity = LYD_VAL_NOT;
+    if (resolve_applies_when(ret)) {
+        ret->when_status = LYD_WHEN;
+    }
     ret->prev = ret;
     if (parent) {
         if (lyd_insert(parent, ret)) {
@@ -237,12 +240,15 @@ lyd_create_leaf(const struct lys_node *schema, const char *val_str)
     }
     ret->schema = (struct lys_node *)schema;
     ret->validity = LYD_VAL_NOT;
+    if (resolve_applies_when((struct lyd_node *)ret)) {
+        ret->when_status = LYD_WHEN;
+    }
     ret->prev = (struct lyd_node *)ret;
     ret->value_type = ((struct lys_node_leaf *)schema)->type.base;
     ret->value_str = lydict_insert(schema->module->ctx, val_str, 0);
 
     /* resolve the type correctly */
-    if (lyp_parse_value(ret, NULL, 1, NULL, 0)) {
+    if (lyp_parse_value(ret, NULL, 1)) {
         lyd_free((struct lyd_node *)ret);
         ly_errno = LY_EINVAL;
         return NULL;
@@ -326,7 +332,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     leaf->value_str = val_str;
 
     /* resolve the type correctly */
-    if (lyp_parse_value(leaf, NULL, 1, NULL, 0)) {
+    if (lyp_parse_value(leaf, NULL, 1)) {
         leaf->value_str = backup;
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
@@ -363,6 +369,9 @@ lyd_create_anyxml(const struct lys_node *schema, const char *val_xml)
     }
     ret->schema = (struct lys_node *)schema;
     ret->validity = LYD_VAL_NOT;
+    if (resolve_applies_when((struct lyd_node *)ret)) {
+        ret->when_status = LYD_WHEN;
+    }
     ret->prev = (struct lyd_node *)ret;
 
     /* store the anyxml data together with the anyxml element */
@@ -447,6 +456,10 @@ lyd_output_new(const struct lys_node *schema)
     }
     ret->schema = (struct lys_node *)schema;
     ret->validity = LYD_VAL_NOT;
+    if (resolve_applies_when(ret)) {
+        ret->when_status = LYD_WHEN;
+    }
+
     ret->prev = ret;
 
     return ret;
@@ -790,8 +803,8 @@ nextsibling:
 API int
 lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 {
-    struct lys_node *sparent;
-    struct lyd_node *iter;
+    struct lys_node *sparent, *schoice, *scase;
+    struct lyd_node *iter, *next;
     int invalid = 0;
 
     if (!node || !parent) {
@@ -815,6 +828,31 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 
     if (node->parent || node->prev->next) {
         lyd_unlink(node);
+    }
+
+    if (parent->child && ((sparent = lys_parent(node->schema))->nodetype & (LYS_CHOICE | LYS_CASE))) {
+        /* auto delete nodes from other cases */
+
+        /* remember which case to skip in which choice */
+        if (sparent->nodetype == LYS_CHOICE) {
+            schoice = sparent;
+            scase = node->schema;
+        } else {
+            schoice = lys_parent(sparent);
+            scase = sparent;
+        }
+
+        /* remove all nodes from other cases than 'sparent' */
+        LY_TREE_FOR_SAFE(parent->child, next, iter) {
+            sparent = lys_parent(iter->schema);
+            if (sparent->nodetype == LYS_CHOICE && sparent == schoice) {
+                /* another implicit case */
+                lyd_free(iter);
+            } else if (sparent->nodetype == LYS_CASE && sparent != scase && lys_parent(sparent) == schoice) {
+                /* another case */
+                lyd_free(iter);
+            }
+        }
     }
 
     if (!parent->child) {
@@ -841,8 +879,8 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 static int
 lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
 {
-    struct lys_node *par1, *par2;
-    struct lyd_node *iter;
+    struct lys_node *par1, *par2, *sparent, *schoice, *scase;
+    struct lyd_node *iter, *next, *start = NULL;
     int invalid = 0;
 
     if (sibling == node) {
@@ -861,10 +899,10 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
         return EXIT_FAILURE;
     }
 
-    if (node->parent != sibling->parent || !node->parent || lyp_is_rpc(node->schema)) {
-        /* a) it is not just moving under a parent node or
-         * b) it is top-level where we don't know if it is the same tree, or
-         * c) it is in an RPC where nodes order matters,
+    if (node->parent != sibling->parent || !node->parent || (invalid = lyp_is_rpc(node->schema))) {
+        /* a) it is not just moving under a parent node (invalid = 1) or
+         * b) it is top-level where we don't know if it is the same tree (invalid = 1), or
+         * c) it is in an RPC where nodes order matters (invalid = 2),
          * so the validation will be necessary */
         if (!node->parent) {
             /* b) search in siblings */
@@ -875,10 +913,48 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
             }
             if (iter == node) {
                 /* node and siblings are not currently in the same data tree */
-                invalid = 1;
+                invalid++;
             }
         } else { /* a) and c) */
-            invalid = 1;
+            invalid++;
+        }
+    }
+
+    if (invalid == 1 && ((sparent = lys_parent(node->schema))->nodetype & (LYS_CHOICE | LYS_CASE))) {
+        /* auto delete nodes from other cases */
+
+        /* remember which case to skip in which choice */
+        if (sparent->nodetype == LYS_CHOICE) {
+            schoice = sparent;
+            scase = node->schema;
+        } else {
+            schoice = lys_parent(sparent);
+            scase = sparent;
+        }
+
+        /* find first node */
+        if (sibling->parent) {
+            start = sibling->parent->child;
+        } else {
+            for (start = sibling; start->prev->next; start = start->prev);
+        }
+
+        /* remove all nodes from other cases than 'sparent' */
+        LY_TREE_FOR_SAFE(start, next, iter) {
+            sparent = lys_parent(iter->schema);
+            if ((sparent->nodetype == LYS_CHOICE && sparent == schoice) ||
+                    (sparent->nodetype == LYS_CASE && sparent != scase && lys_parent(sparent) == schoice)) {
+                /* another case */
+                if (iter == sibling) {
+                    LOGVAL(LYE_MCASEDATA, LY_VLOG_LYD, iter, schoice->name);
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, iter, "Insert request refers node (%s) that is going to be auto-deleted.",
+                           ly_errpath());
+                    return EXIT_FAILURE;
+                } else if (iter == start) {
+                    start = iter->next;
+                }
+                lyd_free(iter);
+            }
         }
     }
 
@@ -909,11 +985,13 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
             sibling->next->prev = node;
         } else {
             /* at the end - fix the prev pointer of the first node */
-            if (sibling->parent) {
+            if (start) {
+                start->prev = node;
+            } else if (sibling->parent) {
                 sibling->parent->child->prev = node;
             } else {
-                for (iter = sibling; iter->prev->next; iter = iter->prev);
-                iter->prev = node;
+                for (start = sibling; start->prev->next; start = start->prev);
+                start->prev = node;
             }
         }
         sibling->next = node;
@@ -946,20 +1024,32 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 }
 
 API int
-lyd_validate(struct lyd_node *node, int options, ...)
+lyd_validate(struct lyd_node **node, int options, ...)
 {
     struct lyd_node *root, *next1, *next2, *iter, *to_free = NULL;
     const struct lys_node *schema;
     struct ly_ctx *ctx;
-    int i;
+    int i, ret = EXIT_FAILURE;
     va_list ap;
+    struct unres_data *unres = NULL;
+
+    if (!node) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    unres = calloc(1, sizeof *unres);
+    if (!unres) {
+        LOGMEM;
+        return EXIT_FAILURE;
+    }
 
     ly_errno = 0;
 
-    if (!node) {
+    if (!(*node)) {
         /* TODO what about LYD_OPT_NOTIF, LYD_OPT_RPC and LYD_OPT_RPCREPLY ? */
         if (options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
-            return EXIT_SUCCESS;
+            goto success;
         }
         /* LYD_OPT_DATA || LYD_OPT_CONFIG */
 
@@ -969,7 +1059,7 @@ lyd_validate(struct lyd_node *node, int options, ...)
         if (!ctx) {
             LOGERR(LY_EINVAL, "%s: Invalid variable argument.", __func__);
             va_end(ap);
-            return EXIT_FAILURE;
+            goto error;
         }
 
         /* check for missing mandatory elements according to schemas in context */
@@ -980,47 +1070,44 @@ lyd_validate(struct lyd_node *node, int options, ...)
             schema = ly_check_mandatory(NULL, ctx->models.list[i]->data);
             if (schema) {
                 if (schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-                    LOGVAL(LYE_TOOMANY, 0, LY_VLOG_LYS, schema, schema->name, schema->parent ? schema->parent->name : "module");
-                    LOGVAL(LYE_SPEC, 0, 0, NULL,
+                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, schema, schema->name, schema->parent ? schema->parent->name : "module");
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, schema, NULL,
                            "Number of \"%s\" instances in \"%s\" does not follow min-elements constraint.",
                            schema->name, schema->parent ? schema->parent->name : ctx->models.list[i]->name);
                 } else {
-                    LOGVAL(LYE_MISSELEM, 0, LY_VLOG_LYS, schema,
+                    LOGVAL(LYE_MISSELEM, LY_VLOG_LYS, schema,
                            schema->name, schema->parent ? schema->parent->name : ctx->models.list[i]->name);
                 }
                 va_end(ap);
-                return EXIT_FAILURE;
+                goto error;
 
             }
         }
 
         va_end(ap);
-        return EXIT_SUCCESS;
+        goto success;
     }
 
     if (!(options & LYD_OPT_NOSIBLINGS)) {
         /* check that the node is the first sibling */
-        while(node->prev->next) {
-            node = node->prev;
+        while((*node)->prev->next) {
+            *node = (*node)->prev;
         }
     }
 
-    LY_TREE_FOR_SAFE(node, next1, root) {
+    LY_TREE_FOR_SAFE(*node, next1, root) {
         LY_TREE_DFS_BEGIN(root, next2, iter) {
             if (to_free) {
                 lyd_free(to_free);
                 to_free = NULL;
             }
 
-            if (lyv_data_context(iter, options, 0, NULL)) {
-                return EXIT_FAILURE;
+            if (lyv_data_context(iter, options, unres)) {
+                goto error;
             }
-            if (lyv_data_value(iter, options)) {
-                return EXIT_FAILURE;
-            }
-            if (lyv_data_content(iter, options, 0, NULL)) {
+            if (lyv_data_content(iter, options, unres)) {
                 if (ly_errno) {
-                    return EXIT_FAILURE;
+                    goto error;
                 } else {
                     /* safe deferred removal */
                     to_free = iter;
@@ -1060,7 +1147,7 @@ nextsiblings:
         }
 
         if (to_free) {
-            if (node == to_free) {
+            if ((*node) == to_free) {
                 /* we shouldn't be here */
                 assert(0);
             }
@@ -1073,8 +1160,23 @@ nextsiblings:
         }
     }
 
+    /* check unresolved checks (when-stmt) */
+    if (resolve_unres_data(unres,  (options & LYD_OPT_NOAUTODEL) ? NULL : node)) {
+        goto error;
+    }
 
-    return EXIT_SUCCESS;
+success:
+    ret = EXIT_SUCCESS;
+
+error:
+
+    if (unres) {
+        free(unres->node);
+        free(unres->type);
+        free(unres);
+    }
+
+    return ret;
 }
 
 /* create an attribute copy */
@@ -1270,6 +1372,7 @@ lyd_dup(const struct lyd_node *node, int recursive)
         new_node->prev = new_node;
         new_node->parent = NULL;
         new_node->validity = LYD_VAL_NOT;
+        new_node->when_status = elem->when_status & LYD_WHEN;
 
         if (!ret) {
             ret = new_node;
@@ -1609,7 +1712,7 @@ lyd_get_node(const struct lyd_node *data, const char *expr)
 
     memset(&xp_set, 0, sizeof xp_set);
 
-    if (lyxp_eval(expr, data, &xp_set, 0, 0) != EXIT_SUCCESS) {
+    if (lyxp_eval(expr, data, &xp_set, 0) != EXIT_SUCCESS) {
         return NULL;
     }
 

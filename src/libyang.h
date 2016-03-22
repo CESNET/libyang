@@ -992,6 +992,7 @@ typedef enum {
     LYVE_NOCOND,       /**< unsatisfied must/when condition (data) */
     LYVE_INORDER,      /**< invalid order of elements (data) */
     LYVE_INCOUNT,      /**< invalid number of elements (data) */
+    LYVE_INWHEN,       /**< irresolvable when condition (data) */
 
     LYVE_XPATH_INTOK,  /**< unexpected XPath token */
     LYVE_XPATH_EOF,    /**< unexpected end of an XPath expression */
