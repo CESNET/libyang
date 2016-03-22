@@ -1309,7 +1309,7 @@ resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_
     int nam_len, has_predicate, i;
 
     if ((i = parse_schema_list_predicate(predicate, &name, &nam_len, NULL, NULL, &has_predicate)) < 1) {
-        LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, predicate[-i], &predicate[-i]);
+        LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-i], &predicate[-i]);
         return -1;
     }
 
@@ -1323,7 +1323,7 @@ resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_
     }
 
     if (i == list->keys_size) {
-        LOGVAL(LYE_PATH_INKEY, 0, LY_VLOG_NONE, NULL, name);
+        LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
         return -1;
     }
 
@@ -1354,7 +1354,7 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
     id = nodeid;
 
     if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate)) < 1) {
-        LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
+        LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
         return NULL;
     }
     id += r;
@@ -1364,13 +1364,13 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
         start = start->child;
         if (!start) {
             /* no descendants, fail for sure */
-            LOGVAL(LYE_PATH_INNODE, 0, LY_VLOG_NONE, NULL, name);
+            LOGVAL(LYE_PATH_INNODE, LY_VLOG_NONE, NULL, name);
             return NULL;
         }
         module = start->module;
     } else {
         if (!mod_name) {
-            LOGVAL(LYE_PATH_MISSMOD, 0, LY_VLOG_NONE, NULL, name);
+            LOGVAL(LYE_PATH_MISSMOD, LY_VLOG_NONE, NULL, name);
             return NULL;
         }
 
@@ -1378,7 +1378,7 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
         module = ly_ctx_get_module(ctx, str, NULL);
         free(str);
         if (!module) {
-            LOGVAL(LYE_PATH_INMOD, 0, LY_VLOG_NONE, NULL, mod_name);
+            LOGVAL(LYE_PATH_INMOD, LY_VLOG_NONE, NULL, mod_name);
             return NULL;
         }
         start = module->data;
@@ -1408,7 +1408,7 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
                     /* will also find an augment module */
                     prefix_mod = ly_ctx_get_module(ctx, module_name, NULL);
                     if (!prefix_mod) {
-                        LOGVAL(LYE_PATH_INMOD, 0, LY_VLOG_NONE, NULL, mod_name);
+                        LOGVAL(LYE_PATH_INMOD, LY_VLOG_NONE, NULL, mod_name);
                         return NULL;
                     }
                 } else {
@@ -1422,7 +1422,7 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
                 if (has_predicate) {
                     r = 0;
                     if (sibling->nodetype != LYS_LIST) {
-                        LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, id[0], id);
+                        LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
                         return NULL;
                     } else if (resolve_json_schema_list_predicate(id, (const struct lys_node_list *)sibling, &r)) {
                         return NULL;
@@ -1440,7 +1440,7 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
                         || (sibling->nodetype == LYS_CASE)) {
                     /* move down the tree, if possible */
                     if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
-                        LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, id[0], id);
+                        LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
                         return NULL;
                     }
                     start = sibling->child;
@@ -1454,12 +1454,12 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
 
         /* no match */
         if (!sibling) {
-            LOGVAL(LYE_PATH_INNODE, 0, LY_VLOG_NONE, NULL, name);
+            LOGVAL(LYE_PATH_INNODE, LY_VLOG_NONE, NULL, name);
             return NULL;
         }
 
         if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate)) < 1) {
-            LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
+            LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
             return NULL;
         }
         id += r;
@@ -1484,12 +1484,12 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
 
     for (i = 0; i < keys->number; ++i) {
         if (!has_predicate) {
-            LOGVAL(LYE_PATH_MISSKEY, 0, LY_VLOG_NONE, NULL, node_name);
+            LOGVAL(LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, node_name);
             return -1;
         }
 
         if ((r = parse_schema_list_predicate(predicate, &name, &nam_len, &value, &val_len, &has_predicate)) < 1) {
-            LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
+            LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
             return -1;
         }
 
@@ -1497,7 +1497,7 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
         *parsed += r;
 
         if (strncmp(keys->set.d[i]->schema->name, name, nam_len) || keys->set.d[i]->schema->name[nam_len]) {
-            LOGVAL(LYE_PATH_INKEY, 0, LY_VLOG_NONE, NULL, name);
+            LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
             return -1;
         }
 
@@ -1509,7 +1509,7 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
     }
 
     if (has_predicate) {
-        LOGVAL(LYE_PATH_INKEY, 0, LY_VLOG_NONE, NULL, name);
+        LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
         return -1;
     }
 
@@ -1532,7 +1532,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
     id = nodeid;
 
     if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate)) < 1) {
-        LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
+        LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
         return NULL;
     }
     id += r;
@@ -1565,7 +1565,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
                     /* will also find an augment module */
                     prefix_mod = ly_ctx_get_module(ctx, module_name, NULL);
                     if (!prefix_mod) {
-                        LOGVAL(LYE_PATH_INMOD, 0, LY_VLOG_NONE, NULL, mod_name);
+                        LOGVAL(LYE_PATH_INMOD, LY_VLOG_NONE, NULL, mod_name);
                         return NULL;
                     }
                 } else {
@@ -1585,7 +1585,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
                 if (sibling->schema->nodetype == LYS_LIST) {
                     r = 0;
                     if (!has_predicate) {
-                        LOGVAL(LYE_PATH_MISSKEY, 0, LY_VLOG_NONE, NULL, name);
+                        LOGVAL(LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, name);
                         return NULL;
                     }
                     ret = resolve_partial_json_data_list_predicate(id, name, sibling, &r);
@@ -1608,7 +1608,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
 
                 /* move down the tree, if possible */
                 if (start->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
-                    LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, id[0], id);
+                    LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
                     return NULL;
                 }
                 last_match = start;
@@ -1626,7 +1626,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
         }
 
         if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate)) < 1) {
-            LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
+            LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
             return NULL;
         }
         id += r;
