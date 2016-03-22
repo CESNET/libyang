@@ -678,7 +678,6 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     int ret = -1;
     const char *name, *value;
     LY_DATA_TYPE base;
-    struct yang_type *typ_tmp;
 
     base = typ->type->base;
     value = transform_schema2json(module, typ->name);
@@ -861,7 +860,6 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             goto error;
         }
         for (i = 0; i < typ->type->info.uni.count; i++) {
-            typ_tmp = (struct yang_type *)typ->type->info.uni.types[i].der;
             if (unres_schema_add_node(module, unres, &typ->type->info.uni.types[i], UNRES_TYPE_DER, parent)) {
                 goto error;
             }
@@ -1276,7 +1274,6 @@ void *
 yang_read_augment(struct lys_module *module, struct lys_node *parent, char *value)
 {
     struct lys_node_augment *aug;
-    uint16_t *size;
 
     if (parent) {
         aug = &((struct lys_node_uses *)parent)->augment[((struct lys_node_uses *)parent)->augment_size];
@@ -1307,16 +1304,16 @@ yang_read_deviation(struct lys_module *module, char *value)
     struct type_deviation *deviation = NULL;
     int i, j, rc;
 
-    deviation = calloc(1, sizeof *deviation);
-    if (!deviation) {
-        LOGMEM;
-        goto error;
-    }
-
     dev = &module->deviation[module->deviation_size];
     dev->target_name = transform_schema2json(module, value);
     free(value);
     if (!dev->target_name) {
+        goto error;
+    }
+
+    deviation = calloc(1, sizeof *deviation);
+    if (!deviation) {
+        LOGMEM;
         goto error;
     }
 
@@ -1520,10 +1517,8 @@ error:
 }
 
 int
-yang_read_deviate_must(struct ly_ctx *ctx, struct type_deviation *dev, uint8_t c_must)
+yang_read_deviate_must(struct type_deviation *dev, uint8_t c_must)
 {
-    uint8_t i;
-
     /* check target node type */
     switch (dev->target->nodetype) {
     case LYS_LEAF:
@@ -1578,9 +1573,8 @@ error:
 }
 
 int
-yang_read_deviate_unique(struct ly_ctx *ctx, struct type_deviation *dev, uint8_t c_uniq)
+yang_read_deviate_unique(struct type_deviation *dev, uint8_t c_uniq)
 {
-    int i, j;
     struct lys_node_list *list;
 
     /* check target node type */
@@ -2103,11 +2097,11 @@ store_flags(struct lys_node *node, uint8_t flags, int config_inherit)
 }
 
 int
-yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, char *data, int size_data)
+yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, const char *data, unsigned int size_data)
 {
     YY_BUFFER_STATE bp;
     struct lys_array_size *size_arrays=NULL;
-    int size;
+    unsigned int size;
 
     size_arrays = calloc(1, sizeof *size_arrays);
     if (!size_arrays) {
@@ -2116,7 +2110,7 @@ yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struc
     }
 
     size = (size_data) ? size_data : strlen(data) + 2;
-    bp = yy_scan_buffer(data, size);
+    bp = yy_scan_buffer((char *)data, size);
     yy_switch_to_buffer(bp);
 
     if (yyparse(module, submodule, unres, size_arrays, LY_READ_ONLY_SIZE)) {
@@ -2124,7 +2118,7 @@ yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struc
         goto error;
     }
     yy_delete_buffer(bp);
-    bp = yy_scan_buffer(data, size);
+    bp = yy_scan_buffer((char *)data, size);
     yy_switch_to_buffer(bp);
 
     if (yyparse(module, submodule, unres, size_arrays, LY_READ_ALL)) {
@@ -2150,7 +2144,7 @@ error:
 }
 
 struct lys_module *
-yang_read_module(struct ly_ctx *ctx, char* data, int size, const char *revision, int implement)
+yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const char *revision, int implement)
 {
 
     struct lys_module *module = NULL;
@@ -2213,7 +2207,7 @@ error:
 }
 
 struct lys_submodule *
-yang_read_submodule(struct lys_module *module, char *data, int size, struct unres_schema *unres)
+yang_read_submodule(struct lys_module *module, const char *data, unsigned int size, struct unres_schema *unres)
 {
     struct lys_submodule *submodule;
 

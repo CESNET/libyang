@@ -242,11 +242,11 @@ int yang_read_deviate(struct type_deviation *dev, LYS_DEVIATE_TYPE mod);
 
 int yang_read_deviate_units(struct ly_ctx *ctx, struct type_deviation *dev, char *value);
 
-int yang_read_deviate_must(struct ly_ctx *ctx, struct type_deviation *dev, uint8_t c_must);
+int yang_read_deviate_must(struct type_deviation *dev, uint8_t c_must);
 
 int yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct lys_unique *unique, char *value, struct unres_schema *unres);
 
-int yang_read_deviate_unique(struct ly_ctx *ctx, struct type_deviation *dev, uint8_t c_uniq);
+int yang_read_deviate_unique(struct type_deviation *dev, uint8_t c_uniq);
 
 int yang_read_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *value);
 
@@ -272,10 +272,10 @@ int yang_use_extension(struct lys_module *module, struct lys_node *data_node, vo
 
 int yang_check_flags(uint8_t *flags, uint8_t mask, char *what, char *where, int value);
 
-int yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, char *data, int size_data);
+int yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, const char *data, unsigned int size_data);
 
-struct lys_module *yang_read_module(struct ly_ctx *ctx, char* data, int size, const char *revision, int implement);
+struct lys_module *yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const char *revision, int implement);
 
-struct lys_submodule *yang_read_submodule(struct lys_module *module, char *data, int size, struct unres_schema *unres);
+struct lys_submodule *yang_read_submodule(struct lys_module *module, const char *data, unsigned int size, struct unres_schema *unres);
 
 #endif /* LY_PARSER_YANG_H_ */

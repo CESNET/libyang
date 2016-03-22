@@ -4526,10 +4526,9 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
     struct lyxml_elem *next, *child, *child2, root, grps, augs;
     struct lys_node *node = NULL;
     struct lys_module *trg;
-    struct lys_import *aux_imp;
-    struct lys_include *aux_inc, inc;
+    struct lys_include inc;
     const char *value;
-    int i, j, r;
+    int i, r;
     int inc_size_aux = 0;
     int version_flag = 0;
     /* counters */

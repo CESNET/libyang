@@ -19,7 +19,7 @@
 
 extern int yylineno;
 extern int yyleng;
-void yyerror(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all, char *str, ...);   //parameter is in directive parse-param
+void yyerror();   //parameter is in directive parse-param
 int yylex(void);
 extern char *yytext;
 char *s, *tmp_s;
@@ -3024,12 +3024,12 @@ deviate_add_opt_stmt: %empty { if (read_all) {
                                  $$.deviation = actual;
                                  actual_type = ADD_KEYWORD;
                                  if (size_arrays->node[size_arrays->next].must) {
-                                    if (yang_read_deviate_must(trg->ctx, actual, size_arrays->node[size_arrays->next].must)) {
+                                    if (yang_read_deviate_must(actual, size_arrays->node[size_arrays->next].must)) {
                                       YYERROR;
                                     }
                                   }
                                   if (size_arrays->node[size_arrays->next].unique) {
-                                    if (yang_read_deviate_unique(trg->ctx, actual, size_arrays->node[size_arrays->next].unique)) {
+                                    if (yang_read_deviate_unique(actual, size_arrays->node[size_arrays->next].unique)) {
                                       YYERROR;
                                     }
                                   }
@@ -3134,12 +3134,12 @@ deviate_delete_opt_stmt: %empty { if (read_all) {
                                     $$.deviation = actual;
                                     actual_type = DELETE_KEYWORD;
                                     if (size_arrays->node[size_arrays->next].must) {
-                                      if (yang_read_deviate_must(trg->ctx, actual, size_arrays->node[size_arrays->next].must)) {
+                                      if (yang_read_deviate_must(actual, size_arrays->node[size_arrays->next].must)) {
                                         YYERROR;
                                       }
                                     }
                                     if (size_arrays->node[size_arrays->next].unique) {
-                                      if (yang_read_deviate_unique(trg->ctx, actual, size_arrays->node[size_arrays->next].unique)) {
+                                      if (yang_read_deviate_unique(actual, size_arrays->node[size_arrays->next].unique)) {
                                         YYERROR;
                                       }
                                     }
@@ -3812,7 +3812,7 @@ identifiers_ref: IDENTIFIERPREFIX { if (read_all) {
 
 %%
 
-void yyerror(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all, char *str, ...){
+void yyerror(){
 
   LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yytext);
   free(s);
