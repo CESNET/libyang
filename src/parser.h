@@ -107,6 +107,12 @@ int lyp_check_import(struct lys_module *module, const char *value, struct lys_im
  */
 int lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodule);
 
+int lyp_add_module(struct lys_module *module, int implement);
+
+void lyp_fail_module(struct lys_module *module);
+
+void lyp_fail_submodule(struct lys_submodule *submodule);
+
 /**
  * Store UTF-8 character specified as 4byte integer into the dst buffer.
  * Returns number of written bytes (4 max), expects that dst has enough space.

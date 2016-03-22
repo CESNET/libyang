@@ -1523,6 +1523,176 @@ error:
     return EXIT_FAILURE;
 }
 
+int
+lyp_add_module(struct lys_module *module, int implement)
+{
+    struct ly_ctx *ctx;
+    struct lys_module **newlist = NULL;
+    int i;
+
+    ctx = module->ctx;
+
+    /* add to the context's list of modules */
+    if (ctx->models.used == ctx->models.size) {
+        newlist = realloc(ctx->models.list, (2 * ctx->models.size) * sizeof *newlist);
+        if (!newlist) {
+            LOGMEM;
+            goto error;
+        }
+        for (i = ctx->models.size; i < ctx->models.size * 2; i++) {
+            newlist[i] = NULL;
+        }
+        ctx->models.size *= 2;
+        ctx->models.list = newlist;
+    }
+    for (i = 0; ctx->models.list[i]; i++) {
+        /* check name (name/revision) and namespace uniqueness */
+        if (!strcmp(ctx->models.list[i]->name, module->name)) {
+            if (ctx->models.list[i]->rev_size == module->rev_size) {
+                /* both have the same number of revisions */
+                if (!module->rev_size || !strcmp(ctx->models.list[i]->rev[0].date, module->rev[0].date)) {
+                    /* both have the same revision -> we already have the same module */
+                    /* so free the new one and update the old one's implement flag if needed */
+                    LOGVRB("Module \"%s\" already in context.", ctx->models.list[i]->name);
+
+                    lys_free(module, NULL, 1);
+                    module = ctx->models.list[i];
+                    if (implement && !module->implemented) {
+                        lyp_set_implemented(module);
+                    }
+
+                    return EXIT_SUCCESS;
+                }
+            }
+            /* else (both elses) keep searching, for now the caller is just adding
+             * another revision of an already present schema
+             */
+        } else if (!strcmp(ctx->models.list[i]->ns, module->ns)) {
+            LOGERR(LY_EINVAL, "Two different modules (\"%s\" and \"%s\") have the same namespace \"%s\".",
+                   ctx->models.list[i]->name, module->name, module->ns);
+            goto error;
+        }
+    }
+    ctx->models.list[i] = module;
+    ctx->models.used++;
+    ctx->models.module_set_id++;
+    return EXIT_SUCCESS;
+
+error:
+    return EXIT_FAILURE;
+}
+
+void
+lyp_fail_module(struct lys_module *module)
+{
+    int i, j, flag;
+    struct lys_node *next, *elem;
+    struct lys_module *orig_mod;
+
+    /* remove applied deviations */
+    for (i = 0; i < module->deviation_size; ++i) {
+        if (module->deviation[i].orig_node) {
+            resolve_augment_schema_nodeid(module->deviation[i].target_name, NULL, module, (const struct lys_node **)&elem);
+            lys_node_switch(elem, module->deviation[i].orig_node);
+            module->deviation[i].orig_node = elem;
+        }
+
+        /* remove our deviation import, clear deviated flag is possible */
+        orig_mod = lys_node_module(module->deviation[i].orig_node);
+        flag = 0;
+        for (j = 0; j < orig_mod->imp_size; ++j) {
+            if (orig_mod->imp[j].external == 2) {
+                if (orig_mod->imp[j].module == module) {
+                    /* our deviation import, remove it */
+                    --orig_mod->imp_size;
+                    if (j < orig_mod->imp_size) {
+                        memcpy(&orig_mod->imp[j], &orig_mod->imp[j + 1], (orig_mod->imp_size - j) * sizeof *orig_mod->imp);
+                    }
+                    --j;
+                } else {
+                    /* some other deviation, we cannot clear the deviated flag */
+                    flag = 1;
+                }
+            }
+        }
+        if (!flag) {
+            /* it's safe to clear the deviated flag */
+            orig_mod->deviated = 0;
+        }
+    }
+
+    /* remove applied augments */
+    for (i = 0; i < module->augment_size; ++i) {
+        if (module->augment[i].target) {
+            LY_TREE_FOR_SAFE(module->augment[i].target->child, next, elem) {
+                if (elem->parent == (struct lys_node *)&module->augment[i]) {
+                    lys_node_free(elem, NULL, 0);
+                }
+            }
+        }
+    }
+}
+
+void
+lyp_fail_submodule(struct lys_submodule *submodule)
+{
+    struct lys_node *next, *elem;
+    struct lys_module *orig_mod, *module;
+    uint8_t i, j, flag;
+
+    module = submodule->belongsto;
+
+    /* remove parsed data */
+    LY_TREE_FOR_SAFE(module->data, next, elem) {
+        if (elem->module == (struct lys_module *)submodule) {
+            lys_node_free(elem, NULL, 0);
+        }
+    }
+
+    /* remove applied deviations */
+    for (i = 0; i < submodule->deviation_size; ++i) {
+        if (submodule->deviation[i].orig_node) {
+            resolve_augment_schema_nodeid(submodule->deviation[i].target_name, NULL, module, (const struct lys_node **)&elem);
+            lys_node_switch(elem, submodule->deviation[i].orig_node);
+            submodule->deviation[i].orig_node = elem;
+        }
+
+        /* remove our deviation import, clear deviated flag is possible */
+        orig_mod = lys_node_module(submodule->deviation[i].orig_node);
+        flag = 0;
+        for (j = 0; j < orig_mod->imp_size; ++j) {
+            if (orig_mod->imp[j].external == 2) {
+                if (orig_mod->imp[j].module == submodule->belongsto) {
+                    /* our deviation import, remove it */
+                    --orig_mod->imp_size;
+                    if (j < orig_mod->imp_size) {
+                        memcpy(&orig_mod->imp[j], &orig_mod->imp[j + 1], (orig_mod->imp_size - j) * sizeof *orig_mod->imp);
+                    }
+                    --j;
+                } else {
+                    /* some other deviation, we cannot clear the deviated flag */
+                    flag = 1;
+                }
+            }
+        }
+        if (!flag) {
+            /* it's safe to clear the deviated flag */
+            orig_mod->deviated = 0;
+        }
+    }
+
+    /* remove applied augments */
+    for (i = 0; i < submodule->augment_size; ++i) {
+        if (submodule->augment[i].target) {
+            LY_TREE_FOR_SAFE(submodule->augment[i].target->child, next, elem) {
+                if (elem->parent == (struct lys_node *)&submodule->augment[i]) {
+                    lys_node_free(elem, NULL, 0);
+                }
+            }
+        }
+    }
+}
+
 /**
  * Store UTF-8 character specified as 4byte integer into the dst buffer.
  * Returns number of written bytes (4 max), expects that dst has enough space.
