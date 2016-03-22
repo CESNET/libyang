@@ -755,7 +755,7 @@ test_lys_print_fd_tree(void **state)
     char file_name[19];
     char *result;
     int rc;
-    int fd;
+    int fd = -1;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     if (!module) {
@@ -808,7 +808,7 @@ test_lys_print_fd_yang(void **state)
     char file_name[19];
     char *result;
     int rc;
-    int fd;
+    int fd = -1;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     if (!module) {
@@ -860,7 +860,7 @@ test_lys_print_fd_yin(void **state)
     char file_name[19];
     char *result;
     int rc;
-    int fd;
+    int fd = -1;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     if (!module) {
@@ -912,7 +912,7 @@ test_lys_print_fd_info(void **state)
     char file_name[19];
     char *result;
     int rc;
-    int fd;
+    int fd = -1;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     if (!module) {
@@ -965,7 +965,7 @@ test_lys_print_file_tree(void **state)
     char *result;
     FILE *f = NULL;
     int rc;
-    int fd;
+    int fd = -1;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     if (!module) {
@@ -1029,7 +1029,7 @@ test_lys_print_file_yin(void **state)
     char *result;
     FILE *f = NULL;
     int rc;
-    int fd;
+    int fd = -1;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     if (!module) {
@@ -1093,7 +1093,7 @@ test_lys_print_file_yang(void **state)
     char *result;
     FILE *f = NULL;
     int rc;
-    int fd;
+    int fd = -1;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     if (!module) {
@@ -1157,7 +1157,7 @@ test_lys_print_file_info(void **state)
     char *result;
     FILE *f = NULL;
     int rc;
-    int fd;
+    int fd = -1;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     if (!module) {

@@ -501,19 +501,19 @@ lyd_new_path_list_keys(struct lyd_node *list, const char *list_name, const char 
 
     for (i = 0; i < slist->keys_size; ++i) {
         if (!has_predicate) {
-            LOGVAL(LYE_PATH_MISSKEY, 0, LY_VLOG_NONE, NULL, list_name);
+            LOGVAL(LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, list_name);
             return -1;
         }
 
         if ((r = parse_schema_list_predicate(predicate, &name, &nam_len, &value, &val_len, &has_predicate)) < 1) {
-            LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
+            LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
             return -1;
         }
         *parsed += r;
         predicate += r;
 
         if (strncmp(slist->keys[i]->name, name, nam_len) || slist->keys[i]->name[nam_len]) {
-            LOGVAL(LYE_PATH_INKEY, 0, LY_VLOG_NONE, NULL, name[0], name);
+            LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name[0], name);
             return -1;
         }
 
@@ -566,7 +566,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         if (!path[0]) {
             /* the node exists */
             if (!(options & LYD_PATH_OPT_UPDATE) || (parent->schema->nodetype != LYS_LEAF)) {
-                LOGVAL(LYE_PATH_EXISTS, 0, LY_VLOG_NONE, NULL);
+                LOGVAL(LYE_PATH_EXISTS, LY_VLOG_NONE, NULL);
                 return NULL;
             }
 
@@ -584,7 +584,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
     }
 
     if ((r = parse_schema_nodeid(path, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
-        LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, path[-r], &path[-r]);
+        LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, path[-r], &path[-r]);
         return NULL;
     }
 
@@ -593,7 +593,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
     /* we are starting from scratch, absolute path */
     if (!data_tree) {
         if (!mod_name) {
-            LOGVAL(LYE_PATH_MISSMOD, 0, LY_VLOG_NONE, NULL, name);
+            LOGVAL(LYE_PATH_MISSMOD, LY_VLOG_NONE, NULL, name);
             return NULL;
         } else if (mod_name_len > LY_MODULE_NAME_MAX_LEN) {
             LOGINT;
@@ -604,7 +604,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         module_name[mod_name_len] = '\0';
         module = ly_ctx_get_module(ctx, module_name, NULL);
         if (!module) {
-            LOGVAL(LYE_PATH_INMOD, 0, LY_VLOG_NONE, NULL, mod_name);
+            LOGVAL(LYE_PATH_INMOD, LY_VLOG_NONE, NULL, mod_name);
             return NULL;
         }
         mod_name = NULL;
@@ -638,7 +638,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         }
 
         if (!schild) {
-            LOGVAL(LYE_PATH_INNODE, 0, LY_VLOG_NONE, NULL, name);
+            LOGVAL(LYE_PATH_INNODE, LY_VLOG_NONE, NULL, name);
             lyd_free(ret);
             return NULL;
         }
@@ -654,14 +654,14 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         case LYS_LEAF:
         case LYS_LEAFLIST:
             if (path[0]) {
-                LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, path[0], path);
+                LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, path[0], path);
                 return NULL;
             }
             node = _lyd_new_leaf(is_relative ? parent : NULL, schild, value);
             break;
         case LYS_ANYXML:
             if (path[0]) {
-                LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, path[0], path);
+                LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, path[0], path);
                 return NULL;
             }
             node = _lyd_new_anyxml(is_relative ? parent : NULL, schild, value);
@@ -703,7 +703,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
             return ret;
         } else if (!(options & LYD_PATH_OPT_RECURSIVE)) {
             /* we were supposed to be done */
-            LOGVAL(LYE_PATH_MISSPAR, 0, LY_VLOG_NONE, NULL, (mod_name ? mod_name : name));
+            LOGVAL(LYE_PATH_MISSPAR, LY_VLOG_NONE, NULL, (mod_name ? mod_name : name));
             return NULL;
         }
 
@@ -714,7 +714,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
 
         /* parse another node */
         if ((r = parse_schema_nodeid(path, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
-            LOGVAL(LYE_PATH_INCHAR, 0, LY_VLOG_NONE, NULL, path[-r], &path[-r]);
+            LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, path[-r], &path[-r]);
             lyd_free(ret);
             return NULL;
         }
@@ -726,7 +726,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
             slist = (const struct lys_node_list *)schild;
             for (i = 0; i < slist->keys_size; ++i) {
                 if (!strncmp(slist->keys[i]->name, name, nam_len) && !slist->keys[i]->name[nam_len]) {
-                    LOGVAL(LYE_PATH_EXISTS, 0, LY_VLOG_NONE, NULL);
+                    LOGVAL(LYE_PATH_EXISTS, LY_VLOG_NONE, NULL);
                     lyd_free(ret);
                     return NULL;
                 }

@@ -5426,7 +5426,8 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
     if (revision) {
         /* check revision of the parsed model */
         if (!module->rev_size || strcmp(revision, module->rev[0].date)) {
-            lys_free(module, NULL, 0);
+            LOGVRB("Module \"%s\" parsed with the wrong revision (\"%s\" instead \"%s\").",
+                   module->name, module->rev[0].date, revision);
             goto error;
         }
     }
