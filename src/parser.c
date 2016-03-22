@@ -55,6 +55,13 @@ lyp_check_options(int options)
 {
     int x = options & LYD_OPT_TYPEMASK;
 
+    /* LYD_OPT_NOAUTODEL can be used only with LYD_OPT_DATA or LYD_OPT_CONFIG */
+    if (options & LYD_OPT_NOAUTODEL) {
+        if (x != LYD_OPT_DATA && x != LYD_OPT_CONFIG) {
+            return 1;
+        }
+    }
+
     /* "is power of 2" algorithm, with 0 exception */
     return x ? !(x && !(x & (x - 1))) : 0;
 }
@@ -136,8 +143,8 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
                 return result;
             } else {
                 /* there is already another revision of the submodule */
-                LOGVAL(LYE_INARG, 0, LY_VLOG_NONE, NULL, result->rev[0].date, "revision");
-                LOGVAL(LYE_SPEC, 0, 0, NULL, "Multiple revisions of a submodule included.");
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, result->rev[0].date, "revision");
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Multiple revisions of a submodule included.");
                 return NULL;
             }
         }
@@ -257,12 +264,12 @@ cleanup:
 
 /* logs directly */
 static int
-parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret, uint32_t line, struct lyd_node *node)
+parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret, struct lyd_node *node)
 {
     char *strptr;
 
     if (!val_str) {
-        LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, node, "", node->schema->name);
+        LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
         return EXIT_FAILURE;
     }
 
@@ -271,14 +278,14 @@ parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret,
     strptr = NULL;
     *ret = strtoll(val_str, &strptr, base);
     if (errno || (*ret < min) || (*ret > max)) {
-        LOGVAL(LYE_OORVAL, line, LY_VLOG_LYD, node, val_str, node->schema->name);
+        LOGVAL(LYE_OORVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
         return EXIT_FAILURE;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
             ++strptr;
         }
         if (*strptr) {
-            LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, node, val_str, node->schema->name);
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
             return EXIT_FAILURE;
         }
     }
@@ -288,12 +295,12 @@ parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret,
 
 /* logs directly */
 static int
-parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret, uint32_t line, struct lyd_node *node)
+parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret, struct lyd_node *node)
 {
     char *strptr;
 
     if (!val_str) {
-        LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, node, "", node->schema->name);
+        LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
         return EXIT_FAILURE;
     }
 
@@ -301,14 +308,14 @@ parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret, uint32_t 
     strptr = NULL;
     *ret = strtoull(val_str, &strptr, base);
     if (errno || (*ret > max)) {
-        LOGVAL(LYE_OORVAL, line, LY_VLOG_LYD, node, val_str, node->schema->name);
+        LOGVAL(LYE_OORVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
         return EXIT_FAILURE;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
             ++strptr;
         }
         if (*strptr) {
-            LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, node, val_str, node->schema->name);
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
             return EXIT_FAILURE;
         }
     }
@@ -322,7 +329,7 @@ parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret, uint32_t 
  */
 static int
 validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnum, struct lys_type *type,
-                      const char *val_str, uint32_t line, struct lyd_node *node)
+                      const char *val_str, struct lyd_node *node)
 {
     struct len_ran_intv *intv = NULL, *tmp_intv;
     int ret = EXIT_FAILURE;
@@ -358,14 +365,14 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
     }
 
     if (ret) {
-        LOGVAL(LYE_OORVAL, line, LY_VLOG_LYD, node, (val_str ? val_str : ""));
+        LOGVAL(LYE_OORVAL, LY_VLOG_LYD, node, (val_str ? val_str : ""));
     }
     return ret;
 }
 
 /* logs directly */
 static int
-validate_pattern(const char *val_str, struct lys_type *type, uint32_t line, struct lyd_node *node)
+validate_pattern(const char *val_str, struct lys_type *type, struct lyd_node *node)
 {
     int i, err_offset;
     pcre *precomp;
@@ -378,7 +385,7 @@ validate_pattern(const char *val_str, struct lys_type *type, uint32_t line, stru
         val_str = "";
     }
 
-    if (type->der && validate_pattern(val_str, &type->der->type, line, node)) {
+    if (type->der && validate_pattern(val_str, &type->der->type, node)) {
         return EXIT_FAILURE;
     }
 
@@ -412,7 +419,7 @@ validate_pattern(const char *val_str, struct lys_type *type, uint32_t line, stru
 
         if (pcre_exec(precomp, NULL, val_str, strlen(val_str), 0, 0, NULL, 0)) {
             free(precomp);
-            LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, node, val_str, node->schema->name);
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
             return EXIT_FAILURE;
         }
         free(precomp);
@@ -568,10 +575,9 @@ error:
  * logs directly
  *
  * resolve - whether resolve identityrefs and leafrefs (which must be in JSON form)
- * unres - whether to try to resolve and on failure store it as unres or fail if resolving fails
  */
 static int
-lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve, struct unres_data *unres, uint32_t line)
+lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve)
 {
     #define DECSIZE 21
     struct lys_type *type;
@@ -587,7 +593,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
     switch (node->value_type) {
     case LY_TYPE_BINARY:
         if (validate_length_range(0, (node->value_str ? strlen(node->value_str) : 0), 0, 0, stype,
-                                  node->value_str, line, (struct lyd_node *)node)) {
+                                  node->value_str, (struct lyd_node *)node)) {
             return EXIT_FAILURE;
         }
 
@@ -640,7 +646,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
 
             if (!found) {
                 /* referenced bit value does not exists */
-                LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, node, node->value_str, node->schema->name);
+                LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
                 return EXIT_FAILURE;
             }
 
@@ -651,14 +657,14 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
 
     case LY_TYPE_BOOL:
         if (!node->value_str) {
-            LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, node, "", node->schema->name);
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
             return EXIT_FAILURE;
         }
 
         if (!strcmp(node->value_str, "true")) {
             node->value.bln = 1;
         } else if (strcmp(node->value_str, "false")) {
-            LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, node, node->value_str, node->schema->name);
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
             return EXIT_FAILURE;
         }
         /* else stays 0 */
@@ -666,7 +672,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
 
     case LY_TYPE_DEC64:
         if (!node->value_str) {
-            LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, node, "", node->schema->name);
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
             return EXIT_FAILURE;
         }
 
@@ -678,7 +684,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
         c = c - len;
         if (len > DECSIZE) {
             /* too long */
-            LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, node, node->value_str, node->schema->name);
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
             return EXIT_FAILURE;
         }
 
@@ -704,21 +710,21 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
                 }
                 d++;
                 if (d > DECSIZE - 2) {
-                    LOGVAL(LYE_OORVAL, line, LY_VLOG_LYD, node, node->value_str, node->schema->name);
+                    LOGVAL(LYE_OORVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
                     return EXIT_FAILURE;
                 }
                 dec[i] = '0';
             } else {
                 if (!isdigit(node->value_str[c + i])) {
                     if (i || node->value_str[c] != '-') {
-                        LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, node, node->value_str, node->schema->name);
+                        LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
                         return EXIT_FAILURE;
                     }
                 } else {
                     d++;
                 }
                 if (d > DECSIZE - 2 || (found && !j)) {
-                    LOGVAL(LYE_OORVAL, line, LY_VLOG_LYD, node, node->value_str, node->schema->name);
+                    LOGVAL(LYE_OORVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
                     return EXIT_FAILURE;
                 }
                 dec[i] = node->value_str[c + i];
@@ -729,9 +735,9 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
         }
 
         if (parse_int(dec, __INT64_C(-9223372036854775807) - __INT64_C(1), __INT64_C(9223372036854775807), 10, &num,
-                      line, (struct lyd_node *)node)
+                      (struct lyd_node *)node)
                 || validate_length_range(2, 0, 0, ((long double)num)/(1 << type->info.dec64.dig), stype,
-                                         node->value_str, line, (struct lyd_node *)node)) {
+                                         node->value_str, (struct lyd_node *)node)) {
             return EXIT_FAILURE;
         }
         node->value.dec64 = num;
@@ -740,14 +746,14 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
     case LY_TYPE_EMPTY:
         /* just check that it is empty */
         if (node->value_str && node->value_str[0]) {
-            LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, node, node->value_str, node->schema->name);
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
             return EXIT_FAILURE;
         }
         break;
 
     case LY_TYPE_ENUM:
         if (!node->value_str) {
-            LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, node, "", node->schema->name);
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
             return EXIT_FAILURE;
         }
 
@@ -764,7 +770,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
         }
 
         if (!node->value.enm) {
-            LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, node, node->value_str, node->schema->name);
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
             return EXIT_FAILURE;
         }
 
@@ -772,11 +778,11 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
 
     case LY_TYPE_IDENT:
         if (!node->value_str) {
-            LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, node, "", node->schema->name);
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
             return EXIT_FAILURE;
         }
 
-        node->value.ident = resolve_identref(stype->info.ident.ref, node->value_str, line, (struct lyd_node *)node);
+        node->value.ident = resolve_identref(stype->info.ident.ref, node->value_str, (struct lyd_node *)node);
         if (!node->value.ident) {
             return EXIT_FAILURE;
         }
@@ -784,31 +790,18 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
 
     case LY_TYPE_INST:
         if (!node->value_str) {
-            LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, node, "", node->schema->name);
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
             return EXIT_FAILURE;
         }
 
         if (!resolve) {
             node->value_type |= LY_TYPE_INST_UNRES;
-        } else {
-            /* validity checking is performed later, right now the data tree
-             * is not complete, so many instanceids cannot be resolved
-             */
-            if (unres) {
-                if (unres_data_add(unres, (struct lyd_node *)node, UNRES_INSTID, line)) {
-                    return EXIT_FAILURE;
-                }
-            } else {
-                if (resolve_unres_data_item((struct lyd_node *)node, UNRES_INSTID, 0, line)) {
-                    return EXIT_FAILURE;
-                }
-            }
         }
         break;
 
     case LY_TYPE_LEAFREF:
         if (!node->value_str) {
-            LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, node, "", node->schema->name);
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
             return EXIT_FAILURE;
         }
 
@@ -818,29 +811,16 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
                 type = &type->info.lref.target->type;
             }
             node->value_type = type->base | LY_TYPE_LEAFREF_UNRES;
-        } else {
-            /* validity checking is performed later, right now the data tree
-             * is not complete, so many noderefs cannot be resolved
-             */
-            if (unres) {
-                if (unres_data_add(unres, (struct lyd_node *)node, UNRES_LEAFREF, line)) {
-                    return EXIT_FAILURE;
-                }
-            } else {
-                if (resolve_unres_data_item((struct lyd_node *)node, UNRES_LEAFREF, 0, line)) {
-                    return EXIT_FAILURE;
-                }
-            }
         }
         break;
 
     case LY_TYPE_STRING:
         if (validate_length_range(0, (node->value_str ? strlen(node->value_str) : 0), 0, 0, stype,
-                                  node->value_str, line, (struct lyd_node *)node)) {
+                                  node->value_str, (struct lyd_node *)node)) {
             return EXIT_FAILURE;
         }
 
-        if (validate_pattern(node->value_str, stype, line, (struct lyd_node *)node)) {
+        if (validate_pattern(node->value_str, stype, (struct lyd_node *)node)) {
             return EXIT_FAILURE;
         }
 
@@ -848,24 +828,24 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
         break;
 
     case LY_TYPE_INT8:
-        if (parse_int(node->value_str, __INT64_C(-128), __INT64_C(127), 0, &num, line, (struct lyd_node *)node)
-                || validate_length_range(1, 0, num, 0, stype, node->value_str, line, (struct lyd_node *)node)) {
+        if (parse_int(node->value_str, __INT64_C(-128), __INT64_C(127), 0, &num, (struct lyd_node *)node)
+                || validate_length_range(1, 0, num, 0, stype, node->value_str, (struct lyd_node *)node)) {
             return EXIT_FAILURE;
         }
         node->value.int8 = num;
         break;
 
     case LY_TYPE_INT16:
-        if (parse_int(node->value_str, __INT64_C(-32768), __INT64_C(32767), 0, &num, line, (struct lyd_node *)node)
-                || validate_length_range(1, 0, num, 0, stype, node->value_str, line, (struct lyd_node *)node)) {
+        if (parse_int(node->value_str, __INT64_C(-32768), __INT64_C(32767), 0, &num, (struct lyd_node *)node)
+                || validate_length_range(1, 0, num, 0, stype, node->value_str, (struct lyd_node *)node)) {
             return EXIT_FAILURE;
         }
         node->value.int16 = num;
         break;
 
     case LY_TYPE_INT32:
-        if (parse_int(node->value_str, __INT64_C(-2147483648), __INT64_C(2147483647), 0, &num, line, (struct lyd_node *)node)
-                || validate_length_range(1, 0, num, 0, stype, node->value_str, line, (struct lyd_node *)node)) {
+        if (parse_int(node->value_str, __INT64_C(-2147483648), __INT64_C(2147483647), 0, &num, (struct lyd_node *)node)
+                || validate_length_range(1, 0, num, 0, stype, node->value_str, (struct lyd_node *)node)) {
             return EXIT_FAILURE;
         }
         node->value.int32 = num;
@@ -873,40 +853,40 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
 
     case LY_TYPE_INT64:
         if (parse_int(node->value_str, __INT64_C(-9223372036854775807) - __INT64_C(1), __INT64_C(9223372036854775807),
-                      0, &num, line, (struct lyd_node *)node)
-                || validate_length_range(1, 0, num, 0, stype, node->value_str, line, (struct lyd_node *)node)) {
+                      0, &num, (struct lyd_node *)node)
+                || validate_length_range(1, 0, num, 0, stype, node->value_str, (struct lyd_node *)node)) {
             return EXIT_FAILURE;
         }
         node->value.int64 = num;
         break;
 
     case LY_TYPE_UINT8:
-        if (parse_uint(node->value_str, __UINT64_C(255), __UINT64_C(0), &unum, line, (struct lyd_node *)node)
-                || validate_length_range(0, unum, 0, 0, stype, node->value_str, line, (struct lyd_node *)node)) {
+        if (parse_uint(node->value_str, __UINT64_C(255), __UINT64_C(0), &unum, (struct lyd_node *)node)
+                || validate_length_range(0, unum, 0, 0, stype, node->value_str, (struct lyd_node *)node)) {
             return EXIT_FAILURE;
         }
         node->value.uint8 = unum;
         break;
 
     case LY_TYPE_UINT16:
-        if (parse_uint(node->value_str, __UINT64_C(65535), __UINT64_C(0), &unum, line, (struct lyd_node *)node)
-                || validate_length_range(0, unum, 0, 0, stype, node->value_str, line, (struct lyd_node *)node)) {
+        if (parse_uint(node->value_str, __UINT64_C(65535), __UINT64_C(0), &unum, (struct lyd_node *)node)
+                || validate_length_range(0, unum, 0, 0, stype, node->value_str, (struct lyd_node *)node)) {
             return EXIT_FAILURE;
         }
         node->value.uint16 = unum;
         break;
 
     case LY_TYPE_UINT32:
-        if (parse_uint(node->value_str, __UINT64_C(4294967295), __UINT64_C(0), &unum, line, (struct lyd_node *)node)
-                || validate_length_range(0, unum, 0, 0, stype, node->value_str, line, (struct lyd_node *)node)) {
+        if (parse_uint(node->value_str, __UINT64_C(4294967295), __UINT64_C(0), &unum, (struct lyd_node *)node)
+                || validate_length_range(0, unum, 0, 0, stype, node->value_str, (struct lyd_node *)node)) {
             return EXIT_FAILURE;
         }
         node->value.uint32 = unum;
         break;
 
     case LY_TYPE_UINT64:
-        if (parse_uint(node->value_str, __UINT64_C(18446744073709551615), __UINT64_C(0), &unum, line, (struct lyd_node *)node)
-                || validate_length_range(0, unum, 0, 0, stype, node->value_str, line, (struct lyd_node *)node)) {
+        if (parse_uint(node->value_str, __UINT64_C(18446744073709551615), __UINT64_C(0), &unum, (struct lyd_node *)node)
+                || validate_length_range(0, unum, 0, 0, stype, node->value_str, (struct lyd_node *)node)) {
             return EXIT_FAILURE;
         }
         node->value.uint64 = unum;
@@ -920,7 +900,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
 }
 
 int
-lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int resolve, struct unres_data *unres, int line)
+lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int resolve)
 {
     int found = 0;
     struct lys_type *type, *stype;
@@ -948,7 +928,7 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
                 }
             }
 
-            if (!lyp_parse_value_(leaf, type, resolve, unres, UINT_MAX)) {
+            if (!lyp_parse_value_(leaf, type, resolve)) {
                 /* success */
                 break;
             }
@@ -965,12 +945,12 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
 
         if (!type) {
             /* failure */
-            LOGVAL(LYE_INVAL, line, LY_VLOG_LYD, leaf, (leaf->value_str ? leaf->value_str : ""), leaf->schema->name);
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, (leaf->value_str ? leaf->value_str : ""), leaf->schema->name);
             return EXIT_FAILURE;
         }
     } else {
         memset(&leaf->value, 0, sizeof leaf->value);
-        if (lyp_parse_value_(leaf, stype, resolve, unres, line)) {
+        if (lyp_parse_value_(leaf, stype, resolve)) {
             ly_errno = LY_EVALID;
             return EXIT_FAILURE;
         }
@@ -1063,8 +1043,7 @@ dup_prefix_check(const char *prefix, struct lys_module *module)
 
 /* logs directly */
 int
-lyp_check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
-                     struct lys_module *module, struct lys_node *parent)
+lyp_check_identifier(const char *id, enum LY_IDENT type, struct lys_module *module, struct lys_node *parent)
 {
     int i;
     int size;
@@ -1075,13 +1054,13 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
 
     /* check id syntax */
     if (!(id[0] >= 'A' && id[0] <= 'Z') && !(id[0] >= 'a' && id[0] <= 'z') && id[0] != '_') {
-        LOGVAL(LYE_INID, line, 0, NULL, id, "invalid start character");
+        LOGVAL(LYE_INID, LY_VLOG_NONE, NULL, id, "invalid start character");
         return EXIT_FAILURE;
     }
     for (i = 1; id[i]; i++) {
         if (!(id[i] >= 'A' && id[i] <= 'Z') && !(id[i] >= 'a' && id[i] <= 'z')
                 && !(id[i] >= '0' && id[i] <= '9') && id[i] != '_' && id[i] != '-' && id[i] != '.') {
-            LOGVAL(LYE_INID, line, 0, NULL, id, "invalid character");
+            LOGVAL(LYE_INID, LY_VLOG_NONE, NULL, id, "invalid character");
             return EXIT_FAILURE;
         }
     }
@@ -1099,7 +1078,7 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
 
         LY_TREE_FOR(parent->child, node) {
             if (ly_strequal(node->name, id, 1)) {
-                LOGVAL(LYE_INID, line, 0, NULL, id, "name duplication");
+                LOGVAL(LYE_INID, LY_VLOG_NONE, NULL, id, "name duplication");
                 return EXIT_FAILURE;
             }
         }
@@ -1117,8 +1096,8 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
                 !strcmp(id, "leafref") || !strcmp(id, "string") ||
                 !strcmp(id, "uint8") || !strcmp(id, "uint16") ||
                 !strcmp(id, "uint32") || !strcmp(id, "uint64") || !strcmp(id, "union")) {
-            LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, id, "typedef");
-            LOGVAL(LYE_SPEC, 0, 0, NULL, "Typedef name duplicates a built-in type.");
+            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, id, "typedef");
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Typedef name duplicates a built-in type.");
             return EXIT_FAILURE;
         }
 
@@ -1142,21 +1121,21 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
             }
 
             if (dup_typedef_check(id, tpdf, size)) {
-                LOGVAL(LYE_DUPID, line, 0, NULL, "typedef", id);
+                LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "typedef", id);
                 return EXIT_FAILURE;
             }
         }
 
         /* check top-level names */
         if (dup_typedef_check(id, module->tpdf, module->tpdf_size)) {
-            LOGVAL(LYE_DUPID, line, 0, NULL, "typedef", id);
+            LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "typedef", id);
             return EXIT_FAILURE;
         }
 
         /* check submodule's top-level names */
         for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
             if (dup_typedef_check(id, module->inc[i].submodule->tpdf, module->inc[i].submodule->tpdf_size)) {
-                LOGVAL(LYE_DUPID, line, 0, NULL, "typedef", id);
+                LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "typedef", id);
                 return EXIT_FAILURE;
             }
         }
@@ -1167,14 +1146,14 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
 
         /* check the module itself */
         if (dup_prefix_check(id, module)) {
-            LOGVAL(LYE_DUPID, line, 0, NULL, "prefix", id);
+            LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "prefix", id);
             return EXIT_FAILURE;
         }
 
         /* and all its submodules */
         for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
             if (dup_prefix_check(id, (struct lys_module *)module->inc[i].submodule)) {
-                LOGVAL(LYE_DUPID, line, 0, NULL, "prefix", id);
+                LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "prefix", id);
                 return EXIT_FAILURE;
             }
         }
@@ -1185,14 +1164,14 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
         /* check feature name uniqness*/
         /* check features in the current module */
         if (dup_feature_check(id, module)) {
-            LOGVAL(LYE_DUPID, line, 0, NULL, "feature", id);
+            LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "feature", id);
             return EXIT_FAILURE;
         }
 
         /* and all its submodules */
         for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
             if (dup_feature_check(id, (struct lys_module *)module->inc[i].submodule)) {
-                LOGVAL(LYE_DUPID, line, 0, NULL, "feature", id);
+                LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "feature", id);
                 return EXIT_FAILURE;
             }
         }
@@ -1208,7 +1187,7 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, unsigned int line,
 
 /* logs directly */
 int
-lyp_check_date(const char *date, unsigned int line)
+lyp_check_date(const char *date)
 {
     int i;
 
@@ -1232,7 +1211,7 @@ lyp_check_date(const char *date, unsigned int line)
 
 error:
 
-    LOGVAL(LYE_INDATE, line, 0, NULL, date);
+    LOGVAL(LYE_INDATE, LY_VLOG_NONE, NULL, date);
     return EXIT_FAILURE;
 }
 
@@ -1262,7 +1241,7 @@ lyp_check_mandatory(struct lys_node *node)
 int
 lyp_check_status(uint8_t flags1, struct lys_module *mod1, const char *name1,
                  uint8_t flags2, struct lys_module *mod2, const char *name2,
-                 unsigned int line, const struct lys_node *node)
+                 const struct lys_node *node)
 {
     uint8_t flg1, flg2;
 
@@ -1270,7 +1249,7 @@ lyp_check_status(uint8_t flags1, struct lys_module *mod1, const char *name1,
     flg2 = (flags2 & LYS_STATUS_MASK) ? (flags2 & LYS_STATUS_MASK) : LYS_STATUS_CURR;
 
     if ((flg1 < flg2) && (mod1 == mod2)) {
-        LOGVAL(LYE_INSTATUS, line, node ? LY_VLOG_LYS : 0, node,
+        LOGVAL(LYE_INSTATUS, node ? LY_VLOG_LYS : LY_VLOG_NONE, node,
                flg1 == LYS_STATUS_CURR ? "current" : "deprecated", name1,
                flg2 == LYS_STATUS_OBSLT ? "obsolete" : "deprecated", name2);
         return EXIT_FAILURE;
@@ -1556,7 +1535,7 @@ error:
  *
  */
 unsigned int
-pututf8(char *dst, int32_t value, uint32_t line)
+pututf8(char *dst, int32_t value)
 {
     if (value < 0x80) {
         /* one byte character */
@@ -1586,8 +1565,8 @@ pututf8(char *dst, int32_t value, uint32_t line)
         return 4;
     } else {
         /* out of range */
-        LOGVAL(LYE_XML_INCHAR, line, LY_VLOG_NONE, NULL, value);
-        LOGVAL(LYE_SPEC, 0, 0, NULL, "Invalid UTF-8 value 0x%08x", value);
+        LOGVAL(LYE_XML_INCHAR, LY_VLOG_NONE, NULL, value);
+        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
         return 0;
     }
 }

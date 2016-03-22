@@ -443,7 +443,7 @@ cmd_data(const char *arg)
 
         if (!strcmp(xml->name, "data")) {
             fprintf(stdout, "Parsing %s as complete datastore.\n", argv[optind]);
-            options = options & ~LYD_OPT_TYPEMASK;
+            options = (options & ~LYD_OPT_TYPEMASK);
         } else if (!strcmp(xml->name, "config")) {
             fprintf(stdout, "Parsing %s as config data.\n", argv[optind]);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_CONFIG;
@@ -609,7 +609,7 @@ cmd_xpath(const char *arg)
         printf("\tEmpty\n");
     } else {
         for (i = 0; i < set->number; ++i) {
-            node = set->dset[i];
+            node = set->set.d[i];
             switch (node->schema->nodetype) {
             case LYS_CONTAINER:
                 printf("\tContainer ");
@@ -641,8 +641,8 @@ cmd_xpath(const char *arg)
                         if (j) {
                             printf(" ");
                         }
-                        printf("\"%s\": %s", keys->dset[j]->schema->name,
-                               ((struct lyd_node_leaf_list *)keys->dset[j])->value_str);
+                        printf("\"%s\": %s", keys->set.d[j]->schema->name,
+                               ((struct lyd_node_leaf_list *)keys->set.d[j])->value_str);
                     }
                     printf(")");
                 }

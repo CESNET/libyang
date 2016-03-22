@@ -72,6 +72,7 @@ extern "C" {
  * - @subpage howtocontext
  * - @subpage howtoschemas
  * - @subpage howtodata
+ * - @subpage howtoxpath
  * - @subpage howtoxml
  * - @subpage howtothreads
  * - @subpage howtologger
@@ -341,6 +342,40 @@ extern "C" {
  */
 
 /**
+ * @page howtoxpath XPath Addressing
+ *
+ * Internally, XPath evaluation is performed on \b when and \b must conditions in the schema. For that almost
+ * a full XPath 1.0 evaluator was implemented. This XPath implementation is available on data trees by calling
+ * lyd_get_node() except that only node sets are returned. This XPath conforms to the YANG specification
+ * (RFC 6020 section 6.4).
+ *
+ * A very small subset of this full XPath is recognized by lyd_new_path(). Basically, only a relative or absolute
+ * path can be specified to identify a new data node. However, lists must be identified by all their keys and created
+ * with all of them, so for those cases predicates are allowed. Predicates must be ordered the way the keys are ordered
+ * and all the keys must be specified. Every predicate includes a single key with its value. These paths are valid XPath
+ * expressions. Example:
+ *
+ * - /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision='']/submodules
+ *
+ * Almost the same XPath is accepted by ly_ctx_get_node(). The difference is that it is not used on data, but schema,
+ * which means there are no key values and only one node for one path. In effect, lists do not have to have any
+ * predicates. If they do, they do not need to have all the keys specified and if values are included, they are ignored.
+ * Nevertheless, any such expression is still a valid XPath, but can return more nodes if executed on a data tree.
+ * Examples (all returning the same node):
+ *
+ * - /ietf-yang-library:modules-state/module/submodules
+ * - /ietf-yang-library:modules-state/module[name]/submodules
+ * - /ietf-yang-library:modules-state/module[name][revision]/submodules
+ * - /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision]/submodules
+ *
+ * Functions List
+ * --------------
+ * - lyd_get_node()
+ * - lyd_new_path()
+ * - ly_ctx_get_node()
+ */
+
+/**
  * @page howtodataparsers Parsing Data
  *
  * Data parser allows to read instances from a specific format. libyang supports the following data formats:
@@ -382,6 +417,11 @@ extern "C" {
  * (or you have to make a valid change by multiple tree modifications) when the tree is being changed. Therefore,
  * there is lyd_validate() function supposed to be called to make sure that the current data tree is valid. Note,
  * that not calling this function after the performed changes can cause failure of various libyang functions later.
+ *
+ * Creating data is generally possible in two ways, they can be combined. You can add nodes one-by-one based on
+ * the node name and/or its parent (lyd_new(), lyd_new_anyxml(), lyd_new_leaf()) or address the nodes using
+ * a simple XPath addressing (lyd_new_path()). The latter enables to create a whole path of nodes and requires
+ * less information about the modified data. The path format specifics can be found [here](@ref howtoxpath).
  *
  * Also remember, that when you are creating/inserting a node, all the objects in that operation must belong to the
  * same context.
@@ -752,6 +792,16 @@ void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct 
  */
 
 /**
+ * @brief set array of ::ly_set
+ * It is kept in union to keep ::ly_set generic for data as well as schema trees
+ */
+union ly_set_set {
+    struct lys_node **s;         /**< array of pointers to a ::lys_node objects */
+    struct lyd_node **d;         /**< array of pointers to a ::lyd_node objects */
+    void **g;                    /**< dummy array for generic work */
+};
+
+/**
  * @brief Structure to hold a set of (not necessary somehow connected) ::lyd_node or ::lys_node objects.
  * Caller is supposed to not mix the type of objects added to the set and according to its knowledge about
  * the set content, it is supposed to access the set via the sset, dset or set members of the structure.
@@ -762,11 +812,7 @@ void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct 
 struct ly_set {
     unsigned int size;               /**< allocated size of the set array */
     unsigned int number;             /**< number of elements in (used size of) the set array */
-    union {
-        struct lys_node **sset;      /**< array of pointers to a ::lys_node objects */
-        struct lyd_node **dset;      /**< array of pointers to a ::lyd_node objects */
-        void **set;                   /**< dummy array for generic work */
-    };
+    union ly_set_set set;            /**< set array - union to keep ::ly_set generic for data as well as schema trees */
 };
 
 /**
@@ -946,6 +992,7 @@ typedef enum {
     LYVE_NOCOND,       /**< unsatisfied must/when condition (data) */
     LYVE_INORDER,      /**< invalid order of elements (data) */
     LYVE_INCOUNT,      /**< invalid number of elements (data) */
+    LYVE_INWHEN,       /**< irresolvable when condition (data) */
 
     LYVE_XPATH_INTOK,  /**< unexpected XPath token */
     LYVE_XPATH_EOF,    /**< unexpected end of an XPath expression */

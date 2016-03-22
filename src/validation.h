@@ -24,18 +24,17 @@
  *
  * Checks included:
  * - data node is not disabled via if-features
- * - data node is not disabled via an unsatisfied when condition
+ * - data node's when-stmt condition - if false, EXIT_FAILURE is returned and ly_vecode is set to LYE_NOCOND,
  * - data node is not status in case of edit-config content (options includes LYD_OPT_EDIT)
  * - data node is in correct place (options includes LYD_OPT_RPC or LYD_OPT_RPCREPLY), since elements order matters
  *   in RPCs and RPC replies.
  *
  * @param[in] node Data tree node to be checked.
  * @param[in] options Parser options, see @ref parseroptions.
- * @param[in] line Optional line of the input to be printed in case of an error.
- * @param[out] unres Structure to store unresolved items into. Can be NULL.
+ * @param[out] unres Structure to store unresolved items into. Can not be NULL.
  * @return EXIT_SUCCESS or EXIT_FAILURE with ly_errno set.
  */
-int lyv_data_context(const struct lyd_node *node, int options, unsigned int line, struct unres_data *unres);
+int lyv_data_context(const struct lyd_node *node, int options, struct unres_data *unres);
 
 /**
  * @brief Validate if the node's content is valid in the context it is placed.
@@ -45,13 +44,12 @@ int lyv_data_context(const struct lyd_node *node, int options, unsigned int line
  *
  * @param[in] node Data tree node to be checked.
  * @param[in] options Parser options, see @ref parseroptions.
- * @param[in] line Optional line of the input to be printed in case of an error.
- * @param[out] unres Structure to store unresolved items into. Can be NULL.
+ * @param[out] unres Structure to store unresolved items into. Cannot be NULL.
  * @return EXIT_SUCCESS or EXIT_FAILURE with set ly_errno. If EXIT_FAILURE is returned
  * but ly_errno is not set, the issue was internally resolved and caller is supposed to
  * unlink and free the node and continue;
  */
-int lyv_data_content(struct lyd_node *node, int options, unsigned int line, struct unres_data *unres);
+int lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres);
 
 /**
  * @brief Validate the node's value. Applies only to referrence values where the validity can change by
