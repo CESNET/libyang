@@ -303,7 +303,7 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
                 if (((struct lyd_node *)iter)->schema->nodetype == LYS_LIST) {
                     dlist = (struct lyd_node *)iter;
                     slist = (struct lys_node_list *)((struct lyd_node *)iter)->schema;
-                    for (i = 0; i < slist->keys_size; i++) {
+                    for (i = slist->keys_size - 1; i > -1; i--) {
                         LY_TREE_FOR(dlist->child, diter) {
                             if (diter->schema == (struct lys_node *)slist->keys[i]) {
                                 break;
@@ -315,7 +315,7 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
                             len = strlen(((struct lyd_node_leaf_list *)diter)->value_str);
                             (*index) -= len;
                             memcpy(&path[(*index)], ((struct lyd_node_leaf_list *)diter)->value_str, len);
-                            (*index) -=2;
+                            (*index) -= 2;
                             memcpy(&path[(*index)], "='", 2);
                             len = strlen(diter->schema->name);
                             (*index) -= len;
