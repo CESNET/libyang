@@ -1202,14 +1202,14 @@ lyxml_parse_path(struct ly_ctx *ctx, const char *filename, int options)
         LOGERR(LY_EINVAL, "%s: Invalid parameter, input file is not a regular file", __func__);
         goto error;
     }
-    addr = mmap(NULL, sb.st_size + 1, PROT_READ, MAP_PRIVATE, fd, 0);
+    addr = mmap(NULL, sb.st_size + 2, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         LOGERR(LY_EMEM,"Map file into memory failed (%s()).", __func__);
         goto error;
     }
 
     elem = lyxml_parse_mem(ctx, addr, options);
-    munmap(addr, sb.st_size);
+    munmap(addr, sb.st_size +2);
     close(fd);
 
     return elem;

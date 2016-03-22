@@ -33,6 +33,7 @@
 #include "parser.h"
 #include "resolve.h"
 #include "tree_internal.h"
+#include "parser_yang.h"
 
 int
 lyp_is_rpc(struct lys_node *node)
@@ -101,7 +102,7 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *rev
         LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
         return NULL;
     }
-    addr = mmap(NULL, sb.st_size + 1, PROT_READ, MAP_PRIVATE, fd, 0);
+    addr = mmap(NULL, sb.st_size + 2, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
         return NULL;
@@ -111,11 +112,13 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *rev
         module = yin_read_module(ctx, addr, revision, 0);
         break;
     case LYS_IN_YANG:
+        module = yang_read_module(ctx, addr, sb.st_size + 2, revision, 0);
+        break;
     default:
         /* TODO */
         break;
     }
-    munmap(addr, sb.st_size);
+    munmap(addr, sb.st_size + 2);
 
     return module;
 }

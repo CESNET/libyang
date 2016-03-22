@@ -1,4 +1,4 @@
-%option noyywrap yylineno
+%option noyywrap nounput noinput
 %{
 #include "parser_yang.h"
 #include "parser_yang_bis.h"
