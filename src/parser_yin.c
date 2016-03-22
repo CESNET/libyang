@@ -2392,7 +2392,7 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
 
     GETVAL(value, yin, "module");
 
-    return lyp_check_include(module, submodule, value, LOGLINE(yin), inc, unres);
+    return lyp_check_include(module, submodule, value, inc, unres);
 
 error:
 

@@ -93,9 +93,9 @@ int lyp_check_date(const char *date);
 int lyp_check_mandatory(struct lys_node *node);
 
 int lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, const char *value,
-                      int line, struct lys_include *inc, struct unres_schema *unres);
+                      struct lys_include *inc, struct unres_schema *unres);
 
-int lyp_check_import(struct lys_module *module, const char *value, int line, struct lys_import *imp);
+int lyp_check_import(struct lys_module *module, const char *value, struct lys_import *imp);
 
 /**
  * @brief Propagate imports and includes into the main module
@@ -105,7 +105,7 @@ int lyp_check_import(struct lys_module *module, const char *value, int line, str
  * @param line
  * @return 0 for success, 1 for failure
  */
-int lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodule, int line);
+int lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodule);
 
 /**
  * Store UTF-8 character specified as 4byte integer into the dst buffer.

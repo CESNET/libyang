@@ -1260,7 +1260,7 @@ lyp_check_status(uint8_t flags1, struct lys_module *mod1, const char *name1,
 
 int
 lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, const char *value,
-                  int line, struct lys_include *inc, struct unres_schema *unres)
+                  struct lys_include *inc, struct unres_schema *unres)
 {
     char *module_data;
     void (*module_data_free)(void *module_data) = NULL;
@@ -1317,8 +1317,8 @@ lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, co
     if (inc->submodule) {
         if (inc->rev[0]) {
             if (!inc->submodule->rev_size || !ly_strequal(inc->rev, inc->submodule->rev[0].date, 1)) {
-                LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, inc->rev[0], "revision");
-                LOGVAL(LYE_SPEC, 0, 0, NULL, "Multiple revisions of the same submodule included.");
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, inc->rev[0], "revision");
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Multiple revisions of the same submodule included.");
                 goto error;
             }
         }
@@ -1356,7 +1356,7 @@ lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, co
 
     /* check the result */
     if (!inc->submodule) {
-        LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, value, "include");
+        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "include");
         LOGERR(LY_EVALID, "Including \"%s\" module into \"%s\" failed.", value, module->name);
         goto error;
     }
@@ -1369,7 +1369,7 @@ error:
 }
 
 int
-lyp_check_import(struct lys_module *module, const char *value, int line, struct lys_import *imp)
+lyp_check_import(struct lys_module *module, const char *value, struct lys_import *imp)
 {
     int count;
 
@@ -1415,7 +1415,7 @@ lyp_check_import(struct lys_module *module, const char *value, int line, struct 
 
     /* check the result */
     if (!imp->module) {
-        LOGVAL(LYE_INARG, line, LY_VLOG_NONE, NULL, value, "import");
+        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "import");
         LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
         goto error;
     }
@@ -1429,7 +1429,7 @@ error:
 
 /* Propagate imports and includes into the main module */
 int
-lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodule, int line)
+lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodule)
 {
     int i, j, r;
     struct lys_include *aux_inc;
@@ -1442,7 +1442,7 @@ lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodu
                     !strcmp(submodule->imp[i].rev, module->imp[j].rev)) {
                 /* check prefix match */
                 if (!ly_strequal(submodule->imp[i].prefix, module->imp[j].prefix, 1)) {
-                    LOGVAL(LYE_INID, line, LY_VLOG_NONE, NULL, submodule->imp[i].prefix,
+                    LOGVAL(LYE_INID, LY_VLOG_NONE, NULL, submodule->imp[i].prefix,
                            "non-matching prefixes of imported module in main module and submodule");
                     goto error;
                 }
@@ -1471,7 +1471,7 @@ lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodu
                 /* new import */
                 /* check prefix uniqueness */
                 if (dup_prefix_check(submodule->imp[i].prefix, module)) {
-                    LOGVAL(LYE_DUPID, line, LY_VLOG_NONE, NULL, "prefix", submodule->imp[i].prefix);
+                    LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "prefix", submodule->imp[i].prefix);
                     goto error;
                 }
                 memcpy(&module->imp[module->imp_size + r], &submodule->imp[i], sizeof *submodule->imp);
