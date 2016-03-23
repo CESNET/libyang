@@ -473,13 +473,13 @@ struct lyd_node *lyd_output_new_anyxml(const struct lys_node *schema, const char
  * Various options to change lyd_new_path() behavior.
  *
  * Default behavior:
- * - only the last node in the path is to be created. If any parents do not exist, returns an error.
  * - if the target node already exists, an error is returned.
+ * - the whole path to the target node is created (with any missing parents) if necessary.
  * @{
  */
 
-#define LYD_PATH_OPT_UPDATE    0x01 /**< If the target node exists and is a leaf, it is updated with the new value. */
-#define LYD_PATH_OPT_RECURSIVE 0x02 /**< If any parents of the target node do not exist, create them, too. */
+#define LYD_PATH_OPT_UPDATE   0x01 /**< If the target node exists and is a leaf, it is updated with the new value. */
+#define LYD_PATH_OPT_NOPARENT 0x02 /**< If any parents of the target node exist, return an error. */
 
 /** @} pathoptions */
 
@@ -488,7 +488,7 @@ struct lyd_node *lyd_output_new_anyxml(const struct lys_node *schema, const char
  *
  * @param[in] data_tree Existing data tree to add to/modify. Can be NULL.
  * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
- * @param[in] path Simple schema XPath of the new node. It can contain only simple node addressing with optional
+ * @param[in] path Simple data XPath of the new node. It can contain only simple node addressing with optional
  * module names as prefixes. List nodes must have predicates, one for each list key in the correct order and
  * with it's value as well, see @ref howtoxpath.
  * @param[in] value Value of the new leaf/lealf-list. If creating other nodes of other types, set to NULL.
