@@ -559,7 +559,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         }
         if (parsed) {
             assert(parent);
-            /* if we parsed something we have a relative path for sure, otherwise we don't know */
+            /* if we parsed something we have a relative path now for sure, otherwise we don't know */
             is_relative = 1;
 
             path += parsed;
@@ -578,10 +578,6 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
                 }
                 return parent;
             }
-
-            sparent = parent->schema;
-            module = lys_node_module(sparent);
-            prev_mod = module;
         }
     }
 
@@ -592,13 +588,19 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
 
     path += r;
 
-    /* we are starting from scratch, absolute path */
-    if (!parent) {
-        if (is_relative) {
-            /* we need an absolute path, so we say we could not find this node as a child of data_tree */
-            LOGVAL(LYE_PATH_INNODE, LY_VLOG_NONE, NULL, mod_name ? mod_name : name);
-            return NULL;
-        } else if (!mod_name) {
+    /* prepare everything for the schema search loop */
+    if (is_relative) {
+        /* we are relative to data_tree or parent if some part of the path already exists */
+        if (!parent) {
+            parent = data_tree;
+        }
+        sparent = parent->schema;
+        module = lys_node_module(sparent);
+        prev_mod = module;
+    } else {
+        /* we are starting from scratch, absolute path */
+        assert(!parent);
+        if (!mod_name) {
             LOGVAL(LYE_PATH_MISSMOD, LY_VLOG_NONE, NULL, name);
             return NULL;
         } else if (mod_name_len > LY_MODULE_NAME_MAX_LEN) {
