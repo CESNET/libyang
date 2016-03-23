@@ -593,8 +593,12 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
     path += r;
 
     /* we are starting from scratch, absolute path */
-    if (!data_tree) {
-        if (!mod_name) {
+    if (!parent) {
+        if (is_relative) {
+            /* we need an absolute path, so we say we could not find this node as a child of data_tree */
+            LOGVAL(LYE_PATH_INNODE, LY_VLOG_NONE, NULL, mod_name ? mod_name : name);
+            return NULL;
+        } else if (!mod_name) {
             LOGVAL(LYE_PATH_MISSMOD, LY_VLOG_NONE, NULL, name);
             return NULL;
         } else if (mod_name_len > LY_MODULE_NAME_MAX_LEN) {
@@ -684,8 +688,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         /* special case when we are creating a sibling of a top-level data node */
         if (!is_relative) {
             if (data_tree) {
-                assert(data_tree == parent);
-                if (lyd_insert_before(data_tree, node)) {
+                if (lyd_insert_after(data_tree, node)) {
                     lyd_free(ret);
                     return NULL;
                 }
