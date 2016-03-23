@@ -2336,6 +2336,7 @@ lyd_wd_add_empty(const struct lys_module *wdmod, struct lyd_node *parent, struct
         case LYS_CHOICE:
             if (((struct lys_node_choice *)siter)->dflt) {
                 next = ((struct lys_node_choice *)siter)->dflt;
+                goto nextsibling;
             }
             break;
         case LYS_USES:
@@ -2384,7 +2385,7 @@ nextsibling:
                 break;
             }
             /* parent was already processed, so go to its sibling */
-            if (siter->parent->nodetype != LYS_CHOICE) {
+            if (siter->parent && lys_parent(siter)->nodetype != LYS_CHOICE) {
                 next = siter->next;
             }
         }
@@ -2489,6 +2490,11 @@ lyd_wd_add_inner(const struct lys_module *wdmod, struct lyd_node *subroot, struc
         default:
             /* do nothing */
             break;
+        }
+
+        if (siter->parent && lys_parent(siter)->nodetype == LYS_CHOICE) {
+            /* only the default case is processed */
+            return EXIT_SUCCESS;
         }
     }
 
@@ -2619,7 +2625,6 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
                 }
                 break;
             case LYS_USES:
-            case LYS_CASE:
                 /* go into */
                 iter = lyd_wd_add_empty(wdmod, NULL, siter->child, unres, options);
                 if (ly_errno != LY_SUCCESS) {
