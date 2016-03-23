@@ -618,6 +618,15 @@ int lyd_validate(struct lyd_node **node, int options, ...);
 int lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options);
 
 /**
+ * @brief Remove all default nodes, respectively all nodes with attribute ncwd:default="true" added by
+ * #LYD_WD_ALL_TAG or #LYD_WD_IMPL_TAG in lyd_wd_add(), lyd_validate() or lyd_parse_*() functions.
+ *
+ * @param[in] root Data tree root. The data tree can be modified so the root can be changed or completely removed.
+ * @return EXIT_SUCCESS or EXIT_FAILURE
+ */
+int lyd_wd_cleanup(struct lyd_node **root);
+
+/**
  * @brief Unlink the specified data subtree. All referenced namespaces are copied.
  *
  * Note, that the node's connection with the schema tree is kept. Therefore, in case of

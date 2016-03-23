@@ -1962,6 +1962,92 @@ ly_set_rm(struct ly_set *set, void *node)
     return ly_set_rm_index(set, i);
 }
 
+API int
+lyd_wd_cleanup(struct lyd_node **root)
+{
+    struct lyd_node *wr, *next1, *next2, *iter, *to_free = NULL;
+    struct lyd_attr *attr;
+    const struct lys_module *wdmod;
+
+    if (!(*root)) {
+        /* nothing to do */
+        return EXIT_SUCCESS;
+    }
+
+    wdmod = ly_ctx_get_module((*root)->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
+    if (!wdmod) {
+        /* nothing to do */
+        return EXIT_SUCCESS;
+    }
+
+    LY_TREE_FOR_SAFE(*root, next1, wr) {
+        LY_TREE_DFS_BEGIN(wr, next2, iter) {
+            if (to_free) {
+                lyd_free(to_free);
+                to_free = NULL;
+            }
+
+            /* if we have leaf with attribute ncwd:default="true" */
+            if (iter->schema->nodetype == LYS_LEAF) {
+                for (attr = iter->attr; attr; attr = attr->next) {
+                    if (attr->module == wdmod && ly_strequal(attr->name, "default", 0) &&
+                            ly_strequal(attr->value, "true", 0)) {
+                        /* safe deferred removal */
+                        to_free = iter;
+                        next2 = NULL;
+                        goto nextsiblings;
+                    }
+                }
+            }
+
+            /* where go next? - modified LY_TREE_DFS_END */
+            if (iter->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                next2 = NULL;
+            } else {
+                next2 = iter->child;
+            }
+nextsiblings:
+            if (!next2) {
+                /* no children */
+                if (iter == wr) {
+                    /* we are done */
+                    break;
+                }
+                /* try siblings */
+                next2 = iter->next;
+            }
+            while (!next2) {
+                iter = iter->parent;
+
+                /* if we have empty non-presence container, we can remove it */
+                if (to_free && !to_free->next && to_free->prev == to_free && iter->schema->nodetype == LYS_CONTAINER
+                        && !((struct lys_node_container *)iter->schema)->presence) {
+                    lyd_free(to_free);
+                    to_free = iter;
+                }
+
+                /* parent is already processed, go to its sibling */
+                if (iter->parent == wr->parent) {
+                    /* we are done */
+                    break;
+                }
+                next2 = iter->next;
+
+            } /* end of modified LY_TREE_DFS_END */
+        }
+
+        if (to_free) {
+            if ((*root) == to_free) {
+                (*root) = next1;
+            }
+            lyd_free(to_free);
+            to_free = NULL;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
 static int
 lyd_wd_trim(struct lyd_node **root, const struct lys_module *wdmod, int options)
 {
