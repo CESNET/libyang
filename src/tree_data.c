@@ -2079,6 +2079,15 @@ lyd_wd_cleanup(struct lyd_node **root)
 {
     const struct lys_module *wdmod;
 
+    if (!root) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+    if (!(*root)) {
+        /* nothing to do */
+        return EXIT_SUCCESS;
+    }
+
     wdmod = ly_ctx_get_module((*root)->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
     return lyd_wd_cleanup_mod(root, wdmod);
 }
