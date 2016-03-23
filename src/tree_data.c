@@ -2446,6 +2446,7 @@ lyd_wd_add_inner(const struct lys_module *wdmod, struct lyd_node *subroot, struc
                 /* container does not exists, go recursively to add default nodes in its subtree */
                 if (((struct lys_node_container *)siter)->presence) {
                     /* but only if it is not presence container */
+                    ly_set_free(nodeset);
                     continue;
                 }
                 lyd_wd_add_empty(wdmod, subroot, siter, unres, options);
