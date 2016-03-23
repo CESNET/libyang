@@ -55,7 +55,7 @@ else()
 endif()
 
 BISON_TARGET(YangBison src/yang.y ${PROJECT_SOURCE_DIR}/src/parser_yang_bis.c COMPILE_FLAGS "-Wall --defines=${PROJECT_SOURCE_DIR}/src/parser_yang_bis.h")
-FLEX_TARGET(YangFlex src/yang.l   ${PROJECT_SOURCE_DIR}/src/parser_yang_lex.c COMPILE_FLAGS "-Cr --header-file=${PROJECT_SOURCE_DIR}/src/parser_yang_lex.h")
+FLEX_TARGET(YangFlex src/yang.l   ${PROJECT_SOURCE_DIR}/src/parser_yang_lex.c COMPILE_FLAGS "--header-file=${PROJECT_SOURCE_DIR}/src/parser_yang_lex.h")
 ADD_FLEX_BISON_DEPENDENCY(YangFlex YangBison)
 
 set(libsrc

@@ -33,13 +33,15 @@
 
 extern int yylineno;
 extern int yyleng;
-void yyerror();   //parameter is in directive parse-param
+void yyerror();
 int yylex(void);
 extern char *yytext;
 char *s, *tmp_s;
 char rev[LY_REV_SIZE];
 struct lys_module *trg;
+/* temporary pointer for the check extension nacm */
 struct lys_node *data_node;
+/* pointer on the current parsed element*/
 void *actual;
 int config_inherit;
 int actual_type;
@@ -59,17 +61,11 @@ int64_t cnt_val;
     struct lys_node_container *container;
     struct lys_node_anyxml *anyxml;
     struct type_choice choice;
+    struct type_node node;
     struct lys_node_case *cs;
     struct lys_node_grp *grouping;
-    struct type_leaf leaf;
-    struct type_leaflist leaflist;
-    struct type_list list;
-    struct type_tpdf tpdf;
     struct type_uses uses;
     struct lys_refine *refine;
-    struct type_augment augment;
-    struct type_rpc rpc;
-    struct type_inout inout;
     struct lys_node_notif *notif;
     struct type_deviation *deviation;
   } nodes;
@@ -815,18 +811,18 @@ base_stmt: BASE_KEYWORD sep identifier_ref_arg_str stmtend;
 typedef_stmt: TYPEDEF_KEYWORD sep typedef_arg_str
               '{' stmtsep
                   type_opt_stmt { if (read_all) {
-                                    if (!($6.tpdf.flag & LYS_TYPE_DEF)) {
+                                    if (!($6.node.flag & LYS_TYPE_DEF)) {
                                       LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "type", "typedef");
                                       YYERROR;
                                     }
-                                    if (unres_schema_add_node(trg, unres, &$6.tpdf.ptr_tpdf->type, UNRES_TYPE_DER,(struct lys_node *) $3)) {
+                                    if (unres_schema_add_node(trg, unres, &$6.node.ptr_tpdf->type, UNRES_TYPE_DER,(struct lys_node *) $3)) {
                                       YYERROR;
                                     }
                                     actual = $3;
 
                                     /* check default value */
-                                    if ($6.tpdf.ptr_tpdf->dflt) {
-                                      if (unres_schema_add_str(trg, unres, &$6.tpdf.ptr_tpdf->type, UNRES_TYPE_DFLT, $6.tpdf.ptr_tpdf->dflt) == -1) {
+                                    if ($6.node.ptr_tpdf->dflt) {
+                                      if (unres_schema_add_str(trg, unres, &$6.node.ptr_tpdf->type, UNRES_TYPE_DFLT, $6.node.ptr_tpdf->dflt) == -1) {
                                         YYERROR;
                                       }
                                     }
@@ -851,38 +847,38 @@ type_stmt: TYPE_KEYWORD sep identifier_ref_arg_str { if (read_all && !(actual = 
                                                    }
            type_end;
 
-type_opt_stmt: %empty { $$.tpdf.ptr_tpdf = actual; }
-  |  type_opt_stmt { if (read_all && ($1.tpdf.flag & LYS_TYPE_DEF)) {
-                       LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, $1.tpdf.ptr_tpdf, "type", "typedef");
+type_opt_stmt: %empty { $$.node.ptr_tpdf = actual; }
+  |  type_opt_stmt { if (read_all && ($1.node.flag & LYS_TYPE_DEF)) {
+                       LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, $1.node.ptr_tpdf, "type", "typedef");
                        YYERROR;
                      }
                    }
      type_stmt stmtsep { if (read_all) {
-                   actual = $1.tpdf.ptr_tpdf;
+                   actual = $1.node.ptr_tpdf;
                    actual_type = TYPEDEF_KEYWORD;
-                   $1.tpdf.flag |= LYS_TYPE_DEF;
+                   $1.node.flag |= LYS_TYPE_DEF;
                    $$ = $1;
                  }
                }
-  |  type_opt_stmt units_stmt { if (read_all && yang_read_units(trg, $1.tpdf.ptr_tpdf, s, TYPEDEF_KEYWORD)) {YYERROR;} s = NULL; }
-  |  type_opt_stmt default_stmt { if (read_all && yang_read_default(trg, $1.tpdf.ptr_tpdf, s, TYPEDEF_KEYWORD)) {
+  |  type_opt_stmt units_stmt { if (read_all && yang_read_units(trg, $1.node.ptr_tpdf, s, TYPEDEF_KEYWORD)) {YYERROR;} s = NULL; }
+  |  type_opt_stmt default_stmt { if (read_all && yang_read_default(trg, $1.node.ptr_tpdf, s, TYPEDEF_KEYWORD)) {
                                     YYERROR;
                                   }
                                   s = NULL;
                                   $$ = $1;
                                 }
   |  type_opt_stmt status_stmt { if (read_all) {
-                                   if (yang_check_flags(&$1.tpdf.ptr_tpdf->flags, LYS_STATUS_MASK, "status", "typedef", $2)) {
+                                   if (yang_check_flags(&$1.node.ptr_tpdf->flags, LYS_STATUS_MASK, "status", "typedef", $2)) {
                                      YYERROR;
                                    }
                                  }
                                }
-  |  type_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.tpdf.ptr_tpdf, s, "typedef")) {
+  |  type_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.node.ptr_tpdf, s, "typedef")) {
                                         YYERROR;
                                       }
                                       s = NULL;
                                     }
-  |  type_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.tpdf.ptr_tpdf, s, "typedef")) {
+  |  type_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.node.ptr_tpdf, s, "typedef")) {
                                       YYERROR;
                                     }
                                     s = NULL;
@@ -1523,136 +1519,144 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                                }
            '{' stmtsep
                leaf_opt_stmt  { if (read_all) {
-                                  if (!($7.leaf.flag & LYS_TYPE_DEF)) {
-                                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, $7.leaf.ptr_leaf, "type statement missing.");
+                                  if (!($7.node.flag & LYS_TYPE_DEF)) {
+                                    LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaf, "type", "leaf");
                                     YYERROR;
                                   } else {
-                                      if (unres_schema_add_node(trg, unres, &$7.leaf.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *) $7.leaf.ptr_leaf)) {
-                                        $7.leaf.ptr_leaf->type.der = NULL;
+                                      if (unres_schema_add_node(trg, unres, &$7.node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *) $7.node.ptr_leaf)) {
+                                        $7.node.ptr_leaf->type.der = NULL;
                                         YYERROR;
                                       }
                                   }
-                                  if ($7.leaf.ptr_leaf->dflt && unres_schema_add_str(trg, unres, &$7.leaf.ptr_leaf->type, UNRES_TYPE_DFLT, $7.leaf.ptr_leaf->dflt) == -1) {
-                                    YYERROR;
+                                  if ($7.node.ptr_leaf->dflt) {
+                                    if ($7.node.ptr_leaf->flags & LYS_MAND_TRUE) {
+                                      /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
+                                      LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaf, "mandatory", "list");
+                                      LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
+                                      YYERROR;
+                                    }
+                                    if (unres_schema_add_str(trg, unres, &$7.node.ptr_leaf->type, UNRES_TYPE_DFLT, $7.node.ptr_leaf->dflt) == -1) {
+                                      YYERROR;
+                                    }
                                   }
                                 }
                               }
-           '}' ;
+             '}' ;
 
-leaf_opt_stmt: %empty { if (read_all) {
-                          $$.leaf.ptr_leaf = actual;
-                          $$.leaf.flag = 0;
-                          actual_type = LEAF_KEYWORD;
-                          if (size_arrays->node[size_arrays->next].if_features) {
-                            $$.leaf.ptr_leaf->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.leaf.ptr_leaf->features);
-                            if (!$$.leaf.ptr_leaf->features) {
+  leaf_opt_stmt: %empty { if (read_all) {
+                            $$.node.ptr_leaf = actual;
+                            $$.node.flag = 0;
+                            actual_type = LEAF_KEYWORD;
+                            if (size_arrays->node[size_arrays->next].if_features) {
+                              $$.node.ptr_leaf->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_leaf->features);
+                              if (!$$.node.ptr_leaf->features) {
+                                LOGMEM;
+                                YYERROR;
+                              }
+                            }
+                            if (size_arrays->node[size_arrays->next].must) {
+                              $$.node.ptr_leaf->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.node.ptr_leaf->must);
+                              if (!$$.node.ptr_leaf->must) {
+                                LOGMEM;
+                                YYERROR;
+                              }
+                            }
+                            store_flags((struct lys_node *)$$.node.ptr_leaf, size_arrays->node[size_arrays->next].flags, config_inherit);
+                            size_arrays->next++;
+                          } else {
+                            $$.index = size_arrays->size;
+                            if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
                               LOGMEM;
                               YYERROR;
                             }
-                          }
-                          if (size_arrays->node[size_arrays->next].must) {
-                            $$.leaf.ptr_leaf->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.leaf.ptr_leaf->must);
-                            if (!$$.leaf.ptr_leaf->must) {
-                              LOGMEM;
-                              YYERROR;
-                            }
-                          }
-                          store_flags((struct lys_node *)$$.leaf.ptr_leaf, size_arrays->node[size_arrays->next].flags, config_inherit);
-                          size_arrays->next++;
-                        } else {
-                          $$.index = size_arrays->size;
-                          if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                            LOGMEM;
-                            YYERROR;
                           }
                         }
-                      }
-  |  leaf_opt_stmt when_stmt { actual = $1.leaf.ptr_leaf; actual_type = LEAF_KEYWORD; }
-     stmtsep
-  |  leaf_opt_stmt if_feature_stmt { if (read_all) {
-                                       if (yang_read_if_feature(trg, $1.leaf.ptr_leaf, s, unres, LEAF_KEYWORD)) {YYERROR;}
-                                       s=NULL;
-                                     } else {
-                                       size_arrays->node[$1.index].if_features++;
+    |  leaf_opt_stmt when_stmt { actual = $1.node.ptr_leaf; actual_type = LEAF_KEYWORD; }
+       stmtsep
+    |  leaf_opt_stmt if_feature_stmt { if (read_all) {
+                                         if (yang_read_if_feature(trg, $1.node.ptr_leaf, s, unres, LEAF_KEYWORD)) {YYERROR;}
+                                         s=NULL;
+                                       } else {
+                                         size_arrays->node[$1.index].if_features++;
+                                       }
                                      }
-                                   }
-  |  leaf_opt_stmt { if (read_all && ($1.leaf.flag & LYS_TYPE_DEF)) {
-                       LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.leaf.ptr_leaf, "type", "leaf");
-                       YYERROR;
+    |  leaf_opt_stmt { if (read_all && ($1.node.flag & LYS_TYPE_DEF)) {
+                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_leaf, "type", "leaf");
+                         YYERROR;
+                       }
                      }
+       type_stmt { if (read_all) {
+                     actual = $1.node.ptr_leaf;
+                     actual_type = LEAF_KEYWORD;
+                     $1.node.flag |= LYS_TYPE_DEF;
                    }
-     type_stmt { if (read_all) {
-                   actual = $1.leaf.ptr_leaf;
-                   actual_type = LEAF_KEYWORD;
-                   $1.leaf.flag |= LYS_TYPE_DEF;
                  }
-               }
-     stmtsep { $$ = $1;}
-  |  leaf_opt_stmt units_stmt { if (read_all && yang_read_units(trg, $1.leaf.ptr_leaf, s, LEAF_KEYWORD)) {YYERROR;} s = NULL; }
-  |  leaf_opt_stmt must_stmt { if (read_all) {
-                                 actual = $1.leaf.ptr_leaf;
-                                 actual_type = LEAF_KEYWORD;
-                               } else {
-                                 size_arrays->node[$1.index].must++;
+       stmtsep { $$ = $1;}
+    |  leaf_opt_stmt units_stmt { if (read_all && yang_read_units(trg, $1.node.ptr_leaf, s, LEAF_KEYWORD)) {YYERROR;} s = NULL; }
+    |  leaf_opt_stmt must_stmt { if (read_all) {
+                                   actual = $1.node.ptr_leaf;
+                                   actual_type = LEAF_KEYWORD;
+                                 } else {
+                                   size_arrays->node[$1.index].must++;
+                                 }
                                }
-                             }
-     stmtsep
-  |  leaf_opt_stmt default_stmt { if (read_all && yang_read_default(trg, $1.leaf.ptr_leaf, s, LEAF_KEYWORD)) {YYERROR;}
-                                  s = NULL;
-                                }
-  |  leaf_opt_stmt config_read_stmt { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "leaf", $2)) {
+       stmtsep
+    |  leaf_opt_stmt default_stmt { if (read_all && yang_read_default(trg, $1.node.ptr_leaf, s, LEAF_KEYWORD)) {YYERROR;}
+                                    s = NULL;
+                                  }
+    |  leaf_opt_stmt config_read_stmt { if (!read_all) {
+                                               if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "leaf", $2)) {
+                                                 YYERROR;
+                                               }
+                                             }
+                                           }
+    |  leaf_opt_stmt mandatory_read_stmt { if (!read_all) {
+                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_MAND_MASK, "mandatory", "leaf", $2)) {
                                                YYERROR;
                                              }
                                            }
                                          }
-  |  leaf_opt_stmt mandatory_read_stmt { if (!read_all) {
-                                           if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_MAND_MASK, "mandatory", "leaf", $2)) {
-                                             YYERROR;
-                                           }
-                                         }
-                                       }
-  |  leaf_opt_stmt status_read_stmt { if (!read_all) {
-                                        if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "leaf", $2)) {
-                                          YYERROR;
+    |  leaf_opt_stmt status_read_stmt { if (!read_all) {
+                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "leaf", $2)) {
+                                            YYERROR;
+                                          }
                                         }
                                       }
-                                    }
-  |  leaf_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.leaf.ptr_leaf, s, "leaf")) {
+    |  leaf_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.node.ptr_leaf, s, "leaf")) {
+                                          YYERROR;
+                                        }
+                                        s = NULL;
+                                      }
+    |  leaf_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.node.ptr_leaf, s, "leaf")) {
                                         YYERROR;
                                       }
                                       s = NULL;
                                     }
-  |  leaf_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.leaf.ptr_leaf, s, "leaf")) {
-                                      YYERROR;
-                                    }
-                                    s = NULL;
-                                  }
 
-leaf_list_stmt: LEAF_LIST_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                             if (!(actual = yang_read_node(trg,actual,s,LYS_LEAFLIST,sizeof(struct lys_node_leaflist)))) {YYERROR;}
-                                                             data_node = actual;
-                                                             s=NULL;
+  leaf_list_stmt: LEAF_LIST_KEYWORD sep identifier_arg_str { if (read_all) {
+                                                               if (!(actual = yang_read_node(trg,actual,s,LYS_LEAFLIST,sizeof(struct lys_node_leaflist)))) {YYERROR;}
+                                                               data_node = actual;
+                                                               s=NULL;
+                                                             }
                                                            }
-                                                         }
-                '{' stmtsep
-                    leaf_list_opt_stmt { if (read_all) {
-                                           if ($7.leaflist.ptr_leaflist->flags & LYS_CONFIG_R) {
-                                             /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
-                                              * ignore oredering MASK - 0x7F
-                                              */
-                                             $7.leaflist.ptr_leaflist->flags &= 0x7F;
+                  '{' stmtsep
+                      leaf_list_opt_stmt { if (read_all) {
+                                             if ($7.node.ptr_leaflist->flags & LYS_CONFIG_R) {
+                                               /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
+                                                * ignore oredering MASK - 0x7F
+                                                */
+                                             $7.node.ptr_leaflist->flags &= 0x7F;
                                            }
-                                           if ($7.leaflist.ptr_leaflist->max && $7.leaflist.ptr_leaflist->min > $7.leaflist.ptr_leaflist->max) {
-                                             LOGVAL(LYE_SPEC, LY_VLOG_LYS, $7.leaflist.ptr_leaflist, "\"min-elements\" is bigger than \"max-elements\".");
+                                           if ($7.node.ptr_leaflist->max && $7.node.ptr_leaflist->min > $7.node.ptr_leaflist->max) {
+                                             LOGVAL(LYE_SPEC, LY_VLOG_LYS, $7.node.ptr_leaflist, "\"min-elements\" is bigger than \"max-elements\".");
                                              YYERROR;
                                            }
-                                           if (!($7.leaflist.flag & LYS_TYPE_DEF)) {
-                                             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.leaflist.ptr_leaflist, "type", "leaf-list");
+                                           if (!($7.node.flag & LYS_TYPE_DEF)) {
+                                             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaflist, "type", "leaf-list");
                                              YYERROR;
                                            } else {
-                                             if (unres_schema_add_node(trg, unres, &$7.leaflist.ptr_leaflist->type, UNRES_TYPE_DER,
-                                                                      (struct lys_node *) $7.leaflist.ptr_leaflist)) {
+                                             if (unres_schema_add_node(trg, unres, &$7.node.ptr_leaflist->type, UNRES_TYPE_DER,
+                                                                      (struct lys_node *) $7.node.ptr_leaflist)) {
                                                YYERROR;
                                              }
                                            }
@@ -1661,24 +1665,24 @@ leaf_list_stmt: LEAF_LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                 '}' ;
 
 leaf_list_opt_stmt: %empty { if (read_all) {
-                               $$.leaflist.ptr_leaflist = actual;
-                               $$.leaflist.flag = 0;
+                               $$.node.ptr_leaflist = actual;
+                               $$.node.flag = 0;
                                actual_type = LEAF_LIST_KEYWORD;
                                if (size_arrays->node[size_arrays->next].if_features) {
-                                 $$.leaflist.ptr_leaflist->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.leaflist.ptr_leaflist->features);
-                                 if (!$$.leaflist.ptr_leaflist->features) {
+                                 $$.node.ptr_leaflist->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_leaflist->features);
+                                 if (!$$.node.ptr_leaflist->features) {
                                    LOGMEM;
                                    YYERROR;
                                  }
                                }
                                if (size_arrays->node[size_arrays->next].must) {
-                                 $$.leaflist.ptr_leaflist->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.leaflist.ptr_leaflist->must);
-                                 if (!$$.leaflist.ptr_leaflist->must) {
+                                 $$.node.ptr_leaflist->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.node.ptr_leaflist->must);
+                                 if (!$$.node.ptr_leaflist->must) {
                                    LOGMEM;
                                    YYERROR;
                                  }
                                }
-                               store_flags((struct lys_node *)$$.leaflist.ptr_leaflist, size_arrays->node[size_arrays->next].flags, config_inherit);
+                               store_flags((struct lys_node *)$$.node.ptr_leaflist, size_arrays->node[size_arrays->next].flags, config_inherit);
                                size_arrays->next++;
                              } else {
                                $$.index = size_arrays->size;
@@ -1688,30 +1692,30 @@ leaf_list_opt_stmt: %empty { if (read_all) {
                                }
                              }
                            }
-  |  leaf_list_opt_stmt when_stmt { actual = $1.leaflist.ptr_leaflist; actual_type = LEAF_LIST_KEYWORD; }
+  |  leaf_list_opt_stmt when_stmt { actual = $1.node.ptr_leaflist; actual_type = LEAF_LIST_KEYWORD; }
      stmtsep
   |  leaf_list_opt_stmt if_feature_stmt { if (read_all) {
-                                            if (yang_read_if_feature(trg, $1.leaflist.ptr_leaflist, s, unres, LEAF_LIST_KEYWORD)) {YYERROR;}
+                                            if (yang_read_if_feature(trg, $1.node.ptr_leaflist, s, unres, LEAF_LIST_KEYWORD)) {YYERROR;}
                                             s=NULL;
                                           } else {
                                             size_arrays->node[$1.index].if_features++;
                                           }
                                         }
-  |  leaf_list_opt_stmt { if (read_all && ($1.leaflist.flag & LYS_TYPE_DEF)) {
-                            LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.leaflist.ptr_leaflist, "type", "leaf-list");
+  |  leaf_list_opt_stmt { if (read_all && ($1.node.flag & LYS_TYPE_DEF)) {
+                            LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_leaflist, "type", "leaf-list");
                             YYERROR;
                           }
                         }
      type_stmt { if (read_all) {
-                   actual = $1.leaflist.ptr_leaflist;
+                   actual = $1.node.ptr_leaflist;
                    actual_type = LEAF_LIST_KEYWORD;
-                   $1.leaflist.flag |= LYS_TYPE_DEF;
+                   $1.node.flag |= LYS_TYPE_DEF;
                  }
                }
      stmtsep { $$ = $1; }
-  |  leaf_list_opt_stmt units_stmt { if (read_all && yang_read_units(trg, $1.leaflist.ptr_leaflist, s, LEAF_LIST_KEYWORD)) {YYERROR;} s = NULL; }
+  |  leaf_list_opt_stmt units_stmt { if (read_all && yang_read_units(trg, $1.node.ptr_leaflist, s, LEAF_LIST_KEYWORD)) {YYERROR;} s = NULL; }
   |  leaf_list_opt_stmt must_stmt { if (read_all) {
-                                      actual = $1.leaflist.ptr_leaflist;
+                                      actual = $1.node.ptr_leaflist;
                                       actual_type = LEAF_LIST_KEYWORD;
                                     } else {
                                       size_arrays->node[$1.index].must++;
@@ -1725,42 +1729,42 @@ leaf_list_opt_stmt: %empty { if (read_all) {
                                            }
                                          }
   |  leaf_list_opt_stmt min_elements_stmt { if (read_all) {
-                                              if ($1.leaflist.flag & LYS_MIN_ELEMENTS) {
-                                                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.leaflist.ptr_leaflist, "min-elements", "leaf-list");
+                                              if ($1.node.flag & LYS_MIN_ELEMENTS) {
+                                                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_leaflist, "min-elements", "leaf-list");
                                                 YYERROR;
                                               }
-                                              $1.leaflist.ptr_leaflist->min = $2;
-                                              $1.leaflist.flag |= LYS_MIN_ELEMENTS;
+                                              $1.node.ptr_leaflist->min = $2;
+                                              $1.node.flag |= LYS_MIN_ELEMENTS;
                                               $$ = $1;
-                                              if ($1.leaflist.ptr_leaflist->max && ($1.leaflist.ptr_leaflist->min > $1.leaflist.ptr_leaflist->max)) {
+                                              if ($1.node.ptr_leaflist->max && ($1.node.ptr_leaflist->min > $1.node.ptr_leaflist->max)) {
                                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "min-elements");
                                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
                                               }
                                             }
                                           }
   |  leaf_list_opt_stmt max_elements_stmt { if (read_all) {
-                                              if ($1.leaflist.flag & LYS_MAX_ELEMENTS) {
-                                                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.leaflist.ptr_leaflist, "max-elements", "leaf-list");
+                                              if ($1.node.flag & LYS_MAX_ELEMENTS) {
+                                                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_leaflist, "max-elements", "leaf-list");
                                                 YYERROR;
                                               }
-                                              $1.leaflist.ptr_leaflist->max = $2;
-                                              $1.leaflist.flag |= LYS_MAX_ELEMENTS;
+                                              $1.node.ptr_leaflist->max = $2;
+                                              $1.node.flag |= LYS_MAX_ELEMENTS;
                                               $$ = $1;
-                                              if ($1.leaflist.ptr_leaflist->min > $1.leaflist.ptr_leaflist->max) {
+                                              if ($1.node.ptr_leaflist->min > $1.node.ptr_leaflist->max) {
                                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "max-elements");
                                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"max-elements\" is smaller than \"min-elements\".");
                                               }
                                             }
                                           }
   |  leaf_list_opt_stmt ordered_by_stmt { if (read_all) {
-                                            if ($1.leaflist.flag & LYS_ORDERED_MASK) {
-                                              LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.leaflist.ptr_leaflist, "ordered by", "leaf-list");
+                                            if ($1.node.flag & LYS_ORDERED_MASK) {
+                                              LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_leaflist, "ordered by", "leaf-list");
                                               YYERROR;
                                             }
                                             if ($2 & LYS_USERORDERED) {
-                                              $1.leaflist.ptr_leaflist->flags |= LYS_USERORDERED;
+                                              $1.node.ptr_leaflist->flags |= LYS_USERORDERED;
                                             }
-                                            $1.leaflist.flag |= $2;
+                                            $1.node.flag |= $2;
                                             $$ = $1;
                                           }
                                         }
@@ -1770,12 +1774,12 @@ leaf_list_opt_stmt: %empty { if (read_all) {
                                              }
                                            }
                                          }
-  |  leaf_list_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.leaflist.ptr_leaflist, s, "leaf-list")) {
+  |  leaf_list_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.node.ptr_leaflist, s, "leaf-list")) {
                                              YYERROR;
                                            }
                                            s = NULL;
                                          }
-  |  leaf_list_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.leaflist.ptr_leaflist, s, "leaf-list")) {
+  |  leaf_list_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.node.ptr_leaflist, s, "leaf-list")) {
                                            YYERROR;
                                          }
                                          s = NULL;
@@ -1789,24 +1793,24 @@ list_stmt: LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                                }
            '{' stmtsep
                list_opt_stmt { if (read_all) {
-                                 if ($7.list.ptr_list->flags & LYS_CONFIG_R) {
+                                 if ($7.node.ptr_list->flags & LYS_CONFIG_R) {
                                    /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
                                     * ignore oredering MASK - 0x7F
                                     */
-                                   $7.list.ptr_list->flags &= 0x7F;
+                                   $7.node.ptr_list->flags &= 0x7F;
                                  }
-                                 if (($7.list.ptr_list->flags & LYS_CONFIG_W) && !$7.list.ptr_list->keys) {
-                                   LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.list.ptr_list, "key", "list");
+                                 if (($7.node.ptr_list->flags & LYS_CONFIG_W) && !$7.node.ptr_list->keys) {
+                                   LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_list, "key", "list");
                                    YYERROR;
                                  }
-                                 if ($7.list.ptr_list->keys && yang_read_key(trg, $7.list.ptr_list, unres)) {
+                                 if ($7.node.ptr_list->keys && yang_read_key(trg, $7.node.ptr_list, unres)) {
                                    YYERROR;
                                  }
-                                 if (!($7.list.flag & LYS_DATADEF)) {
-                                   LOGVAL(LYE_SPEC, LY_VLOG_LYS, $7.list.ptr_list, "data-def statement missing.");
+                                 if (!($7.node.flag & LYS_DATADEF)) {
+                                   LOGVAL(LYE_SPEC, LY_VLOG_LYS, $7.node.ptr_list, "data-def statement missing.");
                                    YYERROR;
                                  }
-                                 if (yang_read_unique(trg, $7.list.ptr_list, unres)) {
+                                 if (yang_read_unique(trg, $7.node.ptr_list, unres)) {
                                    YYERROR;
                                  }
                                }
@@ -1814,37 +1818,37 @@ list_stmt: LIST_KEYWORD sep identifier_arg_str { if (read_all) {
             '}' ;
 
 list_opt_stmt: %empty { if (read_all) {
-                          $$.list.ptr_list = actual;
-                          $$.list.flag = 0;
+                          $$.node.ptr_list = actual;
+                          $$.node.flag = 0;
                           if (size_arrays->node[size_arrays->next].if_features) {
-                            $$.list.ptr_list->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.list.ptr_list->features);
-                            if (!$$.list.ptr_list->features) {
+                            $$.node.ptr_list->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_list->features);
+                            if (!$$.node.ptr_list->features) {
                               LOGMEM;
                               YYERROR;
                             }
                           }
                           if (size_arrays->node[size_arrays->next].must) {
-                            $$.list.ptr_list->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.list.ptr_list->must);
-                            if (!$$.list.ptr_list->must) {
+                            $$.node.ptr_list->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.node.ptr_list->must);
+                            if (!$$.node.ptr_list->must) {
                               LOGMEM;
                               YYERROR;
                             }
                           }
                           if (size_arrays->node[size_arrays->next].tpdf) {
-                            $$.list.ptr_list->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.list.ptr_list->tpdf);
-                            if (!$$.list.ptr_list->tpdf) {
+                            $$.node.ptr_list->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.node.ptr_list->tpdf);
+                            if (!$$.node.ptr_list->tpdf) {
                               LOGMEM;
                               YYERROR;
                             }
                           }
                           if (size_arrays->node[size_arrays->next].unique) {
-                            $$.list.ptr_list->unique = calloc(size_arrays->node[size_arrays->next].unique, sizeof *$$.list.ptr_list->unique);
-                            if (!$$.list.ptr_list->unique) {
+                            $$.node.ptr_list->unique = calloc(size_arrays->node[size_arrays->next].unique, sizeof *$$.node.ptr_list->unique);
+                            if (!$$.node.ptr_list->unique) {
                               LOGMEM;
                               YYERROR;
                             }
                           }
-                          store_flags((struct lys_node *)$$.list.ptr_list, size_arrays->node[size_arrays->next].flags, config_inherit);
+                          store_flags((struct lys_node *)$$.node.ptr_list, size_arrays->node[size_arrays->next].flags, config_inherit);
                           size_arrays->next++;
                         } else {
                           $$.index = size_arrays->size;
@@ -1854,17 +1858,17 @@ list_opt_stmt: %empty { if (read_all) {
                           }
                         }
                       }
-  |  list_opt_stmt when_stmt { actual = $1.list.ptr_list; actual_type = LIST_KEYWORD; }
+  |  list_opt_stmt when_stmt { actual = $1.node.ptr_list; actual_type = LIST_KEYWORD; }
      stmtsep
   |  list_opt_stmt if_feature_stmt { if (read_all) {
-                                       if (yang_read_if_feature(trg, $1.list.ptr_list, s, unres, LIST_KEYWORD)) {YYERROR;}
+                                       if (yang_read_if_feature(trg, $1.node.ptr_list, s, unres, LIST_KEYWORD)) {YYERROR;}
                                        s=NULL;
                                      } else {
                                        size_arrays->node[$1.index].if_features++;
                                      }
                                    }
   |  list_opt_stmt must_stmt { if (read_all) {
-                                 actual = $1.list.ptr_list;
+                                 actual = $1.node.ptr_list;
                                  actual_type = LIST_KEYWORD;
                                } else {
                                  size_arrays->node[$1.index].must++;
@@ -1872,17 +1876,17 @@ list_opt_stmt: %empty { if (read_all) {
                              }
      stmtsep
   |  list_opt_stmt key_stmt { if (read_all) {
-                                if ($1.list.ptr_list->keys) {
-                                  LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.list.ptr_list, "key", "list");
+                                if ($1.node.ptr_list->keys) {
+                                  LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_list, "key", "list");
                                   YYERROR;
                                 }
-                                $1.list.ptr_list->keys = (struct lys_node_leaf **)s;
+                                $1.node.ptr_list->keys = (struct lys_node_leaf **)s;
                                 $$ = $1;
                                 s=NULL;
                               }
                             }
   |  list_opt_stmt unique_stmt { if (read_all) {
-                                   $1.list.ptr_list->unique[$1.list.ptr_list->unique_size++].expr = (const char **)s;
+                                   $1.node.ptr_list->unique[$1.node.ptr_list->unique_size++].expr = (const char **)s;
                                    $$ = $1;
                                    s = NULL;
                                  } else {
@@ -1896,42 +1900,42 @@ list_opt_stmt: %empty { if (read_all) {
                                       }
                                     }
   |  list_opt_stmt min_elements_stmt { if (read_all) {
-                                         if ($1.list.flag & LYS_MIN_ELEMENTS) {
-                                           LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.list.ptr_list, "min-elements", "list");
+                                         if ($1.node.flag & LYS_MIN_ELEMENTS) {
+                                           LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_list, "min-elements", "list");
                                            YYERROR;
                                          }
-                                         $1.list.ptr_list->min = $2;
-                                         $1.list.flag |= LYS_MIN_ELEMENTS;
+                                         $1.node.ptr_list->min = $2;
+                                         $1.node.flag |= LYS_MIN_ELEMENTS;
                                          $$ = $1;
-                                         if ($1.list.ptr_list->max && ($1.list.ptr_list->min > $1.list.ptr_list->max)) {
+                                         if ($1.node.ptr_list->max && ($1.node.ptr_list->min > $1.node.ptr_list->max)) {
                                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "min-elements");
                                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
                                          }
                                        }
                                      }
   |  list_opt_stmt max_elements_stmt { if (read_all) {
-                                         if ($1.list.flag & LYS_MAX_ELEMENTS) {
-                                           LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.list.ptr_list, "max-elements", "list");
+                                         if ($1.node.flag & LYS_MAX_ELEMENTS) {
+                                           LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_list, "max-elements", "list");
                                            YYERROR;
                                          }
-                                         $1.list.ptr_list->max = $2;
-                                         $1.list.flag |= LYS_MAX_ELEMENTS;
+                                         $1.node.ptr_list->max = $2;
+                                         $1.node.flag |= LYS_MAX_ELEMENTS;
                                          $$ = $1;
-                                         if ($1.list.ptr_list->min > $1.list.ptr_list->max) {
+                                         if ($1.node.ptr_list->min > $1.node.ptr_list->max) {
                                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "min-elements");
                                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"max-elements\" is smaller than \"min-elements\".");
                                          }
                                        }
                                      }
   |  list_opt_stmt ordered_by_stmt { if (read_all) {
-                                       if ($1.list.flag & LYS_ORDERED_MASK) {
-                                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.list.ptr_list, "ordered by", "list");
+                                       if ($1.node.flag & LYS_ORDERED_MASK) {
+                                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_list, "ordered by", "list");
                                          YYERROR;
                                        }
                                        if ($2 & LYS_USERORDERED) {
-                                         $1.list.ptr_list->flags |= LYS_USERORDERED;
+                                         $1.node.ptr_list->flags |= LYS_USERORDERED;
                                        }
-                                       $1.list.flag |= $2;
+                                       $1.node.flag |= $2;
                                        $$ = $1;
                                      }
                                    }
@@ -1941,32 +1945,32 @@ list_opt_stmt: %empty { if (read_all) {
                                         }
                                       }
                                     }
-  |  list_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.list.ptr_list, s, "list")) {
+  |  list_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.node.ptr_list, s, "list")) {
                                         YYERROR;
                                       }
                                       s = NULL;
                                     }
-  |  list_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.list.ptr_list, s, "list")) {
+  |  list_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.node.ptr_list, s, "list")) {
                                       YYERROR;
                                     }
                                     s = NULL;
                                   }
   |  list_opt_stmt typedef_stmt { if (read_all) {
-                                            actual = $1.list.ptr_list;
+                                            actual = $1.node.ptr_list;
                                             actual_type = LIST_KEYWORD;
                                           } else {
                                             size_arrays->node[$1.index].tpdf++;
                                           }
                                         }
      stmtsep
-  |  list_opt_stmt grouping_stmt { actual = $1.list.ptr_list;
+  |  list_opt_stmt grouping_stmt { actual = $1.node.ptr_list;
                                    actual_type = LIST_KEYWORD;
                                    data_node = actual;
                                  }
      stmtsep
-  |  list_opt_stmt data_def_stmt { actual = $1.list.ptr_list;
+  |  list_opt_stmt data_def_stmt { actual = $1.node.ptr_list;
                                    actual_type = LIST_KEYWORD;
-                                   $1.list.flag |= LYS_DATADEF;
+                                   $1.node.flag |= LYS_DATADEF;
                                    data_node = actual;
                                  }
      stmtsep { $$ = $1; }
@@ -2573,7 +2577,7 @@ uses_augment_stmt: AUGMENT_KEYWORD sep uses_augment_arg_str { if (read_all) {
                                                               }
                                                             }
                    '{' stmtsep
-                       augment_opt_stmt { if (read_all && !($7.augment.flag & LYS_DATADEF)){
+                       augment_opt_stmt { if (read_all && !($7.node.flag & LYS_DATADEF)){
                                             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "data-def or case", "uses/augment");
                                             YYERROR;
                                           }
@@ -2594,7 +2598,7 @@ augment_stmt: AUGMENT_KEYWORD sep augment_arg_str { if (read_all) {
                                                   }
               '{' stmtsep
                   augment_opt_stmt { if (read_all) {
-                                       if (!($7.augment.flag & LYS_DATADEF)){
+                                       if (!($7.node.flag & LYS_DATADEF)){
                                          LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "data-def or case", "augment");
                                          YYERROR;
                                        }
@@ -2606,12 +2610,12 @@ augment_stmt: AUGMENT_KEYWORD sep augment_arg_str { if (read_all) {
                '}' ;
 
 augment_opt_stmt: %empty { if (read_all) {
-                             $$.augment.ptr_augment = actual;
-                             $$.augment.flag = 0;
+                             $$.node.ptr_augment = actual;
+                             $$.node.flag = 0;
                              actual_type = AUGMENT_KEYWORD;
                              if (size_arrays->node[size_arrays->next].if_features) {
-                               $$.augment.ptr_augment->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.augment.ptr_augment->features);
-                               if (!$$.augment.ptr_augment->features) {
+                               $$.node.ptr_augment->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_augment->features);
+                               if (!$$.node.ptr_augment->features) {
                                  LOGMEM;
                                  YYERROR;
                                }
@@ -2626,43 +2630,43 @@ augment_opt_stmt: %empty { if (read_all) {
                              }
                            }
                          }
-  |  augment_opt_stmt when_stmt { actual = $1.augment.ptr_augment; actual_type = AUGMENT_KEYWORD; }
+  |  augment_opt_stmt when_stmt { actual = $1.node.ptr_augment; actual_type = AUGMENT_KEYWORD; }
      stmtsep
   |  augment_opt_stmt if_feature_stmt { if (read_all) {
-                                          if (yang_read_if_feature(trg, $1.augment.ptr_augment, s, unres, AUGMENT_KEYWORD)) {YYERROR;}
+                                          if (yang_read_if_feature(trg, $1.node.ptr_augment, s, unres, AUGMENT_KEYWORD)) {YYERROR;}
                                           s=NULL;
                                         } else {
                                           size_arrays->node[$1.index].if_features++;
                                         }
                                       }
   |  augment_opt_stmt status_stmt { if (read_all) {
-                                      if (yang_check_flags(&$1.augment.ptr_augment->flags, LYS_STATUS_MASK, "status", "augment", $2)) {
+                                      if (yang_check_flags(&$1.node.ptr_augment->flags, LYS_STATUS_MASK, "status", "augment", $2)) {
                                         YYERROR;
                                       }
                                     }
                                   }
-  |  augment_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.augment.ptr_augment, s, "augment")) {
+  |  augment_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.node.ptr_augment, s, "augment")) {
                                            YYERROR;
                                          }
                                          s = NULL;
                                        }
-  |  augment_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.augment.ptr_augment, s, "augment")) {
+  |  augment_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.node.ptr_augment, s, "augment")) {
                                          YYERROR;
                                        }
                                        s = NULL;
                                      }
   |  augment_opt_stmt data_def_stmt { if (read_all) {
-                                        actual = $1.augment.ptr_augment;
+                                        actual = $1.node.ptr_augment;
                                         actual_type = AUGMENT_KEYWORD;
-                                        $1.augment.flag |= LYS_DATADEF;
+                                        $1.node.flag |= LYS_DATADEF;
                                         data_node = actual;
                                       }
                                     }
      stmtsep { $$ = $1; }
   |  augment_opt_stmt case_stmt { if (read_all) {
-                                    actual = $1.augment.ptr_augment;
+                                    actual = $1.node.ptr_augment;
                                     actual_type = AUGMENT_KEYWORD;
-                                    $1.augment.flag |= LYS_DATADEF;
+                                    $1.node.flag |= LYS_DATADEF;
                                     data_node = actual;
                                   }
                                 }
@@ -2680,8 +2684,9 @@ rpc_stmt: RPC_KEYWORD sep identifier_arg_str { if (read_all) {
                                                  data_node = actual;
                                                  s = NULL;
                                                }
+                                               config_inherit = DISABLE_INHERIT;
                                              }
-          rpc_end;
+          rpc_end { config_inherit = ENABLE_INHERIT; }
 
 rpc_end: ';'
   |  '{' stmtsep
@@ -2690,24 +2695,24 @@ rpc_end: ';'
 
 
 rpc_opt_stmt: %empty { if (read_all) {
-                         $$.rpc.ptr_rpc = actual;
-                         $$.rpc.flag = 0;
+                         $$.node.ptr_rpc = actual;
+                         $$.node.flag = 0;
                          actual_type = RPC_KEYWORD;
                          if (size_arrays->node[size_arrays->next].if_features) {
-                           $$.rpc.ptr_rpc->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.rpc.ptr_rpc->features);
-                           if (!$$.rpc.ptr_rpc->features) {
+                           $$.node.ptr_rpc->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_rpc->features);
+                           if (!$$.node.ptr_rpc->features) {
                              LOGMEM;
                              YYERROR;
                            }
                          }
                          if (size_arrays->node[size_arrays->next].tpdf) {
-                           $$.rpc.ptr_rpc->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.rpc.ptr_rpc->tpdf);
-                           if (!$$.rpc.ptr_rpc->tpdf) {
+                           $$.node.ptr_rpc->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.node.ptr_rpc->tpdf);
+                           if (!$$.node.ptr_rpc->tpdf) {
                              LOGMEM;
                              YYERROR;
                            }
                          }
-                         store_flags((struct lys_node *)$$.rpc.ptr_rpc, size_arrays->node[size_arrays->next].flags, 0);
+                         store_flags((struct lys_node *)$$.node.ptr_rpc, size_arrays->node[size_arrays->next].flags, 0);
                          size_arrays->next++;
                        } else {
                          $$.index = size_arrays->size;
@@ -2718,7 +2723,7 @@ rpc_opt_stmt: %empty { if (read_all) {
                        }
                      }
   |  rpc_opt_stmt if_feature_stmt { if (read_all) {
-                                      if (yang_read_if_feature(trg, $1.rpc.ptr_rpc, s, unres, RPC_KEYWORD)) {YYERROR;}
+                                      if (yang_read_if_feature(trg, $1.node.ptr_rpc, s, unres, RPC_KEYWORD)) {YYERROR;}
                                       s=NULL;
                                     } else {
                                       size_arrays->node[$1.index].if_features++;
@@ -2730,45 +2735,45 @@ rpc_opt_stmt: %empty { if (read_all) {
                                        }
                                      }
                                    }
-  |  rpc_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.rpc.ptr_rpc, s, "rpc")) {
+  |  rpc_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.node.ptr_rpc, s, "rpc")) {
                                        YYERROR;
                                      }
                                      s = NULL;
                                    }
-  |  rpc_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.rpc.ptr_rpc, s, "rpc")) {
+  |  rpc_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.node.ptr_rpc, s, "rpc")) {
                                      YYERROR;
                                    }
                                    s = NULL;
                                  }
   |  rpc_opt_stmt typedef_stmt { if (read_all) {
-                                           actual = $1.rpc.ptr_rpc;
+                                           actual = $1.node.ptr_rpc;
                                            actual_type = RPC_KEYWORD;
                                          } else {
                                            size_arrays->node[$1.index].tpdf++;
                                          }
                                        }
      stmtsep
-  |  rpc_opt_stmt grouping_stmt { actual = $1.rpc.ptr_rpc;
+  |  rpc_opt_stmt grouping_stmt { actual = $1.node.ptr_rpc;
                                   actual_type = RPC_KEYWORD;
                                   data_node = actual;
                                 }
      stmtsep
-  |  rpc_opt_stmt input_stmt { if ($1.rpc.flag & LYS_RPC_INPUT) {
-                                 LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.rpc.ptr_rpc, "input", "rpc");
+  |  rpc_opt_stmt input_stmt { if ($1.node.flag & LYS_RPC_INPUT) {
+                                 LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_rpc, "input", "rpc");
                                  YYERROR;
                                }
-                               $1.rpc.flag |= LYS_RPC_INPUT;
-                               actual = $1.rpc.ptr_rpc;
+                               $1.node.flag |= LYS_RPC_INPUT;
+                               actual = $1.node.ptr_rpc;
                                actual_type = RPC_KEYWORD;
                                data_node = actual;
                              }
      stmtsep { $$ = $1; }
-  |  rpc_opt_stmt output_stmt { if ($1.rpc.flag & LYS_RPC_OUTPUT) {
-                                  LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.rpc.ptr_rpc, "output", "rpc");
+  |  rpc_opt_stmt output_stmt { if ($1.node.flag & LYS_RPC_OUTPUT) {
+                                  LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_rpc, "output", "rpc");
                                   YYERROR;
                                 }
-                                $1.rpc.flag |= LYS_RPC_OUTPUT;
-                                actual = $1.rpc.ptr_rpc;
+                                $1.node.flag |= LYS_RPC_OUTPUT;
+                                actual = $1.node.ptr_rpc;
                                 actual_type = RPC_KEYWORD;
                                 data_node = actual;
                               }
@@ -2782,7 +2787,7 @@ input_stmt: INPUT_KEYWORD optsep { if (read_all) {
                                    }
                                  }
             '{' stmtsep
-                input_output_opt_stmt { if (read_all && !($6.inout.flag & LYS_DATADEF)) {
+                input_output_opt_stmt { if (read_all && !($6.node.flag & LYS_DATADEF)) {
                                           LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "input");
                                           YYERROR;
                                         }
@@ -2790,12 +2795,12 @@ input_stmt: INPUT_KEYWORD optsep { if (read_all) {
             '}'
 
 input_output_opt_stmt: %empty { if (read_all) {
-                                  $$.inout.ptr_inout = actual;
-                                  $$.inout.flag = 0;
+                                  $$.node.ptr_inout = actual;
+                                  $$.node.flag = 0;
                                   actual_type = INPUT_KEYWORD;
                                   if (size_arrays->node[size_arrays->next].tpdf) {
-                                    $$.inout.ptr_inout->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.inout.ptr_inout->tpdf);
-                                    if (!$$.inout.ptr_inout->tpdf) {
+                                    $$.node.ptr_inout->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.node.ptr_inout->tpdf);
+                                    if (!$$.node.ptr_inout->tpdf) {
                                       LOGMEM;
                                       YYERROR;
                                     }
@@ -2810,22 +2815,22 @@ input_output_opt_stmt: %empty { if (read_all) {
                                 }
                               }
   |  input_output_opt_stmt typedef_stmt { if (read_all) {
-                                                    actual = $1.inout.ptr_inout;
+                                                    actual = $1.node.ptr_inout;
                                                     actual_type = INPUT_KEYWORD;
                                                   } else {
                                                     size_arrays->node[$1.index].tpdf++;
                                                   }
                                                 }
      stmtsep
-  |  input_output_opt_stmt grouping_stmt { actual = $1.inout.ptr_inout;
+  |  input_output_opt_stmt grouping_stmt { actual = $1.node.ptr_inout;
                                            actual_type = INPUT_KEYWORD;
                                            data_node = actual;
                                          }
      stmtsep
   |  input_output_opt_stmt data_def_stmt { if (read_all) {
-                                             actual = $1.inout.ptr_inout;
+                                             actual = $1.node.ptr_inout;
                                              actual_type = INPUT_KEYWORD;
-                                             $1.inout.flag |= LYS_DATADEF;
+                                             $1.node.flag |= LYS_DATADEF;
                                              data_node = actual;
                                            }
                                          }
@@ -2840,7 +2845,7 @@ output_stmt: OUTPUT_KEYWORD optsep { if (read_all) {
                                      }
                                    }
              '{' stmtsep
-                 input_output_opt_stmt { if (read_all && !($6.inout.flag & LYS_DATADEF)) {
+                 input_output_opt_stmt { if (read_all && !($6.node.flag & LYS_DATADEF)) {
                                            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "output");
                                            YYERROR;
                                          }
@@ -2853,8 +2858,9 @@ notification_stmt: NOTIFICATION_KEYWORD sep identifier_arg_str { if (read_all) {
                                                                    }
                                                                    data_node = actual;
                                                                  }
+                                                                 config_inherit = DISABLE_INHERIT;
                                                                }
-                   notification_end;
+                   notification_end { config_inherit = ENABLE_INHERIT; }
 
 notification_end: ';' { if (read_all) {
                           size_arrays->next++;

@@ -75,38 +75,16 @@ struct type_choice {
   struct lys_node_choice *ptr_choice;
 };
 
-struct type_leaflist {
-    struct lys_node_leaflist *ptr_leaflist;
-    uint8_t flag;
-};
-
-struct type_list {
-    struct lys_node_list *ptr_list;
-    uint8_t flag;
-};
-
-struct type_leaf {
-    struct lys_node_leaf *ptr_leaf;
-    uint8_t flag;
-};
-
-struct type_tpdf {
-    struct lys_tpdf *ptr_tpdf;
-    uint8_t flag;
-};
-
-struct type_augment {
-    struct lys_node_augment *ptr_augment;
-    uint8_t flag;
-};
-
-struct type_rpc {
-    struct lys_node_rpc *ptr_rpc;
-    uint8_t flag;
-};
-
-struct type_inout {
-    struct lys_node_rpc_inout *ptr_inout;
+struct type_node {
+    union {
+        struct lys_node_leaflist *ptr_leaflist;
+        struct lys_node_list *ptr_list;
+        struct lys_node_leaf *ptr_leaf;
+        struct lys_tpdf *ptr_tpdf;
+        struct lys_node_augment *ptr_augment;
+        struct lys_node_rpc *ptr_rpc;
+        struct lys_node_rpc_inout *ptr_inout;
+    };
     uint8_t flag;
 };
 
