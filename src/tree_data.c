@@ -2432,10 +2432,6 @@ lyd_wd_add_inner(const struct lys_module *wdmod, struct lyd_node *subroot, struc
 
         switch(siter->nodetype) {
         case LYS_CONTAINER:
-            if (((struct lys_node_container *)siter)->presence) {
-                continue;
-            }
-
             sprintf(path, "%s:%s", lys_node_module(siter)->name, siter->name);
             nodeset = NULL;
             nodeset = lyd_get_node(subroot, path);
@@ -2448,6 +2444,10 @@ lyd_wd_add_inner(const struct lys_module *wdmod, struct lyd_node *subroot, struc
                 lyd_wd_add_inner(wdmod, nodeset->set.d[0], siter->child, unres, options);
             } else {
                 /* container does not exists, go recursively to add default nodes in its subtree */
+                if (((struct lys_node_container *)siter)->presence) {
+                    /* but only if it is not presence container */
+                    continue;
+                }
                 lyd_wd_add_empty(wdmod, subroot, siter, unres, options);
             }
             ly_set_free(nodeset);
