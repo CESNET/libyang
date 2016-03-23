@@ -222,6 +222,10 @@ struct lyd_node_anyxml {
  * subtree filter data, edit-config's data or other type of data set - such data do not represent a complete data set
  * and some of the validation rules can fail. Therefore there are other options (within lower 8 bits) to make parser
  * to accept such a data.
+ * - for validation, parser needs to add default nodes into the data tree. By default, these additional (implicit)
+ * nodes are removed before the parser returns. However, if caller use one of the LYD_WD_* option, the default nodes
+ * added by parser are kept in the resulting tree or even the explicit nodes with the default values can be removed
+ * (in case of #LYD_WD_TRIM option).
  * @{
  */
 
@@ -274,6 +278,19 @@ struct lyd_node_anyxml {
                                        applicable only in combination with LYD_OPT_DATA and LYD_OPT_CONFIG flags.
                                        If used, libyang generates validation error instead of silently removing the
                                        constrained subtree. */
+
+#define LYD_WD_MASK       0xF0000 /**< Mask for with-defaults modes */
+#define LYD_WD_TRIM       0x10000 /**< Remove all nodes with the value equal to their default value */
+#define LYD_WD_ALL        0x20000 /**< Explicitly add all missing nodes with their default value */
+#define LYD_WD_ALL_TAG    0x40000 /**< Same as LYD_WD_ALL but also adds attribute 'default' with value 'true' to
+                                       all nodes that has its default value. The 'default' attribute has namespace:
+                                       urn:ietf:params:xml:ns:netconf:default:1.0 and thus the attributes are
+                                       created only when the ietf-netconf-with-defaults module is present in libyang
+                                       context. */
+#define LYD_WD_IMPL_TAG   0x80000 /**< Same as LYD_WD_ALL_TAG but the attributes are added only to the nodes that
+                                       are being created and were not part of the original data tree despite their
+                                       value is equal to their default value. There is the same limitation regarding
+                                       the presence of ietf-netconf-with-defaults module in libyang context. */
 
 /**@} parseroptions */
 
@@ -570,8 +587,8 @@ struct ly_set *lyd_get_list_keys(const struct lyd_node *list);
 /**
  * @brief Validate \p node data subtree.
  *
- * @param[in, out] node Data tree to be validated. In case the options includes #LYD_OPT_AUTODEL, libyang can modify the
- *                 provided tree including the root \p node.
+ * @param[in, out] node Data tree to be validated. In case the \p options does not includes #LYD_OPT_NOAUTODEL, libyang
+ *                 can modify the provided tree including the root \p node.
  * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
  * @param[in] ... libyang context for the data (used only in case the \p node is NULL, so in case of checking empty data tree)
  * @return 0 on success (if options include #LYD_OPT_FILTER, some nodes can be deleted as an
@@ -579,6 +596,35 @@ struct ly_set *lyd_get_list_keys(const struct lyd_node *list);
  * a top-level node(s)), nonzero in case of an error.
  */
 int lyd_validate(struct lyd_node **node, int options, ...);
+
+/**
+ * @brief Add default nodes into the data tree.
+ *
+ * @param[in] ctx Optional parameter. If provided, default nodes from all modules in the context will be added (so it
+ *            has no effect for #LYD_WD_TRIM). If NULL, only the modules explicitly mentioned in data tree are
+ *            taken into account.
+ * @param[in] root Data tree root. In case of #LYD_WD_TRIM the data tree can be modified so the root can be changed or
+ *            removed. In other modes and with empty data tree, new default nodes can be created so the root pointer
+ *            will contain/return the newly created data tree.
+ * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions. The
+ *            LYD_WD_* options are used to select functionality:
+ * - #LYD_WD_TRIM - remove all nodes that have value equal to their default value
+ * - #LYD_WD_ALL - add default nodes
+ * - #LYD_WD_ALL_TAG - add default nodes and add attribute 'default' with value 'true' to all nodes having their default value
+ * - #LYD_WD_IMPL_TAG - add default nodes, but add attribute 'default' only to the added nodes
+ * @note The *_TAG modes require to have ietf-netconf-with-defaults module in the context of the data tree.
+ * @return EXIT_SUCCESS ot EXIT_FAILURE
+ */
+int lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options);
+
+/**
+ * @brief Remove all default nodes, respectively all nodes with attribute ncwd:default="true" added by
+ * #LYD_WD_ALL_TAG or #LYD_WD_IMPL_TAG in lyd_wd_add(), lyd_validate() or lyd_parse_*() functions.
+ *
+ * @param[in] root Data tree root. The data tree can be modified so the root can be changed or completely removed.
+ * @return EXIT_SUCCESS or EXIT_FAILURE
+ */
+int lyd_wd_cleanup(struct lyd_node **root);
 
 /**
  * @brief Unlink the specified data subtree. All referenced namespaces are copied.
@@ -610,12 +656,20 @@ void lyd_free_withsiblings(struct lyd_node *node);
  * @brief Insert attribute into the data node.
  *
  * @param[in] parent Data node where to place the attribute
- * @param[in] name Attribute name including the prefix (prefix:name). Prefix must be the name of one of the
- *            schema in the \p parent's context.
+ * @param[in] mod An alternative way to specify attribute's module (namespace) used in case the \p name does
+ *            not include prefix. If neither prefix in the \p name nor mod is specified, the attribute's
+ *            module is inherited from the \p parent node. It is not allowed to have attributes with no
+ *            module (namespace).
+ * @param[in] name Attribute name. The string can include the attribute's module (namespace) as the name's
+ *            prefix (prefix:name). Prefix must be the name of one of the schema in the \p parent's context.
+ *            If the prefix is not specified, the \p mod parameter is used. If neither of these parameters is
+ *            usable, attribute inherits module (namespace) from the \p parent node. It is not allowed to
+ *            have attributes with no module (namespace).
  * @param[in] value Attribute value
  * @return pointer to the created attribute (which is already connected in \p parent) or NULL on error.
  */
-struct lyd_attr *lyd_insert_attr(struct lyd_node *parent, const char *name, const char *value);
+struct lyd_attr *lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const char *name,
+                                 const char *value);
 
 /**
  * @brief Destroy data attribute

@@ -803,7 +803,7 @@ test_lyd_insert_attr(void **state)
     struct lyd_attr *attr = NULL;
     struct lyd_node *node = root->child;
 
-    attr = lyd_insert_attr(node, "test", "test");
+    attr = lyd_insert_attr(node, NULL, "test", "test");
     if (!attr) {
         fail();
     }
@@ -818,7 +818,7 @@ test_lyd_free_attr(void **state)
     struct lyd_attr *attr = NULL;
     struct lyd_node *node = root->child;
 
-    attr = lyd_insert_attr(node, "test", "test");
+    attr = lyd_insert_attr(node, NULL, "test", "test");
 
     if (!node->attr) {
         fail();

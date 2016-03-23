@@ -53,7 +53,7 @@ cmd_print_help(void)
 void
 cmd_data_help(void)
 {
-    printf("data [-(-s)trict] [-x OPTION] [-o <output-file>] [-f (xml | json)]  <data-file-name>\n");
+    printf("data [-(-s)trict] [-x OPTION] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)]  <data-file-name>\n");
     printf("Accepted OPTIONs:\n");
     printf("\tauto       - resolve data type (one of the following) automatically (as pyang does),\n");
     printf("\t             this option is applicable only in case of XML input data.\n");
@@ -64,7 +64,12 @@ cmd_data_help(void)
     printf("\trpc        - LYD_OPT_RPC\n");
     /* printf("\trpcreply   - LYD_OPT_RPCREPLY\n"); */
     printf("\tnotif      - LYD_OPT_NOTIF\n");
-    printf("\tfilter     - LYD_OPT_FILTER\n");
+    printf("\tfilter     - LYD_OPT_FILTER\n\n");
+    printf("Accepted DEFAULTs:\n");
+    printf("\tall        - add missing default nodes\n");
+    printf("\tall-tagged - add missing default nodes and mark all default nodes with attribute.\n");
+    printf("\trim        - remove all nodes with default value\n");
+    printf("\timplicit-tagged    - add missing nodes and marke them with attribute\n");
 }
 
 void
@@ -323,6 +328,7 @@ cmd_data(const char *arg)
     LYD_FORMAT outformat = LYD_UNKNOWN, informat = LYD_UNKNOWN;
     FILE *output = stdout;
     static struct option long_options[] = {
+        {"defaults", required_argument, 0, 'd'},
         {"help", no_argument, 0, 'h'},
         {"format", required_argument, 0, 'f'},
         {"option", required_argument, 0, 'x'},
@@ -344,12 +350,23 @@ cmd_data(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "hf:o:sx:", long_options, &option_index);
+        c = getopt_long(argc, argv, "d:hf:o:sx:", long_options, &option_index);
         if (c == -1) {
             break;
         }
 
         switch (c) {
+        case 'd':
+            if (!strcmp(optarg, "all")) {
+                options = (options & ~LYD_WD_MASK) | LYD_WD_ALL;
+            } else if (!strcmp(optarg, "all-tagged")) {
+                options = (options & ~LYD_WD_MASK) | LYD_WD_ALL_TAG;
+            } else if (!strcmp(optarg, "trim")) {
+                options = (options & ~LYD_WD_MASK) | LYD_WD_TRIM;
+            } else if (!strcmp(optarg, "implicit-tagged")) {
+                options = (options & ~LYD_WD_MASK) | LYD_WD_IMPL_TAG;
+            }
+            break;
         case 'h':
             cmd_data_help();
             ret = 0;
