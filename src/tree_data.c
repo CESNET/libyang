@@ -2238,7 +2238,7 @@ lyd_wd_add_leaf(const struct lys_module *wdmod, struct ly_ctx *ctx, struct lyd_n
             }
             ly_set_free(nodeset);
         }
-        ret = lyd_new_path(parent, ctx, path, dflt, options | LYD_PATH_OPT_RECURSIVE);
+        ret = lyd_new_path(parent, ctx, path, dflt, options);
         if (wdmod && ret) {
             /* remember the created nodes (if necessary) in unres */
             for (iter = ret; ; iter = iter->child) {
