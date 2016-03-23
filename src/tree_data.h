@@ -587,8 +587,8 @@ struct ly_set *lyd_get_list_keys(const struct lyd_node *list);
 /**
  * @brief Validate \p node data subtree.
  *
- * @param[in, out] node Data tree to be validated. In case the options includes #LYD_OPT_AUTODEL, libyang can modify the
- *                 provided tree including the root \p node.
+ * @param[in, out] node Data tree to be validated. In case the \p options does not includes #LYD_OPT_NOAUTODEL, libyang
+ *                 can modify the provided tree including the root \p node.
  * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
  * @param[in] ... libyang context for the data (used only in case the \p node is NULL, so in case of checking empty data tree)
  * @return 0 on success (if options include #LYD_OPT_FILTER, some nodes can be deleted as an
