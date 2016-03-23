@@ -708,7 +708,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         if (!path[0]) {
             /* we are done */
             return ret;
-        } else if (!(options & LYD_PATH_OPT_RECURSIVE)) {
+        } else if (options & LYD_PATH_OPT_NOPARENT) {
             /* we were supposed to be done */
             LOGVAL(LYE_PATH_MISSPAR, LY_VLOG_NONE, NULL, (mod_name ? mod_name : name));
             return NULL;
