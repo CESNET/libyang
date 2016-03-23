@@ -2364,7 +2364,7 @@ nextsibling:
             /* try siblings */
             next = siter->next;
 
-            if (next && (next->nodetype & (LYS_CONTAINER | LYS_LEAF))) {
+            if (next && (siter->nodetype & (LYS_CONTAINER | LYS_LEAF))) {
                 /* remove node from the path */
                 c = strrchr(path, '/');
                 *c = '\0';
