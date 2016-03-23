@@ -2251,7 +2251,7 @@ lyd_wd_add_empty(const struct lys_module *wdmod, struct lyd_node *parent, struct
     char *c;
     int index = 0;
 
-    index = sprintf(path, "./%s:%s", schema->module->name, schema->name);
+    index = sprintf(path, "./%s:%s", lys_node_module(schema)->name, schema->name);
     if (parent) {
         path_ = &path[0];
     } else {
@@ -2346,7 +2346,7 @@ nextsibling:
         }
         /* add node into the path */
         if (next && (next->nodetype & (LYS_CONTAINER | LYS_LEAF))) {
-            index += sprintf(&path[index], "/%s:%s", next->module->name, next->name);
+            index += sprintf(&path[index], "/%s:%s", lys_node_module(next)->name, next->name);
         }
     }
 
@@ -2392,7 +2392,7 @@ lyd_wd_add_inner(const struct lys_module *wdmod, struct lyd_node *subroot, struc
                 continue;
             }
 
-            sprintf(path, "%s:%s", siter->module->name, siter->name);
+            sprintf(path, "%s:%s", lys_node_module(siter)->name, siter->name);
             nodeset = NULL;
             nodeset = lyd_get_node(subroot, path);
             if (!nodeset) {
@@ -2413,7 +2413,7 @@ lyd_wd_add_inner(const struct lys_module *wdmod, struct lyd_node *subroot, struc
 
             break;
         case LYS_LEAF:
-            sprintf(path, "%s:%s", siter->module->name, siter->name);
+            sprintf(path, "%s:%s", lys_node_module(siter)->name, siter->name);
             lyd_wd_add_leaf(wdmod, siter->module->ctx, subroot, (struct lys_node_leaf *)siter, path, unres, options, 1);
             if (ly_errno != LY_SUCCESS) {
                 LOGVAL(LYE_SPEC, LY_VLOG_LYD, subroot, "Creating default element \"%s\" failed.", path);
@@ -2478,7 +2478,7 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
     modset = ly_set_new();
     LY_TREE_FOR(*root, iter) {
         if (!ctx) {
-            ly_set_add(modset, iter->schema->module);
+            ly_set_add(modset, lys_node_module(iter->schema));
         }
         if  (options & (LYD_OPT_CONFIG | LYD_OPT_EDIT | LYD_OPT_GETCONFIG)) {
             /* do not process status data */
@@ -2523,7 +2523,7 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
                 }
 
                 if ((iter = *root)) {
-                    sprintf(path, "/%s:%s", siter->module->name, siter->name);
+                    sprintf(path, "/%s:%s", lys_node_module(siter)->name, siter->name);
                     nodeset = NULL;
                     nodeset = lyd_get_node(*root, path);
                     if (!nodeset) {
@@ -2546,7 +2546,7 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
                 }
                 break;
             case LYS_LEAF:
-                sprintf(path, "/%s:%s", siter->module->name, siter->name);
+                sprintf(path, "/%s:%s", lys_node_module(siter)->name, siter->name);
                 iter = lyd_wd_add_leaf(wdmod, siter->module->ctx, *root, (struct lys_node_leaf *)siter, path, unres, options, 1);
                 if (ly_errno != LY_SUCCESS) {
                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Creating default element \"%s\" failed.", path);
