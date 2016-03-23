@@ -265,6 +265,18 @@ int yang_use_extension(struct lys_module *module, struct lys_node *data_node, vo
 
 int yang_check_flags(uint8_t *flags, uint8_t mask, char *what, char *where, int value);
 
+/* **
+ * @brief Parse YANG from in-memory string
+ *
+ * yang parser expected at the end of the input string 2 zero byte
+ *
+ * @param[in] module Pointer to the libyang module.
+ * @param[in] submodule Pointer to the libyang submodule.
+ * @param[in] unres Pointer to a unres_schema
+ * @param[in] data Pointer to a NULL-terminated string containing YANG data to parse.
+ * @param[in] size_data Size oof input string
+ * @return 0 on success, 1 on error.
+ */
 int yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, const char *data, unsigned int size_data);
 
 struct lys_module *yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const char *revision, int implement);

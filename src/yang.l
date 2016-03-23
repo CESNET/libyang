@@ -19,7 +19,6 @@
 %}
 %x COMMENT1
 %x COMMENT2
-%x RANGE
 %x STRING1
 %x STRING2
 %x PATH
@@ -103,8 +102,6 @@
 "delete" { return DELETE_KEYWORD; }
 "deprecated" { return DEPRECATED_KEYWORD; }
 "false" { return FALSE_KEYWORD; }
-<RANGE>"max" { return MAX_KEYWORD; }
-<RANGE>"min" { return MIN_KEYWORD; }
 "not-supported" { return NOT_SUPPORTED_KEYWORD; }
 "obsolete" { return OBSOLETE_KEYWORD; }
 "replace" { return REPLACE_KEYWORD; }
@@ -122,21 +119,9 @@
 "'" {BEGIN STRING2;}
 <STRING2>([\n\t -&\(-~]|\\(\l|\\|n|t))* {return STRING;}
 <STRING2>"'" {BEGIN INITIAL;}
-<RANGE>".." {return DOUBLEDOT;}
-<RANGE>"|" {return yytext[0];}
 "0" {return ZERO;}
 "-"[1-9][0-9]* {return INTEGER;}
 [1-9][0-9]* {return NON_NEGATIVE_INTEGER;}
-<RANGE>[-]?[1-9][0-9]*\.[0-9]+ {return DECIMAL;}
-<RANGE>";"  {BEGIN INITIAL; return yytext[0]; }
-<RANGE>"{"  {BEGIN INITIAL; return yytext[0]; }
-<RANGE>\n {return EOL;}
-<RANGE>[ \t]+ { return WHITESPACE;}
-<RANGE>\" {BEGIN STRING1;}
-<RANGE>"'" {BEGIN STRING2;}
-<RANGE>"//" {BEGIN COMMENT2;}
-<RANGE>"/*" {BEGIN COMMENT1;}
-<RANGE>. { printf("%d: unexpected character '%c'\n",yylineno,*yytext); return ERROR;}
 <PATH>"/" |
 <PATH>"[" |
 <PATH>"]" |

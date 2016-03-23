@@ -161,8 +161,6 @@ int64_t cnt_val;
 %token DELETE_KEYWORD
 %token DEPRECATED_KEYWORD
 %token FALSE_KEYWORD
-%token MAX_KEYWORD
-%token MIN_KEYWORD
 %token NOT_SUPPORTED_KEYWORD
 %token OBSOLETE_KEYWORD
 %token REPLACE_KEYWORD
@@ -348,11 +346,7 @@ yang_version_arg_str: NON_NEGATIVE_INTEGER { if (strlen(yytext)!=1 || yytext[0]!
                }
              }
 
-namespace_stmt: NAMESPACE_KEYWORD sep uri_str stmtend;
-
-uri_str: string_1
-  /*|  URI*/
-  ;
+namespace_stmt: NAMESPACE_KEYWORD sep string stmtend;
 
 linkage_stmts: %empty { if (read_all) {
                           if (size_arrays->imp) {
@@ -3795,8 +3789,6 @@ identifier: IDENTIFIER
   |  DELETE_KEYWORD
   |  DEPRECATED_KEYWORD
   |  FALSE_KEYWORD
-  |  MAX_KEYWORD
-  |  MIN_KEYWORD
   |  NOT_SUPPORTED_KEYWORD
   |  OBSOLETE_KEYWORD
   |  REPLACE_KEYWORD

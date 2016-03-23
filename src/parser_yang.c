@@ -77,28 +77,6 @@ yang_read_prefix(struct lys_module *module, void *save, char *value, int type)
     return ret;
 }
 
-void *
-yang_elem_of_array(void **ptr, uint8_t *act_size, int type, int sizeof_struct)
-{
-    void *retval;
-
-    if (!(*act_size % LY_ARRAY_SIZE) && !(*ptr = ly_realloc(*ptr, (*act_size + LY_ARRAY_SIZE) * sizeof_struct))) {
-        LOGMEM;
-        return NULL;
-    }
-    switch (type) {
-    case IMPORT_KEYWORD:
-        retval = &((struct lys_import *)(*ptr))[*act_size];
-        break;
-    case REVISION_KEYWORD:
-        retval = &((struct lys_revision *)(*ptr))[*act_size];
-        break;
-    }
-    (*act_size)++;
-    memset(retval,0,sizeof_struct);
-    return retval;
-}
-
 int
 yang_fill_import(struct lys_module *module, struct lys_import *imp, char *value)
 {
