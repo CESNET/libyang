@@ -1,15 +1,23 @@
-/**
- * @file test_data_initialization.c
- * @author Mislav Novakovic <mislav.novakovic@sartura.hr>
- * @brief Cmocka data test initialization.
+/*
+ * @file test_libyang.c
+ * @author: Mislav Novakovic <mislav.novakovic@sartura.hr>
+ * @brief unit tests for functions from libyang.h header
  *
- * Copyright (c) 2015 Sartura d.o.o.
+ * Copyright (C) 2016 Deutsche Telekom AG.
  *
- * This source code is licensed under BSD 3-Clause License (the "License").
- * You may not use this file except in compliance with the License.
+ * Author: Mislav Novakovic <mislav.novakovic@sartura.hr>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     https://opensource.org/licenses/BSD-3-Clause
+ *	http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #include <stdarg.h>
@@ -208,6 +216,13 @@ test_ly_ctx_set_searchdir_invalid(void **state)
         fail();
     }
 
+    ly_ctx_set_searchdir(NULL, yang_folder);
+    result = ly_ctx_get_searchdir(ctx);
+    if (!result) {
+        fail();
+    }
+    assert_string_equal(yang_folder, result);
+
     ly_ctx_set_searchdir(ctx, new_yang_folder);
     result = ly_ctx_get_searchdir(ctx);
     if (!result) {
@@ -225,12 +240,21 @@ test_ly_ctx_info(void **state)
     struct lyd_node *node;
     char *yang_folder = TESTS_DIR"/data/files";
     (void) state; /* unused */
+
     ctx = ly_ctx_new(yang_folder);
     if (!ctx) {
         fail();
     }
 
+    node = ly_ctx_info(NULL);
+    if (node) {
+        fail();
+    }
+
     node = ly_ctx_info(ctx);
+    if (!node) {
+        fail();
+    }
 
     assert_int_equal(LYD_VAL_OK, node->validity);
 
@@ -238,10 +262,15 @@ test_ly_ctx_info(void **state)
 }
 
 static void
-test_ly_ctx_get_module_name(void **state)
+test_ly_ctx_get_module_names(void **state)
 {
     (void) state; /* unused */
     const char **result;
+
+    result = ly_ctx_get_module_names(NULL);
+    if (result) {
+        fail();
+    }
 
     result = ly_ctx_get_module_names(ctx);
     if (!result) {
@@ -254,13 +283,26 @@ test_ly_ctx_get_module_name(void **state)
 }
 
 static void
-test_ly_ctx_get_submodule_name(void **state)
+test_ly_ctx_get_submodule_names(void **state)
 {
     (void) state; /* unused */
     const char **result;
     const char *module_name = "a";
 
+    result = ly_ctx_get_submodule_names(NULL, module_name);
+    if (result) {
+        fail();
+    }
+
+    result = ly_ctx_get_submodule_names(ctx, "invalid");
+    if (result) {
+        fail();
+    }
+
     result = ly_ctx_get_submodule_names(ctx, module_name);
+    if (!result) {
+        fail();
+    }
 
     assert_string_equal("asub", *result);
 
@@ -273,14 +315,112 @@ test_ly_ctx_get_module(void **state)
     (void) state; /* unused */
     const struct lys_module *module;
     const char *name = "a";
-    const char *revision = NULL;
+    const char *revision = "2016-03-01";
+
+    module = ly_ctx_get_module(NULL, name, NULL);
+    if (module) {
+        fail();
+    }
+
+    module = ly_ctx_get_module(ctx, NULL, NULL);
+    if (module) {
+        fail();
+    }
+
+    module = ly_ctx_get_module(ctx, "invalid", NULL);
+    if (module) {
+        fail();
+    }
+
+    module = ly_ctx_get_module(ctx, name, NULL);
+    if (!module) {
+        fail();
+    }
+
+    assert_string_equal("a", module->name);
+
+    module = ly_ctx_get_module(ctx, name, "invalid");
+    if (module) {
+        fail();
+    }
 
     module = ly_ctx_get_module(ctx, name, revision);
     if (!module) {
         fail();
     }
 
-    assert_string_equal("a", module->name);
+    assert_string_equal(revision, module->rev->date);
+}
+
+static void
+test_ly_ctx_get_module_older(void **state)
+{
+    (void) state; /* unused */
+    const struct lys_module *module;
+    const struct lys_module *module_older = NULL;
+    const char *name = "a";
+    const char *revision = "2016-03-01";
+    const char *revision_older = "2015-01-01";
+
+    module_older = ly_ctx_get_module_older(NULL, module);
+    if (module_older) {
+        fail();
+    }
+
+    module_older = ly_ctx_get_module_older(ctx, NULL);
+    if (module_older) {
+        fail();
+    }
+
+    module = ly_ctx_load_module(ctx, name, revision_older);
+    if (!module) {
+        fail();
+    }
+
+    assert_string_equal(name, module->name);
+
+    module = ly_ctx_load_module(ctx, name, revision);
+    if (!module) {
+        fail();
+    }
+
+    module_older = ly_ctx_get_module_older(ctx, module);
+    if (!module_older) {
+        fail();
+    }
+
+    assert_string_equal(revision_older, module_older->rev->date);
+}
+
+static void
+test_ly_ctx_load_module(void **state)
+{
+    (void) state; /* unused */
+    const struct lys_module *module;
+    const char *name = "a";
+    const char *revision = "2015-01-01";
+
+    module = ly_ctx_load_module(NULL, name, revision);
+    if (module) {
+        fail();
+    }
+
+    module = ly_ctx_load_module(ctx, NULL, revision);
+    if (module) {
+        fail();
+    }
+
+    module = ly_ctx_load_module(ctx, "INVALID_NAME", revision);
+    if (module) {
+        fail();
+    }
+
+    module = ly_ctx_load_module(ctx, name, revision);
+    if (!module) {
+        fail();
+    }
+
+    assert_string_equal(name, module->name);
 }
 
 static void
@@ -290,6 +430,16 @@ test_ly_ctx_get_module_by_ns(void **state)
     const struct lys_module *module;
     const char *ns = "urn:a";
     const char *revision = NULL;
+
+    module = ly_ctx_get_module_by_ns(NULL, ns, revision);
+    if (module) {
+        fail();
+    }
+
+    module = ly_ctx_get_module_by_ns(ctx, NULL, revision);
+    if (module) {
+        fail();
+    }
 
     module = ly_ctx_get_module_by_ns(ctx, ns, revision);
     if (!module) {
@@ -308,12 +458,77 @@ test_ly_ctx_get_submodule(void **state)
     const char *sub_name = "asub";
     const char *revision = NULL;
 
+    submodule = ly_ctx_get_submodule(NULL, mod_name, revision, sub_name);
+    if (submodule) {
+        fail();
+    }
+
+    submodule = ly_ctx_get_submodule(ctx, NULL, revision, sub_name);
+    if (submodule) {
+        fail();
+    }
+
+    submodule = ly_ctx_get_submodule(ctx, mod_name, revision, NULL);
+    if (submodule) {
+        fail();
+    }
+
     submodule = ly_ctx_get_submodule(ctx, mod_name, revision, sub_name);
     if (!submodule) {
         fail();
     }
 
     assert_string_equal("asub", submodule->name);
+}
+
+static void
+test_ly_ctx_get_submodule2(void **state)
+{
+    (void) state; /* unused */
+    const struct lys_submodule *submodule;
+    const char *sub_name = "asub";
+
+    submodule = ly_ctx_get_submodule2(NULL, sub_name);
+    if (submodule) {
+        fail();
+    }
+
+    submodule = ly_ctx_get_submodule2(root->schema->module, NULL);
+    if (submodule) {
+        fail();
+    }
+
+    submodule = ly_ctx_get_submodule2(root->schema->module, sub_name);
+    if (!submodule) {
+        fail();
+    }
+
+    assert_string_equal("asub", submodule->name);
+}
+
+static void
+test_ly_ctx_get_node(void **state)
+{
+    (void) state; /* unused */
+    const struct lys_node *node;
+    const char *nodeid = "/a:x/bubba";
+
+    node = ly_ctx_get_node(NULL, root->schema, nodeid);
+    if (node) {
+        fail();
+    }
+
+    node = ly_ctx_get_node(ctx, root->schema, NULL);
+    if (node) {
+        fail();
+    }
+
+    node = ly_ctx_get_node(ctx, root->schema, nodeid);
+    if (!node) {
+        fail();
+    }
+
+    assert_string_equal("bubba", node->name);
 }
 
 static void
@@ -328,6 +543,101 @@ test_ly_set_new(void **state)
     }
 
     free(set);
+}
+
+static void
+test_ly_set_add(void **state)
+{
+    (void) state; /* unused */
+    struct ly_set *set;
+    int rc;
+
+    set = ly_set_new();
+    if (!set) {
+        fail();
+    }
+
+    rc = ly_set_add(NULL, root->child->schema);
+    if(!rc) {
+        fail();
+    }
+
+    rc = ly_set_add(set, NULL);
+    if(!rc) {
+        fail();
+    }
+
+    rc = ly_set_add(set, root->child->schema);
+    if(rc) {
+        fail();
+    }
+
+    ly_set_free(set);
+}
+
+static void
+test_ly_set_rm(void **state)
+{
+    (void) state; /* unused */
+    struct ly_set *set;
+    int rc;
+
+    set = ly_set_new();
+    if (!set) {
+        fail();
+    }
+
+    rc = ly_set_rm(NULL, root->child->schema);
+    if(!rc) {
+        fail();
+    }
+
+    rc = ly_set_rm(set, NULL);
+    if(!rc) {
+        fail();
+    }
+
+    rc = ly_set_add(set, root->child->schema);
+    if(rc) {
+        fail();
+    }
+
+    rc = ly_set_rm(set, root->child->schema);
+    if(rc) {
+        fail();
+    }
+
+    ly_set_free(set);
+}
+
+static void
+test_ly_set_rm_index(void **state)
+{
+    (void) state; /* unused */
+    struct ly_set *set;
+    int rc;
+
+    set = ly_set_new();
+    if (!set) {
+        fail();
+    }
+
+    rc = ly_set_rm_index(NULL, 0);
+    if(!rc) {
+        fail();
+    }
+
+    rc = ly_set_add(set, root->child->schema);
+    if(rc) {
+        fail();
+    }
+
+    rc = ly_set_rm_index(set, 0);
+    if(rc) {
+        fail();
+    }
+
+    ly_set_free(set);
 }
 
 static void
@@ -346,6 +656,47 @@ test_ly_set_free(void **state)
     if (!set) {
         fail();
     }
+}
+
+static void
+test_ly_verb(void **state)
+{
+    (void) state; /* unused */
+
+    ly_verb(LY_LLERR);
+}
+
+void clb_custom(LY_LOG_LEVEL level, const char *msg, const char *path )
+{
+    (void) level; /* unused */
+    (void) msg; /* unused */
+    (void) path; /* unused */
+}
+
+static void
+test_ly_get_log_clb(void **state)
+{
+    (void) state; /* unused */
+    void *clb = NULL;
+
+    clb = ly_get_log_clb();
+    assert_ptr_equal(clb, NULL);
+}
+
+static void
+test_ly_set_log_clb(void **state)
+{
+    (void) state; /* unused */
+    void *clb = NULL;
+    void *clb_new = NULL;
+
+    clb = ly_get_log_clb();
+
+    ly_set_log_clb(clb_custom,0);
+
+    clb_new = ly_get_log_clb();
+
+    assert_ptr_not_equal(clb, clb_new);
 }
 
 static void
@@ -368,6 +719,7 @@ test_ly_errno_location(void **state)
     error = ly_errno_location();
 
     assert_int_equal(LY_ESYS, *error);
+    ly_ctx_destroy(ctx, NULL);
 }
 
 static void
@@ -403,22 +755,32 @@ test_ly_errpath(void **state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-                    cmocka_unit_test(test_ly_ctx_new),
-                    cmocka_unit_test(test_ly_ctx_new_invalid),
-                    cmocka_unit_test(test_ly_ctx_get_searchdir),
-		    cmocka_unit_test(test_ly_ctx_set_searchdir),
-		    cmocka_unit_test(test_ly_ctx_set_searchdir_invalid),
-                    cmocka_unit_test_teardown(test_ly_ctx_info, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_name, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule_name, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_ly_ctx_get_module, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_by_ns, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_ly_set_new, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_ly_set_free, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_ly_errno_location, setup_f, teardown_f),
-                    cmocka_unit_test(test_ly_errmsg),
-                    cmocka_unit_test_setup_teardown(test_ly_errpath, setup_f, teardown_f),
+        cmocka_unit_test(test_ly_ctx_new),
+        cmocka_unit_test(test_ly_ctx_new_invalid),
+        cmocka_unit_test(test_ly_ctx_get_searchdir),
+        cmocka_unit_test(test_ly_ctx_set_searchdir),
+        cmocka_unit_test(test_ly_ctx_set_searchdir_invalid),
+        cmocka_unit_test_teardown(test_ly_ctx_info, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_names, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule_names, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_ctx_get_module, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_older, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_ctx_load_module, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_by_ns, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule2, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_ctx_get_node, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_set_new, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_set_add, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_set_rm, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_set_rm_index, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_set_free, setup_f, teardown_f),
+        cmocka_unit_test(test_ly_verb),
+        cmocka_unit_test(test_ly_get_log_clb),
+        cmocka_unit_test(test_ly_set_log_clb),
+        cmocka_unit_test(test_ly_errno_location),
+        cmocka_unit_test(test_ly_errmsg),
+        cmocka_unit_test_setup_teardown(test_ly_errpath, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
