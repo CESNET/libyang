@@ -193,9 +193,8 @@ opendir_search:
         flen = strlen(file->d_name);
         if (!strcmp(&file->d_name[flen - 4], ".yin")) {
             format = LYS_IN_YIN;
-        /*TODO } else if (!strcmp(&file->d_name[flen - 5], ".yang")) {
-            continue;
-            format = LYS_IN_YANG;*/
+        } else if (!strcmp(&file->d_name[flen - 5], ".yang")) {
+            format = LYS_IN_YANG;
         } else {
             continue;
         }

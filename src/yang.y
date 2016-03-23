@@ -12,6 +12,17 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+%define api.pure full
+
+%parse-param {void *scanner}
+%parse-param {struct lys_module *module}
+%parse-param {struct lys_submodule *submodule}
+%parse-param {struct unres_schema *unres}
+%parse-param {struct lys_array_size *size_arrays}
+%parse-param {int read_all}
+
+%lex-param {void *scanner}
+
 %{
 #include <stdio.h>
 #include <stdarg.h>
@@ -21,6 +32,8 @@
 #include "resolve.h"
 #include "common.h"
 #include "parser_yang.h"
+#include "parser_yang_bis.h"
+#include "parser_yang_lex.h"
 #include "parser.h"
 
 /* only syntax rules */
@@ -31,11 +44,7 @@
 #define DISABLE_INHERIT 0
 #define ENABLE_INHERIT 0x01
 
-extern int yylineno;
-extern int yyleng;
-void yyerror();
-int yylex(void);
-extern char *yytext;
+void yyerror(void *scanner, ...);
 char *s, *tmp_s;
 char rev[LY_REV_SIZE];
 struct lys_module *trg;
@@ -47,8 +56,6 @@ int config_inherit;
 int actual_type;
 int64_t cnt_val;
 %}
-
-%parse-param {struct lys_module *module} {struct lys_submodule *submodule} {struct unres_schema *unres} {struct lys_array_size *size_arrays} {int read_all}
 
 %union {
   int32_t i;
@@ -241,7 +248,7 @@ start: module_stmt
 
 
 string_1: STRING  { if (read_all) {
-                      s = strdup(yytext);
+                      s = strdup(yyget_text(scanner));
                       if (!s) {
                         LOGMEM;
                         YYERROR;
@@ -254,9 +261,9 @@ optsep string_2
 string_2: %empty
   |  string_2 '+' optsep 
      STRING { if (read_all){
-                s = realloc(s,yyleng+strlen(s)+1);
+                s = realloc(s, yyget_leng(scanner) + strlen(s) + 1);
                 if (s) {
-                  strcat(s,yytext);
+                  strcat(s, yyget_text(scanner));
                 } else {
                   LOGMEM;
                   YYERROR;
@@ -333,7 +340,10 @@ submodule_header_stmts: %empty { $$ = 0; }
   
 yang_version_stmt: YANG_VERSION_KEYWORD sep yang_version_arg_str stmtend;
 
-yang_version_arg_str: NON_NEGATIVE_INTEGER { if (strlen(yytext)!=1 || yytext[0]!='1') {YYERROR;} } optsep
+yang_version_arg_str: NON_NEGATIVE_INTEGER { if (strlen(yyget_text(scanner))!=1 || yyget_text(scanner)[0]!='1') {
+                                               YYERROR;
+                                             }
+                                           } optsep
   | string_1 { if (read_all) {
                  if (strlen(s)!=1 || s[0]!='1') {
                    free(s);
@@ -422,9 +432,9 @@ revision_date_stmt: REVISION_DATE_KEYWORD sep revision_date optsep stmtend;
 
 revision_date: REVISION_DATE { if (read_all) {
                                  if (actual_type==IMPORT_KEYWORD) {
-                                     memcpy(((struct lys_import *)actual)->rev,yytext,LY_REV_SIZE-1);
+                                     memcpy(((struct lys_import *)actual)->rev, yyget_text(scanner), LY_REV_SIZE-1);
                                  } else {                              // INCLUDE KEYWORD
-                                     memcpy(rev,yytext,LY_REV_SIZE - 1);
+                                     memcpy(rev, yyget_text(scanner), LY_REV_SIZE - 1);
                                  }
                                }
                              }
@@ -513,7 +523,7 @@ revision_opt_stmt: %empty
   ;
 
 date_arg_str: REVISION_DATE { if (read_all) {
-                                s = strdup(yytext);
+                                s = strdup(yyget_text(scanner));
                                 if (!s) {
                                   LOGMEM;
                                   YYERROR;
@@ -847,7 +857,9 @@ type_stmt: TYPE_KEYWORD sep identifier_ref_arg_str { if (read_all && !(actual = 
                                                    }
            type_end;
 
-type_opt_stmt: %empty { $$.node.ptr_tpdf = actual; }
+type_opt_stmt: %empty { $$.node.ptr_tpdf = actual;
+                        $$.node.flag = 0;
+                      }
   |  type_opt_stmt { if (read_all && ($1.node.flag & LYS_TYPE_DEF)) {
                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, $1.node.ptr_tpdf, "type", "typedef");
                        YYERROR;
@@ -983,12 +995,11 @@ fraction_digits_stmt: FRACTION_DIGITS_KEYWORD sep fraction_digits_arg_str
 
 fraction_digits_arg_str: positive_integer_value optsep { $$ = $1; }
   | string_1 { if (read_all) {
-                 int errno = 0;
                  char *endptr = NULL;
                  unsigned long val;
 
                  val = strtoul(s, &endptr, 10);
-                 if (*endptr || s[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
+                 if (*endptr || s[0] == '-' || val == 0 || val > UINT32_MAX) {
                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "fraction-digits");
                    free(s);
                    s = NULL;
@@ -3358,7 +3369,7 @@ min_value_arg_str: non_negative_integer_value optsep { $$ = $1; }
                     uint64_t val;
                     char *endptr;
 
-                    val = strtoul(yytext, &endptr, 10);
+                    val = strtoul(yyget_text(scanner), &endptr, 10);
                     if (val > UINT32_MAX || *endptr) {
                         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "min-elements");
                         free(s);
@@ -3383,7 +3394,7 @@ max_value_arg_str: UNBOUNDED_KEYWORD optsep { $$ = 0; }
                     uint64_t val;
                     char *endptr;
 
-                    val = strtoul(yytext, &endptr, 10);
+                    val = strtoul(yyget_text(scanner), &endptr, 10);
                     if (val > UINT32_MAX || *endptr) {
                         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "max-elements");
                         free(s);
@@ -3437,7 +3448,7 @@ unique_arg: sep descendant_schema_nodeid unique_arg
 key_stmt: KEY_KEYWORD sep key_arg_str; 
 
 key_arg_str: node_identifier { if (read_all){
-                                 s = strdup(yytext);
+                                 s = strdup(yyget_text(scanner));
                                  if (!s) {
                                    LOGMEM;
                                    YYERROR;
@@ -3449,13 +3460,13 @@ key_arg_str: node_identifier { if (read_all){
   ;
 
 key_opt: sep node_identifier { if (read_all) {
-                                 s = ly_realloc(s,strlen(s) + yyleng + 2);
+                                 s = ly_realloc(s,strlen(s) + yyget_leng(scanner) + 2);
                                  if (!s) {
                                    LOGMEM;
                                    YYERROR;
                                  }
                                  strcat(s," ");
-                                 strcat(s,yytext);
+                                 strcat(s, yyget_text(scanner));
                                 }
                              }
          key_opt
@@ -3474,21 +3485,21 @@ range_arg_str: string { if (read_all) {
 
 absolute_schema_nodeid: '/' node_identifier { if (read_all) {
                                                 if (s) {
-                                                  s = ly_realloc(s,strlen(s) + yyleng + 2);
+                                                  s = ly_realloc(s,strlen(s) + yyget_leng(scanner) + 2);
                                                   if (!s) {
                                                     LOGMEM;
                                                     YYERROR;
                                                   }
                                                   strcat(s,"/");
-                                                  strcat(s,yytext);
+                                                  strcat(s, yyget_text(scanner));
                                                 } else {
-                                                  s = malloc(yyleng+2);
+                                                  s = malloc(yyget_leng(scanner) + 2);
                                                   if (!s) {
                                                     LOGMEM;
                                                     YYERROR;
                                                   }
                                                   s[0]='/';
-                                                  memcpy(s+1,yytext,yyleng+1);
+                                                  memcpy(s + 1, yyget_text(scanner), yyget_leng(scanner) + 1);
                                                 }
                                               }
                                             }
@@ -3501,14 +3512,14 @@ absolute_schema_nodeid_opt: %empty
 
 descendant_schema_nodeid: node_identifier { if (read_all)  {
                                               if (s) {
-                                                s = ly_realloc(s,strlen(s) + yyleng + 1);
+                                                s = ly_realloc(s,strlen(s) + yyget_leng(scanner) + 1);
                                                 if (!s) {
                                                   LOGMEM;
                                                   YYERROR;
                                                 }
-                                                strcat(s,yytext);
+                                                strcat(s, yyget_text(scanner));
                                               } else {
-                                                s = strdup(yytext);
+                                                s = strdup(yyget_text(scanner));
                                                 if (!s) {
                                                   LOGMEM;
                                                   YYERROR;
@@ -3518,7 +3529,7 @@ descendant_schema_nodeid: node_identifier { if (read_all)  {
                                           }
                           absolute_schema_nodeid_opt;
 
-path_arg_str: { tmp_s = yytext; } absolute_paths { if (read_all) {
+path_arg_str: { tmp_s = yyget_text(scanner); } absolute_paths { if (read_all) {
                                                      s = strdup(tmp_s);
                                                      if (!s) {
                                                        LOGMEM;
@@ -3527,7 +3538,7 @@ path_arg_str: { tmp_s = yytext; } absolute_paths { if (read_all) {
                                                      s[strlen(s) - 1] = '\0';
                                                    }
                                                  }
-  |  { tmp_s = yytext; } relative_path { if (read_all) {
+  |  { tmp_s = yyget_text(scanner); } relative_path { if (read_all) {
                                            s = strdup(tmp_s);
                                            if (!s) {
                                              LOGMEM;
@@ -3583,7 +3594,7 @@ current_function_invocation: CURRENT_KEYWORD whitespace_opt '(' whitespace_opt '
 positive_integer_value: NON_NEGATIVE_INTEGER { /* convert it to uint32_t */
                                                 unsigned long val;
 
-                                                val = strtoul(yytext, NULL, 10);
+                                                val = strtoul(yyget_text(scanner), NULL, 10);
                                                 if (val > UINT32_MAX) {
                                                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Converted number is very long.");
                                                     YYERROR;
@@ -3599,7 +3610,7 @@ integer_value: ZERO { $$ = 0; }
   |  integer_value_convert { /* convert it to int32_t */
                int64_t val;
 
-               val = strtoll(yytext, NULL, 10);
+               val = strtoll(yyget_text(scanner), NULL, 10);
                if (val < INT32_MIN || val > INT32_MAX) {
                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The number is not in the correct range (INT32_MIN..INT32_MAX): \"%d\"",val);
                    YYERROR;
@@ -3663,7 +3674,7 @@ stmtsep: %empty
   ;
 
 unknown_statement: IDENTIFIERPREFIX { if (read_all ) {
-                                       if (yang_use_extension(trg, data_node, actual, yytext)) {
+                                       if (yang_use_extension(trg, data_node, actual, yyget_text(scanner))) {
                                          YYERROR;
                                        }
                                      }
@@ -3706,7 +3717,7 @@ whitespace_opt: %empty
 
 
 string: strings { if (read_all){
-                    s = strdup(yytext);
+                    s = strdup(yyget_text(scanner));
                     if (!s) {
                       LOGMEM;
                       YYERROR;
@@ -3805,7 +3816,7 @@ identifier: IDENTIFIER
   ;
 
 identifiers: identifier { if (read_all) {
-                            s = strdup(yytext);
+                            s = strdup(yyget_text(scanner));
                             if (!s) {
                               LOGMEM;
                               YYERROR;
@@ -3814,7 +3825,7 @@ identifiers: identifier { if (read_all) {
                         }
 
 identifiers_ref: IDENTIFIERPREFIX { if (read_all) {
-                                      s = strdup(yytext);
+                                      s = strdup(yyget_text(scanner));
                                       if (!s) {
                                         LOGMEM;
                                         YYERROR;
@@ -3824,8 +3835,8 @@ identifiers_ref: IDENTIFIERPREFIX { if (read_all) {
 
 %%
 
-void yyerror(){
+void yyerror(void *scanner, ...){
 
-  LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yytext);
+  LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yyget_text(scanner));
   free(s);
 }

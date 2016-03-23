@@ -2071,6 +2071,7 @@ int
 yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, const char *data, unsigned int size_data)
 {
     YY_BUFFER_STATE bp;
+    yyscan_t scanner = NULL;
     struct lys_array_size *size_arrays=NULL;
     unsigned int size;
 
@@ -2081,28 +2082,29 @@ yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struc
     }
 
     size = (size_data) ? size_data : strlen(data) + 2;
-    bp = yy_scan_buffer((char *)data, size);
-    yy_switch_to_buffer(bp);
+    yylex_init(&scanner);
+    bp = yy_scan_buffer((char *)data, size, scanner);
+    yy_switch_to_buffer(bp, scanner);
 
-    if (yyparse(module, submodule, unres, size_arrays, LY_READ_ONLY_SIZE)) {
-        yy_delete_buffer(bp);
+    if (yyparse(scanner, module, submodule, unres, size_arrays, LY_READ_ONLY_SIZE)) {
+        yy_delete_buffer(bp, scanner);
         goto error;
     }
-    yy_delete_buffer(bp);
-    bp = yy_scan_buffer((char *)data, size);
-    yy_switch_to_buffer(bp);
+    yy_delete_buffer(bp, scanner);
+    bp = yy_scan_buffer((char *)data, size, scanner);
+    yy_switch_to_buffer(bp, scanner);
 
-    if (yyparse(module, submodule, unres, size_arrays, LY_READ_ALL)) {
-        yy_delete_buffer(bp);
+    if (yyparse(scanner, module, submodule, unres, size_arrays, LY_READ_ALL)) {
+        yy_delete_buffer(bp, scanner);
         goto error;
     }
-    yy_delete_buffer(bp);
+    yy_delete_buffer(bp, scanner);
 
     nacm_inherit(module);
 
     free(size_arrays->node);
     free(size_arrays);
-    yylex_destroy();
+    yylex_destroy(scanner);
     return EXIT_SUCCESS;
 
 error:
@@ -2110,7 +2112,7 @@ error:
         free(size_arrays->node);
         free(size_arrays);
     }
-    yylex_destroy();
+    yylex_destroy(scanner);
     return EXIT_FAILURE;
 }
 

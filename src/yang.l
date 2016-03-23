@@ -12,7 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-%option noyywrap nounput noinput
+%option noyywrap nounput noinput reentrant bison-bridge
 %{
 #include "parser_yang.h"
 #include "parser_yang_bis.h"
