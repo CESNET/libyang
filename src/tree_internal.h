@@ -363,4 +363,40 @@ int lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *si
  */
 int lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique);
 
+/**
+ * @brief Process with-default nodes (according to the with-defaults mode in \p options).
+ *
+ * @param[in] ctx Optional parameter. If provided, default nodes from all modules in the context will be added (so it
+ *            has no effect for #LYD_WD_TRIM). If NULL, only the modules explicitly mentioned in data tree are
+ *            taken into account.
+ * @param[in] root Data tree root. In case of #LYD_WD_TRIM the data tree can be modified so the root can be changed or
+ *            removed. In other modes and with empty data tree, new default nodes can be created so the root pointer
+ *            will contain/return the newly created data tree.
+ * @param[in,out] unres List of unresolved nodes. If the newly created leafs include some property that needs to be
+ *            resolved, it is added into the list. Caller is supposed to resolve the list by resolve_unres_data().
+ * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions. The
+ *            LYD_WD_* options are used to select functionality:
+ * - #LYD_WD_TRIM - remove all nodes that have value equal to their default value
+ * - #LYD_WD_ALL - add default nodes
+ * - #LYD_WD_ALL_TAG - add default nodes and add attribute 'default' with value 'true' to all nodes having their default value
+ * - #LYD_WD_IMPL_TAG - add default nodes, but add attribute 'default' only to the added nodes
+ * @note The *_TAG modes require to have ietf-netconf-with-defaults module in the context of the data tree if other
+ * schema for default attribute is not specified as \p wdmod.
+ * @param[in] wdmod Optional parameter to specify module in which the default attributes will be created. If NULL
+ * the ietf-netconf-with-defaults schema is used.
+ * @return EXIT_SUCCESS ot EXIT_FAILURE
+ */
+int lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres, int options, const struct lys_module *wdmod);
+
+/**
+ * @brief Remove all default nodes, respectively all nodes with attribute X:default="true" where X is the provided
+ * \p wdmod.
+ *
+ * @param[in] root Data tree root. The data tree can be modified so the root can be changed or completely removed.
+ * @param[in] wdmod Schema in which the default attributes were created. If NULL the ietf-netconf-with-defaults
+ * is used if present in the data tree's context.
+ * @return EXIT_SUCCESS or EXIT_FAILURE
+ */
+int lyd_wd_cleanup_mod(struct lyd_node **root, const struct lys_module *wdmod);
+
 #endif /* LY_TREE_INTERNAL_H_ */

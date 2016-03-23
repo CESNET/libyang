@@ -461,6 +461,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     const struct lys_node *rpc = NULL;
     struct lyd_node *result = NULL, *next, *iter, *last;
     struct lyxml_elem *xmlstart, *xmlelem, *xmlaux;
+    const struct lys_module *wdmod = NULL;
 
     ly_errno = LY_SUCCESS;
 
@@ -535,13 +536,46 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         }
     }
 
+    /* add default values if needed */
+    if (options & LYD_WD_MASK) {
+        if (lyd_wd_top(ctx, &result, unres, options, wdmod)) {
+            LY_TREE_FOR_SAFE(result, next, iter) {
+                lyd_free(iter);
+            }
+            result = NULL;
+            goto cleanup;
+        }
+    } else {
+        /* use internal yang module, since ncwd is not necessarily present */
+        wdmod = ly_ctx_get_module(ctx, "yang", NULL);
+        if (lyd_wd_top(ctx, &result, unres, options | LYD_WD_IMPL_TAG, wdmod)) {
+            LY_TREE_FOR_SAFE(result, next, iter) {
+                lyd_free(iter);
+            }
+            result = NULL;
+            goto cleanup;
+        }
+    }
+
     /* check leafrefs and/or instids if any */
-    if (result && resolve_unres_data(unres, (options & LYD_OPT_NOAUTODEL) ? NULL : &result)) {
+    if (unres->count && result && resolve_unres_data(unres, (options & LYD_OPT_NOAUTODEL) ? NULL : &result)) {
         /* leafref & instid checking failed */
         LY_TREE_FOR_SAFE(result, next, iter) {
             lyd_free(iter);
         }
         result = NULL;
+        goto cleanup;
+    }
+
+    if (!(options & LYD_WD_MASK)) {
+        /* cleanup default nodes */
+        if (lyd_wd_cleanup_mod(&result, wdmod)) {
+            LY_TREE_FOR_SAFE(result, next, iter) {
+                lyd_free(iter);
+            }
+            result = NULL;
+            goto cleanup;
+        }
     }
 
 cleanup:

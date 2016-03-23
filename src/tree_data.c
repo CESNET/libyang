@@ -1037,6 +1037,7 @@ lyd_validate(struct lyd_node **node, int options, ...)
     int i, ret = EXIT_FAILURE;
     va_list ap;
     struct unres_data *unres = NULL;
+    const struct lys_module *wdmod = NULL;
 
     if (!node) {
         ly_errno = LY_EINVAL;
@@ -1165,12 +1166,34 @@ nextsiblings:
         }
     }
 
-    /* check unresolved checks (when-stmt) */
-    if (resolve_unres_data(unres,  (options & LYD_OPT_NOAUTODEL) ? NULL : node)) {
-        goto error;
+success:
+    /* add default values if needed */
+    if (options & LYD_WD_MASK) {
+        if (lyd_wd_top(*node ? (*node)->schema->module->ctx : ctx, node, unres, options, wdmod)) {
+            goto error;
+        }
+    } else {
+        /* use internal yang module, since ncwd is not necessarily present */
+        wdmod = ly_ctx_get_module(*node ? (*node)->schema->module->ctx : ctx, "yang", NULL);
+        if (lyd_wd_top(*node ? (*node)->schema->module->ctx : ctx, node, unres, options | LYD_WD_IMPL_TAG, wdmod)) {
+            goto error;
+        }
     }
 
-success:
+    if (unres->count) {
+        /* check unresolved checks (when-stmt) */
+        if (resolve_unres_data(unres,  (options & LYD_OPT_NOAUTODEL) ? NULL : node)) {
+            goto error;
+        }
+    }
+
+    if (!(options & LYD_WD_MASK)) {
+        /* cleanup default nodes */
+        if (lyd_wd_cleanup_mod(node, wdmod)) {
+            goto error;
+        }
+    }
+
     ret = EXIT_SUCCESS;
 
 error:
@@ -1962,22 +1985,23 @@ ly_set_rm(struct ly_set *set, void *node)
     return ly_set_rm_index(set, i);
 }
 
-API int
-lyd_wd_cleanup(struct lyd_node **root)
+int
+lyd_wd_cleanup_mod(struct lyd_node **root, const struct lys_module *wdmod)
 {
     struct lyd_node *wr, *next1, *next2, *iter, *to_free = NULL;
     struct lyd_attr *attr;
-    const struct lys_module *wdmod;
 
     if (!(*root)) {
         /* nothing to do */
         return EXIT_SUCCESS;
     }
 
-    wdmod = ly_ctx_get_module((*root)->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
     if (!wdmod) {
-        /* nothing to do */
-        return EXIT_SUCCESS;
+        wdmod = ly_ctx_get_module((*root)->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
+        if (!wdmod) {
+            /* nothing to do */
+            return EXIT_SUCCESS;
+        }
     }
 
     LY_TREE_FOR_SAFE(*root, next1, wr) {
@@ -2048,6 +2072,15 @@ nextsiblings:
     return EXIT_SUCCESS;
 }
 
+API int
+lyd_wd_cleanup(struct lyd_node **root)
+{
+    const struct lys_module *wdmod;
+
+    wdmod = ly_ctx_get_module((*root)->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
+    return lyd_wd_cleanup_mod(root, wdmod);
+}
+
 static int
 lyd_wd_trim(struct lyd_node **root, const struct lys_module *wdmod, int options)
 {
@@ -2057,8 +2090,7 @@ lyd_wd_trim(struct lyd_node **root, const struct lys_module *wdmod, int options)
     struct lys_tpdf *tpdf;
 
     LY_TREE_FOR_SAFE(*root, next1, wr) {
-        LY_TREE_DFS_BEGIN(wr, next2, iter)
-        {
+        LY_TREE_DFS_BEGIN(wr, next2, iter) {
             if (to_free) {
                 lyd_free(to_free);
                 to_free = NULL;
@@ -2138,8 +2170,8 @@ nextsiblings:
             break;
         }
     }
-    return 0;
 
+    return EXIT_SUCCESS;
 }
 
 /*
@@ -2450,17 +2482,17 @@ lyd_wd_add_inner(const struct lys_module *wdmod, struct lyd_node *subroot, struc
     return EXIT_SUCCESS;
 }
 
-static int
-lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres, int options)
+int
+lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres, int options,
+           const struct lys_module *wdmod)
 {
-    const struct lys_module *wdmod = NULL;
     struct lys_node *siter;
     struct lyd_node *iter;
     struct ly_set *modset = NULL, *nodeset;
     unsigned int i;
     static char path[4096]; /* TODO thread specific */
 
-    if ((options & LYD_WD_MASK) & (LYD_WD_ALL_TAG | LYD_WD_IMPL_TAG)) {
+    if (!wdmod && ((options & LYD_WD_MASK) & (LYD_WD_ALL_TAG | LYD_WD_IMPL_TAG))) {
         wdmod = ly_ctx_get_module(ctx, "ietf-netconf-with-defaults", NULL);
         if (!wdmod) {
             LOGERR(LY_EINVAL, "%s: missing module \"ietf-netconf-with-defaults\" in context.", __func__);
@@ -2634,7 +2666,7 @@ lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options)
             return EXIT_FAILURE;
         }
     }
-    rc = lyd_wd_top(ctx, root, unres, options);
+    rc = lyd_wd_top(ctx, root, unres, options, NULL);
     if (unres && unres->count && resolve_unres_data(unres, root)) {
         rc = EXIT_FAILURE;
     }
