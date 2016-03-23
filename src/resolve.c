@@ -1517,7 +1517,7 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
 }
 
 struct lyd_node *
-resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int *parsed)
+resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int options, int *parsed)
 {
     char module_name[LY_MODULE_NAME_MAX_LEN - 1];
     const char *id, *mod_name, *name;
@@ -1550,6 +1550,23 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
 
     while (1) {
         LY_TREE_FOR(start, sibling) {
+            /* RPC data check, return simply invalid argument, because the data tree is invalid */
+            if (lys_parent(sibling->schema)) {
+                if (options & LYD_PATH_OPT_OUTPUT) {
+                    if (lys_parent(sibling->schema)->nodetype == LYS_INPUT) {
+                        ly_errno = LY_EINVAL;
+                        *parsed = -1;
+                        return NULL;
+                    }
+                } else {
+                    if (lys_parent(sibling->schema)->nodetype == LYS_OUTPUT) {
+                        ly_errno = LY_EINVAL;
+                        *parsed = -1;
+                        return NULL;
+                    }
+                }
+            }
+
             /* name match */
             if (!strncmp(name, sibling->schema->name, nam_len) && !sibling->schema->name[nam_len]) {
 

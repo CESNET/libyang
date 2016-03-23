@@ -544,16 +544,17 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
     const struct lys_node *schild, *sparent;
     const struct lys_node_list *slist;
     const struct lys_module *module, *prev_mod;
-    int r, i, parsed = 0, mod_name_len, nam_len, is_relative = -1;
+    int r, i, parsed = 0, mod_name_len, nam_len, is_relative = -1, first_iter = 1;
 
     if (!path || (!data_tree && !ctx) || ((options & LYD_PATH_OPT_UPDATE) && !value)
-            || (data_tree && (data_tree->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)))) {
+            || (data_tree && (data_tree->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)))
+            || (!data_tree && (path[0] != '/'))) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
 
     if (data_tree) {
-        parent = resolve_partial_json_data_nodeid(path, data_tree, &parsed);
+        parent = resolve_partial_json_data_nodeid(path, data_tree, options, &parsed);
         if (parsed == -1) {
             return NULL;
         }
@@ -639,9 +640,39 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
                 }
 
                 /* name check */
-                if (!strncmp(schild->name, name, nam_len) && !schild->name[nam_len]) {
-                    break;
+                if (strncmp(schild->name, name, nam_len) || schild->name[nam_len]) {
+                    continue;
                 }
+
+                /* RPC check */
+                if (options & LYD_PATH_OPT_OUTPUT) {
+                    if (lys_parent(schild) && (lys_parent(schild)->nodetype == LYS_INPUT)) {
+                        continue;
+                    }
+
+                    /* special case when we are creating a new child of an RPC output,
+                     * we do not want to create the RPC container (it is not part of
+                     * the data) and we then need to insert it as a top-level sibling
+                     * of the data_tree, if any */
+                    if (schild->nodetype == LYS_RPC) {
+                        if (!path[0]) {
+                            /* only create the RPC container of output? that does not make sense */
+                            ly_errno = LY_EINVAL;
+                            lyd_free(ret);
+                            return NULL;
+                        }
+
+                        node = NULL;
+                        is_relative = 0;
+                        goto next_iter;
+                    }
+                } else {
+                    if (lys_parent(schild) && (lys_parent(schild)->nodetype == LYS_OUTPUT)) {
+                        continue;
+                    }
+                }
+
+                break;
             }
         }
 
@@ -684,9 +715,6 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
             lyd_free(ret);
             return NULL;
         }
-        if (!ret) {
-            ret = node;
-        }
         /* special case when we are creating a sibling of a top-level data node */
         if (!is_relative) {
             if (data_tree) {
@@ -696,6 +724,27 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
                 }
             }
             is_relative = 1;
+        }
+
+        if (first_iter) {
+            /* order if needed, but only when inserted somewhere */
+            if (options & LYD_PATH_OPT_OUTPUT) {
+                if (!lys_parent(node->schema) && lyd_order(node, 0)) {
+                    lyd_free(ret);
+                    return NULL;
+                }
+            } else {
+                sparent = node->schema;
+                do {
+                    sparent = lys_parent(sparent);
+                } while (sparent && (sparent->nodetype != LYS_INPUT));
+                if (sparent && lyd_order(node, 0)) {
+                    lyd_free(ret);
+                    return NULL;
+                }
+            }
+            ret = node;
+            first_iter = 0;
         }
 
         parsed = 0;
@@ -714,6 +763,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
             return NULL;
         }
 
+next_iter:
         /* prepare for another iteration */
         parent = node;
         sparent = schild;
@@ -741,7 +791,8 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         }
     }
 
-    return ret;
+    LOGINT;
+    return NULL;
 }
 
 static void
@@ -1028,6 +1079,13 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
     }
 
     return EXIT_SUCCESS;
+}
+
+API int
+lyd_order(struct lyd_node *sibling, int recursive)
+{
+    /* TODO */
+    return 0;
 }
 
 API int

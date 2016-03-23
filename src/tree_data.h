@@ -458,18 +458,21 @@ struct lyd_node *lyd_output_new_anyxml(const struct lys_node *schema, const char
  * Default behavior:
  * - if the target node already exists, an error is returned.
  * - the whole path to the target node is created (with any missing parents) if necessary.
+ * - RPC output schema children are completely ignored in all modules. Input is searched and nodes created normally.
  * @{
  */
 
 #define LYD_PATH_OPT_UPDATE   0x01 /**< If the target node exists and is a leaf, it is updated with the new value. */
 #define LYD_PATH_OPT_NOPARENT 0x02 /**< If any parents of the target node exist, return an error. */
+#define LYD_PATH_OPT_OUTPUT   0x04 /**< Changes the behavior to ignoring RPC input schema nodes and using only output ones. */
 
 /** @} pathoptions */
 
 /**
  * @brief Create a new data node based on a simple XPath.
  *
- * @param[in] data_tree Existing data tree to add to/modify. Can be NULL.
+ * @param[in] data_tree Existing data tree to add to/modify. It is expected to be valid. If creating RPCs,
+ * there should only be one RPC and either input or output (use flag in this case). Can be NULL.
  * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
  * @param[in] path Simple data XPath of the new node. It can contain only simple node addressing with optional
  * module names as prefixes. List nodes must have predicates, one for each list key in the correct order and
@@ -527,6 +530,15 @@ int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
  * in the data tree.
  */
 int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
+
+/**
+ * @brief Order siblings according to the schema node ordering.
+ *
+ * @param[in] sibling Node, whose siblings will be ordered.
+ * @param[in] recursive Whether order all siblings of siblings, recursively.
+ * @return 0 on success, nonzero in case of error.
+ */
+int lyd_order(struct lyd_node *sibling, int recursive);
 
 /**
  * @brief Search in the given data for instances of nodes matching the provided XPath expression.
