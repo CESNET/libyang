@@ -2329,6 +2329,7 @@ lyd_wd_add_empty(const struct lys_module *wdmod, struct lyd_node *parent, struct
         case LYS_CONTAINER:
             if (((struct lys_node_container *)siter)->presence) {
                 /* don't go into presence containers */
+                next = NULL;
                 goto nextsibling;
             }
             break;
