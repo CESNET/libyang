@@ -180,7 +180,7 @@ test_keys_inorder2(void **state)
     rc = lyd_validate(&(st->dt), 0);
     assert_int_not_equal(rc, 0);
     assert_string_equal(ly_errmsg(), "Invalid position of the key element.");
-    assert_string_equal(ly_errpath(), "/keys:l[key2='2'][key1='1']/key2");
+    assert_string_equal(ly_errpath(), "/keys:l[key1='1'][key2='2']/key2");
 }
 
 int main(void)

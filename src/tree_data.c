@@ -554,33 +554,35 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
 
     if (data_tree) {
         parent = resolve_partial_json_data_nodeid(path, data_tree, &parsed);
-        if (!parent) {
+        if (parsed == -1) {
             return NULL;
         }
-        path += parsed;
         if (parsed) {
+            assert(parent);
             /* if we parsed something we have a relative path for sure, otherwise we don't know */
             is_relative = 1;
-        }
 
-        if (!path[0]) {
-            /* the node exists */
-            if (!(options & LYD_PATH_OPT_UPDATE) || (parent->schema->nodetype != LYS_LEAF)) {
-                LOGVAL(LYE_PATH_EXISTS, LY_VLOG_NONE, NULL);
-                return NULL;
+            path += parsed;
+
+            if (!path[0]) {
+                /* the node exists */
+                if (!(options & LYD_PATH_OPT_UPDATE) || (parent->schema->nodetype != LYS_LEAF)) {
+                    LOGVAL(LYE_PATH_EXISTS, LY_VLOG_NONE, NULL);
+                    return NULL;
+                }
+
+                /* update leaf value */
+                r = lyd_change_leaf((struct lyd_node_leaf_list *)parent, value);
+                if (r) {
+                    return NULL;
+                }
+                return parent;
             }
 
-            /* update leaf value */
-            r = lyd_change_leaf((struct lyd_node_leaf_list *)parent, value);
-            if (r) {
-                return NULL;
-            }
-            return parent;
+            sparent = parent->schema;
+            module = lys_node_module(sparent);
+            prev_mod = module;
         }
-
-        sparent = parent->schema;
-        module = lys_node_module(sparent);
-        prev_mod = module;
     }
 
     if ((r = parse_schema_nodeid(path, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
@@ -591,8 +593,12 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
     path += r;
 
     /* we are starting from scratch, absolute path */
-    if (!data_tree) {
-        if (!mod_name) {
+    if (!parent) {
+        if (is_relative) {
+            /* we need an absolute path, so we say we could not find this node as a child of data_tree */
+            LOGVAL(LYE_PATH_INNODE, LY_VLOG_NONE, NULL, mod_name ? mod_name : name);
+            return NULL;
+        } else if (!mod_name) {
             LOGVAL(LYE_PATH_MISSMOD, LY_VLOG_NONE, NULL, name);
             return NULL;
         } else if (mod_name_len > LY_MODULE_NAME_MAX_LEN) {
@@ -682,8 +688,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         /* special case when we are creating a sibling of a top-level data node */
         if (!is_relative) {
             if (data_tree) {
-                assert(data_tree == parent);
-                if (lyd_insert_before(data_tree, node)) {
+                if (lyd_insert_after(data_tree, node)) {
                     lyd_free(ret);
                     return NULL;
                 }
