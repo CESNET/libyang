@@ -1522,7 +1522,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
     char module_name[LY_MODULE_NAME_MAX_LEN - 1];
     const char *id, *mod_name, *name;
     int r, ret, mod_name_len, nam_len, is_relative = -1, has_predicate, last_parsed;
-    struct lyd_node *sibling, *last_match;
+    struct lyd_node *sibling, *last_match = NULL;
     const struct lys_module *prefix_mod, *prev_mod;
     struct ly_ctx *ctx;
 
@@ -1533,6 +1533,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
 
     if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate)) < 1) {
         LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
+        *parsed = -1;
         return NULL;
     }
     id += r;
@@ -1541,11 +1542,9 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
 
     if (is_relative) {
         prev_mod = start->schema->module;
-        last_match = start;
         start = start->child;
     } else {
         for (; start->parent; start = start->parent);
-        last_match = start;
         prev_mod = start->schema->module;
     }
 
@@ -1558,6 +1557,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
                 if (mod_name) {
                     if (mod_name_len > LY_MODULE_NAME_MAX_LEN) {
                         LOGINT;
+                        *parsed = -1;
                         return NULL;
                     }
                     strncpy(module_name, mod_name, mod_name_len);
@@ -1566,6 +1566,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
                     prefix_mod = ly_ctx_get_module(ctx, module_name, NULL);
                     if (!prefix_mod) {
                         LOGVAL(LYE_PATH_INMOD, LY_VLOG_NONE, NULL, mod_name);
+                        *parsed = -1;
                         return NULL;
                     }
                 } else {
@@ -1586,10 +1587,12 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
                     r = 0;
                     if (!has_predicate) {
                         LOGVAL(LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, name);
+                        *parsed = -1;
                         return NULL;
                     }
                     ret = resolve_partial_json_data_list_predicate(id, name, sibling, &r);
                     if (ret == -1) {
+                        *parsed = -1;
                         return NULL;
                     } else if (ret == 1) {
                         /* this list instance does not match */
@@ -1609,6 +1612,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
                 /* move down the tree, if possible */
                 if (start->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
                     LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
+                    *parsed = -1;
                     return NULL;
                 }
                 last_match = start;
@@ -1627,6 +1631,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
 
         if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate)) < 1) {
             LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
+            *parsed = -1;
             return NULL;
         }
         id += r;
@@ -1635,6 +1640,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
 
     /* cannot get here */
     LOGINT;
+    *parsed = -1;
     return NULL;
 }
 
