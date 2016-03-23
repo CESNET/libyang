@@ -2336,9 +2336,11 @@ lyd_wd_add_empty(const struct lys_module *wdmod, struct lyd_node *parent, struct
         case LYS_CHOICE:
             if (((struct lys_node_choice *)siter)->dflt) {
                 next = ((struct lys_node_choice *)siter)->dflt;
-                goto nextsibling;
+            } else {
+                /* forget about this choice */
+                next = NULL;
             }
-            break;
+            goto nextsibling;
         case LYS_USES:
         case LYS_CASE:
             /* go into */
