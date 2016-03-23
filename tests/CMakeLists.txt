@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 
-set(api_tests test_libyang test_tree_schema test_xml test_dict)
+set(api_tests test_libyang test_tree_schema test_xml test_dict test_tree_data)
 set(data_tests test_data_initialization test_leafref_remove test_instid_remove test_keys test_autodel test_when)
 set(schema_yin_tests test_ietf test_augment test_print_transform)
 
