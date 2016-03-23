@@ -2364,8 +2364,8 @@ lyd_wd_add_inner(const struct lys_module *wdmod, struct lyd_node *subroot, struc
     return EXIT_SUCCESS;
 }
 
-int
-lyd_wd_top(int type, struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres, int options)
+static int
+lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres, int options)
 {
     const struct lys_module *wdmod = NULL;
     struct lys_node *siter;
@@ -2374,7 +2374,7 @@ lyd_wd_top(int type, struct ly_ctx *ctx, struct lyd_node **root, struct unres_da
     unsigned int i;
     static char path[4096]; /* TODO thread specific */
 
-    if (type & (LYD_WD_ALL_TAG | LYD_WD_IMPL_TAG)) {
+    if ((options & LYD_WD_MASK) & (LYD_WD_ALL_TAG | LYD_WD_IMPL_TAG)) {
         wdmod = ly_ctx_get_module(ctx, "ietf-netconf-with-defaults", NULL);
         if (!wdmod) {
             LOGERR(LY_EINVAL, "%s: missing module \"ietf-netconf-with-defaults\" in context.", __func__);
@@ -2382,10 +2382,10 @@ lyd_wd_top(int type, struct ly_ctx *ctx, struct lyd_node **root, struct unres_da
         }
     }
 
-    if (type == LYD_WD_TRIM) {
+    if ((options & LYD_WD_MASK) == LYD_WD_TRIM) {
         /* specific mode, we are not adding something, but removing something */
         return lyd_wd_trim(root, NULL, options);
-    } else if (type == LYD_WD_ALL_TAG) {
+    } else if ((options & LYD_WD_MASK) == LYD_WD_ALL_TAG) {
         lyd_wd_trim(root, wdmod, options);
     }
 
@@ -2420,7 +2420,8 @@ lyd_wd_top(int type, struct ly_ctx *ctx, struct lyd_node **root, struct unres_da
 
     /* add missing top-level default nodes */
     for (i = 0; i < modset->number; i++) {
-        LOGVRB("Adding top level defaults for %s module, mode %x", ((struct lys_module *)modset->set.g[i])->name, type);
+        LOGVRB("Adding top level defaults for %s module, mode %x", ((struct lys_module *)modset->set.g[i])->name,
+               (options & LYD_WD_MASK));
         LY_TREE_FOR(((struct lys_module *)modset->set.g[i])->data, siter) {
             if  (options & (LYD_OPT_CONFIG | LYD_OPT_EDIT | LYD_OPT_GETCONFIG)) {
                 /* do not process status data */
@@ -2547,7 +2548,7 @@ lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options)
             return EXIT_FAILURE;
         }
     }
-    rc = lyd_wd_top(mode, ctx, root, unres, options);
+    rc = lyd_wd_top(ctx, root, unres, options);
     if (unres && unres->count && resolve_unres_data(unres, root)) {
         rc = EXIT_FAILURE;
     }
