@@ -1,3 +1,17 @@
+/**
+ * @file yang.y
+ * @author Pavol Vican
+ * @brief YANG parser for libyang (bison grammar)
+ *
+ * Copyright (c) 2015 CESNET, z.s.p.o.
+ *
+ * This source code is licensed under BSD 3-Clause License (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/BSD-3-Clause
+ */
+
 %{
 #include <stdio.h>
 #include <stdarg.h>
