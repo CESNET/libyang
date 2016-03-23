@@ -553,6 +553,10 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         return NULL;
     }
 
+    if (!ctx) {
+        ctx = data_tree->schema->module->ctx;
+    }
+
     if (data_tree) {
         parent = resolve_partial_json_data_nodeid(path, data_tree, options, &parsed);
         if (parsed == -1) {
