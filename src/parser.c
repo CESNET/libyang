@@ -233,6 +233,7 @@ searchpath:
         /* search in local directory done, try context's search_path */
         if (dir) {
             closedir(dir);
+            dir = NULL;
         }
         wd = strdup(ctx->models.search_path);
         if (!wd) {
