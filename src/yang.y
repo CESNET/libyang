@@ -228,6 +228,7 @@ int64_t cnt_val;
 %type <nodes> deviate_delete_opt_stmt
 %type <nodes> deviate_replace_opt_stmt
 %type <inc> include_stmt
+%type <inc> import_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
@@ -396,7 +397,15 @@ import_stmt: IMPORT_KEYWORD sep tmp_identifier_arg_str {
                                }
                              }
                  revision_date_opt
-             '}' stmtsep { if (read_all && yang_fill_import(trg, actual, $3)) {YYERROR;} }
+             '}' stmtsep { if (read_all) {
+                             $$ = trg;
+                             if (yang_fill_import(trg, actual, $3)) {
+                               YYERROR;
+                             }
+                             trg = $$;
+                             config_inherit = ENABLE_INHERIT;
+                           }
+                         }
 
 tmp_identifier_arg_str: identifier_arg_str { $$ = s; s = NULL; }
 
@@ -416,6 +425,7 @@ include_stmt: INCLUDE_KEYWORD sep identifier_arg_str { if (read_all) {
                                       size_arrays->inc++;
                                       s = NULL;
                                       trg = $$;
+                                      config_inherit = ENABLE_INHERIT;
                                     }
                                   }
 
