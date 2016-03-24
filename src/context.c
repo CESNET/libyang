@@ -528,6 +528,11 @@ ly_ctx_info(struct ly_ctx *ctx)
     const struct lys_module *mod;
     struct lyd_node *root, *cont;
 
+    if (!ctx) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
     mod = ly_ctx_get_module(ctx, "ietf-yang-library", IETF_YANG_LIB_REV);
     if (!mod || !mod->data) {
         LOGINT;
