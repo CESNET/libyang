@@ -5628,12 +5628,12 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
     /* ( Expr ( ',' Expr )* )? */
     if (exp->tokens[*exp_idx] != LYXP_TOKEN_PAR2) {
         if (set) {
-            arg_count = 1;
             args = malloc(sizeof *args);
             if (!args) {
                 LOGMEM;
                 goto cleanup;
             }
+            arg_count = 1;
             args[0] = set_copy(set, ctx);
             if (!args[0]) {
                 goto cleanup;
