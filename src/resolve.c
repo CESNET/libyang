@@ -4840,20 +4840,6 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
                                 break;
                             }
                         }
-                        if (!parent->parent && lys_parent(parent->schema)) {
-                            /* already unlinked node */
-                            parent = NULL;
-                        } else if (parent->prev == parent && !parent->next) {
-                            for (j = 0; j < unres->count; j++) {
-                                if (unres->type[j] != UNRES_DELETE || i == j) {
-                                    continue;
-                                }
-                                if (unres->node[j] == parent) {
-                                    parent = NULL;
-                                    break;
-                                }
-                            }
-                        }
                         unres->node[i] = parent;
                     }
 
@@ -4867,6 +4853,23 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
                     lyd_unlink(unres->node[i]);
                     unres->type[i] = UNRES_DELETE;
                     del_items++;
+
+                    /* update the rest of unres items */
+                    for (j = 0; j < unres->count; j++) {
+                        if (unres->type[j] == UNRES_RESOLVED || unres->type[j] == UNRES_DELETE || j == i) {
+                            continue;
+                        }
+
+                        /* test if the node is in subtree to be deleted */
+                        for (parent = unres->node[j]; parent; parent = parent->parent) {
+                            if (parent == unres->node[i]) {
+                                /* yes, it is */
+                                unres->type[j] = UNRES_RESOLVED;
+                                resolved++;
+                                break;
+                            }
+                        }
+                    }
                 } else {
                     unres->type[i] = UNRES_RESOLVED;
                 }
@@ -4902,22 +4905,6 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
             unres->type[i] = UNRES_RESOLVED;
             del_items--;
             continue;
-        }
-
-        for (j = 0; j < unres->count; j++) {
-            if (unres->type[j] == UNRES_RESOLVED || unres->type[j] == UNRES_DELETE) {
-                continue;
-            }
-
-            /* test if the node is in subtree to be deleted */
-            for (parent = unres->node[j]; parent; parent = parent->parent) {
-                if (parent == unres->node[i]) {
-                    /* yes, it is */
-                    unres->type[j] = UNRES_RESOLVED;
-                    resolved++;
-                    break;
-                }
-            }
         }
 
         /* really remove the complete subtree */
