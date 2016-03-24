@@ -269,7 +269,7 @@ test_lyxml_print_file(void **state)
     fclose(f);
 
     fd = open(file_name, O_RDONLY);
-    if (fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
+    if (fd == -1 || fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
         goto error;
     }
 

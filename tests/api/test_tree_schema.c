@@ -1059,7 +1059,7 @@ test_lys_print_file_yin(void **state)
     fclose(f);
 
     fd = open(file_name, O_RDONLY);
-    if (fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
+    if (fd == -1 || fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
         goto error;
     }
 
@@ -1123,7 +1123,7 @@ test_lys_print_file_yang(void **state)
     fclose(f);
 
     fd = open(file_name, O_RDONLY);
-    if (fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
+    if (fd == -1 || fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
         goto error;
     }
 

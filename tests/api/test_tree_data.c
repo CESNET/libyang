@@ -1029,7 +1029,7 @@ test_lyd_print_file_xml(void **state)
     fclose(f);
 
     fd = open(file_name, O_RDONLY);
-    if (fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
+    if (fd == -1 || fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
         goto error;
     }
 
@@ -1084,7 +1084,7 @@ test_lyd_print_file_xml_format(void **state)
     fclose(f);
 
     fd = open(file_name, O_RDONLY);
-    if (fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
+    if (fd == -1 || fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
         goto error;
     }
 
@@ -1115,7 +1115,7 @@ test_lyd_print_file_json(void **state)
     char *result;
     FILE *f = NULL;
     int rc;
-    int fd;
+    int fd = -1;
 
     memset(file_name, 0, sizeof(file_name));
     strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
@@ -1139,7 +1139,7 @@ test_lyd_print_file_json(void **state)
     fclose(f);
 
     fd = open(file_name, O_RDONLY);
-    if (fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
+    if (fd == -1 || fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
         goto error;
     }
 
