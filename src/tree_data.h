@@ -471,15 +471,18 @@ struct lyd_node *lyd_output_new_anyxml(const struct lys_node *schema, const char
 /**
  * @brief Create a new data node based on a simple XPath.
  *
+ * When manipulating RPC input or output, schema ordering is laways guaranteed. Specially, when working with
+ * RPC output (using #LYD_PATH_OPT_OUTPUT flag), it can therefore happen that a node is created before \p data_tree.
+ *
  * @param[in] data_tree Existing data tree to add to/modify. It is expected to be valid. If creating RPCs,
- * there should only be one RPC and either input or output (use flag in this case). Can be NULL.
+ * there should only be one RPC and either input or output. Can be NULL.
  * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
  * @param[in] path Simple data XPath of the new node. It can contain only simple node addressing with optional
  * module names as prefixes. List nodes must have predicates, one for each list key in the correct order and
- * with it's value as well, see @ref howtoxpath.
+ * with its value as well, see @ref howtoxpath.
  * @param[in] value Value of the new leaf/lealf-list. If creating other nodes of other types, set to NULL.
  * @param[in] options Bitmask of options flags, see @ref pathoptions.
- * @return First created node, NULL on error.
+ * @return First created (or updated) node, NULL on error.
  */
 struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, const char *value, int options);
 
@@ -534,11 +537,14 @@ int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
 /**
  * @brief Order siblings according to the schema node ordering.
  *
- * @param[in] sibling Node, whose siblings will be ordered.
- * @param[in] recursive Whether order all siblings of siblings, recursively.
- * @return 0 on success, nonzero in case of error.
+ * If the siblings include data nodes from other modules, they are
+ * sorted based on the module order in the context.
+ *
+ * @param[in] sibling Node, whose siblings will be sorted.
+ * @param[in] recursive Whether sort all siblings of siblings, recursively.
+ * @return 0 on success, nonzero in case of an error.
  */
-int lyd_order(struct lyd_node *sibling, int recursive);
+int lyd_schema_sort(struct lyd_node *sibling, int recursive);
 
 /**
  * @brief Search in the given data for instances of nodes matching the provided XPath expression.
