@@ -1563,13 +1563,13 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
             if (lys_parent(sibling->schema)) {
                 if (options & LYD_PATH_OPT_OUTPUT) {
                     if (lys_parent(sibling->schema)->nodetype == LYS_INPUT) {
-                        ly_errno = LY_EINVAL;
+                        LOGERR(LY_EINVAL, "%s: provided data tree includes some RPC input nodes.");
                         *parsed = -1;
                         return NULL;
                     }
                 } else {
                     if (lys_parent(sibling->schema)->nodetype == LYS_OUTPUT) {
-                        ly_errno = LY_EINVAL;
+                        LOGERR(LY_EINVAL, "%s: provided data tree includes some RPC output nodes.");
                         *parsed = -1;
                         return NULL;
                     }
