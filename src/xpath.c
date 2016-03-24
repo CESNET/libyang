@@ -4301,7 +4301,7 @@ moveto_parent(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int
         }
 
         /* when check */
-        if ((options & LYXP_WHEN) && !LYD_WHEN_DONE(new_node->when_status)) {
+        if ((options & LYXP_WHEN) && new_node && !LYD_WHEN_DONE(new_node->when_status)) {
             return EXIT_FAILURE;
         }
 
