@@ -1038,8 +1038,8 @@ lyd_validate(struct lyd_node **node, int options, ...)
 {
     struct lyd_node *root, *next1, *next2, *iter, *to_free = NULL;
     const struct lys_node *schema;
-    struct ly_ctx *ctx;
-    int i, ret = EXIT_FAILURE;
+    struct ly_ctx *ctx = NULL;
+    int i, ret = EXIT_FAILURE, clean = 0, ap_flag = 0;
     va_list ap;
     struct unres_data *unres = NULL;
     const struct lys_module *wdmod = NULL;
@@ -1058,20 +1058,20 @@ lyd_validate(struct lyd_node **node, int options, ...)
     ly_errno = 0;
 
     if (!(*node)) {
+        /* get context with schemas from the variable arguments */
+        va_start(ap, options);
+        ap_flag = 1;
+        ctx = va_arg(ap,  struct ly_ctx*);
+        if (!ctx) {
+            LOGERR(LY_EINVAL, "%s: Invalid variable argument.", __func__);
+            goto error;
+        }
+
         /* TODO what about LYD_OPT_NOTIF, LYD_OPT_RPC and LYD_OPT_RPCREPLY ? */
         if (options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
             goto success;
         }
         /* LYD_OPT_DATA || LYD_OPT_CONFIG */
-
-        /* get context with schemas from the variable arguments */
-        va_start(ap, options);
-        ctx = va_arg(ap,  struct ly_ctx*);
-        if (!ctx) {
-            LOGERR(LY_EINVAL, "%s: Invalid variable argument.", __func__);
-            va_end(ap);
-            goto error;
-        }
 
         /* check for missing mandatory elements according to schemas in context */
         for (i = 0; i < ctx->models.used; i++) {
@@ -1089,13 +1089,11 @@ lyd_validate(struct lyd_node **node, int options, ...)
                     LOGVAL(LYE_MISSELEM, LY_VLOG_LYS, schema,
                            schema->name, schema->parent ? schema->parent->name : ctx->models.list[i]->name);
                 }
-                va_end(ap);
                 goto error;
 
             }
         }
 
-        va_end(ap);
         goto success;
     }
 
@@ -1174,15 +1172,16 @@ nextsiblings:
 success:
     /* add default values if needed */
     if (options & LYD_WD_MASK) {
-        if (lyd_wd_top(*node ? (*node)->schema->module->ctx : ctx, node, unres, options, wdmod)) {
+        if (lyd_wd_top(ctx ? ctx : (*node)->schema->module->ctx, node, unres, options, wdmod)) {
             goto error;
         }
-    } else {
+    } else if (!(options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
         /* use internal yang module, since ncwd is not necessarily present */
-        wdmod = ly_ctx_get_module(*node ? (*node)->schema->module->ctx : ctx, "yang", NULL);
-        if (lyd_wd_top(*node ? (*node)->schema->module->ctx : ctx, node, unres, options | LYD_WD_IMPL_TAG, wdmod)) {
+        wdmod = ly_ctx_get_module(ctx ? ctx : (*node)->schema->module->ctx, "yang", NULL);
+        if (lyd_wd_top(ctx ? ctx : (*node)->schema->module->ctx, node, unres, options | LYD_WD_IMPL_TAG, wdmod)) {
             goto error;
         }
+        clean = 1;
     }
 
     if (unres->count) {
@@ -1192,7 +1191,7 @@ success:
         }
     }
 
-    if (!(options & LYD_WD_MASK)) {
+    if (clean) {
         /* cleanup default nodes */
         if (lyd_wd_cleanup_mod(node, wdmod)) {
             goto error;
@@ -1203,6 +1202,9 @@ success:
 
 error:
 
+    if (ap_flag) {
+        va_end(ap);
+    }
     if (unres) {
         free(unres->node);
         free(unres->type);
