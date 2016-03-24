@@ -5510,7 +5510,7 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
     int rc = EXIT_FAILURE;
     int (*xpath_func)(struct lyxp_set **, uint16_t, struct lyd_node *, struct lyxp_set *, int) = NULL;
     uint16_t arg_count = 0, i;
-    struct lyxp_set **args = NULL;
+    struct lyxp_set **args = NULL, **args_aux;
     struct ly_ctx *ctx;
 
     ctx = cur_node->schema->module->ctx;
@@ -5650,11 +5650,13 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
 
         if (set) {
             ++arg_count;
-            args = ly_realloc(args, arg_count * sizeof *args);
-            if (!args) {
+            args_aux = realloc(args, arg_count * sizeof *args);
+            if (!args_aux) {
+                arg_count--;
                 LOGMEM;
                 goto cleanup;
             }
+            args = args_aux;
             args[arg_count - 1] = set_copy(set, ctx);
             if (!args[arg_count - 1]) {
                 goto cleanup;
