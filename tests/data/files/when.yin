@@ -10,6 +10,9 @@
       <text>initial revision</text>
     </description>
   </revision>
+  <leaf name="topleaf">
+    <type name="string"/>
+  </leaf>
   <container name="top">
     <leaf name="a">
       <type name="string"/>

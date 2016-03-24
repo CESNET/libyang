@@ -2410,7 +2410,7 @@ resolve_feature(const char *id, const struct lys_module *module, struct lys_feat
     return EXIT_FAILURE;
 }
 
-static void
+void
 unres_data_del(struct unres_data *unres, uint32_t i)
 {
     /* there are items after the one deleted */
@@ -4755,13 +4755,14 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
  * @param[in] unres Unres data structure to use.
  * @param[in,out] root Root node of the data tree. If not NULL, auto-delete is performed on false when condition. If
  * NULL and when condition is false the error is raised.
+ * @param[in] options Parer options
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 int
-resolve_unres_data(struct unres_data *unres, struct lyd_node **root)
+resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options)
 {
-    uint32_t i, j = 0, resolved = 0, del_items = 0, when_stmt = 0;
+    uint32_t i, j, first = 1, resolved = 0, del_items = 0, when_stmt = 0;
     int rc, progress;
     char *msg, *path;
     struct lyd_node *parent;
@@ -4785,7 +4786,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root)
             if (unres->type[i] != UNRES_WHEN) {
                 continue;
             }
-            if (!j) {
+            if (first) {
                 /* count when-stmt nodes in unres list */
                 when_stmt++;
             }
@@ -4822,14 +4823,47 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root)
                         return -1;
                     } /* follows else */
 
+                    /* only unlink now, the subtree can contain another nodes stored in the unres list */
+                    /* if it has parent non-presence containers that would be empty, we should actually
+                     * remove the container
+                     */
+                    if (!(options & LYD_OPT_KEEPEMPTYCONT)) {
+                        for (parent = unres->node[i];
+                                parent->parent && parent->parent->schema->nodetype == LYS_CONTAINER;
+                                parent = parent->parent) {
+                            if (((struct lys_node_container *)parent->parent->schema)->presence) {
+                                /* presence container */
+                                break;
+                            }
+                            if (parent->next || parent->prev != parent) {
+                                /* non empty (the child we are in and we are going to remove is not the only child) */
+                                break;
+                            }
+                        }
+                        if (!parent->parent && lys_parent(parent->schema)) {
+                            /* already unlinked node */
+                            parent = NULL;
+                        } else if (parent->prev == parent && !parent->next) {
+                            for (j = 0; j < unres->count; j++) {
+                                if (unres->type[j] != UNRES_DELETE || i == j) {
+                                    continue;
+                                }
+                                if (unres->node[j] == parent) {
+                                    parent = NULL;
+                                    break;
+                                }
+                            }
+                        }
+                        unres->node[i] = parent;
+                    }
+
                     /* auto-delete */
                     LOGVRB("auto-delete node \"%s\" due to when condition (%s)", ly_errpath(),
                                     ((struct lys_node_leaf *)unres->node[i]->schema)->when->cond);
-                    if (*root == unres->node[i]) {
+                    if (*root && *root == unres->node[i]) {
                         *root = (*root)->next;
                     }
 
-                    /* only unlink now, the subtree can contain another nodes stored in the unres list */
                     lyd_unlink(unres->node[i]);
                     unres->type[i] = UNRES_DELETE;
                     del_items++;
@@ -4845,7 +4879,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root)
                 return -1;
             }
         }
-        j = 1;
+        first = 0;
     } while (progress && resolved < when_stmt);
 
     /* do we have some unresolved when-stmt? */
@@ -4862,6 +4896,11 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root)
     for (i = 0; del_items && i < unres->count; i++) {
         /* we had some when-stmt resulted to false, so now we have to sanitize the unres list */
         if (unres->type[i] != UNRES_DELETE) {
+            continue;
+        }
+        if (!unres->node[i]) {
+            unres->type[i] = UNRES_RESOLVED;
+            del_items--;
             continue;
         }
 

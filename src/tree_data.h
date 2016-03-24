@@ -225,6 +225,8 @@ struct lyd_node_anyxml {
  * - when parser evaluates when-stmt condition to false, the constrained subtree is automatically removed. If the
  * #LYD_OPT_NOAUTODEL is used, error is raised instead of silent auto delete. The option (and also this default
  * behavior) takes effect only in case of #LYD_OPT_DATA or #LYD_OPT_CONFIG type of data.
+ * - whenever the parser see empty non-presence container, it is automatically removed to minimize memory usage. This
+ * behavior can be changed by #LYD_OPT_KEEPEMPTYCONT.
  * - for validation, parser needs to add default nodes into the data tree. By default, these additional (implicit)
  * nodes are removed before the parser returns. However, if caller use one of the LYD_WD_* option, the default nodes
  * added by parser are kept in the resulting tree or even the explicit nodes with the default values can be removed
@@ -281,6 +283,7 @@ struct lyd_node_anyxml {
                                        applicable only in combination with LYD_OPT_DATA and LYD_OPT_CONFIG flags.
                                        If used, libyang generates validation error instead of silently removing the
                                        constrained subtree. */
+#define LYD_OPT_KEEPEMPTYCONT 0x4000 /**< Do not automatically delete empty non-presence containers. */
 
 #define LYD_WD_MASK       0xF0000 /**< Mask for with-defaults modes */
 #define LYD_WD_TRIM       0x10000 /**< Remove all nodes with the value equal to their default value */

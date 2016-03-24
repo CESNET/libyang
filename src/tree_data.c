@@ -1133,6 +1133,13 @@ lyd_validate(struct lyd_node **node, int options, ...)
                 next2 = NULL;
             } else {
                 next2 = iter->child;
+
+                /* if we have empty non-presence container, we can remove it */
+                if (!next2 && !(options & LYD_OPT_KEEPEMPTYCONT) && iter->schema->nodetype == LYS_CONTAINER
+                        && !((struct lys_node_container *)iter->schema)->presence) {
+                    lyd_free(to_free);
+                    to_free = iter;
+                }
             }
 nextsiblings:
             if (!next2) {
@@ -1146,6 +1153,15 @@ nextsiblings:
             }
             while (!next2) {
                 iter = iter->parent;
+
+                /* if we have empty non-presence container, we can remove it */
+                if (!(options & LYD_OPT_KEEPEMPTYCONT) && to_free && !to_free->next && to_free->prev == to_free &&
+                        iter->schema->nodetype == LYS_CONTAINER &&
+                        !((struct lys_node_container *)iter->schema)->presence) {
+                    lyd_free(to_free);
+                    to_free = iter;
+                }
+
                 /* parent is already processed, go to its sibling */
                 if (iter->parent == root->parent) {
                     /* we are done */
@@ -1186,7 +1202,7 @@ success:
 
     if (unres->count) {
         /* check unresolved checks (when-stmt) */
-        if (resolve_unres_data(unres,  (options & LYD_OPT_NOAUTODEL) ? NULL : node)) {
+        if (resolve_unres_data(unres,  (options & LYD_OPT_NOAUTODEL) ? NULL : node, options)) {
             goto error;
         }
     }
@@ -2158,8 +2174,9 @@ nextsiblings:
                 iter = iter->parent;
 
                 /* if we have empty non-presence container, we can remove it */
-                if (to_free && !to_free->next && to_free->prev == to_free && iter->schema->nodetype == LYS_CONTAINER
-                        && !((struct lys_node_container *)iter->schema)->presence) {
+                if (to_free && !(options & LYD_OPT_KEEPEMPTYCONT) && !to_free->next && to_free->prev == to_free &&
+                        iter->schema->nodetype == LYS_CONTAINER &&
+                        !((struct lys_node_container *)iter->schema)->presence) {
                     lyd_free(to_free);
                     to_free = iter;
                 }
@@ -2692,7 +2709,7 @@ lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options)
         }
     }
     rc = lyd_wd_top(ctx, root, unres, options, NULL);
-    if (unres && unres->count && resolve_unres_data(unres, root)) {
+    if (unres && unres->count && resolve_unres_data(unres, root, options)) {
         rc = EXIT_FAILURE;
     }
 
