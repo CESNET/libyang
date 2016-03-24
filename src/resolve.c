@@ -1478,6 +1478,7 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
     uint16_t i;
     struct ly_set *keys;
 
+    asser(node);
     assert(node->schema->nodetype == LYS_LIST);
 
     keys = lyd_get_list_keys(node);
@@ -1485,12 +1486,12 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
     for (i = 0; i < keys->number; ++i) {
         if (!has_predicate) {
             LOGVAL(LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, node_name);
-            return -1;
+            goto error;
         }
 
         if ((r = parse_schema_list_predicate(predicate, &name, &nam_len, &value, &val_len, &has_predicate)) < 1) {
             LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
-            return -1;
+            goto error;
         }
 
         predicate += r;
@@ -1498,22 +1499,28 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
 
         if (strncmp(keys->set.d[i]->schema->name, name, nam_len) || keys->set.d[i]->schema->name[nam_len]) {
             LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
-            return -1;
+            goto error;
         }
 
         /* value does not match */
         if (strncmp(((struct lyd_node_leaf_list *)keys->set.d[i])->value_str, value, val_len)
                 || ((struct lyd_node_leaf_list *)keys->set.d[i])->value_str[val_len]) {
+            ly_set_free(keys);
             return 1;
         }
     }
 
+    ly_set_free(keys);
     if (has_predicate) {
         LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
         return -1;
     }
 
     return 0;
+
+error:
+    ly_set_free(keys);
+    return -1;
 }
 
 struct lyd_node *
