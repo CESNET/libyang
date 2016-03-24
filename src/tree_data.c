@@ -591,7 +591,10 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
     /* prepare everything for the schema search loop */
     if (is_relative) {
         /* we are relative to data_tree or parent if some part of the path already exists */
-        if (!parent) {
+        if (!data_tree) {
+            LOGERR(LY_EINVAL, "%s: provided relative path (%s) without context node.", path);
+            return NULL;
+        } else if (!parent) {
             parent = data_tree;
         }
         sparent = parent->schema;
