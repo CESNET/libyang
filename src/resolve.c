@@ -1478,7 +1478,7 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
     uint16_t i;
     struct ly_set *keys;
 
-    asser(node);
+    assert(node);
     assert(node->schema->nodetype == LYS_LIST);
 
     keys = lyd_get_list_keys(node);
