@@ -129,8 +129,8 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     int fd;
     char *wd, *cwd, *model_path;
     DIR *dir;
-    struct dirent *file;
-    LYS_INFORMAT format;
+    struct dirent *file, *file_match;
+    LYS_INFORMAT format, format_match;
     struct lys_module *result = NULL;
     int localsearch = 1;
 
@@ -172,18 +172,12 @@ opendir_search:
         goto searchpath;
     }
 
+    file_match = NULL;
+    format_match = 0;
     while ((file = readdir(dir))) {
         if (strncmp(name, file->d_name, len) ||
                 (file->d_name[len] != '.' && file->d_name[len] != '@')) {
             continue;
-        }
-
-        if (revision && file->d_name[len] == '@') {
-            /* check revision from the filename */
-            if (strncmp(revision, &file->d_name[len + 1], strlen(revision))) {
-                /* another revision */
-                continue;
-            }
         }
 
         /* get type according to filename suffix */
@@ -191,40 +185,62 @@ opendir_search:
         if (!strcmp(&file->d_name[flen - 4], ".yin")) {
             format = LYS_IN_YIN;
         /*TODO } else if (!strcmp(&file->d_name[flen - 5], ".yang")) {
-            continue;
             format = LYS_IN_YANG;*/
         } else {
             continue;
         }
 
-        /* open the file */
-        fd = open(file->d_name, O_RDONLY);
-        if (fd < 0) {
-            LOGERR(LY_ESYS, "Unable to open data model file \"%s\" (%s).",
-                   file->d_name, strerror(errno));
-            goto cleanup;
+        if (revision) {
+            if (file->d_name[len] == '@') {
+                /* check revision from the filename */
+                if (strncmp(revision, &file->d_name[len + 1], strlen(revision))) {
+                    /* another revision */
+                    continue;
+                }
+            } else {
+                /* try to find exact revision match, use this only if not found */
+                file_match = file;
+                format_match = format;
+                continue;
+            }
         }
 
-        if (module) {
-            result = (struct lys_module *)lys_submodule_read(module, fd, format, unres);
-        } else {
-            result = lys_read_import(ctx, fd, format, revision);
-        }
-        close(fd);
+        file_match = file;
+        format_match = format;
+        break;
+    }
 
-        if (!result) {
-            goto cleanup;
-        }
+    if (!file_match) {
+        goto searchpath;
+    }
 
-        if (asprintf(&model_path, "%s/%s", wd, file->d_name) == -1) {
-            LOGMEM;
-            result = NULL;
-            goto cleanup;
-        }
-        result->filepath = lydict_insert_zc(ctx, model_path);
-        /* success */
+    /* open the file */
+    fd = open(file_match->d_name, O_RDONLY);
+    if (fd < 0) {
+        LOGERR(LY_ESYS, "Unable to open data model file \"%s\" (%s).",
+               file_match->d_name, strerror(errno));
         goto cleanup;
     }
+
+    if (module) {
+        result = (struct lys_module *)lys_submodule_read(module, fd, format_match, unres);
+    } else {
+        result = lys_read_import(ctx, fd, format_match, revision);
+    }
+    close(fd);
+
+    if (!result) {
+        goto cleanup;
+    }
+
+    if (asprintf(&model_path, "%s/%s", wd, file_match->d_name) == -1) {
+        LOGMEM;
+        result = NULL;
+        goto cleanup;
+    }
+    result->filepath = lydict_insert_zc(ctx, model_path);
+    /* success */
+    goto cleanup;
 
 searchpath:
     if (!ctx->models.search_path) {
