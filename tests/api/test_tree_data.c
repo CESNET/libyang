@@ -287,8 +287,6 @@ test_lyd_parse_mem(void **state)
     return;
 error:
 
-    if (root)
-        lyd_free(root);
     if (ctx)
         ly_ctx_destroy(ctx, NULL);
 
@@ -339,8 +337,6 @@ test_lyd_parse_fd(void **state)
     return;
 error:
 
-    if (root)
-        lyd_free(root);
     if (ctx)
         ly_ctx_destroy(ctx, NULL);
     if (fd > 0)
@@ -383,8 +379,6 @@ test_lyd_parse_path(void **state)
     return;
 error:
 
-    if (root)
-        lyd_free(root);
     if (ctx)
         ly_ctx_destroy(ctx, NULL);
     fail();
@@ -400,7 +394,6 @@ test_lyd_parse_xml(void **state)
     struct lyxml_elem *root_xml = NULL;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     struct ly_ctx *ctx = NULL;
-    struct lyd_node *root = NULL;
 
     ctx = ly_ctx_new(yang_folder);
     if (!ctx) {
@@ -423,8 +416,6 @@ test_lyd_parse_xml(void **state)
 
     if (node)
         lyd_free(node);
-    if (root)
-        lyd_free(root);
     if (root_xml)
         lyxml_free(ctx, root_xml);
     if (ctx)
@@ -433,10 +424,6 @@ test_lyd_parse_xml(void **state)
     return;
 error:
 
-    if (node)
-        lyd_free(node);
-    if (root)
-        lyd_free(root);
     if (root_xml)
         lyxml_free(ctx, root_xml);
     if (ctx)
