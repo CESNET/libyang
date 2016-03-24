@@ -470,15 +470,15 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         return NULL;
     }
 
-    if (!(*root)) {
-        /* empty tree - no work is needed */
-        lyd_validate(NULL, options, ctx);
-        return NULL;
-    }
-
     if (lyp_check_options(options)) {
         LOGERR(LY_EINVAL, "%s: Invalid options (multiple data type flags set).", __func__);
         return NULL;
+    }
+
+    if (!(*root)) {
+        /* empty tree - no work is needed */
+        lyd_validate(&result, options, ctx);
+        return result;
     }
 
     va_start(ap, options);

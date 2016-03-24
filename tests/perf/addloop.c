@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 		} else {
 			lyd_insert_after(data->prev, next);
 		}
-		if (lyd_validate(data, 0)) {
+		if (lyd_validate(&data, 0)) {
 			goto cleanup;
 		}
 		//lyd_print_fd(fd, data, LYD_XML);
