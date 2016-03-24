@@ -56,7 +56,6 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
 
     switch (format) {
     case LYD_XML:
-    case LYD_XML_FORMAT:
         xml = lyxml_parse_mem(ctx, data, xmlopt);
         if (ly_errno) {
             return NULL;

@@ -1001,7 +1001,7 @@ test_lyd_print_mem_xml_format(void **state)
     char *result = NULL;
     int rc;
 
-    rc = lyd_print_mem(&result, root, LYD_XML_FORMAT, 0);
+    rc = lyd_print_mem(&result, root, LYD_XML, LYP_FORMAT);
     if (rc) {
         fail();
     }
@@ -1017,7 +1017,7 @@ test_lyd_print_mem_json(void **state)
     char *result = NULL;
     int rc;
 
-    rc = lyd_print_mem(&result, root, LYD_JSON, 0);
+    rc = lyd_print_mem(&result, root, LYD_JSON, LYP_FORMAT);
     if (rc) {
         fail();
     }
@@ -1087,7 +1087,7 @@ test_lyd_print_fd_xml_format(void **state)
         goto error;
     }
 
-    rc = lyd_print_fd(fd, root, LYD_XML_FORMAT, 0);
+    rc = lyd_print_fd(fd, root, LYD_XML, LYP_FORMAT);
     if (rc) {
         goto error;
     }
@@ -1130,7 +1130,7 @@ test_lyd_print_fd_json(void **state)
         goto error;
     }
 
-    rc = lyd_print_fd(fd, root, LYD_JSON, 0);
+    rc = lyd_print_fd(fd, root, LYD_JSON, LYP_FORMAT);
     if (rc) {
         goto error;
     }
@@ -1235,7 +1235,7 @@ test_lyd_print_file_xml_format(void **state)
         goto error;
     }
 
-    rc = lyd_print_file(f, root, LYD_XML_FORMAT, 0);
+    rc = lyd_print_file(f, root, LYD_XML, LYP_FORMAT);
     if (rc) {
         goto error;
     }
@@ -1290,7 +1290,7 @@ test_lyd_print_file_json(void **state)
         goto error;
     }
 
-    rc = lyd_print_file(f, root, LYD_JSON, 0);
+    rc = lyd_print_file(f, root, LYD_JSON, LYP_FORMAT);
     if (rc) {
         goto error;
     }
@@ -1382,7 +1382,7 @@ test_lyd_print_clb_xml_format(void **state)
     buf->cmp = result_xml_format;
     void *arg = buf;
 
-    rc = lyd_print_clb(custom_lyd_print_clb, arg, root, LYD_XML_FORMAT, 0);
+    rc = lyd_print_clb(custom_lyd_print_clb, arg, root, LYD_XML, LYP_FORMAT);
     if (rc) {
         fail();
         free(buf);
@@ -1406,7 +1406,7 @@ test_lyd_print_clb_json(void **state)
     buf->cmp = result_json;
     void *arg = buf;
 
-    rc = lyd_print_clb(custom_lyd_print_clb, arg, root, LYD_JSON, 0);
+    rc = lyd_print_clb(custom_lyd_print_clb, arg, root, LYD_JSON, LYP_FORMAT);
     if (rc) {
         fail();
         free(buf);

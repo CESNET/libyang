@@ -356,7 +356,7 @@ static void
 test_ly_ctx_get_module_older(void **state)
 {
     (void) state; /* unused */
-    const struct lys_module *module;
+    const struct lys_module *module = NULL;
     const struct lys_module *module_older = NULL;
     const char *name = "a";
     const char *revision = "2016-03-01";

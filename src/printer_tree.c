@@ -779,6 +779,7 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
             }
         }
     }
+    ly_print_flush(out);
 
     free(indent);
     return EXIT_SUCCESS;

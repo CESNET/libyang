@@ -1366,6 +1366,7 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
     }
 
     ly_print(out, "}\n");
+    ly_print_flush(out);
 
     return EXIT_SUCCESS;
 #undef LEVEL

@@ -39,7 +39,6 @@ extern "C" {
 typedef enum {
     LYD_UNKNOWN,         /**< unknown format, used as return value in case of error */
     LYD_XML,             /**< XML format of the instance data */
-    LYD_XML_FORMAT,      /**< For input data, it is interchangeable with #LYD_XML, for output it formats XML with indentantion */
     LYD_JSON,            /**< JSON format of the instance data */
 } LYD_FORMAT;
 

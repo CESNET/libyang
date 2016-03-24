@@ -876,6 +876,7 @@ void ly_set_free(struct ly_set *set);
  * @{
  */
 #define LYP_WITHSIBLINGS 0x01 /**< Flag for printing also the (following) sibling nodes of the data node. */
+#define LYP_FORMAT       0x02 /**< Flag for formatted output. */
 
 /**
  * @}

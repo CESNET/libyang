@@ -373,7 +373,7 @@ cmd_data(const char *arg)
             goto cleanup;
         case 'f':
             if (!strcmp(optarg, "xml")) {
-                outformat = LYD_XML_FORMAT;
+                outformat = LYD_XML;
             } else if (!strcmp(optarg, "json")) {
                 outformat = LYD_JSON;
             } else {
@@ -513,7 +513,7 @@ cmd_data(const char *arg)
     }
 
     if (outformat != LYD_UNKNOWN) {
-        lyd_print_file(output, data, outformat, 1);
+        lyd_print_file(output, data, outformat, LYP_WITHSIBLINGS | LYP_FORMAT);
     }
 
     ret = 0;
@@ -722,7 +722,7 @@ cmd_list(const char *arg)
             return 0;
         case 'f':
             if (!strcmp(optarg, "xml")) {
-                outformat = LYD_XML_FORMAT;
+                outformat = LYD_XML;
             } else if (!strcmp(optarg, "json")) {
                 outformat = LYD_JSON;
             } else {
@@ -752,7 +752,7 @@ error:
     }
 
     if (outformat != LYD_UNKNOWN) {
-        lyd_print_file(stdout, ylib, outformat, LYP_WITHSIBLINGS);
+        lyd_print_file(stdout, ylib, outformat, LYP_WITHSIBLINGS | LYP_FORMAT);
         lyd_free(ylib);
         return 0;
     }
