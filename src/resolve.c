@@ -4856,7 +4856,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
 
                     /* update the rest of unres items */
                     for (j = 0; j < unres->count; j++) {
-                        if (unres->type[j] == UNRES_RESOLVED || unres->type[j] == UNRES_DELETE || j == i) {
+                        if (unres->type[j] == UNRES_RESOLVED || unres->type[j] == UNRES_DELETE) {
                             continue;
                         }
 
