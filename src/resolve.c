@@ -1339,7 +1339,7 @@ resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_
 const struct lys_node *
 resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start)
 {
-    char *str, module_name[LY_MODULE_NAME_MAX_LEN - 1];
+    char *str, module_name[LY_MODULE_NAME_MAX_LEN + 1];
     const char *name, *mod_name, *id;
     const struct lys_node *sibling;
     int r, nam_len, mod_name_len, is_relative = -1, has_predicate;
@@ -1519,7 +1519,7 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
 struct lyd_node *
 resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int *parsed)
 {
-    char module_name[LY_MODULE_NAME_MAX_LEN - 1];
+    char module_name[LY_MODULE_NAME_MAX_LEN + 1];
     const char *id, *mod_name, *name;
     int r, ret, mod_name_len, nam_len, is_relative = -1, has_predicate, last_parsed;
     struct lyd_node *sibling, *last_match = NULL;
