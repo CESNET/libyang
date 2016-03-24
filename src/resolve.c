@@ -4886,7 +4886,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
     } while (progress && resolved < when_stmt);
 
     /* do we have some unresolved when-stmt? */
-    if (when_stmt != resolved) {
+    if (when_stmt > resolved) {
         ly_vlog_hide(0);
         path = strdup(ly_errpath());
         LOGERR(LY_EVALID, "%s%s%s%s", msg = strdup(ly_errmsg()), path[0] ? " (path: " : "",
