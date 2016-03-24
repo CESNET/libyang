@@ -7,14 +7,6 @@
   <include module="asub"/>
   <include module="atop"/>
   <feature name="foo"/>
-  <revision date="2016-03-01">
-    <description>
-      <text>version 2</text>
-    </description>
-    <reference>
-      <text>RFC XXXX</text>
-    </reference>
-  </revision>
   <revision date="2015-01-01">
     <description>
       <text>version 1</text>
