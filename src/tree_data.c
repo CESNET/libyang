@@ -731,18 +731,16 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         }
 
         if (first_iter) {
-            /* order if needed, but only when inserted somewhere */
-            if (options & LYD_PATH_OPT_OUTPUT) {
-                if (!lys_parent(node->schema) && lyd_order(node, 0)) {
-                    lyd_free(ret);
-                    return NULL;
-                }
+            /* sort if needed, but only when inserted somewhere */
+            if ((options & LYD_PATH_OPT_OUTPUT) && lyd_schema_sort(node, 0)) {
+                lyd_free(ret);
+                return NULL;
             } else {
                 sparent = node->schema;
                 do {
                     sparent = lys_parent(sparent);
                 } while (sparent && (sparent->nodetype != LYS_INPUT));
-                if (sparent && lyd_order(node, 0)) {
+                if (sparent && lyd_schema_sort(node, 0)) {
                     lyd_free(ret);
                     return NULL;
                 }
