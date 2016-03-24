@@ -3497,6 +3497,7 @@ moveto_get_root(struct lyd_node *cur_node, int options, enum lyxp_node_type *roo
     if (!options) {
         /* special kind of root that can access everything */
         for (root = cur_node; root->parent; root = root->parent);
+        for (; root->prev->next; root = root->prev);
         *root_type = LYXP_NODE_ROOT_ALL;
         return root;
     }
