@@ -82,7 +82,7 @@ const char *lys_module_a = \
     <leaf name=\"number64\">                          \
       <type name=\"int64\"/>                          \
     </leaf>                                           \
-    </container>                                      \
+  </container>                                        \
   <augment target-node=\"/x\">                        \
     <if-feature name=\"bar\"/>                        \
     <container name=\"bar-y\"/>                       \
@@ -111,11 +111,11 @@ const char *lys_module_a = \
       <leaf name=\"output-leaf2\">                    \
         <type name=\"string\"/>                       \
       </leaf>                                         \
-    <container name=\"rpc-container\">                \
-      <leaf name=\"output-leaf3\">                    \
-        <type name=\"string\"/>                       \
-      </leaf>                                         \
-    </container>                                      \
+      <container name=\"rpc-container\">              \
+        <leaf name=\"output-leaf3\">                  \
+          <type name=\"string\"/>                     \
+        </leaf>                                       \
+      </container>                                    \
     </output>                                         \
   </rpc>                                              \
   <list name=\"l\">                                   \
@@ -501,6 +501,92 @@ test_lyd_output_new_leaf(void **state)
 }
 
 static void
+test_lyd_new_path(void **state)
+{
+    (void) state; /* unused */
+    struct lyd_node *node, *root;
+
+    root = lyd_new_path(NULL, ctx, "/a:x/bar-gggg", "a", 0);
+    assert_non_null(root);
+    assert_string_equal(root->schema->name, "x");
+    assert_string_equal(root->child->schema->name, "bar-gggg");
+
+    node = lyd_new_path(root, NULL, "bubba", "b", 0);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "bubba");
+
+    node = lyd_new_path(root, NULL, "/a:x/number32", "3", 0);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "number32");
+
+    node = lyd_new_path(root, NULL, "a:number64", "64", 0);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "number64");
+
+    node = lyd_new_path(root, NULL, "/a:l[key1='111'][key2='222']", NULL, 0);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "l");
+    assert_ptr_not_equal(root->prev, root);
+
+    lyd_free(root);
+
+    root = lyd_new_path(NULL, ctx, "/a:l[key1='1'][key2='2']", NULL, 0);
+    assert_non_null(root);
+    assert_string_equal(root->schema->name, "l");
+    assert_string_equal(root->child->schema->name, "key1");
+    assert_string_equal(root->child->next->schema->name, "key2");
+
+    node = lyd_new_path(root, NULL, "/a:l[key1='11'][key2='22']/value", "val", 0);
+    assert_non_null(node);
+    assert_ptr_not_equal(root->prev, root);
+    assert_string_equal(node->schema->name, "l");
+    assert_string_equal(node->child->schema->name, "key1");
+    assert_string_equal(node->child->next->schema->name, "key2");
+    assert_string_equal(node->child->next->next->schema->name, "value");
+
+    node = lyd_new_path(root, NULL, "/a:l[key1='1'][key2='2']/value", "val2", 0);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "value");
+
+    lyd_free(root);
+
+    root = lyd_new_path(NULL, ctx, "/a:rpc1/x/input-leaf2", "dudu", 0);
+    assert_non_null(root);
+    assert_string_equal(root->schema->name, "rpc1");
+    assert_string_equal(root->child->schema->name, "x");
+    assert_string_equal(root->child->child->schema->name, "input-leaf2");
+
+    node = lyd_new_path(root, NULL, "/a:rpc1/input-leaf1", "bubu", 0);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "input-leaf1");
+    assert_string_equal(root->child->schema->name, "input-leaf1");
+    assert_string_equal(root->child->next->schema->name, "x");
+
+    lyd_free(root);
+
+    root = lyd_new_path(NULL, ctx, "/a:rpc1/rpc-container", NULL, LYD_PATH_OPT_OUTPUT);
+    assert_non_null(root);
+    assert_string_equal(root->schema->name, "rpc-container");
+
+    node = lyd_new_path(root, NULL, "output-leaf3", "cc", LYD_PATH_OPT_OUTPUT);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "output-leaf3");
+
+    node = lyd_new_path(root, NULL, "/a:rpc1/output-leaf1", "aa", LYD_PATH_OPT_OUTPUT);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "output-leaf1");
+    assert_ptr_equal(node->next, root);
+
+    node = lyd_new_path(root, NULL, "/a:rpc1/output-leaf2", "bb", LYD_PATH_OPT_OUTPUT);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "output-leaf2");
+    assert_string_equal(node->prev->schema->name, "output-leaf1");
+    assert_string_equal(node->next->schema->name, "rpc-container");
+
+    lyd_free_withsiblings(root);
+}
+
+static void
 test_lyd_dup(void **state)
 {
     (void) state; /* unused */
@@ -619,6 +705,79 @@ test_lyd_insert_after(void **state)
 
     result = (struct lyd_node_leaf_list *) root->child->next->next;
     assert_string_equal("1000", result->value_str);
+}
+
+static void
+test_lyd_schema_sort(void **state)
+{
+    (void) state; /* unused */
+    const struct lys_module *module;
+    const struct lys_node *snode;
+    struct lyd_node *root, *node, *node2;
+
+    module = ly_ctx_get_module(ctx, "a", NULL);
+    assert_non_null(module);
+
+    root = lyd_new(NULL, module, "l");
+    assert_non_null(root);
+    node = lyd_new_leaf(root, NULL, "key1", "1");
+    assert_non_null(node);
+    node = lyd_new_leaf(root, NULL, "key2", "2");
+    assert_non_null(node);
+
+    node = lyd_new(NULL, module, "x");
+    assert_non_null(node);
+    assert_int_equal(lyd_insert_after(root, node), 0);
+
+    node2 = lyd_new_leaf(node, NULL, "bubba", "a");
+    assert_non_null(node2);
+    node2 = lyd_new_leaf(node, NULL, "bar-gggg", "b");
+    assert_non_null(node2);
+    node2 = lyd_new_leaf(node, NULL, "number64", "64");
+    assert_non_null(node2);
+    node2 = lyd_new_leaf(node, NULL, "number32", "32");
+    assert_non_null(node2);
+
+    assert_int_equal(lyd_schema_sort(root, 1), 0);
+
+    root = node;
+    assert_string_equal(root->schema->name, "x");
+    assert_string_equal(root->next->schema->name, "l");
+
+    assert_string_equal(root->child->schema->name, "bar-gggg");
+    assert_string_equal(root->child->next->schema->name, "bubba");
+    assert_string_equal(root->child->next->next->schema->name, "number32");
+    assert_string_equal(root->child->next->next->next->schema->name, "number64");
+
+    lyd_free_withsiblings(root);
+
+    snode = ly_ctx_get_node(ctx, NULL, "/a:rpc1/output/rpc-container");
+    assert_non_null(snode);
+    root = lyd_output_new(snode);
+    assert_non_null(root);
+    node2 = lyd_new_leaf(root, NULL, "output-leaf3", "ff");
+    assert_non_null(node2);
+
+    snode = ly_ctx_get_node(ctx, NULL, "/a:rpc1/output/output-leaf1");
+    assert_non_null(snode);
+    node = lyd_output_new_leaf(snode, "gg");
+    assert_non_null(node);
+    assert_int_equal(lyd_insert_after(root, node), 0);
+
+    snode = ly_ctx_get_node(ctx, NULL, "/a:rpc1/output/output-leaf2");
+    assert_non_null(snode);
+    node = lyd_output_new_leaf(snode, "hh");
+    assert_non_null(node);
+    assert_int_equal(lyd_insert_after(root->next, node), 0);
+
+    assert_int_equal(lyd_schema_sort(root, 1), 0);
+
+    root = root->prev->prev;
+    assert_string_equal(root->schema->name, "output-leaf1");
+    assert_string_equal(root->next->schema->name, "output-leaf2");
+    assert_string_equal(root->next->next->schema->name, "rpc-container");
+
+    lyd_free_withsiblings(root);
 }
 
 static void
@@ -1267,10 +1426,12 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lyd_new_leaf, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_change_leaf, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_output_new_leaf, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lyd_new_path, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_dup, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_insert, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_insert_before, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_insert_after, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lyd_schema_sort, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_get_node, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_get_node_2, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_get_list_keys, setup_f_keys, teardown_f),

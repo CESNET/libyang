@@ -415,13 +415,16 @@ extern "C" {
  * one tree to another (or e.g. from one list instance to another) or remove nodes. The functions doesn't allow you
  * to put a node to a wrong place (by checking the module), but not all validation checks can be made directly
  * (or you have to make a valid change by multiple tree modifications) when the tree is being changed. Therefore,
- * there is lyd_validate() function supposed to be called to make sure that the current data tree is valid. Note,
- * that not calling this function after the performed changes can cause failure of various libyang functions later.
+ * there is lyd_validate() function supposed to be called to make sure that the current data tree is valid. If
+ * working with RPCs, they are invalid also in case the data nodes are not ordered according to the schema, which
+ * you can fix easily with lyd_schema_sort(). Note, that not performing validation after some data tree changes
+ * can cause failure of various libyang functions later.
  *
  * Creating data is generally possible in two ways, they can be combined. You can add nodes one-by-one based on
- * the node name and/or its parent (lyd_new(), lyd_new_anyxml(), lyd_new_leaf()) or address the nodes using
- * a simple XPath addressing (lyd_new_path()). The latter enables to create a whole path of nodes and requires
- * less information about the modified data. The path format specifics can be found [here](@ref howtoxpath).
+ * the node name and/or its parent (lyd_new(), lyd_new_anyxml(), lyd_new_leaf(), adn their output variants) or
+ * address the nodes using a simple XPath addressing (lyd_new_path()). The latter enables to create a whole path
+ * of nodes, requires less information about the modified data, and is generally simpler to use. The path format
+ * specifics can be found [here](@ref howtoxpath).
  *
  * Also remember, that when you are creating/inserting a node, all the objects in that operation must belong to the
  * same context.

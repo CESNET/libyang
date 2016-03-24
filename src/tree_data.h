@@ -475,25 +475,31 @@ struct lyd_node *lyd_output_new_anyxml(const struct lys_node *schema, const char
  * Default behavior:
  * - if the target node already exists, an error is returned.
  * - the whole path to the target node is created (with any missing parents) if necessary.
+ * - RPC output schema children are completely ignored in all modules. Input is searched and nodes created normally.
  * @{
  */
 
 #define LYD_PATH_OPT_UPDATE   0x01 /**< If the target node exists and is a leaf, it is updated with the new value. */
 #define LYD_PATH_OPT_NOPARENT 0x02 /**< If any parents of the target node exist, return an error. */
+#define LYD_PATH_OPT_OUTPUT   0x04 /**< Changes the behavior to ignoring RPC input schema nodes and using only output ones. */
 
 /** @} pathoptions */
 
 /**
  * @brief Create a new data node based on a simple XPath.
  *
- * @param[in] data_tree Existing data tree to add to/modify. Can be NULL.
+ * When manipulating RPC input or output, schema ordering is laways guaranteed. Specially, when working with
+ * RPC output (using #LYD_PATH_OPT_OUTPUT flag), it can therefore happen that a node is created before \p data_tree.
+ *
+ * @param[in] data_tree Existing data tree to add to/modify. It is expected to be valid. If creating RPCs,
+ * there should only be one RPC and either input or output. Can be NULL.
  * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
  * @param[in] path Simple data XPath of the new node. It can contain only simple node addressing with optional
  * module names as prefixes. List nodes must have predicates, one for each list key in the correct order and
- * with it's value as well, see @ref howtoxpath.
+ * with its value as well, see @ref howtoxpath.
  * @param[in] value Value of the new leaf/lealf-list. If creating other nodes of other types, set to NULL.
  * @param[in] options Bitmask of options flags, see @ref pathoptions.
- * @return First created node, NULL on error.
+ * @return First created (or updated) node, NULL on error.
  */
 struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, const char *value, int options);
 
@@ -544,6 +550,18 @@ int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
  * in the data tree.
  */
 int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
+
+/**
+ * @brief Order siblings according to the schema node ordering.
+ *
+ * If the siblings include data nodes from other modules, they are
+ * sorted based on the module order in the context.
+ *
+ * @param[in] sibling Node, whose siblings will be sorted.
+ * @param[in] recursive Whether sort all siblings of siblings, recursively.
+ * @return 0 on success, nonzero in case of an error.
+ */
+int lyd_schema_sort(struct lyd_node *sibling, int recursive);
 
 /**
  * @brief Search in the given data for instances of nodes matching the provided XPath expression.

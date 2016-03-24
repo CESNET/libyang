@@ -1049,8 +1049,8 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
                                       LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT))) {
             /* name match */
             if ((sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len])
-                    || (!strncmp(name, "input", 5) && (nam_len == 5) && (sibling->nodetype == LYS_INPUT))
-                    || (!strncmp(name, "output", 6) && (nam_len == 6) && (sibling->nodetype == LYS_OUTPUT))) {
+                    || ((sibling->nodetype == LYS_INPUT) && !strncmp(name, "input", nam_len) && (nam_len == 5))
+                    || ((sibling->nodetype == LYS_OUTPUT) && !strncmp(name, "output", nam_len) && (nam_len == 6))) {
 
                 /* module check */
                 prefix_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
@@ -1251,8 +1251,9 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
         while ((sibling = lys_getnext(sibling, lys_parent(start), abs_start_mod, LYS_GETNEXT_WITHCHOICE
                                       | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT | LYS_GETNEXT_WITHGROUPING))) {
             /* name match */
-            if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
-
+            if ((sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len])
+                    || ((sibling->nodetype == LYS_INPUT) && !strncmp(name, "input", nam_len) && (nam_len == 5))
+                    || ((sibling->nodetype == LYS_OUTPUT) && !strncmp(name, "output", nam_len) && (nam_len == 6))) {
                 /* module check */
                 prefix_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
                 if (!prefix_mod) {
@@ -1395,8 +1396,9 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
         while ((sibling = lys_getnext(sibling, lys_parent(start), module,
                                       LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT))) {
             /* name match */
-            if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
-
+            if ((sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len])
+                    || ((sibling->nodetype == LYS_INPUT) && !strncmp(name, "input", nam_len) && (nam_len == 5))
+                    || ((sibling->nodetype == LYS_OUTPUT) && !strncmp(name, "output", nam_len) && (nam_len == 6))) {
                 /* module check */
                 if (mod_name) {
                     if (mod_name_len > LY_MODULE_NAME_MAX_LEN) {
@@ -1524,7 +1526,7 @@ error:
 }
 
 struct lyd_node *
-resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int *parsed)
+resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int options, int *parsed)
 {
     char module_name[LY_MODULE_NAME_MAX_LEN + 1];
     const char *id, *mod_name, *name;
@@ -1557,6 +1559,23 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
 
     while (1) {
         LY_TREE_FOR(start, sibling) {
+            /* RPC data check, return simply invalid argument, because the data tree is invalid */
+            if (lys_parent(sibling->schema)) {
+                if (options & LYD_PATH_OPT_OUTPUT) {
+                    if (lys_parent(sibling->schema)->nodetype == LYS_INPUT) {
+                        ly_errno = LY_EINVAL;
+                        *parsed = -1;
+                        return NULL;
+                    }
+                } else {
+                    if (lys_parent(sibling->schema)->nodetype == LYS_OUTPUT) {
+                        ly_errno = LY_EINVAL;
+                        *parsed = -1;
+                        return NULL;
+                    }
+                }
+            }
+
             /* name match */
             if (!strncmp(name, sibling->schema->name, nam_len) && !sibling->schema->name[nam_len]) {
 
