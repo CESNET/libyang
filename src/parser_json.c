@@ -706,8 +706,8 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
 
     if (str[0] == '@' && !str[1]) {
         /* process attribute of the parent object (container or list) */
-        if (!*parent) {
-            LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, (*parent), "attribute with no corresponding element to belongs to");
+        if (!(*parent)) {
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "attribute with no corresponding element to belongs to");
             goto error;
         }
 
@@ -755,7 +755,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
                 }
             }
         } else {
-            LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*parent), name);
+            LOGVAL(LYE_INELEM, LY_VLOG_NONE, NULL, name);
             goto error;
         }
     } else {
