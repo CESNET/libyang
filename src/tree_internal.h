@@ -68,6 +68,14 @@ struct ly_types {
 extern struct ly_types ly_types[LY_DATA_TYPE_COUNT];
 
 /**
+ * @brief Internal structure for data node sorting.
+ */
+struct lyd_node_pos {
+    struct lyd_node *node;
+    uint32_t pos;
+};
+
+/**
  * Macros to work with ::lyd_node#when_status
  * +--- bit 1 - some when-stmt connected with the node (resolve_applies_when() is true)
  * |+-- bit 2 - when-stmt's condition is resolved and it is true
