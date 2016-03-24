@@ -222,6 +222,9 @@ struct lyd_node_anyxml {
  * subtree filter data, edit-config's data or other type of data set - such data do not represent a complete data set
  * and some of the validation rules can fail. Therefore there are other options (within lower 8 bits) to make parser
  * to accept such a data.
+ * - when parser evaluates when-stmt condition to false, the constrained subtree is automatically removed. If the
+ * #LYD_OPT_NOAUTODEL is used, error is raised instead of silent auto delete. The option (and also this default
+ * behavior) takes effect only in case of #LYD_OPT_DATA or #LYD_OPT_CONFIG type of data.
  * - for validation, parser needs to add default nodes into the data tree. By default, these additional (implicit)
  * nodes are removed before the parser returns. However, if caller use one of the LYD_WD_* option, the default nodes
  * added by parser are kept in the resulting tree or even the explicit nodes with the default values can be removed
