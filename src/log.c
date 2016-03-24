@@ -57,8 +57,11 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
     } else if (!format) {
         /* postponed print of path related to the previous error, do not rewrite stored original message */
         msg = NULL;
-        asprintf(&msg, "Path related to the last error: \"%s\".", path);
-        free_flag = 1;
+        if (asprintf(&msg, "Path related to the last error: \"%s\".", path) == -1) {
+            msg = "Internal logger error (asprint() failed).";
+        } else {
+            free_flag = 1;
+        }
     } else {
         msg = ((struct ly_err *)&ly_errno)->msg;
         vsnprintf(msg, LY_ERR_MSG_SIZE - 1, format, args);
