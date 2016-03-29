@@ -750,14 +750,14 @@ parse_predicate(const char *id, const char **model, int *mod_len, const char **n
  * schema-nodeid       = absolute-schema-nodeid /
  *                       descendant-schema-nodeid
  * absolute-schema-nodeid = 1*("/" node-identifier)
- * descendant-schema-nodeid =
+ * descendant-schema-nodeid = ["." "/"]
  *                       node-identifier
  *                       absolute-schema-nodeid
  *
  * @param[in] id Identifier to use.
  * @param[out] mod_name Points to the module name, NULL if there is not any.
  * @param[out] mod_name_len Length of the module name, 0 if there is not any.
- * @param[out] name Points to the node name. Can be identifier (from node-identifier), "." or pos.
+ * @param[out] name Points to the node name.
  * @param[out] nam_len Length of the node name.
  * @param[out] is_relative Flag to mark whether the nodeid is absolute or descendant. Must be -1
  *                         on the first call, must not be changed between consecutive calls.
@@ -796,6 +796,10 @@ parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, co
             return -parsed;
         } else {
             *is_relative = 1;
+        }
+        if (!strncmp(id, "./", 2)) {
+            parsed += 2;
+            id += 2;
         }
     } else {
         if (*is_relative == -1) {
