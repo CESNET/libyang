@@ -2263,7 +2263,7 @@ lyd_wd_add_leaf(const struct lys_module *wdmod, struct ly_ctx *ctx, struct lyd_n
             }
             ly_set_free(nodeset);
         }
-        ret = lyd_new_path(parent, ctx, path, dflt, options);
+        ret = lyd_new_path(parent, ctx, path, dflt, 0);
         if (wdmod && ret) {
             /* remember the created nodes (if necessary) in unres */
             for (iter = ret; ; iter = iter->child) {
