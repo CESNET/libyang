@@ -53,7 +53,7 @@ cmd_print_help(void)
 void
 cmd_data_help(void)
 {
-    printf("data [-(-s)trict] [-x OPTION] [-o <output-file>] [-f (xml | json)]  <data-file-name>\n");
+    printf("data [-(-s)trict] [-x OPTION] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)]  <data-file-name>\n");
     printf("Accepted OPTIONs:\n");
     printf("\tauto       - resolve data type (one of the following) automatically (as pyang does),\n");
     printf("\t             this option is applicable only in case of XML input data.\n");
@@ -64,7 +64,12 @@ cmd_data_help(void)
     printf("\trpc        - LYD_OPT_RPC\n");
     /* printf("\trpcreply   - LYD_OPT_RPCREPLY\n"); */
     printf("\tnotif      - LYD_OPT_NOTIF\n");
-    printf("\tfilter     - LYD_OPT_FILTER\n");
+    printf("\tfilter     - LYD_OPT_FILTER\n\n");
+    printf("Accepted DEFAULTs:\n");
+    printf("\tall        - add missing default nodes\n");
+    printf("\tall-tagged - add missing default nodes and mark all default nodes with attribute.\n");
+    printf("\trim        - remove all nodes with default value\n");
+    printf("\timplicit-tagged    - add missing nodes and marke them with attribute\n");
 }
 
 void
@@ -176,6 +181,7 @@ cmd_print(const char *arg)
     char **argv = NULL, *ptr, *target_node = NULL, *model_name, *revision;
     const char **names, *out_path = NULL;
     const struct lys_module *model;
+    const struct lys_submodule *submod;
     LYS_OUTFORMAT format = LYS_OUT_TREE;
     FILE *output = stdout;
     static struct option long_options[] = {
@@ -256,15 +262,24 @@ cmd_print(const char *arg)
 
     model = ly_ctx_get_module(ctx, model_name, revision);
     if (model == NULL) {
+        /* not a model, try to find it as a submodel */
         names = ly_ctx_get_module_names(ctx);
         for (i = 0; names[i]; i++) {
-            if (!model) {
-                model = (struct lys_module *)ly_ctx_get_submodule(ctx, names[i], NULL, model_name);
-                if (model && revision) {
-                    if (!model->rev_size || strcmp(model->rev[0].date, revision)) {
-                        model = NULL;
+            /* go through all main modules */
+            for (model = ly_ctx_get_module(ctx, names[i], NULL); model; model = ly_ctx_get_module_older(ctx, model)) {
+                /* and all its submodules */
+                submod = ly_ctx_get_submodule2(model, model_name);
+                if (submod && revision) {
+                    /* if revision was also specified, check that we have found the correct revision */
+                    if (submod->rev_size && !strcmp(model->rev[0].date, revision)) {
+                        break;
                     }
                 }
+                submod = NULL;
+            }
+            if (submod) {
+                model = (const struct lys_module *)submod;
+                break;
             }
         }
         free(names);
@@ -313,6 +328,7 @@ cmd_data(const char *arg)
     LYD_FORMAT outformat = LYD_UNKNOWN, informat = LYD_UNKNOWN;
     FILE *output = stdout;
     static struct option long_options[] = {
+        {"defaults", required_argument, 0, 'd'},
         {"help", no_argument, 0, 'h'},
         {"format", required_argument, 0, 'f'},
         {"option", required_argument, 0, 'x'},
@@ -334,19 +350,30 @@ cmd_data(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "hf:o:sx:", long_options, &option_index);
+        c = getopt_long(argc, argv, "d:hf:o:sx:", long_options, &option_index);
         if (c == -1) {
             break;
         }
 
         switch (c) {
+        case 'd':
+            if (!strcmp(optarg, "all")) {
+                options = (options & ~LYD_WD_MASK) | LYD_WD_ALL;
+            } else if (!strcmp(optarg, "all-tagged")) {
+                options = (options & ~LYD_WD_MASK) | LYD_WD_ALL_TAG;
+            } else if (!strcmp(optarg, "trim")) {
+                options = (options & ~LYD_WD_MASK) | LYD_WD_TRIM;
+            } else if (!strcmp(optarg, "implicit-tagged")) {
+                options = (options & ~LYD_WD_MASK) | LYD_WD_IMPL_TAG;
+            }
+            break;
         case 'h':
             cmd_data_help();
             ret = 0;
             goto cleanup;
         case 'f':
             if (!strcmp(optarg, "xml")) {
-                outformat = LYD_XML_FORMAT;
+                outformat = LYD_XML;
             } else if (!strcmp(optarg, "json")) {
                 outformat = LYD_JSON;
             } else {
@@ -387,6 +414,10 @@ cmd_data(const char *arg)
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
             } else if (!strcmp(optarg, "filter")) {
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_FILTER;
+            } else {
+                fprintf(stderr, "Invalid parser option \"%s\".\n", optarg);
+                cmd_data_help();
+                goto cleanup;
             }
             break;
         case '?':
@@ -429,7 +460,7 @@ cmd_data(const char *arg)
 
         if (!strcmp(xml->name, "data")) {
             fprintf(stdout, "Parsing %s as complete datastore.\n", argv[optind]);
-            options = options & ~LYD_OPT_TYPEMASK;
+            options = (options & ~LYD_OPT_TYPEMASK);
         } else if (!strcmp(xml->name, "config")) {
             fprintf(stdout, "Parsing %s as config data.\n", argv[optind]);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_CONFIG;
@@ -482,7 +513,7 @@ cmd_data(const char *arg)
     }
 
     if (outformat != LYD_UNKNOWN) {
-        lyd_print_file(output, data, outformat, 1);
+        lyd_print_file(output, data, outformat, LYP_WITHSIBLINGS | LYP_FORMAT);
     }
 
     ret = 0;
@@ -595,7 +626,7 @@ cmd_xpath(const char *arg)
         printf("\tEmpty\n");
     } else {
         for (i = 0; i < set->number; ++i) {
-            node = set->dset[i];
+            node = set->set.d[i];
             switch (node->schema->nodetype) {
             case LYS_CONTAINER:
                 printf("\tContainer ");
@@ -627,8 +658,8 @@ cmd_xpath(const char *arg)
                         if (j) {
                             printf(" ");
                         }
-                        printf("\"%s\": %s", keys->dset[j]->schema->name,
-                               ((struct lyd_node_leaf_list *)keys->dset[j])->value_str);
+                        printf("\"%s\": %s", keys->set.d[j]->schema->name,
+                               ((struct lyd_node_leaf_list *)keys->set.d[j])->value_str);
                     }
                     printf(")");
                 }
@@ -691,7 +722,7 @@ cmd_list(const char *arg)
             return 0;
         case 'f':
             if (!strcmp(optarg, "xml")) {
-                outformat = LYD_XML_FORMAT;
+                outformat = LYD_XML;
             } else if (!strcmp(optarg, "json")) {
                 outformat = LYD_JSON;
             } else {
@@ -721,7 +752,7 @@ error:
     }
 
     if (outformat != LYD_UNKNOWN) {
-        lyd_print_file(stdout, ylib, outformat, LYP_WITHSIBLINGS);
+        lyd_print_file(stdout, ylib, outformat, LYP_WITHSIBLINGS | LYP_FORMAT);
         lyd_free(ylib);
         return 0;
     }

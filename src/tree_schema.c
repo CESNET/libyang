@@ -344,13 +344,13 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
             if (set) {
                 for (i = 0; i < set->number; i++) {
                     LY_TREE_FOR(data->child, diter) {
-                        if (diter->schema == set->sset[i]) {
+                        if (diter->schema == set->set.s[i]) {
                             break;
                         }
                     }
                     if (!diter) {
                         /* instance not found */
-                        node = set->sset[i];
+                        node = set->set.s[i];
                         ly_set_free(set);
                         return node;
                     }
@@ -744,7 +744,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
         }
         /* go up */
         if (lys_find_grouping_up(node->name, start)) {
-            LOGVAL(LYE_DUPID, 0, LY_VLOG_LYS, node, "grouping", node->name);
+            LOGVAL(LYE_DUPID, LY_VLOG_LYS, node, "grouping", node->name);
             return EXIT_FAILURE;
         }
         /* go down, because grouping can be defined after e.g. container in which is collision */
@@ -762,7 +762,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
                 grp = NULL;
                 while ((grp = lys_get_next_grouping(grp, iter))) {
                     if (ly_strequal(node->name, grp->name, 1)) {
-                        LOGVAL(LYE_DUPID, 0, LY_VLOG_LYS, node, "grouping", node->name);
+                        LOGVAL(LYE_DUPID,LY_VLOG_LYS, node, "grouping", node->name);
                         return EXIT_FAILURE;
                     }
                 }
@@ -800,8 +800,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
 
             if (iter->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CONTAINER | LYS_CHOICE | LYS_ANYXML)) {
                 if (iter->module == node->module && ly_strequal(iter->name, node->name, 1)) {
-                    LOGVAL(LYE_SPEC, 0, LY_VLOG_LYS, node, "Duplicated child identifier \"%s\" in \"%s\".", node->name,
-                           stop ? stop->name : "(sub)module");
+                    LOGVAL(LYE_DUPID, LY_VLOG_LYS, node, strnodetype(node->nodetype), node->name);
                     return EXIT_FAILURE;
                 }
             }
@@ -845,7 +844,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
             }
 
             if (iter->module == node->module && ly_strequal(iter->name, node->name, 1)) {
-                LOGVAL(LYE_DUPID, 0, LY_VLOG_LYS, node, "case", node->name);
+                LOGVAL(LYE_DUPID, LY_VLOG_LYS, node, "case", node->name);
                 return EXIT_FAILURE;
             }
         }
@@ -887,8 +886,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
         if (!(child->nodetype &
                 (LYS_ANYXML | LYS_CHOICE | LYS_CONTAINER | LYS_GROUPING | LYS_LEAF |
                  LYS_LEAFLIST | LYS_LIST | LYS_USES))) {
-            LOGVAL(LYE_SPEC, 0, LY_VLOG_LYS, parent, "Unexpected substatement \"%s\" in \"%s\" (%s).",
-                   strnodetype(child->nodetype), strnodetype(parent->nodetype), parent->name);
+            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), strnodetype(parent->nodetype));
             return EXIT_FAILURE;
         }
 
@@ -896,38 +894,35 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     case LYS_CHOICE:
         if (!(child->nodetype &
                 (LYS_ANYXML | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST))) {
-            LOGVAL(LYE_SPEC, 0, LY_VLOG_LYS, parent, "Unexpected substatement \"%s\" in \"choice\" %s.",
-                   strnodetype(child->nodetype), parent->name);
+            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), "choice");
             return EXIT_FAILURE;
         }
         break;
     case LYS_CASE:
         if (!(child->nodetype &
                 (LYS_ANYXML | LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_USES))) {
-            LOGVAL(LYE_SPEC, 0, LY_VLOG_LYS, parent, "Unexpected substatement \"%s\" in \"case\" %s.",
-                   strnodetype(child->nodetype), parent->name);
+            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), "case");
             return EXIT_FAILURE;
         }
         break;
     case LYS_RPC:
         if (!(child->nodetype & (LYS_INPUT | LYS_OUTPUT | LYS_GROUPING))) {
-            LOGVAL(LYE_SPEC, 0, LY_VLOG_LYS, parent, "Unexpected substatement \"%s\" in \"rpc\" %s.",
-                   strnodetype(child->nodetype), parent->name);
+            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), "rpc");
             return EXIT_FAILURE;
         }
         break;
     case LYS_LEAF:
     case LYS_LEAFLIST:
     case LYS_ANYXML:
-        LOGVAL(LYE_SPEC, 0, LY_VLOG_LYS, parent, "The \"%s\" statement (%s) cannot have any data substatement.",
-               strnodetype(parent->nodetype), parent->name);
+        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), strnodetype(parent->nodetype));
+        LOGVAL(LYE_SPEC, LY_VLOG_LYS, NULL, "The \"%s\" statement cannot have any data substatement.",
+               strnodetype(parent->nodetype));
         return EXIT_FAILURE;
     case LYS_AUGMENT:
         if (!(child->nodetype &
                 (LYS_ANYXML | LYS_CASE | LYS_CHOICE | LYS_CONTAINER | LYS_LEAF
                 | LYS_LEAFLIST | LYS_LIST | LYS_USES))) {
-            LOGVAL(LYE_SPEC, 0, LY_VLOG_LYS, parent, "Unexpected substatement \"%s\" in \"%s\" (%s).",
-                   strnodetype(child->nodetype), strnodetype(parent->nodetype), parent->name);
+            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), strnodetype(parent->nodetype));
             return EXIT_FAILURE;
         }
         break;
@@ -936,8 +931,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
         if (!(child->nodetype &
                 (LYS_ANYXML | LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_GROUPING
                 | LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_RPC | LYS_NOTIF | LYS_AUGMENT))) {
-            LOGVAL(LYE_SPEC, 0, LY_VLOG_LYS, parent, "Unexpected substatement \"%s\" in (sub)module \"%s\"",
-                   strnodetype(child->nodetype), module->name);
+            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), "(sub)module");
             return EXIT_FAILURE;
         }
 
@@ -1092,11 +1086,12 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     if (module && !module->filepath) {
         /* get URI if there is /proc */
         addr = NULL;
-        asprintf(&addr, "/proc/self/fd/%d", fd);
-        if ((len = readlink(addr, buf, PATH_MAX - 1)) > 0) {
-            ((struct lys_module *)module)->filepath = lydict_insert(ctx, buf, len);
+        if (asprintf(&addr, "/proc/self/fd/%d", fd) != -1) {
+            if ((len = readlink(addr, buf, PATH_MAX - 1)) > 0) {
+                ((struct lys_module *)module)->filepath = lydict_insert(ctx, buf, len);
+            }
+            free(addr);
         }
-        free(addr);
     }
 
     return module;
@@ -1186,7 +1181,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
         new->der = (struct lys_tpdf *)lyxml_dup_elem(mod->ctx, (struct lyxml_elem *)old->der, NULL, 1);
         new->parent = (struct lys_tpdf *)parent;
         /* all these unres additions can fail even though they did not before */
-        if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_DER, parent, 0)) {
+        if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_DER, parent)) {
             return -1;
         }
         return EXIT_SUCCESS;
@@ -1247,7 +1242,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
             new->info.ident.ref = old->info.ident.ref;
         } else {
             i = unres_schema_find(unres, old, UNRES_TYPE_IDENTREF);
-            if (i > -1 && unres_schema_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i], 0)) {
+            if (i > -1 && unres_schema_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i])) {
                 return -1;
             }
         }
@@ -1273,7 +1268,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
     case LY_TYPE_LEAFREF:
         if (old->info.lref.path) {
             new->info.lref.path = lydict_insert(mod->ctx, old->info.lref.path, 0);
-            if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent, 0)) {
+            if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent)) {
                 return -1;
             }
         }
@@ -1818,7 +1813,7 @@ lys_deviation_free(struct lys_module *module, struct lys_deviation *dev)
                 for (k = 0; k < dev->deviate[i].unique[j].expr_size; k++) {
                     lydict_remove(ctx, dev->deviate[i].unique[j].expr[k]);
                 }
-                free(dev->deviate[j].unique[j].expr);
+                free(dev->deviate[i].unique[j].expr);
             }
             free(dev->deviate[i].unique);
         }
@@ -2286,7 +2281,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
 
         if (leaf_orig->dflt) {
             leaf->dflt = lydict_insert(ctx, leaf_orig->dflt, 0);
-            if (unres_schema_add_str(module, unres, &leaf->type, UNRES_TYPE_DFLT, leaf->dflt, 0) == -1) {
+            if (unres_schema_add_str(module, unres, &leaf->type, UNRES_TYPE_DFLT, leaf->dflt) == -1) {
                 goto error;
             }
         }
@@ -2407,7 +2402,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
         if (!shallow) {
             uses->augment = lys_augment_dup(module, (struct lys_node *)uses, uses_orig->augment, uses_orig->augment_size);
             if (!uses->child) {
-                if (unres_schema_add_node(module, unres, uses, UNRES_USES, NULL, 0) == -1) {
+                if (unres_schema_add_node(module, unres, uses, UNRES_USES, NULL) == -1) {
                     goto error;
                 }
             }

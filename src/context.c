@@ -73,7 +73,10 @@ ly_ctx_new(const char *search_dir)
             return NULL;
         }
         ctx->models.search_path = get_current_dir_name();
-        chdir(cwd);
+        if (chdir(cwd)) {
+            LOGWRN("Unable to return back to working directory \"%s\" (%s)",
+                   cwd, strerror(errno));
+        }
         free(cwd);
     }
     ctx->models.module_set_id = 1;
@@ -125,7 +128,10 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
         free(ctx->models.search_path);
         ctx->models.search_path = get_current_dir_name();
 
-        chdir(cwd);
+        if (chdir(cwd)) {
+            LOGWRN("Unable to return back to working directory \"%s\" (%s)",
+                   cwd, strerror(errno));
+        }
         free(cwd);
     } else {
         free(ctx->models.search_path);
@@ -262,6 +268,44 @@ ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revisi
     return ly_ctx_get_module_by(ctx, name, offsetof(struct lys_module, name), revision);
 }
 
+API const struct lys_module *
+ly_ctx_get_module_older(const struct ly_ctx *ctx, const struct lys_module *module)
+{
+    int i;
+    const struct lys_module *result = NULL, *iter;
+
+    if (!ctx || !module || !module->rev_size) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+
+    for (i = 0; i < ctx->models.used; i++) {
+        iter = ctx->models.list[i];
+        if (iter == module || !iter->rev_size) {
+            /* iter is the module itself or iter has no revision */
+            continue;
+        }
+        if (!ly_strequal(module->name, iter->name, 0)) {
+            /* different module */
+            continue;
+        }
+        if (strcmp(iter->rev[0].date, module->rev[0].date) < 0) {
+            /* iter is older than module */
+            if (result) {
+                if (strcmp(iter->rev[0].date, result->rev[0].date) > 0) {
+                    /* iter is newer than current result */
+                    result = iter;
+                }
+            } else {
+                result = iter;
+            }
+        }
+    }
+
+    return result;
+}
+
 API void
 ly_ctx_set_module_clb(struct ly_ctx *ctx, ly_module_clb clb, void *user_data)
 {
@@ -283,7 +327,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
 {
     const struct lys_module *module;
     char *module_data;
-    void (*module_data_free)(char *module_data) = NULL;
+    void (*module_data_free)(void *module_data) = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
     if (!ctx || !name) {
@@ -300,8 +344,6 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
         module = lys_parse_mem(ctx, module_data, format);
         if (module_data_free) {
             module_data_free(module_data);
-        } else {
-            free(module_data);
         }
     } else {
         module = lyp_search_file(ctx, NULL, name, revision, NULL);
@@ -313,7 +355,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
 API const char **
 ly_ctx_get_module_names(const struct ly_ctx *ctx)
 {
-    int i;
+    int i, j, k;
     const char **result = NULL;
 
     if (!ctx) {
@@ -327,10 +369,20 @@ ly_ctx_get_module_names(const struct ly_ctx *ctx)
         return NULL;
     }
 
-    for (i = 0; i < ctx->models.used; i++) {
-        result[i] = ctx->models.list[i]->name;
+    for (i = j = 0; i < ctx->models.used; i++) {
+        /* avoid duplicities when multiple revisions of the same module are present */
+        for (k = j - 1; k >= 0; k--) {
+            if (ly_strequal(result[k], ctx->models.list[i]->name, 1)) {
+                break;
+            }
+        }
+        if (k < 0) {
+            /* no duplication found */
+            result[j] = ctx->models.list[i]->name;
+            j++;
+        }
     }
-    result[i] = NULL;
+    result[j] = NULL;
 
     return result;
 }
@@ -453,7 +505,7 @@ ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod)
             return EXIT_FAILURE;
         }
         if (cur_mod->inc[i].submodule->filepath) {
-            if (asprintf(&str, "file://%s", cur_mod->inc[i].submodule->filepath) < 0) {
+            if (asprintf(&str, "file://%s", cur_mod->inc[i].submodule->filepath) == -1) {
                 LOGMEM;
                 return EXIT_FAILURE;
             } else if (!lyd_new_leaf(item, NULL, "schema", str)) {
@@ -475,6 +527,11 @@ ly_ctx_info(struct ly_ctx *ctx)
     char *str;
     const struct lys_module *mod;
     struct lyd_node *root, *cont;
+
+    if (!ctx) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
 
     mod = ly_ctx_get_module(ctx, "ietf-yang-library", IETF_YANG_LIB_REV);
     if (!mod || !mod->data) {
@@ -504,7 +561,7 @@ ly_ctx_info(struct ly_ctx *ctx)
             return NULL;
         }
         if (ctx->models.list[i]->filepath) {
-            if (asprintf(&str, "file://%s", ctx->models.list[i]->filepath) < 0) {
+            if (asprintf(&str, "file://%s", ctx->models.list[i]->filepath) == -1) {
                 LOGMEM;
                 lyd_free(root);
                 return NULL;
@@ -549,7 +606,7 @@ ly_ctx_info(struct ly_ctx *ctx)
         return NULL;
     }
 
-    if (lyd_validate(root, 0)) {
+    if (lyd_validate(&root, 0)) {
         lyd_free(root);
         return NULL;
     }
@@ -558,19 +615,17 @@ ly_ctx_info(struct ly_ctx *ctx)
 }
 
 API const struct lys_node *
-ly_ctx_get_node(struct ly_ctx *ctx, const char *nodeid)
+ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid)
 {
-    const struct lys_node *ret;
+    const struct lys_node *node;
 
-    if (!ctx || !nodeid) {
+    if (!ctx || !nodeid || ((nodeid[0] != '/') && !start)) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
 
-    if (resolve_json_absolute_schema_nodeid(nodeid, ctx, &ret)) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
+    /* sets error and everything */
+    node = resolve_json_schema_nodeid(nodeid, ctx, start);
 
-    return ret;
+    return node;
 }

@@ -49,7 +49,6 @@ skip_ws(const char *data)
 
     /* skip leading whitespaces */
     while (data[len] && lyjson_isspace(data[len])) {
-        COUNTLINE(data[len]);
         len++;
     }
 
@@ -145,25 +144,24 @@ lyjson_parse_text(const char *data, unsigned int *len)
                 break;
             default:
                 /* invalid escape sequence */
-                LOGVAL(LYE_XML_INVAL, lineno, 0, NULL, "character escape sequence");
+                LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "character escape sequence");
                 goto error;
 
             }
-            r = pututf8(&buf[o], value, lineno);
+            r = pututf8(&buf[o], value);
             if (!r) {
-                LOGVAL(LYE_XML_INVAL, lineno, 0, NULL, "character UTF8 character");
+                LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "character UTF8 character");
                 goto error;
             }
             o += r - 1; /* o is ++ in for loop */
             (*len) += i; /* number of read characters */
         } else if (data[*len] < 0x20 || data[*len] == 0x5c) {
             /* control characters must be escaped */
-            LOGVAL(LYE_XML_INVAL, lineno, 0, NULL, "control character (unescaped)");
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "control character (unescaped)");
             goto error;
         } else {
             /* unescaped character */
             buf[o] = data[*len];
-            COUNTLINE(buf[o]);
             (*len)++;
         }
     }
@@ -217,7 +215,7 @@ lyjson_parse_number(const char *data)
         case '0':
             if (!i && isdigit(data[len + 1])) {
                 /* leading 0 is not allowed */
-                LOGVAL(LYE_XML_INVAL, lineno, 0, NULL, "JSON number (leading zero)");
+                LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON number (leading zero)");
                 return 0;
             }
             /* no break */
@@ -236,7 +234,7 @@ lyjson_parse_number(const char *data)
             /* ok */
             break;
         default:
-            LOGVAL(LYE_XML_INVAL, lineno, 0, NULL, "character in JSON Number value");
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "character in JSON Number value");
             return 0;
         }
     }
@@ -256,7 +254,7 @@ lyjson_parse_boolean(const char *data)
     }
 
     if (data[len] && data[len] != ',' && data[len] != ']' && data[len] != '}' && !lyjson_isspace(data[len])) {
-        LOGVAL(LYE_XML_INVAL, lineno, 0, NULL, "JSON literal value (expected true or false)");
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON literal value (expected true or false)");
         return 0;
     }
 
@@ -310,7 +308,10 @@ json_get_anyxml(struct lyd_node_anyxml *axml, const char *data)
             /* we are done */
             if (!start) {
                 /* XML in string as we print it */
-                asprintf(&xmlstr, "<%s xmlns=\"%s\"/>", axml->schema->name, axml->schema->module->ns);
+                if (asprintf(&xmlstr, "<%s xmlns=\"%s\"/>", axml->schema->name, axml->schema->module->ns) == -1) {
+                    LOGMEM;
+                    return 0;
+                }
                 axml->value = lyxml_parse_elem(axml->schema->module->ctx, xmlstr, &x, NULL);
                 free(xmlstr);
 
@@ -333,7 +334,7 @@ json_get_anyxml(struct lyd_node_anyxml *axml, const char *data)
 }
 
 static unsigned int
-json_get_value(struct lyd_node_leaf_list *leaf, const char *data, int options, struct unres_data *unres)
+json_get_value(struct lyd_node_leaf_list *leaf, const char *data, int options)
 {
     struct lyd_node_leaf_list *new, *diter;
     struct lys_type *stype;
@@ -342,7 +343,7 @@ json_get_value(struct lyd_node_leaf_list *leaf, const char *data, int options, s
     int resolve;
     char *str;
 
-    assert(leaf && data && unres);
+    assert(leaf && data);
     ctx = leaf->schema->module->ctx;
 
     if (options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
@@ -365,7 +366,7 @@ json_get_value(struct lyd_node_leaf_list *leaf, const char *data, int options, s
     if (leaf->schema->nodetype == LYS_LEAFLIST) {
         /* expecting begin-array */
         if (data[len++] != '[') {
-            LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, leaf, "JSON data (expected begin-array)");
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, leaf, "JSON data (expected begin-array)");
             return 0;
         }
 
@@ -379,18 +380,18 @@ repeat:
     if (data[len] == '"') {
         /* string representations */
         if (data[len++] != '"') {
-            LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, leaf,
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, leaf,
                    "JSON data (missing quotation-mark at the beginning of string)");
             return 0;
         }
         str = lyjson_parse_text(&data[len], &r);
         if (!str) {
-            LOGVAL(LYE_PATH, 0, LY_VLOG_LYD, leaf);
+            LOGPATH(LY_VLOG_LYD, leaf);
             return 0;
         }
         leaf->value_str = lydict_insert_zc(ctx, str);
         if (data[len + r] != '"') {
-            LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, leaf,
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, leaf,
                    "JSON data (missing quotation-mark at the end of string)");
             return 0;
         }
@@ -399,7 +400,7 @@ repeat:
         /* numeric type */
         r = lyjson_parse_number(&data[len]);
         if (!r) {
-            LOGVAL(LYE_PATH, 0, LY_VLOG_LYD, leaf);
+            LOGPATH(LY_VLOG_LYD, leaf);
             return 0;
         }
         leaf->value_str = lydict_insert(ctx, &data[len], r);
@@ -408,7 +409,7 @@ repeat:
         /* boolean */
         r = lyjson_parse_boolean(&data[len]);
         if (!r) {
-            LOGVAL(LYE_PATH, 0, LY_VLOG_LYD, leaf);
+            LOGPATH(LY_VLOG_LYD, leaf);
             return 0;
         }
         leaf->value_str = lydict_insert(ctx, &data[len], r);
@@ -419,11 +420,11 @@ repeat:
         len += 6;
     } else {
         /* error */
-        LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, leaf, "JSON data (unexpected value)");
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, leaf, "JSON data (unexpected value)");
         return 0;
     }
 
-    if (lyp_parse_value(leaf, NULL, resolve, unres, lineno)) {
+    if (lyp_parse_value(leaf, NULL, resolve)) {
         ly_errno = LY_EVALID;
         return 0;
     }
@@ -457,7 +458,7 @@ repeat:
             len += skip_ws(&data[len]);
         } else {
             /* something unexpected */
-            LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, leaf, "JSON data (expecting value-separator or end-array)");
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, leaf, "JSON data (expecting value-separator or end-array)");
             return 0;
         }
     }
@@ -483,7 +484,7 @@ json_parse_attr(struct lys_module *parent_module, struct lyd_attr **attr, const 
             len += skip_ws(&data[len]);
             return len;
         }
-        LOGVAL(LYE_XML_INVAL, lineno, 0, NULL, "JSON data (missing begin-object)");
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing begin-object)");
         goto error;
     }
 
@@ -492,7 +493,7 @@ repeat:
     len += skip_ws(&data[len]);
 
     if (data[len] != '"') {
-        LOGVAL(LYE_XML_INVAL, lineno, 0, NULL, "JSON data (missing quotation-mark at the begining of string)");
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing quotation-mark at the begining of string)");
         return 0;
     }
     len++;
@@ -500,7 +501,7 @@ repeat:
     if (!r) {
         goto error;
     } else if (data[len + r] != '"') {
-        LOGVAL(LYE_XML_INVAL, lineno, 0, NULL, "JSON data (missing quotation-mark at the end of string)");
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing quotation-mark at the end of string)");
         goto error;
     }
     if ((name = strchr(str, ':'))) {
@@ -509,7 +510,7 @@ repeat:
         prefix = str;
         module = (struct lys_module *)ly_ctx_get_module(parent_module->ctx, prefix, NULL);
         if (!module) {
-            LOGVAL(LYE_INELEM, lineno, 0, NULL, name);
+            LOGVAL(LYE_INELEM, LY_VLOG_NONE, NULL, name);
             goto error;
         }
     } else {
@@ -520,14 +521,14 @@ repeat:
     len += r + 1;
     len += skip_ws(&data[len]);
     if (data[len] != ':') {
-        LOGVAL(LYE_XML_INVAL, lineno, 0, NULL, "JSON data (missing name-separator)");
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing name-separator)");
         goto error;
     }
     len++;
     len += skip_ws(&data[len]);
 
     if (data[len] != '"') {
-        LOGVAL(LYE_XML_INVAL, lineno, 0, NULL, "JSON data (missing quotation-mark at the beginning of string)");
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing quotation-mark at the beginning of string)");
         goto error;
     }
     len++;
@@ -535,7 +536,7 @@ repeat:
     if (!r) {
         goto error;
     } else if (data[len + r] != '"') {
-        LOGVAL(LYE_XML_INVAL, lineno, 0, NULL, "JSON data (missing quotation-mark at the end of string)");
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing quotation-mark at the end of string)");
         free(value);
         goto error;
     }
@@ -564,7 +565,7 @@ repeat:
     if (data[len] == ',') {
         goto repeat;
     } else if (data[len] != '}') {
-        LOGVAL(LYE_XML_INVAL, lineno, 0, NULL, "JSON data (missing end-object)");
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing end-object)");
         goto error;
     }
     len++;
@@ -615,7 +616,7 @@ store_attrs(struct ly_ctx *ctx, struct attr_cont *attrs, struct lyd_node *first)
 
             /* we have match */
             if (diter->attr) {
-                LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, diter,
+                LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, diter,
                        "attribute (multiple attribute definitions belong to a single element)");
                 free(iter);
                 goto error;
@@ -626,7 +627,7 @@ store_attrs(struct ly_ctx *ctx, struct attr_cont *attrs, struct lyd_node *first)
         }
 
         if (!diter) {
-            LOGVAL(LYE_XML_MISS, lineno, 0, NULL, "element for the specified attribute", iter->attr->name);
+            LOGVAL(LYE_XML_MISS, LY_VLOG_NONE, NULL, "element for the specified attribute", iter->attr->name);
             lyd_free_attr(iter->schema->module->ctx, NULL, iter->attr, 1);
             free(iter);
             goto error;
@@ -656,6 +657,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
     unsigned int len = 0;
     unsigned int r;
     unsigned int flag_leaflist = 0;
+    int i;
     char *name, *prefix = NULL, *str = NULL;
     const struct lys_module *module = NULL;
     struct lys_node *schema = NULL;
@@ -665,7 +667,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
 
     /* each YANG data node representation starts with string (node identifier) */
     if (data[len] != '"') {
-        LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, (*parent),
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, (*parent),
                "JSON data (missing quotation-mark at the beginning of string)");
         return 0;
     }
@@ -675,7 +677,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
     if (!r) {
         goto error;
     } else if (data[len + r] != '"') {
-        LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, (*parent),
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, (*parent),
                "JSON data (missing quotation-mark at the end of string)");
         goto error;
     }
@@ -697,7 +699,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
     len += r + 1;
     len += skip_ws(&data[len]);
     if (data[len] != ':') {
-        LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, (*parent), "JSON data (missing name-separator)");
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, (*parent), "JSON data (missing name-separator)");
         goto error;
     }
     len++;
@@ -705,14 +707,14 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
 
     if (str[0] == '@' && !str[1]) {
         /* process attribute of the parent object (container or list) */
-        if (!*parent) {
-            LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, (*parent), "attribute with no corresponding element to belongs to");
+        if (!(*parent)) {
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "attribute with no corresponding element to belongs to");
             goto error;
         }
 
         r = json_parse_attr((*parent)->schema->module, &attr, &data[len]);
         if (!r) {
-            LOGVAL(LYE_PATH, 0, LY_VLOG_LYD, (*parent));
+            LOGPATH(LY_VLOG_LYD, (*parent));
             goto error;
         }
         len += r;
@@ -754,7 +756,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
                 }
             }
         } else {
-            LOGVAL(LYE_INELEM, lineno, LY_VLOG_LYD, (*parent), name);
+            LOGVAL(LYE_INELEM, LY_VLOG_NONE, NULL, name);
             goto error;
         }
     } else {
@@ -763,7 +765,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
             /* get the proper schema */
             module = ly_ctx_get_module(ctx, prefix, NULL);
             if (!module) {
-                LOGVAL(LYE_INELEM, lineno, LY_VLOG_LYD, (*parent), name);
+                LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*parent), name);
                 goto error;
             }
         }
@@ -778,7 +780,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
                 }
             }
             if (!schema) {
-                LOGVAL(LYE_INELEM, lineno, LY_VLOG_LYD, (*parent), name);
+                LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*parent), name);
                 goto error;
             }
             schema_parent = schema;
@@ -800,7 +802,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
         }
     }
     if (!schema) {
-        LOGVAL(LYE_INELEM, lineno, LY_VLOG_LYD, (*parent), name);
+        LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*parent), name);
         goto error;
     }
 
@@ -815,7 +817,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
 attr_repeat:
         r = json_parse_attr(schema->module, &attr, &data[len]);
         if (!r) {
-            LOGVAL(LYE_PATH, 0, LY_VLOG_LYD, (*parent));
+            LOGPATH(LY_VLOG_LYD, (*parent));
             goto error;
         }
         len += r;
@@ -833,7 +835,7 @@ attr_repeat:
             *attrs = attrs_aux;
         } else if (!flag_leaflist) {
             /* error */
-            LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, (*parent), "attribute data");
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, (*parent), "attribute data");
             goto error;
         }
 
@@ -844,7 +846,7 @@ attr_repeat:
                 flag_leaflist++;
                 goto attr_repeat;
             } else if (data[len] != ']') {
-                LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, (*parent), "JSON data (missing end-array)");
+                LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, (*parent), "JSON data (missing end-array)");
                 goto error;
             }
             len++;
@@ -898,8 +900,11 @@ attr_repeat:
     }
     result->schema = schema;
     result->validity = LYD_VAL_NOT;
+    if (resolve_applies_when(result)) {
+        result->when_status = LYD_WHEN;
+    }
 
-    if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(result, options, lineno, unres)) {
+    if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(result, options, unres)) {
         goto error;
     }
 
@@ -908,7 +913,7 @@ attr_repeat:
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
-        r = json_get_value((struct lyd_node_leaf_list *)result, &data[len], options, unres);
+        r = json_get_value((struct lyd_node_leaf_list *)result, &data[len], options);
         if (!r) {
             goto error;
         }
@@ -927,7 +932,7 @@ attr_repeat:
         len += skip_ws(&data[len]);
     } else if (schema->nodetype & (LYS_CONTAINER | LYS_RPC)) {
         if (data[len] != '{') {
-            LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, result, "JSON data (missing begin-object)");
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, result, "JSON data (missing begin-object)");
             goto error;
         }
         len++;
@@ -960,15 +965,21 @@ attr_repeat:
         }
 
         if (data[len] != '}') {
-            LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, result, "JSON data (missing end-object)");
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, result, "JSON data (missing end-object)");
             goto error;
         }
         len++;
         len += skip_ws(&data[len]);
 
+        /* if we have empty non-presence container, we can remove it */
+        if (!(options & LYD_OPT_KEEPEMPTYCONT) && schema->nodetype == LYS_CONTAINER && !result->child &&
+                !((struct lys_node_container *)schema)->presence) {
+            goto clear;
+        }
+
     } else if (schema->nodetype == LYS_LIST) {
         if (data[len] != '[') {
-            LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, result, "JSON data (missing begin-array)");
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, result, "JSON data (missing begin-array)");
             goto error;
         }
 
@@ -989,7 +1000,7 @@ attr_repeat:
             }
 
             if (data[len] != '{') {
-                LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, result,
+                LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, result,
                        "JSON data (missing list instance's begin-object)");
                 goto error;
             }
@@ -1017,7 +1028,7 @@ attr_repeat:
 
             if (data[len] != '}') {
                 /* expecting end-object */
-                LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, result,
+                LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, result,
                        "JSON data (missing list instance's end-object)");
                 goto error;
             }
@@ -1027,7 +1038,7 @@ attr_repeat:
             if (data[len] == ',') {
                 /* various validation checks */
                 ly_errno = 0;
-                if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(list, options, lineno, unres)) {
+                if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(list, options, unres)) {
                     if (ly_errno) {
                         goto error;
                     }
@@ -1059,8 +1070,7 @@ attr_repeat:
         result = list;
 
         if (data[len] != ']') {
-            LOGVAL(LYE_XML_INVAL, lineno, LY_VLOG_LYD, result,
-                   "JSON data (missing end-array)");
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, result, "JSON data (missing end-array)");
             goto error;
         }
         len++;
@@ -1069,7 +1079,7 @@ attr_repeat:
 
     /* various validation checks */
     ly_errno = 0;
-    if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(result, options, lineno, unres)) {
+    if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(result, options, unres)) {
         if (ly_errno) {
             goto error;
         }
@@ -1086,8 +1096,15 @@ attr_repeat:
     return len;
 
 error:
-    if ((*parent) == result) {
-        (*parent) = NULL;
+    len = 0;
+
+clear:
+    /* cleanup */
+    for (i = unres->count - 1; i >= 0; i--) {
+        /* remove unres items connected with the node being removed */
+        if (unres->node[i] == result) {
+            unres_data_del(unres, i);
+        }
     }
     while (*attrs) {
         attrs_aux = *attrs;
@@ -1100,7 +1117,7 @@ error:
     lyd_free(result);
     free(str);
 
-    return 0;
+    return len;
 }
 
 struct lyd_node *
@@ -1110,6 +1127,7 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
     struct unres_data *unres = NULL;
     unsigned int len = 0, r;
     struct attr_cont *attrs = NULL;
+    const struct lys_module *wdmod = NULL;
 
     ly_errno = LY_SUCCESS;
 
@@ -1124,16 +1142,12 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
         return NULL;
     }
 
-#ifndef NDEBUG
-    lineno = 0;
-#endif
-
     /* skip leading whitespaces */
     len += skip_ws(&data[len]);
 
     /* expect top-level { */
     if (data[len] != '{') {
-        LOGVAL(LYE_XML_INVAL, lineno, 0, NULL, "JSON data (missing top level begin-object)");
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing top level begin-object)");
         goto cleanup;
     }
 
@@ -1159,7 +1173,7 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
 
     if (data[len] != '}') {
         /* expecting end-object */
-        LOGVAL(LYE_XML_INVAL, lineno, 0, NULL, "JSON data (missing top-level end-object)");
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing top-level end-object)");
         LY_TREE_FOR_SAFE(result, next, iter) {
             lyd_free(iter);
         }
@@ -1183,21 +1197,51 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
         goto cleanup;
     }
 
+    /* add default values if needed */
+    if (options & LYD_WD_MASK) {
+        if (lyd_wd_top(ctx, &result, unres, options, wdmod)) {
+            LY_TREE_FOR_SAFE(result, next, iter) {
+                lyd_free(iter);
+            }
+            result = NULL;
+            goto cleanup;
+        }
+    } else {
+        /* use internal yang module, since ncwd is not necessarily present */
+        wdmod = ly_ctx_get_module(ctx, "yang", NULL);
+        if (lyd_wd_top(ctx, &result, unres, options | LYD_WD_IMPL_TAG, wdmod)) {
+            LY_TREE_FOR_SAFE(result, next, iter) {
+                lyd_free(iter);
+            }
+            result = NULL;
+            goto cleanup;
+        }
+    }
+
     /* check leafrefs and/or instids if any */
-    if (result && resolve_unres_data(unres)) {
+    if (unres->count && result && resolve_unres_data(unres, (options & LYD_OPT_NOAUTODEL) ? NULL : &result, options)) {
         /* leafref & instid checking failed */
         LY_TREE_FOR_SAFE(result, next, iter) {
             lyd_free(iter);
         }
         result = NULL;
+        goto cleanup;
+    }
+
+    if (!(options & LYD_WD_MASK)) {
+        /* cleanup default nodes */
+        if (lyd_wd_cleanup_mod(&result, wdmod)) {
+            LY_TREE_FOR_SAFE(result, next, iter) {
+                lyd_free(iter);
+            }
+            result = NULL;
+            goto cleanup;
+        }
     }
 
 cleanup:
     free(unres->node);
     free(unres->type);
-#ifndef NDEBUG
-    free(unres->line);
-#endif
     free(unres);
 
     return result;

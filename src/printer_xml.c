@@ -381,17 +381,18 @@ xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int to
 }
 
 int
-xml_print_data(struct lyout *out, const struct lyd_node *root, int format, int options)
+xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
 {
     const struct lyd_node *node;
 
     /* content */
     LY_TREE_FOR(root, node) {
-        xml_print_node(out, format ? 1 : 0, node, 1);
+        xml_print_node(out, (options & LYP_FORMAT ? 1 : 0), node, 1);
         if (!(options & LYP_WITHSIBLINGS)) {
             break;
         }
     }
+    ly_print_flush(out);
 
     return EXIT_SUCCESS;
 }

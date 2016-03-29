@@ -60,15 +60,19 @@ char *get_current_dir_name(void);
 
 #endif
 
+#define LY_MODULE_NAME_MAX_LEN 255
+
 /*
  * logger
  */
 extern volatile uint8_t ly_log_level;
 
-#define LY_ERR_MSG_SIZE 2044
+#define LY_ERR_MSG_SIZE 2042
 struct ly_err {
     LY_ERR no;
-    int path_index;
+    LY_VECODE code;
+    uint8_t vlog_hide;
+    uint16_t path_index;
     char msg[LY_ERR_MSG_SIZE];
     char path[LY_ERR_MSG_SIZE];
 };
@@ -102,10 +106,12 @@ void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 
 #define LOGINT LOGERR(LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 
-enum LY_ERR {
-    LYE_PATH = -3,
-    LYE_SPEC = -2,
-    LYE_LINE = -1,
+typedef enum {
+    LYE_PATH = -3,    /**< error path set */
+    LYE_SPEC = -2,    /**< generic error */
+    LYE_LINE = -1,    /**< error line set */
+
+    LYE_SUCCESS = 0,
 
     LYE_XML_MISS,
     LYE_XML_INVAL,
@@ -113,11 +119,12 @@ enum LY_ERR {
 
     LYE_EOF,
     LYE_INSTMT,
+    LYE_INCHILDSTMT,
     LYE_INID,
     LYE_INDATE,
     LYE_INARG,
-    LYE_MISSSTMT1,
-    LYE_MISSSTMT2,
+    LYE_MISSCHILDSTMT,
+    LYE_MISSSTMT,
     LYE_MISSARG,
     LYE_TOOMANY,
     LYE_DUPID,
@@ -154,6 +161,8 @@ enum LY_ERR {
     LYE_MCASEDATA,
     LYE_NOCOND,
     LYE_INORDER,
+    LYE_INCOUNT,
+    LYE_INWHEN,
 
     LYE_XPATH_INTOK,
     LYE_XPATH_EOF,
@@ -161,24 +170,28 @@ enum LY_ERR {
     LYE_XPATH_INOP_2,
     LYE_XPATH_INCTX,
     LYE_XPATH_INARGCOUNT,
-    LYE_XPATH_INARGTYPE
-};
+    LYE_XPATH_INARGTYPE,
+
+    LYE_PATH_INCHAR,
+    LYE_PATH_INMOD,
+    LYE_PATH_MISSMOD,
+    LYE_PATH_INNODE,
+    LYE_PATH_INKEY,
+    LYE_PATH_MISSKEY,
+    LYE_PATH_EXISTS,
+    LYE_PATH_MISSPAR,
+} LY_ECODE;
+
 enum LY_VLOG_ELEM {
     LY_VLOG_NONE = 0,
     LY_VLOG_XML,
     LY_VLOG_LYS,
     LY_VLOG_LYD
 };
-void ly_vlog(enum LY_ERR code, unsigned int line, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
-#define LOGVAL(code, line, elem_type, elem, args...) ly_vlog(code, line, elem_type, elem, ##args)
-
-#ifdef NDEBUG
-#    define LOGLINE(node) 0
-#    define LOGLINE_IDX(node, idx) 0
-#else
-#    define LOGLINE(node) (node)->line
-#    define LOGLINE_IDX(node, idx) (node)->line[idx]
-#endif
+void ly_vlog_hide(int hide);
+void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
+#define LOGVAL(code, elem_type, elem, args...) ly_vlog(code, elem_type, elem, ##args)
+#define LOGPATH(elem_type, elem) ly_vlog(LYE_PATH, elem_type, elem)
 
 /**
  * @brief Basic functionality like strpbrk(3). However, it searches string \p s
@@ -262,11 +275,10 @@ const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxm
  *
  * @param[in] module Module (schema) with imports to search.
  * @param[in] expr Expression from \p module.
- * @param[in] line Line in the input file.
  *
  * @return Transformed JSON expression in the dictionary, NULL on error.
  */
-const char *transform_schema2json(const struct lys_module *module, const char *expr, uint32_t line);
+const char *transform_schema2json(const struct lys_module *module, const char *expr);
 
 /**
  * @brief Wrapper for realloc() call. The only difference is that if it fails to

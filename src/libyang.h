@@ -72,6 +72,7 @@ extern "C" {
  * - @subpage howtocontext
  * - @subpage howtoschemas
  * - @subpage howtodata
+ * - @subpage howtoxpath
  * - @subpage howtoxml
  * - @subpage howtothreads
  * - @subpage howtologger
@@ -341,6 +342,40 @@ extern "C" {
  */
 
 /**
+ * @page howtoxpath XPath Addressing
+ *
+ * Internally, XPath evaluation is performed on \b when and \b must conditions in the schema. For that almost
+ * a full XPath 1.0 evaluator was implemented. This XPath implementation is available on data trees by calling
+ * lyd_get_node() except that only node sets are returned. This XPath conforms to the YANG specification
+ * (RFC 6020 section 6.4).
+ *
+ * A very small subset of this full XPath is recognized by lyd_new_path(). Basically, only a relative or absolute
+ * path can be specified to identify a new data node. However, lists must be identified by all their keys and created
+ * with all of them, so for those cases predicates are allowed. Predicates must be ordered the way the keys are ordered
+ * and all the keys must be specified. Every predicate includes a single key with its value. These paths are valid XPath
+ * expressions. Example:
+ *
+ * - /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision='']/submodules
+ *
+ * Almost the same XPath is accepted by ly_ctx_get_node(). The difference is that it is not used on data, but schema,
+ * which means there are no key values and only one node for one path. In effect, lists do not have to have any
+ * predicates. If they do, they do not need to have all the keys specified and if values are included, they are ignored.
+ * Nevertheless, any such expression is still a valid XPath, but can return more nodes if executed on a data tree.
+ * Examples (all returning the same node):
+ *
+ * - /ietf-yang-library:modules-state/module/submodules
+ * - /ietf-yang-library:modules-state/module[name]/submodules
+ * - /ietf-yang-library:modules-state/module[name][revision]/submodules
+ * - /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision]/submodules
+ *
+ * Functions List
+ * --------------
+ * - lyd_get_node()
+ * - lyd_new_path()
+ * - ly_ctx_get_node()
+ */
+
+/**
  * @page howtodataparsers Parsing Data
  *
  * Data parser allows to read instances from a specific format. libyang supports the following data formats:
@@ -380,8 +415,16 @@ extern "C" {
  * one tree to another (or e.g. from one list instance to another) or remove nodes. The functions doesn't allow you
  * to put a node to a wrong place (by checking the module), but not all validation checks can be made directly
  * (or you have to make a valid change by multiple tree modifications) when the tree is being changed. Therefore,
- * there is lyd_validate() function supposed to be called to make sure that the current data tree is valid. Note,
- * that not calling this function after the performed changes can cause failure of various libyang functions later.
+ * there is lyd_validate() function supposed to be called to make sure that the current data tree is valid. If
+ * working with RPCs, they are invalid also in case the data nodes are not ordered according to the schema, which
+ * you can fix easily with lyd_schema_sort(). Note, that not performing validation after some data tree changes
+ * can cause failure of various libyang functions later.
+ *
+ * Creating data is generally possible in two ways, they can be combined. You can add nodes one-by-one based on
+ * the node name and/or its parent (lyd_new(), lyd_new_anyxml(), lyd_new_leaf(), adn their output variants) or
+ * address the nodes using a simple XPath addressing (lyd_new_path()). The latter enables to create a whole path
+ * of nodes, requires less information about the modified data, and is generally simpler to use. The path format
+ * specifics can be found [here](@ref howtoxpath).
  *
  * Also remember, that when you are creating/inserting a node, all the objects in that operation must belong to the
  * same context.
@@ -399,6 +442,7 @@ extern "C" {
  * - lyd_new()
  * - lyd_new_anyxml()
  * - lyd_new_leaf()
+ * - lyd_new_path()
  * - lyd_output_new()
  * - lyd_output_new_anyxml()
  * - lyd_output_new_leaf()
@@ -602,6 +646,25 @@ const char **ly_ctx_get_submodule_names(const struct ly_ctx *ctx, const char *mo
 const struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision);
 
 /**
+ * @brief Get pointer to the older schema tree to the specified one in the provided context.
+ *
+ * The module is not necessarily from the provided \p ctx. If there are multiple schemas older than the
+ * provided one, the newest of them is returned.
+ *
+ * The function can be used in combination with ly_ctx_get_module() to get all revisions of a module in a context:
+ * \code{.c}
+ * for (mod = ly_ctx_get_module(ctx, name, NULL); mod; mod = ly_ctx_get_module_older(ctx, mod)) {
+ *     ...
+ * }
+ * \endcode
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] module YANG module to compare with
+ * @return Pointer to the data model structure, NULL if no older schema is present in the context.
+ */
+const struct lys_module *ly_ctx_get_module_older(const struct ly_ctx *ctx, const struct lys_module *module);
+
+/**
  * @brief Try to find the model in the searchpath of \p ctx and load it into it. If custom missing
  * module callback is set, it is used instead.
  *
@@ -621,11 +684,11 @@ const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name
  * @param[in] revision Optional missing module revision.
  * @param[in] user_data User-supplied callback data.
  * @param[out] format Format of the returned module data.
- * @param[out] free_module_data Optional callback for freeing the returned module data. If not set, free() is used.
+ * @param[out] free_module_data Callback for freeing the returned module data. If not set, the data will be left untouched.
  * @return Requested module data or NULL on error.
  */
 typedef char *(*ly_module_clb)(const char *name, const char *revision, void *user_data, LYS_INFORMAT *format,
-                               void (**free_module_data)(char *model_data));
+                               void (**free_module_data)(void *model_data));
 
 /**
  * @brief Set missing include or import model callback.
@@ -684,21 +747,25 @@ const struct lys_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const
 const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodule);
 
 /**
- * @brief Get schema node according to the given absolute schema node identifier
- * in JSON format.
+ * @brief Get schema node according to the given schema node identifier in JSON format.
  *
- * The first node identifier must be prefixed with the module name. Then every other
- * identifier either has an explicit module name or the module name of the previous
- * node is assumed. Examples:
+ * If the \p nodeid is absolute, the first node identifier must be prefixed with
+ * the module name. Then every other identifier either has an explicit module name or
+ * the module name of the previous node is assumed. Examples:
  *
  * /ietf-netconf-monitoring:get-schema/input/identifier
  * /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/ip
  *
+ * If the \p nodeid is relative, \p start is mandatory and is the starting point
+ * for the resolution. The first node identifier does not need a module name.
+ *
  * @param[in] ctx Context to work in.
- * @param[in] nodeid JSON absolute schema node identifier.
+ * @param[in] start Starting node for a relative schema node identifier, in which
+ * case it is mandatory.
+ * @param[in] nodeid JSON schema node identifier.
  * @return Resolved schema node or NULL.
  */
-const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const char *nodeid);
+const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid);
 
 /**
  * @brief Free all internal structures of the specified context.
@@ -728,6 +795,16 @@ void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct 
  */
 
 /**
+ * @brief set array of ::ly_set
+ * It is kept in union to keep ::ly_set generic for data as well as schema trees
+ */
+union ly_set_set {
+    struct lys_node **s;         /**< array of pointers to a ::lys_node objects */
+    struct lyd_node **d;         /**< array of pointers to a ::lyd_node objects */
+    void **g;                    /**< dummy array for generic work */
+};
+
+/**
  * @brief Structure to hold a set of (not necessary somehow connected) ::lyd_node or ::lys_node objects.
  * Caller is supposed to not mix the type of objects added to the set and according to its knowledge about
  * the set content, it is supposed to access the set via the sset, dset or set members of the structure.
@@ -738,11 +815,7 @@ void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct 
 struct ly_set {
     unsigned int size;               /**< allocated size of the set array */
     unsigned int number;             /**< number of elements in (used size of) the set array */
-    union {
-        struct lys_node **sset;      /**< array of pointers to a ::lys_node objects */
-        struct lyd_node **dset;      /**< array of pointers to a ::lyd_node objects */
-        void **set;                   /**< dummy array for generic work */
-    };
+    union ly_set_set set;            /**< set array - union to keep ::ly_set generic for data as well as schema trees */
 };
 
 /**
@@ -803,6 +876,7 @@ void ly_set_free(struct ly_set *set);
  * @{
  */
 #define LYP_WITHSIBLINGS 0x01 /**< Flag for printing also the (following) sibling nodes of the data node. */
+#define LYP_FORMAT       0x02 /**< Flag for formatted output. */
 
 /**
  * @}
@@ -865,16 +939,101 @@ typedef enum {
 } LY_ERR;
 
 /**
+ * @typedef LY_VECODE
+ * @brief libyang's codes of validation error. Whenever ly_errno is set to LY_EVALID, the ly_vecode is also set
+ * to the appropriate LY_VECODE value.
+ * @ingroup logger
+ */
+typedef enum {
+    LYVE_SUCCESS = 0,  /**< no error */
+
+    LYVE_XML_MISS,     /**< missing XML object */
+    LYVE_XML_INVAL,    /**< invalid XML object */
+    LYVE_XML_INCHAR,   /**< invalid XML character */
+
+    LYVE_EOF,          /**< unexpected end of input data */
+    LYVE_INSTMT,       /**< invalid statement (schema) */
+    /* */
+    LYVE_INID,         /**< invalid identifier (schema) */
+    LYVE_INDATE,       /**< invalid date format */
+    LYVE_INARG,        /**< invalid value of a statement argument (schema) */
+    LYVE_MISSSTMT,     /**< missing required statement (schema) */
+    /* */
+    LYVE_MISSARG,      /**< missing required statement argument (schema) */
+    LYVE_TOOMANY,      /**< too many instances of some object */
+    LYVE_DUPID,        /**< duplicated identifier (schema) */
+    LYVE_DUPLEAFLIST,  /**< multiple instances of leaf-list */
+    LYVE_DUPLIST,      /**< multiple instances of list */
+    LYVE_ENUM_DUPVAL,  /**< duplicated enum value (schema) */
+    LYVE_ENUM_DUPNAME, /**< duplicated enum name (schema) */
+    LYVE_ENUM_WS,      /**< enum name with leading/trailing whitespaces (schema) */
+    LYVE_BITS_DUPVAL,  /**< duplicated bits value (schema) */
+    LYVE_BITS_DUPNAME, /**< duplicated bits name (schema) */
+    LYVE_INMOD,        /**< invalid module name */
+    /* */
+    LYVE_KEY_NLEAF,    /**< list key is not a leaf (schema) */
+    LYVE_KEY_TYPE,     /**< invalid list key type (schema) */
+    LYVE_KEY_CONFIG,   /**< key config value differs from the list config value */
+    LYVE_KEY_MISS,     /**< list key not found (schema) */
+    LYVE_KEY_DUP,      /**< duplicated key identifier (schema) */
+    LYVE_INREGEX,      /**< invalid regular expression (schema) */
+    LYVE_INRESOLV,     /**< no resolvents found (schema) */
+    LYVE_INSTATUS,     /**< invalid derivation because of status (schema) */
+
+    LYVE_OBSDATA,      /**< obsolete data instantiation (data) */
+    /* */
+    LYVE_NORESOLV,     /**< no resolvents found for an expression (data) */
+    LYVE_INELEM,       /**< invalid element (data) */
+    /* */
+    LYVE_MISSELEM,     /**< missing required element (data) */
+    LYVE_INVAL,        /**< invalid value of an element (data) */
+    LYVE_INATTR,       /**< invalid attribute in an element (data) */
+    LYVE_MISSATTR,     /**< missing attribute in an element (data) */
+    LYVE_OORVAL,       /**< value out of range/length (data) */
+    LYVE_INCHAR,       /**< unexpected characters (data) */
+    LYVE_INPRED,       /**< predicate resolution fail (data) */
+    LYVE_MCASEDATA,    /**< data for more cases of a choice (data) */
+    LYVE_NOCOND,       /**< unsatisfied must/when condition (data) */
+    LYVE_INORDER,      /**< invalid order of elements (data) */
+    LYVE_INCOUNT,      /**< invalid number of elements (data) */
+    LYVE_INWHEN,       /**< irresolvable when condition (data) */
+
+    LYVE_XPATH_INTOK,  /**< unexpected XPath token */
+    LYVE_XPATH_EOF,    /**< unexpected end of an XPath expression */
+    LYVE_XPATH_INOP,   /**< invalid XPath operation operands */
+    /* */
+    LYVE_XPATH_INCTX,  /**< invalid XPath context type */
+    LYVE_XPATH_INARGCOUNT, /**< invalid number of arguments for an XPath function */
+    LYVE_XPATH_INARGTYPE, /**< invalid type of arguments for an XPath function */
+
+    LYVE_PATH_INCHAR,  /**< invalid characters (path) */
+    LYVE_PATH_INMOD,   /**< invalid module name (path) */
+    LYVE_PATH_MISSMOD, /**< missing module name (path) */
+    LYVE_PATH_INNODE,  /**< invalid node name (path) */
+    LYVE_PATH_INKEY,   /**< invalid key name (path) */
+    LYVE_PATH_MISSKEY, /**< missing some list keys (path) */
+    LYVE_PATH_EXISTS,  /**< target node already exists (path) */
+    LYVE_PATH_MISSPAR, /**< some parent of the target node is missing (path) */
+} LY_VECODE;
+
+/**
  * @cond INTERNAL
  * Get address of (thread-specific) `ly_errno' variable.
  */
 LY_ERR *ly_errno_location(void);
+
+LY_VECODE *ly_vecode_location(void);
 
 /**
  * @endcond INTERNAL
  * @brief libyang specific (thread-safe) errno (see #LY_ERR for the list of possible values and their meaning).
  */
 #define ly_errno (*ly_errno_location())
+
+/**
+ * @brief libyang's validation error code
+ */
+#define ly_vecode (*ly_vecode_location())
 
 /**
  * @brief Get the last (thread-specific) error message.

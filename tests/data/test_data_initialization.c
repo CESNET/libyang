@@ -195,7 +195,7 @@ test_yanglibrary(void **state)
     yanglib = ly_ctx_info(ctx);
     assert_non_null(yanglib);
 
-    rc = lyd_validate(yanglib, 0);
+    rc = lyd_validate(&yanglib, 0);
 
     /* cleanup */
     lyd_free(yanglib);

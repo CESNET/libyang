@@ -85,6 +85,21 @@ ly_print(struct lyout *out, const char *format, ...)
     return count;
 }
 
+void
+ly_print_flush(struct lyout *out)
+{
+    switch (out->type) {
+    case LYOUT_STREAM:
+        fflush(out->method.f);
+        break;
+    case LYOUT_FD:
+    case LYOUT_MEMORY:
+    case LYOUT_CALLBACK:
+        /* nothing to do */
+        break;
+    }
+}
+
 int
 ly_write(struct lyout *out, const char *buf, size_t count)
 {
@@ -321,9 +336,7 @@ lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format, in
 
     switch (format) {
     case LYD_XML:
-        return xml_print_data(out, root, 0, options);
-    case LYD_XML_FORMAT:
-        return xml_print_data(out, root, 1, options);
+        return xml_print_data(out, root, options);
     case LYD_JSON:
         return json_print_data(out, root, options);
     default:

@@ -47,6 +47,7 @@ struct lyout {
  * @brief Generic printer, replacement for printf() / write() / etc
  */
 int ly_print(struct lyout *out, const char *format, ...);
+void ly_print_flush(struct lyout *out);
 int ly_write(struct lyout *out, const char *buf, size_t count);
 
 int yang_print_model(struct lyout *out, const struct lys_module *module);
@@ -55,7 +56,7 @@ int tree_print_model(struct lyout *out, const struct lys_module *module);
 int info_print_model(struct lyout *out, const struct lys_module *module, const char *target_node);
 
 int json_print_data(struct lyout *out, const struct lyd_node *root, int options);
-int xml_print_data(struct lyout *out, const struct lyd_node *root, int format, int options);
+int xml_print_data(struct lyout *out, const struct lyd_node *root, int options);
 
 /* 0 - same, 1 - different */
 int nscmp(const struct lyd_node *node1, const struct lyd_node *node2);

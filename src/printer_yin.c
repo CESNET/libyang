@@ -1411,6 +1411,7 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
     } else {
         ly_print(out, "</module>\n");
     }
+    ly_print_flush(out);
 
     return EXIT_SUCCESS;
 #undef LEVEL
