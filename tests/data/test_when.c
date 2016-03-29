@@ -68,7 +68,7 @@ teardown_f(void **state)
 {
     struct state *st = (*state);
 
-    lyd_free(st->dt);
+    lyd_free_withsiblings(st->dt);
     ly_ctx_destroy(st->ctx, NULL);
     free(st->xml);
     free(st);
@@ -102,7 +102,7 @@ test_parse_autodel(void **state)
 
     xml = "<topleaf xmlns=\"urn:libyang:tests:when\">X</topleaf>"
           "<top xmlns=\"urn:libyang:tests:when\"><b><b1>B</b1></b><c>C</c></top>";
-    lyd_free(st->dt);
+    lyd_free_withsiblings(st->dt);
 
     st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, 0);
     assert_ptr_not_equal(st->dt, NULL);

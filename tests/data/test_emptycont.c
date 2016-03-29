@@ -68,7 +68,7 @@ teardown_f(void **state)
 {
     struct state *st = (*state);
 
-    lyd_free(st->dt);
+    lyd_free_withsiblings(st->dt);
     ly_ctx_destroy(st->ctx, NULL);
     free(st->xml);
     free(st);
