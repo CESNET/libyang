@@ -606,19 +606,27 @@ int lyd_validate(struct lyd_node **node, int options, ...);
 /**
  * @brief Add default nodes into the data tree.
  *
+ * The function expects that the provided data tree is valid. If not, the result is undefined - in general, the
+ * result is not more invalid than the provided data tree input, so if the input data tree is invalid, result will
+ * be also invalid and the process of adding default values could be incomplete.
+ *
+ * Since default nodes are also needed by the validation process, to optimize your application you can add default
+ * values directly in lyd_validate() and lyd_parse*() functions using appropriate options value. By default, these
+ * functions removes the  default nodes at the end of their processing.
+ *
  * @param[in] ctx Optional parameter. If provided, default nodes from all modules in the context will be added (so it
  *            has no effect for #LYD_WD_TRIM). If NULL, only the modules explicitly mentioned in data tree are
  *            taken into account.
  * @param[in] root Data tree root. In case of #LYD_WD_TRIM the data tree can be modified so the root can be changed or
  *            removed. In other modes and with empty data tree, new default nodes can be created so the root pointer
  *            will contain/return the newly created data tree.
- * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions. The
+ * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions - only the
  *            LYD_WD_* options are used to select functionality:
  * - #LYD_WD_TRIM - remove all nodes that have value equal to their default value
  * - #LYD_WD_ALL - add default nodes
  * - #LYD_WD_ALL_TAG - add default nodes and add attribute 'default' with value 'true' to all nodes having their default value
  * - #LYD_WD_IMPL_TAG - add default nodes, but add attribute 'default' only to the added nodes
- * @note The *_TAG modes require to have ietf-netconf-with-defaults module in the context of the data tree.
+ * @note The LYD_WD_*_TAG modes require to have ietf-netconf-with-defaults module in the context of the data tree.
  * @return EXIT_SUCCESS ot EXIT_FAILURE
  */
 int lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options);
