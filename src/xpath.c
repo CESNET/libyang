@@ -5638,9 +5638,14 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
             if (!args[0]) {
                 goto cleanup;
             }
-        }
-        if ((rc = eval_expr(exp, exp_idx, cur_node, args[0], options))) {
-            goto cleanup;
+
+            if ((rc = eval_expr(exp, exp_idx, cur_node, args[0], options))) {
+                goto cleanup;
+            }
+        } else {
+            if ((rc = eval_expr(exp, exp_idx, cur_node, NULL, options))) {
+                goto cleanup;
+            }
         }
     }
     while ((exp->used > *exp_idx) && (exp->tokens[*exp_idx] == LYXP_TOKEN_COMMA)) {
