@@ -904,7 +904,9 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
     for (par2 = lys_parent(node->schema);
          par2 && !(par2->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF));
          par2 = lys_parent(par2));
-    if (par1 != par2) {
+    if ((par1 != par2)
+            && !(par1 && (par1->nodetype == LYS_OUTPUT) && !par2)
+            && !(par2 && (par2->nodetype == LYS_OUTPUT) && !par1)) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
