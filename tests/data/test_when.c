@@ -68,7 +68,7 @@ teardown_f(void **state)
 {
     struct state *st = (*state);
 
-    lyd_free(st->dt);
+    lyd_free_withsiblings(st->dt);
     ly_ctx_destroy(st->ctx, NULL);
     free(st->xml);
     free(st);
@@ -97,10 +97,17 @@ test_parse_autodel(void **state)
     const char *xml = "<top xmlns=\"urn:libyang:tests:when\"><b><b1>B</b1></b><c>C</c></top>";
 
     st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, 0);
-    assert_ptr_not_equal(st->dt, NULL);
+    assert_ptr_equal(st->dt, NULL);
+    assert_int_equal(ly_errno, LY_SUCCESS);
 
-    lyd_print_mem(&(st->xml), st->dt, LYD_XML, 0);
-    assert_string_equal(st->xml, "<top xmlns=\"urn:libyang:tests:when\"/>");
+    xml = "<topleaf xmlns=\"urn:libyang:tests:when\">X</topleaf>"
+          "<top xmlns=\"urn:libyang:tests:when\"><b><b1>B</b1></b><c>C</c></top>";
+    lyd_free_withsiblings(st->dt);
+
+    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, 0);
+    assert_ptr_not_equal(st->dt, NULL);
+    lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS);
+    assert_string_equal(st->xml, "<topleaf xmlns=\"urn:libyang:tests:when\">X</topleaf>");
 }
 
 static void
@@ -137,9 +144,23 @@ test_insert_autodel(void **state)
     assert_ptr_not_equal(lyd_new_leaf(node, NULL, "b1", "B"), NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), 0), 0);
+    assert_ptr_equal(st->dt, NULL);
 
+    st->dt = lyd_new(NULL, st->mod, "top");
+    assert_ptr_not_equal(st->dt, NULL);
+
+    node = lyd_new_leaf(NULL, st->mod, "topleaf", "X");
+    assert_ptr_not_equal(node, NULL);
+    assert_int_equal(lyd_insert_after(st->dt, node), 0);
+
+    assert_ptr_not_equal(lyd_new_leaf(st->dt, NULL, "c", "C"), NULL);
+    node = lyd_new(st->dt, NULL, "b");
+    assert_ptr_not_equal(node, NULL);
+    assert_ptr_not_equal(lyd_new_leaf(node, NULL, "b1", "B"), NULL);
+
+    assert_int_equal(lyd_validate(&(st->dt), 0), 0);
     lyd_print_mem(&(st->xml), st->dt, LYD_XML, 0);
-    assert_string_equal(st->xml, "<top xmlns=\"urn:libyang:tests:when\"/>");
+    assert_string_equal(st->xml, "<topleaf xmlns=\"urn:libyang:tests:when\">X</topleaf>");
 }
 
 int main(void)

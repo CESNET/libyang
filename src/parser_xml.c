@@ -426,6 +426,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         }
     }
 
+    /* if we have empty non-presence container, we can remove it */
+    if (!(options & LYD_OPT_KEEPEMPTYCONT) && schema->nodetype == LYS_CONTAINER && !(*result)->child &&
+            !((struct lys_node_container *)schema)->presence) {
+        goto clear;
+    }
+
     /* rest of validation checks */
     ly_errno = 0;
     if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(*result, options, unres)) {
@@ -446,6 +452,12 @@ error:
 
 clear:
     /* cleanup */
+    for (i = unres->count - 1; i >= 0; i--) {
+        /* remove unres items connected with the node being removed */
+        if (unres->node[i] == *result) {
+            unres_data_del(unres, i);
+        }
+    }
     lyd_free(*result);
     *result = NULL;
 
@@ -470,15 +482,15 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         return NULL;
     }
 
-    if (!(*root)) {
-        /* empty tree - no work is needed */
-        lyd_validate(NULL, options, ctx);
-        return NULL;
-    }
-
     if (lyp_check_options(options)) {
         LOGERR(LY_EINVAL, "%s: Invalid options (multiple data type flags set).", __func__);
         return NULL;
+    }
+
+    if (!(*root)) {
+        /* empty tree - no work is needed */
+        lyd_validate(&result, options, ctx);
+        return result;
     }
 
     va_start(ap, options);
@@ -558,7 +570,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     }
 
     /* check leafrefs and/or instids if any */
-    if (unres->count && result && resolve_unres_data(unres, (options & LYD_OPT_NOAUTODEL) ? NULL : &result)) {
+    if (unres->count && result && resolve_unres_data(unres, (options & LYD_OPT_NOAUTODEL) ? NULL : &result, options)) {
         /* leafref & instid checking failed */
         LY_TREE_FOR_SAFE(result, next, iter) {
             lyd_free(iter);

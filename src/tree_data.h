@@ -221,6 +221,11 @@ struct lyd_node_anyxml {
  * subtree filter data, edit-config's data or other type of data set - such data do not represent a complete data set
  * and some of the validation rules can fail. Therefore there are other options (within lower 8 bits) to make parser
  * to accept such a data.
+ * - when parser evaluates when-stmt condition to false, the constrained subtree is automatically removed. If the
+ * #LYD_OPT_NOAUTODEL is used, error is raised instead of silent auto delete. The option (and also this default
+ * behavior) takes effect only in case of #LYD_OPT_DATA or #LYD_OPT_CONFIG type of data.
+ * - whenever the parser see empty non-presence container, it is automatically removed to minimize memory usage. This
+ * behavior can be changed by #LYD_OPT_KEEPEMPTYCONT.
  * - for validation, parser needs to add default nodes into the data tree. By default, these additional (implicit)
  * nodes are removed before the parser returns. However, if caller use one of the LYD_WD_* option, the default nodes
  * added by parser are kept in the resulting tree or even the explicit nodes with the default values can be removed
@@ -277,6 +282,7 @@ struct lyd_node_anyxml {
                                        applicable only in combination with LYD_OPT_DATA and LYD_OPT_CONFIG flags.
                                        If used, libyang generates validation error instead of silently removing the
                                        constrained subtree. */
+#define LYD_OPT_KEEPEMPTYCONT 0x4000 /**< Do not automatically delete empty non-presence containers. */
 
 #define LYD_WD_MASK       0xF0000 /**< Mask for with-defaults modes */
 #define LYD_WD_TRIM       0x10000 /**< Remove all nodes with the value equal to their default value */
@@ -617,19 +623,27 @@ int lyd_validate(struct lyd_node **node, int options, ...);
 /**
  * @brief Add default nodes into the data tree.
  *
+ * The function expects that the provided data tree is valid. If not, the result is undefined - in general, the
+ * result is not more invalid than the provided data tree input, so if the input data tree is invalid, result will
+ * be also invalid and the process of adding default values could be incomplete.
+ *
+ * Since default nodes are also needed by the validation process, to optimize your application you can add default
+ * values directly in lyd_validate() and lyd_parse*() functions using appropriate options value. By default, these
+ * functions removes the  default nodes at the end of their processing.
+ *
  * @param[in] ctx Optional parameter. If provided, default nodes from all modules in the context will be added (so it
  *            has no effect for #LYD_WD_TRIM). If NULL, only the modules explicitly mentioned in data tree are
  *            taken into account.
  * @param[in] root Data tree root. In case of #LYD_WD_TRIM the data tree can be modified so the root can be changed or
  *            removed. In other modes and with empty data tree, new default nodes can be created so the root pointer
  *            will contain/return the newly created data tree.
- * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions. The
+ * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions - only the
  *            LYD_WD_* options are used to select functionality:
  * - #LYD_WD_TRIM - remove all nodes that have value equal to their default value
  * - #LYD_WD_ALL - add default nodes
  * - #LYD_WD_ALL_TAG - add default nodes and add attribute 'default' with value 'true' to all nodes having their default value
  * - #LYD_WD_IMPL_TAG - add default nodes, but add attribute 'default' only to the added nodes
- * @note The *_TAG modes require to have ietf-netconf-with-defaults module in the context of the data tree.
+ * @note The LYD_WD_*_TAG modes require to have ietf-netconf-with-defaults module in the context of the data tree.
  * @return EXIT_SUCCESS ot EXIT_FAILURE
  */
 int lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options);

@@ -3497,6 +3497,7 @@ moveto_get_root(struct lyd_node *cur_node, int options, enum lyxp_node_type *roo
     if (!options) {
         /* special kind of root that can access everything */
         for (root = cur_node; root->parent; root = root->parent);
+        for (; root->prev->next; root = root->prev);
         *root_type = LYXP_NODE_ROOT_ALL;
         return root;
     }
@@ -4300,7 +4301,7 @@ moveto_parent(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int
         }
 
         /* when check */
-        if ((options & LYXP_WHEN) && !LYD_WHEN_DONE(new_node->when_status)) {
+        if ((options & LYXP_WHEN) && new_node && !LYD_WHEN_DONE(new_node->when_status)) {
             return EXIT_FAILURE;
         }
 

@@ -176,9 +176,9 @@ struct lyxp_set {
  * @brief Types of nodes that can be in an LYXP_SET_NODE_SET XPath set.
  */
 enum lyxp_node_type {
-    LYXP_NODE_ROOT_ALL,         /* access to all the data (node value NULL) */
-    LYXP_NODE_ROOT_CONFIG,      /* <running> data context (node value NULL) */
-    LYXP_NODE_ROOT_STATE,       /* <running> + state data context (node value NULL) */
+    LYXP_NODE_ROOT_ALL,         /* access to all the data (node value first top-level node) */
+    LYXP_NODE_ROOT_CONFIG,      /* <running> data context (node value first top-level node) */
+    LYXP_NODE_ROOT_STATE,       /* <running> + state data context (node value first top-level node) */
     LYXP_NODE_ROOT_NOTIF,       /* notification context (node value LYS_NOTIF) */
     LYXP_NODE_ROOT_RPC,         /* RPC (input) context (node value LYS_RPC) */
     LYXP_NODE_ROOT_OUTPUT,      /* RPC output-only context (node value LYS_RPC) */

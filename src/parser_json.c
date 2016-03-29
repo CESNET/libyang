@@ -657,6 +657,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
     unsigned int len = 0;
     unsigned int r;
     unsigned int flag_leaflist = 0;
+    int i;
     char *name, *prefix = NULL, *str = NULL;
     const struct lys_module *module = NULL;
     struct lys_node *schema = NULL;
@@ -706,8 +707,8 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
 
     if (str[0] == '@' && !str[1]) {
         /* process attribute of the parent object (container or list) */
-        if (!*parent) {
-            LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, (*parent), "attribute with no corresponding element to belongs to");
+        if (!(*parent)) {
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "attribute with no corresponding element to belongs to");
             goto error;
         }
 
@@ -755,7 +756,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
                 }
             }
         } else {
-            LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*parent), name);
+            LOGVAL(LYE_INELEM, LY_VLOG_NONE, NULL, name);
             goto error;
         }
     } else {
@@ -970,6 +971,12 @@ attr_repeat:
         len++;
         len += skip_ws(&data[len]);
 
+        /* if we have empty non-presence container, we can remove it */
+        if (!(options & LYD_OPT_KEEPEMPTYCONT) && schema->nodetype == LYS_CONTAINER && !result->child &&
+                !((struct lys_node_container *)schema)->presence) {
+            goto clear;
+        }
+
     } else if (schema->nodetype == LYS_LIST) {
         if (data[len] != '[') {
             LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, result, "JSON data (missing begin-array)");
@@ -1089,8 +1096,15 @@ attr_repeat:
     return len;
 
 error:
-    if ((*parent) == result) {
-        (*parent) = NULL;
+    len = 0;
+
+clear:
+    /* cleanup */
+    for (i = unres->count - 1; i >= 0; i--) {
+        /* remove unres items connected with the node being removed */
+        if (unres->node[i] == result) {
+            unres_data_del(unres, i);
+        }
     }
     while (*attrs) {
         attrs_aux = *attrs;
@@ -1103,7 +1117,7 @@ error:
     lyd_free(result);
     free(str);
 
-    return 0;
+    return len;
 }
 
 struct lyd_node *
@@ -1205,7 +1219,7 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
     }
 
     /* check leafrefs and/or instids if any */
-    if (unres->count && result && resolve_unres_data(unres, (options & LYD_OPT_NOAUTODEL) ? NULL : &result)) {
+    if (unres->count && result && resolve_unres_data(unres, (options & LYD_OPT_NOAUTODEL) ? NULL : &result, options)) {
         /* leafref & instid checking failed */
         LY_TREE_FOR_SAFE(result, next, iter) {
             lyd_free(iter);
