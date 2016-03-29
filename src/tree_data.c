@@ -2414,6 +2414,12 @@ nextsibling:
             /* parent was already processed, so go to its sibling */
             if (siter->parent && lys_parent(siter)->nodetype != LYS_CHOICE) {
                 next = siter->next;
+                if (next && (siter->nodetype & (LYS_CONTAINER | LYS_LEAF))) {
+                    /* remove node from the path */
+                    c = strrchr(path, '/');
+                    *c = '\0';
+                    index = c - path;
+                }
             }
         }
         /* add node into the path */
