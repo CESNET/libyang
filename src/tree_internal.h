@@ -403,8 +403,9 @@ int lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *un
  * @param[in] root Data tree root. The data tree can be modified so the root can be changed or completely removed.
  * @param[in] wdmod Schema in which the default attributes were created. If NULL the ietf-netconf-with-defaults
  * is used if present in the data tree's context.
+ * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
  * @return EXIT_SUCCESS or EXIT_FAILURE
  */
-int lyd_wd_cleanup_mod(struct lyd_node **root, const struct lys_module *wdmod);
+int lyd_wd_cleanup_mod(struct lyd_node **root, const struct lys_module *wdmod, int options);
 
 #endif /* LY_TREE_INTERNAL_H_ */

@@ -581,7 +581,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 
     if (!(options & LYD_WD_MASK)) {
         /* cleanup default nodes */
-        if (lyd_wd_cleanup_mod(&result, wdmod)) {
+        if (lyd_wd_cleanup_mod(&result, wdmod, options)) {
             LY_TREE_FOR_SAFE(result, next, iter) {
                 lyd_free(iter);
             }
