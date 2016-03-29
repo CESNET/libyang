@@ -2676,6 +2676,9 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
                     *root = iter;
                 } else {
                     lyd_insert_after((*root)->prev, iter);
+                    if (ly_errno != LY_SUCCESS) {
+                        goto error;
+                    }
                 }
             }
 
