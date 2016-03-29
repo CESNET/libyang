@@ -4086,7 +4086,7 @@ resolve_when(struct lyd_node *node)
     struct lyd_node *ctx_node = NULL;
     struct lys_node *parent;
     struct lyxp_set set;
-    int rc;
+    int rc = 0;
 
     assert(node);
     memset(&set, 0, sizeof set);
@@ -4097,7 +4097,7 @@ resolve_when(struct lyd_node *node)
             if (rc == 1) {
                 LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
             }
-            return rc;
+            goto cleanup;
         }
 
         /* set boolean result of the condition */
@@ -4107,8 +4107,11 @@ resolve_when(struct lyd_node *node)
             LOGVAL(LYE_NOCOND, LY_VLOG_LYD, node, "When", ((struct lys_node_container *)node->schema)->when->cond);
             ly_vlog_hide(0);
             node->when_status |= LYD_WHEN_FALSE;
-            goto success;
+            goto cleanup;
         }
+
+        /* free xpath set content */
+        lyxp_set_cast(&set, LYXP_SET_EMPTY, node, 0);
     }
 
     parent = node->schema;
@@ -4121,7 +4124,8 @@ resolve_when(struct lyd_node *node)
                 ctx_node = resolve_when_ctx_node(node, parent);
                 if (!ctx_node) {
                     LOGINT;
-                    return -1;
+                    rc = -1;
+                    goto cleanup;
                 }
             }
             rc = lyxp_eval(((struct lys_node_uses *)parent)->when->cond, ctx_node, &set, LYXP_WHEN);
@@ -4129,7 +4133,7 @@ resolve_when(struct lyd_node *node)
                 if (rc == 1) {
                     LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)parent)->when->cond);
                 }
-                return rc;
+                goto cleanup;
             }
 
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, LYXP_WHEN);
@@ -4138,8 +4142,11 @@ resolve_when(struct lyd_node *node)
                 LOGVAL(LYE_NOCOND, LY_VLOG_LYD, node, "When", ((struct lys_node_uses *)parent)->when->cond);
                 ly_vlog_hide(0);
                 node->when_status |= LYD_WHEN_FALSE;
-                goto success;
+                goto cleanup;
             }
+
+            /* free xpath set content */
+            lyxp_set_cast(&set, LYXP_SET_EMPTY, ctx_node, 0);
         }
 
 check_augment:
@@ -4148,7 +4155,8 @@ check_augment:
                 ctx_node = resolve_when_ctx_node(node, parent->parent);
                 if (!ctx_node) {
                     LOGINT;
-                    return -1;
+                    rc = -1;
+                    goto cleanup;
                 }
             }
             rc = lyxp_eval(((struct lys_node_augment *)parent->parent)->when->cond, ctx_node, &set, LYXP_WHEN);
@@ -4156,7 +4164,7 @@ check_augment:
                 if (rc == 1) {
                     LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)parent->parent)->when->cond);
                 }
-                return rc;
+                goto cleanup;
             }
 
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, LYXP_WHEN);
@@ -4166,8 +4174,11 @@ check_augment:
                 LOGVAL(LYE_NOCOND, LY_VLOG_LYD, node, "When", ((struct lys_node_augment *)parent->parent)->when->cond);
                 ly_vlog_hide(0);
                 node->when_status |= LYD_WHEN_FALSE;
-                goto success;
+               goto cleanup;
             }
+
+            /* free xpath set content */
+            lyxp_set_cast(&set, LYXP_SET_EMPTY, ctx_node, 0);
         }
 
         parent = lys_parent(parent);
@@ -4175,8 +4186,12 @@ check_augment:
 
     node->when_status |= LYD_WHEN_TRUE;
 
-success:
-    return 0;
+cleanup:
+
+    /* free xpath set content */
+    lyxp_set_cast(&set, LYXP_SET_EMPTY, ctx_node ? ctx_node : node, 0);
+
+    return rc;
 }
 
 /**

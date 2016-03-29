@@ -1786,6 +1786,7 @@ lyd_get_node(const struct lyd_node *data, const char *expr)
             }
         }
     }
+    /* free xp_set content */
     lyxp_set_cast(&xp_set, LYXP_SET_EMPTY, data, 0);
 
     return set;
