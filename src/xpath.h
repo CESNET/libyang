@@ -197,7 +197,10 @@ enum lyxp_node_type {
  *
  * @param[in] expr XPath expression to evaluate. Must be in JSON format (prefixes are model names).
  * @param[in] cur_node Current (context) data node.
- * @param[out] set Result set. Must be valid (zeroed usually).
+ * @param[out] set Result set. Must be valid and in the same libyang context as \p cur_node.
+ * To be safe, always either zero or cast the \p set to empty. After done using, either cast
+ * the \p set to empty (if allocated statically) or free it (if allocated dynamically) to
+ * prevent memory leaks.
  * @param[in] options Whether to apply some evaluation restrictions.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on unresolved when dependency, -1 on error.
@@ -228,7 +231,7 @@ void lyxp_set_print_xml(FILE *f, struct lyxp_set *set);
  *
  * @param[in] set Set to cast.
  * @param[in] target Target type to cast \p set into.
- * @param[in] cur_node Current (context) data node.
+ * @param[in] cur_node Current (context) data node. Cannot be NULL.
  * @param[in] options Whether to apply some evaluation restrictions.
  */
 void lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct lyd_node *cur_node, int options);
