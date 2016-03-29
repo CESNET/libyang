@@ -1439,7 +1439,7 @@ success:
 
     if (clean) {
         /* cleanup default nodes */
-        if (lyd_wd_cleanup_mod(node, wdmod)) {
+        if (lyd_wd_cleanup_mod(node, wdmod, options)) {
             goto error;
         }
     }
@@ -2240,7 +2240,7 @@ ly_set_rm(struct ly_set *set, void *node)
 }
 
 int
-lyd_wd_cleanup_mod(struct lyd_node **root, const struct lys_module *wdmod)
+lyd_wd_cleanup_mod(struct lyd_node **root, const struct lys_module *wdmod, int options)
 {
     struct lyd_node *wr, *next1, *next2, *iter, *to_free = NULL;
     struct lyd_attr *attr;
@@ -2298,8 +2298,9 @@ nextsiblings:
                 iter = iter->parent;
 
                 /* if we have empty non-presence container, we can remove it */
-                if (to_free && !to_free->next && to_free->prev == to_free && iter->schema->nodetype == LYS_CONTAINER
-                        && !((struct lys_node_container *)iter->schema)->presence) {
+                if (to_free && !(options & LYD_OPT_KEEPEMPTYCONT) && !to_free->next && to_free->prev == to_free &&
+                        iter->schema->nodetype == LYS_CONTAINER &&
+                        !((struct lys_node_container *)iter->schema)->presence) {
                     lyd_free(to_free);
                     to_free = iter;
                 }
@@ -2327,7 +2328,7 @@ nextsiblings:
 }
 
 API int
-lyd_wd_cleanup(struct lyd_node **root)
+lyd_wd_cleanup(struct lyd_node **root, int options)
 {
     const struct lys_module *wdmod;
 
@@ -2341,7 +2342,7 @@ lyd_wd_cleanup(struct lyd_node **root)
     }
 
     wdmod = ly_ctx_get_module((*root)->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
-    return lyd_wd_cleanup_mod(root, wdmod);
+    return lyd_wd_cleanup_mod(root, wdmod, options);
 }
 
 static int

@@ -653,9 +653,10 @@ int lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options);
  * #LYD_WD_ALL_TAG or #LYD_WD_IMPL_TAG in lyd_wd_add(), lyd_validate() or lyd_parse_*() functions.
  *
  * @param[in] root Data tree root. The data tree can be modified so the root can be changed or completely removed.
+ * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
  * @return EXIT_SUCCESS or EXIT_FAILURE
  */
-int lyd_wd_cleanup(struct lyd_node **root);
+int lyd_wd_cleanup(struct lyd_node **root, int options);
 
 /**
  * @brief Unlink the specified data subtree. All referenced namespaces are copied.
