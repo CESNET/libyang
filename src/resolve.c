@@ -1621,12 +1621,12 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
                 }
 
                 /* move down the tree, if possible */
-                if (start->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                if (sibling->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
                     LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
                     *parsed = -1;
                     return NULL;
                 }
-                last_match = start;
+                last_match = sibling;
                 start = sibling->child;
                 if (start) {
                     prev_mod = start->schema->module;
