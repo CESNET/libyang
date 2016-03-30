@@ -13,16 +13,25 @@ set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 # include custom Modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 
-find_package(BISON)
-if(NOT BISON_FOUND)
-	message(FATAL_ERROR "Missing Bison.")
-endif()
-
 find_package(FLEX)
-if(NOT FLEX_FOUND)
-	message(FATAL_ERROR "Missing Flex.")
-endif()
+find_package(BISON)
 
+if(NOT BISON_FOUND)
+	message(WARNING "Missing Bison.\nTarget bison does not exist.")
+elseif (NOT FLEX_FOUND)
+	message(WARNING "Missing Flex.\nTarget bison does not exist.")
+else()
+	if (BISON_VERSION VERSION_LESS 3)
+		set(EMPTYDIR "")
+	else ()
+		set(EMPTYDIR "%empty")
+	endif()
+	configure_file(${PROJECT_SOURCE_DIR}/src/yang.y.in ${PROJECT_SOURCE_DIR}/src/yang.y)
+	add_custom_target(bison
+		COMMAND bison -Wall -o ${PROJECT_SOURCE_DIR}/src/parser_yang_bis.c --defines=${PROJECT_SOURCE_DIR}/src/parser_yang_bis.h ${PROJECT_SOURCE_DIR}/src/yang.y
+		COMMAND flex -o ${PROJECT_SOURCE_DIR}/src/parser_yang_lex.c --header-file=${PROJECT_SOURCE_DIR}/src/parser_yang_lex.h ${PROJECT_SOURCE_DIR}/src/yang.l
+	)
+endif()
 
 # check the supported platform
 if(NOT UNIX)
@@ -54,10 +63,6 @@ else()
 	option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
 endif()
 
-BISON_TARGET(YangBison src/yang.y ${PROJECT_SOURCE_DIR}/src/parser_yang_bis.c COMPILE_FLAGS "-Wall --defines=${PROJECT_SOURCE_DIR}/src/parser_yang_bis.h")
-FLEX_TARGET(YangFlex src/yang.l   ${PROJECT_SOURCE_DIR}/src/parser_yang_lex.c COMPILE_FLAGS "--header-file=${PROJECT_SOURCE_DIR}/src/parser_yang_lex.h")
-ADD_FLEX_BISON_DEPENDENCY(YangFlex YangBison)
-
 set(libsrc
 	src/common.c
 	src/context.c
@@ -70,8 +75,8 @@ set(libsrc
 	src/parser_yin.c
 	src/parser_xml.c
 	src/parser_json.c
-	${FLEX_YangFlex_OUTPUTS}
-	${BISON_YangBison_OUTPUTS}
+	src/parser_yang_bis.c
+	src/parser_yang_lex.c
 	src/parser_yang.c
 	src/tree_schema.c
 	src/tree_data.c
