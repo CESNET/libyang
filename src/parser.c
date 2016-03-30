@@ -1549,13 +1549,16 @@ error:
 }
 
 int
-lyp_add_module(struct lys_module *module, int implement)
+lyp_add_module(struct lys_module **module, int implement)
 {
     struct ly_ctx *ctx;
     struct lys_module **newlist = NULL;
+    struct lys_module *mod;
     int i;
 
-    ctx = module->ctx;
+    assert(module);
+    mod = (*module);
+    ctx = mod->ctx;
 
     /* add to the context's list of modules */
     if (ctx->models.used == ctx->models.size) {
@@ -1572,18 +1575,18 @@ lyp_add_module(struct lys_module *module, int implement)
     }
     for (i = 0; ctx->models.list[i]; i++) {
         /* check name (name/revision) and namespace uniqueness */
-        if (!strcmp(ctx->models.list[i]->name, module->name)) {
-            if (ctx->models.list[i]->rev_size == module->rev_size) {
+        if (!strcmp(ctx->models.list[i]->name, mod->name)) {
+            if (ctx->models.list[i]->rev_size == mod->rev_size) {
                 /* both have the same number of revisions */
-                if (!module->rev_size || !strcmp(ctx->models.list[i]->rev[0].date, module->rev[0].date)) {
+                if (!mod->rev_size || !strcmp(ctx->models.list[i]->rev[0].date, mod->rev[0].date)) {
                     /* both have the same revision -> we already have the same module */
                     /* so free the new one and update the old one's implement flag if needed */
                     LOGVRB("Module \"%s\" already in context.", ctx->models.list[i]->name);
 
-                    lys_free(module, NULL, 1);
-                    module = ctx->models.list[i];
-                    if (implement && !module->implemented) {
-                        lyp_set_implemented(module);
+                    lys_free(mod, NULL, 1);
+                    (*module) = ctx->models.list[i];
+                    if (implement && !(*module)->implemented) {
+                        lyp_set_implemented(*module);
                     }
 
                     return EXIT_SUCCESS;
@@ -1592,13 +1595,13 @@ lyp_add_module(struct lys_module *module, int implement)
             /* else (both elses) keep searching, for now the caller is just adding
              * another revision of an already present schema
              */
-        } else if (!strcmp(ctx->models.list[i]->ns, module->ns)) {
+        } else if (!strcmp(ctx->models.list[i]->ns, mod->ns)) {
             LOGERR(LY_EINVAL, "Two different modules (\"%s\" and \"%s\") have the same namespace \"%s\".",
-                   ctx->models.list[i]->name, module->name, module->ns);
+                   ctx->models.list[i]->name, mod->name, mod->ns);
             goto error;
         }
     }
-    ctx->models.list[i] = module;
+    ctx->models.list[i] = mod;
     ctx->models.used++;
     ctx->models.module_set_id++;
     return EXIT_SUCCESS;

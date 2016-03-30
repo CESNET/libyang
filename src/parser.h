@@ -107,7 +107,7 @@ int lyp_check_import(struct lys_module *module, const char *value, struct lys_im
  */
 int lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodule);
 
-int lyp_add_module(struct lys_module *module, int implement);
+int lyp_add_module(struct lys_module **module, int implement);
 
 void lyp_fail_module(struct lys_module *module);
 

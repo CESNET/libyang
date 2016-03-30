@@ -5151,7 +5151,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
         }
     }
 
-    if (lyp_add_module(module, implement)) {
+    if (lyp_add_module(&module, implement)) {
         goto error;
     }
 

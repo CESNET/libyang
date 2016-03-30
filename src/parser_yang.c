@@ -2157,7 +2157,7 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         }
     }
 
-    if (lyp_add_module(module, implement)) {
+    if (lyp_add_module(&module, implement)) {
         goto error;
     }
 
