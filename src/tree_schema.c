@@ -34,6 +34,7 @@
 #include "xml_internal.h"
 #include "tree_internal.h"
 #include "validation.h"
+#include "parser_yang.h"
 
 API const struct lys_feature *
 lys_is_disabled(const struct lys_node *node, int recursive)
@@ -992,6 +993,8 @@ lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
         mod = yin_read_module(ctx, data, NULL, 1);
         break;
     case LYS_IN_YANG:
+        mod = yang_read_module(ctx, data, 0, NULL, 1);
+        break;
     default:
         /* TODO */
         break;
@@ -1016,6 +1019,8 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
         submod = yin_read_submodule(module, data, unres);
         break;
     case LYS_IN_YANG:
+        submod = yang_read_submodule(module, data, 0, unres);
+        break;
     default:
         /* TODO */
         break;
@@ -1075,13 +1080,13 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
         return NULL;
     }
 
-    addr = mmap(NULL, sb.st_size + 1, PROT_READ, MAP_PRIVATE, fd, 0);
+    addr = mmap(NULL, sb.st_size + 2, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         LOGERR(LY_EMEM, "Map file into memory failed (%s()).",__func__);
         return NULL;
     }
     module = lys_parse_mem(ctx, addr, format);
-    munmap(addr, sb.st_size);
+    munmap(addr, sb.st_size + 2);
 
     if (module && !module->filepath) {
         /* get URI if there is /proc */
@@ -1111,13 +1116,13 @@ lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format, struc
         LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
         return NULL;
     }
-    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    addr = mmap(NULL, sb.st_size + 2, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
         return NULL;
     }
     submodule = lys_submodule_parse(module, addr, format, unres);
-    munmap(addr, sb.st_size);
+    munmap(addr, sb.st_size + 2);
 
     return submodule;
 
