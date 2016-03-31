@@ -4806,7 +4806,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
     struct lyd_node *parent;
 
     assert(unres);
-    assert(root && (*root));
+    assert((root && (*root)) || (options & LYD_OPT_NOAUTODEL));
 
     if (!unres->count) {
         return EXIT_SUCCESS;
