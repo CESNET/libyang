@@ -2836,7 +2836,7 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
 
     /* initiate internal buffer */
     if (ly_buf_used && path[0]) {
-        buf_backup = strdup(path);
+        buf_backup = strndup(path, LY_BUF_SIZE - 1);
     }
     path[0] = '\0';
 
