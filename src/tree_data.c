@@ -2979,6 +2979,7 @@ error:
     if (buf_backup) {
         /* return previous internal buffer content */
         strcpy(path, buf_backup);
+        free(buf_backup);
     }
     ly_buf_used--;
 
