@@ -64,13 +64,13 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         }
     } else {
         msg = ((struct ly_err *)&ly_errno)->msg;
-        vsnprintf(msg, LY_ERR_MSG_SIZE - 1, format, args);
-        msg[LY_ERR_MSG_SIZE - 1] = '\0';
+        vsnprintf(msg, LY_BUF_SIZE - 1, format, args);
+        msg[LY_BUF_SIZE - 1] = '\0';
     }
 
     if (!path) {
         /* erase previous path */
-        ((struct ly_err *)&ly_errno)->path_index = LY_ERR_MSG_SIZE - 1;
+        ((struct ly_err *)&ly_errno)->path_index = LY_BUF_SIZE - 1;
     }
 
     if (hide) {
@@ -278,7 +278,7 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
     /* resolve path */
     path = ((struct ly_err *)&ly_errno)->path;
     index = &((struct ly_err *)&ly_errno)->path_index;
-    (*index) = LY_ERR_MSG_SIZE - 1;
+    (*index) = LY_BUF_SIZE - 1;
     path[(*index)] = '\0';
     if (path_flag && elem_type) { /* != LY_VLOG_NONE */
         if (!iter) {
