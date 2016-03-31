@@ -528,7 +528,7 @@ test_lyd_new_path(void **state)
     assert_string_equal(node->schema->name, "l");
     assert_ptr_not_equal(root->prev, root);
 
-    lyd_free(root);
+    lyd_free_withsiblings(root);
 
     root = lyd_new_path(NULL, ctx, "/a:l[key1='1'][key2='2']", NULL, 0);
     assert_non_null(root);
@@ -548,7 +548,7 @@ test_lyd_new_path(void **state)
     assert_non_null(node);
     assert_string_equal(node->schema->name, "value");
 
-    lyd_free(root);
+    lyd_free_withsiblings(root);
 
     root = lyd_new_path(NULL, ctx, "/a:rpc1/x/input-leaf2", "dudu", 0);
     assert_non_null(root);
