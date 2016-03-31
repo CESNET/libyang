@@ -2550,16 +2550,14 @@ lyd_wd_add_empty(const struct lys_module *wdmod, struct lyd_node *parent, struct
 {
     struct lys_node *next, *siter;
     struct lyd_node *ret = NULL, *iter;
-    static char path[4096]; /* TODO thread specific */
-    char *path_ = path;
+    char *path = ly_buf(); /* initiated from lyd_wd_top() */
     char *c;
     int index = 0;
 
-    index = sprintf(path, "./%s:%s", lys_node_module(schema)->name, schema->name);
     if (parent) {
-        path_ = &path[0];
+        index = sprintf(path, "%s:%s", lys_node_module(schema)->name, schema->name);
     } else {
-        path_ = &path[1];
+        index = sprintf(path, "/%s:%s", lys_node_module(schema)->name, schema->name);
     }
 
     LY_TREE_DFS_BEGIN(schema, next, siter) {
@@ -2573,15 +2571,16 @@ lyd_wd_add_empty(const struct lys_module *wdmod, struct lyd_node *parent, struct
 
         switch (siter->nodetype) {
         case LYS_LEAF:
-            iter = lyd_wd_add_leaf(wdmod, siter->module->ctx, parent, (struct lys_node_leaf *)siter, path_, unres,
+            iter = lyd_wd_add_leaf(wdmod, siter->module->ctx, parent, (struct lys_node_leaf *)siter, path, unres,
                                    options, parent ? 1 : 0);
             if (ly_errno != LY_SUCCESS) {
                 if (!parent) {
                     lyd_free_withsiblings(ret);
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Creating default element \"%s\" failed.", path_);
+                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Creating default element \"%s\" failed.", path);
                 } else {
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, parent, "Creating default element \"%s\" failed.", path_);
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, parent, "Creating default element \"%s\" failed.", path);
                 }
+                path[0] = '\0';
                 return NULL;
             } else if (iter && !parent) {
                 parent = ret = iter;
@@ -2664,6 +2663,7 @@ nextsibling:
         }
     }
 
+    path[0] = '\0';
     return ret;
 }
 
@@ -2676,7 +2676,7 @@ lyd_wd_add_inner(const struct lys_module *wdmod, struct lyd_node *subroot, struc
     struct lys_node *siter;
     struct lyd_node *iter;
     struct ly_set *nodeset;
-    static char path[4096]; /* TODO thread specific */
+    char *path = ly_buf(); /* initiated from lyd_wd_top() */
 
     assert(subroot);
 
@@ -2705,6 +2705,7 @@ lyd_wd_add_inner(const struct lys_module *wdmod, struct lyd_node *subroot, struc
             sprintf(path, "%s:%s", lys_node_module(siter)->name, siter->name);
             nodeset = NULL;
             nodeset = lyd_get_node(subroot, path);
+            path[0] = '\0';
             if (!nodeset) {
                 return EXIT_FAILURE;
             }
@@ -2732,8 +2733,10 @@ lyd_wd_add_inner(const struct lys_module *wdmod, struct lyd_node *subroot, struc
             lyd_wd_add_leaf(wdmod, siter->module->ctx, subroot, (struct lys_node_leaf *)siter, path, unres, options, 1);
             if (ly_errno != LY_SUCCESS) {
                 LOGVAL(LYE_SPEC, LY_VLOG_LYD, subroot, "Creating default element \"%s\" failed.", path);
+                path[0] = '\0';
                 return EXIT_FAILURE;
             } /* else if default, it was already connected into parent */
+            path[0] = '\0';
             break;
         case LYS_CHOICE:
             if (((struct lys_node_choice *)siter)->dflt) {
@@ -2778,13 +2781,15 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
     struct lyd_node *iter;
     struct ly_set *modset = NULL, *nodeset;
     unsigned int i;
-    static char path[4096]; /* TODO thread specific */
+    int ret = EXIT_FAILURE;
+    char *path = ly_buf(), *buf_backup = NULL;
+    ly_buf_used++;
 
     if (!wdmod && ((options & LYD_WD_MASK) & (LYD_WD_ALL_TAG | LYD_WD_IMPL_TAG))) {
         wdmod = ly_ctx_get_module(ctx, "ietf-netconf-with-defaults", NULL);
         if (!wdmod) {
             LOGERR(LY_EINVAL, "%s: missing module \"ietf-netconf-with-defaults\" in context.", __func__);
-            return EXIT_FAILURE;
+            goto error;
         }
     }
 
@@ -2794,6 +2799,12 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
     } else if ((options & LYD_WD_MASK) == LYD_WD_ALL_TAG) {
         lyd_wd_trim(root, wdmod, options);
     }
+
+    /* initiate internal buffer */
+    if (ly_buf_used && path[0]) {
+        buf_backup = strdup(path);
+    }
+    path[0] = '\0';
 
     modset = ly_set_new();
     LY_TREE_FOR(*root, iter) {
@@ -2846,6 +2857,7 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
                     sprintf(path, "/%s:%s", lys_node_module(siter)->name, siter->name);
                     nodeset = NULL;
                     nodeset = lyd_get_node(*root, path);
+                    path[0] = '\0';
                     if (!nodeset) {
                         goto error;
                     }
@@ -2870,8 +2882,11 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
                 iter = lyd_wd_add_leaf(wdmod, siter->module->ctx, *root, (struct lys_node_leaf *)siter, path, unres, options, 1);
                 if (ly_errno != LY_SUCCESS) {
                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Creating default element \"%s\" failed.", path);
+                    path[0] = '\0';
                     goto error;
                 }
+                path[0] = '\0';
+
                 if (iter) {
                     if (!(*root)) {
                         *root = iter;
@@ -2921,12 +2936,19 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
         }
     }
 
-    ly_set_free(modset);
-    return EXIT_SUCCESS;
+    ret = EXIT_SUCCESS;
 
 error:
+    /* cleanup */
     ly_set_free(modset);
-    return EXIT_FAILURE;
+
+    if (buf_backup) {
+        /* return previous internal buffer content */
+        strcpy(path, buf_backup);
+    }
+    ly_buf_used--;
+
+    return ret;
 }
 
 API int
