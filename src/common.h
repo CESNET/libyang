@@ -62,20 +62,35 @@ char *get_current_dir_name(void);
 
 #define LY_MODULE_NAME_MAX_LEN 255
 
-/*
- * logger
- */
-extern volatile uint8_t ly_log_level;
-
-#define LY_ERR_MSG_SIZE 2042
+#define LY_BUF_SIZE 1024
 struct ly_err {
     LY_ERR no;
     LY_VECODE code;
     uint8_t vlog_hide;
+    uint8_t buf_used;
     uint16_t path_index;
-    char msg[LY_ERR_MSG_SIZE];
-    char path[LY_ERR_MSG_SIZE];
+    char msg[LY_BUF_SIZE];
+    char path[LY_BUF_SIZE];
+    char buf[LY_BUF_SIZE];
 };
+
+/**
+ * @brief libyang internal thread-specific buffer of LY_BUF_SIZE size
+ *
+ * Caller is responsible to check and set ly_buf_used to 1 (and set
+ * buf[0] to '\0') when starts to use buffer and back to 0 when the
+ * buffer is no more needed. If the buffer is already used, it is
+ * possible to duplicate the buffer content and write string back to
+ * the buffer when leaving.
+ */
+uint8_t *ly_buf_used_location(void);
+char *ly_buf(void);
+#define ly_buf_used (*ly_buf_used_location())
+
+/*
+ * logger
+ */
+extern volatile uint8_t ly_log_level;
 
 void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 
