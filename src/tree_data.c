@@ -2820,7 +2820,7 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
     ly_buf_used++;
 
     if (!wdmod && ((options & LYD_WD_MASK) & (LYD_WD_ALL_TAG | LYD_WD_IMPL_TAG))) {
-        wdmod = ly_ctx_get_module(ctx, "ietf-netconf-with-defaults", NULL);
+        wdmod = ly_ctx_get_module(ctx ? ctx : (*root)->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
         if (!wdmod) {
             LOGERR(LY_EINVAL, "%s: missing module \"ietf-netconf-with-defaults\" in context.", __func__);
             goto error;
