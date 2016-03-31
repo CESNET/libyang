@@ -147,8 +147,8 @@ test_lydict_insert_zc(void **state)
 {
     (void) state; /* unused */
     char *value = NULL;
-    value = malloc(sizeof(char) * 1);
-    strcpy(value, "x");
+
+    value = strdup("x");
     if (!value) {
         fail();
     }
@@ -161,9 +161,7 @@ test_lydict_insert_zc(void **state)
 
     assert_string_equal("x", string);
 
-    value = NULL;
-    value = malloc(sizeof(char) * 5);
-    strcpy(value, "bubba");
+    value = strdup("bubba");
     if (!value) {
         free(value);
         fail();
@@ -181,39 +179,35 @@ static void
 test_lydict_remove(void **state)
 {
     (void) state; /* unused */
-    char *value = NULL;
-    value = malloc(sizeof(char) * 1);
-    strcpy(value, "new_name");
+    char *value = NULL, *value2;
+    const char *str;
+
+    value = strdup("new_name");
     if (!value) {
         fail();
     }
+    value2 = strdup("new_name");
+    if (!value2) {
+        fail();
+    }
+
     const char *string;
-    string = lydict_insert_zc(ctx, value);
+    string = lydict_insert_zc(ctx, value); /* 1st instance */
     if (!string) {
         free(value);
         fail();
     }
 
     assert_string_equal("new_name", string);
-    lydict_remove(ctx, string);
-    assert_string_not_equal("bubba", string);
-
-    value = NULL;
-    value = malloc(sizeof(char) * 5);
-    strcpy(value, "bubba");
-    if (!value) {
-        fail();
-    }
-
-    string = lydict_insert_zc(ctx, value);
-    if (!string) {
-        free(value);
-        fail();
-    }
-
-    assert_string_equal("bubba", string);
-    lydict_remove(ctx, string);
-    assert_string_equal("bubba", string);
+    str = lydict_insert(ctx, "new_name", 0); /* 2nd instance */
+    assert_ptr_equal(str, string);
+    lydict_remove(ctx, string); /* remove 2nd instance */
+    lydict_remove(ctx, string); /* remove 1st instance */
+    /* string content is supposed to be invalid since now! */
+    str = lydict_insert_zc(ctx, value2);
+    assert_ptr_not_equal(str, NULL);
+    assert_ptr_not_equal(str, string);
+    lydict_remove(ctx, str);
 }
 
 int main(void)
