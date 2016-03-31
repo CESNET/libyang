@@ -2771,9 +2771,17 @@ lyd_wd_add_inner(const struct lys_module *wdmod, struct lyd_node *subroot, struc
                 if (!iter) {
                     /* go to the default case */
                     lyd_wd_add_inner(wdmod, subroot, ((struct lys_node_choice *)siter)->dflt, unres, options);
-                    if (ly_errno != LY_SUCCESS) {
-                        return EXIT_FAILURE;
+                } else if (lys_parent(iter->schema)->nodetype == LYS_CASE) {
+                    /* add missing default nodes from present choice case */
+                    lyd_wd_add_inner(wdmod, subroot, lys_parent(iter->schema)->child, unres, options);
+                } else { /* shorthand case */
+                    if (!(iter->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+                        /* go into */
+                        lyd_wd_add_inner(wdmod, iter, iter->schema->child, unres, options);
                     }
+                }
+                if (ly_errno != LY_SUCCESS) {
+                    return EXIT_FAILURE;
                 }
             }
             break;
