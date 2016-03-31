@@ -1430,21 +1430,22 @@ success:
         clean = 1;
     }
 
+    ret = EXIT_SUCCESS;
+
     if (unres->count) {
         /* check unresolved checks (when-stmt) */
         if (resolve_unres_data(unres,  (options & LYD_OPT_NOAUTODEL) ? NULL : node, options)) {
-            goto error;
+            ret = EXIT_FAILURE;
         }
     }
 
     if (clean) {
         /* cleanup default nodes */
         if (lyd_wd_cleanup_mod(node, wdmod, options)) {
-            goto error;
+            ret = EXIT_FAILURE;
         }
     }
 
-    ret = EXIT_SUCCESS;
 
 error:
 
