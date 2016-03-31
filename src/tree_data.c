@@ -871,7 +871,7 @@ nextsibling:
 API int
 lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 {
-    struct lys_node *sparent, *schoice, *scase;
+    struct lys_node *sparent, *schoice, *scase, *saux;
     struct lyd_node *iter, *next;
     int invalid = 0;
 
@@ -898,7 +898,7 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
         lyd_unlink(node);
     }
 
-    if (parent->child && ((sparent = lys_parent(node->schema))->nodetype & (LYS_CHOICE | LYS_CASE))) {
+    if (parent->child && (sparent = lys_parent(node->schema)) && (sparent->nodetype & (LYS_CHOICE | LYS_CASE))) {
         /* auto delete nodes from other cases */
 
         /* remember which case to skip in which choice */
@@ -910,6 +910,7 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
             scase = sparent;
         }
 
+autodelete:
         /* remove all nodes from other cases than 'sparent' */
         LY_TREE_FOR_SAFE(parent->child, next, iter) {
             sparent = lys_parent(iter->schema);
@@ -920,6 +921,18 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
                 /* another case */
                 lyd_free(iter);
             }
+        }
+
+        if ((saux = lys_parent(schoice)) && (saux->nodetype & (LYS_CHOICE | LYS_CASE))) {
+            /* go recursively in case of nested choices */
+            if (saux->nodetype == LYS_CHOICE) {
+                schoice = saux;
+                scase = sparent;
+            } else {
+                schoice = lys_parent(saux);
+                scase = saux;
+            }
+            goto autodelete;
         }
     }
 
@@ -947,7 +960,7 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 static int
 lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
 {
-    struct lys_node *par1, *par2, *sparent, *schoice, *scase;
+    struct lys_node *par1, *par2, *sparent, *schoice, *scase, *saux;
     struct lyd_node *iter, *next, *start = NULL;
     int invalid = 0;
 
@@ -1009,6 +1022,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
             for (start = sibling; start->prev->next; start = start->prev);
         }
 
+autodelete:
         /* remove all nodes from other cases than 'sparent' */
         LY_TREE_FOR_SAFE(start, next, iter) {
             sparent = lys_parent(iter->schema);
@@ -1025,6 +1039,18 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
                 }
                 lyd_free(iter);
             }
+        }
+
+        if ((saux = lys_parent(schoice)) && (saux->nodetype & (LYS_CHOICE | LYS_CASE))) {
+            /* go recursively in case of nested choices */
+            if (saux->nodetype == LYS_CHOICE) {
+                schoice = saux;
+                scase = sparent;
+            } else {
+                schoice = lys_parent(saux);
+                scase = saux;
+            }
+            goto autodelete;
         }
     }
 
