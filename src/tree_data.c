@@ -570,17 +570,23 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
 
             if (!path[0]) {
                 /* the node exists */
-                if (!(options & LYD_PATH_OPT_UPDATE) || (parent->schema->nodetype != LYS_LEAF)) {
+                if (!(options & LYD_PATH_OPT_UPDATE)) {
                     LOGVAL(LYE_PATH_EXISTS, LY_VLOG_NONE, NULL);
                     return NULL;
                 }
 
-                /* update leaf value */
-                r = lyd_change_leaf((struct lyd_node_leaf_list *)parent, value);
-                if (r) {
-                    return NULL;
+                /* update leaf value if needed */
+                if ((parent->schema->nodetype == LYS_LEAF)
+                        && (!value || strcmp(((struct lyd_node_leaf_list *)parent)->value_str, value))) {
+                    r = lyd_change_leaf((struct lyd_node_leaf_list *)parent, value);
+                    if (r) {
+                        return NULL;
+                    }
+
+                    return parent;
                 }
-                return parent;
+
+                return NULL;
             }
         }
     }

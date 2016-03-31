@@ -484,7 +484,8 @@ struct lyd_node *lyd_output_new_anyxml(const struct lys_node *schema, const char
  * @{
  */
 
-#define LYD_PATH_OPT_UPDATE   0x01 /**< If the target node exists and is a leaf, it is updated with the new value. */
+#define LYD_PATH_OPT_UPDATE   0x01 /**< If the target node exists and is a leaf, it is updated with the new value and returned.
+                                        If the target node exists and is not a leaf, NULL is returned and no error set. */
 #define LYD_PATH_OPT_NOPARENT 0x02 /**< If any parents of the target node exist, return an error. */
 #define LYD_PATH_OPT_OUTPUT   0x04 /**< Changes the behavior to ignoring RPC input schema nodes and using only output ones. */
 
@@ -494,7 +495,8 @@ struct lyd_node *lyd_output_new_anyxml(const struct lys_node *schema, const char
  * @brief Create a new data node based on a simple XPath.
  *
  * When manipulating RPC input or output, schema ordering is laways guaranteed. Specially, when working with
- * RPC output (using #LYD_PATH_OPT_OUTPUT flag), it can therefore happen that a node is created before \p data_tree.
+ * RPC output (using #LYD_PATH_OPT_OUTPUT flag), it can therefore happen that a node is created and inserted
+ * before \p data_tree.
  *
  * @param[in] data_tree Existing data tree to add to/modify. It is expected to be valid. If creating RPCs,
  * there should only be one RPC and either input or output. Can be NULL.
@@ -504,7 +506,9 @@ struct lyd_node *lyd_output_new_anyxml(const struct lys_node *schema, const char
  * with its value as well, see @ref howtoxpath.
  * @param[in] value Value of the new leaf/lealf-list. If creating other nodes of other types, set to NULL.
  * @param[in] options Bitmask of options flags, see @ref pathoptions.
- * @return First created (or updated) node, NULL on error.
+ * @return First created (or updated node with #LYD_PATH_OPT_UPDATE) node,
+ * NULL if #LYD_PATH_OPT_UPDATE was used and the full path exists,
+ * NULL and ly_errno is set on error.
  */
 struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, const char *value, int options);
 
