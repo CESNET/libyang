@@ -49,7 +49,7 @@ API void
 static void
 log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *path, va_list args)
 {
-    char *msg;
+    char *msg, *bufdup = NULL;
     int free_flag = 0;
 
     if (&ly_errno == &ly_errno_int) {
@@ -63,12 +63,23 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
             free_flag = 1;
         }
     } else {
-        msg = ((struct ly_err *)&ly_errno)->msg;
+        if (level == LY_LLERR) {
+            /* store error message into msg buffer ... */
+            msg = ((struct ly_err *)&ly_errno)->msg;
+        } else if (!hide) {
+            /* other messages are stored in working string buffer and not available for later access */
+            msg = ((struct ly_err *)&ly_errno)->buf;
+            if (ly_buf_used && msg[0]) {
+                bufdup = strndup(msg, LY_BUF_SIZE - 1);
+            }
+        } else { /* hide */
+            return;
+        }
         vsnprintf(msg, LY_BUF_SIZE - 1, format, args);
         msg[LY_BUF_SIZE - 1] = '\0';
     }
 
-    if (!path) {
+    if (level == LY_LLERR && !path) {
         /* erase previous path */
         ((struct ly_err *)&ly_errno)->path_index = LY_BUF_SIZE - 1;
     }
@@ -88,6 +99,10 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
 
     if (free_flag) {
         free(msg);
+    } else if (bufdup) {
+        /* return previous internal buffer content */
+        strcpy(msg, bufdup);
+        free(bufdup);
     }
 }
 
