@@ -60,8 +60,6 @@ char *get_current_dir_name(void);
 
 #endif
 
-#define LY_MODULE_NAME_MAX_LEN 255
-
 #define LY_BUF_SIZE 1024
 struct ly_err {
     LY_ERR no;

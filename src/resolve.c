@@ -1345,7 +1345,7 @@ resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_
 const struct lys_node *
 resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start)
 {
-    char *str, module_name[LY_MODULE_NAME_MAX_LEN + 1];
+    char *module_name = ly_buf(), *buf_backup = NULL;
     const char *name, *mod_name, *id;
     const struct lys_node *sibling;
     int r, nam_len, mod_name_len, is_relative = -1, has_predicate;
@@ -1378,11 +1378,28 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
         if (!mod_name) {
             LOGVAL(LYE_PATH_MISSMOD, LY_VLOG_NONE, NULL, name);
             return NULL;
+        } else if (mod_name_len > LY_BUF_SIZE - 1) {
+            LOGINT;
+            return NULL;
         }
 
-        str = strndup(mod_name, mod_name_len);
-        module = ly_ctx_get_module(ctx, str, NULL);
-        free(str);
+        if (ly_buf_used && module_name[0]) {
+            buf_backup = strndup(module_name, LY_BUF_SIZE - 1);
+        }
+        ly_buf_used++;
+
+        strncpy(module_name, mod_name, mod_name_len);
+        module_name[mod_name_len] = '\0';
+        module = ly_ctx_get_module(ctx, module_name, NULL);
+
+        if (buf_backup) {
+            /* return previous internal buffer content */
+            strcpy(module_name, buf_backup);
+            free(buf_backup);
+            buf_backup = NULL;
+        }
+        ly_buf_used--;
+
         if (!module) {
             LOGVAL(LYE_PATH_INMOD, LY_VLOG_NONE, NULL, mod_name);
             return NULL;
@@ -1406,14 +1423,29 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
                     || ((sibling->nodetype == LYS_OUTPUT) && !strncmp(name, "output", nam_len) && (nam_len == 6))) {
                 /* module check */
                 if (mod_name) {
-                    if (mod_name_len > LY_MODULE_NAME_MAX_LEN) {
+                    if (mod_name_len > LY_BUF_SIZE - 1) {
                         LOGINT;
                         return NULL;
                     }
+
+                    if (ly_buf_used && module_name[0]) {
+                        buf_backup = strndup(module_name, LY_BUF_SIZE - 1);
+                    }
+                    ly_buf_used++;
+
                     strncpy(module_name, mod_name, mod_name_len);
                     module_name[mod_name_len] = '\0';
                     /* will also find an augment module */
                     prefix_mod = ly_ctx_get_module(ctx, module_name, NULL);
+
+                    if (buf_backup) {
+                        /* return previous internal buffer content */
+                        strcpy(module_name, buf_backup);
+                        free(buf_backup);
+                        buf_backup = NULL;
+                    }
+                    ly_buf_used--;
+
                     if (!prefix_mod) {
                         LOGVAL(LYE_PATH_INMOD, LY_VLOG_NONE, NULL, mod_name);
                         return NULL;
@@ -1533,7 +1565,7 @@ error:
 struct lyd_node *
 resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int options, int *parsed)
 {
-    char module_name[LY_MODULE_NAME_MAX_LEN + 1];
+    char *module_name = ly_buf(), *buf_backup = NULL;
     const char *id, *mod_name, *name;
     int r, ret, mod_name_len, nam_len, is_relative = -1, has_predicate, last_parsed;
     struct lyd_node *sibling, *last_match = NULL;
@@ -1586,15 +1618,30 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
 
                 /* module check */
                 if (mod_name) {
-                    if (mod_name_len > LY_MODULE_NAME_MAX_LEN) {
+                    if (mod_name_len > LY_BUF_SIZE - 1) {
                         LOGINT;
                         *parsed = -1;
                         return NULL;
                     }
+
+                    if (ly_buf_used && module_name[0]) {
+                        buf_backup = strndup(module_name, LY_BUF_SIZE - 1);
+                    }
+                    ly_buf_used++;
+
                     strncpy(module_name, mod_name, mod_name_len);
                     module_name[mod_name_len] = '\0';
                     /* will also find an augment module */
                     prefix_mod = ly_ctx_get_module(ctx, module_name, NULL);
+
+                    if (buf_backup) {
+                        /* return previous internal buffer content */
+                        strcpy(module_name, buf_backup);
+                        free(buf_backup);
+                        buf_backup = NULL;
+                    }
+                    ly_buf_used--;
+
                     if (!prefix_mod) {
                         LOGVAL(LYE_PATH_INMOD, LY_VLOG_NONE, NULL, mod_name);
                         *parsed = -1;

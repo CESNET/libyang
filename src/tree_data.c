@@ -541,7 +541,7 @@ lyd_new_path_list_keys(struct lyd_node *list, const char *list_name, const char 
 API struct lyd_node *
 lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, const char *value, int options)
 {
-    char module_name[LY_MODULE_NAME_MAX_LEN + 1];
+    char *module_name = ly_buf(), *buf_backup = NULL;
     const char *mod_name, *name, *node_mod_name;
     struct lyd_node *ret = NULL, *node, *parent = NULL;
     const struct lys_node *schild, *sparent;
@@ -620,14 +620,27 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         if (!mod_name) {
             LOGVAL(LYE_PATH_MISSMOD, LY_VLOG_NONE, NULL, name);
             return NULL;
-        } else if (mod_name_len > LY_MODULE_NAME_MAX_LEN) {
+        } else if (mod_name_len > LY_BUF_SIZE - 1) {
             LOGINT;
             return NULL;
         }
 
+        if (ly_buf_used && module_name[0]) {
+            buf_backup = strndup(module_name, LY_BUF_SIZE - 1);
+        }
+        ly_buf_used++;
+
         strncpy(module_name, mod_name, mod_name_len);
         module_name[mod_name_len] = '\0';
         module = ly_ctx_get_module(ctx, module_name, NULL);
+
+        if (buf_backup) {
+            /* return previous internal buffer content */
+            strcpy(module_name, buf_backup);
+            free(buf_backup);
+        }
+        ly_buf_used--;
+
         if (!module) {
             LOGVAL(LYE_PATH_INMOD, LY_VLOG_NONE, NULL, mod_name);
             return NULL;
