@@ -387,6 +387,21 @@ ly_ctx_get_module_names(const struct ly_ctx *ctx)
     return result;
 }
 
+API const struct lys_module *
+ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *idx)
+{
+    if (!ctx || !idx) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    if (*idx >= (unsigned)ctx->models.used) {
+        return NULL;
+    }
+
+    return ctx->models.list[(*idx)++];
+}
+
 API const char **
 ly_ctx_get_submodule_names(const struct ly_ctx *ctx, const char *module_name)
 {

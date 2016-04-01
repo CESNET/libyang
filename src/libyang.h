@@ -106,6 +106,7 @@ extern "C" {
  * Alternatively, the ly_ctx_info() function can be used to get complex information about the schemas in the context
  * in the form of data tree defined by
  * <a href="https://tools.ietf.org/html/draft-ietf-netconf-yang-library-04">ietf-yang-library</a> schema.
+ * Also, if all the modules need to be iterated over, it can be done effectively using ly_ctx_get_module_iter().
  *
  * Modules held by a context cannot be removed one after one. The only way how to \em change modules in the
  * context is to create a new context and remove the old one. To remove a context, there is ly_ctx_destroy()
@@ -125,6 +126,7 @@ extern "C" {
  * - ly_ctx_load_module()
  * - ly_ctx_info()
  * - ly_ctx_get_module_names()
+ * - ly_ctx_get_module_iter()
  * - ly_ctx_get_module()
  * - ly_ctx_get_module_by_ns()
  * - ly_ctx_get_submodule_names()
@@ -620,6 +622,15 @@ struct lyd_node *ly_ctx_info(struct ly_ctx *ctx);
  * the context.
  */
 const char **ly_ctx_get_module_names(const struct ly_ctx *ctx);
+
+/**
+ * @brief Iterate over all modules in a context.
+ *
+ * @param[in] ctx Context with the modules.
+ * @param[in,out] idx Index of the next module to be returned. Value of 0 starts from the beginning.
+ * @return Next context module, NULL if the last was already returned.
+ */
+const struct lys_module *ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *idx);
 
 /**
  * @brief Get the names of the loaded submodules of the specified module.
