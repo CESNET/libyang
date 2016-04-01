@@ -2834,7 +2834,6 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
     unsigned int i;
     int ret = EXIT_FAILURE;
     char *path = ly_buf(), *buf_backup = NULL;
-    ly_buf_used++;
 
     if (!wdmod && ((options & LYD_WD_MASK) & (LYD_WD_ALL_TAG | LYD_WD_IMPL_TAG))) {
         wdmod = ly_ctx_get_module(ctx ? ctx : (*root)->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
@@ -2855,6 +2854,7 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
     if (ly_buf_used && path[0]) {
         buf_backup = strndup(path, LY_BUF_SIZE - 1);
     }
+    ly_buf_used++;
     path[0] = '\0';
 
     modset = ly_set_new();
