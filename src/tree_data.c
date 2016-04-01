@@ -630,7 +630,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         }
         ly_buf_used++;
 
-        strncpy(module_name, mod_name, mod_name_len);
+        memmove(module_name, mod_name, mod_name_len);
         module_name[mod_name_len] = '\0';
         module = ly_ctx_get_module(ctx, module_name, NULL);
 

@@ -1388,7 +1388,7 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
         }
         ly_buf_used++;
 
-        strncpy(module_name, mod_name, mod_name_len);
+        memmove(module_name, mod_name, mod_name_len);
         module_name[mod_name_len] = '\0';
         module = ly_ctx_get_module(ctx, module_name, NULL);
 
@@ -1433,7 +1433,7 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
                     }
                     ly_buf_used++;
 
-                    strncpy(module_name, mod_name, mod_name_len);
+                    memmove(module_name, mod_name, mod_name_len);
                     module_name[mod_name_len] = '\0';
                     /* will also find an augment module */
                     prefix_mod = ly_ctx_get_module(ctx, module_name, NULL);
@@ -1629,7 +1629,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
                     }
                     ly_buf_used++;
 
-                    strncpy(module_name, mod_name, mod_name_len);
+                    memmove(module_name, mod_name, mod_name_len);
                     module_name[mod_name_len] = '\0';
                     /* will also find an augment module */
                     prefix_mod = ly_ctx_get_module(ctx, module_name, NULL);
