@@ -132,6 +132,10 @@ lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, ...)
         return NULL;
     }
 
+    if (!sb.st_size) {
+        return NULL;
+    }
+
     data = mmap(NULL, sb.st_size + 2, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     if (data == MAP_FAILED) {
         LOGERR(LY_ESYS, "Mapping file descriptor into memory failed.");

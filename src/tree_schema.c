@@ -1080,6 +1080,11 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
         return NULL;
     }
 
+    if (!sb.st_size) {
+        LOGERR(LY_EINVAL, "File empty.");
+        return NULL;
+    }
+
     addr = mmap(NULL, sb.st_size + 2, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         LOGERR(LY_EMEM, "Map file into memory failed (%s()).",__func__);
@@ -1116,6 +1121,12 @@ lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format, struc
         LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
         return NULL;
     }
+
+    if (!sb.st_size) {
+        LOGERR(LY_EINVAL, "File empty.");
+        return NULL;
+    }
+
     addr = mmap(NULL, sb.st_size + 2, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
