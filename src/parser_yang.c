@@ -650,7 +650,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     const char *name, *value;
     LY_DATA_TYPE base;
 
-    base = typ->type->base;
+    base = typ->base;
     value = transform_schema2json(module, typ->name);
     if (!value) {
         goto error;
@@ -695,7 +695,6 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         if (typ->type->base == LY_TYPE_BINARY) {
             if (typ->type->info.str.pat_count) {
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Binary type could not include pattern statement.");
-                typ->type->base = base;
                 goto error;
             }
             typ->type->info.binary.length = typ->type->info.str.length;
@@ -733,7 +732,6 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         } else if (typ->type->base >= LY_TYPE_INT8 && typ->type->base <=LY_TYPE_UINT64) {
             if (typ->type->info.dec64.dig) {
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Numerical type could not include fraction statement.");
-                typ->type->base = base;
                 goto error;
             }
             typ->type->info.num.range = typ->type->info.dec64.range;
@@ -779,12 +777,12 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         }
         break;
     case LY_TYPE_LEAFREF:
-        if (typ->type->base == LY_TYPE_IDENT && typ->flags & LYS_TYPE_BASE) {
+        if (typ->type->base == LY_TYPE_IDENT && (typ->flags & LYS_TYPE_BASE)) {
             if (yang_read_identyref(module, typ->type, unres)) {
                 goto error;
             }
         } else if (typ->type->base == LY_TYPE_LEAFREF) {
-            if (typ->type->info.lref.path && !typ->type->der->type.der) {
+            if (typ->type->info.lref.path) {
                 value = typ->type->info.lref.path;
                 /* store in the JSON format */
                 typ->type->info.lref.path = transform_schema2json(module, value);
@@ -795,11 +793,8 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 if (unres_schema_add_node(module, unres, typ->type, UNRES_TYPE_LEAFREF, parent) == -1) {
                     goto error;
                 }
-            } else if (!typ->type->info.lref.path && !typ->type->der->type.der) {
+            } else if (!typ->type->der->type.der) {
                 LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "path", "type");
-                goto error;
-            } else {
-                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "path");
                 goto error;
             }
         } else {
@@ -818,7 +813,6 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         break;
     case LY_TYPE_UNION:
         if (typ->type->base != LY_TYPE_UNION) {
-            typ->type->base = LY_TYPE_UNION;
             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", parent->name);
             goto error;
         }
@@ -858,7 +852,6 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     return EXIT_SUCCESS;
 
 error:
-    typ->type->base = base;
     if (typ->type->module_name) {
         lydict_remove(module->ctx, typ->type->module_name);
         typ->type->module_name = NULL;
@@ -942,10 +935,10 @@ yang_read_length(struct lys_module *module, struct yang_type *typ, char *value)
 {
     struct lys_restr **length;
 
-    if (typ->type->base == 0 || typ->type->base == LY_TYPE_STRING) {
+    if (typ->base == 0 || typ->base == LY_TYPE_STRING) {
         length = &typ->type->info.str.length;
-        typ->type->base = LY_TYPE_STRING;
-    } else if (typ->type->base == LY_TYPE_BINARY) {
+        typ->base = LY_TYPE_STRING;
+    } else if (typ->base == LY_TYPE_BINARY) {
         length = &typ->type->info.binary.length;
     } else {
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected length statement.");
@@ -993,11 +986,11 @@ yang_read_pattern(struct lys_module *module, struct yang_type *typ, char *value)
 void *
 yang_read_range(struct  lys_module *module, struct yang_type *typ, char *value)
 {
-    if (typ->type->base != 0 && typ->type->base != LY_TYPE_DEC64) {
+    if (typ->base != 0 && typ->base != LY_TYPE_DEC64) {
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected range statement.");
         goto error;
     }
-    typ->type->base = LY_TYPE_DEC64;
+    typ->base = LY_TYPE_DEC64;
     if (typ->type->info.dec64.range) {
         LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "range", "type");
         goto error;
@@ -1018,8 +1011,8 @@ error:
 int
 yang_read_fraction(struct yang_type *typ, uint32_t value)
 {
-    if (typ->type->base == 0 || typ->type->base == LY_TYPE_DEC64) {
-        typ->type->base = LY_TYPE_DEC64;
+    if (typ->base == 0 || typ->base == LY_TYPE_DEC64) {
+        typ->base = LY_TYPE_DEC64;
     } else {
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected fraction-digits statement.");
         goto error;

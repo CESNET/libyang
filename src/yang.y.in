@@ -917,7 +917,7 @@ type_body_stmts: decimal_string_restrictions
   | enum_specification
   | path_stmt  { /*leafref_specification */
                  if (read_all) {
-                   ((struct yang_type *)actual)->type->base = LY_TYPE_LEAFREF;
+                   ((struct yang_type *)actual)->base = LY_TYPE_LEAFREF;
                    ((struct yang_type *)actual)->type->info.lref.path = lydict_insert_zc(trg->ctx, s);
                    s = NULL;
                  }
@@ -925,14 +925,14 @@ type_body_stmts: decimal_string_restrictions
   | base_stmt  { /*identityref_specification */
                  if (read_all) {
                    ((struct yang_type *)actual)->flags |= LYS_TYPE_BASE;
-                   ((struct yang_type *)actual)->type->base = LY_TYPE_LEAFREF;
+                   ((struct yang_type *)actual)->base = LY_TYPE_LEAFREF;
                    ((struct yang_type *)actual)->type->info.lref.path = lydict_insert_zc(trg->ctx, s);
                    s = NULL;
                  }
                }
   | require_instance_stmt  { /*instance_identifier_specification */
                              if (read_all) {
-                               ((struct yang_type *)actual)->type->base = LY_TYPE_INST;
+                               ((struct yang_type *)actual)->base = LY_TYPE_INST;
                              }
                            }
   | bits_specification
@@ -950,7 +950,7 @@ decimal_string_restrictions: @EMPTYDIR@  { if (read_all) {
                                              LOGMEM;
                                              YYERROR;
                                            }
-                                           ((struct yang_type *)actual)->type->base = LY_TYPE_STRING;
+                                           ((struct yang_type *)actual)->base = LY_TYPE_STRING;
                                          }
                                          if (size_arrays->node[size_arrays->next].uni) {
                                            ((struct yang_type *)actual)->type->info.uni.types = calloc(size_arrays->node[size_arrays->next].uni, sizeof(struct lys_type));
@@ -958,7 +958,7 @@ decimal_string_restrictions: @EMPTYDIR@  { if (read_all) {
                                              LOGMEM;
                                              YYERROR;
                                            }
-                                           ((struct yang_type *)actual)->type->base = LY_TYPE_UNION;
+                                           ((struct yang_type *)actual)->base = LY_TYPE_UNION;
                                          }
                                          size_arrays->next++;
                                        } else {
@@ -1106,7 +1106,7 @@ enum_specification: { if (read_all) {
                             YYERROR;
                           }
                         }
-                        ((struct yang_type *)actual)->type->base = LY_TYPE_ENUM;
+                        ((struct yang_type *)actual)->base = LY_TYPE_ENUM;
                         cnt_val = 0;
                       } else {
                         if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
@@ -1252,7 +1252,7 @@ bits_specification: { if (read_all) {
                             YYERROR;
                           }
                         }
-                        ((struct yang_type *)actual)->type->base = LY_TYPE_BITS;
+                        ((struct yang_type *)actual)->base = LY_TYPE_BITS;
                         cnt_val = 0;
                       } else {
                         if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {

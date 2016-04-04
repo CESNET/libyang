@@ -4725,7 +4725,8 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres)
         if ((*unres)->type[i] == UNRES_TYPE_DER) {
             yin = (struct lyxml_elem *)((struct lys_type *)(*unres)->item[i])->der;
             if (yin->flags & LY_YANG_STRUCTURE_FLAG) {
-                yang =(struct yang_type *)yin;
+                yang = (struct yang_type *)yin;
+                yang->type->base = yang->base;
                 if (yang->name) {
                     free(yang->name);
                 }

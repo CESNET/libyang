@@ -103,6 +103,7 @@ struct type_uses {
 
 struct yang_type {
     char flags;       /**< this is used to distinguish lyxml_elem * from a YANG temporary parsing structure */
+    LY_DATA_TYPE base;
     char *name;
     struct lys_type *type;
 };
