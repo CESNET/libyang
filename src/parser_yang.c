@@ -2020,27 +2020,45 @@ error:
 void
 nacm_inherit(struct lys_module *module)
 {
-    struct lys_node *next, *elem;
+    struct lys_node *next, *elem, *tmp_node, *tmp_child;
 
     LY_TREE_DFS_BEGIN(module->data, next, elem) {
+        tmp_node = NULL;
         if (elem->parent) {
             switch (elem->nodetype) {
-            case LYS_GROUPING:
-                /* extension nacm not inherited*/
-                break;
-            case LYS_CHOICE:
-            case LYS_ANYXML:
-            case LYS_USES:
-                if (elem->parent->nodetype != LYS_GROUPING) {
-                   elem->nacm |= elem->parent->nacm;
-                }
-                break;
-            default:
-                elem->nacm |= elem->parent->nacm;
-                break;
+                case LYS_GROUPING:
+                    /* extension nacm not inherited*/
+                    break;
+                case LYS_CHOICE:
+                case LYS_ANYXML:
+                case LYS_USES:
+                    if (elem->parent->nodetype != LYS_GROUPING) {
+                        elem->nacm |= elem->parent->nacm;
+                    }
+                    break;
+                case LYS_CONTAINER:
+                case LYS_LIST:
+                case LYS_CASE:
+                case LYS_NOTIF:
+                case LYS_RPC:
+                case LYS_INPUT:
+                case LYS_OUTPUT:
+                case LYS_AUGMENT:
+                    elem->nacm |= elem->parent->nacm;
+                    break;
+                case LYS_LEAF:
+                case LYS_LEAFLIST:
+                    tmp_node = elem;
+                    tmp_child = elem->child;
+                    elem->child = NULL;
+                default:
+                    break;
             }
         }
         LY_TREE_DFS_END(module->data, next, elem);
+        if (tmp_node) {
+            tmp_node->child = tmp_child;
+        }
     }
 }
 
@@ -2092,8 +2110,6 @@ yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struc
     }
     yy_delete_buffer(bp, scanner);
 
-    nacm_inherit(module);
-
     free(size_arrays->node);
     free(size_arrays);
     yylex_destroy(scanner);
@@ -2112,7 +2128,7 @@ struct lys_module *
 yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const char *revision, int implement)
 {
 
-    struct lys_module *module = NULL;
+    struct lys_module *tmp_module, *module = NULL;
     struct unres_schema *unres = NULL;
 
     unres = calloc(1, sizeof *unres);
@@ -2149,8 +2165,13 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         }
     }
 
+    tmp_module = module;
     if (lyp_add_module(&module, implement)) {
         goto error;
+    }
+
+    if (module == tmp_module) {
+        nacm_inherit(module);
     }
 
     unres_schema_free(NULL, &unres);
