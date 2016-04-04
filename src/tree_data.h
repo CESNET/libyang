@@ -494,7 +494,7 @@ struct lyd_node *lyd_output_new_anyxml(const struct lys_node *schema, const char
 /**
  * @brief Create a new data node based on a simple XPath.
  *
- * When manipulating RPC input or output, schema ordering is laways guaranteed. Specially, when working with
+ * When manipulating RPC input or output, schema ordering is always guaranteed. Specially, when working with
  * RPC output (using #LYD_PATH_OPT_OUTPUT flag), it can therefore happen that a node is created and inserted
  * before \p data_tree.
  *
