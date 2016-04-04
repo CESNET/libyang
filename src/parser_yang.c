@@ -1176,7 +1176,6 @@ yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *valu
     }
     if (!parent) {
         ret = &module->tpdf[module->tpdf_size];
-        ret->type.parent = NULL;
         module->tpdf_size++;
     } else {
         switch (parent->nodetype) {
@@ -1211,9 +1210,9 @@ yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *valu
             free(value);
             return NULL;
         }
-        ret->type.parent = (struct lys_tpdf *)parent;
     }
 
+    ret->type.parent = ret;
     ret->name = lydict_insert_zc(module->ctx, value);
     ret->module = module;
     return ret;
