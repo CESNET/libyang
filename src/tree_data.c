@@ -885,11 +885,72 @@ nextsibling:
     }
 }
 
+int
+lyv_multicases(struct lyd_node *node, struct lyd_node *first_sibling, int autodelete, struct lyd_node *nodel)
+{
+    struct lys_node *sparent, *schoice, *scase, *saux;
+    struct lyd_node *next, *iter;
+    assert(node);
+
+    sparent = lys_parent(node->schema);
+    if (!sparent || !(sparent->nodetype & (LYS_CHOICE | LYS_CASE))) {
+        /* node is not under any choice */
+        return EXIT_SUCCESS;
+    } else if (!first_sibling) {
+        /* nothing to check */
+        return EXIT_SUCCESS;
+    }
+
+    /* remember which case to skip in which choice */
+    if (sparent->nodetype == LYS_CHOICE) {
+        schoice = sparent;
+        scase = node->schema;
+    } else {
+        schoice = lys_parent(sparent);
+        scase = sparent;
+    }
+
+autodelete:
+    /* remove all nodes from other cases than 'sparent' */
+    LY_TREE_FOR_SAFE(first_sibling, next, iter)
+    {
+        sparent = lys_parent(iter->schema);
+        if ((sparent->nodetype == LYS_CHOICE && sparent == schoice) /* another implicit case */
+                || (sparent->nodetype == LYS_CASE && sparent != scase && lys_parent(sparent) == schoice) /* another case */
+                ) {
+            if (autodelete) {
+                if (iter == nodel) {
+                    LOGVAL(LYE_MCASEDATA, LY_VLOG_LYD, iter, schoice->name);
+                    return 2;
+                }
+                lyd_free(iter);
+            } else {
+                LOGVAL(LYE_MCASEDATA, LY_VLOG_LYD, node, schoice->name);
+                return 1;
+            }
+        }
+    }
+
+    if ((saux = lys_parent(schoice)) && (saux->nodetype & (LYS_CHOICE | LYS_CASE))) {
+        /* go recursively in case of nested choices */
+        if (saux->nodetype == LYS_CHOICE) {
+            schoice = saux;
+            scase = sparent;
+        } else {
+            schoice = lys_parent(saux);
+            scase = saux;
+        }
+        goto autodelete;
+    }
+
+    return EXIT_SUCCESS;
+}
+
 API int
 lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 {
-    struct lys_node *sparent, *schoice, *scase, *saux;
-    struct lyd_node *iter, *next;
+    struct lys_node *sparent;
+    struct lyd_node *iter;
     int invalid = 0;
 
     if (!node || !parent) {
@@ -915,43 +976,8 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
         lyd_unlink(node);
     }
 
-    if (parent->child && (sparent = lys_parent(node->schema)) && (sparent->nodetype & (LYS_CHOICE | LYS_CASE))) {
-        /* auto delete nodes from other cases */
-
-        /* remember which case to skip in which choice */
-        if (sparent->nodetype == LYS_CHOICE) {
-            schoice = sparent;
-            scase = node->schema;
-        } else {
-            schoice = lys_parent(sparent);
-            scase = sparent;
-        }
-
-autodelete:
-        /* remove all nodes from other cases than 'sparent' */
-        LY_TREE_FOR_SAFE(parent->child, next, iter) {
-            sparent = lys_parent(iter->schema);
-            if (sparent->nodetype == LYS_CHOICE && sparent == schoice) {
-                /* another implicit case */
-                lyd_free(iter);
-            } else if (sparent->nodetype == LYS_CASE && sparent != scase && lys_parent(sparent) == schoice) {
-                /* another case */
-                lyd_free(iter);
-            }
-        }
-
-        if ((saux = lys_parent(schoice)) && (saux->nodetype & (LYS_CHOICE | LYS_CASE))) {
-            /* go recursively in case of nested choices */
-            if (saux->nodetype == LYS_CHOICE) {
-                schoice = saux;
-                scase = sparent;
-            } else {
-                schoice = lys_parent(saux);
-                scase = saux;
-            }
-            goto autodelete;
-        }
-    }
+    /* auto delete nodes from other cases, if any */
+    lyv_multicases(node, parent->child, 1, NULL);
 
     if (!parent->child) {
         /* add as the only child of the parent */
@@ -977,8 +1003,8 @@ autodelete:
 static int
 lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
 {
-    struct lys_node *par1, *par2, *sparent, *schoice, *scase, *saux;
-    struct lyd_node *iter, *next, *start = NULL;
+    struct lys_node *par1, *par2;
+    struct lyd_node *iter,*start = NULL;
     int invalid = 0;
 
     if (sibling == node) {
@@ -1020,55 +1046,23 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
         }
     }
 
-    if (invalid == 1 && (sparent = lys_parent(node->schema)) && (sparent->nodetype & (LYS_CHOICE | LYS_CASE))) {
+    if (invalid == 1) {
         /* auto delete nodes from other cases */
 
-        /* remember which case to skip in which choice */
-        if (sparent->nodetype == LYS_CHOICE) {
-            schoice = sparent;
-            scase = node->schema;
-        } else {
-            schoice = lys_parent(sparent);
-            scase = sparent;
-        }
-
-        /* find first node */
+        /* find first sibling node */
         if (sibling->parent) {
             start = sibling->parent->child;
         } else {
             for (start = sibling; start->prev->next; start = start->prev);
         }
 
-autodelete:
-        /* remove all nodes from other cases than 'sparent' */
-        LY_TREE_FOR_SAFE(start, next, iter) {
-            sparent = lys_parent(iter->schema);
-            if ((sparent->nodetype == LYS_CHOICE && sparent == schoice) ||
-                    (sparent->nodetype == LYS_CASE && sparent != scase && lys_parent(sparent) == schoice)) {
-                /* another case */
-                if (iter == sibling) {
-                    LOGVAL(LYE_MCASEDATA, LY_VLOG_LYD, iter, schoice->name);
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, iter, "Insert request refers node (%s) that is going to be auto-deleted.",
-                           ly_errpath());
-                    return EXIT_FAILURE;
-                } else if (iter == start) {
-                    start = iter->next;
-                }
-                lyd_free(iter);
-            }
+        if (lyv_multicases(node, start, 1, sibling) == 2) {
+            LOGVAL(LYE_SPEC, LY_VLOG_LYD, sibling, "Insert request refers node (%s) that is going to be auto-deleted.",
+                   ly_errpath());
+            return EXIT_FAILURE;
         }
-
-        if ((saux = lys_parent(schoice)) && (saux->nodetype & (LYS_CHOICE | LYS_CASE))) {
-            /* go recursively in case of nested choices */
-            if (saux->nodetype == LYS_CHOICE) {
-                schoice = saux;
-                scase = sparent;
-            } else {
-                schoice = lys_parent(saux);
-                scase = saux;
-            }
-            goto autodelete;
-        }
+        /* start could be autodeleted, so we cannot use it */
+        start = NULL;
     }
 
     if (node->parent || node->next || node->prev->next) {
@@ -1098,9 +1092,7 @@ autodelete:
             sibling->next->prev = node;
         } else {
             /* at the end - fix the prev pointer of the first node */
-            if (start) {
-                start->prev = node;
-            } else if (sibling->parent) {
+            if (sibling->parent) {
                 sibling->parent->child->prev = node;
             } else {
                 for (start = sibling; start->prev->next; start = start->prev);

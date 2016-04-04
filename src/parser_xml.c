@@ -124,7 +124,7 @@ static int
 xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node *schema_parent, struct lyd_node *parent,
                struct lyd_node *prev, int options, struct unres_data *unres, struct lyd_node **result)
 {
-    struct lyd_node *diter, *dlast;
+    struct lyd_node *diter, *dlast, *first_sibling;
     struct lys_node *schema = NULL;
     struct lyd_attr *dattr, *dattr_iter;
     struct lyxml_attr *attr;
@@ -233,8 +233,10 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             for (diter = prev; diter->prev != prev; diter = diter->prev);
         }
         diter->prev = *result;
+        first_sibling = diter;
     } else {
         (*result)->prev = *result;
+        first_sibling = *result;
     }
     (*result)->schema = schema;
     (*result)->validity = LYD_VAL_NOT;
@@ -434,7 +436,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
 
     /* rest of validation checks */
     ly_errno = 0;
-    if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(*result, options, unres)) {
+    if (!(options & LYD_OPT_TRUSTED) &&
+            (lyv_data_content(*result, options, unres) ||
+             lyv_multicases(*result, first_sibling == *result ? NULL : first_sibling, 0, NULL))) {
         if (ly_errno) {
             goto error;
         } else {

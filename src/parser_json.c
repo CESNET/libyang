@@ -661,7 +661,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
     char *name, *prefix = NULL, *str = NULL;
     const struct lys_module *module = NULL;
     struct lys_node *schema = NULL;
-    struct lyd_node *result = NULL, *new, *list, *diter = NULL;
+    struct lyd_node *result = NULL, *new, *list, *diter = NULL, *first_sibling;
     struct lyd_attr *attr;
     struct attr_cont *attrs_aux;
 
@@ -895,8 +895,10 @@ attr_repeat:
             for (diter = prev; diter->prev != prev; diter = diter->prev);
         }
         diter->prev = result;
+        first_sibling = diter;
     } else {
         result->prev = result;
+        first_sibling = result;
     }
     result->schema = schema;
     result->validity = LYD_VAL_NOT;
@@ -1038,7 +1040,9 @@ attr_repeat:
             if (data[len] == ',') {
                 /* various validation checks */
                 ly_errno = 0;
-                if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(list, options, unres)) {
+                if (!(options & LYD_OPT_TRUSTED) &&
+                        (lyv_data_content(list, options, unres) ||
+                         lyv_multicases(list, first_sibling == list ? NULL : first_sibling, 0, NULL))) {
                     if (ly_errno) {
                         goto error;
                     }
@@ -1056,12 +1060,7 @@ attr_repeat:
                 list->next = new;
 
                 /* fix the "last" pointer */
-                if (*parent) {
-                    diter = (*parent)->child;
-                } else {
-                    for (diter = prev; diter->prev != prev; diter = diter->prev);
-                }
-                diter->prev = new;
+                first_sibling->prev = new;
 
                 new->schema = list->schema;
                 list = new;
@@ -1079,7 +1078,9 @@ attr_repeat:
 
     /* various validation checks */
     ly_errno = 0;
-    if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(result, options, unres)) {
+    if (!(options & LYD_OPT_TRUSTED) &&
+            (lyv_data_content(result, options, unres) ||
+             lyv_multicases(result, first_sibling == result ? NULL : first_sibling, 0, NULL))) {
         if (ly_errno) {
             goto error;
         }

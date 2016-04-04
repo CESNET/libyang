@@ -407,7 +407,6 @@ int
 lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
 {
     const struct lys_node *schema, *siter;
-    const struct lys_node *cs, *ch;
     struct lyd_node *diter, *start;
     struct lys_ident *ident;
     struct lys_tpdf *tpdf;
