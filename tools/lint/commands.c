@@ -63,8 +63,7 @@ cmd_data_help(void)
     printf("\tedit       - LYD_OPT_EDIT\n");
     printf("\trpc        - LYD_OPT_RPC\n");
     /* printf("\trpcreply   - LYD_OPT_RPCREPLY\n"); */
-    printf("\tnotif      - LYD_OPT_NOTIF\n");
-    printf("\tfilter     - LYD_OPT_FILTER\n\n");
+    printf("\tnotif      - LYD_OPT_NOTIF\n\n");
     printf("Accepted DEFAULTs:\n");
     printf("\tall        - add missing default nodes\n");
     printf("\tall-tagged - add missing default nodes and mark all default nodes with attribute.\n");
@@ -412,8 +411,6 @@ cmd_data(const char *arg)
              */
             } else if (!strcmp(optarg, "notif")) {
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
-            } else if (!strcmp(optarg, "filter")) {
-                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_FILTER;
             } else {
                 fprintf(stderr, "Invalid parser option \"%s\".\n", optarg);
                 cmd_data_help();
@@ -485,9 +482,6 @@ cmd_data(const char *arg)
         } else if (!strcmp(xml->name, "notification")) {
             fprintf(stdout, "Parsing %s as <notification> data.\n", argv[optind]);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
-        } else if (!strcmp(xml->name, "filter")) {
-            fprintf(stdout, "Parsing %s as subtree filter data.\n", argv[optind]);
-            options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_FILTER;
         } else {
             fprintf(stderr, "Invalid top-level element for automatic data type recognition.\n");
             lyxml_free(ctx, xml);

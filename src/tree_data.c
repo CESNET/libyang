@@ -1339,7 +1339,7 @@ lyd_validate(struct lyd_node **node, int options, ...)
         }
 
         /* TODO what about LYD_OPT_NOTIF, LYD_OPT_RPC and LYD_OPT_RPCREPLY ? */
-        if (options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
+        if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
             goto success;
         }
         /* LYD_OPT_DATA || LYD_OPT_CONFIG */
@@ -1462,7 +1462,7 @@ success:
         if (lyd_wd_top(ctx ? ctx : (*node)->schema->module->ctx, node, unres, options, wdmod)) {
             goto error;
         }
-    } else if (!(options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
+    } else if (!(options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
         /* use internal yang module, since ncwd is not necessarily present */
         wdmod = ly_ctx_get_module(ctx ? ctx : (*node)->schema->module->ctx, "yang", NULL);
         if (lyd_wd_top(ctx ? ctx : (*node)->schema->module->ctx, node, unres, options | LYD_WD_IMPL_TAG, wdmod)) {

@@ -257,13 +257,7 @@ struct lyd_node_anyxml {
 #define LYD_OPT_RPC        0x10 /**< Data represents RPC's input parameters. */
 #define LYD_OPT_RPCREPLY   0x20 /**< Data represents RPC's output parameters (maps to NETCONF <rpc-reply> data). */
 #define LYD_OPT_NOTIF      0x40 /**< Data represents an event notification data. */
-#define LYD_OPT_FILTER     0x80 /**< Data represents NETCONF subtree filter. Validation modifications:
-                                     - leafs/leaf-lists with no data are allowed (even not allowed e.g. by length restriction)
-                                     - multiple instances of container/leaf/.. are allowed
-                                     - list's keys/unique nodes are not required
-                                     - mandatory nodes can be omitted
-                                     - leafrefs and instance-identifier are not resolved
-                                     - data from different choice's branches are allowed */
+/* 0x80 reserved, formerly LYD_OPT_FILTER */
 #define LYD_OPT_TYPEMASK   0xff /**< Mask to filter data type options. Always only a single data type option (only
                                      single bit from the lower 8 bits) can be set. */
 
@@ -618,9 +612,7 @@ struct ly_set *lyd_get_list_keys(const struct lyd_node *list);
  *                 can modify the provided tree including the root \p node.
  * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
  * @param[in] ... libyang context for the data (used only in case the \p node is NULL, so in case of checking empty data tree)
- * @return 0 on success (if options include #LYD_OPT_FILTER, some nodes can be deleted as an
- * optimization, which can have a bad consequences when the \p node stores a subtree instead of a tree with
- * a top-level node(s)), nonzero in case of an error.
+ * @return 0 on success, nonzero in case of an error.
  */
 int lyd_validate(struct lyd_node **node, int options, ...);
 

@@ -88,12 +88,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options)
     /* will be changed in case of union */
     leaf->value_type = ((struct lys_node_leaf *)node->schema)->type.base;
 
-    if ((options & LYD_OPT_FILTER) && !leaf->value_str) {
-        /* no value in filter (selection) node -> nothing more is needed */
-        return EXIT_SUCCESS;
-    }
-
-    if (options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
+    if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
         resolve = 0;
     } else {
         resolve = 1;
@@ -319,7 +314,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         if (xml_get_value(*result, xml, options)) {
             goto error;
         }
-    } else if (schema->nodetype == LYS_ANYXML && !(options & LYD_OPT_FILTER)) {
+    } else if (schema->nodetype == LYS_ANYXML) {
         /* HACK unlink xml children and link them to a separate copy of xml */
         tmp_xml = calloc(1, sizeof *tmp_xml);
         if (!tmp_xml) {

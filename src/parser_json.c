@@ -346,22 +346,13 @@ json_get_value(struct lyd_node_leaf_list *leaf, const char *data, int options)
     assert(leaf && data);
     ctx = leaf->schema->module->ctx;
 
-    if (options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
+    if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
         resolve = 0;
     } else {
         resolve = 1;
     }
 
     stype = &((struct lys_node_leaf *)leaf->schema)->type;
-
-    if (options & LYD_OPT_FILTER) {
-        /* no value in filter (selection) node is accepted in this case */
-        if (!strncmp(&data[len], "null", 4)) {
-            leaf->value_type = stype->base;
-            len +=4;
-            goto end;
-        }
-    }
 
     if (leaf->schema->nodetype == LYS_LEAFLIST) {
         /* expecting begin-array */
@@ -463,7 +454,6 @@ repeat:
         }
     }
 
-end:
     len += skip_ws(&data[len]);
     return len;
 }
@@ -989,17 +979,6 @@ attr_repeat:
         do {
             len++;
             len += skip_ws(&data[len]);
-
-            if (options & LYD_OPT_FILTER) {
-                /* filter selection node ? */
-                if (data[len] == ']') {
-                    break;
-                } else if (!strcmp(&data[len], "null")) {
-                    len += 4;
-                    len += skip_ws(&data[len]);
-                    break;
-                }
-            }
 
             if (data[len] != '{') {
                 LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, result,
