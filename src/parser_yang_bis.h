@@ -146,7 +146,7 @@ extern int yydebug;
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 60 "/home/xvican01/Documents/bc/libyang/src/yang.y" /* yacc.c:1909  */
+
 
   int32_t i;
   uint32_t uint;
@@ -167,7 +167,7 @@ union YYSTYPE
     struct type_deviation *deviation;
   } nodes;
 
-#line 171 "/home/xvican01/Documents/bc/libyang/src/parser_yang_bis.h" /* yacc.c:1909  */
+
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
