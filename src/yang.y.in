@@ -249,11 +249,12 @@ start: module_stmt
 
 
 string_1: STRING  { if (read_all) {
-                      s = strdup(yyget_text(scanner));
+                      s = calloc(1, yyget_leng(scanner) - 1);
                       if (!s) {
                         LOGMEM;
                         YYERROR;
                       }
+                      memcpy(s, yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
                     }
                   }
 optsep string_2

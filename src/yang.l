@@ -19,8 +19,6 @@
 %}
 %x COMMENT1
 %x COMMENT2
-%x STRING1
-%x STRING2
 %x PATH
 %%
 
@@ -113,12 +111,8 @@
 "}" |
 ";" | 
 "+"  { return yytext[0];}  /* unsolved problem with concatenate string '+' */
-\" {BEGIN STRING1;}
-<STRING1>([\n\t !#-\[\]-~]|\\(\"|\\|n|t))* {return STRING;}
-<STRING1>\" {BEGIN INITIAL;}
-"'" {BEGIN STRING2;}
-<STRING2>([\n\t -&\(-~]|\\(\l|\\|n|t))* {return STRING;}
-<STRING2>"'" {BEGIN INITIAL;}
+\"([\n\t !#-\[\]-~]|\\[\n\t -~])*\" {return STRING;}
+"'"([\n\t -&\(-~]|\\[\n\t -~])*"'" {return STRING;}
 "0" {return ZERO;}
 "-"[1-9][0-9]* {return INTEGER;}
 [1-9][0-9]* {return NON_NEGATIVE_INTEGER;}
@@ -133,8 +127,8 @@
 <PATH>[ \t]+ { return WHITESPACE;}
 <PATH>";" |
 <PATH>"{" {BEGIN INITIAL; return yytext[0];}
-<PATH>\" {BEGIN STRING1;}
-<PATH>"'" {BEGIN STRING2;}
+<PATH>\"([\n\t !#-\[\]-~]|\\[\n\t -~])*\" {return STRING;}
+<PATH>"'"([\n\t -&\(-~]|\\[\n\t -~])*"'" {return STRING;}
 <PATH>"//" {BEGIN COMMENT2;}
 <PATH>"/*" {BEGIN COMMENT1;}
 <PATH>[A-Za-z_][-A-Za-z0-9_\.]* {return IDENTIFIER;}
