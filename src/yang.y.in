@@ -3304,7 +3304,7 @@ when_stmt: WHEN_KEYWORD sep string  { if (read_all && !(actual=yang_read_when(tr
            when_end;
 
 when_end: ';'
-  |  '{'
+  |  '{' stmtsep
          when_opt_stmt
      '}'
 
