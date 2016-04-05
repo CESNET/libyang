@@ -82,6 +82,7 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
     if (level == LY_LLERR && !path) {
         /* erase previous path */
         ((struct ly_err *)&ly_errno)->path_index = LY_BUF_SIZE - 1;
+        ((struct ly_err *)&ly_errno)->path_obj = NULL;
     }
 
     if (hide) {
@@ -290,12 +291,23 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
         ly_vecode = ecode2vecode[code];
     }
 
+    if (!path_flag) {
+        goto log;
+    }
+
     /* resolve path */
     path = ((struct ly_err *)&ly_errno)->path;
     index = &((struct ly_err *)&ly_errno)->path_index;
-    (*index) = LY_BUF_SIZE - 1;
-    path[(*index)] = '\0';
-    if (path_flag && elem_type) { /* != LY_VLOG_NONE */
+    if (elem_type) { /* != LY_VLOG_NONE */
+        /* check if the path is equal to the last one */
+        if (iter == ((struct ly_err *)&ly_errno)->path_obj) {
+            /* path is up-to-date (same as the last one) */
+            goto log;
+        }
+
+        /* update path */
+        (*index) = LY_BUF_SIZE - 1;
+        path[(*index)] = '\0';
         if (!iter) {
             /* top-level */
             path[--(*index)] = '/';
@@ -366,9 +378,16 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
                 memcpy(&path[(*index)], prefix, len);
             }
             path[--(*index)] = '/';
+
+            /* store the source of the path */
+            ((struct ly_err *)&ly_errno)->path_obj = elem;
         }
+    } else {
+        /* erase path, the rest will be erased by log_vprintf() since it will get NULL path parameter */
+        path[(*index)] = '\0';
     }
 
+log:
     va_start(ap, elem);
     switch (code) {
     case LYE_SPEC:

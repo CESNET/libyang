@@ -67,6 +67,7 @@ struct ly_err {
     uint8_t vlog_hide;
     uint8_t buf_used;
     uint16_t path_index;
+    const void *path_obj;
     char msg[LY_BUF_SIZE];
     char path[LY_BUF_SIZE];
     char buf[LY_BUF_SIZE];
