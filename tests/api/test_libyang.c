@@ -410,22 +410,22 @@ test_ly_ctx_get_submodule(void **state)
     const char *sub_name = "asub";
     const char *revision = NULL;
 
-    submodule = ly_ctx_get_submodule(NULL, mod_name, revision, sub_name);
+    submodule = ly_ctx_get_submodule(NULL, mod_name, revision, sub_name, NULL);
     if (submodule) {
         fail();
     }
 
-    submodule = ly_ctx_get_submodule(ctx, NULL, revision, sub_name);
+    submodule = ly_ctx_get_submodule(ctx, NULL, revision, sub_name, "2010-02-08");
     if (submodule) {
         fail();
     }
 
-    submodule = ly_ctx_get_submodule(ctx, mod_name, revision, NULL);
+    submodule = ly_ctx_get_submodule(ctx, mod_name, revision, NULL, NULL);
     if (submodule) {
         fail();
     }
 
-    submodule = ly_ctx_get_submodule(ctx, mod_name, revision, sub_name);
+    submodule = ly_ctx_get_submodule(ctx, mod_name, revision, sub_name, NULL);
     if (!submodule) {
         fail();
     }
@@ -713,8 +713,6 @@ int main(void)
         cmocka_unit_test(test_ly_ctx_set_searchdir),
         cmocka_unit_test(test_ly_ctx_set_searchdir_invalid),
         cmocka_unit_test_teardown(test_ly_ctx_info, teardown_f),
-        cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_names, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule_names, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_older, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_load_module, setup_f, teardown_f),
