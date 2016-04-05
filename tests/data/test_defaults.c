@@ -94,15 +94,12 @@ test_empty(void **state)
                         "<write-default>deny</write-default>"
                         "<exec-default>permit</exec-default>"
                         "<enable-external-groups>true</enable-external-groups>"
-                        "<denied-operations>0</denied-operations>"
-                        "<denied-data-writes>0</denied-data-writes>"
-                        "<denied-notifications>0</denied-notifications>"
                       "</nacm><df xmlns=\"urn:libyang:tests:defaults\">"
                         "<foo>42</foo><b1_1>42</b1_1>"
                       "</df><hidden xmlns=\"urn:libyang:tests:defaults\">"
                         "<foo>42</foo><baz>42</baz></hidden>";
 
-    lyd_wd_add(st->ctx, &(st->dt), LYD_WD_ALL);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, st->ctx), 0);
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
@@ -121,9 +118,6 @@ test_empty_tag(void **state)
                         "<write-default ncwd:default=\"true\">deny</write-default>"
                         "<exec-default ncwd:default=\"true\">permit</exec-default>"
                         "<enable-external-groups ncwd:default=\"true\">true</enable-external-groups>"
-                        "<denied-operations ncwd:default=\"true\">0</denied-operations>"
-                        "<denied-data-writes ncwd:default=\"true\">0</denied-data-writes>"
-                        "<denied-notifications ncwd:default=\"true\">0</denied-notifications>"
                       "</nacm><df xmlns=\"urn:libyang:tests:defaults\" "
                           "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
                         "<foo ncwd:default=\"true\">42</foo><b1_1 ncwd:default=\"true\">42</b1_1>"
@@ -131,8 +125,9 @@ test_empty_tag(void **state)
                           "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
                         "<foo ncwd:default=\"true\">42</foo><baz ncwd:default=\"true\">42</baz></hidden>";
 
-    lyd_wd_add(st->ctx, &(st->dt), LYD_WD_ALL_TAG);
+    lyd_wd_add(st->ctx, &(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL_TAG);
     assert_ptr_not_equal(st->dt, NULL);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL), 0);
 
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
     assert_ptr_not_equal(st->xml, NULL);

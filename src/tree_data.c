@@ -1356,7 +1356,7 @@ lyd_validate(struct lyd_node **node, int options, ...)
             if (!ctx->models.list[i]->data) {
                 continue;
             }
-            schema = ly_check_mandatory(NULL, ctx->models.list[i]->data);
+            schema = ly_check_mandatory(NULL, ctx->models.list[i]->data, (options & LYD_OPT_TYPEMASK) ? 0 : 1);
             if (schema) {
                 if (schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, schema, schema->name, schema->parent ? schema->parent->name : "module");

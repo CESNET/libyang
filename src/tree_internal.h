@@ -288,10 +288,11 @@ void lys_free(struct lys_module *module, void (*private_destructor)(const struct
  * are already resolved. Note that the \p start node itself is not checked since it must be present.
  * @param[in] schema To check mandatory elements in empty data tree (\p data is NULL), we need
  * the first schema node in a schema to be checked.
+ * @param[in] status Include status (read-only) nodes.
  * @return The first mandatory element definition not present in the data, NULL if
  * there is no such element in the \p starts's subtree.
  */
-const struct lys_node *ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema);
+const struct lys_node *ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema, int status);
 
 /**
  * @brief Find the parent node of an attribute.
