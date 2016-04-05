@@ -102,7 +102,7 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         free(msg);
     } else if (bufdup) {
         /* return previous internal buffer content */
-        strcpy(msg, bufdup);
+        strncpy(msg, bufdup, LY_BUF_SIZE - 1);
         free(bufdup);
     }
 }

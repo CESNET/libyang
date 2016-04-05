@@ -1440,7 +1440,7 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
 
                     if (buf_backup) {
                         /* return previous internal buffer content */
-                        strcpy(module_name, buf_backup);
+                        strncpy(module_name, buf_backup, LY_BUF_SIZE - 1);
                         free(buf_backup);
                         buf_backup = NULL;
                     }
@@ -1636,7 +1636,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
 
                     if (buf_backup) {
                         /* return previous internal buffer content */
-                        strcpy(module_name, buf_backup);
+                        strncpy(module_name, buf_backup, LY_BUF_SIZE - 1);
                         free(buf_backup);
                         buf_backup = NULL;
                     }
