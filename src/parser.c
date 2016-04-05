@@ -1626,7 +1626,11 @@ lyp_fail_module(struct lys_module *module)
     /* remove applied deviations */
     for (i = 0; i < module->deviation_size; ++i) {
         if (module->deviation[i].orig_node) {
-            resolve_augment_schema_nodeid(module->deviation[i].target_name, NULL, module, (const struct lys_node **)&elem);
+            j = resolve_augment_schema_nodeid(module->deviation[i].target_name, NULL, module, (const struct lys_node **)&elem);
+            if (j) {
+                LOGINT;
+                continue;
+            }
             lys_node_switch(elem, module->deviation[i].orig_node);
             module->deviation[i].orig_node = elem;
         }
@@ -1686,7 +1690,11 @@ lyp_fail_submodule(struct lys_submodule *submodule)
     /* remove applied deviations */
     for (i = 0; i < submodule->deviation_size; ++i) {
         if (submodule->deviation[i].orig_node) {
-            resolve_augment_schema_nodeid(submodule->deviation[i].target_name, NULL, module, (const struct lys_node **)&elem);
+            j = resolve_augment_schema_nodeid(submodule->deviation[i].target_name, NULL, module, (const struct lys_node **)&elem);
+            if (j) {
+                LOGINT;
+                continue;
+            }
             lys_node_switch(elem, submodule->deviation[i].orig_node);
             submodule->deviation[i].orig_node = elem;
         }
