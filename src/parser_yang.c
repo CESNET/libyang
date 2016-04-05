@@ -15,7 +15,6 @@
 #include <ctype.h>
 #include <pcre.h>
 #include "parser_yang.h"
-#include "parser_yang_bis.h"
 #include "parser_yang_lex.h"
 #include "parser.h"
 #include "xpath.h"
@@ -34,7 +33,7 @@ yang_check_string(struct lys_module *module, const char **target, char *what, ch
 }
 
 int 
-yang_read_common(struct lys_module *module, char *value, int type) 
+yang_read_common(struct lys_module *module, char *value, enum yytokentype type)
 {
     int ret = 0;
 
@@ -51,13 +50,18 @@ yang_read_common(struct lys_module *module, char *value, int type)
     case CONTACT_KEYWORD:
         ret = yang_check_string(module, &module->contact, "contact", "module", value);
         break;
+    default:
+        free(value);
+        LOGINT;
+        ret = EXIT_FAILURE;
+        break;
     }
 
     return ret;
 }
 
 int 
-yang_read_prefix(struct lys_module *module, void *save, char *value, int type) 
+yang_read_prefix(struct lys_module *module, void *save, char *value, enum yytokentype type)
 {
     int ret = 0;
 
@@ -71,6 +75,11 @@ yang_read_prefix(struct lys_module *module, void *save, char *value, int type)
         break;
     case IMPORT_KEYWORD:
         ((struct lys_import *)save)->prefix = lydict_insert_zc(module->ctx, value);
+        break;
+    default:
+        free(value);
+        LOGINT;
+        ret = EXIT_FAILURE;
         break;
     }
 
@@ -202,7 +211,7 @@ error:
 }
 
 int
-yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct unres_schema *unres, int type)
+yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct unres_schema *unres, enum yytokentype type)
 {
     const char *exp;
     int ret;
@@ -284,7 +293,7 @@ yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, 
 }
 
 void *
-yang_read_must(struct lys_module *module, struct lys_node *node, char *value, int type)
+yang_read_must(struct lys_module *module, struct lys_node *node, char *value, enum yytokentype type)
 {
     struct lys_restr *retval;
 
@@ -313,6 +322,9 @@ yang_read_must(struct lys_module *module, struct lys_node *node, char *value, in
         break;
     case DELETE_KEYWORD:
         retval = &((struct type_deviation *)node)->deviate->must[((struct type_deviation *)node)->deviate->must_size++];
+        break;
+    default:
+        goto error;
         break;
     }
     retval->expr = transform_schema2json(module, value);
@@ -354,7 +366,7 @@ yang_read_presence(struct lys_module *module, struct lys_node_container *cont, c
 }
 
 void *
-yang_read_when(struct lys_module *module, struct lys_node *node, int type, char *value)
+yang_read_when(struct lys_module *module, struct lys_node *node, enum yytokentype type, char *value)
 {
     struct lys_when *retval;
 
@@ -432,6 +444,9 @@ yang_read_when(struct lys_module *module, struct lys_node *node, int type, char 
         }
         ((struct lys_node_augment *)node)->when = retval;
         break;
+    default:
+        goto error;
+        break;
     }
     free(value);
     return retval;
@@ -472,7 +487,7 @@ yang_read_node(struct lys_module *module, struct lys_node *parent, char *value, 
 }
 
 int
-yang_read_default(struct lys_module *module, void *node, char *value, int type)
+yang_read_default(struct lys_module *module, void *node, char *value, enum yytokentype type)
 {
     int ret;
 
@@ -483,12 +498,17 @@ yang_read_default(struct lys_module *module, void *node, char *value, int type)
     case TYPEDEF_KEYWORD:
         ret = yang_check_string(module, &((struct lys_tpdf *) node)->dflt, "default", "typedef", value);
         break;
+    default:
+        free(value);
+        LOGINT;
+        ret = EXIT_FAILURE;
+        break;
     }
     return ret;
 }
 
 int
-yang_read_units(struct lys_module *module, void *node, char *value, int type)
+yang_read_units(struct lys_module *module, void *node, char *value, enum yytokentype type)
 {
     int ret;
 
@@ -501,6 +521,11 @@ yang_read_units(struct lys_module *module, void *node, char *value, int type)
         break;
     case TYPEDEF_KEYWORD:
         ret = yang_check_string(module, &((struct lys_tpdf *) node)->units, "units", "typedef", value);
+        break;
+    default:
+        free(value);
+        LOGINT;
+        ret = EXIT_FAILURE;
         break;
     }
     return ret;
@@ -867,7 +892,7 @@ error:
 }
 
 void *
-yang_read_type(struct lys_module *module, void *parent, char *value, int type)
+yang_read_type(struct lys_module *module, void *parent, char *value, enum yytokentype type)
 {
     struct yang_type *typ;
     struct type_deviation *dev;
@@ -928,11 +953,15 @@ yang_read_type(struct lys_module *module, void *parent, char *value, int type)
         typ->type->der = (struct lys_tpdf *)typ;
         dev->deviate->type = typ->type;
         break;
+    default:
+        goto error;
+        break;
     }
-    typ->name = value;
+    typ->name = lydict_insert_zc(module->ctx, value);
     return typ;
 
 error:
+    free(value);
     free(typ);
     return NULL;
 }

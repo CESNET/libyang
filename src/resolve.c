@@ -4351,9 +4351,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
                 stype->der = (struct lys_tpdf *)yang;
             } else {
                 /* we need to always be able to free this, it's safe only in this case */
-                if (yang->name) {
-                    free(yang->name);
-                }
+                lydict_remove(mod->ctx, yang->name);
                 free(yang);
             }
 
@@ -4726,9 +4724,7 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres)
             yin = (struct lyxml_elem *)((struct lys_type *)(*unres)->item[i])->der;
             if (yin->flags & LY_YANG_STRUCTURE_FLAG) {
                 yang =(struct yang_type *)yin;
-                if (yang->name) {
-                    free(yang->name);
-                }
+                lydict_remove(module->ctx, yang->name);
                 free(yang);
             } else {
                 lyxml_free(module->ctx, yin);

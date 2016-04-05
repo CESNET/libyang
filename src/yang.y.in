@@ -32,7 +32,6 @@
 #include "resolve.h"
 #include "common.h"
 #include "parser_yang.h"
-#include "parser_yang_bis.h"
 #include "parser_yang_lex.h"
 #include "parser.h"
 

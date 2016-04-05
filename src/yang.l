@@ -15,7 +15,6 @@
 %option noyywrap nounput noinput reentrant bison-bridge
 %{
 #include "parser_yang.h"
-#include "parser_yang_bis.h"
 %}
 %x COMMENT1
 %x COMMENT2
