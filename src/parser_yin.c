@@ -1499,6 +1499,13 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Adding property that already exists.");
                             goto error;
                         }
+                        /* check collision with mandatory */
+                        if (choice->flags & LYS_MAND_TRUE) {
+                            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, child->name, child->parent->name);
+                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                                   "Adding the \"default\" statement is forbidden on choice with the \"mandatory\" statement.");
+                            goto error;
+                        }
                     } else if (d->mod == LY_DEVIATE_RPL) {
                         /* check that there was a value before */
                         if (!choice->dflt) {
