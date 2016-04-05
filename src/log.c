@@ -274,7 +274,7 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
     va_list ap;
     const char *fmt;
     char* path;
-    uint16_t *index;
+    uint16_t *index = NULL;
     int i;
     const void *iter = elem;
     struct lys_node_list *slist;
@@ -392,14 +392,14 @@ log:
     switch (code) {
     case LYE_SPEC:
         fmt = va_arg(ap, char *);
-        log_vprintf(LY_LLERR, (*ly_vlog_hide_location()), fmt, path[(*index)] ? &path[(*index)] : NULL, ap);
+        log_vprintf(LY_LLERR, (*ly_vlog_hide_location()), fmt, index && path[(*index)] ? &path[(*index)] : NULL, ap);
         break;
     case LYE_PATH:
         log_vprintf(LY_LLERR, (*ly_vlog_hide_location()), NULL, &path[(*index)], ap);
         break;
     default:
         log_vprintf(LY_LLERR, (*ly_vlog_hide_location()), ly_errs[code],
-                    path[(*index)] ? &path[(*index)] : NULL, ap);
+                    index && path[(*index)] ? &path[(*index)] : NULL, ap);
         break;
     }
     va_end(ap);
