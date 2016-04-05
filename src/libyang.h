@@ -737,13 +737,16 @@ const struct lys_module *ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const
  * If you already have the pointer to the submodule's main module, use ly_ctx_get_submodule2() instead.
  *
  * @param[in] ctx Context to work in.
- * @param[in] module Name of the main (belongs-to) module.
- * @param[in] revision Optional revision date of the main module. If not specified, the newist revision is used.
+ * @param[in] module Name of the main (belongs-to) module. If NULL, all module submodules are searched.
+ * @param[in] revision Optional revision date of \p module. If NULL, all revisions of \p module
+ * are searched. If set, \p module must also be set.
  * @param[in] submodule Name of the submodule to get.
+ * @param[in] sub_revision Optional revision date of \p submodule. If NULL, the newest revision of \p submodule
+ * is returned.
  * @return Pointer to the data model structure.
  */
 const struct lys_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *revision,
-                                                 const char *submodule);
+                                                 const char *submodule, const char *sub_revision);
 
 /**
  * @brief Get submodule of a main module.

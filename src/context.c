@@ -190,22 +190,55 @@ ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodul
 }
 
 API const struct lys_submodule *
-ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *revision, const char *submodule)
+ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *revision, const char *submodule,
+                     const char *sub_revision)
 {
     const struct lys_module *mainmod;
+    const struct lys_submodule *ret = NULL, *submod;
+    uint32_t idx = 0;
 
-    if (!module || !submodule) {
+    if (!ctx || !submodule || (revision && !module)) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
 
-    mainmod = ly_ctx_get_module(ctx, module, revision);
-    if (!mainmod) {
-        ly_errno = LY_EINVAL;
-        return NULL;
+    while ((mainmod = ly_ctx_get_module_iter(ctx, &idx))) {
+        if (module && strcmp(mainmod->name, module)) {
+            /* main module name does not match */
+            continue;
+        }
+
+        if (revision && (!mainmod->rev || strcmp(revision, mainmod->rev[0].date))) {
+            /* main module revision does not match */
+            continue;
+        }
+
+        submod = ly_ctx_get_submodule2(mainmod, submodule);
+        if (!submod) {
+            continue;
+        }
+
+        if (!sub_revision) {
+            /* store only if newer */
+            if (ret) {
+                if (submod->rev && (!ret->rev || (strcmp(submod->rev[0].date, ret->rev[0].date) > 0))) {
+                    ret = submod;
+                }
+            } else {
+                ret = submod;
+            }
+        } else {
+            /* store only if revision matches, we are done if it does */
+            if (!submod->rev) {
+                continue;
+            } else if (!strcmp(sub_revision, submod->rev[0].date)) {
+                ret = submod;
+                break;
+            }
+        }
     }
 
-    return ly_ctx_get_submodule2(mainmod, submodule);
+    return ret;
 }
 
 static const struct lys_module *
