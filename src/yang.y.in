@@ -262,7 +262,7 @@ optsep string_2
 string_2: @EMPTYDIR@
   |  string_2 '+' optsep
      STRING { if (read_all){
-                s = realloc(s, yyget_leng(scanner) + strlen(s) + 1);
+                s = ly_realloc(s, yyget_leng(scanner) + strlen(s) + 1);
                 if (s) {
                   strcat(s, yyget_text(scanner));
                 } else {
