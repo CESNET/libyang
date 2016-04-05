@@ -1546,9 +1546,9 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         }
                         /* check collision with mandatory */
                         if (leaf->flags & LYS_MAND_TRUE) {
-                            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
+                            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, child->name, child->parent->name);
                             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
-                                   "Adding the \"default\" statement is not allowed due to existing \"mandatory\" statement.");
+                                   "Adding the \"default\" statement is forbidden on leaf with the \"mandatory\" statement.");
                             goto error;
                         }
                     }
@@ -1615,9 +1615,9 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     }
                     /* check collision with default-stmt */
                     if ((dev_target->nodetype == LYS_LEAF) && ((struct lys_node_leaf *)(dev_target))->dflt) {
-                        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
+                        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, child->name, child->parent->name);
                         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
-                               "Adding the \"mandatory\" statement is not allowed due to existing \"default\" statement.");
+                               "Adding the \"mandatory\" statement is forbidden on leaf with the \"default\" statement.");
                         goto error;
                     }
 
@@ -3131,9 +3131,9 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             goto error;
         }
         if (leaf->flags & LYS_MAND_TRUE) {
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "mandatory");
+            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "mandatory", "leaf");
             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
-                   "The \"mandatory\" statement is not allowed with the \"default\" statement.");
+                   "The \"mandatory\" statement is forbidden on leaf with the \"default\" statement.");
             goto error;
         }
     }
