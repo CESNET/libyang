@@ -419,7 +419,7 @@ extern "C" {
  * can cause failure of various libyang functions later.
  *
  * Creating data is generally possible in two ways, they can be combined. You can add nodes one-by-one based on
- * the node name and/or its parent (lyd_new(), lyd_new_anyxml(), lyd_new_leaf(), adn their output variants) or
+ * the node name and/or its parent (lyd_new(), lyd_new_anyxml_*(), lyd_new_leaf(), adn their output variants) or
  * address the nodes using a simple XPath addressing (lyd_new_path()). The latter enables to create a whole path
  * of nodes, requires less information about the modified data, and is generally simpler to use. The path format
  * specifics can be found [here](@ref howtoxpath).
@@ -438,11 +438,13 @@ extern "C" {
  * - lyd_insert_after()
  * - lyd_insert_attr()
  * - lyd_new()
- * - lyd_new_anyxml()
+ * - lyd_new_anyxml_str()
+ * - lyd_new_anyxml_xml()
  * - lyd_new_leaf()
  * - lyd_new_path()
  * - lyd_output_new()
- * - lyd_output_new_anyxml()
+ * - lyd_output_new_anyxml_str()
+ * - lyd_output_new_anyxml_xml()
  * - lyd_output_new_leaf()
  * - lyd_unlink()
  * - lyd_free()

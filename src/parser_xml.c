@@ -123,7 +123,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     struct lys_node *schema = NULL;
     struct lyd_attr *dattr, *dattr_iter;
     struct lyxml_attr *attr;
-    struct lyxml_elem *tmp_xml, *child, *next;
+    struct lyxml_elem *child, *next;
     int i, havechildren, r, flag;
     int ret = 0;
     const char *str;
@@ -315,37 +315,22 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             goto error;
         }
     } else if (schema->nodetype == LYS_ANYXML) {
-        /* HACK unlink xml children and link them to a separate copy of xml */
-        tmp_xml = calloc(1, sizeof *tmp_xml);
-        if (!tmp_xml) {
-            LOGMEM;
-            goto error;
+        /* store children values */
+        if (xml->child) {
+            child = xml->child;
+            /* manually unlink all siblings and correct namespaces */
+            xml->child = NULL;
+            LY_TREE_FOR(child, next) {
+                next->parent = NULL;
+                lyxml_correct_elem_ns(ctx, next, 1, 1);
+            }
+
+            ((struct lyd_node_anyxml *)*result)->xml_struct = 1;
+            ((struct lyd_node_anyxml *)*result)->value.xml = child;
+        } else {
+            ((struct lyd_node_anyxml *)*result)->xml_struct = 0;
+            ((struct lyd_node_anyxml *)*result)->value.str = lydict_insert(ctx, xml->content, 0);
         }
-        memcpy(tmp_xml, xml, sizeof *tmp_xml);
-        /* keep attributes in the original */
-        tmp_xml->attr = NULL;
-        /* increase reference counters on strings */
-        tmp_xml->name = lydict_insert(ctx, tmp_xml->name, 0);
-        tmp_xml->content = lydict_insert(ctx, tmp_xml->content, 0);
-        xml->child = NULL;
-        /* xml is correct now */
-
-        LY_TREE_FOR(tmp_xml->child, child) {
-            child->parent = tmp_xml;
-        }
-        /* children are correct now */
-
-        /* unlink manually */
-        tmp_xml->parent = NULL;
-        tmp_xml->next = NULL;
-        tmp_xml->prev = tmp_xml;
-
-        /* just to correct namespaces */
-        lyxml_unlink_elem(ctx, tmp_xml, 1);
-        /* tmp_xml is correct now */
-
-        ((struct lyd_node_anyxml *)*result)->value = tmp_xml;
-        /* we can safely continue with xml, it's like it was, only without children */
     }
 
     for (attr = xml->attr; attr; attr = attr->next) {

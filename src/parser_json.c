@@ -264,9 +264,8 @@ lyjson_parse_boolean(const char *data)
 static unsigned int
 json_get_anyxml(struct lyd_node_anyxml *axml, const char *data)
 {
-    unsigned int len = 0, x;
-    char stop, start, *xmlstr;
-    struct lyxml_elem *xml, *xmlnext;
+    unsigned int len = 0;
+    char stop, start;
     int level = 0;
 
     switch (data[len]) {
@@ -289,7 +288,8 @@ json_get_anyxml(struct lyd_node_anyxml *axml, const char *data)
         while (!isspace(data[len])) {
             len++;
         }
-        axml->value = NULL; /* TODO ??? */
+        axml->xml_struct = 0;
+        axml->value.str = NULL; /* TODO ??? */
         return len;
     }
 
@@ -307,24 +307,11 @@ json_get_anyxml(struct lyd_node_anyxml *axml, const char *data)
         if (!level) {
             /* we are done */
             if (!start) {
-                /* XML in string as we print it */
-                if (asprintf(&xmlstr, "<%s xmlns=\"%s\"/>", axml->schema->name, axml->schema->module->ns) == -1) {
-                    LOGMEM;
-                    return 0;
-                }
-                axml->value = lyxml_parse_elem(axml->schema->module->ctx, xmlstr, &x, NULL);
-                free(xmlstr);
-
-                xmlstr = strndup(&data[1], len - 2);
-                xml = lyxml_parse_mem(axml->schema->module->ctx, xmlstr, LYXML_PARSE_MULTIROOT);
-                if (xml) {
-                    LY_TREE_FOR_SAFE(xml, xmlnext, xml) {
-                        lyxml_add_child(axml->schema->module->ctx, axml->value, xml);
-                    }
-                }
-                free(xmlstr);
+                axml->xml_struct = 0;
+                axml->value.str = lydict_insert(axml->schema->module->ctx, &data[1], len - 2);
             } else {
-                axml->value = NULL; /* TODO ??? */
+                axml->xml_struct = 0;
+                axml->value.str = NULL; /* TODO ??? */
             }
             return len;
         }

@@ -302,20 +302,19 @@ json_print_anyxml(struct lyout *out, int level, const struct lyd_node *node)
         ly_print(out, "%*s\"%s\": ", LEVEL, INDENT, node->schema->name);
     }
 
-    if (axml->value) {
-        /* print content */
-        if (axml->value->content) {
-            json_print_string(out, axml->value->content);
-        }
-
-        /* print children */
-        if (axml->value->child) {
-            lyxml_print_mem(&xml, axml->value->child, LYXML_PRINT_SIBLINGS);
+    if (axml->xml_struct) {
+        if (axml->value.xml) {
+            lyxml_print_mem(&xml, axml->value.xml, LYXML_PRINT_SIBLINGS);
             json_print_string(out, xml);
             free(xml);
         }
+    } else {
+        if (axml->value.str) {
+            json_print_string(out, axml->value.str);
+        }
     }
-    if (!axml->value || (!axml->value->content && !axml->value->child)) {
+    /* it checks both xml and str, it's a union */
+    if (!axml->value.str) {
         ly_print(out, "[null]");
     }
 

@@ -167,6 +167,11 @@ struct lyd_node_leaf_list {
     LY_DATA_TYPE value_type;         /**< type of the value in the node, mainly for union to avoid repeating of type detection */
 };
 
+union lyd_node_anyxml_value {
+    const char *str;
+    struct lyxml_elem *xml;
+};
+
 /**
  * @brief Structure for data nodes defined as #LYS_ANYXML.
  *
@@ -193,7 +198,8 @@ struct lyd_node_anyxml {
     /* struct lyd_node *child; should be here, but is not */
 
     /* anyxml's specific members */
-    struct lyxml_elem *value;       /**< anyxml name is the root element of value! */
+    uint8_t xml_struct;              /**< 1 for value.xml, 0 for value.str */
+    union lyd_node_anyxml_value value; /**< anyxml value, everything is in the dictionary, there can be more XML siblings */
 };
 
 /**
@@ -427,16 +433,30 @@ struct lyd_node *lyd_new_leaf(struct lyd_node *parent, const struct lys_module *
 int lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str);
 
 /**
- * @brief Create a new anyxml node in a data tree.
+ * @brief Create a new anyxml node in a data tree with a string value.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
  * @param[in] name Schema node name of the new data node.
- * @param[in] val_xml Value of the node being created. Must be a well-formed XML.
+ * @param[in] val_str Well-formed XML string value of the node being created. Must be dynamically allocated
+ * and is freed with the data.
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_new_anyxml(struct lyd_node *parent, const struct lys_module *module, const char *name,
-                                const char *val_xml);
+struct lyd_node *lyd_new_anyxml_str(struct lyd_node *parent, const struct lys_module *module, const char *name,
+                                    char *val_str);
+
+/**
+ * @brief Create a new anyxml node in a data tree with an XML structure value.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
+ * @param[in] module Module with the node being created.
+ * @param[in] name Schema node name of the new data node.
+ * @param[in] val_xml XML structure value of the node being created. There can be more siblings,
+ * they are freed with the data.
+ * @return New node, NULL on error.
+ */
+struct lyd_node *lyd_new_anyxml_xml(struct lyd_node *parent, const struct lys_module *module, const char *name,
+                                    struct lyxml_elem *val_xml);
 
 /**
  * @brief Create a new container node in a data tree, whose schema parent is #LYS_OUTPUT.
@@ -457,13 +477,26 @@ struct lyd_node *lyd_output_new(const struct lys_node *schema);
 struct lyd_node *lyd_output_new_leaf(const struct lys_node *schema, const char *val_str);
 
 /**
- * @brief Create a new anyxml node in a data tree, whose schema parent is #LYS_OUTPUT.
+ * @brief Create a new anyxml node in a data tree, whose schema parent is #LYS_OUTPUT
+ * and has a string value.
  *
  * @param[in] schema Schema node of the leaf.
- * @param[in] val_xml Value of the node being created. Must be a well-formed XML.
+ * @param[in] val_str Well-formed XML string value of the node being created. Must be dynamically allocated
+ * and is freed with the data.
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_output_new_anyxml(const struct lys_node *schema, const char *val_xml);
+struct lyd_node *lyd_output_new_anyxml_str(const struct lys_node *schema, char *val_str);
+
+/**
+ * @brief Create a new anyxml node in a data tree, whose schema parent is #LYS_OUTPUT
+ * and has an XML structure value.
+ *
+ * @param[in] schema Schema node of the leaf.
+ * @param[in] val_xml XML structure value of the node being created. There can be more siblings,
+ * they are freed with the data.
+ * @return New node, NULL on error.
+ */
+struct lyd_node *lyd_output_new_anyxml_xml(const struct lys_node *schema, struct lyxml_elem *val_xml);
 
 /**
  * @defgroup pathoptions Data path creation options
@@ -498,13 +531,15 @@ struct lyd_node *lyd_output_new_anyxml(const struct lys_node *schema, const char
  * @param[in] path Simple data XPath of the new node. It can contain only simple node addressing with optional
  * module names as prefixes. List nodes must have predicates, one for each list key in the correct order and
  * with its value as well, see @ref howtoxpath.
- * @param[in] value Value of the new leaf/lealf-list. If creating other nodes of other types, set to NULL.
+ * @param[in] value Value of the new leaf/lealf-list. If creating anyxml, this value is internally duplicated
+ * (for other options use lyd_*_new_anyxml_*()). If creating nodes of other types, set to NULL.
  * @param[in] options Bitmask of options flags, see @ref pathoptions.
  * @return First created (or updated node with #LYD_PATH_OPT_UPDATE) node,
  * NULL if #LYD_PATH_OPT_UPDATE was used and the full path exists,
  * NULL and ly_errno is set on error.
  */
-struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, const char *value, int options);
+struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, const char *value,
+                              int options);
 
 /**
  * @brief Create a copy of the specified data tree \p node. Namespaces are copied as needed,
