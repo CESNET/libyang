@@ -332,18 +332,18 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     }
 
     backup = leaf->value_str;
-    leaf->value_str = val_str;
+    leaf->value_str = lydict_insert(leaf->schema->module->ctx, val_str, 0);
 
     /* resolve the type correctly */
     if (lyp_parse_value(leaf, NULL, 1)) {
+        lydict_remove(leaf->schema->module->ctx, leaf->value_str);
         leaf->value_str = backup;
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
 
-    /* value is correct, finish the changes in leaf */
+    /* value is correct, remove backup */
     lydict_remove(leaf->schema->module->ctx, backup);
-    leaf->value_str = lydict_insert(leaf->schema->module->ctx, val_str, 0);
 
     if (leaf->schema->flags & LYS_UNIQUE) {
         /* locate the first parent list */
