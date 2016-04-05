@@ -28,8 +28,9 @@ else()
 	endif()
 	configure_file(${PROJECT_SOURCE_DIR}/src/yang.y.in ${PROJECT_SOURCE_DIR}/src/yang.y)
 	add_custom_target(bison
-		COMMAND bison -Wall -o ${PROJECT_SOURCE_DIR}/src/parser_yang_bis.c --defines=${PROJECT_SOURCE_DIR}/src/parser_yang_bis.h ${PROJECT_SOURCE_DIR}/src/yang.y
-		COMMAND flex -o ${PROJECT_SOURCE_DIR}/src/parser_yang_lex.c --header-file=${PROJECT_SOURCE_DIR}/src/parser_yang_lex.h ${PROJECT_SOURCE_DIR}/src/yang.l
+		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
+		COMMAND bison -Wall -o parser_yang_bis.c --defines=parser_yang_bis.h yang.y
+		COMMAND flex -o parser_yang_lex.c --header-file=parser_yang_lex.h yang.l
 	)
 endif()
 
