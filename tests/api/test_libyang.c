@@ -32,6 +32,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <string.h>
+#include <limits.h>
 
 #include "../config.h"
 #include "../../src/libyang.h"
@@ -165,8 +166,10 @@ static void
 test_ly_ctx_get_searchdir(void **state)
 {
     const char *result;
-    char *yang_folder = TESTS_DIR"/data/files";
+    char *yang_folder = realpath(TESTS_DIR"/data/files", NULL);
     (void) state; /* unused */
+
+    assert_ptr_not_equal(yang_folder, NULL);
     ctx = ly_ctx_new(yang_folder);
     if (!ctx) {
         fail();
@@ -185,9 +188,13 @@ static void
 test_ly_ctx_set_searchdir(void **state)
 {
     const char *result;
-    char *yang_folder = TESTS_DIR"/data/files";
-    char *new_yang_folder = TESTS_DIR"/schema/yin";
+    char *yang_folder = realpath(TESTS_DIR"/data/files", NULL);
+    char *new_yang_folder = realpath(TESTS_DIR"/schema/yin", NULL);
     (void) state; /* unused */
+
+    assert_ptr_not_equal(yang_folder, NULL);
+    assert_ptr_not_equal(new_yang_folder, NULL);
+
     ctx = ly_ctx_new(yang_folder);
     if (!ctx) {
         fail();
@@ -208,9 +215,12 @@ static void
 test_ly_ctx_set_searchdir_invalid(void **state)
 {
     const char *result;
-    char *yang_folder = TESTS_DIR"/data/files";
+    char *yang_folder = realpath(TESTS_DIR"/data/files", NULL);
     char *new_yang_folder = "INVALID_PATH";
     (void) state; /* unused */
+
+    assert_ptr_not_equal(yang_folder, NULL);
+
     ctx = ly_ctx_new(yang_folder);
     if (!ctx) {
         fail();
