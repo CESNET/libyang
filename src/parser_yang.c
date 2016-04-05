@@ -2127,7 +2127,7 @@ yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struc
     size_arrays = calloc(1, sizeof *size_arrays);
     if (!size_arrays) {
         LOGMEM;
-        goto error;
+        return EXIT_FAILURE;
     }
 
     size = (size_data) ? size_data : strlen(data) + 2;
@@ -2181,7 +2181,7 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
     module = calloc(1, sizeof *module);
     if (!module) {
         LOGMEM;
-        return NULL;
+        goto error;
     }
 
     /* initiale module */
