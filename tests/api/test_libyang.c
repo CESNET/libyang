@@ -262,54 +262,6 @@ test_ly_ctx_info(void **state)
 }
 
 static void
-test_ly_ctx_get_module_names(void **state)
-{
-    (void) state; /* unused */
-    const char **result;
-
-    result = ly_ctx_get_module_names(NULL);
-    if (result) {
-        fail();
-    }
-
-    result = ly_ctx_get_module_names(ctx);
-    if (!result) {
-        fail();
-    }
-
-    assert_string_equal("yang", *result);
-
-    free(result);
-}
-
-static void
-test_ly_ctx_get_submodule_names(void **state)
-{
-    (void) state; /* unused */
-    const char **result;
-    const char *module_name = "a";
-
-    result = ly_ctx_get_submodule_names(NULL, module_name);
-    if (result) {
-        fail();
-    }
-
-    result = ly_ctx_get_submodule_names(ctx, "invalid");
-    if (result) {
-        fail();
-    }
-
-    result = ly_ctx_get_submodule_names(ctx, module_name);
-    if (!result) {
-        fail();
-    }
-
-    assert_string_equal("asub", *result);
-
-    free(result);
-}
-
-static void
 test_ly_ctx_get_module(void **state)
 {
     (void) state; /* unused */

@@ -385,41 +385,6 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
     return module;
 }
 
-API const char **
-ly_ctx_get_module_names(const struct ly_ctx *ctx)
-{
-    int i, j, k;
-    const char **result = NULL;
-
-    if (!ctx) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
-    result = malloc((ctx->models.used+1) * sizeof *result);
-    if (!result) {
-        LOGMEM;
-        return NULL;
-    }
-
-    for (i = j = 0; i < ctx->models.used; i++) {
-        /* avoid duplicities when multiple revisions of the same module are present */
-        for (k = j - 1; k >= 0; k--) {
-            if (ly_strequal(result[k], ctx->models.list[i]->name, 1)) {
-                break;
-            }
-        }
-        if (k < 0) {
-            /* no duplication found */
-            result[j] = ctx->models.list[i]->name;
-            j++;
-        }
-    }
-    result[j] = NULL;
-
-    return result;
-}
-
 API const struct lys_module *
 ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *idx)
 {
@@ -433,38 +398,6 @@ ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *idx)
     }
 
     return ctx->models.list[(*idx)++];
-}
-
-API const char **
-ly_ctx_get_submodule_names(const struct ly_ctx *ctx, const char *module_name)
-{
-    int i;
-    const char **result = NULL;
-    const struct lys_module *mod;
-
-    if (!ctx) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
-    mod = ly_ctx_get_module(ctx, module_name, NULL);
-    if (!mod) {
-        LOGERR(LY_EVALID, "Data model \"%s\" not loaded", module_name);
-        return NULL;
-    }
-
-    result = malloc((mod->inc_size+1) * sizeof *result);
-    if (!result) {
-        LOGMEM;
-        return NULL;
-    }
-
-    for (i = 0; i < mod->inc_size && mod->inc[i].submodule; i++) {
-        result[i] = mod->inc[i].submodule->name;
-    }
-    result[i] = NULL;
-
-    return result;
 }
 
 static int
