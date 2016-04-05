@@ -912,8 +912,7 @@ lyv_multicases(struct lyd_node *node, struct lyd_node *first_sibling, int autode
 
 autodelete:
     /* remove all nodes from other cases than 'sparent' */
-    LY_TREE_FOR_SAFE(first_sibling, next, iter)
-    {
+    LY_TREE_FOR_SAFE(first_sibling, next, iter) {
         sparent = lys_parent(iter->schema);
         if ((sparent->nodetype == LYS_CHOICE && sparent == schoice) /* another implicit case */
                 || (sparent->nodetype == LYS_CASE && sparent != scase && lys_parent(sparent) == schoice) /* another case */
@@ -923,6 +922,9 @@ autodelete:
                     LOGVAL(LYE_MCASEDATA, LY_VLOG_LYD, iter, schoice->name);
                     return 2;
                 }
+                if (iter == first_sibling) {
+                    first_sibling = next;
+                }
                 lyd_free(iter);
             } else {
                 LOGVAL(LYE_MCASEDATA, LY_VLOG_LYD, node, schoice->name);
@@ -931,7 +933,7 @@ autodelete:
         }
     }
 
-    if ((saux = lys_parent(schoice)) && (saux->nodetype & (LYS_CHOICE | LYS_CASE))) {
+    if (first_sibling && (saux = lys_parent(schoice)) && (saux->nodetype & (LYS_CHOICE | LYS_CASE))) {
         /* go recursively in case of nested choices */
         if (saux->nodetype == LYS_CHOICE) {
             schoice = saux;
