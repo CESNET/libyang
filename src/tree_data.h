@@ -535,7 +535,7 @@ struct lyd_node *lyd_output_new_anyxml_xml(const struct lys_node *schema, struct
  * (for other options use lyd_*_new_anyxml_*()). If creating nodes of other types, set to NULL.
  * @param[in] options Bitmask of options flags, see @ref pathoptions.
  * @return First created (or updated node with #LYD_PATH_OPT_UPDATE) node,
- * NULL if #LYD_PATH_OPT_UPDATE was used and the full path exists,
+ * NULL if #LYD_PATH_OPT_UPDATE was used and the full path exists or the leaf original value matches \p value,
  * NULL and ly_errno is set on error.
  */
 struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, const char *value,
