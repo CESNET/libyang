@@ -166,10 +166,11 @@ static void
 test_ly_ctx_get_searchdir(void **state)
 {
     const char *result;
-    char *yang_folder = realpath(TESTS_DIR"/data/files", NULL);
+    char yang_folder[PATH_MAX];
     (void) state; /* unused */
 
-    assert_ptr_not_equal(yang_folder, NULL);
+    assert_ptr_not_equal(realpath(TESTS_DIR"/data/files", yang_folder), NULL);
+
     ctx = ly_ctx_new(yang_folder);
     if (!ctx) {
         fail();
@@ -188,12 +189,12 @@ static void
 test_ly_ctx_set_searchdir(void **state)
 {
     const char *result;
-    char *yang_folder = realpath(TESTS_DIR"/data/files", NULL);
-    char *new_yang_folder = realpath(TESTS_DIR"/schema/yin", NULL);
+    char yang_folder[PATH_MAX];
+    char new_yang_folder[PATH_MAX];
     (void) state; /* unused */
 
-    assert_ptr_not_equal(yang_folder, NULL);
-    assert_ptr_not_equal(new_yang_folder, NULL);
+    assert_ptr_not_equal(realpath(TESTS_DIR"/data/files", yang_folder), NULL);
+    assert_ptr_not_equal(realpath(TESTS_DIR"/schema/yin", new_yang_folder), NULL);
 
     ctx = ly_ctx_new(yang_folder);
     if (!ctx) {
@@ -215,11 +216,11 @@ static void
 test_ly_ctx_set_searchdir_invalid(void **state)
 {
     const char *result;
-    char *yang_folder = realpath(TESTS_DIR"/data/files", NULL);
+    char yang_folder[PATH_MAX];
     char *new_yang_folder = "INVALID_PATH";
     (void) state; /* unused */
 
-    assert_ptr_not_equal(yang_folder, NULL);
+    assert_ptr_not_equal(realpath(TESTS_DIR"/data/files", yang_folder), NULL);
 
     ctx = ly_ctx_new(yang_folder);
     if (!ctx) {
