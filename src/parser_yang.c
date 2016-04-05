@@ -1620,6 +1620,10 @@ yang_read_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *
                     LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "default");
                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Adding property that already exists.");
                     goto error;
+                } else if (choice->flags & LYS_MAND_TRUE) {
+                    LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "default", "choice");
+                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"default\" statement is forbidden on choices with \"mandatory\".");
+                    goto error;
                 }
             } else { /* replace*/
                 if (!choice->dflt) {
@@ -1738,10 +1742,17 @@ yang_read_deviate_mandatory(struct type_deviation *dev, uint8_t value)
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "mandatory");
             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Adding property that already exists.");
             goto error;
-        } else if (((struct lys_node_leaf*)dev->target)->dflt) {
-            /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
-            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "mandatory", "leaf");
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
+        } else {
+            if (dev->target->nodetype == LYS_LEAF && ((struct lys_node_leaf *)dev->target)->dflt) {
+                /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
+                LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "mandatory", "leaf");
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
+                goto error;
+            } else if (dev->target->nodetype == LYS_CHOICE && ((struct lys_node_choice *)dev->target)->dflt) {
+                LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "mandatory", "choice");
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on choices with \"default\".");
+                goto error;
+            }
         }
     } else { /* replace */
         if (!(dev->target->flags & LYS_MAND_MASK)) {
