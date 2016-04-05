@@ -2571,7 +2571,7 @@ lyd_wd_add_leaf(const struct lys_module *wdmod, struct ly_ctx *ctx, struct lyd_n
     if (leaf->dflt) {
         /* leaf has a default value */
         dflt = leaf->dflt;
-    } else {
+    } else if (!(leaf->flags & LYS_MAND_TRUE)) {
         /* get the default value from the type */
         for (tpdf = leaf->type.der; tpdf && !dflt; tpdf = tpdf->type.der) {
             dflt = tpdf->dflt;
