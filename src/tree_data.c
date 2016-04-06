@@ -583,7 +583,6 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
     int r, i, parsed = 0, mod_name_len, nam_len, is_relative = -1, first_iter = 1;
 
     if (!path || (!data_tree && !ctx)
-            || (data_tree && (data_tree->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)))
             || (!data_tree && (path[0] != '/'))) {
         ly_errno = LY_EINVAL;
         return NULL;
