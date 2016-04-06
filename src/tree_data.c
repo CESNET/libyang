@@ -2932,7 +2932,7 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
 
     /* add missing top-level default nodes */
     for (i = 0; i < modset->number; i++) {
-        LOGVRB("Adding top level defaults for %s module, mode %x", ((struct lys_module *)modset->set.g[i])->name,
+        LOGDBG("DEFAULTS: adding top level defaults for %s module, mode %x", ((struct lys_module *)modset->set.g[i])->name,
                (options & LYD_WD_MASK));
         LY_TREE_FOR(((struct lys_module *)modset->set.g[i])->data, siter) {
             if  (options & (LYD_OPT_CONFIG | LYD_OPT_EDIT | LYD_OPT_GETCONFIG)) {
