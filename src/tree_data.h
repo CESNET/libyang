@@ -521,9 +521,10 @@ struct lyd_node *lyd_output_new_anyxml_xml(const struct lys_node *schema, struct
 /**
  * @brief Create a new data node based on a simple XPath.
  *
- * When manipulating RPC input or output, schema ordering is always guaranteed. Specially, when working with
- * RPC output (using #LYD_PATH_OPT_OUTPUT flag), it can therefore happen that a node is created and inserted
- * before \p data_tree.
+ * The new node is normally inserted at the end, either as the last child of a parent or as the last sibling
+ * if working with top-level elements. However, when manipulating RPC input or output, schema ordering is
+ * required and always guaranteed. Specially, when working with RPC output (using #LYD_PATH_OPT_OUTPUT flag),
+ * it can therefore happen that a node is created and inserted before \p data_tree.
  *
  * @param[in] data_tree Existing data tree to add to/modify. It is expected to be valid. If creating RPCs,
  * there should only be one RPC and either input or output. Can be NULL.

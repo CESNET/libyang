@@ -785,6 +785,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         /* special case when we are creating a sibling of a top-level data node */
         if (!is_relative) {
             if (data_tree) {
+                for (; data_tree->next; data_tree = data_tree->next);
                 if (lyd_insert_after(data_tree, node)) {
                     lyd_free(ret);
                     return NULL;
