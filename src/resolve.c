@@ -1530,12 +1530,14 @@ error:
 }
 
 struct lyd_node *
-resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int options, int *parsed)
+resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, struct lyd_node *start, int options,
+                                 int *parsed)
 {
     char module_name[LY_MODULE_NAME_MAX_LEN + 1];
     const char *id, *mod_name, *name;
     int r, ret, mod_name_len, nam_len, is_relative = -1, has_predicate, last_parsed;
     struct lyd_node *sibling, *last_match = NULL;
+    struct lyd_node_leaf_list *llist;
     const struct lys_module *prefix_mod, *prev_mod;
     struct ly_ctx *ctx;
 
@@ -1606,13 +1608,16 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
                     continue;
                 }
 
-                /* leaf-list never matches, it does not make sense */
+                /* leaf-list, did we find it with the correct value or not? */
                 if (sibling->schema->nodetype == LYS_LEAFLIST) {
-                    sibling = NULL;
-                    break;
+                    llist = (struct lyd_node_leaf_list *)sibling;
+                    if ((!llist_value && llist->value_str && llist->value_str[0])
+                            || (llist_value && strcmp(llist_value, llist->value_str))) {
+                        continue;
+                    }
                 }
 
-                /* is it a list? we need predicates'n'stuff then */
+                /* list, we need predicates'n'stuff then */
                 if (sibling->schema->nodetype == LYS_LIST) {
                     r = 0;
                     if (!has_predicate) {
