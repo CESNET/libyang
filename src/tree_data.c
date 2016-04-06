@@ -332,18 +332,18 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     }
 
     backup = leaf->value_str;
-    leaf->value_str = val_str;
+    leaf->value_str = lydict_insert(leaf->schema->module->ctx, val_str, 0);
 
     /* resolve the type correctly */
     if (lyp_parse_value(leaf, NULL, 1)) {
+        lydict_remove(leaf->schema->module->ctx, leaf->value_str);
         leaf->value_str = backup;
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
 
-    /* value is correct, finish the changes in leaf */
+    /* value is correct, remove backup */
     lydict_remove(leaf->schema->module->ctx, backup);
-    leaf->value_str = lydict_insert(leaf->schema->module->ctx, val_str, 0);
 
     if (leaf->schema->flags & LYS_UNIQUE) {
         /* locate the first parent list */
@@ -1390,7 +1390,7 @@ lyd_validate(struct lyd_node **node, int options, ...)
             if (!ctx->models.list[i]->data) {
                 continue;
             }
-            schema = ly_check_mandatory(NULL, ctx->models.list[i]->data);
+            schema = ly_check_mandatory(NULL, ctx->models.list[i]->data, (options & LYD_OPT_TYPEMASK) ? 0 : 1);
             if (schema) {
                 if (schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, schema, schema->name, schema->parent ? schema->parent->name : "module");
@@ -2571,7 +2571,7 @@ lyd_wd_add_leaf(const struct lys_module *wdmod, struct ly_ctx *ctx, struct lyd_n
     if (leaf->dflt) {
         /* leaf has a default value */
         dflt = leaf->dflt;
-    } else {
+    } else if (!(leaf->flags & LYS_MAND_TRUE)) {
         /* get the default value from the type */
         for (tpdf = leaf->type.der; tpdf && !dflt; tpdf = tpdf->type.der) {
             dflt = tpdf->dflt;
