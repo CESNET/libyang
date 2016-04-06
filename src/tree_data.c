@@ -594,7 +594,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
     }
 
     if (data_tree) {
-        parent = resolve_partial_json_data_nodeid(path, data_tree, options, &parsed);
+        parent = resolve_partial_json_data_nodeid(path, value, data_tree, options, &parsed);
         if (parsed == -1) {
             return NULL;
         }
