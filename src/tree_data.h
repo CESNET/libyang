@@ -257,7 +257,8 @@ struct lyd_node_anyxml {
 #define LYD_OPT_RPC        0x10 /**< Data represents RPC's input parameters. */
 #define LYD_OPT_RPCREPLY   0x20 /**< Data represents RPC's output parameters (maps to NETCONF <rpc-reply> data). */
 #define LYD_OPT_NOTIF      0x40 /**< Data represents an event notification data. */
-#define LYD_OPT_FILTER     0x80 /**< Data represents NETCONF subtree filter. Validation modifications:
+#define LYD_OPT_FILTER     0x80 /**< DEPRECATED option, do not use!
+                                     Data represents NETCONF subtree filter. Validation modifications:
                                      - leafs/leaf-lists with no data are allowed (even not allowed e.g. by length restriction)
                                      - multiple instances of container/leaf/.. are allowed
                                      - list's keys/unique nodes are not required
