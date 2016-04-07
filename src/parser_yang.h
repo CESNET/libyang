@@ -104,26 +104,17 @@ struct type_uses {
 struct yang_type {
     char flags;       /**< this is used to distinguish lyxml_elem * from a YANG temporary parsing structure */
     LY_DATA_TYPE base;
-    char *name;
+    const char *name;
     struct lys_type *type;
 };
 
+#include "parser_yang_bis.h"
+
 char * yang_read_string(const char *input, int size, int indent);
 
-int yang_read_common(struct lys_module *module,char *value, int type);
+int yang_read_common(struct lys_module *module,char *value, enum yytokentype type);
 
-int yang_read_prefix(struct lys_module *module, void *save, char *value,int type);
-
-/**
- * @brief Get free member of array
- *
- * @param[in/out] ptr Pointer to the array.
- * @param[in/out] act_size Pointer to the current size of array.
- * @param[in] type Type of array.
- * @param[in] sizeof_struct
- * @return first free member of array, NULL on error.
- */
-void *yang_elem_of_array(void **ptr, uint8_t *act_size, int type, int sizeof_struct);
+int yang_read_prefix(struct lys_module *module, void *save, char *value, enum yytokentype type);
 
 /**
  * @brief Add node to the array
@@ -144,23 +135,23 @@ void *yang_read_revision(struct lys_module *module, char *value);
 
 void *yang_read_feature(struct lys_module *module, char *value);
 
-int yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct unres_schema *unres, int type);
+int yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct unres_schema *unres, enum yytokentype type);
 
 void *yang_read_identity(struct lys_module *module, char *value);
 
 int yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, struct unres_schema *unres);
 
-void *yang_read_must(struct lys_module *module, struct lys_node *node, char *value, int type);
+void *yang_read_must(struct lys_module *module, struct lys_node *node, char *value, enum yytokentype type);
 
 int yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, char *what, int message);
 
 int yang_read_presence(struct lys_module *module, struct lys_node_container *cont, char *value);
 
-int yang_read_config(void *node, int value, int type);
+int yang_read_config(void *node, int value, enum yytokentype type);
 
 void store_flags(struct lys_node *node, uint8_t flags, int config_inherit);
 
-void *yang_read_when(struct lys_module *module, struct lys_node *node, int type, char *value);
+void *yang_read_when(struct lys_module *module, struct lys_node *node, enum yytokentype type, char *value);
 
 /**
  * @brief Allocate memory for node and add to the tree
@@ -174,15 +165,15 @@ void *yang_read_when(struct lys_module *module, struct lys_node *node, int type,
 */
 void * yang_read_node(struct lys_module *module, struct lys_node *parent, char *value, int nodetype, int sizeof_struct);
 
-int yang_read_default(struct lys_module *module, void *node, char *value, int type);
+int yang_read_default(struct lys_module *module, void *node, char *value, enum yytokentype type);
 
-int yang_read_units(struct lys_module *module, void *node, char *value, int type);
+int yang_read_units(struct lys_module *module, void *node, char *value, enum yytokentype type);
 
 int yang_read_key(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres);
 
 int yang_read_unique(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres);
 
-void *yang_read_type(struct lys_module *module, void *parent, char *value, int type);
+void *yang_read_type(struct lys_module *module, void *parent, char *value, enum yytokentype type);
 
 void *yang_read_length(struct lys_module *module, struct yang_type *typ, char *value);
 
@@ -255,7 +246,7 @@ int yang_check_flags(uint8_t *flags, uint8_t mask, char *what, char *where, int 
  * @param[in] submodule Pointer to the libyang submodule.
  * @param[in] unres Pointer to a unres_schema
  * @param[in] data Pointer to a NULL-terminated string containing YANG data to parse.
- * @param[in] size_data Size oof input string
+ * @param[in] size_data Size of input string
  * @return 0 on success, 1 on error.
  */
 int yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, const char *data, unsigned int size_data);

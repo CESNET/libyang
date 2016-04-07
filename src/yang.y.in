@@ -33,7 +33,6 @@
 #include "resolve.h"
 #include "common.h"
 #include "parser_yang.h"
-#include "parser_yang_bis.h"
 #include "parser_yang_lex.h"
 #include "parser.h"
 
@@ -1579,7 +1578,7 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                   if ($7.node.ptr_leaf->dflt) {
                                     if ($7.node.ptr_leaf->flags & LYS_MAND_TRUE) {
                                       /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
-                                      LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaf, "mandatory", "list");
+                                      LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaf, "mandatory", "leaf");
                                       LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
                                       YYERROR;
                                     }

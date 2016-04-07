@@ -1440,7 +1440,7 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
 
                     if (buf_backup) {
                         /* return previous internal buffer content */
-                        strcpy(module_name, buf_backup);
+                        strncpy(module_name, buf_backup, LY_BUF_SIZE - 1);
                         free(buf_backup);
                         buf_backup = NULL;
                     }
@@ -1563,12 +1563,14 @@ error:
 }
 
 struct lyd_node *
-resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int options, int *parsed)
+resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, struct lyd_node *start, int options,
+                                 int *parsed)
 {
     char *module_name = ly_buf(), *buf_backup = NULL;
     const char *id, *mod_name, *name;
     int r, ret, mod_name_len, nam_len, is_relative = -1, has_predicate, last_parsed;
     struct lyd_node *sibling, *last_match = NULL;
+    struct lyd_node_leaf_list *llist;
     const struct lys_module *prefix_mod, *prev_mod;
     struct ly_ctx *ctx;
 
@@ -1636,7 +1638,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
 
                     if (buf_backup) {
                         /* return previous internal buffer content */
-                        strcpy(module_name, buf_backup);
+                        strncpy(module_name, buf_backup, LY_BUF_SIZE - 1);
                         free(buf_backup);
                         buf_backup = NULL;
                     }
@@ -1654,13 +1656,16 @@ resolve_partial_json_data_nodeid(const char *nodeid, struct lyd_node *start, int
                     continue;
                 }
 
-                /* leaf-list never matches, it does not make sense */
+                /* leaf-list, did we find it with the correct value or not? */
                 if (sibling->schema->nodetype == LYS_LEAFLIST) {
-                    sibling = NULL;
-                    break;
+                    llist = (struct lyd_node_leaf_list *)sibling;
+                    if ((!llist_value && llist->value_str && llist->value_str[0])
+                            || (llist_value && strcmp(llist_value, llist->value_str))) {
+                        continue;
+                    }
                 }
 
-                /* is it a list? we need predicates'n'stuff then */
+                /* list, we need predicates'n'stuff then */
                 if (sibling->schema->nodetype == LYS_LIST) {
                     r = 0;
                     if (!has_predicate) {
@@ -4351,9 +4356,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
                 stype->der = (struct lys_tpdf *)yang;
             } else {
                 /* we need to always be able to free this, it's safe only in this case */
-                if (yang->name) {
-                    free(yang->name);
-                }
+                lydict_remove(mod->ctx, yang->name);
                 free(yang);
             }
 
@@ -4725,11 +4728,9 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres)
         if ((*unres)->type[i] == UNRES_TYPE_DER) {
             yin = (struct lyxml_elem *)((struct lys_type *)(*unres)->item[i])->der;
             if (yin->flags & LY_YANG_STRUCTURE_FLAG) {
-                yang = (struct yang_type *)yin;
+                yang =(struct yang_type *)yin;
                 yang->type->base = yang->base;
-                if (yang->name) {
-                    free(yang->name);
-                }
+                lydict_remove(module->ctx, yang->name);
                 free(yang);
             } else {
                 lyxml_free(module->ctx, yin);

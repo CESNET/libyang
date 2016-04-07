@@ -268,7 +268,15 @@ cast_string_recursive(struct lyd_node *node, int fake_cont, enum lyxp_node_type 
         break;
 
     case LYS_ANYXML:
-        lyxml_print_mem(&buf, ((struct lyd_node_anyxml *)node)->value->child, 0);
+        if (((struct lyd_node_anyxml *)node)->xml_struct) {
+            lyxml_print_mem(&buf, ((struct lyd_node_anyxml *)node)->value.xml, 0);
+        } else {
+            buf = strdup(((struct lyd_node_anyxml *)node)->value.str);
+            if (!buf) {
+                LOGMEM;
+                return;
+            }
+        }
         line = strtok_r(buf, "\n", &ptr);
         do {
             cast_string_realloc(indent * 2 + strlen(line) + 1, str, used, size);

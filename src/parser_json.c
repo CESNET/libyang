@@ -264,9 +264,8 @@ lyjson_parse_boolean(const char *data)
 static unsigned int
 json_get_anyxml(struct lyd_node_anyxml *axml, const char *data)
 {
-    unsigned int len = 0, x;
-    char stop, start, *xmlstr;
-    struct lyxml_elem *xml, *xmlnext;
+    unsigned int len = 0;
+    char stop, start;
     int level = 0;
 
     switch (data[len]) {
@@ -289,7 +288,8 @@ json_get_anyxml(struct lyd_node_anyxml *axml, const char *data)
         while (!isspace(data[len])) {
             len++;
         }
-        axml->value = NULL; /* TODO ??? */
+        axml->xml_struct = 0;
+        axml->value.str = NULL; /* TODO ??? */
         return len;
     }
 
@@ -307,24 +307,11 @@ json_get_anyxml(struct lyd_node_anyxml *axml, const char *data)
         if (!level) {
             /* we are done */
             if (!start) {
-                /* XML in string as we print it */
-                if (asprintf(&xmlstr, "<%s xmlns=\"%s\"/>", axml->schema->name, axml->schema->module->ns) == -1) {
-                    LOGMEM;
-                    return 0;
-                }
-                axml->value = lyxml_parse_elem(axml->schema->module->ctx, xmlstr, &x, NULL);
-                free(xmlstr);
-
-                xmlstr = strndup(&data[1], len - 2);
-                xml = lyxml_parse_mem(axml->schema->module->ctx, xmlstr, LYXML_PARSE_MULTIROOT);
-                if (xml) {
-                    LY_TREE_FOR_SAFE(xml, xmlnext, xml) {
-                        lyxml_add_child(axml->schema->module->ctx, axml->value, xml);
-                    }
-                }
-                free(xmlstr);
+                axml->xml_struct = 0;
+                axml->value.str = lydict_insert(axml->schema->module->ctx, &data[1], len - 2);
             } else {
-                axml->value = NULL; /* TODO ??? */
+                axml->xml_struct = 0;
+                axml->value.str = NULL; /* TODO ??? */
             }
             return len;
         }
@@ -346,22 +333,13 @@ json_get_value(struct lyd_node_leaf_list *leaf, const char *data, int options)
     assert(leaf && data);
     ctx = leaf->schema->module->ctx;
 
-    if (options & (LYD_OPT_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
+    if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
         resolve = 0;
     } else {
         resolve = 1;
     }
 
     stype = &((struct lys_node_leaf *)leaf->schema)->type;
-
-    if (options & LYD_OPT_FILTER) {
-        /* no value in filter (selection) node is accepted in this case */
-        if (!strncmp(&data[len], "null", 4)) {
-            leaf->value_type = stype->base;
-            len +=4;
-            goto end;
-        }
-    }
 
     if (leaf->schema->nodetype == LYS_LEAFLIST) {
         /* expecting begin-array */
@@ -463,7 +441,6 @@ repeat:
         }
     }
 
-end:
     len += skip_ws(&data[len]);
     return len;
 }
@@ -661,7 +638,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
     char *name, *prefix = NULL, *str = NULL;
     const struct lys_module *module = NULL;
     struct lys_node *schema = NULL;
-    struct lyd_node *result = NULL, *new, *list, *diter = NULL;
+    struct lyd_node *result = NULL, *new, *list, *diter = NULL, *first_sibling;
     struct lyd_attr *attr;
     struct attr_cont *attrs_aux;
 
@@ -895,8 +872,10 @@ attr_repeat:
             for (diter = prev; diter->prev != prev; diter = diter->prev);
         }
         diter->prev = result;
+        first_sibling = diter;
     } else {
         result->prev = result;
+        first_sibling = result;
     }
     result->schema = schema;
     result->validity = LYD_VAL_NOT;
@@ -988,17 +967,6 @@ attr_repeat:
             len++;
             len += skip_ws(&data[len]);
 
-            if (options & LYD_OPT_FILTER) {
-                /* filter selection node ? */
-                if (data[len] == ']') {
-                    break;
-                } else if (!strcmp(&data[len], "null")) {
-                    len += 4;
-                    len += skip_ws(&data[len]);
-                    break;
-                }
-            }
-
             if (data[len] != '{') {
                 LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, result,
                        "JSON data (missing list instance's begin-object)");
@@ -1038,7 +1006,9 @@ attr_repeat:
             if (data[len] == ',') {
                 /* various validation checks */
                 ly_errno = 0;
-                if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(list, options, unres)) {
+                if (!(options & LYD_OPT_TRUSTED) &&
+                        (lyv_data_content(list, options, unres) ||
+                         lyv_multicases(list, first_sibling == list ? NULL : first_sibling, 0, NULL))) {
                     if (ly_errno) {
                         goto error;
                     }
@@ -1056,12 +1026,7 @@ attr_repeat:
                 list->next = new;
 
                 /* fix the "last" pointer */
-                if (*parent) {
-                    diter = (*parent)->child;
-                } else {
-                    for (diter = prev; diter->prev != prev; diter = diter->prev);
-                }
-                diter->prev = new;
+                first_sibling->prev = new;
 
                 new->schema = list->schema;
                 list = new;
@@ -1079,7 +1044,9 @@ attr_repeat:
 
     /* various validation checks */
     ly_errno = 0;
-    if (!(options & LYD_OPT_TRUSTED) && lyv_data_content(result, options, unres)) {
+    if (!(options & LYD_OPT_TRUSTED) &&
+            (lyv_data_content(result, options, unres) ||
+             lyv_multicases(result, first_sibling == result ? NULL : first_sibling, 0, NULL))) {
         if (ly_errno) {
             goto error;
         }

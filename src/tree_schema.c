@@ -413,7 +413,7 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
 }
 
 const struct lys_node *
-ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema)
+ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema, int status)
 {
     const struct lys_node *siter, *saux, *saux2, *result, *parent = NULL, *parent2;
     const struct lyd_node *diter;
@@ -430,7 +430,7 @@ ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema)
 
 repeat:
     while (siter) {
-        if (lys_is_disabled(siter, 2)) {
+        if (lys_is_disabled(siter, 2) || (!status && (siter->flags & LYS_CONFIG_R))) {
             siter = siter->next;
             continue;
         }
@@ -466,7 +466,7 @@ repeat:
             parent2 = NULL;
 repeat_choice:
             while (siter && data) {
-                if (lys_is_disabled(siter, 2)) {
+                if (lys_is_disabled(siter, 2) || (!status && (siter->flags & LYS_CONFIG_R))) {
                     siter = siter->next;
                     continue;
                 }

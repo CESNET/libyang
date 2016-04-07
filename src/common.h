@@ -67,6 +67,7 @@ struct ly_err {
     uint8_t vlog_hide;
     uint8_t buf_used;
     uint16_t path_index;
+    const void *path_obj;
     char msg[LY_BUF_SIZE];
     char path[LY_BUF_SIZE];
     char buf[LY_BUF_SIZE];
@@ -197,9 +198,10 @@ typedef enum {
 
 enum LY_VLOG_ELEM {
     LY_VLOG_NONE = 0,
-    LY_VLOG_XML,
-    LY_VLOG_LYS,
-    LY_VLOG_LYD
+    LY_VLOG_XML, /* struct lyxml_elem* */
+    LY_VLOG_LYS, /* struct lys_node* */
+    LY_VLOG_LYD, /* struct lyd_node* */
+    LY_VLOG_STR  /* const char* */
 };
 void ly_vlog_hide(int hide);
 void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);

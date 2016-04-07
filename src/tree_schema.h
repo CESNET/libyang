@@ -343,8 +343,7 @@ typedef enum {
 } LY_DATA_TYPE;
 #define LY_DATA_TYPE_COUNT 20        /**< number of #LY_DATA_TYPE built-in types */
 #define LY_DATA_TYPE_MASK 0x3f       /**< mask for valid type values, 2 bits are reserver for #LY_TYPE_LEAFREF_UNRES and
-                                          #LY_TYPE_INST_UNRES in case of parsing with #LYD_OPT_FILTER or #LYD_OPT_EDIT
-                                          options. */
+                                          #LY_TYPE_INST_UNRES in case of parsing with #LYD_OPT_EDIT options. */
 #define LY_TYPE_LEAFREF_UNRES 0x40   /**< flag for unresolved leafref, the rest of bits store the target node's type */
 #define LY_TYPE_INST_UNRES 0x80      /**< flag for unresolved instance-identifier, always use in conjunction with LY_TYPE_INST */
 

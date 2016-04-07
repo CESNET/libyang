@@ -161,8 +161,7 @@ lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr 
     return result;
 }
 
-/* copy_ns: 0 - set invalid namespaces to NULL, 1 - copy them into this subtree */
-static void
+void
 lyxml_correct_elem_ns(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns, int correct_attrs)
 {
     const struct lyxml_ns *tmp_ns;

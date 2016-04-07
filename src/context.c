@@ -190,22 +190,55 @@ ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodul
 }
 
 API const struct lys_submodule *
-ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *revision, const char *submodule)
+ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *revision, const char *submodule,
+                     const char *sub_revision)
 {
     const struct lys_module *mainmod;
+    const struct lys_submodule *ret = NULL, *submod;
+    uint32_t idx = 0;
 
-    if (!module || !submodule) {
+    if (!ctx || !submodule || (revision && !module)) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
 
-    mainmod = ly_ctx_get_module(ctx, module, revision);
-    if (!mainmod) {
-        ly_errno = LY_EINVAL;
-        return NULL;
+    while ((mainmod = ly_ctx_get_module_iter(ctx, &idx))) {
+        if (module && strcmp(mainmod->name, module)) {
+            /* main module name does not match */
+            continue;
+        }
+
+        if (revision && (!mainmod->rev || strcmp(revision, mainmod->rev[0].date))) {
+            /* main module revision does not match */
+            continue;
+        }
+
+        submod = ly_ctx_get_submodule2(mainmod, submodule);
+        if (!submod) {
+            continue;
+        }
+
+        if (!sub_revision) {
+            /* store only if newer */
+            if (ret) {
+                if (submod->rev && (!ret->rev || (strcmp(submod->rev[0].date, ret->rev[0].date) > 0))) {
+                    ret = submod;
+                }
+            } else {
+                ret = submod;
+            }
+        } else {
+            /* store only if revision matches, we are done if it does */
+            if (!submod->rev) {
+                continue;
+            } else if (!strcmp(sub_revision, submod->rev[0].date)) {
+                ret = submod;
+                break;
+            }
+        }
     }
 
-    return ly_ctx_get_submodule2(mainmod, submodule);
+    return ret;
 }
 
 static const struct lys_module *
@@ -352,41 +385,6 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
     return module;
 }
 
-API const char **
-ly_ctx_get_module_names(const struct ly_ctx *ctx)
-{
-    int i, j, k;
-    const char **result = NULL;
-
-    if (!ctx) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
-    result = malloc((ctx->models.used+1) * sizeof *result);
-    if (!result) {
-        LOGMEM;
-        return NULL;
-    }
-
-    for (i = j = 0; i < ctx->models.used; i++) {
-        /* avoid duplicities when multiple revisions of the same module are present */
-        for (k = j - 1; k >= 0; k--) {
-            if (ly_strequal(result[k], ctx->models.list[i]->name, 1)) {
-                break;
-            }
-        }
-        if (k < 0) {
-            /* no duplication found */
-            result[j] = ctx->models.list[i]->name;
-            j++;
-        }
-    }
-    result[j] = NULL;
-
-    return result;
-}
-
 API const struct lys_module *
 ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *idx)
 {
@@ -400,38 +398,6 @@ ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *idx)
     }
 
     return ctx->models.list[(*idx)++];
-}
-
-API const char **
-ly_ctx_get_submodule_names(const struct ly_ctx *ctx, const char *module_name)
-{
-    int i;
-    const char **result = NULL;
-    const struct lys_module *mod;
-
-    if (!ctx) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
-    mod = ly_ctx_get_module(ctx, module_name, NULL);
-    if (!mod) {
-        LOGERR(LY_EVALID, "Data model \"%s\" not loaded", module_name);
-        return NULL;
-    }
-
-    result = malloc((mod->inc_size+1) * sizeof *result);
-    if (!result) {
-        LOGMEM;
-        return NULL;
-    }
-
-    for (i = 0; i < mod->inc_size && mod->inc[i].submodule; i++) {
-        result[i] = mod->inc[i].submodule->name;
-    }
-    result[i] = NULL;
-
-    return result;
 }
 
 static int

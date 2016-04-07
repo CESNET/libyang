@@ -99,14 +99,12 @@ extern "C" {
  *
  * Context can hold multiple revisons of the same schema.
  *
- * Context holds all modules and their submodules internally. The list of available module names is
- * provided via ly_ctx_get_module_names() functions. Similarly, caller can get also a list of submodules
- * names of a specific module using ly_ctx_get_submodule_names() function. The returned names can be
- * subsequently used to get the (sub)module structures using ly_ctx_get_module() and ly_ctx_get_submodule().
- * Alternatively, the ly_ctx_info() function can be used to get complex information about the schemas in the context
- * in the form of data tree defined by
+ * Context holds all modules and their submodules internally. To get a specific module or submodule, use
+ * ly_ctx_get_module() and ly_ctx_get_submodule(). If you need to do something with all the modules or
+ * submodules in the context, it is advised to iterate over them using ly_ctx_get_module_iter(), it is
+ * the most efficient way. Alternatively, the ly_ctx_info() function can be used to get complex information
+ * about the schemas in the context in the form of data tree defined by
  * <a href="https://tools.ietf.org/html/draft-ietf-netconf-yang-library-04">ietf-yang-library</a> schema.
- * Also, if all the modules need to be iterated over, it can be done effectively using ly_ctx_get_module_iter().
  *
  * Modules held by a context cannot be removed one after one. The only way how to \em change modules in the
  * context is to create a new context and remove the old one. To remove a context, there is ly_ctx_destroy()
@@ -125,11 +123,9 @@ extern "C" {
  * - ly_ctx_get_module_clb()
  * - ly_ctx_load_module()
  * - ly_ctx_info()
- * - ly_ctx_get_module_names()
  * - ly_ctx_get_module_iter()
  * - ly_ctx_get_module()
  * - ly_ctx_get_module_by_ns()
- * - ly_ctx_get_submodule_names()
  * - ly_ctx_get_submodule()
  * - ly_ctx_get_node()
  * - ly_ctx_destroy()
@@ -423,7 +419,7 @@ extern "C" {
  * can cause failure of various libyang functions later.
  *
  * Creating data is generally possible in two ways, they can be combined. You can add nodes one-by-one based on
- * the node name and/or its parent (lyd_new(), lyd_new_anyxml(), lyd_new_leaf(), adn their output variants) or
+ * the node name and/or its parent (lyd_new(), lyd_new_anyxml_*(), lyd_new_leaf(), adn their output variants) or
  * address the nodes using a simple XPath addressing (lyd_new_path()). The latter enables to create a whole path
  * of nodes, requires less information about the modified data, and is generally simpler to use. The path format
  * specifics can be found [here](@ref howtoxpath).
@@ -442,11 +438,13 @@ extern "C" {
  * - lyd_insert_after()
  * - lyd_insert_attr()
  * - lyd_new()
- * - lyd_new_anyxml()
+ * - lyd_new_anyxml_str()
+ * - lyd_new_anyxml_xml()
  * - lyd_new_leaf()
  * - lyd_new_path()
  * - lyd_output_new()
- * - lyd_output_new_anyxml()
+ * - lyd_output_new_anyxml_str()
+ * - lyd_output_new_anyxml_xml()
  * - lyd_output_new_leaf()
  * - lyd_unlink()
  * - lyd_free()
@@ -613,17 +611,6 @@ const char *ly_ctx_get_searchdir(const struct ly_ctx *ctx);
 struct lyd_node *ly_ctx_info(struct ly_ctx *ctx);
 
 /**
- * @brief Get the names of the loaded modules.
- *
- * @param[in] ctx Context with the modules.
- * @return NULL-terminated array of the module names,
- * NULL on error. The returned array must be freed by the caller, do not free
- * names in the array. Also remember that the names will be freed with freeing
- * the context.
- */
-const char **ly_ctx_get_module_names(const struct ly_ctx *ctx);
-
-/**
  * @brief Iterate over all modules in a context.
  *
  * @param[in] ctx Context with the modules.
@@ -631,18 +618,6 @@ const char **ly_ctx_get_module_names(const struct ly_ctx *ctx);
  * @return Next context module, NULL if the last was already returned.
  */
 const struct lys_module *ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *idx);
-
-/**
- * @brief Get the names of the loaded submodules of the specified module.
- *
- * @param[in] ctx Context with the modules.
- * @param[in] module_name Name of the parent module.
- * @return NULL-terminated array of submodule names of the parent module,
- * NULL on error. The returned array must be freed by the caller, do not free
- * names in the array. Also remember that the names will be freed with freeing
- * the context.
- */
-const char **ly_ctx_get_submodule_names(const struct ly_ctx *ctx, const char *module_name);
 
 /**
  * @brief Get pointer to the schema tree of the module of the specified name.
@@ -737,13 +712,16 @@ const struct lys_module *ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const
  * If you already have the pointer to the submodule's main module, use ly_ctx_get_submodule2() instead.
  *
  * @param[in] ctx Context to work in.
- * @param[in] module Name of the main (belongs-to) module.
- * @param[in] revision Optional revision date of the main module. If not specified, the newist revision is used.
+ * @param[in] module Name of the main (belongs-to) module. If NULL, all module submodules are searched.
+ * @param[in] revision Optional revision date of \p module. If NULL, all revisions of \p module
+ * are searched. If set, \p module must also be set.
  * @param[in] submodule Name of the submodule to get.
+ * @param[in] sub_revision Optional revision date of \p submodule. If NULL, the newest revision of \p submodule
+ * is returned.
  * @return Pointer to the data model structure.
  */
 const struct lys_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *revision,
-                                                 const char *submodule);
+                                                 const char *submodule, const char *sub_revision);
 
 /**
  * @brief Get submodule of a main module.

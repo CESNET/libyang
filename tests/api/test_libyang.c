@@ -32,6 +32,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <string.h>
+#include <limits.h>
 
 #include "../config.h"
 #include "../../src/libyang.h"
@@ -165,8 +166,11 @@ static void
 test_ly_ctx_get_searchdir(void **state)
 {
     const char *result;
-    char *yang_folder = TESTS_DIR"/data/files";
+    char yang_folder[PATH_MAX];
     (void) state; /* unused */
+
+    assert_ptr_not_equal(realpath(TESTS_DIR"/data/files", yang_folder), NULL);
+
     ctx = ly_ctx_new(yang_folder);
     if (!ctx) {
         fail();
@@ -185,9 +189,13 @@ static void
 test_ly_ctx_set_searchdir(void **state)
 {
     const char *result;
-    char *yang_folder = TESTS_DIR"/data/files";
-    char *new_yang_folder = TESTS_DIR"/schema/yin";
+    char yang_folder[PATH_MAX];
+    char new_yang_folder[PATH_MAX];
     (void) state; /* unused */
+
+    assert_ptr_not_equal(realpath(TESTS_DIR"/data/files", yang_folder), NULL);
+    assert_ptr_not_equal(realpath(TESTS_DIR"/schema/yin", new_yang_folder), NULL);
+
     ctx = ly_ctx_new(yang_folder);
     if (!ctx) {
         fail();
@@ -208,9 +216,12 @@ static void
 test_ly_ctx_set_searchdir_invalid(void **state)
 {
     const char *result;
-    char *yang_folder = TESTS_DIR"/data/files";
+    char yang_folder[PATH_MAX];
     char *new_yang_folder = "INVALID_PATH";
     (void) state; /* unused */
+
+    assert_ptr_not_equal(realpath(TESTS_DIR"/data/files", yang_folder), NULL);
+
     ctx = ly_ctx_new(yang_folder);
     if (!ctx) {
         fail();
@@ -259,54 +270,6 @@ test_ly_ctx_info(void **state)
     assert_int_equal(LYD_VAL_OK, node->validity);
 
     lyd_free(node);
-}
-
-static void
-test_ly_ctx_get_module_names(void **state)
-{
-    (void) state; /* unused */
-    const char **result;
-
-    result = ly_ctx_get_module_names(NULL);
-    if (result) {
-        fail();
-    }
-
-    result = ly_ctx_get_module_names(ctx);
-    if (!result) {
-        fail();
-    }
-
-    assert_string_equal("yang", *result);
-
-    free(result);
-}
-
-static void
-test_ly_ctx_get_submodule_names(void **state)
-{
-    (void) state; /* unused */
-    const char **result;
-    const char *module_name = "a";
-
-    result = ly_ctx_get_submodule_names(NULL, module_name);
-    if (result) {
-        fail();
-    }
-
-    result = ly_ctx_get_submodule_names(ctx, "invalid");
-    if (result) {
-        fail();
-    }
-
-    result = ly_ctx_get_submodule_names(ctx, module_name);
-    if (!result) {
-        fail();
-    }
-
-    assert_string_equal("asub", *result);
-
-    free(result);
 }
 
 static void
@@ -458,22 +421,22 @@ test_ly_ctx_get_submodule(void **state)
     const char *sub_name = "asub";
     const char *revision = NULL;
 
-    submodule = ly_ctx_get_submodule(NULL, mod_name, revision, sub_name);
+    submodule = ly_ctx_get_submodule(NULL, mod_name, revision, sub_name, NULL);
     if (submodule) {
         fail();
     }
 
-    submodule = ly_ctx_get_submodule(ctx, NULL, revision, sub_name);
+    submodule = ly_ctx_get_submodule(ctx, NULL, revision, sub_name, "2010-02-08");
     if (submodule) {
         fail();
     }
 
-    submodule = ly_ctx_get_submodule(ctx, mod_name, revision, NULL);
+    submodule = ly_ctx_get_submodule(ctx, mod_name, revision, NULL, NULL);
     if (submodule) {
         fail();
     }
 
-    submodule = ly_ctx_get_submodule(ctx, mod_name, revision, sub_name);
+    submodule = ly_ctx_get_submodule(ctx, mod_name, revision, sub_name, NULL);
     if (!submodule) {
         fail();
     }
@@ -761,8 +724,6 @@ int main(void)
         cmocka_unit_test(test_ly_ctx_set_searchdir),
         cmocka_unit_test(test_ly_ctx_set_searchdir_invalid),
         cmocka_unit_test_teardown(test_ly_ctx_info, teardown_f),
-        cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_names, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule_names, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_older, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_load_module, setup_f, teardown_f),
