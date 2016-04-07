@@ -386,6 +386,10 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
                     }
                     (*index) = LY_BUF_SIZE - len;
                     memcpy(&path[(*index)], (const char *)iter, len - 1);
+                    /* skip the first '/', it will get added few lines down, set name, iter properly */
+                    ++(*index);
+                    name = "";
+                    iter = NULL;
                     break;
                 default:
                     /* shouldn't be here */
