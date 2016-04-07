@@ -34,6 +34,9 @@
 #define SCHEMA_FOLDER_YIN TESTS_DIR"/schema/yin/ietf"
 #define SCHEMA_FOLDER_YANG TESTS_DIR"/schema/yang/ietf"
 
+char yang_files[38][50] = {};
+char yin_files[38][50] = {};
+
 static int
 setup_ctx(void **state, int format)
 {
@@ -72,10 +75,28 @@ teardown_ctx(void **state)
 }
 
 static void
+write_file(char *filename, const char *name, const struct lys_module *module, LYS_OUTFORMAT format)
+{
+    FILE *f;
+
+    strcpy(filename, name);
+    strcat(filename, "_");
+    strcat(filename, module->name);
+    f = fopen(filename, "w");
+    if (!f) {
+        fprintf(stderr, "unable to open \"%s\" file.\n", filename);
+        fail();
+    }
+    lys_print_file(f, module, format, NULL);
+    fclose(f);
+}
+
+static void
 test_modules(void **state)
 {
     struct ly_ctx *ctx = *state;
     char *extension;
+    const struct lys_module *module;
 
     char files[19][32] = { "iana-crypt-hash", "iana-if-type", "ietf-inet-types@2010-09-24",
                            "ietf-inet-types", "ietf-interfaces", "ietf-ipfix-psamp", "ietf-ip",
@@ -102,12 +123,103 @@ test_modules(void **state)
     for (i = 0; i < 19; i++) {
         strcat(files[i], extension);
         fprintf(stdout, "Loading \"%s\" module ... ", files[i]);
-        if (!lys_parse_path(ctx, files[i], format)) {
+        if (!(module = lys_parse_path(ctx, files[i], format))) {
             fprintf(stdout, "failed\n");
             fail();
         }
         fprintf(stdout, "ok\n");
+        if (format == LYS_IN_YIN) {
+            write_file(yang_files[i], "tmp1", module, LYS_OUT_YANG);
+            write_file(yin_files[i], "tmp3", module, LYS_OUT_YIN);
+        } else {
+            write_file(yang_files[i + 19], "tmp2", module, LYS_OUT_YANG);
+            write_file(yin_files[i + 19], "tmp4", module, LYS_OUT_YIN);
+        }
     }
+}
+
+static void
+compare_modules(void **state)
+{
+    int i, ch1, ch2;
+    FILE *f1, *f2;
+    char filename[1024];
+    char (*files)[38][50] = *state;
+
+    for (i = 0; i < 19; ++i) {
+        if (!(*files)[i]) {
+            fprintf(stderr, "missing file name.\n");
+            fail();
+        }
+        fprintf(stdout, "Compare \"%s\" module ... ", &(*files)[i][5]);
+        strcpy(filename, SCHEMA_FOLDER_YIN);
+        strcat(filename, "/");
+        strcat(filename, (*files)[i]);
+        f1 = fopen(filename, "r");
+        if (!f1) {
+            fprintf(stdout, "failed\n");
+            fprintf(stderr, "unable to open \"%s\" file.\n", filename);
+            fail();
+        }
+        strcpy(filename, SCHEMA_FOLDER_YANG);
+        strcat(filename, "/");
+        strcat(filename, (*files)[i + 19]);
+        f2 = fopen(filename, "r");
+        if (!f2) {
+            fclose(f1);
+            fprintf(stdout, "failed\n");
+            fprintf(stderr, "unable to open \"%s\" file.\n", (*files)[i + 19]);
+            fail();
+        }
+
+        ch1 = getc(f1);
+        ch2 = getc(f2);
+        while ((ch1 != EOF) && (ch2 != EOF) && (ch1 == ch2)) {
+            ch1 = getc(f1);
+            ch2 = getc(f2);
+        }
+        fclose(f1);
+        fclose(f2);
+        if (ch1 == ch2) {
+            fprintf(stdout, "ok\n");
+        } else {
+            fprintf(stdout, "failed\n");
+            fail();
+        }
+    }
+}
+
+static int
+setup_files_yin(void **state)
+{
+    *state = &yin_files;
+    return 0;
+}
+
+static int
+setup_files_yang(void **state)
+{
+    *state = &yang_files;
+    return 0;
+}
+
+static int
+teardown_files(void **state)
+{
+    int i;
+
+    (void)state; /* unused */
+    chdir(SCHEMA_FOLDER_YIN);
+    for (i = 0; i < 19; ++i) {
+        remove(yang_files[i]);
+        remove(yin_files[i]);
+    }
+    chdir(SCHEMA_FOLDER_YANG);
+    for (i = 19; i < 38; ++i) {
+        remove(yang_files[i]);
+        remove(yin_files[i]);
+    }
+    return 0;
 }
 
 int
@@ -115,8 +227,10 @@ main(void)
 {
     const struct CMUnitTest cmut[] = {
         cmocka_unit_test_setup_teardown(test_modules, setup_ctx_yin, teardown_ctx),
-        cmocka_unit_test_setup_teardown(test_modules, setup_ctx_yang, teardown_ctx)
+        cmocka_unit_test_setup_teardown(test_modules, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(compare_modules, setup_files_yang, NULL),
+        cmocka_unit_test_setup_teardown(compare_modules, setup_files_yin, NULL)
     };
 
-    return cmocka_run_group_tests(cmut, NULL, NULL);
+    return cmocka_run_group_tests(cmut, NULL, teardown_files);
 }
