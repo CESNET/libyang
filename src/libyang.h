@@ -1002,6 +1002,7 @@ typedef enum {
     /* */
     LYVE_MISSELEM,     /**< missing required element (data) */
     LYVE_INVAL,        /**< invalid value of an element (data) */
+    LYVE_INVALATTR,    /**< invalid attribute value (data) */
     LYVE_INATTR,       /**< invalid attribute in an element (data) */
     LYVE_MISSATTR,     /**< missing attribute in an element (data) */
     LYVE_OORVAL,       /**< value out of range/length (data) */

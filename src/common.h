@@ -167,6 +167,7 @@ typedef enum {
     LYE_INELEM_LEN,
     LYE_MISSELEM,
     LYE_INVAL,
+    LYE_INVALATTR,
     LYE_INATTR,
     LYE_MISSATTR,
     LYE_OORVAL,

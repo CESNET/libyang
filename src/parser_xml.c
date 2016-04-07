@@ -241,64 +241,89 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
 
     /* check insert attribute and its values */
     if (options & LYD_OPT_EDIT) {
+        /* 0x01 - insert attribute present
+         * 0x02 - insert is relative (before or after)
+         * 0x04 - value attribute present
+         * 0x08 - key attribute present
+         * 0x10 - operation not allowing insert attribute
+         */
         i = 0;
         for (attr = xml->attr; attr; attr = attr->next) {
-            if (attr->type != LYXML_ATTR_STD || !attr->ns ||
-                    strcmp(attr->name, "insert") || strcmp(attr->ns->value, LY_NSYANG)) {
+            if (attr->type != LYXML_ATTR_STD || !attr->ns) {
+                /* not interesting attribute or namespace declaration */
                 continue;
             }
 
-            /* insert attribute present */
-            if (!(schema->flags & LYS_USERORDERED)) {
-                /* ... but it is not expected */
-                LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), "insert", schema->name);
-                return -1;
-            }
+            if (!strcmp(attr->name, "operation") && !strcmp(attr->ns->value, LY_NSNC)) {
+                if (!strcmp(attr->value, "delete") || !strcmp(attr->value, "remove")) {
+                    i |= 0x10;
+                } else if (strcmp(attr->value, "create") &&
+                        strcmp(attr->value, "merge") &&
+                        strcmp(attr->value, "replace")) {
+                    /* unknown operation */
+                    LOGVAL(LYE_INVALATTR, LY_VLOG_LYD, (*result), attr->value, attr->name);
+                    return -1;
+                }
+            } else if (!strcmp(attr->name, "insert") && !strcmp(attr->ns->value, LY_NSYANG)) {
+                /* 'insert' attribute present */
+                if (!(schema->flags & LYS_USERORDERED)) {
+                    /* ... but it is not expected */
+                    LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), "insert", schema->name);
+                    return -1;
+                }
 
-            if (i) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "insert attributes", xml->name);
-                return -1;
+                if (i & 0x01) {
+                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "insert attributes", xml->name);
+                    return -1;
+                }
+                if (!strcmp(attr->value, "first") || !strcmp(attr->value, "last")) {
+                    i |= 0x01;
+                } else if (!strcmp(attr->value, "before") || !strcmp(attr->value, "after")) {
+                    i |= 0x01 | 0x02;
+                } else {
+                    LOGVAL(LYE_INVALATTR, LY_VLOG_LYD, (*result), attr->value, attr->name);
+                    return -1;
+                }
+                str = attr->name;
+            } else if (!strcmp(attr->name, "value") && !strcmp(attr->ns->value, LY_NSYANG)) {
+                if (i & 0x04) {
+                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "value attributes", xml->name);
+                    return -1;
+                } else if (schema->nodetype & LYS_LIST) {
+                    LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, schema->name);
+                    return -1;
+                }
+                i |= 0x04;
+                str = attr->name;
+            } else if (!strcmp(attr->name, "key") && !strcmp(attr->ns->value, LY_NSYANG)) {
+                if (i & 0x08) {
+                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "key attributes", xml->name);
+                    return -1;
+                } else if (schema->nodetype & LYS_LEAFLIST) {
+                    LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, schema->name);
+                    return -1;
+                }
+                i |= 0x08;
+                str = attr->name;
             }
-            if (!strcmp(attr->value, "first") || !strcmp(attr->value, "last")) {
-                i = 1;
-            } else if (!strcmp(attr->value, "before") || !strcmp(attr->value, "after")) {
-                i = 2;
-            } else {
-                LOGVAL(LYE_INARG, LY_VLOG_LYD, (*result), attr->value, attr->name);
-                return -1;
-            }
-            str = attr->name;
         }
 
-        for (attr = xml->attr; attr; attr = attr->next) {
-            if (attr->type != LYXML_ATTR_STD || !attr->ns ||
-                    (strcmp(attr->name, "value") && strcmp(attr->name, "key")) ||
-                    strcmp(attr->ns->value, LY_NSYANG)) {
-                continue;
-            }
-
-            /* the value or key attribute is present */
-            if (i < 2 ||
-                    ((schema->nodetype & LYS_LIST) && !strcmp(attr->name, "value")) ||
-                    ((schema->nodetype & LYS_LEAFLIST) && !strcmp(attr->name, "key"))) {
-                /* but it shouldn't */
-                LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, schema->name);
-                return -1;
-            }
-            i++;
-            str = attr->name;
-        }
-        if (i && !(schema->nodetype & (LYS_LEAFLIST | LYS_LIST))) {
+        /* report errors */
+        if (i > 0x10 || (i && !(schema->nodetype & (LYS_LEAFLIST | LYS_LIST)))) {
             /* attributes in wrong elements */
             LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), str, xml->name);
             return -1;
-        } else if (i == 2) {
-            /* missing value attribute for "before" or "after" */
-            LOGVAL(LYE_MISSATTR, LY_VLOG_LYD, (*result), "value", xml->name);
+        } else if (i == 3) {
+            /* 0x01 | 0x02 - relative position, but value/key is missing */
+            if (schema->nodetype & LYS_LIST) {
+                LOGVAL(LYE_MISSATTR, LY_VLOG_LYD, (*result), "key", xml->name);
+            } else { /* LYS_LEAFLIST */
+                LOGVAL(LYE_MISSATTR, LY_VLOG_LYD, (*result), "value", xml->name);
+            }
             return -1;
-        } else if (i > 3) {
-            /* more than one instance of the value attribute */
-            LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "value attributes", xml->name);
+        } else if ((i & (0x04 | 0x08)) && !(i & 0x02)) {
+            /* key/value without relative position */
+            LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), (i & 0x04) ? "value" : "key", schema->name);
             return -1;
         }
     }
