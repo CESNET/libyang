@@ -1570,7 +1570,7 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                     LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaf, "type", "leaf");
                                     YYERROR;
                                   } else {
-                                      if (unres_schema_add_node(trg, unres, &$7.node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *) $7.node.ptr_leaf)) {
+                                      if (unres_schema_add_node(trg, unres, &$7.node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *) $7.node.ptr_leaf->parent)) {
                                         $7.node.ptr_leaf->type.der = NULL;
                                         YYERROR;
                                       }
@@ -1703,7 +1703,7 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                              YYERROR;
                                            } else {
                                              if (unres_schema_add_node(trg, unres, &$7.node.ptr_leaflist->type, UNRES_TYPE_DER,
-                                                                      (struct lys_node *) $7.node.ptr_leaflist)) {
+                                                                      (struct lys_node *) $7.node.ptr_leaflist->parent)) {
                                                YYERROR;
                                              }
                                            }
