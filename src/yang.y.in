@@ -3875,5 +3875,4 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...){
 
   (void)yylloc; /* unused */
   LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yyget_text(scanner));
-  free(s);
 }
