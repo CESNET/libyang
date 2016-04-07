@@ -1999,6 +1999,9 @@ yang_use_extension(struct lys_module *module, struct lys_node *data_node, void *
             break;
         }
     }
+    if (!ns && !strcmp(module->prefix, prefix)) {
+        ns = (module->type) ? ((struct lys_submodule *)module)->belongsto->ns : module->ns;
+    }
     if (ns && !strcmp(ns, LY_NSNACM)) {
         if (!strcmp(identif, "default-deny-write")) {
             data_node->nacm |= LYS_NACM_DENYW;
