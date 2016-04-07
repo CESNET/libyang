@@ -241,7 +241,12 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
                     continue;
                 }
                 if (!lyd_compare(diter, node, 1)) { /* comparing keys and unique combinations */
-                    LOGVAL(LYE_DUPLIST, LY_VLOG_LYD, node, schema->name);
+                    if (schema->nodetype == LYS_LIST) {
+                        LOGVAL(LYE_DUPLIST, LY_VLOG_LYD, node, schema->name);
+                    } else {
+                        LOGVAL(LYE_DUPLEAFLIST, LY_VLOG_LYD, node, schema->name,
+                               ((struct lyd_node_leaf_list *)node)->value_str);
+                    }
                     return EXIT_FAILURE;
                 }
             }
