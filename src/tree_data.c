@@ -250,13 +250,6 @@ lyd_create_leaf(const struct lys_node *schema, const char *val_str)
     ret->value_type = ((struct lys_node_leaf *)schema)->type.base;
     ret->value_str = lydict_insert(schema->module->ctx, val_str, 0);
 
-    /* resolve the type correctly */
-    if (lyp_parse_value(ret, NULL, 1)) {
-        lyd_free((struct lyd_node *)ret);
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
     return (struct lyd_node *)ret;
 }
 
@@ -276,6 +269,12 @@ _lyd_new_leaf(struct lyd_node *parent, const struct lys_node *schema, const char
             lyd_free(ret);
             return NULL;
         }
+    }
+
+    /* resolve the type correctly (after it was connected to parent cause of log) */
+    if (lyp_parse_value((struct lyd_node_leaf_list *)ret, NULL, 1)) {
+        lyd_free((struct lyd_node *)ret);
+        return NULL;
     }
 
     if (ret->schema->flags & LYS_UNIQUE) {
@@ -338,7 +337,6 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     if (lyp_parse_value(leaf, NULL, 1)) {
         lydict_remove(leaf->schema->module->ctx, leaf->value_str);
         leaf->value_str = backup;
-        ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
 
@@ -492,13 +490,23 @@ lyd_output_new(const struct lys_node *schema)
 API struct lyd_node *
 lyd_output_new_leaf(const struct lys_node *schema, const char *val_str)
 {
+    struct lyd_node *ret;
+
     if (!schema || (schema->nodetype != LYS_LEAF)
             || !lys_parent(schema) || (lys_parent(schema)->nodetype != LYS_OUTPUT)) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
 
-    return lyd_create_leaf(schema, val_str);
+    ret = lyd_create_leaf(schema, val_str);
+
+    /* resolve the type correctly */
+    if (lyp_parse_value((struct lyd_node_leaf_list *)ret, NULL, 1)) {
+        lyd_free((struct lyd_node *)ret);
+        return NULL;
+    }
+
+    return ret;
 }
 
 API struct lyd_node *
