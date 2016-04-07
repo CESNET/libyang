@@ -398,7 +398,7 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
                     }
                     (*index) = LY_BUF_SIZE - len;
                     memcpy(&path[(*index)], (const char *)iter, len - 1);
-                    break;
+                    goto log;
                 default:
                     /* shouldn't be here */
                     iter = NULL;
