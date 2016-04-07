@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 2.6)
 
 set(api_tests test_libyang test_tree_schema test_xml test_dict test_tree_data)
 set(data_tests test_data_initialization test_leafref_remove test_instid_remove test_keys test_autodel test_when test_defaults test_emptycont)
-set(schema_yin_tests test_augment test_print_transform)
-set(schema_tests test_ietf)
+set(schema_yin_tests test_print_transform)
+set(schema_tests test_ietf test_augment)
 
 foreach(test_name IN LISTS api_tests)
     add_executable(${test_name} api/${test_name}.c)
