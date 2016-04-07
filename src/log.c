@@ -178,13 +178,13 @@ const char *ly_errs[] = {
 /* LYE_XPATH_INARGTYPE */ "Wrong type of argument #%d (%s) for the XPath function %s.",
 
 /* LYE_PATH_INCHAR */  "Unexpected character(s) '%c' (%s).",
-/* LYE_PATH_INMOD */   "Module not found (%s).",
-/* LYE_PATH_MISSMOD */ "Missing module name (%s).",
-/* LYE_PATH_INNODE */  "Schema node not found (%s).",
+/* LYE_PATH_INMOD */   "Module not found.",
+/* LYE_PATH_MISSMOD */ "Missing module name.",
+/* LYE_PATH_INNODE */  "Schema node not found.",
 /* LYE_PATH_INKEY */   "List key not found or on incorrect position (%s).",
 /* LYE_PATH_MISSKEY */ "Not all list keys specified (%s).",
 /* LYE_PATH_EXISTS */  "Node already exists.",
-/* LYE_PATH_MISSPAR */ "Parent does not exist (%s).",
+/* LYE_PATH_MISSPAR */ "Parent does not exist.",
 };
 
 static const LY_VECODE ecode2vecode[] = {

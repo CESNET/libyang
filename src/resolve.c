@@ -1369,13 +1369,17 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
         start = start->child;
         if (!start) {
             /* no descendants, fail for sure */
-            LOGVAL(LYE_PATH_INNODE, LY_VLOG_NONE, NULL, name);
+            str = strndup(nodeid, (name + nam_len) - nodeid);
+            LOGVAL(LYE_PATH_INNODE, LY_VLOG_STR, str);
+            free(str);
             return NULL;
         }
         module = start->module;
     } else {
         if (!mod_name) {
-            LOGVAL(LYE_PATH_MISSMOD, LY_VLOG_NONE, NULL, name);
+            str = strndup(nodeid, (name + nam_len) - nodeid);
+            LOGVAL(LYE_PATH_MISSMOD, LY_VLOG_STR, nodeid);
+            free(str);
             return NULL;
         }
 
@@ -1383,7 +1387,9 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
         module = ly_ctx_get_module(ctx, str, NULL);
         free(str);
         if (!module) {
-            LOGVAL(LYE_PATH_INMOD, LY_VLOG_NONE, NULL, mod_name);
+            str = strndup(nodeid, (mod_name + mod_name_len) - nodeid);
+            LOGVAL(LYE_PATH_INMOD, LY_VLOG_STR, str);
+            free(str);
             return NULL;
         }
         start = module->data;
@@ -1414,7 +1420,9 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
                     /* will also find an augment module */
                     prefix_mod = ly_ctx_get_module(ctx, module_name, NULL);
                     if (!prefix_mod) {
-                        LOGVAL(LYE_PATH_INMOD, LY_VLOG_NONE, NULL, mod_name);
+                        str = strndup(nodeid, (mod_name + mod_name_len) - nodeid);
+                        LOGVAL(LYE_PATH_INMOD, LY_VLOG_STR, str);
+                        free(str);
                         return NULL;
                     }
                 } else {
@@ -1460,7 +1468,9 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
 
         /* no match */
         if (!sibling) {
-            LOGVAL(LYE_PATH_INNODE, LY_VLOG_NONE, NULL, name);
+            str = strndup(nodeid, (name + nam_len) - nodeid);
+            LOGVAL(LYE_PATH_INNODE, LY_VLOG_STR, str);
+            free(str);
             return NULL;
         }
 
@@ -1533,7 +1543,7 @@ struct lyd_node *
 resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, struct lyd_node *start, int options,
                                  int *parsed)
 {
-    char module_name[LY_MODULE_NAME_MAX_LEN + 1];
+    char module_name[LY_MODULE_NAME_MAX_LEN + 1], *str;
     const char *id, *mod_name, *name;
     int r, ret, mod_name_len, nam_len, is_relative = -1, has_predicate, last_parsed;
     struct lyd_node *sibling, *last_match = NULL;
@@ -1597,7 +1607,9 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                     /* will also find an augment module */
                     prefix_mod = ly_ctx_get_module(ctx, module_name, NULL);
                     if (!prefix_mod) {
-                        LOGVAL(LYE_PATH_INMOD, LY_VLOG_NONE, NULL, mod_name);
+                        str = strndup(nodeid, (mod_name + mod_name_len) - nodeid);
+                        LOGVAL(LYE_PATH_INMOD, LY_VLOG_STR, str);
+                        free(str);
                         *parsed = -1;
                         return NULL;
                     }
