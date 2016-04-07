@@ -1320,7 +1320,7 @@ lys_yang_type_dup(struct lys_module *module, struct lys_node *parent, struct yan
     }
     new->flags = old->flags;
     new->base = old->base;
-    new->name = strdup(old->name);
+    new->name = lydict_insert(module->ctx, old->name, 0);
     new->type = type;
     if (!new->name) {
         LOGMEM;
