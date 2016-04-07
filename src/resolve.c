@@ -1345,7 +1345,7 @@ resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_
 const struct lys_node *
 resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start)
 {
-    char *module_name = ly_buf(), *buf_backup = NULL;
+    char *module_name = ly_buf(), *buf_backup = NULL, *str;
     const char *name, *mod_name, *id;
     const struct lys_node *sibling;
     int r, nam_len, mod_name_len, is_relative = -1, has_predicate;
@@ -1370,13 +1370,17 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
         start = start->child;
         if (!start) {
             /* no descendants, fail for sure */
-            LOGVAL(LYE_PATH_INNODE, LY_VLOG_NONE, NULL, name);
+            str = strndup(nodeid, (name + nam_len) - nodeid);
+            LOGVAL(LYE_PATH_INNODE, LY_VLOG_STR, str);
+            free(str);
             return NULL;
         }
         module = start->module;
     } else {
         if (!mod_name) {
-            LOGVAL(LYE_PATH_MISSMOD, LY_VLOG_NONE, NULL, name);
+            str = strndup(nodeid, (name + nam_len) - nodeid);
+            LOGVAL(LYE_PATH_MISSMOD, LY_VLOG_STR, nodeid);
+            free(str);
             return NULL;
         } else if (mod_name_len > LY_BUF_SIZE - 1) {
             LOGINT;
@@ -1401,7 +1405,9 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
         ly_buf_used--;
 
         if (!module) {
-            LOGVAL(LYE_PATH_INMOD, LY_VLOG_NONE, NULL, mod_name);
+            str = strndup(nodeid, (mod_name + mod_name_len) - nodeid);
+            LOGVAL(LYE_PATH_INMOD, LY_VLOG_STR, str);
+            free(str);
             return NULL;
         }
         start = module->data;
@@ -1447,7 +1453,9 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
                     ly_buf_used--;
 
                     if (!prefix_mod) {
-                        LOGVAL(LYE_PATH_INMOD, LY_VLOG_NONE, NULL, mod_name);
+                        str = strndup(nodeid, (mod_name + mod_name_len) - nodeid);
+                        LOGVAL(LYE_PATH_INMOD, LY_VLOG_STR, str);
+                        free(str);
                         return NULL;
                     }
                 } else {
@@ -1493,7 +1501,9 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
 
         /* no match */
         if (!sibling) {
-            LOGVAL(LYE_PATH_INNODE, LY_VLOG_NONE, NULL, name);
+            str = strndup(nodeid, (name + nam_len) - nodeid);
+            LOGVAL(LYE_PATH_INNODE, LY_VLOG_STR, str);
+            free(str);
             return NULL;
         }
 
@@ -1566,7 +1576,7 @@ struct lyd_node *
 resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, struct lyd_node *start, int options,
                                  int *parsed)
 {
-    char *module_name = ly_buf(), *buf_backup = NULL;
+    char *module_name = ly_buf(), *buf_backup = NULL, *str;
     const char *id, *mod_name, *name;
     int r, ret, mod_name_len, nam_len, is_relative = -1, has_predicate, last_parsed;
     struct lyd_node *sibling, *last_match = NULL;
@@ -1645,7 +1655,9 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                     ly_buf_used--;
 
                     if (!prefix_mod) {
-                        LOGVAL(LYE_PATH_INMOD, LY_VLOG_NONE, NULL, mod_name);
+                        str = strndup(nodeid, (mod_name + mod_name_len) - nodeid);
+                        LOGVAL(LYE_PATH_INMOD, LY_VLOG_STR, str);
+                        free(str);
                         *parsed = -1;
                         return NULL;
                     }
