@@ -128,6 +128,7 @@ extern "C" {
  * - ly_ctx_get_module_by_ns()
  * - ly_ctx_get_submodule()
  * - ly_ctx_get_node()
+ * - ly_ctx_get_node2()
  * - ly_ctx_destroy()
  */
 
@@ -356,7 +357,7 @@ extern "C" {
  * - /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision='']/submodules
  *
  * Almost the same XPath is accepted by ly_ctx_get_node(). The difference is that it is not used on data, but schema,
- * which means there are no key values and only one node for one path. In effect, lists do not have to have any
+ * which means there are no key values and only one node matches one path. In effect, lists do not have to have any
  * predicates. If they do, they do not need to have all the keys specified and if values are included, they are ignored.
  * Nevertheless, any such expression is still a valid XPath, but can return more nodes if executed on a data tree.
  * Examples (all returning the same node):
@@ -366,11 +367,15 @@ extern "C" {
  * - /ietf-yang-library:modules-state/module[name][revision]/submodules
  * - /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision]/submodules
  *
+ * Also, choice, case, input, and output nodes need to be specified and cannot be skipped in schema XPaths. Use
+ * ly_ctx_get_node2() if you want to search based on a data XPath, the same format as what lyd_new_path() uses.
+ *
  * Functions List
  * --------------
  * - lyd_get_node()
  * - lyd_new_path()
  * - ly_ctx_get_node()
+ * - ly_ctx_get_node2()
  */
 
 /**
@@ -755,6 +760,27 @@ const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_
  * @return Resolved schema node or NULL.
  */
 const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid);
+
+/**
+ * @brief Get schema node according to the given data node identifier in JSON format.
+ *
+ * The functionality is almost the same as ly_ctx_get_node(), but this function accepts
+ * the data node identifier format (skipped choices, cases, inputs, and outputs). Examples:
+ *
+ * /ietf-netconf-monitoring:get-schema/identifier
+ * /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/ip
+ *
+ * Since input and output is skipped, there could arise ambiguities if one RPC input
+ * contains a parameter with the same name as is in output, hence the flag.
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] start Starting node for a relative schema node identifier, in which
+ * case it is mandatory.
+ * @param[in] nodeid JSON schema node identifier.
+ * @param[in] rpc_output Whether to search in RPC output parameters instead input ones.
+ * @return Resolved schema node or NULL.
+ */
+const struct lys_node *ly_ctx_get_node2(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid, int rpc_output);
 
 /**
  * @brief Free all internal structures of the specified context.

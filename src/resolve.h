@@ -108,7 +108,8 @@ int resolve_choice_default_schema_nodeid(const char *nodeid, const struct lys_no
 int resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *module, int ret_nodetype,
                                    const struct lys_node **ret);
 
-const struct lys_node *resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start);
+const struct lys_node *resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start,
+                                                  int data_nodeid);
 
 struct lyd_node *resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, struct lyd_node *start,
                                                   int options, int *parsed);

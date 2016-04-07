@@ -1341,9 +1341,10 @@ resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_
     return 0;
 }
 
-/* cannot return LYS_GROUPING, LYS_AUGMENT, LYS_USES, logs directly */
+/* cannot return LYS_GROUPING, LYS_AUGMENT, LYS_USES, logs directly
+ * data_nodeid - 0 schema nodeid, 1 - data nodeid with RPC input, 2 - data nodeid with RPC output */
 const struct lys_node *
-resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start)
+resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start, int data_nodeid)
 {
     char *module_name = ly_buf(), *buf_backup = NULL, *str;
     const char *name, *mod_name, *id;
@@ -1421,12 +1422,20 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
 
     while (1) {
         sibling = NULL;
-        while ((sibling = lys_getnext(sibling, lys_parent(start), module,
-                                      LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT))) {
+        while ((sibling = lys_getnext(sibling, lys_parent(start), module, (data_nodeid ?
+                0 : LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT)))) {
             /* name match */
             if ((sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len])
                     || ((sibling->nodetype == LYS_INPUT) && !strncmp(name, "input", nam_len) && (nam_len == 5))
                     || ((sibling->nodetype == LYS_OUTPUT) && !strncmp(name, "output", nam_len) && (nam_len == 6))) {
+
+                /* data RPC input/output check */
+                if ((data_nodeid == 1) && sibling->parent && (sibling->parent->nodetype == LYS_OUTPUT)) {
+                    continue;
+                } else if ((data_nodeid == 2) && sibling->parent && (sibling->parent->nodetype == LYS_INPUT)) {
+                    continue;
+                }
+
                 /* module check */
                 if (mod_name) {
                     if (mod_name_len > LY_BUF_SIZE - 1) {
