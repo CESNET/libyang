@@ -13,6 +13,7 @@
  */
 
 %define api.pure full
+%locations
 
 %parse-param {void *scanner}
 %parse-param {struct lys_module *module}
@@ -44,7 +45,7 @@
 #define DISABLE_INHERIT 0
 #define ENABLE_INHERIT 0x01
 
-void yyerror(void *scanner, ...);
+void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 char *s, *tmp_s;
 char rev[LY_REV_SIZE];
 struct lys_module *trg;
@@ -249,12 +250,19 @@ start: module_stmt
 
 
 string_1: STRING  { if (read_all) {
-                      s = calloc(1, yyget_leng(scanner) - 1);
-                      if (!s) {
-                        LOGMEM;
-                        YYERROR;
+                      if (yyget_text(scanner)[0] == '"') {
+                        s = yang_read_string(yyget_text(scanner) + 1, yyget_leng(scanner) - 2, yylloc.first_column);
+                        if (!s) {
+                          YYERROR;
+                        }
+                      } else {
+                        s = calloc(1, yyget_leng(scanner) - 1);
+                        if (!s) {
+                          LOGMEM;
+                          YYERROR;
+                        }
+                        memcpy(s, yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
                       }
-                      memcpy(s, yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
                     }
                   }
 optsep string_2
@@ -263,12 +271,31 @@ optsep string_2
 string_2: @EMPTYDIR@
   |  string_2 '+' optsep
      STRING { if (read_all){
-                s = realloc(s, yyget_leng(scanner) + strlen(s) + 1);
-                if (s) {
-                  strcat(s, yyget_text(scanner));
+                char *temp;
+                if (yyget_text(scanner)[0] == '"') {
+                  temp = yang_read_string(yyget_text(scanner) + 1, yyget_leng(scanner) - 2, yylloc.first_column);
+                  if (!temp) {
+                    YYERROR;
+                  }
+                  s = ly_realloc(s, strlen(temp) + strlen(s) + 1);
+                  if (s) {
+                    strcat(s, temp);
+                    free(temp);
+                  } else {
+                    free(temp);
+                    LOGMEM;
+                    YYERROR;
+                  }
                 } else {
-                  LOGMEM;
-                  YYERROR;
+                  int length = yyget_leng(scanner) - 2 + strlen(s) + 1;
+                  s = ly_realloc(s, length);
+                  if (s) {
+                    memcpy(s + strlen(s), yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
+                    s[length - 1] = '\0';
+                  } else {
+                    LOGMEM;
+                    YYERROR;
+                  }
                 }
               }
             }
@@ -3845,8 +3872,9 @@ identifiers_ref: IDENTIFIERPREFIX { if (read_all) {
 
 %%
 
-void yyerror(void *scanner, ...){
+void yyerror(YYLTYPE *yylloc, void *scanner, ...){
 
+  (void)yylloc; /* unused */
   LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yyget_text(scanner));
   free(s);
 }

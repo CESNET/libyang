@@ -2234,3 +2234,118 @@ error:
 
     return NULL;
 }
+
+static int
+count_substring(const char *str, char c)
+{
+    const char *tmp = str;
+    int count = 0;
+
+    while ((tmp = strchr(tmp, c))) {
+        tmp++;
+        count++;
+    }
+    return count;
+}
+
+static int
+read_indent(const char *input, int indent, int size, int in_index, int *out_index, char *output)
+{
+    int k = 0, j;
+
+    while (in_index < size) {
+        if (input[in_index] == ' ') {
+            k++;
+        } else if (input[in_index] == '\t') {
+            /* RFC 6020 6.1.3 tab character is treated as 8 space characters */
+            k += 8;
+        } else {
+            break;
+        }
+        ++in_index;
+        if (k >= indent) {
+            for (j = k - indent; j > 0; --j) {
+                output[*out_index] = ' ';
+                ++(*out_index);
+            }
+            break;
+        }
+    }
+    return in_index;
+}
+
+char *
+yang_read_string(const char *input, int size, int indent)
+{
+    int space, count;
+    int in_index, out_index;
+    char *value;
+    char *retval = NULL;
+
+    value = malloc(size + 1);
+    if (!value) {
+        LOGMEM;
+        return NULL;
+    }
+    /* replace special character in escape sequence */
+    in_index = out_index = 0;
+    while (in_index < size) {
+        if (input[in_index] == '\\') {
+            if (input[in_index + 1] == 'n') {
+                value[out_index] = '\n';
+                ++in_index;
+            } else if (input[in_index + 1] == 't') {
+                value[out_index] = '\t';
+                ++in_index;
+            } else if (input[in_index + 1] == '\\') {
+                value[out_index] = '\\';
+                ++in_index;
+            } else if ((in_index + 1) != size && input[in_index + 1] == '"') {
+                value[out_index] = '"';
+                ++in_index;
+            } else {
+                value[out_index] = input[in_index];
+            }
+        } else {
+            value[out_index] = input[in_index];
+        }
+        ++in_index;
+        ++out_index;
+    }
+    value[out_index] = '\0';
+    size = out_index;
+    count = count_substring(value, '\t');
+
+    /* extend size of string due to replacing character '\t' with 8 spaces */
+    retval = malloc(size + 1 + 7 * count);
+    if (!retval) {
+        LOGMEM;
+        goto error;
+    }
+    in_index = out_index = space = 0;
+    while (in_index < size) {
+        if (value[in_index] == '\n') {
+            out_index -= space;
+            space = 0;
+            retval[out_index] = '\n';
+            ++out_index;
+            ++in_index;
+            in_index = read_indent(value, indent, size, in_index, &out_index, retval);
+            continue;
+        } else {
+            space = (value[in_index] == ' ' || value[in_index] == '\t') ? space + 1 : 0;
+            retval[out_index] = value[in_index];
+            ++out_index;
+        }
+        ++in_index;
+    }
+    retval[out_index] = '\0';
+    if (out_index != size) {
+        retval = ly_realloc(retval, out_index + 1);
+    }
+    free(value);
+    return retval;
+error:
+    free(value);
+    return NULL;
+}

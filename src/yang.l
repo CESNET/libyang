@@ -12,10 +12,15 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-%option noyywrap nounput noinput reentrant bison-bridge
+%option noyywrap nounput noinput reentrant bison-bridge bison-locations
+
 %{
 #include "parser_yang.h"
 #include "parser_yang_bis.h"
+
+#define YY_USER_ACTION yylloc->first_line = yylloc->last_line = 0;\
+                       yylloc->first_column = (yylloc->last_column == 1) ? yylloc->last_column: yylloc->last_column +1;\
+                       yylloc->last_column = yylloc->first_column + yyleng - 1;
 %}
 %x COMMENT1
 %x COMMENT2
@@ -111,8 +116,8 @@
 "}" |
 ";" | 
 "+"  { return yytext[0];}  /* unsolved problem with concatenate string '+' */
-\"([\n\t !#-\[\]-~]|\\[\n\t -~])*\" {return STRING;}
-"'"([\n\t -&\(-~]|\\[\n\t -~])*"'" {return STRING;}
+\"([\n\t !#-\[\]-~]|\\[ -~])*\" {return STRING;}
+"'"[\n\t -&\(-~]*"'" {return STRING;}
 "0" {return ZERO;}
 "-"[1-9][0-9]* {return INTEGER;}
 [1-9][0-9]* {return NON_NEGATIVE_INTEGER;}
@@ -123,12 +128,12 @@
 <PATH>"(" |
 <PATH>")"  {return yytext[0];}
 <PATH>".." {return DOUBLEDOT;}
-<PATH>\n { return EOL;}
+<PATH>\n { yylloc->last_column = 1; return EOL;}
 <PATH>[ \t]+ { return WHITESPACE;}
 <PATH>";" |
 <PATH>"{" {BEGIN INITIAL; return yytext[0];}
-<PATH>\"([\n\t !#-\[\]-~]|\\[\n\t -~])*\" {return STRING;}
-<PATH>"'"([\n\t -&\(-~]|\\[\n\t -~])*"'" {return STRING;}
+<PATH>\"([\n\t !#-\[\]-~]|\\[ -~])*\" {return STRING;}
+<PATH>"'"[\n\t -&\(-~]*"'" {return STRING;}
 <PATH>"//" {BEGIN COMMENT2;}
 <PATH>"/*" {BEGIN COMMENT1;}
 <PATH>[A-Za-z_][-A-Za-z0-9_\.]* {return IDENTIFIER;}
@@ -143,7 +148,7 @@
                              default:  return STRINGS;
                             }
                           } else {return STRINGS;} }
-\n { return EOL;}
+\n { yylloc->last_column = 1; return EOL; }
 [ \t]+ { return WHITESPACE;}
 
 . { printf("%d: unexpected character '%c'\n",yylineno,*yytext); return ERROR;}

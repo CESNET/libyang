@@ -108,6 +108,8 @@ struct yang_type {
     struct lys_type *type;
 };
 
+char * yang_read_string(const char *input, int size, int indent);
+
 int yang_read_common(struct lys_module *module,char *value, int type);
 
 int yang_read_prefix(struct lys_module *module, void *save, char *value,int type);
