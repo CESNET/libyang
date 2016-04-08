@@ -2805,24 +2805,28 @@ rpc_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                   data_node = actual;
                                 }
      stmtsep
-  |  rpc_opt_stmt input_stmt { if ($1.node.flag & LYS_RPC_INPUT) {
-                                 LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_rpc, "input", "rpc");
-                                 YYERROR;
+  |  rpc_opt_stmt input_stmt { if (read_all) {
+                                 if ($1.node.flag & LYS_RPC_INPUT) {
+                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_rpc, "input", "rpc");
+                                   YYERROR;
+                                 }
+                                 $1.node.flag |= LYS_RPC_INPUT;
+                                 actual = $1.node.ptr_rpc;
+                                 actual_type = RPC_KEYWORD;
+                                 data_node = actual;
                                }
-                               $1.node.flag |= LYS_RPC_INPUT;
-                               actual = $1.node.ptr_rpc;
-                               actual_type = RPC_KEYWORD;
-                               data_node = actual;
                              }
      stmtsep { $$ = $1; }
-  |  rpc_opt_stmt output_stmt { if ($1.node.flag & LYS_RPC_OUTPUT) {
-                                  LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_rpc, "output", "rpc");
-                                  YYERROR;
+  |  rpc_opt_stmt output_stmt { if (read_all) {
+                                  if ($1.node.flag & LYS_RPC_OUTPUT) {
+                                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_rpc, "output", "rpc");
+                                    YYERROR;
+                                  }
+                                  $1.node.flag |= LYS_RPC_OUTPUT;
+                                  actual = $1.node.ptr_rpc;
+                                  actual_type = RPC_KEYWORD;
+                                  data_node = actual;
                                 }
-                                $1.node.flag |= LYS_RPC_OUTPUT;
-                                actual = $1.node.ptr_rpc;
-                                actual_type = RPC_KEYWORD;
-                                data_node = actual;
                               }
      stmtsep { $$ = $1; }
 
