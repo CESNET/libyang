@@ -2035,10 +2035,11 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                         val1 = ((struct lyd_node_leaf_list *)diter)->value_str;
                     } else {
                         /* use default value */
-                        if (resolve_descendant_schema_nodeid(slist->unique[i].expr[j], first->schema->child, LYS_LEAF, &snode)) {
+                        if (resolve_descendant_schema_nodeid(slist->unique[i].expr[j], first->schema->child, LYS_LEAF, &snode, 1)) {
                             /* error, but unique expression was checked when the schema was parsed */
                             return -1;
                         }
+                        /* TODO default type value */
                         val1 = ((struct lys_node_leaf *)snode)->dflt;
                     }
 
@@ -2048,14 +2049,16 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                         val2 = ((struct lyd_node_leaf_list *)diter)->value_str;
                     } else {
                         /* use default value */
-                        if (resolve_descendant_schema_nodeid(slist->unique[i].expr[j], second->schema->child, LYS_LEAF, &snode)) {
+                        if (resolve_descendant_schema_nodeid(slist->unique[i].expr[j], second->schema->child, LYS_LEAF, &snode, 1)) {
                             /* error, but unique expression was checked when the schema was parsed */
                             return -1;
                         }
+                        /* TODO default type value */
                         val2 = ((struct lys_node_leaf *)snode)->dflt;
                     }
 
                     if (!val1 || !val2 || !ly_strequal(val1, val2, 1)) {
+                        /* values differ */
                         break;
                     }
                 }
