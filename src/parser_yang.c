@@ -675,7 +675,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     const char *name, *value;
     LY_DATA_TYPE base;
 
-    base = typ->type->base;
+    base = typ->base;
     value = transform_schema2json(module, typ->name);
     if (!value) {
         goto error;
@@ -720,7 +720,6 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         if (typ->type->base == LY_TYPE_BINARY) {
             if (typ->type->info.str.pat_count) {
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Binary type could not include pattern statement.");
-                typ->type->base = base;
                 goto error;
             }
             typ->type->info.binary.length = typ->type->info.str.length;
@@ -758,7 +757,6 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         } else if (typ->type->base >= LY_TYPE_INT8 && typ->type->base <=LY_TYPE_UINT64) {
             if (typ->type->info.dec64.dig) {
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Numerical type could not include fraction statement.");
-                typ->type->base = base;
                 goto error;
             }
             typ->type->info.num.range = typ->type->info.dec64.range;
@@ -804,12 +802,12 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         }
         break;
     case LY_TYPE_LEAFREF:
-        if (typ->type->base == LY_TYPE_IDENT && typ->flags & LYS_TYPE_BASE) {
+        if (typ->type->base == LY_TYPE_IDENT && (typ->flags & LYS_TYPE_BASE)) {
             if (yang_read_identyref(module, typ->type, unres)) {
                 goto error;
             }
         } else if (typ->type->base == LY_TYPE_LEAFREF) {
-            if (typ->type->info.lref.path && !typ->type->der->type.der) {
+            if (typ->type->info.lref.path) {
                 value = typ->type->info.lref.path;
                 /* store in the JSON format */
                 typ->type->info.lref.path = transform_schema2json(module, value);
@@ -820,11 +818,8 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 if (unres_schema_add_node(module, unres, typ->type, UNRES_TYPE_LEAFREF, parent) == -1) {
                     goto error;
                 }
-            } else if (!typ->type->info.lref.path && !typ->type->der->type.der) {
+            } else if (!typ->type->der->type.der) {
                 LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "path", "type");
-                goto error;
-            } else {
-                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "path");
                 goto error;
             }
         } else {
@@ -843,7 +838,6 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         break;
     case LY_TYPE_UNION:
         if (typ->type->base != LY_TYPE_UNION) {
-            typ->type->base = LY_TYPE_UNION;
             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", parent->name);
             goto error;
         }
@@ -883,7 +877,6 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     return EXIT_SUCCESS;
 
 error:
-    typ->type->base = base;
     if (typ->type->module_name) {
         lydict_remove(module->ctx, typ->type->module_name);
         typ->type->module_name = NULL;
@@ -971,10 +964,10 @@ yang_read_length(struct lys_module *module, struct yang_type *typ, char *value)
 {
     struct lys_restr **length;
 
-    if (typ->type->base == 0 || typ->type->base == LY_TYPE_STRING) {
+    if (typ->base == 0 || typ->base == LY_TYPE_STRING) {
         length = &typ->type->info.str.length;
-        typ->type->base = LY_TYPE_STRING;
-    } else if (typ->type->base == LY_TYPE_BINARY) {
+        typ->base = LY_TYPE_STRING;
+    } else if (typ->base == LY_TYPE_BINARY) {
         length = &typ->type->info.binary.length;
     } else {
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected length statement.");
@@ -1022,11 +1015,11 @@ yang_read_pattern(struct lys_module *module, struct yang_type *typ, char *value)
 void *
 yang_read_range(struct  lys_module *module, struct yang_type *typ, char *value)
 {
-    if (typ->type->base != 0 && typ->type->base != LY_TYPE_DEC64) {
+    if (typ->base != 0 && typ->base != LY_TYPE_DEC64) {
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected range statement.");
         goto error;
     }
-    typ->type->base = LY_TYPE_DEC64;
+    typ->base = LY_TYPE_DEC64;
     if (typ->type->info.dec64.range) {
         LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "range", "type");
         goto error;
@@ -1047,8 +1040,8 @@ error:
 int
 yang_read_fraction(struct yang_type *typ, uint32_t value)
 {
-    if (typ->type->base == 0 || typ->type->base == LY_TYPE_DEC64) {
-        typ->type->base = LY_TYPE_DEC64;
+    if (typ->base == 0 || typ->base == LY_TYPE_DEC64) {
+        typ->base = LY_TYPE_DEC64;
     } else {
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected fraction-digits statement.");
         goto error;
@@ -1212,7 +1205,6 @@ yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *valu
     }
     if (!parent) {
         ret = &module->tpdf[module->tpdf_size];
-        ret->type.parent = NULL;
         module->tpdf_size++;
     } else {
         switch (parent->nodetype) {
@@ -1247,9 +1239,9 @@ yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *valu
             free(value);
             return NULL;
         }
-        ret->type.parent = (struct lys_tpdf *)parent;
     }
 
+    ret->type.parent = ret;
     ret->name = lydict_insert_zc(module->ctx, value);
     ret->module = module;
     return ret;
@@ -2056,6 +2048,9 @@ yang_use_extension(struct lys_module *module, struct lys_node *data_node, void *
             break;
         }
     }
+    if (!ns && !strcmp(module->prefix, prefix)) {
+        ns = (module->type) ? ((struct lys_submodule *)module)->belongsto->ns : module->ns;
+    }
     if (ns && !strcmp(ns, LY_NSNACM)) {
         if (!strcmp(identif, "default-deny-write")) {
             data_node->nacm |= LYS_NACM_DENYW;
@@ -2077,27 +2072,45 @@ error:
 void
 nacm_inherit(struct lys_module *module)
 {
-    struct lys_node *next, *elem;
+    struct lys_node *next, *elem, *tmp_node, *tmp_child;
 
     LY_TREE_DFS_BEGIN(module->data, next, elem) {
+        tmp_node = NULL;
         if (elem->parent) {
             switch (elem->nodetype) {
-            case LYS_GROUPING:
-                /* extension nacm not inherited*/
-                break;
-            case LYS_CHOICE:
-            case LYS_ANYXML:
-            case LYS_USES:
-                if (elem->parent->nodetype != LYS_GROUPING) {
-                   elem->nacm |= elem->parent->nacm;
-                }
-                break;
-            default:
-                elem->nacm |= elem->parent->nacm;
-                break;
+                case LYS_GROUPING:
+                    /* extension nacm not inherited*/
+                    break;
+                case LYS_CHOICE:
+                case LYS_ANYXML:
+                case LYS_USES:
+                    if (elem->parent->nodetype != LYS_GROUPING) {
+                        elem->nacm |= elem->parent->nacm;
+                    }
+                    break;
+                case LYS_CONTAINER:
+                case LYS_LIST:
+                case LYS_CASE:
+                case LYS_NOTIF:
+                case LYS_RPC:
+                case LYS_INPUT:
+                case LYS_OUTPUT:
+                case LYS_AUGMENT:
+                    elem->nacm |= elem->parent->nacm;
+                    break;
+                case LYS_LEAF:
+                case LYS_LEAFLIST:
+                    tmp_node = elem;
+                    tmp_child = elem->child;
+                    elem->child = NULL;
+                default:
+                    break;
             }
         }
         LY_TREE_DFS_END(module->data, next, elem);
+        if (tmp_node) {
+            tmp_node->child = tmp_child;
+        }
     }
 }
 
@@ -2149,8 +2162,6 @@ yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struc
     }
     yy_delete_buffer(bp, scanner);
 
-    nacm_inherit(module);
-
     free(size_arrays->node);
     free(size_arrays);
     yylex_destroy(scanner);
@@ -2169,7 +2180,7 @@ struct lys_module *
 yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const char *revision, int implement)
 {
 
-    struct lys_module *module = NULL;
+    struct lys_module *tmp_module, *module = NULL;
     struct unres_schema *unres = NULL;
 
     unres = calloc(1, sizeof *unres);
@@ -2206,8 +2217,13 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         }
     }
 
+    tmp_module = module;
     if (lyp_add_module(&module, implement)) {
         goto error;
+    }
+
+    if (module == tmp_module) {
+        nacm_inherit(module);
     }
 
     unres_schema_free(NULL, &unres);
@@ -2268,5 +2284,120 @@ error:
     lyp_fail_submodule(submodule);
     lys_submodule_free(submodule, NULL);
 
+    return NULL;
+}
+
+static int
+count_substring(const char *str, char c)
+{
+    const char *tmp = str;
+    int count = 0;
+
+    while ((tmp = strchr(tmp, c))) {
+        tmp++;
+        count++;
+    }
+    return count;
+}
+
+static int
+read_indent(const char *input, int indent, int size, int in_index, int *out_index, char *output)
+{
+    int k = 0, j;
+
+    while (in_index < size) {
+        if (input[in_index] == ' ') {
+            k++;
+        } else if (input[in_index] == '\t') {
+            /* RFC 6020 6.1.3 tab character is treated as 8 space characters */
+            k += 8;
+        } else {
+            break;
+        }
+        ++in_index;
+        if (k >= indent) {
+            for (j = k - indent; j > 0; --j) {
+                output[*out_index] = ' ';
+                ++(*out_index);
+            }
+            break;
+        }
+    }
+    return in_index;
+}
+
+char *
+yang_read_string(const char *input, int size, int indent)
+{
+    int space, count;
+    int in_index, out_index;
+    char *value;
+    char *retval = NULL;
+
+    value = malloc(size + 1);
+    if (!value) {
+        LOGMEM;
+        return NULL;
+    }
+    /* replace special character in escape sequence */
+    in_index = out_index = 0;
+    while (in_index < size) {
+        if (input[in_index] == '\\') {
+            if (input[in_index + 1] == 'n') {
+                value[out_index] = '\n';
+                ++in_index;
+            } else if (input[in_index + 1] == 't') {
+                value[out_index] = '\t';
+                ++in_index;
+            } else if (input[in_index + 1] == '\\') {
+                value[out_index] = '\\';
+                ++in_index;
+            } else if ((in_index + 1) != size && input[in_index + 1] == '"') {
+                value[out_index] = '"';
+                ++in_index;
+            } else {
+                value[out_index] = input[in_index];
+            }
+        } else {
+            value[out_index] = input[in_index];
+        }
+        ++in_index;
+        ++out_index;
+    }
+    value[out_index] = '\0';
+    size = out_index;
+    count = count_substring(value, '\t');
+
+    /* extend size of string due to replacing character '\t' with 8 spaces */
+    retval = malloc(size + 1 + 7 * count);
+    if (!retval) {
+        LOGMEM;
+        goto error;
+    }
+    in_index = out_index = space = 0;
+    while (in_index < size) {
+        if (value[in_index] == '\n') {
+            out_index -= space;
+            space = 0;
+            retval[out_index] = '\n';
+            ++out_index;
+            ++in_index;
+            in_index = read_indent(value, indent, size, in_index, &out_index, retval);
+            continue;
+        } else {
+            space = (value[in_index] == ' ' || value[in_index] == '\t') ? space + 1 : 0;
+            retval[out_index] = value[in_index];
+            ++out_index;
+        }
+        ++in_index;
+    }
+    retval[out_index] = '\0';
+    if (out_index != size) {
+        retval = ly_realloc(retval, out_index + 1);
+    }
+    free(value);
+    return retval;
+error:
+    free(value);
     return NULL;
 }

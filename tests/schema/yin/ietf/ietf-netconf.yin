@@ -53,7 +53,7 @@ the RFC itself for full legal notices.</text>
   <revision date="2011-06-01">
     <description>
       <text>Initial revision;
-2013-09-29: Updated to include NACM attributes, 
+2013-09-29: Updated to include NACM attributes,
 as specified in RFC 6536: sec 3.2.5 and 3.2.8</text>
     </description>
     <reference>

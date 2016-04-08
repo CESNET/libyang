@@ -13,6 +13,7 @@
  */
 
 %define api.pure full
+%locations
 
 %parse-param {void *scanner}
 %parse-param {struct lys_module *module}
@@ -43,7 +44,7 @@
 #define DISABLE_INHERIT 0
 #define ENABLE_INHERIT 0x01
 
-void yyerror(void *scanner, ...);
+void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 char *s, *tmp_s;
 char rev[LY_REV_SIZE];
 struct lys_module *trg;
@@ -248,10 +249,18 @@ start: module_stmt
 
 
 string_1: STRING  { if (read_all) {
-                      s = strdup(yyget_text(scanner));
-                      if (!s) {
-                        LOGMEM;
-                        YYERROR;
+                      if (yyget_text(scanner)[0] == '"') {
+                        s = yang_read_string(yyget_text(scanner) + 1, yyget_leng(scanner) - 2, yylloc.first_column);
+                        if (!s) {
+                          YYERROR;
+                        }
+                      } else {
+                        s = calloc(1, yyget_leng(scanner) - 1);
+                        if (!s) {
+                          LOGMEM;
+                          YYERROR;
+                        }
+                        memcpy(s, yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
                       }
                     }
                   }
@@ -261,12 +270,31 @@ optsep string_2
 string_2: @EMPTYDIR@
   |  string_2 '+' optsep
      STRING { if (read_all){
-                s = ly_realloc(s, yyget_leng(scanner) + strlen(s) + 1);
-                if (s) {
-                  strcat(s, yyget_text(scanner));
+                char *temp;
+                if (yyget_text(scanner)[0] == '"') {
+                  temp = yang_read_string(yyget_text(scanner) + 1, yyget_leng(scanner) - 2, yylloc.first_column);
+                  if (!temp) {
+                    YYERROR;
+                  }
+                  s = ly_realloc(s, strlen(temp) + strlen(s) + 1);
+                  if (s) {
+                    strcat(s, temp);
+                    free(temp);
+                  } else {
+                    free(temp);
+                    LOGMEM;
+                    YYERROR;
+                  }
                 } else {
-                  LOGMEM;
-                  YYERROR;
+                  int length = yyget_leng(scanner) - 2 + strlen(s) + 1;
+                  s = ly_realloc(s, length);
+                  if (s) {
+                    memcpy(s + strlen(s), yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
+                    s[length - 1] = '\0';
+                  } else {
+                    LOGMEM;
+                    YYERROR;
+                  }
                 }
               }
             }
@@ -915,7 +943,7 @@ type_body_stmts: decimal_string_restrictions
   | enum_specification
   | path_stmt  { /*leafref_specification */
                  if (read_all) {
-                   ((struct yang_type *)actual)->type->base = LY_TYPE_LEAFREF;
+                   ((struct yang_type *)actual)->base = LY_TYPE_LEAFREF;
                    ((struct yang_type *)actual)->type->info.lref.path = lydict_insert_zc(trg->ctx, s);
                    s = NULL;
                  }
@@ -923,14 +951,14 @@ type_body_stmts: decimal_string_restrictions
   | base_stmt  { /*identityref_specification */
                  if (read_all) {
                    ((struct yang_type *)actual)->flags |= LYS_TYPE_BASE;
-                   ((struct yang_type *)actual)->type->base = LY_TYPE_LEAFREF;
+                   ((struct yang_type *)actual)->base = LY_TYPE_LEAFREF;
                    ((struct yang_type *)actual)->type->info.lref.path = lydict_insert_zc(trg->ctx, s);
                    s = NULL;
                  }
                }
   | require_instance_stmt  { /*instance_identifier_specification */
                              if (read_all) {
-                               ((struct yang_type *)actual)->type->base = LY_TYPE_INST;
+                               ((struct yang_type *)actual)->base = LY_TYPE_INST;
                              }
                            }
   | bits_specification
@@ -948,7 +976,7 @@ decimal_string_restrictions: @EMPTYDIR@  { if (read_all) {
                                              LOGMEM;
                                              YYERROR;
                                            }
-                                           ((struct yang_type *)actual)->type->base = LY_TYPE_STRING;
+                                           ((struct yang_type *)actual)->base = LY_TYPE_STRING;
                                          }
                                          if (size_arrays->node[size_arrays->next].uni) {
                                            ((struct yang_type *)actual)->type->info.uni.types = calloc(size_arrays->node[size_arrays->next].uni, sizeof(struct lys_type));
@@ -956,7 +984,7 @@ decimal_string_restrictions: @EMPTYDIR@  { if (read_all) {
                                              LOGMEM;
                                              YYERROR;
                                            }
-                                           ((struct yang_type *)actual)->type->base = LY_TYPE_UNION;
+                                           ((struct yang_type *)actual)->base = LY_TYPE_UNION;
                                          }
                                          size_arrays->next++;
                                        } else {
@@ -1104,7 +1132,7 @@ enum_specification: { if (read_all) {
                             YYERROR;
                           }
                         }
-                        ((struct yang_type *)actual)->type->base = LY_TYPE_ENUM;
+                        ((struct yang_type *)actual)->base = LY_TYPE_ENUM;
                         cnt_val = 0;
                       } else {
                         if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
@@ -1250,7 +1278,7 @@ bits_specification: { if (read_all) {
                             YYERROR;
                           }
                         }
-                        ((struct yang_type *)actual)->type->base = LY_TYPE_BITS;
+                        ((struct yang_type *)actual)->base = LY_TYPE_BITS;
                         cnt_val = 0;
                       } else {
                         if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
@@ -1542,7 +1570,7 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                     LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaf, "type", "leaf");
                                     YYERROR;
                                   } else {
-                                      if (unres_schema_add_node(trg, unres, &$7.node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *) $7.node.ptr_leaf)) {
+                                      if (unres_schema_add_node(trg, unres, &$7.node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *) $7.node.ptr_leaf->parent)) {
                                         $7.node.ptr_leaf->type.der = NULL;
                                         YYERROR;
                                       }
@@ -1675,7 +1703,7 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                              YYERROR;
                                            } else {
                                              if (unres_schema_add_node(trg, unres, &$7.node.ptr_leaflist->type, UNRES_TYPE_DER,
-                                                                      (struct lys_node *) $7.node.ptr_leaflist)) {
+                                                                      (struct lys_node *) $7.node.ptr_leaflist->parent)) {
                                                YYERROR;
                                              }
                                            }
@@ -3302,7 +3330,7 @@ when_stmt: WHEN_KEYWORD sep string  { if (read_all && !(actual=yang_read_when(tr
            when_end;
 
 when_end: ';'
-  |  '{'
+  |  '{' stmtsep
          when_opt_stmt
      '}'
 
@@ -3843,8 +3871,8 @@ identifiers_ref: IDENTIFIERPREFIX { if (read_all) {
 
 %%
 
-void yyerror(void *scanner, ...){
+void yyerror(YYLTYPE *yylloc, void *scanner, ...){
 
+  (void)yylloc; /* unused */
   LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yyget_text(scanner));
-  free(s);
 }

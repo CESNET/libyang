@@ -103,11 +103,14 @@ struct type_uses {
 
 struct yang_type {
     char flags;       /**< this is used to distinguish lyxml_elem * from a YANG temporary parsing structure */
+    LY_DATA_TYPE base;
     const char *name;
     struct lys_type *type;
 };
 
 #include "parser_yang_bis.h"
+
+char * yang_read_string(const char *input, int size, int indent);
 
 int yang_read_common(struct lys_module *module,char *value, enum yytokentype type);
 

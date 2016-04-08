@@ -1,0 +1,12 @@
+submodule esub1 {
+  belongs-to emod {
+    prefix e;
+  }
+
+  augment "/e:top" {
+    container bar-sub;
+  }
+  augment "/top" {
+    container bar-sub2;
+  }
+}

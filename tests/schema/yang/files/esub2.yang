@@ -1,0 +1,7 @@
+submodule esub2 {
+  belongs-to emod {
+    prefix ee;
+  }
+
+  container top;
+}

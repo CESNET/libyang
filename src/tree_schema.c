@@ -36,6 +36,10 @@
 #include "validation.h"
 #include "parser_yang.h"
 
+static int
+lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, struct lys_type *old,
+             struct unres_schema *unres);
+
 API const struct lys_feature *
 lys_is_disabled(const struct lys_node *node, int recursive)
 {
@@ -1181,6 +1185,161 @@ lys_restr_free(struct ly_ctx *ctx, struct lys_restr *restr)
 }
 
 static int
+type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, struct lys_type *old,
+              LY_DATA_TYPE base, struct unres_schema *unres)
+{
+    int i;
+
+    switch (base) {
+        case LY_TYPE_BINARY:
+            if (old->info.binary.length) {
+                new->info.binary.length = lys_restr_dup(mod->ctx, old->info.binary.length, 1);
+            }
+            break;
+
+        case LY_TYPE_BITS:
+            new->info.bits.count = old->info.bits.count;
+            if (new->info.bits.count) {
+                new->info.bits.bit = calloc(new->info.bits.count, sizeof *new->info.bits.bit);
+                if (!new->info.bits.bit) {
+                    LOGMEM;
+                    return -1;
+                }
+                for (i = 0; i < new->info.bits.count; i++) {
+                    new->info.bits.bit[i].name = lydict_insert(mod->ctx, old->info.bits.bit[i].name, 0);
+                    new->info.bits.bit[i].dsc = lydict_insert(mod->ctx, old->info.bits.bit[i].dsc, 0);
+                    new->info.bits.bit[i].ref = lydict_insert(mod->ctx, old->info.bits.bit[i].ref, 0);
+                    new->info.bits.bit[i].flags = old->info.bits.bit[i].flags;
+                    new->info.bits.bit[i].pos = old->info.bits.bit[i].pos;
+                }
+            }
+            break;
+
+        case LY_TYPE_DEC64:
+            new->info.dec64.dig = old->info.dec64.dig;
+            if (old->info.dec64.range) {
+                new->info.dec64.range = lys_restr_dup(mod->ctx, old->info.dec64.range, 1);
+            }
+            break;
+
+        case LY_TYPE_ENUM:
+            new->info.enums.count = old->info.enums.count;
+            if (new->info.enums.count) {
+                new->info.enums.enm = calloc(new->info.enums.count, sizeof *new->info.enums.enm);
+                if (!new->info.enums.enm) {
+                    LOGMEM;
+                    return -1;
+                }
+                for (i = 0; i < new->info.enums.count; i++) {
+                    new->info.enums.enm[i].name = lydict_insert(mod->ctx, old->info.enums.enm[i].name, 0);
+                    new->info.enums.enm[i].dsc = lydict_insert(mod->ctx, old->info.enums.enm[i].dsc, 0);
+                    new->info.enums.enm[i].ref = lydict_insert(mod->ctx, old->info.enums.enm[i].ref, 0);
+                    new->info.enums.enm[i].flags = old->info.enums.enm[i].flags;
+                    new->info.enums.enm[i].value = old->info.enums.enm[i].value;
+                }
+            }
+            break;
+
+        case LY_TYPE_IDENT:
+            if (old->info.ident.ref) {
+                new->info.ident.ref = old->info.ident.ref;
+            } else {
+                i = unres_schema_find(unres, old, UNRES_TYPE_IDENTREF);
+                if (i > -1 && unres_schema_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i])) {
+                    return -1;
+                }
+            }
+            break;
+
+        case LY_TYPE_INST:
+            new->info.inst.req = old->info.inst.req;
+            break;
+
+        case LY_TYPE_INT8:
+        case LY_TYPE_INT16:
+        case LY_TYPE_INT32:
+        case LY_TYPE_INT64:
+        case LY_TYPE_UINT8:
+        case LY_TYPE_UINT16:
+        case LY_TYPE_UINT32:
+        case LY_TYPE_UINT64:
+            if (old->info.num.range) {
+                new->info.num.range = lys_restr_dup(mod->ctx, old->info.num.range, 1);
+            }
+            break;
+
+        case LY_TYPE_LEAFREF:
+            if (old->info.lref.path) {
+                new->info.lref.path = lydict_insert(mod->ctx, old->info.lref.path, 0);
+                if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent)) {
+                    return -1;
+                }
+            }
+            break;
+
+        case LY_TYPE_STRING:
+            if (old->info.str.length) {
+                new->info.str.length = lys_restr_dup(mod->ctx, old->info.str.length, 1);
+            }
+            new->info.str.patterns = lys_restr_dup(mod->ctx, old->info.str.patterns, old->info.str.pat_count);
+            new->info.str.pat_count = old->info.str.pat_count;
+            break;
+
+        case LY_TYPE_UNION:
+            new->info.uni.count = old->info.uni.count;
+            if (new->info.uni.count) {
+                new->info.uni.types = calloc(new->info.uni.count, sizeof *new->info.uni.types);
+                if (!new->info.uni.types) {
+                    LOGMEM;
+                    return -1;
+                }
+                for (i = 0; i < new->info.uni.count; i++) {
+                    if (lys_type_dup(mod, parent, &(new->info.uni.types[i]), &(old->info.uni.types[i]), unres)) {
+                        return -1;
+                    }
+                }
+            }
+            break;
+
+        default:
+            /* nothing to do for LY_TYPE_BOOL, LY_TYPE_EMPTY */
+            break;
+    }
+    return EXIT_SUCCESS;
+}
+
+struct yang_type *
+lys_yang_type_dup(struct lys_module *module, struct lys_node *parent, struct yang_type *old, struct lys_type *type, struct unres_schema *unres)
+{
+    struct yang_type *new;
+
+    new = calloc(1, sizeof *new);
+    if (!new) {
+        LOGMEM;
+        return NULL;
+    }
+    new->flags = old->flags;
+    new->base = old->base;
+    new->name = lydict_insert(module->ctx, old->name, 0);
+    new->type = type;
+    if (!new->name) {
+        LOGMEM;
+        goto error;
+    }
+    if (type_dup(module, parent, type, old->type, new->base, unres)) {
+        new->type->base = new->base;
+        lys_type_free(module->ctx, new->type);
+        memset(&new->type->info, 0, sizeof new->type->info);
+        goto error;
+    }
+    return new;
+
+    error:
+    free(new);
+    return NULL;
+}
+
+static int
 lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, struct lys_type *old,
             struct unres_schema *unres)
 {
@@ -1194,132 +1353,20 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
     if (i != -1) {
         /* HACK (serious one) for unres */
         /* nothing else we can do but duplicate it immediately */
-        new->der = (struct lys_tpdf *)lyxml_dup_elem(mod->ctx, (struct lyxml_elem *)old->der, NULL, 1);
+        if (((struct lyxml_elem *)old->der)->flags & LY_YANG_STRUCTURE_FLAG) {
+            new->der = (struct lys_tpdf *)lys_yang_type_dup(mod, parent, (struct yang_type *)old->der, new, unres);
+        } else {
+            new->der = (struct lys_tpdf *)lyxml_dup_elem(mod->ctx, (struct lyxml_elem *)old->der, NULL, 1);
+        }
         new->parent = (struct lys_tpdf *)parent;
         /* all these unres additions can fail even though they did not before */
-        if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_DER, parent)) {
+        if (!new->der || unres_schema_add_node(mod, unres, new, UNRES_TYPE_DER, parent)) {
             return -1;
         }
         return EXIT_SUCCESS;
     }
 
-    switch (new->base) {
-    case LY_TYPE_BINARY:
-        if (old->info.binary.length) {
-            new->info.binary.length = lys_restr_dup(mod->ctx, old->info.binary.length, 1);
-        }
-        break;
-
-    case LY_TYPE_BITS:
-        new->info.bits.count = old->info.bits.count;
-        if (new->info.bits.count) {
-            new->info.bits.bit = calloc(new->info.bits.count, sizeof *new->info.bits.bit);
-            if (!new->info.bits.bit) {
-                LOGMEM;
-                return -1;
-            }
-            for (i = 0; i < new->info.bits.count; i++) {
-                new->info.bits.bit[i].name = lydict_insert(mod->ctx, old->info.bits.bit[i].name, 0);
-                new->info.bits.bit[i].dsc = lydict_insert(mod->ctx, old->info.bits.bit[i].dsc, 0);
-                new->info.bits.bit[i].ref = lydict_insert(mod->ctx, old->info.bits.bit[i].ref, 0);
-                new->info.bits.bit[i].flags = old->info.bits.bit[i].flags;
-                new->info.bits.bit[i].pos = old->info.bits.bit[i].pos;
-            }
-        }
-        break;
-
-    case LY_TYPE_DEC64:
-        new->info.dec64.dig = old->info.dec64.dig;
-        if (old->info.dec64.range) {
-            new->info.dec64.range = lys_restr_dup(mod->ctx, old->info.dec64.range, 1);
-        }
-        break;
-
-    case LY_TYPE_ENUM:
-        new->info.enums.count = old->info.enums.count;
-        if (new->info.enums.count) {
-            new->info.enums.enm = calloc(new->info.enums.count, sizeof *new->info.enums.enm);
-            if (!new->info.enums.enm) {
-                LOGMEM;
-                return -1;
-            }
-            for (i = 0; i < new->info.enums.count; i++) {
-                new->info.enums.enm[i].name = lydict_insert(mod->ctx, old->info.enums.enm[i].name, 0);
-                new->info.enums.enm[i].dsc = lydict_insert(mod->ctx, old->info.enums.enm[i].dsc, 0);
-                new->info.enums.enm[i].ref = lydict_insert(mod->ctx, old->info.enums.enm[i].ref, 0);
-                new->info.enums.enm[i].flags = old->info.enums.enm[i].flags;
-                new->info.enums.enm[i].value = old->info.enums.enm[i].value;
-            }
-        }
-        break;
-
-    case LY_TYPE_IDENT:
-        if (old->info.ident.ref) {
-            new->info.ident.ref = old->info.ident.ref;
-        } else {
-            i = unres_schema_find(unres, old, UNRES_TYPE_IDENTREF);
-            if (i > -1 && unres_schema_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i])) {
-                return -1;
-            }
-        }
-        break;
-
-    case LY_TYPE_INST:
-        new->info.inst.req = old->info.inst.req;
-        break;
-
-    case LY_TYPE_INT8:
-    case LY_TYPE_INT16:
-    case LY_TYPE_INT32:
-    case LY_TYPE_INT64:
-    case LY_TYPE_UINT8:
-    case LY_TYPE_UINT16:
-    case LY_TYPE_UINT32:
-    case LY_TYPE_UINT64:
-        if (old->info.num.range) {
-            new->info.num.range = lys_restr_dup(mod->ctx, old->info.num.range, 1);
-        }
-        break;
-
-    case LY_TYPE_LEAFREF:
-        if (old->info.lref.path) {
-            new->info.lref.path = lydict_insert(mod->ctx, old->info.lref.path, 0);
-            if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent)) {
-                return -1;
-            }
-        }
-        break;
-
-    case LY_TYPE_STRING:
-        if (old->info.str.length) {
-            new->info.str.length = lys_restr_dup(mod->ctx, old->info.str.length, 1);
-        }
-        new->info.str.patterns = lys_restr_dup(mod->ctx, old->info.str.patterns, old->info.str.pat_count);
-        new->info.str.pat_count = old->info.str.pat_count;
-        break;
-
-    case LY_TYPE_UNION:
-        new->info.uni.count = old->info.uni.count;
-        if (new->info.uni.count) {
-            new->info.uni.types = calloc(new->info.uni.count, sizeof *new->info.uni.types);
-            if (!new->info.uni.types) {
-                LOGMEM;
-                return -1;
-            }
-            for (i = 0; i < new->info.uni.count; i++) {
-                if (lys_type_dup(mod, parent, &(new->info.uni.types[i]), &(old->info.uni.types[i]), unres)) {
-                    return -1;
-                }
-            }
-        }
-        break;
-
-    default:
-        /* nothing to do for LY_TYPE_BOOL, LY_TYPE_EMPTY */
-        break;
-    }
-
-    return EXIT_SUCCESS;
+    return type_dup(mod, parent, new, old, new->base, unres);
 }
 
 void

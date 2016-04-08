@@ -30,8 +30,8 @@
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
-#ifndef YY_YY_HOME_XVICAN01_DOCUMENTS_BC_LIBYANG_SRC_PARSER_YANG_BIS_H_INCLUDED
-# define YY_YY_HOME_XVICAN01_DOCUMENTS_BC_LIBYANG_SRC_PARSER_YANG_BIS_H_INCLUDED
+#ifndef YY_YY_PARSER_YANG_BIS_H_INCLUDED
+# define YY_YY_PARSER_YANG_BIS_H_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
 # define YYDEBUG 0
@@ -146,7 +146,7 @@ extern int yydebug;
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 60 "/home/xvican01/Documents/bc/libyang/src/yang.y" /* yacc.c:1909  */
+
 
   int32_t i;
   uint32_t uint;
@@ -167,14 +167,28 @@ union YYSTYPE
     struct type_deviation *deviation;
   } nodes;
 
-#line 171 "/home/xvican01/Documents/bc/libyang/src/parser_yang_bis.h" /* yacc.c:1909  */
+
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
+#endif
+
+/* Location type.  */
+#if ! defined YYLTYPE && ! defined YYLTYPE_IS_DECLARED
+typedef struct YYLTYPE YYLTYPE;
+struct YYLTYPE
+{
+  int first_line;
+  int first_column;
+  int last_line;
+  int last_column;
+};
+# define YYLTYPE_IS_DECLARED 1
+# define YYLTYPE_IS_TRIVIAL 1
 #endif
 
 
 
 int yyparse (void *scanner, struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all);
 
-#endif /* !YY_YY_HOME_XVICAN01_DOCUMENTS_BC_LIBYANG_SRC_PARSER_YANG_BIS_H_INCLUDED  */
+#endif /* !YY_YY_PARSER_YANG_BIS_H_INCLUDED  */

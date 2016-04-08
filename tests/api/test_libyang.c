@@ -39,22 +39,22 @@
 
 struct ly_ctx *ctx = NULL;
 struct lyd_node *root = NULL;
+const struct lys_module *module = NULL;
 
 int
-generic_init(char *config_file, char *yang_file, char *yang_folder)
+generic_init(char *config_file, char *yin_file, char *yang_file, char *yang_folder)
 {
-    LYS_INFORMAT yang_format;
     LYD_FORMAT in_format;
-    char *schema = NULL;
+    char *schema1 = NULL;
+    char *schema2 = NULL;
     char *config = NULL;
-    struct stat sb_schema, sb_config;
+    struct stat sb_schema1, sb_schema2, sb_config;
     int fd = -1;
 
-    if (!config_file || !yang_file || !yang_folder) {
+    if (!config_file || !yang_file || !yin_file || !yang_folder) {
         goto error;
     }
 
-    yang_format = LYS_IN_YIN;
     in_format = LYD_XML;
 
     ctx = ly_ctx_new(yang_folder);
@@ -62,12 +62,20 @@ generic_init(char *config_file, char *yang_file, char *yang_folder)
         goto error;
     }
 
-    fd = open(yang_file, O_RDONLY);
-    if (fd == -1 || fstat(fd, &sb_schema) == -1 || !S_ISREG(sb_schema.st_mode)) {
+    fd = open(yin_file, O_RDONLY);
+    if (fd == -1 || fstat(fd, &sb_schema1) == -1 || !S_ISREG(sb_schema1.st_mode)) {
         goto error;
     }
 
-    schema = mmap(NULL, sb_schema.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    schema1 = mmap(NULL, sb_schema1.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    close(fd);
+
+    fd = open(yang_file, O_RDONLY);
+    if (fd == -1 || fstat(fd, &sb_schema2) == -1 || !S_ISREG(sb_schema2.st_mode)) {
+        goto error;
+    }
+
+    schema2 = mmap(NULL, sb_schema2.st_size + 2, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     close(fd);
 
     fd = open(config_file, O_RDONLY);
@@ -79,7 +87,11 @@ generic_init(char *config_file, char *yang_file, char *yang_folder)
     close(fd);
     fd = -1;
 
-    if (!lys_parse_mem(ctx, schema, yang_format)) {
+    if (!lys_parse_mem(ctx, schema1, LYS_IN_YIN)) {
+        goto error;
+    }
+
+    if (!(module = lys_parse_mem(ctx, schema2, LYS_IN_YANG))) {
         goto error;
     }
 
@@ -90,13 +102,17 @@ generic_init(char *config_file, char *yang_file, char *yang_folder)
 
     /* cleanup */
     munmap(config, sb_config.st_size);
-    munmap(schema, sb_schema.st_size);
+    munmap(schema1, sb_schema1.st_size);
+    munmap(schema2, sb_schema2.st_size + 2);
 
     return 0;
 
 error:
-    if (schema) {
-        munmap(schema, sb_schema.st_size);
+    if (schema1) {
+        munmap(schema1, sb_schema1.st_size);
+    }
+    if (schema2) {
+        munmap(schema2, sb_schema2.st_size + 2);
     }
     if (config) {
         munmap(config, sb_config.st_size);
@@ -113,11 +129,12 @@ setup_f(void **state)
 {
     (void) state; /* unused */
     char *config_file = TESTS_DIR"/api/files/a.xml";
-    char *yang_file = TESTS_DIR"/api/files/a.yin";
+    char *yin_file = TESTS_DIR"/api/files/a.yin";
+    char *yang_file = TESTS_DIR"/api/files/b.yang";
     char *yang_folder = TESTS_DIR"/api/files";
     int rc;
 
-    rc = generic_init(config_file, yang_file, yang_folder);
+    rc = generic_init(config_file, yin_file, yang_file, yang_folder);
 
     if (rc) {
         return -1;
@@ -277,10 +294,11 @@ test_ly_ctx_get_module(void **state)
 {
     (void) state; /* unused */
     const struct lys_module *module;
-    const char *name = "a";
+    const char *name1 = "a";
+    const char *name2 = "b";
     const char *revision = "2016-03-01";
 
-    module = ly_ctx_get_module(NULL, name, NULL);
+    module = ly_ctx_get_module(NULL, name1, NULL);
     if (module) {
         fail();
     }
@@ -295,19 +313,38 @@ test_ly_ctx_get_module(void **state)
         fail();
     }
 
-    module = ly_ctx_get_module(ctx, name, NULL);
+    module = ly_ctx_get_module(ctx, name1, NULL);
     if (!module) {
         fail();
     }
 
     assert_string_equal("a", module->name);
 
-    module = ly_ctx_get_module(ctx, name, "invalid");
+    module = ly_ctx_get_module(ctx, name1, "invalid");
     if (module) {
         fail();
     }
 
-    module = ly_ctx_get_module(ctx, name, revision);
+    module = ly_ctx_get_module(ctx, name1, revision);
+    if (!module) {
+        fail();
+    }
+
+    assert_string_equal(revision, module->rev->date);
+
+    module = ly_ctx_get_module(ctx, name2, NULL);
+    if (!module) {
+        fail();
+    }
+
+    assert_string_equal("b", module->name);
+
+    module = ly_ctx_get_module(ctx, name2, "invalid");
+    if (module) {
+        fail();
+    }
+
+    module = ly_ctx_get_module(ctx, name2, revision);
     if (!module) {
         fail();
     }
@@ -384,6 +421,13 @@ test_ly_ctx_load_module(void **state)
     }
 
     assert_string_equal(name, module->name);
+
+    module = ly_ctx_load_module(ctx, "b", revision);
+    if (!module) {
+        fail();
+    }
+
+    assert_string_equal("b", module->name);
 }
 
 static void
@@ -410,6 +454,13 @@ test_ly_ctx_get_module_by_ns(void **state)
     }
 
     assert_string_equal("a", module->name);
+
+    module = ly_ctx_get_module_by_ns(ctx, "urn:b", revision);
+    if (!module) {
+        fail();
+    }
+
+    assert_string_equal("b", module->name);
 }
 
 static void
@@ -442,6 +493,13 @@ test_ly_ctx_get_submodule(void **state)
     }
 
     assert_string_equal("asub", submodule->name);
+
+    submodule = ly_ctx_get_submodule(ctx, "b", revision, "bsub", NULL);
+    if (!submodule) {
+        fail();
+    }
+
+    assert_string_equal("bsub", submodule->name);
 }
 
 static void
@@ -449,9 +507,10 @@ test_ly_ctx_get_submodule2(void **state)
 {
     (void) state; /* unused */
     const struct lys_submodule *submodule;
-    const char *sub_name = "asub";
+    const char *sub_name1 = "asub";
+    const char *sub_name2 = "bsub";
 
-    submodule = ly_ctx_get_submodule2(NULL, sub_name);
+    submodule = ly_ctx_get_submodule2(NULL, sub_name1);
     if (submodule) {
         fail();
     }
@@ -461,12 +520,19 @@ test_ly_ctx_get_submodule2(void **state)
         fail();
     }
 
-    submodule = ly_ctx_get_submodule2(root->schema->module, sub_name);
+    submodule = ly_ctx_get_submodule2(root->schema->module, sub_name1);
     if (!submodule) {
         fail();
     }
 
     assert_string_equal("asub", submodule->name);
+
+    submodule = ly_ctx_get_submodule2(module, sub_name2);
+    if (!submodule) {
+        fail();
+    }
+
+    assert_string_equal("bsub", submodule->name);
 }
 
 static void
@@ -474,9 +540,10 @@ test_ly_ctx_get_node(void **state)
 {
     (void) state; /* unused */
     const struct lys_node *node;
-    const char *nodeid = "/a:x/bubba";
+    const char *nodeid1 = "/a:x/bubba";
+    const char *nodeid2 = "/b:x/bubba";
 
-    node = ly_ctx_get_node(NULL, root->schema, nodeid);
+    node = ly_ctx_get_node(NULL, root->schema, nodeid1);
     if (node) {
         fail();
     }
@@ -486,7 +553,14 @@ test_ly_ctx_get_node(void **state)
         fail();
     }
 
-    node = ly_ctx_get_node(ctx, root->schema, nodeid);
+    node = ly_ctx_get_node(ctx, root->schema, nodeid1);
+    if (!node) {
+        fail();
+    }
+
+    assert_string_equal("bubba", node->name);
+
+    node = ly_ctx_get_node(ctx, root->schema, nodeid2);
     if (!node) {
         fail();
     }
