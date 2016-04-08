@@ -972,6 +972,10 @@ lyv_multicases(struct lyd_node *node, struct lyd_node *first_sibling, int autode
 autodelete:
     /* remove all nodes from other cases than 'sparent' */
     LY_TREE_FOR_SAFE(first_sibling, next, iter) {
+        if (iter == node) {
+            continue;
+        }
+
         sparent = lys_parent(iter->schema);
         if ((sparent->nodetype == LYS_CHOICE && sparent == schoice) /* another implicit case */
                 || (sparent->nodetype == LYS_CASE && sparent != scase && lys_parent(sparent) == schoice) /* another case */
