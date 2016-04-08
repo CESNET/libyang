@@ -72,7 +72,6 @@
 #include "resolve.h"
 #include "common.h"
 #include "parser_yang.h"
-#include "parser_yang_bis.h"
 #include "parser_yang_lex.h"
 #include "parser.h"
 
@@ -84,7 +83,7 @@
 #define DISABLE_INHERIT 0
 #define ENABLE_INHERIT 0x01
 
-void yyerror(void *scanner, ...);
+void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 char *s, *tmp_s;
 char rev[LY_REV_SIZE];
 struct lys_module *trg;
@@ -116,8 +115,8 @@ int64_t cnt_val;
 
 /* In a future release of Bison, this section will be replaced
    by #include "parser_yang_bis.h".  */
-#ifndef YY_YY_HOME_XVICAN01_DOCUMENTS_BC_LIBYANG_SRC_PARSER_YANG_BIS_H_INCLUDED
-# define YY_YY_HOME_XVICAN01_DOCUMENTS_BC_LIBYANG_SRC_PARSER_YANG_BIS_H_INCLUDED
+#ifndef YY_YY_PARSER_YANG_BIS_H_INCLUDED
+# define YY_YY_PARSER_YANG_BIS_H_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
 # define YYDEBUG 0
@@ -259,11 +258,25 @@ union YYSTYPE
 # define YYSTYPE_IS_DECLARED 1
 #endif
 
+/* Location type.  */
+#if ! defined YYLTYPE && ! defined YYLTYPE_IS_DECLARED
+typedef struct YYLTYPE YYLTYPE;
+struct YYLTYPE
+{
+  int first_line;
+  int first_column;
+  int last_line;
+  int last_column;
+};
+# define YYLTYPE_IS_DECLARED 1
+# define YYLTYPE_IS_TRIVIAL 1
+#endif
+
 
 
 int yyparse (void *scanner, struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all);
 
-#endif /* !YY_YY_HOME_XVICAN01_DOCUMENTS_BC_LIBYANG_SRC_PARSER_YANG_BIS_H_INCLUDED  */
+#endif /* !YY_YY_PARSER_YANG_BIS_H_INCLUDED  */
 
 /* Copy the second part of user declarations.  */
 
@@ -448,13 +461,15 @@ void free (void *); /* INFRINGES ON USER NAME SPACE */
 
 #if (! defined yyoverflow \
      && (! defined __cplusplus \
-         || (defined YYSTYPE_IS_TRIVIAL && YYSTYPE_IS_TRIVIAL)))
+         || (defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL \
+             && defined YYSTYPE_IS_TRIVIAL && YYSTYPE_IS_TRIVIAL)))
 
 /* A type that is properly aligned for any stack member.  */
 union yyalloc
 {
   yytype_int16 yyss_alloc;
   YYSTYPE yyvs_alloc;
+  YYLTYPE yyls_alloc;
 };
 
 /* The size of the maximum gap between one aligned stack and the next.  */
@@ -463,8 +478,8 @@ union yyalloc
 /* The size of an array large to enough to hold all stacks, each with
    N elements.  */
 # define YYSTACK_BYTES(N) \
-     ((N) * (sizeof (yytype_int16) + sizeof (YYSTYPE)) \
-      + YYSTACK_GAP_MAXIMUM)
+     ((N) * (sizeof (yytype_int16) + sizeof (YYSTYPE) + sizeof (YYLTYPE)) \
+      + 2 * YYSTACK_GAP_MAXIMUM)
 
 # define YYCOPY_NEEDED 1
 
@@ -574,80 +589,80 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,   244,   244,   245,   251,   251,   263,   265,   264,   277,
-     289,   277,   298,   299,   300,   301,   304,   316,   304,   327,
-     328,   334,   334,   343,   345,   345,   349,   357,   359,   382,
-     383,   386,   394,   386,   411,   413,   413,   433,   434,   438,
-     439,   441,   443,   452,   463,   452,   472,   474,   475,   476,
-     477,   482,   488,   490,   492,   494,   496,   504,   507,   507,
-     516,   517,   517,   522,   523,   528,   535,   535,   544,   550,
-     591,   594,   595,   596,   597,   598,   599,   600,   606,   607,
-     608,   610,   610,   629,   630,   634,   635,   642,   649,   660,
-     672,   672,   674,   675,   679,   681,   682,   683,   694,   696,
-     697,   696,   700,   701,   702,   703,   720,   720,   729,   730,
-     735,   754,   761,   767,   772,   778,   780,   780,   789,   791,
-     790,   798,   799,   810,   816,   822,   829,   833,   831,   853,
-     863,   863,   870,   873,   873,   885,   886,   892,   898,   903,
-     909,   910,   916,   917,   918,   925,   933,   938,   942,   972,
-     973,   977,   978,   979,   987,  1000,  1006,  1007,  1025,  1029,
-    1039,  1040,  1045,  1060,  1065,  1070,  1075,  1081,  1085,  1095,
-    1096,  1101,  1101,  1119,  1120,  1123,  1135,  1145,  1146,  1151,
-    1152,  1161,  1167,  1172,  1178,  1190,  1191,  1209,  1214,  1215,
-    1220,  1222,  1224,  1228,  1232,  1247,  1247,  1265,  1266,  1268,
-    1279,  1289,  1290,  1295,  1296,  1305,  1311,  1316,  1322,  1334,
-    1335,  1350,  1352,  1354,  1356,  1358,  1358,  1365,  1366,  1371,
-    1391,  1397,  1402,  1407,  1408,  1415,  1418,  1419,  1420,  1421,
-    1422,  1423,  1424,  1427,  1427,  1435,  1436,  1441,  1475,  1475,
-    1477,  1484,  1484,  1492,  1493,  1499,  1505,  1510,  1515,  1515,
-    1520,  1520,  1528,  1528,  1535,  1542,  1535,  1567,  1595,  1595,
-    1597,  1604,  1609,  1604,  1616,  1617,  1617,  1625,  1628,  1634,
-    1640,  1646,  1651,  1657,  1664,  1657,  1688,  1716,  1716,  1718,
-    1725,  1730,  1725,  1737,  1738,  1738,  1746,  1752,  1766,  1780,
-    1792,  1798,  1803,  1809,  1816,  1809,  1841,  1882,  1882,  1884,
-    1891,  1891,  1899,  1909,  1917,  1923,  1937,  1951,  1963,  1969,
-    1974,  1979,  1979,  1987,  1987,  1992,  1992,  2000,  2000,  2011,
-    2013,  2012,  2030,  2051,  2051,  2053,  2066,  2078,  2086,  2094,
-    2102,  2111,  2120,  2120,  2130,  2131,  2134,  2135,  2136,  2137,
-    2138,  2141,  2141,  2149,  2150,  2154,  2174,  2174,  2176,  2183,
-    2189,  2194,  2199,  2199,  2206,  2206,  2217,  2218,  2222,  2249,
-    2249,  2251,  2258,  2258,  2266,  2272,  2278,  2284,  2289,  2295,
-    2295,  2311,  2312,  2316,  2351,  2351,  2353,  2360,  2366,  2371,
-    2376,  2376,  2384,  2384,  2399,  2399,  2408,  2409,  2414,  2415,
-    2418,  2438,  2445,  2469,  2493,  2512,  2531,  2556,  2581,  2586,
-    2592,  2601,  2592,  2608,  2609,  2612,  2621,  2612,  2633,  2654,
-    2654,  2656,  2663,  2669,  2674,  2679,  2679,  2687,  2687,  2697,
-    2698,  2701,  2701,  2712,  2713,  2718,  2746,  2753,  2759,  2764,
-    2769,  2769,  2777,  2777,  2782,  2782,  2792,  2792,  2803,  2811,
-    2803,  2818,  2838,  2838,  2846,  2846,  2851,  2851,  2861,  2869,
-    2861,  2876,  2876,  2886,  2890,  2895,  2922,  2929,  2935,  2940,
-    2945,  2945,  2953,  2953,  2958,  2958,  2965,  2974,  2965,  2987,
-    3006,  3013,  3020,  3030,  3031,  3033,  3038,  3040,  3041,  3042,
-    3045,  3047,  3047,  3053,  3054,  3058,  3080,  3088,  3096,  3112,
-    3120,  3127,  3134,  3145,  3157,  3157,  3163,  3164,  3168,  3190,
-    3198,  3209,  3219,  3228,  3228,  3234,  3235,  3239,  3244,  3250,
-    3258,  3266,  3273,  3280,  3291,  3303,  3303,  3306,  3307,  3311,
-    3312,  3317,  3323,  3325,  3326,  3325,  3329,  3330,  3331,  3346,
-    3348,  3349,  3348,  3352,  3353,  3354,  3369,  3371,  3373,  3374,
-    3395,  3397,  3398,  3399,  3420,  3422,  3423,  3424,  3436,  3436,
-    3444,  3445,  3450,  3452,  3453,  3455,  3456,  3458,  3460,  3460,
-    3469,  3472,  3472,  3483,  3486,  3496,  3517,  3519,  3520,  3523,
-    3523,  3542,  3542,  3551,  3551,  3560,  3563,  3565,  3567,  3568,
-    3570,  3572,  3574,  3575,  3577,  3579,  3580,  3582,  3583,  3585,
-    3587,  3590,  3594,  3596,  3597,  3599,  3600,  3602,  3604,  3615,
-    3616,  3619,  3620,  3632,  3633,  3635,  3636,  3638,  3639,  3645,
-    3646,  3649,  3650,  3651,  3677,  3678,  3681,  3682,  3683,  3686,
-    3686,  3694,  3696,  3697,  3699,  3700,  3702,  3703,  3705,  3706,
-    3708,  3709,  3711,  3712,  3714,  3715,  3718,  3719,  3722,  3724,
-    3725,  3729,  3729,  3738,  3740,  3741,  3742,  3743,  3744,  3745,
-    3746,  3748,  3749,  3750,  3751,  3752,  3753,  3754,  3755,  3756,
-    3757,  3758,  3759,  3760,  3761,  3762,  3763,  3764,  3765,  3766,
-    3767,  3768,  3769,  3770,  3771,  3772,  3773,  3774,  3775,  3776,
-    3777,  3778,  3779,  3780,  3781,  3782,  3783,  3784,  3785,  3786,
-    3787,  3788,  3789,  3790,  3791,  3792,  3793,  3794,  3795,  3796,
-    3797,  3798,  3799,  3800,  3801,  3802,  3803,  3804,  3805,  3806,
-    3807,  3808,  3809,  3810,  3811,  3812,  3813,  3814,  3815,  3816,
-    3817,  3818,  3819,  3820,  3821,  3822,  3823,  3824,  3825,  3828,
-    3837
+       0,   244,   244,   245,   251,   251,   270,   272,   271,   303,
+     315,   303,   324,   325,   326,   327,   330,   342,   330,   353,
+     354,   360,   360,   369,   371,   371,   375,   383,   385,   408,
+     409,   412,   420,   412,   437,   439,   439,   459,   460,   464,
+     465,   467,   469,   478,   489,   478,   498,   500,   501,   502,
+     503,   508,   514,   516,   518,   520,   522,   530,   533,   533,
+     542,   543,   543,   548,   549,   554,   561,   561,   570,   576,
+     617,   620,   621,   622,   623,   624,   625,   626,   632,   633,
+     634,   636,   636,   655,   656,   660,   661,   668,   675,   686,
+     698,   698,   700,   701,   705,   707,   708,   709,   720,   722,
+     723,   722,   726,   727,   728,   729,   746,   746,   755,   756,
+     761,   780,   787,   793,   798,   804,   806,   806,   815,   817,
+     816,   824,   825,   836,   842,   848,   855,   859,   857,   879,
+     889,   889,   896,   899,   899,   911,   912,   918,   924,   929,
+     935,   936,   942,   943,   944,   951,   959,   964,   968,   998,
+     999,  1003,  1004,  1005,  1013,  1026,  1032,  1033,  1051,  1055,
+    1065,  1066,  1071,  1086,  1091,  1096,  1101,  1107,  1111,  1121,
+    1122,  1127,  1127,  1145,  1146,  1149,  1161,  1171,  1172,  1177,
+    1178,  1187,  1193,  1198,  1204,  1216,  1217,  1235,  1240,  1241,
+    1246,  1248,  1250,  1254,  1258,  1273,  1273,  1291,  1292,  1294,
+    1305,  1315,  1316,  1321,  1322,  1331,  1337,  1342,  1348,  1360,
+    1361,  1376,  1378,  1380,  1382,  1384,  1384,  1391,  1392,  1397,
+    1417,  1423,  1428,  1433,  1434,  1441,  1444,  1445,  1446,  1447,
+    1448,  1449,  1450,  1453,  1453,  1461,  1462,  1467,  1501,  1501,
+    1503,  1510,  1510,  1518,  1519,  1525,  1531,  1536,  1541,  1541,
+    1546,  1546,  1554,  1554,  1561,  1568,  1561,  1593,  1621,  1621,
+    1623,  1630,  1635,  1630,  1642,  1643,  1643,  1651,  1654,  1660,
+    1666,  1672,  1677,  1683,  1690,  1683,  1714,  1742,  1742,  1744,
+    1751,  1756,  1751,  1763,  1764,  1764,  1772,  1778,  1792,  1806,
+    1818,  1824,  1829,  1835,  1842,  1835,  1867,  1908,  1908,  1910,
+    1917,  1917,  1925,  1935,  1943,  1949,  1963,  1977,  1989,  1995,
+    2000,  2005,  2005,  2013,  2013,  2018,  2018,  2026,  2026,  2037,
+    2039,  2038,  2056,  2077,  2077,  2079,  2092,  2104,  2112,  2120,
+    2128,  2137,  2146,  2146,  2156,  2157,  2160,  2161,  2162,  2163,
+    2164,  2167,  2167,  2175,  2176,  2180,  2200,  2200,  2202,  2209,
+    2215,  2220,  2225,  2225,  2232,  2232,  2243,  2244,  2248,  2275,
+    2275,  2277,  2284,  2284,  2292,  2298,  2304,  2310,  2315,  2321,
+    2321,  2337,  2338,  2342,  2377,  2377,  2379,  2386,  2392,  2397,
+    2402,  2402,  2410,  2410,  2425,  2425,  2434,  2435,  2440,  2441,
+    2444,  2464,  2471,  2495,  2519,  2538,  2557,  2582,  2607,  2612,
+    2618,  2627,  2618,  2634,  2635,  2638,  2647,  2638,  2659,  2680,
+    2680,  2682,  2689,  2695,  2700,  2705,  2705,  2713,  2713,  2723,
+    2724,  2727,  2727,  2738,  2739,  2744,  2772,  2779,  2785,  2790,
+    2795,  2795,  2803,  2803,  2808,  2808,  2818,  2818,  2829,  2837,
+    2829,  2844,  2864,  2864,  2872,  2872,  2877,  2877,  2887,  2895,
+    2887,  2902,  2902,  2912,  2916,  2921,  2948,  2955,  2961,  2966,
+    2971,  2971,  2979,  2979,  2984,  2984,  2991,  3000,  2991,  3013,
+    3032,  3039,  3046,  3056,  3057,  3059,  3064,  3066,  3067,  3068,
+    3071,  3073,  3073,  3079,  3080,  3084,  3106,  3114,  3122,  3138,
+    3146,  3153,  3160,  3171,  3183,  3183,  3189,  3190,  3194,  3216,
+    3224,  3235,  3245,  3254,  3254,  3260,  3261,  3265,  3270,  3276,
+    3284,  3292,  3299,  3306,  3317,  3329,  3329,  3332,  3333,  3337,
+    3338,  3343,  3349,  3351,  3352,  3351,  3355,  3356,  3357,  3372,
+    3374,  3375,  3374,  3378,  3379,  3380,  3395,  3397,  3399,  3400,
+    3421,  3423,  3424,  3425,  3446,  3448,  3449,  3450,  3462,  3462,
+    3470,  3471,  3476,  3478,  3479,  3481,  3482,  3484,  3486,  3486,
+    3495,  3498,  3498,  3509,  3512,  3522,  3543,  3545,  3546,  3549,
+    3549,  3568,  3568,  3577,  3577,  3586,  3589,  3591,  3593,  3594,
+    3596,  3598,  3600,  3601,  3603,  3605,  3606,  3608,  3609,  3611,
+    3613,  3616,  3620,  3622,  3623,  3625,  3626,  3628,  3630,  3641,
+    3642,  3645,  3646,  3658,  3659,  3661,  3662,  3664,  3665,  3671,
+    3672,  3675,  3676,  3677,  3703,  3704,  3707,  3708,  3709,  3712,
+    3712,  3720,  3722,  3723,  3725,  3726,  3728,  3729,  3731,  3732,
+    3734,  3735,  3737,  3738,  3740,  3741,  3744,  3745,  3748,  3750,
+    3751,  3755,  3755,  3764,  3766,  3767,  3768,  3769,  3770,  3771,
+    3772,  3774,  3775,  3776,  3777,  3778,  3779,  3780,  3781,  3782,
+    3783,  3784,  3785,  3786,  3787,  3788,  3789,  3790,  3791,  3792,
+    3793,  3794,  3795,  3796,  3797,  3798,  3799,  3800,  3801,  3802,
+    3803,  3804,  3805,  3806,  3807,  3808,  3809,  3810,  3811,  3812,
+    3813,  3814,  3815,  3816,  3817,  3818,  3819,  3820,  3821,  3822,
+    3823,  3824,  3825,  3826,  3827,  3828,  3829,  3830,  3831,  3832,
+    3833,  3834,  3835,  3836,  3837,  3838,  3839,  3840,  3841,  3842,
+    3843,  3844,  3845,  3846,  3847,  3848,  3849,  3850,  3851,  3854,
+    3863
 };
 #endif
 
@@ -2074,7 +2089,7 @@ do                                                              \
     }                                                           \
   else                                                          \
     {                                                           \
-      yyerror (scanner, module, submodule, unres, size_arrays, read_all, YY_("syntax error: cannot back up")); \
+      yyerror (&yylloc, scanner, module, submodule, unres, size_arrays, read_all, YY_("syntax error: cannot back up")); \
       YYERROR;                                                  \
     }                                                           \
 while (0)
@@ -2083,6 +2098,32 @@ while (0)
 #define YYTERROR        1
 #define YYERRCODE       256
 
+
+/* YYLLOC_DEFAULT -- Set CURRENT to span from RHS[1] to RHS[N].
+   If N is 0, then set CURRENT to the empty location which ends
+   the previous symbol: RHS[0] (always defined).  */
+
+#ifndef YYLLOC_DEFAULT
+# define YYLLOC_DEFAULT(Current, Rhs, N)                                \
+    do                                                                  \
+      if (N)                                                            \
+        {                                                               \
+          (Current).first_line   = YYRHSLOC (Rhs, 1).first_line;        \
+          (Current).first_column = YYRHSLOC (Rhs, 1).first_column;      \
+          (Current).last_line    = YYRHSLOC (Rhs, N).last_line;         \
+          (Current).last_column  = YYRHSLOC (Rhs, N).last_column;       \
+        }                                                               \
+      else                                                              \
+        {                                                               \
+          (Current).first_line   = (Current).last_line   =              \
+            YYRHSLOC (Rhs, 0).last_line;                                \
+          (Current).first_column = (Current).last_column =              \
+            YYRHSLOC (Rhs, 0).last_column;                              \
+        }                                                               \
+    while (0)
+#endif
+
+#define YYRHSLOC(Rhs, K) ((Rhs)[K])
 
 
 /* Enable debugging if requested.  */
@@ -2099,9 +2140,48 @@ do {                                            \
     YYFPRINTF Args;                             \
 } while (0)
 
-/* This macro is provided for backward compatibility. */
+
+/* YY_LOCATION_PRINT -- Print the location on the stream.
+   This macro was not mandated originally: define only if we know
+   we won't break user code: when these are the locations we know.  */
+
 #ifndef YY_LOCATION_PRINT
-# define YY_LOCATION_PRINT(File, Loc) ((void) 0)
+# if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
+
+/* Print *YYLOCP on YYO.  Private, do not rely on its existence. */
+
+YY_ATTRIBUTE_UNUSED
+static unsigned
+yy_location_print_ (FILE *yyo, YYLTYPE const * const yylocp)
+{
+  unsigned res = 0;
+  int end_col = 0 != yylocp->last_column ? yylocp->last_column - 1 : 0;
+  if (0 <= yylocp->first_line)
+    {
+      res += YYFPRINTF (yyo, "%d", yylocp->first_line);
+      if (0 <= yylocp->first_column)
+        res += YYFPRINTF (yyo, ".%d", yylocp->first_column);
+    }
+  if (0 <= yylocp->last_line)
+    {
+      if (yylocp->first_line < yylocp->last_line)
+        {
+          res += YYFPRINTF (yyo, "-%d", yylocp->last_line);
+          if (0 <= end_col)
+            res += YYFPRINTF (yyo, ".%d", end_col);
+        }
+      else if (0 <= end_col && yylocp->first_column < end_col)
+        res += YYFPRINTF (yyo, "-%d", end_col);
+    }
+  return res;
+ }
+
+#  define YY_LOCATION_PRINT(File, Loc)          \
+  yy_location_print_ (File, &(Loc))
+
+# else
+#  define YY_LOCATION_PRINT(File, Loc) ((void) 0)
+# endif
 #endif
 
 
@@ -2111,7 +2191,7 @@ do {                                                                      \
     {                                                                     \
       YYFPRINTF (stderr, "%s ", Title);                                   \
       yy_symbol_print (stderr,                                            \
-                  Type, Value, scanner, module, submodule, unres, size_arrays, read_all); \
+                  Type, Value, Location, scanner, module, submodule, unres, size_arrays, read_all); \
       YYFPRINTF (stderr, "\n");                                           \
     }                                                                     \
 } while (0)
@@ -2122,10 +2202,11 @@ do {                                                                      \
 `----------------------------------------*/
 
 static void
-yy_symbol_value_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvaluep, void *scanner, struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all)
+yy_symbol_value_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvaluep, YYLTYPE const * const yylocationp, void *scanner, struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all)
 {
   FILE *yyo = yyoutput;
   YYUSE (yyo);
+  YYUSE (yylocationp);
   YYUSE (scanner);
   YYUSE (module);
   YYUSE (submodule);
@@ -2147,12 +2228,14 @@ yy_symbol_value_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvalue
 `--------------------------------*/
 
 static void
-yy_symbol_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvaluep, void *scanner, struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all)
+yy_symbol_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvaluep, YYLTYPE const * const yylocationp, void *scanner, struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all)
 {
   YYFPRINTF (yyoutput, "%s %s (",
              yytype < YYNTOKENS ? "token" : "nterm", yytname[yytype]);
 
-  yy_symbol_value_print (yyoutput, yytype, yyvaluep, scanner, module, submodule, unres, size_arrays, read_all);
+  YY_LOCATION_PRINT (yyoutput, *yylocationp);
+  YYFPRINTF (yyoutput, ": ");
+  yy_symbol_value_print (yyoutput, yytype, yyvaluep, yylocationp, scanner, module, submodule, unres, size_arrays, read_all);
   YYFPRINTF (yyoutput, ")");
 }
 
@@ -2185,7 +2268,7 @@ do {                                                            \
 `------------------------------------------------*/
 
 static void
-yy_reduce_print (yytype_int16 *yyssp, YYSTYPE *yyvsp, int yyrule, void *scanner, struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all)
+yy_reduce_print (yytype_int16 *yyssp, YYSTYPE *yyvsp, YYLTYPE *yylsp, int yyrule, void *scanner, struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all)
 {
   unsigned long int yylno = yyrline[yyrule];
   int yynrhs = yyr2[yyrule];
@@ -2199,7 +2282,7 @@ yy_reduce_print (yytype_int16 *yyssp, YYSTYPE *yyvsp, int yyrule, void *scanner,
       yy_symbol_print (stderr,
                        yystos[yyssp[yyi + 1 - yynrhs]],
                        &(yyvsp[(yyi + 1) - (yynrhs)])
-                                              , scanner, module, submodule, unres, size_arrays, read_all);
+                       , &(yylsp[(yyi + 1) - (yynrhs)])                       , scanner, module, submodule, unres, size_arrays, read_all);
       YYFPRINTF (stderr, "\n");
     }
 }
@@ -2207,7 +2290,7 @@ yy_reduce_print (yytype_int16 *yyssp, YYSTYPE *yyvsp, int yyrule, void *scanner,
 # define YY_REDUCE_PRINT(Rule)          \
 do {                                    \
   if (yydebug)                          \
-    yy_reduce_print (yyssp, yyvsp, Rule, scanner, module, submodule, unres, size_arrays, read_all); \
+    yy_reduce_print (yyssp, yyvsp, yylsp, Rule, scanner, module, submodule, unres, size_arrays, read_all); \
 } while (0)
 
 /* Nonzero means print parse trace.  It is left uninitialized so that
@@ -2465,9 +2548,10 @@ yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
 `-----------------------------------------------*/
 
 static void
-yydestruct (const char *yymsg, int yytype, YYSTYPE *yyvaluep, void *scanner, struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all)
+yydestruct (const char *yymsg, int yytype, YYSTYPE *yyvaluep, YYLTYPE *yylocationp, void *scanner, struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, struct lys_array_size *size_arrays, int read_all)
 {
   YYUSE (yyvaluep);
+  YYUSE (yylocationp);
   YYUSE (scanner);
   YYUSE (module);
   YYUSE (submodule);
@@ -2529,6 +2613,14 @@ int yychar;
 YY_INITIAL_VALUE (static YYSTYPE yyval_default;)
 YYSTYPE yylval YY_INITIAL_VALUE (= yyval_default);
 
+/* Location data for the lookahead symbol.  */
+static YYLTYPE yyloc_default
+# if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
+  = { 1, 1, 1, 1 }
+# endif
+;
+YYLTYPE yylloc = yyloc_default;
+
     /* Number of syntax errors so far.  */
     int yynerrs;
 
@@ -2539,6 +2631,7 @@ YYSTYPE yylval YY_INITIAL_VALUE (= yyval_default);
     /* The stacks and their tools:
        'yyss': related to states.
        'yyvs': related to semantic values.
+       'yyls': related to locations.
 
        Refer to the stacks through separate pointers, to allow yyoverflow
        to reallocate them elsewhere.  */
@@ -2553,6 +2646,14 @@ YYSTYPE yylval YY_INITIAL_VALUE (= yyval_default);
     YYSTYPE *yyvs;
     YYSTYPE *yyvsp;
 
+    /* The location stack.  */
+    YYLTYPE yylsa[YYINITDEPTH];
+    YYLTYPE *yyls;
+    YYLTYPE *yylsp;
+
+    /* The locations where the error started and ended.  */
+    YYLTYPE yyerror_range[3];
+
     YYSIZE_T yystacksize;
 
   int yyn;
@@ -2562,6 +2663,7 @@ YYSTYPE yylval YY_INITIAL_VALUE (= yyval_default);
   /* The variables used to return semantic value and location from the
      action routines.  */
   YYSTYPE yyval;
+  YYLTYPE yyloc;
 
 #if YYERROR_VERBOSE
   /* Buffer for error messages, and its allocated size.  */
@@ -2570,7 +2672,7 @@ YYSTYPE yylval YY_INITIAL_VALUE (= yyval_default);
   YYSIZE_T yymsg_alloc = sizeof yymsgbuf;
 #endif
 
-#define YYPOPSTACK(N)   (yyvsp -= (N), yyssp -= (N))
+#define YYPOPSTACK(N)   (yyvsp -= (N), yyssp -= (N), yylsp -= (N))
 
   /* The number of symbols on the RHS of the reduced rule.
      Keep to zero when no symbol should be popped.  */
@@ -2578,6 +2680,7 @@ YYSTYPE yylval YY_INITIAL_VALUE (= yyval_default);
 
   yyssp = yyss = yyssa;
   yyvsp = yyvs = yyvsa;
+  yylsp = yyls = yylsa;
   yystacksize = YYINITDEPTH;
 
   YYDPRINTF ((stderr, "Starting parse\n"));
@@ -2586,6 +2689,7 @@ YYSTYPE yylval YY_INITIAL_VALUE (= yyval_default);
   yyerrstatus = 0;
   yynerrs = 0;
   yychar = YYEMPTY; /* Cause a token to be read.  */
+  yylsp[0] = yylloc;
   goto yysetstate;
 
 /*------------------------------------------------------------.
@@ -2611,6 +2715,7 @@ YYSTYPE yylval YY_INITIAL_VALUE (= yyval_default);
            memory.  */
         YYSTYPE *yyvs1 = yyvs;
         yytype_int16 *yyss1 = yyss;
+        YYLTYPE *yyls1 = yyls;
 
         /* Each stack pointer address is followed by the size of the
            data in use in that stack, in bytes.  This used to be a
@@ -2619,8 +2724,10 @@ YYSTYPE yylval YY_INITIAL_VALUE (= yyval_default);
         yyoverflow (YY_("memory exhausted"),
                     &yyss1, yysize * sizeof (*yyssp),
                     &yyvs1, yysize * sizeof (*yyvsp),
+                    &yyls1, yysize * sizeof (*yylsp),
                     &yystacksize);
 
+        yyls = yyls1;
         yyss = yyss1;
         yyvs = yyvs1;
       }
@@ -2643,6 +2750,7 @@ YYSTYPE yylval YY_INITIAL_VALUE (= yyval_default);
           goto yyexhaustedlab;
         YYSTACK_RELOCATE (yyss_alloc, yyss);
         YYSTACK_RELOCATE (yyvs_alloc, yyvs);
+        YYSTACK_RELOCATE (yyls_alloc, yyls);
 #  undef YYSTACK_RELOCATE
         if (yyss1 != yyssa)
           YYSTACK_FREE (yyss1);
@@ -2652,6 +2760,7 @@ YYSTYPE yylval YY_INITIAL_VALUE (= yyval_default);
 
       yyssp = yyss + yysize - 1;
       yyvsp = yyvs + yysize - 1;
+      yylsp = yyls + yysize - 1;
 
       YYDPRINTF ((stderr, "Stack size increased to %lu\n",
                   (unsigned long int) yystacksize));
@@ -2686,7 +2795,7 @@ yybackup:
   if (yychar == YYEMPTY)
     {
       YYDPRINTF ((stderr, "Reading a token: "));
-      yychar = yylex (&yylval, scanner);
+      yychar = yylex (&yylval, &yylloc, scanner);
     }
 
   if (yychar <= YYEOF)
@@ -2729,7 +2838,7 @@ yybackup:
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
   *++yyvsp = yylval;
   YY_IGNORE_MAYBE_UNINITIALIZED_END
-
+  *++yylsp = yylloc;
   goto yynewstate;
 
 
@@ -2760,7 +2869,8 @@ yyreduce:
      GCC warning that YYVAL may be used uninitialized.  */
   yyval = yyvsp[1-yylen];
 
-
+  /* Default location.  */
+  YYLLOC_DEFAULT (yyloc, (yylsp - yylen), yylen);
   YY_REDUCE_PRINT (yyn);
   switch (yyn)
     {
@@ -2776,12 +2886,19 @@ yyreduce:
   case 4:
 
     { if (read_all) {
-                      s = calloc(1, yyget_leng(scanner) - 1);
-                      if (!s) {
-                        LOGMEM;
-                        YYERROR;
+                      if (yyget_text(scanner)[0] == '"') {
+                        s = yang_read_string(yyget_text(scanner) + 1, yyget_leng(scanner) - 2, yylloc.first_column);
+                        if (!s) {
+                          YYERROR;
+                        }
+                      } else {
+                        s = calloc(1, yyget_leng(scanner) - 1);
+                        if (!s) {
+                          LOGMEM;
+                          YYERROR;
+                        }
+                        memcpy(s, yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
                       }
-                      memcpy(s, yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
                     }
                   }
 
@@ -2790,12 +2907,31 @@ yyreduce:
   case 7:
 
     { if (read_all){
-                s = realloc(s, yyget_leng(scanner) + strlen(s) + 1);
-                if (s) {
-                  strcat(s, yyget_text(scanner));
+                char *temp;
+                if (yyget_text(scanner)[0] == '"') {
+                  temp = yang_read_string(yyget_text(scanner) + 1, yyget_leng(scanner) - 2, yylloc.first_column);
+                  if (!temp) {
+                    YYERROR;
+                  }
+                  s = ly_realloc(s, strlen(temp) + strlen(s) + 1);
+                  if (s) {
+                    strcat(s, temp);
+                    free(temp);
+                  } else {
+                    free(temp);
+                    LOGMEM;
+                    YYERROR;
+                  }
                 } else {
-                  LOGMEM;
-                  YYERROR;
+                  int length = yyget_leng(scanner) - 2 + strlen(s) + 1;
+                  s = ly_realloc(s, length);
+                  if (s) {
+                    memcpy(s + strlen(s), yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
+                    s[length - 1] = '\0';
+                  } else {
+                    LOGMEM;
+                    YYERROR;
+                  }
                 }
               }
             }
@@ -4525,7 +4661,7 @@ yyreduce:
                                     LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, (yyvsp[0].nodes).node.ptr_leaf, "type", "leaf");
                                     YYERROR;
                                   } else {
-                                      if (unres_schema_add_node(trg, unres, &(yyvsp[0].nodes).node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *) (yyvsp[0].nodes).node.ptr_leaf)) {
+                                      if (unres_schema_add_node(trg, unres, &(yyvsp[0].nodes).node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *) (yyvsp[0].nodes).node.ptr_leaf->parent)) {
                                         (yyvsp[0].nodes).node.ptr_leaf->type.der = NULL;
                                         YYERROR;
                                       }
@@ -4533,7 +4669,7 @@ yyreduce:
                                   if ((yyvsp[0].nodes).node.ptr_leaf->dflt) {
                                     if ((yyvsp[0].nodes).node.ptr_leaf->flags & LYS_MAND_TRUE) {
                                       /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
-                                      LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, (yyvsp[0].nodes).node.ptr_leaf, "mandatory", "list");
+                                      LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, (yyvsp[0].nodes).node.ptr_leaf, "mandatory", "leaf");
                                       LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
                                       YYERROR;
                                     }
@@ -4732,7 +4868,7 @@ yyreduce:
                                              YYERROR;
                                            } else {
                                              if (unres_schema_add_node(trg, unres, &(yyvsp[0].nodes).node.ptr_leaflist->type, UNRES_TYPE_DER,
-                                                                      (struct lys_node *) (yyvsp[0].nodes).node.ptr_leaflist)) {
+                                                                      (struct lys_node *) (yyvsp[0].nodes).node.ptr_leaflist->parent)) {
                                                YYERROR;
                                              }
                                            }
@@ -7571,6 +7707,7 @@ yyreduce:
   YY_STACK_PRINT (yyss, yyssp);
 
   *++yyvsp = yyval;
+  *++yylsp = yyloc;
 
   /* Now 'shift' the result of the reduction.  Determine what state
      that goes to, based on the state we popped back to and the rule
@@ -7600,7 +7737,7 @@ yyerrlab:
     {
       ++yynerrs;
 #if ! YYERROR_VERBOSE
-      yyerror (scanner, module, submodule, unres, size_arrays, read_all, YY_("syntax error"));
+      yyerror (&yylloc, scanner, module, submodule, unres, size_arrays, read_all, YY_("syntax error"));
 #else
 # define YYSYNTAX_ERROR yysyntax_error (&yymsg_alloc, &yymsg, \
                                         yyssp, yytoken)
@@ -7627,7 +7764,7 @@ yyerrlab:
                 yymsgp = yymsg;
               }
           }
-        yyerror (scanner, module, submodule, unres, size_arrays, read_all, yymsgp);
+        yyerror (&yylloc, scanner, module, submodule, unres, size_arrays, read_all, yymsgp);
         if (yysyntax_error_status == 2)
           goto yyexhaustedlab;
       }
@@ -7635,7 +7772,7 @@ yyerrlab:
 #endif
     }
 
-
+  yyerror_range[1] = yylloc;
 
   if (yyerrstatus == 3)
     {
@@ -7651,7 +7788,7 @@ yyerrlab:
       else
         {
           yydestruct ("Error: discarding",
-                      yytoken, &yylval, scanner, module, submodule, unres, size_arrays, read_all);
+                      yytoken, &yylval, &yylloc, scanner, module, submodule, unres, size_arrays, read_all);
           yychar = YYEMPTY;
         }
     }
@@ -7672,6 +7809,7 @@ yyerrorlab:
   if (/*CONSTCOND*/ 0)
      goto yyerrorlab;
 
+  yyerror_range[1] = yylsp[1-yylen];
   /* Do not reclaim the symbols of the rule whose action triggered
      this YYERROR.  */
   YYPOPSTACK (yylen);
@@ -7705,9 +7843,9 @@ yyerrlab1:
       if (yyssp == yyss)
         YYABORT;
 
-
+      yyerror_range[1] = *yylsp;
       yydestruct ("Error: popping",
-                  yystos[yystate], yyvsp, scanner, module, submodule, unres, size_arrays, read_all);
+                  yystos[yystate], yyvsp, yylsp, scanner, module, submodule, unres, size_arrays, read_all);
       YYPOPSTACK (1);
       yystate = *yyssp;
       YY_STACK_PRINT (yyss, yyssp);
@@ -7717,6 +7855,11 @@ yyerrlab1:
   *++yyvsp = yylval;
   YY_IGNORE_MAYBE_UNINITIALIZED_END
 
+  yyerror_range[2] = yylloc;
+  /* Using YYLLOC is tempting, but would change the location of
+     the lookahead.  YYLOC is available though.  */
+  YYLLOC_DEFAULT (yyloc, yyerror_range, 2);
+  *++yylsp = yyloc;
 
   /* Shift the error token.  */
   YY_SYMBOL_PRINT ("Shifting", yystos[yyn], yyvsp, yylsp);
@@ -7744,7 +7887,7 @@ yyabortlab:
 | yyexhaustedlab -- memory exhaustion comes here.  |
 `-------------------------------------------------*/
 yyexhaustedlab:
-  yyerror (scanner, module, submodule, unres, size_arrays, read_all, YY_("memory exhausted"));
+  yyerror (&yylloc, scanner, module, submodule, unres, size_arrays, read_all, YY_("memory exhausted"));
   yyresult = 2;
   /* Fall through.  */
 #endif
@@ -7756,7 +7899,7 @@ yyreturn:
          user semantic actions for why this is necessary.  */
       yytoken = YYTRANSLATE (yychar);
       yydestruct ("Cleanup: discarding lookahead",
-                  yytoken, &yylval, scanner, module, submodule, unres, size_arrays, read_all);
+                  yytoken, &yylval, &yylloc, scanner, module, submodule, unres, size_arrays, read_all);
     }
   /* Do not reclaim the symbols of the rule whose action triggered
      this YYABORT or YYACCEPT.  */
@@ -7765,7 +7908,7 @@ yyreturn:
   while (yyssp != yyss)
     {
       yydestruct ("Cleanup: popping",
-                  yystos[*yyssp], yyvsp, scanner, module, submodule, unres, size_arrays, read_all);
+                  yystos[*yyssp], yyvsp, yylsp, scanner, module, submodule, unres, size_arrays, read_all);
       YYPOPSTACK (1);
     }
 #ifndef yyoverflow
@@ -7781,8 +7924,8 @@ yyreturn:
 
 
 
-void yyerror(void *scanner, ...){
+void yyerror(YYLTYPE *yylloc, void *scanner, ...){
 
+  (void)yylloc; /* unused */
   LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yyget_text(scanner));
-  free(s);
 }
