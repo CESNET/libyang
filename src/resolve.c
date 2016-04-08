@@ -1010,6 +1010,52 @@ resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start
     return result;
 }
 
+/*
+ *  0 - ok (done)
+ *  1 - continue
+ *  2 - break
+ * -1 - error
+ */
+static int
+schema_nodeid_siblingcheck(const struct lys_node *sibling, uint8_t *shorthand, const char *id,
+                           const struct lys_module *module, const char *mod_name, int mod_name_len,
+                           const struct lys_node **start)
+{
+    const struct lys_module *prefix_mod;
+
+    /* module check */
+    prefix_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+    if (!prefix_mod) {
+        return -1;
+    }
+    if (prefix_mod != lys_node_module(sibling)) {
+        return 1;
+    }
+
+    /* check for shorthand cases - then 'start' does not change */
+    if (sibling->parent && sibling->parent->nodetype == LYS_CHOICE && sibling->nodetype != LYS_CASE) {
+        *shorthand = ~(*shorthand);
+    }
+
+    /* the result node? */
+    if (!id[0]) {
+        if (*shorthand) {
+            return 1;
+        }
+        return 0;
+    }
+
+    if (!(*shorthand)) {
+        /* move down the tree, if possible */
+        if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+            return -1;
+        }
+        *start = sibling->child;
+    }
+
+    return 2;
+}
+
 /* start - relative, module - absolute, -1 error, EXIT_SUCCESS ok (but ret can still be NULL), >0 unexpected char on ret - 1 */
 int
 resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_module *module,
@@ -1018,8 +1064,9 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
     const char *name, *mod_name, *id;
     const struct lys_node *sibling;
     int r, nam_len, mod_name_len, is_relative = -1;
+    uint8_t shorthand = 0;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
-    const struct lys_module *prefix_mod, *start_mod;
+    const struct lys_module *start_mod;
 
     assert(nodeid && (start || module) && !(start && module) && ret);
 
@@ -1056,31 +1103,17 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
                     || ((sibling->nodetype == LYS_INPUT) && !strncmp(name, "input", nam_len) && (nam_len == 5))
                     || ((sibling->nodetype == LYS_OUTPUT) && !strncmp(name, "output", nam_len) && (nam_len == 6))) {
 
-                /* module check */
-                prefix_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
-                if (!prefix_mod) {
-                    return -1;
-                }
-                if (prefix_mod != lys_node_module(sibling)) {
-                    continue;
-                }
-
-                /* the result node? */
-                if (!id[0]) {
+                r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, &start);
+                if (r == 0) {
                     *ret = sibling;
                     return EXIT_SUCCESS;
+                } else if (r == 1) {
+                    continue;
+                } else if (r == 2) {
+                    break;
+                } else {
+                    return -1;
                 }
-
-                /* check for shorthand cases - then 'start' does not change */
-                if (!sibling->parent || (sibling->parent->nodetype != LYS_CHOICE)
-                        || (sibling->nodetype == LYS_CASE)) {
-                    /* move down the tree, if possible */
-                    if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
-                        return -1;
-                    }
-                    start = sibling->child;
-                }
-                break;
             }
         }
 
@@ -1109,8 +1142,9 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
     const char *name, *mod_name, *id;
     const struct lys_node *sibling;
     int r, nam_len, mod_name_len, is_relative = -1;
+    uint8_t shorthand = 0;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
-    const struct lys_module *prefix_mod, *module;
+    const struct lys_module *module;
 
     assert(nodeid && start && ret);
     assert(!(ret_nodetype & (LYS_USES | LYS_AUGMENT)) && ((ret_nodetype == LYS_GROUPING) || !(ret_nodetype & LYS_GROUPING)));
@@ -1134,35 +1168,21 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
 
-                /* module check */
-                prefix_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
-                if (!prefix_mod) {
-                    return -1;
-                }
-                if (prefix_mod != lys_node_module(sibling)) {
-                    continue;
-                }
-
-                /* the result node? */
-                if (!id[0]) {
+                r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, &start);
+                if (r == 0) {
                     if (!(sibling->nodetype & ret_nodetype)) {
                         /* wrong node type, too bad */
                         continue;
                     }
                     *ret = sibling;
                     return EXIT_SUCCESS;
+                } else if (r == 1) {
+                    continue;
+                } else if (r == 2) {
+                    break;
+                } else {
+                    return -1;
                 }
-
-                /* check for shorthand cases - then 'start' does not change */
-                if (!sibling->parent || (sibling->parent->nodetype != LYS_CHOICE)
-                        || (sibling->nodetype == LYS_CASE)) {
-                    /* move down the tree, if possible */
-                    if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
-                        return -1;
-                    }
-                    start = sibling->child;
-                }
-                break;
             }
         }
 
@@ -1228,7 +1248,8 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
     const char *name, *mod_name, *id;
     const struct lys_node *sibling, *start;
     int r, nam_len, mod_name_len, is_relative = -1;
-    const struct lys_module *prefix_mod, *abs_start_mod;
+    uint8_t shorthand = 0;
+    const struct lys_module *abs_start_mod;
 
     assert(nodeid && module && ret);
     assert(!(ret_nodetype & (LYS_USES | LYS_AUGMENT)) && ((ret_nodetype == LYS_GROUPING) || !(ret_nodetype & LYS_GROUPING)));
@@ -1258,35 +1279,22 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
             if ((sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len])
                     || ((sibling->nodetype == LYS_INPUT) && !strncmp(name, "input", nam_len) && (nam_len == 5))
                     || ((sibling->nodetype == LYS_OUTPUT) && !strncmp(name, "output", nam_len) && (nam_len == 6))) {
-                /* module check */
-                prefix_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
-                if (!prefix_mod) {
-                    return -1;
-                }
-                if (prefix_mod != lys_node_module(sibling)) {
-                    continue;
-                }
 
-                /* the result node? */
-                if (!id[0]) {
+                r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, &start);
+                if (r == 0) {
                     if (!(sibling->nodetype & ret_nodetype)) {
                         /* wrong node type, too bad */
                         continue;
                     }
                     *ret = sibling;
                     return EXIT_SUCCESS;
+                } else if (r == 1) {
+                    continue;
+                } else if (r == 2) {
+                    break;
+                } else {
+                    return -1;
                 }
-
-                /* check for shorthand cases - then 'start' does not change */
-                if (!sibling->parent || (sibling->parent->nodetype != LYS_CHOICE)
-                        || (sibling->nodetype == LYS_CASE)) {
-                    /* move down the tree, if possible */
-                    if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
-                        return -1;
-                    }
-                    start = sibling->child;
-                }
-                break;
             }
         }
 
@@ -1347,7 +1355,7 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
     char *str, module_name[LY_MODULE_NAME_MAX_LEN + 1];
     const char *name, *mod_name, *id;
     const struct lys_node *sibling;
-    int r, nam_len, mod_name_len, is_relative = -1, has_predicate;
+    int r, nam_len, mod_name_len, is_relative = -1, has_predicate, shorthand = 0;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
     const struct lys_module *prefix_mod, *module, *prev_mod;
 
@@ -1444,14 +1452,22 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
                     id += r;
                 }
 
+                /* check for shorthand cases - then 'start' does not change */
+                if (sibling->parent && sibling->parent->nodetype == LYS_CHOICE && sibling->nodetype != LYS_CASE) {
+                    shorthand = ~shorthand;
+                }
+
                 /* the result node? */
                 if (!id[0]) {
+                    if (shorthand) {
+                        /* wrong path for shorthand */
+                        sibling = NULL;
+                        break;
+                    }
                     return sibling;
                 }
 
-                /* check for shorthand cases - then 'start' does not change */
-                if (!sibling->parent || (sibling->parent->nodetype != LYS_CHOICE)
-                        || (sibling->nodetype == LYS_CASE)) {
+                if (!shorthand) {
                     /* move down the tree, if possible */
                     if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
                         LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
