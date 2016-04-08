@@ -255,6 +255,11 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             }
 
             if (!strcmp(attr->name, "operation") && !strcmp(attr->ns->value, LY_NSNC)) {
+                if (i & 0x10) {
+                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "operation attributes", xml->name);
+                    return -1;
+                }
+
                 if (!strcmp(attr->value, "delete") || !strcmp(attr->value, "remove")) {
                     i |= 0x10;
                 } else if (strcmp(attr->value, "create") &&
