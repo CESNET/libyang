@@ -965,7 +965,7 @@ struct lyd_node *
 resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start)
 {
     char *str, *token, *p;
-    struct lyd_node *result = start, *iter;
+    struct lyd_node *result = NULL, *iter;
     const struct lys_node *schema = NULL;
 
     assert(nodeid && start);
@@ -979,6 +979,7 @@ resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start
         LOGMEM;
         return NULL;
     }
+
     while (p) {
         token = p;
         p = strchr(p, '/');
@@ -987,23 +988,30 @@ resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start
             p++;
         }
 
-        schema = NULL;
-        if (resolve_descendant_schema_nodeid(token, result->schema, LYS_LEAF, &schema) || !schema) {
-            free(str);
-            return NULL;
-        }
+        if (p) {
+            /* inner node */
+            if (resolve_descendant_schema_nodeid(token, schema ? schema->child : start->schema, LYS_CONTAINER | LYS_LIST | LYS_CHOICE | LYS_CASE, &schema)
+                    || !schema) {
+                free(str);
+                return NULL;
+            }
 
-        LY_TREE_FOR(result, iter) {
-            if (iter->schema == schema) {
-                break;
+            if (schema->nodetype & (LYS_CHOICE | LYS_CASE)) {
+                continue;
+            }
+        } else {
+            /* final node */
+            if (resolve_descendant_schema_nodeid(token, schema ? schema->child : start->schema, LYS_LEAF, &schema) || !schema) {
+                free(str);
+                return NULL;
             }
         }
-
-        if (!p) {
-            /* final result */
-            result = iter;
-        } else {
-            result = iter->child;
+        LY_TREE_FOR(result ? result->child : start, iter) {
+            if (iter->schema == schema) {
+                /* move in data tree according to returned schema */
+                result = iter;
+                break;
+            }
         }
     }
     free(str);
