@@ -733,7 +733,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 goto error;
             }
         } else {
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", parent->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
             goto error;
         }
         break;
@@ -765,13 +765,13 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 goto error;
             }
         } else {
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", parent->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
             goto error;
         }
         break;
     case LY_TYPE_ENUM:
         if (typ->type->base != LY_TYPE_ENUM) {
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", parent->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
             goto error;
         }
         if (!typ->type->der->type.der && !typ->type->info.bits.count) {
@@ -787,7 +787,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         break;
     case LY_TYPE_BITS:
         if (typ->type->base != LY_TYPE_BITS) {
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", parent->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
             goto error;
         }
         if (!typ->type->der->type.der && !typ->type->info.bits.count) {
@@ -823,7 +823,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 goto error;
             }
         } else {
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", parent->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
             goto error;
         }
         break;
@@ -838,7 +838,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         break;
     case LY_TYPE_UNION:
         if (typ->type->base != LY_TYPE_UNION) {
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", parent->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
             goto error;
         }
         if (!typ->type->info.uni.types) {
@@ -866,7 +866,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     default:
         if (base >= LY_TYPE_BINARY && base <= LY_TYPE_UINT64) {
             if (typ->type->base != base) {
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", parent->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
                 goto error;
             }
         } else {

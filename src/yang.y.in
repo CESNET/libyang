@@ -1571,7 +1571,6 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                     YYABORT;
                                   } else {
                                       if (unres_schema_add_node(trg, unres, &$7.node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *) $7.node.ptr_leaf->parent)) {
-                                        $7.node.ptr_leaf->type.der = NULL;
                                         YYABORT;
                                       }
                                   }
