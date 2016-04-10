@@ -2129,51 +2129,45 @@ store_flags(struct lys_node *node, uint8_t flags, int config_inherit)
     }
 }
 
-int
-yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, const char *data, unsigned int size_data)
+static int
+yang_parse(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, const char *data,
+           unsigned int size, struct lys_array_size *size_arrays, int type_read)
 {
     YY_BUFFER_STATE bp;
     yyscan_t scanner = NULL;
+    int ret = EXIT_SUCCESS;
+
+    yylex_init(&scanner);
+    bp = yy_scan_buffer((char *)data, size, scanner);
+    yy_switch_to_buffer(bp, scanner);
+    if (yyparse(scanner, module, submodule, unres, size_arrays, type_read)) {
+        ret = EXIT_FAILURE;
+    }
+    yy_delete_buffer(bp, scanner);
+    yylex_destroy(scanner);
+    return ret;
+}
+
+int
+yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, const char *data, unsigned int size_data)
+{
     struct lys_array_size *size_arrays=NULL;
     unsigned int size;
+    int ret;
 
     size_arrays = calloc(1, sizeof *size_arrays);
     if (!size_arrays) {
         LOGMEM;
         return EXIT_FAILURE;
     }
-
     size = (size_data) ? size_data : strlen(data) + 2;
-    yylex_init(&scanner);
-    bp = yy_scan_buffer((char *)data, size, scanner);
-    yy_switch_to_buffer(bp, scanner);
-
-    if (yyparse(scanner, module, submodule, unres, size_arrays, LY_READ_ONLY_SIZE)) {
-        yy_delete_buffer(bp, scanner);
-        goto error;
+    ret = yang_parse(module, submodule, unres, data, size, size_arrays, LY_READ_ONLY_SIZE);
+    if (!ret) {
+        ret = yang_parse(module, submodule, unres, data, size, size_arrays, LY_READ_ALL);
     }
-    yy_delete_buffer(bp, scanner);
-    bp = yy_scan_buffer((char *)data, size, scanner);
-    yy_switch_to_buffer(bp, scanner);
-
-    if (yyparse(scanner, module, submodule, unres, size_arrays, LY_READ_ALL)) {
-        yy_delete_buffer(bp, scanner);
-        goto error;
-    }
-    yy_delete_buffer(bp, scanner);
-
     free(size_arrays->node);
     free(size_arrays);
-    yylex_destroy(scanner);
-    return EXIT_SUCCESS;
-
-error:
-    if (size_arrays) {
-        free(size_arrays->node);
-        free(size_arrays);
-    }
-    yylex_destroy(scanner);
-    return EXIT_FAILURE;
+    return ret;
 }
 
 struct lys_module *
