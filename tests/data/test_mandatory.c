@@ -72,73 +72,81 @@ test_mandatory(void **state)
 {
     struct state *st = (*state);
 
-    //const char miss_leaf1[] = "<top xmlns=\"urn:libyang:tests:mandatory\"/>";
+    const char miss_leaf1[] = "<top xmlns=\"urn:libyang:tests:mandatory\"/>";
     const char few_llist1[] = "<top xmlns=\"urn:libyang:tests:mandatory\"><leaf1>a</leaf1></top>";
-    const char many_llist1[] = "<top xmlns=\"urn:libyang:tests:mandatory\"><leaf1>a</leaf1>\
-    <llist1>1</llist1><llist1>2</llist1><llist1>3</llist1><llist1>4</llist1><llist1>5</llist1><llist1>6</llist1>\
-    </top>";
-    //const char miss_leaf2[] = "<top xmlns=\"urn:libyang:tests:mandatory\"><leaf1>a</leaf1><llist1>1</llist1><llist1>2</llist1></top>";
-    const char miss_choice2[] = "<top xmlns=\"urn:libyang:tests:mandatory\"><leaf1>a</leaf1><llist1>1</llist1><llist1>2</llist1>\
-    <cont1><cont2><cont3><leaf2>5</leaf2></cont3></cont2></cont1>\
-    <leaf3>b</leaf3></top>";
-    const char miss_leaf6[] = "<top xmlns=\"urn:libyang:tests:mandatory\"><leaf1>a</leaf1><llist1>1</llist1><llist1>2</llist1>\
-    <cont1><cont2><cont3><leaf2>5</leaf2></cont3></cont2></cont1>\
-    </top>";
-    /*const char miss_leaf7[] = "<top xmlns=\"urn:libyang:tests:mandatory\"><leaf1>a</leaf1><llist1>1</llist1><llist1>2</llist1>\
-    <cont1><cont2><cont3><leaf2>5</leaf2></cont3></cont2></cont1>\
-    <leaf3>c</leaf3><leaf5>d</leaf5>\
-    <leaf6/></top>";
-    const char valid[] = "<top xmlns=\"urn:libyang:tests:mandatory\"><leaf1>a</leaf1><llist1>1</llist1><llist1>2</llist1>\
-    <cont1><cont2><cont3><leaf2>5</leaf2></cont3></cont2></cont1>\
-    <leaf3>c</leaf3><leaf5>d</leaf5>\
-    <leaf6/><leaf7/></top>";*/
+    const char many_llist1[] = "<top xmlns=\"urn:libyang:tests:mandatory\">"
+                                 "<leaf1>a</leaf1>"
+                                 "<llist1>1</llist1><llist1>2</llist1><llist1>3</llist1>"
+                                 "<llist1>4</llist1><llist1>5</llist1><llist1>6</llist1>"
+                               "</top>";
+    const char miss_leaf2[] = "<top xmlns=\"urn:libyang:tests:mandatory\">"
+                                "<leaf1>a</leaf1><llist1>1</llist1><llist1>2</llist1>"
+                              "</top>";
+    const char miss_choice2[] = "<top xmlns=\"urn:libyang:tests:mandatory\">"
+                                  "<leaf1>a</leaf1><llist1>1</llist1><llist1>2</llist1>"
+                                  "<cont1><cont2><cont3><leaf2>5</leaf2></cont3></cont2></cont1>"
+                                  "<leaf3>b</leaf3>"
+                                "</top>";
+    const char miss_leaf6[] = "<top xmlns=\"urn:libyang:tests:mandatory\">"
+                                "<leaf1>a</leaf1><llist1>1</llist1><llist1>2</llist1>"
+                                "<cont1><cont2><cont3><leaf2>5</leaf2></cont3></cont2></cont1>"
+                              "</top>";
+    const char miss_leaf7[] = "<top xmlns=\"urn:libyang:tests:mandatory\">"
+                                "<leaf1>a</leaf1><llist1>1</llist1><llist1>2</llist1>"
+                                "<cont1><cont2><cont3><leaf2>5</leaf2></cont3></cont2></cont1>"
+                                "<leaf3>c</leaf3><leaf5>d</leaf5><leaf6/>"
+                              "</top>";
+    const char valid[] = "<top xmlns=\"urn:libyang:tests:mandatory\">"
+                           "<leaf1>a</leaf1><llist1>1</llist1><llist1>2</llist1>"
+                           "<cont1><cont2><cont3><leaf2>5</leaf2></cont3></cont2></cont1>"
+                           "<leaf3>c</leaf3><leaf5>d</leaf5><leaf6/><leaf7/>"
+                         "</top>";
 
-    /*st->dt = lyd_parse_mem(st->ctx, miss_leaf1, LYD_XML, 0);
+    st->dt = lyd_parse_mem(st->ctx, miss_leaf1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
     assert_int_equal(ly_vecode, LYVE_MISSELEM);
-    assert_string_equal(ly_errpath(), "/mandatory:top/leaf1");*/
+    assert_string_equal(ly_errpath(), "/mandatory:top/leaf1");
 
-    st->dt = lyd_parse_mem(st->ctx, few_llist1, LYD_XML, 0);
+    st->dt = lyd_parse_mem(st->ctx, few_llist1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
     assert_int_equal(ly_vecode, LYVE_NOMIN);
     assert_string_equal(ly_errpath(), "/mandatory:top/llist1");
 
-    st->dt = lyd_parse_mem(st->ctx, many_llist1, LYD_XML, 0);
+    st->dt = lyd_parse_mem(st->ctx, many_llist1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
     assert_int_equal(ly_vecode, LYVE_NOMAX);
     assert_string_equal(ly_errpath(), "/mandatory:top/llist1");
 
-    /*st->dt = lyd_parse_mem(st->ctx, miss_leaf2, LYD_XML, 0);
+    st->dt = lyd_parse_mem(st->ctx, miss_leaf2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
     assert_int_equal(ly_vecode, LYVE_MISSELEM);
-    assert_string_equal(ly_errpath(), "/mandatory:top/cont1/cont2/cont3/leaf2");*/
+    assert_string_equal(ly_errpath(), "/mandatory:top/cont1/cont2/cont3/leaf2");
 
-    st->dt = lyd_parse_mem(st->ctx, miss_choice2, LYD_XML, 0);
+    st->dt = lyd_parse_mem(st->ctx, miss_choice2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
     assert_int_equal(ly_vecode, LYVE_NOMANDCHOICE);
     assert_string_equal(ly_errpath(), "/mandatory:top/choice1/case1/choice2");
 
-    st->dt = lyd_parse_mem(st->ctx, miss_leaf6, LYD_XML, 0);
+    st->dt = lyd_parse_mem(st->ctx, miss_leaf6, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
     assert_int_equal(ly_vecode, LYVE_MISSELEM);
     assert_string_equal(ly_errpath(), "/mandatory:top/leaf6");
 
-    /*st->dt = lyd_parse_mem(st->ctx, miss_leaf7, LYD_XML, 0);
+    st->dt = lyd_parse_mem(st->ctx, miss_leaf7, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
     assert_int_equal(ly_vecode, LYVE_MISSELEM);
-    assert_string_equal(ly_errpath(), "/mandatory:top/leaf7");*/
+    assert_string_equal(ly_errpath(), "/mandatory:top/leaf7");
 
-    /*st->dt = lyd_parse_mem(st->ctx, valid, LYD_XML, 0);
+    st->dt = lyd_parse_mem(st->ctx, valid, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_SUCCESS);
-    lyd_free(st->dt);*/
 }
 
 int main(void)
