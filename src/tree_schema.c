@@ -472,7 +472,7 @@ repeat:
                 return EXIT_FAILURE;
             }
             /* ... and then the subtree */
-            if (parent && siter->nodetype == LYS_CONTAINER && !((struct lys_node_container *)siter)->presence) {
+            if (siter->nodetype == LYS_CONTAINER && !((struct lys_node_container *)siter)->presence) {
                 saux = NULL;
                 while ((saux = check_mand_getnext(saux, siter, NULL))) {
                     if (check_mand_check(saux, siter, data)) {
