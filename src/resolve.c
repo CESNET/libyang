@@ -992,7 +992,7 @@ resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start
         if (p) {
             /* inner node */
             if (resolve_descendant_schema_nodeid(token, schema ? schema->child : start->schema,
-                                                 LYS_CONTAINER | LYS_LIST | LYS_CHOICE | LYS_CASE | LYS_LEAF, &schema, 0)
+                                                 LYS_CONTAINER | LYS_CHOICE | LYS_CASE | LYS_LEAF, 0, 0, &schema)
                     || !schema) {
                 result = NULL;
                 break;
@@ -1017,7 +1017,8 @@ resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start
             }
         } else {
             /* final node */
-            if (resolve_descendant_schema_nodeid(token, schema ? schema->child : start->schema, LYS_LEAF, &schema, shorthand ? 0 : 1)
+            if (resolve_descendant_schema_nodeid(token, schema ? schema->child : start->schema, LYS_LEAF,
+                                                 shorthand ? 0 : 1, 0, &schema)
                     || !schema) {
                 result = NULL;
                 break;
@@ -1169,10 +1170,14 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
     return -1;
 }
 
-/* unique, refine, -1 error, EXIT_SUCCESS ok (but ret can still be NULL), >0 unexpected char on ret - 1 */
+/* unique, refine,
+ * >0  - unexpected char on position (ret - 1),
+ *  0  - ok (but ret can still be NULL),
+ * -1  - error,
+ * -2  - violated no_innerlist  */
 int
 resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *start, int ret_nodetype,
-                                 const struct lys_node **ret, int check_shorthand)
+                                 int check_shorthand, int no_innerlist, const struct lys_node **ret)
 {
     const char *name, *mod_name, *id;
     const struct lys_node *sibling;
@@ -1225,6 +1230,9 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
         if (!sibling) {
             *ret = NULL;
             return EXIT_SUCCESS;
+        } else if (no_innerlist && sibling->nodetype == LYS_LIST) {
+            *ret = NULL;
+            return -2;
         }
 
         if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
@@ -1247,7 +1255,7 @@ resolve_choice_default_schema_nodeid(const char *nodeid, const struct lys_node *
         return -1;
     }
 
-    return resolve_descendant_schema_nodeid(nodeid, start, LYS_NO_RPC_NOTIF_NODE, ret, 1);
+    return resolve_descendant_schema_nodeid(nodeid, start, LYS_NO_RPC_NOTIF_NODE, 1, 0, ret);
 }
 
 /* uses, -1 error, EXIT_SUCCESS ok (but ret can still be NULL), >0 unexpected char on ret - 1 */
@@ -2439,12 +2447,14 @@ resolve_unique(struct lys_node *parent, const char *uniq_str_path)
     int rc;
     const struct lys_node *leaf = NULL;
 
-    rc = resolve_descendant_schema_nodeid(uniq_str_path, parent->child, LYS_LEAF, &leaf, 1);
+    rc = resolve_descendant_schema_nodeid(uniq_str_path, parent->child, LYS_LEAF, 1, 1, &leaf);
     if (rc || !leaf) {
         if (rc) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, parent, uniq_str_path, "unique");
             if (rc > 0) {
                 LOGVAL(LYE_INCHAR, LY_VLOG_LYS, parent, uniq_str_path[rc - 1], &uniq_str_path[rc - 1]);
+            } else if (rc == -2) {
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, parent, "unique argument references list");
             }
             rc = -1;
         } else {
@@ -3529,7 +3539,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
     for (i = 0; i < uses->refine_size; i++) {
         rfn = &uses->refine[i];
         rc = resolve_descendant_schema_nodeid(rfn->target_name, uses->child, LYS_NO_RPC_NOTIF_NODE,
-                                              (const struct lys_node **)&node, 1);
+                                              1, 0, (const struct lys_node **)&node);
         if (rc || !node) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, rfn->target_name, "refine");
             return -1;
