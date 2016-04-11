@@ -1800,27 +1800,27 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
 
 /**
  * @brief Resolves length or range intervals. Does not log.
- * Syntax is assumed to be correct, *local_intv MUST be NULL.
+ * Syntax is assumed to be correct, *ret MUST be NULL.
  *
- * @param[in] str_restr The restriction as a string.
- * @param[in] type The type of the restriction.
- * @param[in] superior_restr Flag whether to check superior
- * types.
- * @param[out] local_intv The final interval structure.
+ * @param[in] str_restr Restriction as a string.
+ * @param[in] type Type of the restriction.
+ * @param[out] ret Final interval structure that starts with
+ * the interval of the initial type, continues with intervals
+ * of any superior types derived from the initial one, and
+ * finishes with intervals from our \p type.
  *
  * @return EXIT_SUCCESS on succes, -1 on error.
  */
 int
-resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int superior_restr,
-                         struct len_ran_intv** local_intv)
+resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct len_ran_intv **ret)
 {
     /* 0 - unsigned, 1 - signed, 2 - floating point */
-    int kind, rc = EXIT_SUCCESS;
+    int kind;
     int64_t local_smin, local_smax;
     uint64_t local_umin, local_umax;
     long double local_fmin, local_fmax;
     const char *seg_ptr, *ptr;
-    struct len_ran_intv *tmp_local_intv = NULL, *tmp_intv, *intv = NULL;
+    struct len_ran_intv *local_intv = NULL, *tmp_local_intv = NULL, *tmp_intv, *intv = NULL;
 
     switch (type->base) {
     case LY_TYPE_BINARY:
@@ -1930,8 +1930,8 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
     }
 
     /* process superior types */
-    if (type->der && superior_restr) {
-        if (resolve_len_ran_interval(NULL, &type->der->type, superior_restr, &intv)) {
+    if (type->der) {
+        if (resolve_len_ran_interval(NULL, &type->der->type, &intv)) {
             LOGINT;
             return -1;
         }
@@ -1939,15 +1939,8 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
     }
 
     if (!str_restr) {
-        /* we are validating data and not have any restriction, but a superior type might have */
-        if (type->der && !superior_restr && !intv) {
-            if (resolve_len_ran_interval(NULL, &type->der->type, superior_restr, &intv)) {
-                LOGINT;
-                return -1;
-            }
-            assert(!intv || (intv->kind == kind));
-        }
-        *local_intv = intv;
+        /* we do not have any restriction, return superior ones */
+        *ret = intv;
         return EXIT_SUCCESS;
     }
 
@@ -1979,19 +1972,21 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
     /* finally parse our restriction */
     seg_ptr = str_restr;
     while (1) {
-        if (!*local_intv && !tmp_local_intv) {
-            *local_intv = malloc(sizeof **local_intv);
-            tmp_local_intv = *local_intv;
+        if (!tmp_local_intv) {
+            assert(!local_intv);
+            local_intv = malloc(sizeof *local_intv);
+            tmp_local_intv = local_intv;
         } else {
-            tmp_local_intv->next = malloc(sizeof **local_intv);
+            tmp_local_intv->next = malloc(sizeof *tmp_local_intv);
             tmp_local_intv = tmp_local_intv->next;
         }
         if (!tmp_local_intv) {
             LOGMEM;
-            return -1;
+            goto error;
         }
 
         tmp_local_intv->kind = kind;
+        tmp_local_intv->type = type;
         tmp_local_intv->next = NULL;
 
         /* min */
@@ -2036,8 +2031,7 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
             ptr += 3;
         } else {
             LOGINT;
-            rc = -1;
-            goto cleanup;
+            goto error;
         }
 
         while (isspace(ptr[0])) {
@@ -2079,13 +2073,11 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
                 }
             } else {
                 LOGINT;
-                rc = -1;
-                goto cleanup;
+                goto error;
             }
         } else {
             LOGINT;
-            rc = -1;
-            goto cleanup;
+            goto error;
         }
 
         /* next segment (next OR) */
@@ -2099,7 +2091,7 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
     /* check local restrictions against superior ones */
     if (intv) {
         tmp_intv = intv;
-        tmp_local_intv = *local_intv;
+        tmp_local_intv = local_intv;
 
         while (tmp_local_intv && tmp_intv) {
             /* reuse local variables */
@@ -2115,8 +2107,7 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
                         continue;
                     /* ascending order of restrictions -> fail */
                     } else {
-                        rc = -1;
-                        goto cleanup;
+                        goto error;
                     }
                 }
             } else if (kind == 1) {
@@ -2128,8 +2119,7 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
                         tmp_local_intv = tmp_local_intv->next;
                         continue;
                     } else {
-                        rc = -1;
-                        goto cleanup;
+                        goto error;
                     }
                 }
             } else if (kind == 2) {
@@ -2141,8 +2131,7 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
                         tmp_local_intv = tmp_local_intv->next;
                         continue;
                     } else {
-                        rc = -1;
-                        goto cleanup;
+                        goto error;
                     }
                 }
             }
@@ -2152,28 +2141,34 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int super
 
         /* some interval left uncovered -> fail */
         if (tmp_local_intv) {
-            rc = -1;
+            goto error;
         }
-
     }
 
-cleanup:
+    /* append the local intervals to all the intervals of the superior types, return it all */
+    if (intv) {
+        for (tmp_intv = intv; tmp_intv->next; tmp_intv = tmp_intv->next);
+        tmp_intv->next = local_intv;
+    } else {
+        intv = local_intv;
+    }
+    *ret = intv;
+
+    return EXIT_SUCCESS;
+
+error:
     while (intv) {
         tmp_intv = intv->next;
         free(intv);
         intv = tmp_intv;
     }
-
-    /* fail */
-    if (rc) {
-        while (*local_intv) {
-            tmp_local_intv = (*local_intv)->next;
-            free(*local_intv);
-            *local_intv = tmp_local_intv;
-        }
+    while (local_intv) {
+        tmp_local_intv = local_intv->next;
+        free(local_intv);
+        local_intv = tmp_local_intv;
     }
 
-    return rc;
+    return -1;
 }
 
 /**

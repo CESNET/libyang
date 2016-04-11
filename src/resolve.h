@@ -114,8 +114,7 @@ const struct lys_node *resolve_json_schema_nodeid(const char *nodeid, struct ly_
 struct lyd_node *resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, struct lyd_node *start,
                                                   int options, int *parsed);
 
-int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int superior_restr,
-                             struct len_ran_intv **local_intv);
+int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct len_ran_intv **ret);
 
 int resolve_superior_type(const char *name, const char *prefix, const struct lys_module *module,
                           const struct lys_node *parent, struct lys_tpdf **ret);

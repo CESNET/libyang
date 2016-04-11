@@ -357,10 +357,12 @@ static int
 validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnum, struct lys_type *type,
                       const char *val_str, struct lyd_node *node)
 {
+    struct lys_restr *restr = NULL;
     struct len_ran_intv *intv = NULL, *tmp_intv;
-    int ret = EXIT_FAILURE;
+    struct lys_type *cur_type;
+    int match;
 
-    if (resolve_len_ran_interval(NULL, type, 0, &intv)) {
+    if (resolve_len_ran_interval(NULL, type, &intv)) {
         /* already done during schema parsing */
         LOGINT;
         return EXIT_FAILURE;
@@ -369,20 +371,36 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
         return EXIT_SUCCESS;
     }
 
-    for (tmp_intv = intv; tmp_intv; tmp_intv = tmp_intv->next) {
-        if (((kind == 0) && (unum < tmp_intv->value.uval.min))
-                || ((kind == 1) && (snum < tmp_intv->value.sval.min))
-                || ((kind == 2) && (fnum < tmp_intv->value.fval.min))) {
-            break;
+    /* I know that all intervals belonging to a single restriction share one type pointer */
+    tmp_intv = intv;
+    cur_type = intv->type;
+    do {
+        match = 0;
+        for (; tmp_intv && (tmp_intv->type == cur_type); tmp_intv = tmp_intv->next) {
+            if (match) {
+                /* just iterate through the rest of this restriction intervals */
+                continue;
+            }
+
+            if (((kind == 0) && (unum < tmp_intv->value.uval.min))
+                    || ((kind == 1) && (snum < tmp_intv->value.sval.min))
+                    || ((kind == 2) && (fnum < tmp_intv->value.fval.min))) {
+                break;
+            }
+
+            if (((kind == 0) && (unum >= tmp_intv->value.uval.min) && (unum <= tmp_intv->value.uval.max))
+                    || ((kind == 1) && (snum >= tmp_intv->value.sval.min) && (snum <= tmp_intv->value.sval.max))
+                    || ((kind == 2) && (fnum >= tmp_intv->value.fval.min) && (fnum <= tmp_intv->value.fval.max))) {
+                match = 1;
+            }
         }
 
-        if (((kind == 0) && (unum >= tmp_intv->value.uval.min) && (unum <= tmp_intv->value.uval.max))
-                || ((kind == 1) && (snum >= tmp_intv->value.sval.min) && (snum <= tmp_intv->value.sval.max))
-                || ((kind == 2) && (fnum >= tmp_intv->value.fval.min) && (fnum <= tmp_intv->value.fval.max))) {
-            ret = EXIT_SUCCESS;
+        if (!match) {
             break;
+        } else if (tmp_intv) {
+            cur_type = tmp_intv->type;
         }
-    }
+    } while (tmp_intv);
 
     while (intv) {
         tmp_intv = intv->next;
@@ -390,10 +408,42 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
         intv = tmp_intv;
     }
 
-    if (ret) {
-        LOGVAL(LYE_OORVAL, LY_VLOG_LYD, node, (val_str ? val_str : ""));
+    if (!match) {
+        switch (cur_type->base) {
+        case LY_TYPE_BINARY:
+            restr = cur_type->info.binary.length;
+            break;
+        case LY_TYPE_DEC64:
+            restr = cur_type->info.dec64.range;
+            break;
+        case LY_TYPE_INT8:
+        case LY_TYPE_INT16:
+        case LY_TYPE_INT32:
+        case LY_TYPE_INT64:
+        case LY_TYPE_UINT8:
+        case LY_TYPE_UINT16:
+        case LY_TYPE_UINT32:
+        case LY_TYPE_UINT64:
+            restr = cur_type->info.num.range;
+            break;
+        case LY_TYPE_STRING:
+            restr = cur_type->info.str.length;
+            break;
+        default:
+            LOGINT;
+            return EXIT_FAILURE;
+        }
+
+        LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, (val_str ? val_str : ""));
+        if (restr && restr->emsg) {
+            LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, restr->emsg);
+        }
+        if (restr && restr->eapptag) {
+            strncpy(((struct ly_err *)&ly_errno)->apptag, restr->eapptag, LY_APPTAG_LEN - 1);
+        }
+        return EXIT_FAILURE;
     }
-    return ret;
+    return EXIT_SUCCESS;
 }
 
 /* logs directly */
@@ -421,7 +471,7 @@ validate_pattern(const char *val_str, struct lys_type *type, struct lyd_node *no
          *
          * http://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs
          */
-        perl_regex = malloc((strlen(type->info.str.patterns[i].expr)+2) * sizeof(char));
+        perl_regex = malloc((strlen(type->info.str.patterns[i].expr) + 2) * sizeof(char));
         if (!perl_regex) {
             LOGMEM;
             return EXIT_FAILURE;
@@ -585,15 +635,13 @@ upper:
     }
 
 syntax_ok:
-
-    if (resolve_len_ran_interval(expr, type, 1, &intv)) {
+    if (resolve_len_ran_interval(expr, type, &intv)) {
         goto error;
     }
 
     ret = EXIT_SUCCESS;
 
 error:
-
     while (intv) {
         tmp_intv = intv->next;
         free(intv);
