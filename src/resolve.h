@@ -84,6 +84,7 @@ struct len_ran_intv {
         } fval;
     } value;
 
+    struct lys_type *type;     /* just to be able to get to optional error-message and/or error-app-tag */
     struct len_ran_intv *next;
 };
 
