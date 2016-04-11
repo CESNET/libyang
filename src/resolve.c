@@ -2580,7 +2580,7 @@ unres_data_del(struct unres_data *unres, uint32_t i)
  * @param[in,out] parents Resolved nodes. If there are some parents,
  *                        they are replaced (!!) with the resolvents.
  *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
 resolve_data(const struct lys_module *mod, const char *name, int nam_len, struct lyd_node *start, struct unres_data *parents)
@@ -2594,7 +2594,7 @@ resolve_data(const struct lys_module *mod, const char *name, int nam_len, struct
         parents->node = malloc(sizeof *parents->node);
         if (!parents->node) {
             LOGMEM;
-            return EXIT_FAILURE;
+            return -1;
         }
         parents->node[0] = NULL;
     }
@@ -2921,7 +2921,6 @@ resolve_path_arg_data(struct lyd_node *node, const char *path, struct unres_data
             parsed += i;
 
             if (!ret->count) {
-                LOGVAL(LYE_NORESOLV, LY_VLOG_LYD, node, path-parsed);
                 rc = EXIT_FAILURE;
                 goto error;
             }
@@ -4852,8 +4851,9 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
     switch (type) {
     case UNRES_LEAFREF:
         assert(sleaf->type.base == LY_TYPE_LEAFREF);
-        if ((rc = resolve_path_arg_data(node, sleaf->type.info.lref.path, &matches))) {
-            return rc;
+        /* EXIT_FAILURE return keeps leaf->value.lefref NULL, handled later */
+        if (resolve_path_arg_data(node, sleaf->type.info.lref.path, &matches) == -1) {
+            return -1;
         }
 
         /* check that value matches */
