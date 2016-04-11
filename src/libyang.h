@@ -1010,14 +1010,19 @@ typedef enum {
     LYVE_INVALATTR,    /**< invalid attribute value (data) */
     LYVE_INATTR,       /**< invalid attribute in an element (data) */
     LYVE_MISSATTR,     /**< missing attribute in an element (data) */
-    LYVE_OORVAL,       /**< value out of range/length (data) */
+    LYVE_NOCONSTR,     /**< value out of range/length/pattern (data) */
     LYVE_INCHAR,       /**< unexpected characters (data) */
     LYVE_INPRED,       /**< predicate resolution fail (data) */
     LYVE_MCASEDATA,    /**< data for more cases of a choice (data) */
-    LYVE_NOCOND,       /**< unsatisfied must/when condition (data) */
+    LYVE_NOMUST,       /**< unsatisfied must condition (data) */
+    LYVE_NOWHEN,       /**< unsatisfied when condition (data) */
     LYVE_INORDER,      /**< invalid order of elements (data) */
-    LYVE_INCOUNT,      /**< invalid number of elements (data) */
     LYVE_INWHEN,       /**< irresolvable when condition (data) */
+    LYVE_NOMIN,        /**< min-elements constraint not honored (data) */
+    LYVE_NOMAX,        /**< max-elements constraint not honored (data) */
+    LYVE_NOREQINS,     /**< required instance does not exits (data) */
+    LYVE_NOLEAFREF,    /**< leaf pointed to by leafref does not exist (data) */
+    LYVE_NOMANDCHOICE, /**< no mandatory choice case branch exists (data) */
 
     LYVE_XPATH_INTOK,  /**< unexpected XPath token */
     LYVE_XPATH_EOF,    /**< unexpected end of an XPath expression */

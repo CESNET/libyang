@@ -304,7 +304,7 @@ parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret,
     strptr = NULL;
     *ret = strtoll(val_str, &strptr, base);
     if (errno || (*ret < min) || (*ret > max)) {
-        LOGVAL(LYE_OORVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
+        LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, val_str);
         return EXIT_FAILURE;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
@@ -334,7 +334,7 @@ parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret, struct ly
     strptr = NULL;
     *ret = strtoull(val_str, &strptr, base);
     if (errno || (*ret > max)) {
-        LOGVAL(LYE_OORVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
+        LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, val_str);
         return EXIT_FAILURE;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
@@ -445,7 +445,13 @@ validate_pattern(const char *val_str, struct lys_type *type, struct lyd_node *no
 
         if (pcre_exec(precomp, NULL, val_str, strlen(val_str), 0, 0, NULL, 0)) {
             free(precomp);
-            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
+            LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, val_str);
+            if (type->info.str.patterns[i].emsg) {
+                LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, type->info.str.patterns[i].emsg);
+            }
+            if (type->info.str.patterns[i].eapptag) {
+                strncpy(((struct ly_err *)&ly_errno)->apptag, type->info.str.patterns[i].eapptag, LY_APPTAG_LEN - 1);
+            }
             return EXIT_FAILURE;
         }
         free(precomp);
@@ -736,7 +742,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
                 }
                 d++;
                 if (d > DECSIZE - 2) {
-                    LOGVAL(LYE_OORVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
+                    LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
                     return EXIT_FAILURE;
                 }
                 dec[i] = '0';
@@ -750,7 +756,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
                     d++;
                 }
                 if (d > DECSIZE - 2 || (found && !j)) {
-                    LOGVAL(LYE_OORVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
+                    LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
                     return EXIT_FAILURE;
                 }
                 dec[i] = node->value_str[c + i];

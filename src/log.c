@@ -167,14 +167,19 @@ const char *ly_errs[] = {
 /* LYE_INVALATTR */    "Invalid \"%s\" attribute value \"%s\".",
 /* LYE_INATTR */       "Invalid attribute \"%s\" in \"%s\" element.",
 /* LYE_MISSATTR */     "Missing attribute \"%s\" in \"%s\" element.",
-/* LYE_OORVAL */       "Value \"%s\" is out of range or length.",
+/* LYE_NOCONSTR */     "Value \"%s\" does not satisfy a constraint (range, length, or pattern).",
 /* LYE_INCHAR */       "Unexpected character(s) '%c' (%.15s).",
 /* LYE_INPRED */       "Predicate resolution failed on \"%s\".",
 /* LYE_MCASEDATA */    "Data for more than one case branch of \"%s\" choice present.",
-/* LYE_NOCOND */       "%s condition \"%s\" not satisfied.",
+/* LYE_NOMUST */       "Must condition \"%s\" not satisfied.",
+/* LYE_NOWHEN */       "When condition \"%s\" not satisfied.",
 /* LYE_INORDER */      "Invalid order of elements \"%s\" and \"%s\".",
-/* LYE_INCOUNT */      "Wrong number of \"%s\" elements.",
 /* LYE_INWHEN */       "Irresolvable when condition \"%s\".",
+/* LYE_NOMIN */        "Too few \"%s\" elements.",
+/* LYE_NOMAX */        "Too many \"%s\" elements.",
+/* LYE_NOREQINS */     "Required instance of \"%s\" does not exists.",
+/* LYE_NOLEAFREF */    "Leafref \"%s\" of value \"%s\" points to a non-existing leaf.",
+/* LYE_NOMANDCHOICE */ "Mandatory choice \"%s\" missing a case branch.",
 
 /* LYE_XPATH_INTOK */  "Unexpected XPath token %s (%.15s).",
 /* LYE_XPATH_EOF */    "Unexpected XPath expression end.",
@@ -239,14 +244,19 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_INVAL,        /* LYE_INVAL */
     LYVE_INATTR,       /* LYE_INATTR */
     LYVE_MISSATTR,     /* LYE_MISSATTR */
-    LYVE_OORVAL,       /* LYE_OORVAL */
+    LYVE_NOCONSTR,     /* LYE_NOCONSTR */
     LYVE_INCHAR,       /* LYE_INCHAR */
     LYVE_INPRED,       /* LYE_INPRED */
     LYVE_MCASEDATA,    /* LYE_MCASEDATA */
-    LYVE_NOCOND,       /* LYE_NOCOND */
+    LYVE_NOMUST,       /* LYE_NOMUST */
+    LYVE_NOWHEN,       /* LYE_NOWHEN */
     LYVE_INORDER,      /* LYE_INORDER */
-    LYVE_INCOUNT,      /* LYE_INCOUNT */
-    LYVE_INWHEN,      /* LYE_INWHEN */
+    LYVE_INWHEN,       /* LYE_INWHEN */
+    LYVE_NOMIN,        /* LYE_NOMIN */
+    LYVE_NOMAX,        /* LYE_NOMAX */
+    LYVE_NOREQINS,     /* LYE_NOREQINS */
+    LYVE_NOLEAFREF,    /* LYE_NOLEAFREF */
+    LYVE_NOMANDCHOICE, /* LYE_NOMANDCHOICE */
 
     LYVE_XPATH_INTOK,  /* LYE_XPATH_INTOK */
     LYVE_XPATH_EOF,    /* LYE_XPATH_EOF */

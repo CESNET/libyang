@@ -4113,7 +4113,13 @@ resolve_must(struct lyd_node *node)
         lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, LYXP_MUST);
 
         if (!set.value.bool) {
-            LOGVAL(LYE_NOCOND, LY_VLOG_LYD, node, "Must", must[i].expr);
+            LOGVAL(LYE_NOMUST, LY_VLOG_LYD, node, must[i].expr);
+            if (must[i].emsg) {
+                LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, must[i].emsg);
+            }
+            if (must[i].eapptag) {
+                strncpy(((struct ly_err *)&ly_errno)->apptag, must[i].eapptag, LY_APPTAG_LEN - 1);
+            }
             return 1;
         }
     }
@@ -4251,7 +4257,7 @@ resolve_when(struct lyd_node *node)
         lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, LYXP_WHEN);
         if (!set.value.bool) {
             ly_vlog_hide(1);
-            LOGVAL(LYE_NOCOND, LY_VLOG_LYD, node, "When", ((struct lys_node_container *)node->schema)->when->cond);
+            LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
             ly_vlog_hide(0);
             node->when_status |= LYD_WHEN_FALSE;
             goto cleanup;
@@ -4286,7 +4292,7 @@ resolve_when(struct lyd_node *node)
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, LYXP_WHEN);
             if (!set.value.bool) {
                 ly_vlog_hide(1);
-                LOGVAL(LYE_NOCOND, LY_VLOG_LYD, node, "When", ((struct lys_node_uses *)parent)->when->cond);
+                LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)parent)->when->cond);
                 ly_vlog_hide(0);
                 node->when_status |= LYD_WHEN_FALSE;
                 goto cleanup;
@@ -4318,7 +4324,7 @@ check_augment:
 
             if (!set.value.bool) {
                 ly_vlog_hide(1);
-                LOGVAL(LYE_NOCOND, LY_VLOG_LYD, node, "When", ((struct lys_node_augment *)parent->parent)->when->cond);
+                LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)parent->parent)->when->cond);
                 ly_vlog_hide(0);
                 node->when_status |= LYD_WHEN_FALSE;
                goto cleanup;
@@ -4868,8 +4874,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
 
         if (!leaf->value.leafref) {
             /* reference not found */
-            LOGVAL(LYE_NORESOLV, LY_VLOG_LYD, leaf, sleaf->type.info.lref.path);
-            LOGVAL(LYE_SPEC, LY_VLOG_LYD, leaf, "Leafref value \"%s\" did not match any node value.", leaf->value_str);
+            LOGVAL(LYE_NOLEAFREF, LY_VLOG_LYD, leaf, sleaf->type.info.lref.path, leaf->value_str);
             return EXIT_FAILURE;
         }
         break;
@@ -4882,7 +4887,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
             if (ly_errno) {
                 return -1;
             } else if (sleaf->type.info.inst.req > -1) {
-                LOGVAL(LYE_NORESOLV, LY_VLOG_LYD, leaf, leaf->value_str);
+                LOGVAL(LYE_NOREQINS, LY_VLOG_LYD, leaf, leaf->value_str);
                 return EXIT_FAILURE;
             } else {
                 LOGVRB("There is no instance of \"%s\", but it is not required.", leaf->value_str);
