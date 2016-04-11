@@ -1123,7 +1123,9 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
 
         /* try to resolve leaf */
         if (unres) {
-            unres_schema_add_str(module, unres, parent, UNRES_LIST_UNIQ, unique->expr[i]);
+            if (unres_schema_add_str(module, unres, parent, UNRES_LIST_UNIQ, unique->expr[i]) == -1){
+                goto error;
+            }
         } else {
             if (resolve_unique(parent, unique->expr[i])) {
                 goto error;

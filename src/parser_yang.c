@@ -601,7 +601,9 @@ yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct l
         }
         /* try to resolve leaf */
         if (unres) {
-            unres_schema_add_str(module, unres, (struct lys_node *)list, UNRES_LIST_UNIQ, unique->expr[i]);
+            if (unres_schema_add_str(module, unres, (struct lys_node *) list, UNRES_LIST_UNIQ, unique->expr[i]) == -1) {
+                goto error;
+            }
         } else {
             if (resolve_unique((struct lys_node *)list, unique->expr[i])) {
                 goto error;
