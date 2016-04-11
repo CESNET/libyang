@@ -121,9 +121,8 @@ void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 #define LOGINT LOGERR(LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 
 typedef enum {
-    LYE_PATH = -3,    /**< error path set */
-    LYE_SPEC = -2,    /**< generic error */
-    LYE_LINE = -1,    /**< error line set */
+    LYE_PATH = -2,    /**< error path set */
+    LYE_SPEC = -1,    /**< generic error */
 
     LYE_SUCCESS = 0,
 

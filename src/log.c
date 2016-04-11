@@ -285,7 +285,7 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
 
     ly_errno = LY_EVALID;
 
-    if (code == LYE_LINE || (code == LYE_PATH && !path_flag)) {
+    if ((code == LYE_PATH) && !path_flag) {
         return;
     }
     if (code > 0) {
