@@ -234,13 +234,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
                         diter->validity) { /* skip comparison that will be done in future when checking diter as node */
                     continue;
                 }
-                if (!lyd_compare(diter, node, 1)) { /* comparing keys and unique combinations */
-                    if (schema->nodetype == LYS_LIST) {
-                        LOGVAL(LYE_DUPLIST, LY_VLOG_LYD, node, schema->name);
-                    } else {
-                        LOGVAL(LYE_DUPLEAFLIST, LY_VLOG_LYD, node, schema->name,
-                               ((struct lyd_node_leaf_list *)node)->value_str);
-                    }
+                if (lyd_list_equal(diter, node)) { /* comparing keys and unique combinations */
                     return EXIT_FAILURE;
                 }
             }

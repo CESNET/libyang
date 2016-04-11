@@ -117,7 +117,9 @@ test_un_defaults(void **state)
 
     st->dt = lyd_parse_mem(st->ctx, xml3, LYD_XML, 0);
     assert_ptr_equal(st->dt, NULL);
-    assert_string_equal(ly_errmsg(), "Instances of \"list\" list are not unique.");
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_NOUNIQ);
+    assert_string_equal(ly_errmsg(), "Unique leaf requirements of list \"list\" are not satisfied.");
 }
 
 static void

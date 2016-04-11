@@ -984,6 +984,7 @@ typedef enum {
     LYVE_DUPID,        /**< duplicated identifier (schema) */
     LYVE_DUPLEAFLIST,  /**< multiple instances of leaf-list */
     LYVE_DUPLIST,      /**< multiple instances of list */
+    LYVE_NOUNIQ,       /**< unique leaves match on 2 list instances (data) */
     LYVE_ENUM_DUPVAL,  /**< duplicated enum value (schema) */
     LYVE_ENUM_DUPNAME, /**< duplicated enum name (schema) */
     LYVE_ENUM_WS,      /**< enum name with leading/trailing whitespaces (schema) */

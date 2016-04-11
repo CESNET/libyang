@@ -145,6 +145,7 @@ typedef enum {
     LYE_DUPID,
     LYE_DUPLEAFLIST,
     LYE_DUPLIST,
+    LYE_NOUNIQ,
     LYE_ENUM_DUPVAL,
     LYE_ENUM_DUPNAME,
     LYE_ENUM_WS,

@@ -2105,7 +2105,7 @@ end:
 }
 
 int
-lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
+lyd_list_equal(struct lyd_node *first, struct lyd_node *second)
 {
     struct lys_node_list *slist;
     const struct lys_node *snode = NULL;
@@ -2113,11 +2113,12 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
     const char *val1, *val2;
     int i, j;
 
-    assert(first);
-    assert(second);
+    assert(first && (first->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)));
+    assert(second && (second->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)));
+    assert(first->schema->nodetype == second->schema->nodetype);
 
     if (first->schema != second->schema) {
-        return 1;
+        return 0;
     }
 
     switch (first->schema->nodetype) {
@@ -2125,49 +2126,50 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
         /* compare values */
         if (ly_strequal(((struct lyd_node_leaf_list *)first)->value_str,
                         ((struct lyd_node_leaf_list *)second)->value_str, 1)) {
-            return 0;
+            LOGVAL(LYE_DUPLEAFLIST, LY_VLOG_LYD, second, second->schema->name,
+                   ((struct lyd_node_leaf_list *)second)->value_str);
+            return 1;
         }
-        return 1;
+        return EXIT_SUCCESS;
     case LYS_LIST:
         slist = (struct lys_node_list *)first->schema;
 
-        if (unique) {
-            /* compare unique leafs */
-            for (i = 0; i < slist->unique_size; i++) {
-                for (j = 0; j < slist->unique[i].expr_size; j++) {
-                    /* first */
-                    diter = resolve_data_descendant_schema_nodeid(slist->unique[i].expr[j], first->child);
-                    if (diter) {
-                        val1 = ((struct lyd_node_leaf_list *)diter)->value_str;
-                    } else {
-                        /* use default value */
-                        val1 = lyd_get_default(slist->unique[i].expr[j], (struct lyd_node_leaf_list *)first);
-                        if (ly_errno) {
-                            return -1;
-                        }
-                    }
-
-                    /* second */
-                    diter = resolve_data_descendant_schema_nodeid(slist->unique[i].expr[j], second->child);
-                    if (diter) {
-                        val2 = ((struct lyd_node_leaf_list *)diter)->value_str;
-                    } else {
-                        /* use default value */
-                        val2 = lyd_get_default(slist->unique[i].expr[j], (struct lyd_node_leaf_list *)second);
-                        if (ly_errno) {
-                            return -1;
-                        }
-                    }
-
-                    if (!val1 || !val2 || !ly_strequal(val1, val2, 1)) {
-                        /* values differ */
-                        break;
+        /* compare unique leafs */
+        for (i = 0; i < slist->unique_size; i++) {
+            for (j = 0; j < slist->unique[i].expr_size; j++) {
+                /* first */
+                diter = resolve_data_descendant_schema_nodeid(slist->unique[i].expr[j], first->child);
+                if (diter) {
+                    val1 = ((struct lyd_node_leaf_list *)diter)->value_str;
+                } else {
+                    /* use default value */
+                    val1 = lyd_get_default(slist->unique[i].expr[j], (struct lyd_node_leaf_list *)first);
+                    if (ly_errno) {
+                        return -1;
                     }
                 }
-                if (j && j == slist->unique[i].expr_size) {
-                    /* all unique leafs are the same in this set */
-                    return 0;
+
+                /* second */
+                diter = resolve_data_descendant_schema_nodeid(slist->unique[i].expr[j], second->child);
+                if (diter) {
+                    val2 = ((struct lyd_node_leaf_list *)diter)->value_str;
+                } else {
+                    /* use default value */
+                    val2 = lyd_get_default(slist->unique[i].expr[j], (struct lyd_node_leaf_list *)second);
+                    if (ly_errno) {
+                        return -1;
+                    }
                 }
+
+                if (!val1 || !val2 || !ly_strequal(val1, val2, 1)) {
+                    /* values differ */
+                    break;
+                }
+            }
+            if (j && j == slist->unique[i].expr_size) {
+                /* all unique leafs are the same in this set */
+                LOGVAL(LYE_NOUNIQ, LY_VLOG_LYD, second, slist->name);
+                return 1;
             }
         }
 
@@ -2193,14 +2195,15 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                 }
             }
             if (!ly_strequal(val1, val2, 1)) {
-                return 1;
+                return 0;
             }
         }
 
-        return 0;
+        LOGVAL(LYE_DUPLIST, LY_VLOG_LYD, second, second->schema->name);
+        return 1;
     default:
-        /* no additional check is needed */
-        return 0;
+        LOGINT;
+        return -1;
     }
 }
 

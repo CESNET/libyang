@@ -140,8 +140,9 @@ const char *ly_errs[] = {
 /* LYE_MISSARG */      "Missing argument \"%s\" to keyword \"%s\".",
 /* LYE_TOOMANY */      "Too many instances of \"%s\" in \"%s\".",
 /* LYE_DUPID */        "Duplicated %s identifier \"%s\".",
-/* LYE_DUPLEAFLIST */  "Instances of \"%s\" leaf-list are not unique (\"%s\").",
-/* LYE_DUPLIST */      "Instances of \"%s\" list are not unique.",
+/* LYE_DUPLEAFLIST */  "Duplicated instance of \"%s\" leaf-list (\"%s\").",
+/* LYE_DUPLIST */      "Duplicated instance of \"%s\" list.",
+/* LYE_NOUNIQ */       "Unique leaf requirements of list \"%s\" are not satisfied.",
 /* LYE_ENUM_DUPVAL */  "The value \"%d\" of \"%s\" enum has already been assigned to another enum value.",
 /* LYE_ENUM_DUPNAME */ "The enum name \"%s\" has already been assigned to another enum.",
 /* LYE_ENUM_WS */      "The enum name \"%s\" includes invalid leading or trailing whitespaces.",
@@ -220,6 +221,7 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_DUPID,        /* LYE_DUPID */
     LYVE_DUPLEAFLIST,  /* LYE_DUPLEAFLIST */
     LYVE_DUPLIST,      /* LYE_DUPLIST */
+    LYVE_NOUNIQ,       /* LYE_NOUNIQ */
     LYVE_ENUM_DUPVAL,  /* LYE_ENUM_DUPVAL */
     LYVE_ENUM_DUPNAME, /* LYE_ENUM_DUPNAME */
     LYVE_ENUM_WS,      /* LYE_ENUM_WS */
