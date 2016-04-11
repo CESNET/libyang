@@ -3043,3 +3043,9 @@ lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options)
 
     return rc;
 }
+
+struct lys_module *
+lyd_node_module(const struct lyd_node *node)
+{
+    return node->schema->module->type ? ((struct lys_submodule *)node->schema->module)->belongsto : node->schema->module;
+}
