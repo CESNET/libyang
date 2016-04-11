@@ -475,7 +475,7 @@ repeat:
             if (siter->nodetype == LYS_CONTAINER && !((struct lys_node_container *)siter)->presence) {
                 saux = NULL;
                 while ((saux = check_mand_getnext(saux, siter, NULL))) {
-                    if (check_mand_check(saux, siter, data)) {
+                    if ((status || (saux->flags & LYS_CONFIG_W)) && check_mand_check(saux, lys_parent(siter), data)) {
                         return EXIT_FAILURE;
                     }
                 }
