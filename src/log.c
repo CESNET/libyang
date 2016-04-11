@@ -242,6 +242,7 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_INELEM,       /* LYE_INELEM_LEN */
     LYVE_MISSELEM,     /* LYE_MISSELEM */
     LYVE_INVAL,        /* LYE_INVAL */
+    LYVE_INVALATTR,    /* LYE_INVALATTR */
     LYVE_INATTR,       /* LYE_INATTR */
     LYVE_MISSATTR,     /* LYE_MISSATTR */
     LYVE_NOCONSTR,     /* LYE_NOCONSTR */
