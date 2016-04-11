@@ -141,12 +141,37 @@ test_un_empty(void **state)
     assert_ptr_not_equal(st->dt, NULL);
 }
 
+#if 0
+static void
+test_schema_inpath(void **state)
+{
+    struct state *st = (*state);
+    const char *sch = "module unique2 {"
+                      "  namespace \"urn:libyang:tests:unique2\";"
+                      "  prefix un2;"
+                      "  list list1 {"
+                      "    key key;"
+                      "    leaf key { type string; }"
+                      "    unique sublist/value;"
+                      "    list sublist {"
+                      "      key key;"
+                      "      leaf key { type string; }"
+                      "      leaf value { type string; }"
+                      "} } }";
+
+    assert_ptr_equal(lys_parse_mem(st->ctx, sch, LYS_IN_YANG), NULL);
+}
+#endif
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
                     cmocka_unit_test_setup_teardown(test_un_correct, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_un_defaults, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_un_empty, setup_f, teardown_f),
+#if 0
+                    cmocka_unit_test_setup_teardown(test_schema_inpath, setup_f, teardown_f),
+#endif
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
