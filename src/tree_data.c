@@ -1256,9 +1256,9 @@ lyd_node_pos_cmp(const void *item1, const void *item2)
     np2 = (struct lyd_node_pos *)item2;
 
     /* different modules? */
-    if (np1->node->schema->module != np2->node->schema->module) {
-        mpos1 = lys_module_pos(np1->node->schema->module);
-        mpos2 = lys_module_pos(np2->node->schema->module);
+    if (lys_node_module(np1->node->schema) != lys_node_module(np2->node->schema)) {
+        mpos1 = lys_module_pos(lys_node_module(np1->node->schema));
+        mpos2 = lys_module_pos(lys_node_module(np2->node->schema));
         /* if lys_module_pos failed, there is nothing we can do anyway,
          * at least internal error will be printed */
 
