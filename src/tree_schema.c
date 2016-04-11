@@ -286,7 +286,8 @@ repeat:
 static int
 check_mand_check(const struct lys_node *node, const struct lys_node *stop, const struct lyd_node *data)
 {
-    struct lys_node *siter = NULL, *parent = NULL;
+    const struct lys_node *siter = NULL;
+    struct lys_node *parent = NULL;
     struct lyd_node *diter = NULL;
     struct ly_set *set = NULL;
     unsigned int i;
@@ -348,7 +349,8 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
 
                 /* search for instance */
                 if (set) {
-                    for (i = 0; i < set->number; i++) {
+                    for (i = set->number; i > 0; ) {
+                        i--;
                         LY_TREE_FOR(data->child, diter) {
                             if (diter->schema == set->set.s[i]) {
                                 break;
@@ -357,20 +359,35 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
                         if (!diter) {
                             /* instance not found */
                             LOGVAL(LYE_MISSELEM, LY_VLOG_LYS, node, set->set.s[i]->name,
-                                   (lys_parent(set->set.s[i]) ? lys_parent(set->set.s[i])->name
-                                    : lys_node_module(set->set.s[i])->name));
+                                   (lys_parent(set->set.s[i]) ? lys_parent(set->set.s[i])->name : lys_node_module(set->set.s[i])->name));
                             ly_set_free(set);
                             return EXIT_FAILURE;
                         }
                         data = diter;
+                        if (data->validity == LYD_VAL_OK) {
+                            /* already checked */
+                            ly_set_free(set);
+                            return EXIT_SUCCESS;
+                        }
                     }
                     ly_set_free(set);
                 }
             }
 
-            LY_TREE_FOR(data->child, diter) {
-                if (diter->schema == node) {
-                    return EXIT_SUCCESS;
+            if (node->nodetype == LYS_CHOICE) {
+                siter = NULL;
+                LY_TREE_FOR(data->child, diter) {
+                    while ((siter = lys_getnext(siter, node, NULL, 0))) {
+                        if (diter->schema == siter) {
+                            return EXIT_SUCCESS;
+                        }
+                    }
+                }
+            } else {
+                LY_TREE_FOR(data->child, diter) {
+                    if (diter->schema == node) {
+                        return EXIT_SUCCESS;
+                    }
                 }
             }
 
