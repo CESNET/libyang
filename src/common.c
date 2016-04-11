@@ -138,6 +138,18 @@ ly_errpath(void)
     return &e->path[e->path_index];
 }
 
+API const char *
+ly_errapptag(void)
+{
+    struct ly_err *e;
+
+    e = ly_err_location();
+    if (!e) {
+        return NULL;
+    }
+    return e->apptag;
+}
+
 uint8_t *
 ly_vlog_hide_location(void)
 {

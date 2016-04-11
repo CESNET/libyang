@@ -924,6 +924,11 @@ void ly_verb(LY_LOG_LEVEL level);
 
 /**
  * @brief Set logger callback.
+ *
+ * !IMPORTANT! If an error has a specific error-app-tag defined in the model, it will NOT be set
+ *             at the time of calling this callback. It will be set right after, so to retrieve it
+ *             it must be checked afterwards with ly_errapptag().
+ *
  * @param[in] clb Logging callback.
  * @param[in] path flag to resolve and provide path as the third parameter of the callback function. In case of
  *            validation and some other errors, it can be useful to get the path to the problematic element. Note,
@@ -1052,7 +1057,8 @@ LY_VECODE *ly_vecode_location(void);
 #define ly_vecode (*ly_vecode_location())
 
 /**
- * @brief Get the last (thread-specific) error message.
+ * @brief Get the last (thread-specific) error message. If the coresponding module defined
+ * a specific error message, it will be used instead the default one.
  *
  * Sometimes, the error message is extended with path of the element where is the problem.
  * The path is available via ly_errpath().
@@ -1070,6 +1076,17 @@ const char *ly_errmsg(void);
  * @return Path of the error element.
  */
 const char *ly_errpath(void);
+
+/**
+ * @brief Get the last (thread-specific) error-app-tag if there was a specific one defined
+ * in the module for the last error.
+ *
+ * The app-tag always corresponds to the error message available via ly_errmsg(), so
+ * whenever a subsequent error message is printed, the app-tag is erased or rewritten.
+ *
+ * @return Error-app-tag of the last error.
+ */
+const char *ly_errapptag(void);
 
 /**@} logger */
 

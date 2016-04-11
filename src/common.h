@@ -61,6 +61,7 @@ char *get_current_dir_name(void);
 #endif
 
 #define LY_BUF_SIZE 1024
+#define LY_APPTAG_LEN 128
 struct ly_err {
     LY_ERR no;
     LY_VECODE code;
@@ -70,6 +71,7 @@ struct ly_err {
     const void *path_obj;
     char msg[LY_BUF_SIZE];
     char path[LY_BUF_SIZE];
+    char apptag[LY_APPTAG_LEN];
     char buf[LY_BUF_SIZE];
 };
 
