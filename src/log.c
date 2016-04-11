@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "common.h"
+#include "tree_internal.h"
 
 extern LY_ERR ly_errno_int;
 volatile uint8_t ly_log_level = LY_LLERR;
@@ -365,13 +366,19 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
                     break;
                 case LY_VLOG_LYS:
                     name = ((struct lys_node *)iter)->name;
-                    iter = ((struct lys_node *)iter)->parent;
+                    if (!((struct lys_node *)iter)->parent ||
+                            lys_node_module((struct lys_node *)iter) != lys_node_module(lys_parent((struct lys_node *)iter))) {
+                        prefix = lys_node_module((struct lys_node *)iter)->name;
+                    }
+                    do {
+                        iter = lys_parent((struct lys_node *)iter);
+                    } while (iter && (((struct lys_node *)iter)->nodetype == LYS_USES));
                     break;
                 case LY_VLOG_LYD:
                     name = ((struct lyd_node *)iter)->schema->name;
                     if (!((struct lyd_node *)iter)->parent ||
-                            ((struct lyd_node *)iter)->schema->module != ((struct lyd_node *)iter)->parent->schema->module) {
-                        prefix = ((struct lyd_node *)iter)->schema->module->name;
+                            lyd_node_module((struct lyd_node *)iter) != lyd_node_module(((struct lyd_node *)iter)->parent)) {
+                        prefix = lyd_node_module((struct lyd_node *)iter)->name;
                     }
 
                     /* handle predicates (keys) in case of lists */
