@@ -83,7 +83,7 @@ test_parse(void **state)
     struct state *st = (*state);
     const char *xml = "<top xmlns=\"urn:libyang:tests:when\"><a>A</a><b><b1>B</b1></b><c>C</c></top>";
 
-    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, 0);
+    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->dt, NULL);
 
     lyd_print_mem(&(st->xml), st->dt, LYD_XML, 0);
@@ -96,7 +96,7 @@ test_parse_autodel(void **state)
     struct state *st = (*state);
     const char *xml = "<top xmlns=\"urn:libyang:tests:when\"><b><b1>B</b1></b><c>C</c></top>";
 
-    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, 0);
+    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_SUCCESS);
 
@@ -104,7 +104,7 @@ test_parse_autodel(void **state)
           "<top xmlns=\"urn:libyang:tests:when\"><b><b1>B</b1></b><c>C</c></top>";
     lyd_free_withsiblings(st->dt);
 
-    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, 0);
+    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->dt, NULL);
     lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS);
     assert_string_equal(st->xml, "<topleaf xmlns=\"urn:libyang:tests:when\">X</topleaf>");
