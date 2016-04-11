@@ -3360,10 +3360,7 @@ resolve_instid(struct lyd_node *data, const char *path)
         /* instance identifier must resolve to a single node */
         LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, data, path, "data tree");
 
-        /* cleanup */
-        free(node_match.node);
-
-        return NULL;
+        goto error;
     } else {
         /* we have required result, remember it and cleanup */
         result = node_match.node[0];
