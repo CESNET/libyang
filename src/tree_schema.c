@@ -990,14 +990,29 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     return EXIT_SUCCESS;
 }
 
-API const struct lys_module *
-lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
+static const struct lys_module *
+lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int internal)
 {
+    char *enlarged_data = NULL;
     struct lys_module *mod = NULL;
+    unsigned int len;
 
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
         return NULL;
+    }
+
+    if (!internal && format == LYS_IN_YANG) {
+        /* enlarge data by 2 bytes for flex */
+        len = strlen(data);
+        enlarged_data = malloc((len + 2) * sizeof *enlarged_data);
+        if (!enlarged_data) {
+            LOGMEM;
+            return NULL;
+        }
+        memcpy(enlarged_data, data, len);
+        enlarged_data[len] = enlarged_data[len + 1] = '\0';
+        data = enlarged_data;
     }
 
     switch (format) {
@@ -1008,11 +1023,18 @@ lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
         mod = yang_read_module(ctx, data, 0, NULL, 1);
         break;
     default:
-        /* TODO */
+        LOGERR(LY_EINVAL, "Invalid schema input format.");
         break;
     }
 
+    free(enlarged_data);
     return mod;
+}
+
+API const struct lys_module *
+lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
+{
+    return lys_parse_mem_(ctx, data, format, 0);
 }
 
 struct lys_submodule *
@@ -1102,7 +1124,7 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
         LOGERR(LY_EMEM, "Map file into memory failed (%s()).",__func__);
         return NULL;
     }
-    module = lys_parse_mem(ctx, addr, format);
+    module = lys_parse_mem_(ctx, addr, format, 1);
     munmap(addr, sb.st_size + 2);
 
     if (module && !module->filepath) {
