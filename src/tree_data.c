@@ -945,13 +945,18 @@ nextsibling:
 }
 
 int
-lyv_multicases(struct lyd_node *node, struct lyd_node *first_sibling, int autodelete, struct lyd_node *nodel)
+lyv_multicases(struct lyd_node *node, struct lys_node *schemanode, struct lyd_node *first_sibling,
+               int autodelete, struct lyd_node *nodel)
 {
     struct lys_node *sparent, *schoice, *scase, *saux;
     struct lyd_node *next, *iter;
-    assert(node);
+    assert(node || schemanode);
 
-    sparent = lys_parent(node->schema);
+    if (!schemanode) {
+        schemanode = node->schema;
+    }
+
+    sparent = lys_parent(schemanode);
     if (!sparent || !(sparent->nodetype & (LYS_CHOICE | LYS_CASE))) {
         /* node is not under any choice */
         return EXIT_SUCCESS;
@@ -963,7 +968,7 @@ lyv_multicases(struct lyd_node *node, struct lyd_node *first_sibling, int autode
     /* remember which case to skip in which choice */
     if (sparent->nodetype == LYS_CHOICE) {
         schoice = sparent;
-        scase = node->schema;
+        scase = schemanode;
     } else {
         schoice = lys_parent(sparent);
         scase = sparent;
@@ -972,7 +977,7 @@ lyv_multicases(struct lyd_node *node, struct lyd_node *first_sibling, int autode
 autodelete:
     /* remove all nodes from other cases than 'sparent' */
     LY_TREE_FOR_SAFE(first_sibling, next, iter) {
-        if (iter == node) {
+        if (node && iter == node) {
             continue;
         }
 
@@ -990,21 +995,16 @@ autodelete:
                 }
                 lyd_free(iter);
             } else {
-                LOGVAL(LYE_MCASEDATA, LY_VLOG_LYD, node, schoice->name);
+                LOGVAL(LYE_MCASEDATA, node ? LY_VLOG_LYD : LY_VLOG_NONE, node, schoice->name);
                 return 1;
             }
         }
     }
 
-    if (first_sibling && (saux = lys_parent(schoice)) && (saux->nodetype & (LYS_CHOICE | LYS_CASE))) {
+    if (first_sibling && (saux = lys_parent(schoice)) && (saux->nodetype & LYS_CASE)) {
         /* go recursively in case of nested choices */
-        if (saux->nodetype == LYS_CHOICE) {
-            schoice = saux;
-            scase = sparent;
-        } else {
-            schoice = lys_parent(saux);
-            scase = saux;
-        }
+        schoice = lys_parent(saux);
+        scase = saux;
         goto autodelete;
     }
 
@@ -1042,7 +1042,7 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
     }
 
     /* auto delete nodes from other cases, if any */
-    lyv_multicases(node, parent->child, 1, NULL);
+    lyv_multicases(node, NULL, parent->child, 1, NULL);
 
     if (!parent->child) {
         /* add as the only child of the parent */
@@ -1121,7 +1121,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
             for (start = sibling; start->prev->next; start = start->prev);
         }
 
-        if (lyv_multicases(node, start, 1, sibling) == 2) {
+        if (lyv_multicases(node, NULL, start, 1, sibling) == 2) {
             LOGVAL(LYE_SPEC, LY_VLOG_LYD, sibling, "Insert request refers node (%s) that is going to be auto-deleted.",
                    ly_errpath());
             return EXIT_FAILURE;
@@ -1986,6 +1986,124 @@ lyd_free_withsiblings(struct lyd_node *node)
     }
 }
 
+/**
+ * Expectations:
+ * - list exists in data tree
+ * - the leaf (defined by the unique_expr) is not instantiated under the list
+ *
+ * NULL + ly_errno - error
+ * NULL - no default value
+ * pointer to the default value
+ */
+static const char *
+lyd_get_default(const char* unique_expr, struct lyd_node_leaf_list *list)
+{
+    const struct lys_node *parent;
+    const struct lys_node_leaf *sleaf = NULL;
+    struct lys_tpdf *tpdf;
+    struct lyd_node *last;
+    const char *dflt = NULL;
+    struct ly_set *s, *r;
+    unsigned int i;
+
+    assert(unique_expr);
+
+    if (resolve_descendant_schema_nodeid(unique_expr, list->schema->child, LYS_LEAF, 1, 1, &parent)) {
+        /* error, but unique expression was checked when the schema was parsed */
+        return NULL;
+    }
+
+    sleaf = (struct lys_node_leaf *)parent;
+    if (sleaf->dflt) {
+        /* leaf has a default value */
+        dflt = sleaf->dflt;
+    } else if (!(sleaf->flags & LYS_MAND_TRUE)) {
+        /* get the default value from the type */
+        for (tpdf = sleaf->type.der; tpdf && !dflt; tpdf = tpdf->type.der) {
+            dflt = tpdf->dflt;
+        }
+    }
+
+    if (!dflt) {
+        return NULL;
+    }
+
+    /* it has default value, but check if it can appear in the data tree under the list */
+    s = ly_set_new();
+    for (parent = sleaf->parent; parent != list->schema; parent = parent->parent) {
+        if (!(parent->nodetype & (LYS_CONTAINER | LYS_CASE | LYS_CHOICE | LYS_USES))) {
+            /* This should be already detected when parsing schema */
+            LOGINT;
+            ly_set_free(s);
+            return NULL;
+        }
+        ly_set_add(s, (void *)parent);
+    }
+    ly_vlog_hide(1);
+    for (i = 0, last = (struct lyd_node *)list; i < s->number; i++) {
+        parent = s->set.s[i]; /* shortcut */
+
+        switch (parent->nodetype) {
+        case LYS_CONTAINER:
+            if (last) {
+                /* find instance in the data */
+                r = lyd_get_node(last, parent->name);
+                if (!r || r->number > 1) {
+                    ly_set_free(r);
+                    LOGINT;
+                    dflt = NULL;
+                    goto end;
+                }
+                if (r->number) {
+                    last = r->set.d[0];
+                } else {
+                    last = NULL;
+                }
+                ly_set_free(r);
+            }
+            if (((struct lys_node_container *)parent)->presence) {
+                /* not-instantiated presence container on path */
+                dflt = NULL;
+                goto end;
+            }
+            break;
+        case LYS_CHOICE :
+            /* check presence of another case */
+            if (!last) {
+                continue;
+            }
+
+            /* remember the case to be searched in choice by lyv_multicases() */
+            if (i + 1 == s->number) {
+                parent = (struct lys_node *)sleaf;
+            } else if (s->set.s[i + 1]->nodetype == LYS_CASE && (i + 2 < s->number) &&
+                    s->set.s[i + 2]->nodetype == LYS_CHOICE) {
+                /* nested choices are covered by lyv_multicases, we just have to pass
+                 * the lowest choice */
+                i++;
+                continue;
+            } else {
+                parent = s->set.s[i + 1];
+            }
+            if (lyv_multicases(NULL, (struct lys_node *)parent, last->child, 0, NULL)) {
+                /* another case is present */
+                ly_errno = LY_SUCCESS;
+                dflt = NULL;
+                goto end;
+            }
+            break;
+        default:
+            /* LYS_CASE, LYS_USES */
+            continue;
+        }
+    }
+
+end:
+    ly_vlog_hide(0);
+    ly_set_free(s);
+    return dflt;
+}
+
 int
 lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
 {
@@ -2023,12 +2141,10 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                         val1 = ((struct lyd_node_leaf_list *)diter)->value_str;
                     } else {
                         /* use default value */
-                        if (resolve_descendant_schema_nodeid(slist->unique[i].expr[j], first->schema->child, LYS_LEAF, &snode, 1)) {
-                            /* error, but unique expression was checked when the schema was parsed */
+                        val1 = lyd_get_default(slist->unique[i].expr[j], (struct lyd_node_leaf_list *)first);
+                        if (ly_errno) {
                             return -1;
                         }
-                        /* TODO default type value */
-                        val1 = ((struct lys_node_leaf *)snode)->dflt;
                     }
 
                     /* second */
@@ -2037,12 +2153,10 @@ lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique)
                         val2 = ((struct lyd_node_leaf_list *)diter)->value_str;
                     } else {
                         /* use default value */
-                        if (resolve_descendant_schema_nodeid(slist->unique[i].expr[j], second->schema->child, LYS_LEAF, &snode, 1)) {
-                            /* error, but unique expression was checked when the schema was parsed */
+                        val2 = lyd_get_default(slist->unique[i].expr[j], (struct lyd_node_leaf_list *)second);
+                        if (ly_errno) {
                             return -1;
                         }
-                        /* TODO default type value */
-                        val2 = ((struct lys_node_leaf *)snode)->dflt;
                     }
 
                     if (!val1 || !val2 || !ly_strequal(val1, val2, 1)) {

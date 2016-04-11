@@ -120,7 +120,6 @@ test_un_defaults(void **state)
     assert_string_equal(ly_errmsg(), "Instances of \"list\" list are not unique.");
 }
 
-#if 0
 static void
 test_un_empty(void **state)
 {
@@ -140,18 +139,14 @@ test_un_empty(void **state)
 
     st->dt = lyd_parse_mem(st->ctx, xml2, LYD_XML, 0);
     assert_ptr_not_equal(st->dt, NULL);
-    lyd_free(st->dt);
 }
-#endif
 
 int main(void)
 {
     const struct CMUnitTest tests[] = {
                     cmocka_unit_test_setup_teardown(test_un_correct, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_un_defaults, setup_f, teardown_f),
-#if 0
                     cmocka_unit_test_setup_teardown(test_un_empty, setup_f, teardown_f),
-#endif
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

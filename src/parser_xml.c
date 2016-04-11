@@ -448,7 +448,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     ly_errno = 0;
     if (!(options & LYD_OPT_TRUSTED) &&
             (lyv_data_content(*result, options, unres) ||
-             lyv_multicases(*result, first_sibling == *result ? NULL : first_sibling, 0, NULL))) {
+             lyv_multicases(*result, NULL, first_sibling == *result ? NULL : first_sibling, 0, NULL))) {
         if (ly_errno) {
             goto error;
         } else {
