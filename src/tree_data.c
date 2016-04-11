@@ -1373,7 +1373,6 @@ API int
 lyd_validate(struct lyd_node **node, int options, ...)
 {
     struct lyd_node *root, *next1, *next2, *iter, *to_free = NULL;
-    const struct lys_node *schema;
     struct ly_ctx *ctx = NULL;
     int i, ret = EXIT_FAILURE, clean = 0, ap_flag = 0;
     va_list ap;
@@ -1414,19 +1413,8 @@ lyd_validate(struct lyd_node **node, int options, ...)
             if (!ctx->models.list[i]->data) {
                 continue;
             }
-            schema = ly_check_mandatory(NULL, ctx->models.list[i]->data, (options & LYD_OPT_TYPEMASK) ? 0 : 1);
-            if (schema) {
-                if (schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, schema, schema->name, schema->parent ? schema->parent->name : "module");
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, schema, NULL,
-                           "Number of \"%s\" instances in \"%s\" does not follow min-elements constraint.",
-                           schema->name, schema->parent ? schema->parent->name : ctx->models.list[i]->name);
-                } else {
-                    LOGVAL(LYE_MISSELEM, LY_VLOG_LYS, schema,
-                           schema->name, schema->parent ? schema->parent->name : ctx->models.list[i]->name);
-                }
+            if (ly_check_mandatory(NULL, ctx->models.list[i]->data, (options & LYD_OPT_TYPEMASK) ? 0 : 1)) {
                 goto error;
-
             }
         }
 

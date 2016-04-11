@@ -180,13 +180,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
         /* mandatory children */
         if ((schema->nodetype & (LYS_CONTAINER | LYS_LIST))
                 && !(options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
-            siter = ly_check_mandatory(node, NULL, (options & LYD_OPT_TYPEMASK) ? 0 : 1);
-            if (siter) {
-                if (siter->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-                    LOGVAL(LYE_INCOUNT, LY_VLOG_LYD, node, siter->name, siter->parent->name);
-                } else {
-                    LOGVAL(LYE_MISSELEM, LY_VLOG_LYD, node, siter->name, siter->parent->name);
-                }
+            if (ly_check_mandatory(node, NULL, (options & LYD_OPT_TYPEMASK) ? 0 : 1)) {
                 return EXIT_FAILURE;
             }
         }

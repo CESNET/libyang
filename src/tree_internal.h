@@ -279,20 +279,19 @@ void lys_node_free(struct lys_node *node, void (*private_destructor)(const struc
 void lys_free(struct lys_module *module, void (*private_destructor)(const struct lys_node *node, void *priv), int remove_from_ctx);
 
 /**
- * @brief Check presence of all the mandatory elements in the given data tree subtree
+ * @brief Check presence of all the mandatory elements in the given data tree subtree. Logs directly.
  *
  * Besides the mandatory statements, also min-elements and max-elements constraints in
  * lists and leaf-list are checked.
  *
  * @param[in] data Root node for the searching subtree. Expecting that all child instances
- * are already resolved. Note that the \p start node itself is not checked since it must be present.
+ * mandatory nodes were already checked. Note that the \p start node itself is not checked since it must be present.
  * @param[in] schema To check mandatory elements in empty data tree (\p data is NULL), we need
  * the first schema node in a schema to be checked.
  * @param[in] status Include status (read-only) nodes.
- * @return The first mandatory element definition not present in the data, NULL if
- * there is no such element in the \p starts's subtree.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on failure.
  */
-const struct lys_node *ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema, int status);
+int ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema, int status);
 
 /**
  * @brief Find the parent node of an attribute.
