@@ -64,11 +64,11 @@ cmd_data_help(void)
     printf("\trpc        - LYD_OPT_RPC\n");
     /* printf("\trpcreply   - LYD_OPT_RPCREPLY\n"); */
     printf("\tnotif      - LYD_OPT_NOTIF\n\n");
-    printf("Accepted DEFAULTs:\n");
+    printf("Accepted DEFAULTS:\n");
     printf("\tall        - add missing default nodes\n");
-    printf("\tall-tagged - add missing default nodes and mark all default nodes with attribute.\n");
-    printf("\trim        - remove all nodes with default value\n");
-    printf("\timplicit-tagged    - add missing nodes and marke them with attribute\n");
+    printf("\tall-tagged - add missing default nodes and mark all the default nodes with the attribute.\n");
+    printf("\ttrim       - remove all nodes with a default value\n");
+    printf("\timplicit-tagged    - add missing nodes and mark them with the attribute\n");
 }
 
 void
