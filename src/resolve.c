@@ -4862,7 +4862,6 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
         }
 
         free(matches.node);
-        memset(&matches, 0, sizeof matches);
 
         if (!leaf->value.leafref) {
             /* reference not found */
