@@ -59,4 +59,8 @@
           <mandatory value="true"/>
       </leaf>
   </container>
+  <leaf name="topleaf">
+      <type name="empty"/>
+      <mandatory value="true"/>
+  </leaf>
 </module>

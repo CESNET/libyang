@@ -59,7 +59,7 @@ teardown_f(void **state)
 {
     struct state *st = (*state);
 
-    lyd_free(st->dt);
+    lyd_free_withsiblings(st->dt);
     ly_ctx_destroy(st->ctx, NULL);
     free(st);
     (*state) = NULL;
@@ -72,7 +72,8 @@ test_mandatory(void **state)
 {
     struct state *st = (*state);
 
-    const char miss_leaf1[] = "<top xmlns=\"urn:libyang:tests:mandatory\"/>";
+    const char miss_leaf1[] = "<top xmlns=\"urn:libyang:tests:mandatory\"/>"
+                              "<topleaf xmlns=\"urn:libyang:tests:mandatory\"/>";
     const char few_llist1[] = "<top xmlns=\"urn:libyang:tests:mandatory\"><leaf1>a</leaf1></top>";
     const char many_llist1[] = "<top xmlns=\"urn:libyang:tests:mandatory\">"
                                  "<leaf1>a</leaf1>"
@@ -96,11 +97,16 @@ test_mandatory(void **state)
                                 "<cont1><cont2><cont3><leaf2>5</leaf2></cont3></cont2></cont1>"
                                 "<leaf3>c</leaf3><leaf5>d</leaf5><leaf6/>"
                               "</top>";
-    const char valid[] = "<top xmlns=\"urn:libyang:tests:mandatory\">"
+    const char miss_topleaf[] = "<top xmlns=\"urn:libyang:tests:mandatory\">"
                            "<leaf1>a</leaf1><llist1>1</llist1><llist1>2</llist1>"
                            "<cont1><cont2><cont3><leaf2>5</leaf2></cont3></cont2></cont1>"
                            "<leaf3>c</leaf3><leaf5>d</leaf5><leaf6/><leaf7/>"
                          "</top>";
+    const char valid[] = "<top xmlns=\"urn:libyang:tests:mandatory\">"
+                           "<leaf1>a</leaf1><llist1>1</llist1><llist1>2</llist1>"
+                           "<cont1><cont2><cont3><leaf2>5</leaf2></cont3></cont2></cont1>"
+                           "<leaf3>c</leaf3><leaf5>d</leaf5><leaf6/><leaf7/>"
+                         "</top><topleaf xmlns=\"urn:libyang:tests:mandatory\"/>";
 
     st->dt = lyd_parse_mem(st->ctx, miss_leaf1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(st->dt, NULL);
@@ -143,6 +149,12 @@ test_mandatory(void **state)
     assert_int_equal(ly_errno, LY_EVALID);
     assert_int_equal(ly_vecode, LYVE_MISSELEM);
     assert_string_equal(ly_errpath(), "/mandatory:top");
+
+    st->dt = lyd_parse_mem(st->ctx, miss_topleaf, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(st->dt, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_MISSELEM);
+    assert_string_equal(ly_errpath(), "/mandatory:topleaf");
 
     st->dt = lyd_parse_mem(st->ctx, valid, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->dt, NULL);
