@@ -2454,7 +2454,7 @@ resolve_unique(struct lys_node *parent, const char *uniq_str_path)
             if (rc > 0) {
                 LOGVAL(LYE_INCHAR, LY_VLOG_LYS, parent, uniq_str_path[rc - 1], &uniq_str_path[rc - 1]);
             } else if (rc == -2) {
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, parent, "unique argument references list");
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, parent, "Unique argument references list.");
             }
             rc = -1;
         } else {
