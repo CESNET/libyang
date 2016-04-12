@@ -324,6 +324,9 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
                 if (!diter) {
                     /* instance not found */
                     missing_parent = set->set.s[i];
+                    if (toplevel) {
+                        data = NULL;
+                    }
                     break;
                 }
                 data = diter;
@@ -342,8 +345,8 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
 
     if (node->flags & LYS_MAND_TRUE) {
         if (missing_parent) {
-            LOGVAL(LYE_MISSELEM, LY_VLOG_LYD, data, missing_parent->name,
-                   (lys_parent(missing_parent) ? lys_parent(missing_parent)->name : lys_node_module(missing_parent)->name));
+            LOGVAL(LYE_MISSELEM, LY_VLOG_LYD, data, node->name,
+                   (lys_parent(node) ? lys_parent(node)->name : lys_node_module(node)->name));
             return EXIT_FAILURE;
         }
 
@@ -394,9 +397,9 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
             /* 7.6.5, rule 3 (or 2) */
             /* 7.9.4, rule 2 */
             if (node->nodetype == LYS_CHOICE) {
-                LOGVAL(LYE_NOMANDCHOICE, LY_VLOG_LYD, data, node->name);
+                LOGVAL(LYE_NOMANDCHOICE, LY_VLOG_LYD, toplevel ? NULL : data, node->name);
             } else {
-                LOGVAL(LYE_MISSELEM, LY_VLOG_LYD, data, node->name,
+                LOGVAL(LYE_MISSELEM, LY_VLOG_LYD, toplevel ? NULL : data, node->name,
                    (lys_parent(node) ? lys_parent(node)->name : lys_node_module(node)->name));
             }
             break;
@@ -430,11 +433,11 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
         }
 
         if (min && (minmax < min)) {
-            LOGVAL(LYE_NOMIN, LY_VLOG_LYD, data, node->name);
+            LOGVAL(LYE_NOMIN, LY_VLOG_LYD, toplevel ? NULL : data, node->name);
             return EXIT_FAILURE;
         }
         if (max && (minmax > max)) {
-            LOGVAL(LYE_NOMAX, LY_VLOG_LYD, data, node->name);
+            LOGVAL(LYE_NOMAX, LY_VLOG_LYD, toplevel ? NULL : data, node->name);
             return EXIT_FAILURE;
         }
     }
