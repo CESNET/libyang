@@ -2111,6 +2111,8 @@ lyd_list_equal(struct lyd_node *first, struct lyd_node *second)
     const struct lys_node *snode = NULL;
     struct lyd_node *diter;
     const char *val1, *val2;
+    char *path1, *path2, *uniq_str = ly_buf(), *buf_backup = NULL;
+    uint16_t idx1, idx2, idx_uniq;
     int i, j;
 
     assert(first && (first->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)));
@@ -2166,9 +2168,43 @@ lyd_list_equal(struct lyd_node *first, struct lyd_node *second)
                     break;
                 }
             }
-            if (j && j == slist->unique[i].expr_size) {
-                /* all unique leafs are the same in this set */
-                LOGVAL(LYE_NOUNIQ, LY_VLOG_LYD, second, slist->name);
+            if (j && (j == slist->unique[i].expr_size)) {
+                /* all unique leafs are the same in this set, create this nice error */
+                path1 = malloc(LY_BUF_SIZE);
+                path2 = malloc(LY_BUF_SIZE);
+                if (!path1 || !path2) {
+                    LOGMEM;
+                    return -1;
+                }
+                idx1 = idx2 = LY_BUF_SIZE - 1;
+                path1[idx1] = '\0';
+                path2[idx2] = '\0';
+                ly_vlog_build_path_reverse(LY_VLOG_LYD, first, path1, &idx1);
+                ly_vlog_build_path_reverse(LY_VLOG_LYD, second, path2, &idx2);
+
+                /* use internal buffer to rebuild the unique string */
+                if (ly_buf_used && uniq_str[0]) {
+                    buf_backup = strndup(uniq_str, LY_BUF_SIZE - 1);
+                }
+                ly_buf_used++;
+                idx_uniq = 0;
+
+                for (j = 0; j < slist->unique[i].expr_size; ++j) {
+                    if (j) {
+                        uniq_str[idx_uniq++] = ' ';
+                    }
+                    strcpy(&uniq_str[idx_uniq], slist->unique[i].expr[j]);
+                    idx_uniq += strlen(slist->unique[i].expr[j]);
+                }
+
+                LOGVAL(LYE_NOUNIQ, LY_VLOG_LYD, second, uniq_str, &path1[idx1], &path2[idx2]);
+                free(path1);
+                free(path2);
+                if (buf_backup) {
+                    strcpy(uniq_str, buf_backup);
+                    free(buf_backup);
+                }
+                ly_buf_used--;
                 return 1;
             }
         }
