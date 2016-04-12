@@ -358,7 +358,7 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
                         }
                         if (!diter) {
                             /* instance not found */
-                            LOGVAL(LYE_MISSELEM, LY_VLOG_LYS, node, set->set.s[i]->name,
+                            LOGVAL(LYE_MISSELEM, LY_VLOG_LYD, data, set->set.s[i]->name,
                                    (lys_parent(set->set.s[i]) ? lys_parent(set->set.s[i])->name : lys_node_module(set->set.s[i])->name));
                             ly_set_free(set);
                             return EXIT_FAILURE;
@@ -395,9 +395,9 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
             /* 7.6.5, rule 3 (or 2) */
             /* 7.9.4, rule 2 */
             if (node->nodetype == LYS_CHOICE) {
-                LOGVAL(LYE_NOMANDCHOICE, LY_VLOG_LYS, node, node->name);
+                LOGVAL(LYE_NOMANDCHOICE, LY_VLOG_LYD, data, node->name);
             } else {
-                LOGVAL(LYE_MISSELEM, LY_VLOG_LYS, node, node->name,
+                LOGVAL(LYE_MISSELEM, LY_VLOG_LYD, data, node->name,
                    (lys_parent(node) ? lys_parent(node)->name : lys_node_module(node)->name));
             }
             return EXIT_FAILURE;;
@@ -412,6 +412,8 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
             LY_TREE_FOR(data->child, diter) {
                 if (diter->schema == node) {
                     minmax++;
+                    /* remember the last instance, we will use it in the log message */
+                    data = diter;
                 }
             }
         }
@@ -554,8 +556,13 @@ repeat_choice:
             }
 
             if (!found && (saux->flags & LYS_MAND_TRUE)) {
-                LOGVAL(LYE_MISSELEM, LY_VLOG_LYS, saux, saux->name,
-                       (lys_parent(saux) ? lys_parent(saux)->name : lys_node_module(saux)->name));
+                if (data) {
+                    LOGVAL(LYE_MISSELEM, LY_VLOG_LYD, data, saux->name,
+                           (lys_parent(saux) ? lys_parent(saux)->name : lys_node_module(saux)->name));
+                } else {
+                    LOGVAL(LYE_MISSELEM, LY_VLOG_LYS, saux, saux->name,
+                           (lys_parent(saux) ? lys_parent(saux)->name : lys_node_module(saux)->name));
+                }
                 return EXIT_FAILURE;
             }
 
