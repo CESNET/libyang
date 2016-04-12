@@ -119,7 +119,7 @@ test_un_defaults(void **state)
     assert_ptr_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
     assert_int_equal(ly_vecode, LYVE_NOUNIQ);
-    assert_string_equal(ly_errmsg(), "Unique \"value select/a/a\" not satisfied in \"/unique:un/list[name='x']\" and \"/unique:un/list[name='y']\".");
+    assert_string_equal(ly_errmsg(), "Unique data leaf(s) \"value a\" not satisfied in \"/unique:un/list[name='x']\" and \"/unique:un/list[name='y']\".");
 }
 
 static void

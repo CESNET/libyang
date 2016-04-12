@@ -2128,6 +2128,55 @@ end:
     return dflt;
 }
 
+static int
+lyd_build_relative_data_path(const struct lyd_node *node, const char *schema_id, char *buf)
+{
+    const struct lys_node *snode, *schema;
+    const char *end;
+    int len = 0;
+
+    schema = node->schema;
+
+    while (1) {
+        end = strchr(schema_id, '/');
+        if (!end) {
+            end = schema_id + strlen(schema_id);
+        }
+
+        snode = NULL;
+        while ((snode = lys_getnext(snode, schema, NULL, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
+            if (!strncmp(snode->name, schema_id, end - schema_id) && !snode->name[end - schema_id]) {
+                assert(snode->nodetype != LYS_LIST);
+                if (!(snode->nodetype & (LYS_CHOICE | LYS_CASE))) {
+                    len += sprintf(&buf[len], "%s%s", (len ? "/" : ""), snode->name);
+                }
+                /* shorthand case, skip it in schema */
+                if (lys_parent(snode) && (lys_parent(snode)->nodetype == LYS_CHOICE) && (snode->nodetype != LYS_CASE)) {
+                    schema_id = end + 1;
+                    end = strchr(schema_id, '/');
+                    if (!end) {
+                        end = schema_id + strlen(schema_id);
+                    }
+                }
+                schema = snode;
+                break;
+            }
+        }
+        if (!snode) {
+            LOGINT;
+            return -1;
+        }
+
+        if (!end[0]) {
+            return len;
+        }
+        schema_id = end + 1;
+    }
+
+    LOGINT;
+    return -1;
+}
+
 int
 lyd_list_equal(struct lyd_node *first, struct lyd_node *second)
 {
@@ -2217,8 +2266,7 @@ lyd_list_equal(struct lyd_node *first, struct lyd_node *second)
                     if (j) {
                         uniq_str[idx_uniq++] = ' ';
                     }
-                    strcpy(&uniq_str[idx_uniq], slist->unique[i].expr[j]);
-                    idx_uniq += strlen(slist->unique[i].expr[j]);
+                    idx_uniq += lyd_build_relative_data_path(first, slist->unique[i].expr[j], &uniq_str[idx_uniq]);
                 }
 
                 LOGVAL(LYE_NOUNIQ, LY_VLOG_LYD, second, uniq_str, &path1[idx1], &path2[idx2]);

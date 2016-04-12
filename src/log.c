@@ -142,7 +142,7 @@ const char *ly_errs[] = {
 /* LYE_DUPID */        "Duplicated %s identifier \"%s\".",
 /* LYE_DUPLEAFLIST */  "Duplicated instance of \"%s\" leaf-list (\"%s\").",
 /* LYE_DUPLIST */      "Duplicated instance of \"%s\" list.",
-/* LYE_NOUNIQ */       "Unique \"%s\" not satisfied in \"%s\" and \"%s\".",
+/* LYE_NOUNIQ */       "Unique data leaf(s) \"%s\" not satisfied in \"%s\" and \"%s\".",
 /* LYE_ENUM_DUPVAL */  "The value \"%d\" of \"%s\" enum has already been assigned to another enum value.",
 /* LYE_ENUM_DUPNAME */ "The enum name \"%s\" has already been assigned to another enum.",
 /* LYE_ENUM_WS */      "The enum name \"%s\" includes invalid leading or trailing whitespaces.",
