@@ -86,7 +86,7 @@ test_un_correct(void **state)
                         "<list><name>y</name><value>2</value><a>2</a><input><x>2</x><y>2</y></input></list>"
                       "</un>";
 
-    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, 0);
+    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->dt, NULL);
 }
 
@@ -107,15 +107,15 @@ test_un_defaults(void **state)
                         "<list><name>y</name><input><y>2</y></input></list>"
                        "</un>";
 
-    st->dt = lyd_parse_mem(st->ctx, xml1, LYD_XML, 0);
+    st->dt = lyd_parse_mem(st->ctx, xml1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->dt, NULL);
     lyd_free(st->dt);
 
-    st->dt = lyd_parse_mem(st->ctx, xml2, LYD_XML, 0);
+    st->dt = lyd_parse_mem(st->ctx, xml2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->dt, NULL);
     lyd_free(st->dt);
 
-    st->dt = lyd_parse_mem(st->ctx, xml3, LYD_XML, 0);
+    st->dt = lyd_parse_mem(st->ctx, xml3, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
     assert_int_equal(ly_vecode, LYVE_NOUNIQ);
@@ -135,11 +135,11 @@ test_un_empty(void **state)
                         "<list><name>y</name><a>2</a></list>"
                        "</un>";
 
-    st->dt = lyd_parse_mem(st->ctx, xml1, LYD_XML, 0);
+    st->dt = lyd_parse_mem(st->ctx, xml1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->dt, NULL);
     lyd_free(st->dt);
 
-    st->dt = lyd_parse_mem(st->ctx, xml2, LYD_XML, 0);
+    st->dt = lyd_parse_mem(st->ctx, xml2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->dt, NULL);
 }
 

@@ -314,7 +314,7 @@ generic_init(char *config_file, char *yang_file, char *yang_folder)
         goto error;
     }
 
-    root = lyd_parse_mem(ctx, config, in_format, LYD_OPT_STRICT);
+    root = lyd_parse_mem(ctx, config, in_format, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     if (!root) {
         goto error;
     }

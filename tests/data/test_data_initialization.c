@@ -74,7 +74,7 @@ generic_init(char *config_file, char *yang_file, char *yang_folder)
         goto error;
     }
 
-    root = lyd_parse_mem(ctx, config, in_format, LYD_OPT_STRICT);
+    root = lyd_parse_mem(ctx, config, in_format, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     if (!root) {
         goto error;
     }
@@ -195,7 +195,7 @@ test_yanglibrary(void **state)
     yanglib = ly_ctx_info(ctx);
     assert_non_null(yanglib);
 
-    rc = lyd_validate(&yanglib, 0);
+    rc = lyd_validate(&yanglib, LYD_OPT_DATA);
 
     /* cleanup */
     lyd_free(yanglib);

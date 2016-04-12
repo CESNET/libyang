@@ -184,7 +184,7 @@ generic_init(char *config_file, const char *module, char *yang_folder)
         goto error;
     }
 
-    root = lyd_parse_mem(ctx, config, in_format, LYD_OPT_STRICT);
+    root = lyd_parse_mem(ctx, config, in_format, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     if (!root) {
         goto error;
     }
@@ -272,7 +272,7 @@ test_lyd_parse_mem(void **state)
         goto error;
     }
 
-    root = lyd_parse_mem(ctx, a_data_xml, in_format, LYD_OPT_STRICT);
+    root = lyd_parse_mem(ctx, a_data_xml, in_format, LYD_OPT_NOSIBLINGS | LYD_OPT_STRICT);
     if (!root) {
         goto error;
     }
@@ -320,7 +320,7 @@ test_lyd_parse_fd(void **state)
         goto error;
     }
 
-    root = lyd_parse_fd(ctx, fd, in_format, LYD_OPT_STRICT);
+    root = lyd_parse_fd(ctx, fd, in_format, LYD_OPT_NOSIBLINGS | LYD_OPT_STRICT);
     if (!root) {
         goto error;
     }
@@ -364,7 +364,7 @@ test_lyd_parse_path(void **state)
         goto error;
     }
 
-    root = lyd_parse_path(ctx, config_file, in_format, LYD_OPT_STRICT);
+    root = lyd_parse_path(ctx, config_file, in_format, LYD_OPT_NOSIBLINGS | LYD_OPT_STRICT);
     if (!root) {
         goto error;
     }
@@ -407,7 +407,7 @@ test_lyd_parse_xml(void **state)
 
     root_xml = lyxml_parse_mem(ctx, a_data_xml, 1);
 
-    node = lyd_parse_xml(ctx, &root_xml, LYD_OPT_DATA);
+    node = lyd_parse_xml(ctx, &root_xml, LYD_OPT_NOSIBLINGS | LYD_OPT_DATA);
     if (!node) {
         goto error;
     }
@@ -842,7 +842,7 @@ test_lyd_validate(void **state)
     struct lyd_node *node = root;
     int rc;
 
-    rc = lyd_validate(&root, 0);
+    rc = lyd_validate(&root, LYD_OPT_CONFIG);
     if (rc) {
         fail();
     }
@@ -861,7 +861,7 @@ test_lyd_validate(void **state)
         fail();
     }
 
-    rc = lyd_validate(&root, 0);
+    rc = lyd_validate(&root, LYD_OPT_CONFIG);
     if (rc) {
         fail();
     }
