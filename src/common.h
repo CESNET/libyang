@@ -216,6 +216,8 @@ void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
 #define LOGVAL(code, elem_type, elem, args...) ly_vlog(code, elem_type, elem, ##args)
 #define LOGPATH(elem_type, elem) ly_vlog(LYE_PATH, elem_type, elem)
 
+void ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index);
+
 /**
  * @brief Basic functionality like strpbrk(3). However, it searches string \p s
  *        backwards up to most \p s_len characters.
