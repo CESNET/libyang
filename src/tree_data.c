@@ -2132,7 +2132,7 @@ lyd_list_equal(struct lyd_node *first, struct lyd_node *second)
                    ((struct lyd_node_leaf_list *)second)->value_str);
             return 1;
         }
-        return EXIT_SUCCESS;
+        return 0;
     case LYS_LIST:
         slist = (struct lys_node_list *)first->schema;
 
