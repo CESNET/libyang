@@ -112,13 +112,13 @@ test_mandatory(void **state)
     assert_ptr_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
     assert_int_equal(ly_vecode, LYVE_MISSELEM);
-    assert_string_equal(ly_errpath(), "/mandatory:top/leaf1");
+    assert_string_equal(ly_errpath(), "/");
 
     st->dt = lyd_parse_mem(st->ctx, few_llist1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
     assert_int_equal(ly_vecode, LYVE_NOMIN);
-    assert_string_equal(ly_errpath(), "/mandatory:top/llist1");
+    assert_string_equal(ly_errpath(), "/mandatory:top");
 
     st->dt = lyd_parse_mem(st->ctx, many_llist1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(st->dt, NULL);
@@ -154,7 +154,7 @@ test_mandatory(void **state)
     assert_ptr_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
     assert_int_equal(ly_vecode, LYVE_MISSELEM);
-    assert_string_equal(ly_errpath(), "/mandatory:topleaf");
+    assert_string_equal(ly_errpath(), "/");
 
     st->dt = lyd_parse_mem(st->ctx, valid, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->dt, NULL);
