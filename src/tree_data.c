@@ -38,6 +38,32 @@
 #include "validation.h"
 #include "xpath.h"
 
+static int
+lyd_check_topmandatory(struct ly_ctx *ctx, struct lyd_node *data, int options)
+{
+    assert(ctx);
+    int i;
+
+    /* TODO what about LYD_OPT_NOTIF, LYD_OPT_RPC and LYD_OPT_RPCREPLY ? */
+    if ((options & LYD_OPT_NOSIBLINGS) || (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
+        return EXIT_SUCCESS;
+    }
+
+    /* LYD_OPT_DATA || LYD_OPT_CONFIG */
+
+    /* check for missing mandatory elements (from the top level) according to schemas in context */
+    for (i = 0; i < ctx->models.used; i++) {
+        if (!ctx->models.list[i]->data) {
+            continue;
+        }
+        if (ly_check_mandatory(data, ctx->models.list[i]->data, (options & LYD_OPT_TYPEMASK) ? 0 : 1)) {
+            return EXIT_FAILURE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
 static struct lyd_node *
 lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, LYD_FORMAT format, int options)
 {
@@ -73,11 +99,22 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
         return NULL;
     }
 
-    if (!result && !ly_errno) {
-        /* is empty data tree really valid ? */
-        lyd_validate(&result, options, ctx);
+    if (!ly_errno) {
+        if (!result) {
+            /* is empty data tree really valid ? */
+            lyd_validate(&result, options, ctx);
+        } else {
+            /* check for missing top level mandatory nodes */
+            lyd_check_topmandatory(ctx, result, options);
+        }
     }
-    return result;
+
+    if (ly_errno) {
+        lyd_free_withsiblings(result);
+        return NULL;
+    } else {
+        return result;
+    }
 }
 
 static struct lyd_node *
@@ -1374,7 +1411,7 @@ lyd_validate(struct lyd_node **node, int options, ...)
 {
     struct lyd_node *root, *next1, *next2, *iter, *to_free = NULL;
     struct ly_ctx *ctx = NULL;
-    int i, ret = EXIT_FAILURE, clean = 0, ap_flag = 0;
+    int ret = EXIT_FAILURE, clean = 0, ap_flag = 0;
     va_list ap;
     struct unres_data *unres = NULL;
     const struct lys_module *wdmod = NULL;
@@ -1401,31 +1438,19 @@ lyd_validate(struct lyd_node **node, int options, ...)
             LOGERR(LY_EINVAL, "%s: Invalid variable argument.", __func__);
             goto error;
         }
+    } else {
+        ctx = (*node)->schema->module->ctx;
 
-        /* TODO what about LYD_OPT_NOTIF, LYD_OPT_RPC and LYD_OPT_RPCREPLY ? */
-        if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
-            goto success;
-        }
-        /* LYD_OPT_DATA || LYD_OPT_CONFIG */
-
-        /* check for missing mandatory elements according to schemas in context */
-        for (i = 0; i < ctx->models.used; i++) {
-            if (!ctx->models.list[i]->data) {
-                continue;
-            }
-            if (ly_check_mandatory(NULL, ctx->models.list[i]->data, (options & LYD_OPT_TYPEMASK) ? 0 : 1)) {
-                goto error;
+        if (!(options & LYD_OPT_NOSIBLINGS)) {
+            /* check that the node is the first sibling */
+            while((*node)->prev->next) {
+                *node = (*node)->prev;
             }
         }
-
-        goto success;
     }
 
-    if (!(options & LYD_OPT_NOSIBLINGS)) {
-        /* check that the node is the first sibling */
-        while((*node)->prev->next) {
-            *node = (*node)->prev;
-        }
+    if (lyd_check_topmandatory(ctx, *node, options)) {
+        goto error;
     }
 
     LY_TREE_FOR_SAFE(*node, next1, root) {
@@ -1509,7 +1534,6 @@ nextsiblings:
         }
     }
 
-success:
     /* add default values if needed */
     if (options & LYD_WD_MASK) {
         if (lyd_wd_top(ctx ? ctx : (*node)->schema->module->ctx, node, unres, options, wdmod)) {
