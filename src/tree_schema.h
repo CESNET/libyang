@@ -174,7 +174,7 @@ extern "C" {
  */
 typedef enum {
     LYS_IN_UNKNOWN = 0,  /**< unknown format, used as return value in case of error */
-    LYS_IN_YANG = 1,     /**< YANG schema input format, TODO not yet supported */
+    LYS_IN_YANG = 1,     /**< YANG schema input format */
     LYS_IN_YIN = 2       /**< YIN schema input format */
 } LYS_INFORMAT;
 
@@ -1144,7 +1144,7 @@ struct lys_node_augment {
 
     /* replaces #next and #prev members of ::lys_node */
     struct lys_when *when;           /**< when statement (optional) */
-    struct lys_node *target;         /**< pointer to the target node TODO refer to augmentation description */
+    struct lys_node *target;         /**< pointer to the target node */
 
     /* again compatible members with ::lys_node */
     uint8_t features_size;           /**< number of elements in the #features array */

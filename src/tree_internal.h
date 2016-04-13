@@ -96,7 +96,7 @@ struct lyd_node_pos {
  * @param[in] module Schema tree where to connect the submodule, belongs-to value must match.
  * @param[in] data String containing the submodule specification in the given \p format.
  * @param[in] format Format of the data to read.
- * @param[in] unres TODO provide description
+ * @param[in] unres list of unresolved items
  * @return Created submodule structure or NULL in case of error.
  */
 struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT format,
@@ -111,7 +111,7 @@ struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char 
  * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the submodule
  *            specification in the given \p format.
  * @param[in] format Format of the data to read.
- * @param[in] unres TODO provide description
+ * @param[in] unres list of unresolved items
  * @return Created submodule structure or NULL in case of error.
  */
 struct lys_submodule *lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format,
@@ -179,7 +179,7 @@ int lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_modu
  * @param[in] node Schema tree node to be duplicated.
  * @param[in] flags Config flag to be inherited in case the origin node does not specify config flag
  * @param[in] nacm NACM flags to be inherited from the parent
- * @param[in] unres TODO provide description
+ * @param[in] unres list of unresolved items
  * @param[in] shallow Whether to copy children and connect to parent/module too.
  * @return Created copy of the provided schema \p node.
  */

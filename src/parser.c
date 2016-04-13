@@ -121,7 +121,7 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *rev
         module = yang_read_module(ctx, addr, sb.st_size + 2, revision, 0);
         break;
     default:
-        /* TODO */
+        LOGERR(LY_EINVAL, "%s: Invalid format parameter.", __func__);
         break;
     }
     munmap(addr, sb.st_size + 2);

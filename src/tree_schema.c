@@ -1082,7 +1082,7 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
         submod = yang_read_submodule(module, data, 0, unres);
         break;
     default:
-        /* TODO */
+        assert(0);
         break;
     }
 
@@ -2710,8 +2710,6 @@ lys_features_change(const struct lys_module *module, const char *name, int op)
             }
         }
     }
-
-    /* TODO submodules of submodules ... */
 
     if (all) {
         return EXIT_SUCCESS;
