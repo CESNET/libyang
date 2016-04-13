@@ -587,7 +587,7 @@ ly_ctx_info(struct ly_ctx *ctx)
         return NULL;
     }
 
-    if (lyd_validate(&root, 0)) {
+    if (lyd_validate(&root, LYD_OPT_NOSIBLINGS)) {
         lyd_free(root);
         return NULL;
     }
