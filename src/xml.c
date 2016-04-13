@@ -894,6 +894,7 @@ process:
     if (!memcmp("/>", c, 2)) {
         /* we are done, it was EmptyElemTag */
         c += 2;
+        elem->content = lydict_insert(ctx, "", 0);
         closed_flag = 1;
     } else if (*c == '>') {
         /* process element content */

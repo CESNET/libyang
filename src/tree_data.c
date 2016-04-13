@@ -285,7 +285,7 @@ lyd_create_leaf(const struct lys_node *schema, const char *val_str)
     }
     ret->prev = (struct lyd_node *)ret;
     ret->value_type = ((struct lys_node_leaf *)schema)->type.base;
-    ret->value_str = lydict_insert(schema->module->ctx, val_str, 0);
+    ret->value_str = lydict_insert(schema->module->ctx, val_str ? val_str : "", 0);
 
     return (struct lyd_node *)ret;
 }
@@ -381,7 +381,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     }
 
     backup = leaf->value_str;
-    leaf->value_str = lydict_insert(leaf->schema->module->ctx, val_str, 0);
+    leaf->value_str = lydict_insert(leaf->schema->module->ctx, val_str ? val_str : "", 0);
 
     /* resolve the type correctly */
     if (lyp_parse_value(leaf, NULL, 1)) {

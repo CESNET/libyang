@@ -394,7 +394,7 @@ repeat:
         len += r;
     } else if (!strncmp(&data[len], "[null]", 6)) {
         /* empty */
-        leaf->value_str = NULL;
+        leaf->value_str = lydict_insert(ctx, "", 0);
         len += 6;
     } else {
         /* error */
