@@ -196,39 +196,6 @@ struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent
 void lys_node_switch(struct lys_node *dst, struct lys_node *src);
 
 /**
- * @brief Return main module of the schema tree node.
- *
- * In case of regular YANG module, it returns ::lys_node#module pointer,
- * but in case of submodule, it returns pointer to the main module.
- *
- * @param[in] node Schema tree node to be examined
- * @return pointer to the main module (schema structure), NULL in case of error.
- */
-struct lys_module *lys_node_module(const struct lys_node *node);
-
-/**
- * @brief Return main module of the data tree node.
- *
- * In case of regular YANG module, it returns ::lys_node#module pointer,
- * but in case of submodule, it returns pointer to the main module.
- *
- * @param[in] node Data tree node to be examined
- * @return pointer to the main module (schema structure), NULL in case of error.
- */
-struct lys_module *lyd_node_module(const struct lyd_node *node);
-
-/**
- * @brief Return main module of the module.
- *
- * In case of regular YANG module, it returns itself,
- * but in case of submodule, it returns pointer to the main module.
- *
- * @param[in] module Module to be examined
- * @return pointer to the main module (schema structure).
- */
-struct lys_module *lys_module(const struct lys_module *module);
-
-/**
  * @brief Free a schema when condition
  *
  * @param[in] libyang context where the schema of the ondition is used.
