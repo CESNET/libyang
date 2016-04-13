@@ -424,6 +424,7 @@ struct lyd_node *lyd_new_leaf(struct lyd_node *parent, const struct lys_module *
  * @brief Change value of a leaf node.
  *
  * Despite the prototype allows to provide a leaflist node as \p leaf parameter, only leafs are accepted.
+ * Also, changing the value of a list key is prohibited.
  *
  * @param[in] leaf A leaf node to change.
  * @param[in] val_str String form of the new value to be set to the \p leaf. In case the type is #LY_TYPE_INST

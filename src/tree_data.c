@@ -361,10 +361,23 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
 {
     const char *backup;
     struct lyd_node *parent;
+    struct lys_node_list *slist;
+    uint32_t i;
 
     if (!leaf) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
+    }
+
+    /* key value cannot be changed */
+    if (leaf->parent && (leaf->parent->schema->nodetype == LYS_LIST)) {
+        slist = (struct lys_node_list *)leaf->parent->schema;
+        for (i = 0; i < slist->keys_size; ++i) {
+            if (slist->keys[i]->name == leaf->schema->name) {
+                LOGVAL(LYE_SPEC, LY_VLOG_LYD, leaf, "List key value cannot be changed.");
+                return EXIT_FAILURE;
+            }
+        }
     }
 
     backup = leaf->value_str;
