@@ -527,6 +527,9 @@ struct lyd_node *lyd_output_new_anyxml_xml(const struct lys_node *schema, struct
  * required and always guaranteed. Specially, when working with RPC output (using #LYD_PATH_OPT_OUTPUT flag),
  * it can therefore happen that a node is created and inserted before \p data_tree.
  *
+ * If \p path points to a list key and the list does not exist, the key value from the predicate is used
+ * and \p value is ignored.
+ *
  * @param[in] data_tree Existing data tree to add to/modify. It is expected to be valid. If creating RPCs,
  * there should only be one RPC and either input or output. Can be NULL.
  * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
@@ -536,7 +539,7 @@ struct lyd_node *lyd_output_new_anyxml_xml(const struct lys_node *schema, struct
  * @param[in] value Value of the new leaf/lealf-list. If creating anyxml, this value is internally duplicated
  * (for other options use lyd_*_new_anyxml_*()). If creating nodes of other types, set to NULL.
  * @param[in] options Bitmask of options flags, see @ref pathoptions.
- * @return First created (or updated node with #LYD_PATH_OPT_UPDATE) node,
+ * @return First created (or updated with #LYD_PATH_OPT_UPDATE) node,
  * NULL if #LYD_PATH_OPT_UPDATE was used and the full path exists or the leaf original value matches \p value,
  * NULL and ly_errno is set on error.
  */

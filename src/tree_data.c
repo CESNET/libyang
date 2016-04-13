@@ -911,17 +911,18 @@ next_iter:
         }
         id += r;
 
-        /* if a key of a list was supposed to be created, it is created as a part of the list instance
-         * creation and can cause several corner cases that can simply be avoided by forbidding this */
+        /* if a key of a list was supposed to be created, it is created as a part of the list instance creation */
         if ((schild->nodetype == LYS_LIST) && !mod_name) {
             slist = (const struct lys_node_list *)schild;
             for (i = 0; i < slist->keys_size; ++i) {
                 if (!strncmp(slist->keys[i]->name, name, nam_len) && !slist->keys[i]->name[nam_len]) {
-                    str = strndup(path, (name + nam_len) - path);
-                    LOGVAL(LYE_PATH_EXISTS, LY_VLOG_STR, str);
-                    free(str);
-                    lyd_free(ret);
-                    return NULL;
+                    /* the path continues? there cannot be anything after a key (leaf) */
+                    if (id[0]) {
+                        LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
+                        lyd_free(ret);
+                        return NULL;
+                    }
+                    return ret;
                 }
             }
         }
