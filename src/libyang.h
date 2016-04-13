@@ -1078,6 +1078,10 @@ const char *ly_errmsg(void);
  *
  * The path always corresponds to the error message available via ly_errmsg(), so
  * whenever a subsequent error message is printed, the path is erased or rewritten.
+ * The path reflects the type of the processed tree - data path for data tree functions
+ * and schema path in case of schema tree functions. In case of processing YIN schema
+ * or XML data, the path can be just XML path. In such a case, the corresponding
+ * ly_vecode (value 1-3) is set.
  *
  * @return Path of the error element.
  */

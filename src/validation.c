@@ -267,7 +267,8 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
             if (((struct lyd_node_leaf_list *)node)->value_type == LY_TYPE_IDENT) {
                 ident = ((struct lyd_node_leaf_list *)node)->value.ident;
                 if (lyp_check_status(schema->flags, schema->module, schema->name,
-                                 ident->flags, ident->module, ident->name, schema)) {
+                                 ident->flags, ident->module, ident->name, NULL)) {
+                    LOGPATH(LY_VLOG_LYD, node);
                     return EXIT_FAILURE;
                 }
             }

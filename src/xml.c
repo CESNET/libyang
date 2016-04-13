@@ -936,7 +936,7 @@ process:
                     uc = lyxml_getutf8(e, &size);
                 }
                 if (!*e) {
-                    LOGVAL(LYE_EOF, LY_VLOG_XML, elem);
+                    LOGVAL(LYE_EOF, LY_VLOG_NONE, NULL);
                     goto error;
                 }
 
