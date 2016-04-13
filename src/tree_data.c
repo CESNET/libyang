@@ -411,7 +411,7 @@ lyd_create_anyxml(const struct lys_node *schema, char *val_str, struct lyxml_ele
 {
     struct lyd_node_anyxml *ret;
 
-    assert((val_str || val_xml) && (!val_str || !val_xml));
+    assert(!val_str || !val_xml);
 
     ret = calloc(1, sizeof *ret);
     if (!ret) {
