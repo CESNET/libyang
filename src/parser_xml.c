@@ -314,7 +314,8 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         }
 
         /* report errors */
-        if (i > 0x10 || (i && i < 0x10 && !(schema->nodetype & (LYS_LEAFLIST | LYS_LIST)))) {
+        if (i > 0x10 || (i && i < 0x10 &&
+                (!(schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) || !(schema->flags & LYS_USERORDERED)))) {
             /* attributes in wrong elements */
             LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), str, xml->name);
             return -1;
