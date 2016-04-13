@@ -2834,13 +2834,13 @@ lys_features_list(const struct lys_module *module, uint8_t **states)
     return result;
 }
 
-struct lys_module *
+API struct lys_module *
 lys_node_module(const struct lys_node *node)
 {
     return node->module->type ? ((struct lys_submodule *)node->module)->belongsto : node->module;
 }
 
-struct lys_module *
+API struct lys_module *
 lys_module(const struct lys_module *module)
 {
     return (module->type ? ((struct lys_submodule *)module)->belongsto : (struct lys_module *)module);

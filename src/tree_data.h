@@ -750,6 +750,17 @@ struct lyd_attr *lyd_insert_attr(struct lyd_node *parent, const struct lys_modul
 void lyd_free_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr, int recursive);
 
 /**
+ * @brief Return main module of the data tree node.
+ *
+ * In case of regular YANG module, it returns ::lys_node#module pointer,
+ * but in case of submodule, it returns pointer to the main module.
+ *
+ * @param[in] node Data tree node to be examined
+ * @return pointer to the main module (schema structure), NULL in case of error.
+ */
+struct lys_module *lyd_node_module(const struct lyd_node *node);
+
+/**
 * @brief Print data tree in the specified format.
 *
 * Same as lyd_print(), but it allocates memory and store the data into it.

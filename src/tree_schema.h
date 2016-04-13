@@ -1497,6 +1497,28 @@ const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys
 struct lys_node *lys_parent(const struct lys_node *node);
 
 /**
+ * @brief Return main module of the schema tree node.
+ *
+ * In case of regular YANG module, it returns ::lys_node#module pointer,
+ * but in case of submodule, it returns pointer to the main module.
+ *
+ * @param[in] node Schema tree node to be examined
+ * @return pointer to the main module (schema structure), NULL in case of error.
+ */
+struct lys_module *lys_node_module(const struct lys_node *node);
+
+/**
+ * @brief Return main module of the module.
+ *
+ * In case of regular YANG module, it returns itself,
+ * but in case of submodule, it returns pointer to the main module.
+ *
+ * @param[in] module Module to be examined
+ * @return pointer to the main module (schema structure).
+ */
+struct lys_module *lys_module(const struct lys_module *module);
+
+/**
  * @brief Set a schema private pointer to a user pointer.
  *
  * @param[in] node Node, whose private field will be assigned.
