@@ -8,15 +8,14 @@
 libyang is YANG data modelling language parser and toolkit written (and
 providing API) in C.
 
-
 ## Provided Features
 
-* parsing (and validating) data models in YIN format
-* reading instance data in XML format and validating
-* reading instance data in JSON format and validating
-* providing instance data in XML format
-* providing instance data in JSON format
-
+* Parsing (and validating) schemas in YANG format.
+* Parsing (and validating) schemas in YIN format.
+* Parsing, validating and printing instance data in XML format.
+* Parsing, validating and printing instance data in JSON format.
+* Manipulation with the instance data.
+* Support for adding default values into instance data.
 
 ## Planned Features
 
