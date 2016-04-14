@@ -3604,19 +3604,18 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
         }
 
         /* min/max-elements on list or leaf-list */
-        /* magic - bit 3 in flags means min set, bit 4 says max set */
         if (node->nodetype == LYS_LIST) {
-            if (rfn->flags & 0x04) {
+            if (rfn->flags & LYS_RFN_MINSET) {
                 ((struct lys_node_list *)node)->min = rfn->mod.list.min;
             }
-            if (rfn->flags & 0x08) {
+            if (rfn->flags & LYS_RFN_MAXSET) {
                 ((struct lys_node_list *)node)->max = rfn->mod.list.max;
             }
         } else if (node->nodetype == LYS_LEAFLIST) {
-            if (rfn->flags & 0x04) {
+            if (rfn->flags & LYS_RFN_MINSET) {
                 ((struct lys_node_leaflist *)node)->min = rfn->mod.list.min;
             }
-            if (rfn->flags & 0x08) {
+            if (rfn->flags & LYS_RFN_MAXSET) {
                 ((struct lys_node_leaflist *)node)->max = rfn->mod.list.max;
             }
         }

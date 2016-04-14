@@ -539,11 +539,10 @@ yang_print_refine(struct lyout *out, int level, const struct lys_module *module,
             yang_print_text(out, level, "presence", refine->mod.presence, 1);
         }
     } else if (refine->target_type & (LYS_LIST | LYS_LEAFLIST)) {
-        /* magic - bit 3 in flags means min set, bit 4 says max set */
-        if (refine->flags & 0x04) {
+        if (refine->flags & LYS_RFN_MINSET) {
             ly_print(out, "%*smin-elements %u;\n", LEVEL, INDENT, refine->mod.list.min);
         }
-        if (refine->flags & 0x08) {
+        if (refine->flags & LYS_RFN_MAXSET) {
             if (refine->mod.list.max) {
                 ly_print(out, "%*smax-elements %u;\n", LEVEL, INDENT, refine->mod.list.max);
             } else {

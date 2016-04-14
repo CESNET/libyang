@@ -2221,9 +2221,7 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
                 goto error;
             }
             rfn->mod.list.min = (uint32_t) val;
-
-            /* magic - bit 3 in flags means min set */
-            rfn->flags |= 0x04;
+            rfn->flags |= LYS_RFN_MINSET;
         } else if (!strcmp(sub->name, "max-elements")) {
             /* list or leaf-list */
             if (f_max) {
@@ -2262,9 +2260,7 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
                 }
                 rfn->mod.list.max = (uint32_t) val;
             }
-
-            /* magic - bit 4 in flags means min set */
-            rfn->flags |= 0x08;
+            rfn->flags |= LYS_RFN_MAXSET;
         } else if (!strcmp(sub->name, "presence")) {
             /* container */
             if (rfn->mod.presence) {

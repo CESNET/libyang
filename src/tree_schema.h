@@ -573,6 +573,8 @@ struct lys_type {
 #define LYS_CONFIG_W     0x01        /**< config true; */
 #define LYS_CONFIG_R     0x02        /**< config false; */
 #define LYS_CONFIG_MASK  0x03        /**< mask for config value */
+#define LYS_RFN_MAXSET   0x08        /**< refine has max-elements set */
+#define LYS_RFN_MINSET   0x10        /**< refine has min-elements set */
 #define LYS_STATUS_CURR  0x04        /**< status current; */
 #define LYS_STATUS_DEPRC 0x08        /**< status deprecated; */
 #define LYS_STATUS_OBSLT 0x10        /**< status obsolete; */

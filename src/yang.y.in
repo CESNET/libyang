@@ -2557,12 +2557,11 @@ refine_body_opt_stmts: @EMPTYDIR@ { if (read_all) {
                                                  if ($1.refine->target_type) {
                                                    if ($1.refine->target_type & (LYS_LIST | LYS_LEAFLIST)) {
                                                      $1.refine->target_type &= (LYS_LIST | LYS_LEAFLIST);
-                                                     /* magic - bit 3 in flags means min set */
-                                                     if ($1.refine->flags & 0x04) {
+                                                     if ($1.refine->flags & LYS_RFN_MINSET) {
                                                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "min-elements", "refine");
                                                        YYABORT;
                                                      }
-                                                     $1.refine->flags |= 0x04;
+                                                     $1.refine->flags |= LYS_RFN_MINSET;
                                                      $1.refine->mod.list.min = $2;
                                                    } else {
                                                      LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "min-elements", "refine");
@@ -2571,8 +2570,7 @@ refine_body_opt_stmts: @EMPTYDIR@ { if (read_all) {
                                                    }
                                                  } else {
                                                    $1.refine->target_type = LYS_LIST | LYS_LEAFLIST;
-                                                   /* magic - bit 3 in flags means min set */
-                                                   $1.refine->flags |= 0x04;
+                                                   $1.refine->flags |= LYS_RFN_MINSET;
                                                    $1.refine->mod.list.min = $2;
                                                  }
                                                  $$ = $1;
@@ -2582,12 +2580,11 @@ refine_body_opt_stmts: @EMPTYDIR@ { if (read_all) {
                                                  if ($1.refine->target_type) {
                                                    if ($1.refine->target_type & (LYS_LIST | LYS_LEAFLIST)) {
                                                      $1.refine->target_type &= (LYS_LIST | LYS_LEAFLIST);
-                                                     /* magic - bit 4 in flags means max set */
-                                                     if ($1.refine->flags & 0x08) {
+                                                     if ($1.refine->flags & LYS_RFN_MAXSET) {
                                                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "max-elements", "refine");
                                                        YYABORT;
                                                      }
-                                                     $1.refine->flags |= 0x08;
+                                                     $1.refine->flags |= LYS_RFN_MAXSET;
                                                      $1.refine->mod.list.max = $2;
                                                    } else {
                                                      LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "max-elements", "refine");
@@ -2596,8 +2593,7 @@ refine_body_opt_stmts: @EMPTYDIR@ { if (read_all) {
                                                    }
                                                  } else {
                                                    $1.refine->target_type = LYS_LIST | LYS_LEAFLIST;
-                                                   /* magic - bit 4 in flags means max set */
-                                                   $1.refine->flags |= 0x08;
+                                                   $1.refine->flags |= LYS_RFN_MAXSET;
                                                    $1.refine->mod.list.max = $2;
                                                  }
                                                  $$ = $1;
