@@ -1322,10 +1322,10 @@ dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options)
         return size;
     }
 
-    if (!e->child && !e->content) {
+    if (!e->child && (!e->content || !e->content[0])) {
         size += ly_print(out, "/>%s", delim);
         return size;
-    } else if (e->content) {
+    } else if (e->content && e->content[0]) {
         ly_print(out, ">");
         size++;
 
