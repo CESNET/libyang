@@ -583,6 +583,7 @@ struct lys_type {
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *     2 LYS_CONFIG_R     |x|x|x|x|x|x| | | | | | | | | | | |x|
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     3 LYS_CONFIG_SET   |x|x|x|x|x|x| | | | | | | | | | | | |
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *     4 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |
  *       LYS_RFN_MAXSET   | | | | | | | | | | | | | | | | | |x|
@@ -604,6 +605,7 @@ struct lys_type {
  */
 #define LYS_CONFIG_W     0x01        /**< config true; */
 #define LYS_CONFIG_R     0x02        /**< config false; */
+#define LYS_CONFIG_SET   0x04        /**< config explicitely set in the node */
 #define LYS_CONFIG_MASK  0x03        /**< mask for config value */
 #define LYS_STATUS_CURR  0x08        /**< status current; */
 #define LYS_STATUS_DEPRC 0x10        /**< status deprecated; */

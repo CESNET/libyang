@@ -3353,13 +3353,13 @@ config_read_stmt: CONFIG_KEYWORD sep { read_all = (read_all) ? LY_READ_ONLY_SIZE
                   config_arg_str { read_all = (read_all) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
                   stmtend { $$ = $4; }
 
-config_arg_str: TRUE_KEYWORD optsep { $$ = LYS_CONFIG_W; }
-  |  FALSE_KEYWORD optsep { $$ = LYS_CONFIG_R; }
+config_arg_str: TRUE_KEYWORD optsep { $$ = LYS_CONFIG_W | LYS_CONFIG_SET; }
+  |  FALSE_KEYWORD optsep { $$ = LYS_CONFIG_R | LYS_CONFIG_SET; }
   |  string_1 { if (read_all) {
                   if (!strcmp(s, "true")) {
-                    $$ = LYS_CONFIG_W;
+                    $$ = LYS_CONFIG_W | LYS_CONFIG_SET;
                   } else if (!strcmp(s, "false")) {
-                    $$ = LYS_CONFIG_R;
+                    $$ = LYS_CONFIG_R | LYS_CONFIG_SET;
                   } else {
                     LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "config");
                     free(s);

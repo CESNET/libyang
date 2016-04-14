@@ -7212,13 +7212,13 @@ yyreduce:
 
   case 526:
 
-    { (yyval.i) = LYS_CONFIG_W; }
+    { (yyval.i) = LYS_CONFIG_W | LYS_CONFIG_SET; }
 
     break;
 
   case 527:
 
-    { (yyval.i) = LYS_CONFIG_R; }
+    { (yyval.i) = LYS_CONFIG_R | LYS_CONFIG_SET; }
 
     break;
 
@@ -7226,9 +7226,9 @@ yyreduce:
 
     { if (read_all) {
                   if (!strcmp(s, "true")) {
-                    (yyval.i) = LYS_CONFIG_W;
+                    (yyval.i) = LYS_CONFIG_W | LYS_CONFIG_SET;
                   } else if (!strcmp(s, "false")) {
-                    (yyval.i) = LYS_CONFIG_R;
+                    (yyval.i) = LYS_CONFIG_R | LYS_CONFIG_SET;
                   } else {
                     LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "config");
                     free(s);

@@ -2522,6 +2522,7 @@ read_yin_common(struct lys_module *module, struct lys_node *parent,
                 LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, sub->name);
                 goto error;
             }
+            node->flags |= LYS_CONFIG_SET;
         } else {
             /* skip the lyxml_free */
             continue;
@@ -2531,8 +2532,8 @@ read_yin_common(struct lys_module *module, struct lys_node *parent,
 
     if ((opt & OPT_INHERIT) && !(node->flags & LYS_CONFIG_MASK)) {
         /* get config flag from parent */
-        if (parent) {
-            node->flags |= parent->flags & LYS_CONFIG_MASK;
+        if (parent && (parent->flags & LYS_CONFIG_R)) {
+            node->flags |= LYS_CONFIG_R;
         } else {
             /* default config is true */
             node->flags |= LYS_CONFIG_W;

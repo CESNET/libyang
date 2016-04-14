@@ -206,7 +206,7 @@ static void
 yang_print_snode_common2(struct lyout *out, int level, const struct lys_node *node, int *flag)
 {
     if (node->parent) {
-        if ((node->parent->flags & LYS_CONFIG_MASK) != (node->flags & LYS_CONFIG_MASK)) {
+        if (node->flags & LYS_CONFIG_SET) {
             /* print config when it differs from the parent ... */
             if (node->flags & LYS_CONFIG_W) {
                 yang_print_open(out, flag);
