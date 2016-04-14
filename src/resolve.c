@@ -3511,7 +3511,7 @@ static int
 resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 {
     struct ly_ctx *ctx;
-    struct lys_node *node = NULL;
+    struct lys_node *node = NULL, *next, *iter;
     const struct lys_node *node_aux;
     struct lys_refine *rfn;
     struct lys_restr *must, **old_must;
@@ -3565,8 +3565,70 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
         /* config on any nodetype */
         if (rfn->flags & LYS_CONFIG_MASK) {
+            if (node->parent &&
+                    ((node->parent->flags & LYS_CONFIG_MASK) != (rfn->flags & LYS_CONFIG_MASK)) &&
+                    (rfn->flags & LYS_CONFIG_W)) {
+                /* setting config true under config false is prohibited */
+                LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, "config", "refine");
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, uses,
+                       "changing config from 'false' to 'true' is prohibited while "
+                       "the target's parent is still config 'false'.");
+                return -1;
+            }
+
             node->flags &= ~LYS_CONFIG_MASK;
             node->flags |= (rfn->flags & LYS_CONFIG_MASK);
+
+            /* inherit config change to the target children */
+            LY_TREE_DFS_BEGIN(node->child, next, iter) {
+                if (rfn->flags & LYS_CONFIG_W) {
+                    if (iter->flags & LYS_CONFIG_SET) {
+                        /* config is set explicitely, go to next sibling */
+                        next = NULL;
+                        goto nextsibling;
+                    }
+                } else { /* LYS_CONFIG_R */
+                    if ((iter->flags & LYS_CONFIG_SET) && (iter->flags & LYS_CONFIG_W)) {
+                        /* error - we would have config data under status data */
+                        LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, "config", "refine");
+                        LOGVAL(LYE_SPEC, LY_VLOG_LYS, uses,
+                               "changing config from 'true' to 'false' is prohibited while the target "
+                               "has still a children with explicit config 'true'.");
+                        return -1;
+                    }
+                }
+                /* change config */
+                iter->flags &= ~LYS_CONFIG_MASK;
+                iter->flags |= (rfn->flags & LYS_CONFIG_MASK);
+
+                /* select next iter - modified LY_TREE_DFS_END */
+                if (iter->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                    next = NULL;
+                } else {
+                    next = iter->child;
+                }
+nextsibling:
+                if (!next) {
+                    /* no children */
+                    if (iter == node->child) {
+                        /* we are done, (START) has no children */
+                        break;
+                    }
+                    /* try siblings */
+                    next = iter->next;
+                }
+                while (!next) {
+                    /* parent is already processed, go to its sibling */
+                    iter = lys_parent(iter);
+
+                    /* no siblings, go back through parents */
+                    if (iter == node) {
+                        /* we are done, no next element to process */
+                        break;
+                    }
+                    next = iter->next;
+                }
+            }
         }
 
         /* default value ... */
