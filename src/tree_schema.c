@@ -1013,6 +1013,21 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
         parent->child->prev = iter;
     }
 
+    /* propagate information about status data presence */
+    if ((child->nodetype & (LYS_CONTAINER | LYS_CHOICE | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML)) &&
+            (child->flags & LYS_INCL_STATUS)) {
+        for(iter = parent; iter; iter = iter->parent) {
+            /* store it only into container or list - the only data inner nodes */
+            if (iter->nodetype & (LYS_CONTAINER | LYS_LIST)) {
+                if (iter->flags & LYS_INCL_STATUS) {
+                    /* done, someone else set it already from here */
+                    break;
+                }
+                /* set flag about including status data */
+                iter->flags |= LYS_INCL_STATUS;
+            }
+        }
+    }
     return EXIT_SUCCESS;
 }
 

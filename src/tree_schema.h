@@ -596,6 +596,7 @@ struct lys_type {
  *     7 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | | | | |x|
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *     8 LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | | | |x|
+ *       LYS_INCL_STATUS  |x| | | |x| | | | | | | | | | | | | |
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *     9 LYS_USERORDERED  | | | |x|x| | | | | | | | | | | | | |
  *       LYS_UNIQUE       | | |x| | | | | | | | | | | | | | | |
@@ -617,6 +618,8 @@ struct lys_type {
                                           ::lys_node_choice, ::lys_node_leaf and ::lys_node_anyxml */
 #define LYS_MAND_FALSE   0x80        /**< mandatory false; applicable only to
                                           ::lys_node_choice, ::lys_node_leaf and ::lys_node_anyxml */
+#define LYS_INCL_STATUS  0x80        /**< flag that the subtree includes status node(s), applicable only to
+                                          ::lys_node_container and lys_node_list */
 #define LYS_MAND_MASK    0xc0        /**< mask for mandatory values */
 #define LYS_USERORDERED  0x100       /**< ordered-by user lists, applicable only to
                                           ::lys_node_list and ::lys_node_leaflist */
