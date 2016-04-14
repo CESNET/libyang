@@ -965,6 +965,10 @@ process:
                     goto error;
                 }
                 c++;
+                if (!(elem->flags & LYXML_ELEM_MIXED) && !elem->content) {
+                    /* there was no content, but we don't want NULL (only if mixed content) */
+                    elem->content = lydict_insert(ctx, "", 0);
+                }
                 closed_flag = 1;
                 break;
 
