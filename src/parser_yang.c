@@ -246,13 +246,17 @@ yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct u
 }
 
 int
-yang_check_flags(uint8_t *flags, uint8_t mask, char *what, char *where, int value)
+yang_check_flags(uint16_t *flags, uint16_t mask, char *what, char *where, uint16_t value, int shortint)
 {
     if (*flags & mask) {
         LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, what, where);
         return EXIT_FAILURE;
     } else {
-        *flags |= value;
+        if (shortint) {
+            *((uint8_t *)flags) |= (uint8_t)value;
+        } else {
+            *flags |= value;
+        }
         return EXIT_SUCCESS;
     }
 }

@@ -43,7 +43,7 @@ struct lys_node_array{
     uint8_t tpdf;
     union {
         uint8_t uni;
-        uint8_t flags;
+        uint16_t flags;
     };
     union {
         uint8_t enm;
@@ -235,7 +235,7 @@ int yang_fill_include(struct lys_module *module, struct lys_submodule *submodule
 
 int yang_use_extension(struct lys_module *module, struct lys_node *data_node, void *actual, char *value);
 
-int yang_check_flags(uint8_t *flags, uint8_t mask, char *what, char *where, int value);
+int yang_check_flags(uint16_t *flags, uint16_t mask, char *what, char *where, uint16_t value, int shortint);
 
 /* **
  * @brief Parse YANG from in-memory string

@@ -96,7 +96,7 @@ info_print_snode(struct lyout *out, const struct lys_node *parent, const struct 
 }
 
 static void
-info_print_flags(struct lyout *out, uint8_t flags, uint8_t mask, int is_list)
+info_print_flags(struct lyout *out, uint16_t flags, uint16_t mask, int is_list)
 {
     if (mask & LYS_CONFIG_MASK) {
         ly_print(out, "%-*s", INDENT_LEN, "Config: ");

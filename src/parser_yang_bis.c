@@ -632,39 +632,39 @@ static const yytype_uint16 yyrline[] =
     2401,  2401,  2409,  2409,  2424,  2424,  2433,  2434,  2439,  2440,
     2443,  2463,  2470,  2494,  2518,  2537,  2556,  2579,  2602,  2607,
     2613,  2622,  2613,  2629,  2630,  2633,  2642,  2633,  2654,  2675,
-    2675,  2677,  2684,  2690,  2695,  2700,  2700,  2708,  2708,  2718,
-    2719,  2722,  2722,  2733,  2734,  2739,  2767,  2774,  2780,  2785,
-    2790,  2790,  2798,  2798,  2803,  2803,  2815,  2815,  2828,  2836,
-    2828,  2843,  2863,  2863,  2871,  2871,  2876,  2876,  2886,  2894,
-    2886,  2901,  2901,  2911,  2915,  2920,  2947,  2954,  2960,  2965,
-    2970,  2970,  2978,  2978,  2983,  2983,  2990,  2999,  2990,  3012,
-    3031,  3038,  3045,  3055,  3056,  3058,  3063,  3065,  3066,  3067,
-    3070,  3072,  3072,  3078,  3079,  3083,  3105,  3113,  3121,  3137,
-    3145,  3152,  3159,  3170,  3182,  3182,  3188,  3189,  3193,  3215,
-    3223,  3234,  3244,  3253,  3253,  3259,  3260,  3264,  3269,  3275,
-    3283,  3291,  3298,  3305,  3316,  3328,  3328,  3331,  3332,  3336,
-    3337,  3342,  3348,  3350,  3351,  3350,  3354,  3355,  3356,  3371,
-    3373,  3374,  3373,  3377,  3378,  3379,  3394,  3396,  3398,  3399,
-    3420,  3422,  3423,  3424,  3445,  3447,  3448,  3449,  3461,  3461,
-    3469,  3470,  3475,  3477,  3478,  3480,  3481,  3483,  3485,  3485,
-    3494,  3497,  3497,  3508,  3511,  3521,  3542,  3544,  3545,  3548,
-    3548,  3567,  3567,  3576,  3576,  3585,  3588,  3590,  3592,  3593,
-    3595,  3597,  3599,  3600,  3602,  3604,  3605,  3607,  3608,  3610,
-    3612,  3615,  3619,  3621,  3622,  3624,  3625,  3627,  3629,  3640,
-    3641,  3644,  3645,  3657,  3658,  3660,  3661,  3663,  3664,  3670,
-    3671,  3674,  3675,  3676,  3702,  3703,  3706,  3707,  3708,  3711,
-    3711,  3719,  3721,  3722,  3724,  3725,  3727,  3728,  3730,  3731,
-    3733,  3734,  3736,  3737,  3739,  3740,  3743,  3744,  3747,  3749,
-    3750,  3754,  3754,  3763,  3765,  3766,  3767,  3768,  3769,  3770,
-    3771,  3773,  3774,  3775,  3776,  3777,  3778,  3779,  3780,  3781,
-    3782,  3783,  3784,  3785,  3786,  3787,  3788,  3789,  3790,  3791,
-    3792,  3793,  3794,  3795,  3796,  3797,  3798,  3799,  3800,  3801,
-    3802,  3803,  3804,  3805,  3806,  3807,  3808,  3809,  3810,  3811,
-    3812,  3813,  3814,  3815,  3816,  3817,  3818,  3819,  3820,  3821,
-    3822,  3823,  3824,  3825,  3826,  3827,  3828,  3829,  3830,  3831,
-    3832,  3833,  3834,  3835,  3836,  3837,  3838,  3839,  3840,  3841,
-    3842,  3843,  3844,  3845,  3846,  3847,  3848,  3849,  3850,  3853,
-    3862
+    2675,  2677,  2684,  2692,  2697,  2702,  2702,  2710,  2710,  2720,
+    2721,  2724,  2724,  2735,  2736,  2741,  2769,  2776,  2782,  2787,
+    2792,  2792,  2800,  2800,  2805,  2805,  2817,  2817,  2830,  2838,
+    2830,  2845,  2865,  2865,  2873,  2873,  2878,  2878,  2888,  2896,
+    2888,  2903,  2903,  2913,  2917,  2922,  2949,  2956,  2962,  2967,
+    2972,  2972,  2980,  2980,  2985,  2985,  2992,  3001,  2992,  3014,
+    3033,  3040,  3047,  3057,  3058,  3060,  3065,  3067,  3068,  3069,
+    3072,  3074,  3074,  3080,  3081,  3085,  3107,  3115,  3123,  3139,
+    3147,  3154,  3161,  3172,  3184,  3184,  3190,  3191,  3195,  3217,
+    3225,  3236,  3246,  3255,  3255,  3261,  3262,  3266,  3271,  3277,
+    3285,  3293,  3300,  3307,  3318,  3330,  3330,  3333,  3334,  3338,
+    3339,  3344,  3350,  3352,  3353,  3352,  3356,  3357,  3358,  3373,
+    3375,  3376,  3375,  3379,  3380,  3381,  3396,  3398,  3400,  3401,
+    3422,  3424,  3425,  3426,  3447,  3449,  3450,  3451,  3463,  3463,
+    3471,  3472,  3477,  3479,  3480,  3482,  3483,  3485,  3487,  3487,
+    3496,  3499,  3499,  3510,  3513,  3523,  3544,  3546,  3547,  3550,
+    3550,  3569,  3569,  3578,  3578,  3587,  3590,  3592,  3594,  3595,
+    3597,  3599,  3601,  3602,  3604,  3606,  3607,  3609,  3610,  3612,
+    3614,  3617,  3621,  3623,  3624,  3626,  3627,  3629,  3631,  3642,
+    3643,  3646,  3647,  3659,  3660,  3662,  3663,  3665,  3666,  3672,
+    3673,  3676,  3677,  3678,  3704,  3705,  3708,  3709,  3710,  3713,
+    3713,  3721,  3723,  3724,  3726,  3727,  3729,  3730,  3732,  3733,
+    3735,  3736,  3738,  3739,  3741,  3742,  3745,  3746,  3749,  3751,
+    3752,  3756,  3756,  3765,  3767,  3768,  3769,  3770,  3771,  3772,
+    3773,  3775,  3776,  3777,  3778,  3779,  3780,  3781,  3782,  3783,
+    3784,  3785,  3786,  3787,  3788,  3789,  3790,  3791,  3792,  3793,
+    3794,  3795,  3796,  3797,  3798,  3799,  3800,  3801,  3802,  3803,
+    3804,  3805,  3806,  3807,  3808,  3809,  3810,  3811,  3812,  3813,
+    3814,  3815,  3816,  3817,  3818,  3819,  3820,  3821,  3822,  3823,
+    3824,  3825,  3826,  3827,  3828,  3829,  3830,  3831,  3832,  3833,
+    3834,  3835,  3836,  3837,  3838,  3839,  3840,  3841,  3842,  3843,
+    3844,  3845,  3846,  3847,  3848,  3849,  3850,  3851,  3852,  3855,
+    3864
 };
 #endif
 
@@ -3604,7 +3604,7 @@ yyreduce:
   case 112:
 
     { if (!read_all) {
-                                           if (yang_check_flags(&size_arrays->node[(yyvsp[-1].i)].flags, LYS_STATUS_MASK, "status", "feature", (yyvsp[0].i))) {
+                                           if (yang_check_flags(&size_arrays->node[(yyvsp[-1].i)].flags, LYS_STATUS_MASK, "status", "feature", (yyvsp[0].i), 0)) {
                                              YYABORT;
                                            }
                                          }
@@ -3678,7 +3678,7 @@ yyreduce:
   case 123:
 
     { if (read_all) {
-                                       if (yang_check_flags(&((struct lys_ident *)actual)->flags, LYS_STATUS_MASK, "status", "identity", (yyvsp[0].i))) {
+                                       if (yang_check_flags((uint16_t*)&((struct lys_ident *)actual)->flags, LYS_STATUS_MASK, "status", "identity", (yyvsp[0].i), 1)) {
                                          YYABORT;
                                        }
                                      }
@@ -3805,7 +3805,7 @@ yyreduce:
   case 137:
 
     { if (read_all) {
-                                   if (yang_check_flags(&(yyvsp[-1].nodes).node.ptr_tpdf->flags, LYS_STATUS_MASK, "status", "typedef", (yyvsp[0].i))) {
+                                   if (yang_check_flags((uint16_t*)&(yyvsp[-1].nodes).node.ptr_tpdf->flags, LYS_STATUS_MASK, "status", "typedef", (yyvsp[0].i), 0)) {
                                      YYABORT;
                                    }
                                  }
@@ -4148,7 +4148,7 @@ yyreduce:
   case 181:
 
     { if (read_all) {
-                                   if (yang_check_flags(&((struct lys_type_enum *)actual)->flags, LYS_STATUS_MASK, "status", "enum", (yyvsp[0].i))) {
+                                   if (yang_check_flags((uint16_t*)&((struct lys_type_enum *)actual)->flags, LYS_STATUS_MASK, "status", "enum", (yyvsp[0].i), 1)) {
                                      YYABORT;
                                    }
                                  }
@@ -4329,7 +4329,7 @@ yyreduce:
   case 205:
 
     { if (read_all) {
-                                  if (yang_check_flags(&((struct lys_type_bit *)actual)->flags, LYS_STATUS_MASK, "status", "bit", (yyvsp[0].i))) {
+                                  if (yang_check_flags((uint16_t*)&((struct lys_type_bit *)actual)->flags, LYS_STATUS_MASK, "status", "bit", (yyvsp[0].i), 1)) {
                                     YYABORT;
                                   }
                                 }
@@ -4435,7 +4435,7 @@ yyreduce:
   case 220:
 
     { if (!read_all) {
-                                            if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "grouping", (yyvsp[0].i))) {
+                                            if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "grouping", (yyvsp[0].i), 0)) {
                                               YYABORT;
                                             }
                                           }
@@ -4576,7 +4576,7 @@ yyreduce:
   case 244:
 
     { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_CONFIG_MASK, "config", "container", (yyvsp[0].i))) {
+                                             if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_CONFIG_MASK, "config", "container", (yyvsp[0].i), 0)) {
                                                YYABORT;
                                              }
                                            }
@@ -4587,7 +4587,7 @@ yyreduce:
   case 245:
 
     { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "container", (yyvsp[0].i))) {
+                                             if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "container", (yyvsp[0].i), 0)) {
                                                YYABORT;
                                              }
                                            }
@@ -4790,7 +4790,7 @@ yyreduce:
   case 268:
 
     { if (!read_all) {
-                                               if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_CONFIG_MASK, "config", "leaf", (yyvsp[0].i))) {
+                                               if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_CONFIG_MASK, "config", "leaf", (yyvsp[0].i), 0)) {
                                                  YYABORT;
                                                }
                                              }
@@ -4801,7 +4801,7 @@ yyreduce:
   case 269:
 
     { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_MAND_MASK, "mandatory", "leaf", (yyvsp[0].i))) {
+                                             if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_MAND_MASK, "mandatory", "leaf", (yyvsp[0].i), 0)) {
                                                YYABORT;
                                              }
                                            }
@@ -4812,7 +4812,7 @@ yyreduce:
   case 270:
 
     { if (!read_all) {
-                                          if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "leaf", (yyvsp[0].i))) {
+                                          if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "leaf", (yyvsp[0].i), 0)) {
                                             YYABORT;
                                           }
                                         }
@@ -4977,7 +4977,7 @@ yyreduce:
   case 286:
 
     { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_CONFIG_MASK, "config", "leaf-list", (yyvsp[0].i))) {
+                                             if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_CONFIG_MASK, "config", "leaf-list", (yyvsp[0].i), 0)) {
                                                YYABORT;
                                              }
                                            }
@@ -5043,7 +5043,7 @@ yyreduce:
   case 290:
 
     { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "leaf-list", (yyvsp[0].i))) {
+                                             if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "leaf-list", (yyvsp[0].i), 0)) {
                                                YYABORT;
                                              }
                                            }
@@ -5217,7 +5217,7 @@ yyreduce:
   case 304:
 
     { if (!read_all) {
-                                        if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_CONFIG_MASK, "config", "list", (yyvsp[0].i))) {
+                                        if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_CONFIG_MASK, "config", "list", (yyvsp[0].i), 0)) {
                                           YYABORT;
                                         }
                                       }
@@ -5283,7 +5283,7 @@ yyreduce:
   case 308:
 
     { if (!read_all) {
-                                        if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "list", (yyvsp[0].i))) {
+                                        if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "list", (yyvsp[0].i), 0)) {
                                           YYABORT;
                                         }
                                       }
@@ -5458,7 +5458,7 @@ yyreduce:
   case 327:
 
     { if (!read_all) {
-                                           if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_CONFIG_MASK, "config", "choice", (yyvsp[0].i))) {
+                                           if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_CONFIG_MASK, "config", "choice", (yyvsp[0].i), 0)) {
                                              YYABORT;
                                            }
                                          } else {
@@ -5471,7 +5471,7 @@ yyreduce:
   case 328:
 
     { if (!read_all) {
-                                      if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_MAND_MASK, "mandatory", "choice", (yyvsp[0].i))) {
+                                      if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_MAND_MASK, "mandatory", "choice", (yyvsp[0].i), 0)) {
                                         YYABORT;
                                       }
                                     } else {
@@ -5484,7 +5484,7 @@ yyreduce:
   case 329:
 
     { if (!read_all) {
-                                          if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "choice", (yyvsp[0].i))) {
+                                          if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "choice", (yyvsp[0].i), 0)) {
                                             YYABORT;
                                           }
                                         } else {
@@ -5597,7 +5597,7 @@ yyreduce:
   case 349:
 
     { if (!read_all) {
-                                        if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "case", (yyvsp[0].i))) {
+                                        if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "case", (yyvsp[0].i), 0)) {
                                           YYABORT;
                                         }
                                       }
@@ -5713,7 +5713,7 @@ yyreduce:
   case 364:
 
     { if (!read_all) {
-                                          if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_CONFIG_MASK, "config", "anyxml", (yyvsp[0].i))) {
+                                          if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_CONFIG_MASK, "config", "anyxml", (yyvsp[0].i), 0)) {
                                             YYABORT;
                                           }
                                         }
@@ -5724,7 +5724,7 @@ yyreduce:
   case 365:
 
     { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_MAND_MASK, "mandatory", "anyxml", (yyvsp[0].i))) {
+                                             if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_MAND_MASK, "mandatory", "anyxml", (yyvsp[0].i), 0)) {
                                                YYABORT;
                                              }
                                            }
@@ -5735,7 +5735,7 @@ yyreduce:
   case 366:
 
     { if (!read_all) {
-                                          if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "anyxml", (yyvsp[0].i))) {
+                                          if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "anyxml", (yyvsp[0].i), 0)) {
                                             YYABORT;
                                           }
                                         }
@@ -5849,7 +5849,7 @@ yyreduce:
   case 377:
 
     { if (!read_all) {
-                                        if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "uses", (yyvsp[0].i))) {
+                                        if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "uses", (yyvsp[0].i), 0)) {
                                           YYABORT;
                                         }
                                       }
@@ -6019,7 +6019,7 @@ yyreduce:
                                            if ((yyvsp[-1].nodes).refine->target_type) {
                                              if ((yyvsp[-1].nodes).refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST)) {
                                                (yyvsp[-1].nodes).refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST);
-                                               if (yang_check_flags(&(yyvsp[-1].nodes).refine->flags, LYS_CONFIG_MASK, "config", "refine", (yyvsp[0].i))) {
+                                               if (yang_check_flags((uint16_t*)&(yyvsp[-1].nodes).refine->flags, LYS_CONFIG_MASK, "config", "refine", (yyvsp[0].i), 1)) {
                                                  YYABORT;
                                                }
                                              } else {
@@ -6043,7 +6043,7 @@ yyreduce:
                                               if ((yyvsp[-1].nodes).refine->target_type) {
                                                 if ((yyvsp[-1].nodes).refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_ANYXML)) {
                                                   (yyvsp[-1].nodes).refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_ANYXML);
-                                                  if (yang_check_flags(&(yyvsp[-1].nodes).refine->flags, LYS_MAND_MASK, "mandatory", "refine", (yyvsp[0].i))) {
+                                                  if (yang_check_flags((uint16_t*)&(yyvsp[-1].nodes).refine->flags, LYS_MAND_MASK, "mandatory", "refine", (yyvsp[0].i), 1)) {
                                                     YYABORT;
                                                   }
                                                 } else {
@@ -6235,7 +6235,9 @@ yyreduce:
   case 412:
 
     { if (read_all) {
-                                      if (yang_check_flags(&(yyvsp[-1].nodes).node.ptr_augment->flags, LYS_STATUS_MASK, "status", "augment", (yyvsp[0].i))) {
+                                      /* hack - flags is bit field, so its address is taken as a member after
+                                       * 3 const char pointers in the lys_node_augment structure */
+                                      if (yang_check_flags((uint16_t*)((yyvsp[-1].nodes).node.ptr_augment + (3 * sizeof(const char*))), LYS_STATUS_MASK, "status", "augment", (yyvsp[0].i), 0)) {
                                         YYABORT;
                                       }
                                     }
@@ -6367,7 +6369,7 @@ yyreduce:
   case 427:
 
     { if (!read_all) {
-                                       if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "rpc", (yyvsp[0].i))) {
+                                       if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "rpc", (yyvsp[0].i), 0)) {
                                          YYABORT;
                                        }
                                      }
@@ -6643,7 +6645,7 @@ yyreduce:
   case 457:
 
     { if (!read_all) {
-                                                if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "notification", (yyvsp[0].i))) {
+                                                if (yang_check_flags(&size_arrays->node[(yyvsp[-1].nodes).index].flags, LYS_STATUS_MASK, "status", "notification", (yyvsp[0].i), 0)) {
                                                   YYABORT;
                                                 }
                                               }

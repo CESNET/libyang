@@ -3787,7 +3787,7 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
     const char *name;
     int i, mod_name_len = 0;
     struct lys_ident *target, **ret;
-    uint8_t flags;
+    uint16_t flags;
     struct lys_module *mod;
 
     assert((ident && !type) || (!ident && type));
@@ -3963,7 +3963,10 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
             return -1;
         } else if (!uses->grp) {
             if (par_grp && !(uses->flags & LYS_USESGRP)) {
-                par_grp->nacm++;
+                /* hack - in contrast to lys_node, lys_node_grp has bigger nacm field
+                 * (and smaller flags - it uses only a limited set of flags)
+                 */
+                ((struct lys_node_grp *)par_grp)->nacm++;
                 uses->flags |= LYS_USESGRP;
             }
             return EXIT_FAILURE;
@@ -3972,7 +3975,7 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
 
     if (uses->grp->nacm) {
         if (par_grp && !(uses->flags & LYS_USESGRP)) {
-            par_grp->nacm++;
+            ((struct lys_node_grp *)par_grp)->nacm++;
             uses->flags |= LYS_USESGRP;
         }
         return EXIT_FAILURE;
@@ -3982,11 +3985,11 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
     if (!rc) {
         /* decrease unres count only if not first try */
         if (par_grp && (uses->flags & LYS_USESGRP)) {
-            if (!par_grp->nacm) {
+            if (!((struct lys_node_grp *)par_grp)->nacm) {
                 LOGINT;
                 return -1;
             }
-            par_grp->nacm--;
+            ((struct lys_node_grp *)par_grp)->nacm--;
             uses->flags &= ~LYS_USESGRP;
         }
 
@@ -3999,7 +4002,7 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
 
         return EXIT_SUCCESS;
     } else if ((rc == EXIT_FAILURE) && par_grp && !(uses->flags & LYS_USESGRP)) {
-        par_grp->nacm++;
+        ((struct lys_node_grp *)par_grp)->nacm++;
         uses->flags |= LYS_USESGRP;
     }
 

@@ -785,7 +785,7 @@ feature_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                         }
                                       }
   |  feature_opt_stmt status_read_stmt { if (!read_all) {
-                                           if (yang_check_flags(&size_arrays->node[$1].flags, LYS_STATUS_MASK, "status", "feature", $2)) {
+                                           if (yang_check_flags(&size_arrays->node[$1].flags, LYS_STATUS_MASK, "status", "feature", $2, 0)) {
                                              YYABORT;
                                            }
                                          }
@@ -834,7 +834,7 @@ identity_opt_stmt: @EMPTYDIR@ { $$ = NULL; }
                                    }
                                  }
   |  identity_opt_stmt status_stmt { if (read_all) {
-                                       if (yang_check_flags(&((struct lys_ident *)actual)->flags, LYS_STATUS_MASK, "status", "identity", $2)) {
+                                       if (yang_check_flags((uint16_t*)&((struct lys_ident *)actual)->flags, LYS_STATUS_MASK, "status", "identity", $2, 1)) {
                                          YYABORT;
                                        }
                                      }
@@ -916,7 +916,7 @@ type_opt_stmt: @EMPTYDIR@ { $$.node.ptr_tpdf = actual;
                                   $$ = $1;
                                 }
   |  type_opt_stmt status_stmt { if (read_all) {
-                                   if (yang_check_flags(&$1.node.ptr_tpdf->flags, LYS_STATUS_MASK, "status", "typedef", $2)) {
+                                   if (yang_check_flags((uint16_t*)&$1.node.ptr_tpdf->flags, LYS_STATUS_MASK, "status", "typedef", $2, 0)) {
                                      YYABORT;
                                    }
                                  }
@@ -1185,7 +1185,7 @@ enum_opt_stmt: @EMPTYDIR@
                                 }
                               }
   |  enum_opt_stmt status_stmt { if (read_all) {
-                                   if (yang_check_flags(&((struct lys_type_enum *)actual)->flags, LYS_STATUS_MASK, "status", "enum", $2)) {
+                                   if (yang_check_flags((uint16_t*)&((struct lys_type_enum *)actual)->flags, LYS_STATUS_MASK, "status", "enum", $2, 1)) {
                                      YYABORT;
                                    }
                                  }
@@ -1329,7 +1329,7 @@ bit_opt_stmt: @EMPTYDIR@
                                   }
                                 }
   |  bit_opt_stmt status_stmt { if (read_all) {
-                                  if (yang_check_flags(&((struct lys_type_bit *)actual)->flags, LYS_STATUS_MASK, "status", "bit", $2)) {
+                                  if (yang_check_flags((uint16_t*)&((struct lys_type_bit *)actual)->flags, LYS_STATUS_MASK, "status", "bit", $2, 1)) {
                                     YYABORT;
                                   }
                                 }
@@ -1415,7 +1415,7 @@ grouping_opt_stmt: @EMPTYDIR@ { if (read_all) {
                              }
                            }
   |  grouping_opt_stmt status_read_stmt { if (!read_all) {
-                                            if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "grouping", $2)) {
+                                            if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "grouping", $2, 0)) {
                                               YYABORT;
                                             }
                                           }
@@ -1517,13 +1517,13 @@ container_opt_stmt: @EMPTYDIR@ { if (read_all) {
      stmtsep
   |  container_opt_stmt presence_stmt { if (read_all && yang_read_presence(trg, $1.container, s)) {YYABORT;} s=NULL; }
   |  container_opt_stmt config_read_stmt { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "container", $2)) {
+                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "container", $2, 0)) {
                                                YYABORT;
                                              }
                                            }
                                          }
   |  container_opt_stmt status_read_stmt { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "container", $2)) {
+                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "container", $2, 0)) {
                                                YYABORT;
                                              }
                                            }
@@ -1651,19 +1651,19 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                     s = NULL;
                                   }
     |  leaf_opt_stmt config_read_stmt { if (!read_all) {
-                                               if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "leaf", $2)) {
+                                               if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "leaf", $2, 0)) {
                                                  YYABORT;
                                                }
                                              }
                                            }
     |  leaf_opt_stmt mandatory_read_stmt { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_MAND_MASK, "mandatory", "leaf", $2)) {
+                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_MAND_MASK, "mandatory", "leaf", $2, 0)) {
                                                YYABORT;
                                              }
                                            }
                                          }
     |  leaf_opt_stmt status_read_stmt { if (!read_all) {
-                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "leaf", $2)) {
+                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "leaf", $2, 0)) {
                                             YYABORT;
                                           }
                                         }
@@ -1769,7 +1769,7 @@ leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                   }
      stmtsep
   |  leaf_list_opt_stmt config_read_stmt { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "leaf-list", $2)) {
+                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "leaf-list", $2, 0)) {
                                                YYABORT;
                                              }
                                            }
@@ -1815,7 +1815,7 @@ leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                           }
                                         }
   |  leaf_list_opt_stmt status_read_stmt { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "leaf-list", $2)) {
+                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "leaf-list", $2, 0)) {
                                                YYABORT;
                                              }
                                            }
@@ -1940,7 +1940,7 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                  }
                                }
   |  list_opt_stmt config_read_stmt { if (!read_all) {
-                                        if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "list", $2)) {
+                                        if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "list", $2, 0)) {
                                           YYABORT;
                                         }
                                       }
@@ -1986,7 +1986,7 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                      }
                                    }
   |  list_opt_stmt status_read_stmt { if (!read_all) {
-                                        if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "list", $2)) {
+                                        if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "list", $2, 0)) {
                                           YYABORT;
                                         }
                                       }
@@ -2101,7 +2101,7 @@ choice_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                     }
                                   }
   |  choice_opt_stmt config_read_stmt { if (!read_all) {
-                                           if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "choice", $2)) {
+                                           if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "choice", $2, 0)) {
                                              YYABORT;
                                            }
                                          } else {
@@ -2109,7 +2109,7 @@ choice_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                          }
                                        }
 |  choice_opt_stmt mandatory_read_stmt { if (!read_all) {
-                                      if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_MAND_MASK, "mandatory", "choice", $2)) {
+                                      if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_MAND_MASK, "mandatory", "choice", $2, 0)) {
                                         YYABORT;
                                       }
                                     } else {
@@ -2117,7 +2117,7 @@ choice_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                     }
                                   }
   |  choice_opt_stmt status_read_stmt { if (!read_all) {
-                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "choice", $2)) {
+                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "choice", $2, 0)) {
                                             YYABORT;
                                           }
                                         } else {
@@ -2206,7 +2206,7 @@ case_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                      }
                                    }
   |  case_opt_stmt status_read_stmt { if (!read_all) {
-                                        if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "case", $2)) {
+                                        if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "case", $2, 0)) {
                                           YYABORT;
                                         }
                                       }
@@ -2289,19 +2289,19 @@ anyxml_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                }
      stmtsep
   |  anyxml_opt_stmt config_read_stmt { if (!read_all) {
-                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "anyxml", $2)) {
+                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "anyxml", $2, 0)) {
                                             YYABORT;
                                           }
                                         }
                                       }
   |  anyxml_opt_stmt mandatory_read_stmt { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_MAND_MASK, "mandatory", "anyxml", $2)) {
+                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_MAND_MASK, "mandatory", "anyxml", $2, 0)) {
                                                YYABORT;
                                              }
                                            }
                                          }
   |  anyxml_opt_stmt status_read_stmt { if (!read_all) {
-                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "anyxml", $2)) {
+                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "anyxml", $2, 0)) {
                                             YYABORT;
                                           }
                                         }
@@ -2383,7 +2383,7 @@ uses_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                      }
                                    }
   |  uses_opt_stmt status_read_stmt { if (!read_all) {
-                                        if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "uses", $2)) {
+                                        if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "uses", $2, 0)) {
                                           YYABORT;
                                         }
                                       }
@@ -2519,7 +2519,7 @@ refine_body_opt_stmts: @EMPTYDIR@ { if (read_all) {
                                            if ($1.refine->target_type) {
                                              if ($1.refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST)) {
                                                $1.refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST);
-                                               if (yang_check_flags(&$1.refine->flags, LYS_CONFIG_MASK, "config", "refine", $2)) {
+                                               if (yang_check_flags((uint16_t*)&$1.refine->flags, LYS_CONFIG_MASK, "config", "refine", $2, 1)) {
                                                  YYABORT;
                                                }
                                              } else {
@@ -2538,7 +2538,7 @@ refine_body_opt_stmts: @EMPTYDIR@ { if (read_all) {
                                               if ($1.refine->target_type) {
                                                 if ($1.refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_ANYXML)) {
                                                   $1.refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_ANYXML);
-                                                  if (yang_check_flags(&$1.refine->flags, LYS_MAND_MASK, "mandatory", "refine", $2)) {
+                                                  if (yang_check_flags((uint16_t*)&$1.refine->flags, LYS_MAND_MASK, "mandatory", "refine", $2, 1)) {
                                                     YYABORT;
                                                   }
                                                 } else {
@@ -2682,7 +2682,9 @@ augment_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                         }
                                       }
   |  augment_opt_stmt status_stmt { if (read_all) {
-                                      if (yang_check_flags(&$1.node.ptr_augment->flags, LYS_STATUS_MASK, "status", "augment", $2)) {
+                                      /* hack - flags is bit field, so its address is taken as a member after
+                                       * 3 const char pointers in the lys_node_augment structure */
+                                      if (yang_check_flags((uint16_t*)($1.node.ptr_augment + (3 * sizeof(const char*))), LYS_STATUS_MASK, "status", "augment", $2, 0)) {
                                         YYABORT;
                                       }
                                     }
@@ -2772,7 +2774,7 @@ rpc_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                     }
                                   }
   |  rpc_opt_stmt status_read_stmt { if (!read_all) {
-                                       if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "rpc", $2)) {
+                                       if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "rpc", $2, 0)) {
                                          YYABORT;
                                        }
                                      }
@@ -2952,7 +2954,7 @@ notification_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                              }
                                            }
   |  notification_opt_stmt status_read_stmt { if (!read_all) {
-                                                if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "notification", $2)) {
+                                                if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "notification", $2, 0)) {
                                                   YYABORT;
                                                 }
                                               }

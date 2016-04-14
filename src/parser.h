@@ -68,8 +68,8 @@ int lyp_check_length_range(const char *expr, struct lys_type *type);
 int fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_type *type,
                   struct unres_schema *unres);
 
-int lyp_check_status(uint8_t flags1, struct lys_module *mod1, const char *name1,
-                     uint8_t flags2, struct lys_module *mod2, const char *name2,
+int lyp_check_status(uint16_t flags1, struct lys_module *mod1, const char *name1,
+                     uint16_t flags2, struct lys_module *mod2, const char *name2,
                      const struct lys_node *node);
 
 /**
