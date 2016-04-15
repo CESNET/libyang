@@ -49,48 +49,6 @@ lyv_keys(const struct lyd_node *list)
 }
 
 int
-lyv_data_value(struct lyd_node *node, int options)
-{
-    int rc;
-
-    assert(node);
-
-    if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-        /* nothing to check */
-        return EXIT_SUCCESS;
-    }
-
-    switch (((struct lys_node_leaf *)node->schema)->type.base) {
-    case LY_TYPE_LEAFREF:
-        if (!((struct lyd_node_leaf_list *)node)->value.leafref) {
-            if (!(options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
-                /* try to resolve leafref */
-                rc = resolve_unres_data_item(node, UNRES_LEAFREF);
-                if (rc) {
-                    return EXIT_FAILURE;
-                }
-            } /* in other cases the leafref is always unresolved */
-        }
-        break;
-    case LY_TYPE_INST:
-        if (!(options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) &&
-                ((struct lys_node_leaf *)node->schema)->type.info.inst.req > -1) {
-            /* try to resolve instance-identifier to get know if the target exists */
-            rc = resolve_unres_data_item(node, UNRES_INSTID);
-            if (rc) {
-                return EXIT_FAILURE;
-            }
-        }
-        break;
-    default:
-        /* do nothing */
-        break;
-    }
-
-    return EXIT_SUCCESS;
-}
-
-int
 lyv_data_context(const struct lyd_node *node, int options, struct unres_data *unres)
 {
     const struct lys_node *siter = NULL;

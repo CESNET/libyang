@@ -65,14 +65,4 @@ int lyv_data_content(struct lyd_node *node, int options, struct unres_data *unre
 int lyv_multicases(struct lyd_node *node, struct lys_node *schemanode, struct lyd_node *first_sibling, int autodelete,
                    struct lyd_node *nodel);
 
-/**
- * @brief Validate the node's value. Applies only to referrence values where the validity can change by
- * modifying a value/tree outside the node itself (leafrefs).
- *
- * @param[in] node Data tree node to be checked.
- * @param[in] options Parser options, see @ref parseroptions.
- * @return EXIT_SUCCESS or EXIT_FAILURE with ly_errno set.
- */
-int lyv_data_value(struct lyd_node *node, int options);
-
 #endif /* LY_VALIDATION_H_ */
