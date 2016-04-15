@@ -1093,8 +1093,8 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
     struct lyd_node *result = NULL, *next = NULL, *iter = NULL;
     struct unres_data *unres = NULL;
     unsigned int len = 0, r;
+    int options_aux;
     struct attr_cont *attrs = NULL;
-    const struct lys_module *wdmod = NULL;
 
     ly_errno = LY_SUCCESS;
 
@@ -1165,24 +1165,20 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
     }
 
     /* add default values if needed */
-    if (options & LYD_WD_MASK) {
-        if (lyd_wd_top(ctx, &result, unres, options, wdmod)) {
-            LY_TREE_FOR_SAFE(result, next, iter) {
-                lyd_free(iter);
-            }
-            result = NULL;
-            goto cleanup;
-        }
+    if (options & LYD_WD_EXPLICIT) {
+        options_aux = (options & ~LYD_WD_MASK) | LYD_WD_IMPL_TAG;
+    } else if (!(options & LYD_WD_MASK)) {
+        options_aux = options | LYD_WD_IMPL_TAG;
     } else {
-        /* use internal yang module, since ncwd is not necessarily present */
-        wdmod = ly_ctx_get_module(ctx, "yang", NULL);
-        if (lyd_wd_top(ctx, &result, unres, options | LYD_WD_IMPL_TAG, wdmod)) {
-            LY_TREE_FOR_SAFE(result, next, iter) {
-                lyd_free(iter);
-            }
-            result = NULL;
-            goto cleanup;
+        options_aux = options;
+    }
+    if (lyd_wd_top(ctx, &result, unres, options_aux)) {
+        LY_TREE_FOR_SAFE(result, next, iter)
+        {
+            lyd_free(iter);
         }
+        result = NULL;
+        goto cleanup;
     }
 
     /* check leafrefs and/or instids if any */
@@ -1195,9 +1191,9 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
         goto cleanup;
     }
 
-    if (!(options & LYD_WD_MASK)) {
+    if (options != options_aux) {
         /* cleanup default nodes */
-        if (lyd_wd_cleanup_mod(&result, wdmod, options)) {
+        if (lyd_wd_cleanup(&result, options)) {
             LY_TREE_FOR_SAFE(result, next, iter) {
                 lyd_free(iter);
             }

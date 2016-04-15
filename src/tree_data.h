@@ -97,7 +97,7 @@ typedef union lyd_value_u {
  */
 #define LYD_VAL_OK       0x00    /**< node is successfully validated including whole subtree */
 #define LYD_VAL_UNIQUE   0x01    /**< Unique value(s) changed, applicable only to ::lys_node_list data nodes */
-#define LYD_VAL_NOT      0x1f    /**< node was not validated yet */
+#define LYD_VAL_NOT      0x0f    /**< node was not validated yet */
 /**
  * @}
  */
@@ -116,7 +116,8 @@ typedef union lyd_value_u {
  */
 struct lyd_node {
     struct lys_node *schema;         /**< pointer to the schema definition of this node */
-    uint8_t validity:5;              /**< [validity flags](@ref validityflags) */
+    uint8_t validity:4;              /**< [validity flags](@ref validityflags) */
+    uint8_t dflt:1;                  /**< flag for default node (applicable only on leafs) to be marked with default attribute */
     uint8_t when_status:3;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
                                           do not use this value! */
 
@@ -147,7 +148,8 @@ struct lyd_node {
 struct lyd_node_leaf_list {
     struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_leaflist
                                           structure */
-    uint8_t validity:5;              /**< [validity flags](@ref validityflags) */
+    uint8_t validity:4;              /**< [validity flags](@ref validityflags) */
+    uint8_t dflt:1;                  /**< flag for default node (applicable only on leafs) to be marked with default attribute */
     uint8_t when_status:3;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
                                           do not use this value! */
 
@@ -183,7 +185,8 @@ union lyd_node_anyxml_value {
 struct lyd_node_anyxml {
     struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_anyxml
                                           structure */
-    uint8_t validity:5;              /**< [validity flags](@ref validityflags) */
+    uint8_t validity:4;              /**< [validity flags](@ref validityflags) */
+    uint8_t dflt:1;                  /**< flag for default node (applicable only on leafs) to be marked with default attribute */
     uint8_t when_status:3;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
                                           do not use this value! */
 
@@ -683,16 +686,20 @@ int lyd_validate(struct lyd_node **node, int options, ...);
  * - #LYD_WD_ALL_TAG - add default nodes and add attribute 'default' with value 'true' to all nodes having their default value
  * - #LYD_WD_IMPL_TAG - add default nodes, but add attribute 'default' only to the added nodes
  * @note The LYD_WD_*_TAG modes require to have ietf-netconf-with-defaults module in the context of the data tree.
+ * @note If you already added some tagged default nodes (by parser or previous call of lyd_validate()), you should
+ * specify the same LYD_WD_*_TAG in all subsequent call to lyd_validate(). Otherwise, the tagged nodes will be removed.
  * @return EXIT_SUCCESS ot EXIT_FAILURE
  */
 int lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options);
 
 /**
- * @brief Remove all default nodes, respectively all nodes with attribute ncwd:default="true" added by
- * #LYD_WD_ALL_TAG or #LYD_WD_IMPL_TAG in lyd_wd_add(), lyd_validate() or lyd_parse_*() functions.
+ * @brief Remove all default nodes, respectively all nodes with set ::lyd_node#dflt added by
+ * #LYD_WD_ALL_TAG or #LYD_WD_IMPL_TAG options in lyd_wd_add(), lyd_validate() or lyd_parse_*() functions.
  *
  * @param[in] root Data tree root. The data tree can be modified so the root can be changed or completely removed.
  * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
+ *            If #LYD_WD_EXPLICIT is found in options, the default status nodes are kept, so it is better to
+ *            erase all LYD_WD_* flags from the value.
  * @return EXIT_SUCCESS or EXIT_FAILURE
  */
 int lyd_wd_cleanup(struct lyd_node **root, int options);
