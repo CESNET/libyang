@@ -6236,8 +6236,8 @@ yyreduce:
 
     { if (read_all) {
                                       /* hack - flags is bit field, so its address is taken as a member after
-                                       * 3 pointers in the lys_node_augment structure */
-                                      if (yang_check_flags((uint16_t*)((yyvsp[-1].nodes).node.ptr_augment + 3),
+                                       * 3 const char pointers in the lys_node_augment structure */
+                                      if (yang_check_flags((uint16_t*)((const char **)(yyvsp[-1].nodes).node.ptr_augment + 3),
                                                            LYS_STATUS_MASK, "status", "augment", (yyvsp[0].i), 0)) {
                                         YYABORT;
                                       }

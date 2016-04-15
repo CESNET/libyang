@@ -2683,8 +2683,8 @@ augment_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                       }
   |  augment_opt_stmt status_stmt { if (read_all) {
                                       /* hack - flags is bit field, so its address is taken as a member after
-                                       * 3 pointers in the lys_node_augment structure */
-                                      if (yang_check_flags((uint16_t*)($1.node.ptr_augment + 3),
+                                       * 3 const char pointers in the lys_node_augment structure */
+                                      if (yang_check_flags((uint16_t*)((const char **)$1.node.ptr_augment + 3),
                                                            LYS_STATUS_MASK, "status", "augment", $2, 0)) {
                                         YYABORT;
                                       }
