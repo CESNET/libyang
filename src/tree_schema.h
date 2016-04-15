@@ -96,7 +96,8 @@ extern "C" {
  * to the #LY_TREE_DFS_BEGIN - they always have to be used together.
  *
  * Works for all types of nodes despite it is data or schema tree, but all the
- * parameters must be pointers to the same type. Use the same parameters for
+ * parameters must be pointers to the same type - basic type of the tree (struct
+ * lys_node*, struct lyd_node* or struct lyxml_elem*). Use the same parameters for
  * #LY_TREE_DFS_BEGIN and #LY_TREE_DFS_END.
  *
  * Use with closing curly bracket '}' after the macro.
@@ -109,8 +110,13 @@ extern "C" {
     /* select element for the next run - children first */                    \
     (NEXT) = (ELEM)->child;                                                   \
     if (sizeof(typeof(*(START))) == sizeof(struct lyd_node)) {                \
-        /* child exception for lyd_node_leaf and lyd_node_leaflist */         \
+        /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) { \
+            (NEXT) = NULL;                                                    \
+        }                                                                     \
+    } else if (sizeof(typeof(*(START))) == sizeof(struct lys_node)) {         \
+        /* child exception for leafs, leaflists and anyxml without children */\
+        if (((struct lys_node *)(ELEM))->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) { \
             (NEXT) = NULL;                                                    \
         }                                                                     \
     }                                                                         \
@@ -133,27 +139,12 @@ extern "C" {
         }                                                                     \
         /* no siblings, go back through parents */                            \
         if (sizeof(typeof(*(START))) == sizeof(struct lys_node)) {            \
-            /* lys_node_augment only */                                       \
-            if ((ELEM)->parent && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) { \
-                if ((START)->parent && (((struct lys_node *)(START)->parent)->nodetype == LYS_AUGMENT)) { \
-                    /* lys_node prev is actually lys_node_augment target */   \
-                    if ((ELEM)->parent->prev == (START)->parent->prev) {      \
-                        break;                                                \
-                    }                                                         \
-                } else {                                                      \
-                    if ((ELEM)->parent->prev == (START)->parent) {            \
-                        break;                                                \
-                    }                                                         \
-                }                                                             \
-            } else {                                                          \
-                if ((START)->parent && (((struct lys_node *)(START)->parent)->nodetype == LYS_AUGMENT)) { \
-                    if ((ELEM)->parent == (START)->parent->prev) {            \
-                        break;                                                \
-                    }                                                         \
-                } /* else covered just below */                               \
+            /* due to possible augments */                                    \
+            if (lys_parent((struct lys_node *)(ELEM)) == lys_parent((struct lys_node *)(START))) { \
+                /* we are done, no next element to process */                 \
+                break;                                                        \
             }                                                                 \
-        }                                                                     \
-        if ((ELEM)->parent == (START)->parent) {                              \
+        } else if ((ELEM)->parent == (START)->parent) {                       \
             /* we are done, no next element to process */                     \
             break;                                                            \
         }                                                                     \
