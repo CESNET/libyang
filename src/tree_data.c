@@ -2822,6 +2822,11 @@ lyd_wd_add_leaf(const struct lys_module *wdmod, struct ly_ctx *ctx, struct lyd_n
     struct ly_set *nodeset;
     const char *dflt = NULL;
 
+    if ((options & LYD_WD_MASK) == LYD_WD_EXPLICIT && (leaf->flags & LYS_CONFIG_W)) {
+        /* do not process config data in explicit mode */
+        return NULL;
+    }
+
     if (leaf->dflt) {
         /* leaf has a default value */
         dflt = leaf->dflt;
@@ -3053,12 +3058,19 @@ lyd_wd_add_inner(const struct lys_module *wdmod, struct lyd_node *subroot, struc
 
             if (nodeset->number == 1) {
                 /* recursion */
-                lyd_wd_add_inner(wdmod, nodeset->set.d[0], siter->child, unres, options);
+                if ((options & LYD_WD_MASK) != LYD_WD_EXPLICIT
+                        || ((siter->flags & LYS_CONFIG_W) && (siter->flags & LYS_INCL_STATUS))) {
+                    lyd_wd_add_inner(wdmod, nodeset->set.d[0], siter->child, unres, options);
+                } /* else explicit mode with no status data in subtree -> do nothing */
             } else {
                 /* container does not exists, go recursively to add default nodes in its subtree */
                 if (((struct lys_node_container *)siter)->presence) {
                     /* but only if it is not presence container */
                     ly_set_free(nodeset);
+                    continue;
+                } else if ((options & LYD_WD_MASK) == LYD_WD_EXPLICIT
+                        && ((siter->flags & LYS_CONFIG_W) && !(siter->flags & LYS_INCL_STATUS))) {
+                    /* do not process config data in explicit mode */
                     continue;
                 }
                 lyd_wd_add_empty(wdmod, subroot, siter, unres, options);
@@ -3145,7 +3157,14 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
         /* specific mode, we are not adding something, but removing something */
         return lyd_wd_trim(root, NULL, options);
     } else if ((options & LYD_WD_MASK) == LYD_WD_ALL_TAG) {
+        /* as first part, mark the explicit default nodes ... */
         lyd_wd_trim(root, wdmod, options);
+        /* and then continue by adding the missing default nodes */
+    } else if  ((options & LYD_WD_MASK) == LYD_WD_EXPLICIT
+            && (options & (LYD_OPT_CONFIG | LYD_OPT_EDIT | LYD_OPT_GETCONFIG))) {
+        /* Explicit mode, but the result is not supposed to contain status data,
+         * so there is nothing to do */
+        return EXIT_SUCCESS;
     }
 
     /* initiate internal buffer */
@@ -3160,7 +3179,7 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
         if (!ctx) {
             ly_set_add(modset, lys_node_module(iter->schema));
         }
-        if  (options & (LYD_OPT_CONFIG | LYD_OPT_EDIT | LYD_OPT_GETCONFIG)) {
+        if (options & (LYD_OPT_CONFIG | LYD_OPT_EDIT | LYD_OPT_GETCONFIG)) {
             /* do not process status data */
             if (iter->schema->flags & LYS_CONFIG_R) {
                 continue;
@@ -3168,6 +3187,11 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
         }
 
         if (iter->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) {
+            if ((options & LYD_WD_MASK) == LYD_WD_EXPLICIT
+                    && ((iter->schema->flags & LYS_CONFIG_W) && !(iter->schema->flags & LYS_INCL_STATUS))) {
+                /* do not process config data in explicit mode */
+                continue;
+            }
             /* go into */
             if (lyd_wd_add_inner(wdmod, iter, iter->schema->child, unres, options)) {
                 goto error;

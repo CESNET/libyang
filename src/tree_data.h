@@ -284,18 +284,21 @@ struct lyd_node_anyxml {
                                        constrained subtree. */
 #define LYD_OPT_KEEPEMPTYCONT 0x4000 /**< Do not automatically delete empty non-presence containers. */
 
-#define LYD_WD_MASK       0xF0000 /**< Mask for with-defaults modes */
-#define LYD_WD_TRIM       0x10000 /**< Remove all nodes with the value equal to their default value */
-#define LYD_WD_ALL        0x20000 /**< Explicitly add all missing nodes with their default value */
-#define LYD_WD_ALL_TAG    0x40000 /**< Same as LYD_WD_ALL but also adds attribute 'default' with value 'true' to
-                                       all nodes that has its default value. The 'default' attribute has namespace:
-                                       urn:ietf:params:xml:ns:netconf:default:1.0 and thus the attributes are
-                                       created only when the ietf-netconf-with-defaults module is present in libyang
-                                       context. */
-#define LYD_WD_IMPL_TAG   0x80000 /**< Same as LYD_WD_ALL_TAG but the attributes are added only to the nodes that
-                                       are being created and were not part of the original data tree despite their
-                                       value is equal to their default value. There is the same limitation regarding
-                                       the presence of ietf-netconf-with-defaults module in libyang context. */
+#define LYD_WD_MASK        0x1F0000  /**< Mask for with-defaults modes */
+#define LYD_WD_EXPLICIT    0x100000  /**< Explicit mode - add missing default status data, but only in case the data
+                                          type is supposed to include status data (all except #LYD_OPT_CONFIG,
+                                          #LYD_OPT_GETCONF and #LYD_OPT_EDIT */
+#define LYD_WD_TRIM        0x010000  /**< Remove all nodes with the value equal to their default value */
+#define LYD_WD_ALL         0x020000  /**< Explicitly add all missing nodes with their default value */
+#define LYD_WD_ALL_TAG     0x040000  /**< Same as LYD_WD_ALL but also adds attribute 'default' with value 'true' to
+                                          all nodes that has its default value. The 'default' attribute has namespace:
+                                          urn:ietf:params:xml:ns:netconf:default:1.0 and thus the attributes are
+                                          created only when the ietf-netconf-with-defaults module is present in libyang
+                                          context. */
+#define LYD_WD_IMPL_TAG    0x080000  /**< Same as LYD_WD_ALL_TAG but the attributes are added only to the nodes that
+                                          are being created and were not part of the original data tree despite their
+                                          value is equal to their default value. There is the same limitation regarding
+                                          the presence of ietf-netconf-with-defaults module in libyang context. */
 
 /**@} parseroptions */
 
