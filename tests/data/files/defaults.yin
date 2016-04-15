@@ -72,6 +72,11 @@
             <leaf name="b1_2">
               <type name="string"/>
             </leaf>
+            <leaf name="b1_status">
+              <config value="false"/>
+              <type name="int32"/>
+              <default value="42"/>
+            </leaf>
           </case>
           <leaf name="b2">
             <type name="int32"/>
@@ -87,6 +92,11 @@
       <default value="42"/>
     </leaf>
     <leaf name="baz">
+      <type name="int32"/>
+      <default value="42"/>
+    </leaf>
+    <leaf name="papa">
+      <config value="false"/>
       <type name="int32"/>
       <default value="42"/>
     </leaf>
