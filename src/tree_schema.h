@@ -1374,22 +1374,7 @@ struct lys_ident {
     struct lys_module *module;       /**< pointer to the module where the identity is defined */
 
     struct lys_ident *base;          /**< pointer to the base identity */
-    struct lys_ident_der *der;       /**< list of pointers to the derived identities */
-};
-/**
- * @brief Structure to serialize pointers to the identities.
- *
- * The list of derived identities cannot be static since any new schema can
- * extend the current set of derived identities.
- *
- * TODO: the list actually could be just a static array and we could reallocate it whenever it
- * is needed. Since we are not going to allow removing a particular schema from
- * the context, we don't need to remove a subset of pointers to derived
- * identities.
- */
-struct lys_ident_der {
-    struct lys_ident *ident;         /**< pointer to the identity */
-    struct lys_ident_der *next;      /**< next record, NULL in case of the last record in the list */
+    struct lys_ident **der;          /**< array of pointers to the derived identities */
 };
 
 /**

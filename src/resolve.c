@@ -3756,7 +3756,6 @@ resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident,
 {
     uint32_t i, j;
     struct lys_ident *base = NULL, *base_iter;
-    struct lys_ident_der *der;
 
     assert(ret);
 
@@ -3808,22 +3807,23 @@ matchfound:
 
         /* maintain backlinks to the derived identitise */
         while (base) {
-            for (der = base->der; der && der->next; der = der->next);
-            if (der) {
-                der->next = malloc(sizeof *der);
-                der = der->next;
+            /* 1. get current number of backlinks */
+            if (base->der) {
+                for (i = 0; base->der[i]; i++);
             } else {
-                ident->base->der = der = malloc(sizeof *der);
+                i = 0;
             }
-            if (!der) {
+            base->der = ly_realloc(base->der, (i + 2) * sizeof *(base->der));
+            if (!base->der) {
                 LOGMEM;
                 return EXIT_FAILURE;
             }
-            der->next = NULL;
-            der->ident = ident;
+            base->der[i] = ident;
+            base->der[i + 1] = NULL; /* array termination */
 
             base = base->base;
         }
+
         *ret = ident->base;
         return EXIT_SUCCESS;
     }
@@ -3931,7 +3931,8 @@ resolve_identref(struct lys_ident *base, const char *ident_name, struct lyd_node
 {
     const char *mod_name, *name;
     int mod_name_len, rc;
-    struct lys_ident_der *der;
+    int i;
+    struct lys_ident *der;
 
     if (!base || !ident_name) {
         return NULL;
@@ -3951,12 +3952,13 @@ resolve_identref(struct lys_ident *base, const char *ident_name, struct lyd_node
         return base;
     }
 
-    for (der = base->der; der; der = der->next) {
-        if (!strcmp(der->ident->name, name) && (!mod_name
-                || (!strncmp(der->ident->module->name, mod_name, mod_name_len)
-                && !der->ident->module->name[mod_name_len]))) {
-            /* we have match */
-            return der->ident;
+    if (base->der) {
+        for (der = base->der[i = 0]; base->der[i]; der = base->der[++i]) {
+            if (!strcmp(der->name, name) &&
+                    (!mod_name || (!strncmp(der->module->name, mod_name, mod_name_len) && !der->module->name[mod_name_len]))) {
+                /* we have match */
+                return der;
+            }
         }
     }
 

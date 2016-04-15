@@ -1738,28 +1738,12 @@ lys_refine_dup(struct lys_module *mod, struct lys_refine *old, int size)
 static void
 lys_ident_free(struct ly_ctx *ctx, struct lys_ident *ident)
 {
-    struct lys_ident_der *der;
-
     assert(ctx);
     if (!ident) {
         return;
     }
 
-    /*
-     * if caller free only a single data model which is used (its identity is
-     * reference from identity in another module), this silly freeing can lead
-     * to segmentation fault. But without noting if the module is used by some
-     * other, it cannot be solved.
-     *
-     * Possible solution is to not allow caller to remove particular schema
-     * from the context. This is the current approach.
-     */
-    while (ident->der) {
-        der = ident->der;
-        ident->der = der->next;
-        free(der);
-    }
-
+    free(ident->der);
     lydict_remove(ctx, ident->name);
     lydict_remove(ctx, ident->dsc);
     lydict_remove(ctx, ident->ref);
