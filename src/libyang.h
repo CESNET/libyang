@@ -41,6 +41,9 @@ extern "C" {
  * - Manipulation with the instance data.
  * - Support for adding default values into instance data.
  *
+ * The current implementation covers YANG 1.0 specified in [RFC 6020](https://tools.ietf.org/html/rfc6020).
+ * Future plans include support for [YANG 1.1](https://tools.ietf.org/html/draft-ietf-netmod-rfc6020bis-11).
+ *
  * @subsection about-features-others Extra (side-effect) Features
  *
  * - XML parser.
