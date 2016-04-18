@@ -432,6 +432,11 @@ struct lyd_node *lyd_new_leaf(struct lyd_node *parent, const struct lys_module *
  * Despite the prototype allows to provide a leaflist node as \p leaf parameter, only leafs are accepted.
  * Also, changing the value of a list key is prohibited.
  *
+ * As for the other data tree manipulation functions, the change is not fully validated to allow multiple changes
+ * in the data tree. Therefore, when all changes on the data tree are done, caller is supposed to call lyd_validate()
+ * to check that the result is valid data tree. Specifically, if a leafref leaf is changed, it is not checked that
+ * the (leafref) value is correct.
+ *
  * @param[in] leaf A leaf node to change.
  * @param[in] val_str String form of the new value to be set to the \p leaf. In case the type is #LY_TYPE_INST
  * or #LY_TYPE_IDENT, JSON node-id format is expected (nodes are prefixed with module names, not XML namespaces).

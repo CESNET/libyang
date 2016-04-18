@@ -383,6 +383,7 @@ API int
 lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
 {
     const char *backup;
+    lyd_val backup_val;
     struct lyd_node *parent;
     struct lys_node_list *slist;
     uint32_t i;
@@ -404,12 +405,15 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     }
 
     backup = leaf->value_str;
+    memcpy(&backup_val, &leaf->value, sizeof backup);
     leaf->value_str = lydict_insert(leaf->schema->module->ctx, val_str ? val_str : "", 0);
+    /* leaf->value is erased by lyp_parse_value() */
 
     /* resolve the type correctly */
     if (lyp_parse_value(leaf, NULL, 1)) {
         lydict_remove(leaf->schema->module->ctx, leaf->value_str);
         leaf->value_str = backup;
+        memcpy(&leaf->value, &backup_val, sizeof backup);
         return EXIT_FAILURE;
     }
 

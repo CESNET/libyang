@@ -69,7 +69,8 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
         ((struct lyd_node_leaf_list *)node)->value_type &= LY_DATA_TYPE_MASK;
 
         /* if leafref or instance-identifier, store the node for later resolving */
-        if (((struct lyd_node_leaf_list *)node)->value_type == LY_TYPE_LEAFREF) {
+        if (((struct lyd_node_leaf_list *)node)->value_type == LY_TYPE_LEAFREF &&
+                !((struct lyd_node_leaf_list *)node)->value.leafref) {
             if (unres_data_add(unres, (struct lyd_node *)node, UNRES_LEAFREF)) {
                 return EXIT_FAILURE;
             }
