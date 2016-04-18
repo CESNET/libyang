@@ -701,7 +701,8 @@ int lyd_validate(struct lyd_node **node, int options, ...);
  * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions - only the
  *            LYD_WD_* options are used to select functionality:
  * - #LYD_WD_TRIM - remove all nodes that have value equal to their default value
- * - #LYD_WD_ALL - add default nodes
+ * - #LYD_WD_EXPLICIT - add only status default nodes
+ * - #LYD_WD_ALL - add all (status as well as config) default nodes
  * - #LYD_WD_ALL_TAG - add default nodes and add attribute 'default' with value 'true' to all nodes having their default value
  * - #LYD_WD_IMPL_TAG - add default nodes, but add attribute 'default' only to the added nodes
  * @note The LYD_WD_*_TAG modes require to have ietf-netconf-with-defaults module in the context of the data tree.
