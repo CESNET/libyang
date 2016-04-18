@@ -1111,7 +1111,7 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
         invalid = 1;
     }
 
-    if (node->parent || node->prev->next) {
+    if (node->parent || node->next || node->prev->next) {
         lyd_unlink(node);
     }
 
