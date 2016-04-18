@@ -100,7 +100,7 @@ following linker parameters:
 -lyang
 ```
 
-Note, that it may be necessary to call `ldconfig` after library installation and if the
+Note, that it may be necessary to call `ldconfig(8)` after library installation and if the
 library was installed into a non-standard path, the path to libyang must be specified to the
 linker. To help with setting all the compiler's options, there is `libyang.pc` file for
 `pkg-config(1)` available in the source tree. The file is installed with the library.
