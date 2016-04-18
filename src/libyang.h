@@ -346,7 +346,13 @@ extern "C" {
  * Internally, XPath evaluation is performed on \b when and \b must conditions in the schema. For that almost
  * a full XPath 1.0 evaluator was implemented. This XPath implementation is available on data trees by calling
  * lyd_get_node() except that only node sets are returned. This XPath conforms to the YANG specification
- * (RFC 6020 section 6.4).
+ * (RFC 6020 section 6.4). Some examples:
+ *
+ * - /module-name:* - all top-level nodes of the _module-name_
+ * - /module-name:container//* - all the descendants of _container_ (excluding _container_)
+ * - /module-name:container/list[key1='1'][key2='2'] - get _list_ instance with _key1_ of value _1_ and _key2_ of value _2_
+ * (this can return more _list_ instances if there are more keys than _key1_ and _key2_)
+ * - /module-name:container/leaf-list[.='val'] - get _leaf-list_ instance with the value _val_
  *
  * A very small subset of this full XPath is recognized by lyd_new_path(). Basically, only a relative or absolute
  * path can be specified to identify a new data node. However, lists must be identified by all their keys and created
@@ -429,7 +435,7 @@ extern "C" {
  * of nodes, requires less information about the modified data, and is generally simpler to use. The path format
  * specifics can be found [here](@ref howtoxpath).
  *
- * Working with two data subtrees can also be preformed two ways. Usually, you should use lyd_insert*() functions.
+ * Working with two data subtrees can also be performed two ways. Usually, you should use lyd_insert*() functions.
  * But they always work with a single subtree and it must be placed on an exact and correct location in the other
  * tree. If using lyd_merge(), this information is learnt internally and duplicities (that would invalidate
  * the final data tree) are filtered out at the cost of somewhat reduced effectivity.
