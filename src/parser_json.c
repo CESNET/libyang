@@ -1093,7 +1093,6 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
     struct lyd_node *result = NULL, *next = NULL, *iter = NULL;
     struct unres_data *unres = NULL;
     unsigned int len = 0, r;
-    int options_aux;
     struct attr_cont *attrs = NULL;
 
     ly_errno = LY_SUCCESS;
@@ -1103,19 +1102,25 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
         return NULL;
     }
 
-    unres = calloc(1, sizeof *unres);
-    if (!unres) {
-        LOGMEM;
-        return NULL;
-    }
-
     /* skip leading whitespaces */
     len += skip_ws(&data[len]);
+
+    /* no data (or whitespaces only) are fine */
+    if (!data[len]) {
+        lyd_validate(&result, options, ctx);
+        return result;
+    }
 
     /* expect top-level { */
     if (data[len] != '{') {
         LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing top level begin-object)");
-        goto cleanup;
+        return NULL;
+    }
+
+    unres = calloc(1, sizeof *unres);
+    if (!unres) {
+        LOGMEM;
+        return NULL;
     }
 
     do {
@@ -1124,8 +1129,7 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
 
         r = json_parse_data(ctx, &data[len], parent, &next, iter, &attrs, options, unres);
         if (!r) {
-            result = NULL;
-            goto cleanup;
+            goto error;
         }
         len += r;
 
@@ -1141,71 +1145,42 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
     if (data[len] != '}') {
         /* expecting end-object */
         LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing top-level end-object)");
-        LY_TREE_FOR_SAFE(result, next, iter) {
-            lyd_free(iter);
-        }
-        result = NULL;
-        goto cleanup;
+        goto error;
     }
     len++;
     len += skip_ws(&data[len]);
 
     /* store attributes */
     if (store_attrs(ctx, attrs, result)) {
-        LY_TREE_FOR_SAFE(result, next, iter) {
-            lyd_free(iter);
-        }
-        result = NULL;
-        goto cleanup;
+        goto error;
     }
 
     if (!result) {
         LOGERR(LY_EVALID, "Model for the data to be linked with not found.");
-        goto cleanup;
+        goto error;
     }
 
-    /* add default values if needed */
-    if (options & LYD_WD_EXPLICIT) {
-        options_aux = (options & ~LYD_WD_MASK) | LYD_WD_IMPL_TAG;
-    } else if (!(options & LYD_WD_MASK)) {
-        options_aux = options | LYD_WD_IMPL_TAG;
-    } else {
-        options_aux = options;
-    }
-    if (lyd_wd_top(ctx, &result, unres, options_aux)) {
-        LY_TREE_FOR_SAFE(result, next, iter)
-        {
-            lyd_free(iter);
-        }
-        result = NULL;
-        goto cleanup;
+    /* check for missing top level mandatory nodes */
+    if (lyd_check_topmandatory(ctx, result, options)) {
+        goto error;
     }
 
-    /* check leafrefs and/or instids if any */
-    if (unres->count && result && resolve_unres_data(unres, (options & LYD_OPT_NOAUTODEL) ? NULL : &result, options)) {
-        /* leafref & instid checking failed */
-        LY_TREE_FOR_SAFE(result, next, iter) {
-            lyd_free(iter);
-        }
-        result = NULL;
-        goto cleanup;
+    /* add/validate default values, unres */
+    if (lyd_validate_defaults_unres(&result, options, ctx, unres)) {
+        goto error;
     }
 
-    if (options != options_aux) {
-        /* cleanup default nodes */
-        if (lyd_wd_cleanup(&result, options)) {
-            LY_TREE_FOR_SAFE(result, next, iter) {
-                lyd_free(iter);
-            }
-            result = NULL;
-            goto cleanup;
-        }
-    }
-
-cleanup:
     free(unres->node);
     free(unres->type);
     free(unres);
 
     return result;
+
+error:
+    lyd_free_withsiblings(result);
+    free(unres->node);
+    free(unres->type);
+    free(unres);
+
+    return NULL;
 }

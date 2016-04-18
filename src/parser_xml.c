@@ -483,10 +483,10 @@ API struct lyd_node *
 lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 {
     va_list ap;
-    int r, options_aux;
+    int r;
     struct unres_data *unres = NULL;
     const struct lys_node *rpc = NULL;
-    struct lyd_node *result = NULL, *next, *iter, *last;
+    struct lyd_node *result = NULL, *iter, *last;
     struct lyxml_elem *xmlstart, *xmlelem, *xmlaux;
 
     ly_errno = LY_SUCCESS;
@@ -507,19 +507,19 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         return result;
     }
 
+    unres = calloc(1, sizeof *unres);
+    if (!unres) {
+        LOGMEM;
+        return NULL;
+    }
+
     va_start(ap, options);
     if (options & LYD_OPT_RPCREPLY) {
         rpc = va_arg(ap,  struct lys_node*);
         if (!rpc || (rpc->nodetype != LYS_RPC)) {
             LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
-            goto cleanup;
+            goto error;
         }
-    }
-
-    unres = calloc(1, sizeof *unres);
-    if (!unres) {
-        LOGMEM;
-        goto cleanup;
     }
 
     if (!(options & LYD_OPT_NOSIBLINGS)) {
@@ -540,11 +540,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     LY_TREE_FOR_SAFE(xmlstart, xmlaux, xmlelem) {
         r = xml_parse_data(ctx, xmlelem, rpc, NULL, last, options, unres, &iter);
         if (r) {
-            LY_TREE_FOR_SAFE(result, next, iter) {
-                lyd_free(iter);
-            }
-            result = NULL;
-            goto cleanup;
+            goto error;
         } else if (options & LYD_OPT_DESTRUCT) {
             lyxml_free(ctx, xmlelem);
             *root = xmlaux;
@@ -562,51 +558,29 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         }
     }
 
-    /* add default values if needed */
-    if (options & LYD_WD_EXPLICIT) {
-        options_aux = (options & ~LYD_WD_MASK) | LYD_WD_IMPL_TAG;
-    } else if (!(options & LYD_WD_MASK)) {
-        options_aux = options | LYD_WD_IMPL_TAG;
-    } else {
-        options_aux = options;
-    }
-    if (lyd_wd_top(ctx, &result, unres, options_aux)) {
-        LY_TREE_FOR_SAFE(result, next, iter)
-        {
-            lyd_free(iter);
-        }
-        result = NULL;
-        goto cleanup;
+    /* check for missing top level mandatory nodes */
+    if (lyd_check_topmandatory(ctx, result, options)) {
+        goto error;
     }
 
-    /* check leafrefs and/or instids if any */
-    if (unres->count && result && resolve_unres_data(unres, (options & LYD_OPT_NOAUTODEL) ? NULL : &result, options)) {
-        /* leafref & instid checking failed */
-        LY_TREE_FOR_SAFE(result, next, iter) {
-            lyd_free(iter);
-        }
-        result = NULL;
-        goto cleanup;
+    /* add/validate default values, unres */
+    if (lyd_validate_defaults_unres(&result, options, ctx, unres)) {
+        goto error;
     }
 
-    if (options_aux != options) {
-        /* cleanup default nodes used for internal purposes (not asked by caller) */
-        if (lyd_wd_cleanup(&result, options)) {
-            LY_TREE_FOR_SAFE(result, next, iter) {
-                lyd_free(iter);
-            }
-            result = NULL;
-            goto cleanup;
-        }
-    }
-
-cleanup:
-    if (unres) {
-        free(unres->node);
-        free(unres->type);
-        free(unres);
-    }
+    free(unres->node);
+    free(unres->type);
+    free(unres);
     va_end(ap);
 
     return result;
+
+error:
+    lyd_free_withsiblings(result);
+    free(unres->node);
+    free(unres->type);
+    free(unres);
+    va_end(ap);
+
+    return NULL;
 }

@@ -38,7 +38,7 @@
 #include "validation.h"
 #include "xpath.h"
 
-static int
+int
 lyd_check_topmandatory(struct ly_ctx *ctx, struct lyd_node *data, int options)
 {
     assert(ctx);
@@ -70,7 +70,6 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
     struct lyxml_elem *xml, *xmlnext;
     struct lyd_node *result = NULL;
     int xmlopt = LYXML_PARSE_MULTIROOT;
-    struct unres_data *unres = NULL;
 
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -98,38 +97,6 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
     default:
         /* error */
         return NULL;
-    }
-
-    if (!ly_errno) {
-        if (!result) {
-            /* is empty data tree really valid ? */
-            lyd_validate(&result, options, ctx);
-        } else {
-            /* check for missing top level mandatory nodes */
-            lyd_check_topmandatory(ctx, result, options);
-
-            /* add default nodes if requested */
-            if (options & LYD_WD_MASK) {
-                unres = calloc(1, sizeof *unres);
-                if (!unres) {
-                    LOGMEM;
-                    return NULL;
-                }
-
-                lyd_wd_top(ctx, &result, unres, options);
-
-                if (unres->count) {
-                    /* check unresolved checks (when-stmt) */
-                    resolve_unres_data(unres,  (options & LYD_OPT_NOAUTODEL) ? NULL : &result, options);
-                }
-            }
-        }
-    }
-
-    if (unres) {
-        free(unres->node);
-        free(unres->type);
-        free(unres);
     }
 
     if (ly_errno) {
@@ -193,6 +160,7 @@ lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, ...)
     }
 
     if (!sb.st_size) {
+        ly_errno = LY_SUCCESS;
         return NULL;
     }
 
@@ -1791,12 +1759,49 @@ lyd_schema_sort(struct lyd_node *sibling, int recursive)
     return EXIT_SUCCESS;
 }
 
+int
+lyd_validate_defaults_unres(struct lyd_node **node, int options, struct ly_ctx *ctx, struct unres_data *unres)
+{
+    int options_aux;
+
+    assert(node && unres);
+
+    /* add default values if needed */
+    if (options & LYD_WD_EXPLICIT) {
+        options_aux = (options & ~LYD_WD_MASK) | LYD_WD_IMPL_TAG;
+    } else if (!(options & LYD_WD_MASK)) {
+        options_aux = options | LYD_WD_IMPL_TAG;
+    } else {
+        options_aux = options;
+    }
+    if (lyd_wd_top(ctx, node, unres, options_aux)) {
+        return 1;
+    }
+
+    /* check leafrefs and/or instids if any */
+    if (unres->count) {
+        if (!(*node) || resolve_unres_data(unres, (options & LYD_OPT_NOAUTODEL) ? NULL : node, options)) {
+            /* leafref & instid checking failed */
+            return 1;
+        }
+    }
+
+    if (options_aux != options) {
+        /* cleanup default nodes used for internal purposes (not asked by caller) */
+        if (lyd_wd_cleanup(node, options)) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 API int
 lyd_validate(struct lyd_node **node, int options, ...)
 {
     struct lyd_node *root, *next1, *next2, *iter, *to_free = NULL;
     struct ly_ctx *ctx = NULL;
-    int ret = EXIT_FAILURE, ap_flag = 0, options_aux;
+    int ret = EXIT_FAILURE, ap_flag = 0;
     va_list ap;
     struct unres_data *unres = NULL;
 
@@ -1919,36 +1924,13 @@ nextsiblings:
     }
 
     /* add default values if needed */
-    if (options & LYD_WD_EXPLICIT) {
-        options_aux = (options & ~LYD_WD_MASK) | LYD_WD_IMPL_TAG;
-    } else if (!(options & LYD_WD_MASK)) {
-        options_aux = options | LYD_WD_IMPL_TAG;
-    } else {
-        options_aux = options;
-    }
-    if (lyd_wd_top(ctx ? ctx : (*node)->schema->module->ctx, node, unres, options_aux)) {
+    if (lyd_validate_defaults_unres(node, options, ctx ? ctx : (*node)->schema->module->ctx, unres)) {
         goto error;
     }
 
     ret = EXIT_SUCCESS;
 
-    if (unres->count) {
-        /* check unresolved checks (when-stmt) */
-        if (resolve_unres_data(unres,  (options & LYD_OPT_NOAUTODEL) ? NULL : node, options)) {
-            ret = EXIT_FAILURE;
-        }
-    }
-
-    if (options != options_aux) {
-        /* cleanup default nodes */
-        if (lyd_wd_cleanup(node, options)) {
-            ret = EXIT_FAILURE;
-        }
-    }
-
-
 error:
-
     if (ap_flag) {
         va_end(ap);
     }
