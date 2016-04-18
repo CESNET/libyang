@@ -512,7 +512,8 @@ cmd_xpath(const char *arg)
     char **argv = NULL, *ptr, *expr = NULL;
     unsigned int i, j;
     struct lyd_node *data = NULL, *node;
-    struct ly_set *set, *keys;
+    struct lyd_node_leaf_list *key;
+    struct ly_set *set;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"expr", required_argument, 0, 'e'},
@@ -625,26 +626,22 @@ cmd_xpath(const char *arg)
             if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
                 printf(" (val: %s)", ((struct lyd_node_leaf_list *)node)->value_str);
             } else if (node->schema->nodetype == LYS_LIST) {
-                keys = lyd_get_list_keys(node);
-                if (keys && keys->number) {
-                    printf(" (");
-                    for (j = 0; j < keys->number; ++j) {
-                        if (j) {
-                            printf(" ");
-                        }
-                        printf("\"%s\": %s", keys->set.d[j]->schema->name,
-                               ((struct lyd_node_leaf_list *)keys->set.d[j])->value_str);
+                key = (struct lyd_node_leaf_list *)node->child;
+                printf(" (");
+                for (j = 0; j < ((struct lys_node_list *)node->schema)->keys_size; ++j) {
+                    if (j) {
+                        printf(" ");
                     }
-                    printf(")");
+                    printf("\"%s\": %s", key->schema->name, key->value_str);
+                    key = (struct lyd_node_leaf_list *)key->next;
                 }
-                ly_set_free(keys);
+                printf(")");
             }
             printf("\n");
         }
     }
     printf("\n");
 
-    ly_set_free(set);
     ret = 0;
 
 cleanup:

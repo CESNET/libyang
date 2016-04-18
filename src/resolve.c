@@ -1592,51 +1592,51 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
     const char *name, *value;
     int nam_len, val_len, has_predicate = 1, r;
     uint16_t i;
-    struct ly_set *keys;
+    struct lyd_node_leaf_list *key;
 
     assert(node);
     assert(node->schema->nodetype == LYS_LIST);
 
-    keys = lyd_get_list_keys(node);
+    key = (struct lyd_node_leaf_list *)node->child;
+    for (i = 0; i < ((struct lys_node_list *)node->schema)->keys_size; ++i) {
+        if (!key) {
+            /* invalid data */
+            LOGINT;
+            return -1;
+        }
 
-    for (i = 0; i < keys->number; ++i) {
         if (!has_predicate) {
             LOGVAL(LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, node_name);
-            goto error;
+            return -1;
         }
 
         if ((r = parse_schema_list_predicate(predicate, &name, &nam_len, &value, &val_len, &has_predicate)) < 1) {
             LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
-            goto error;
+            return -1;
         }
 
         predicate += r;
         *parsed += r;
 
-        if (strncmp(keys->set.d[i]->schema->name, name, nam_len) || keys->set.d[i]->schema->name[nam_len]) {
+        if (strncmp(key->schema->name, name, nam_len) || key->schema->name[nam_len]) {
             LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
-            goto error;
+            return -1;
         }
 
         /* value does not match */
-        if (strncmp(((struct lyd_node_leaf_list *)keys->set.d[i])->value_str, value, val_len)
-                || ((struct lyd_node_leaf_list *)keys->set.d[i])->value_str[val_len]) {
-            ly_set_free(keys);
+        if (strncmp(key->value_str, value, val_len) || key->value_str[val_len]) {
             return 1;
         }
+
+        key = (struct lyd_node_leaf_list *)key->next;
     }
 
-    ly_set_free(keys);
     if (has_predicate) {
         LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
         return -1;
     }
 
     return 0;
-
-error:
-    ly_set_free(keys);
-    return -1;
 }
 
 struct lyd_node *

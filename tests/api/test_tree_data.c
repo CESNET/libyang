@@ -224,24 +224,6 @@ setup_f(void **state)
 }
 
 static int
-setup_f_keys(void **state)
-{
-    (void) state; /* unused */
-    char *config_file = TESTS_DIR"/api/files/keys.xml";
-    const char *module = lys_module_a;
-    char *yang_folder = TESTS_DIR"/api/files";
-    int rc;
-
-    rc = generic_init(config_file, module, yang_folder);
-
-    if (rc) {
-        return -1;
-    }
-
-    return 0;
-}
-
-static int
 teardown_f(void **state)
 {
     (void) state; /* unused */
@@ -811,25 +793,6 @@ test_lyd_get_node_2(void **state)
     struct lyd_node *node = *set->set.d;
     result = (struct lyd_node_leaf_list *) node;
     assert_string_equal("test", result->value_str);
-
-    ly_set_free(set);
-}
-
-static void
-test_lyd_get_list_keys(void **state)
-{
-    (void) state; /* unused */
-    struct ly_set *set = NULL;
-    struct lyd_node_leaf_list *result;
-
-    set = lyd_get_list_keys(root);
-    if (!set) {
-        fail();
-    }
-
-    struct lyd_node *node = *set->set.d;
-    result = (struct lyd_node_leaf_list *) node;
-    assert_string_equal("1", result->value_str);
 
     ly_set_free(set);
 }
@@ -1434,7 +1397,6 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lyd_schema_sort, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_get_node, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_get_node_2, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_lyd_get_list_keys, setup_f_keys, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_validate, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_unlink, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_free, setup_f, teardown_f),
