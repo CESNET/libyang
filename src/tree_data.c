@@ -1838,6 +1838,9 @@ lyd_dup(const struct lyd_node *node, int recursive)
             next = NULL;
         }
         if (!next) {
+            if (elem->parent == node->parent) {
+                break;
+            }
             /* no children, so try siblings */
             next = elem->next;
         } else {
