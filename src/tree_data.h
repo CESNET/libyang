@@ -290,7 +290,7 @@ struct lyd_node_anyxml {
 #define LYD_WD_MASK        0x1F0000  /**< Mask for with-defaults modes */
 #define LYD_WD_EXPLICIT    0x100000  /**< Explicit mode - add missing default status data, but only in case the data
                                           type is supposed to include status data (all except #LYD_OPT_CONFIG,
-                                          #LYD_OPT_GETCONF and #LYD_OPT_EDIT */
+                                          #LYD_OPT_GETCONFIG and #LYD_OPT_EDIT */
 #define LYD_WD_TRIM        0x010000  /**< Remove all nodes with the value equal to their default value */
 #define LYD_WD_ALL         0x020000  /**< Explicitly add all missing nodes with their default value */
 #define LYD_WD_ALL_TAG     0x040000  /**< Same as LYD_WD_ALL but also adds attribute 'default' with value 'true' to
