@@ -563,6 +563,26 @@ struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, co
 struct lyd_node *lyd_dup(const struct lyd_node *node, int recursive);
 
 /**
+ * @brief Merge a (sub)tree into a data tree. Missing nodes are merged, leaf values updated.
+ * If \p target and \p source do not share the top-level schema node, even if they
+ * are from different modules, \p source parents up to top-level node will be created and
+ * linked to the \p target (but only containers can be created this way, lists need keys,
+ * so if lists are missing, an error will be returned).
+ *
+ * In short, this function will always try to return a fully valid data tree and will fail
+ * if it is not possible.
+ *
+ * @param[in] target Top-level (or a RPC output child) data tree to merge to. Must be valid.
+ * @param[in] source Data tree to merge \p target with. Must be valid (at least as a subtree).
+ * @param[in] options Bitmask of 2 option flags:
+ * LYD_OPT_DESTRUCT - spend \p source in the function, otherwise \p source is left untouched,
+ * LYD_OPT_NOSIBLINGS - merge only the \p source subtree (ignore siblings), otherwise merge
+ * \p source and all its succeeding siblings (preceeding ones are still ignored!).
+ * @return 0 on success, nonzero in case of an error.
+ */
+int lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options);
+
+/**
  * @brief Insert the \p node element as child to the \p parent element. The \p node is inserted as a last child of the
  * \p parent.
  *
