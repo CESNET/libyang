@@ -205,7 +205,7 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     case LY_TYPE_UINT16:
     case LY_TYPE_UINT32:
     case LY_TYPE_UINT64:
-        if (!leaf->value_str) {
+        if (!leaf->value_str || !leaf->value_str[0]) {
             ly_print(out, "/>");
         } else {
             ly_print(out, ">");
