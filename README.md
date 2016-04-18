@@ -17,9 +17,11 @@ providing API) in C.
 * Manipulation with the instance data.
 * Support for adding default values into instance data.
 
+Current implementation covers YANG 1.0 specified by [RFC 6020](https://tools.ietf.org/html/rfc6020).
+
 ## Planned Features
 
-* parsing (and validating) data models in YANG format
+* YANG 1.1 support.
 
 ## Requirements
 
@@ -42,6 +44,7 @@ The library documentation can be generated directly from the source codes using
 Doxygen tool:
 ```
 $ make doc
+$ google-chrome ../doc/html/index.html
 ```
 
 ### Useful CMake Options
