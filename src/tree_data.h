@@ -575,9 +575,12 @@ struct lyd_node *lyd_dup(const struct lyd_node *node, int recursive);
  * so if lists are missing, an error will be returned).
  *
  * In short, this function will always try to return a fully valid data tree and will fail
- * if it is not possible.
+ * if it is not possible. Also, in some less common cases, despite both trees \p target and
+ * \p source are valid, the resulting tree may be invalid and this function will succeed.
+ * If you know there are such possibilities in your data trees or you are not sure, always
+ * validate the resulting merged \p target tree.
  *
- * @param[in] target Top-level (or a RPC output child) data tree to merge to. Must be valid.
+ * @param[in] target Top-level (or an RPC output child) data tree to merge to. Must be valid.
  * @param[in] source Data tree to merge \p target with. Must be valid (at least as a subtree).
  * @param[in] options Bitmask of 2 option flags:
  * LYD_OPT_DESTRUCT - spend \p source in the function, otherwise \p source is left untouched,

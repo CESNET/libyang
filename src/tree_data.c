@@ -949,6 +949,7 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
         trg_leaf->value = src_leaf->value;
         src_leaf->value = (lyd_val)0;
         if ((trg_leaf->value_type == LY_TYPE_INST) || (trg_leaf->value_type == LY_TYPE_LEAFREF)) {
+            /* these are, for instance, cases when the resulting data tree will definitely not be valid */
             trg_leaf->value = (lyd_val)0;
         }
     } else {
