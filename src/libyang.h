@@ -554,16 +554,26 @@ extern "C" {
  * lyd_get_node() except that only node sets are returned. This XPath conforms to the YANG specification
  * (RFC 6020 section 6.4). Some useful examples:
  *
- * - /module-name:*
- *   + get all top-level nodes of the __module-name__
- * - /module-name:container//*
- *   + get all the descendants of __container__ (excluding __container__)
- * - /module-name:container/list[key1='1'][key2='2']
- *   + get __list__ instance with __key1__ of value __1__ and __key2__ of value __2__ (this can return more __list__ instances if there are more keys than __key1__ and __key2__)
- * - /module-name:container/leaf-list[.='val']
- *   + get __leaf-list__ instance with the value __val__
- * - /module-name:container/container2/augment-module:aug-cont/aug-leaf
- *   + get __aug-leaf__, which was added to __module-name__ from an augment module __augment-module__
+ * - get all top-level nodes of the __module-name__
+ *
+ *       /module-name:*
+ *
+ * - get all the descendants of __container__ (excluding __container__)
+ *
+ *       /module-name:container//\asterisk
+ *
+ * - get __list__ instance with __key1__ of value __1__ and __key2__ of value __2__ (this can return more __list__ instances if there are more keys than __key1__ and __key2__)
+ *
+ *       /module-name:container/list[key1='1'][key2='2']
+ *
+ * - get __leaf-list__ instance with the value __val__
+ *
+ *       /module-name:container/leaf-list[.='val']
+ *
+ * - get __aug-leaf__, which was added to __module-name__ from an augment module __augment-module__
+ *
+ *       /module-name:container/container2/augment-module:aug-cont/aug-leaf
+ *
  *
  * A very small subset of this full XPath is recognized by lyd_new_path(). Basically, only a relative or absolute
  * path can be specified to identify a new data node. However, lists must be identified by all their keys and created
@@ -659,10 +669,10 @@ extern "C" {
  * error node (via ly_errpath()) are available.
  *
  * For some specific cases, a YANG schema can define error message and/or error tag (mainly for
- * use in NETCONF). If a message iss set, it is provided via ly_errmsg(). If a tag is set in schema
+ * use in NETCONF). If a message is set, it is provided via ly_errmsg(). If a tag is set in schema,
  * it is available via ly_erraptag() (if not set, the returned string is empty).
  *
- * By default, all libyang messages are printed to `stderr`. However, caller is able to set its own logging
+ * By default, all libyang messages are printed to `stderr`. However, the caller is able to set their own logging
  * callback function. In that case, instead of printing messages, libyang passes error level, message and path
  * (if any) to the caller's callback function. In case of error level, the message and path are still
  * automatically stored and available via the functions and macros described above.
