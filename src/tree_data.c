@@ -2006,6 +2006,11 @@ lyd_unlink(struct lyd_node *node)
         LY_TREE_DFS_END(node, next, iter)
     }
 
+    /* invalidate parent to make sure it will be checked in future validation */
+    if (node->parent) {
+        node->parent->validity = LYD_VAL_NOT;
+    }
+
     /* unlink from siblings */
     if (node->prev->next) {
         node->prev->next = node->next;
