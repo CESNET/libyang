@@ -4025,8 +4025,10 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
 
     if (!strcmp(yin->name, "input")) {
         inout->nodetype = LYS_INPUT;
+        inout->name = lydict_insert(module->ctx, "input", 0);
     } else if (!strcmp(yin->name, "output")) {
         inout->nodetype = LYS_OUTPUT;
+        inout->name = lydict_insert(module->ctx, "output", 0);
     } else {
         LOGINT;
         free(inout);

@@ -1135,10 +1135,7 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
         while ((sibling = lys_getnext(sibling, lys_parent(start), start_mod,
                                       LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT))) {
             /* name match */
-            if ((sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len])
-                    || ((sibling->nodetype == LYS_INPUT) && !strncmp(name, "input", nam_len) && (nam_len == 5))
-                    || ((sibling->nodetype == LYS_OUTPUT) && !strncmp(name, "output", nam_len) && (nam_len == 6))) {
-
+            if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
                 r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, &start);
                 if (r == 0) {
                     *ret = sibling;
@@ -1207,7 +1204,6 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
                                       LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
-
                 r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, &start);
                 if (r == 0) {
                     if (!(sibling->nodetype & ret_nodetype)) {
@@ -1319,10 +1315,7 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
         while ((sibling = lys_getnext(sibling, lys_parent(start), abs_start_mod, LYS_GETNEXT_WITHCHOICE
                                       | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT | LYS_GETNEXT_WITHGROUPING))) {
             /* name match */
-            if ((sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len])
-                    || ((sibling->nodetype == LYS_INPUT) && !strncmp(name, "input", nam_len) && (nam_len == 5))
-                    || ((sibling->nodetype == LYS_OUTPUT) && !strncmp(name, "output", nam_len) && (nam_len == 6))) {
-
+            if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
                 r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, &start);
                 if (r == 0) {
                     if (!(sibling->nodetype & ret_nodetype)) {
@@ -1475,9 +1468,7 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
         while ((sibling = lys_getnext(sibling, lys_parent(start), module, (data_nodeid ?
                 0 : LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT)))) {
             /* name match */
-            if ((sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len])
-                    || ((sibling->nodetype == LYS_INPUT) && !strncmp(name, "input", nam_len) && (nam_len == 5))
-                    || ((sibling->nodetype == LYS_OUTPUT) && !strncmp(name, "output", nam_len) && (nam_len == 6))) {
+            if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
 
                 /* data RPC input/output check */
                 if ((data_nodeid == 1) && sibling->parent && (sibling->parent->nodetype == LYS_OUTPUT)) {

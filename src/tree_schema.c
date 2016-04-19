@@ -1991,9 +1991,9 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
     }
 
     /* common part */
+    lydict_remove(ctx, node->name);
     if (!(node->nodetype & (LYS_INPUT | LYS_OUTPUT))) {
         free(node->features);
-        lydict_remove(ctx, node->name);
         lydict_remove(ctx, node->dsc);
         lydict_remove(ctx, node->ref);
     }

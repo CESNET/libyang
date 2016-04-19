@@ -1059,7 +1059,8 @@ struct lys_node_case {
  *
  */
 struct lys_node_rpc_inout {
-    void *fill1[3];                  /**< padding for compatibility with ::lys_node - name, dsc and ref */
+    const char *name;
+    void *fill1[2];                  /**< padding for compatibility with ::lys_node - dsc and ref */
     uint16_t fill2[1];               /**< padding for compatibility with ::lys_node - flags and nacm */
     struct lys_module *module;       /**< link to the node's data model */
 
