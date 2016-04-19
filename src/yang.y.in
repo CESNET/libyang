@@ -2829,10 +2829,16 @@ rpc_opt_stmt: @EMPTYDIR@ { if (read_all) {
      stmtsep { $$ = $1; }
 
 input_stmt: INPUT_KEYWORD optsep { if (read_all) {
-                                     if (!(actual = yang_read_node(trg, actual, NULL, LYS_INPUT, sizeof(struct lys_node_rpc_inout)))) {
+                                     s = strdup("input");
+                                     if (!s) {
+                                       LOGMEM;
+                                       YYABORT;
+                                     }
+                                     if (!(actual = yang_read_node(trg, actual, s, LYS_INPUT, sizeof(struct lys_node_rpc_inout)))) {
                                       YYABORT;
                                      }
                                      data_node = actual;
+                                     s = NULL;
                                    }
                                  }
             '{' stmtsep
@@ -2887,10 +2893,16 @@ input_output_opt_stmt: @EMPTYDIR@ { if (read_all) {
   ;
 
 output_stmt: OUTPUT_KEYWORD optsep { if (read_all) {
-                                       if (!(actual = yang_read_node(trg, actual, NULL, LYS_OUTPUT, sizeof(struct lys_node_rpc_inout)))) {
+                                       s = strdup("output");
+                                       if (!s) {
+                                         LOGMEM;
+                                         YYABORT;
+                                       }
+                                       if (!(actual = yang_read_node(trg, actual, s, LYS_OUTPUT, sizeof(struct lys_node_rpc_inout)))) {
                                         YYABORT;
                                        }
                                        data_node = actual;
+                                       s = NULL;
                                      }
                                    }
              '{' stmtsep
