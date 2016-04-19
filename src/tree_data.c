@@ -41,24 +41,70 @@
 int
 lyd_check_topmandatory(struct ly_ctx *ctx, struct lyd_node *data, int options)
 {
-    assert(ctx);
     int i;
+    struct lys_node *schema;
+    struct lyd_node *node;
 
-    /* TODO what about LYD_OPT_NOTIF, LYD_OPT_RPC and LYD_OPT_RPCREPLY ? */
+    assert(ctx);
+
     if ((options & LYD_OPT_NOSIBLINGS) || (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
         return EXIT_SUCCESS;
     }
 
-    /* LYD_OPT_DATA || LYD_OPT_CONFIG */
+    if (lys_parent(data->schema) && (lys_parent(data->schema)->nodetype != LYS_OUTPUT)) {
+        LOGERR(LY_EINVAL, "Subtree are not top-level data.");
+        return EXIT_FAILURE;
+    }
 
-    /* check for missing mandatory elements (from the top level) according to schemas in context */
-    for (i = 0; i < ctx->models.used; i++) {
-        if (!ctx->models.list[i]->data) {
-            continue;
+    if (!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_DATA | LYD_OPT_CONFIG))) {
+        LY_TREE_FOR(data, node) {
+            if (lys_parent(node->schema) || (node->schema->nodetype & (LYS_NOTIF | LYS_RPC))) {
+                LOGERR(LY_EINVAL, "Subtree includes non-data nodes (a notification, an RPC, or an RPC output).");
+                return EXIT_FAILURE;
+            }
         }
-        if (ly_check_mandatory(data, ctx->models.list[i]->data, (options & LYD_OPT_TYPEMASK) ? 0 : 1)) {
+
+        /* check for missing mandatory elements (from the top level) according to schemas in context */
+        for (i = 0; i < ctx->models.used; i++) {
+            if (!ctx->models.list[i]->data) {
+                continue;
+            }
+            if (ly_check_mandatory(data, ctx->models.list[i]->data, (options & LYD_OPT_TYPEMASK) ? 0 : 1)) {
+                return EXIT_FAILURE;
+            }
+        }
+    } else if (options & LYD_OPT_NOTIF) {
+        if (data->parent || (data->prev != data) || (data->schema->nodetype != LYS_NOTIF)) {
+            LOGERR(LY_EINVAL, "Subtree is not a single notification.");
             return EXIT_FAILURE;
         }
+        if (ly_check_mandatory(data, NULL, 1)) {
+            return EXIT_FAILURE;
+        }
+    } else if (options & LYD_OPT_RPC) {
+        if (data->parent || (data->prev != data) || (data->schema->nodetype != LYS_RPC)) {
+            LOGERR(LY_EINVAL, "Subtree is not a single RPC.");
+            return EXIT_FAILURE;
+        }
+        if (ly_check_mandatory(data, NULL, 1)) {
+            return EXIT_FAILURE;
+        }
+    } else if (options & LYD_OPT_RPCREPLY) {
+        LY_TREE_FOR(data, node) {
+            if (data->parent || (lys_parent(data->schema)->nodetype != LYS_OUTPUT)
+                    || (lys_parent(data->schema) != lys_parent(data->prev->schema))) {
+                LOGERR(LY_EINVAL, "Siblings are not one RPC output.");
+                return EXIT_FAILURE;
+            }
+        }
+
+        for (schema = data->schema; schema->prev->next; schema = schema->prev);
+        if (ly_check_mandatory(data, schema, 1)) {
+            return EXIT_FAILURE;
+        }
+    } else {
+        LOGINT;
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
