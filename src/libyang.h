@@ -552,7 +552,18 @@ extern "C" {
  * Internally, XPath evaluation is performed on \b when and \b must conditions in the schema. For that almost
  * a full XPath 1.0 evaluator was implemented. This XPath implementation is available on data trees by calling
  * lyd_get_node() except that only node sets are returned. This XPath conforms to the YANG specification
- * (RFC 6020 section 6.4).
+ * (RFC 6020 section 6.4). Some useful examples:
+ *
+ * - /module-name:*
+ *   + get all top-level nodes of the __module-name__
+ * - /module-name:container//*
+ *   + get all the descendants of __container__ (excluding __container__)
+ * - /module-name:container/list[key1='1'][key2='2']
+ *   + get __list__ instance with __key1__ of value __1__ and __key2__ of value __2__ (this can return more __list__ instances if there are more keys than __key1__ and __key2__)
+ * - /module-name:container/leaf-list[.='val']
+ *   + get __leaf-list__ instance with the value __val__
+ * - /module-name:container/container2/augment-module:aug-cont/aug-leaf
+ *   + get __aug-leaf__, which was added to __module-name__ from an augment module __augment-module__
  *
  * A very small subset of this full XPath is recognized by lyd_new_path(). Basically, only a relative or absolute
  * path can be specified to identify a new data node. However, lists must be identified by all their keys and created
