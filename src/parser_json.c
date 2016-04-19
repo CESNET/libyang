@@ -950,10 +950,12 @@ attr_repeat:
         len++;
         len += skip_ws(&data[len]);
 
-        /* if we have empty non-presence container, we can remove it */
+        /* if we have empty non-presence container, we could remove it immediately if there were no attributes of it, who knows */
         if (!(options & LYD_OPT_KEEPEMPTYCONT) && schema->nodetype == LYS_CONTAINER && !result->child &&
                 !((struct lys_node_container *)schema)->presence) {
-            goto clear;
+            if (unres_data_add(unres, result, UNRES_EMPTYCONT)) {
+                goto error;
+            }
         }
 
     } else if (schema->nodetype == LYS_LIST) {
@@ -1064,8 +1066,6 @@ attr_repeat:
 
 error:
     len = 0;
-
-clear:
     /* cleanup */
     for (i = unres->count - 1; i >= 0; i--) {
         /* remove unres items connected with the node being removed */

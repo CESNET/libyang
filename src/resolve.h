@@ -41,7 +41,8 @@ enum UNRES_ITEM {
     UNRES_LEAFREF,       /* unresolved leafref reference */
     UNRES_INSTID,        /* unresolved instance-identifier reference */
     UNRES_WHEN,          /* unresolved when condition */
-    UNRES_MUST           /* unresolved must condition */
+    UNRES_MUST,          /* unresolved must condition */
+    UNRES_EMPTYCONT      /* empty container that will get auto-deleted */
 };
 
 /**
