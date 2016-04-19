@@ -262,6 +262,9 @@ void lys_free(struct lys_module *module, void (*private_destructor)(const struct
  * Besides the mandatory statements, also min-elements and max-elements constraints in
  * lists and leaf-list are checked.
  *
+ * If \p schema is NULL, iterate over and check \p data schema children. If \p schema is set, it is iterated over
+ * its siblings.
+ *
  * @param[in] data Root node for the searching subtree. Expecting that all child instances
  * mandatory nodes were already checked. Note that the \p start node itself is not checked since it must be present.
  * @param[in] schema To check mandatory elements in empty data tree (\p data is NULL), we need
