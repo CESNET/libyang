@@ -290,7 +290,7 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
     struct lys_node *parent = NULL;
     const struct lyd_node *diter = NULL;
     struct ly_set *set = NULL;
-    unsigned int i, toplevel = stop ? 0 : 1;
+    unsigned int i, toplevel = (stop && stop->nodetype != LYS_OUTPUT) ? 0 : 1;
     uint32_t minmax, min, max;
 
     if (data) {
@@ -574,6 +574,7 @@ repeat_choice:
             break;
         case LYS_USES:
         case LYS_CASE:
+        case LYS_INPUT:
             /* go into */
             parent = siter;
             siter = siter->child;
