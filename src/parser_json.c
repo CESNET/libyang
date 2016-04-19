@@ -1161,7 +1161,7 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
     }
 
     /* check for missing top level mandatory nodes */
-    if (lyd_check_topmandatory(ctx, result, options)) {
+    if (lyd_check_topmandatory(result, ctx, NULL, options)) {
         goto error;
     }
 

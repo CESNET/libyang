@@ -375,12 +375,13 @@ int lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *un
 /**
  * @brief Check for (validate) top-level mandatory nodes of a data tree.
  *
- * @param[in] ctx libyang context.
  * @param[in] data Data tree to validate.
+ * @param[in] ctx libyang context.
+ * @param[in] rpc RPC node should be set in case options & LYD_OPT_RPCREPLY and data == NULL.
  * @param[in] options Standard @ref parseroptions.
  * @return EXIT_SUCCESS or EXIT_FAILURE.
  */
-int lyd_check_topmandatory(struct ly_ctx *ctx, struct lyd_node *data, int options);
+int lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, struct lys_node *rpc, int options);
 
 /**
  * @brief Add default values, validate the data, \p resolve unres, and finally

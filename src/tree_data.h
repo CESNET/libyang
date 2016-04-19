@@ -673,10 +673,11 @@ struct ly_set *lyd_get_node2(const struct lyd_node *data, const struct lys_node 
 /**
  * @brief Validate \p node data subtree.
  *
- * @param[in, out] node Data tree to be validated. In case the \p options does not includes #LYD_OPT_NOAUTODEL, libyang
+ * @param[in,out] node Data tree to be validated. In case the \p options does not includes #LYD_OPT_NOAUTODEL, libyang
  *                 can modify the provided tree including the root \p node.
  * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
- * @param[in] ... libyang context for the data (used only in case the \p node is NULL, so in case of checking empty data tree)
+ * @param[in] ... if \p options include #LYD_OPT_RPCREPLY then RPC schema node of the data (unsed ony when \p node is NULL),
+ *                otherwise libyang context for the data (used only in case the \p node is NULL, so in case of checking empty data tree).
  * @return 0 on success, nonzero in case of an error.
  */
 int lyd_validate(struct lyd_node **node, int options, ...);

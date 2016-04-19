@@ -559,7 +559,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     }
 
     /* check for missing top level mandatory nodes */
-    if (lyd_check_topmandatory(ctx, result, options)) {
+    if (lyd_check_topmandatory(result, ctx, NULL, options)) {
         goto error;
     }
 
