@@ -389,44 +389,6 @@ extern "C" {
  */
 
 /**
- * @page howtoxpath XPath Addressing
- *
- * Internally, XPath evaluation is performed on \b when and \b must conditions in the schema. For that almost
- * a full XPath 1.0 evaluator was implemented. This XPath implementation is available on data trees by calling
- * lyd_get_node() except that only node sets are returned. This XPath conforms to the YANG specification
- * (RFC 6020 section 6.4).
- *
- * A very small subset of this full XPath is recognized by lyd_new_path(). Basically, only a relative or absolute
- * path can be specified to identify a new data node. However, lists must be identified by all their keys and created
- * with all of them, so for those cases predicates are allowed. Predicates must be ordered the way the keys are ordered
- * and all the keys must be specified. Every predicate includes a single key with its value. These paths are valid XPath
- * expressions. Example:
- *
- * - /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision='']/submodules
- *
- * Almost the same XPath is accepted by ly_ctx_get_node(). The difference is that it is not used on data, but schema,
- * which means there are no key values and only one node matches one path. In effect, lists do not have to have any
- * predicates. If they do, they do not need to have all the keys specified and if values are included, they are ignored.
- * Nevertheless, any such expression is still a valid XPath, but can return more nodes if executed on a data tree.
- * Examples (all returning the same node):
- *
- * - /ietf-yang-library:modules-state/module/submodules
- * - /ietf-yang-library:modules-state/module[name]/submodules
- * - /ietf-yang-library:modules-state/module[name][revision]/submodules
- * - /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision]/submodules
- *
- * Also, choice, case, input, and output nodes need to be specified and cannot be skipped in schema XPaths. Use
- * ly_ctx_get_node2() if you want to search based on a data XPath, the same format as what lyd_new_path() uses.
- *
- * Functions List
- * --------------
- * - lyd_get_node()
- * - lyd_new_path()
- * - ly_ctx_get_node()
- * - ly_ctx_get_node2()
- */
-
-/**
  * @page howtodataparsers Parsing Data
  *
  * Data parser allows to read instances from a specific format. libyang supports the following data formats:
@@ -585,10 +547,52 @@ extern "C" {
  */
 
 /**
+ * @page howtoxpath XPath Addressing
+ *
+ * Internally, XPath evaluation is performed on \b when and \b must conditions in the schema. For that almost
+ * a full XPath 1.0 evaluator was implemented. This XPath implementation is available on data trees by calling
+ * lyd_get_node() except that only node sets are returned. This XPath conforms to the YANG specification
+ * (RFC 6020 section 6.4).
+ *
+ * A very small subset of this full XPath is recognized by lyd_new_path(). Basically, only a relative or absolute
+ * path can be specified to identify a new data node. However, lists must be identified by all their keys and created
+ * with all of them, so for those cases predicates are allowed. Predicates must be ordered the way the keys are ordered
+ * and all the keys must be specified. Every predicate includes a single key with its value. These paths are valid XPath
+ * expressions. Example:
+ *
+ *     /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision='']/submodules
+ *
+ * Almost the same XPath is accepted by ly_ctx_get_node(). The difference is that it is not used on data, but schema,
+ * which means there are no key values and only one node matches one path. In effect, lists do not have to have any
+ * predicates. If they do, they do not need to have all the keys specified and if values are included, they are ignored.
+ * Nevertheless, any such expression is still a valid XPath, but can return more nodes if executed on a data tree.
+ * Examples (all returning the same node):
+ *
+ *     /ietf-yang-library:modules-state/module/submodules
+ *     /ietf-yang-library:modules-state/module[name]/submodules
+ *     /ietf-yang-library:modules-state/module[name][revision]/submodules
+ *     /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision]/submodules
+ *
+ * Also, `choice`, `case`, `input`, and `output` nodes need to be specified and cannot be skipped in schema XPaths. Use
+ * ly_ctx_get_node2() if you want to search based on a data XPath, the same format as what lyd_new_path() uses.
+ *
+ * Also note, that in all cases the node's prefix is specified as the name of the appropriate YANG schema. Any node
+ * can be prefixed by the module name. However, if the prefix is omitted, the module name is inherited from the previous
+ * (parent) node. It means, that the first node in the path is always supposed to have a prefix.
+ *
+ * Functions List
+ * --------------
+ * - lyd_get_node()
+ * - lyd_new_path()
+ * - ly_ctx_get_node()
+ * - ly_ctx_get_node2()
+ */
+
+/**
  * @page howtoxml libyang XML Support
  *
- * libyang XML parser is able to parse XML documents used to represent data modeled by YANG. Therefore, there are
- * some limitations in comparison to a full-featured XML parsers:
+ * libyang XML parser is able to parse XML documents. The main purpose is to load data modeled by YANG. However, it can
+ * be used as a standalone XML parser with the following limitations in comparison to a full-featured XML parsers:
  * - comments are ignored
  * - Doctype declaration is ignored
  * - CData sections are ignored
@@ -598,7 +602,7 @@ extern "C" {
  * you wish and dump the tree to an output. The only "write" functions are lyxml_free() and lyxml_unlink() to remove
  * part of the tree or to unlink (separate) a subtree.
  *
- * XML parser is also used internally by libyang for parsing YIN schemas and data instances in XML format.
+ * XML parser is used internally by libyang for parsing YIN schemas and data instances in XML format.
  *
  * \note API for this group of functions is described in the [XML Parser module](@ref xmlparser).
  *
@@ -619,9 +623,9 @@ extern "C" {
 /**
  * @page howtothreads libyang in Threads
  *
- * libyang can be used in multithreaded application keeping in mind the following rules:
+ * libyang can be used in multithreaded applications keeping in mind the following rules:
  * - libyang context manipulation (adding new schemas) is not thread safe and it is supposed to be done in a main
- *   thread before any other work with context, schemas or data instances. And destroying the context is supposed to
+ *   thread before any other work with context, schemas or data instances. Destroying the context is supposed to
  *   be done when no other thread accesses context, schemas nor data trees
  * - Data parser (\b lyd_parse*() functions) can be used simultaneously in multiple threads (also the returned
  *   #ly_errno is thread safe).
@@ -637,9 +641,20 @@ extern "C" {
  * changed by the ly_verb() function. By default, the verbosity level is
  * set to #LY_LLERR value.
  *
- * In case the logger has an error message (LY_LLERR) to print, also an error
- * code is recorded in extern ly_errno variable. Possible values are of type
- * ::LY_ERR.
+ * When an error is encountered, the error message and error number are stored for
+ * later use. Caller is able to access the last error message via ly_errmsg() and the
+ * corresponding last error code via #ly_errno. If that was a validation error (#ly_errno
+ * is set to #LY_EVALID), also validation error code (via #ly_vecode) and path to the
+ * error node (via ly_errpath()) are available.
+ *
+ * For some specific cases, a YANG schema can define error message and/or error tag (mainly for
+ * use in NETCONF). If a message iss set, it is provided via ly_errmsg(). If a tag is set in schema
+ * it is available via ly_erraptag() (if not set, the returned string is empty).
+ *
+ * By default, all libyang messages are printed to `stderr`. However, caller is able to set its own logging
+ * callback function. In that case, instead of printing messages, libyang passes error level, message and path
+ * (if any) to the caller's callback function. In case of error level, the message and path are still
+ * automatically stored and available via the functions and macros described above.
  *
  * \note API for this group of functions is described in the [logger module](@ref logger).
  *
@@ -648,6 +663,11 @@ extern "C" {
  * - ly_verb()
  * - ly_set_log_clb()
  * - ly_get_log_clb()
+ * - ly_errmsg()
+ * - ly_errpath()
+ * - ly_errapptag()
+ * - #ly_errno
+ * - #ly_vecode
  */
 
 /**
@@ -1165,7 +1185,7 @@ LY_VECODE *ly_vecode_location(void);
  * Sometimes, the error message is extended with path of the element where is the problem.
  * The path is available via ly_errpath().
  *
- * @return Text of the last error message.
+ * @return Text of the last error message, empty string if there is no error.
  */
 const char *ly_errmsg(void);
 
@@ -1179,7 +1199,7 @@ const char *ly_errmsg(void);
  * or XML data, the path can be just XML path. In such a case, the corresponding
  * ly_vecode (value 1-3) is set.
  *
- * @return Path of the error element.
+ * @return Path of the error element, empty string if error path does not apply to the last error.
  */
 const char *ly_errpath(void);
 
@@ -1190,7 +1210,7 @@ const char *ly_errpath(void);
  * The app-tag always corresponds to the error message available via ly_errmsg(), so
  * whenever a subsequent error message is printed, the app-tag is erased or rewritten.
  *
- * @return Error-app-tag of the last error.
+ * @return Error-app-tag of the last error, empty string if the error-app-tag does not apply to the last error.
  */
 const char *ly_errapptag(void);
 
