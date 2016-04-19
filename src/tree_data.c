@@ -1132,7 +1132,7 @@ lyd_merge_siblings(struct lyd_node *target, struct lyd_node *source)
 API int
 lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options)
 {
-    struct lyd_node *node, *node2, *trg_merge_start, *src_merge_start = NULL;
+    struct lyd_node *node = NULL, *node2, *trg_merge_start, *src_merge_start = NULL;
     struct lys_node *src_snode;
     int i, src_depth, depth, first_iter, ret;
 
