@@ -161,8 +161,7 @@ lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr 
     return result;
 }
 
-/* copy_ns: 0 - set invalid namespaces to NULL, 1 - copy them into this subtree */
-static void
+void
 lyxml_correct_elem_ns(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns, int correct_attrs)
 {
     const struct lyxml_ns *tmp_ns;
@@ -895,6 +894,7 @@ process:
     if (!memcmp("/>", c, 2)) {
         /* we are done, it was EmptyElemTag */
         c += 2;
+        elem->content = lydict_insert(ctx, "", 0);
         closed_flag = 1;
     } else if (*c == '>') {
         /* process element content */
@@ -936,7 +936,7 @@ process:
                     uc = lyxml_getutf8(e, &size);
                 }
                 if (!*e) {
-                    LOGVAL(LYE_EOF, LY_VLOG_XML, elem);
+                    LOGVAL(LYE_EOF, LY_VLOG_NONE, NULL);
                     goto error;
                 }
 
@@ -965,6 +965,10 @@ process:
                     goto error;
                 }
                 c++;
+                if (!(elem->flags & LYXML_ELEM_MIXED) && !elem->content) {
+                    /* there was no content, but we don't want NULL (only if mixed content) */
+                    elem->content = lydict_insert(ctx, "", 0);
+                }
                 closed_flag = 1;
                 break;
 
@@ -1202,14 +1206,14 @@ lyxml_parse_path(struct ly_ctx *ctx, const char *filename, int options)
         LOGERR(LY_EINVAL, "%s: Invalid parameter, input file is not a regular file", __func__);
         goto error;
     }
-    addr = mmap(NULL, sb.st_size + 1, PROT_READ, MAP_PRIVATE, fd, 0);
+    addr = mmap(NULL, sb.st_size + 2, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         LOGERR(LY_EMEM,"Map file into memory failed (%s()).", __func__);
         goto error;
     }
 
     elem = lyxml_parse_mem(ctx, addr, options);
-    munmap(addr, sb.st_size);
+    munmap(addr, sb.st_size +2);
     close(fd);
 
     return elem;
@@ -1318,10 +1322,10 @@ dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options)
         return size;
     }
 
-    if (!e->child && !e->content) {
+    if (!e->child && (!e->content || !e->content[0])) {
         size += ly_print(out, "/>%s", delim);
         return size;
-    } else if (e->content) {
+    } else if (e->content && e->content[0]) {
         ly_print(out, ">");
         size++;
 

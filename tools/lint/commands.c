@@ -63,13 +63,12 @@ cmd_data_help(void)
     printf("\tedit       - LYD_OPT_EDIT\n");
     printf("\trpc        - LYD_OPT_RPC\n");
     /* printf("\trpcreply   - LYD_OPT_RPCREPLY\n"); */
-    printf("\tnotif      - LYD_OPT_NOTIF\n");
-    printf("\tfilter     - LYD_OPT_FILTER\n\n");
-    printf("Accepted DEFAULTs:\n");
+    printf("\tnotif      - LYD_OPT_NOTIF\n\n");
+    printf("Accepted DEFAULTS:\n");
     printf("\tall        - add missing default nodes\n");
-    printf("\tall-tagged - add missing default nodes and mark all default nodes with attribute.\n");
-    printf("\trim        - remove all nodes with default value\n");
-    printf("\timplicit-tagged    - add missing nodes and marke them with attribute\n");
+    printf("\tall-tagged - add missing default nodes and mark all the default nodes with the attribute.\n");
+    printf("\ttrim       - remove all nodes with a default value\n");
+    printf("\timplicit-tagged    - add missing nodes and mark them with the attribute\n");
 }
 
 void
@@ -177,11 +176,10 @@ cmd_add(const char *arg)
 int
 cmd_print(const char *arg)
 {
-    int c, i, argc, option_index, ret = 1;
+    int c, argc, option_index, ret = 1;
     char **argv = NULL, *ptr, *target_node = NULL, *model_name, *revision;
-    const char **names, *out_path = NULL;
-    const struct lys_module *model;
-    const struct lys_submodule *submod;
+    const char *out_path = NULL;
+    const struct lys_module *module;
     LYS_OUTFORMAT format = LYS_OUT_TREE;
     FILE *output = stdout;
     static struct option long_options[] = {
@@ -247,11 +245,11 @@ cmd_print(const char *arg)
 
     /* file name */
     if (optind == argc) {
-        fprintf(stderr, "Missing the model name.\n");
+        fprintf(stderr, "Missing the module name.\n");
         goto cleanup;
     }
 
-    /* model, revision */
+    /* module, revision */
     model_name = argv[optind];
     revision = NULL;
     if (strchr(model_name, '@')) {
@@ -260,36 +258,17 @@ cmd_print(const char *arg)
         ++revision;
     }
 
-    model = ly_ctx_get_module(ctx, model_name, revision);
-    if (model == NULL) {
-        /* not a model, try to find it as a submodel */
-        names = ly_ctx_get_module_names(ctx);
-        for (i = 0; names[i]; i++) {
-            /* go through all main modules */
-            for (model = ly_ctx_get_module(ctx, names[i], NULL); model; model = ly_ctx_get_module_older(ctx, model)) {
-                /* and all its submodules */
-                submod = ly_ctx_get_submodule2(model, model_name);
-                if (submod && revision) {
-                    /* if revision was also specified, check that we have found the correct revision */
-                    if (submod->rev_size && !strcmp(model->rev[0].date, revision)) {
-                        break;
-                    }
-                }
-                submod = NULL;
-            }
-            if (submod) {
-                model = (const struct lys_module *)submod;
-                break;
-            }
-        }
-        free(names);
+    module = ly_ctx_get_module(ctx, model_name, revision);
+    if (!module) {
+        /* not a module, try to find it as a submodule */
+        module = (const struct lys_module *)ly_ctx_get_submodule(ctx, NULL, NULL, model_name, revision);
     }
 
-    if (model == NULL) {
+    if (!module) {
         if (revision) {
-            fprintf(stderr, "No model \"%s\" in revision %s found.\n", model_name, revision);
+            fprintf(stderr, "No (sub)module \"%s\" in revision %s found.\n", model_name, revision);
         } else {
-            fprintf(stderr, "No model \"%s\" found.\n", model_name);
+            fprintf(stderr, "No (sub)module \"%s\" found.\n", model_name);
         }
         goto cleanup;
     }
@@ -302,7 +281,7 @@ cmd_print(const char *arg)
         }
     }
 
-    ret = lys_print_file(output, model, format, target_node);
+    ret = lys_print_file(output, module, format, target_node);
 
 cleanup:
     free(*argv);
@@ -412,8 +391,6 @@ cmd_data(const char *arg)
              */
             } else if (!strcmp(optarg, "notif")) {
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
-            } else if (!strcmp(optarg, "filter")) {
-                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_FILTER;
             } else {
                 fprintf(stderr, "Invalid parser option \"%s\".\n", optarg);
                 cmd_data_help();
@@ -485,9 +462,6 @@ cmd_data(const char *arg)
         } else if (!strcmp(xml->name, "notification")) {
             fprintf(stdout, "Parsing %s as <notification> data.\n", argv[optind]);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
-        } else if (!strcmp(xml->name, "filter")) {
-            fprintf(stdout, "Parsing %s as subtree filter data.\n", argv[optind]);
-            options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_FILTER;
         } else {
             fprintf(stderr, "Invalid top-level element for automatic data type recognition.\n");
             lyxml_free(ctx, xml);
@@ -538,7 +512,8 @@ cmd_xpath(const char *arg)
     char **argv = NULL, *ptr, *expr = NULL;
     unsigned int i, j;
     struct lyd_node *data = NULL, *node;
-    struct ly_set *set, *keys;
+    struct lyd_node_leaf_list *key;
+    struct ly_set *set;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"expr", required_argument, 0, 'e'},
@@ -651,26 +626,22 @@ cmd_xpath(const char *arg)
             if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
                 printf(" (val: %s)", ((struct lyd_node_leaf_list *)node)->value_str);
             } else if (node->schema->nodetype == LYS_LIST) {
-                keys = lyd_get_list_keys(node);
-                if (keys && keys->number) {
-                    printf(" (");
-                    for (j = 0; j < keys->number; ++j) {
-                        if (j) {
-                            printf(" ");
-                        }
-                        printf("\"%s\": %s", keys->set.d[j]->schema->name,
-                               ((struct lyd_node_leaf_list *)keys->set.d[j])->value_str);
+                key = (struct lyd_node_leaf_list *)node->child;
+                printf(" (");
+                for (j = 0; j < ((struct lys_node_list *)node->schema)->keys_size; ++j) {
+                    if (j) {
+                        printf(" ");
                     }
-                    printf(")");
+                    printf("\"%s\": %s", key->schema->name, key->value_str);
+                    key = (struct lyd_node_leaf_list *)key->next;
                 }
-                ly_set_free(keys);
+                printf(")");
             }
             printf("\n");
         }
     }
     printf("\n");
 
-    ly_set_free(set);
     ret = 0;
 
 cleanup:
@@ -823,7 +794,7 @@ cmd_feature(const char *arg)
     char **argv = NULL, *ptr, *model_name, *revision, *feat_names = NULL;
     const char **names;
     uint8_t *states;
-    const struct lys_module *model;
+    const struct lys_module *module;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"enable", required_argument, 0, 'e'},
@@ -876,9 +847,9 @@ cmd_feature(const char *arg)
         }
     }
 
-    /* model name */
+    /* module name */
     if (optind == argc) {
-        fprintf(stderr, "Missing the model name.\n");
+        fprintf(stderr, "Missing the module name.\n");
         goto cleanup;
     }
 
@@ -890,34 +861,25 @@ cmd_feature(const char *arg)
         ++revision;
     }
 
-    model = ly_ctx_get_module(ctx, model_name, revision);
-    if (model == NULL) {
-        names = ly_ctx_get_module_names(ctx);
-        for (i = 0; names[i]; i++) {
-            if (!model) {
-                model = (struct lys_module *)ly_ctx_get_submodule(ctx, names[i], NULL, model_name);
-                if (model && revision) {
-                    if (!model->rev_size || strcmp(model->rev[0].date, revision)) {
-                        model = NULL;
-                    }
-                }
-            }
-        }
-        free(names);
+    module = ly_ctx_get_module(ctx, model_name, revision);
+    if (!module) {
+        /* not a module, try to find it as a submodule */
+        module = (const struct lys_module *)ly_ctx_get_submodule(ctx, NULL, NULL, model_name, revision);
     }
-    if (model == NULL) {
+
+    if (module == NULL) {
         if (revision) {
-            fprintf(stderr, "No model \"%s\" in revision %s found.\n", model_name, revision);
+            fprintf(stderr, "No (sub)module \"%s\" in revision %s found.\n", model_name, revision);
         } else {
-            fprintf(stderr, "No model \"%s\" found.\n", model_name);
+            fprintf(stderr, "No (sub)module \"%s\" found.\n", model_name);
         }
         goto cleanup;
     }
 
     if (!task) {
-        printf("%s features:\n", model->name);
+        printf("%s features:\n", module->name);
 
-        names = lys_features_list(model, &states);
+        names = lys_features_list(module, &states);
 
         /* get the max len */
         max_len = 0;
@@ -937,8 +899,8 @@ cmd_feature(const char *arg)
     } else {
         feat_names = strtok(feat_names, ",");
         while (feat_names) {
-            if (((task == 1) && lys_features_enable(model, feat_names))
-                    || ((task == 2) && lys_features_disable(model, feat_names))) {
+            if (((task == 1) && lys_features_enable(module, feat_names))
+                    || ((task == 2) && lys_features_disable(module, feat_names))) {
                 fprintf(stderr, "Feature \"%s\" not found.\n", feat_names);
                 ret = 1;
             }

@@ -71,31 +71,28 @@ last_is_opt(const char *hint)
 static void
 get_model_completion(const char *hint, char ***matches, unsigned int *match_count)
 {
-    int i, j;
-    const char **names, **sub_names;
+    int i;
+    uint32_t idx = 0;
+    const struct lys_module *module;
 
     *match_count = 0;
     *matches = NULL;
 
-    names = ly_ctx_get_module_names(ctx);
-    for (i = 0; names[i]; ++i) {
-        if (!strncmp(hint, names[i], strlen(hint))) {
+    while ((module = ly_ctx_get_module_iter(ctx, &idx))) {
+        if (!strncmp(hint, module->name, strlen(hint))) {
             ++(*match_count);
             *matches = realloc(*matches, *match_count * sizeof **matches);
-            (*matches)[*match_count-1] = strdup(names[i]);
+            (*matches)[*match_count-1] = strdup(module->name);
         }
 
-        sub_names = ly_ctx_get_submodule_names(ctx, names[i]);
-        for (j = 0; sub_names[j]; ++j) {
-            if (!strncmp(hint, sub_names[j], strlen(hint))) {
+        for (i = 0; i < module->inc_size; ++i) {
+            if (!strncmp(hint, module->inc[i].submodule->name, strlen(hint))) {
                 ++(*match_count);
                 *matches = realloc(*matches, *match_count * sizeof **matches);
-                (*matches)[*match_count-1] = strdup(sub_names[j]);
+                (*matches)[*match_count-1] = strdup(module->inc[i].submodule->name);
             }
         }
-        free(sub_names);
     }
-    free(names);
 }
 
 void

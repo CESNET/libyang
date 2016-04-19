@@ -60,6 +60,9 @@
  */
 int lyxml_add_child(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_elem *child);
 
+/* copy_ns: 0 - set invalid namespaces to NULL, 1 - copy them into this subtree */
+void lyxml_correct_elem_ns(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns, int correct_attrs);
+
 struct lyxml_elem *lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem,
                                   struct lyxml_elem *parent, int recursive);
 

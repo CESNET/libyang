@@ -198,7 +198,7 @@ static void
 yin_print_snode_common2(struct lyout *out, int level, const struct lys_node *node)
 {
     if (node->parent) {
-        if ((node->parent->flags & LYS_CONFIG_MASK) != (node->flags & LYS_CONFIG_MASK)) {
+        if (node->flags & LYS_CONFIG_SET) {
             /* print config when it differs from the parent ... */
             if (node->flags & LYS_CONFIG_W) {
                 yin_print_open(out, level, "config", "value", "true", 1);
@@ -556,10 +556,10 @@ yin_print_refine(struct lyout *out, int level, const struct lys_module *module, 
             yin_print_open(out, level, "presence", "value", refine->mod.presence, 1);
         }
     } else if (refine->target_type & (LYS_LIST | LYS_LEAFLIST)) {
-        if (refine->flags & 0x04) {
+        if (refine->flags & LYS_RFN_MINSET) {
             yin_print_unsigned(out, level, "min-elements", "value", refine->mod.list.min);
         }
-        if (refine->flags & 0x08) {
+        if (refine->flags & LYS_RFN_MAXSET) {
             if (refine->mod.list.max) {
                 yin_print_unsigned(out, level, "max-elements", "value", refine->mod.list.max);
             } else {

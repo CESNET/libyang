@@ -32,11 +32,11 @@
 /* libyang errno */
 LY_ERR ly_errno_int = LY_EINT;
 LY_VECODE ly_vecode_unkn = LYVE_SUCCESS;
-uint8_t ly_vlog_hide_def = 0;
+uint8_t ly_vlog_hide_def;
 static pthread_once_t ly_err_once = PTHREAD_ONCE_INIT;
 static pthread_key_t ly_err_key;
 #ifdef __linux__
-struct ly_err ly_err_main = {LY_SUCCESS, LYVE_SUCCESS, 0, 0, 0, {0}, {0}, {0}};
+struct ly_err ly_err_main = {LY_SUCCESS, LYVE_SUCCESS, 0, 0, 0, NULL + 1, {0}, {0}, {0}, {0}};
 #endif
 
 static void
@@ -83,6 +83,7 @@ ly_err_location(void)
         {
 #endif /* __linux__ */
             e = calloc(1, sizeof *e);
+            e->path_obj = NULL + 1; /* hack - invalid address as an initial value */
         }
         pthread_setspecific(ly_err_key, e);
     }
@@ -136,6 +137,18 @@ ly_errpath(void)
         return NULL;
     }
     return &e->path[e->path_index];
+}
+
+API const char *
+ly_errapptag(void)
+{
+    struct ly_err *e;
+
+    e = ly_err_location();
+    if (!e) {
+        return NULL;
+    }
+    return e->apptag;
 }
 
 uint8_t *
@@ -437,7 +450,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
         rc = parse_identifier(id);
         if (rc < id_len) {
             if (log) {
-                LOGVAL(LYE_INCHAR, LY_VLOG_XML, xml, id[rc], &id[rc]);
+                LOGVAL(LYE_XML_INCHAR, LY_VLOG_XML, xml, id[rc], &id[rc]);
             }
             free(out);
             return NULL;
@@ -456,6 +469,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
         free(prefix);
         if (!ns) {
             if (log) {
+                LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "namespace prexif");
                 LOGVAL(LYE_SPEC, LY_VLOG_XML, xml,
                        "XML namespace with prefix \"%.*s\" not defined.", id_len, id);
             }
@@ -465,6 +479,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
         mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
         if (!mod) {
             if (log) {
+                LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "module namespace");
                 LOGVAL(LYE_SPEC, LY_VLOG_XML, xml,
                        "Module with the namespace \"%s\" could not be found.", ns->value);
             }

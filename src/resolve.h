@@ -84,6 +84,7 @@ struct len_ran_intv {
         } fval;
     } value;
 
+    struct lys_type *type;     /* just to be able to get to optional error-message and/or error-app-tag */
     struct len_ran_intv *next;
 };
 
@@ -101,20 +102,20 @@ int resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *sta
                                   const struct lys_node **ret);
 
 int resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *start, int ret_nodetype,
-                                     const struct lys_node **ret);
+                                     int check_shorthand, int no_innerlist, const struct lys_node **ret);
 
 int resolve_choice_default_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_node **ret);
 
 int resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *module, int ret_nodetype,
                                    const struct lys_node **ret);
 
-const struct lys_node *resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start);
+const struct lys_node *resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start,
+                                                  int data_nodeid);
 
 struct lyd_node *resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, struct lyd_node *start,
                                                   int options, int *parsed);
 
-int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, int superior_restr,
-                             struct len_ran_intv **local_intv);
+int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct len_ran_intv **ret);
 
 int resolve_superior_type(const char *name, const char *prefix, const struct lys_module *module,
                           const struct lys_node *parent, struct lys_tpdf **ret);

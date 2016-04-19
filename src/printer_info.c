@@ -96,7 +96,7 @@ info_print_snode(struct lyout *out, const struct lys_node *parent, const struct 
 }
 
 static void
-info_print_flags(struct lyout *out, uint8_t flags, uint8_t mask, int is_list)
+info_print_flags(struct lyout *out, uint16_t flags, uint16_t mask, int is_list)
 {
     if (mask & LYS_CONFIG_MASK) {
         ly_print(out, "%-*s", INDENT_LEN, "Config: ");
@@ -693,7 +693,7 @@ info_print_typedef_detail(struct lyout *outf, const struct lys_tpdf *tpdf)
 static void
 info_print_ident_detail(struct lyout *out, const struct lys_ident *ident)
 {
-    struct lys_ident_der *der;
+    int i;
 
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Identity: ", ident->name);
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Module: ", ident->module->name);
@@ -704,10 +704,8 @@ info_print_ident_detail(struct lyout *out, const struct lys_ident *ident)
 
     ly_print(out, "%-*s", INDENT_LEN, "Derived: ");
     if (ident->der) {
-        der = ident->der;
-        ly_print(out, "%s\n", der->ident->name);
-        for (der = der->next; der; der = der->next) {
-            ly_print(out, "%*s%s\n", INDENT_LEN, "", der->ident->name);
+        for (i = 0; ident->der[i]; i++) {
+            ly_print(out, "%*s%s\n", i ? INDENT_LEN : 0, "", ident->der[i]->name);
         }
     } else {
         ly_print(out, "\n");
@@ -1091,7 +1089,7 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
         /* find the node in the grouping */
         if (grouping_target) {
             rc = resolve_descendant_schema_nodeid(grouping_target, target->child, LYS_NO_RPC_NOTIF_NODE,
-                                                  (const struct lys_node **)&target);
+                                                  1, 0, (const struct lys_node **)&target);
             if (rc || !target) {
                 ly_print(out, "Grouping %s child \"%s\" not found.\n", target_node + 9, grouping_target);
                 return EXIT_FAILURE;

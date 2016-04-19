@@ -33,58 +33,67 @@
 
 void xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int toplevel);
 
+struct mlist {
+    struct mlist *next;
+    struct lys_module *module;
+} *mlist = NULL, *mlist_new;
+
+static int
+modlist_add(struct mlist **mlist, const struct lys_module *mod)
+{
+    struct mlist *iter;
+
+    for (iter = *mlist; iter; iter = iter->next) {
+        if (mod == iter->module) {
+            break;
+        }
+    }
+
+    if (!iter) {
+        iter = malloc(sizeof *iter);
+        if (!iter) {
+            LOGMEM;
+            return EXIT_FAILURE;
+        }
+        iter->next = *mlist;
+        iter->module = (struct lys_module *)mod;
+        *mlist = iter;
+    }
+
+    return EXIT_SUCCESS;
+}
+
 static void
 xml_print_ns(struct lyout *out, const struct lyd_node *node)
 {
     struct lyd_node *next, *cur, *node2;
     struct lyd_attr *attr;
-    struct mlist {
-        struct mlist *next;
-        struct lys_module *module;
-    } *mlist = NULL, *mlist_new;
+    const struct lys_module *wdmod = NULL;
+    struct mlist *mlist = NULL, *miter;
 
     assert(out);
     assert(node);
 
     for (attr = node->attr; attr; attr = attr->next) {
-        for (mlist_new = mlist; mlist_new; mlist_new = mlist_new->next) {
-            if (attr->module == mlist_new->module) {
-                break;
-            }
-        }
-
-        if (!mlist_new) {
-            mlist_new = malloc(sizeof *mlist_new);
-            if (!mlist_new) {
-                LOGMEM;
-                goto print;
-            }
-            mlist_new->next = mlist;
-            mlist_new->module = attr->module;
-            mlist = mlist_new;
+        if (modlist_add(&mlist, wdmod)) {
+            goto print;
         }
     }
 
     if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
-        node2 = (struct lyd_node *)node;
+        /* get with-defaults module */
+        wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
+
         LY_TREE_FOR(node->child, node2) {
             LY_TREE_DFS_BEGIN(node2, next, cur) {
-                for (attr = cur->attr; attr; attr = attr->next) {
-                    for (mlist_new = mlist; mlist_new; mlist_new = mlist_new->next) {
-                        if (attr->module == mlist_new->module) {
-                            break;
-                        }
+                if (cur->dflt && wdmod) {
+                    if (modlist_add(&mlist, wdmod)) {
+                        goto print;
                     }
-
-                    if (!mlist_new) {
-                        mlist_new = malloc(sizeof *mlist_new);
-                        if (!mlist_new) {
-                            LOGMEM;
-                            goto print;
-                        }
-                        mlist_new->next = mlist;
-                        mlist_new->module = attr->module;
-                        mlist = mlist_new;
+                }
+                for (attr = cur->attr; attr; attr = attr->next) {
+                    if (modlist_add(&mlist, attr->module)) {
+                        goto print;
                     }
                 }
             LY_TREE_DFS_END(node2, next, cur)}
@@ -94,11 +103,11 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node)
 print:
     /* print used namespaces */
     while (mlist) {
-        mlist_new = mlist;
+        miter = mlist;
         mlist = mlist->next;
 
-        ly_print(out, " xmlns:%s=\"%s\"", mlist_new->module->prefix, mlist_new->module->ns);
-        free(mlist_new);
+        ly_print(out, " xmlns:%s=\"%s\"", miter->module->prefix, miter->module->ns);
+        free(miter);
     }
 }
 
@@ -110,7 +119,17 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node)
     const char *xml_expr;
     uint32_t ns_count, i;
     int rpc_filter = 0;
+    const struct lys_module *wdmod = NULL;
 
+    /* with-defaults */
+    if (node->dflt) {
+        /* get with-defaults module */
+        wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
+        if (wdmod) {
+            /* print attribute only if context include with-defaults schema */
+            ly_print(out, " %s:default=\"true\"", wdmod->prefix);
+        }
+    }
     /* technically, check for the extension get-filter-element-attributes from ietf-netconf */
     if (!strcmp(node->schema->name, "filter")
             && (!strcmp(node->schema->module->name, "ietf-netconf") || !strcmp(node->schema->module->name, "notifications"))) {
@@ -186,7 +205,7 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     case LY_TYPE_UINT16:
     case LY_TYPE_UINT32:
     case LY_TYPE_UINT64:
-        if (!leaf->value_str) {
+        if (!leaf->value_str || !leaf->value_str[0]) {
             ly_print(out, "/>");
         } else {
             ly_print(out, ">");
@@ -335,17 +354,15 @@ xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int 
     xml_print_attrs(out, node);
     ly_print(out, ">");
 
-    if (axml->value) {
-        /* print content */
-        if (axml->value->content) {
-            ly_print(out, "%s", axml->value->content);
-        }
-
-        /* print children */
-        if (axml->value->child) {
-            lyxml_print_mem(&buf, axml->value->child, LYXML_PRINT_FORMAT | LYXML_PRINT_SIBLINGS);
+    if (axml->xml_struct) {
+        if (axml->value.xml) {
+            lyxml_print_mem(&buf, axml->value.xml, LYXML_PRINT_FORMAT | LYXML_PRINT_SIBLINGS);
             ly_print(out, "%*s%s", LEVEL, INDENT, buf);
             free(buf);
+        }
+    } else {
+        if (axml->value.str) {
+            ly_print(out, "%s", axml->value.str);
         }
     }
 

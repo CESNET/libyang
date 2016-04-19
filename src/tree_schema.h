@@ -96,7 +96,8 @@ extern "C" {
  * to the #LY_TREE_DFS_BEGIN - they always have to be used together.
  *
  * Works for all types of nodes despite it is data or schema tree, but all the
- * parameters must be pointers to the same type. Use the same parameters for
+ * parameters must be pointers to the same type - basic type of the tree (struct
+ * lys_node*, struct lyd_node* or struct lyxml_elem*). Use the same parameters for
  * #LY_TREE_DFS_BEGIN and #LY_TREE_DFS_END.
  *
  * Use with closing curly bracket '}' after the macro.
@@ -109,8 +110,13 @@ extern "C" {
     /* select element for the next run - children first */                    \
     (NEXT) = (ELEM)->child;                                                   \
     if (sizeof(typeof(*(START))) == sizeof(struct lyd_node)) {                \
-        /* child exception for lyd_node_leaf and lyd_node_leaflist */         \
+        /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) { \
+            (NEXT) = NULL;                                                    \
+        }                                                                     \
+    } else if (sizeof(typeof(*(START))) == sizeof(struct lys_node)) {         \
+        /* child exception for leafs, leaflists and anyxml without children */\
+        if (((struct lys_node *)(ELEM))->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) { \
             (NEXT) = NULL;                                                    \
         }                                                                     \
     }                                                                         \
@@ -133,27 +139,12 @@ extern "C" {
         }                                                                     \
         /* no siblings, go back through parents */                            \
         if (sizeof(typeof(*(START))) == sizeof(struct lys_node)) {            \
-            /* lys_node_augment only */                                       \
-            if ((ELEM)->parent && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) { \
-                if ((START)->parent && (((struct lys_node *)(START)->parent)->nodetype == LYS_AUGMENT)) { \
-                    /* lys_node prev is actually lys_node_augment target */   \
-                    if ((ELEM)->parent->prev == (START)->parent->prev) {      \
-                        break;                                                \
-                    }                                                         \
-                } else {                                                      \
-                    if ((ELEM)->parent->prev == (START)->parent) {            \
-                        break;                                                \
-                    }                                                         \
-                }                                                             \
-            } else {                                                          \
-                if ((START)->parent && (((struct lys_node *)(START)->parent)->nodetype == LYS_AUGMENT)) { \
-                    if ((ELEM)->parent == (START)->parent->prev) {            \
-                        break;                                                \
-                    }                                                         \
-                } /* else covered just below */                               \
+            /* due to possible augments */                                    \
+            if (lys_parent((struct lys_node *)(ELEM)) == lys_parent((struct lys_node *)(START))) { \
+                /* we are done, no next element to process */                 \
+                break;                                                        \
             }                                                                 \
-        }                                                                     \
-        if ((ELEM)->parent == (START)->parent) {                              \
+        } else if ((ELEM)->parent == (START)->parent) {                       \
             /* we are done, no next element to process */                     \
             break;                                                            \
         }                                                                     \
@@ -174,7 +165,7 @@ extern "C" {
  */
 typedef enum {
     LYS_IN_UNKNOWN = 0,  /**< unknown format, used as return value in case of error */
-    LYS_IN_YANG = 1,     /**< YANG schema input format, TODO not yet supported */
+    LYS_IN_YANG = 1,     /**< YANG schema input format */
     LYS_IN_YIN = 2       /**< YIN schema input format */
 } LYS_INFORMAT;
 
@@ -343,8 +334,7 @@ typedef enum {
 } LY_DATA_TYPE;
 #define LY_DATA_TYPE_COUNT 20        /**< number of #LY_DATA_TYPE built-in types */
 #define LY_DATA_TYPE_MASK 0x3f       /**< mask for valid type values, 2 bits are reserver for #LY_TYPE_LEAFREF_UNRES and
-                                          #LY_TYPE_INST_UNRES in case of parsing with #LYD_OPT_FILTER or #LYD_OPT_EDIT
-                                          options. */
+                                          #LY_TYPE_INST_UNRES in case of parsing with #LYD_OPT_EDIT options. */
 #define LY_TYPE_LEAFREF_UNRES 0x40   /**< flag for unresolved leafref, the rest of bits store the target node's type */
 #define LY_TYPE_INST_UNRES 0x80      /**< flag for unresolved instance-identifier, always use in conjunction with LY_TYPE_INST */
 
@@ -569,27 +559,66 @@ struct lys_type {
  *
  * Various flags for schema nodes.
  *
+ *     1 - container    6 - anyxml            11 - rpc output   16 - type(def)
+ *     2 - choice       7 - case              12 - grouping     17 - identity
+ *     3 - leaf         8 - notification      13 - uses         18 - refine
+ *     4 - leaflist     9 - rpc               14 - augment
+ *     5 - list        10 - rpc input         15 - feature
+ *
+ *                                           1 1 1 1 1 1 1 1 1
+ *                         1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8
+ *     -------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     1 LYS_USESGRP      | | | | | | | | | | | | |x| | | | | |
+ *       LYS_AUTOASSIGNED | | | | | | | | | | | | | | | |x| | |
+ *       LYS_CONFIG_W     |x|x|x|x|x|x| | | | | | | | | | | |x|
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     2 LYS_CONFIG_R     |x|x|x|x|x|x| | | | | | | | | | | |x|
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     3 LYS_CONFIG_SET   |x|x|x|x|x|x| | | | | | | | | | | | |
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     4 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |
+ *       LYS_RFN_MAXSET   | | | | | | | | | | | | | | | | | |x|
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     5 LYS_STATUS_DEPRC |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |
+ *       LYS_RFN_MINSET   | | | | | | | | | | | | | | | | | |x|
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     6 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     7 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | | | | |x|
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     8 LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | | | |x|
+ *       LYS_INCL_STATUS  |x| | | |x| | | | | | | | | | | | | |
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     9 LYS_USERORDERED  | | | |x|x| | | | | | | | | | | | | |
+ *       LYS_UNIQUE       | | |x| | | | | | | | | | | | | | | |
+ *       LYS_FENABLED     | | | | | | | | | | | | | | |x| | | |
+ *
  * @{
  */
 #define LYS_CONFIG_W     0x01        /**< config true; */
 #define LYS_CONFIG_R     0x02        /**< config false; */
+#define LYS_CONFIG_SET   0x04        /**< config explicitely set in the node */
 #define LYS_CONFIG_MASK  0x03        /**< mask for config value */
-#define LYS_STATUS_CURR  0x04        /**< status current; */
-#define LYS_STATUS_DEPRC 0x08        /**< status deprecated; */
-#define LYS_STATUS_OBSLT 0x10        /**< status obsolete; */
-#define LYS_STATUS_MASK  0x1c        /**< mask for status value */
-#define LYS_MAND_TRUE    0x20        /**< mandatory true; applicable only to
+#define LYS_STATUS_CURR  0x08        /**< status current; */
+#define LYS_STATUS_DEPRC 0x10        /**< status deprecated; */
+#define LYS_STATUS_OBSLT 0x20        /**< status obsolete; */
+#define LYS_STATUS_MASK  0x38        /**< mask for status value */
+#define LYS_RFN_MAXSET   0x08        /**< refine has max-elements set */
+#define LYS_RFN_MINSET   0x10        /**< refine has min-elements set */
+#define LYS_MAND_TRUE    0x40        /**< mandatory true; applicable only to
                                           ::lys_node_choice, ::lys_node_leaf and ::lys_node_anyxml */
-#define LYS_MAND_FALSE   0x40        /**< mandatory false; applicable only to
+#define LYS_MAND_FALSE   0x80        /**< mandatory false; applicable only to
                                           ::lys_node_choice, ::lys_node_leaf and ::lys_node_anyxml */
-#define LYS_MAND_MASK    0x60        /**< mask for mandatory values */
-#define LYS_USERORDERED  0x80        /**< ordered-by user lists, applicable only to
+#define LYS_INCL_STATUS  0x80        /**< flag that the subtree includes status node(s), applicable only to
+                                          ::lys_node_container and lys_node_list */
+#define LYS_MAND_MASK    0xc0        /**< mask for mandatory values */
+#define LYS_USERORDERED  0x100       /**< ordered-by user lists, applicable only to
                                           ::lys_node_list and ::lys_node_leaflist */
-#define LYS_FENABLED     0x80        /**< feature enabled flag, applicable only to ::lys_feature */
-#define LYS_UNIQUE       0x80        /**< part of the list's unique, applicable only to ::lys_node_leaf */
-#define LYS_AUTOASSIGNED 0x80        /**< value was auto-assigned, applicable only to
+#define LYS_FENABLED     0x100       /**< feature enabled flag, applicable only to ::lys_feature */
+#define LYS_UNIQUE       0x100       /**< part of the list's unique, applicable only to ::lys_node_leaf */
+#define LYS_AUTOASSIGNED 0x01        /**< value was auto-assigned, applicable only to
                                           ::lys_type enum and bits flags */
-#define LYS_USESGRP      0x80        /**< flag for resolving uses in groupings, applicable only to ::lys_node_uses */
+#define LYS_USESGRP      0x01        /**< flag for resolving uses in groupings, applicable only to ::lys_node_uses */
 /**
  * @}
  */
@@ -614,8 +643,8 @@ struct lys_node {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
-    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
+    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) */
@@ -646,8 +675,8 @@ struct lys_node_container {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
-    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
+    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_CONTAINER */
@@ -688,8 +717,8 @@ struct lys_node_choice {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
-    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
+    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_CHOICE */
@@ -728,8 +757,8 @@ struct lys_node_leaf {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
-    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
+    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_LEAF */
@@ -776,8 +805,8 @@ struct lys_node_leaflist {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
-    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
+    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_LEAFLIST */
@@ -822,8 +851,8 @@ struct lys_node_list {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
-    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
+    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_LIST */
@@ -872,8 +901,8 @@ struct lys_node_anyxml {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
-    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
+    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_ANYXML */
@@ -912,9 +941,9 @@ struct lys_node_uses {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* and LYS_USESGRP
+    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* and LYS_USESGRP
                                           values are allowed */
-    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_USES */
@@ -948,6 +977,10 @@ struct lys_node_uses {
  * Beginning of the structure is completely compatible with ::lys_node structure extending it by the #tpdf_size and
  * #tpdf members.
  *
+ * In contrast to ::lys_node, ::lys_node_grp has bigger #nacm member and smaller #flags member. This is needed
+ * internally by the libyang parser and it is possible because groupings uses a limited set of
+ * [schema node flags](@ref snodeflags).
+ *
  * ::lys_node_grp contains data specifications in the schema tree. However, the data does not directly form the schema
  * data tree. Instead, they are referenced via uses (::lys_node_uses) statement and copies of the grouping data are
  * actually placed into the uses nodes. Therefore, the nodes you can find under the ::lys_node_grp are not referenced
@@ -957,8 +990,8 @@ struct lys_node_grp {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
-    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) - always 0 in ::lys_node_grp */
+    uint16_t flags:8;                /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
+    uint16_t nacm:8;                 /**< [NACM extension flags](@ref nacmflags) - always 0 in ::lys_node_grp */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_GROUPING */
@@ -992,8 +1025,8 @@ struct lys_node_case {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
-    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
+    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_CASE */
@@ -1026,8 +1059,9 @@ struct lys_node_case {
  *
  */
 struct lys_node_rpc_inout {
-    void *fill1[3];                  /**< padding for compatibility with ::lys_node - name, dsc and ref */
-    uint8_t fill2[2];                /**< padding for compatibility with ::lys_node - flags and nacm */
+    const char *name;
+    void *fill1[2];                  /**< padding for compatibility with ::lys_node - dsc and ref */
+    uint16_t fill2[1];               /**< padding for compatibility with ::lys_node - flags and nacm */
     struct lys_module *module;       /**< link to the node's data model */
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_INPUT or #LYS_OUTPUT */
@@ -1057,8 +1091,8 @@ struct lys_node_notif {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
-    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
+    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_NOTIF */
@@ -1090,8 +1124,8 @@ struct lys_node_rpc {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
-    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
+    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_RPC */
@@ -1131,8 +1165,8 @@ struct lys_node_augment {
                                           placed (mandatory). */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
-    uint8_t nacm;                    /**< [NACM extension flags](@ref nacmflags) */
+    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
+    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 
     LYS_NODE nodetype;               /**< #LYS_AUGMENT */
@@ -1145,7 +1179,7 @@ struct lys_node_augment {
 
     /* replaces #next and #prev members of ::lys_node */
     struct lys_when *when;           /**< when statement (optional) */
-    struct lys_node *target;         /**< pointer to the target node TODO refer to augmentation description */
+    struct lys_node *target;         /**< pointer to the target node */
 
     /* again compatible members with ::lys_node */
     uint8_t features_size;           /**< number of elements in the #features array */
@@ -1181,7 +1215,7 @@ struct lys_refine {
     const char *target_name;         /**< descendant schema node identifier of the target node to be refined (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) */
+    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only config and mandatory flags apply */
 
     uint16_t target_type;            /**< limitations (get from specified refinements) for target node type:
                                           - 0 = no limitations,
@@ -1273,8 +1307,7 @@ struct lys_tpdf {
     const char *name;                /**< name of the newly defined type (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values (or 0) are allowed */
-    uint8_t padding;                 /**< padding to keep module member at the same place as in ::lys_node */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values (or 0) are allowed */
     struct lys_module *module;       /**< pointer to the module where the data type is defined (mandatory),
                                           NULL in case of built-in typedefs */
 
@@ -1299,9 +1332,9 @@ struct lys_feature {
     const char *name;                /**< feature name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values and
+    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values and
                                           #LYS_FENABLED value are allowed */
-    uint8_t padding;
+    uint16_t padding:2;
     struct lys_module *module;       /**< link to the features's data model (mandatory) */
 
     uint8_t features_size;           /**< number of elements in the #features array */
@@ -1342,22 +1375,7 @@ struct lys_ident {
     struct lys_module *module;       /**< pointer to the module where the identity is defined */
 
     struct lys_ident *base;          /**< pointer to the base identity */
-    struct lys_ident_der *der;       /**< list of pointers to the derived identities */
-};
-/**
- * @brief Structure to serialize pointers to the identities.
- *
- * The list of derived identities cannot be static since any new schema can
- * extend the current set of derived identities.
- *
- * TODO: the list actually could be just a static array and we could reallocate it whenever it
- * is needed. Since we are not going to allow removing a particular schema from
- * the context, we don't need to remove a subset of pointers to derived
- * identities.
- */
-struct lys_ident_der {
-    struct lys_ident *ident;         /**< pointer to the identity */
-    struct lys_ident_der *next;      /**< next record, NULL in case of the last record in the list */
+    struct lys_ident **der;          /**< array of pointers to the derived identities */
 };
 
 /**

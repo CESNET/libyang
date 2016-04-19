@@ -96,7 +96,7 @@ struct lyd_node_pos {
  * @param[in] module Schema tree where to connect the submodule, belongs-to value must match.
  * @param[in] data String containing the submodule specification in the given \p format.
  * @param[in] format Format of the data to read.
- * @param[in] unres TODO provide description
+ * @param[in] unres list of unresolved items
  * @return Created submodule structure or NULL in case of error.
  */
 struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT format,
@@ -111,7 +111,7 @@ struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char 
  * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the submodule
  *            specification in the given \p format.
  * @param[in] format Format of the data to read.
- * @param[in] unres TODO provide description
+ * @param[in] unres list of unresolved items
  * @return Created submodule structure or NULL in case of error.
  */
 struct lys_submodule *lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format,
@@ -179,7 +179,7 @@ int lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_modu
  * @param[in] node Schema tree node to be duplicated.
  * @param[in] flags Config flag to be inherited in case the origin node does not specify config flag
  * @param[in] nacm NACM flags to be inherited from the parent
- * @param[in] unres TODO provide description
+ * @param[in] unres list of unresolved items
  * @param[in] shallow Whether to copy children and connect to parent/module too.
  * @return Created copy of the provided schema \p node.
  */
@@ -257,20 +257,22 @@ void lys_node_free(struct lys_node *node, void (*private_destructor)(const struc
 void lys_free(struct lys_module *module, void (*private_destructor)(const struct lys_node *node, void *priv), int remove_from_ctx);
 
 /**
- * @brief Check presence of all the mandatory elements in the given data tree subtree
+ * @brief Check presence of all the mandatory elements in the given data tree subtree. Logs directly.
  *
  * Besides the mandatory statements, also min-elements and max-elements constraints in
  * lists and leaf-list are checked.
  *
+ * If \p schema is NULL, iterate over and check \p data schema children. If \p schema is set, it is iterated over
+ * its siblings.
+ *
  * @param[in] data Root node for the searching subtree. Expecting that all child instances
- * are already resolved. Note that the \p start node itself is not checked since it must be present.
+ * mandatory nodes were already checked. Note that the \p start node itself is not checked since it must be present.
  * @param[in] schema To check mandatory elements in empty data tree (\p data is NULL), we need
  * the first schema node in a schema to be checked.
  * @param[in] status Include status (read-only) nodes.
- * @return The first mandatory element definition not present in the data, NULL if
- * there is no such element in the \p starts's subtree.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on failure.
  */
-const struct lys_node *ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema, int status);
+int ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema, int status);
 
 /**
  * @brief Find the parent node of an attribute.
@@ -333,22 +335,19 @@ int lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *si
                          const struct lys_node **ret);
 
 /**
- * @brief Compare 2 data nodes if they are the same from the YANG point of view.
+ * @brief Compare 2 list or leaf-list data nodes if they are the same from the YANG point of view. Logs directly.
  *
- * - containers are the same if they are defined by the same schema tree node
- * - anyxmls are the same if they are defined by the same schema tree node
- * - leafs are the same if they are defined by the same schema tree node
  * - leaf-lists are the same if they are defined by the same schema tree node and they have the same value
- * - lists are the same if they are defined by the same schema tree node and all their keys have identical values
+ * - lists are the same if they are defined by the same schema tree node, all their keys have identical values,
+ *   and all unique sets have the same values
  *
- * @param[in] first The first data node to compare
- * @param[in] second The second node to compare
- * @param[in] unique If the given nodes are lists, value 1 here forces to check their leafs defined as unique.
- * If they are the same, the return value is 0 despite the values of the key. For all other node type, this
- * parameter is ignored.
- * @return 0 if both the nodes are the same from the YANG point of view.
+ * @param[in] first First data node to compare.
+ * @param[in] second Second node to compare.
+ * @return 1 if both the nodes are the same from the YANG point of view,
+ *         0 if they differ,
+ *         -1 on error.
  */
-int lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique);
+int lyd_list_equal(struct lyd_node *first, struct lyd_node *second);
 
 /**
  * @brief Process with-default nodes (according to the with-defaults mode in \p options).
@@ -365,26 +364,35 @@ int lyd_compare(struct lyd_node *first, struct lyd_node *second, int unique);
  *            LYD_WD_* options are used to select functionality:
  * - #LYD_WD_TRIM - remove all nodes that have value equal to their default value
  * - #LYD_WD_ALL - add default nodes
- * - #LYD_WD_ALL_TAG - add default nodes and add attribute 'default' with value 'true' to all nodes having their default value
- * - #LYD_WD_IMPL_TAG - add default nodes, but add attribute 'default' only to the added nodes
- * @note The *_TAG modes require to have ietf-netconf-with-defaults module in the context of the data tree if other
- * schema for default attribute is not specified as \p wdmod.
- * @param[in] wdmod Optional parameter to specify module in which the default attributes will be created. If NULL
- * the ietf-netconf-with-defaults schema is used.
+ * - #LYD_WD_ALL_TAG - add default nodes and set ::lyd_node#dflt in all nodes having their default value
+ * - #LYD_WD_IMPL_TAG - add default nodes, but set ::lyd_node#dflt only in the added nodes
+ * @note The *_TAG modes require to have ietf-netconf-with-defaults module in the context of the data tree in time of
+ * printing - all the flagged nodes are printed with the 'default' attribute with 'true' value.
  * @return EXIT_SUCCESS ot EXIT_FAILURE
  */
-int lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres, int options, const struct lys_module *wdmod);
+int lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres, int options);
 
 /**
- * @brief Remove all default nodes, respectively all nodes with attribute X:default="true" where X is the provided
- * \p wdmod.
+ * @brief Check for (validate) top-level mandatory nodes of a data tree.
  *
- * @param[in] root Data tree root. The data tree can be modified so the root can be changed or completely removed.
- * @param[in] wdmod Schema in which the default attributes were created. If NULL the ietf-netconf-with-defaults
- * is used if present in the data tree's context.
- * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
- * @return EXIT_SUCCESS or EXIT_FAILURE
+ * @param[in] data Data tree to validate.
+ * @param[in] ctx libyang context.
+ * @param[in] rpc RPC node should be set in case options & LYD_OPT_RPCREPLY and data == NULL.
+ * @param[in] options Standard @ref parseroptions.
+ * @return EXIT_SUCCESS or EXIT_FAILURE.
  */
-int lyd_wd_cleanup_mod(struct lyd_node **root, const struct lys_module *wdmod, int options);
+int lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, struct lys_node *rpc, int options);
+
+/**
+ * @brief Add default values, validate the data, \p resolve unres, and finally
+ * remove any redundant default values based on \p options.
+ *
+ * @param[in,out] node Pointer to the manipulated data tree.
+ * @param[in] options All the relevant @ref parseroptions (LYD_WD_*, LYD_OPT_NOAUTODEL).
+ * @param[in] ctx libyang context.
+ * @param[in] unres Valid unres structure, on function successful exit they are all resolved.
+ * @return 0 on success, nonzero on failure.
+ */
+int lyd_validate_defaults_unres(struct lyd_node **node, int options, struct ly_ctx *ctx, struct unres_data *unres);
 
 #endif /* LY_TREE_INTERNAL_H_ */

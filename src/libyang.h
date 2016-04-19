@@ -34,12 +34,15 @@ extern "C" {
  *
  * @section about-features Main Features
  *
+ * - Parsing (and validating) schemas in YANG format.
  * - Parsing (and validating) schemas in YIN format.
  * - Parsing, validating and printing instance data in XML format.
  * - Parsing, validating and printing instance data in JSON format.
  * - Manipulation with the instance data.
+ * - Support for adding default values into instance data.
  *
- * - \todo Parsing (and validating) schemas in YANG format.
+ * The current implementation covers YANG 1.0 specified in [RFC 6020](https://tools.ietf.org/html/rfc6020).
+ * Future plans include support for [YANG 1.1](https://tools.ietf.org/html/draft-ietf-netmod-rfc6020bis-11).
  *
  * @subsection about-features-others Extra (side-effect) Features
  *
@@ -92,20 +95,24 @@ extern "C" {
  * This automatic searching can be completely avoided when the caller sets module searching callback
  * (#ly_module_clb) via ly_ctx_set_module_clb().
  *
- * Schemas are added into the context using [parser functions](@ref howtoschemasparsers) - \b lys_parse_*() or \b lyd_parse_*().
+ * Schemas are added into the context using [parser functions](@ref howtoschemasparsers) - \b lys_parse_*().
  * In case of schemas, also ly_ctx_load_module() can be used - in that case the #ly_module_clb or automatic
- * search in working directory and in the searchpath is used. Note, that functions for schemas have \b lys_
+ * search in working directory and in the searchpath is used.
+ *
+ * Similarly, data trees can be parsed by \b lyd_parse_*() functions. Note, that functions for schemas have \b lys_
  * prefix while functions for instance data have \b lyd_ prefix.
  *
  * Context can hold multiple revisons of the same schema.
  *
- * Context holds all modules and their submodules internally. The list of available module names is
- * provided via ly_ctx_get_module_names() functions. Similarly, caller can get also a list of submodules
- * names of a specific module using ly_ctx_get_submodule_names() function. The returned names can be
- * subsequently used to get the (sub)module structures using ly_ctx_get_module() and ly_ctx_get_submodule().
- * Alternatively, the ly_ctx_info() function can be used to get complex information about the schemas in the context
- * in the form of data tree defined by
+ * Context holds all modules and their submodules internally and they can appear in multiple revisions. To get
+ * a specific module or submodule, use ly_ctx_get_module() and ly_ctx_get_submodule(). There are some additional
+ * alternatives to these functions (with different parameters_. If you need to do something with all the modules or
+ * submodules in the context, it is advised to iterate over them using ly_ctx_get_module_iter(), it is
+ * the most efficient way. Alternatively, the ly_ctx_info() function can be used to get complex information
+ * about the schemas in the context in the form of data tree defined by
  * <a href="https://tools.ietf.org/html/draft-ietf-netconf-yang-library-04">ietf-yang-library</a> schema.
+ * To get a specific node defined in a module in the context, ly_ctx_get_node() and ly_ctx_get_node2() can be used.
+ * They differ in parameters used to identify the schema node.
  *
  * Modules held by a context cannot be removed one after one. The only way how to \em change modules in the
  * context is to create a new context and remove the old one. To remove a context, there is ly_ctx_destroy()
@@ -124,12 +131,14 @@ extern "C" {
  * - ly_ctx_get_module_clb()
  * - ly_ctx_load_module()
  * - ly_ctx_info()
- * - ly_ctx_get_module_names()
+ * - ly_ctx_get_module_iter()
  * - ly_ctx_get_module()
+ * - ly_ctx_get_module_older()
  * - ly_ctx_get_module_by_ns()
- * - ly_ctx_get_submodule_names()
  * - ly_ctx_get_submodule()
+ * - ly_ctx_get_submodule2()
  * - ly_ctx_get_node()
+ * - ly_ctx_get_node2()
  * - ly_ctx_destroy()
  */
 
@@ -171,8 +180,9 @@ extern "C" {
  * a caller application. Such an object can be assigned to a specific node using lys_set_private() function.
  * Note that the object is not freed by libyang when the context is being destroyed. So the caller is responsible
  * for freeing the provided structure after the context is destroyed or the private pointer is set to NULL in
- * appropriate schema nodes where the object was previously set. On the other hand, freeing the object while the schema
- * tree is still used can lead to a segmentation fault.
+ * appropriate schema nodes where the object was previously set. This can be automated via destructor function
+ * to free these private objects. The destructor is passed to the ly_ctx_destroy() function. On the other hand,
+ * freeing the object while the schema tree is still in use can lead to a segmentation fault.
  *
  * - @subpage howtoschemasparsers
  * - @subpage howtoschemasfeatures
@@ -183,8 +193,10 @@ extern "C" {
  *
  * Functions List (not assigned to above subsections)
  * --------------------------------------------------
- * - lys_get_next()
+ * - lys_getnext()
  * - lys_parent()
+ * - lys_module()
+ * - lys_node_module()
  * - lys_set_private()
  */
 
@@ -198,18 +210,20 @@ extern "C" {
  *   Basic YANG schemas format described in [RFC 6020](http://tools.ietf.org/html/rfc6020).
  *   Currently, only YANG 1.0 is supported.
  *
- *   \todo YANG input is not yet implemented
- *
  * - YIN
  *
- *   Alternative XML-based format to YANG. The details can be found in
+ *   Alternative XML-based format to YANG - YANG Independent Notation. The details can be found in
  *   [RFC 6020](http://tools.ietf.org/html/rfc6020#section-11).
  *
  * When the [context](@ref howtocontext) is created, it already contains the following three schemas, which
- * are implemented internally by libyang: *
+ * are implemented internally by libyang:
  * - ietf-inet-types@2013-07-15
  * - ietf-yang-types@2013-07-15
  * - ietf-yang-library@2015-07-03
+ * - yang@2016-02-11
+ *
+ * The last one is libyang's internal module to provide namespace for various YANG attributes defined in RFC 6020
+ * (such as `insert` attribute for edit-config's data).
  *
  * Other schemas can be added to the context manually as described in [context page](@ref howtocontext) by the functions
  * listed below. Besides the schema parser functions, it is also possible to use ly_ctx_load_module() which tries to
@@ -233,12 +247,12 @@ extern "C" {
  *
  * The first two functions are used to access information about the features in the schema.
  * lys_features_list() provides list of all features defined in the specific schema and its
- * submodules. Optionally, it can also provides information about the state of all features.
+ * submodules. Optionally, it can also provide information about the state of all features.
  * Alternatively, caller can use lys_features_state() function to get state of one specific
  * feature.
  *
  * The remaining two functions, lys_features_enable() and lys_features_disable(), are used
- * to enable and disable the specific feature (or all via \b "*"). By default, when the module
+ * to enable and disable the specific feature (or all via the '`*`' value). By default, when the module
  * is loaded by libyang parser, all features are disabled.
  *
  * To get know, if a specific schema node is currently disabled or enable, the lys_is_disabled() function can be used.
@@ -267,12 +281,45 @@ extern "C" {
  *
  * - YIN
  *
- *   Alternative XML-based format to YANG. The details can be found in
+ *   Alternative XML-based format to YANG - YANG Independent Notation. The details can be found in
  *   [RFC 6020](http://tools.ietf.org/html/rfc6020#section-11).
  *
  * - Tree
  *
- *   Simple tree structure of the module.
+ *   Simple tree structure of the module where each node is printed as:
+ *
+ *       <status> <flags> <name> <opts> <type> <if-features>
+ *
+ *   - `<status>` is one of:
+ *     - `+` for current
+ *     - `x` for deprecated
+ *     - `o` for obsolete
+ *
+ *   - `<flags>` is one of:
+ *     - `rw` for configuration data
+ *     - `ro` for status data
+ *     - `-x` for RPCs
+ *     - `-n` for Notification
+ *
+ *   - `<name>` is the name of the node
+ *     - `(<name>)` means that the node is a choice node
+ *     - `:(<name>)` means that the node is a case node
+ *     - if the node is augmented into the tree from another module, it is printed with the module name as
+ *     `<module-name>:<name>`.
+ *
+ *   - `<opts>` is one of:
+ *     - `?` for an optional leaf or choice
+ *     - `!` for a presence container
+ *     - `*` for a leaf-list or list
+ *     - `[<keys>]` for a list's keys
+ *
+ *   - `<type>` is the name of the type for leafs and leaf-lists
+ *     - if there is a default value defined, it is printed within angle brackets `<default-value>`
+ *     - if the type is a leafref, the type is printed as -> TARGET`
+ *
+ *   - `<if-features>` is the list of features this node depends on, printed within curly brackets and
+ *     a question mark `{...}?`
+ *
  *
  * - Info
  *
@@ -330,6 +377,7 @@ extern "C" {
  *
  * - @subpage howtodataparsers
  * - @subpage howtodatamanipulators
+ * - @subpage howtodatawd
  * - @subpage howtodataprinters
  *
  * \note API for this group of functions is described in the [Data Instances module](@ref datatree).
@@ -338,41 +386,6 @@ extern "C" {
  * --------------------------------------------------
  * - lyd_get_node()
  * - lyd_get_node2()
- * - lyd_get_list_keys()
- */
-
-/**
- * @page howtoxpath XPath Addressing
- *
- * Internally, XPath evaluation is performed on \b when and \b must conditions in the schema. For that almost
- * a full XPath 1.0 evaluator was implemented. This XPath implementation is available on data trees by calling
- * lyd_get_node() except that only node sets are returned. This XPath conforms to the YANG specification
- * (RFC 6020 section 6.4).
- *
- * A very small subset of this full XPath is recognized by lyd_new_path(). Basically, only a relative or absolute
- * path can be specified to identify a new data node. However, lists must be identified by all their keys and created
- * with all of them, so for those cases predicates are allowed. Predicates must be ordered the way the keys are ordered
- * and all the keys must be specified. Every predicate includes a single key with its value. These paths are valid XPath
- * expressions. Example:
- *
- * - /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision='']/submodules
- *
- * Almost the same XPath is accepted by ly_ctx_get_node(). The difference is that it is not used on data, but schema,
- * which means there are no key values and only one node for one path. In effect, lists do not have to have any
- * predicates. If they do, they do not need to have all the keys specified and if values are included, they are ignored.
- * Nevertheless, any such expression is still a valid XPath, but can return more nodes if executed on a data tree.
- * Examples (all returning the same node):
- *
- * - /ietf-yang-library:modules-state/module/submodules
- * - /ietf-yang-library:modules-state/module[name]/submodules
- * - /ietf-yang-library:modules-state/module[name][revision]/submodules
- * - /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision]/submodules
- *
- * Functions List
- * --------------
- * - lyd_get_node()
- * - lyd_new_path()
- * - ly_ctx_get_node()
  */
 
 /**
@@ -421,10 +434,15 @@ extern "C" {
  * can cause failure of various libyang functions later.
  *
  * Creating data is generally possible in two ways, they can be combined. You can add nodes one-by-one based on
- * the node name and/or its parent (lyd_new(), lyd_new_anyxml(), lyd_new_leaf(), adn their output variants) or
+ * the node name and/or its parent (lyd_new(), lyd_new_anyxml_*(), lyd_new_leaf(), adn their output variants) or
  * address the nodes using a simple XPath addressing (lyd_new_path()). The latter enables to create a whole path
  * of nodes, requires less information about the modified data, and is generally simpler to use. The path format
  * specifics can be found [here](@ref howtoxpath).
+ *
+ * Working with two data subtrees can also be preformed two ways. Usually, you should use lyd_insert*() functions.
+ * But they always work with a single subtree and it must be placed on an exact and correct location in the other
+ * tree. If using lyd_merge(), this information is learnt internally and duplicities (that would invalidate
+ * the final data tree) are filtered out at the cost of somewhat reduced effectivity.
  *
  * Also remember, that when you are creating/inserting a node, all the objects in that operation must belong to the
  * same context.
@@ -439,13 +457,17 @@ extern "C" {
  * - lyd_insert_before()
  * - lyd_insert_after()
  * - lyd_insert_attr()
+ * - lyd_merge()
  * - lyd_new()
- * - lyd_new_anyxml()
+ * - lyd_new_anyxml_str()
+ * - lyd_new_anyxml_xml()
  * - lyd_new_leaf()
  * - lyd_new_path()
  * - lyd_output_new()
- * - lyd_output_new_anyxml()
+ * - lyd_output_new_anyxml_str()
+ * - lyd_output_new_anyxml_xml()
  * - lyd_output_new_leaf()
+ * - lyd_schema_sort()
  * - lyd_unlink()
  * - lyd_free()
  * - lyd_free_attr()
@@ -454,21 +476,62 @@ extern "C" {
  */
 
 /**
+ * @page howtodatawd Default Values
+ *
+ * libyang provide support for work with default values as defined in [RFC 6243](https://tools.ietf.org/html/rfc6243).
+ * This document defines 4 modes for adding/removing default nodes to/from a data tree, libyang adds the fifth mode:
+ * - \b explicit - Only the explicitly set configuration data. But in the case of status data, missing default
+ *                 data are added into the tree. In libyang, this mode is represented by #LYD_WD_EXPLICIT option.
+ * - \b trim - Data nodes containing the schema default value are removed. This mode is applied using #LYD_WD_TRIM option.
+ * - \b report-all - All the missing default data are added into the data tree. This mode is represented by
+ *                 #LYD_WD_ALL option.
+ * - \b report-all-tagged - In this case, all the missing default data are added as in case of the `report-all` mode,
+ *                 but additionally all the nodes (existing as well as added) containing the schema default value
+ *                 are tagged (see the note below). libyang uses #LYD_WD_ALL_TAG option for this mode.
+ * - \b report-implicit-tagged - The last mode is similar to the previous one, except only the added nodes are tagged.
+ *                 This is the libyang's extension and it is represented by #LYD_WD_IMPL_TAG option.
+ *
+ * In the data nodes, the tag is represented as set ::lyd_node's `dflt` member. However, when the data tree is printed,
+ * the tag is automatically printed as XML/JSON attribute as defined in [RFC 6243](https://tools.ietf.org/html/rfc6243).
+ * This conversion is done only if the context includes the ietf-netconf-with-defaults schema. Otherwise, both
+ * #LYD_WD_ALL_TAG and #LYD_WD_IMPL_TAG have the same result as #LYD_WD_ALL.
+ *
+ * The base function for with-defaults capability is lyd_wd_add(), which modifies the data tree according to the
+ * required with-defaults mode. However, the with-defaults modes can be applied directly by the data parser
+ * functions and by lyd_validate().
+ *
+ * With the lyd_wd_cleanup(), caller is able to remove all the data nodes marked with the defaults tag (set via
+ * #LYD_WD_ALL_TAG or #LYD_WD_IMPL_TAG).
+ *
+ * Functions List
+ * --------------
+ * - lyd_wd_add()
+ * - lyd_wd_cleanup()
+ *
+ * - lyd_parse_mem()
+ * - lyd_parse_fd()
+ * - lyd_parse_path()
+ * - lyd_parse_xml()
+ * - lyd_validate()
+ */
+
+/**
  * @page howtodataprinters Printing Data
  *
- * Schema printers allows to serialize internal representation of a schema module in a specific format. libyang
- * supports the following schema formats for printing:
+ * Data printers allows to serialize internal representation of a data tree in a specific format. libyang
+ * supports the following data formats for printing:
  *
  * - XML
  *
  *   Basic format as specified in rules of mapping YANG modeled data to XML in
  *   [RFC 6020](http://tools.ietf.org/html/rfc6020). It is possible to specify if
- *   the indentation will be used.
+ *   the indentation (formatting) will be used (by #LYP_FORMAT @ref printerflags "printer option").
  *
  * - JSON
  *
  *   The alternative data format available in RESTCONF protocol. Specification of JSON encoding of data modeled by YANG
- *   can be found in [this draft](https://tools.ietf.org/html/draft-ietf-netmod-yang-json-05).
+ *   can be found in [this draft](https://tools.ietf.org/html/draft-ietf-netmod-yang-json-05).It is possible to specify
+ *   if the indentation (formatting) will be used (by #LYP_FORMAT @ref printerflags "printer option").
  *
  * Printer functions allow to print to the different outputs including a callback function which allows caller
  * to have a full control of the output data - libyang passes to the callback a private argument (some internal
@@ -484,10 +547,73 @@ extern "C" {
  */
 
 /**
+ * @page howtoxpath XPath Addressing
+ *
+ * Internally, XPath evaluation is performed on \b when and \b must conditions in the schema. For that almost
+ * a full XPath 1.0 evaluator was implemented. This XPath implementation is available on data trees by calling
+ * lyd_get_node() except that only node sets are returned. This XPath conforms to the YANG specification
+ * (RFC 6020 section 6.4). Some useful examples:
+ *
+ * - get all top-level nodes of the __module-name__
+ *
+ *       /module-name:*
+ *
+ * - get all the descendants of __container__ (excluding __container__)
+ *
+ *       /module-name:container//\asterisk
+ *
+ * - get __list__ instance with __key1__ of value __1__ and __key2__ of value __2__ (this can return more __list__ instances if there are more keys than __key1__ and __key2__)
+ *
+ *       /module-name:container/list[key1='1'][key2='2']
+ *
+ * - get __leaf-list__ instance with the value __val__
+ *
+ *       /module-name:container/leaf-list[.='val']
+ *
+ * - get __aug-leaf__, which was added to __module-name__ from an augment module __augment-module__
+ *
+ *       /module-name:container/container2/augment-module:aug-cont/aug-leaf
+ *
+ *
+ * A very small subset of this full XPath is recognized by lyd_new_path(). Basically, only a relative or absolute
+ * path can be specified to identify a new data node. However, lists must be identified by all their keys and created
+ * with all of them, so for those cases predicates are allowed. Predicates must be ordered the way the keys are ordered
+ * and all the keys must be specified. Every predicate includes a single key with its value. These paths are valid XPath
+ * expressions. Example:
+ *
+ *     /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision='']/submodules
+ *
+ * Almost the same XPath is accepted by ly_ctx_get_node(). The difference is that it is not used on data, but schema,
+ * which means there are no key values and only one node matches one path. In effect, lists do not have to have any
+ * predicates. If they do, they do not need to have all the keys specified and if values are included, they are ignored.
+ * Nevertheless, any such expression is still a valid XPath, but can return more nodes if executed on a data tree.
+ * Examples (all returning the same node):
+ *
+ *     /ietf-yang-library:modules-state/module/submodules
+ *     /ietf-yang-library:modules-state/module[name]/submodules
+ *     /ietf-yang-library:modules-state/module[name][revision]/submodules
+ *     /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision]/submodules
+ *
+ * Also, `choice`, `case`, `input`, and `output` nodes need to be specified and cannot be skipped in schema XPaths. Use
+ * ly_ctx_get_node2() if you want to search based on a data XPath, the same format as what lyd_new_path() uses.
+ *
+ * Also note, that in all cases the node's prefix is specified as the name of the appropriate YANG schema. Any node
+ * can be prefixed by the module name. However, if the prefix is omitted, the module name is inherited from the previous
+ * (parent) node. It means, that the first node in the path is always supposed to have a prefix.
+ *
+ * Functions List
+ * --------------
+ * - lyd_get_node()
+ * - lyd_new_path()
+ * - ly_ctx_get_node()
+ * - ly_ctx_get_node2()
+ */
+
+/**
  * @page howtoxml libyang XML Support
  *
- * libyang XML parser is able to parse XML documents used to represent data modeled by YANG. Therefore, there are
- * some limitations in comparison to a full-featured XML parsers:
+ * libyang XML parser is able to parse XML documents. The main purpose is to load data modeled by YANG. However, it can
+ * be used as a standalone XML parser with the following limitations in comparison to a full-featured XML parsers:
  * - comments are ignored
  * - Doctype declaration is ignored
  * - CData sections are ignored
@@ -497,7 +623,7 @@ extern "C" {
  * you wish and dump the tree to an output. The only "write" functions are lyxml_free() and lyxml_unlink() to remove
  * part of the tree or to unlink (separate) a subtree.
  *
- * XML parser is also used internally by libyang for parsing YIN schemas and data instances in XML format.
+ * XML parser is used internally by libyang for parsing YIN schemas and data instances in XML format.
  *
  * \note API for this group of functions is described in the [XML Parser module](@ref xmlparser).
  *
@@ -518,9 +644,9 @@ extern "C" {
 /**
  * @page howtothreads libyang in Threads
  *
- * libyang can be used in multithreaded application keeping in mind the following rules:
+ * libyang can be used in multithreaded applications keeping in mind the following rules:
  * - libyang context manipulation (adding new schemas) is not thread safe and it is supposed to be done in a main
- *   thread before any other work with context, schemas or data instances. And destroying the context is supposed to
+ *   thread before any other work with context, schemas or data instances. Destroying the context is supposed to
  *   be done when no other thread accesses context, schemas nor data trees
  * - Data parser (\b lyd_parse*() functions) can be used simultaneously in multiple threads (also the returned
  *   #ly_errno is thread safe).
@@ -536,9 +662,20 @@ extern "C" {
  * changed by the ly_verb() function. By default, the verbosity level is
  * set to #LY_LLERR value.
  *
- * In case the logger has an error message (LY_LLERR) to print, also an error
- * code is recorded in extern ly_errno variable. Possible values are of type
- * ::LY_ERR.
+ * When an error is encountered, the error message and error number are stored for
+ * later use. Caller is able to access the last error message via ly_errmsg() and the
+ * corresponding last error code via #ly_errno. If that was a validation error (#ly_errno
+ * is set to #LY_EVALID), also validation error code (via #ly_vecode) and path to the
+ * error node (via ly_errpath()) are available.
+ *
+ * For some specific cases, a YANG schema can define error message and/or error tag (mainly for
+ * use in NETCONF). If a message is set, it is provided via ly_errmsg(). If a tag is set in schema,
+ * it is available via ly_erraptag() (if not set, the returned string is empty).
+ *
+ * By default, all libyang messages are printed to `stderr`. However, the caller is able to set their own logging
+ * callback function. In that case, instead of printing messages, libyang passes error level, message and path
+ * (if any) to the caller's callback function. In case of error level, the message and path are still
+ * automatically stored and available via the functions and macros described above.
  *
  * \note API for this group of functions is described in the [logger module](@ref logger).
  *
@@ -547,6 +684,11 @@ extern "C" {
  * - ly_verb()
  * - ly_set_log_clb()
  * - ly_get_log_clb()
+ * - ly_errmsg()
+ * - ly_errpath()
+ * - ly_errapptag()
+ * - #ly_errno
+ * - #ly_vecode
  */
 
 /**
@@ -611,27 +753,13 @@ const char *ly_ctx_get_searchdir(const struct ly_ctx *ctx);
 struct lyd_node *ly_ctx_info(struct ly_ctx *ctx);
 
 /**
- * @brief Get the names of the loaded modules.
+ * @brief Iterate over all modules in a context.
  *
  * @param[in] ctx Context with the modules.
- * @return NULL-terminated array of the module names,
- * NULL on error. The returned array must be freed by the caller, do not free
- * names in the array. Also remember that the names will be freed with freeing
- * the context.
+ * @param[in,out] idx Index of the next module to be returned. Value of 0 starts from the beginning.
+ * @return Next context module, NULL if the last was already returned.
  */
-const char **ly_ctx_get_module_names(const struct ly_ctx *ctx);
-
-/**
- * @brief Get the names of the loaded submodules of the specified module.
- *
- * @param[in] ctx Context with the modules.
- * @param[in] module_name Name of the parent module.
- * @return NULL-terminated array of submodule names of the parent module,
- * NULL on error. The returned array must be freed by the caller, do not free
- * names in the array. Also remember that the names will be freed with freeing
- * the context.
- */
-const char **ly_ctx_get_submodule_names(const struct ly_ctx *ctx, const char *module_name);
+const struct lys_module *ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *idx);
 
 /**
  * @brief Get pointer to the schema tree of the module of the specified name.
@@ -726,13 +854,16 @@ const struct lys_module *ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const
  * If you already have the pointer to the submodule's main module, use ly_ctx_get_submodule2() instead.
  *
  * @param[in] ctx Context to work in.
- * @param[in] module Name of the main (belongs-to) module.
- * @param[in] revision Optional revision date of the main module. If not specified, the newist revision is used.
+ * @param[in] module Name of the main (belongs-to) module. If NULL, all module submodules are searched.
+ * @param[in] revision Optional revision date of \p module. If NULL, all revisions of \p module
+ * are searched. If set, \p module must also be set.
  * @param[in] submodule Name of the submodule to get.
+ * @param[in] sub_revision Optional revision date of \p submodule. If NULL, the newest revision of \p submodule
+ * is returned.
  * @return Pointer to the data model structure.
  */
 const struct lys_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *revision,
-                                                 const char *submodule);
+                                                 const char *submodule, const char *sub_revision);
 
 /**
  * @brief Get submodule of a main module.
@@ -766,6 +897,27 @@ const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_
  * @return Resolved schema node or NULL.
  */
 const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid);
+
+/**
+ * @brief Get schema node according to the given data node identifier in JSON format.
+ *
+ * The functionality is almost the same as ly_ctx_get_node(), but this function accepts
+ * the data node identifier format (skipped choices, cases, inputs, and outputs). Examples:
+ *
+ * /ietf-netconf-monitoring:get-schema/identifier
+ * /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/ip
+ *
+ * Since input and output is skipped, there could arise ambiguities if one RPC input
+ * contains a parameter with the same name as is in output, hence the flag.
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] start Starting node for a relative schema node identifier, in which
+ * case it is mandatory.
+ * @param[in] nodeid JSON schema node identifier.
+ * @param[in] rpc_output Whether to search in RPC output parameters instead input ones.
+ * @return Resolved schema node or NULL.
+ */
+const struct lys_node *ly_ctx_get_node2(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid, int rpc_output);
 
 /**
  * @brief Free all internal structures of the specified context.
@@ -909,6 +1061,11 @@ void ly_verb(LY_LOG_LEVEL level);
 
 /**
  * @brief Set logger callback.
+ *
+ * !IMPORTANT! If an error has a specific error-app-tag defined in the model, it will NOT be set
+ *             at the time of calling this callback. It will be set right after, so to retrieve it
+ *             it must be checked afterwards with ly_errapptag().
+ *
  * @param[in] clb Logging callback.
  * @param[in] path flag to resolve and provide path as the third parameter of the callback function. In case of
  *            validation and some other errors, it can be useful to get the path to the problematic element. Note,
@@ -964,6 +1121,7 @@ typedef enum {
     LYVE_DUPID,        /**< duplicated identifier (schema) */
     LYVE_DUPLEAFLIST,  /**< multiple instances of leaf-list */
     LYVE_DUPLIST,      /**< multiple instances of list */
+    LYVE_NOUNIQ,       /**< unique leaves match on 2 list instances (data) */
     LYVE_ENUM_DUPVAL,  /**< duplicated enum value (schema) */
     LYVE_ENUM_DUPNAME, /**< duplicated enum name (schema) */
     LYVE_ENUM_WS,      /**< enum name with leading/trailing whitespaces (schema) */
@@ -987,16 +1145,22 @@ typedef enum {
     /* */
     LYVE_MISSELEM,     /**< missing required element (data) */
     LYVE_INVAL,        /**< invalid value of an element (data) */
+    LYVE_INVALATTR,    /**< invalid attribute value (data) */
     LYVE_INATTR,       /**< invalid attribute in an element (data) */
     LYVE_MISSATTR,     /**< missing attribute in an element (data) */
-    LYVE_OORVAL,       /**< value out of range/length (data) */
+    LYVE_NOCONSTR,     /**< value out of range/length/pattern (data) */
     LYVE_INCHAR,       /**< unexpected characters (data) */
     LYVE_INPRED,       /**< predicate resolution fail (data) */
     LYVE_MCASEDATA,    /**< data for more cases of a choice (data) */
-    LYVE_NOCOND,       /**< unsatisfied must/when condition (data) */
+    LYVE_NOMUST,       /**< unsatisfied must condition (data) */
+    LYVE_NOWHEN,       /**< unsatisfied when condition (data) */
     LYVE_INORDER,      /**< invalid order of elements (data) */
-    LYVE_INCOUNT,      /**< invalid number of elements (data) */
     LYVE_INWHEN,       /**< irresolvable when condition (data) */
+    LYVE_NOMIN,        /**< min-elements constraint not honored (data) */
+    LYVE_NOMAX,        /**< max-elements constraint not honored (data) */
+    LYVE_NOREQINS,     /**< required instance does not exits (data) */
+    LYVE_NOLEAFREF,    /**< leaf pointed to by leafref does not exist (data) */
+    LYVE_NOMANDCHOICE, /**< no mandatory choice case branch exists (data) */
 
     LYVE_XPATH_INTOK,  /**< unexpected XPath token */
     LYVE_XPATH_EOF,    /**< unexpected end of an XPath expression */
@@ -1036,12 +1200,13 @@ LY_VECODE *ly_vecode_location(void);
 #define ly_vecode (*ly_vecode_location())
 
 /**
- * @brief Get the last (thread-specific) error message.
+ * @brief Get the last (thread-specific) error message. If the coresponding module defined
+ * a specific error message, it will be used instead the default one.
  *
  * Sometimes, the error message is extended with path of the element where is the problem.
  * The path is available via ly_errpath().
  *
- * @return Text of the last error message.
+ * @return Text of the last error message, empty string if there is no error.
  */
 const char *ly_errmsg(void);
 
@@ -1050,10 +1215,25 @@ const char *ly_errmsg(void);
  *
  * The path always corresponds to the error message available via ly_errmsg(), so
  * whenever a subsequent error message is printed, the path is erased or rewritten.
+ * The path reflects the type of the processed tree - data path for data tree functions
+ * and schema path in case of schema tree functions. In case of processing YIN schema
+ * or XML data, the path can be just XML path. In such a case, the corresponding
+ * ly_vecode (value 1-3) is set.
  *
- * @return Path of the error element.
+ * @return Path of the error element, empty string if error path does not apply to the last error.
  */
 const char *ly_errpath(void);
+
+/**
+ * @brief Get the last (thread-specific) error-app-tag if there was a specific one defined
+ * in the module for the last error.
+ *
+ * The app-tag always corresponds to the error message available via ly_errmsg(), so
+ * whenever a subsequent error message is printed, the app-tag is erased or rewritten.
+ *
+ * @return Error-app-tag of the last error, empty string if the error-app-tag does not apply to the last error.
+ */
+const char *ly_errapptag(void);
 
 /**@} logger */
 

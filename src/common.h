@@ -60,17 +60,18 @@ char *get_current_dir_name(void);
 
 #endif
 
-#define LY_MODULE_NAME_MAX_LEN 255
-
 #define LY_BUF_SIZE 1024
+#define LY_APPTAG_LEN 128
 struct ly_err {
     LY_ERR no;
     LY_VECODE code;
     uint8_t vlog_hide;
     uint8_t buf_used;
     uint16_t path_index;
+    const void *path_obj;
     char msg[LY_BUF_SIZE];
     char path[LY_BUF_SIZE];
+    char apptag[LY_APPTAG_LEN];
     char buf[LY_BUF_SIZE];
 };
 
@@ -122,9 +123,8 @@ void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 #define LOGINT LOGERR(LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 
 typedef enum {
-    LYE_PATH = -3,    /**< error path set */
-    LYE_SPEC = -2,    /**< generic error */
-    LYE_LINE = -1,    /**< error line set */
+    LYE_PATH = -2,    /**< error path set */
+    LYE_SPEC = -1,    /**< generic error */
 
     LYE_SUCCESS = 0,
 
@@ -145,6 +145,7 @@ typedef enum {
     LYE_DUPID,
     LYE_DUPLEAFLIST,
     LYE_DUPLIST,
+    LYE_NOUNIQ,
     LYE_ENUM_DUPVAL,
     LYE_ENUM_DUPNAME,
     LYE_ENUM_WS,
@@ -160,24 +161,30 @@ typedef enum {
     LYE_INREGEX,
     LYE_INRESOLV,
     LYE_INSTATUS,
+
     LYE_OBSDATA,
     LYE_OBSTYPE,
-
     LYE_NORESOLV,
     LYE_INELEM,
     LYE_INELEM_LEN,
     LYE_MISSELEM,
     LYE_INVAL,
+    LYE_INVALATTR,
     LYE_INATTR,
     LYE_MISSATTR,
-    LYE_OORVAL,
+    LYE_NOCONSTR,
     LYE_INCHAR,
     LYE_INPRED,
     LYE_MCASEDATA,
-    LYE_NOCOND,
+    LYE_NOMUST,
+    LYE_NOWHEN,
     LYE_INORDER,
-    LYE_INCOUNT,
     LYE_INWHEN,
+    LYE_NOMIN,
+    LYE_NOMAX,
+    LYE_NOREQINS,
+    LYE_NOLEAFREF,
+    LYE_NOMANDCHOICE,
 
     LYE_XPATH_INTOK,
     LYE_XPATH_EOF,
@@ -208,6 +215,8 @@ void ly_vlog_hide(int hide);
 void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
 #define LOGVAL(code, elem_type, elem, args...) ly_vlog(code, elem_type, elem, ##args)
 #define LOGPATH(elem_type, elem) ly_vlog(LYE_PATH, elem_type, elem)
+
+void ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index);
 
 /**
  * @brief Basic functionality like strpbrk(3). However, it searches string \p s

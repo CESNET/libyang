@@ -68,8 +68,8 @@ int lyp_check_length_range(const char *expr, struct lys_type *type);
 int fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_type *type,
                   struct unres_schema *unres);
 
-int lyp_check_status(uint8_t flags1, struct lys_module *mod1, const char *name1,
-                     uint8_t flags2, struct lys_module *mod2, const char *name2,
+int lyp_check_status(uint16_t flags1, struct lys_module *mod1, const char *name1,
+                     uint16_t flags2, struct lys_module *mod2, const char *name2,
                      const struct lys_node *node);
 
 /**
@@ -91,6 +91,27 @@ int lyp_check_options(int options);
 int lyp_check_identifier(const char *id, enum LY_IDENT type, struct lys_module *module, struct lys_node *parent);
 int lyp_check_date(const char *date);
 int lyp_check_mandatory(struct lys_node *node);
+
+int lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, const char *value,
+                      struct lys_include *inc, struct unres_schema *unres);
+
+int lyp_check_import(struct lys_module *module, const char *value, struct lys_import *imp);
+
+/**
+ * @brief Propagate imports and includes into the main module
+ *
+ * @param module Main module
+ * @param submodule
+ * @param line
+ * @return 0 for success, 1 for failure
+ */
+int lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodule);
+
+int lyp_add_module(struct lys_module **module, int implement);
+
+void lyp_fail_module(struct lys_module *module);
+
+void lyp_fail_submodule(struct lys_submodule *submodule);
 
 /**
  * Store UTF-8 character specified as 4byte integer into the dst buffer.

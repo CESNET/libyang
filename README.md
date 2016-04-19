@@ -9,19 +9,20 @@
 libyang is YANG data modelling language parser and toolkit written (and
 providing API) in C.
 
-
 ## Provided Features
 
-* parsing (and validating) data models in YIN format
-* reading instance data in XML format and validating
-* reading instance data in JSON format and validating
-* providing instance data in XML format
-* providing instance data in JSON format
+* Parsing (and validating) schemas in YANG format.
+* Parsing (and validating) schemas in YIN format.
+* Parsing, validating and printing instance data in XML format.
+* Parsing, validating and printing instance data in JSON format.
+* Manipulation with the instance data.
+* Support for adding default values into instance data.
 
+Current implementation covers YANG 1.0 specified by [RFC 6020](https://tools.ietf.org/html/rfc6020).
 
 ## Planned Features
 
-* parsing (and validating) data models in YANG format
+* YANG 1.1 support.
 
 ## Requirements
 
@@ -44,6 +45,7 @@ The library documentation can be generated directly from the source codes using
 Doxygen tool:
 ```
 $ make doc
+$ google-chrome ../doc/html/index.html
 ```
 
 ### Useful CMake Options
@@ -85,6 +87,28 @@ $ cmake -D CMAKE_BUILD_TYPE:String="Release" ..
 Note that, with CMake, if you want to change the compiler or its options after
 you already ran CMake, you need to clear its cache first - the most simple way
 to do it is to remove all content from the 'build' directory.
+
+## Usage
+
+All libyang functions are available via the main header:
+```
+#include <libyang/libyang.h>
+```
+
+To compile your program with libyang, it is necessary to link it with libyang using the
+following linker parameters:
+```
+-lyang
+```
+
+Note, that it may be necessary to call `ldconfig(8)` after library installation and if the
+library was installed into a non-standard path, the path to libyang must be specified to the
+linker. To help with setting all the compiler's options, there is `libyang.pc` file for
+`pkg-config(1)` available in the source tree. The file is installed with the library.
+
+If you are using `cmake` in you project, it is also possible to use the provided
+`FindLibYANG.cmake` file to detect presence of the libyang library in the system.
+
 
 ## Tests
 
