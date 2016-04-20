@@ -2224,6 +2224,7 @@ lyd_dup(const struct lyd_node *node, int recursive)
         new_node->prev = new_node;
         new_node->parent = NULL;
         new_node->validity = LYD_VAL_NOT;
+        new_node->dflt = elem->dflt;
         new_node->when_status = elem->when_status & LYD_WHEN;
 
         if (!ret) {
