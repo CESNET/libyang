@@ -126,7 +126,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     struct lyxml_elem *child, *next;
     int i, havechildren, r, flag;
     int ret = 0;
-    const char *str;
+    const char *str = NULL;
 
     assert(xml);
     assert(result);

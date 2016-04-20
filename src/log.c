@@ -386,7 +386,7 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
 {
     va_list ap;
     const char *fmt;
-    char* path;
+    char* path = NULL;
     uint16_t *index = NULL;
     const void *iter = elem;
 
