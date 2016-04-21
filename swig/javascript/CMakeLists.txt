@@ -106,8 +106,7 @@ file(COPY "${CMAKE_SOURCE_DIR}/models" DESTINATION ${SWIG_DEST})
 file(COPY "${CMAKE_SOURCE_DIR}/swig/javascript/test/files" DESTINATION "${SWIG_DEST}/test")
 configure_file("${CMAKE_SOURCE_DIR}/swig/javascript/test/yang.js" "${SWIG_DEST}/test/yang.js" ESCAPE_QUOTES @ONLY)
 
-add_custom_target(npmpkg)
-add_custom_command(TARGET npmpkg POST_BUILD
+add_custom_target(npmpkg ALL
 	COMMENT "start building node package"
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/libyang_javascriptJAVASCRIPT_wrap.cxx "${SWIG_DEST}/src/"
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/package.json ${SWIG_DEST}
