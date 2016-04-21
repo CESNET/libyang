@@ -3739,7 +3739,7 @@ nextsibling:
  * @param[in] basename Base name of the identity.
  * @param[out] ret Pointer to the resolved identity. Can be NULL.
  *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference.
+ * @return EXIT_SUCCESS on success (but ret can still be NULL), EXIT_FAILURE on error.
  */
 static int
 resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident, const char *basename,
@@ -3819,7 +3819,7 @@ matchfound:
         return EXIT_SUCCESS;
     }
 
-    return EXIT_FAILURE;
+    return EXIT_SUCCESS;
 }
 
 /**
@@ -3856,6 +3856,7 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
         flags = type->parent->flags;
         mod = type->parent->module;
     }
+    *ret = NULL;
 
     /* search for the base identity */
     name = strchr(basename, ':');
@@ -3881,21 +3882,21 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
     }
 
     /* search in the identified module ... */
-    if (!resolve_base_ident_sub(module, ident, name, ret)) {
-        goto success;
-    } else if (ly_errno) {
+    if (resolve_base_ident_sub(module, ident, name, ret)) {
         return EXIT_FAILURE;
+    } else if (*ret) {
+        goto success;
     }
     /* and all its submodules */
     for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
-        if (!resolve_base_ident_sub((struct lys_module *)module->inc[i].submodule, ident, name, ret)) {
-            goto success;
-        } else if (ly_errno) {
+        if (resolve_base_ident_sub((struct lys_module *)module->inc[i].submodule, ident, name, ret)) {
             return EXIT_FAILURE;
+        } else if (*ret) {
+            goto success;
         }
     }
 
-    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, basename, parent);
+    LOGVAL(LYE_INRESOLV, LY_VLOG_NONE, NULL, parent, basename);
     return EXIT_FAILURE;
 
 success:
