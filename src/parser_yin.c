@@ -1266,7 +1266,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, yin->name);
         goto error;
     }
-    if (dev_target->module == lys_module(module)) {
+    if (dev_target->module == lys_main_module(module)) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, yin->name);
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Deviating own module is not allowed.");
         goto error;
@@ -2637,7 +2637,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
-    if (lys_node_addchild(parent, lys_module(module), retval)) {
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
         goto error;
     }
 
@@ -2760,7 +2760,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
-    if (lys_node_addchild(parent, lys_module(module), retval)) {
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
         goto error;
     }
 
@@ -2913,7 +2913,7 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
-    if (lys_node_addchild(parent, lys_module(module), retval)) {
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
         goto error;
     }
 
@@ -3037,7 +3037,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
-    if (lys_node_addchild(parent, lys_module(module), retval)) {
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
         goto error;
     }
 
@@ -3209,7 +3209,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
-    if (lys_node_addchild(parent, lys_module(module), retval)) {
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
         goto error;
     }
 
@@ -3638,7 +3638,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
     }
 
-    if (lys_node_addchild(parent, lys_module(module), retval)) {
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
         goto error;
     }
 
@@ -3843,7 +3843,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
         }
     }
 
-    if (lys_node_addchild(parent, lys_module(module), retval)) {
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
         goto error;
     }
 
@@ -3959,7 +3959,7 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
         }
     }
 
-    if (lys_node_addchild(parent, lys_module(module), retval)) {
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
         goto error;
     }
 
@@ -4089,7 +4089,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
         }
     }
 
-    if (lys_node_addchild(parent, lys_module(module), retval)) {
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
         goto error;
     }
 
@@ -4223,7 +4223,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
         }
     }
 
-    if (lys_node_addchild(parent, lys_module(module), retval)) {
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
         goto error;
     }
 
@@ -4370,7 +4370,7 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
         }
     }
 
-    if (lys_node_addchild(parent, lys_module(module), retval)) {
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
         goto error;
     }
 
@@ -4493,7 +4493,7 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
     }
 
-    if (lys_node_addchild(parent, lys_module(module), retval)) {
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
         goto error;
     }
 

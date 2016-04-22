@@ -226,8 +226,8 @@ yin_print_iffeature(struct lyout *out, int level, const struct lys_module *modul
     struct lys_module *mod;
 
     ly_print(out, "%*s<if-feature name=\"", LEVEL, INDENT);
-    mod = lys_module(feat->module);
-    if (lys_module(module) != mod) {
+    mod = lys_main_module(feat->module);
+    if (lys_main_module(module) != mod) {
         ly_print(out, "%s:", transform_module_name2import_prefix(module, mod->name));
     }
     ly_print(out, "%s\"/>\n", feat->name);
@@ -422,8 +422,8 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
             break;
         case LY_TYPE_IDENT:
             if (type->info.ident.ref) {
-                mod = lys_module(type->info.ident.ref->module);
-                if (lys_module(module) == mod) {
+                mod = lys_main_module(type->info.ident.ref->module);
+                if (lys_main_module(module) == mod) {
                     ly_print(out, "%*s<base name=\"%s\"/>\n", LEVEL, INDENT, type->info.ident.ref->name);
                 } else {
                     ly_print(out, "%*s<base name=\"%s:%s\"/>\n", LEVEL, INDENT,
@@ -727,8 +727,8 @@ yin_print_identity(struct lyout *out, int level, const struct lys_ident *ident)
         yin_print_snode_common(out, level, (struct lys_node *)ident);
         if (ident->base) {
             ly_print(out, "%*s<base name=\"", LEVEL, INDENT);
-            mod = lys_module(ident->base->module);
-            if (lys_module(ident->module) != mod) {
+            mod = lys_main_module(ident->base->module);
+            if (lys_main_module(ident->module) != mod) {
                 ly_print(out, "%s:", transform_module_name2import_prefix(ident->module, mod->name));
             }
             ly_print(out, "%s\"/>\n", ident->base->name);
@@ -1381,7 +1381,7 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
         yin_print_deviation(out, level, module, &module->deviation[i]);
     }
 
-    LY_TREE_FOR(lys_module(module)->data, node) {
+    LY_TREE_FOR(lys_main_module(module)->data, node) {
         if (node->module != module) {
             /* data from submodules */
             continue;

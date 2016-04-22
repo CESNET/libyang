@@ -1321,7 +1321,7 @@ yang_read_deviation(struct lys_module *module, char *value)
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, "deviations");
         goto error;
     }
-    if (dev_target->module == lys_module(module)) {
+    if (dev_target->module == lys_main_module(module)) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, "deviation");
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Deviating own module is not allowed.");
         goto error;

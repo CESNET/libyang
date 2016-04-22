@@ -2666,7 +2666,7 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyd_node 
             module = ((struct lyd_attr *)node)->module;
         }
 
-        module = lys_module(module);
+        module = lys_main_module(module);
 
         set_fill_string(set, module->ns, strlen(module->ns), ctx);
         break;

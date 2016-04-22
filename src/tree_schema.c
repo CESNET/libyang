@@ -151,7 +151,7 @@ lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblin
     while ((node = lys_getnext(node, siblings->parent, mod, 0))) {
         if (!type || (node->nodetype & type)) {
             /* module check */
-            if (lys_node_module(node) != lys_module(mod)) {
+            if (lys_node_module(node) != lys_main_module(mod)) {
                 continue;
             }
 
@@ -1088,7 +1088,7 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
     assert(data);
 
     /* get the main module */
-    module = lys_module(module);
+    module = lys_main_module(module);
 
     switch (format) {
     case LYS_IN_YIN:
@@ -2069,7 +2069,7 @@ lys_get_import_module(const struct lys_module *module, const char *prefix, int p
         name_len = strlen(name);
     }
 
-    main_module = lys_module(module);
+    main_module = lys_main_module(module);
 
     /* module own prefix, submodule own prefix, (sub)module own name */
     if ((!prefix || (!module->type && !strncmp(main_module->prefix, prefix, pref_len) && !main_module->prefix[pref_len])
@@ -2839,7 +2839,7 @@ lys_node_module(const struct lys_node *node)
 }
 
 API struct lys_module *
-lys_module(const struct lys_module *module)
+lys_main_module(const struct lys_module *module)
 {
     return (module->type ? ((struct lys_submodule *)module)->belongsto : (struct lys_module *)module);
 }
