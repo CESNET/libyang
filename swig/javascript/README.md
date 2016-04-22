@@ -1,5 +1,6 @@
 ## Requirements
 
+* cmake >= 3.1
 * swig
 * node
 * npm
