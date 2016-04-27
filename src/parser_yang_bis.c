@@ -7304,7 +7304,7 @@ yyreduce:
                     uint64_t val;
                     char *endptr;
 
-                    val = strtoul(yyget_text(scanner), &endptr, 10);
+                    val = strtoul(s, &endptr, 10);
                     if (val > UINT32_MAX || *endptr) {
                         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "min-elements");
                         free(s);
@@ -7347,7 +7347,7 @@ yyreduce:
                     uint64_t val;
                     char *endptr;
 
-                    val = strtoul(yyget_text(scanner), &endptr, 10);
+                    val = strtoul(s, &endptr, 10);
                     if (val > UINT32_MAX || *endptr) {
                         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "max-elements");
                         free(s);
