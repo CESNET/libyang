@@ -302,6 +302,7 @@ string_2: @EMPTYDIR@
 
 module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                               if (submodule) {
+                                                                free(s);
                                                                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "module");
                                                                 YYABORT;
                                                               }
@@ -329,6 +330,7 @@ module_header_stmts: @EMPTYDIR@  { $$ = 0; }
 
 submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                                     if (!submodule) {
+                                                                      free(s);
                                                                       LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "submodule");
                                                                       YYABORT;
                                                                     }
