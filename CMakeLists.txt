@@ -29,7 +29,7 @@ else()
 	configure_file(${PROJECT_SOURCE_DIR}/src/yang.y.in ${PROJECT_SOURCE_DIR}/src/yang.y)
 	add_custom_target(bison
 		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
-		COMMAND bison -Wall -l -o parser_yang_bis.c --defines=parser_yang_bis.h yang.y
+		COMMAND bison -Wno-other -l -o parser_yang_bis.c --defines=parser_yang_bis.h yang.y
 		COMMAND flex -L -o parser_yang_lex.c --header-file=parser_yang_lex.h yang.l
 	)
 endif()

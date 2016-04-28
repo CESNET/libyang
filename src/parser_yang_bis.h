@@ -153,6 +153,7 @@ union YYSTYPE
   char *str;
   void *v;
   struct lys_module *inc;
+  struct yang_type *type;
   union {
     uint32_t index;
     struct lys_node_container *container;
