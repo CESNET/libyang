@@ -314,7 +314,7 @@ const struct lys_module *lys_get_import_module(const struct lys_module *module, 
  *                 Does not return groupings, uses, and augments (but can return augment nodes).
  * @param[out] ret Pointer to the node of the desired type. Can be NULL.
  *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference.
  */
 int lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int mod_name_len, const char *name,
                     int nam_len, LYS_NODE type, const struct lys_node **ret);
