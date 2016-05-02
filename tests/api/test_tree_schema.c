@@ -366,14 +366,10 @@ static int
 setup_f(void **state)
 {
     (void) state; /* unused */
-    char *config_file = TESTS_DIR"/api/files/a.xml";
-    char *yang_file = TESTS_DIR"/api/files/a.yin";
     char *yang_folder = TESTS_DIR"/api/files";
-    int rc;
 
-    rc = generic_init(config_file, yang_file, yang_folder);
-
-    if (rc) {
+    ctx = ly_ctx_new(yang_folder);
+    if (!ctx) {
         return -1;
     }
 
@@ -469,7 +465,7 @@ test_lys_parse_fd(void **state)
     assert_string_equal("b", module->name);
 
     module = lys_parse_mem(ctx, lys_module_a, LYS_IN_YIN);
-    if (!module) {
+    if (module) {
         fail();
     }
 
