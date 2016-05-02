@@ -19,7 +19,7 @@
 #include "parser.h"
 #include "xpath.h"
 
-static int 
+static int
 yang_check_string(struct lys_module *module, const char **target, char *what, char *where, char *value)
 {
     if (*target) {
@@ -32,7 +32,7 @@ yang_check_string(struct lys_module *module, const char **target, char *what, ch
     }
 }
 
-int 
+int
 yang_read_common(struct lys_module *module, char *value, enum yytokentype type)
 {
     int ret = 0;
@@ -60,7 +60,7 @@ yang_read_common(struct lys_module *module, char *value, enum yytokentype type)
     return ret;
 }
 
-int 
+int
 yang_read_prefix(struct lys_module *module, void *save, char *value, enum yytokentype type)
 {
     int ret = 0;
@@ -1435,7 +1435,7 @@ yang_read_deviate_unsupported(struct type_deviation *dev)
             }
         }
     }
- 
+
     /* unlink and store the original node */
     dev->deviation->orig_node = dev->target;
 
@@ -2215,7 +2215,7 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
     }
 
     /* initiale module */
-    module->ctx=ctx;
+    module->ctx = ctx;
     module->type = 0;
     module->implemented = (implement ? 1 : 0);
 
@@ -2282,10 +2282,7 @@ yang_read_submodule(struct lys_module *module, const char *data, unsigned int si
         goto error;
     }
 
-    /* cleanup */
-
     LOGVRB("Submodule \"%s\" successfully parsed.", submodule->name);
-
     return submodule;
 
 error:

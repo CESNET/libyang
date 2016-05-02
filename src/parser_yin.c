@@ -4563,7 +4563,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
     int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0, c_inc = 0, c_aug = 0, c_ftrs = 0, c_dev = 0;
 
     /* to simplify code, store the module/submodule being processed as trg */
-    trg = submodule ? (struct lys_module*)submodule : module;
+    trg = submodule ? (struct lys_module *)submodule : module;
 
     /* init */
     memset(&root, 0, sizeof root);
@@ -5097,7 +5097,6 @@ yin_read_submodule(struct lys_module *module, const char *data, struct unres_sch
     lyxml_free(module->ctx, yin);
 
     LOGVRB("Submodule \"%s\" successfully parsed.", submodule->name);
-
     return submodule;
 
 error:
