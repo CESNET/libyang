@@ -217,7 +217,7 @@ tree_print_container(struct lyout *out, const struct lys_module *module, int lev
     }
 
     nodemod = lys_node_module(node);
-    if (lys_module(module) != nodemod) {
+    if (lys_main_module(module) != nodemod) {
         ly_print(out, "%s:", nodemod->name);
     }
 
@@ -271,7 +271,7 @@ tree_print_choice(struct lyout *out, const struct lys_module *module, int level,
     ly_print(out, "(");
 
     nodemod = lys_node_module(node);
-    if (lys_module(module) != nodemod) {
+    if (lys_main_module(module) != nodemod) {
         ly_print(out, "%s:", nodemod->name);
     }
 
@@ -316,7 +316,7 @@ tree_print_case(struct lyout *out, const struct lys_module *module, int level, c
             (cas->flags & LYS_STATUS_DEPRC ? "x" : (cas->flags & LYS_STATUS_OBSLT ? "o" : "+")));
 
     nodemod = lys_node_module(node);
-    if (lys_module(module) != nodemod) {
+    if (lys_main_module(module) != nodemod) {
         ly_print(out, "%s:", nodemod->name);
     }
 
@@ -371,7 +371,7 @@ tree_print_anyxml(struct lyout *out, const struct lys_module *module, char *inde
 
     prefix_len = 0;
     nodemod = lys_node_module(node);
-    if (lys_module(module) != nodemod) {
+    if (lys_main_module(module) != nodemod) {
         ly_print(out, "%s:", nodemod->name);
         prefix_len = strlen(nodemod->name)+1;
     }
@@ -423,7 +423,7 @@ tree_print_leaf(struct lyout *out, const struct lys_module *module, char *indent
 
     prefix_len = 0;
     nodemod = lys_node_module(node);
-    if (lys_module(module) != nodemod) {
+    if (lys_main_module(module) != nodemod) {
         ly_print(out, "%s:", nodemod->name);
         prefix_len = strlen(nodemod->name)+1;
     }
@@ -463,7 +463,7 @@ tree_print_leaflist(struct lyout *out, const struct lys_module *module, char *in
     }
 
     nodemod = lys_node_module(node);
-    if (lys_module(module) != nodemod) {
+    if (lys_main_module(module) != nodemod) {
         ly_print(out, "%s:", nodemod->name);
     }
 
@@ -499,7 +499,7 @@ tree_print_list(struct lyout *out, const struct lys_module *module, int level, c
     }
 
     nodemod = lys_node_module(node);
-    if (lys_module(module) != nodemod) {
+    if (lys_main_module(module) != nodemod) {
         ly_print(out, "%s:", nodemod->name);
     }
 

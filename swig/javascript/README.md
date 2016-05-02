@@ -1,17 +1,17 @@
 ## Requirements
 
+* cmake >= 3.1
 * swig
 * node
-* node-gyp
+* npm
 
 ## Install
 
 ```
 $ cmake -DJAVASCRIPT_BINDING=ON ..
 $ make
-$ make npmpkg
 $ cd javascript
-$ node-gyp configure build
+$ npm install
 ```
 
 More details on swig's javascript bindings can be found at [SWIG](http://www.swig.org/Doc3.0/Javascript.html#Javascript_node_extensions).

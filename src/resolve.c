@@ -3473,7 +3473,7 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
 
     /* check identifier uniqueness as in lys_node_addchild() */
     LY_TREE_FOR(aug->child, sub) {
-        if (lys_check_id(sub, aug->parent, lys_module(aug->module))) {
+        if (lys_check_id(sub, aug->parent, lys_main_module(aug->module))) {
             return -1;
         }
     }
@@ -4090,7 +4090,7 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
             len = strlen(keys_str);
         }
 
-        rc = lys_get_sibling(list->child, lys_module(list->module)->name, 0, keys_str, len, LYS_LEAF, (const struct lys_node **)&list->keys[i]);
+        rc = lys_get_sibling(list->child, lys_main_module(list->module)->name, 0, keys_str, len, LYS_LEAF, (const struct lys_node **)&list->keys[i]);
         if (rc) {
             if (rc == -1) {
                 LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, list, "list keys", keys_str);

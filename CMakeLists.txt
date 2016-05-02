@@ -6,7 +6,7 @@ set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and tool
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
 set(LIBYANG_MINOR_VERSION 9)
-set(LIBYANG_MICRO_VERSION 69)
+set(LIBYANG_MICRO_VERSION 71)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 
@@ -29,7 +29,7 @@ else()
 	configure_file(${PROJECT_SOURCE_DIR}/src/yang.y.in ${PROJECT_SOURCE_DIR}/src/yang.y)
 	add_custom_target(bison
 		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
-		COMMAND bison -Wall -l -o parser_yang_bis.c --defines=parser_yang_bis.h yang.y
+		COMMAND bison -Wno-other -l -o parser_yang_bis.c --defines=parser_yang_bis.h yang.y
 		COMMAND flex -L -o parser_yang_lex.c --header-file=parser_yang_lex.h yang.l
 	)
 endif()

@@ -48,6 +48,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 char *s, *tmp_s;
 char rev[LY_REV_SIZE];
 struct lys_module *trg;
+struct lys_node *tpdf_parent;
 /* temporary pointer for the check extension nacm */
 struct lys_node *data_node;
 /* pointer on the current parsed element*/
@@ -63,6 +64,7 @@ int64_t cnt_val;
   char *str;
   void *v;
   struct lys_module *inc;
+  struct yang_type *type;
   union {
     uint32_t index;
     struct lys_node_container *container;
@@ -208,6 +210,7 @@ int64_t cnt_val;
 %type <v> bit_arg_str
 %type <v> union_spec
 %type <v> typedef_arg_str
+%type <type> type_stmtsep
 %type <nodes> container_opt_stmt
 %type <nodes> anyxml_opt_stmt
 %type <nodes> choice_opt_stmt
@@ -236,6 +239,10 @@ int64_t cnt_val;
                 free($$.deviation);
               }
             } deviation_opt_stmt
+%destructor { if (read_all) {
+                yang_delete_type(module, $$);
+              }
+            } type_stmtsep
 
 %%
 
@@ -302,6 +309,7 @@ string_2: @EMPTYDIR@
 
 module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                               if (submodule) {
+                                                                free(s);
                                                                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "module");
                                                                 YYABORT;
                                                               }
@@ -329,6 +337,7 @@ module_header_stmts: @EMPTYDIR@  { $$ = 0; }
 
 submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                                     if (!submodule) {
+                                                                      free(s);
                                                                       LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "submodule");
                                                                       YYABORT;
                                                                     }
@@ -862,10 +871,7 @@ typedef_stmt: TYPEDEF_KEYWORD sep typedef_arg_str
                                       LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "type", "typedef");
                                       YYABORT;
                                     }
-                                    if (unres_schema_add_node(trg, unres, &$6.node.ptr_tpdf->type, UNRES_TYPE_DER,(struct lys_node *) $3)) {
-                                      YYABORT;
-                                    }
-                                    actual = $3;
+                                    actual = tpdf_parent;
 
                                     /* check default value */
                                     if ($6.node.ptr_tpdf->dflt) {
@@ -878,7 +884,7 @@ typedef_stmt: TYPEDEF_KEYWORD sep typedef_arg_str
                '}' ;
 
 typedef_arg_str: identifier_arg_str { if (read_all) {
-                                        $$ = actual;
+                                        tpdf_parent = actual;
                                         if (!(actual = yang_read_typedef(trg, actual, s))) {
                                           YYABORT;
                                         }
@@ -907,6 +913,9 @@ type_opt_stmt: @EMPTYDIR@ { $$.node.ptr_tpdf = actual;
                    actual_type = TYPEDEF_KEYWORD;
                    $1.node.flag |= LYS_TYPE_DEF;
                    $$ = $1;
+                   if (unres_schema_add_node(trg, unres, &$1.node.ptr_tpdf->type, UNRES_TYPE_DER, tpdf_parent)) {
+                     YYABORT;
+                   }
                  }
                }
   |  type_opt_stmt units_stmt { if (read_all && yang_read_units(trg, $1.node.ptr_tpdf, s, TYPEDEF_KEYWORD)) {YYABORT;} s = NULL; }
@@ -934,11 +943,16 @@ type_opt_stmt: @EMPTYDIR@ { $$.node.ptr_tpdf = actual;
                                   }
 
 type_end: ';'
-  |  '{' stmtsep
+  |  '{' type_stmtsep
          type_body_stmts
       '}'
   ;
 
+/* store pointer to the structure of yang_type */
+type_stmtsep: stmtsep { if (read_all) {
+                          $$ = actual;
+                        }
+                      }
 
 type_body_stmts: decimal_string_restrictions
   | enum_specification
@@ -1570,10 +1584,6 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                   if (!($7.node.flag & LYS_TYPE_DEF)) {
                                     LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaf, "type", "leaf");
                                     YYABORT;
-                                  } else {
-                                      if (unres_schema_add_node(trg, unres, &$7.node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *) $7.node.ptr_leaf->parent)) {
-                                        YYABORT;
-                                      }
                                   }
                                   if ($7.node.ptr_leaf->dflt) {
                                     if ($7.node.ptr_leaf->flags & LYS_MAND_TRUE) {
@@ -1636,6 +1646,9 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                      actual = $1.node.ptr_leaf;
                      actual_type = LEAF_KEYWORD;
                      $1.node.flag |= LYS_TYPE_DEF;
+                     if (unres_schema_add_node(trg, unres, &$1.node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *)$1.node.ptr_leaf->parent)) {
+                       YYABORT;
+                     }
                    }
                  }
        stmtsep { $$ = $1;}
@@ -1701,11 +1714,6 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                            if (!($7.node.flag & LYS_TYPE_DEF)) {
                                              LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaflist, "type", "leaf-list");
                                              YYABORT;
-                                           } else {
-                                             if (unres_schema_add_node(trg, unres, &$7.node.ptr_leaflist->type, UNRES_TYPE_DER,
-                                                                      (struct lys_node *) $7.node.ptr_leaflist->parent)) {
-                                               YYABORT;
-                                             }
                                            }
                                          }
                                        }
@@ -1757,6 +1765,9 @@ leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                    actual = $1.node.ptr_leaflist;
                    actual_type = LEAF_LIST_KEYWORD;
                    $1.node.flag |= LYS_TYPE_DEF;
+                   if (unres_schema_add_node(trg, unres, &$1.node.ptr_leaflist->type, UNRES_TYPE_DER, (struct lys_node *)$1.node.ptr_leaflist->parent)) {
+                     YYABORT;
+                   }
                  }
                }
      stmtsep { $$ = $1; }
@@ -3420,7 +3431,7 @@ min_value_arg_str: non_negative_integer_value optsep { $$ = $1; }
                     uint64_t val;
                     char *endptr;
 
-                    val = strtoul(yyget_text(scanner), &endptr, 10);
+                    val = strtoul(s, &endptr, 10);
                     if (val > UINT32_MAX || *endptr) {
                         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "min-elements");
                         free(s);
@@ -3445,7 +3456,7 @@ max_value_arg_str: UNBOUNDED_KEYWORD optsep { $$ = 0; }
                     uint64_t val;
                     char *endptr;
 
-                    val = strtoul(yyget_text(scanner), &endptr, 10);
+                    val = strtoul(s, &endptr, 10);
                     if (val > UINT32_MAX || *endptr) {
                         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "max-elements");
                         free(s);

@@ -1535,7 +1535,7 @@ struct lys_module *lys_node_module(const struct lys_node *node);
  * @param[in] module Module to be examined
  * @return pointer to the main module (schema structure).
  */
-struct lys_module *lys_module(const struct lys_module *module);
+struct lys_module *lys_main_module(const struct lys_module *module);
 
 /**
  * @brief Set a schema private pointer to a user pointer.

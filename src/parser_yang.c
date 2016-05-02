@@ -965,6 +965,24 @@ error:
     return NULL;
 }
 
+void
+yang_delete_type(struct lys_module *module, struct yang_type *stype)
+{
+    int i;
+
+    stype->type->base = stype->base;
+    stype->type->der = NULL;
+    lydict_remove(module->ctx, stype->name);
+    if (stype->base == LY_TYPE_UNION) {
+        for (i = 0; i < stype->type->info.uni.count; i++) {
+            if (stype->type->info.uni.types[i].der) {
+                yang_delete_type(module, (struct yang_type *)stype->type->info.uni.types[i].der);
+            }
+        }
+    }
+    free(stype);
+}
+
 void *
 yang_read_length(struct lys_module *module, struct yang_type *typ, char *value)
 {
@@ -982,6 +1000,7 @@ yang_read_length(struct lys_module *module, struct yang_type *typ, char *value)
 
     if (*length) {
         LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "length", "type");
+        goto error;
     }
     *length = calloc(1, sizeof **length);
     if (!*length) {
@@ -1321,7 +1340,7 @@ yang_read_deviation(struct lys_module *module, char *value)
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, "deviations");
         goto error;
     }
-    if (dev_target->module == lys_module(module)) {
+    if (dev_target->module == lys_main_module(module)) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, "deviation");
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Deviating own module is not allowed.");
         goto error;
