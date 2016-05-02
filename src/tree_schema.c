@@ -1615,9 +1615,7 @@ lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment *aug, void (*privat
     struct lys_node *next, *sub;
 
     /* children from a resolved augment are freed under the target node */
-    if (!aug->target || !aug->module->implemented) {
-        /* aug.target could have been freed, leave it be */
-        aug->target = NULL;
+    if (!aug->target) {
         LY_TREE_FOR_SAFE(aug->child, next, sub) {
             lys_node_free(sub, private_destructor, 0);
         }
