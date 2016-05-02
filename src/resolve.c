@@ -4621,7 +4621,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
 
     assert(unres);
 
-    LOGVRB("Resolving unresolved schema nodes and their constraints.");
+    LOGVRB("Resolving unresolved schema nodes and their constraints...");
     ly_vlog_hide(1);
 
     /* uses */
@@ -4684,8 +4684,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         return -1;
     }
 
-    LOGVRB("Resolving unresolved schema nodes and their constraints.");
-
+    LOGVRB("All schema nodes and constraints resolved.");
     unres->count = 0;
     return EXIT_SUCCESS;
 }
@@ -5038,7 +5037,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
         return EXIT_SUCCESS;
     }
 
-    LOGVRB("Resolving unresolved data nodes and their constraints.");
+    LOGVRB("Resolving unresolved data nodes and their constraints...");
     ly_vlog_hide(1);
 
     /* when-stmt first */
@@ -5207,7 +5206,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
         return -1;
     }
 
-    LOGVRB("All data nodes and constraints resolved");
+    LOGVRB("All data nodes and constraints resolved.");
     unres->count = 0;
     return EXIT_SUCCESS;
 }
