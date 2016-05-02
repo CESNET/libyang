@@ -43,6 +43,7 @@ API struct ly_ctx *
 ly_ctx_new(const char *search_dir)
 {
     struct ly_ctx *ctx;
+    struct lys_module *module;
     char *cwd;
 
     ctx = calloc(1, sizeof *ctx);
@@ -88,16 +89,20 @@ ly_ctx_new(const char *search_dir)
     }
 
     /* load ietf-inet-types */
-    if (!lys_parse_mem(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN)) {
+    module = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN);
+    if (!module) {
         ly_ctx_destroy(ctx, NULL);
         return NULL;
     }
+    module->implemented = 0;
 
     /* load ietf-yang-types */
-    if (!lys_parse_mem(ctx, (char *)ietf_yang_types_2013_07_15_yin, LYS_IN_YIN)) {
+    module = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_yang_types_2013_07_15_yin, LYS_IN_YIN);
+    if (!module) {
         ly_ctx_destroy(ctx, NULL);
         return NULL;
     }
+    module->implemented = 0;
 
     /* load ietf-yang-library */
     if (!lys_parse_mem(ctx, (char *)ietf_yang_library_2016_02_01_yin, LYS_IN_YIN)) {
