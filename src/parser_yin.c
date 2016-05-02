@@ -5130,7 +5130,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
     }
 
     if (module->augment_size || module->deviation_size) {
-        LOGVRB("Module \"%s\" includes augments or deviations, changing conformance to \"implement\".");
+        LOGVRB("Module \"%s\" includes augments or deviations, changing conformance to \"implement\".", module->name);
         module->implemented = 1;
 
         lys_sub_module_set_dev_aug_target_implement(module);
