@@ -38,6 +38,14 @@ const char *lys_module_a = \
         xmlns:a=\"urn:a\">                            \
   <namespace uri=\"urn:a\"/>                          \
   <prefix value=\"a_mod\"/>                           \
+  <revision date=\"2015-01-01\">                      \
+    <description>                                     \
+      <text>version 1</text>                          \
+    </description>                                    \
+    <reference>                                       \
+      <text>RFC XXXX</text>                           \
+    </reference>                                      \
+  </revision>                                         \
   <include module=\"asub\"/>                          \
   <include module=\"atop\"/>                          \
   <feature name=\"foo\"/>                             \
@@ -179,6 +187,13 @@ module a {\n\
   include \"asub\";\n\
   include \"atop\";\n\
 \n\
+  revision \"2015-01-01\" {\n\
+    description\n\
+      \"version 1\";\n\
+    reference\n\
+      \"RFC XXXX\";\n\
+  }\n\
+\n\
   feature foo;\n\
 \n\
   grouping gg {\n\
@@ -227,6 +242,14 @@ char *result_yin = "\
   <prefix value=\"a_mod\"/>\n\
   <include module=\"asub\"/>\n\
   <include module=\"atop\"/>\n\
+  <revision date=\"2015-01-01\">\n\
+    <description>\n\
+      <text>version 1</text>\n\
+    </description>\n\
+    <reference>\n\
+      <text>RFC XXXX</text>\n\
+    </reference>\n\
+  </revision>\n\
   <feature name=\"foo\"/>\n\
   <grouping name=\"gg\">\n\
     <leaf name=\"bar-gggg\">\n\
@@ -889,7 +912,6 @@ error:
     }
     fail();
 }
-
 
 static void
 test_lys_print_fd_yang(void **state)

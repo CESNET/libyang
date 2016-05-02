@@ -57,8 +57,6 @@ enum LY_IDENT {
 struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
                                    const char *revision, struct unres_schema *unres);
 
-void lyp_set_implemented(struct lys_module *module);
-
 struct lys_type *lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *found);
 
 int lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int resolve);
@@ -107,11 +105,7 @@ int lyp_check_import(struct lys_module *module, const char *value, struct lys_im
  */
 int lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodule);
 
-int lyp_add_module(struct lys_module **module, int implement);
-
-void lyp_fail_module(struct lys_module *module);
-
-void lyp_fail_submodule(struct lys_submodule *submodule);
+int lyp_ctx_add_module(struct lys_module **module);
 
 /**
  * Store UTF-8 character specified as 4byte integer into the dst buffer.

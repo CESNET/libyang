@@ -395,4 +395,14 @@ int lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, struct lys
  */
 int lyd_validate_defaults_unres(struct lyd_node **node, int options, struct ly_ctx *ctx, struct unres_data *unres);
 
+void lys_deviation_add_ext_imports(struct lys_module *dev_target_module, struct lys_module *dev_module);
+
+void lys_switch_deviations(struct lys_module *module);
+
+void lys_sub_module_remove_devs_augs(struct lys_module *module);
+
+void lys_sub_module_set_dev_aug_target_implement(struct lys_module *module);
+
+void lys_submodule_module_data_free(struct lys_submodule *submodule);
+
 #endif /* LY_TREE_INTERNAL_H_ */
