@@ -818,9 +818,19 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
         /* 6.2.1, rule 7 */
         if (parent) {
             iter = parent;
-            while (iter && (iter->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE))) {
+            while (iter && (iter->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE | LYS_AUGMENT))) {
+                if (iter->nodetype == LYS_AUGMENT) {
+                    if (((struct lys_node_augment *)iter)->target) {
+                        /* augment is resolved, go up */
+                        iter = ((struct lys_node_augment *)iter)->target;
+                        continue;
+                    }
+                    /* augment is not resolved, this is the final parent */
+                    break;
+                }
                 iter = iter->parent;
             }
+
             if (!iter) {
                 stop = NULL;
                 iter = module->data;
@@ -857,7 +867,12 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
             if (!iter->next) {
                 /* no sibling, go to parent's sibling */
                 do {
-                    iter = iter->parent;
+                    /* for parent LYS_AUGMENT */
+                    if (iter->parent == stop) {
+                        iter = stop;
+                        break;
+                    }
+                    iter = lys_parent(iter);
                     if (iter && iter->next) {
                         break;
                     }

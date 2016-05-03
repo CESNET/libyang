@@ -3467,7 +3467,7 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
 
     /* check identifier uniqueness as in lys_node_addchild() */
     LY_TREE_FOR(aug->child, sub) {
-        if (lys_check_id(sub, aug->parent, lys_main_module(aug->module))) {
+        if (lys_check_id(sub, aug->target, NULL)) {
             return -1;
         }
     }
