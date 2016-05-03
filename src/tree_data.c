@@ -3207,6 +3207,9 @@ lyd_wd_add_leaf(struct ly_ctx *ctx, struct lyd_node *parent, struct lys_node_lea
     if ((options & LYD_WD_MASK) == LYD_WD_EXPLICIT && (leaf->flags & LYS_CONFIG_W)) {
         /* do not process config data in explicit mode */
         return NULL;
+    } else if (lys_is_disabled((struct lys_node *)leaf, 0)) {
+        /* ignore disabled data */
+        return NULL;
     }
 
     if (leaf->dflt) {
@@ -3294,6 +3297,10 @@ lyd_wd_add_empty(struct lyd_node *parent, struct lys_node *schema, struct unres_
                 next = NULL;
                 goto nextsibling;
             }
+        } else if (lys_is_disabled(siter, 0)) {
+            /* ignore disabled data */
+            next = NULL;
+            goto nextsibling;
         }
 
         switch (siter->nodetype) {
@@ -3424,6 +3431,9 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
             if (siter->flags & LYS_CONFIG_R) {
                 continue;
             }
+        } else if (lys_is_disabled(siter, 0)) {
+            /* ignore disabled data */
+            continue;
         }
 
         switch(siter->nodetype) {
@@ -3589,6 +3599,9 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
                 if (siter->flags & LYS_CONFIG_R) {
                     continue;
                 }
+            } else if (lys_is_disabled(siter, 0)) {
+                /* ignore disabled data */
+                continue;
             }
 
             switch (siter->nodetype) {

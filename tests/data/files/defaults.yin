@@ -4,8 +4,19 @@
         xmlns:df="urn:libyang:tests:defaults">
   <namespace uri="urn:libyang:tests:defaults"/>
   <prefix value="df"/>
+  <feature name="unhide"/>
+  <leaf name="hiddenleaf">
+    <if-feature name="unhide"/>
+    <type name="int32"/>
+    <default value="42"/>
+  </leaf>
   <container name="df">
     <leaf name="foo">
+      <type name="int32"/>
+      <default value="42"/>
+    </leaf>
+    <leaf name="hiddenleaf">
+      <if-feature name="unhide"/>
       <type name="int32"/>
       <default value="42"/>
     </leaf>
