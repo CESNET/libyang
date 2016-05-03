@@ -372,8 +372,15 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             if ((*result)->schema->nodetype != LYS_ANYXML ||
                     !ly_strequal((*result)->schema->name, "filter", 0) ||
                     !ly_strequal((*result)->schema->module->name, "ietf-netconf", 0)) {
-                LOGWRN("Ignoring \"%s\" attribute in \"%s\" element.", attr->name, xml->name);
-                continue;
+                if (options & LYD_OPT_STRICT) {
+                    LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, xml->name);
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, (*result), "Attribute \"%s\" with no namespace (schema).",
+                           attr->name);
+                    goto error;
+                } else {
+                    LOGWRN("Ignoring \"%s\" attribute in \"%s\" element.", attr->name, xml->name);
+                    continue;
+                }
             } else {
                 /* exception for filter's attributes */
                 flag = 1;
@@ -406,9 +413,16 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             dattr->module = (struct lys_module *)ly_ctx_get_module_by_ns(ctx, attr->ns->value, NULL);
         }
         if (!dattr->module) {
-            LOGWRN("Attribute \"%s\" from unknown schema (\"%s\") - skipping.", attr->name, attr->ns->value);
             free(dattr);
-            continue;
+            if (options & LYD_OPT_STRICT) {
+                LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, xml->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_LYD, (*result), "Attribute \"%s\" from unknown schema (\"%s\").",
+                       attr->name, attr->ns->value);
+                goto error;
+            } else {
+                LOGWRN("Attribute \"%s\" from unknown schema (\"%s\") - skipping.", attr->name, attr->ns->value);
+                continue;
+            }
         }
 
         if (!(*result)->attr) {
