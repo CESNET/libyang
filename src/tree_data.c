@@ -1890,8 +1890,6 @@ lyd_validate(struct lyd_node **node, int options, ...)
         return EXIT_FAILURE;
     }
 
-    ly_errno = 0;
-
     if (!(*node)) {
         /* get context with schemas from the variable arguments */
         va_start(ap, options);
