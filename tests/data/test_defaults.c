@@ -326,6 +326,31 @@ test_df4(void **state)
     assert_string_equal(st->xml, xml1);
 }
 
+static void
+test_feature(void **state)
+{
+    struct state *st = (*state);
+    const char *xml = "<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
+                        "<enable-nacm>true</enable-nacm>"
+                        "<read-default>permit</read-default>"
+                        "<write-default>deny</write-default>"
+                        "<exec-default>permit</exec-default>"
+                        "<enable-external-groups>true</enable-external-groups>"
+                      "</nacm><hiddenleaf xmlns=\"urn:libyang:tests:defaults\">42"
+                      "</hiddenleaf><df xmlns=\"urn:libyang:tests:defaults\">"
+                        "<foo>42</foo><hiddenleaf>42</hiddenleaf><b1_1>42</b1_1>"
+                      "</df><hidden xmlns=\"urn:libyang:tests:defaults\">"
+                        "<foo>42</foo><baz>42</baz></hidden>";
+
+    assert_int_equal(lys_features_enable(st->mod, "unhide"), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, st->ctx), 0);
+    assert_ptr_not_equal(st->dt, NULL);
+
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_ptr_not_equal(st->xml, NULL);
+    assert_string_equal(st->xml, xml);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -335,7 +360,8 @@ int main(void)
                     cmocka_unit_test_setup_teardown(test_df1, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_df2, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_df3, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_df4, setup_f, teardown_f), };
+                    cmocka_unit_test_setup_teardown(test_df4, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_feature, setup_f, teardown_f), };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

@@ -24,6 +24,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include <cmocka.h>
 
@@ -95,7 +96,7 @@ static void
 test_modules(void **state)
 {
     struct ly_ctx *ctx = *state;
-    char *extension;
+    char *extension, path[PATH_MAX];
     const struct lys_module *module;
 
     char files[17][32] = { "iana-crypt-hash", "iana-if-type",
@@ -107,7 +108,8 @@ test_modules(void **state)
                          };
     int i, format;
 
-    if (!strcmp(ctx->models.search_path, SCHEMA_FOLDER_YIN)) {
+
+    if (!strcmp(ctx->models.search_path, realpath(SCHEMA_FOLDER_YIN, path))) {
         extension = ".yin";
         format = LYS_IN_YIN;
     }  else {

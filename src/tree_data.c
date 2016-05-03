@@ -1877,6 +1877,8 @@ lyd_validate(struct lyd_node **node, int options, ...)
     va_list ap;
     struct unres_data *unres = NULL;
 
+    ly_errno = LY_SUCCESS;
+
     if (!node) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
@@ -1887,8 +1889,6 @@ lyd_validate(struct lyd_node **node, int options, ...)
         LOGMEM;
         return EXIT_FAILURE;
     }
-
-    ly_errno = 0;
 
     if (!(*node)) {
         /* get context with schemas from the variable arguments */
@@ -2075,6 +2075,8 @@ lyd_unlink(struct lyd_node *node)
                         }
                     }
                     ly_set_free(data);
+                } else {
+                    ly_errno = LY_SUCCESS;
                 }
             }
         }
@@ -3207,6 +3209,9 @@ lyd_wd_add_leaf(struct ly_ctx *ctx, struct lyd_node *parent, struct lys_node_lea
     if ((options & LYD_WD_MASK) == LYD_WD_EXPLICIT && (leaf->flags & LYS_CONFIG_W)) {
         /* do not process config data in explicit mode */
         return NULL;
+    } else if (lys_is_disabled((struct lys_node *)leaf, 0)) {
+        /* ignore disabled data */
+        return NULL;
     }
 
     if (leaf->dflt) {
@@ -3294,6 +3299,11 @@ lyd_wd_add_empty(struct lyd_node *parent, struct lys_node *schema, struct unres_
                 next = NULL;
                 goto nextsibling;
             }
+        }
+        if (lys_is_disabled(siter, 0)) {
+            /* ignore disabled data */
+            next = NULL;
+            goto nextsibling;
         }
 
         switch (siter->nodetype) {
@@ -3424,6 +3434,10 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
             if (siter->flags & LYS_CONFIG_R) {
                 continue;
             }
+        }
+        if (lys_is_disabled(siter, 0)) {
+            /* ignore disabled data */
+            continue;
         }
 
         switch(siter->nodetype) {
@@ -3590,6 +3604,10 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
                     continue;
                 }
             }
+            if (lys_is_disabled(siter, 0)) {
+                /* ignore disabled data */
+                continue;
+            }
 
             switch (siter->nodetype) {
             case LYS_CONTAINER:
@@ -3701,6 +3719,8 @@ lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options)
 {
     int rc, mode;
     struct unres_data *unres = NULL;
+
+    ly_errno = LY_SUCCESS;
 
     if (!root || (!ctx && !(*root))) {
         ly_errno = LY_EINVAL;
