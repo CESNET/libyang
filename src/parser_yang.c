@@ -2194,11 +2194,17 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
 
     if (module->augment_size || module->deviation_size) {
         LOGVRB("Module \"%s\" includes augments or deviations, changing conformance to \"implement\".", module->name);
-        module->implemented = 1;
+        if (lys_module_set_implement(module)) {
+            goto error;
+        }
 
-        lys_sub_module_set_dev_aug_target_implement(module);
+        if (lys_sub_module_set_dev_aug_target_implement(module)) {
+            goto error;
+        }
         for (i = 0; i < module->inc_size; ++i) {
-            lys_sub_module_set_dev_aug_target_implement((struct lys_module *)module->inc[i].submodule);
+            if (lys_sub_module_set_dev_aug_target_implement((struct lys_module *)module->inc[i].submodule)) {
+                goto error;
+            }
         }
     }
 

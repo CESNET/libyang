@@ -3123,7 +3123,34 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
     }
 }
 
-void
+int
+lys_module_set_implement(struct lys_module *module)
+{
+    struct ly_ctx *ctx;
+    int i;
+
+    if (module->implemented) {
+        return EXIT_SUCCESS;
+    }
+
+    ctx = module->ctx;
+
+    for (i = 0; i < ctx->models.used; ++i) {
+        if (module == ctx->models.list[i]) {
+            continue;
+        }
+
+        if (!strcmp(module->name, ctx->models.list[i]->name) && ctx->models.list[i]->implemented) {
+            LOGERR(LY_EINVAL, "Module \"%s\" in another revision already implemented.", module->name);
+            return EXIT_FAILURE;
+        }
+    }
+
+    module->implemented = 1;
+    return EXIT_SUCCESS;
+}
+
+int
 lys_sub_module_set_dev_aug_target_implement(struct lys_module *module)
 {
     int i;
@@ -3132,18 +3159,20 @@ lys_sub_module_set_dev_aug_target_implement(struct lys_module *module)
     for (i = 0; i < module->deviation_size; ++i) {
         assert(module->deviation[i].orig_node);
         trg_mod = lys_node_module(module->deviation[i].orig_node);
-        if (!trg_mod->implemented) {
-            trg_mod->implemented = 1;
+        if (lys_module_set_implement(trg_mod)) {
+            return EXIT_FAILURE;
         }
     }
 
     for (i = 0; i < module->augment_size; ++i) {
         assert(module->augment[i].target);
         trg_mod = lys_node_module(module->augment[i].target);
-        if (!trg_mod->implemented) {
-            trg_mod->implemented = 1;
+        if (lys_module_set_implement(trg_mod)) {
+            return EXIT_FAILURE;
         }
     }
+
+    return EXIT_SUCCESS;
 }
 
 void

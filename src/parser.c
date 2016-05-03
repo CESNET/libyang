@@ -1601,11 +1601,11 @@ lyp_ctx_add_module(struct lys_module **module)
     struct ly_ctx *ctx;
     struct lys_module **newlist = NULL;
     struct lys_module *mod;
-    int i, implement;
+    int i, match_i = -1, to_implement;
 
     assert(module);
     mod = (*module);
-    implement = mod->implemented;
+    to_implement = 0;
     ctx = mod->ctx;
 
     /* add to the context's list of modules */
@@ -1621,10 +1621,17 @@ lyp_ctx_add_module(struct lys_module **module)
         ctx->models.size *= 2;
         ctx->models.list = newlist;
     }
+
     for (i = 0; ctx->models.list[i]; i++) {
         /* check name (name/revision) and namespace uniqueness */
         if (!strcmp(ctx->models.list[i]->name, mod->name)) {
-            if (!ctx->models.list[i]->rev_size && mod->rev_size) {
+            if (to_implement) {
+                if (i == match_i) {
+                    continue;
+                }
+                LOGERR(LY_EINVAL, "Module \"%s\" in another revision already implemented.", ctx->models.list[i]->name);
+                return EXIT_FAILURE;
+            } else if (!ctx->models.list[i]->rev_size && mod->rev_size) {
                 LOGERR(LY_EINVAL, "Module \"%s\" without revision already in context.", ctx->models.list[i]->name);
                 return EXIT_FAILURE;
             } else if (ctx->models.list[i]->rev_size && !mod->rev_size) {
@@ -1634,14 +1641,15 @@ lyp_ctx_add_module(struct lys_module **module)
                     || !strcmp(ctx->models.list[i]->rev[0].date, mod->rev[0].date)) {
 
                 LOGVRB("Module \"%s\" already in context.", ctx->models.list[i]->name);
-                lys_sub_module_remove_devs_augs(mod);
-                lys_free(mod, NULL, 1);
-                (*module) = ctx->models.list[i];
-                if (implement && !(*module)->implemented) {
-                    (*module)->implemented = 1;
+                to_implement = mod->implemented;
+                match_i = i;
+                if (to_implement && !ctx->models.list[i]->implemented) {
+                    /* check first that it is okay to change it to implemented */
+                    i = -1;
+                    continue;
                 }
+                goto already_in_context;
 
-                return EXIT_SUCCESS;
             } else if (mod->implemented && ctx->models.list[i]->implemented) {
                 LOGERR(LY_EINVAL, "Module \"%s\" in another revision already implemented.", ctx->models.list[i]->name);
                 return EXIT_FAILURE;
@@ -1655,9 +1663,21 @@ lyp_ctx_add_module(struct lys_module **module)
             return EXIT_FAILURE;
         }
     }
+
+    if (to_implement) {
+        i = match_i;
+        ctx->models.list[i]->implemented = 1;
+        goto already_in_context;
+    }
     ctx->models.list[i] = mod;
     ctx->models.used++;
     ctx->models.module_set_id++;
+    return EXIT_SUCCESS;
+
+already_in_context:
+    lys_sub_module_remove_devs_augs(mod);
+    lys_free(mod, NULL, 1);
+    (*module) = ctx->models.list[i];
     return EXIT_SUCCESS;
 }
 
