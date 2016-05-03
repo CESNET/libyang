@@ -664,7 +664,8 @@ lyd_new_path_list_keys(struct lyd_node *list, const char *list_name, const char 
             return -1;
         }
 
-        if ((r = parse_schema_list_predicate(predicate, &name, &nam_len, &value, &val_len, &has_predicate)) < 1) {
+        if (((r = parse_schema_json_predicate(predicate, &name, &nam_len, &value, &val_len, &has_predicate)) < 1)
+                || !strncmp(name, ".", nam_len)) {
             LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
             return -1;
         }

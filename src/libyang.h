@@ -890,6 +890,9 @@ const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_
  * If the \p nodeid is relative, \p start is mandatory and is the starting point
  * for the resolution. The first node identifier does not need a module name.
  *
+ * Predicates on lists are accepted (ignored) in the form of "<key>(=<value>)"
+ * and on leaves/leaf-lists ".(=<value>)".
+ *
  * @param[in] ctx Context to work in.
  * @param[in] start Starting node for a relative schema node identifier, in which
  * case it is mandatory.
@@ -909,6 +912,9 @@ const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node
  *
  * Since input and output is skipped, there could arise ambiguities if one RPC input
  * contains a parameter with the same name as is in output, hence the flag.
+ *
+ * Predicates on lists are accepted (ignored) in the form of "<key>(=<value>)"
+ * and on leaves/leaf-lists ".(=<value>)".
  *
  * @param[in] ctx Context to work in.
  * @param[in] start Starting node for a relative schema node identifier, in which

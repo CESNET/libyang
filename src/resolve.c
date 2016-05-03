@@ -828,7 +828,7 @@ parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, co
  * @brief Parse schema predicate (special format internally used).
  *
  * predicate           = "[" *WSP predicate-expr *WSP "]"
- * predicate-expr      = identifier / key-with-value
+ * predicate-expr      = "." / identifier / key-with-value
  * key-with-value      = identifier *WSP "=" *WSP
  *                       ((DQUOTE string DQUOTE) /
  *                        (SQUOTE string SQUOTE))
@@ -841,7 +841,7 @@ parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, co
  * @param[out] has_predicate Flag to mark whether there is another predicate specified.
  */
 int
-parse_schema_list_predicate(const char *id, const char **name, int *nam_len, const char **value, int *val_len,
+parse_schema_json_predicate(const char *id, const char **name, int *nam_len, const char **value, int *val_len,
                             int *has_predicate)
 {
     const char *ptr;
@@ -878,7 +878,9 @@ parse_schema_list_predicate(const char *id, const char **name, int *nam_len, con
     }
 
     /* identifier */
-    if ((ret = parse_identifier(id)) < 1) {
+    if (id[0] == '.') {
+        ret = 1;
+    } else if ((ret = parse_identifier(id)) < 1) {
         return -parsed + ret;
     }
     if (name) {
@@ -1357,7 +1359,8 @@ resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_
     const char *name;
     int nam_len, has_predicate, i;
 
-    if ((i = parse_schema_list_predicate(predicate, &name, &nam_len, NULL, NULL, &has_predicate)) < 1) {
+    if (((i = parse_schema_json_predicate(predicate, &name, &nam_len, NULL, NULL, &has_predicate)) < 1)
+            || !strncmp(name, ".", nam_len)) {
         LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-i], &predicate[-i]);
         return -1;
     }
@@ -1518,17 +1521,24 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
                 /* do we have some predicates on it? */
                 if (has_predicate) {
                     r = 0;
-                    if (sibling->nodetype != LYS_LIST) {
+                    if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+                        if ((r = parse_schema_json_predicate(id, NULL, NULL, NULL, NULL, &has_predicate)) < 1) {
+                            LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
+                            return NULL;
+                        }
+                    } else if (sibling->nodetype == LYS_LIST) {
+                        if (resolve_json_schema_list_predicate(id, (const struct lys_node_list *)sibling, &r)) {
+                            return NULL;
+                        }
+                    } else {
                         LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
-                        return NULL;
-                    } else if (resolve_json_schema_list_predicate(id, (const struct lys_node_list *)sibling, &r)) {
                         return NULL;
                     }
                     id += r;
                 }
 
                 /* check for shorthand cases - then 'start' does not change */
-                if (sibling->parent && sibling->parent->nodetype == LYS_CHOICE && sibling->nodetype != LYS_CASE) {
+                if (lys_parent(sibling) && (lys_parent(sibling)->nodetype == LYS_CHOICE) && (sibling->nodetype != LYS_CASE)) {
                     shorthand = ~shorthand;
                 }
 
@@ -1601,7 +1611,8 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
             return -1;
         }
 
-        if ((r = parse_schema_list_predicate(predicate, &name, &nam_len, &value, &val_len, &has_predicate)) < 1) {
+        if (((r = parse_schema_json_predicate(predicate, &name, &nam_len, &value, &val_len, &has_predicate)) < 1)
+                || !strncmp(name, ".", nam_len)) {
             LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
             return -1;
         }
