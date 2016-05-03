@@ -1349,9 +1349,9 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             }
 
             /* you cannot remove a key leaf */
-            if ((dev_target->nodetype == LYS_LEAF) && dev_target->parent && (dev_target->parent->nodetype == LYS_LIST)) {
-                for (i = 0; i < ((struct lys_node_list *)dev_target->parent)->keys_size; ++i) {
-                    if (((struct lys_node_list *)dev_target->parent)->keys[i] == (struct lys_node_leaf *)dev_target) {
+            if ((dev_target->nodetype == LYS_LEAF) && lys_parent(dev_target) && (lys_parent(dev_target)->nodetype == LYS_LIST)) {
+                for (i = 0; i < ((struct lys_node_list *)lys_parent(dev_target))->keys_size; ++i) {
+                    if (((struct lys_node_list *)lys_parent(dev_target))->keys[i] == (struct lys_node_leaf *)dev_target) {
                         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, develem->name);
                         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"not-supported\" deviation cannot remove a list key.");
                         goto error;

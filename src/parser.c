@@ -40,8 +40,8 @@ lyp_is_rpc(struct lys_node *node)
 {
     assert(node);
 
-    while(node->parent) {
-        node = node->parent;
+    while (lys_parent(node)) {
+        node = lys_parent(node);
     }
 
     if (node->nodetype == LYS_RPC) {
@@ -1174,7 +1174,7 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, struct lys_module *modu
         }
 
         /* check locally scoped typedefs (avoid name shadowing) */
-        for (; parent; parent = parent->parent) {
+        for (; parent; parent = lys_parent(parent)) {
             switch (parent->nodetype) {
             case LYS_CONTAINER:
                 size = ((struct lys_node_container *)parent)->tpdf_size;
