@@ -3135,6 +3135,9 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
             elem->prev = last;
             last->next = NULL;
         }
+
+        /* needs to be NULL for lys_augment_free() to free the children */
+        module->augment[i].target = NULL;
     }
 }
 
