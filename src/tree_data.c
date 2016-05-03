@@ -3297,7 +3297,8 @@ lyd_wd_add_empty(struct lyd_node *parent, struct lys_node *schema, struct unres_
                 next = NULL;
                 goto nextsibling;
             }
-        } else if (lys_is_disabled(siter, 0)) {
+        }
+        if (lys_is_disabled(siter, 0)) {
             /* ignore disabled data */
             next = NULL;
             goto nextsibling;
@@ -3431,7 +3432,8 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
             if (siter->flags & LYS_CONFIG_R) {
                 continue;
             }
-        } else if (lys_is_disabled(siter, 0)) {
+        }
+        if (lys_is_disabled(siter, 0)) {
             /* ignore disabled data */
             continue;
         }
@@ -3599,7 +3601,8 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
                 if (siter->flags & LYS_CONFIG_R) {
                     continue;
                 }
-            } else if (lys_is_disabled(siter, 0)) {
+            }
+            if (lys_is_disabled(siter, 0)) {
                 /* ignore disabled data */
                 continue;
             }
