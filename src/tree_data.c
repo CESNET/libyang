@@ -1877,6 +1877,8 @@ lyd_validate(struct lyd_node **node, int options, ...)
     va_list ap;
     struct unres_data *unres = NULL;
 
+    ly_errno = LY_SUCCESS;
+
     if (!node) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
@@ -2075,6 +2077,8 @@ lyd_unlink(struct lyd_node *node)
                         }
                     }
                     ly_set_free(data);
+                } else {
+                    ly_errno = LY_SUCCESS;
                 }
             }
         }
@@ -3717,6 +3721,8 @@ lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options)
 {
     int rc, mode;
     struct unres_data *unres = NULL;
+
+    ly_errno = LY_SUCCESS;
 
     if (!root || (!ctx && !(*root))) {
         ly_errno = LY_EINVAL;
