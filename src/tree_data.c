@@ -3583,10 +3583,14 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
                 goto error;
             }
         }
+
+        if (options & LYD_OPT_NOSIBLINGS) {
+            break;
+        }
     }
 
     if (ctx) {
-        /* add modules into our internal set */
+        /* add all modules into our internal set */
         for (i = 0; i < (unsigned int)ctx->models.used; i++) {
             if (ctx->models.list[i]->data) {
                 ly_set_add(modset, ctx->models.list[i]);
@@ -3727,6 +3731,12 @@ lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options)
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
+
+    if ((options & LYD_OPT_NOSIBLINGS) && !(*root)) {
+        LOGERR(LY_EINVAL, "Cannot add default values for one module (LYD_OPT_NOSIBLINGS) without any data.");
+        return EXIT_FAILURE;
+    }
+
     mode = options & LYD_WD_MASK;
     if (!mode) {
         /* nothing to do */

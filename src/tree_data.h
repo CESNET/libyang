@@ -691,11 +691,20 @@ int lyd_validate(struct lyd_node **node, int options, ...);
  *
  * Since default nodes are also needed by the validation process, to optimize your application you can add default
  * values directly in lyd_validate() and lyd_parse*() functions using appropriate options value. By default, these
- * functions removes the  default nodes at the end of their processing.
+ * functions remove the default nodes at the end of their processing.
  *
- * @param[in] ctx Optional parameter. If provided, default nodes from all modules in the context will be added (so it
- *            has no effect for #LYD_WD_TRIM). If NULL, only the modules explicitly mentioned in data tree are
- *            taken into account.
+ * \p ctx parameter and \p options with #LYD_OPT_NOSIBLINGS values can result in 4 different scenarios:
+ *
+ * - If \p ctx is set and \p options include #LYD_OPT_NOSIBLINGS, tree default nodes will be added ONLY to \p root,
+ * top-level default nodes will be added from ALL the modules (so it has no effect for #LYD_WD_TRIM).
+ * - If \p ctx is set and \p options do not include #LYD_OPT_NOSIBLINGS, tree default values will be added to ALL
+ * the \p root siblings, top-level nodes will be added from ALL the modules.
+ * - If \p ctx is NULL and \p options include #LYD_OPT_NOSIBLINGS, tree default nodes will be added ONLY to \p root,
+ * top-level default nodes will be added ONLY from the module of \p root.
+ * - If \p ctx is NULL and \p options do not include #LYD_OPT_NOSIBLINGS, tree default nodes will be added to ALL
+ * the \p root siblings, top-level default nodes will be added from ALL the \p root siblings modules.
+ *
+ * @param[in] ctx Optional parameter. Exact meaning described in this function description last paragraph.
  * @param[in] root Data tree root. In case of #LYD_WD_TRIM the data tree can be modified so the root can be changed or
  *            removed. In other modes and with empty data tree, new default nodes can be created so the root pointer
  *            will contain/return the newly created data tree.
