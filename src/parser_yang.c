@@ -2193,7 +2193,9 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
     }
 
     if (module->augment_size || module->deviation_size) {
-        LOGVRB("Module \"%s\" includes augments or deviations, changing conformance to \"implement\".", module->name);
+        if (!module->implemented) {
+            LOGVRB("Module \"%s\" includes augments or deviations, changing conformance to \"implement\".", module->name);
+        }
         if (lys_module_set_implement(module)) {
             goto error;
         }
