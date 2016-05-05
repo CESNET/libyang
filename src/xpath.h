@@ -116,7 +116,7 @@ struct lyxp_expr {
     uint16_t used;           /* used array items */
     uint16_t size;           /* allocated array items */
 
-    const char *expr;        /* the original XPath expression */
+    char *expr;              /* the original XPath expression */
 };
 
 /*

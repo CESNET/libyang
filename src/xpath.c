@@ -53,6 +53,7 @@ exp_free(struct lyxp_expr *exp)
 {
     uint16_t i;
 
+    free(exp->expr);
     free(exp->tokens);
     free(exp->expr_pos);
     free(exp->tok_len);
@@ -1845,7 +1846,7 @@ parse_ncname(const char *ncname)
  *
  * http://www.w3.org/TR/1999/REC-xpath-19991116/ section 3.7
  *
- * @param[in] expr XPath expression to parse.
+ * @param[in] expr XPath expression to parse. It is duplicated.
  *
  * @return Filled expression structure or NULL on error.
  */
@@ -1863,7 +1864,12 @@ parse_expr(const char *expr)
         LOGMEM;
         return NULL;
     }
-    ret->expr = expr;
+    ret->expr = strdup(expr);
+    if (!ret->expr) {
+        LOGMEM;
+        free(ret);
+        return NULL;
+    }
     ret->used = 0;
     ret->size = LYXP_EXPR_SIZE_START;
     ret->tokens = malloc(ret->size * sizeof *ret->tokens);
