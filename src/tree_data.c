@@ -1458,7 +1458,8 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
         }
 
         /* check that both has the same (schema) parent or that they are top-level nodes */
-        if (first->parent->schema != second->parent->schema) {
+        if ((first->parent && second->parent && first->parent->schema != second->parent->schema) ||
+                (!first->parent && first->parent != second->parent)) {
             LOGERR(LY_EINVAL, "%s: incompatible trees with different parents.", __func__);
             return NULL;
         }
