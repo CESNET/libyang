@@ -2580,6 +2580,38 @@ end:
     return dflt;
 }
 
+API char *
+lyd_path(struct lyd_node *node)
+{
+    char *buf_backup = NULL, *buf = ly_buf(), *result = NULL;
+    uint16_t index = LY_BUF_SIZE - 1;
+
+    if (!node) {
+        LOGERR(LY_EINVAL, "%s: NULL node parameter", __func__);
+        return NULL;
+    }
+
+    /* backup the shared internal buffer */
+    if (ly_buf_used && buf[0]) {
+        buf_backup = strndup(buf, LY_BUF_SIZE - 1);
+    }
+    ly_buf_used++;
+
+    /* build the path */
+    buf[index] = '\0';
+    ly_vlog_build_path_reverse(LY_VLOG_LYD, node, buf, &index);
+    result = strdup(&buf[index]);
+
+    /* restore the shared internal buffer */
+    if (buf_backup) {
+        strcpy(buf, buf_backup);
+        free(buf_backup);
+    }
+    ly_buf_used--;
+
+    return result;
+}
+
 static int
 lyd_build_relative_data_path(const struct lyd_node *node, const char *schema_id, char *buf)
 {

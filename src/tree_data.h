@@ -206,6 +206,15 @@ struct lyd_node_anyxml {
 };
 
 /**
+ * @brief Build path (usable as XPath) of the data node.
+ * @param[in] node Data node to be processed. Note that the node should be from a complete data tree, having a subtree
+ *            (after using lyd_unlink()) can cause generating invalid paths.
+ * @return NULL on error, on success the buffer for the resulting path is allocated and caller is supposed to free it
+ * with free().
+ */
+char *lyd_path(struct lyd_node *node);
+
+/**
  * @defgroup parseroptions Data parser options
  * @ingroup datatree
  *
