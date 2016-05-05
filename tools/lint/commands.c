@@ -642,6 +642,7 @@ cmd_xpath(const char *arg)
     }
     printf("\n");
 
+    ly_set_free(set);
     ret = 0;
 
 cleanup:
