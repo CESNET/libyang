@@ -699,12 +699,13 @@ API struct lyd_node *
 lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, const char *value, int options)
 {
     char *module_name = ly_buf(), *buf_backup = NULL, *str;
-    const char *mod_name, *name, *node_mod_name, *id;
+    const char *mod_name, *name, *val_name, *val, *node_mod_name, *id;
     struct lyd_node *ret = NULL, *node, *parent = NULL;
     const struct lys_node *schild, *sparent;
     const struct lys_node_list *slist;
     const struct lys_module *module, *prev_mod;
-    int r, i, parsed = 0, mod_name_len, nam_len, is_relative = -1, first_iter = 1;
+    int r, i, parsed = 0, mod_name_len, nam_len, val_name_len, val_len;
+    int is_relative = -1, has_predicate, first_iter = 1;
 
     if (!path || (!data_tree && !ctx)
             || (!data_tree && (path[0] != '/'))) {
@@ -753,7 +754,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         }
     }
 
-    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
+    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate)) < 1) {
         LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
         return NULL;
     }
@@ -885,15 +886,41 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
             break;
         case LYS_LEAF:
         case LYS_LEAFLIST:
+            str = NULL;
+            if (has_predicate) {
+                if ((r = parse_schema_json_predicate(id, &val_name, &val_name_len, &val, &val_len, &has_predicate)) < 1) {
+                    LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
+                    lyd_free(ret);
+                    return NULL;
+                }
+                id += r;
+
+                if ((val_name[0] != '.') || (val_name_len != 1)) {
+                    LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, val_name[0], val_name);
+                    lyd_free(ret);
+                    return NULL;
+                }
+
+                str = strndup(val, val_len);
+                if (!str) {
+                    LOGMEM;
+                    lyd_free(ret);
+                    return NULL;
+                }
+            }
             if (id[0]) {
                 LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
+                free(str);
+                lyd_free(ret);
                 return NULL;
             }
-            node = _lyd_new_leaf(is_relative ? parent : NULL, schild, value);
+            node = _lyd_new_leaf(is_relative ? parent : NULL, schild, (str ? str : value));
+            free(str);
             break;
         case LYS_ANYXML:
             if (id[0]) {
                 LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
+                lyd_free(ret);
                 return NULL;
             }
             str = strdup(value);
@@ -946,7 +973,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         }
 
         parsed = 0;
-        if ((schild->nodetype == LYS_LIST) && lyd_new_path_list_keys(node, name, id, &parsed)) {
+        if ((schild->nodetype == LYS_LIST) && (!has_predicate || lyd_new_path_list_keys(node, name, id, &parsed))) {
             lyd_free(ret);
             return NULL;
         }
@@ -970,7 +997,7 @@ next_iter:
         prev_mod = lys_node_module(schild);
 
         /* parse another node */
-        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
+        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate)) < 1) {
             LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
             lyd_free(ret);
             return NULL;

@@ -578,10 +578,11 @@ extern "C" {
  * A very small subset of this full XPath is recognized by lyd_new_path(). Basically, only a relative or absolute
  * path can be specified to identify a new data node. However, lists must be identified by all their keys and created
  * with all of them, so for those cases predicates are allowed. Predicates must be ordered the way the keys are ordered
- * and all the keys must be specified. Every predicate includes a single key with its value. These paths are valid XPath
+ * and all the keys must be specified. Every predicate includes a single key with its value. Optionally, leaves and
+ * leaf-lists can have predicates specifying their value in the path itself. All these paths are valid XPath
  * expressions. Example:
  *
- *     /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision='']/submodules
+ *     /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision='']/conformance[.='implement']
  *
  * Almost the same XPath is accepted by ly_ctx_get_node(). The difference is that it is not used on data, but schema,
  * which means there are no key values and only one node matches one path. In effect, lists do not have to have any

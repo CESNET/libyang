@@ -546,7 +546,8 @@ struct lyd_node *lyd_output_new_anyxml_xml(const struct lys_node *schema, struct
  * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
  * @param[in] path Simple data XPath of the new node. It can contain only simple node addressing with optional
  * module names as prefixes. List nodes must have predicates, one for each list key in the correct order and
- * with its value as well, see @ref howtoxpath.
+ * with its value as well, leaves and leaf-lists can have predicates too that have preference over \p value,
+ * see @ref howtoxpath.
  * @param[in] value Value of the new leaf/lealf-list. If creating anyxml, this value is internally duplicated
  * (for other options use lyd_*_new_anyxml_*()). If creating nodes of other types, set to NULL.
  * @param[in] options Bitmask of options flags, see @ref pathoptions.
