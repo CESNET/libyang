@@ -664,13 +664,15 @@ set_sorted_dup_node_clean(struct lyxp_set *set)
     uint16_t i = 0;
     int ret = EXIT_SUCCESS;
 
-    while (i < set->used - 1) {
-        if ((set->value.nodes[i] == set->value.nodes[i + 1])
-                && (set->node_type[i] == set->node_type[i + 1])) {
-            set_remove_node(set, i + 1);
-        ret = EXIT_FAILURE;
-        } else {
-            ++i;
+    if (set->used > 1) {
+        while (i < set->used - 1) {
+            if ((set->value.nodes[i] == set->value.nodes[i + 1])
+                    && (set->node_type[i] == set->node_type[i + 1])) {
+                set_remove_node(set, i + 1);
+            ret = EXIT_FAILURE;
+            } else {
+                ++i;
+            }
         }
     }
 
