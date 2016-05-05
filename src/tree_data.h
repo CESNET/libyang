@@ -253,9 +253,9 @@ void lyd_free_diff(struct lyd_difflist *diff);
  * Note, that the \p first and the \p second must have the same schema parent (or they must be top-level elements).
  * In case of using #LYD_OPT_NOSIBLINGS, they both must be instances of the same schema node.
  *
- * @param[in] first The first (sub)tree to compare. Without #LYD_OPT_NOSIBLINGS option, all the first's siblings are
+ * @param[in] first The first (sub)tree to compare. Without #LYD_OPT_NOSIBLINGS option, all siblings are
  *            taken into comparison.
- * @param[in] second The second (sub)tree to compare. Without #LYD_OPT_NOSIBLINGS option, all the first's siblings are
+ * @param[in] second The second (sub)tree to compare. Without #LYD_OPT_NOSIBLINGS option, all siblings are
  *            taken into comparison.
  * @param[in] options The following @ref parseroptions with the described meanings are accepted:
  *            - #LYD_OPT_NOSIBLINGS - the \p first and the \p second have to instantiate the same schema node and
@@ -265,7 +265,7 @@ void lyd_free_diff(struct lyd_difflist *diff);
  *              conversion of the \p second tree to the \p first one is doable at the cost of some additional
  *              instructions.
  * @return NULL on error, the list of differences on success. In case the trees are the same, the first item in the
- *         lyd_difflist::type array is LYD_DIFF_END.
+ *         lyd_difflist::type array is #LYD_DIFF_END. The returned structure is supposed to be freed by lyd_free_diff().
  */
 struct lyd_difflist *lyd_diff(struct lyd_node *first, struct lyd_node *second, int options);
 
