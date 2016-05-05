@@ -97,7 +97,9 @@ typedef union lyd_value_u {
  */
 #define LYD_VAL_OK       0x00    /**< node is successfully validated including whole subtree */
 #define LYD_VAL_UNIQUE   0x01    /**< Unique value(s) changed, applicable only to ::lys_node_list data nodes */
-#define LYD_VAL_NOT      0x0f    /**< node was not validated yet */
+#define LYD_VAL_NOT      0x07    /**< node was not validated yet */
+#define LYD_VAL_INUSE    0x08    /**< Internal flag for note about various processing on data, should be used only
+                                      internally and removed before the libyang returns to the caller */
 /**
  * @}
  */
@@ -206,6 +208,68 @@ struct lyd_node_anyxml {
 };
 
 /**
+ * @brief list of possible types of differencies in #lyd_difflist
+ */
+typedef enum {
+    LYD_DIFF_END = 0,  /**< end of the differences list */
+    LYD_DIFF_CREATED,  /**< newly created node
+                            - Node is present in the second tree, but not in the first tree.
+                            - To make both trees the same the node in lyd_difflist::second is supposed to be inserted
+                              (copied via lyd_dup()) into the node (as a child) at the same index in the
+                              lyd_difflist::first array. If the lyd_difflist::first at the index is NULL, the missing
+                              node is top-level. */
+    LYD_DIFF_DELETED,  /**< deleted node
+                            - Node is present in the first tree, but not in the second tree.
+                            - To make both trees the same the node in lyd_difflist::first can be deleted from the
+                              first tree. The lyd_difflist::second item is NULL until the #LYD_OPT_REVERSIBLE option
+                              is used in lyd_diff(). In that case the #LYD_DIFF_DELETED and #LYD_DIFF_CREATED can be
+                              used interchangeably according to which tree is being change into the other (the default
+                              direction is from the first to the second). */
+    LYD_DIFF_CHANGED   /**< value of a leaf or anyxml is changed, the lyd_difflist::first and lyd_difflist::second
+                            points to the leaf/anyxml instances in the first and the second tree respectively. */
+} LYD_DIFFTYPE;
+
+/**
+ * @brief Structure for the result of lyd_diff(), describing differences between two data trees.
+ */
+struct lyd_difflist {
+    LYD_DIFFTYPE *type;      /**< array of the differences types, terminated by #LYD_DIFF_END value. */
+    struct lyd_node **first; /**< array of nodes in the first tree for the specific type of difference, see the
+                                  description of #LYD_DIFFTYPE values for more information. */
+    struct lyd_node **second;/**< array of nodes in the second tree for the specific type of difference, see the
+                                  description of #LYD_DIFFTYPE values for more information. */
+};
+
+/**
+ * @brief Free the result of lyd_diff(). It frees the structure of the lyd_diff() result, not the referenced nodes.
+ *
+ * @param[in] diff The lyd_diff() result to free.
+ */
+void lyd_free_diff(struct lyd_difflist *diff);
+
+/**
+ * @brief Compare two data trees and provide list of differences.
+ *
+ * Note, that the \p first and the \p second must have the same schema parent (or they must be top-level elements).
+ * In case of using #LYD_OPT_NOSIBLINGS, they both must be instances of the same schema node.
+ *
+ * @param[in] first The first (sub)tree to compare. Without #LYD_OPT_NOSIBLINGS option, all the first's siblings are
+ *            taken into comparison.
+ * @param[in] second The second (sub)tree to compare. Without #LYD_OPT_NOSIBLINGS option, all the first's siblings are
+ *            taken into comparison.
+ * @param[in] options The following @ref parseroptions with the described meanings are accepted:
+ *            - #LYD_OPT_NOSIBLINGS - the \p first and the \p second have to instantiate the same schema node and
+ *              only their content (subtree) is compared.
+ *            - #LYD_OPT_REVERSIBLE - by default, the information in the returned lyd_difflist can be used only to
+ *              change the \p first tree to the \p second one. In case of using this option, also the other
+ *              conversion of the \p second tree to the \p first one is doable at the cost of some additional
+ *              instructions.
+ * @return NULL on error, the list of differences on success. In case the trees are the same, the first item in the
+ *         lyd_difflist::type array is LYD_DIFF_END.
+ */
+struct lyd_difflist *lyd_diff(struct lyd_node *first, struct lyd_node *second, int options);
+
+/**
  * @brief Build path (usable as XPath) of the data node.
  * @param[in] node Data node to be processed. Note that the node should be from a complete data tree, having a subtree
  *            (after using lyd_unlink()) can cause generating invalid paths.
@@ -311,6 +375,9 @@ char *lyd_path(struct lyd_node *node);
                                           are being created and were not part of the original data tree despite their
                                           value is equal to their default value. There is the same limitation regarding
                                           the presence of ietf-netconf-with-defaults module in libyang context. */
+#define LYD_OPT_REVERSIBLE 0x200000  /**< Applicable only to lyd_diff(). With some additional computation it provides
+                                          instructions not only to change the first diff's tree to the second one, but
+                                          also the second one into the first tree. See lyd_diff() for more information */
 
 /**@} parseroptions */
 

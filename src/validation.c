@@ -193,7 +193,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
                         diter->validity) { /* skip comparison that will be done in future when checking diter as node */
                     continue;
                 }
-                if (lyd_list_equal(diter, node)) { /* comparing keys and unique combinations */
+                if (lyd_list_equal(diter, node, 1)) { /* comparing keys and unique combinations */
                     return EXIT_FAILURE;
                 }
             }
