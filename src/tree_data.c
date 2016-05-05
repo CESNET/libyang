@@ -1699,40 +1699,21 @@ lys_module_pos(struct lys_module *module)
     return 0;
 }
 
-/* compare all siblings */
 static int
-lys_module_node_pos_r(struct lys_node *siblings, struct lys_node *target, uint32_t *pos)
+lys_module_node_pos_r(struct lys_node *first_sibling, struct lys_node *target, uint32_t *pos)
 {
     const struct lys_node *next = NULL;
 
-    while ((next = lys_getnext(next, lys_parent(siblings), lys_node_module(siblings), 0))) {
+    /* the schema nodes are actually from data, lys_getnext skips non-data schema nodes for us */
+    while ((next = lys_getnext(next, lys_parent(first_sibling), lys_node_module(first_sibling), 0))) {
         ++(*pos);
         if (target == next) {
             return 0;
         }
-
-        if ((next->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_NOTIF)) && next->child) {
-            if (!lys_module_node_pos_r(next->child, target, pos)) {
-                return 0;
-            }
-        }
     }
 
+    LOGINT;
     return 1;
-}
-
-static uint32_t
-lys_module_node_pos(struct lys_node *node)
-{
-    uint32_t pos = 0;
-
-    assert(node->module->data);
-    if (lys_module_node_pos_r(lys_node_module(node)->data, node, &pos)) {
-        LOGINT;
-        return 0;
-    }
-
-    return pos;
 }
 
 static int
@@ -1771,6 +1752,7 @@ lyd_schema_sort(struct lyd_node *sibling, int recursive)
 {
     uint32_t len, i;
     struct lyd_node *node;
+    struct lys_node *first_ssibling;
     struct lyd_node_pos *array;
 
     if (!sibling) {
@@ -1778,72 +1760,86 @@ lyd_schema_sort(struct lyd_node *sibling, int recursive)
         return -1;
     }
 
-    /* nothing to sort */
-    if (sibling->prev == sibling) {
-        return EXIT_SUCCESS;
-    }
+    /* something actually to sort */
+    if (sibling->prev != sibling) {
 
-    /* find the beginning */
-    if (sibling->parent) {
-        sibling = sibling->parent->child;
-    } else {
-        while (sibling->prev->next) {
-            sibling = sibling->prev;
-        }
-    }
-
-    /* count siblings */
-    len = 0;
-    for (node = sibling; node; node = node->next) {
-        ++len;
-    }
-
-    array = malloc(len * sizeof *array);
-    if (!array) {
-        LOGMEM;
-        return -1;
-    }
-
-    /* fill arrays with positions and corresponding nodes */
-    for (i = 0, node = sibling; i < len; ++i, node = node->next) {
-        array[i].pos = lys_module_node_pos(node->schema);
-        if (!array[i].pos) {
-            free(array);
-            return -1;
-        }
-
-        array[i].node = node;
-    }
-
-    /* sort the arrays */
-    qsort(array, len, sizeof *array, lyd_node_pos_cmp);
-
-    /* adjust siblings based on the sorted array */
-    for (i = 0; i < len; ++i) {
-        /* parent child */
-        if (i == 0) {
-            /* adjust sibling so that it still points to the beginning */
-            sibling = array[i].node;
-            if (array[i].node->parent) {
-                array[i].node->parent->child = array[i].node;
+        /* find the beginning */
+        if (sibling->parent) {
+            sibling = sibling->parent->child;
+        } else {
+            while (sibling->prev->next) {
+                sibling = sibling->prev;
             }
         }
 
-        /* prev */
-        if (i > 0) {
-            array[i].node->prev = array[i - 1].node;
+        /* find the data node schema parent */
+        first_ssibling = sibling->schema;
+        while (lys_parent(first_ssibling)
+                && lys_parent(first_ssibling)->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES)) {
+            first_ssibling = lys_parent(first_ssibling);
+        }
+        /* find the beginning */
+        if (first_ssibling->parent) {
+            first_ssibling = first_ssibling->parent->child;
         } else {
-            array[i].node->prev = array[len - 1].node;
+            while (first_ssibling->prev->next) {
+                first_ssibling = first_ssibling->prev;
+            }
         }
 
-        /* next */
-        if (i < len - 1) {
-            array[i].node->next = array[i + 1].node;
-        } else {
-            array[i].node->next = NULL;
+        /* count siblings */
+        len = 0;
+        for (node = sibling; node; node = node->next) {
+            ++len;
         }
+
+        array = malloc(len * sizeof *array);
+        if (!array) {
+            LOGMEM;
+            return -1;
+        }
+
+        /* fill arrays with positions and corresponding nodes */
+        for (i = 0, node = sibling; i < len; ++i, node = node->next) {
+            array[i].pos = 0;
+            if (lys_module_node_pos_r(first_ssibling, node->schema, &array[i].pos)) {
+                free(array);
+                return -1;
+            }
+
+            array[i].node = node;
+        }
+
+        /* sort the arrays */
+        qsort(array, len, sizeof *array, lyd_node_pos_cmp);
+
+        /* adjust siblings based on the sorted array */
+        for (i = 0; i < len; ++i) {
+            /* parent child */
+            if (i == 0) {
+                /* adjust sibling so that it still points to the beginning */
+                sibling = array[i].node;
+                if (array[i].node->parent) {
+                    array[i].node->parent->child = array[i].node;
+                }
+            }
+
+            /* prev */
+            if (i > 0) {
+                array[i].node->prev = array[i - 1].node;
+            } else {
+                array[i].node->prev = array[len - 1].node;
+            }
+
+            /* next */
+            if (i < len - 1) {
+                array[i].node->next = array[i + 1].node;
+            } else {
+                array[i].node->next = NULL;
+            }
+        }
+        free(array);
     }
-    free(array);
 
     /* sort all the children recursively */
     if (recursive) {
