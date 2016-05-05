@@ -55,8 +55,8 @@ sibling_is_valid_child(const struct lys_node *node, int including, const struct 
     }
 
     /* if in uses, the following printed child can actually be in the parent node :-/ */
-    if (node->parent && (node->parent->nodetype == LYS_USES)) {
-        return sibling_is_valid_child(node->parent, 0, module);
+    if (lys_parent(node) && (lys_parent(node)->nodetype == LYS_USES)) {
+        return sibling_is_valid_child(lys_parent(node), 0, module);
     }
 
     return 0;
@@ -81,9 +81,9 @@ create_indent(int level, const char *old_indent, const struct lys_node *node, in
     }
 
     /* this is the direct child of a case */
-    if (!is_case && node->parent && (node->parent->nodetype & (LYS_CASE | LYS_CHOICE))) {
+    if (!is_case && lys_parent(node) && (lys_parent(node)->nodetype & (LYS_CASE | LYS_CHOICE))) {
         /* it is not the only child */
-        if (node->next && node->next->parent && (node->next->parent->nodetype == LYS_CHOICE)) {
+        if (node->next && lys_parent(node->next) && (lys_parent(node->next)->nodetype == LYS_CHOICE)) {
             next_is_case = 1;
         }
     }
@@ -399,7 +399,7 @@ tree_print_leaf(struct lyout *out, const struct lys_module *module, char *indent
 
     /* get know if the leaf is a key in a list, in that case it is
      * mandatory by default */
-    for (parent = leaf->parent; parent && parent->nodetype == LYS_USES; parent = parent->parent);
+    for (parent = lys_parent(node); parent && parent->nodetype == LYS_USES; parent = lys_parent(parent));
     if (parent && parent->nodetype == LYS_LIST) {
         list = (struct lys_node_list *)parent;
         for (i = 0; i < list->keys_size; i++) {

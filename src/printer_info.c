@@ -71,7 +71,7 @@ info_print_snode(struct lyout *out, const struct lys_node *parent, const struct 
     if (node) {
         if (node->name) {
             ly_print(out, "%s \"", strnodetype(node->nodetype));
-            if (parent != node->parent) {
+            if (parent != lys_parent(node)) {
                 ly_print(out, "%s:", node->module->prefix);
             }
             ly_print(out, "%s\"\n", node->name);
@@ -82,7 +82,7 @@ info_print_snode(struct lyout *out, const struct lys_node *parent, const struct 
         for (; node; node = node->next) {
             if (node->name) {
                 ly_print(out, "%*s%s \"", INDENT_LEN, "", strnodetype(node->nodetype));
-                if (parent != node->parent) {
+                if (parent != lys_parent(node)) {
                     ly_print(out, "%s:", node->module->prefix);
                 }
                 ly_print(out, "%s\"\n", node->name);
@@ -937,9 +937,9 @@ info_print_input(struct lyout *out, const struct lys_node *node)
 {
     struct lys_node_rpc_inout *input = (struct lys_node_rpc_inout *)node;
 
-    assert(input->parent && input->parent->nodetype == LYS_RPC);
+    assert(lys_parent(node) && lys_parent(node)->nodetype == LYS_RPC);
 
-    ly_print(out, "%-*s%s\n", INDENT_LEN, "Input of: ", input->parent->name);
+    ly_print(out, "%-*s%s\n", INDENT_LEN, "Input of: ", lys_parent(node)->name);
     info_print_typedef(out, input->tpdf, input->tpdf_size);
 
     info_print_snode(out, (struct lys_node *)input, input->child, "Children:");
@@ -950,9 +950,9 @@ info_print_output(struct lyout *out, const struct lys_node *node)
 {
     struct lys_node_rpc_inout *output = (struct lys_node_rpc_inout *)node;
 
-    assert(output->parent && output->parent->nodetype == LYS_RPC);
+    assert(lys_parent(node) && lys_parent(node)->nodetype == LYS_RPC);
 
-    ly_print(out, "%-*s%s\n", INDENT_LEN, "Output of: ", output->parent->name);
+    ly_print(out, "%-*s%s\n", INDENT_LEN, "Output of: ", lys_parent(node)->name);
     info_print_typedef(out, output->tpdf, output->tpdf_size);
 
     info_print_snode(out, (struct lys_node *)output, output->child, "Children:");

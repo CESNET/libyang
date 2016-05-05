@@ -97,9 +97,9 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
     /* check elements order in case of RPC's input and output */
     if (node->validity && lyp_is_rpc(node->schema)) {
         if ((node->prev != node) && node->prev->next) {
-            for (siter = lys_getnext(node->schema, node->schema->parent, node->schema->module, 0);
+            for (siter = lys_getnext(node->schema, lys_parent(node->schema), node->schema->module, 0);
                     siter;
-                    siter = lys_getnext(siter, siter->parent, siter->module, 0)) {
+                    siter = lys_getnext(siter, lys_parent(siter), siter->module, 0)) {
                 if (siter == node->prev->schema) {
                     /* data predecessor has the schema node after
                      * the schema node of the data node being checked */
@@ -158,7 +158,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
             for (diter = start; diter; diter = diter->next) {
                 if (diter->schema == schema && diter != node) {
                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, node, schema->name,
-                           schema->parent ? schema->parent->name : "data tree");
+                           lys_parent(schema) ? lys_parent(schema)->name : "data tree");
                     return EXIT_FAILURE;
                 }
             }
@@ -207,15 +207,15 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
                 LOGVAL(LYE_OBSDATA, LY_VLOG_LYD, node, schema->name);
                 return EXIT_FAILURE;
             }
-            siter = siter->parent;
-        } while(siter && !(siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST)));
+            siter = lys_parent(siter);
+        } while (siter && !(siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML)));
 
         /* status of the identity value */
         if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
             if (options & LYD_OPT_OBSOLETE) {
                 /* check that we are not instantiating obsolete type */
                 tpdf = ((struct lys_node_leaf *)node->schema)->type.der;
-                while(tpdf) {
+                while (tpdf) {
                     if ((tpdf->flags & LYS_STATUS_MASK) == LYS_STATUS_OBSLT) {
                         LOGVAL(LYE_OBSTYPE, LY_VLOG_LYD, node, schema->name, tpdf->name);
                         return EXIT_FAILURE;

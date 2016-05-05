@@ -101,7 +101,7 @@ yin_print_restr(struct lyout *out, int level, const char *elem_name, const struc
 static int
 yin_has_nacmext(const struct lys_node *node)
 {
-    if (node->nacm && (!node->parent || node->parent->nacm != node->nacm)) {
+    if (node->nacm && (!lys_parent(node) || lys_parent(node)->nacm != node->nacm)) {
         return 1;
     }
     return 0;
@@ -113,7 +113,7 @@ yin_print_nacmext(struct lyout *out, int level, const struct lys_node *node, con
     int i, j;
     const char *prefix = NULL;
 
-    if (node->nacm && (!node->parent || node->parent->nacm != node->nacm)) {
+    if (node->nacm && (!lys_parent(node) || lys_parent(node)->nacm != node->nacm)) {
         /* locate ietf-netconf-acm module in imports */
         if (!strcmp(module->name, "ietf-netconf-acm")) {
             prefix = module->prefix;
@@ -138,10 +138,10 @@ yin_print_nacmext(struct lyout *out, int level, const struct lys_node *node, con
             }
         }
 
-        if ((node->nacm & LYS_NACM_DENYW) && (!node->parent || !(node->parent->nacm & LYS_NACM_DENYW))) {
+        if ((node->nacm & LYS_NACM_DENYW) && (!lys_parent(node) || !(lys_parent(node)->nacm & LYS_NACM_DENYW))) {
             ly_print(out, "%*s<%s:default-deny-write/>\n", LEVEL, INDENT, prefix);
         }
-        if ((node->nacm & LYS_NACM_DENYA) && (!node->parent || !(node->parent->nacm & LYS_NACM_DENYA))) {
+        if ((node->nacm & LYS_NACM_DENYA) && (!lys_parent(node) || !(lys_parent(node)->nacm & LYS_NACM_DENYA))) {
             ly_print(out, "%*s<%s:default-deny-all/>\n", LEVEL, INDENT, prefix);
         }
     }
@@ -182,8 +182,8 @@ yin_print_snode_common(struct lyout *out, int level, const struct lys_node *node
 static int
 yin_has_snode_common2(const struct lys_node *node)
 {
-    if ((node->parent && (node->parent->flags & LYS_CONFIG_MASK) != (node->flags & LYS_CONFIG_MASK))
-            || (!node->parent && (node->flags & LYS_CONFIG_R)) || (node->flags & LYS_MAND_MASK)) {
+    if ((lys_parent(node) && (lys_parent(node)->flags & LYS_CONFIG_MASK) != (node->flags & LYS_CONFIG_MASK))
+            || (!lys_parent(node) && (node->flags & LYS_CONFIG_R)) || (node->flags & LYS_MAND_MASK)) {
         return 1;
     }
     return yin_has_snode_common(node);
@@ -197,7 +197,7 @@ yin_has_snode_common2(const struct lys_node *node)
 static void
 yin_print_snode_common2(struct lyout *out, int level, const struct lys_node *node)
 {
-    if (node->parent) {
+    if (lys_parent(node)) {
         if (node->flags & LYS_CONFIG_SET) {
             /* print config when it differs from the parent ... */
             if (node->flags & LYS_CONFIG_W) {

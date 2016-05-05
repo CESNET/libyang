@@ -1002,11 +1002,11 @@ resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start
 
             if (schema->nodetype & (LYS_CHOICE | LYS_CASE)) {
                 continue;
-            } else if (schema->parent->nodetype == LYS_CHOICE) {
+            } else if (lys_parent(schema)->nodetype == LYS_CHOICE) {
                 /* shorthand case */
                 if (!shorthand) {
                     shorthand = 1;
-                    schema = schema->parent;
+                    schema = lys_parent(schema);
                     continue;
                 } else {
                     shorthand = 0;
@@ -1068,7 +1068,7 @@ schema_nodeid_siblingcheck(const struct lys_node *sibling, int8_t *shorthand, co
     }
 
     /* check for shorthand cases - then 'start' does not change */
-    if (sibling->parent && sibling->parent->nodetype == LYS_CHOICE && sibling->nodetype != LYS_CASE) {
+    if (lys_parent(sibling) && (lys_parent(sibling)->nodetype == LYS_CHOICE) && (sibling->nodetype != LYS_CASE)) {
         if (*shorthand != -1) {
             *shorthand = *shorthand ? 0 : 1;
         }
@@ -1474,9 +1474,9 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
 
                 /* data RPC input/output check */
-                if ((data_nodeid == 1) && sibling->parent && (sibling->parent->nodetype == LYS_OUTPUT)) {
+                if ((data_nodeid == 1) && lys_parent(sibling) && (lys_parent(sibling)->nodetype == LYS_OUTPUT)) {
                     continue;
-                } else if ((data_nodeid == 2) && sibling->parent && (sibling->parent->nodetype == LYS_INPUT)) {
+                } else if ((data_nodeid == 2) && lys_parent(sibling) && (lys_parent(sibling)->nodetype == LYS_INPUT)) {
                     continue;
                 }
 
@@ -2253,7 +2253,7 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
                 break;
 
             default:
-                parent = parent->parent;
+                parent = lys_parent(parent);
                 continue;
             }
 
@@ -2266,7 +2266,7 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
                 }
             }
 
-            parent = parent->parent;
+            parent = lys_parent(parent);
         }
     } else {
         /* get module where to search */
@@ -3004,7 +3004,7 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
                 LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, path_key_expr);
                 return 0;
             }
-            dst_node = dst_node->parent;
+            dst_node = lys_parent(dst_node);
         }
         while (1) {
             if (!dest_pref) {
@@ -3112,7 +3112,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                     if (i == parent_times) {
                         break;
                     }
-                    node = node->parent;
+                    node = lys_parent(node);
                 }
 
                 node = node->child;
@@ -3392,7 +3392,7 @@ static void
 inherit_config_flag(struct lys_node *node)
 {
     LY_TREE_FOR(node, node) {
-        node->flags |= node->parent->flags & LYS_CONFIG_MASK;
+        node->flags |= lys_parent(node)->flags & LYS_CONFIG_MASK;
         inherit_config_flag(node->child);
     }
 }
@@ -3561,8 +3561,8 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
         /* config on any nodetype */
         if (rfn->flags & LYS_CONFIG_MASK) {
-            if (node->parent &&
-                    ((node->parent->flags & LYS_CONFIG_MASK) != (rfn->flags & LYS_CONFIG_MASK)) &&
+            if (lys_parent(node) &&
+                    ((lys_parent(node)->flags & LYS_CONFIG_MASK) != (rfn->flags & LYS_CONFIG_MASK)) &&
                     (rfn->flags & LYS_CONFIG_W)) {
                 /* setting config true under config false is prohibited */
                 LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, "config", "refine");
@@ -4012,7 +4012,7 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
      *       is used to store number of so far unresolved uses. The grouping cannot be used unless the nacm
      *       value is decreased back to 0. To remember that the uses already increased grouping's nacm, the
      *       LYS_USESGRP flag is used. */
-    for (par_grp = uses->parent; par_grp && (par_grp->nodetype != LYS_GROUPING); par_grp = par_grp->parent);
+    for (par_grp = lys_parent((struct lys_node *)uses); par_grp && (par_grp->nodetype != LYS_GROUPING); par_grp = lys_parent(par_grp));
 
     if (!uses->grp) {
         rc = resolve_uses_schema_nodeid(uses->name, (const struct lys_node *)uses, (const struct lys_node_grp **)&uses->grp);

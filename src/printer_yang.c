@@ -133,7 +133,7 @@ yang_print_nacmext(struct lyout *out, int level, const struct lys_node *node, co
     int i, j;
     const char *prefix = NULL;
 
-    if (node->nacm && (!node->parent || node->parent->nacm != node->nacm)) {
+    if (node->nacm && (!lys_parent(node) || lys_parent(node)->nacm != node->nacm)) {
         /* locate ietf-netconf-acm module in imports */
         if (!strcmp(module->name, "ietf-netconf-acm")) {
             prefix = module->prefix;
@@ -158,11 +158,11 @@ yang_print_nacmext(struct lyout *out, int level, const struct lys_node *node, co
             }
         }
 
-        if ((node->nacm & LYS_NACM_DENYW) && (!node->parent || !(node->parent->nacm & LYS_NACM_DENYW))) {
+        if ((node->nacm & LYS_NACM_DENYW) && (!lys_parent(node) || !(lys_parent(node)->nacm & LYS_NACM_DENYW))) {
             yang_print_open(out, flag);
             ly_print(out, "%*s%s:default-deny-write;\n", LEVEL, INDENT, prefix);
         }
-        if ((node->nacm & LYS_NACM_DENYA) && (!node->parent || !(node->parent->nacm & LYS_NACM_DENYA))) {
+        if ((node->nacm & LYS_NACM_DENYA) && (!lys_parent(node) || !(lys_parent(node)->nacm & LYS_NACM_DENYA))) {
             yang_print_open(out, flag);
             ly_print(out, "%*s%s:default-deny-all;\n", LEVEL, INDENT, prefix);
         }
@@ -205,7 +205,7 @@ yang_print_snode_common(struct lyout *out, int level, const struct lys_node *nod
 static void
 yang_print_snode_common2(struct lyout *out, int level, const struct lys_node *node, int *flag)
 {
-    if (node->parent) {
+    if (lys_parent(node)) {
         if (node->flags & LYS_CONFIG_SET) {
             /* print config when it differs from the parent ... */
             if (node->flags & LYS_CONFIG_W) {

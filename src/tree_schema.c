@@ -148,7 +148,7 @@ lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblin
 
     /* try to find the node */
     node = NULL;
-    while ((node = lys_getnext(node, siblings->parent, mod, 0))) {
+    while ((node = lys_getnext(node, lys_parent(siblings), mod, 0))) {
         if (!type || (node->nodetype & type)) {
             /* module check */
             if (lys_node_module(node) != lys_main_module(mod)) {
@@ -1032,7 +1032,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     /* propagate information about status data presence */
     if ((child->nodetype & (LYS_CONTAINER | LYS_CHOICE | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML)) &&
             (child->flags & LYS_INCL_STATUS)) {
-        for(iter = parent; iter; iter = iter->parent) {
+        for(iter = parent; iter; iter = lys_parent(iter)) {
             /* store it only into container or list - the only data inner nodes */
             if (iter->nodetype & (LYS_CONTAINER | LYS_LIST)) {
                 if (iter->flags & LYS_INCL_STATUS) {
@@ -2372,7 +2372,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
         cont->tpdf_size = cont_orig->tpdf_size;
 
         cont->must = lys_restr_dup(ctx, cont_orig->must, cont->must_size);
-        cont->tpdf = lys_tpdf_dup(module, node->parent, cont_orig->tpdf, cont->tpdf_size, unres);
+        cont->tpdf = lys_tpdf_dup(module, lys_parent(node), cont_orig->tpdf, cont->tpdf_size, unres);
         break;
 
     case LYS_CHOICE:
@@ -2404,7 +2404,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
         break;
 
     case LYS_LEAF:
-        if (lys_type_dup(module, node->parent, &(leaf->type), &(leaf_orig->type), unres)) {
+        if (lys_type_dup(module, lys_parent(node), &(leaf->type), &(leaf_orig->type), unres)) {
             goto error;
         }
         leaf->units = lydict_insert(module->ctx, leaf_orig->units, 0);
@@ -2425,7 +2425,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
         break;
 
     case LYS_LEAFLIST:
-        if (lys_type_dup(module, node->parent, &(llist->type), &(llist_orig->type), unres)) {
+        if (lys_type_dup(module, lys_parent(node), &(llist->type), &(llist_orig->type), unres)) {
             goto error;
         }
         llist->units = lydict_insert(module->ctx, llist_orig->units, 0);
@@ -2449,7 +2449,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
         list->must = lys_restr_dup(ctx, list_orig->must, list->must_size);
 
         list->tpdf_size = list_orig->tpdf_size;
-        list->tpdf = lys_tpdf_dup(module, node->parent, list_orig->tpdf, list->tpdf_size, unres);
+        list->tpdf = lys_tpdf_dup(module, lys_parent(node), list_orig->tpdf, list->tpdf_size, unres);
 
         list->keys_size = list_orig->keys_size;
         if (list->keys_size) {
@@ -2549,23 +2549,23 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
 
     case LYS_GROUPING:
         grp->tpdf_size = grp_orig->tpdf_size;
-        grp->tpdf = lys_tpdf_dup(module, node->parent, grp_orig->tpdf, grp->tpdf_size, unres);
+        grp->tpdf = lys_tpdf_dup(module, lys_parent(node), grp_orig->tpdf, grp->tpdf_size, unres);
         break;
 
     case LYS_RPC:
         rpc->tpdf_size = rpc_orig->tpdf_size;
-        rpc->tpdf = lys_tpdf_dup(module, node->parent, rpc_orig->tpdf, rpc->tpdf_size, unres);
+        rpc->tpdf = lys_tpdf_dup(module, lys_parent(node), rpc_orig->tpdf, rpc->tpdf_size, unres);
         break;
 
     case LYS_INPUT:
     case LYS_OUTPUT:
         io->tpdf_size = io_orig->tpdf_size;
-        io->tpdf = lys_tpdf_dup(module, node->parent, io_orig->tpdf, io->tpdf_size, unres);
+        io->tpdf = lys_tpdf_dup(module, lys_parent(node), io_orig->tpdf, io->tpdf_size, unres);
         break;
 
     case LYS_NOTIF:
         ntf->tpdf_size = ntf_orig->tpdf_size;
-        ntf->tpdf = lys_tpdf_dup(module, node->parent, ntf_orig->tpdf, ntf->tpdf_size, unres);
+        ntf->tpdf = lys_tpdf_dup(module, lys_parent(node), ntf_orig->tpdf, ntf->tpdf_size, unres);
         break;
 
     default:

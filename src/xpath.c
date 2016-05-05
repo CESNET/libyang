@@ -217,7 +217,7 @@ cast_string_recursive(struct lyd_node *node, int fake_cont, enum lyxp_node_type 
         return;
     }
 
-    if ((root_type == LYXP_NODE_ROOT_OUTPUT) && (node->schema->parent->nodetype == LYS_INPUT)) {
+    if ((root_type == LYXP_NODE_ROOT_OUTPUT) && (lys_parent(node->schema)->nodetype == LYS_INPUT)) {
         return;
     }
 
@@ -890,7 +890,7 @@ get_node_pos(struct lyd_node *node, enum lyxp_node_type node_type, struct lyd_no
         if ((root_type == LYXP_NODE_ROOT_CONFIG) && (elem->schema->flags & LYS_CONFIG_R)) {
             goto skip_children;
         }
-        if ((root_type == LYXP_NODE_ROOT_OUTPUT) && (elem->schema->parent->nodetype == LYS_INPUT)) {
+        if ((root_type == LYXP_NODE_ROOT_OUTPUT) && (lys_parent(elem->schema)->nodetype == LYS_INPUT)) {
             goto skip_children;
         }
 
@@ -3518,7 +3518,7 @@ moveto_get_root(struct lyd_node *cur_node, int options, enum lyxp_node_type *roo
             root = root->parent;
 
             if ((root->schema->nodetype == LYS_RPC) || (root->schema->nodetype == LYS_NOTIF)) {
-                if (prev->schema->parent->nodetype == LYS_OUTPUT) {
+                if (lys_parent(prev->schema)->nodetype == LYS_OUTPUT) {
                     is_output = 1;
                 }
                 break;
@@ -3600,7 +3600,7 @@ moveto_node_check(struct lyd_node *node, enum lyxp_node_type root_type, const ch
     /* context check */
     if ((root_type != LYXP_NODE_ROOT_ALL)
             && (((root_type == LYXP_NODE_ROOT_CONFIG) && (node->schema->flags & LYS_CONFIG_R))
-            || ((root_type == LYXP_NODE_ROOT_OUTPUT) && (node->schema->parent->nodetype == LYS_INPUT))
+            || ((root_type == LYXP_NODE_ROOT_OUTPUT) && (lys_parent(node->schema)->nodetype == LYS_INPUT))
             || ((root_type != LYXP_NODE_ROOT_NOTIF) && (node->schema->nodetype == LYS_NOTIF))
             || ((root_type != LYXP_NODE_ROOT_RPC) && (node->schema->nodetype == LYS_RPC)))) {
         return -1;
@@ -3808,7 +3808,7 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
             /* context check */
             if ((root_type != LYXP_NODE_ROOT_ALL)
                     && (((root_type == LYXP_NODE_ROOT_CONFIG) && (elem->schema->flags & LYS_CONFIG_R))
-                    || ((root_type == LYXP_NODE_ROOT_OUTPUT) && (elem->schema->parent->nodetype == LYS_INPUT))
+                    || ((root_type == LYXP_NODE_ROOT_OUTPUT) && (lys_parent(elem->schema)->nodetype == LYS_INPUT))
                     || ((root_type != LYXP_NODE_ROOT_NOTIF) && (elem->schema->nodetype == LYS_NOTIF))
                     || ((root_type != LYXP_NODE_ROOT_RPC) && (elem->schema->nodetype == LYS_RPC)))) {
                 goto skip_children;
@@ -4217,7 +4217,7 @@ moveto_self(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int o
                 /* context check */
                 if ((root_type != LYXP_NODE_ROOT_ALL)
                         && (((root_type == LYXP_NODE_ROOT_CONFIG) && (sub->schema->flags & LYS_CONFIG_R))
-                        || ((root_type == LYXP_NODE_ROOT_OUTPUT) && (sub->schema->parent->nodetype == LYS_INPUT))
+                        || ((root_type == LYXP_NODE_ROOT_OUTPUT) && (lys_parent(sub->schema)->nodetype == LYS_INPUT))
                         || ((root_type != LYXP_NODE_ROOT_NOTIF) && (sub->schema->nodetype == LYS_NOTIF))
                         || ((root_type != LYXP_NODE_ROOT_RPC) && (sub->schema->nodetype == LYS_RPC)))) {
                     continue;

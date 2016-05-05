@@ -2529,7 +2529,7 @@ lyd_get_default(const char* unique_expr, struct lyd_node_leaf_list *list)
 
     /* it has default value, but check if it can appear in the data tree under the list */
     s = ly_set_new();
-    for (parent = sleaf->parent; parent != list->schema; parent = parent->parent) {
+    for (parent = lys_parent((struct lys_node *)sleaf); parent != list->schema; parent = lys_parent(parent)) {
         if (!(parent->nodetype & (LYS_CONTAINER | LYS_CASE | LYS_CHOICE | LYS_USES))) {
             /* This should be already detected when parsing schema */
             LOGINT;
@@ -3207,7 +3207,7 @@ lyd_wd_get_choice_inst(struct lyd_node *data, struct lys_node *schema)
 
     /* check that no case is instantiated */
     LY_TREE_FOR(data, iter) {
-        for (sparent = iter->schema->parent; sparent; sparent = sparent->parent) {
+        for (sparent = lys_parent(iter->schema); sparent; sparent = lys_parent(sparent)) {
             if (!(sparent->nodetype & (LYS_CASE | LYS_CHOICE | LYS_USES))) {
                 sparent = NULL;
                 break;
@@ -3403,12 +3403,12 @@ nextsibling:
                 index = c - path;
             }
             siter = lys_parent(siter);
-            if (schema->parent == lys_parent(siter)) {
+            if (lys_parent(schema) == lys_parent(siter)) {
                 /* done */
                 break;
             }
             /* parent was already processed, so go to its sibling */
-            if (siter->parent && lys_parent(siter)->nodetype != LYS_CHOICE) {
+            if (lys_parent(siter) && lys_parent(siter)->nodetype != LYS_CHOICE) {
                 next = siter->next;
                 if (next && (siter->nodetype & (LYS_CONTAINER | LYS_LEAF))) {
                     /* remove node from the path */
@@ -3543,7 +3543,7 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
             break;
         }
 
-        if (siter->parent && lys_parent(siter)->nodetype == LYS_CHOICE) {
+        if (lys_parent(siter) && (lys_parent(siter)->nodetype == LYS_CHOICE)) {
             /* only the default case is processed */
             return EXIT_SUCCESS;
         }
