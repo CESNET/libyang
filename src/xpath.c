@@ -154,7 +154,7 @@ print_expr_struct_debug(struct lyxp_expr *exp)
     uint16_t i, j;
     char tmp[128];
 
-    if (!exp) {
+    if (!exp || (ly_log_level < LY_LLDBG)) {
         return;
     }
 
@@ -170,6 +170,119 @@ print_expr_struct_debug(struct lyxp_expr *exp)
             strcat(tmp, ")");
         }
         LOGDBG(tmp);
+    }
+}
+
+/**
+ * @brief Print XPath set content to debug output.
+ *
+ * @param[in] set Set to print.
+ */
+static void
+print_set_debug(struct lyxp_set *set)
+{
+    uint32_t i;
+    char *str_num;
+
+    if (ly_log_level < LY_LLDBG) {
+        return;
+    }
+
+    switch (set->type) {
+    case LYXP_SET_NODE_SET:
+        LOGDBG("XPATH: set NODE SET:");
+        for (i = 0; i < set->used; ++i) {
+            switch (set->node_type[i]) {
+            case LYXP_NODE_ROOT_ALL:
+                LOGDBG("XPATH:\t%d (pos %u): ROOT ALL", i + 1, set->pos[i]);
+                break;
+            case LYXP_NODE_ROOT_CONFIG:
+                LOGDBG("XPATH:\t%d (pos %u): ROOT CONFIG", i + 1, set->pos[i]);
+                break;
+            case LYXP_NODE_ROOT_STATE:
+                LOGDBG("XPATH:\t%d (pos %u): ROOT STATE", i + 1, set->pos[i]);
+                break;
+            case LYXP_NODE_ROOT_NOTIF:
+                LOGDBG("XPATH:\t%d (pos %u): ROOT NOTIF %s", i + 1, set->pos[i], set->value.nodes[i]->schema->name);
+                break;
+            case LYXP_NODE_ROOT_RPC:
+                LOGDBG("XPATH:\t%d (pos %u): ROOT RPC %s", i + 1, set->pos[i], set->value.nodes[i]->schema->name);
+                break;
+            case LYXP_NODE_ROOT_OUTPUT:
+                LOGDBG("XPATH:\t%d (pos %u): ROOT OUTPUT %s", i + 1, set->pos[i], set->value.nodes[i]->schema->name);
+                break;
+            case LYXP_NODE_ELEM:
+                if ((set->value.nodes[i]->schema->nodetype == LYS_LIST)
+                        && (set->value.nodes[i]->child->schema->nodetype == LYS_LEAF)) {
+                    LOGDBG("XPATH:\t%d (pos %u): ELEM %s (1st child val: %s)", i + 1, set->pos[i],
+                           set->value.nodes[i]->schema->name,
+                           ((struct lyd_node_leaf_list *)set->value.nodes[i]->child)->value_str);
+                } else if (set->value.nodes[i]->schema->nodetype == LYS_LEAFLIST) {
+                    LOGDBG("XPATH:\t%d (pos %u): ELEM %s (val: %s)", i + 1, set->pos[i],
+                           set->value.nodes[i]->schema->name,
+                           ((struct lyd_node_leaf_list *)set->value.nodes[i])->value_str);
+                } else {
+                    LOGDBG("XPATH:\t%d (pos %u): ELEM %s", i + 1, set->pos[i], set->value.nodes[i]->schema->name);
+                }
+                break;
+            case LYXP_NODE_TEXT:
+                if (set->value.nodes[i]->schema->nodetype == LYS_ANYXML) {
+                    LOGDBG("XPATH:\t%d (pos %u): TEXT <anyxml>", i + 1, set->pos[i]);
+                } else {
+                    LOGDBG("XPATH:\t%d (pos %u): TEXT %s", i + 1, set->pos[i],
+                           ((struct lyd_node_leaf_list *)set->value.nodes[i])->value_str);
+                }
+                break;
+            case LYXP_NODE_ATTR:
+                LOGDBG("XPATH:\t%d (pos %u): ATTR %s = %s", i + 1, set->pos[i], set->value.attrs[i]->name,
+                       set->value.attrs[i]->value);
+                break;
+            }
+        }
+        break;
+
+    case LYXP_SET_EMPTY:
+        LOGDBG("XPATH: set EMPTY");
+        break;
+
+    case LYXP_SET_BOOLEAN:
+        LOGDBG("XPATH: set BOOLEAN");
+        LOGDBG("XPATH:\t%s", (set->value.bool ? "true" : "false"));
+        break;
+
+    case LYXP_SET_STRING:
+        LOGDBG("XPATH: set STRING");
+        LOGDBG("XPATH:\t%s", set->value.str);
+        break;
+
+    case LYXP_SET_NUMBER:
+        LOGDBG("XPATH: set NUMBER");
+
+        if (isnan(set->value.num)) {
+            str_num = strdup("NaN");
+        } else if ((set->value.num == 0) || (set->value.num == -0)) {
+            str_num = strdup("0");
+        } else if (isinf(set->value.num) && !signbit(set->value.num)) {
+            str_num = strdup("Infinity");
+        } else if (isinf(set->value.num) && signbit(set->value.num)) {
+            str_num = strdup("-Infinity");
+        } else if ((long long)set->value.num == set->value.num) {
+            if (asprintf(&str_num, "%lld", (long long)set->value.num) == -1) {
+                str_num = NULL;
+            }
+        } else {
+            if (asprintf(&str_num, "%03.1Lf", set->value.num) == -1) {
+                str_num = NULL;
+            }
+        }
+
+        if (!str_num) {
+            LOGMEM;
+            return;
+        }
+
+        LOGDBG("XPATH:\t%s", str_num);
+        free(str_num);
     }
 }
 
@@ -755,111 +868,6 @@ set_insert_node(struct lyxp_set *set, void *node, enum lyxp_node_type node_type,
         set->value.nodes[idx] = node;
         set->node_type[idx] = node_type;
         ++set->used;
-    }
-}
-
-/**
- * @brief Print XPath set content to debug output.
- *
- * @param[in] set Set to print.
- */
-static void
-print_set_debug(struct lyxp_set *set)
-{
-    uint16_t i;
-    char *str_num;
-
-    switch (set->type) {
-    case LYXP_SET_NODE_SET:
-        LOGDBG("XPATH: set NODE SET:");
-        for (i = 0; i < set->used; ++i) {
-            switch (set->node_type[i]) {
-            case LYXP_NODE_ROOT_ALL:
-                LOGDBG("XPATH:\t%d: ROOT ALL", i + 1);
-                break;
-            case LYXP_NODE_ROOT_CONFIG:
-                LOGDBG("XPATH:\t%d: ROOT CONFIG", i + 1);
-                break;
-            case LYXP_NODE_ROOT_STATE:
-                LOGDBG("XPATH:\t%d: ROOT STATE", i + 1);
-                break;
-            case LYXP_NODE_ROOT_NOTIF:
-                LOGDBG("XPATH:\t%d: ROOT NOTIF %s", i + 1, set->value.nodes[i]->schema->name);
-                break;
-            case LYXP_NODE_ROOT_RPC:
-                LOGDBG("XPATH:\t%d: ROOT RPC %s", i + 1, set->value.nodes[i]->schema->name);
-                break;
-            case LYXP_NODE_ROOT_OUTPUT:
-                LOGDBG("XPATH:\t%d: ROOT OUTPUT %s", i + 1, set->value.nodes[i]->schema->name);
-                break;
-            case LYXP_NODE_ELEM:
-                if ((set->value.nodes[i]->schema->nodetype == LYS_LIST)
-                        && (set->value.nodes[i]->child->schema->nodetype == LYS_LEAF)) {
-                    LOGDBG("XPATH:\t%d: ELEM %s (1st child val: %s)", i + 1, set->value.nodes[i]->schema->name,
-                           ((struct lyd_node_leaf_list *)set->value.nodes[i]->child)->value_str);
-                } else if (set->value.nodes[i]->schema->nodetype == LYS_LEAFLIST) {
-                    LOGDBG("XPATH:\t%d: ELEM %s (val: %s)", i + 1, set->value.nodes[i]->schema->name,
-                           ((struct lyd_node_leaf_list *)set->value.nodes[i])->value_str);
-                } else {
-                    LOGDBG("XPATH:\t%d: ELEM %s", i + 1, set->value.nodes[i]->schema->name);
-                }
-                break;
-            case LYXP_NODE_TEXT:
-                if (set->value.nodes[i]->schema->nodetype == LYS_ANYXML) {
-                    LOGDBG("XPATH:\t%d: TEXT <anyxml>", i + 1);
-                } else {
-                    LOGDBG("XPATH:\t%d: TEXT %s", i + 1, ((struct lyd_node_leaf_list *)set->value.nodes[i])->value_str);
-                }
-                break;
-            case LYXP_NODE_ATTR:
-                LOGDBG("XPATH:\t%d: ATTR %s = %s", i + 1, set->value.attrs[i]->name, set->value.attrs[i]->value);
-                break;
-            }
-        }
-        break;
-
-    case LYXP_SET_EMPTY:
-        LOGDBG("XPATH: set EMPTY");
-        break;
-
-    case LYXP_SET_BOOLEAN:
-        LOGDBG("XPATH: set BOOLEAN");
-        LOGDBG("XPATH:\t%s", (set->value.bool ? "true" : "false"));
-        break;
-
-    case LYXP_SET_STRING:
-        LOGDBG("XPATH: set STRING");
-        LOGDBG("XPATH:\t%s", set->value.str);
-        break;
-
-    case LYXP_SET_NUMBER:
-        LOGDBG("XPATH: set NUMBER");
-
-        if (isnan(set->value.num)) {
-            str_num = strdup("NaN");
-        } else if ((set->value.num == 0) || (set->value.num == -0)) {
-            str_num = strdup("0");
-        } else if (isinf(set->value.num) && !signbit(set->value.num)) {
-            str_num = strdup("Infinity");
-        } else if (isinf(set->value.num) && signbit(set->value.num)) {
-            str_num = strdup("-Infinity");
-        } else if ((long long)set->value.num == set->value.num) {
-            if (asprintf(&str_num, "%lld", (long long)set->value.num) == -1) {
-                str_num = NULL;
-            }
-        } else {
-            if (asprintf(&str_num, "%03.1Lf", set->value.num) == -1) {
-                str_num = NULL;
-            }
-        }
-
-        if (!str_num) {
-            LOGMEM;
-            return;
-        }
-
-        LOGDBG("XPATH:\t%s", str_num);
-        free(str_num);
     }
 }
 
