@@ -922,14 +922,20 @@ set_insert_node(struct lyxp_set *set, void *node, uint32_t pos, enum lyxp_node_t
  * @param[in] node_type Node type of \p node.
  * @param[in] root Root node.
  * @param[in] root_type Type of the XPath \p root node.
+ * @param[in] prev Node that we think is before \p node in DFS from \p root. Can optionally
+ * be used to increase efficiency and start the DFS from this node.
+ * @param[in] prev_pos Node \p prev position. Optional, but must be set if \p prev is set.
  *
  * @return Node position.
  */
-static uint16_t
-get_node_pos(struct lyd_node *node, enum lyxp_node_type node_type, struct lyd_node *root, enum lyxp_node_type root_type)
+static uint32_t
+get_node_pos(struct lyd_node *node, enum lyxp_node_type node_type, struct lyd_node *root, enum lyxp_node_type root_type,
+             struct lyd_node **prev, uint32_t *prev_pos)
 {
     struct lyd_node *next, *elem;
-    uint16_t pos = 1;
+    uint32_t pos;
+
+    assert(prev && prev_pos);
 
     if ((node_type == LYXP_NODE_ROOT_ALL) || (node_type == LYXP_NODE_ROOT_CONFIG) || (node_type == LYXP_NODE_ROOT_STATE)
             || (node_type == LYXP_NODE_ROOT_NOTIF) || (node_type == LYXP_NODE_ROOT_RPC) || (node_type == LYXP_NODE_ROOT_OUTPUT)) {
@@ -940,8 +946,20 @@ get_node_pos(struct lyd_node *node, enum lyxp_node_type node_type, struct lyd_no
         root = root->child;
     }
 
+    /* loop init */
+    if (*prev) {
+        /* start from previous element */
+        elem = next = *prev;
+        pos = *prev_pos;
+    } else {
+        /* start from root */
+        elem = next = root;
+        pos = 1;
+    }
+
+dfs_search:
     /* TREE DFS */
-    for (elem = next = root; elem; elem = next) {
+    for (; elem; elem = next) {
         if ((root_type == LYXP_NODE_ROOT_CONFIG) && (elem->schema->flags & LYS_CONFIG_R)) {
             goto skip_children;
         }
@@ -963,7 +981,13 @@ get_node_pos(struct lyd_node *node, enum lyxp_node_type node_type, struct lyd_no
         }
         if (!next) {
 skip_children:
-            /* no children, so try siblings */
+            /* no children */
+            if (elem == root) {
+                /* we are done, root has no children */
+                elem = NULL;
+                break;
+            }
+            /* try siblings */
             next = elem->next;
         }
         while (!next) {
@@ -979,8 +1003,30 @@ skip_children:
     }
 
     if (!elem) {
-        LOGINT;
+        if (!(*prev)) {
+            /* we went from root and failed to find it, cannot be */
+            LOGINT;
+            return 0;
+        } else {
+            /* node is before prev, we assumed otherwise :( */
+            //LOGDBG("XPATH: get_node_pos optimalization fail.");
+
+            *prev = NULL;
+            *prev_pos = 0;
+
+            elem = next = root;
+            pos = 1;
+            goto dfs_search;
+        }
     }
+
+    /*if (*prev) {
+        LOGDBG("XPATH: get_node_pos optimalization success.");
+    }*/
+
+    /* remember the last found node for next time */
+    *prev = node;
+    *prev_pos = pos;
 
     return pos;
 }
@@ -1092,7 +1138,7 @@ set_sort(struct lyxp_set *set, struct lyd_node *cur_node, int options)
 {
     uint32_t i, j, tmp_pos, node_pos1 = 0, node_pos2 = 0, attr_pos1 = 0, attr_pos2 = 0;
     int ret = 0, cmp, inverted, change;
-    struct lyd_node *tmp_node, *root = NULL;
+    struct lyd_node *tmp_node, *root, *prev;
     enum lyxp_node_type tmp_type, root_type;
 
     if ((set->type != LYXP_SET_NODE_SET) || (set->used == 1)) {
@@ -1101,6 +1147,34 @@ set_sort(struct lyxp_set *set, struct lyd_node *cur_node, int options)
 
     /* get root */
     root = moveto_get_root(cur_node, options, &root_type);
+
+    /* fill positions */
+    prev = NULL;
+    tmp_pos = 0;
+    for (i = 0; i < set->used; ++i) {
+        if (!set->pos[i]) {
+            tmp_node = NULL;
+            switch (set->node_type[i]) {
+            case LYXP_NODE_ATTR:
+                tmp_node = lyd_attr_parent(root, set->value.attrs[i]);
+                if (!tmp_node) {
+                    LOGINT;
+                    return -1;
+                }
+                /* fallthrough */
+            case LYXP_NODE_ELEM:
+            case LYXP_NODE_TEXT:
+                if (!tmp_node) {
+                    tmp_node = set->value.nodes[i];
+                }
+                set->pos[i] = get_node_pos(tmp_node, set->node_type[i], root, root_type, &prev, &tmp_pos);
+                break;
+            default:
+                /* all roots have position 0 */
+                break;
+            }
+        }
+    }
 
     LOGDBG("XPATH: SORT BEGIN");
     print_set_debug(set);
@@ -1116,10 +1190,10 @@ set_sort(struct lyxp_set *set, struct lyd_node *cur_node, int options)
                 LOGINT;
                 return -1;
             }
-            node_pos1 = get_node_pos(tmp_node, set->node_type[0], root, root_type);
+            node_pos1 = set->pos[0];
             attr_pos1 = get_attr_pos(set->value.attrs[0], tmp_node);
         } else {
-            node_pos1 = get_node_pos(set->value.nodes[0], set->node_type[0], root, root_type);
+            node_pos1 = set->pos[0];
         }
 
         for (j = 1; j < set->used - i; ++j) {
@@ -1132,17 +1206,17 @@ set_sort(struct lyxp_set *set, struct lyd_node *cur_node, int options)
                 }
 
                 if (inverted) {
-                    node_pos1 = get_node_pos(tmp_node, set->node_type[j], root, root_type);
+                    node_pos1 = set->pos[j];
                     attr_pos1 = get_attr_pos(set->value.attrs[j], tmp_node);
                 } else {
-                    node_pos2 = get_node_pos(tmp_node, set->node_type[j], root, root_type);
+                    node_pos2 = set->pos[j];
                     attr_pos2 = get_attr_pos(set->value.attrs[j], tmp_node);
                 }
             } else {
                 if (inverted) {
-                    node_pos1 = get_node_pos(set->value.nodes[j], set->node_type[j], root, root_type);
+                    node_pos1 = set->pos[j];
                 } else {
-                    node_pos2 = get_node_pos(set->value.nodes[j], set->node_type[j], root, root_type);
+                    node_pos2 = set->pos[j];
                 }
             }
 
