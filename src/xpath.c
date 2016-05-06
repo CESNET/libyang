@@ -994,6 +994,7 @@ skip_children:
             /* no siblings, go back through parents */
             if (elem->parent == root->parent) {
                 /* we are done, no next element to process */
+                elem = NULL;
                 break;
             }
             /* parent is already processed, go to its sibling */
