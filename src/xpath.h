@@ -167,9 +167,10 @@ struct lyxp_set {
 
     /* this is valid only for type == LYXP_NODE_SET */
     enum lyxp_node_type *node_type;  /* item with this index is of this node type */
-    uint16_t used;
-    uint16_t size;
-    uint16_t pos;                    /* current context position, indexed from 1, relevant only for predicates */
+    uint32_t *pos;                   /* if node_type is LYXP_NODE_ATTR, it is the parent node position */
+    uint32_t used;
+    uint32_t size;
+    uint32_t ctx_pos;                /* current context position, indexed from 1, relevant only for predicates */
 };
 
 /**
