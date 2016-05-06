@@ -4134,7 +4134,7 @@ moveto_attr(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
 
     /* no need to sort */
     (void)options; /* suppress unused variable warning */
-    assert(!set_sort(set, cur_node, options));
+    assert(set_sort(set, cur_node, options) == 1);
     assert(!set_sorted_dup_node_clean(set));
 
     return EXIT_SUCCESS;
@@ -4320,7 +4320,7 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
     }
 
     /* no need to sort */
-    assert(!set_sort(set, cur_node, options));
+    assert(set_sort(set, cur_node, options) == 1);
     assert(!set_sorted_dup_node_clean(set));
 
     return EXIT_SUCCESS;
