@@ -976,7 +976,7 @@ dfs_search:
         /* select element for the next run - children first */
         next = elem->child;
         /* child exception for lyd_node_leaf and lyd_node_leaflist, but not the root */
-        if (elem->schema && (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
+        if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
             next = NULL;
         }
         if (!next) {
