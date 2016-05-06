@@ -3799,7 +3799,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
 {
     uint32_t i, orig_used;
     int replaced, pref_len, ret;
-    const char *name_dict = NULL; /* optimalization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
+    const char *ptr, *name_dict = NULL; /* optimalization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
     struct lys_module *moveto_mod;
     struct lyd_node *sub;
     struct ly_ctx *ctx;
@@ -3818,8 +3818,8 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
     moveto_get_root(cur_node, options, &root_type);
 
     /* prefix */
-    if (strnchr(qname, ':', qname_len)) {
-        pref_len = strnchr(qname, ':', qname_len) - qname;
+    if ((ptr = strnchr(qname, ':', qname_len))) {
+        pref_len = ptr - qname;
         moveto_mod = moveto_resolve_model(qname, pref_len, ctx, 1);
         if (!moveto_mod) {
             return -1;
