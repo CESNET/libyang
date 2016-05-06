@@ -3840,12 +3840,12 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
         if ((set->node_type[i] == LYXP_NODE_ROOT_NOTIF) || (set->node_type[i] == LYXP_NODE_ROOT_RPC)) {
             assert((root_type == LYXP_NODE_ROOT_NOTIF) || (root_type == LYXP_NODE_ROOT_RPC));
             ret = moveto_node_check(set->value.nodes[i], root_type, name_dict, moveto_mod, options);
-            if (ret == EXIT_FAILURE) {
-                lydict_remove(ctx, name_dict);
-                return EXIT_FAILURE;
-            } else if (!ret) {
+            if (!ret) {
                 /* pos is always one, because it's the root, only not the fake one */
                 moveto_node_add(set, set->value.nodes[i], 1, i, &replaced);
+            } else if (ret == EXIT_FAILURE) {
+                lydict_remove(ctx, name_dict);
+                return EXIT_FAILURE;
             }
 
         } else if ((set->node_type[i] == LYXP_NODE_ROOT_CONFIG) || (set->node_type[i] == LYXP_NODE_ROOT_STATE)
@@ -3855,12 +3855,12 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
 
             LY_TREE_FOR(set->value.nodes[i], sub) {
                 ret = moveto_node_check(sub, root_type, name_dict, moveto_mod, options);
-                if (ret == EXIT_FAILURE) {
-                    lydict_remove(ctx, name_dict);
-                    return EXIT_FAILURE;
-                } else if (!ret) {
+                if (!ret) {
                     /* pos filled later */
                     moveto_node_add(set, sub, 0, i, &replaced);
+                } else if (ret == EXIT_FAILURE) {
+                    lydict_remove(ctx, name_dict);
+                    return EXIT_FAILURE;
                 }
             }
 
@@ -3869,11 +3869,11 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
 
             LY_TREE_FOR(set->value.nodes[i]->child, sub) {
                 ret = moveto_node_check(sub, root_type, name_dict, moveto_mod, options);
-                if (ret == EXIT_FAILURE) {
+                if (!ret) {
+                    moveto_node_add(set, sub, 0, i, &replaced);
+                } else if (ret == EXIT_FAILURE) {
                     lydict_remove(ctx, name_dict);
                     return EXIT_FAILURE;
-                } else if (!ret) {
-                    moveto_node_add(set, sub, 0, i, &replaced);
                 }
             }
         }
