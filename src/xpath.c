@@ -3721,16 +3721,15 @@ moveto_root(struct lyxp_set *set, struct lyd_node *cur_node, int options)
 /**
  * @brief Check \p node as a part of NameTest processing.
  *
- * @param[in] node Node to use.
- * @param[in] qname Qualified node name to move to.
- * @param[in] qname_len Length of \p qname.
+ * @param[in] node Node to check.
+ * @param[in] node_name Node name to move to. Must be in the dictionary!
  * @param[in] moveto_mod Expected module of the node.
  * @param[in] options Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on unresolved when, -1 on error.
  */
 static int
-moveto_node_check(struct lyd_node *node, enum lyxp_node_type root_type, const char *qname, uint16_t qname_len,
+moveto_node_check(struct lyd_node *node, enum lyxp_node_type root_type, const char *node_name,
                   struct lys_module *moveto_mod, int options)
 {
     /* module check */
@@ -3748,8 +3747,7 @@ moveto_node_check(struct lyd_node *node, enum lyxp_node_type root_type, const ch
     }
 
     /* name check */
-    if (((qname_len != 1) || (qname[0] != '*'))
-            && (strncmp(node->schema->name, qname, qname_len) || node->schema->name[qname_len])) {
+    if ((node->schema->name != node_name) && strcmp(node_name, "*")) {
         return -1;
     }
 
@@ -3801,6 +3799,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
 {
     uint32_t i, orig_used;
     int replaced, pref_len, ret;
+    const char *name_dict = NULL; /* optimalization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
     struct lys_module *moveto_mod;
     struct lyd_node *sub;
     struct ly_ctx *ctx;
@@ -3831,13 +3830,18 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
         moveto_mod = NULL;
     }
 
+    /* name */
+    name_dict = lydict_insert(ctx, qname, qname_len);
+
     orig_used = set->used;
     for (i = 0; (i < orig_used) && (set->type == LYXP_SET_NODE_SET); ) {
         replaced = 0;
 
         if ((set->node_type[i] == LYXP_NODE_ROOT_NOTIF) || (set->node_type[i] == LYXP_NODE_ROOT_RPC)) {
-            ret = moveto_node_check(set->value.nodes[i], root_type, qname, qname_len, moveto_mod, options);
+            assert((root_type == LYXP_NODE_ROOT_NOTIF) || (root_type == LYXP_NODE_ROOT_RPC));
+            ret = moveto_node_check(set->value.nodes[i], root_type, name_dict, moveto_mod, options);
             if (ret == EXIT_FAILURE) {
+                lydict_remove(ctx, name_dict);
                 return EXIT_FAILURE;
             } else if (!ret) {
                 /* pos is always one, because it's the root, only not the fake one */
@@ -3850,8 +3854,9 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
                 || (root_type == LYXP_NODE_ROOT_ALL));
 
             LY_TREE_FOR(set->value.nodes[i], sub) {
-                ret = moveto_node_check(sub, root_type, qname, qname_len, moveto_mod, options);
+                ret = moveto_node_check(sub, root_type, name_dict, moveto_mod, options);
                 if (ret == EXIT_FAILURE) {
+                    lydict_remove(ctx, name_dict);
                     return EXIT_FAILURE;
                 } else if (!ret) {
                     /* pos filled later */
@@ -3863,8 +3868,9 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
         } else if (!(set->value.nodes[i]->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
 
             LY_TREE_FOR(set->value.nodes[i]->child, sub) {
-                ret = moveto_node_check(sub, root_type, qname, qname_len, moveto_mod, options);
+                ret = moveto_node_check(sub, root_type, name_dict, moveto_mod, options);
                 if (ret == EXIT_FAILURE) {
+                    lydict_remove(ctx, name_dict);
                     return EXIT_FAILURE;
                 } else if (!ret) {
                     moveto_node_add(set, sub, 0, i, &replaced);
@@ -3880,6 +3886,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
             ++i;
         }
     }
+    lydict_remove(ctx, name_dict);
 
     set_sort(set, cur_node, options);
     assert(!set_sorted_dup_node_clean(set));
