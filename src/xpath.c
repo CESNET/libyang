@@ -3834,7 +3834,8 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
     name_dict = lydict_insert(ctx, qname, qname_len);
 
     orig_used = set->used;
-    for (i = 0; (i < orig_used) && (set->type == LYXP_SET_NODE_SET); ) {
+    i = 0;
+    while (i < orig_used) {
         replaced = 0;
 
         if ((set->node_type[i] == LYXP_NODE_ROOT_NOTIF) || (set->node_type[i] == LYXP_NODE_ROOT_RPC)) {
@@ -3881,6 +3882,9 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
         if (!replaced) {
             /* no match */
             set_remove_node(set, i);
+            if (set->type != LYXP_SET_NODE_SET) {
+                break;
+            }
             --orig_used;
         } else {
             ++i;
