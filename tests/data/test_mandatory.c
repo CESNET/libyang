@@ -124,7 +124,7 @@ test_mandatory(void **state)
     assert_ptr_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
     assert_int_equal(ly_vecode, LYVE_NOMAX);
-    assert_string_equal(ly_errpath(), "/mandatory:top/llist1");
+    assert_string_equal(ly_errpath(), "/mandatory:top/llist1[.='6']");
 
     st->dt = lyd_parse_mem(st->ctx, miss_leaf2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(st->dt, NULL);
