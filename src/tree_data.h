@@ -253,6 +253,22 @@ void lyd_free_diff(struct lyd_difflist *diff);
  * Note, that the \p first and the \p second must have the same schema parent (or they must be top-level elements).
  * In case of using #LYD_OPT_NOSIBLINGS, they both must be instances of the same schema node.
  *
+ * Order of the resulting set follows these rules:
+ * - first, the newly created (#LYD_DIFF_CREATED) and modified (#LYD_DIFF_CHANGED) nodes are present. The order
+ *   follows the nodes order in the second tree - the current siblings are processed first and then the children
+ *   are processed. Note, that this is actually not the BFS:
+ *           1     2
+ *          / \   / \
+ *         3   4 7   8
+ *        / \
+ *       5   6
+ * - then, the deleted (#LYD_DIF_DELETED) nodes in the first tree are specified.
+ *
+ * To change the first tree into the second one, it is necessary to follow the order of transactions described in
+ * the result. Note, that it is not possible just to use the transactions in the reverse order to transform the
+ * second tree into the first one. The transactions can be generalized (to be used on a different instance of the
+ * first tree) using lyd_path() to get identifiers for the nodes used in the transactions.
+ *
  * @param[in] first The first (sub)tree to compare. Without #LYD_OPT_NOSIBLINGS option, all siblings are
  *            taken into comparison.
  * @param[in] second The second (sub)tree to compare. Without #LYD_OPT_NOSIBLINGS option, all siblings are
