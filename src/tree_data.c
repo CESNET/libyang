@@ -90,9 +90,9 @@ lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, struct lys_nod
         }
     } else if (options & LYD_OPT_RPCREPLY) {
         LY_TREE_FOR(data, node) {
-            if (node->parent || (lys_parent(node->schema)->nodetype != LYS_OUTPUT)
+            if (node->parent || !lys_parent(node->schema) || (lys_parent(node->schema)->nodetype != LYS_OUTPUT)
                     || (lys_parent(node->schema) != lys_parent(node->prev->schema))) {
-                LOGERR(LY_EINVAL, "Siblings are not one RPC output.");
+                LOGERR(LY_EINVAL, "Siblings are not from one RPC output.");
                 return EXIT_FAILURE;
             }
         }
