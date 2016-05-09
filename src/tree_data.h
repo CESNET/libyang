@@ -260,10 +260,6 @@ void lyd_free_diff(struct lyd_difflist *diff);
  * @param[in] options The following @ref parseroptions with the described meanings are accepted:
  *            - #LYD_OPT_NOSIBLINGS - the \p first and the \p second have to instantiate the same schema node and
  *              only their content (subtree) is compared.
- *            - #LYD_OPT_REVERSIBLE - by default, the information in the returned lyd_difflist can be used only to
- *              change the \p first tree to the \p second one. In case of using this option, also the other
- *              conversion of the \p second tree to the \p first one is doable at the cost of some additional
- *              instructions.
  * @return NULL on error, the list of differences on success. In case the trees are the same, the first item in the
  *         lyd_difflist::type array is #LYD_DIFF_END. The returned structure is supposed to be freed by lyd_free_diff().
  */
@@ -375,9 +371,6 @@ char *lyd_path(struct lyd_node *node);
                                           are being created and were not part of the original data tree despite their
                                           value is equal to their default value. There is the same limitation regarding
                                           the presence of ietf-netconf-with-defaults module in libyang context. */
-#define LYD_OPT_REVERSIBLE 0x200000  /**< Applicable only to lyd_diff(). With some additional computation it provides
-                                          instructions not only to change the first diff's tree to the second one, but
-                                          also the second one into the first tree. See lyd_diff() for more information */
 
 /**@} parseroptions */
 

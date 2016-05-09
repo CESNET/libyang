@@ -1343,6 +1343,17 @@ error:
     return -1;
 }
 
+API void
+lyd_free_diff(struct lyd_difflist *diff)
+{
+    if (diff) {
+        free(diff->type);
+        free(diff->first);
+        free(diff->second);
+        free(diff);
+    }
+}
+
 static int
 lyd_difflist_add(struct lyd_difflist *diff, unsigned int *size, unsigned int index,
                  LYD_DIFFTYPE type, struct lyd_node *first, struct lyd_node *second)
@@ -1391,38 +1402,94 @@ lyd_difflist_add(struct lyd_difflist *diff, unsigned int *size, unsigned int ind
     return EXIT_SUCCESS;
 }
 
-API void
-lyd_free_diff(struct lyd_difflist *diff)
+/*
+ * -1 - error
+ *  0 - ok
+ *  1 - first and second not the same
+ */
+static int
+lyd_diff_compare(struct lyd_node *first, struct lyd_node *second,
+                 struct lyd_difflist *diff, unsigned int *size, unsigned int *i, struct ly_set *set)
 {
-    if (diff) {
-        free(diff->type);
-        free(diff->first);
-        free(diff->second);
-        free(diff);
+    int rc;
+    char *str1, *str2;
+    struct lyd_node_anyxml *axml;
+
+    switch (first->schema->nodetype) {
+    case LYS_LEAFLIST:
+    case LYS_LIST:
+        rc = lyd_list_equal(first, second, 0);
+        if (rc == -1) {
+            return -1;
+        } else if (!rc) {
+            /* list instances differs */
+            return 1;
+        } /* else matches */
+        /* no break, fall through */
+    case LYS_CONTAINER:
+        second->validity |= LYD_VAL_INUSE;
+        if (second->child) {
+            /* remember the matching node in first for keeping correct pointer in first
+             * for comparing when passing through the second tree in lyd_diff(). When
+             * the node does node have children, the corresponding node in the first
+             * tree will not be needed -> set size optimization
+             */
+            ly_set_add(set, first);
+        }
+        break;
+    case LYS_LEAF:
+        /* check for leaf's modification */
+        if (!ly_strequal(((struct lyd_node_leaf_list * )first)->value_str,
+                         ((struct lyd_node_leaf_list * )second)->value_str, 1)) {
+            if (lyd_difflist_add(diff, size, (*i)++, LYD_DIFF_CHANGED, first, second)) {
+               return -1;
+            }
+        }
+        break;
+    case LYS_ANYXML:
+        /* check for anyxml's modification */
+        axml = (struct lyd_node_anyxml *)first;
+        if (!axml->value.str) {
+            lyxml_print_mem(&str1, axml->value.xml, LYXML_PRINT_SIBLINGS);
+            axml->value.str = lydict_insert_zc(axml->schema->module->ctx, str1);
+        }
+        str1 = (char *)axml->value.str;
+
+        axml = (struct lyd_node_anyxml *)second;
+        if (!axml->value.str) {
+            lyxml_print_mem(&str2, axml->value.xml, LYXML_PRINT_SIBLINGS);
+            axml->value.str = lydict_insert_zc(axml->schema->module->ctx, str2);
+        }
+        str2 = (char *)axml->value.str;
+
+        if (!ly_strequal(str1, str2, 1)) {
+            if (lyd_difflist_add(diff, size, (*i)++, LYD_DIFF_CHANGED, first, second)) {
+                return -1;
+            }
+        }
+        break;
+    default:
+        LOGINT;
+        return -1;
     }
+
+    /* mark both that they have matching instance in the other tree */
+    first->validity |= LYD_VAL_INUSE;
+
+    return 0;
 }
 
-/*
- * Diff algorithm
- *
- * - do DFS on the second tree, for each second node try to find its equivalent in the first tree
- *   - if the equivalent node is found, flag it with LYD_VAL_INUSE
- *     - if it is leaf or anyxml, compare them and if they differ, add them to the result as LYD_DIFF_CHANGED
- *   - if not, add the second node into the result as LYD_DIFF_CREATED
- * - do DFS on the first tree
- *   - add the nodes not flagged by LYD_VAL_INUSE into the result as LYD_DIFF_DELETED
- *   - only of LYD_OPT_REVERSIBLE is specified, search for instances of LYD_VAL_INUSE nodes in the second tree
- *     to get the parent where the node is missing
- */
 API struct lyd_difflist *
 lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
 {
     struct lyd_node *elem1, *elem2, *iter, *next1, *next2;
-    struct lyd_node_anyxml *axml;
     struct lyd_difflist *result;
-    unsigned int size, index = 0;
+    unsigned int size, index = 0, i;
     int rc;
-    char *str1, *str2;
+    struct matchlist_s {
+        struct matchlist_s *prev;
+        struct ly_set *match;
+    } *matchlist, *mlaux;
 
     if (!first) {
         LOGERR(LY_EINVAL, "%s: \"first\" parameter is NULL.", __func__);
@@ -1476,15 +1543,15 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
     result->first = calloc(size, sizeof *result->first);
     result->second = calloc(size, sizeof *result->second);
 
+    matchlist = malloc(sizeof *matchlist);
+    matchlist->match = ly_set_new();
+    matchlist->prev = NULL;
+
     /*
      * compare trees
      */
-
-    /* 1) find new nodes in second
-     * 2) find leaf/anyxml modifications
-     */
     next1 = first;
-    LY_TREE_DFS_BEGIN(second, next2, elem2) {
+    for (elem2 = next2 = second; elem2; elem2 = next2) {
         /* keep right pointer for searching in the first tree */
         elem1 = next1;
 
@@ -1495,53 +1562,13 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
             }
 
             /* elem2 instance found */
-
-            if (elem2->schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) {
-                /* in case of list and leaflist we have to check that the instances match */
-                rc = lyd_list_equal(iter, elem2, 0);
-                if (rc == -1) {
-                    goto error;
-                } else if (!rc) {
-                    /* list instances differs */
-                    continue;
-                }
-            } else if (iter->schema->nodetype == LYS_LEAF) {
-                /* check for leaf's modification */
-                if (!ly_strequal(((struct lyd_node_leaf_list *)iter)->value_str,
-                                 ((struct lyd_node_leaf_list *)elem2)->value_str, 1)) {
-                    if (lyd_difflist_add(result, &size, index++, LYD_DIFF_CHANGED, iter, elem2)) {
-                        goto error;
-                    }
-                }
-            } else if (iter->schema->nodetype == LYS_ANYXML) {
-                /* check for anyxml's modification */
-                axml = (struct lyd_node_anyxml *)iter;
-                if (!axml->value.str) {
-                    lyxml_print_mem(&str1, axml->value.xml, LYXML_PRINT_SIBLINGS);
-                    axml->value.str = lydict_insert_zc(axml->schema->module->ctx, str1);
-                }
-                str1 = (char *)axml->value.str;
-
-                axml = (struct lyd_node_anyxml *)elem2;
-                if (!axml->value.str) {
-                    lyxml_print_mem(&str2, axml->value.xml, LYXML_PRINT_SIBLINGS);
-                    axml->value.str = lydict_insert_zc(axml->schema->module->ctx, str2);
-                }
-                str2 = (char *)axml->value.str;
-
-                if (!ly_strequal(str1, str2, 1)) {
-                    if (lyd_difflist_add(result, &size, index++, LYD_DIFF_CHANGED, iter, elem2)) {
-                        goto error;
-                    }
-                }
-            }
-
-            /* mark it in the first tree - the flag will be later used
-             * to simply filter nodes with instance in the second tree */
-            iter->validity |= LYD_VAL_INUSE;
-
-            /* continue with searching for another node in second tree */
-            break;
+            rc = lyd_diff_compare(iter, elem2, result, &size, &index, matchlist->match);
+            if (rc == -1) {
+                goto error;
+            } else if (rc == 0) {
+                /* match */
+                break;
+            } /* else, continue */
         }
 
         if (!iter) {
@@ -1549,86 +1576,118 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
             if (lyd_difflist_add(result, &size, index++, LYD_DIFF_CREATED, elem1->parent, elem2)) {
                 goto error;
             }
-            goto dfs2_nextsibling;
         }
 
-        /* modified LY_TREE_DFS_END() - processing root's siblings */
-        /* select element for the next run - children first */
-        if (elem2->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
-            next2 = NULL;
-        } else {
-            next1 = iter->child;
-            next2 = elem2->child;
-        }
+        /* select element for the next run                                    1     2
+         * - first, process all siblings of a single parent                  / \   / \
+         * - then, go to children (deep)                                    3   4 7   8
+         * - return to the parent's next sibling children                  / \
+         *                                                                5   6
+         */
+        /* siblings first */
+        next1 = elem1;
+        next2 = elem2->next;
+
         if (!next2) {
-dfs2_nextsibling:
-            /* try siblings */
-            next1 = elem1;
-            next2 = elem2->next;
-        }
-        while (!next2) {
-            /* parent is already processed, go to its sibling */
+            /* children */
 
-            elem2 = elem2->parent;
-            if (elem2 == second->parent) {
-                /* we are done, no next element to process */
-                break;
-            }
-            next1 = elem1->parent;
-            /* get the first sibling of the next1 for further searching */
-            if (next1->parent) {
-                next1 = next1->parent->child;
+            /* first, get the first sibling */
+            if (elem2->parent == second->parent) {
+                elem2 = second;
             } else {
-                for (; next1->prev->next; next1 = next1->prev);
+                elem2 = elem2->parent->child;
             }
-            next2 = elem2->next;
+
+            /* and then find the first child */
+            for (iter = elem2, i = 0; iter; iter = iter->next) {
+                if (!(iter->validity & LYD_VAL_INUSE)) {
+                    continue;
+                }
+                iter->validity &= ~LYD_VAL_INUSE;
+
+                if (iter->child) {
+                    next1 = matchlist->match->set.d[i]->child;
+                    matchlist->match->set.d[i++] = NULL;
+                    next2 = iter->child;
+                    break;
+                }
+            }
+
+            if (!iter) {
+                /* no child/data on next level */
+                if (elem2 == second) {
+                    /* done */
+                    break;
+                }
+            } else {
+                /* create new matchlist item */
+                mlaux = malloc(sizeof *mlaux);
+                mlaux->match = ly_set_new();
+                mlaux->prev = matchlist;
+                matchlist = mlaux;
+            }
+        }
+
+        while (!next2) {
+            /* parent */
+
+            /* clean the last match set */
+            ly_set_clean(matchlist->match);
+
+            /* try to go to a cousin - child of the next parent's sibling */
+            mlaux = matchlist->prev;
+            for (i = 0; i < mlaux->match->number && !mlaux->match->set.d[i]; i++);
+            for (iter = elem2->parent->next; iter; iter = iter->next) {
+                if (!(iter->validity & LYD_VAL_INUSE)) {
+                    continue;
+                }
+                iter->validity &= ~LYD_VAL_INUSE;
+
+                if (iter->child) {
+                    next1 = mlaux->match->set.d[i]->child;
+                    mlaux->match->set.d[i++] = NULL;
+                    next2 = iter->child;
+                    break;
+                }
+            }
+
+            /* if no cousin exists, continue next loop on higher level */
+            if (!iter) {
+                elem2 = elem2->parent;
+
+                /* remove matchlist item */
+                ly_set_free(matchlist->match);
+                mlaux = matchlist;
+                matchlist = matchlist->prev;
+                free(mlaux);
+
+                if (!matchlist->prev) { /* elem2->parent == second->parent */
+                    /* done */
+                    break;
+                }
+            }
         }
     }
 
-    /* 3) find deleted nodes in second (new nodes in first)
-     *    as a side effect, also remove all LYD_VAL_INUSE flags from first nodes */
-    next2 = second;
+    ly_set_free(matchlist->match);
+    free(matchlist);
+    matchlist = NULL;
+
     LY_TREE_DFS_BEGIN(first, next1, elem1) {
-        /* keep right pointer for searching in the first tree */
-        elem2 = next2;
 
         /* search for elem1s deleted in the second */
         if (elem1->validity & LYD_VAL_INUSE) {
             /* erase temporary LYD_VAL_INUSE flag and continue into children */
             elem1->validity &= ~LYD_VAL_INUSE;
-
-            /* search for elem1's instance in the second (if requested by LYD_OPT_REVERSIBLE) */
-            if ((options & LYD_OPT_REVERSIBLE) && (elem1->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_LEAFLIST))) {
-                LY_TREE_FOR(elem2, iter) {
-                    if (iter->schema != elem1->schema) {
-                        continue;
-                    }
-
-                    /* instance found */
-                    if (elem1->schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) {
-                        /* in case of list and leaflist we have to check that the instances match */
-                        rc = lyd_list_equal(iter, elem1, 0);
-                        if (rc == -1) {
-                            goto error;
-                        } else if (!rc) {
-                            /* list instances differs */
-                            continue;
-                        }
-                    }
-                    break;
-                }
-            }
         } else {
             /* elem1 has no matching node in second, add it into result */
-            if (lyd_difflist_add(result, &size, index++, LYD_DIFF_DELETED, elem1,
-                                 (options & LYD_OPT_REVERSIBLE) ? elem2->parent : NULL)) {
+            if (lyd_difflist_add(result, &size, index++, LYD_DIFF_DELETED, elem1, NULL)) {
                 goto error;
             }
 
             /* skip subtree processing of data missing in the second tree */
-            goto dfs1_nextsibling;
+            goto dfs_nextsibling;
         }
-
 
         /* modified LY_TREE_DFS_END() */
         /* select element for the next run - children first */
@@ -1636,15 +1695,11 @@ dfs2_nextsibling:
             next1 = NULL;
         } else {
             next1 = elem1->child;
-            if (options & LYD_OPT_REVERSIBLE) {
-                next2 = iter->child;
-            }
         }
         if (!next1) {
-dfs1_nextsibling:
+dfs_nextsibling:
             /* try siblings */
             next1 = elem1->next;
-            next2 = elem2;
         }
         while (!next1) {
             /* parent is already processed, go to its sibling */
@@ -1655,15 +1710,6 @@ dfs1_nextsibling:
                 break;
             }
 
-            if (options & LYD_OPT_REVERSIBLE) {
-                next2 = elem2->parent;
-                /* get the first sibling of the next2 for further searching */
-                if (next2->parent) {
-                    next2 = next2->parent->child;
-                } else {
-                    for (; next2->prev->next; next2 = next2->prev);
-                }
-            }
             next1 = elem1->next;
         }
     }
@@ -1673,6 +1719,13 @@ dfs1_nextsibling:
 
 error:
 
+    while (matchlist) {
+        mlaux = matchlist;
+        matchlist = mlaux->prev;
+        ly_set_free(mlaux->match);
+        free(mlaux);
+
+    }
     lyd_free_diff(result);
 
     return NULL;
