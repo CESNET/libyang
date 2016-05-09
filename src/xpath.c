@@ -54,12 +54,18 @@ exp_free(struct lyxp_expr *exp)
 {
     uint16_t i;
 
+    if (!exp) {
+        return;
+    }
+
     free(exp->expr);
     free(exp->tokens);
     free(exp->expr_pos);
     free(exp->tok_len);
-    for (i = 0; i < exp->used; ++i) {
-        free(exp->repeat[i]);
+    if (exp->repeat) {
+        for (i = 0; i < exp->used; ++i) {
+            free(exp->repeat[i]);
+        }
     }
     free(exp->repeat);
     free(exp);
@@ -2019,39 +2025,32 @@ parse_expr(const char *expr)
     int prev_function_check = 0;
 
     /* init lyxp_expr structure */
-    ret = malloc(sizeof *ret);
+    ret = calloc(1, sizeof *ret);
     if (!ret) {
         LOGMEM;
-        return NULL;
+        goto error;
     }
     ret->expr = strdup(expr);
     if (!ret->expr) {
         LOGMEM;
-        free(ret);
-        return NULL;
+        goto error;
     }
     ret->used = 0;
     ret->size = LYXP_EXPR_SIZE_START;
     ret->tokens = malloc(ret->size * sizeof *ret->tokens);
     if (!ret->tokens) {
         LOGMEM;
-        free(ret);
-        return NULL;
+        goto error;
     }
     ret->expr_pos = malloc(ret->size * sizeof *ret->expr_pos);
     if (!ret->expr_pos) {
         LOGMEM;
-        free(ret->tokens);
-        free(ret);
-        return NULL;
+        goto error;
     }
     ret->tok_len = malloc(ret->size * sizeof *ret->tok_len);
     if (!ret->tok_len) {
         LOGMEM;
-        free(ret->tokens);
-        free(ret->expr_pos);
-        free(ret);
-        return NULL;
+        goto error;
     }
 
     while (is_xmlws(expr[parsed])) {
@@ -2268,11 +2267,7 @@ parse_expr(const char *expr)
     return ret;
 
 error:
-    free(ret->tokens);
-    free(ret->expr_pos);
-    free(ret->tok_len);
-    free(ret);
-
+    exp_free(ret);
     return NULL;
 }
 
@@ -6739,7 +6734,7 @@ int
 lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *set, int options)
 {
     struct lyxp_expr *exp;
-    uint16_t exp_idx;
+    uint16_t exp_idx = 0;
     int rc = -1;
 
     if (!expr || !cur_node || !set) {
@@ -6748,36 +6743,35 @@ lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *se
     }
 
     exp = parse_expr(expr);
-    if (exp) {
-        exp_idx = 0;
-        rc = reparse_expr(exp, &exp_idx);
-        if (!rc && (exp->used > exp_idx)) {
-            LOGVAL(LYE_XPATH_INTOK, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[exp_idx]]);
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unparsed characters \"%s\" left at the end of an XPath expression.",
-                   &exp->expr[exp->expr_pos[exp_idx]]);
-            rc = -1;
-        }
-        if (rc) {
-            exp_free(exp);
-        }
-    }
-    if (!rc && exp) {
-        print_expr_struct_debug(exp);
-
-        exp_idx = 0;
-        lyxp_set_cast(set, LYXP_SET_EMPTY, cur_node, options);
-
-        set_insert_node(set, (struct lyd_node *)cur_node, 0, LYXP_NODE_ELEM, 0);
-
-        rc = eval_expr(exp, &exp_idx, (struct lyd_node *)cur_node, set, options);
-
-        exp_free(exp);
+    if (!exp) {
+        rc = -1;
+        goto finish;
     }
 
-    if (exp && (rc == -1)) {
+    rc = reparse_expr(exp, &exp_idx);
+    if (rc) {
+        goto finish;
+    } else if (exp->used > exp_idx) {
+        LOGVAL(LYE_XPATH_INTOK, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[exp_idx]]);
+        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unparsed characters \"%s\" left at the end of an XPath expression.",
+               &exp->expr[exp->expr_pos[exp_idx]]);
+        rc = -1;
+        goto finish;
+    }
+
+    print_expr_struct_debug(exp);
+
+    exp_idx = 0;
+    lyxp_set_cast(set, LYXP_SET_EMPTY, cur_node, options);
+    set_insert_node(set, (struct lyd_node *)cur_node, 0, LYXP_NODE_ELEM, 0);
+
+    rc = eval_expr(exp, &exp_idx, (struct lyd_node *)cur_node, set, options);
+    if (rc == -1) {
         LOGPATH(LY_VLOG_LYD, cur_node);
     }
 
+finish:
+    exp_free(exp);
     return rc;
 }
 
