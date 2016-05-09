@@ -2346,10 +2346,10 @@ lyd_free_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr
     }
 }
 
-struct lyd_node *
-lyd_attr_parent(struct lyd_node *root, struct lyd_attr *attr)
+const struct lyd_node *
+lyd_attr_parent(const struct lyd_node *root, struct lyd_attr *attr)
 {
-    struct lyd_node *next, *elem;
+    const struct lyd_node *next, *elem;
     struct lyd_attr *node_attr;
 
     LY_TREE_DFS_BEGIN(root, next, elem) {
@@ -2816,8 +2816,8 @@ lyd_get_node(const struct lyd_node *data, const char *expr)
 
     if (xp_set.type == LYXP_SET_NODE_SET) {
         for (i = 0; i < xp_set.used; ++i) {
-            if ((xp_set.node_type[i] == LYXP_NODE_ELEM) || (xp_set.node_type[i] == LYXP_NODE_TEXT)) {
-                if (ly_set_add(set, xp_set.value.nodes[i])) {
+            if (xp_set.val.nodes[i].type == LYXP_NODE_ELEM) {
+                if (ly_set_add(set, xp_set.val.nodes[i].node)) {
                     ly_set_free(set);
                     set = NULL;
                     break;

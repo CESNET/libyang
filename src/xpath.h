@@ -153,27 +153,6 @@ enum lyxp_set_type {
 };
 
 /**
- * @brief XPath set - (partial) result.
- */
-struct lyxp_set {
-    enum lyxp_set_type type;
-    union {
-        struct lyd_node **nodes;
-        struct lyd_attr **attrs;
-        const char *str;
-        long double num;
-        int bool;
-    } value;
-
-    /* this is valid only for type == LYXP_NODE_SET */
-    enum lyxp_node_type *node_type;  /* item with this index is of this node type */
-    uint32_t *pos;                   /* if node_type is LYXP_NODE_ATTR, it is the parent node position */
-    uint32_t used;
-    uint32_t size;
-    uint32_t ctx_pos;                /* current context position, indexed from 1, relevant only for predicates */
-};
-
-/**
  * @brief Types of nodes that can be in an LYXP_SET_NODE_SET XPath set.
  */
 enum lyxp_node_type {
@@ -187,6 +166,33 @@ enum lyxp_node_type {
     LYXP_NODE_ELEM,
     LYXP_NODE_TEXT,
     LYXP_NODE_ATTR
+};
+
+/**
+ * @brief XPath set - (partial) result.
+ */
+struct lyxp_set {
+    enum lyxp_set_type type;
+    union {
+        struct lyxp_set_nodes {
+            struct lyd_node *node;
+            enum lyxp_node_type type;
+            uint32_t pos;
+        } *nodes;
+        struct lyxp_set_attrs {
+            struct lyd_attr *attr;
+            enum lyxp_node_type type;
+            uint32_t pos; /* if node_type is LYXP_NODE_ATTR, it is the parent node position */
+        } *attrs;
+        const char *str;
+        long double num;
+        int bool;
+    } val;
+
+    /* this is valid only for type == LYXP_NODE_SET */
+    uint32_t used;
+    uint32_t size;
+    uint32_t ctx_pos;                /* current context position, indexed from 1, relevant only for predicates */
 };
 
 #define LYXP_MUST 0x01 /* apply must data tree access restrictions */
@@ -217,14 +223,6 @@ int lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set
  * @return EXIT_SUCCESS on pass, -1 on failure.
  */
 int lyxp_syntax_check(const char *expr);
-
-/**
- * @brief Print \p set contents.
- *
- * @param[in] f File stream to use.
- * @param[in] set Set to print.
- */
-void lyxp_set_print_xml(FILE *f, struct lyxp_set *set);
 
 /**
  * @brief Cast XPath set to another type.

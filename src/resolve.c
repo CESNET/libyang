@@ -4174,7 +4174,7 @@ resolve_must(struct lyd_node *node)
 
         lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, LYXP_MUST);
 
-        if (!set.value.bool) {
+        if (!set.val.bool) {
             LOGVAL(LYE_NOMUST, LY_VLOG_LYD, node, must[i].expr);
             if (must[i].emsg) {
                 LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, must[i].emsg);
@@ -4317,7 +4317,7 @@ resolve_when(struct lyd_node *node)
 
         /* set boolean result of the condition */
         lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, LYXP_WHEN);
-        if (!set.value.bool) {
+        if (!set.val.bool) {
             ly_vlog_hide(1);
             LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
             ly_vlog_hide(0);
@@ -4352,7 +4352,7 @@ resolve_when(struct lyd_node *node)
             }
 
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, LYXP_WHEN);
-            if (!set.value.bool) {
+            if (!set.val.bool) {
                 ly_vlog_hide(1);
                 LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)parent)->when->cond);
                 ly_vlog_hide(0);
@@ -4384,7 +4384,7 @@ check_augment:
 
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, LYXP_WHEN);
 
-            if (!set.value.bool) {
+            if (!set.val.bool) {
                 ly_vlog_hide(1);
                 LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)parent->parent)->when->cond);
                 ly_vlog_hide(0);
