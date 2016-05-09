@@ -720,6 +720,18 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
     id = path;
 
     if (data_tree) {
+        if (options & LYD_PATH_OPT_OUTPUT) {
+            /* just check the data, whether they make sense */
+            for (sparent = lys_parent(data_tree->schema); sparent; sparent = lys_parent(sparent)) {
+                if (sparent->nodetype == LYS_OUTPUT) {
+                    break;
+                }
+            }
+            if (!sparent) {
+                LOGERR(LY_EINVAL, "Provided data tree is not an RPC output.");
+                return NULL;
+            }
+        }
         parent = resolve_partial_json_data_nodeid(id, value, data_tree, options, &parsed);
         if (parsed == -1) {
             return NULL;
@@ -938,6 +950,14 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         }
 
         if (!node) {
+            str = strndup(path, id - path);
+            if (is_relative) {
+                LOGVAL(LYE_SPEC, LY_VLOG_STR, str, "Failed to create node \"%s\" as a child of \"%s\".",
+                       schild->name, parent->schema->name);
+            } else {
+                LOGVAL(LYE_SPEC, LY_VLOG_STR, str, "Failed to create node \"%s\".", schild->name);
+            }
+            free(str);
             lyd_free(ret);
             return NULL;
         }
