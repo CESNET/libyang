@@ -3222,7 +3222,7 @@ lyd_get_node(const struct lyd_node *data, const char *expr)
     if (xp_set.type == LYXP_SET_NODE_SET) {
         for (i = 0; i < xp_set.used; ++i) {
             if ((xp_set.node_type[i] == LYXP_NODE_ELEM) || (xp_set.node_type[i] == LYXP_NODE_TEXT)) {
-                if (ly_set_add(set, xp_set.value.nodes[i])) {
+                if (ly_set_add(set, xp_set.value.nodes[i]) < 0) {
                     ly_set_free(set);
                     set = NULL;
                     break;
@@ -3350,14 +3350,14 @@ ly_set_add(struct ly_set *set, void *node)
 
     if (!set || !node) {
         ly_errno = LY_EINVAL;
-        return EXIT_FAILURE;
+        return -1;
     }
 
     /* search for duplication */
     for (i = 0; i < set->number; i++) {
         if (set->set.g[i] == node) {
             /* already in set */
-            return EXIT_SUCCESS;
+            return i;
         }
     }
 
@@ -3365,7 +3365,7 @@ ly_set_add(struct ly_set *set, void *node)
         new = realloc(set->set.g, (set->size + 8) * sizeof *(set->set.g));
         if (!new) {
             LOGMEM;
-            return EXIT_FAILURE;
+            return -1;
         }
         set->size += 8;
         set->set.g = new;
@@ -3373,7 +3373,7 @@ ly_set_add(struct ly_set *set, void *node)
 
     set->set.g[set->number++] = node;
 
-    return EXIT_SUCCESS;
+    return set->number - 1;
 }
 
 API int
