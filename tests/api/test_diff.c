@@ -173,20 +173,20 @@ test_diff2(void **state)
     assert_ptr_not_equal((diff = lyd_diff(st->first, st->second, 0)), NULL);
     assert_ptr_not_equal(diff->type, NULL);
 
-    assert_int_equal(diff->type[0], LYD_DIFF_CHANGED);
+    assert_int_equal(diff->type[0], LYD_DIFF_CREATED);
     assert_ptr_not_equal(diff->first[0], NULL);
-    assert_string_equal((str = lyd_path(diff->first[0])), "/defaults:df/list[name=\'b\']/value");
+    assert_string_equal((str = lyd_path(diff->first[0])), "/defaults:df");
     free(str);
     assert_ptr_not_equal(diff->second[0], NULL);
-    assert_string_equal((str = lyd_path(diff->second[0])), "/defaults:df/list[name=\'b\']/value");
+    assert_string_equal((str = lyd_path(diff->second[0])), "/defaults:df/list[name=\'c\']");
     free(str);
 
-    assert_int_equal(diff->type[1], LYD_DIFF_CREATED);
+    assert_int_equal(diff->type[1], LYD_DIFF_CHANGED);
     assert_ptr_not_equal(diff->first[1], NULL);
-    assert_string_equal((str = lyd_path(diff->first[1])), "/defaults:df");
+    assert_string_equal((str = lyd_path(diff->first[1])), "/defaults:df/list[name=\'b\']/value");
     free(str);
     assert_ptr_not_equal(diff->second[1], NULL);
-    assert_string_equal((str = lyd_path(diff->second[1])), "/defaults:df/list[name=\'c\']");
+    assert_string_equal((str = lyd_path(diff->second[1])), "/defaults:df/list[name=\'b\']/value");
     free(str);
 
     assert_int_equal(diff->type[2], LYD_DIFF_DELETED);
