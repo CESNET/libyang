@@ -861,7 +861,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
                     if (schild->nodetype == LYS_RPC) {
                         if (!id[0]) {
                             /* only create the RPC container of output? that does not make sense */
-                            LOGERR(LY_EINVAL, "%s: RPC is not included in data when creating output nodes, nothing to create.");
+                            LOGERR(LY_EINVAL, "%s: RPC should not be included in data when creating output nodes, nothing to create.");
                             lyd_free(ret);
                             return NULL;
                         }
