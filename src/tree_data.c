@@ -3370,6 +3370,20 @@ ly_set_rm(struct ly_set *set, void *node)
 }
 
 API int
+ly_set_clean(struct ly_set *set)
+{
+    if (!set) {
+        return EXIT_FAILURE;
+    }
+
+    free(set->set.g);
+    set->number = 0;
+    set->set.g = NULL;
+
+    return EXIT_SUCCESS;
+}
+
+API int
 lyd_wd_cleanup(struct lyd_node **root, int options)
 {
     struct lyd_node *wr, *next1, *next2, *iter, *to_free = NULL;

@@ -993,6 +993,14 @@ struct ly_set *ly_set_new(void);
 int ly_set_add(struct ly_set *set, void *node);
 
 /**
+ * @brief Remove all objects from the set, but keep the set container for further use.
+ *
+ * @param[in] set Set to clean.
+ * @return 0 on success
+ */
+int ly_set_clean(struct ly_set *set);
+
+/**
  * @brief Remove a ::lyd_node or ::lys_node object from the set.
  *
  * Note that after removing a node from a set, indexes of other nodes in the set can change
