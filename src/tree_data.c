@@ -3773,6 +3773,7 @@ lyd_wd_top(struct ly_ctx *ctx, struct lys_node *rpc, struct lyd_node **root, str
 
         }
     }
+    ly_set_free(topset);
 
     if (options & LYD_OPT_RPCREPLY) {
         lyd_schema_sort(*root, 0);
