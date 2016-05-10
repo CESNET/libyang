@@ -926,8 +926,8 @@ process:
 
                         /* look for the prefix in namespaces */
                         if (memcmp(prefix, c, e - c)) {
-                            LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, elem,
-                                   "(different namespaces) opening (%s) and closing element tags", elem->name);
+                            LOGVAL(LYE_SPEC, LY_VLOG_XML, elem,
+                                   "Invalid (different namespaces) opening (%s) and closing element tags.", elem->name);
                             goto error;
                         }
                         c = start;
@@ -950,8 +950,8 @@ process:
                 memcpy(str, c, e - c);
                 str[e - c] = '\0';
                 if (size != strlen(elem->name) || memcmp(str, elem->name, size)) {
-                    LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, elem,
-                           "(mixed names) opening (%s) and closing (%s) element tags", elem->name, str);
+                    LOGVAL(LYE_SPEC, LY_VLOG_XML, elem,
+                           "Invalid (mixed names) opening (%s) and closing (%s) element tags.", elem->name, str);
                     free(str);
                     goto error;
                 }
@@ -960,8 +960,7 @@ process:
 
                 ign_xmlws(c);
                 if (*c != '>') {
-                    LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, elem,
-                           "data after closing element tag \"%s\"", elem->name);
+                    LOGVAL(LYE_SPEC, LY_VLOG_XML, elem, "Data after closing element tag \"%s\".", elem->name);
                     goto error;
                 }
                 c++;
