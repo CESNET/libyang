@@ -1097,7 +1097,7 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
 
     ly_errno = LY_SUCCESS;
 
-    if (!ctx || !data) {
+    if (!ctx || !data || (options & LYD_OPT_RPCREPLY)) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
         return NULL;
     }
@@ -1166,7 +1166,7 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
     }
 
     /* add/validate default values, unres */
-    if (lyd_validate_defaults_unres(&result, options, ctx, unres)) {
+    if (lyd_validate_defaults_unres(&result, options, ctx, NULL, unres)) {
         goto error;
     }
 

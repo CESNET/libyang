@@ -499,7 +499,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     va_list ap;
     int r;
     struct unres_data *unres = NULL;
-    const struct lys_node *rpc = NULL;
+    struct lys_node *rpc = NULL;
     struct lyd_node *result = NULL, *iter, *last;
     struct lyxml_elem *xmlstart, *xmlelem, *xmlaux;
 
@@ -578,7 +578,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     }
 
     /* add/validate default values, unres */
-    if (lyd_validate_defaults_unres(&result, options, ctx, unres)) {
+    if (lyd_validate_defaults_unres(&result, options, ctx, rpc, unres)) {
         goto error;
     }
 

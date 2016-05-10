@@ -1875,7 +1875,8 @@ lyd_schema_sort(struct lyd_node *sibling, int recursive)
 }
 
 int
-lyd_validate_defaults_unres(struct lyd_node **node, int options, struct ly_ctx *ctx, struct unres_data *unres)
+lyd_validate_defaults_unres(struct lyd_node **node, int options, struct ly_ctx *ctx, struct lys_node *rpc,
+                            struct unres_data *unres)
 {
     int options_aux;
 
@@ -1889,7 +1890,7 @@ lyd_validate_defaults_unres(struct lyd_node **node, int options, struct ly_ctx *
     } else {
         options_aux = options;
     }
-    if (lyd_wd_top(ctx, node, unres, options_aux)) {
+    if (lyd_wd_top(ctx, rpc, node, unres, options_aux)) {
         return 1;
     }
 
@@ -1948,6 +1949,13 @@ lyd_validate(struct lyd_node **node, int options, ...)
             goto error;
         }
     } else {
+        if (options & LYD_OPT_RPCREPLY) {
+            rpc = lys_parent(lys_parent((*node)->schema));
+            if (!rpc) {
+                LOGERR(LY_EINVAL, "%s: Provided data are not RPC output pamareters.");
+                goto error;
+            }
+        }
         ctx = (*node)->schema->module->ctx;
 
         if (!(options & LYD_OPT_NOSIBLINGS)) {
@@ -2044,7 +2052,7 @@ nextsiblings:
     }
 
     /* add default values if needed */
-    if (lyd_validate_defaults_unres(node, options, ctx ? ctx : (*node)->schema->module->ctx, unres)) {
+    if (lyd_validate_defaults_unres(node, options, ctx ? ctx : (*node)->schema->module->ctx, rpc, unres)) {
         goto error;
     }
 
@@ -3276,7 +3284,7 @@ lyd_wd_add_leaf(struct ly_ctx *ctx, struct lyd_node *parent, struct lys_node_lea
             }
             ly_set_free(nodeset);
         }
-        ret = lyd_new_path(parent, ctx, path, dflt, 0);
+        ret = lyd_new_path(parent, ctx, path, dflt, options & LYD_OPT_RPCREPLY ? LYD_PATH_OPT_OUTPUT : 0);
         if ((options & (LYD_WD_ALL_TAG | LYD_WD_IMPL_TAG)) && ret) {
             /* remember the created nodes (if necessary) in unres */
             for (iter = ret; ; iter = iter->child) {
@@ -3573,11 +3581,11 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
 }
 
 int
-lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres, int options)
+lyd_wd_top(struct ly_ctx *ctx, struct lys_node *rpc, struct lyd_node **root, struct unres_data *unres, int options)
 {
     struct lys_node *siter;
     struct lyd_node *iter;
-    struct ly_set *modset = NULL, *nodeset;
+    struct ly_set *topset = NULL, *nodeset;
     unsigned int i;
     int ret = EXIT_FAILURE;
     char *path = ly_buf(), *buf_backup = NULL;
@@ -3603,10 +3611,10 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
     ly_buf_used++;
     path[0] = '\0';
 
-    modset = ly_set_new();
+    topset = ly_set_new();
     LY_TREE_FOR(*root, iter) {
         if (!ctx) {
-            ly_set_add(modset, lys_node_module(iter->schema));
+            ly_set_add(topset, lys_node_module(iter->schema)->data);
         }
         if (options & (LYD_OPT_CONFIG | LYD_OPT_EDIT | LYD_OPT_GETCONFIG)) {
             /* do not process status data */
@@ -3632,20 +3640,40 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
         }
     }
 
+    if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
+        /* do not add any top-level default nodes in these cases */
+        return EXIT_SUCCESS;
+    }
+
     if (ctx) {
-        /* add all modules into our internal set */
-        for (i = 0; i < (unsigned int)ctx->models.used; i++) {
-            if (ctx->models.list[i]->data) {
-                ly_set_add(modset, ctx->models.list[i]);
+        if (options & LYD_OPT_RPCREPLY) {
+            LY_TREE_FOR(rpc->child, siter) {
+                if (siter->nodetype == LYS_OUTPUT) {
+                    break;
+                }
+            }
+            if (!siter) {
+                /* no output children */
+                assert(!*root);
+                return EXIT_SUCCESS;
+            }
+            assert(siter->child);
+            ly_set_add(topset, siter->child);
+        } else {
+            /* add all module data into our internal set */
+            for (i = 0; i < (unsigned int)ctx->models.used; i++) {
+                if (ctx->models.list[i]->data) {
+                    ly_set_add(topset, ctx->models.list[i]->data);
+                }
             }
         }
     }
 
     /* add missing top-level default nodes */
-    for (i = 0; i < modset->number; i++) {
-        LOGDBG("DEFAULTS: adding top level defaults for %s module, mode %x", ((struct lys_module *)modset->set.g[i])->name,
+    for (i = 0; i < topset->number; i++) {
+        LOGDBG("DEFAULTS: adding top level defaults for %s module, mode %x", lys_node_module(topset->set.s[i])->name,
                (options & LYD_WD_MASK));
-        LY_TREE_FOR(((struct lys_module *)modset->set.g[i])->data, siter) {
+        LY_TREE_FOR(topset->set.s[i], siter) {
             if  (options & (LYD_OPT_CONFIG | LYD_OPT_EDIT | LYD_OPT_GETCONFIG)) {
                 /* do not process status data */
                 if (siter->flags & LYS_CONFIG_R) {
@@ -3746,11 +3774,15 @@ lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres,
         }
     }
 
+    if (options & LYD_OPT_RPCREPLY) {
+        lyd_schema_sort(*root, 0);
+    }
+
     ret = EXIT_SUCCESS;
 
 error:
     /* cleanup */
-    ly_set_free(modset);
+    ly_set_free(topset);
 
     if (buf_backup) {
         /* return previous internal buffer content */
@@ -3767,6 +3799,7 @@ lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options)
 {
     int rc, mode;
     struct unres_data *unres = NULL;
+    struct lys_node *rpc;
 
     ly_errno = LY_SUCCESS;
 
@@ -3778,6 +3811,18 @@ lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options)
     if ((options & LYD_OPT_NOSIBLINGS) && !(*root)) {
         LOGERR(LY_EINVAL, "Cannot add default values for one module (LYD_OPT_NOSIBLINGS) without any data.");
         return EXIT_FAILURE;
+    }
+
+    if (options & LYD_OPT_RPCREPLY) {
+        if (!(*root)) {
+            LOGERR(LY_EINVAL, "Cannot add default RPC output values without any data.");
+            return EXIT_FAILURE;
+        }
+        rpc = lys_parent(lys_parent((*root)->schema));
+        if (!rpc) {
+            LOGERR(LY_EINVAL, "Not an RPC output data.");
+            return EXIT_FAILURE;
+        }
     }
 
     mode = options & LYD_WD_MASK;
@@ -3797,7 +3842,7 @@ lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options)
             return EXIT_FAILURE;
         }
     }
-    rc = lyd_wd_top(ctx, root, unres, options);
+    rc = lyd_wd_top(ctx, rpc, root, unres, options);
     if (unres && unres->count && resolve_unres_data(unres, root, options)) {
         rc = EXIT_FAILURE;
     }

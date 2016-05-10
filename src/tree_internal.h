@@ -355,6 +355,7 @@ int lyd_list_equal(struct lyd_node *first, struct lyd_node *second);
  * @param[in] ctx Optional parameter. If provided, default nodes from all modules in the context will be added (so it
  *            has no effect for #LYD_WD_TRIM). If NULL, only the modules explicitly mentioned in data tree are
  *            taken into account.
+ * @param[in] rpc Mandatory parameter if \p options & #LYD_OPT_RPCREPLY. RPC of the RPC output to add default nodes to.
  * @param[in] root Data tree root. In case of #LYD_WD_TRIM the data tree can be modified so the root can be changed or
  *            removed. In other modes and with empty data tree, new default nodes can be created so the root pointer
  *            will contain/return the newly created data tree.
@@ -370,7 +371,8 @@ int lyd_list_equal(struct lyd_node *first, struct lyd_node *second);
  * printing - all the flagged nodes are printed with the 'default' attribute with 'true' value.
  * @return EXIT_SUCCESS ot EXIT_FAILURE
  */
-int lyd_wd_top(struct ly_ctx *ctx, struct lyd_node **root, struct unres_data *unres, int options);
+int lyd_wd_top(struct ly_ctx *ctx, struct lys_node *rpc, struct lyd_node **root, struct unres_data *unres,
+               int options);
 
 /**
  * @brief Check for (validate) top-level mandatory nodes of a data tree.
@@ -393,7 +395,8 @@ int lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, struct lys
  * @param[in] unres Valid unres structure, on function successful exit they are all resolved.
  * @return 0 on success, nonzero on failure.
  */
-int lyd_validate_defaults_unres(struct lyd_node **node, int options, struct ly_ctx *ctx, struct unres_data *unres);
+int lyd_validate_defaults_unres(struct lyd_node **node, int options, struct ly_ctx *ctx, struct lys_node *rpc,
+                                struct unres_data *unres);
 
 void lys_deviation_add_ext_imports(struct lys_module *dev_target_module, struct lys_module *dev_module);
 
