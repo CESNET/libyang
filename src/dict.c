@@ -173,7 +173,7 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
 
     /* collision, search if the value is already in dict */
     while (record) {
-        if (!memcmp(value, record->value, len) && record->value[len] == '\0') {
+        if (!strncmp(value, record->value, len) && record->value[len] == '\0') {
             /* record found */
             record->refcount++;
 
