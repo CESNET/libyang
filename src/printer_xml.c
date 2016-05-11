@@ -74,12 +74,14 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node)
     assert(out);
     assert(node);
 
+    /* add node attribute modules */
     for (attr = node->attr; attr; attr = attr->next) {
-        if (modlist_add(&mlist, wdmod)) {
+        if (modlist_add(&mlist, attr->module)) {
             goto print;
         }
     }
 
+    /* add node children nodes and attribute modules */
     if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
         /* get with-defaults module */
         wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
