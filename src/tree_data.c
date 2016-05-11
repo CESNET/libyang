@@ -904,7 +904,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
                 lyd_free(ret);
                 return NULL;
             }
-            str = strdup(value);
+            str = strdup(value ? value : "");
             if (!str) {
                 LOGMEM;
                 lyd_free(ret);
