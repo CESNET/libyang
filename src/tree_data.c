@@ -3613,7 +3613,7 @@ lyd_wd_top(struct ly_ctx *ctx, struct lys_node *rpc, struct lyd_node **root, str
 
     topset = ly_set_new();
     LY_TREE_FOR(*root, iter) {
-        if (!ctx) {
+        if (!ctx && !(options & (LYD_OPT_RPC | LYD_OPT_NOTIF))) {
             ly_set_add(topset, lys_node_module(iter->schema)->data);
         }
         if (options & (LYD_OPT_CONFIG | LYD_OPT_EDIT | LYD_OPT_GETCONFIG)) {
@@ -3655,7 +3655,8 @@ lyd_wd_top(struct ly_ctx *ctx, struct lys_node *rpc, struct lyd_node **root, str
             if (!siter) {
                 /* no output children */
                 assert(!*root);
-                return EXIT_SUCCESS;
+                ret = EXIT_FAILURE;
+                goto error;
             }
             assert(siter->child);
             ly_set_add(topset, siter->child);
@@ -3773,7 +3774,6 @@ lyd_wd_top(struct ly_ctx *ctx, struct lys_node *rpc, struct lyd_node **root, str
 
         }
     }
-    ly_set_free(topset);
 
     if (options & LYD_OPT_RPCREPLY) {
         lyd_schema_sort(*root, 0);
