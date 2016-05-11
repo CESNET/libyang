@@ -572,6 +572,16 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         }
     }
 
+    if (options & LYD_OPT_RPCREPLY) {
+        iter = result;
+        result = lyd_new_output(NULL, lys_node_module(rpc), rpc->name);
+        if (iter && lyd_insert(result, iter)) {
+            LOGINT;
+            lyd_free_withsiblings(iter);
+            goto error;
+        }
+    }
+
     /* check for missing top level mandatory nodes */
     if (lyd_check_topmandatory(result, ctx, options)) {
         goto error;
