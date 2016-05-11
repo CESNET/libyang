@@ -176,9 +176,9 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     const char *xml_expr;
     uint32_t ns_count, i;
 
-    if (!node->parent || nscmp(node, node->parent)) {
+    if (toplevel || !node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
-        ns = lys_node_module(node->schema)->ns;
+        ns = lyd_node_module(node)->ns;
         ly_print(out, "%*s<%s xmlns=\"%s\"", LEVEL, INDENT, node->schema->name, ns);
     } else {
         ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
@@ -268,9 +268,9 @@ xml_print_container(struct lyout *out, int level, const struct lyd_node *node, i
     struct lyd_node *child;
     const char *ns;
 
-    if (!node->parent || nscmp(node, node->parent)) {
+    if (toplevel || !node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
-        ns = lys_node_module(node->schema)->ns;
+        ns = lyd_node_module(node)->ns;
         ly_print(out, "%*s<%s xmlns=\"%s\"", LEVEL, INDENT, node->schema->name, ns);
     } else {
         ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
@@ -303,9 +303,9 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
 
     if (is_list) {
         /* list print */
-        if (!node->parent || nscmp(node, node->parent)) {
+        if (toplevel || !node->parent || nscmp(node, node->parent)) {
             /* print "namespace" */
-            ns = lys_node_module(node->schema)->ns;
+            ns = lyd_node_module(node)->ns;
             ly_print(out, "%*s<%s xmlns=\"%s\"", LEVEL, INDENT, node->schema->name, ns);
         } else {
             ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
@@ -340,9 +340,9 @@ xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int 
     struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
     const char *ns;
 
-    if (!node->parent || nscmp(node, node->parent)) {
+    if (toplevel || !node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
-        ns = lys_node_module(node->schema)->ns;
+        ns = lyd_node_module(node)->ns;
         ly_print(out, "%*s<%s xmlns=\"%s\"", LEVEL, INDENT, node->schema->name, ns);
     } else {
         ly_print(out, "%*s<%s", LEVEL, INDENT, node->schema->name);
