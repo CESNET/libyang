@@ -1161,12 +1161,12 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
     }
 
     /* check for missing top level mandatory nodes */
-    if (lyd_check_topmandatory(result, ctx, NULL, options)) {
+    if (lyd_check_topmandatory(result, ctx, options)) {
         goto error;
     }
 
     /* add/validate default values, unres */
-    if (lyd_validate_defaults_unres(&result, options, ctx, NULL, unres)) {
+    if (lyd_validate_defaults_unres(&result, options, ctx, unres)) {
         goto error;
     }
 

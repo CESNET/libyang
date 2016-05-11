@@ -446,7 +446,7 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
 }
 
 int
-ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema, int status)
+ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema, int status, int rpc_output)
 {
     const struct lys_node *siter, *saux, *saux2, *parent = NULL, *parent2;
     const struct lyd_node *diter;
@@ -572,9 +572,22 @@ repeat_choice:
             siter = saux->next;
 
             break;
+        case LYS_INPUT:
+            if (rpc_output) {
+                /* skip */
+                siter = siter->next;
+                break;
+            }
+            /* fallthrough */
+        case LYS_OUTPUT:
+            if (!rpc_output) {
+                /* skip */
+                siter = siter->next;
+                break;
+            }
+            /* fallthrough */
         case LYS_USES:
         case LYS_CASE:
-        case LYS_INPUT:
             /* go into */
             parent = siter;
             siter = siter->child;

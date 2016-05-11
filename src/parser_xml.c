@@ -573,12 +573,12 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     }
 
     /* check for missing top level mandatory nodes */
-    if (lyd_check_topmandatory(result, ctx, NULL, options)) {
+    if (lyd_check_topmandatory(result, ctx, options)) {
         goto error;
     }
 
     /* add/validate default values, unres */
-    if (lyd_validate_defaults_unres(&result, options, ctx, rpc, unres)) {
+    if (lyd_validate_defaults_unres(&result, options, ctx, unres)) {
         goto error;
     }
 

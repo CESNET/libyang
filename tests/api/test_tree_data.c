@@ -469,17 +469,19 @@ test_lyd_output_new_leaf(void **state)
     struct lyd_node *node = NULL;
     struct lyd_node_leaf_list *result = NULL;
 
-    node = lyd_output_new_leaf(root->schema->next->next->next->child->next->child, "test");
+    node = lyd_new_output(NULL, root->schema->module, "rpc1");
     if (!node) {
         fail();
     }
 
-    assert_string_equal("output-leaf1", node->schema->name);
+    result = (struct lyd_node_leaf_list *)lyd_new_output_leaf(node, NULL, "output-leaf1", "test");
+    if (!result) {
+        fail();
+    }
 
-    result = (struct lyd_node_leaf_list *) node;
     assert_string_equal("test", result->value_str);
 
-    free(node);
+    lyd_free(node);
 }
 
 static void
@@ -548,16 +550,16 @@ test_lyd_new_path(void **state)
 
     root = lyd_new_path(NULL, ctx, "/a:rpc1/rpc-container", NULL, LYD_PATH_OPT_OUTPUT);
     assert_non_null(root);
-    assert_string_equal(root->schema->name, "rpc-container");
+    assert_string_equal(root->schema->name, "rpc1");
 
-    node = lyd_new_path(root, NULL, "output-leaf3", "cc", LYD_PATH_OPT_OUTPUT);
+    node = lyd_new_path(root->child, NULL, "output-leaf3", "cc", LYD_PATH_OPT_OUTPUT);
     assert_non_null(node);
     assert_string_equal(node->schema->name, "output-leaf3");
 
     node = lyd_new_path(root, NULL, "/a:rpc1/output-leaf1", "aa", LYD_PATH_OPT_OUTPUT);
     assert_non_null(node);
     assert_string_equal(node->schema->name, "output-leaf1");
-    assert_ptr_equal(node->next, root);
+    assert_ptr_equal(node, root->child);
 
     node = lyd_new_path(root, NULL, "/a:rpc1/output-leaf2", "bb", LYD_PATH_OPT_OUTPUT);
     assert_non_null(node);
@@ -565,7 +567,7 @@ test_lyd_new_path(void **state)
     assert_string_equal(node->prev->schema->name, "output-leaf1");
     assert_string_equal(node->next->schema->name, "rpc-container");
 
-    lyd_free_withsiblings(root);
+    lyd_free(root);
 }
 
 static void
@@ -694,7 +696,6 @@ test_lyd_schema_sort(void **state)
 {
     (void) state; /* unused */
     const struct lys_module *module;
-    const struct lys_node *snode;
     struct lyd_node *root, *node, *node2;
 
     module = ly_ctx_get_module(ctx, "a", NULL);
@@ -733,31 +734,25 @@ test_lyd_schema_sort(void **state)
 
     lyd_free_withsiblings(root);
 
-    snode = ly_ctx_get_node(ctx, NULL, "/a:rpc1/output/rpc-container");
-    assert_non_null(snode);
-    root = lyd_output_new(snode);
+    root = lyd_new_output(NULL, module, "rpc1");
     assert_non_null(root);
-    node2 = lyd_new_leaf(root, NULL, "output-leaf3", "ff");
+    node = lyd_new_output(root, NULL, "rpc-container");
+    assert_non_null(node);
+    node2 = lyd_new_output_leaf(node, NULL, "output-leaf3", "ff");
     assert_non_null(node2);
 
-    snode = ly_ctx_get_node(ctx, NULL, "/a:rpc1/output/output-leaf1");
-    assert_non_null(snode);
-    node = lyd_output_new_leaf(snode, "gg");
+    node = lyd_new_output_leaf(root, NULL, "output-leaf1", "gg");
     assert_non_null(node);
-    assert_int_equal(lyd_insert_after(root, node), 0);
 
-    snode = ly_ctx_get_node(ctx, NULL, "/a:rpc1/output/output-leaf2");
-    assert_non_null(snode);
-    node = lyd_output_new_leaf(snode, "hh");
+    node = lyd_new_output_leaf(root, NULL, "output-leaf2", "hh");
     assert_non_null(node);
-    assert_int_equal(lyd_insert_after(root->next, node), 0);
 
     assert_int_equal(lyd_schema_sort(root, 1), 0);
 
-    root = root->prev->prev;
-    assert_string_equal(root->schema->name, "output-leaf1");
-    assert_string_equal(root->next->schema->name, "output-leaf2");
-    assert_string_equal(root->next->next->schema->name, "rpc-container");
+    node = root->child;
+    assert_string_equal(node->schema->name, "output-leaf1");
+    assert_string_equal(node->next->schema->name, "output-leaf2");
+    assert_string_equal(node->next->next->schema->name, "rpc-container");
 
     lyd_free_withsiblings(root);
 }
