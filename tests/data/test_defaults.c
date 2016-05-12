@@ -327,6 +327,129 @@ test_df4(void **state)
 }
 
 static void
+test_rpc_input_default(void **state)
+{
+    struct state *st = (*state);
+    const char *xml1 = "<rpc1 xmlns=\"urn:libyang:tests:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+                         "<inleaf1>hi</inleaf1>"
+                         "<inleaf2 ncwd:default=\"true\">def1</inleaf2>"
+                       "</rpc1>";
+    const char *xml2 = "<rpc1 xmlns=\"urn:libyang:tests:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+                         "<inleaf2 ncwd:default=\"true\">def1</inleaf2>"
+                       "</rpc1>";
+
+    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:rpc1/inleaf1[.='hi']", NULL, 0);
+    assert_ptr_not_equal(st->dt, NULL);
+
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPC), 0);
+    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_RPC | LYD_WD_ALL_TAG), 0);
+
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_ptr_not_equal(st->xml, NULL);
+    assert_string_equal(st->xml, xml1);
+
+    assert_int_equal(lyd_wd_cleanup(&(st->dt), 0), 0);
+    free(st->xml);
+    st->xml = NULL;
+    lyd_free(st->dt);
+    st->dt = NULL;
+
+    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:rpc1", NULL, 0);
+    assert_ptr_not_equal(st->dt, NULL);
+
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPC), 0);
+    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_RPC | LYD_WD_ALL_TAG), 0);
+
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_ptr_not_equal(st->xml, NULL);
+    assert_string_equal(st->xml, xml2);
+
+    assert_int_equal(lyd_wd_cleanup(&(st->dt), 0), 0);
+}
+
+static void
+test_rpc_output_default(void **state)
+{
+    struct state *st = (*state);
+    const char *xml1 = "<rpc1 xmlns=\"urn:libyang:tests:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+                         "<outleaf1 ncwd:default=\"true\">def2</outleaf1>"
+                         "<outleaf2>hai</outleaf2>"
+                       "</rpc1>";
+    const char *xml2 = "<rpc1 xmlns=\"urn:libyang:tests:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+                         "<outleaf1 ncwd:default=\"true\">def2</outleaf1>"
+                       "</rpc1>";
+
+    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:rpc1/outleaf2[.='hai']", NULL, LYD_PATH_OPT_OUTPUT);
+    assert_ptr_not_equal(st->dt, NULL);
+
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPCREPLY), 0);
+    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_RPCREPLY | LYD_WD_ALL_TAG), 0);
+
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_ptr_not_equal(st->xml, NULL);
+    assert_string_equal(st->xml, xml1);
+
+    assert_int_equal(lyd_wd_cleanup(&(st->dt), 0), 0);
+    free(st->xml);
+    st->xml = NULL;
+    lyd_free(st->dt);
+    st->dt = NULL;
+
+    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:rpc1", NULL, LYD_PATH_OPT_OUTPUT);
+    assert_ptr_not_equal(st->dt, NULL);
+
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPCREPLY), 0);
+    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_RPCREPLY | LYD_WD_ALL_TAG), 0);
+
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_ptr_not_equal(st->xml, NULL);
+    assert_string_equal(st->xml, xml2);
+
+    assert_int_equal(lyd_wd_cleanup(&(st->dt), 0), 0);
+}
+
+static void
+test_notif_default(void **state)
+{
+    struct state *st = (*state);
+    const char *xml1 = "<notif xmlns=\"urn:libyang:tests:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+                         "<ntfleaf2>helloo</ntfleaf2>"
+                         "<ntfleaf1 ncwd:default=\"true\">def3</ntfleaf1>"
+                       "</notif>";
+    const char *xml2 = "<notif xmlns=\"urn:libyang:tests:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+                         "<ntfleaf1 ncwd:default=\"true\">def3</ntfleaf1>"
+                       "</notif>";
+
+    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:notif/ntfleaf2[.='helloo']", NULL, 0);
+    assert_ptr_not_equal(st->dt, NULL);
+
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_NOTIF), 0);
+    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_NOTIF | LYD_WD_ALL_TAG), 0);
+
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_ptr_not_equal(st->xml, NULL);
+    assert_string_equal(st->xml, xml1);
+
+    assert_int_equal(lyd_wd_cleanup(&(st->dt), 0), 0);
+    free(st->xml);
+    st->xml = NULL;
+    lyd_free(st->dt);
+    st->dt = NULL;
+
+    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:notif", NULL, 0);
+    assert_ptr_not_equal(st->dt, NULL);
+
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_NOTIF), 0);
+    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_NOTIF | LYD_WD_ALL_TAG), 0);
+
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_ptr_not_equal(st->xml, NULL);
+    assert_string_equal(st->xml, xml2);
+
+    assert_int_equal(lyd_wd_cleanup(&(st->dt), 0), 0);
+}
+
+static void
 test_feature(void **state)
 {
     struct state *st = (*state);
@@ -361,6 +484,9 @@ int main(void)
                     cmocka_unit_test_setup_teardown(test_df2, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_df3, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_df4, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_rpc_input_default, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_rpc_output_default, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_notif_default, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_feature, setup_f, teardown_f), };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -112,4 +112,33 @@
       <default value="42"/>
     </leaf>
   </container>
+  <rpc name="rpc1">
+    <input>
+      <leaf name="inleaf1">
+        <type name="string"/>
+      </leaf>
+      <leaf name="inleaf2">
+        <type name="string"/>
+        <default value="def1"/>
+      </leaf>
+    </input>
+    <output>
+      <leaf name="outleaf1">
+        <type name="string"/>
+        <default value="def2"/>
+      </leaf>
+      <leaf name="outleaf2">
+        <type name="string"/>
+      </leaf>
+    </output>
+  </rpc>
+  <notification name="notif">
+    <leaf name="ntfleaf1">
+      <type name="string"/>
+      <default value="def3"/>
+    </leaf>
+    <leaf name="ntfleaf2">
+      <type name="string"/>
+    </leaf>
+  </notification>
 </module>
