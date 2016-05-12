@@ -3392,7 +3392,7 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
     }
 
     LY_TREE_FOR(schema, siter) {
-        if  (options & (LYD_OPT_CONFIG | LYD_OPT_EDIT | LYD_OPT_GETCONFIG)) {
+        if (options & (LYD_OPT_CONFIG | LYD_OPT_EDIT | LYD_OPT_GETCONFIG)) {
             /* do not process status data */
             if (siter->flags & LYS_CONFIG_R) {
                 continue;
@@ -3403,7 +3403,7 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
             continue;
         }
 
-        switch(siter->nodetype) {
+        switch (siter->nodetype) {
         case LYS_CONTAINER:
             sprintf(path, "%s:%s", lys_node_module(siter)->name, siter->name);
             nodeset = NULL;
@@ -3469,6 +3469,18 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
                 }
             }
             break;
+        case LYS_INPUT:
+        case LYS_OUTPUT:
+            assert(options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY));
+            if ((siter->nodetype == LYS_INPUT) && (options & LYD_OPT_RPCREPLY)) {
+                /* skip input */
+                break;
+            }
+            if ((siter->nodetype == LYS_OUTPUT) && (options & LYD_OPT_RPC)) {
+                /* skip output */
+                break;
+            }
+            /* fallthrough */
         case LYS_USES:
         case LYS_CASE:
             /* go into */
@@ -3534,7 +3546,7 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
             }
         }
 
-        if (iter->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) {
+        if (iter->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_NOTIF)) {
             if ((options & LYD_WD_MASK) == LYD_WD_EXPLICIT
                     && ((iter->schema->flags & LYS_CONFIG_W) && !(iter->schema->flags & LYS_INCL_STATUS))) {
                 /* do not process config data in explicit mode */
