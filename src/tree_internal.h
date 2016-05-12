@@ -351,29 +351,6 @@ int lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *si
 int lyd_list_equal(struct lyd_node *first, struct lyd_node *second);
 
 /**
- * @brief Process with-default nodes (according to the with-defaults mode in \p options).
- *
- * @param[in] root Data tree root. In case of #LYD_WD_TRIM the data tree can be modified so the root can be changed or
- *            removed. In other modes and with empty data tree, new default nodes can be created so the root pointer
- *            will contain/return the newly created data tree.
- * @param[in,out] unres List of unresolved nodes. If the newly created leafs include some property that needs to be
- *            resolved, it is added into the list. Caller is supposed to resolve the list by resolve_unres_data().
- * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions. The
- *            LYD_WD_* options are used to select functionality:
- * - #LYD_WD_TRIM - remove all nodes that have value equal to their default value
- * - #LYD_WD_ALL - add default nodes
- * - #LYD_WD_ALL_TAG - add default nodes and set ::lyd_node#dflt in all nodes having their default value
- * - #LYD_WD_IMPL_TAG - add default nodes, but set ::lyd_node#dflt only in the added nodes
- * @note The *_TAG modes require to have ietf-netconf-with-defaults module in the context of the data tree in time of
- * printing - all the flagged nodes are printed with the 'default' attribute with 'true' value.
- * @param[in] ctx Optional parameter. If provided, default nodes from all modules in the context will be added (so it
- *            has no effect for #LYD_WD_TRIM). If NULL, only the modules explicitly mentioned in data tree are
- *            taken into account.
- * @return EXIT_SUCCESS ot EXIT_FAILURE
- */
-int lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct ly_ctx *ctx);
-
-/**
  * @brief Check for (validate) top-level mandatory nodes of a data tree.
  *
  * @param[in] data Data tree to validate.
@@ -385,16 +362,27 @@ int lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, st
 int lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, int options);
 
 /**
- * @brief Add default values, validate the data, \p resolve unres, and finally
+ * @brief Add default values, \p resolve unres, and finally
  * remove any redundant default values based on \p options.
  *
- * @param[in,out] node Pointer to the manipulated data tree.
- * @param[in] options All the relevant @ref parseroptions (LYD_WD_*, LYD_OPT_NOAUTODEL).
- * @param[in] ctx libyang context.
+ * @param[in] root Data tree root. In case of #LYD_WD_TRIM the data tree can be modified so the root can be changed or
+ *            removed. In other modes and with empty data tree, new default nodes can be created so the root pointer
+ *            will contain/return the newly created data tree.
+ * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions. The
+ *            LYD_WD_* options are used to select functionality:
+ * - #LYD_WD_TRIM - remove all nodes that have value equal to their default value
+ * - #LYD_WD_ALL - add default nodes
+ * - #LYD_WD_ALL_TAG - add default nodes and set ::lyd_node#dflt in all nodes having their default value
+ * - #LYD_WD_IMPL_TAG - add default nodes, but set ::lyd_node#dflt only in the added nodes
+ * @note The *_TAG modes require to have ietf-netconf-with-defaults module in the context of the data tree in time of
+ * printing - all the flagged nodes are printed with the 'default' attribute with 'true' value.
+ * @param[in] ctx Optional parameter. If provided, default nodes from all modules in the context will be added (so it
+ *            has no effect for #LYD_WD_TRIM). If NULL, only the modules explicitly mentioned in data tree are
+ *            taken into account.
  * @param[in] unres Valid unres structure, on function successful exit they are all resolved.
  * @return 0 on success, nonzero on failure.
  */
-int lyd_validate_defaults_unres(struct lyd_node **node, int options, struct ly_ctx *ctx, struct unres_data *unres);
+int lyd_defaults_add_unres(struct lyd_node **node, int options, struct ly_ctx *ctx, struct unres_data *unres);
 
 void lys_deviation_add_ext_imports(struct lys_module *dev_target_module, struct lys_module *dev_module);
 

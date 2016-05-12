@@ -1835,43 +1835,6 @@ lyd_schema_sort(struct lyd_node *sibling, int recursive)
     return EXIT_SUCCESS;
 }
 
-int
-lyd_validate_defaults_unres(struct lyd_node **node, int options, struct ly_ctx *ctx, struct unres_data *unres)
-{
-    int options_aux;
-
-    assert(node && unres);
-
-    /* add default values if needed */
-    if (options & LYD_WD_EXPLICIT) {
-        options_aux = (options & ~LYD_WD_MASK) | LYD_WD_IMPL_TAG;
-    } else if (!(options & LYD_WD_MASK)) {
-        options_aux = options | LYD_WD_IMPL_TAG;
-    } else {
-        options_aux = options;
-    }
-    if (lyd_wd_top(node, unres, options_aux, ctx)) {
-        return 1;
-    }
-
-    /* check leafrefs and/or instids if any */
-    if (unres->count) {
-        if (!(*node) || resolve_unres_data(unres, (options & LYD_OPT_NOAUTODEL) ? NULL : node, options)) {
-            /* leafref & instid checking failed */
-            return 1;
-        }
-    }
-
-    if (options_aux != options) {
-        /* cleanup default nodes used for internal purposes (not asked by caller) */
-        if (lyd_wd_cleanup(node, options)) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
 API int
 lyd_validate(struct lyd_node **node, int options, ...)
 {
@@ -2000,7 +1963,7 @@ nextsiblings:
     }
 
     /* add default values if needed */
-    if (lyd_validate_defaults_unres(node, options, ctx, unres)) {
+    if (lyd_defaults_add_unres(node, options, ctx, unres)) {
         goto error;
     }
 
@@ -3528,7 +3491,7 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
     return EXIT_SUCCESS;
 }
 
-int
+static int
 lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct ly_ctx *ctx)
 {
     struct lys_node *siter;
@@ -3727,35 +3690,79 @@ error:
     return ret;
 }
 
-API int
-lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options)
+int
+lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, struct unres_data *unres)
 {
-    int rc, mode;
-    struct unres_data *unres = NULL;
-    struct lys_node *rpc;
+    int options_aux;
 
-    ly_errno = LY_SUCCESS;
-
-    if (!root || (!ctx && !(*root))) {
-        ly_errno = LY_EINVAL;
-        return EXIT_FAILURE;
-    }
+    assert(root);
+    assert((options & LYD_WD_TRIM) || unres);
 
     if ((options & LYD_OPT_NOSIBLINGS) && !(*root)) {
         LOGERR(LY_EINVAL, "Cannot add default values for one module (LYD_OPT_NOSIBLINGS) without any data.");
         return EXIT_FAILURE;
     }
 
-    if (options & LYD_OPT_RPCREPLY) {
+    if (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF)) {
         if (!(*root)) {
-            LOGERR(LY_EINVAL, "Cannot add default RPC output values without any data.");
+            LOGERR(LY_EINVAL, "Cannot add default values to RPC, RPC reply, and notification without at least the empty container.");
             return EXIT_FAILURE;
         }
-        rpc = lys_parent(lys_parent((*root)->schema));
-        if (!rpc) {
-            LOGERR(LY_EINVAL, "Not an RPC output data.");
+        if ((options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) && ((*root)->schema->nodetype != LYS_RPC)) {
+            LOGERR(LY_EINVAL, "Not valid RPC data.");
             return EXIT_FAILURE;
         }
+        if ((options & LYD_OPT_NOTIF) && ((*root)->schema->nodetype != LYS_NOTIF)) {
+            LOGERR(LY_EINVAL, "Not valid notification data.");
+            return EXIT_FAILURE;
+        }
+        if (!(options & LYD_OPT_NOSIBLINGS) && ((*root)->prev != (*root))) {
+            LOGERR(LY_EINVAL, "Additional invalid data with an RPC, RPC reply, or notification.");
+            return EXIT_FAILURE;
+        }
+    }
+
+    /* add default values if needed */
+    if (options & LYD_WD_EXPLICIT) {
+        options_aux = (options & ~LYD_WD_MASK) | LYD_WD_IMPL_TAG;
+    } else if (!(options & LYD_WD_MASK)) {
+        options_aux = options | LYD_WD_IMPL_TAG;
+    } else {
+        options_aux = options;
+    }
+    if (lyd_wd_top(root, unres, options_aux, ctx)) {
+        return EXIT_FAILURE;
+    }
+
+    /* check leafrefs and/or instids if any */
+    if (unres && unres->count) {
+        if (!(*root) || resolve_unres_data(unres, (options & LYD_OPT_NOAUTODEL) ? NULL : root, options)) {
+            /* leafref & instid checking failed */
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (options_aux != options) {
+        /* cleanup default nodes used for internal purposes (not asked by caller) */
+        if (lyd_wd_cleanup(root, options)) {
+            return EXIT_FAILURE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+API int
+lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options)
+{
+    int rc, mode;
+    struct unres_data *unres = NULL;
+
+    ly_errno = LY_SUCCESS;
+
+    if (!root || (!ctx && !(*root))) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
     }
 
     mode = options & LYD_WD_MASK;
@@ -3775,10 +3782,8 @@ lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options)
             return EXIT_FAILURE;
         }
     }
-    rc = lyd_wd_top(root, unres, options, ctx);
-    if (unres && unres->count && resolve_unres_data(unres, root, options)) {
-        rc = EXIT_FAILURE;
-    }
+
+    rc = lyd_defaults_add_unres(root, options, ctx, unres);
 
     /* cleanup */
     if (unres) {

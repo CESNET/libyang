@@ -1166,7 +1166,7 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
     }
 
     /* add/validate default values, unres */
-    if (lyd_validate_defaults_unres(&result, options, ctx, unres)) {
+    if (lyd_defaults_add_unres(&result, options, ctx, unres)) {
         goto error;
     }
 

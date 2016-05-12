@@ -588,7 +588,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     }
 
     /* add/validate default values, unres */
-    if (lyd_validate_defaults_unres(&result, options, ctx, unres)) {
+    if (lyd_defaults_add_unres(&result, options, ctx, unres)) {
         goto error;
     }
 
