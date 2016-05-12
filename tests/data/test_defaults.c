@@ -157,7 +157,7 @@ test_empty_tag(void **state)
                           "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
                         "<foo ncwd:default=\"true\">42</foo><baz ncwd:default=\"true\">42</baz></hidden>";
 
-    lyd_wd_add(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL_TAG, st->ctx);
+    lyd_wd_add(st->ctx, &(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL_TAG);
     assert_ptr_not_equal(st->dt, NULL);
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL), 0);
 
@@ -188,7 +188,7 @@ test_df1(void **state)
     assert_ptr_not_equal(lyd_new_leaf(node, NULL, "ho", "1"), NULL);
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
 
-    assert_int_equal(lyd_wd_add(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, NULL), 0);
+    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL), 0);
 
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
     assert_ptr_not_equal(st->xml, NULL);
@@ -215,7 +215,7 @@ test_df2(void **state)
     assert_ptr_not_equal(lyd_new_leaf(node, NULL, "value", "1"), NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
-    assert_int_equal(lyd_wd_add(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, NULL), 0);
+    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL), 0);
 
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
     assert_ptr_not_equal(st->xml, NULL);
@@ -246,7 +246,7 @@ test_df3(void **state)
     /* select - c */
     assert_ptr_not_equal((node = lyd_new(st->dt, NULL, "c")), NULL);
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
-    assert_int_equal(lyd_wd_add(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL_TAG, NULL), 0);
+    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL_TAG), 0);
 
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
     assert_ptr_not_equal(st->xml, NULL);
@@ -259,7 +259,7 @@ test_df3(void **state)
     /* select - a */
     assert_ptr_not_equal(lyd_new_leaf(st->dt, NULL, "a1", "1"), NULL);
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
-    assert_int_equal(lyd_wd_add(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, NULL), 0);
+    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL), 0);
 
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
     assert_ptr_not_equal(st->xml, NULL);
@@ -293,7 +293,7 @@ test_df4(void **state)
     /* select2 - s2a */
     assert_ptr_not_equal(lyd_new_leaf(st->dt, NULL, "s2a", "1"), NULL);
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
-    assert_int_equal(lyd_wd_add(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL_TAG, NULL), 0);
+    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL_TAG), 0);
 
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
     assert_ptr_not_equal(st->xml, NULL);
@@ -306,7 +306,7 @@ test_df4(void **state)
     /* select2 - s2b - b2 */
     assert_ptr_not_equal(lyd_new_leaf(st->dt, NULL, "b2", "1"), NULL);
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
-    assert_int_equal(lyd_wd_add(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL_TAG, NULL), 0);
+    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL_TAG), 0);
 
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
     assert_ptr_not_equal(st->xml, NULL);
@@ -319,7 +319,7 @@ test_df4(void **state)
     /* select2 - s2b - b1 */
     assert_ptr_not_equal(lyd_new_leaf(st->dt, NULL, "b1_2", "x"), NULL);
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
-    assert_int_equal(lyd_wd_add(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, NULL), 0);
+    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL), 0);
 
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
     assert_ptr_not_equal(st->xml, NULL);

@@ -3728,7 +3728,7 @@ error:
 }
 
 API int
-lyd_wd_add(struct lyd_node **root, int options, struct ly_ctx *ctx)
+lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options)
 {
     int rc, mode;
     struct unres_data *unres = NULL;

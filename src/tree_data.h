@@ -716,6 +716,7 @@ int lyd_validate(struct lyd_node **node, int options, ...);
  * - If \p ctx is NULL and \p options do not include #LYD_OPT_NOSIBLINGS, tree default nodes will be added to ALL
  * the \p root siblings, top-level default nodes will be added from ALL the \p root siblings modules.
  *
+ * @param[in] ctx Optional parameter. Exact meaning described in this function description last paragraph.
  * @param[in] root Data tree root. In case of #LYD_WD_TRIM the data tree can be modified so the root can be changed or
  *            removed. In other modes and with empty data tree, new default nodes can be created so the root pointer
  *            will contain/return the newly created data tree.
@@ -729,10 +730,9 @@ int lyd_validate(struct lyd_node **node, int options, ...);
  * @note The LYD_WD_*_TAG modes require to have ietf-netconf-with-defaults module in the context of the data tree.
  * @note If you already added some tagged default nodes (by parser or previous call of lyd_validate()), you should
  * specify the same LYD_WD_*_TAG in all subsequent call to lyd_validate(). Otherwise, the tagged nodes will be removed.
- * @param[in] ctx Optional parameter. Exact meaning described in this function description last paragraph.
  * @return EXIT_SUCCESS ot EXIT_FAILURE
  */
-int lyd_wd_add(struct lyd_node **root, int options, struct ly_ctx *ctx);
+int lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options);
 
 /**
  * @brief Remove all default nodes, respectively all nodes with set ::lyd_node#dflt added by
