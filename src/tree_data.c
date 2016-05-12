@@ -3527,14 +3527,9 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
         return EXIT_SUCCESS;
     }
 
-    /* initiate internal buffer */
-    if (ly_buf_used && path[0]) {
-        buf_backup = strndup(path, LY_BUF_SIZE - 1);
+    if (!(options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF))) {
+        topset = ly_set_new();
     }
-    ly_buf_used++;
-    path[0] = '\0';
-
-    topset = ly_set_new();
     LY_TREE_FOR(*root, iter) {
         if (!ctx && !(options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF))) {
             ly_set_add(topset, lys_node_module(iter->schema)->data);
@@ -3576,6 +3571,13 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
             }
         }
     }
+
+    /* initiate internal buffer */
+    if (ly_buf_used && path[0]) {
+        buf_backup = strndup(path, LY_BUF_SIZE - 1);
+    }
+    ly_buf_used++;
+    path[0] = '\0';
 
     /* add missing top-level default nodes */
     for (i = 0; i < topset->number; i++) {
