@@ -50,7 +50,7 @@ lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, int options)
         return EXIT_SUCCESS;
     }
 
-    if (data && lys_parent(data->schema) && (lys_parent(data->schema)->nodetype != LYS_OUTPUT)) {
+    if (data && lys_parent(data->schema)) {
         LOGERR(LY_EINVAL, "Subtree are not top-level data.");
         return EXIT_FAILURE;
     }
@@ -1222,29 +1222,24 @@ lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options)
         return -1;
     }
 
-    if (lys_parent(target->schema) && (lys_parent(target->schema)->nodetype != LYS_OUTPUT)) {
+    if (lys_parent(target->schema)) {
         LOGERR(LY_EINVAL, "Target not a top-level data tree.");
         return -1;
     }
 
     /* find source top-level schema node */
     for (src_snode = source->schema, src_depth = 0;
-         (lys_parent(src_snode) && (lys_parent(src_snode)->nodetype != LYS_OUTPUT));
+         lys_parent(src_snode);
          src_snode = lys_parent(src_snode), ++src_depth);
 
     /* check for forbidden data merges */
-    if (lys_parent(target->schema) && (lys_parent(target->schema)->nodetype == LYS_OUTPUT)) {
-        if (lys_parent(target->schema) != lys_parent(src_snode)) {
-            LOGERR(LY_EINVAL, "Target RPC output, source not (or of a different RPC).");
-            return -1;
-        }
-    } else if (target->schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
+    if (target->schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
         if (target->schema != src_snode) {
             LOGERR(LY_EINVAL, "Target RPC or notification, source not (or a different schema node).");
             return -1;
         }
     } else {
-        if (lys_parent(src_snode) || (src_snode->nodetype & (LYS_RPC | LYS_NOTIF))) {
+        if (src_snode->nodetype & (LYS_RPC | LYS_NOTIF)) {
             LOGERR(LY_EINVAL, "Target data, source RPC output, RPC input, or a notification.");
             return -1;
         }
@@ -1341,7 +1336,7 @@ lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options)
         ret = lyd_merge_siblings(trg_merge_start, src_merge_start);
     }
 
-    if (lys_parent(target->schema) && (lys_parent(target->schema)->nodetype == LYS_OUTPUT)) {
+    if (target->schema->nodetype == LYS_RPC) {
         lyd_schema_sort(target, 1);
     }
 
@@ -2806,9 +2801,6 @@ lyd_get_node2(const struct lyd_node *data, const struct lys_node *schema)
         if (siter->nodetype == LYS_AUGMENT) {
             siter = ((struct lys_node_augment *)siter)->target;
             continue;
-        } else if (siter->nodetype == LYS_OUTPUT) {
-            /* done for RPC reply */
-            break;
         } else if (siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_ANYXML | LYS_NOTIF | LYS_RPC)) {
             /* standard data node */
             ly_set_add(spath, (void*)siter);
