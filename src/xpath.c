@@ -485,32 +485,26 @@ cast_string_elem(struct lyd_node *node, int fake_cont, enum lyxp_node_type root_
 static const char *
 cast_node_set_to_string(struct lyxp_set *set, struct lyd_node *cur_node, int options)
 {
-    uint32_t ctx_pos;
     struct ly_ctx *ctx;
     enum lyxp_node_type root_type;
 
     ctx = cur_node->schema->module->ctx;
     moveto_get_root(cur_node, options, &root_type);
 
-    if (set->ctx_pos) {
-        ctx_pos = set->ctx_pos - 1;
-    } else {
-        ctx_pos = 0;
-    }
-    switch (set->val.nodes[ctx_pos].type) {
+    switch (set->val.nodes[0].type) {
     case LYXP_NODE_ROOT_ALL:
     case LYXP_NODE_ROOT_CONFIG:
     case LYXP_NODE_ROOT_STATE:
     case LYXP_NODE_ROOT_NOTIF:
     case LYXP_NODE_ROOT_RPC:
-        return cast_string_elem(set->val.nodes[ctx_pos].node, 1, root_type, ctx);
+        return cast_string_elem(set->val.nodes[0].node, 1, root_type, ctx);
     case LYXP_NODE_ROOT_OUTPUT:
-        return cast_string_elem(set->val.nodes[ctx_pos].node->child, 1, root_type, ctx);
+        return cast_string_elem(set->val.nodes[0].node->child, 1, root_type, ctx);
     case LYXP_NODE_ELEM:
     case LYXP_NODE_TEXT:
-        return cast_string_elem(set->val.nodes[ctx_pos].node, 0, root_type, ctx);
+        return cast_string_elem(set->val.nodes[0].node, 0, root_type, ctx);
     case LYXP_NODE_ATTR:
-        return lydict_insert(ctx, set->val.attrs[ctx_pos].attr->value, 0);
+        return lydict_insert(ctx, set->val.attrs[0].attr->value, 0);
     }
 
     LOGINT;
@@ -575,6 +569,8 @@ set_copy(struct lyxp_set *set, struct ly_ctx *ctx)
         memcpy(ret->val.nodes, set->val.nodes, set->used * sizeof *ret->val.nodes);
 
         ret->used = ret->size = set->used;
+        ret->ctx_pos = set->ctx_pos;
+        ret->ctx_size = set->ctx_size;
     } else {
        memcpy(ret, set, sizeof *ret);
        if (set->type == LYXP_SET_STRING) {
@@ -686,6 +682,7 @@ set_fill_set(struct lyxp_set *trg, struct lyxp_set *src, struct ly_ctx *ctx)
             trg->used = src->used;
             trg->size = src->size;
             trg->ctx_pos = src->ctx_pos;
+            trg->ctx_size = src->ctx_size;
 
             trg->val.nodes = malloc(trg->used * sizeof *trg->val.nodes);
             if (!trg->val.nodes) {
@@ -715,12 +712,9 @@ set_remove_node(struct lyxp_set *set, uint32_t idx)
     assert(idx < set->used);
 
     --set->used;
-    if (set->used && (set->ctx_pos != idx + 1)) {
+    if (set->used) {
         memmove(&set->val.nodes[idx], &set->val.nodes[idx + 1],
                 (set->used - idx) * sizeof *set->val.nodes);
-        if (idx + 1 < set->ctx_pos) {
-            --set->ctx_pos;
-        }
     } else {
         free(set->val.nodes);
         /* this changes it to LYXP_SET_EMPTY */
@@ -814,7 +808,8 @@ set_insert_node(struct lyxp_set *set, const void *node, uint32_t pos, enum lyxp_
         set->type = LYXP_SET_NODE_SET;
         set->used = 0;
         set->size = LYXP_SET_SIZE_START;
-        set->ctx_pos = 0;
+        set->ctx_pos = 1;
+        set->ctx_size = 1;
     } else {
         /* not an empty set */
         if (set->used == set->size) {
@@ -836,9 +831,6 @@ set_insert_node(struct lyxp_set *set, const void *node, uint32_t pos, enum lyxp_
         /* make space for the new node */
         if (idx < set->used) {
             memmove(&set->val.nodes[idx + 1], &set->val.nodes[idx], (set->used - idx) * sizeof *set->val.nodes);
-            if (set->ctx_pos >= idx + 1) {
-                ++set->ctx_pos;
-            }
         }
     }
 
@@ -1173,13 +1165,6 @@ set_sort(struct lyxp_set *set, const struct lyd_node *cur_node, int options)
                 item = set->val.nodes[j - 1];
                 set->val.nodes[j - 1] = set->val.nodes[j];
                 set->val.nodes[j] = item;
-
-                /* ctx_pos == index + 1 */
-                if (set->ctx_pos == j + 1) {
-                    set->ctx_pos = j;
-                } else if (set->ctx_pos == j) {
-                    set->ctx_pos = j + 1;
-                }
             } else {
                 /* whether node_pos1 should be smaller than node_pos2 or the other way around */
                 inverted = !inverted;
@@ -2596,20 +2581,14 @@ xpath_lang(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node
         return -1;
     }
 
-    /* assign the context node */
-    if (set->ctx_pos) {
-        i = set->ctx_pos - 1;
-    } else {
-        i = 0;
-    }
-    switch (set->val.nodes[i].type) {
+    switch (set->val.nodes[0].type) {
     case LYXP_NODE_ELEM:
     case LYXP_NODE_TEXT:
-        node = set->val.nodes[i].node;
+        node = set->val.nodes[0].node;
         break;
     case LYXP_NODE_ATTR:
         root = moveto_get_root(cur_node, options, NULL);
-        node = lyd_attr_parent(root, set->val.attrs[i].attr);
+        node = lyd_attr_parent(root, set->val.attrs[0].attr);
         break;
     default:
         /* nothing to do with roots */
@@ -2686,7 +2665,7 @@ xpath_last(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node
         return -1;
     }
 
-    set_fill_number(set, set->used, ctx);
+    set_fill_number(set, set->ctx_size, ctx);
     return EXIT_SUCCESS;
 }
 
@@ -2751,11 +2730,7 @@ xpath_local_name(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cu
         }
 #endif
 
-        if (set->ctx_pos) {
-            item = &set->val.nodes[set->ctx_pos - 1];
-        } else {
-            item = &set->val.nodes[0];
-        }
+        item = &set->val.nodes[0];
     }
 
     switch (item->type) {
@@ -2843,11 +2818,7 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyd_node 
         }
 #endif
 
-        if (set->ctx_pos) {
-            item = &set->val.nodes[set->ctx_pos - 1];
-        } else {
-            item = &set->val.nodes[0];
-        }
+        item = &set->val.nodes[0];
     }
 
     switch (item->type) {
@@ -3103,13 +3074,6 @@ xpath_position(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_
         LOGVAL(LYE_XPATH_INCTX, LY_VLOG_NONE, NULL, print_set_type(set), "position()");
         return -1;
     }
-
-#ifndef NDEBUG
-    /* we need the set sorted, it affects the result */
-    if (set_sort(set, cur_node, options) > 1) {
-        LOGERR(LY_EINT, "XPath set was expected to be sorted, but is not (%s).", __func__);
-    }
-#endif
 
     set_fill_number(set, set->ctx_pos, ctx);
 
@@ -3835,21 +3799,23 @@ moveto_node_check(struct lyd_node *node, enum lyxp_node_type root_type, const ch
  * @param[in,out] replaced Whether the node in \p set has already been replaced.
  */
 static void
-moveto_node_add(struct lyxp_set *set, struct lyd_node *node, uint32_t pos, uint32_t i, int *replaced)
+moveto_node_add(struct lyxp_set *set, struct lyd_node *node, uint32_t pos, uint32_t *i, int *replaced)
 {
     if (!(*replaced)) {
-        set->val.nodes[i].node = node;
-        set->val.nodes[i].type = LYXP_NODE_ELEM;
-        set->val.nodes[i].pos = pos;
+        set->val.nodes[*i].node = node;
+        set->val.nodes[*i].type = LYXP_NODE_ELEM;
+        set->val.nodes[*i].pos = pos;
         *replaced = 1;
     } else {
         set_insert_node(set, node, pos, LYXP_NODE_ELEM, set->used);
     }
+
+    ++(*i);
 }
 
 /**
  * @brief Move context \p set to a node. Handles '/' and '*', 'NAME', 'PREFIX:*', or 'PREFIX:NAME'.
- *        Result is LYXP_SET_NODE_SET (or LYXP_SET_EMPTY). Indirectly context position aware.
+ *        Result is LYXP_SET_NODE_SET (or LYXP_SET_EMPTY). Context position aware.
  *
  * @param[in,out] set Set to use.
  * @param[in] cur_node Original context node.
@@ -3862,7 +3828,7 @@ moveto_node_add(struct lyxp_set *set, struct lyd_node *node, uint32_t pos, uint3
 static int
 moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, uint16_t qname_len, int options)
 {
-    uint32_t i, orig_used;
+    uint32_t i;
     int replaced, pref_len, ret;
     const char *ptr, *name_dict = NULL; /* optimalization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
     struct lys_module *moveto_mod;
@@ -3898,9 +3864,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
     /* name */
     name_dict = lydict_insert(ctx, qname, qname_len);
 
-    orig_used = set->used;
-    i = 0;
-    while (i < orig_used) {
+    for (i = 0; i < set->used; ) {
         replaced = 0;
 
         if ((set->val.nodes[i].type == LYXP_NODE_ROOT_NOTIF) || (set->val.nodes[i].type == LYXP_NODE_ROOT_RPC)) {
@@ -3908,7 +3872,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
             ret = moveto_node_check(set->val.nodes[i].node, root_type, name_dict, moveto_mod, options);
             if (!ret) {
                 /* pos is always one, because it's the root, only not the fake one */
-                moveto_node_add(set, set->val.nodes[i].node, 1, i, &replaced);
+                moveto_node_add(set, set->val.nodes[i].node, 1, &i, &replaced);
             } else if (ret == EXIT_FAILURE) {
                 lydict_remove(ctx, name_dict);
                 return EXIT_FAILURE;
@@ -3923,7 +3887,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
                 ret = moveto_node_check(sub, root_type, name_dict, moveto_mod, options);
                 if (!ret) {
                     /* pos filled later */
-                    moveto_node_add(set, sub, 0, i, &replaced);
+                    moveto_node_add(set, sub, 0, &i, &replaced);
                 } else if (ret == EXIT_FAILURE) {
                     lydict_remove(ctx, name_dict);
                     return EXIT_FAILURE;
@@ -3936,7 +3900,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
             LY_TREE_FOR(set->val.nodes[i].node->child, sub) {
                 ret = moveto_node_check(sub, root_type, name_dict, moveto_mod, options);
                 if (!ret) {
-                    moveto_node_add(set, sub, 0, i, &replaced);
+                    moveto_node_add(set, sub, 0, &i, &replaced);
                 } else if (ret == EXIT_FAILURE) {
                     lydict_remove(ctx, name_dict);
                     return EXIT_FAILURE;
@@ -3947,12 +3911,6 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
         if (!replaced) {
             /* no match */
             set_remove_node(set, i);
-            if (set->type != LYXP_SET_NODE_SET) {
-                break;
-            }
-            --orig_used;
-        } else {
-            ++i;
         }
     }
     lydict_remove(ctx, name_dict);
@@ -3963,7 +3921,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
 /**
  * @brief Move context \p set to a node and all its descendants. Handles '//' and '*', 'NAME',
  *        'PREFIX:*', or 'PREFIX:NAME'. Result is LYXP_SET_NODE_SET (or LYXP_SET_EMPTY).
- *        Indirectly context position aware.
+ *        Context position aware.
  *
  * @param[in] set Set to use.
  * @param[in] cur_node Original context node.
@@ -4151,7 +4109,7 @@ moveto_attr(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
         qname += pref_len + 1;
         qname_len -= pref_len + 1;
     } else {
-        pref_len = 0;
+        moveto_mod = NULL;
     }
 
     if ((qname_len == 1) && (qname[0] == '*')) {
@@ -4163,11 +4121,11 @@ moveto_attr(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
 
         /* only attributes of an elem can be in the result, skip all the rest;
          * our attributes are always qualified */
-        if (pref_len && (set->val.nodes[i].type == LYXP_NODE_ELEM)) {
+        if (set->val.nodes[i].type == LYXP_NODE_ELEM) {
             LY_TREE_FOR(set->val.nodes[i].node->attr, sub) {
 
                 /* check "namespace" */
-                if (sub->module != moveto_mod) {
+                if (moveto_mod && (sub->module != moveto_mod)) {
                     /* no match */
                     continue;
                 }
@@ -4181,8 +4139,8 @@ moveto_attr(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
                         replaced = 1;
                     } else {
                         set_insert_node(set, (struct lyd_node *)sub, set->val.nodes[i].pos, LYXP_NODE_ATTR, i + 1);
-                        ++i;
                     }
+                    ++i;
                 }
             }
         }
@@ -4190,8 +4148,6 @@ moveto_attr(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
         if (!replaced) {
             /* no match */
             set_remove_node(set, i);
-        } else {
-            ++i;
         }
     }
 
@@ -4230,16 +4186,6 @@ moveto_union(struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *cur_
         return EXIT_SUCCESS;
     }
 
-    /* keep only the context node (we are in a predicate) */
-    if (set1->ctx_pos) {
-        set1->val.nodes[0] = set1->val.nodes[set1->ctx_pos - 1];
-        set1->used = 1;
-    }
-    if (set2->ctx_pos) {
-        set2->val.nodes[0] = set2->val.nodes[set2->ctx_pos - 1];
-        set2->used = 1;
-    }
-
 #ifndef NDEBUG
     /* we assume sets are sorted */
     if ((set_sort(set1, cur_node, options) > 1) || (set_sort(set2, cur_node, options) > 1)) {
@@ -4258,7 +4204,7 @@ moveto_union(struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *cur_
 /**
  * @brief Move context \p set to an attribute in any of the descendants. Handles '//' and '@*',
  *        '@NAME', '@PREFIX:*', or '@PREFIX:NAME'. Result is LYXP_SET_NODE_SET (or LYXP_SET_EMPTY).
- *        Indirectly context position aware.
+ *        Context position aware.
  *
  * @param[in,out] set Set to use.
  * @param[in] cur_node Original context node.
@@ -4300,7 +4246,7 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
         qname += pref_len + 1;
         qname_len -= pref_len + 1;
     } else {
-        moveto_mod = 0;
+        moveto_mod = NULL;
     }
 
     /* can be optimized similarly to moveto_node_alldesc() and save considerable amount of memory,
@@ -4329,10 +4275,10 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
 
         /* only attributes of an elem can be in the result, skip all the rest,
          * we have all attributes qualified in lyd tree */
-        if (moveto_mod && (set->val.nodes[i].type == LYXP_NODE_ELEM)) {
+        if (set->val.nodes[i].type == LYXP_NODE_ELEM) {
             LY_TREE_FOR(set->val.nodes[i].node->attr, sub) {
                 /* check "namespace" */
-                if (sub->module != moveto_mod) {
+                if (moveto_mod && (sub->module != moveto_mod)) {
                     /* no match */
                     continue;
                 }
@@ -4346,8 +4292,8 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
                         replaced = 1;
                     } else {
                         set_insert_node(set, (struct lyd_node *)sub, set->val.attrs[i].pos, LYXP_NODE_ATTR, i + 1);
-                        ++i;
                     }
+                    ++i;
                 }
             }
         }
@@ -4355,8 +4301,6 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
         if (!replaced) {
             /* no match */
             set_remove_node(set, i);
-        } else {
-            ++i;
         }
     }
 
@@ -4365,7 +4309,7 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
 
 /**
  * @brief Move context \p set to self. Handles '/' or '//' and '.'. Result is LYXP_SET_NODE_SET
- *        (or LYXP_SET_EMPTY). Indirectly context position aware.
+ *        (or LYXP_SET_EMPTY). Context position aware.
  *
  * @param[in,out] set Set to use.
  * @param[in] cur_node Original context node.
@@ -4451,7 +4395,7 @@ moveto_self(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int o
 
 /**
  * @brief Move context \p set to parent. Handles '/' or '//' and '..'. Result is LYXP_SET_NODE_SET
- *        (or LYXP_SET_EMPTY). Indirectly context position aware.
+ *        (or LYXP_SET_EMPTY). Context position aware.
  *
  * @param[in] set Set to use.
  * @param[in] cur_node Original context node.
@@ -5425,9 +5369,10 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
                int options)
 {
     int ret;
-    uint16_t i, j, orig_i, orig_exp, brack2_exp;
+    uint16_t i, j, orig_exp, brack2_exp;
+    uint32_t orig_pos, orig_size;
     uint8_t **pred_repeat, rep_size;
-    struct lyxp_set *set2, *orig_set;
+    struct lyxp_set set2;
     struct ly_ctx *ctx;
 
     ctx = cur_node->schema->module->ctx;
@@ -5450,7 +5395,6 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         }
 #endif
 
-        orig_set = set_copy(set, ctx);
         orig_exp = *exp_idx;
 
         /* find the predicate end */
@@ -5460,7 +5404,6 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         pred_repeat = calloc(brack2_exp - orig_exp, sizeof *pred_repeat);
         if (!pred_repeat) {
             LOGMEM;
-            lyxp_set_free(orig_set, ctx);
             return -1;
         }
         for (j = 0; j < brack2_exp - orig_exp; ++j) {
@@ -5474,17 +5417,19 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
                         free(pred_repeat[j]);
                     }
                     free(pred_repeat);
-                    lyxp_set_free(orig_set, ctx);
                     return -1;
                 }
                 memcpy(pred_repeat[j], exp->repeat[orig_exp + j], rep_size * sizeof **pred_repeat);
             }
         }
 
-        i = 0;
-        for (orig_i = 0; orig_i < orig_set->used; ++orig_i) {
-            set2 = set_copy(orig_set, ctx);
-            set2->ctx_pos = orig_i + 1;
+        orig_size = set->used;
+        for (i = 0, orig_pos = 1; i < set->used; ++orig_pos) {
+            set2.type = LYXP_SET_EMPTY;
+            set_insert_node(&set2, set->val.nodes[i].node, set->val.nodes[i].pos, set->val.nodes[i].type, 0);
+            /* remember the node context position for position() and context size for last() */
+            set2.ctx_pos = orig_pos;
+            set2.ctx_size = orig_size;
             *exp_idx = orig_exp;
 
             /* replace repeats */
@@ -5496,34 +5441,32 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
                 }
             }
 
-            ret = eval_expr(exp, exp_idx, cur_node, set2, options);
+            ret = eval_expr(exp, exp_idx, cur_node, &set2, options);
             if (ret) {
                 for (j = 0; j < brack2_exp - orig_exp; ++j) {
                     free(pred_repeat[j]);
                 }
                 free(pred_repeat);
-                lyxp_set_free(set2, ctx);
-                lyxp_set_free(orig_set, ctx);
+                free(set2.val.nodes);
                 return ret;
             }
 
             /* number is a position */
-            if (set2->type == LYXP_SET_NUMBER) {
-                if ((long long)set2->val.num == orig_i + 1) {
-                    set2->val.num = 1;
+            if (set2.type == LYXP_SET_NUMBER) {
+                if ((long long)set2.val.num == orig_pos) {
+                    set2.val.num = 1;
                 } else {
-                    set2->val.num = 0;
+                    set2.val.num = 0;
                 }
             }
-            lyxp_set_cast(set2, LYXP_SET_BOOLEAN, cur_node, options);
+            lyxp_set_cast(&set2, LYXP_SET_BOOLEAN, cur_node, options);
 
             /* predicate satisfied or not? */
-            if (set2->val.bool) {
+            if (set2.val.bool) {
                 ++i;
             } else {
                 set_remove_node(set, i);
             }
-            lyxp_set_free(set2, ctx);
         }
 
         /* free predicate repeats */
@@ -5531,22 +5474,20 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
             free(pred_repeat[j]);
         }
         free(pred_repeat);
-
-        lyxp_set_free(orig_set, ctx);
     } else {
-        set2 = set_copy(set, ctx);
+        set_fill_set(&set2, set, ctx);
 
-        ret = eval_expr(exp, exp_idx, cur_node, set2, options);
+        ret = eval_expr(exp, exp_idx, cur_node, &set2, options);
         if (ret) {
-            lyxp_set_free(set2, ctx);
+            lyxp_set_cast(&set2, LYXP_SET_EMPTY, cur_node, options);
             return ret;
         }
 
-        lyxp_set_cast(set2, LYXP_SET_BOOLEAN, cur_node, options);
-        if (!set2->val.bool) {
+        lyxp_set_cast(&set2, LYXP_SET_BOOLEAN, cur_node, options);
+        if (!set2.val.bool) {
             lyxp_set_cast(set, LYXP_SET_EMPTY, cur_node, options);
         }
-        lyxp_set_free(set2, ctx);
+        lyxp_set_cast(&set2, LYXP_SET_EMPTY, cur_node, options);
     }
 
     /* ']' */

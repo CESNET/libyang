@@ -192,7 +192,8 @@ struct lyxp_set {
     /* this is valid only for type == LYXP_NODE_SET */
     uint32_t used;
     uint32_t size;
-    uint32_t ctx_pos;                /* current context position, indexed from 1, relevant only for predicates */
+    uint32_t ctx_pos;
+    uint32_t ctx_size;
 };
 
 #define LYXP_MUST 0x01 /* apply must data tree access restrictions */
