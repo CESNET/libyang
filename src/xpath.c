@@ -2977,7 +2977,7 @@ xpath_normalize_space(struct lyxp_set **args, uint16_t arg_count, struct lyd_nod
                 space_before = 0;
             }
 
-            new[new_used] = set->val.str[i];
+            new[new_used] = (space_before ? ' ' : set->val.str[i]);
             ++new_used;
         }
 
