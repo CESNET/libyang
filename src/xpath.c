@@ -5475,6 +5475,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         }
         free(pred_repeat);
     } else {
+        set2.type = LYXP_SET_EMPTY;
         set_fill_set(&set2, set, ctx);
 
         ret = eval_expr(exp, exp_idx, cur_node, &set2, options);
