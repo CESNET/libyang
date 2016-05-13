@@ -211,22 +211,27 @@ struct lyd_node_anyxml {
  * @brief list of possible types of differencies in #lyd_difflist
  */
 typedef enum {
-    LYD_DIFF_END = 0,  /**< end of the differences list */
-    LYD_DIFF_CREATED,  /**< newly created node
-                            - Node is present in the second tree, but not in the first tree.
-                            - To make both trees the same the node in lyd_difflist::second is supposed to be inserted
-                              (copied via lyd_dup()) into the node (as a child) at the same index in the
-                              lyd_difflist::first array. If the lyd_difflist::first at the index is NULL, the missing
-                              node is top-level. */
-    LYD_DIFF_DELETED,  /**< deleted node
-                            - Node is present in the first tree, but not in the second tree.
-                            - To make both trees the same the node in lyd_difflist::first can be deleted from the
-                              first tree. The lyd_difflist::second item is NULL until the #LYD_OPT_REVERSIBLE option
-                              is used in lyd_diff(). In that case the #LYD_DIFF_DELETED and #LYD_DIFF_CREATED can be
-                              used interchangeably according to which tree is being change into the other (the default
-                              direction is from the first to the second). */
-    LYD_DIFF_CHANGED   /**< value of a leaf or anyxml is changed, the lyd_difflist::first and lyd_difflist::second
-                            points to the leaf/anyxml instances in the first and the second tree respectively. */
+    LYD_DIFF_END = 0,        /**< end of the differences list */
+    LYD_DIFF_CREATED,        /**< newly created node
+                                  - Node is present in the second tree, but not in the first tree.
+                                  - To make both trees the same the node in lyd_difflist::second is supposed to be
+                                    inserted (copied via lyd_dup()) into the node (as a child) at the same index in the
+                                    lyd_difflist::first array (where is its parent). If the lyd_difflist::first at the
+                                    index is NULL, the missing node is top-level. */
+    LYD_DIFF_DELETED,        /**< deleted node
+                                  - Node is present in the first tree, but not in the second tree.
+                                  - To make both trees the same the node in lyd_difflist::first can be deleted from the
+                                    first tree. The pointer at the same index in the lyd_difflist::second array is
+                                    NULL */
+    LYD_DIFF_CHANGED,        /**< value of a leaf or anyxml is changed, the lyd_difflist::first and lyd_difflist::second
+                                  points to the leaf/anyxml instances in the first and the second tree respectively. */
+    LYD_DIFF_MOVEDAFTER      /**< user-ordered (leaf-)list item was moved.
+                                  - To make both trees the same, all #LYD_DIFF_MOVEAFTER transactions must be applied
+                                  to the first tree in the strict order they appear in the difflist. The
+                                  lyd_difflist::first points to the first tree node being moved and the
+                                  lyd_difflist::second points to the first tree node after which the first node is
+                                  supposed to be moved. If the second pointer is NULL, the node is being moved into
+                                  the beginning as the first node of the (leaf-)list instances. */
 } LYD_DIFFTYPE;
 
 /**
