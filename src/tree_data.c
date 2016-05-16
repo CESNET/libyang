@@ -3548,7 +3548,7 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
             }
             /* go into */
             if (lyd_wd_add_inner(iter, iter->schema->child, unres, options)) {
-                goto error;
+                goto cleanup;
             }
         }
 
@@ -3559,7 +3559,8 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
 
     if (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF)) {
         /* do not add any top-level default nodes in these cases */
-        return EXIT_SUCCESS;
+        ret = EXIT_SUCCESS;
+        goto cleanup;
     }
 
     if (ctx) {
@@ -3599,7 +3600,7 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
                     nodeset = lyd_get_node(*root, path);
                     path[0] = '\0';
                     if (!nodeset) {
-                        goto error;
+                        goto cleanup;
                     }
                     if (!nodeset->number) {
                         iter = NULL;
@@ -3611,7 +3612,7 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
                     /* container does not exists, go recursively to add default nodes in its subtree */
                     iter = lyd_wd_add_empty(NULL, siter, unres, options);
                     if (ly_errno != LY_SUCCESS) {
-                        goto error;
+                        goto cleanup;
                     }
                 } else {
                     iter = NULL;
@@ -3623,7 +3624,7 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
                 if (ly_errno != LY_SUCCESS) {
                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Creating default element \"%s\" failed.", path);
                     path[0] = '\0';
-                    goto error;
+                    goto cleanup;
                 }
                 path[0] = '\0';
 
@@ -3643,7 +3644,7 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
                         /* go to the default case */
                         iter = lyd_wd_add_empty(NULL, ((struct lys_node_choice *)siter)->dflt, unres, options);
                         if (ly_errno != LY_SUCCESS) {
-                            goto error;
+                            goto cleanup;
                         }
                     }
                 }
@@ -3652,7 +3653,7 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
                 /* go into */
                 iter = lyd_wd_add_empty(NULL, siter->child, unres, options);
                 if (ly_errno != LY_SUCCESS) {
-                    goto error;
+                    goto cleanup;
                 }
                 break;
             default:
@@ -3668,7 +3669,7 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
                 } else {
                     lyd_insert_after((*root)->prev, iter);
                     if (ly_errno != LY_SUCCESS) {
-                        goto error;
+                        goto cleanup;
                     }
                 }
             }
@@ -3682,8 +3683,7 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
 
     ret = EXIT_SUCCESS;
 
-error:
-    /* cleanup */
+cleanup:
     ly_set_free(topset);
 
     if (buf_backup) {
