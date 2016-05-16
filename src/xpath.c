@@ -6529,7 +6529,7 @@ static int
 eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
               int options)
 {
-    int is_false = 0, ret;
+    int ret;
     uint16_t op_exp;
     struct lyxp_set orig_set;
     struct ly_ctx *ctx;
@@ -6557,9 +6557,6 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_nod
     /* cast to boolean, we know that will be the final result */
     if (op_exp) {
         lyxp_set_cast(set, LYXP_SET_BOOLEAN, cur_node, options);
-        if (!set->val.bool) {
-            is_false = 1;
-        }
     }
 
     /* ('and' EqualityExpr)* */
@@ -6577,7 +6574,11 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_nod
         }
 
         /* lazy evaluation */
-        if (is_false) {
+        if (!set || !set->val.bool) {
+            ret = eval_equality_expr(exp, exp_idx, cur_node, NULL, options);
+            if (ret) {
+                return ret;
+            }
             continue;
         }
 
@@ -6590,9 +6591,6 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_nod
 
         /* eval - just get boolean value actually */
         lyxp_set_cast(set, LYXP_SET_BOOLEAN, cur_node, options);
-        if (!set->val.bool) {
-            is_false = 1;
-        }
     }
 
     lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, options);
@@ -6615,7 +6613,7 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_nod
 static int
 eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set, int options)
 {
-    int is_true = 0, ret;
+    int ret;
     uint16_t op_exp;
     struct lyxp_set orig_set;
     struct ly_ctx *ctx;
@@ -6643,9 +6641,6 @@ eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, s
     /* cast to boolean, we know that will be the final result */
     if (op_exp) {
         lyxp_set_cast(set, LYXP_SET_BOOLEAN, cur_node, options);
-        if (set->val.bool) {
-            is_true = 1;
-        }
     }
 
     /* ('or' AndExpr)* */
@@ -6663,7 +6658,11 @@ eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, s
         }
 
         /* lazy evaluation */
-        if (is_true) {
+        if (!set || set->val.bool) {
+            ret = eval_and_expr(exp, exp_idx, cur_node, NULL, options);
+            if (ret) {
+                return ret;
+            }
             continue;
         }
 
@@ -6676,9 +6675,6 @@ eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, s
 
         /* eval - just get boolean value actually */
         lyxp_set_cast(set, LYXP_SET_BOOLEAN, cur_node, options);
-        if (set->val.bool) {
-            is_true = 1;
-        }
     }
 
     lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, options);
