@@ -1225,6 +1225,13 @@ set_sorted_merge(struct lyxp_set *trg, struct lyxp_set *src, struct lyd_node *cu
         return -1;
     }
 
+#ifndef NDEBUG
+    LOGDBG("XPATH: MERGE target");
+    print_set_debug(trg);
+    LOGDBG("XPATH: MERGE source");
+    print_set_debug(src);
+#endif
+
     /* make memory for the merge (duplicates are not detected yet, so space
      * will likely be wasted on them, too bad) */
     if (trg->size - trg->used < src->used) {
@@ -1285,6 +1292,11 @@ copy_nodes:
         i = src->used;
         goto copy_nodes;
     }
+
+#ifndef NDEBUG
+    LOGDBG("XPATH: MERGE result");
+    print_set_debug(trg);
+#endif
 
     lyxp_set_cast(src, LYXP_SET_EMPTY, cur_node, options);
     return 0;
