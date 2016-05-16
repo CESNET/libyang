@@ -321,7 +321,7 @@ test_attributes(void **state)
 }
 
 static void
-test_functions(void **state)
+test_functions_operators(void **state)
 {
     struct state *st = (*state);
 
@@ -371,6 +371,23 @@ test_functions(void **state)
     assert_int_equal(st->set->number, 2);
     ly_set_free(st->set);
     st->set = NULL;
+
+    st->set = lyd_get_node(st->dt, "//interface[name='iface2']//. | //ip | //interface[number((1 mod (20 - 15)) div 1)]//.");
+    assert_ptr_not_equal(st->set, NULL);
+    assert_int_equal(st->set->number, 64);
+    ly_set_free(st->set);
+    st->set = NULL;
+
+    st->set = lyd_get_node(st->dt, "//ip[position() mod 2 = 1] | //ip[position() mod 2 = 0]");
+    assert_ptr_not_equal(st->set, NULL);
+    assert_int_equal(st->set->number, 10);
+    assert_string_equal(((struct lyd_node_leaf_list *)st->set->set.d[0])->value_str, "10.0.0.1");
+    assert_string_equal(((struct lyd_node_leaf_list *)st->set->set.d[1])->value_str, "172.0.0.1");
+    assert_string_equal(((struct lyd_node_leaf_list *)st->set->set.d[2])->value_str, "10.0.0.2");
+    assert_string_equal(((struct lyd_node_leaf_list *)st->set->set.d[7])->value_str, "10.0.0.1");
+    assert_string_equal(((struct lyd_node_leaf_list *)st->set->set.d[9])->value_str, "2001:abcd:ef01:2345:6789:0:1:1");
+    ly_set_free(st->set);
+    st->set = NULL;
 }
 
 int main(void)
@@ -380,7 +397,7 @@ int main(void)
                     cmocka_unit_test_setup_teardown(test_simple, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_advanced, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_attributes, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_functions, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_functions_operators, setup_f, teardown_f),
                     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
