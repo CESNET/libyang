@@ -1404,7 +1404,6 @@ lyd_difflist_add(struct lyd_difflist *diff, unsigned int *size, unsigned int ind
 
 struct diff_ordered_dist {
     struct diff_ordered_dist *next;
-    struct diff_ordered_dist *prev;
     int dist;
 };
 struct diff_ordered_item {
@@ -1416,7 +1415,8 @@ struct diff_ordered {
     struct lys_node *schema;
     unsigned int count;
     struct diff_ordered_item *items; /* array */
-    struct diff_ordered_dist *dist;  /* linked list, 2-way */
+    struct diff_ordered_dist *dist;  /* linked list (1-way, ring) */
+    struct diff_ordered_dist *dist_last;  /* aux pointer for faster insertion sort */
 };
 
 static void
@@ -1545,8 +1545,9 @@ lyd_diff_move_preprocess(struct diff_ordered *ordered, struct lyd_node *first, s
 {
     struct lyd_node *iter;
     unsigned int pos = 0;
+    int abs_dist;
     struct diff_ordered_dist *dist_aux;
-    struct diff_ordered_dist *dist_iter;
+    struct diff_ordered_dist *dist_iter, *dist_last;
     char *str = NULL;
 
     /* ordered->count was zeroed and now it is incremented with each added
@@ -1568,30 +1569,40 @@ lyd_diff_move_preprocess(struct diff_ordered *ordered, struct lyd_node *first, s
     /* store information, count distance */
     ordered->items[pos].dist = dist_aux = calloc(1, sizeof *dist_aux);
     ordered->items[pos].dist->dist = ordered->count - pos;
+    abs_dist = abs(ordered->items[pos].dist->dist);
     ordered->items[pos].first = first;
     ordered->items[pos].second = second;
     ordered->count++;
 
-    /* sort distances, higher first */
-    for (dist_iter = ordered->dist; dist_iter; dist_iter = dist_iter->next) {
-        if (abs(dist_aux->dist) >= abs(dist_iter->dist)) {
+    /* insert sort of distances, higher first */
+    for (dist_iter = ordered->dist, dist_last = NULL;
+            dist_iter;
+            dist_last = dist_iter, dist_iter = dist_iter->next) {
+        if (abs_dist >= abs(dist_iter->dist)) {
             /* found correct place */
-            dist_aux->prev = dist_iter->prev;
             dist_aux->next = dist_iter;
-            dist_iter->prev = dist_aux;
+            if (dist_last) {
+                dist_last->next = dist_aux;
+            }
             break;
-        } else if (!dist_iter->next) {
+        } else if (dist_iter->next == ordered->dist) {
             /* last item */
-            dist_aux->prev = dist_iter;
+            dist_aux->next = ordered->dist; /* ring list */
+            ordered->dist_last = dist_aux;
             break;
         }
     }
-    if (!dist_aux->prev) {
+    if (dist_aux->next == ordered->dist) {
         /* first item */
         ordered->dist = dist_aux;
-    } else {
-        /* fix prev's next pointer */
-        dist_aux->prev->next = dist_aux;
+        if (dist_aux->next) {
+            /* more than one item, update the last one's next */
+            ordered->dist_last->next = dist_aux;
+        } else {
+            /* the only item */
+            ordered->dist_last = dist_aux;
+            dist_aux->next = dist_aux; /* ring list */
+        }
     }
 
     return 0;
@@ -1610,7 +1621,7 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
     } *matchlist, *mlaux;
     struct ly_set *ordset_keys, *ordset;
     struct diff_ordered *ordered;
-    struct diff_ordered_dist *dist_aux, *dist_iter, *distp;
+    struct diff_ordered_dist *dist_aux, *dist_iter;
     struct diff_ordered_item item_aux;
 
     if (!first) {
@@ -1893,41 +1904,63 @@ dfs_nextsibling:
     /* 3) moved nodes (when user-ordered) */
     for (i = 0; i < ordset->number; i++) {
         ordered = (struct diff_ordered *)ordset->set.g[i];
+        if (!ordered->dist->dist) {
+            /* the dist list is sorted here, but the biggest dist is 0,
+             * so nothing changed in order of these items between first
+             * and second. We can continue with another user-ordered list.
+             */
+            continue;
+        }
 
         /* get needed movements
          * - from the biggest distances try to apply node movements
          * on first tree node until they will be ordered as in the
          * second tree - i.e. until there will be no position difference
          */
-        for (j = 0; j < ordered->count; j++) {
-            /* check current ordering status */
-            if (!ordered->dist->dist) {
-                /* done */
-                break;
-            }
 
-            /* apply the biggest move (distance) */
+        for (dist_iter = ordered->dist; ; dist_iter = dist_iter->next) {
+            /* dist list is sorted at the beginning, since applying a move causes
+             * just a small change in other distances, we assume the the biggest
+             * dist is the next one (note that dist list is implemented as ring
+             * list). This way we avoid sorting distances after each move. The loop
+             * stops when all distances are zero.
+             */
+            dist_aux = dist_iter;
+            while (!dist_iter->dist) {
+                /* no dist, so no move. Try another, but when
+                 * there is no dist at all, stop the loop
+                 */
+                dist_iter = dist_iter->next;
+                if (dist_iter == dist_aux) {
+                    /* all dist we zeroed */
+                    goto movedone;
+                }
+            }
+            /* something to move */
+
+            /* get the item to move */
             for (k = 0; k < ordered->count; k++) {
-                if (ordered->items[k].dist == ordered->dist) {
+                if (ordered->items[k].dist == dist_iter) {
                     break;
                 }
             }
 
+            /* apply the move (distance) */
             memcpy(&item_aux, &ordered->items[k], sizeof item_aux);
-            if (ordered->dist->dist > 0) {
+            if (dist_iter->dist > 0) {
                 /* move to right (other move to left) */
-                while (ordered->dist->dist) {
+                while (dist_iter->dist) {
                     memcpy(&ordered->items[k], &ordered->items[k + 1], sizeof *ordered->items);
                     ordered->items[k].dist->dist++; /* update moved item distance */
-                    ordered->dist->dist--;
+                    dist_iter->dist--;
                     k++;
                 }
             } else {
                 /* move to left (other move to right) */
-                while (ordered->dist->dist) {
+                while (dist_iter->dist) {
                     memcpy(&ordered->items[k], &ordered->items[k - 1], sizeof *ordered->items);
                     ordered->items[k].dist->dist--; /* update moved item distance */
-                    ordered->dist->dist++;
+                    dist_iter->dist++;
                     k--;
                 }
             }
@@ -1938,41 +1971,11 @@ dfs_nextsibling:
                                  (k > 0) ? ordered->items[k - 1].first : NULL)) {
                 goto error;
             }
+            continue;
 
-            /* sort list of distances */
-            for (distp = ordered->dist; distp->next; ) {
-                if (abs(distp->dist) < abs(distp->next->dist)) {
-                    /* disconnect current distp (dist_aux) for reorder */
-                    dist_aux = distp;
-                    if (distp->prev) {
-                        distp->prev->next = distp->next;
-                    } else {
-                        ordered->dist = distp->next;
-                    }
-                    distp->next->prev = distp->prev;
-                    /* remember next distp */
-                    distp = distp->next;
-
-                    /* reorder */
-                    for (dist_iter = distp; ; dist_iter = dist_iter->next) {
-                        if (!dist_iter->next || abs(dist_iter->next->dist) < abs(dist_aux->dist)) {
-                            /* found correct place */
-                            dist_aux->next = dist_iter->next;
-                            dist_aux->prev = dist_iter;
-                            dist_iter->next = dist_aux;
-                            if (dist_aux->next) {
-                                dist_aux->next->prev = dist_aux;
-                            }
-                            break;
-                        }
-                    }
-                } else {
-                    /* continue in list */
-                    distp = distp->next;
-                }
-            }
+movedone:
+            break;
         }
-
     }
 
 
