@@ -388,6 +388,12 @@ test_functions_operators(void **state)
     assert_string_equal(((struct lyd_node_leaf_list *)st->set->set.d[9])->value_str, "2001:abcd:ef01:2345:6789:0:1:1");
     ly_set_free(st->set);
     st->set = NULL;
+
+    st->set = lyd_get_node(st->dt, "//*[1] | //*[last()] | //*[10] | //*[8]//.");
+    assert_ptr_not_equal(st->set, NULL);
+    assert_int_equal(st->set->number, 15);
+    ly_set_free(st->set);
+    st->set = NULL;
 }
 
 int main(void)
