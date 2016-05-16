@@ -1262,6 +1262,7 @@ set_sorted_merge(struct lyxp_set *trg, struct lyxp_set *src, struct lyd_node *cu
                 ++count;
                 ++dup_count;
                 ++i;
+                ++j;
             }
         } else if (cmp < 0) {
             /* inserting src node into trg, just remember it for now */
@@ -1273,10 +1274,10 @@ copy_nodes:
             memmove(&trg->val.nodes[j + (count - dup_count)],
                     &trg->val.nodes[j],
                     (trg->used - j) * sizeof *trg->val.nodes);
-            memcpy(&trg->val.nodes[j], &src->val.nodes[i - count], count * sizeof *src->val.nodes);
+            memcpy(&trg->val.nodes[j - dup_count], &src->val.nodes[i - count], count * sizeof *src->val.nodes);
 
             trg->used += count - dup_count;
-            ++i;
+            /* do not change i, except the copying above, we are basically doing exactly what is in the else branch below */
             j += count - dup_count;
 
             count = 0;
@@ -1286,7 +1287,7 @@ copy_nodes:
         }
     } while ((i < src->used) && (j < trg->used));
 
-    if (i < src->used) {
+    if ((i < src->used) || count) {
         /* loop ended, but we need to copy something at trg end */
         count += src->used - i;
         i = src->used;
