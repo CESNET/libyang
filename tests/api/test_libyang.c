@@ -259,6 +259,12 @@ test_ly_ctx_set_searchdir_invalid(void **state)
 
     assert_string_equal(yang_folder, result);
 
+    ly_ctx_set_searchdir(ctx, NULL);
+    result = ly_ctx_get_searchdir(ctx);
+    if (result) {
+        fail();
+    }
+
     ly_ctx_destroy(ctx, NULL);
 }
 
@@ -266,13 +272,7 @@ static void
 test_ly_ctx_info(void **state)
 {
     struct lyd_node *node;
-    char *yang_folder = TESTS_DIR"/data/files";
     (void) state; /* unused */
-
-    ctx = ly_ctx_new(yang_folder);
-    if (!ctx) {
-        fail();
-    }
 
     node = ly_ctx_info(NULL);
     if (node) {
@@ -835,7 +835,7 @@ int main(void)
         cmocka_unit_test(test_ly_ctx_get_searchdir),
         cmocka_unit_test(test_ly_ctx_set_searchdir),
         cmocka_unit_test(test_ly_ctx_set_searchdir_invalid),
-        cmocka_unit_test_teardown(test_ly_ctx_info, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_ctx_info, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_older, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_load_module, setup_f, teardown_f),
