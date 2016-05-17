@@ -43,6 +43,13 @@
     <leaf name="bubba">
       <type name="string"/>
     </leaf>
+    <choice name="choic">
+      <container name="con">
+        <leaf name="lef">
+          <type name="empty"/>
+        </leaf>
+      </container>
+    </choice>
   </container>
   <augment target-node="/x">
     <if-feature name="bar"/>

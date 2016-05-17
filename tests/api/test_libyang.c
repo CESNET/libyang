@@ -547,6 +547,7 @@ test_ly_ctx_get_node(void **state)
     const struct lys_node *node;
     const char *nodeid1 = "/a:x/bubba";
     const char *nodeid2 = "/b:x/bubba";
+    const char *nodeid3 = "/a:x/choic/con/con/lef";
 
     node = ly_ctx_get_node(NULL, root->schema, nodeid1);
     if (node) {
@@ -571,6 +572,13 @@ test_ly_ctx_get_node(void **state)
     }
 
     assert_string_equal("bubba", node->name);
+
+    node = ly_ctx_get_node(ctx, root->schema, nodeid3);
+    if (!node) {
+        fail();
+    }
+
+    assert_string_equal("lef", node->name);
 }
 
 static void
@@ -580,6 +588,7 @@ test_ly_ctx_get_node2(void **state)
     const struct lys_node *node;
     const char *nodeid1 = "/a:x/bubba";
     const char *nodeid2 = "/b:x/bubba";
+    const char *nodeid3 = "/a:x/con/lef";
 
     node = ly_ctx_get_node2(NULL, root->schema, nodeid1, 0);
     if (node) {
@@ -604,6 +613,13 @@ test_ly_ctx_get_node2(void **state)
     }
 
     assert_string_equal("bubba", node->name);
+
+    node = ly_ctx_get_node2(ctx, root->schema, nodeid3, 0);
+    if (!node) {
+        fail();
+    }
+
+    assert_string_equal("lef", node->name);
 }
 
 static void

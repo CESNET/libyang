@@ -1538,7 +1538,7 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
                 }
 
                 /* check for shorthand cases - then 'start' does not change */
-                if (lys_parent(sibling) && (lys_parent(sibling)->nodetype == LYS_CHOICE) && (sibling->nodetype != LYS_CASE)) {
+                if (!data_nodeid && lys_parent(sibling) && (lys_parent(sibling)->nodetype == LYS_CHOICE) && (sibling->nodetype != LYS_CASE)) {
                     shorthand = ~shorthand;
                 }
 
@@ -1549,13 +1549,13 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
                         str = strndup(nodeid, (name + nam_len) - nodeid);
                         LOGVAL(LYE_PATH_INNODE, LY_VLOG_STR, str);
                         free(str);
-                        LOGVAL(LYE_SPEC, LY_VLOG_STR, str, "Shorthand case path must include the virtual case statement.");
+                        LOGVAL(LYE_SPEC, LY_VLOG_STR, str, "Schema shorthand case path must include the virtual case statement.");
                         return NULL;
                     }
                     return sibling;
                 }
 
-                if (!shorthand) {
+                if (data_nodeid || !shorthand) {
                     /* move down the tree, if possible */
                     if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
                         LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
