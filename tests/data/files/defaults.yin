@@ -5,6 +5,10 @@
   <namespace uri="urn:libyang:tests:defaults"/>
   <prefix value="df"/>
   <feature name="unhide"/>
+  <typedef name="defint32">
+    <type name="int32"/>
+    <default value="42"/>
+  </typedef>
   <leaf name="hiddenleaf">
     <if-feature name="unhide"/>
     <type name="int32"/>
@@ -12,8 +16,7 @@
   </leaf>
   <container name="df">
     <leaf name="foo">
-      <type name="int32"/>
-      <default value="42"/>
+      <type name="defint32"/>
     </leaf>
     <leaf name="hiddenleaf">
       <if-feature name="unhide"/>
@@ -31,6 +34,10 @@
         <mandatory value="true"/>
       </leaf>
     </container>
+    <leaf-list name="llist">
+      <type name="defint32"/>
+      <ordered-by value="user"/>
+    </leaf-list>
     <list name="list">
       <key value="name"/>
       <leaf name="name">
