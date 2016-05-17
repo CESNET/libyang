@@ -92,7 +92,7 @@ yin_print_restr(struct lyout *out, int level, const char *elem_name, const struc
 
     yin_print_open(out, level, elem_name, "value", restr->expr, close);
     if (!close) {
-        yin_print_restr_sub(out, level, restr);
+        yin_print_restr_sub(out, level + 1, restr);
 
         yin_print_close(out, level, elem_name);
     }
