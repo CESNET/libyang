@@ -2,9 +2,6 @@ module b {
   namespace "urn:b";
   prefix b_mod;
 
-  include bsub;
-  include btop;
-
   revision 2015-01-01 {
     description
       "version 1";
@@ -21,12 +18,9 @@ module b {
 
   container x {
     leaf bar-leaf {
-      if-feature bar;
       type string;
     }
-    uses gg {
-      if-feature bar;
-    }
+    uses gg;
     leaf baz {
       if-feature foo;
       type string;
@@ -34,13 +28,6 @@ module b {
     leaf bubba {
       type string;
     }
-  }
-  augment "/x" {
-    if-feature bar;
-    container bar-y;
-  }
-  rpc bar-rpc {
-    if-feature bar;
   }
   rpc foo-rpc {
     if-feature foo;

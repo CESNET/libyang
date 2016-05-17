@@ -4,8 +4,6 @@
         xmlns:a="urn:a">
   <namespace uri="urn:a"/>
   <prefix value="a_mod"/>
-  <include module="asub"/>
-  <include module="atop"/>
   <feature name="foo"/>
   <revision date="2015-01-01">
     <description>
@@ -22,12 +20,9 @@
   </grouping>
   <container name="x">
     <leaf name="bar-leaf">
-      <if-feature name="bar"/>
       <type name="string"/>
     </leaf>
-    <uses name="gg">
-      <if-feature name="bar"/>
-    </uses>
+    <uses name="gg"/>
     <leaf name="baz">
       <if-feature name="foo"/>
       <type name="string"/>
@@ -36,13 +31,6 @@
       <type name="string"/>
     </leaf>
   </container>
-  <augment target-node="/x">
-    <if-feature name="bar"/>
-    <container name="bar-y"/>
-  </augment>
-  <rpc name="bar-rpc">
-    <if-feature name="bar"/>
-  </rpc>
   <rpc name="foo-rpc">
     <if-feature name="foo"/>
   </rpc>

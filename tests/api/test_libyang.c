@@ -352,7 +352,7 @@ test_ly_ctx_get_module(void **state)
     assert_string_equal(revision, module->rev->date);
 }
 
-void
+static void
 test_ly_ctx_get_module_older(void **state)
 {
     (void) state; /* unused */
@@ -372,12 +372,10 @@ test_ly_ctx_get_module_older(void **state)
         fail();
     }
 
-    module = ly_ctx_load_module(ctx, name, revision_older);
+    module = ly_ctx_load_module(ctx, "c", NULL);
     if (!module) {
         fail();
     }
-
-    assert_string_equal(name, module->name);
 
     module = ly_ctx_load_module(ctx, name, revision);
     if (!module) {
@@ -392,7 +390,7 @@ test_ly_ctx_get_module_older(void **state)
     assert_string_equal(revision_older, module_older->rev->date);
 }
 
-void
+static void
 test_ly_ctx_load_module(void **state)
 {
     (void) state; /* unused */
@@ -415,14 +413,21 @@ test_ly_ctx_load_module(void **state)
         fail();
     }
 
-    module = ly_ctx_load_module(ctx, name, revision);
+    module = ly_ctx_load_module(ctx, "c", NULL);
     if (!module) {
         fail();
     }
 
-    assert_string_equal(name, module->name);
+    assert_string_equal("c", module->name);
 
-    module = ly_ctx_load_module(ctx, "b", revision);
+    module = ly_ctx_get_module(ctx, "a", revision);
+    if (!module) {
+        fail();
+    }
+
+    assert_string_equal("a", module->name);
+
+    module = ly_ctx_get_module(ctx, "b", revision);
     if (!module) {
         fail();
     }
@@ -561,6 +566,39 @@ test_ly_ctx_get_node(void **state)
     assert_string_equal("bubba", node->name);
 
     node = ly_ctx_get_node(ctx, root->schema, nodeid2);
+    if (!node) {
+        fail();
+    }
+
+    assert_string_equal("bubba", node->name);
+}
+
+static void
+test_ly_ctx_get_node2(void **state)
+{
+    (void) state; /* unused */
+    const struct lys_node *node;
+    const char *nodeid1 = "/a:x/bubba";
+    const char *nodeid2 = "/b:x/bubba";
+
+    node = ly_ctx_get_node2(NULL, root->schema, nodeid1, 0);
+    if (node) {
+        fail();
+    }
+
+    node = ly_ctx_get_node2(ctx, root->schema, NULL, 0);
+    if (node) {
+        fail();
+    }
+
+    node = ly_ctx_get_node2(ctx, root->schema, nodeid1, 0);
+    if (!node) {
+        fail();
+    }
+
+    assert_string_equal("bubba", node->name);
+
+    node = ly_ctx_get_node2(ctx, root->schema, nodeid2, 0);
     if (!node) {
         fail();
     }
@@ -799,13 +837,13 @@ int main(void)
         cmocka_unit_test(test_ly_ctx_set_searchdir_invalid),
         cmocka_unit_test_teardown(test_ly_ctx_info, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module, setup_f, teardown_f),
-        /* TODO need to be significantly reworked to test what they tested before */
-        /*cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_older, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_ly_ctx_load_module, setup_f, teardown_f),*/
+        cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_older, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_ctx_load_module, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_by_ns, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule2, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_node, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_ctx_get_node2, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_set_new, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_set_add, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_set_rm, setup_f, teardown_f),
