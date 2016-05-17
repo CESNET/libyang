@@ -8,6 +8,11 @@
 #include "xml.h"
 #include "dict.h"
 
+
+void ly_ctx_destroy(struct ly_ctx *ctx) {
+        ly_ctx_destroy(ctx, NULL);
+}
+
 %}
 %include "typemaps.i"
 
@@ -44,3 +49,4 @@
 %include "xml.h"
 %include "dict.h"
 
+void ly_ctx_destroy(struct ly_ctx *ctx);
