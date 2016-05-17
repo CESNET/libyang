@@ -1616,9 +1616,10 @@ API struct lyd_difflist *
 lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
 {
     int rc;
-    struct lyd_node *elem1, *elem2, *iter, *next1, *next2;
-    struct lyd_difflist *result;
-    unsigned int size, index = 0, i, j, k;
+    struct lyd_node *elem1, *elem2, *iter, *aux, *next1, *next2;
+    struct lyd_difflist *result, *result2;
+    void *new;
+    unsigned int size, size2, index = 0, index2 = 0, i, j, k;
     struct matchlist_s {
         struct matchlist_s *prev;
         struct ly_set *match;
@@ -1680,6 +1681,17 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
     result->first = calloc(size, sizeof *result->first);
     result->second = calloc(size, sizeof *result->second);
 
+    /* the records about created and moved items are created in
+     * bad order, so the records about created nodes (and their
+     * possible moving) is stored separately and added to the
+     * main result at the end.
+     */
+    result2 = malloc(sizeof *result);
+    size2 = 1;
+    result2->type = calloc(size2, sizeof *result->type);
+    result2->first = calloc(size2, sizeof *result->first);
+    result2->second = calloc(size2, sizeof *result->second);
+
     matchlist = malloc(sizeof *matchlist);
     matchlist->match = ly_set_new();
     matchlist->prev = NULL;
@@ -1714,13 +1726,25 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
 
         if (!iter) {
             /* elem2 not found in the first tree */
-            if (lyd_difflist_add(result, &size, index++, LYD_DIFF_CREATED, elem1->parent, elem2)) {
+            if (lyd_difflist_add(result2, &size2, index2++, LYD_DIFF_CREATED, elem1->parent, elem2)) {
                 goto error;
             }
 
             if (elem2->schema->flags & LYS_USERORDERED) {
-                /* even the created nodes can need additional move */
-                diff_ordset_insert(elem2, ordset_keys, ordset);
+                /* store the correct place where the node is supposed to be moved after creation */
+                for (aux = elem2->prev; aux->next; aux = aux->prev) {
+                    if (aux->schema == elem2->schema) {
+                        /* predecessor found */
+                        break;
+                    }
+                }
+                if (!aux->next) {
+                    /* predecessor not found */
+                    aux = NULL;
+                }
+                if (lyd_difflist_add(result2, &size2, index2++, LYD_DIFF_MOVEDAFTER2, aux, elem2)) {
+                    goto error;
+                }
             }
         }
 
@@ -1971,7 +1995,7 @@ dfs_nextsibling:
             memcpy(&ordered->items[k], &item_aux, sizeof *ordered->items);
 
             /* store the transaction into the difflist */
-            if (lyd_difflist_add(result, &size, index++, LYD_DIFF_MOVEDAFTER, item_aux.first,
+            if (lyd_difflist_add(result, &size, index++, LYD_DIFF_MOVEDAFTER1, item_aux.first,
                                  (k > 0) ? ordered->items[k - 1].first : NULL)) {
                 goto error;
             }
@@ -1982,8 +2006,42 @@ movedone:
         }
     }
 
-
     diff_ordset_free(ordset);
+
+    if (index2) {
+        /* append result2 with newly created
+         * (and possibly moved) nodes */
+        if (index + index2 + 1 == size) {
+            /* result must be enlarged */
+            size = index + index2 + 1;
+            new = realloc(result->type, size * sizeof *result->type);
+            if (!new) {
+                LOGMEM;
+                goto error;
+            }
+            result->type = new;
+
+            new = realloc(result->first, size * sizeof *result->first);
+            if (!new) {
+                LOGMEM;
+                goto error;
+            }
+            result->first = new;
+
+            new = realloc(result->second, size * sizeof *result->second);
+            if (!new) {
+                LOGMEM ;
+                goto error;
+            }
+            result->second = new;
+        }
+
+        /* append */
+        memcpy(&result->type[index], result2->type, (index2 + 1) * sizeof *result->type);
+        memcpy(&result->first[index], result2->first, (index2 + 1) * sizeof *result->first);
+        memcpy(&result->second[index], result2->second, (index2 + 1) * sizeof *result->second);
+    }
+    lyd_free_diff(result2);
 
     ly_errno = LY_SUCCESS;
     return result;
@@ -2001,6 +2059,7 @@ error:
     diff_ordset_free(ordset);
 
     lyd_free_diff(result);
+    lyd_free_diff(result2);
 
     return NULL;
 }

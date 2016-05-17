@@ -212,12 +212,6 @@ struct lyd_node_anyxml {
  */
 typedef enum {
     LYD_DIFF_END = 0,        /**< end of the differences list */
-    LYD_DIFF_CREATED,        /**< newly created node
-                                  - Node is present in the second tree, but not in the first tree.
-                                  - To make both trees the same the node in lyd_difflist::second is supposed to be
-                                    inserted (copied via lyd_dup()) into the node (as a child) at the same index in the
-                                    lyd_difflist::first array (where is its parent). If the lyd_difflist::first at the
-                                    index is NULL, the missing node is top-level. */
     LYD_DIFF_DELETED,        /**< deleted node
                                   - Node is present in the first tree, but not in the second tree.
                                   - To make both trees the same the node in lyd_difflist::first can be deleted from the
@@ -225,13 +219,27 @@ typedef enum {
                                     NULL */
     LYD_DIFF_CHANGED,        /**< value of a leaf or anyxml is changed, the lyd_difflist::first and lyd_difflist::second
                                   points to the leaf/anyxml instances in the first and the second tree respectively. */
-    LYD_DIFF_MOVEDAFTER      /**< user-ordered (leaf-)list item was moved.
-                                  - To make both trees the same, all #LYD_DIFF_MOVEAFTER transactions must be applied
+    LYD_DIFF_MOVEDAFTER1,    /**< user-ordered (leaf-)list item was moved.
+                                  - To make both trees the same, all #LYD_DIFF_MOVEDAFTER1 transactions must be applied
                                   to the first tree in the strict order they appear in the difflist. The
                                   lyd_difflist::first points to the first tree node being moved and the
                                   lyd_difflist::second points to the first tree node after which the first node is
                                   supposed to be moved. If the second pointer is NULL, the node is being moved into
                                   the beginning as the first node of the (leaf-)list instances. */
+    LYD_DIFF_CREATED,        /**< newly created node
+                                  - Node is present in the second tree, but not in the first tree.
+                                  - To make both trees the same the node in lyd_difflist::second is supposed to be
+                                    inserted (copied via lyd_dup()) into the node (as a child) at the same index in the
+                                    lyd_difflist::first array (where is its parent). If the lyd_difflist::first at the
+                                    index is NULL, the missing node is top-level. */
+    LYD_DIFF_MOVEDAFTER2     /**< similar to LYD_DIFF_MOVEDAFTER1, but this time the moved item is in the second tree.
+                                  This type is always used in combination with (as a successor of) #LYD_DIFF_CREATED
+                                  as an instruction to move the newly created node to a specific position. Note, that
+                                  due to applicability to the second tree, the meaning of lyd_difflist:first and
+                                  lyd_difflist:second is inverse in comparison to #LYD_DIFF_MOVEDAFTER1. The
+                                  lyd_difflist::second points to the (previously) created node in the second tree and
+                                  the lyd_difflist::first points to the predecessor node in the second tree. If the
+                                  predecessor is NULL, the node is supposed to bes the first sibling. */
 } LYD_DIFFTYPE;
 
 /**
@@ -259,15 +267,26 @@ void lyd_free_diff(struct lyd_difflist *diff);
  * In case of using #LYD_OPT_NOSIBLINGS, they both must be instances of the same schema node.
  *
  * Order of the resulting set follows these rules:
- * - first, the newly created (#LYD_DIFF_CREATED) and modified (#LYD_DIFF_CHANGED) nodes are present. The order
- *   follows the nodes order in the second tree - the current siblings are processed first and then the children
- *   are processed. Note, that this is actually not the BFS:
+ * - To change the first tree into the second tree, the resulting transactions are supposed to be applied in the order
+ *   they appear in the result. First, the changed (#LYD_DIFF_CHANGED) nodes are described followed by the deleted
+ *   (#LYD_DIFF_DELETED) nodes. Then, the moving of the user-ordered nodes present in both trees (#LYD_DIFF_MOVEDAFTER1)
+ *   follows and the last transactions in the results are the newly created (#LYD_DIFF_CREATED) nodes. These nodes are
+ *   supposed to be added as the last siblings, but in some case they can need additional move. In such a case, the
+ *   #LYD_DIFF_MOVEDAFTER2 transactions can appear.
+ * - The order of the changed (#LYD_DIFF_CHANGED) and created (#LYD_DIFF_CREATED) follows the nodes order in the
+ *   second tree - the current siblings are processed first and then the children are processed. Note, that this is
+ *   actually not the BFS:
  *           1     2
  *          / \   / \
  *         3   4 7   8
  *        / \
  *       5   6
- * - then, the deleted (#LYD_DIF_DELETED) nodes in the first tree are specified.
+ * - The order of the deleted (#LYD_DIFF_DELETED) nodes is the DFS:
+ *          1     6
+ *         / \   / \
+ *        2   5 7   8
+ *       / \
+ *      3   4
  *
  * To change the first tree into the second one, it is necessary to follow the order of transactions described in
  * the result. Note, that it is not possible just to use the transactions in the reverse order to transform the
