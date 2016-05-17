@@ -1556,6 +1556,10 @@ lyd_diff_move_preprocess(struct diff_ordered *ordered, struct lyd_node *first, s
 
     /* get the position of the first node */
     for (iter = first->prev; iter->next; iter = iter->prev) {
+        if (!(iter->validity & LYD_VAL_INUSE)) {
+            /* skip deleted nodes */
+            continue;
+        }
         if (iter->schema == first->schema) {
             pos++;
         }
