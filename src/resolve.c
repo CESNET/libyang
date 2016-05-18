@@ -5203,6 +5203,8 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
             resolved++;
         } else if (rc == -1) {
             ly_vlog_hide(0);
+            /* print only this last error */
+            resolve_unres_data_item(unres->node[i], unres->type[i]);
             return -1;
         }
     }
