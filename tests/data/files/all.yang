@@ -1,5 +1,4 @@
 module all {
-  yang-version 1;
   namespace "urn:all";
   prefix all_mod;
 
