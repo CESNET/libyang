@@ -875,6 +875,7 @@ yang_print_leaf(struct lyout *out, int level, const struct lys_node *node)
         case LY_TYPE_LEAFREF:
         case LY_TYPE_IDENT:
         case LY_TYPE_UNION:
+	case LY_TYPE_BITS:
             ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, leaf->dflt);
             break;
         default:
