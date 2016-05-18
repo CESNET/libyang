@@ -173,13 +173,12 @@ lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int optio
     return result;
 }
 
-API struct lyd_node *
-lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, ...)
+static struct lyd_node *
+lyd_parse_fd_(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, va_list ap)
 {
     struct lyd_node *ret;
     struct stat sb;
     char *data;
-    va_list ap;
 
     if (!ctx || (fd == -1)) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -202,11 +201,22 @@ lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, ...)
         return NULL;
     }
 
-    va_start(ap, options);
     ret = lyd_parse_data_(ctx, data, format, options, ap);
 
-    va_end(ap);
     munmap(data, sb.st_size + 1);
+
+    return ret;
+}
+
+API struct lyd_node *
+lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, ...)
+{
+    struct lyd_node *ret;
+    va_list ap;
+
+    va_start(ap, options);
+    ret = lyd_parse_fd_(ctx, fd, format, options, ap);
+    va_end(ap);
 
     return ret;
 }
@@ -230,7 +240,7 @@ lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int opti
     }
 
     va_start(ap, options);
-    ret = lyd_parse_fd(ctx, fd, format, options);
+    ret = lyd_parse_fd_(ctx, fd, format, options, ap);
 
     va_end(ap);
     close(fd);
