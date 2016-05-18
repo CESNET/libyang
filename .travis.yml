@@ -20,8 +20,8 @@ before_install:
   - cd ../..
   - if [ "${CC}" = "gcc" ]; then pip install --user codecov; export CFLAGS="-coverage"; fi
 
-script: 
-  - mkdir build && cd build && cmake .. && make -j2 && make test
+script:
+  - mkdir build && cd build && cmake .. && make -j2 && ctest -V
 
 after_success:
   - if [ "${CC}" = "gcc" ]; then codecov; fi
