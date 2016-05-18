@@ -883,10 +883,6 @@ attr_repeat:
         result->when_status = LYD_WHEN;
     }
 
-    if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(result, options, unres)) {
-        goto error;
-    }
-
     /* TODO handle notifications */
 
     /* type specific processing */
@@ -1045,6 +1041,10 @@ attr_repeat:
     }
 
     /* various validation checks */
+    if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(result, options, unres)) {
+        goto error;
+    }
+
     ly_errno = 0;
     if (!(options & LYD_OPT_TRUSTED) &&
             (lyv_data_content(result, options, unres) ||

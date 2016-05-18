@@ -334,11 +334,6 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         }
     }
 
-    /* first part of validation checks */
-    if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(*result, options, unres)) {
-        goto error;
-    }
-
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
@@ -362,6 +357,11 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             ((struct lyd_node_anyxml *)*result)->xml_struct = 0;
             ((struct lyd_node_anyxml *)*result)->value.str = lydict_insert(ctx, xml->content, 0);
         }
+    }
+
+    /* first part of validation checks */
+    if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(*result, options, unres)) {
+        goto error;
     }
 
     for (attr = xml->attr; attr; attr = attr->next) {
