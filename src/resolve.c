@@ -4946,7 +4946,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
         break;
 
     case UNRES_INSTID:
-        assert(sleaf->type.base == LY_TYPE_INST);
+        assert((sleaf->type.base == LY_TYPE_INST) || (sleaf->type.base == LY_TYPE_UNION));
         ly_errno = 0;
         leaf->value.instance = resolve_instid(node, leaf->value_str);
         if (!leaf->value.instance) {
