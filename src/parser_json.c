@@ -204,39 +204,42 @@ error:
 static unsigned int
 lyjson_parse_number(const char *data)
 {
-    unsigned int len;
-    unsigned int i = 0;
+    unsigned int len = 0;
 
-    for (len = 0;
-         data[len] && data[len] != ',' && data[len] != ']' && data[len] != '}' && !lyjson_isspace(data[len]);
-         len++) {
+    if (data[len] == '-') {
+        ++len;
+    }
 
-        switch(data[len]) {
-        case '0':
-            if (!i && isdigit(data[len + 1])) {
-                /* leading 0 is not allowed */
-                LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON number (leading zero)");
-                return 0;
+    if (data[len] == '0') {
+        ++len;
+    } else if (isdigit(data[len])) {
+        ++len;
+        while (isdigit(data[len])) {
+            ++len;
+        }
+    } else {
+        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid character in JSON Number value ('%c').", data[len]);
+        return 0;
+    }
+
+    if (data[len] == '.') {
+        ++len;
+        if (!isdigit(data[len])) {
+            if (data[len]) {
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid character in JSON Number value ('%c').", data[len]);
+            } else {
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid character in JSON Number value (EOF).");
             }
-            /* no break */
-        case '1':
-        case '2':
-        case '3':
-        case '4':
-        case '5':
-        case '6':
-        case '7':
-        case '8':
-        case '9':
-            i = 1;
-            /* no break */
-        case 0x2d: /* minus */
-            /* ok */
-            break;
-        default:
-            LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "character in JSON Number value");
             return 0;
         }
+        while (isdigit(data[len])) {
+            ++len;
+        }
+    }
+
+    if (data[len] && (data[len] != ',') && (data[len] != ']') && (data[len] != '}') && !lyjson_isspace(data[len])) {
+        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid character in JSON Number value ('%c').", data[len]);
+        return 0;
     }
 
     return len;
