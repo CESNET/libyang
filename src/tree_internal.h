@@ -344,11 +344,12 @@ int lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *si
  *
  * @param[in] first First data node to compare.
  * @param[in] second Second node to compare.
+ * @param[in] printval Flag for printing validation errors, useful for internal (non-validation) use of this function
  * @return 1 if both the nodes are the same from the YANG point of view,
  *         0 if they differ,
  *         -1 on error.
  */
-int lyd_list_equal(struct lyd_node *first, struct lyd_node *second);
+int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int printval);
 
 /**
  * @brief Check for (validate) top-level mandatory nodes of a data tree.

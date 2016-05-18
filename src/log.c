@@ -351,6 +351,15 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                         path[--(*index)] = '[';
                     }
                 }
+            } else if (((struct lyd_node *)elem)->schema->nodetype == LYS_LEAFLIST &&
+                    ((struct lyd_node_leaf_list *)elem)->value_str) {
+                (*index) -= 2;
+                memcpy(&path[(*index)], "']", 2);
+                len = strlen(((struct lyd_node_leaf_list *)elem)->value_str);
+                (*index) -= len;
+                memcpy(&path[(*index)], ((struct lyd_node_leaf_list *)elem)->value_str, len);
+                (*index) -= 4;
+                memcpy(&path[(*index)], "[.='", 4);
             }
 
             elem = ((struct lyd_node *)elem)->parent;
