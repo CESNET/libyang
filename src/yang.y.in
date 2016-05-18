@@ -1103,7 +1103,7 @@ message_opt_stmt: @EMPTYDIR@ { switch (actual_type) {
                                            }
                                            s = NULL;
                                          }
-  |  message_opt_stmt error_app_tag_stmt { if (yang_read_message(trg, actual, s, $1, ERROR_APP_TAG_KEYWORD)) {
+  |  message_opt_stmt error_app_tag_stmt { if (read_all && yang_read_message(trg, actual, s, $1, ERROR_APP_TAG_KEYWORD)) {
                                              YYABORT;
                                            }
                                            s = NULL;
