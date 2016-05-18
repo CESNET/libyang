@@ -28,7 +28,6 @@
 struct state {
     struct ly_ctx *ctx;
     const struct lys_module *mod;
-    const struct lys_node *rpc;
     struct lyd_node *dt;
     int fd;
     char *str1;
@@ -62,11 +61,6 @@ setup_f(void **state)
         goto error;
     }
     lys_features_enable(st->mod, "*");
-    st->rpc = ly_ctx_get_node(st->ctx, NULL, "/all:rpc1");
-    if (!st->rpc) {
-        fprintf(stderr, "Failed to get RPC.\n");
-        goto error;
-    }
 
     st->mod = lys_parse_path(st->ctx, schemadev, LYS_IN_YIN);
     if (!st->mod) {
@@ -214,6 +208,7 @@ test_parse_print_xml(void **state)
 {
     struct state *st = (*state);
     struct stat s;
+    const struct lys_node *rpc_schema;
     int fd;
     const char *data = TESTS_DIR"/data/files/all-data.xml";
     const char *rpc = TESTS_DIR"/data/files/all-rpc.xml";
@@ -274,7 +269,10 @@ test_parse_print_xml(void **state)
     assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    st->dt = lyd_parse_path(st->ctx, rpcreply, LYD_XML, LYD_OPT_RPCREPLY, st->rpc);
+    rpc_schema = ly_ctx_get_node(st->ctx, NULL, "/all:rpc1");
+    assert_ptr_not_equal(rpc_schema, NULL);
+
+    st->dt = lyd_parse_path(st->ctx, rpcreply, LYD_XML, LYD_OPT_RPCREPLY, rpc_schema);
     assert_ptr_not_equal(st->dt, NULL);
     lyd_print_mem(&(st->str2), st->dt->child, LYD_XML, LYP_FORMAT);
 
