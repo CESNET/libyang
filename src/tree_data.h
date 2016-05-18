@@ -276,17 +276,20 @@ void lyd_free_diff(struct lyd_difflist *diff);
  * - The order of the changed (#LYD_DIFF_CHANGED) and created (#LYD_DIFF_CREATED) follows the nodes order in the
  *   second tree - the current siblings are processed first and then the children are processed. Note, that this is
  *   actually not the BFS:
+ *
  *           1     2
  *          / \   / \
  *         3   4 7   8
  *        / \
  *       5   6
+ *
  * - The order of the deleted (#LYD_DIFF_DELETED) nodes is the DFS:
- *          1     6
- *         / \   / \
- *        2   5 7   8
- *       / \
- *      3   4
+ *
+ *           1     6
+ *          / \   / \
+ *         2   5 7   8
+ *        / \
+ *       3   4
  *
  * To change the first tree into the second one, it is necessary to follow the order of transactions described in
  * the result. Note, that it is not possible just to use the transactions in the reverse order to transform the
