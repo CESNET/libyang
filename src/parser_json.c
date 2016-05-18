@@ -361,11 +361,7 @@ repeat:
 
     if (data[len] == '"') {
         /* string representations */
-        if (data[len++] != '"') {
-            LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, leaf,
-                   "JSON data (missing quotation-mark at the beginning of string)");
-            return 0;
-        }
+        ++len;
         str = lyjson_parse_text(&data[len], &r);
         if (!str) {
             LOGPATH(LY_VLOG_LYD, leaf);
