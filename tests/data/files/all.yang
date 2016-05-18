@@ -1,0 +1,177 @@
+module all {
+  yang-version 1;
+  namespace "urn:all";
+  prefix all_mod;
+
+
+  feature feat1 {
+    status "obsolete";
+    if-feature feat2;
+  }
+
+  feature feat2;
+
+  identity ident1 {
+    base ident2;
+  }
+
+  identity ident2;
+
+  typedef tdef1 {
+    type tdef2 {
+      length "3..9 | 30..40";
+      pattern "[ac]*";
+    }
+    units "none";
+    default "aaa";
+  }
+
+  typedef tdef2 {
+    type string {
+      length "2..10 | 20..50";
+      pattern "[ab]*";
+    }
+  }
+
+  grouping group1 {
+    leaf leaf1 {
+      type int8;
+    }
+  }
+
+  container cont1 {
+    leaf leaf2 {
+      if-feature feat1;
+      status "obsolete";
+      type int16;
+    }
+    uses group1 {
+      if-feature feat2;
+    }
+    leaf leaf3 {
+      type int32;
+    }
+    leaf leaf4 {
+      type int64 {
+        range "1000 .. 50000" {
+          error-app-tag "special-tag";
+          error-message
+            "Special error message.";
+        }
+      }
+    }
+    leaf leaf5 {
+      type uint8;
+    }
+    leaf leaf6 {
+      type uint16;
+    }
+    leaf leaf7 {
+      type uint32;
+    }
+    leaf leaf8 {
+      type uint64;
+    }
+    choice choic1 {
+      default "leaf10";
+      leaf leaf9 {
+        type decimal64 {
+          fraction-digits 9;
+        }
+      }
+      leaf leaf10 {
+        type boolean;
+        default false;
+      }
+    }
+    leaf leaf11 {
+      type enumeration {
+        enum "one";
+        enum "two";
+        enum "five" {
+          value 5;
+        }
+      }
+    }
+    leaf leaf12 {
+      type bits {
+        bit flag0 {
+          position 0;
+        }
+        bit flag1;
+        bit flag2 {
+          position 2;
+        }
+        bit flag3 {
+          position 3;
+        }
+      }
+      default "flag0 flag3";
+    }
+    leaf leaf13 {
+      type binary;
+    }
+    leaf leaf14 {
+      type leafref {
+        path "/cont1/leaf17";
+      }
+    }
+    leaf leaf15 {
+      type empty;
+    }
+    leaf leaf16 {
+      type union {
+        type instance-identifier {
+          require-instance true;
+        }
+        type int8;
+      }
+    }
+    list list1 {
+      key "leaf18";
+      unique "leaf19";
+      min-elements 1;
+      max-elements 20;
+      leaf leaf18 {
+        type string;
+      }
+      leaf leaf19 {
+        type uint32;
+      }
+      anyxml axml1;
+    }
+    leaf-list llist1 {
+      type tdef1;
+      ordered-by user;
+    }
+  }
+
+  rpc rpc1 {
+    input {
+      leaf leaf20 {
+        type tdef1;
+      }
+    }
+    output {
+      container cont2 {
+        leaf leaf21 {
+          type empty;
+        }
+      }
+    }
+  }
+
+  notification notif1 {
+    leaf leaf22 {
+      type empty;
+    }
+  }
+
+  augment "/cont1" {
+    leaf leaf17 {
+      type identityref {
+        base ident1;
+      }
+    }
+  }
+}

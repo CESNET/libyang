@@ -1,0 +1,20 @@
+module all-dev {
+  namespace "urn:all-dev";
+  prefix alldev_mod;
+
+  import all {
+    prefix all_mod;
+  }
+
+  deviation "/all_mod:notif1/all_mod:leaf22" {
+    deviate replace {
+      type string;
+    }
+    deviate add {
+      mandatory false;
+    }
+    deviate add {
+      config true;
+    }
+  }
+}

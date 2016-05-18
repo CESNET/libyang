@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module name="all"
+        xmlns="urn:ietf:params:xml:ns:yang:yin:1"
+        xmlns:all_mod="urn:all">
+  <yang-version value="1"/>
+  <namespace uri="urn:all"/>
+  <prefix value="all_mod"/>
+  <feature name="feat1">
+    <status value="obsolete"/>
+    <if-feature name="feat2"/>
+  </feature>
+  <feature name="feat2"/>
+  <identity name="ident1">
+    <base name="ident2"/>
+  </identity>
+  <identity name="ident2"/>
+  <typedef name="tdef1">
+    <type name="tdef2">
+      <length value="3..9 | 30..40"/>
+      <pattern value="[ac]*"/>
+    </type>
+    <units name="none"/>
+    <default value="aaa"/>
+  </typedef>
+  <typedef name="tdef2">
+    <type name="string">
+      <length value="2..10 | 20..50"/>
+      <pattern value="[ab]*"/>
+    </type>
+  </typedef>
+  <grouping name="group1">
+    <leaf name="leaf1">
+      <type name="int8"/>
+    </leaf>
+  </grouping>
+  <container name="cont1">
+    <leaf name="leaf2">
+      <if-feature name="feat1"/>
+      <status value="obsolete"/>
+      <type name="int16"/>
+    </leaf>
+    <uses name="group1">
+      <if-feature name="feat2"/>
+    </uses>
+    <leaf name="leaf3">
+      <type name="int32"/>
+    </leaf>
+    <leaf name="leaf4">
+      <type name="int64">
+        <range value="1000 .. 50000">
+          <error-app-tag value="special-tag"/>
+          <error-message>
+            <value>Special error message.</value>
+          </error-message>
+        </range>
+      </type>
+    </leaf>
+    <leaf name="leaf5">
+      <type name="uint8"/>
+    </leaf>
+    <leaf name="leaf6">
+      <type name="uint16"/>
+    </leaf>
+    <leaf name="leaf7">
+      <type name="uint32"/>
+    </leaf>
+    <leaf name="leaf8">
+      <type name="uint64"/>
+    </leaf>
+    <choice name="choic1">
+      <default value="leaf10"/>
+      <leaf name="leaf9">
+        <type name="decimal64">
+          <fraction-digits value="9"/>
+        </type>
+      </leaf>
+      <leaf name="leaf10">
+        <type name="boolean"/>
+        <default value="false"/>
+      </leaf>
+    </choice>
+    <leaf name="leaf11">
+      <type name="enumeration">
+        <enum name="one"/>
+        <enum name="two"/>
+        <enum name="five">
+          <value value="5"/>
+        </enum>
+      </type>
+    </leaf>
+    <leaf name="leaf12">
+      <type name="bits">
+        <bit name="flag0">
+          <position value="0"/>
+        </bit>
+        <bit name="flag1"/>
+        <bit name="flag2">
+          <position value="2"/>
+        </bit>
+        <bit name="flag3">
+          <position value="3"/>
+        </bit>
+      </type>
+      <default value="flag0 flag3"/>
+    </leaf>
+    <leaf name="leaf13">
+      <type name="binary"/>
+    </leaf>
+    <leaf name="leaf14">
+      <type name="leafref">
+        <path value="/cont1/leaf17"/>
+      </type>
+    </leaf>
+    <leaf name="leaf15">
+      <type name="empty"/>
+    </leaf>
+    <leaf name="leaf16">
+      <type name="union">
+        <type name="instance-identifier">
+          <require-instance value="true"/>
+        </type>
+        <type name="int8"/>
+      </type>
+    </leaf>
+    <list name="list1">
+      <key value="leaf18"/>
+      <unique tag="leaf19"/>
+      <min-elements value="1"/>
+      <max-elements value="20"/>
+      <leaf name="leaf18">
+        <type name="string"/>
+      </leaf>
+      <leaf name="leaf19">
+        <type name="uint32"/>
+      </leaf>
+      <anyxml name="axml1"/>
+    </list>
+    <leaf-list name="llist1">
+      <type name="tdef1"/>
+      <ordered-by value="user"/>
+    </leaf-list>
+  </container>
+  <rpc name="rpc1">
+    <input>
+      <leaf name="leaf20">
+        <type name="tdef1"/>
+      </leaf>
+    </input>
+    <output>
+      <container name="cont2">
+        <leaf name="leaf21">
+          <type name="empty"/>
+        </leaf>
+      </container>
+    </output>
+  </rpc>
+  <notification name="notif1">
+    <leaf name="leaf22">
+      <type name="empty"/>
+    </leaf>
+  </notification>
+  <augment target-node="/cont1">
+    <leaf name="leaf17">
+      <type name="identityref">
+        <base name="ident1"/>
+      </type>
+    </leaf>
+  </augment>
+</module>

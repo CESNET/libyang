@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module name="all-dev"
+        xmlns="urn:ietf:params:xml:ns:yang:yin:1"
+        xmlns:alldev_mod="urn:all-dev"
+        xmlns:all_mod="urn:all">
+  <namespace uri="urn:all-dev"/>
+  <prefix value="alldev_mod"/>
+  <import module="all">
+    <prefix value="all_mod"/>
+  </import>
+  <deviation target-node="/all_mod:notif1/all_mod:leaf22">
+    <deviate value="replace">
+      <type name="string"/>
+    </deviate>
+    <deviate value="add">
+      <mandatory value="false"/>
+    </deviate>
+    <deviate value="add">
+      <config value="true"/>
+    </deviate>
+  </deviation>
+</module>
