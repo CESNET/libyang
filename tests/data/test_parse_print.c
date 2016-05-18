@@ -271,6 +271,7 @@ test_parse_print_xml(void **state)
 
     rpc_schema = ly_ctx_get_node(st->ctx, NULL, "/all:rpc1");
     assert_ptr_not_equal(rpc_schema, NULL);
+    assert_int_equal(rpc_schema->nodetype, LYS_RPC);
 
     st->dt = lyd_parse_path(st->ctx, rpcreply, LYD_XML, LYD_OPT_RPCREPLY, rpc_schema);
     assert_ptr_not_equal(st->dt, NULL);
