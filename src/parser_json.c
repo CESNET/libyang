@@ -883,8 +883,6 @@ attr_repeat:
         result->when_status = LYD_WHEN;
     }
 
-    /* TODO handle notifications */
-
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
@@ -905,7 +903,7 @@ attr_repeat:
         }
         len += r;
         len += skip_ws(&data[len]);
-    } else if (schema->nodetype & (LYS_CONTAINER | LYS_RPC)) {
+    } else if (schema->nodetype & (LYS_CONTAINER | LYS_RPC | LYS_NOTIF)) {
         if (data[len] != '{') {
             LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, result, "JSON data (missing begin-object)");
             goto error;
