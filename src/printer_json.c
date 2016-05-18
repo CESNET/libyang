@@ -27,7 +27,7 @@
 #define INDENT ""
 #define LEVEL (level*2)
 
-static void json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int withsiblings);
+static void json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int withsiblings, int toplevel);
 
 static int
 json_print_string(struct lyout *out, const char *text)
@@ -83,7 +83,7 @@ json_print_attrs(struct lyout *out, int level, const struct lyd_node *node, cons
 }
 
 static void
-json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int onlyvalue)
+json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int onlyvalue, int toplevel)
 {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
     const char *schema = NULL;
@@ -95,7 +95,7 @@ json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int o
     }
 
     if (!onlyvalue) {
-        if (!node->parent || nscmp(node, node->parent)) {
+        if (toplevel || !node->parent || nscmp(node, node->parent)) {
             /* print "namespace" */
             schema = lys_node_module(node->schema)->name;
             ly_print(out, "%*s\"%s:%s\":%s", LEVEL, INDENT, schema, node->schema->name, (level ? " " : ""));
@@ -129,7 +129,7 @@ json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int o
 
     case LY_TYPE_LEAFREF:
         if (leaf->value.leafref) {
-            json_print_leaf(out, level, leaf->value.leafref, 1);
+            json_print_leaf(out, level, leaf->value.leafref, 1, 0);
         } else {
             ly_print(out, "\"\"");
         }
@@ -161,11 +161,11 @@ json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int o
 }
 
 static void
-json_print_container(struct lyout *out, int level, const struct lyd_node *node)
+json_print_container(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
 {
     const char *schema;
 
-    if (!node->parent || nscmp(node, node->parent)) {
+    if (toplevel || !node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
         schema = lys_node_module(node->schema)->name;
         ly_print(out, "%*s\"%s:%s\":%s{%s", LEVEL, INDENT, schema, node->schema->name, (level ? " " : ""), (level ? "\n" : ""));
@@ -183,7 +183,7 @@ json_print_container(struct lyout *out, int level, const struct lyd_node *node)
             ly_print(out, ",%s", (level ? "\n" : ""));
         }
     }
-    json_print_nodes(out, level, node->child, 1);
+    json_print_nodes(out, level, node->child, 1, 0);
     if (level) {
         level--;
     }
@@ -191,7 +191,7 @@ json_print_container(struct lyout *out, int level, const struct lyd_node *node)
 }
 
 static void
-json_print_leaf_list(struct lyout *out, int level, const struct lyd_node *node, int is_list)
+json_print_leaf_list(struct lyout *out, int level, const struct lyd_node *node, int is_list, int toplevel)
 {
     const char *schema = NULL;
     const struct lyd_node *list = node;
@@ -202,7 +202,7 @@ json_print_leaf_list(struct lyout *out, int level, const struct lyd_node *node, 
         flag_empty = 1;
     }
 
-    if (!node->parent || nscmp(node, node->parent)) {
+    if (toplevel || !node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
         schema = lys_node_module(node->schema)->name;
         ly_print(out, "%*s\"%s:%s\":", LEVEL, INDENT, schema, node->schema->name);
@@ -235,7 +235,7 @@ json_print_leaf_list(struct lyout *out, int level, const struct lyd_node *node, 
                 json_print_attrs(out, level + 1, node, NULL);
                 ly_print(out, "%*s}%s", LEVEL, INDENT, list->child ? ",\n" : "");
             }
-            json_print_nodes(out, level, list->child, 1);
+            json_print_nodes(out, level, list->child, 1, 0);
             if (level) {
                 --level;
             }
@@ -246,7 +246,7 @@ json_print_leaf_list(struct lyout *out, int level, const struct lyd_node *node, 
         } else {
             /* leaf-list print */
             ly_print(out, "%*s", LEVEL, INDENT);
-            json_print_leaf(out, level, list, 1);
+            json_print_leaf(out, level, list, 1, toplevel);
             if (list->attr) {
                 flag_attrs = 1;
             }
@@ -298,13 +298,13 @@ json_print_leaf_list(struct lyout *out, int level, const struct lyd_node *node, 
 }
 
 static void
-json_print_anyxml(struct lyout *out, int level, const struct lyd_node *node)
+json_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
 {
     const char *schema = NULL;
     struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
     char *xml;
 
-    if (!node->parent || nscmp(node, node->parent)) {
+    if (toplevel || !node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
         schema = lys_node_module(node->schema)->name;
         ly_print(out, "%*s\"%s:%s\": ", LEVEL, INDENT, schema, node->schema->name);
@@ -341,7 +341,7 @@ json_print_anyxml(struct lyout *out, int level, const struct lyd_node *node)
 }
 
 static void
-json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int withsiblings)
+json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int withsiblings, int toplevel)
 {
     const struct lyd_node *node, *iter;
 
@@ -354,14 +354,14 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
                 /* print the previous comma */
                 ly_print(out, ",%s", (level ? "\n" : ""));
             }
-            json_print_container(out, level, node);
+            json_print_container(out, level, node, toplevel);
             break;
         case LYS_LEAF:
             if (node->prev->next) {
                 /* print the previous comma */
                 ly_print(out, ",%s", (level ? "\n" : ""));
             }
-            json_print_leaf(out, level, node, 0);
+            json_print_leaf(out, level, node, 0, toplevel);
             break;
         case LYS_LEAFLIST:
         case LYS_LIST:
@@ -382,7 +382,7 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
                 }
 
                 /* print the list/leaflist */
-                json_print_leaf_list(out, level, node, node->schema->nodetype == LYS_LIST ? 1 : 0);
+                json_print_leaf_list(out, level, node, node->schema->nodetype == LYS_LIST ? 1 : 0, toplevel);
             }
             break;
         case LYS_ANYXML:
@@ -390,7 +390,7 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
                 /* print the previous comma */
                 ly_print(out, ",%s", (level ? "\n" : ""));
             }
-            json_print_anyxml(out, level, node);
+            json_print_anyxml(out, level, node, toplevel);
             break;
         default:
             LOGINT;
@@ -419,7 +419,7 @@ json_print_data(struct lyout *out, const struct lyd_node *root, int options)
     ly_print(out, "{%s", (level ? "\n" : ""));
 
     /* content */
-    json_print_nodes(out, level, root, options & LYP_WITHSIBLINGS);
+    json_print_nodes(out, level, root, options & LYP_WITHSIBLINGS, 1);
 
     /* end */
     ly_print(out, "}%s", (level ? "\n" : ""));
