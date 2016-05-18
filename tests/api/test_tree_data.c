@@ -1373,6 +1373,23 @@ test_lyd_print_clb_json(void **state)
     free(buf);
 }
 
+static void
+test_lyd_path(void **state)
+{
+    (void) state; /* unused */
+    char *str;
+
+    str = lyd_path(root);
+    assert_ptr_not_equal(str, NULL);
+    assert_string_equal(str, "/a:x");
+    free(str);
+
+    str = lyd_path(root->child);
+    assert_ptr_not_equal(str, NULL);
+    assert_string_equal(str, "/a:x/bubba");
+    free(str);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1410,6 +1427,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lyd_print_clb_xml, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_print_clb_xml_format, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_print_clb_json, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lyd_path, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

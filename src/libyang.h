@@ -987,11 +987,23 @@ struct ly_set *ly_set_new(void);
 /**
  * @brief Add a ::lyd_node or ::lys_node object into the set
  *
+ * Since it is a set, the function checks for duplicity and if the
+ * node is already in the set, the index of the previously added
+ * node is returned.
+ *
  * @param[in] set Set where the \p node will be added.
  * @param[in] node The ::lyd_node or ::lys_node object to be added into the \p set;
- * @return 0 on success
+ * @return -1 on failure, index of the \p node in the set on success
  */
 int ly_set_add(struct ly_set *set, void *node);
+
+/**
+ * @brief Remove all objects from the set, but keep the set container for further use.
+ *
+ * @param[in] set Set to clean.
+ * @return 0 on success
+ */
+int ly_set_clean(struct ly_set *set);
 
 /**
  * @brief Remove a ::lyd_node or ::lys_node object from the set.
