@@ -359,7 +359,7 @@ xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int 
     if (axml->xml_struct) {
         if (axml->value.xml) {
             lyxml_print_mem(&buf, axml->value.xml, LYXML_PRINT_FORMAT | LYXML_PRINT_SIBLINGS);
-            ly_print(out, "%*s%s", LEVEL, INDENT, buf);
+            ly_print(out, "\n%s", buf);
             free(buf);
         }
     } else {
