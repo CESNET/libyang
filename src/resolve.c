@@ -555,9 +555,7 @@ parse_instance_identifier(const char *id, const char **model, int *mod_len, cons
     ++id;
 
     if ((ret = parse_node_identifier(id, model, mod_len, name, nam_len)) < 1) {
-        return -parsed+ret;
-    } else if (model && !*model) {
-        return -parsed;
+        return -parsed + ret;
     }
 
     parsed += ret;
@@ -3289,7 +3287,7 @@ resolve_instid(struct lyd_node *data, const char *path)
 {
     int i = 0, j;
     struct lyd_node *result = NULL;
-    const struct lys_module *mod = NULL;
+    const struct lys_module *mod, *prev_mod;
     struct ly_ctx *ctx = data->schema->module->ctx;
     const char *model, *name;
     char *str;
@@ -3306,6 +3304,8 @@ resolve_instid(struct lyd_node *data, const char *path)
         for (; data->prev->next; data = data->prev);
     }
 
+    prev_mod = lyd_node_module(data);
+
     /* search for the instance node */
     while (path[i]) {
         j = parse_instance_identifier(&path[i], &model, &mod_len, &name, &name_len, &has_predicate);
@@ -3315,17 +3315,16 @@ resolve_instid(struct lyd_node *data, const char *path)
         }
         i += j;
 
-        str = strndup(model, mod_len);
-        if (!str) {
-            LOGMEM;
-            goto error;
-        }
-        mod = ly_ctx_get_module(ctx, str, NULL);
-        free(str);
-
-        if (!mod) {
-            /* no instance exists */
-            return NULL;
+        if (model) {
+            str = strndup(model, mod_len);
+            if (!str) {
+                LOGMEM;
+                goto error;
+            }
+            mod = ly_ctx_get_module(ctx, str, NULL);
+            free(str);
+        } else {
+            mod = prev_mod;
         }
 
         if (resolve_data(mod, name, name_len, data, &node_match)) {
@@ -3360,6 +3359,8 @@ resolve_instid(struct lyd_node *data, const char *path)
                 return NULL;
             }
         }
+
+        prev_mod = mod;
     }
 
     if (!node_match.count) {
