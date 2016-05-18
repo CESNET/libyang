@@ -267,60 +267,61 @@ lyjson_parse_boolean(const char *data)
 static unsigned int
 json_get_anyxml(struct lyd_node_anyxml *axml, const char *data)
 {
-    unsigned int len = 0;
-    char stop, start;
-    int level = 0;
+    struct ly_ctx *ctx;
+    unsigned int len = 0, r;
+    char *str;
 
-    switch (data[len]) {
-    case '"':
-        start = 0;
-        stop = '"';
-        len++;
-        level = 1;
-        break;
-    case '[':
-        start = '[';
-        stop = ']';
-        break;
-    case '{':
-        start = '{';
-        stop = '}';
-        break;
-    default:
-        /* number or one of literals */
-        while (!isspace(data[len])) {
-            len++;
+    ctx = axml->schema->module->ctx;
+
+    if (data[len] == '"') {
+        /* string representations */
+        ++len;
+        str = lyjson_parse_text(&data[len], &r);
+        if (!str) {
+            LOGPATH(LY_VLOG_LYD, axml);
+            return 0;
         }
         axml->xml_struct = 0;
-        axml->value.str = NULL; /* TODO ??? */
-        return len;
+        axml->value.str = lydict_insert_zc(ctx, str);
+        if (data[len + r] != '"') {
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, axml,
+                   "JSON data (missing quotation-mark at the end of string)");
+            return 0;
+        }
+        len += r + 1;
+    } else if (data[len] == '-' || isdigit(data[len])) {
+        /* numeric type */
+        r = lyjson_parse_number(&data[len]);
+        if (!r) {
+            LOGPATH(LY_VLOG_LYD, axml);
+            return 0;
+        }
+        axml->xml_struct = 0;
+        axml->value.str = lydict_insert(ctx, &data[len], r);
+        len += r;
+    } else if (data[len] == 'f' || data[len] == 't') {
+        /* boolean */
+        r = lyjson_parse_boolean(&data[len]);
+        if (!r) {
+            LOGPATH(LY_VLOG_LYD, axml);
+            return 0;
+        }
+        axml->xml_struct = 0;
+        axml->value.str = lydict_insert(ctx, &data[len], r);
+        len += r;
+    } else if (!strncmp(&data[len], "[null]", 6)) {
+        /* empty */
+        axml->xml_struct = 0;
+        axml->value.str = lydict_insert(ctx, "", 0);
+        len += 6;
+    } else {
+        /* error */
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, axml, "JSON data (unexpected value)");
+        return 0;
     }
 
-    while (data[len]) {
-        if (start && data[len] == start) {
-            if (!len || data[len - 1] != '\\') {
-                level++;
-            }
-        } else if (data[len] == stop) {
-            if (!len || data[len - 1] != '\\') {
-                level--;
-            }
-        }
-        len++;
-        if (!level) {
-            /* we are done */
-            if (!start) {
-                axml->xml_struct = 0;
-                axml->value.str = lydict_insert(axml->schema->module->ctx, &data[1], len - 2);
-            } else {
-                axml->xml_struct = 0;
-                axml->value.str = NULL; /* TODO ??? */
-            }
-            return len;
-        }
-    }
-
-    return 0;
+    len += skip_ws(&data[len]);
+    return len;
 }
 
 static unsigned int
