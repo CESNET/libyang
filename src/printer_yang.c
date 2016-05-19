@@ -577,7 +577,8 @@ yang_print_deviation(struct lyout *out, int level, const struct lys_module *modu
     for (i = 0; i < deviation->deviate_size; ++i) {
         ly_print(out, "%*sdeviate ", LEVEL, INDENT);
         if (deviation->deviate[i].mod == LY_DEVIATE_NO) {
-            ly_print(out, "not-supported {\n");
+            ly_print(out, "not-supported;\n");
+            continue;
         } else if (deviation->deviate[i].mod == LY_DEVIATE_ADD) {
             ly_print(out, "add {\n");
         } else if (deviation->deviate[i].mod == LY_DEVIATE_RPL) {
@@ -600,7 +601,7 @@ yang_print_deviation(struct lyout *out, int level, const struct lys_module *modu
         }
 
         if (deviation->deviate[i].dflt) {
-            ly_print(out, "%*sdefault %s;\n", LEVEL, INDENT, deviation->deviate[i].dflt);
+            ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, deviation->deviate[i].dflt);
         }
 
         if (deviation->deviate[i].min_set) {
@@ -627,7 +628,7 @@ yang_print_deviation(struct lyout *out, int level, const struct lys_module *modu
         }
 
         if (deviation->deviate[i].units) {
-            ly_print(out, "%*sunits %s;\n", LEVEL, INDENT, deviation->deviate[i].units);
+            ly_print(out, "%*sunits \"%s\";\n", LEVEL, INDENT, deviation->deviate[i].units);
         }
 
         level--;
@@ -866,22 +867,11 @@ yang_print_leaf(struct lyout *out, int level, const struct lys_node *node)
     }
     yang_print_snode_common2(out, level, node, NULL);
     yang_print_type(out, level, node->module, &leaf->type);
-    if (leaf->units != NULL) {
+    if (leaf->units) {
         ly_print(out, "%*sunits \"%s\";\n", LEVEL, INDENT, leaf->units);
     }
-    if (leaf->dflt != NULL) {
-        switch (leaf->type.base) {
-        case LY_TYPE_STRING:
-        case LY_TYPE_LEAFREF:
-        case LY_TYPE_IDENT:
-        case LY_TYPE_UNION:
-	case LY_TYPE_BITS:
-            ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, leaf->dflt);
-            break;
-        default:
-            ly_print(out, "%*sdefault %s;\n", LEVEL, INDENT, leaf->dflt);
-            break;
-        }
+    if (leaf->dflt) {
+        ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, leaf->dflt);
     }
     level--;
 

@@ -594,7 +594,8 @@ yin_print_deviation(struct lyout *out, int level, const struct lys_module *modul
     for (i = 0; i < deviation->deviate_size; ++i) {
         ly_print(out, "%*s<deviate value=", LEVEL, INDENT);
         if (deviation->deviate[i].mod == LY_DEVIATE_NO) {
-            ly_print(out, "\"not-supported\">\n");
+            ly_print(out, "\"not-supported\"/>\n");
+            continue;
         } else if (deviation->deviate[i].mod == LY_DEVIATE_ADD) {
             ly_print(out, "\"add\">\n");
         } else if (deviation->deviate[i].mod == LY_DEVIATE_RPL) {
