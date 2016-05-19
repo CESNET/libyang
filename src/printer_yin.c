@@ -625,8 +625,8 @@ yin_print_deviation(struct lyout *out, int level, const struct lys_module *modul
             yin_print_unsigned(out, level, "min-elements", "value", deviation->deviate[i].min);
         }
         if (deviation->deviate[i].max_set) {
-            if (deviation->deviate[1].max) {
-                yin_print_unsigned(out, level, "max-elements", "value", deviation->deviate[1].max);
+            if (deviation->deviate[i].max) {
+                yin_print_unsigned(out, level, "max-elements", "value", deviation->deviate[i].max);
             } else {
                 yin_print_open(out, level, "max-elements", "value", "unbounded", 1);
             }
