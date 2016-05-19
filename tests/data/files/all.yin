@@ -139,6 +139,9 @@
       <type name="tdef1"/>
       <ordered-by value="user"/>
     </leaf-list>
+    <leaf name="leaf23">
+      <type name="empty"/>
+    </leaf>
   </container>
   <rpc name="rpc1">
     <input>

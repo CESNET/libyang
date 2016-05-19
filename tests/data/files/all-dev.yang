@@ -17,4 +17,26 @@ module all-dev {
       config true;
     }
   }
+
+  deviation "/all_mod:cont1/all_mod:list1" {
+    deviate replace {
+      min-elements 2;
+      max-elements 15;
+    }
+    deviate delete {
+      unique "leaf19";
+    }
+  }
+
+  deviation "/all_mod:cont1/all_mod:leaf13" {
+    deviate add {
+      default "CVdseNE==";
+      must "../leaf2 > 0";
+      units "b/h";
+    }
+  }
+
+  deviation "/all_mod:cont1/all_mod:leaf23" {
+    deviate not-supported;
+  }
 }
