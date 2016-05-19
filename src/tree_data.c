@@ -1627,6 +1627,20 @@ lyd_diff_move_preprocess(struct diff_ordered *ordered, struct lyd_node *first, s
     return 0;
 }
 
+static struct lyd_difflist *
+lyd_diff_init_difflist(unsigned int *size)
+{
+    struct lyd_difflist *result;
+
+    result = malloc(sizeof *result);
+    *size = 1;
+    result->type = calloc(*size, sizeof *result->type);
+    result->first = calloc(*size, sizeof *result->first);
+    result->second = calloc(*size, sizeof *result->second);
+
+    return result;
+}
+
 API struct lyd_difflist *
 lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
 {
@@ -1645,11 +1659,34 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
     struct diff_ordered_item item_aux;
 
     if (!first) {
-        LOGERR(LY_EINVAL, "%s: \"first\" parameter is NULL.", __func__);
-        return NULL;
+        /* all nodes in second were created,
+         * but the second must be top level */
+        if (second && second->parent) {
+            LOGERR(LY_EINVAL, "%s: \"first\" parameter is NULL and \"second\" is not top level.", __func__);
+            return NULL;
+        }
+        result = lyd_diff_init_difflist(&size);
+        LY_TREE_FOR(second, iter) {
+            if (lyd_difflist_add(result, &size, index++, LYD_DIFF_CREATED, NULL, iter)) {
+                goto error;
+            }
+            if (options & LYD_OPT_NOSIBLINGS) {
+                break;
+            }
+        }
+        return result;
     } else if (!second) {
-        LOGERR(LY_EINVAL, "%s: \"second\" parameter is NULL.", __func__);
-        return NULL;
+        /* all nodes from first were deleted */
+        result = lyd_diff_init_difflist(&size);
+        LY_TREE_FOR(first, iter) {
+            if (lyd_difflist_add(result, &size, index++, LYD_DIFF_DELETED, iter, NULL)) {
+                goto error;
+            }
+            if (options & LYD_OPT_NOSIBLINGS) {
+                break;
+            }
+        }
+        return result;
     }
 
     if (options & LYD_OPT_NOSIBLINGS) {
@@ -1690,22 +1727,14 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
     }
 
     /* initiate resulting structure */
-    result = malloc(sizeof *result);
-    size = 1;
-    result->type = calloc(size, sizeof *result->type);
-    result->first = calloc(size, sizeof *result->first);
-    result->second = calloc(size, sizeof *result->second);
+    result = lyd_diff_init_difflist(&size);
 
     /* the records about created and moved items are created in
      * bad order, so the records about created nodes (and their
      * possible moving) is stored separately and added to the
      * main result at the end.
      */
-    result2 = malloc(sizeof *result);
-    size2 = 1;
-    result2->type = calloc(size2, sizeof *result->type);
-    result2->first = calloc(size2, sizeof *result->first);
-    result2->second = calloc(size2, sizeof *result->second);
+    result2 = lyd_diff_init_difflist(&size2);
 
     matchlist = malloc(sizeof *matchlist);
     matchlist->match = ly_set_new();
