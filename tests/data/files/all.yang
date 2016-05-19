@@ -1,5 +1,4 @@
 module all {
-  yang-version 1;
   namespace "urn:all";
   prefix all_mod;
 
@@ -81,7 +80,7 @@ module all {
       }
       leaf leaf10 {
         type boolean;
-        default false;
+        default "false";
       }
     }
     leaf leaf11 {
@@ -143,6 +142,9 @@ module all {
     leaf-list llist1 {
       type tdef1;
       ordered-by user;
+    }
+    leaf leaf23 {
+      type empty;
     }
   }
 

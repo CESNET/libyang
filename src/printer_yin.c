@@ -594,7 +594,8 @@ yin_print_deviation(struct lyout *out, int level, const struct lys_module *modul
     for (i = 0; i < deviation->deviate_size; ++i) {
         ly_print(out, "%*s<deviate value=", LEVEL, INDENT);
         if (deviation->deviate[i].mod == LY_DEVIATE_NO) {
-            ly_print(out, "\"not-supported\">\n");
+            ly_print(out, "\"not-supported\"/>\n");
+            continue;
         } else if (deviation->deviate[i].mod == LY_DEVIATE_ADD) {
             ly_print(out, "\"add\">\n");
         } else if (deviation->deviate[i].mod == LY_DEVIATE_RPL) {
@@ -624,8 +625,8 @@ yin_print_deviation(struct lyout *out, int level, const struct lys_module *modul
             yin_print_unsigned(out, level, "min-elements", "value", deviation->deviate[i].min);
         }
         if (deviation->deviate[i].max_set) {
-            if (deviation->deviate[1].max) {
-                yin_print_unsigned(out, level, "max-elements", "value", deviation->deviate[1].max);
+            if (deviation->deviate[i].max) {
+                yin_print_unsigned(out, level, "max-elements", "value", deviation->deviate[i].max);
             } else {
                 yin_print_open(out, level, "max-elements", "value", "unbounded", 1);
             }

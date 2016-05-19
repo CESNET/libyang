@@ -19,4 +19,23 @@
       <config value="true"/>
     </deviate>
   </deviation>
+  <deviation target-node="/all_mod:cont1/all_mod:list1">
+    <deviate value="replace">
+      <min-elements value="2"/>
+      <max-elements value="15"/>
+    </deviate>
+    <deviate value="delete">
+      <unique tag="leaf19"/>
+    </deviate>
+  </deviation>
+  <deviation target-node="/all_mod:cont1/all_mod:leaf13">
+    <deviate value="add">
+      <default value="CVdseNE=="/>
+      <must condition="../leaf2 &gt; 0"/>
+      <units name="b/h"/>
+    </deviate>
+  </deviation>
+  <deviation target-node="/all_mod:cont1/all_mod:leaf23">
+    <deviate value="not-supported"/>
+  </deviation>
 </module>
