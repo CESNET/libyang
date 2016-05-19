@@ -31,9 +31,12 @@
  * make dictionary size dynamic
  */
 struct dict_rec {
-    char *value;
-    uint32_t refcount;
     struct dict_rec *next;
+    char *value;
+    uint32_t refcount:22;
+    uint32_t len:10;
+#define DICT_REC_MAXCOUNT 0x003fffff
+#define DICT_REC_MAXLEN   0x000003ff
 };
 
 /**
