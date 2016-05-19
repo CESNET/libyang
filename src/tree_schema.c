@@ -2544,7 +2544,8 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
         uses->augment_size = uses_orig->augment_size;
         if (!shallow) {
             uses->augment = lys_augment_dup(module, (struct lys_node *)uses, uses_orig->augment, uses_orig->augment_size);
-            if (!uses->child) {
+            if (!uses->grp || uses->grp->nacm) {
+                assert(!uses->child);
                 if (unres_schema_add_node(module, unres, uses, UNRES_USES, NULL) == -1) {
                     goto error;
                 }
