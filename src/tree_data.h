@@ -297,9 +297,10 @@ void lyd_free_diff(struct lyd_difflist *diff);
  * first tree) using lyd_path() to get identifiers for the nodes used in the transactions.
  *
  * @param[in] first The first (sub)tree to compare. Without #LYD_OPT_NOSIBLINGS option, all siblings are
- *            taken into comparison.
+ *            taken into comparison. If NULL, all the \p second nodes are supposed to be top level and they will
+ *            be marked as #LYD_DIFF_CREATED.
  * @param[in] second The second (sub)tree to compare. Without #LYD_OPT_NOSIBLINGS option, all siblings are
- *            taken into comparison.
+ *            taken into comparison. If NULL, all the \p first nodes will be marked as #LYD_DIFF_DELETED.
  * @param[in] options The following @ref parseroptions with the described meanings are accepted:
  *            - #LYD_OPT_NOSIBLINGS - the \p first and the \p second have to instantiate the same schema node and
  *              only their content (subtree) is compared.

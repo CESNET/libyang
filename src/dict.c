@@ -144,6 +144,7 @@ static char *
 dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
 {
     uint32_t index;
+    int match = 0;
     struct dict_rec *record, *new;
 
     index = dict_hash(value, len) & ctx->dict.hash_mask;
@@ -163,6 +164,11 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
             record->value[len] = '\0';
         }
         record->refcount = 1;
+        if (len > DICT_REC_MAXLEN) {
+            record->len = 0;
+        } else {
+            record->len = len;
+        }
         record->next = NULL;
 
         ctx->dict.used++;
@@ -173,8 +179,25 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
 
     /* collision, search if the value is already in dict */
     while (record) {
-        if (!strncmp(value, record->value, len) && record->value[len] == '\0') {
+        if (record->len) {
+            /* for strings shorter than DICT_REC_MAXLEN we are able to speed up
+             * recognition of varying strings according to their lengths, and
+             * for strings with the same length it is safe to use faster memcmp()
+             * instead of strncmp() */
+            if ((record->len == len) && !memcmp(value, record->value, len)) {
+                match = 1;
+            }
+        } else {
+            if (!strncmp(value, record->value, len) && record->value[len] == '\0') {
+                match = 1;
+            }
+        }
+        if (match) {
             /* record found */
+            if (record->refcount == DICT_REC_MAXCOUNT) {
+                LOGWRN("DICT: refcount overflow detected, duplicating record");
+                break;
+            }
             record->refcount++;
 
             if (zerocopy) {
@@ -212,8 +235,12 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
         new->value[len] = '\0';
     }
     new->refcount = 1;
-    new->next = NULL;
-
+    if (len > DICT_REC_MAXLEN) {
+        new->len = 0;
+    } else {
+        new->len = len;
+    }
+    new->next = record->next; /* in case of refcount overflow, we are not at the end of chain */
     record->next = new;
 
     ctx->dict.used++;

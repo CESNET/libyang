@@ -1546,8 +1546,8 @@ resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct 
                         /* wrong path for shorthand */
                         str = strndup(nodeid, (name + nam_len) - nodeid);
                         LOGVAL(LYE_PATH_INNODE, LY_VLOG_STR, str);
-                        free(str);
                         LOGVAL(LYE_SPEC, LY_VLOG_STR, str, "Schema shorthand case path must include the virtual case statement.");
+                        free(str);
                         return NULL;
                     }
                     return sibling;

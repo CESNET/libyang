@@ -106,6 +106,88 @@ test_same(void **state)
 }
 
 static void
+test_empty1(void **state)
+{
+    struct state *st = (*state);
+    const char *xml = "<df xmlns=\"urn:libyang:tests:defaults\">"
+                        "<foo>42</foo><b1_1>42</b1_1>"
+                      "</df><hidden xmlns=\"urn:libyang:tests:defaults\">"
+                        "<foo>42</foo><baz>42</baz></hidden>";
+    struct lyd_difflist *diff;
+
+    assert_ptr_not_equal((st->first = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG)), NULL);
+
+    assert_ptr_not_equal((diff = lyd_diff(NULL, st->first, 0)), NULL);
+    assert_ptr_not_equal(diff->type, NULL);
+
+    assert_int_equal(diff->type[0], LYD_DIFF_CREATED);
+    assert_ptr_equal(diff->first[0], NULL);
+    assert_ptr_equal(diff->second[0], st->first);
+
+    assert_int_equal(diff->type[1], LYD_DIFF_CREATED);
+    assert_ptr_equal(diff->first[1], NULL);
+    assert_ptr_equal(diff->second[1], st->first->next);
+
+    assert_int_equal(diff->type[2], LYD_DIFF_END);
+    lyd_free_diff(diff);
+}
+
+static void
+test_empty2(void **state)
+{
+    struct state *st = (*state);
+    const char *xml = "<df xmlns=\"urn:libyang:tests:defaults\">"
+                        "<foo>42</foo><b1_1>42</b1_1>"
+                      "</df><hidden xmlns=\"urn:libyang:tests:defaults\">"
+                        "<foo>42</foo><baz>42</baz></hidden>";
+    struct lyd_difflist *diff;
+
+    assert_ptr_not_equal((st->first = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG)), NULL);
+
+    assert_ptr_not_equal((diff = lyd_diff(st->first, NULL, 0)), NULL);
+    assert_ptr_not_equal(diff->type, NULL);
+
+    assert_int_equal(diff->type[0], LYD_DIFF_DELETED);
+    assert_ptr_equal(diff->first[0], st->first);
+    assert_ptr_equal(diff->second[0], NULL);
+
+    assert_int_equal(diff->type[1], LYD_DIFF_DELETED);
+    assert_ptr_equal(diff->first[1], st->first->next);
+    assert_ptr_equal(diff->second[1], NULL);
+
+    assert_int_equal(diff->type[2], LYD_DIFF_END);
+    lyd_free_diff(diff);
+}
+
+static void
+test_empty3(void **state)
+{
+    struct state *st = (*state);
+    const char *xml = "<df xmlns=\"urn:libyang:tests:defaults\"><foo>42</foo></df>";
+    struct lyd_difflist *diff;
+
+    assert_ptr_not_equal((st->first = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG)), NULL);
+
+    assert_ptr_not_equal((diff = lyd_diff(NULL, NULL, 0)), NULL);
+    assert_ptr_not_equal(diff->type, NULL);
+    assert_int_equal(diff->type[0], LYD_DIFF_END);
+    lyd_free_diff(diff);
+
+    assert_ptr_equal((diff = lyd_diff(NULL, st->first->child, 0)), NULL);
+    assert_int_equal(ly_errno, LY_EINVAL);
+
+    assert_ptr_not_equal((diff = lyd_diff(st->first->child, NULL, 0)), NULL);
+    assert_ptr_not_equal(diff->type, NULL);
+
+    assert_int_equal(diff->type[0], LYD_DIFF_DELETED);
+    assert_ptr_equal(diff->first[0], st->first->child);
+    assert_ptr_equal(diff->second[0], NULL);
+
+    assert_int_equal(diff->type[1], LYD_DIFF_END);
+    lyd_free_diff(diff);
+}
+
+static void
 test_diff1(void **state)
 {
     struct state *st = (*state);
@@ -383,6 +465,9 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
                     cmocka_unit_test_setup_teardown(test_same, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_empty1, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_empty2, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_empty3, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_diff1, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_diff2, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_move1, setup_f, teardown_f),
