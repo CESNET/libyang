@@ -3910,6 +3910,9 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
     }
 
     /* last part - process data nodes */
+    if (!root.child) {
+        LOGWRN("Grouping \"%s\" without children.", retval->name);
+    }
     LY_TREE_FOR_SAFE(root.child, next, sub) {
         if (!strcmp(sub->name, "container")) {
             node = read_yin_container(module, retval, sub, resolve, unres);
