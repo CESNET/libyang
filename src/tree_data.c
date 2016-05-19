@@ -1646,14 +1646,14 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
 {
     int rc;
     struct lyd_node *elem1, *elem2, *iter, *aux, *next1, *next2;
-    struct lyd_difflist *result, *result2;
+    struct lyd_difflist *result, *result2 = NULL;
     void *new;
     unsigned int size, size2, index = 0, index2 = 0, i, j, k;
     struct matchlist_s {
         struct matchlist_s *prev;
         struct ly_set *match;
-    } *matchlist, *mlaux;
-    struct ly_set *ordset_keys, *ordset;
+    } *matchlist = NULL, *mlaux;
+    struct ly_set *ordset_keys = NULL, *ordset = NULL;
     struct diff_ordered *ordered;
     struct diff_ordered_dist *dist_aux, *dist_iter;
     struct diff_ordered_item item_aux;
