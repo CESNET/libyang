@@ -1337,7 +1337,7 @@ yang_read_deviation(struct lys_module *module, char *value)
     /* resolve target node */
     rc = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&dev_target);
     if (rc || !dev_target) {
-        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, "deviations");
+        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, "deviation");
         goto error;
     }
     if (dev_target->module == lys_main_module(module)) {
