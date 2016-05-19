@@ -3388,16 +3388,25 @@ error:
 }
 
 /**
- * @brief Passes config flag down to children. Does not log.
+ * @brief Passes config flag down to children, skips nodes without config flags.
+ * Does not log.
  *
- * @param[in] node Parent node.
+ * @param[in] node Siblings and their children to have flags changed.
+ * @param[in] flags Flags to assign to all the nodes.
  */
 static void
-inherit_config_flag(struct lys_node *node)
+inherit_config_flag(struct lys_node *node, int flags)
 {
+    assert(!(flags ^ (flags & LYS_CONFIG_MASK)));
     LY_TREE_FOR(node, node) {
-        node->flags |= lys_parent(node)->flags & LYS_CONFIG_MASK;
-        inherit_config_flag(node->child);
+        if (node->flags & LYS_CONFIG_SET) {
+            /* skip nodes with an explicit config value */
+            continue;
+        }
+        if (!(node->nodetype & (LYS_USES | LYS_GROUPING))) {
+            node->flags |= flags;
+        }
+        inherit_config_flag(node->child, flags);
     }
 }
 
@@ -3472,12 +3481,9 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
         return -1;
     }
 
-    /* inherit config information from parent, augment does not have
-     * config property, but we need to keep the information for subelements
-     */
-    aug->flags |= aug->target->flags & LYS_CONFIG_MASK;
+    /* inherit config information from actual parent */
     LY_TREE_FOR(aug->child, sub) {
-        inherit_config_flag(sub);
+        inherit_config_flag(sub, aug->target->flags & LYS_CONFIG_MASK);
     }
 
     /* check identifier uniqueness as in lys_node_addchild() */
@@ -3512,19 +3518,33 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 {
     struct ly_ctx *ctx;
     struct lys_node *node = NULL, *next, *iter;
-    const struct lys_node *node_aux;
+    struct lys_node *node_aux;
     struct lys_refine *rfn;
     struct lys_restr *must, **old_must;
-    int i, j, rc;
+    int i, j, rc, parent_flags;
     uint8_t size, *old_size;
 
     assert(uses->grp);
     /* HACK just check that the grouping is resolved */
     assert(!uses->grp->nacm);
 
+    if (!uses->grp->child) {
+        /* grouping without children, warning was already displayed */
+        return EXIT_SUCCESS;
+    }
+
+    /* get proper parent (config) flags */
+    for (node_aux = lys_parent((struct lys_node *)uses); node_aux && (node_aux->nodetype == LYS_USES); node_aux = lys_parent(node_aux));
+    if (node_aux) {
+        parent_flags = node_aux->flags & LYS_CONFIG_MASK;
+    } else {
+        /* default */
+        parent_flags = LYS_CONFIG_W;
+    }
+
     /* copy the data nodes from grouping into the uses context */
     LY_TREE_FOR(uses->grp->child, node_aux) {
-        node = lys_node_dup(uses->module, (struct lys_node *)uses, node_aux, uses->flags, uses->nacm, unres, 0);
+        node = lys_node_dup(uses->module, (struct lys_node *)uses, node_aux, 0, uses->nacm, unres, 0);
         if (!node) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, uses->grp->name, "uses");
             LOGVAL(LYE_SPEC, LY_VLOG_LYS, uses, "Copying data from grouping failed.");
@@ -3532,6 +3552,11 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
         }
     }
     ctx = uses->module->ctx;
+
+    if (parent_flags) {
+        assert(uses->child);
+        inherit_config_flag(uses->child, parent_flags);
+    }
 
     /* we managed to copy the grouping, the rest must be possible to resolve */
 
