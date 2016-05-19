@@ -1383,6 +1383,7 @@ yang_read_deviate_unsupported(struct type_deviation *dev)
     }
 
     /* unlink and store the original node */
+    lys_node_unlink(dev->target);
     dev->deviation->orig_node = dev->target;
 
     dev->deviation->deviate_size = 1;
