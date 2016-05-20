@@ -324,9 +324,6 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
                 if (!diter) {
                     /* instance not found */
                     missing_parent = set->set.s[i];
-                    if (toplevel) {
-                        data = NULL;
-                    }
                     break;
                 }
                 data = diter;
@@ -345,7 +342,7 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
 
     if (node->flags & LYS_MAND_TRUE) {
         if (missing_parent) {
-            LOGVAL(LYE_MISSELEM, LY_VLOG_LYD, data, node->name,
+            LOGVAL(LYE_MISSELEM, LY_VLOG_LYD, toplevel ? NULL : data, node->name,
                    (lys_parent(node) ? lys_parent(node)->name : lys_node_module(node)->name));
             return EXIT_FAILURE;
         }
