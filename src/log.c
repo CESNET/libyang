@@ -84,7 +84,9 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         if (!path) {
             /* erase previous path */
             ((struct ly_err *)&ly_errno)->path_index = LY_BUF_SIZE - 1;
-            ((struct ly_err *)&ly_errno)->path_obj = NULL;
+            if (((struct ly_err *)&ly_errno)->path_obj != NULL + 1) {
+                ((struct ly_err *)&ly_errno)->path_obj = NULL;
+            }
         }
 
         /* if the error-app-tag should be set, do it after calling LOGVAL */
