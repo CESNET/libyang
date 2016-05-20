@@ -2794,7 +2794,7 @@ lyd_unlink(struct lyd_node *node)
                     }
                     ly_set_free(data);
                 } else {
-                    ly_errno = LY_SUCCESS;
+                    return EXIT_FAILURE;
                 }
             }
         }
