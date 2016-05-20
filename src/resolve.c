@@ -4614,6 +4614,10 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
 static void
 print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
 {
+    struct lyxml_elem *xml;
+    struct lyxml_attr *attr;
+    const char *type_name;
+
     switch (type) {
     case UNRES_IDENT:
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "identity", (char *)str_node);
@@ -4626,8 +4630,19 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
                ((struct lys_type *)item)->info.lref.path);
         break;
     case UNRES_TYPE_DER:
-        LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "derived type",
-               ((struct lyxml_elem *)((struct lys_type *)item)->der)->attr->value);
+        xml = (struct lyxml_elem *)((struct lys_type *)item)->der;
+        if (xml->flags & LY_YANG_STRUCTURE_FLAG) {
+            type_name = ((struct yang_type *)xml)->name;
+        } else {
+            LY_TREE_FOR(xml->attr, attr) {
+                if ((attr->type == LYXML_ATTR_STD) && !strcmp(attr->name, "name")) {
+                    type_name = attr->value;
+                    break;
+                }
+            }
+            assert(attr);
+        }
+        LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "derived type", type_name);
         break;
     case UNRES_IFFEAT:
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "if-feature", (char *)str_node);
