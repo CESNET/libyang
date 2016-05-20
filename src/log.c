@@ -163,7 +163,7 @@ const char *ly_errs[] = {
 
 /* LYE_OBSDATA */      "Obsolete data \"%s\" instantiated.",
 /* LYE_OBSTYPE */      "Data node \"%s\" with obsolete type \"%s\" instantiated.",
-/* LYE_NORESOLV */     "No resolvents found for \"%s\".",
+/* LYE_NORESOLV */     "No resolvents found for %s \"%s\".",
 /* LYE_INELEM */       "Unknown element \"%s\".",
 /* LYE_INELEM_LEN */   "Unknown element \"%.*s\".",
 /* LYE_MISSELEM */     "Missing required element \"%s\" in \"%s\".",

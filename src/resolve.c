@@ -2926,7 +2926,7 @@ resolve_path_arg_data(struct lyd_node *node, const char *path, struct unres_data
             }
             if ((rc = resolve_path_predicate_data(path, node, ret, &i))) {
                 if (rc == -1) {
-                    LOGVAL(LYE_NORESOLV, LY_VLOG_LYD, node, path);
+                    LOGVAL(LYE_NORESOLV, LY_VLOG_LYD, node, "leafref", path);
                 }
                 goto error;
             }
@@ -2987,7 +2987,7 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
         rc = lys_get_sibling(context_node->child, sour_pref, sour_pref_len, source, sour_len,
                              LYS_LEAF | LYS_AUGMENT, &src_node);
         if (rc) {
-            LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, path-parsed);
+            LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path-parsed);
             return 0;
         }
 
@@ -3002,7 +3002,7 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
         /* parent is actually the parent of this leaf, so skip the first ".." */
         for (i = 0, dst_node = parent; i < dest_parent_times; ++i) {
             if (!dst_node) {
-                LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, path_key_expr);
+                LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path_key_expr);
                 return 0;
             }
             dst_node = lys_parent(dst_node);
@@ -3014,7 +3014,7 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
             rc = lys_get_sibling(dst_node->child, dest_pref, dest_pref_len, dest, dest_len,
                                  LYS_CONTAINER | LYS_LIST | LYS_LEAF | LYS_AUGMENT, &dst_node);
             if (rc) {
-                LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, path_key_expr);
+                LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path_key_expr);
                 return 0;
             }
 
@@ -3033,7 +3033,7 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
 
         /* check source - dest match */
         if (dst_node->nodetype != LYS_LEAF) {
-            LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, path-parsed);
+            LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path-parsed);
             LOGVAL(LYE_SPEC, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent,
                    "Destination node is not a leaf, but %s.", strnodetype(dst_node->nodetype));
             return -parsed;
@@ -3082,14 +3082,15 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                 /* get start node */
                 node = mod ? mod->data : NULL;
                 if (!node) {
-                    LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, path);
+                    LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent,
+                           "leafref", path);
                     return EXIT_FAILURE;
                 }
             } else if (parent_times > 0) {
                 /* node is the parent already, skip one ".." */
                 if (parent_tpdf) {
                     /* the path is not allowed to contain relative path since we are in top level typedef */
-                    LOGVAL(LYE_NORESOLV, 0, NULL, path);
+                    LOGVAL(LYE_NORESOLV, 0, NULL, "leafref", path);
                     return -1;
                 }
 
@@ -3097,7 +3098,8 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                 i = 0;
                 while (1) {
                     if (!node) {
-                        LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, path);
+                        LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent,
+                               "leafref", path);
                         return EXIT_FAILURE;
                     }
 
@@ -3138,14 +3140,14 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
 
         rc = lys_get_sibling(node, prefix, pref_len, name, nam_len, LYS_ANY & ~(LYS_USES | LYS_GROUPING), &node);
         if (rc) {
-            LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, path);
+            LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, "leafref", path);
             return EXIT_FAILURE;
         }
 
         if (has_predicate) {
             /* we have predicate, so the current result must be list */
             if (node->nodetype != LYS_LIST) {
-                LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, path);
+                LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, "leafref", path);
                 return -1;
             }
 
@@ -3161,7 +3163,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
 
     /* the target must be leaf or leaf-list */
     if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-        LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, path);
+        LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, "leafref", path);
         return -1;
     }
 
