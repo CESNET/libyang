@@ -196,6 +196,16 @@ struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent
 void lys_node_switch(struct lys_node *dst, struct lys_node *src);
 
 /**
+ * @brief Add pointer to \p leafref to \p leafref_target children so that it knows there
+ * are some leafrefs referring it.
+ *
+ * @param[in] leafref_target Leaf that is \p leafref's target.
+ * @param[in] leafref Leaf or leaflist of type #LY_TYPE_LEAFREF referring \p leafref_target.
+ * @return 0 on success, -1 on error.
+ */
+int lys_leaf_add_leafref_target(struct lys_node_leaf *leafref_target, struct lys_node *leafref);
+
+/**
  * @brief Free a schema when condition
  *
  * @param[in] libyang context where the schema of the ondition is used.

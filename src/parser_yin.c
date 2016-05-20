@@ -232,6 +232,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     struct lyxml_elem *next, *node;
     struct lys_restr **restr;
     struct lys_type_bit bit;
+    struct lys_type *type_der;
     pcre *precomp;
     int i, j, rc, err_offset;
     int ret = -1;
@@ -271,6 +272,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     /* the type could not be resolved or it was resolved to an unresolved typedef */
     } else if (rc == EXIT_FAILURE) {
+        LOGVAL(LYE_NORESOLV, LY_VLOG_NONE, NULL, "type", name);
         ret = EXIT_FAILURE;
         goto error;
     }
@@ -754,6 +756,13 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         if (!type->info.lref.path && !type->der->type.der) {
             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "path", "type");
             goto error;
+        } else if (type->der->type.der && parent) {
+            for (type_der = &type->der->type; !type_der->info.lref.path && type_der->der; type_der = &type_der->der->type);
+            assert(type_der->info.lref.path && type_der->info.lref.target);
+            /* add pointer to leafref target, only on leaves (not in typedefs) */
+            if (lys_leaf_add_leafref_target(type_der->info.lref.target, (struct lys_node *)type->parent)) {
+                goto error;
+            }
         }
         break;
 

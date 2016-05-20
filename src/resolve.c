@@ -2183,7 +2183,8 @@ error:
 }
 
 /**
- * @brief Resolve a typedef, return only resolved typedefs if derived. Does not log.
+ * @brief Resolve a typedef, return only resolved typedefs if derived. If leafref, it must be
+ * resolved for this function to return it. Does not log.
  *
  * @param[in] name Typedef name.
  * @param[in] mod_name Typedef name module name.
@@ -2198,7 +2199,7 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
                       const struct lys_node *parent, struct lys_tpdf **ret)
 {
     int i, j;
-    struct lys_tpdf *tpdf;
+    struct lys_tpdf *tpdf, *match;
     int tpdf_size;
 
     if (!mod_name) {
@@ -2260,10 +2261,8 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
 
             for (i = 0; i < tpdf_size; i++) {
                 if (!strcmp(tpdf[i].name, name) && tpdf[i].type.base) {
-                    if (ret) {
-                        *ret = &tpdf[i];
-                    }
-                    return EXIT_SUCCESS;
+                    match = &tpdf[i];
+                    goto check_leafref;
                 }
             }
 
@@ -2280,10 +2279,8 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
     /* search in top level typedefs */
     for (i = 0; i < module->tpdf_size; i++) {
         if (!strcmp(module->tpdf[i].name, name) && module->tpdf[i].type.base) {
-            if (ret) {
-                *ret = &module->tpdf[i];
-            }
-            return EXIT_SUCCESS;
+            match = &module->tpdf[i];
+            goto check_leafref;
         }
     }
 
@@ -2291,15 +2288,32 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
     for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
         for (j = 0; j < module->inc[i].submodule->tpdf_size; j++) {
             if (!strcmp(module->inc[i].submodule->tpdf[j].name, name) && module->inc[i].submodule->tpdf[j].type.base) {
-                if (ret) {
-                    *ret = &module->inc[i].submodule->tpdf[j];
-                }
-                return EXIT_SUCCESS;
+                match = &module->inc[i].submodule->tpdf[j];
+                goto check_leafref;
             }
         }
     }
 
     return EXIT_FAILURE;
+
+check_leafref:
+    if (ret) {
+        *ret = match;
+    }
+    if (match->type.base == LY_TYPE_LEAFREF) {
+        while (!match->type.info.lref.path) {
+            match = match->type.der;
+            assert(match);
+        }
+        if (!match->type.info.lref.target) {
+            /* lefref not resolved yet, not good enough */
+            if (ret) {
+                *ret = NULL;
+            }
+            return EXIT_FAILURE;
+        }
+    }
+    return EXIT_SUCCESS;
 }
 
 /**
@@ -4495,16 +4509,12 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
 
         rc = resolve_path_arg_schema(stype->info.lref.path, node, tpdf_flag,
                                      (const struct lys_node **)&stype->info.lref.target);
-        if (stype->info.lref.target) {
+        if (!tpdf_flag && !rc) {
+            assert(stype->info.lref.target);
             /* store the backlink from leafref target */
-            if (!stype->info.lref.target->child) {
-                stype->info.lref.target->child = (void*)ly_set_new();
-                if (!stype->info.lref.target->child) {
-                    LOGMEM;
-                    return -1;
-                }
+            if (lys_leaf_add_leafref_target(stype->info.lref.target, (struct lys_node *)stype->parent)) {
+                rc = -1;
             }
-            ly_set_add((struct ly_set *)stype->info.lref.target->child, stype->parent);
         }
 
         break;
@@ -4672,9 +4682,10 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         res_count = 0;
 
         for (i = 0; i < unres->count; ++i) {
-            /* we do not need to have UNRES_TYPE_IDENTREF or UNRES_TYPE_LEAFREF resolved,
-             * we need every type's base only */
-            if ((unres->type[i] != UNRES_USES) && (unres->type[i] != UNRES_TYPE_DER)) {
+            /* we do not need to have UNRES_TYPE_IDENTREF resolved, we need its type's base only,
+             * but UNRES_TYPE_LEAFREF must be resolved (for storing leafref target pointers) */
+            if ((unres->type[i] != UNRES_USES) && (unres->type[i] != UNRES_TYPE_DER)
+                    && (unres->type[i] != UNRES_TYPE_LEAFREF)) {
                 continue;
             }
 

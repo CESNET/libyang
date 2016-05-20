@@ -2899,6 +2899,26 @@ lys_set_private(const struct lys_node *node, void *priv)
     return prev;
 }
 
+int
+lys_leaf_add_leafref_target(struct lys_node_leaf *leafref_target, struct lys_node *leafref)
+{
+    if (leafref_target->nodetype != LYS_LEAF) {
+        LOGINT;
+        return -1;
+    }
+
+    if (!leafref_target->child) {
+        leafref_target->child = (void*)ly_set_new();
+        if (!leafref_target->child) {
+            LOGMEM;
+            return -1;
+        }
+    }
+    ly_set_add((struct ly_set *)leafref_target->child, leafref);
+
+    return 0;
+}
+
 static void
 lys_switch_deviation(struct lys_deviation *dev, struct lys_module *dev_module)
 {
