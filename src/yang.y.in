@@ -45,17 +45,8 @@
 #define ENABLE_INHERIT 0x01
 
 void yyerror(YYLTYPE *yylloc, void *scanner, ...);
-char *s, *tmp_s;
-char rev[LY_REV_SIZE];
-struct lys_module *trg;
-struct lys_node *tpdf_parent;
-/* temporary pointer for the check extension nacm */
-struct lys_node *data_node;
-/* pointer on the current parsed element*/
-void *actual;
-int config_inherit;
-int actual_type;
-int64_t cnt_val;
+/* temporary pointer for the check extension nacm 'data_node' */
+/* pointer on the current parsed element 'actual' */
 %}
 
 %union {

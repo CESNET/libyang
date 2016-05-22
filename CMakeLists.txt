@@ -15,6 +15,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 
 find_package(FLEX)
 find_package(BISON)
+find_program (SED_TOOL NAMES sed)
 
 if(NOT BISON_FOUND)
 	message(WARNING "Missing Bison.\nTarget bison does not exist.")
@@ -31,6 +32,7 @@ else()
 		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
 		COMMAND bison -Wno-other -l -o parser_yang_bis.c --defines=parser_yang_bis.h yang.y
 		COMMAND flex -L -o parser_yang_lex.c --header-file=parser_yang_lex.h yang.l
+		COMMAND ${SED_TOOL} -i 's/int yychar\;/int yychar\;\\nchar *s, *tmp_s\;\\nchar rev[LY_REV_SIZE]\;\\nstruct lys_module *trg\;\\nstruct lys_node *tpdf_parent, *data_node\;\\nvoid *actual\;\\nint config_inherit, actual_type\;\\nint64_t cnt_val\;/' parser_yang_bis.c
 	)
 endif()
 
