@@ -19,7 +19,7 @@
 #include "parser_yang_bis.h"
 
 #define YY_USER_ACTION yylloc->first_line = yylloc->last_line = 0;\
-                       yylloc->first_column = (yylloc->last_column == 1) ? yylloc->last_column: yylloc->last_column +1;\
+                       yylloc->first_column = yylloc->last_column +1;\
                        yylloc->last_column = yylloc->first_column + yyleng - 1;
 %}
 %x COMMENT1
@@ -128,7 +128,7 @@
 <PATH>"(" |
 <PATH>")"  {return yytext[0];}
 <PATH>".." {return DOUBLEDOT;}
-<PATH>\n { yylloc->last_column = 1; return EOL;}
+<PATH>\n { yylloc->last_column = 0; return EOL;}
 <PATH>[ \t]+ { return WHITESPACE;}
 <PATH>";" |
 <PATH>"{" {BEGIN INITIAL; return yytext[0];}
@@ -148,7 +148,7 @@
                              default:  return STRINGS;
                             }
                           } else {return STRINGS;} }
-\n { yylloc->last_column = 1; return EOL; }
+\n { yylloc->last_column = 0; return EOL; }
 [ \t]+ { return WHITESPACE;}
 
 . { printf("%d: unexpected character '%c'\n",yylineno,*yytext); return ERROR;}

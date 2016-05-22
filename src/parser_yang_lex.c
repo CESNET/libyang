@@ -1359,7 +1359,7 @@ static yyconst flex_int16_t yy_chk[3260] =
 #include "parser_yang_bis.h"
 
 #define YY_USER_ACTION yylloc->first_line = yylloc->last_line = 0;\
-                       yylloc->first_column = (yylloc->last_column == 1) ? yylloc->last_column: yylloc->last_column +1;\
+                       yylloc->first_column = yylloc->last_column +1;\
                        yylloc->last_column = yylloc->first_column + yyleng - 1;
 
 #define INITIAL 0
@@ -2086,7 +2086,7 @@ YY_RULE_SETUP
 case 102:
 /* rule 102 can match eol */
 YY_RULE_SETUP
-{ yylloc->last_column = 1; return EOL;}
+{ yylloc->last_column = 0; return EOL;}
 	YY_BREAK
 case 103:
 YY_RULE_SETUP
@@ -2148,7 +2148,7 @@ YY_RULE_SETUP
 case 116:
 /* rule 116 can match eol */
 YY_RULE_SETUP
-{ yylloc->last_column = 1; return EOL; }
+{ yylloc->last_column = 0; return EOL; }
 	YY_BREAK
 case 117:
 YY_RULE_SETUP
