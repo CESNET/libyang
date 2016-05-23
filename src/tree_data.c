@@ -3129,7 +3129,7 @@ lyd_free(struct lyd_node *node)
         }
     } else if (node->schema->nodetype == LYS_ANYXML) {
         if (((struct lyd_node_anyxml *)node)->xml_struct) {
-            lyxml_free(node->schema->module->ctx, ((struct lyd_node_anyxml *)node)->value.xml);
+            lyxml_free_withsiblings(node->schema->module->ctx, ((struct lyd_node_anyxml *)node)->value.xml);
         } else {
             lydict_remove(node->schema->module->ctx, ((struct lyd_node_anyxml *)node)->value.str);
         }
