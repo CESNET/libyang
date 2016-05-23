@@ -99,7 +99,7 @@ lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, int options)
 static struct lyd_node *
 lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, LYD_FORMAT format, int options)
 {
-    struct lyxml_elem *xml, *xmlnext;
+    struct lyxml_elem *xml;
     struct lyd_node *result = NULL;
     int xmlopt = LYXML_PARSE_MULTIROOT;
 
@@ -119,9 +119,7 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
             return NULL;
         }
         result = lyd_parse_xml(ctx, &xml, options, parent);
-        LY_TREE_FOR_SAFE(xml, xmlnext, xml) {
-            lyxml_free(ctx, xml);
-        }
+        lyxml_free_withsiblings(ctx, xml);
         break;
     case LYD_JSON:
         result = lyd_parse_json(ctx, parent, data, options);

@@ -243,6 +243,16 @@ int lyxml_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count
 void lyxml_free(struct ly_ctx *ctx, struct lyxml_elem *elem);
 
 /**
+ * @brief Free (and unlink from the XML tree) the specified (sub)tree with all
+ * its attributes and namespace definitions. In contrast to lyxml_free(), free also
+ * all the element's siblings (preceding as well as following).
+ *
+ * @param[in] ctx libyang context to use
+ * @param[in] elem Pointer to the element to free.
+ */
+void lyxml_free_withsiblings(struct ly_ctx *ctx, struct lyxml_elem *elem);
+
+/**
  * @brief Unlink the element from its parent. In contrast to lyxml_free(),
  * after return the caller can still manipulate with the elem. Any namespaces
  * are corrected and copied, if needed.

@@ -398,6 +398,27 @@ lyxml_free(struct ly_ctx *ctx, struct lyxml_elem *elem)
     lyxml_free_elem(ctx, elem);
 }
 
+API void
+lyxml_free_withsiblings(struct ly_ctx *ctx, struct lyxml_elem *elem)
+{
+    struct lyxml_elem *iter, *aux;
+
+    if (!elem) {
+        return;
+    }
+
+    /* optimization - avoid freeing (unlinking) the last node of the siblings list */
+    /* so, first, free the node's predecessors to the beginning of the list ... */
+    for(iter = elem->prev; iter->next; iter = aux) {
+        aux = iter->prev;
+        lyxml_free(ctx, iter);
+    }
+    /* ... then, the node is the first in the siblings list, so free them all */
+    LY_TREE_FOR_SAFE(elem, aux, iter) {
+        lyxml_free(ctx, iter);
+    }
+}
+
 API const char *
 lyxml_get_attr(const struct lyxml_elem *elem, const char *name, const char *ns)
 {
