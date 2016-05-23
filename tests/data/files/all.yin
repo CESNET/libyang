@@ -5,6 +5,8 @@
   <yang-version value="1"/>
   <namespace uri="urn:all"/>
   <prefix value="all_mod"/>
+  <revision date="2016-05-23"/>
+  <revision date="2016-05-22"/>
   <feature name="feat1">
     <status value="obsolete"/>
     <if-feature name="feat2"/>
@@ -41,6 +43,20 @@
     </leaf>
     <uses name="group1">
       <if-feature name="feat2"/>
+      <refine target-node="leaf1">
+        <config value="true"/>
+        <mandatory value="false"/>
+        <description>
+          <text>
+            "dsc"
+          </text>
+        </description>
+        <reference>
+          <text>"none"</text>
+        </reference>
+        <must condition="24 - 4 = number('20')"/>
+        <default value="25"/>
+      </refine>
     </uses>
     <leaf name="leaf3">
       <type name="int32"/>

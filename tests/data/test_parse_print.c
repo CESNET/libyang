@@ -197,10 +197,7 @@ test_parse_print_yang(void **state)
 
     lys_print_mem(&(st->str2), st->mod, LYS_OUT_YANG, NULL);
 
-    if (strcmp(st->str1, st->str2)) {
-        printf("\"%s\"\n", st->str2);
-        fail();
-    }
+    assert_string_equal(st->str1, st->str2);
 }
 
 static void

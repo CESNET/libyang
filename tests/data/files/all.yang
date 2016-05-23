@@ -3,6 +3,9 @@ module all {
   prefix all_mod;
 
 
+  revision 2016-05-23;
+  revision 2016-05-22;
+
   feature feat1 {
     status "obsolete";
     if-feature feat2;
@@ -46,6 +49,16 @@ module all {
     }
     uses group1 {
       if-feature feat2;
+      refine "leaf1" {
+        config true;
+        mandatory false;
+        description
+          "dsc";
+        reference
+          "none";
+        must "24 - 4 = number('20')";
+        default "25";
+      }
     }
     leaf leaf3 {
       type int32;
