@@ -5927,7 +5927,7 @@ yyreduce:
                                       LOGMEM;
                                       YYABORT;
                                     }
-                                    (yyval.nodes).refine->target_type = LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML;
+                                    (yyval.nodes).refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML;
                                   }
                                   size_arrays->next++;
                                 } else {
