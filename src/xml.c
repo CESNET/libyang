@@ -97,7 +97,7 @@ lyxml_correct_attr_ns(struct ly_ctx *ctx, struct lyxml_attr *attr, struct lyxml_
             if (copy_ns) {
                 tmp_ns = attr->ns;
                 /* we may have already copied the NS over? */
-                attr->ns = lyxml_get_ns(attr->ns->parent, tmp_ns->prefix);
+                attr->ns = lyxml_get_ns(attr_parent, tmp_ns->prefix);
 
                 /* we haven't copied it over, copy it now */
                 if (!attr->ns) {
