@@ -1211,6 +1211,10 @@ lyd_merge_siblings(struct lyd_node *target, struct lyd_node *source)
         /* sibling not found, insert it */
         if (!trg) {
             lyd_insert_after(target->prev, src);
+            if (src == source) {
+                /* just so source is not freed, we inserted it and need it further */
+                source = src_backup;
+            }
         }
     }
 
