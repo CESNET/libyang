@@ -2262,18 +2262,20 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
         return EXIT_FAILURE;
     }
 
-    if (node->parent != parent || lyp_is_rpc(node->schema)) {
+    if (node->parent != parent || (invalid = lyp_is_rpc(node->schema))) {
         /* it is not just moving under a parent node or it is in an RPC where
          * nodes order matters, so the validation will be necessary */
-        invalid = 1;
+        invalid++;
     }
 
-    if (node->parent || node->next || node->prev->next) {
-        lyd_unlink(node);
+    if (node->parent || node->prev->next) {
+        lyd_unlink_internal(node, invalid);
     }
 
-    /* auto delete nodes from other cases, if any */
-    lyv_multicases(node, NULL, parent->child, 1, NULL);
+    if (invalid == 1) {
+        /* auto delete nodes from other cases, if any */
+        lyv_multicases(node, NULL, parent->child, 1, NULL);
+    }
 
     if (!parent->child) {
         /* add as the only child of the parent */
@@ -2360,7 +2362,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
     }
 
     if (node->parent || node->next || node->prev->next) {
-        lyd_unlink(node);
+        lyd_unlink_internal(node, invalid);
     }
 
     node->parent = sibling->parent;
