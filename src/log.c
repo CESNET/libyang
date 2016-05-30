@@ -311,6 +311,8 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             if (!((struct lys_node *)elem)->parent ||
                     lys_node_module((struct lys_node *)elem) != lys_node_module(lys_parent((struct lys_node *)elem))) {
                 prefix = lys_node_module((struct lys_node *)elem)->name;
+            } else {
+                prefix = NULL;
             }
             do {
                 elem = lys_parent((struct lys_node *)elem);
@@ -321,6 +323,8 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             if (!((struct lyd_node *)elem)->parent ||
                     lyd_node_module((struct lyd_node *)elem) != lyd_node_module(((struct lyd_node *)elem)->parent)) {
                 prefix = lyd_node_module((struct lyd_node *)elem)->name;
+            } else {
+                prefix = NULL;
             }
 
             /* handle predicates (keys) in case of lists */
