@@ -1649,7 +1649,7 @@ API struct lyd_difflist *
 lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
 {
     int rc;
-    struct lyd_node *elem1, *elem2, *iter, *aux, *next1, *next2;
+    struct lyd_node *elem1, *elem2, *iter, *aux, *parent = NULL, *next1, *next2;
     struct lyd_difflist *result, *result2 = NULL;
     void *new;
     unsigned int size, size2, index = 0, index2 = 0, i, j, k;
@@ -1774,12 +1774,14 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
 
         if (!iter) {
             /* elem2 not found in the first tree */
-            if (lyd_difflist_add(result2, &size2, index2++, LYD_DIFF_CREATED, elem1->parent, elem2)) {
+            if (lyd_difflist_add(result2, &size2, index2++, LYD_DIFF_CREATED, elem1 ? elem1->parent : parent, elem2)) {
                 goto error;
             }
 
-            if (elem2->schema->flags & LYS_USERORDERED) {
+            if (elem1 && (elem2->schema->flags & LYS_USERORDERED)) {
                 /* store the correct place where the node is supposed to be moved after creation */
+                /* if elem1 does not exist, all nodes were created and they will be created in
+                 * correct order, so it is not needed to detect moves */
                 for (aux = elem2->prev; aux->next; aux = aux->prev) {
                     if (aux->schema == elem2->schema) {
                         /* predecessor found */
@@ -1852,6 +1854,9 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
 
                 if ((iter->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) && iter->child) {
                     next1 = matchlist->match->set.d[i]->child;
+                    if (!next1) {
+                        parent = matchlist->match->set.d[i];
+                    }
                     matchlist->match->set.d[i] = NULL;
                     next2 = iter->child;
                     break;
@@ -1904,6 +1909,9 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
 
                 if ((iter->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) && iter->child) {
                     next1 = mlaux->match->set.d[i]->child;
+                    if (!next1) {
+                        parent = mlaux->match->set.d[i];
+                    }
                     mlaux->match->set.d[i] = NULL;
                     next2 = iter->child;
                     break;
