@@ -3770,6 +3770,7 @@ ly_set_clean(struct ly_set *set)
     }
 
     free(set->set.g);
+    set->size = 0;
     set->number = 0;
     set->set.g = NULL;
 
