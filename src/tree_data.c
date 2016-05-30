@@ -38,6 +38,8 @@
 #include "validation.h"
 #include "xpath.h"
 
+static int lyd_unlink_internal(struct lyd_node *node, int permanent);
+
 int
 lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, int options)
 {
@@ -2768,8 +2770,8 @@ lyd_dup_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr)
     return ret;
 }
 
-API int
-lyd_unlink(struct lyd_node *node)
+static int
+lyd_unlink_internal(struct lyd_node *node, int permanent)
 {
     struct lyd_node *iter, *next;
     struct ly_set *set, *data;
@@ -2780,32 +2782,34 @@ lyd_unlink(struct lyd_node *node)
         return EXIT_FAILURE;
     }
 
-    /* fix leafrefs */
-    LY_TREE_DFS_BEGIN(node, next, iter) {
-        /* the node is target of a leafref */
-        if ((iter->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && iter->schema->child) {
-            set = (struct ly_set *)iter->schema->child;
-            for (i = 0; i < set->number; i++) {
-                data = lyd_get_node2(iter, set->set.s[i]);
-                if (data) {
-                    for (j = 0; j < data->number; j++) {
-                        if (((struct lyd_node_leaf_list *)data->set.d[j])->value.leafref == iter) {
-                            /* remove reference to the node we are going to replace */
-                            ((struct lyd_node_leaf_list *)data->set.d[j])->value.leafref = NULL;
+    if (permanent) {
+        /* fix leafrefs */
+        LY_TREE_DFS_BEGIN(node, next, iter) {
+            /* the node is target of a leafref */
+            if ((iter->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && iter->schema->child) {
+                set = (struct ly_set *)iter->schema->child;
+                for (i = 0; i < set->number; i++) {
+                    data = lyd_get_node2(iter, set->set.s[i]);
+                    if (data) {
+                        for (j = 0; j < data->number; j++) {
+                            if (((struct lyd_node_leaf_list *)data->set.d[j])->value.leafref == iter) {
+                                /* remove reference to the node we are going to replace */
+                                ((struct lyd_node_leaf_list *)data->set.d[j])->value.leafref = NULL;
+                            }
                         }
+                        ly_set_free(data);
+                    } else {
+                        return EXIT_FAILURE;
                     }
-                    ly_set_free(data);
-                } else {
-                    return EXIT_FAILURE;
                 }
             }
+            LY_TREE_DFS_END(node, next, iter)
         }
-        LY_TREE_DFS_END(node, next, iter)
-    }
 
-    /* invalidate parent to make sure it will be checked in future validation */
-    if (node->parent) {
-        node->parent->validity = LYD_VAL_NOT;
+        /* invalidate parent to make sure it will be checked in future validation */
+        if (node->parent) {
+            node->parent->validity = LYD_VAL_NOT;
+        }
     }
 
     /* unlink from siblings */
@@ -2841,6 +2845,12 @@ lyd_unlink(struct lyd_node *node)
     node->prev = node;
 
     return EXIT_SUCCESS;
+}
+
+API int
+lyd_unlink(struct lyd_node *node)
+{
+    return lyd_unlink_internal(node, 1);
 }
 
 API struct lyd_node *
