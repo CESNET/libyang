@@ -2057,7 +2057,7 @@ movedone:
     if (index2) {
         /* append result2 with newly created
          * (and possibly moved) nodes */
-        if (index + index2 + 1 == size) {
+        if (index + index2 + 1 >= size) {
             /* result must be enlarged */
             size = index + index2 + 1;
             new = realloc(result->type, size * sizeof *result->type);
