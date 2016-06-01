@@ -3808,22 +3808,20 @@ moveto_node_check(struct lyd_node *node, enum lyxp_node_type root_type, const ch
  * @param[in] node Node to add.
  * @param[in] pos Node sort position.
  * @param[in,out] set Set to use.
- * @param[in] i Current index in \p set.
+ * @param[in] i Desired index of \p node in \p set.
  * @param[in,out] replaced Whether the node in \p set has already been replaced.
  */
 static void
-moveto_node_add(struct lyxp_set *set, struct lyd_node *node, uint32_t pos, uint32_t *i, int *replaced)
+moveto_node_add(struct lyxp_set *set, struct lyd_node *node, uint32_t pos, uint32_t i, int *replaced)
 {
     if (!(*replaced)) {
-        set->val.nodes[*i].node = node;
-        set->val.nodes[*i].type = LYXP_NODE_ELEM;
-        set->val.nodes[*i].pos = pos;
+        set->val.nodes[i].node = node;
+        set->val.nodes[i].type = LYXP_NODE_ELEM;
+        set->val.nodes[i].pos = pos;
         *replaced = 1;
     } else {
-        set_insert_node(set, node, pos, LYXP_NODE_ELEM, set->used);
+        set_insert_node(set, node, pos, LYXP_NODE_ELEM, i);
     }
-
-    ++(*i);
 }
 
 /**
@@ -3885,7 +3883,8 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
             ret = moveto_node_check(set->val.nodes[i].node, root_type, name_dict, moveto_mod, options);
             if (!ret) {
                 /* pos is always one, because it's the root, only not the fake one */
-                moveto_node_add(set, set->val.nodes[i].node, 1, &i, &replaced);
+                moveto_node_add(set, set->val.nodes[i].node, 1, i, &replaced);
+                ++i;
             } else if (ret == EXIT_FAILURE) {
                 lydict_remove(ctx, name_dict);
                 return EXIT_FAILURE;
@@ -3900,7 +3899,8 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
                 ret = moveto_node_check(sub, root_type, name_dict, moveto_mod, options);
                 if (!ret) {
                     /* pos filled later */
-                    moveto_node_add(set, sub, 0, &i, &replaced);
+                    moveto_node_add(set, sub, 0, i, &replaced);
+                    ++i;
                 } else if (ret == EXIT_FAILURE) {
                     lydict_remove(ctx, name_dict);
                     return EXIT_FAILURE;
@@ -3913,7 +3913,8 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
             LY_TREE_FOR(set->val.nodes[i].node->child, sub) {
                 ret = moveto_node_check(sub, root_type, name_dict, moveto_mod, options);
                 if (!ret) {
-                    moveto_node_add(set, sub, 0, &i, &replaced);
+                    moveto_node_add(set, sub, 0, i, &replaced);
+                    ++i;
                 } else if (ret == EXIT_FAILURE) {
                     lydict_remove(ctx, name_dict);
                     return EXIT_FAILURE;
