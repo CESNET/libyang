@@ -1109,7 +1109,7 @@ lyd_merge_node_equal(struct lyd_node *node1, struct lyd_node *node2)
 static int
 lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source)
 {
-    struct lyd_node *trg_parent, *src, *src_backup, *src_elem, *src_next, *trg_child;
+    struct lyd_node *trg_parent, *src, *src_backup, *src_elem, *src_elem_backup, *src_next, *trg_child, *trg_parent_backup;
 
     LY_TREE_FOR_SAFE(source, src_backup, src) {
         for (src_elem = src_next = src, trg_parent = target;
@@ -1119,28 +1119,47 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source)
             LY_TREE_FOR(trg_parent->child, trg_child) {
                 /* schema match, data match? */
                 if (lyd_merge_node_equal(trg_child, src_elem)) {
-                    if (trg_child->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
-                        if (trg_child->schema->nodetype & (LYS_LEAF | LYS_ANYXML)) {
-                            lyd_merge_node_update(trg_child, src_elem);
-                        }
-                        /* do not change trg_parent */
-                        break;
-                    } else {
-                        trg_parent = trg_child;
+                    if (trg_child->schema->nodetype & (LYS_LEAF | LYS_ANYXML)) {
+                        lyd_merge_node_update(trg_child, src_elem);
                     }
                     break;
                 }
             }
 
-            /* no - link it there as a subtree, continue with siblings */
-            if (!trg_child) {
-                /* prepare a bit for the next iteration, src_elem will be unlinked! */
-                src_next = src_elem->next;
-                if (!src_next) {
-                    src_next = src_elem->parent;
+            /* first prepare for the next iteration */
+            src_elem_backup = src_elem;
+            trg_parent_backup = trg_parent;
+            if ((src_elem->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) && trg_child) {
+                /* go into children */
+                src_next = src_elem->child;
+                trg_parent = trg_child;
+            } else {
+                /* no children (or the whole subtree will be inserted), try siblings */
+                if (src_elem == src) {
+                    /* we are done, src has no children, but we still need to insert it */
+                    src_next = NULL;
+                    src_elem = src_elem->child;
+                } else {
+                    src_next = src_elem->next;
+                    /* trg_parent does not change */
+                }
+            }
+            while (!src_next) {
+                src_elem = src_elem->parent;
+                if (src_elem->parent == src->parent) {
+                    /* we are done, no next element to process */
+                    break;
                 }
 
-                if (lyd_insert(trg_parent, src_elem)) {
+                /* parent is already processed, go to its sibling */
+                src_next = src_elem->next;
+                trg_parent = trg_parent->parent;
+            }
+
+            if (!trg_child) {
+                /* we need to insert the whole subtree */
+                if (lyd_insert(trg_parent_backup, src_elem_backup)) {
+                    LOGINT;
                     lyd_free_withsiblings(source);
                     return -1;
                 }
@@ -1151,32 +1170,6 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source)
                     }
                     break;
                 }
-            /* yes - normally continue the merge and the tree search */
-            } else {
-                if (src_elem->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) {
-                    src_next = src_elem->child;
-                } else {
-                    /* no children */
-                    if (src_elem == src) {
-                        /* we are done, src has no children */
-                        break;
-                    }
-                    /* try siblings */
-                    src_next = src_elem->next;
-                }
-            }
-
-            while (!src_next) {
-                /* parent is already processed, go to its sibling */
-                src_elem = src_elem->parent;
-
-                if (src_elem->parent == src->parent) {
-                    /* we are done, no next element to process */
-                    break;
-                }
-                src_next = src_elem->next;
-
-                trg_parent = trg_parent->parent;
             }
         }
     }
