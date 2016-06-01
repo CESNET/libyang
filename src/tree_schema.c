@@ -577,7 +577,7 @@ repeat_choice:
             }
             /* fallthrough */
         case LYS_OUTPUT:
-            if (!rpc_output) {
+            if ((siter->nodetype == LYS_OUTPUT) && !rpc_output) {
                 /* skip */
                 siter = siter->next;
                 break;
