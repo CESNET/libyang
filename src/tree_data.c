@@ -1177,10 +1177,6 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source)
                 src_next = src_elem->next;
 
                 trg_parent = trg_parent->parent;
-                /* TODO needed even? move back to the first sibling */
-                while (trg_parent->prev->next) {
-                    trg_parent = trg_parent->prev;
-                }
             }
         }
     }
