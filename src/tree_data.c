@@ -1119,10 +1119,15 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source)
             LY_TREE_FOR(trg_parent->child, trg_child) {
                 /* schema match, data match? */
                 if (lyd_merge_node_equal(trg_child, src_elem)) {
-                    if (trg_child->schema->nodetype & (LYS_LEAF | LYS_ANYXML)) {
-                        lyd_merge_node_update(trg_child, src_elem);
+                    if (trg_child->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                        if (trg_child->schema->nodetype & (LYS_LEAF | LYS_ANYXML)) {
+                            lyd_merge_node_update(trg_child, src_elem);
+                        }
+                        /* do not change trg_parent */
+                        break;
+                    } else {
+                        trg_parent = trg_child;
                     }
-                    trg_parent = trg_child;
                     break;
                 }
             }
