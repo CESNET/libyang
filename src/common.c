@@ -343,7 +343,7 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
         /* remember the namespace definition (only if it's new) */
         if (!schema && ns_count) {
             for (i = 0; i < *ns_count; ++i) {
-                if ((*namespaces)[i] == mod->ns) {
+                if (ly_strequal((*namespaces)[i], mod->ns, 1)) {
                     break;
                 }
             }

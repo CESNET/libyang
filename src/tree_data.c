@@ -423,7 +423,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     if (leaf->parent && (leaf->parent->schema->nodetype == LYS_LIST)) {
         slist = (struct lys_node_list *)leaf->parent->schema;
         for (i = 0; i < slist->keys_size; ++i) {
-            if (slist->keys[i]->name == leaf->schema->name) {
+            if (ly_strequal(slist->keys[i]->name, leaf->schema->name, 1)) {
                 LOGVAL(LYE_SPEC, LY_VLOG_LYD, leaf, "List key value cannot be changed.");
                 return EXIT_FAILURE;
             }

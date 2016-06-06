@@ -111,12 +111,12 @@ lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int mod_n
         if (!type || (node->nodetype & type)) {
             /* module name comparison */
             node_mod_name = lys_node_module(node)->name;
-            if ((node_mod_name != mod_name) && (strncmp(node_mod_name, mod_name, mod_name_len) || node_mod_name[mod_name_len])) {
+            if (!ly_strequal(node_mod_name, mod_name, 1) && (strncmp(node_mod_name, mod_name, mod_name_len) || node_mod_name[mod_name_len])) {
                 continue;
             }
 
             /* direct name check */
-            if ((node->name == name) || (!strncmp(node->name, name, nam_len) && !node->name[nam_len])) {
+            if (ly_strequal(node->name, name, 1) || (!strncmp(node->name, name, nam_len) && !node->name[nam_len])) {
                 if (ret) {
                     *ret = node;
                 }
@@ -2598,7 +2598,7 @@ lys_node_switch(struct lys_node *dst, struct lys_node *src)
 {
     struct lys_node *child;
 
-    assert((dst->module == src->module) && (dst->name == src->name) && (dst->nodetype == src->nodetype));
+    assert((dst->module == src->module) && ly_strequal(dst->name, src->name, 1) && (dst->nodetype == src->nodetype));
 
     /* sibling next */
     if (dst->prev != dst) {

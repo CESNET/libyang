@@ -1511,7 +1511,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     }
 
                     if (d->mod == LY_DEVIATE_DEL) {
-                        if (!leaf->dflt || (leaf->dflt != d->dflt)) {
+                        if (!leaf->dflt || !ly_strequal(leaf->dflt, d->dflt, 1)) {
                             LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, child->name);
                             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Value differs from the target being deleted.");
                             goto error;
@@ -1709,7 +1709,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     *stritem = lydict_insert(ctx, value, 0);
                 } else if (d->mod == LY_DEVIATE_DEL) {
                     /* check values */
-                    if (*stritem != d->units) {
+                    if (!ly_strequal(*stritem, d->units, 1)) {
                         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, child->name);
                         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Value differs from the target being deleted.");
                         goto error;

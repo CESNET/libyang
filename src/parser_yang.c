@@ -1457,7 +1457,7 @@ yang_read_deviate_units(struct ly_ctx *ctx, struct type_deviation *dev, char *va
 
     if (dev->deviate->mod == LY_DEVIATE_DEL) {
         /* check values */
-        if (*stritem != dev->deviate->units) {
+        if (!ly_strequal(*stritem, dev->deviate->units, 1)) {
             LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->deviate->units, "units");
             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Value differs from the target being deleted.");
             goto error;
@@ -1649,7 +1649,7 @@ yang_read_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *
         leaf = (struct lys_node_leaf *)dev->target;
 
         if (dev->deviate->mod == LY_DEVIATE_DEL) {
-            if (!leaf->dflt || (leaf->dflt != dev->deviate->dflt)) {
+            if (!leaf->dflt || !ly_strequal(leaf->dflt, dev->deviate->dflt, 1)) {
                 LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->deviate->dflt, "default");
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Value differs from the target being deleted.");
                 goto error;

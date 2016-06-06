@@ -3789,7 +3789,7 @@ moveto_node_check(struct lyd_node *node, enum lyxp_node_type root_type, const ch
     }
 
     /* name check */
-    if ((node->schema->name != node_name) && strcmp(node_name, "*")) {
+    if (!ly_strequal(node->schema->name, node_name, 1) && strcmp(node_name, "*")) {
         return -1;
     }
 
