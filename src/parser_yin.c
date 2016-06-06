@@ -2760,6 +2760,9 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
             dflt = sub;
             lyxml_unlink_elem(ctx, dflt, 0);
 
+            continue;
+            /* skip lyxml_free() at the end of the loop, the sub node is processed later as dflt */
+
         } else if (!strcmp(sub->name, "mandatory")) {
             if (f_mand) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
