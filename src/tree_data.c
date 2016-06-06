@@ -2889,10 +2889,17 @@ lyd_dup(const struct lyd_node *node, int recursive)
                 return NULL;
             }
 
-            new_leaf->value = ((struct lyd_node_leaf_list *)elem)->value;
             new_leaf->value_str = lydict_insert(elem->schema->module->ctx,
                                                 ((struct lyd_node_leaf_list *)elem)->value_str, 0);
             new_leaf->value_type = ((struct lyd_node_leaf_list *)elem)->value_type;
+
+            /* value_str pointer is shared in these cases */
+            if ((new_leaf->value_type == LY_TYPE_BINARY) || (new_leaf->value_type == LY_TYPE_STRING)) {
+                new_leaf->value.string = new_leaf->value_str;
+            } else {
+                new_leaf->value = ((struct lyd_node_leaf_list *)elem)->value;
+            }
+
             /* bits type must be treated specially */
             if (new_leaf->value_type == LY_TYPE_BITS) {
                 for (type = &((struct lys_node_leaf *)elem->schema)->type; type->der->module; type = &type->der->type) {
