@@ -2691,11 +2691,11 @@ error:
 static struct lys_node *
 read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve, struct unres_schema *unres)
 {
-    struct lyxml_elem *sub, *next;
+    struct lyxml_elem *sub, *next, *dflt = NULL;
     struct ly_ctx *const ctx = module->ctx;
     struct lys_node *retval, *node = NULL;
     struct lys_node_choice *choice;
-    const char *value, *dflt_str = NULL;
+    const char *value;
     int f_mand = 0, c_ftrs = 0, ret;
 
     choice = calloc(1, sizeof *choice);
@@ -2752,11 +2752,13 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
                 goto error;
             }
         } else if (!strcmp(sub->name, "default")) {
-            if (dflt_str) {
+            if (dflt) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
                 goto error;
             }
-            GETVAL(dflt_str, sub, "value");
+            dflt = sub;
+            lyxml_unlink_elem(ctx, dflt, 0);
+
         } else if (!strcmp(sub->name, "mandatory")) {
             if (f_mand) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
@@ -2817,23 +2819,26 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
     }
 
     /* check - default is prohibited in combination with mandatory */
-    if (dflt_str && (choice->flags & LYS_MAND_TRUE)) {
+    if (dflt && (choice->flags & LYS_MAND_TRUE)) {
         LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "default", "choice");
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"default\" statement is forbidden on choices with \"mandatory\".");
         goto error;
     }
 
     /* link default with the case */
-    if (dflt_str) {
-        if (unres_schema_add_str(module, unres, choice, UNRES_CHOICE_DFLT, dflt_str) == -1) {
+    if (dflt) {
+        GETVAL(value, dflt, "value");
+        if (unres_schema_add_str(module, unres, choice, UNRES_CHOICE_DFLT, value) == -1) {
             goto error;
         }
+        lyxml_free(ctx, dflt);
     }
 
     return retval;
 
 error:
 
+    lyxml_free(ctx, dflt);
     lys_node_free(retval, NULL, 0);
 
     return NULL;
