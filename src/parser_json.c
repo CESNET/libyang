@@ -1028,7 +1028,7 @@ attr_repeat:
                 list = new;
             }
         } while (data[len] == ',');
-        result = list;
+        result = first_sibling;
 
         if (data[len] != ']') {
             LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, result, "JSON data (missing end-array)");
