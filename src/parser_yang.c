@@ -694,7 +694,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         lydict_remove(module->ctx, value);
         goto error;
     }
-    /* module name*/
+    /* module name */
     name = value;
     if (value[i]) {
         typ->type->module_name = lydict_insert(module->ctx, value, i);
@@ -708,17 +708,19 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     }
 
     rc = resolve_superior_type(name, typ->type->module_name, module, parent, &typ->type->der);
-    lydict_remove(module->ctx, value);
     if (rc == -1) {
         LOGVAL(LYE_INMOD, LY_VLOG_NONE, NULL, typ->type->module_name);
+        lydict_remove(module->ctx, value);
         goto error;
 
     /* the type could not be resolved or it was resolved to an unresolved typedef or leafref */
     } else if (rc == EXIT_FAILURE) {
         LOGVAL(LYE_NORESOLV, LY_VLOG_NONE, NULL, "type", name);
+        lydict_remove(module->ctx, value);
         ret = EXIT_FAILURE;
         goto error;
     }
+    lydict_remove(module->ctx, value);
     typ->type->base = typ->type->der->type.base;
     if (base == 0) {
         base = typ->type->der->type.base;
