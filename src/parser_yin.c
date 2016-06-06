@@ -261,22 +261,24 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             lydict_remove(module->ctx, value);
             goto error;
         }
+        /* name is in dictionary, but moved */
         ++name;
-        name = lydict_insert(module->ctx, name, 0);
-        lydict_remove(module->ctx, value);
     }
 
     rc = resolve_superior_type(name, type->module_name, module, parent, &type->der);
     if (rc == -1) {
         LOGVAL(LYE_INMOD, LY_VLOG_NONE, NULL, type->module_name);
+        lydict_remove(module->ctx, value);
         goto error;
 
     /* the type could not be resolved or it was resolved to an unresolved typedef */
     } else if (rc == EXIT_FAILURE) {
         LOGVAL(LYE_NORESOLV, LY_VLOG_NONE, NULL, "type", name);
+        lydict_remove(module->ctx, value);
         ret = EXIT_FAILURE;
         goto error;
     }
+    lydict_remove(module->ctx, value);
     type->base = type->der->type.base;
 
     /* check status */
