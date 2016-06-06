@@ -2122,9 +2122,7 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
 
     /* just free the import array, imported modules will stay in the context */
     for (i = 0; i < module->imp_size; i++) {
-        if (!module->imp[i].external) {
-            lydict_remove(ctx, module->imp[i].prefix);
-        }
+        lydict_remove(ctx, module->imp[i].prefix);
     }
     free(module->imp);
 
