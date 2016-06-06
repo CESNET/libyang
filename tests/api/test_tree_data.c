@@ -583,7 +583,7 @@ test_lyd_dup(void **state)
 
     assert_string_equal("bubba", copy->schema->name);
 
-    free(copy);
+    lyd_free(copy);
 }
 
 static void
@@ -856,7 +856,7 @@ test_lyd_unlink(void **state)
         fail();
     }
 
-    free(new);
+    lyd_free(new);
 }
 
 static void
