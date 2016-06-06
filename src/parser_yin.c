@@ -262,10 +262,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             goto error;
         }
         ++name;
+        name = lydict_insert(module->ctx, name, 0);
+        lydict_remove(module->ctx, value);
     }
 
     rc = resolve_superior_type(name, type->module_name, module, parent, &type->der);
-    lydict_remove(module->ctx, value);
     if (rc == -1) {
         LOGVAL(LYE_INMOD, LY_VLOG_NONE, NULL, type->module_name);
         goto error;
