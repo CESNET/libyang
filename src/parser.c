@@ -1547,6 +1547,7 @@ lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodu
                     goto error;
                 }
                 memcpy(&module->imp[module->imp_size + r], &submodule->imp[i], sizeof *submodule->imp);
+                module->imp[module->imp_size + r].prefix = lydict_insert(module->ctx, module->imp[module->imp_size + r].prefix, 0);
                 module->imp[module->imp_size + r].external = 1;
                 r++;
             }
