@@ -4603,7 +4603,10 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         break;
     }
 
-    if (has_str && !rc) {
+    if (has_str && (!rc || rc != EXIT_FAILURE)) {
+        /* the string is no more needed in case of success
+         * or fatal error. In case of forward reference,
+         * we will try to resolve the string later */
         lydict_remove(mod->ctx, str_snode);
     }
 
