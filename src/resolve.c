@@ -4920,13 +4920,44 @@ unres_schema_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type)
     return ret;
 }
 
+static void
+unres_schema_free_item(struct ly_ctx *ctx, struct unres_schema *unres, uint32_t i)
+{
+    struct lyxml_elem *yin;
+    struct yang_type *yang;
+
+    switch (unres->type[i]) {
+    case UNRES_TYPE_DER:
+        yin = (struct lyxml_elem *)((struct lys_type *)unres->item[i])->der;
+        if (yin->flags & LY_YANG_STRUCTURE_FLAG) {
+            yang =(struct yang_type *)yin;
+            yang->type->base = yang->base;
+            lydict_remove(ctx, yang->name);
+            free(yang);
+        } else {
+            lyxml_free(ctx, yin);
+        }
+        break;
+    case UNRES_IDENT:
+    case UNRES_TYPE_IDENTREF:
+    case UNRES_IFFEAT:
+    case UNRES_TYPE_DFLT:
+    case UNRES_CHOICE_DFLT:
+    case UNRES_LIST_KEYS:
+    case UNRES_LIST_UNIQ:
+        lydict_remove(ctx, (const char *)unres->str_snode[i]);
+        break;
+    default:
+        break;
+    }
+    unres->type[i] = UNRES_RESOLVED;
+}
+
 void
 unres_schema_free(struct lys_module *module, struct unres_schema **unres)
 {
     uint32_t i;
     unsigned int unresolved = 0;
-    struct lyxml_elem *yin;
-    struct yang_type *yang;
 
     if (!unres || !(*unres)) {
         return;
@@ -4941,20 +4972,12 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres)
             }
             continue;
         }
-        if ((*unres)->type[i] == UNRES_TYPE_DER) {
-            yin = (struct lyxml_elem *)((struct lys_type *)(*unres)->item[i])->der;
-            if (yin->flags & LY_YANG_STRUCTURE_FLAG) {
-                yang =(struct yang_type *)yin;
-                yang->type->base = yang->base;
-                lydict_remove(module->ctx, yang->name);
-                free(yang);
-            } else {
-                lyxml_free(module->ctx, yin);
-            }
-        }
-        (*unres)->type[i] = UNRES_RESOLVED;
+
+        /* free heap memory for the specific item */
+        unres_schema_free_item(module->ctx, *unres, i);
     }
 
+    /* free it all */
     if (!module || (!unresolved && !module->type)) {
         free((*unres)->item);
         free((*unres)->type);
