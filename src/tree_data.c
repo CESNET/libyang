@@ -3169,7 +3169,7 @@ lyd_free(struct lyd_node *node)
             if (((struct lyd_node_leaf_list *)node)->value.bit) {
                 free(((struct lyd_node_leaf_list *)node)->value.bit);
             }
-            break;
+            /* fallthrough */
         default:
             lydict_remove(node->schema->module->ctx, ((struct lyd_node_leaf_list *)node)->value_str);
             break;
