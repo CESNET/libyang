@@ -1871,7 +1871,7 @@ lys_list_free(struct ly_ctx *ctx, struct lys_node_list *list)
     lys_when_free(ctx, list->when);
 
     for (i = 0; i < list->unique_size; i++) {
-        for (j = 0; j > list->unique[i].expr_size; j++) {
+        for (j = 0; j < list->unique[i].expr_size; j++) {
             lydict_remove(ctx, list->unique[i].expr[j]);
         }
         free(list->unique[i].expr);
