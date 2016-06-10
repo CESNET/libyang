@@ -311,7 +311,7 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
             }
             /* ignore return - memory error is logged and we will
              * check at least the rest of nodes we have */
-            (void)ly_set_add(set, parent);
+            (void)ly_set_add(set, parent, LY_SET_OPT_USEASLIST);
         }
         if (set) {
             for (i = set->number; i > 0; ) {
@@ -2909,7 +2909,7 @@ lys_leaf_add_leafref_target(struct lys_node_leaf *leafref_target, struct lys_nod
             return -1;
         }
     }
-    ly_set_add((struct ly_set *)leafref_target->child, leafref);
+    ly_set_add((struct ly_set *)leafref_target->child, leafref, 0);
 
     return 0;
 }

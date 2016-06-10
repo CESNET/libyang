@@ -968,6 +968,9 @@ union ly_set_set {
  * Caller is supposed to not mix the type of objects added to the set and according to its knowledge about
  * the set content, it is supposed to access the set via the sset, dset or set members of the structure.
  *
+ * Until ly_set_rm() or ly_set_rm_index() is used, the set keeps the order of the inserted items as they
+ * were added into the set, so the first added item is on array index 0.
+ *
  * To free the structure, use ly_set_free() function, to manipulate with the structure, use other
  * ly_set_* functions.
  */
@@ -976,6 +979,12 @@ struct ly_set {
     unsigned int number;             /**< number of elements in (used size of) the set array */
     union ly_set_set set;            /**< set array - union to keep ::ly_set generic for data as well as schema trees */
 };
+
+/**
+ * @brief Option for ly_set_add() to allow duplicities in the ly_set structure so the
+ * set is not used as a set, but as a list of (container for) items.
+ */
+#define LY_SET_OPT_USEASLIST 0x01
 
 /**
  * @brief Create and initiate new ::ly_set structure.
@@ -993,9 +1002,11 @@ struct ly_set *ly_set_new(void);
  *
  * @param[in] set Set where the \p node will be added.
  * @param[in] node The ::lyd_node or ::lys_node object to be added into the \p set;
+ * @param[in] options Options to change behavior of the function. Accepted options are:
+ * - #LY_SET_OPT_USEASLIST - do not check for duplicities
  * @return -1 on failure, index of the \p node in the set on success
  */
-int ly_set_add(struct ly_set *set, void *node);
+int ly_set_add(struct ly_set *set, void *node, int options);
 
 /**
  * @brief Remove all objects from the set, but keep the set container for further use.
