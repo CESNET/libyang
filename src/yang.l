@@ -33,7 +33,8 @@
 <COMMENT1>"*/" {BEGIN INITIAL; }
 "//" {BEGIN COMMENT2;}
 <COMMENT2>. 
-<COMMENT2>\n {BEGIN INITIAL; return EOL; }
+<COMMENT2>\n |
+<COMMENT2>\r\n {BEGIN INITIAL; return EOL; }
 "anyxml" { return ANYXML_KEYWORD; }
 "argument" { return ARGUMENT_KEYWORD; }
 "augment" { BEGIN PATH; return AUGMENT_KEYWORD; }
@@ -116,8 +117,8 @@
 "}" |
 ";" | 
 "+"  { return yytext[0];}  /* unsolved problem with concatenate string '+' */
-\"([\n\t !#-\[\]-~]|\\[ -~])*\" {return STRING;}
-"'"[\n\t -&\(-~]*"'" {return STRING;}
+\"([\n\t !#-\[\]-~]|\\[ -~]|\r\n)*\" {return STRING;}
+"'"([\n\t -&\(-~]|\r\n)*"'" {return STRING;}
 "0" {return ZERO;}
 "-"[1-9][0-9]* {return INTEGER;}
 [1-9][0-9]* {return NON_NEGATIVE_INTEGER;}
@@ -128,12 +129,13 @@
 <PATH>"(" |
 <PATH>")"  {return yytext[0];}
 <PATH>".." {return DOUBLEDOT;}
-<PATH>\n { yylloc->last_column = 0; return EOL;}
+<PATH>\n  |
+<PATH>\r\n { yylloc->last_column = 0; return EOL;}
 <PATH>[ \t]+ { return WHITESPACE;}
 <PATH>";" |
 <PATH>"{" {BEGIN INITIAL; return yytext[0];}
-<PATH>\"([\n\t !#-\[\]-~]|\\[ -~])*\" {return STRING;}
-<PATH>"'"[\n\t -&\(-~]*"'" {return STRING;}
+<PATH>\"([\n\t !#-\[\]-~]|\\[ -~]|\r\n)*\" {return STRING;}
+<PATH>"'"([\n\t -&\(-~]|\r\n)*"'" {return STRING;}
 <PATH>"//" {BEGIN COMMENT2;}
 <PATH>"/*" {BEGIN COMMENT1;}
 <PATH>[A-Za-z_][-A-Za-z0-9_\.]* {return IDENTIFIER;}
@@ -148,7 +150,8 @@
                              default:  return STRINGS;
                             }
                           } else {return STRINGS;} }
-\n { yylloc->last_column = 0; return EOL; }
+\n |
+\r\n { yylloc->last_column = 0; return EOL; }
 [ \t]+ { return WHITESPACE;}
 
 . { printf("%d: unexpected character '%c'\n",yylineno,*yytext); return ERROR;}

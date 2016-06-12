@@ -2454,7 +2454,7 @@ refine_body_opt_stmts: @EMPTYDIR@ { if (read_all) {
                                       LOGMEM;
                                       YYABORT;
                                     }
-                                    $$.refine->target_type = LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML;
+                                    $$.refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML;
                                   }
                                   size_arrays->next++;
                                 } else {
