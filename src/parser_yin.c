@@ -3022,7 +3022,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             /* HACK for unres */
             leaf->type.der = (struct lys_tpdf *)sub;
             leaf->type.parent = (struct lys_tpdf *)leaf;
-            if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DER, parent)) {
+            if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DER, retval)) {
                 leaf->type.der = NULL;
                 goto error;
             }
@@ -3194,7 +3194,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             /* HACK for unres */
             llist->type.der = (struct lys_tpdf *)sub;
             llist->type.parent = (struct lys_tpdf *)llist;
-            if (unres_schema_add_node(module, unres, &llist->type, UNRES_TYPE_DER, parent)) {
+            if (unres_schema_add_node(module, unres, &llist->type, UNRES_TYPE_DER, retval)) {
                 llist->type.der = NULL;
                 goto error;
             }

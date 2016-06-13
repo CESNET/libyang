@@ -4747,7 +4747,7 @@ yyreduce:
                      actual = (yyvsp[-2].nodes).node.ptr_leaf;
                      actual_type = LEAF_KEYWORD;
                      (yyvsp[-2].nodes).node.flag |= LYS_TYPE_DEF;
-                     if (unres_schema_add_node(trg, unres, &(yyvsp[-2].nodes).node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *)(yyvsp[-2].nodes).node.ptr_leaf->parent)) {
+                     if (unres_schema_add_node(trg, unres, &(yyvsp[-2].nodes).node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *)(yyvsp[-2].nodes).node.ptr_leaf)) {
                        YYABORT;
                      }
                    }
@@ -4940,7 +4940,7 @@ yyreduce:
                    actual = (yyvsp[-2].nodes).node.ptr_leaflist;
                    actual_type = LEAF_LIST_KEYWORD;
                    (yyvsp[-2].nodes).node.flag |= LYS_TYPE_DEF;
-                   if (unres_schema_add_node(trg, unres, &(yyvsp[-2].nodes).node.ptr_leaflist->type, UNRES_TYPE_DER, (struct lys_node *)(yyvsp[-2].nodes).node.ptr_leaflist->parent)) {
+                   if (unres_schema_add_node(trg, unres, &(yyvsp[-2].nodes).node.ptr_leaflist->type, UNRES_TYPE_DER, (struct lys_node *)(yyvsp[-2].nodes).node.ptr_leaflist)) {
                      YYABORT;
                    }
                  }

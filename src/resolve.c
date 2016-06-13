@@ -3108,7 +3108,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                     return -1;
                 }
 
-                node = parent;
+                node = lys_parent(parent);
                 i = 0;
                 while (1) {
                     if (!node) {
