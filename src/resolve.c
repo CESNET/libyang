@@ -2730,6 +2730,7 @@ resolve_path_predicate_data(const char *pred, struct lyd_node *node, struct unre
     int pke_len, sour_len, sour_pref_len, dest_len, dest_pref_len, parsed_loc = 0, pke_parsed = 0;
     int has_predicate, dest_parent_times, i, rc;
     uint32_t j;
+    struct lyd_node_leaf_list *leaf_dst, *leaf_src;
 
     source_match.count = 1;
     source_match.node = malloc(sizeof *source_match.node);
@@ -2766,7 +2767,7 @@ resolve_path_predicate_data(const char *pred, struct lyd_node *node, struct unre
             }
 
             /* destination */
-            dest_match.node[0] = node_match->node[j];
+            dest_match.node[0] = node;
             dest_parent_times = 0;
             if ((i = parse_path_key_expr(path_key_expr, &dest_pref, &dest_pref_len, &dest, &dest_len,
                                             &dest_parent_times)) < 1) {
@@ -2803,13 +2804,19 @@ resolve_path_predicate_data(const char *pred, struct lyd_node *node, struct unre
             }
 
             /* check match between source and destination nodes */
-            if (((struct lys_node_leaf *)source_match.node[0]->schema)->type.base
-                    != ((struct lys_node_leaf *)dest_match.node[0]->schema)->type.base) {
+            leaf_dst = (struct lyd_node_leaf_list *)dest_match.node[0];
+            while (leaf_dst->value_type == LY_TYPE_LEAFREF) {
+                leaf_dst = (struct lyd_node_leaf_list *)leaf_dst->value.leafref;
+            }
+            leaf_src = (struct lyd_node_leaf_list *)source_match.node[0];
+            while (leaf_src->value_type == LY_TYPE_LEAFREF) {
+                leaf_src = (struct lyd_node_leaf_list *)leaf_src->value.leafref;
+            }
+            if (leaf_src->value_type != leaf_dst->value_type) {
                 goto remove_leafref;
             }
 
-            if (!ly_strequal(((struct lyd_node_leaf_list *)source_match.node[0])->value_str,
-                             ((struct lyd_node_leaf_list *)dest_match.node[0])->value_str, 1)) {
+            if (!ly_strequal(leaf_src->value_str, leaf_dst->value_str, 1)) {
                 goto remove_leafref;
             }
 
