@@ -2897,11 +2897,25 @@ lys_set_private(const struct lys_node *node, void *priv)
 int
 lys_leaf_add_leafref_target(struct lys_node_leaf *leafref_target, struct lys_node *leafref)
 {
+    struct lys_node_leaf *iter = leafref_target;
+
     if (leafref_target->nodetype != LYS_LEAF) {
         LOGINT;
         return -1;
     }
 
+    /* check for cycles */
+    while (iter && iter->type.base == LY_TYPE_LEAFREF) {
+        if ((void *)iter == (void *)leafref) {
+            /* cycle detected */
+            LOGVAL(LYE_CIRC_LEAFREFS, LY_VLOG_LYS, leafref);
+            return -1;
+        }
+        iter = iter->type.info.lref.target;
+    }
+
+    /* create fake child - the ly_set structure to hold the list of
+     * leafrefs referencing the leaf */
     if (!leafref_target->child) {
         leafref_target->child = (void*)ly_set_new();
         if (!leafref_target->child) {

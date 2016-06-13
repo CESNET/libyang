@@ -1156,6 +1156,7 @@ typedef enum {
     LYVE_INREGEX,      /**< invalid regular expression (schema) */
     LYVE_INRESOLV,     /**< no resolvents found (schema) */
     LYVE_INSTATUS,     /**< invalid derivation because of status (schema) */
+    LYVE_CIRC_LEAFREFS,/**< circular chain of leafrefs detected (schema) */
 
     LYVE_OBSDATA,      /**< obsolete data instantiation (data) */
     /* */

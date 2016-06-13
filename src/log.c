@@ -160,6 +160,7 @@ const char *ly_errs[] = {
 /* LYE_INREGEX */      "Regular expression \"%s\" is not valid (%s).",
 /* LYE_INRESOLV */     "Failed to resolve %s \"%s\".",
 /* LYE_INSTATUS */     "A \"%s\" definition %s references \"%s\" definition %s.",
+/* LYE_CIRC_LEAFREFS */"A circular chain of leafrefs detected.",
 
 /* LYE_OBSDATA */      "Obsolete data \"%s\" instantiated.",
 /* LYE_OBSTYPE */      "Data node \"%s\" with obsolete type \"%s\" instantiated.",
@@ -239,6 +240,7 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_INREGEX,      /* LYE_INREGEX */
     LYVE_INRESOLV,     /* LYE_INRESOLV */
     LYVE_INSTATUS,     /* LYE_INSTATUS */
+    LYVE_CIRC_LEAFREFS,/* LYE_CIRC_LEAFREFS */
 
     LYVE_OBSDATA,      /* LYE_OBSDATA */
     LYVE_OBSDATA,      /* LYE_OBSTYPE */

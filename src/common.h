@@ -161,6 +161,7 @@ typedef enum {
     LYE_INREGEX,
     LYE_INRESOLV,
     LYE_INSTATUS,
+    LYE_CIRC_LEAFREFS,
 
     LYE_OBSDATA,
     LYE_OBSTYPE,
