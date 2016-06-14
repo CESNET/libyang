@@ -797,6 +797,19 @@ struct ly_set *lyd_get_node(const struct lyd_node *data, const char *expr);
 struct ly_set *lyd_get_node2(const struct lyd_node *data, const struct lys_node *schema);
 
 /**
+ * @brief Resolve the leafref.
+ *
+ * This function is considered to be a part of a low level API and it should be used deliberately.
+ *
+ * @param[in] leafref The leafref node to resolve.
+ * @return
+ * - EXIT_SUCCESS on success,
+ * - EXIT_FAILURE when target does not exist,
+ * - -1 on error.
+ */
+int lyd_validate_leafref(struct lyd_node_leaf_list *leafref);
+
+/**
  * @brief Validate \p node data subtree.
  *
  * @param[in,out] node Data tree to be validated. In case the \p options does not includes #LYD_OPT_NOAUTODEL, libyang

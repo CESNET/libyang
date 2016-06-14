@@ -159,7 +159,7 @@ generic_init(char *config_file, const char *module, char *yang_folder)
     int fd = -1;
 
 
-    if (!config_file || !module || !yang_folder) {
+    if (!yang_folder) {
         goto error;
     }
 
@@ -171,26 +171,30 @@ generic_init(char *config_file, const char *module, char *yang_folder)
         goto error;
     }
 
-    fd = open(config_file, O_RDONLY);
-    if (fd == -1 || fstat(fd, &sb_config) == -1 || !S_ISREG(sb_config.st_mode)) {
+    if (module && !lys_parse_mem(ctx, module, yang_format)) {
         goto error;
     }
 
-    config = mmap(NULL, sb_config.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    close(fd);
-    fd = -1;
+    if (config_file) {
+        fd = open(config_file, O_RDONLY);
+        if (fd == -1 || fstat(fd, &sb_config) == -1 || !S_ISREG(sb_config.st_mode)) {
+            goto error;
+        }
 
-    if (!lys_parse_mem(ctx, lys_module_a, yang_format)) {
-        goto error;
+        config = mmap(NULL, sb_config.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        close(fd);
+        fd = -1;
+
+        root = lyd_parse_mem(ctx, config, in_format, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+        if (!root) {
+            goto error;
+        }
+
+        /* cleanup */
+        munmap(config, sb_config.st_size);
+    } else {
+        root = NULL;
     }
-
-    root = lyd_parse_mem(ctx, config, in_format, LYD_OPT_CONFIG | LYD_OPT_STRICT);
-    if (!root) {
-        goto error;
-    }
-
-    /* cleanup */
-    munmap(config, sb_config.st_size);
 
     return 0;
 
@@ -210,13 +214,31 @@ setup_f(void **state)
 {
     (void) state; /* unused */
     char *config_file = TESTS_DIR"/api/files/a.xml";
-    const char *module = lys_module_a;
     char *yang_folder = TESTS_DIR"/api/files";
     int rc;
 
-    rc = generic_init(config_file, module, yang_folder);
+    rc = generic_init(config_file, lys_module_a, yang_folder);
 
     if (rc) {
+        return -1;
+    }
+
+    return 0;
+}
+
+static int
+setup_leafrefs(void **state)
+{
+    (void) state; /* unused */
+    char *yang_folder = TESTS_DIR"/data/files";
+    int rc;
+
+    rc = generic_init(NULL, NULL, yang_folder);
+    if (rc) {
+        return -1;
+    }
+
+    if (!ly_ctx_load_module(ctx, "leafrefs", NULL)) {
         return -1;
     }
 
@@ -790,6 +812,37 @@ test_lyd_get_node_2(void **state)
     assert_string_equal("test", result->value_str);
 
     ly_set_free(set);
+}
+
+static void
+test_lyd_validate_leafref(void **state)
+{
+    (void) state; /* unused */
+    struct lyd_node *root = NULL, *list;
+    struct lyd_node_leaf_list *lr;
+    int rc;
+
+    root = lyd_new_path(NULL, ctx, "/leafrefs:lrtests/link", "jedna", 0);
+    assert_ptr_not_equal(root, NULL);
+    assert_ptr_not_equal(root->child, NULL);
+
+    lr = (struct lyd_node_leaf_list *)root->child;
+    assert_ptr_equal(lr->value.leafref, NULL);
+
+    rc = lyd_validate_leafref(lr);
+    assert_int_equal(rc, EXIT_FAILURE);
+    assert_ptr_equal(lr->value.leafref, NULL);
+
+    list = lyd_new_path(root, ctx, "/leafrefs:lrtests/target[id='1']/name", "jedna", 0);
+    assert_ptr_not_equal(list, NULL);
+    assert_ptr_not_equal(list->child, NULL);
+    assert_ptr_equal(list->parent, root);
+
+    rc = lyd_validate_leafref(lr);
+    assert_int_equal(rc, EXIT_SUCCESS);
+    assert_ptr_equal(lr->value.leafref, list->child->next);
+
+    lyd_free_withsiblings(root);
 }
 
 static void
@@ -1409,6 +1462,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lyd_schema_sort, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_get_node, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_get_node_2, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lyd_validate_leafref, setup_leafrefs, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_validate, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_unlink, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_free, setup_f, teardown_f),

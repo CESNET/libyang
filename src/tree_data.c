@@ -2599,6 +2599,22 @@ lyd_schema_sort(struct lyd_node *sibling, int recursive)
 }
 
 API int
+lyd_validate_leafref(struct lyd_node_leaf_list *leafref)
+{
+    if (!leafref || leafref->value_type != LY_TYPE_LEAFREF) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    if (leafref->value.leafref) {
+        /* nothing to do */
+        return EXIT_SUCCESS;
+    }
+
+    return resolve_unres_data_item((struct lyd_node *)leafref, UNRES_LEAFREF);
+}
+
+API int
 lyd_validate(struct lyd_node **node, int options, ...)
 {
     struct lyd_node *root, *next1, *next2, *iter, *to_free = NULL;
