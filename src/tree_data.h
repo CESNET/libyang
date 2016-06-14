@@ -818,23 +818,32 @@ int lyd_validate(struct lyd_node **node, int options, ...);
  * values directly in lyd_validate() and lyd_parse*() functions using appropriate options value. By default, these
  * functions remove the default nodes at the end of their processing.
  *
- * \p ctx parameter and \p options with #LYD_OPT_NOSIBLINGS values can result in 4 different scenarios:
+ * The \p ctx parameter is optional and it is used to get schemas to add a top level default nodes according to the
+ * following rules:
+ * - \p root points to an inner (non top-level) node
+ *   - the \p root is taken as a subroot and default nodes are being added only inside this subtree, \p ctx is not used
+ * - \p root points to a top-level node or to an empty tree
+ *   - \p ctx is specified
+ *     - \p options include #LYD_OPT_NOSIBLINGS
+ *       - default nodes being added are limited to the schemas mentioned by the \p root node and its siblings,
+ *       - NOSIBLINGS has meaning "no sibling schema" here,
+ *       - \p root pointing an empty tree is an error in this case
+ *     - \p options does not include #LYD_OPT_NOSIBLINGS
+ *       - (top-level) default nodes from all schemas in the \p ctx are added into the tree
+ *   - \p ctx is not specified
+ *     - \p options include #LYD_OPT_NOSIBLINGS
+ *       - only the node pointed by \p root is affected, so the node is actually handled as a subroot
+ *       - \p root pointing an empty tree is an error in this case
+ *     - \p options does not include #LYD_OPT_NOSIBLINGS
+ *       - default nodes being added are limited to the schemas mentioned by the \p root node and its siblings,
+ *       - \p root pointing an empty tree is an error in this case
  *
- * - If \p ctx is set and \p options include #LYD_OPT_NOSIBLINGS, tree default nodes will be added ONLY to \p root,
- * top-level default nodes will be added from ALL the modules (so it has no effect for #LYD_WD_TRIM).
- * - If \p ctx is set and \p options do not include #LYD_OPT_NOSIBLINGS, tree default values will be added to ALL
- * the \p root siblings, top-level nodes will be added from ALL the modules.
- * - If \p ctx is NULL and \p options include #LYD_OPT_NOSIBLINGS, tree default nodes will be added ONLY to \p root,
- * top-level default nodes will be added ONLY from the module of \p root.
- * - If \p ctx is NULL and \p options do not include #LYD_OPT_NOSIBLINGS, tree default nodes will be added to ALL
- * the \p root siblings, top-level default nodes will be added from ALL the \p root siblings modules.
- *
- * @param[in] ctx Optional parameter. Exact meaning described in this function description last paragraph.
+ * @param[in] ctx Optional parameter, for details see the previous paragraph.
  * @param[in] root Data tree root. In case of #LYD_WD_TRIM the data tree can be modified so the root can be changed or
  *            removed. In other modes and with empty data tree, new default nodes can be created so the root pointer
  *            will contain/return the newly created data tree.
- * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions - only the
- *            LYD_WD_* options are used to select functionality:
+ * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions - besides
+ *            the #LYD_OPT_NOSIBLINGS described above, only the LYD_WD_* options are allowed to select functionality:
  * - #LYD_WD_TRIM - remove all nodes that have value equal to their default value
  * - #LYD_WD_EXPLICIT - add only status default nodes
  * - #LYD_WD_ALL - add all (status as well as config) default nodes
