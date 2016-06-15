@@ -609,7 +609,7 @@ upper:
 
         if (*c == '|') {
             c++;
-            /* process next length-parth */
+            /* process next length-part */
             goto lengthpart;
         } else if (*c == '\0') {
             goto syntax_ok;
