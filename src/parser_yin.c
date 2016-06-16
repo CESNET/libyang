@@ -825,6 +825,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 if (!precomp) {
                     LOGVAL(LYE_INREGEX, LY_VLOG_NONE, NULL, value, err_ptr);
                     free(type->info.str.patterns);
+                    type->info.str.patterns = NULL;
                     goto error;
                 }
                 free(precomp);
