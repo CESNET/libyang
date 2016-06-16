@@ -3146,7 +3146,10 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
 
     /* remove applied augments */
     for (i = 0; i < module->augment_size; ++i) {
-        assert(module->augment[i].target);
+        if (!module->augment[i].target) {
+            /* skip not resolved augments */
+            continue;
+        }
 
         elem = module->augment[i].child;
         if (elem) {
