@@ -3427,7 +3427,7 @@ inherit_config_flag(struct lys_node *node, int flags)
             continue;
         }
         if (!(node->nodetype & (LYS_USES | LYS_GROUPING))) {
-            node->flags |= flags;
+            node->flags = (node->flags & ~LYS_CONFIG_MASK) | flags;
         }
         inherit_config_flag(node->child, flags);
     }
