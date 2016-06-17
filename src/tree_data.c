@@ -1438,7 +1438,7 @@ diff_ordset_insert(struct lyd_node *node, struct ly_set *ordset_keys, struct ly_
     unsigned int i;
     struct diff_ordered *new_ordered;
 
-    i = ly_set_add(ordset_keys, node->schema);
+    i = ly_set_add(ordset_keys, node->schema, 0);
     if (i == ordset->number) {
         /* not seen user-ordered list */
         new_ordered = malloc(sizeof *new_ordered);
@@ -1446,7 +1446,7 @@ diff_ordset_insert(struct lyd_node *node, struct ly_set *ordset_keys, struct ly_
         new_ordered->count = 0;
         new_ordered->items = NULL;
         new_ordered->dist = NULL;
-        ly_set_add(ordset, new_ordered);
+        ly_set_add(ordset, new_ordered, LY_SET_OPT_USEASLIST);
     }
     ((struct diff_ordered *)ordset->set.g[i])->count++;
 }
@@ -1508,8 +1508,9 @@ lyd_diff_compare(struct lyd_node *first, struct lyd_node *second,
         second->validity |= LYD_VAL_INUSE;
         /* remember the matching node in first for keeping correct pointer in first
          * for comparing when passing through the second tree in lyd_diff().
-         */
-        ly_set_add(matchset, first);
+         * Duplicities are not allowed actually, but they cannot happen since single
+         * node can match only one node in the other tree */
+        ly_set_add(matchset, first, LY_SET_OPT_USEASLIST);
         break;
     case LYS_LEAF:
         /* check for leaf's modification */
@@ -3270,7 +3271,7 @@ lyd_get_default(const char* unique_expr, struct lyd_node_leaf_list *list)
             ly_set_free(s);
             return NULL;
         }
-        ly_set_add(s, (void *)parent);
+        ly_set_add(s, (void *)parent, LY_SET_OPT_USEASLIST);
     }
     ly_vlog_hide(1);
     for (i = 0, last = (struct lyd_node *)list; i < s->number; i++) {
@@ -3591,7 +3592,7 @@ lyd_get_node(const struct lyd_node *data, const char *expr)
     if (xp_set.type == LYXP_SET_NODE_SET) {
         for (i = 0; i < xp_set.used; ++i) {
             if (xp_set.val.nodes[i].type == LYXP_NODE_ELEM) {
-                if (ly_set_add(set, xp_set.val.nodes[i].node) < 0) {
+                if (ly_set_add(set, xp_set.val.nodes[i].node, LY_SET_OPT_USEASLIST) < 0) {
                     ly_set_free(set);
                     set = NULL;
                     break;
@@ -3643,7 +3644,7 @@ lyd_get_node2(const struct lyd_node *data, const struct lys_node *schema)
             continue;
         } else if (siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_ANYXML | LYS_NOTIF | LYS_RPC)) {
             /* standard data node */
-            ly_set_add(spath, (void*)siter);
+            ly_set_add(spath, (void*)siter, LY_SET_OPT_USEASLIST);
 
         } /* else skip the rest node types */
         siter = siter->parent;
@@ -3656,7 +3657,7 @@ lyd_get_node2(const struct lyd_node *data, const struct lys_node *schema)
     /* start searching */
     LY_TREE_FOR((struct lyd_node *)data, iter) {
         if (iter->schema == spath->set.s[spath->number - 1]) {
-            ly_set_add(ret, iter);
+            ly_set_add(ret, iter, LY_SET_OPT_USEASLIST);
         }
     }
     for (i = spath->number - 1; i; i--) {
@@ -3673,7 +3674,7 @@ lyd_get_node2(const struct lyd_node *data, const struct lys_node *schema)
         for (j = 0; j < ret->number; j++) {
             LY_TREE_FOR(ret->set.d[j]->child, iter) {
                 if (iter->schema == spath->set.s[i - 1]) {
-                    ly_set_add(ret_aux, iter);
+                    ly_set_add(ret_aux, iter, LY_SET_OPT_USEASLIST);
                 }
             }
         }
@@ -3709,7 +3710,7 @@ ly_set_free(struct ly_set *set)
 }
 
 API int
-ly_set_add(struct ly_set *set, void *node)
+ly_set_add(struct ly_set *set, void *node, int options)
 {
     unsigned int i;
     void **new;
@@ -3719,11 +3720,13 @@ ly_set_add(struct ly_set *set, void *node)
         return -1;
     }
 
-    /* search for duplication */
-    for (i = 0; i < set->number; i++) {
-        if (set->set.g[i] == node) {
-            /* already in set */
-            return i;
+    if (!(options & LY_SET_OPT_USEASLIST)) {
+        /* search for duplication */
+        for (i = 0; i < set->number; i++) {
+            if (set->set.g[i] == node) {
+                /* already in set */
+                return i;
+            }
         }
     }
 
@@ -4386,7 +4389,7 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
     }
     LY_TREE_FOR(*root, iter) {
         if ((!ctx || (options & LYD_OPT_NOSIBLINGS)) && !(options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF))) {
-            ly_set_add(topset, lys_node_module(iter->schema)->data);
+            ly_set_add(topset, lys_node_module(iter->schema)->data, 0);
         }
         if (options & (LYD_OPT_CONFIG | LYD_OPT_EDIT | LYD_OPT_GETCONFIG)) {
             /* do not process status data */
@@ -4424,7 +4427,7 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
         /* add all module data into our internal set */
         for (i = 0; i < (unsigned int)ctx->models.used; i++) {
             if (ctx->models.list[i]->data) {
-                ly_set_add(topset, ctx->models.list[i]->data);
+                ly_set_add(topset, ctx->models.list[i]->data, LY_SET_OPT_USEASLIST);
             }
         }
     }

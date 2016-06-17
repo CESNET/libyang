@@ -648,17 +648,17 @@ test_ly_set_add(void **state)
         fail();
     }
 
-    rc = ly_set_add(NULL, root->child->schema);
+    rc = ly_set_add(NULL, root->child->schema, 0);
     if(rc != -1) {
         fail();
     }
 
-    rc = ly_set_add(set, NULL);
+    rc = ly_set_add(set, NULL, 0);
     if(rc != -1) {
         fail();
     }
 
-    rc = ly_set_add(set, root->child->schema);
+    rc = ly_set_add(set, root->child->schema, 0);
     if(rc == -1) {
         fail();
     }
@@ -688,7 +688,7 @@ test_ly_set_rm(void **state)
         fail();
     }
 
-    rc = ly_set_add(set, root->child->schema);
+    rc = ly_set_add(set, root->child->schema, 0);
     if(rc) {
         fail();
     }
@@ -718,7 +718,7 @@ test_ly_set_rm_index(void **state)
         fail();
     }
 
-    rc = ly_set_add(set, root->child->schema);
+    rc = ly_set_add(set, root->child->schema, 0);
     if(rc) {
         fail();
     }
