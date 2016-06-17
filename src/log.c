@@ -157,7 +157,7 @@ const char *ly_errs[] = {
 /* LYE_KEY_CONFIG */   "The \"config\" value of the \"%s\" key differs from its list config value.",
 /* LYE_KEY_MISS */     "Leaf \"%s\" defined as key in a list not found.",
 /* LYE_KEY_DUP */      "Key identifier \"%s\" is not unique.",
-/* LYE_INREGEX */      "Regular expression \"%s\" is not valid (%s).",
+/* LYE_INREGEX */      "Regular expression \"%s\" is not valid (\"%s\": %s).",
 /* LYE_INRESOLV */     "Failed to resolve %s \"%s\".",
 /* LYE_INSTATUS */     "A \"%s\" definition %s references \"%s\" definition %s.",
 /* LYE_CIRC_LEAFREFS */"A circular chain of leafrefs detected.",

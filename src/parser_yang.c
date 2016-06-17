@@ -13,7 +13,6 @@
  */
 
 #include <ctype.h>
-#include <pcre.h>
 #include "parser_yang.h"
 #include "parser_yang_lex.h"
 #include "parser.h"
@@ -1033,18 +1032,10 @@ error:
 void *
 yang_read_pattern(struct lys_module *module, struct yang_type *typ, char *value)
 {
-    pcre *precomp;
-    int err_offset;
-    const char *err_ptr;
-
-    /* check that the regex is valid */
-    precomp = pcre_compile(value, PCRE_NO_AUTO_CAPTURE, &err_ptr, &err_offset, NULL);
-    if (!precomp) {
-        LOGVAL(LYE_INREGEX, LY_VLOG_NONE, NULL, value, err_ptr);
+    if (lyp_check_pattern(value, NULL)) {
         free(value);
         return NULL;
     }
-    free(precomp);
 
     typ->type->info.str.patterns[typ->type->info.str.pat_count].expr = lydict_insert_zc(module->ctx, value);
     typ->type->info.str.pat_count++;

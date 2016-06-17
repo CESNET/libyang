@@ -15,6 +15,8 @@
 #ifndef LY_PARSER_H_
 #define LY_PARSER_H_
 
+#include <pcre.h>
+
 #include "libyang.h"
 #include "tree_schema.h"
 #include "tree_internal.h"
@@ -62,6 +64,8 @@ struct lys_type *lyp_get_next_union_type(struct lys_type *type, struct lys_type 
 int lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int resolve);
 
 int lyp_check_length_range(const char *expr, struct lys_type *type);
+
+int lyp_check_pattern(const char *pattern, pcre **pcre_precomp);
 
 int fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_type *type,
                   struct unres_schema *unres);

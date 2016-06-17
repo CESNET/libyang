@@ -21,7 +21,6 @@
 #include <string.h>
 #include <stddef.h>
 #include <sys/types.h>
-#include <pcre.h>
 
 #include "libyang.h"
 #include "common.h"
@@ -228,13 +227,12 @@ int
 fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_type *type,
               struct unres_schema *unres)
 {
-    const char *value, *name, *err_ptr;
+    const char *value, *name;
     struct lyxml_elem *next, *node;
     struct lys_restr **restr;
     struct lys_type_bit bit;
     struct lys_type *type_der;
-    pcre *precomp;
-    int i, j, rc, err_offset;
+    int i, j, rc;
     int ret = -1;
     int64_t v, v_;
     int64_t p, p_;
@@ -820,15 +818,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             LY_TREE_FOR(yin->child, node) {
                 GETVAL(value, node, "value");
 
-                /* check that the regex is valid */
-                precomp = pcre_compile(value, PCRE_NO_AUTO_CAPTURE, &err_ptr, &err_offset, NULL);
-                if (!precomp) {
-                    LOGVAL(LYE_INREGEX, LY_VLOG_NONE, NULL, value, err_ptr);
+                if (lyp_check_pattern(value, NULL)) {
                     free(type->info.str.patterns);
                     type->info.str.patterns = NULL;
                     goto error;
                 }
-                free(precomp);
 
                 type->info.str.patterns[type->info.str.pat_count].expr = lydict_insert(module->ctx, value, 0);
 
