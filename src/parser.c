@@ -1491,6 +1491,11 @@ lyp_check_status(uint16_t flags1, struct lys_module *mod1, const char *name1,
     return EXIT_SUCCESS;
 }
 
+/* returns:
+ *  0 - inc successfully filled
+ * -1 - error, inc is cleaned
+ *  1 - duplication, ignore the inc structure, inc is cleaned
+ */
 int
 lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, const char *value,
                   struct lys_include *inc, struct unres_schema *unres)
@@ -1498,29 +1503,48 @@ lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, co
     char *module_data;
     void (*module_data_free)(void *module_data) = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
-    int count, i;
+    int count, i, j;
 
     /* check that the submodule was not included yet (previous submodule could have included it) */
-    for (i = 0; i < module->inc_size; ++i) {
-        if (module->inc[i].submodule && (ly_strequal(module->inc[i].submodule->name, value, 1))) {
-            /* copy the duplicate into the result */
-            memcpy(inc, &module->inc[i], sizeof *inc);
-
-            if (submodule) {
-                /* we don't care if it was external or not */
-                inc->external = 0;
-            } else if (inc->external) {
-                /* remove the duplicate */
-                --module->inc_size;
-                memmove(&module->inc[i], &module->inc[i + 1], (module->inc_size - i) * sizeof *inc);
-                module->inc = ly_realloc(module->inc, module->inc_size * sizeof *module->inc);
-
-                /* it is no longer external */
-                inc->external = 0;
+    for (i = 0; i < module->inc_size && module->inc[i].submodule; ++i) {
+        if (ly_strequal(module->inc[i].submodule->name, value, 1)) {
+            /* check revisions, including multiple revisions of a single module is error */
+            if (inc->rev[0] && !module->inc[i].submodule->rev_size) {
+                /* the already included submodule has no revision, but here we require some */
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "include");
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Including multiple revisions of submodule \"%s\".", value);
+                return -1;
+            } else if (inc->rev[0] && module->inc[i].submodule->rev_size &&
+                    strcmp(module->inc[i].submodule->rev[0].date, inc->rev)) {
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "include");
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Including multiple revisions of submodule \"%s\".", value);
+                return -1;
             }
-            /* if !submodule && !inc->external, we just create a duplicate so it is detected and ended with error */
+            /* we want to load module, which is already included in the main module */
+            if (!submodule && !module->inc[i].external) {
+                /* it was already included by the main module */
+                LOGWRN("Duplicated include of the \"%s\" submodule in the \"%s\" module.", value, module->name);
+            } else if (submodule && module->inc[i].external) {
+                for (j = 0; j < submodule->inc_size && submodule->inc[j].submodule; j++) {
+                    if (ly_strequal(submodule->inc[j].submodule->name, value, 1)) {
+                        LOGWRN("Duplicated include of the \"%s\" submodule in the \"%s\" submodule.", value, submodule->name);
+                        break;
+                    }
+                }
+            }
 
-            return EXIT_SUCCESS;
+            if (!submodule) {
+                /* the included submodule is no longer external */
+                module->inc[i].external = 0;
+                /* the expected array will be shorter due to duplicity */
+                module->inc_size--;
+                module->inc = ly_realloc(module->inc, module->inc_size * sizeof *module->inc);
+                if (!module->inc) {
+                    LOGMEM;
+                    return -1;
+                }
+            }
+            return 1;
         }
     }
 

@@ -2337,7 +2337,12 @@ error:
     return EXIT_FAILURE;
 }
 
-/* logs directly */
+/* logs directly
+ * returns:
+ *  0 - inc successfully filled
+ * -1 - error, inc is cleaned
+ *  1 - duplication, ignore the inc structure, inc is cleaned
+ */
 static int
 fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, struct lyxml_elem *yin,
                  struct lys_include *inc, struct unres_schema *unres)
@@ -4831,20 +4836,12 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
              * 2) we cannot pass directly the structure in the array since
              * submodule parser can realloc our array of includes */
             r = fill_yin_include(module, submodule, child, &inc, unres);
-            memcpy(&trg->inc[inc_size_aux], &inc, sizeof inc);
-            inc_size_aux++;
-            if (r) {
+            if (!r) {
+                /* success, copy the filled data into the final array */
+                memcpy(&trg->inc[inc_size_aux], &inc, sizeof inc);
+                inc_size_aux++;
+            } else if (r == -1) {
                 goto error;
-            }
-
-            /* check duplications in include submodules */
-            for (i = 0; i < inc_size_aux - 1; i++) {
-                if (trg->inc[i].submodule && !strcmp(trg->inc[i].submodule->name, trg->inc[inc_size_aux - 1].submodule->name)) {
-                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, trg->inc[i].submodule->name, "include");
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Including submodule \"%s\" repeatedly.", trg->inc[i].submodule->name);
-                    trg->inc[inc_size_aux - 1].submodule = NULL;
-                    goto error;
-                }
             }
 
         } else if (!strcmp(child->name, "revision")) {
