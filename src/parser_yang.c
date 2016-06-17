@@ -100,9 +100,10 @@ yang_fill_import(struct lys_module *module, struct lys_import *imp, char *value)
 
     /* check duplicities in imported modules */
     for (i = 0; i < module->imp_size; i++) {
-        if (!strcmp(module->imp[i].module->name, module->imp[module->imp_size].module->name)) {
+        if (!strcmp(module->imp[i].module->name, module->imp[module->imp_size].module->name) &&
+                module->imp[i].module != module->imp[module->imp_size].module) {
             LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, module->imp[i].module->name, "import");
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Importing module \"%s\" repeatedly.", module->imp[i].module->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Importing multiple revisions of module \"%s\".", module->imp[i].module->name);
             goto error;
         }
     }

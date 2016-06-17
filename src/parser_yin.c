@@ -4815,11 +4815,12 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 goto error;
             }
 
-            /* check duplicities in imported modules */
+            /* check for importing a single module in multiple revisions */
             for (i = 0; i < trg->imp_size - 1; i++) {
-                if (!strcmp(trg->imp[i].module->name, trg->imp[trg->imp_size - 1].module->name)) {
+                if (!strcmp(trg->imp[i].module->name, trg->imp[trg->imp_size - 1].module->name) &&
+                        trg->imp[i].module != trg->imp[trg->imp_size - 1].module) {
                     LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, trg->imp[i].module->name, "import");
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Importing module \"%s\" repeatedly.", trg->imp[i].module->name);
+                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Importing multiple revisions of module \"%s\".", trg->imp[i].module->name);
                     goto error;
                 }
             }
