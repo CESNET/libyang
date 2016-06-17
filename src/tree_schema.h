@@ -373,6 +373,7 @@ struct lys_type_info_dec64 {
     struct lys_restr *range; /**< range restriction (optional), see
                                   [RFC 6020 sec. 9.2.4](http://tools.ietf.org/html/rfc6020#section-9.2.4) */
     uint8_t dig;             /**< fraction-digits restriction (mandatory) */
+    uint64_t div;            /**< auxiliary value for moving decimal point (dividing the stored value to get the real value) */
 };
 
 /**

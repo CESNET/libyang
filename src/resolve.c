@@ -1845,10 +1845,8 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
         break;
     case LY_TYPE_DEC64:
         kind = 2;
-        local_fmin = -9223372036854775808.0;
-        local_fmin /= 1 << type->info.dec64.dig;
-        local_fmax = 9223372036854775807.0;
-        local_fmax /= 1 << type->info.dec64.dig;
+        local_fmin = ((long double)-9223372036854775808.0) / type->info.dec64.div;
+        local_fmax = ((long double)9223372036854775807.0) / type->info.dec64.div;
 
         if (!str_restr && type->info.dec64.range) {
             str_restr = type->info.dec64.range->expr;

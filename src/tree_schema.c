@@ -1314,6 +1314,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
 
         case LY_TYPE_DEC64:
             new->info.dec64.dig = old->info.dec64.dig;
+            new->info.dec64.div = old->info.dec64.div;
             if (old->info.dec64.range) {
                 new->info.dec64.range = lys_restr_dup(mod->ctx, old->info.dec64.range, 1);
             }

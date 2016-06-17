@@ -452,6 +452,10 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     goto error;
                 }
                 type->info.dec64.dig = (uint8_t)v;
+                type->info.dec64.div = 10;
+                for (i = 1; i < v; i++) {
+                    type->info.dec64.div *= 10;
+                }
             } else {
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name);
                 goto error;

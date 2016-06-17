@@ -964,7 +964,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
 
         if (parse_int(dec, __INT64_C(-9223372036854775807) - __INT64_C(1), __INT64_C(9223372036854775807), 10, &num,
                       (struct lyd_node *)node)
-                || validate_length_range(2, 0, 0, ((long double)num)/(1 << type->info.dec64.dig), stype,
+                || validate_length_range(2, 0, 0, ((long double)num) / type->info.dec64.div, stype,
                                          node->value_str, (struct lyd_node *)node)) {
             return EXIT_FAILURE;
         }
