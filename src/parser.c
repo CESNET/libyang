@@ -37,7 +37,7 @@
 
 #define LYP_URANGE_LEN 19
 
-char *lyp_ublock2urange[][2] = {
+static char *lyp_ublock2urange[][2] = {
     {"BasicLatin", "[\\x{0000}-\\x{007F}]"},
     {"Latin-1Supplement", "[\\x{0080}-\\x{00FF}]"},
     {"LatinExtended-A", "[\\x{0100}-\\x{017F}]"},
