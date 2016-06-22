@@ -108,7 +108,6 @@ test_modules(void **state)
                          };
     int i, format;
 
-
     if (!strcmp(ctx->models.search_path, realpath(SCHEMA_FOLDER_YIN, path))) {
         extension = ".yin";
         format = LYS_IN_YIN;
