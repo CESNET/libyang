@@ -97,7 +97,9 @@ void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 
 #define LOGERR(errno, str, args...)                                 \
 	ly_errno = errno;                                               \
-	ly_log(LY_LLERR, str, ##args)
+    if (ly_log_level >= LY_LLERR) {                                 \
+        ly_log(LY_LLERR, str, ##args);                              \
+    }
 
 #define LOGWRN(str, args...)                                        \
 	if (ly_log_level >= LY_LLWRN) {                                 \
