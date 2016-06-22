@@ -2308,7 +2308,12 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
             imp->prefix = lydict_insert(module->ctx, value, strlen(value));
         } else if (!strcmp(child->name, "revision-date")) {
             if (imp->rev[0]) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "revision-date", yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
+                goto error;
+            } else if (!imp->prefix) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                       "The \"prefix\" statement is expected before the \"revision-date\".");
                 goto error;
             }
             GETVAL(value, child, "date");
