@@ -376,7 +376,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
     if (ctx->module_clb) {
         module_data = ctx->module_clb(name, revision, ctx->module_clb_data, &format, &module_data_free);
         if (!module_data) {
-            LOGERR(LY_EVALID, "User module retrieval callback failed!");
+            LOGERR(0, "User module retrieval callback failed!");
             return NULL;
         }
         module = lys_parse_mem(ctx, module_data, format);

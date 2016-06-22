@@ -96,7 +96,7 @@ extern volatile uint8_t ly_log_level;
 void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 
 #define LOGERR(errno, str, args...)                                 \
-	ly_errno = errno;                                               \
+    if (errno) { ly_errno = errno; }                                \
     if (ly_log_level >= LY_LLERR) {                                 \
         ly_log(LY_LLERR, str, ##args);                              \
     }
