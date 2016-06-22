@@ -210,7 +210,7 @@ struct lys_module *
 lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
                 struct unres_schema *unres)
 {
-    size_t len, flen;
+    size_t len, flen, file_len = 0;
     int fd;
     char *wd, *cwd, *model_path;
     DIR *dir;
@@ -288,6 +288,22 @@ opendir_search:
                 format_match = format;
                 continue;
             }
+        } else {
+            /* remember the revision and try to find the newest one */
+            if (file_match) {
+                int a;
+                if (file->d_name[len] != '@' || lyp_check_date(&file->d_name[len + 1])) {
+                    continue;
+                } else if (file_match->d_name[file_len] == '@' &&
+                    (a = strncmp(&file_match->d_name[file_len + 1], &file->d_name[len + 1], LY_REV_SIZE - 1)) >= 0) {
+                    continue;
+                }
+            }
+
+            file_match = file;
+            file_len = len;
+            format_match = format;
+            continue;
         }
 
         file_match = file;
@@ -1425,10 +1441,6 @@ lyp_check_date(const char *date)
     int i;
 
     assert(date);
-
-    if (strlen(date) != LY_REV_SIZE - 1) {
-        goto error;
-    }
 
     for (i = 0; i < LY_REV_SIZE - 1; i++) {
         if (i == 4 || i == 7) {
