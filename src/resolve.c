@@ -4831,6 +4831,10 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
             free(msg);
         }
         return rc;
+    } else {
+        /* erase info about validation errors */
+        ly_errno = LY_SUCCESS;
+        ly_vecode = LYVE_SUCCESS;
     }
 
     print_unres_schema_item_fail(item, type, snode);
