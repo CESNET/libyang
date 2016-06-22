@@ -4187,7 +4187,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
             if (r) {
                 goto error;
             }
-        } else if (!strcmp(sub->name, "if-features")) {
+        } else if (!strcmp(sub->name, "if-feature")) {
             r = fill_yin_iffeature(retval, sub, &notif->features[notif->features_size], unres);
             notif->features_size++;
             if (r) {
