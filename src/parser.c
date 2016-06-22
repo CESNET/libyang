@@ -1491,6 +1491,71 @@ lyp_check_status(uint16_t flags1, struct lys_module *mod1, const char *name1,
     return EXIT_SUCCESS;
 }
 
+static void
+lyp_check_circmod_pop(struct lys_module *module)
+{
+    struct ly_modules_list *models = &module->ctx->models;
+
+    /* update the list of currently being parsed modules */
+    models->parsing_number--;
+    if (models->parsing_number == 1) {
+        free(models->parsing);
+        models->parsing = NULL;
+        models->parsing_number = models->parsing_size = 0;
+    } else {
+        models->parsing[models->parsing_number] = NULL;
+    }
+}
+
+/*
+ * types: 0 - include, 1 - import
+ */
+static int
+lyp_check_circmod(struct lys_module *module, const char *value, int type)
+{
+    LY_ECODE code = type ? LYE_CIRC_IMPORTS : LYE_CIRC_INCLUDES;
+    struct ly_modules_list *models = &module->ctx->models;
+    int i;
+
+    /* circular import check */
+    if (!models->parsing_size) {
+        if (ly_strequal(module->name, value, 1)) {
+            LOGVAL(code, LY_VLOG_NONE, NULL, value);
+            return -1;
+        }
+
+        /* storing - first import, besides the module being imported, add also the starting module */
+        models->parsing_size = models->parsing_number = 2;
+        models->parsing = malloc(2 * sizeof *models->parsing);
+        if (!models->parsing) {
+            LOGMEM;
+            return -1;
+        }
+        models->parsing[0] = module->name;
+        models->parsing[1] = value;
+    } else {
+        for (i = 0; i < models->parsing_number; i++) {
+            if (ly_strequal(models->parsing[i], value, 1)) {
+                LOGVAL(code, LY_VLOG_NONE, NULL, value);
+                return -1;
+            }
+        }
+        /* storing - enlarge the list of modules being currently parsed */
+        models->parsing_number++;
+        if (models->parsing_number >= models->parsing_size) {
+            models->parsing_size++;
+            models->parsing = ly_realloc(models->parsing, models->parsing_size * sizeof *models->parsing);
+            if (!models->parsing) {
+                LOGMEM;
+                return -1;
+            }
+        }
+        models->parsing[models->parsing_number - 1] = value;
+    }
+
+    return 0;
+}
+
 /* returns:
  *  0 - inc successfully filled
  * -1 - error, inc is cleaned
@@ -1548,26 +1613,10 @@ lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, co
         }
     }
 
-    /* check for circular include, store it if passed */
-    if (!module->ctx->models.parsing) {
-        count = 0;
-    } else {
-        for (count = 0; module->ctx->models.parsing[count]; ++count) {
-            if (ly_strequal(value, module->ctx->models.parsing[count], 1)) {
-                LOGERR(LY_EVALID, "Circular include dependency on the submodule \"%s\".", value);
-                goto error;
-            }
-        }
+    /* circular include check */
+    if (lyp_check_circmod(module, value, 0)) {
+        return -1;
     }
-    ++count;
-    module->ctx->models.parsing =
-        ly_realloc(module->ctx->models.parsing, (count + 1) * sizeof *module->ctx->models.parsing);
-    if (!module->ctx->models.parsing) {
-        LOGMEM;
-        goto error;
-    }
-    module->ctx->models.parsing[count - 1] = value;
-    module->ctx->models.parsing[count] = NULL;
 
     /* try to load the submodule */
     inc->submodule = (struct lys_submodule *)ly_ctx_get_submodule2(module, value);
@@ -1576,6 +1625,7 @@ lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, co
             if (!inc->submodule->rev_size || !ly_strequal(inc->rev, inc->submodule->rev[0].date, 1)) {
                 LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, inc->rev[0], "revision");
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Multiple revisions of the same submodule included.");
+                lyp_check_circmod_pop(module);
                 goto error;
             }
         }
@@ -1599,17 +1649,8 @@ lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, co
         }
     }
 
-    /* remove the new submodule name now that its parsing is finished (even if failed) */
-    if (module->ctx->models.parsing[count] || !ly_strequal(module->ctx->models.parsing[count - 1], value, 1)) {
-        LOGINT;
-    }
-    --count;
-    if (count) {
-        module->ctx->models.parsing[count] = NULL;
-    } else {
-        free(module->ctx->models.parsing);
-        module->ctx->models.parsing = NULL;
-    }
+    /* update the list of currently being parsed modules */
+    lyp_check_circmod_pop(module);
 
     /* check the result */
     if (!inc->submodule) {

@@ -161,6 +161,8 @@ const char *ly_errs[] = {
 /* LYE_INRESOLV */     "Failed to resolve %s \"%s\".",
 /* LYE_INSTATUS */     "A \"%s\" definition %s references \"%s\" definition %s.",
 /* LYE_CIRC_LEAFREFS */"A circular chain of leafrefs detected.",
+/* LYE_CIRC_IMPORTS */ "A circular dependency (import) for module \"%s\".",
+/* LYE_CIRC_INCLUDES */"A circular dependency (include) for submodule \"%s\".",
 
 /* LYE_OBSDATA */      "Obsolete data \"%s\" instantiated.",
 /* LYE_OBSTYPE */      "Data node \"%s\" with obsolete type \"%s\" instantiated.",
@@ -241,6 +243,8 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_INRESOLV,     /* LYE_INRESOLV */
     LYVE_INSTATUS,     /* LYE_INSTATUS */
     LYVE_CIRC_LEAFREFS,/* LYE_CIRC_LEAFREFS */
+    LYVE_CIRC_IMPORTS, /* LYE_CIRC_IMPORTS */
+    LYVE_CIRC_INCLUDES,/* LYE_CIRC_INCLUDES */
 
     LYVE_OBSDATA,      /* LYE_OBSDATA */
     LYVE_OBSDATA,      /* LYE_OBSTYPE */
