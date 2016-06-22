@@ -1882,6 +1882,7 @@ list_stmt: LIST_KEYWORD sep identifier_arg_str { if (read_all) {
 list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                           $$.node.ptr_list = actual;
                           $$.node.flag = 0;
+                          actual_type = LIST_KEYWORD;
                           if (size_arrays->node[size_arrays->next].if_features) {
                             $$.node.ptr_list->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_list->features);
                             if (!$$.node.ptr_list->features) {
