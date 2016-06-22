@@ -4723,6 +4723,10 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
                 /* print the error */
                 resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
                 return -1;
+            } else {
+                /* forward reference, erase ly_errno */
+                ly_errno = LY_SUCCESS;
+                ly_vecode = LYVE_SUCCESS;
             }
         }
     } while (res_count && (res_count < unres_count));
@@ -5265,6 +5269,10 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
             } else if (rc == -1) {
                 ly_vlog_hide(0);
                 return -1;
+            } else {
+                /* forward reference, erase ly_errno */
+                ly_errno = LY_SUCCESS;
+                ly_vecode = LYVE_SUCCESS;
             }
         }
         first = 0;
