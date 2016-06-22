@@ -3754,11 +3754,12 @@ string_opt_part1: @EMPTYDIR@
   |  sep
 
 string_opt_part2: @EMPTYDIR@
+  |  strings
   |  STRING optsep string_opt_part3
 
 string_opt_part3: @EMPTYDIR@
   |  string_opt_part3 '+' optsep STRING optsep
-
+  
 unknown_statement_end: ';'
   |  '{' optsep unknown_statement2_opt '}'
 
@@ -3781,7 +3782,6 @@ sep: sep_stmt optsep;
 whitespace_opt: @EMPTYDIR@
   | WHITESPACE
   ;
-
 
 string: strings { if (read_all){
                     s = strdup(yyget_text(scanner));
