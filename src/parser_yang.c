@@ -89,30 +89,17 @@ int
 yang_fill_import(struct lys_module *module, struct lys_import *imp, char *value)
 {
     const char *exp;
-    int rc, i;
+    int rc;
 
     exp = lydict_insert_zc(module->ctx, value);
     rc = lyp_check_import(module, exp, imp);
     lydict_remove(module->ctx, exp);
+    module->imp_size++;
     if (rc) {
-        goto error;
+        return EXIT_FAILURE;
     }
 
-    /* check duplicities in imported modules */
-    for (i = 0; i < module->imp_size; i++) {
-        if (!strcmp(module->imp[i].module->name, module->imp[module->imp_size].module->name) &&
-                module->imp[i].module != module->imp[module->imp_size].module) {
-            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, module->imp[i].module->name, "import");
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Importing multiple revisions of module \"%s\".", module->imp[i].module->name);
-            goto error;
-        }
-    }
-    module->imp_size++;
     return EXIT_SUCCESS;
-
-error:
-    module->imp_size++;
-    return EXIT_FAILURE;
 }
 
 int
@@ -1969,7 +1956,7 @@ yang_check_deviation(struct lys_module *module, struct type_deviation *dev, stru
 
 int
 yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, char *value,
-                  char *rev, int inc_size, struct unres_schema *unres)
+                  char *rev, struct unres_schema *unres)
 {
     struct lys_include inc;
     struct lys_module *trg;
@@ -1985,7 +1972,8 @@ yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, ch
     rc = lyp_check_include(module, submodule, str, &inc, unres);
     if (!rc) {
         /* success, copy the filled data into the final array */
-        memcpy(&trg->inc[inc_size], &inc, sizeof inc);
+        memcpy(&trg->inc[trg->inc_size], &inc, sizeof inc);
+        trg->inc_size++;
     } else if (rc == -1) {
         ret = EXIT_FAILURE;
     }
@@ -2208,6 +2196,9 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
             goto error;
         }
         for (i = 0; i < module->inc_size; ++i) {
+            if (!module->inc[i].submodule) {
+                continue;
+            }
             if (lys_sub_module_set_dev_aug_target_implement((struct lys_module *)module->inc[i].submodule)) {
                 goto error;
             }

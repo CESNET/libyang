@@ -4530,7 +4530,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
     struct lys_include inc;
     const char *value;
     int i, r;
-    int inc_size_aux = 0;
+    size_t size;
     int version_flag = 0;
     /* counters */
     int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0, c_inc = 0, c_aug = 0, c_ftrs = 0, c_dev = 0;
@@ -4750,11 +4750,14 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
 
     /* allocate arrays for elements with cardinality of 0..n */
     if (c_imp) {
-        trg->imp = calloc(c_imp, sizeof *trg->imp);
+        size = (c_imp * sizeof *trg->imp) + sizeof(void*);
+        trg->imp = calloc(1, size);
         if (!trg->imp) {
             LOGMEM;
             goto error;
         }
+        /* set stop block for possible realloc */
+        trg->imp[c_imp].module = (void*)0x1;
     }
     if (c_rev) {
         trg->rev = calloc(c_rev, sizeof *trg->rev);
@@ -4778,16 +4781,14 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
         }
     }
     if (c_inc) {
-        trg->inc = calloc(c_inc, sizeof *trg->inc);
+        size = (c_inc * sizeof *trg->inc) + sizeof(void*);
+        trg->inc = calloc(1, size);
         if (!trg->inc) {
             LOGMEM;
             goto error;
         }
-        trg->inc_size = c_inc;
-        /* trg->inc_size can be updated by the included submodules,
-         * so we will use inc_size_aux here, trg->inc_size stores the
-         * target size of the array
-         */
+        /* set stop block for possible realloc */
+        trg->inc[c_inc].submodule = (void*)0x1;
     }
     if (c_aug) {
         trg->augment = calloc(c_aug, sizeof *trg->augment);
@@ -4820,16 +4821,6 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 goto error;
             }
 
-            /* check for importing a single module in multiple revisions */
-            for (i = 0; i < trg->imp_size - 1; i++) {
-                if (!strcmp(trg->imp[i].module->name, trg->imp[trg->imp_size - 1].module->name) &&
-                        trg->imp[i].module != trg->imp[trg->imp_size - 1].module) {
-                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, trg->imp[i].module->name, "import");
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Importing multiple revisions of module \"%s\".", trg->imp[i].module->name);
-                    goto error;
-                }
-            }
-
         } else if (!strcmp(child->name, "include")) {
             memset(&inc, 0, sizeof inc);
             /* 1) pass module, not trg, since we want to pass the main module
@@ -4838,8 +4829,8 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             r = fill_yin_include(module, submodule, child, &inc, unres);
             if (!r) {
                 /* success, copy the filled data into the final array */
-                memcpy(&trg->inc[inc_size_aux], &inc, sizeof inc);
-                inc_size_aux++;
+                memcpy(&trg->inc[trg->inc_size], &inc, sizeof inc);
+                trg->inc_size++;
             } else if (r == -1) {
                 goto error;
             }
@@ -4945,6 +4936,15 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
 
     if (submodule && lyp_propagate_submodule(module, submodule)) {
         goto error;
+    }
+    if (!submodule && module->inc_size) {
+        /* update the size of the array, it can be smaller due to possible duplicities
+         * found in submodules */
+        module->inc = ly_realloc(module->inc, module->inc_size * sizeof *module->inc);
+        if (!module->inc) {
+            LOGMEM;
+            goto error;
+        }
     }
 
     /* process data nodes. Start with groupings to allow uses
@@ -5161,6 +5161,9 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
             goto error;
         }
         for (i = 0; i < module->inc_size; ++i) {
+            if (!module->inc[i].submodule) {
+                continue;
+            }
             if (lys_sub_module_set_dev_aug_target_implement((struct lys_module *)module->inc[i].submodule)) {
                 goto error;
             }
