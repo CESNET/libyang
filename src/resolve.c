@@ -4624,7 +4624,7 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
 {
     struct lyxml_elem *xml;
     struct lyxml_attr *attr;
-    const char *type_name;
+    const char *type_name = NULL;
 
     switch (type) {
     case UNRES_IDENT:
@@ -4824,11 +4824,13 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
     ly_vlog_hide(0);
     if (rc != EXIT_FAILURE) {
         if (rc == -1 && ly_errno == LY_EVALID) {
-            path = strdup(ly_errpath());
-            LOGERR(LY_EVALID, "%s%s%s%s", msg = strdup(ly_errmsg()),
-                   path[0] ? " (path: " : "", path[0] ? path : "", path[0] ? ")" : "");
-            free(path);
-            free(msg);
+            if (ly_log_level >= LY_LLERR) {
+                path = strdup(ly_errpath());
+                msg = strdup(ly_errmsg());
+                LOGERR(LY_EVALID, "%s%s%s%s", msg, path[0] ? " (path: " : "", path[0] ? path : "", path[0] ? ")" : "");
+                free(path);
+                free(msg);
+            }
         }
         return rc;
     } else {
@@ -5195,11 +5197,14 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
                     if (!root) {
                         /* false when condition */
                         ly_vlog_hide(0);
-                        path = strdup(ly_errpath());
-                        LOGERR(LY_EVALID, "%s%s%s%s", msg = strdup(ly_errmsg()), path[0] ? " (path: " : "",
-                               path[0] ? path : "", path[0] ? ")" : "");
-                        free(path);
-                        free(msg);
+                        if (ly_log_level >= LY_LLERR) {
+                            path = strdup(ly_errpath());
+                            msg = strdup(ly_errmsg());
+                            LOGERR(LY_EVALID, "%s%s%s%s", msg,
+                                   path[0] ? " (path: " : "", path[0] ? path : "", path[0] ? ")" : "");
+                            free(path);
+                            free(msg);
+                        }
                         return -1;
                     } /* follows else */
 
@@ -5268,11 +5273,13 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
     /* do we have some unresolved when-stmt? */
     if (when_stmt > resolved) {
         ly_vlog_hide(0);
-        path = strdup(ly_errpath());
-        LOGERR(LY_EVALID, "%s%s%s%s", msg = strdup(ly_errmsg()), path[0] ? " (path: " : "",
-               path[0] ? path : "", path[0] ? ")" : "");
-        free(path);
-        free(msg);
+        if (ly_log_level >= LY_LLERR) {
+            path = strdup(ly_errpath());
+            msg = strdup(ly_errmsg());
+            LOGERR(LY_EVALID, "%s%s%s%s", msg, path[0] ? " (path: " : "", path[0] ? path : "", path[0] ? ")" : "");
+            free(path);
+            free(msg);
+        }
         return -1;
     }
 
