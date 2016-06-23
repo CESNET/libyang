@@ -210,12 +210,13 @@ struct lys_module *
 lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
                 struct unres_schema *unres)
 {
-    size_t len, flen, file_len = 0;
+    size_t len, flen, match_len = 0;
     int fd;
-    char *wd, *cwd, *model_path;
+    char *wd, *cwd;
     DIR *dir;
-    struct dirent *file, *file_match;
-    LYS_INFORMAT format, format_match;
+    struct dirent *file;
+    char *match_name = NULL;
+    LYS_INFORMAT format, match_format = 0;
     struct lys_module *result = NULL;
     int localsearch = 1;
 
@@ -257,8 +258,6 @@ opendir_search:
         goto searchpath;
     }
 
-    file_match = NULL;
-    format_match = 0;
     while ((file = readdir(dir))) {
         if (strncmp(name, file->d_name, len) ||
                 (file->d_name[len] != '.' && file->d_name[len] != '@')) {
@@ -281,72 +280,44 @@ opendir_search:
                 if (strncmp(revision, &file->d_name[len + 1], strlen(revision))) {
                     /* another revision */
                     continue;
+                } else {
+                    /* exact revision */
+                    free(match_name);
+                    asprintf(&match_name, "%s/%s", wd, file->d_name);
+                    match_format = format;
+                    goto matched;
                 }
             } else {
-                /* try to find exact revision match, use this only if not found */
-                file_match = file;
-                format_match = format;
+                /* continue trying to find exact revision match, use this only if not found */
+                free(match_name);
+                asprintf(&match_name, "%s/%s", wd, file->d_name);
+                match_format = format;
                 continue;
             }
         } else {
             /* remember the revision and try to find the newest one */
-            if (file_match) {
+            if (match_name) {
                 int a;
                 if (file->d_name[len] != '@' || lyp_check_date(&file->d_name[len + 1])) {
                     continue;
-                } else if (file_match->d_name[file_len] == '@' &&
-                    (a = strncmp(&file_match->d_name[file_len + 1], &file->d_name[len + 1], LY_REV_SIZE - 1)) >= 0) {
+                } else if (match_name[match_len] == '@' &&
+                    (a = strncmp(&match_name[match_len + 1], &file->d_name[len + 1], LY_REV_SIZE - 1)) >= 0) {
                     continue;
                 }
+                free(match_name);
             }
 
-            file_match = file;
-            file_len = len;
-            format_match = format;
+            asprintf(&match_name, "%s/%s", wd, file->d_name);
+            match_len = len;
+            match_format = format;
             continue;
         }
-
-        file_match = file;
-        format_match = format;
-        break;
     }
-
-    if (!file_match) {
-        goto searchpath;
-    }
-
-    /* open the file */
-    fd = open(file_match->d_name, O_RDONLY);
-    if (fd < 0) {
-        LOGERR(LY_ESYS, "Unable to open data model file \"%s\" (%s).",
-               file_match->d_name, strerror(errno));
-        goto cleanup;
-    }
-
-    if (module) {
-        result = (struct lys_module *)lys_submodule_read(module, fd, format_match, unres);
-    } else {
-        result = lys_read_import(ctx, fd, format_match, revision);
-    }
-    close(fd);
-
-    if (!result) {
-        goto cleanup;
-    }
-
-    if (asprintf(&model_path, "%s/%s", wd, file_match->d_name) == -1) {
-        LOGMEM;
-        result = NULL;
-        goto cleanup;
-    }
-    result->filepath = lydict_insert_zc(ctx, model_path);
-    /* success */
-    goto cleanup;
 
 searchpath:
     if (!ctx->models.search_path) {
         LOGWRN("No search path defined for the current context.");
-    } else if (!result && localsearch) {
+    } else if (localsearch) {
         /* search in local directory done, try context's search_path */
         if (dir) {
             closedir(dir);
@@ -362,7 +333,44 @@ searchpath:
         goto opendir_search;
     }
 
-    LOGERR(LY_ESYS, "Data model \"%s\" not found (search path is \"%s\")", name, ctx->models.search_path);
+    if (!match_name) {
+        LOGERR(LY_ESYS, "Data model \"%s\" not found (search path is \"%s\")", name, ctx->models.search_path);
+        goto cleanup;
+    }
+
+matched:
+    /* open the file */
+    fd = open(match_name, O_RDONLY);
+    if (fd < 0) {
+        LOGERR(LY_ESYS, "Unable to open data model file \"%s\" (%s).",
+               match_name, strerror(errno));
+        goto cleanup;
+    }
+
+    /* go back to cwd if changed */
+    if (cwd != wd) {
+        if (chdir(cwd)) {
+            LOGWRN("Unable to return back to working directory \"%s\" (%s)",
+                   cwd, strerror(errno));
+        }
+        free(wd);
+        wd = cwd;
+    }
+
+    if (module) {
+        result = (struct lys_module *)lys_submodule_read(module, fd, match_format, unres);
+    } else {
+        result = lys_read_import(ctx, fd, match_format, revision);
+    }
+    close(fd);
+
+    if (!result) {
+        goto cleanup;
+    }
+
+    result->filepath = lydict_insert_zc(ctx, match_name);
+    match_name = NULL;
+    /* success */
 
 cleanup:
     if (cwd != wd) {
@@ -376,6 +384,7 @@ cleanup:
     if (dir) {
         closedir(dir);
     }
+    free(match_name);
 
     return result;
 }
