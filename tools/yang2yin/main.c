@@ -931,30 +931,6 @@ get_keyword(char *word, enum yang_arg *arg)
     return ret;
 }
 
-/* (does not log) */
-static int
-get_identifier(char *word)
-{
-    int colon = 0;
-
-    if (isalpha(word[0]) || (word[0] == '_')) {
-        ++word;
-        while (word[0] && (isalnum(word[0]) || (word[0] == '_') || (word[0] == '-') || (word[0] == '.')
-                || (!colon && (word[0] == ':')))) {
-            if (word[0] == ':') {
-                colon = 1;
-            }
-            ++word;
-        }
-    }
-
-    if (!word[0]) {
-        return 0;
-    }
-    /* not an identifier as a whole */
-    return -1;
-}
-
 static void
 print_text_xml_encode(FILE *out, const char *word)
 {
@@ -1304,11 +1280,7 @@ print_keyword(enum yang_token keyword, enum yang_arg arg, FILE *out, int level, 
             return -1;
         }
 
-        if (get_identifier(word)) {
-            fprintf(stderr, "Unexpected characters (\"%.20s\"...).\n", word);
-            return -1;
-        }
-
+        /* word is the identifier (after some changes) */
         fprintf(out, "%s%s", word, (yin_element ? "" : "\""));
         break;
 
@@ -1420,11 +1392,6 @@ print_sub_module(enum yang_token keyword, enum yang_arg arg, FILE *out, FILE *in
             return -1;
         }
 
-        if (get_identifier(word)) {
-            fprintf(stderr, "Unexpected characters (\"%.20s\"...).\n", word);
-            return -1;
-        }
-
         fprintf(out, "%s\"", word);
         break;
 
@@ -1519,16 +1486,6 @@ find_namespace_imports(FILE *in, char **buf, int *buf_len, char **name_space, ch
 
         switch (arg) {
         case Y_IDENTIF_ARG:
-            word = get_word(in, buf, buf_len);
-            if (!word) {
-                goto error;
-            }
-
-            if (get_identifier(word)) {
-                fprintf(stderr, "Unexpected characters (\"%.20s\"...).\n", word);
-                goto error;
-            }
-            break;
         case Y_STR_ARG:
             word = get_word(in, buf, buf_len);
             if (!word) {
@@ -1726,11 +1683,6 @@ convert_yang2yin(FILE *out, FILE *in, const char *search_dir)
 
     word = get_word(in, &buf, &buf_len);
     if (!word) {
-        free(buf);
-        return -1;
-    }
-    if (get_identifier(word)) {
-        fprintf(stderr, "Unexpected characters (\"%.20s\"...).\n", word);
         free(buf);
         return -1;
     }
