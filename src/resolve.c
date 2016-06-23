@@ -3539,7 +3539,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 {
     struct ly_ctx *ctx;
     struct lys_node *node = NULL, *next, *iter;
-    struct lys_node *node_aux;
+    struct lys_node *node_aux, *parent;
     struct lys_refine *rfn;
     struct lys_restr *must, **old_must;
     int i, j, rc, parent_flags;
@@ -3611,8 +3611,9 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
         /* config on any nodetype */
         if (rfn->flags & LYS_CONFIG_MASK) {
-            if (lys_parent(node) &&
-                    ((lys_parent(node)->flags & LYS_CONFIG_MASK) != (rfn->flags & LYS_CONFIG_MASK)) &&
+            for (parent = lys_parent(node); parent && parent->nodetype == LYS_USES; parent = lys_parent(parent));
+            if (parent && parent->nodetype != LYS_GROUPING &&
+                    ((parent->flags & LYS_CONFIG_MASK) != (rfn->flags & LYS_CONFIG_MASK)) &&
                     (rfn->flags & LYS_CONFIG_W)) {
                 /* setting config true under config false is prohibited */
                 LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, "config", "refine");
