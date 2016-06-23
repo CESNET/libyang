@@ -210,7 +210,7 @@ struct lys_module *
 lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
                 struct unres_schema *unres)
 {
-    size_t len, flen, match_len = 0;
+    size_t len, flen, match_len = 0, dir_len;
     int fd;
     char *wd, *cwd;
     DIR *dir;
@@ -250,6 +250,7 @@ opendir_search:
         }
     }
     dir = opendir(wd);
+    dir_len = strlen(wd);
     LOGVRB("Searching for \"%s\" in %s.", name, wd);
     if (!dir) {
         LOGWRN("Unable to open directory \"%s\" for searching referenced modules (%s)",
@@ -284,6 +285,7 @@ opendir_search:
                     /* exact revision */
                     free(match_name);
                     asprintf(&match_name, "%s/%s", wd, file->d_name);
+                    match_len = dir_len + 1 + len;
                     match_format = format;
                     goto matched;
                 }
@@ -291,6 +293,7 @@ opendir_search:
                 /* continue trying to find exact revision match, use this only if not found */
                 free(match_name);
                 asprintf(&match_name, "%s/%s", wd, file->d_name);
+                match_len = dir_len + 1 +len;
                 match_format = format;
                 continue;
             }
@@ -308,7 +311,7 @@ opendir_search:
             }
 
             asprintf(&match_name, "%s/%s", wd, file->d_name);
-            match_len = len;
+            match_len = dir_len + 1 + len;
             match_format = format;
             continue;
         }
