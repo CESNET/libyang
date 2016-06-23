@@ -1737,7 +1737,7 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
         /* no revision specified, try to load the newest module from the search locations into the context */
         verb = ly_log_level;
         ly_verb(LY_LLSILENT);
-        (struct lys_module *)ly_ctx_load_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
+        ly_ctx_load_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
         ly_verb(verb);
         if (ly_errno == LY_ESYS) {
             /* it is ok, that the e.g. input file was not found */
