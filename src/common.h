@@ -96,8 +96,10 @@ extern volatile uint8_t ly_log_level;
 void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 
 #define LOGERR(errno, str, args...)                                 \
-	ly_errno = errno;                                               \
-	ly_log(LY_LLERR, str, ##args)
+    if (errno) { ly_errno = errno; }                                \
+    if (ly_log_level >= LY_LLERR) {                                 \
+        ly_log(LY_LLERR, str, ##args);                              \
+    }
 
 #define LOGWRN(str, args...)                                        \
 	if (ly_log_level >= LY_LLWRN) {                                 \
@@ -162,6 +164,8 @@ typedef enum {
     LYE_INRESOLV,
     LYE_INSTATUS,
     LYE_CIRC_LEAFREFS,
+    LYE_CIRC_IMPORTS,
+    LYE_CIRC_INCLUDES,
 
     LYE_OBSDATA,
     LYE_OBSTYPE,

@@ -1077,7 +1077,8 @@ void ly_set_free(struct ly_set *set);
  * @brief Verbosity levels of the libyang logger.
  */
 typedef enum {
-    LY_LLERR,      /**< Print only error messages. */
+    LY_LLSILENT,   /**< Print no messages. */
+    LY_LLERR,      /**< Print only error messages, default value. */
     LY_LLWRN,      /**< Print error and warning messages. */
     LY_LLVRB,      /**< Besides errors and warnings, print some other verbose messages. */
     LY_LLDBG       /**< Print all messages including some development debug messages. */
@@ -1168,6 +1169,8 @@ typedef enum {
     LYVE_INRESOLV,     /**< no resolvents found (schema) */
     LYVE_INSTATUS,     /**< invalid derivation because of status (schema) */
     LYVE_CIRC_LEAFREFS,/**< circular chain of leafrefs detected (schema) */
+    LYVE_CIRC_IMPORTS, /**< circular chain of imports detected (schema) */
+    LYVE_CIRC_INCLUDES,/**< circular chain of includes detected (schema) */
 
     LYVE_OBSDATA,      /**< obsolete data instantiation (data) */
     /* */

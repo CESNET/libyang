@@ -245,6 +245,15 @@ start: module_stmt
  |  submodule_stmt { if (read_all && lyp_propagate_submodule(module, submodule)) {
                        YYABORT;
                      }
+                     if (!submodule && module->inc_size) {
+                       /* update the size of the array, it can be smaller due to possible duplicities
+                        * found in submodules */
+                       module->inc = ly_realloc(module->inc, module->inc_size * sizeof *module->inc);
+                       if (!module->inc) {
+                         LOGMEM;
+                         YYABORT;
+                       }
+                     }
                    }
 
 
@@ -386,24 +395,24 @@ namespace_stmt: NAMESPACE_KEYWORD sep string stmtend;
 
 linkage_stmts: @EMPTYDIR@ { if (read_all) {
                           if (size_arrays->imp) {
-                            trg->imp = calloc(size_arrays->imp, sizeof *trg->imp);
+                            size_t size = (size_arrays->imp * sizeof *trg->imp) + sizeof(void*);
+                            trg->imp = calloc(1, size);
                             if (!trg->imp) {
                               LOGMEM;
                               YYABORT;
                             }
+                            /* set stop block for possible realloc */
+                            trg->imp[size_arrays->imp].module = (void*)0x1;
                           }
                           if (size_arrays->inc) {
-                            trg->inc = calloc(size_arrays->inc, sizeof *trg->inc);
+                            size_t size = (size_arrays->inc * sizeof *trg->inc) + sizeof(void*);
+                            trg->inc = calloc(1, size);
                             if (!trg->inc) {
                               LOGMEM;
                               YYABORT;
                             }
-                            trg->inc_size = size_arrays->inc;
-                            size_arrays->inc = 0;
-                            /* trg->inc_size can be updated by the included submodules,
-                             * so we will use size_arrays->inc here, trg->inc_size stores the
-                             * target size of the array
-                             */
+                            /* set stop block for possible realloc */
+                            trg->inc[size_arrays->inc].submodule = (void*)0x1;
                           }
                         }
                       }
@@ -448,13 +457,15 @@ include_stmt: INCLUDE_KEYWORD sep tmp_identifier_arg_str { if (read_all) {
                                                          }
               include_end stmtsep { if (read_all) {
                                       $$ = trg;
-                                      if (yang_fill_include(module, submodule, $3, rev, size_arrays->inc, unres)) {
+                                      int rc;
+                                      rc = yang_fill_include(module, submodule, $3, rev, unres);
+                                      if (!rc) {
+                                        s = NULL;
+                                        trg = $$;
+                                        config_inherit = ENABLE_INHERIT;
+                                      } else if (rc == -1) {
                                         YYABORT;
                                       }
-                                      size_arrays->inc++;
-                                      s = NULL;
-                                      trg = $$;
-                                      config_inherit = ENABLE_INHERIT;
                                     }
                                   }
 
@@ -1871,6 +1882,7 @@ list_stmt: LIST_KEYWORD sep identifier_arg_str { if (read_all) {
 list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                           $$.node.ptr_list = actual;
                           $$.node.flag = 0;
+                          actual_type = LIST_KEYWORD;
                           if (size_arrays->node[size_arrays->next].if_features) {
                             $$.node.ptr_list->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_list->features);
                             if (!$$.node.ptr_list->features) {
@@ -3742,11 +3754,12 @@ string_opt_part1: @EMPTYDIR@
   |  sep
 
 string_opt_part2: @EMPTYDIR@
+  |  strings
   |  STRING optsep string_opt_part3
 
 string_opt_part3: @EMPTYDIR@
   |  string_opt_part3 '+' optsep STRING optsep
-
+  
 unknown_statement_end: ';'
   |  '{' optsep unknown_statement2_opt '}'
 
@@ -3769,7 +3782,6 @@ sep: sep_stmt optsep;
 whitespace_opt: @EMPTYDIR@
   | WHITESPACE
   ;
-
 
 string: strings { if (read_all){
                     s = strdup(yyget_text(scanner));

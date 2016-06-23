@@ -210,7 +210,7 @@ struct lys_module *
 lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
                 struct unres_schema *unres)
 {
-    size_t len, flen;
+    size_t len, flen, file_len = 0;
     int fd;
     char *wd, *cwd, *model_path;
     DIR *dir;
@@ -288,6 +288,22 @@ opendir_search:
                 format_match = format;
                 continue;
             }
+        } else {
+            /* remember the revision and try to find the newest one */
+            if (file_match) {
+                int a;
+                if (file->d_name[len] != '@' || lyp_check_date(&file->d_name[len + 1])) {
+                    continue;
+                } else if (file_match->d_name[file_len] == '@' &&
+                    (a = strncmp(&file_match->d_name[file_len + 1], &file->d_name[len + 1], LY_REV_SIZE - 1)) >= 0) {
+                    continue;
+                }
+            }
+
+            file_match = file;
+            file_len = len;
+            format_match = format;
+            continue;
         }
 
         file_match = file;
@@ -1160,7 +1176,9 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
             }
 
             if (!lyp_parse_value_(leaf, type, resolve)) {
-                /* success */
+                /* success, erase set ly_errno and ly_vecode */
+                ly_errno = LY_SUCCESS;
+                ly_vecode = LYVE_SUCCESS;
                 break;
             }
 
@@ -1426,10 +1444,6 @@ lyp_check_date(const char *date)
 
     assert(date);
 
-    if (strlen(date) != LY_REV_SIZE - 1) {
-        goto error;
-    }
-
     for (i = 0; i < LY_REV_SIZE - 1; i++) {
         if (i == 4 || i == 7) {
             if (date[i] != '-') {
@@ -1491,6 +1505,76 @@ lyp_check_status(uint16_t flags1, struct lys_module *mod1, const char *name1,
     return EXIT_SUCCESS;
 }
 
+static void
+lyp_check_circmod_pop(struct lys_module *module)
+{
+    struct ly_modules_list *models = &module->ctx->models;
+
+    /* update the list of currently being parsed modules */
+    models->parsing_number--;
+    if (models->parsing_number == 1) {
+        free(models->parsing);
+        models->parsing = NULL;
+        models->parsing_number = models->parsing_size = 0;
+    } else {
+        models->parsing[models->parsing_number] = NULL;
+    }
+}
+
+/*
+ * types: 0 - include, 1 - import
+ */
+static int
+lyp_check_circmod(struct lys_module *module, const char *value, int type)
+{
+    LY_ECODE code = type ? LYE_CIRC_IMPORTS : LYE_CIRC_INCLUDES;
+    struct ly_modules_list *models = &module->ctx->models;
+    int i;
+
+    /* circular import check */
+    if (!models->parsing_size) {
+        if (ly_strequal(module->name, value, 1)) {
+            LOGVAL(code, LY_VLOG_NONE, NULL, value);
+            return -1;
+        }
+
+        /* storing - first import, besides the module being imported, add also the starting module */
+        models->parsing_size = models->parsing_number = 2;
+        models->parsing = malloc(2 * sizeof *models->parsing);
+        if (!models->parsing) {
+            LOGMEM;
+            return -1;
+        }
+        models->parsing[0] = module->name;
+        models->parsing[1] = value;
+    } else {
+        for (i = 0; i < models->parsing_number; i++) {
+            if (ly_strequal(models->parsing[i], value, 1)) {
+                LOGVAL(code, LY_VLOG_NONE, NULL, value);
+                return -1;
+            }
+        }
+        /* storing - enlarge the list of modules being currently parsed */
+        models->parsing_number++;
+        if (models->parsing_number >= models->parsing_size) {
+            models->parsing_size++;
+            models->parsing = ly_realloc(models->parsing, models->parsing_size * sizeof *models->parsing);
+            if (!models->parsing) {
+                LOGMEM;
+                return -1;
+            }
+        }
+        models->parsing[models->parsing_number - 1] = value;
+    }
+
+    return 0;
+}
+
+/* returns:
+ *  0 - inc successfully filled
+ * -1 - error, inc is cleaned
+ *  1 - duplication, ignore the inc structure, inc is cleaned
+ */
 int
 lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, const char *value,
                   struct lys_include *inc, struct unres_schema *unres)
@@ -1498,52 +1582,49 @@ lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, co
     char *module_data;
     void (*module_data_free)(void *module_data) = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
-    int count, i;
+    int i, j;
 
     /* check that the submodule was not included yet (previous submodule could have included it) */
     for (i = 0; i < module->inc_size; ++i) {
-        if (module->inc[i].submodule && (ly_strequal(module->inc[i].submodule->name, value, 1))) {
-            /* copy the duplicate into the result */
-            memcpy(inc, &module->inc[i], sizeof *inc);
-
-            if (submodule) {
-                /* we don't care if it was external or not */
-                inc->external = 0;
-            } else if (inc->external) {
-                /* remove the duplicate */
-                --module->inc_size;
-                memmove(&module->inc[i], &module->inc[i + 1], (module->inc_size - i) * sizeof *inc);
-                module->inc = ly_realloc(module->inc, module->inc_size * sizeof *module->inc);
-
-                /* it is no longer external */
-                inc->external = 0;
+        if (!module->inc[i].submodule) {
+            /* skip the not yet filled records */
+            continue;
+        }
+        if (ly_strequal(module->inc[i].submodule->name, value, 1)) {
+            /* check revisions, including multiple revisions of a single module is error */
+            if (inc->rev[0] && (!module->inc[i].submodule->rev_size || strcmp(module->inc[i].submodule->rev[0].date, inc->rev))) {
+                /* the already included submodule has
+                 * - no revision, but here we require some
+                 * - different revision than the one required here */
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "include");
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Including multiple revisions of submodule \"%s\".", value);
+                return -1;
             }
-            /* if !submodule && !inc->external, we just create a duplicate so it is detected and ended with error */
+            /* we want to load module, which is already included in the main module */
+            if (!submodule && !module->inc[i].external) {
+                /* it was already included by the main module */
+                LOGWRN("Duplicated include of the \"%s\" submodule in the \"%s\" module.", value, module->name);
+            } else if (submodule && module->inc[i].external) {
+                for (j = 0; j < submodule->inc_size && submodule->inc[j].submodule; j++) {
+                    if (ly_strequal(submodule->inc[j].submodule->name, value, 1)) {
+                        LOGWRN("Duplicated include of the \"%s\" submodule in the \"%s\" submodule.", value, submodule->name);
+                        break;
+                    }
+                }
+            }
 
-            return EXIT_SUCCESS;
+            if (!submodule) {
+                /* the included submodule is no longer external */
+                module->inc[i].external = 0;
+            }
+            return 1;
         }
     }
 
-    /* check for circular include, store it if passed */
-    if (!module->ctx->models.parsing) {
-        count = 0;
-    } else {
-        for (count = 0; module->ctx->models.parsing[count]; ++count) {
-            if (ly_strequal(value, module->ctx->models.parsing[count], 1)) {
-                LOGERR(LY_EVALID, "Circular include dependency on the submodule \"%s\".", value);
-                goto error;
-            }
-        }
+    /* circular include check */
+    if (lyp_check_circmod(module, value, 0)) {
+        return -1;
     }
-    ++count;
-    module->ctx->models.parsing =
-        ly_realloc(module->ctx->models.parsing, (count + 1) * sizeof *module->ctx->models.parsing);
-    if (!module->ctx->models.parsing) {
-        LOGMEM;
-        goto error;
-    }
-    module->ctx->models.parsing[count - 1] = value;
-    module->ctx->models.parsing[count] = NULL;
 
     /* try to load the submodule */
     inc->submodule = (struct lys_submodule *)ly_ctx_get_submodule2(module, value);
@@ -1552,6 +1633,7 @@ lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, co
             if (!inc->submodule->rev_size || !ly_strequal(inc->rev, inc->submodule->rev[0].date, 1)) {
                 LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, inc->rev[0], "revision");
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Multiple revisions of the same submodule included.");
+                lyp_check_circmod_pop(module);
                 goto error;
             }
         }
@@ -1575,17 +1657,8 @@ lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, co
         }
     }
 
-    /* remove the new submodule name now that its parsing is finished (even if failed) */
-    if (module->ctx->models.parsing[count] || !ly_strequal(module->ctx->models.parsing[count - 1], value, 1)) {
-        LOGINT;
-    }
-    --count;
-    if (count) {
-        module->ctx->models.parsing[count] = NULL;
-    } else {
-        free(module->ctx->models.parsing);
-        module->ctx->models.parsing = NULL;
-    }
+    /* update the list of currently being parsed modules */
+    lyp_check_circmod_pop(module);
 
     /* check the result */
     if (!inc->submodule) {
@@ -1601,75 +1674,120 @@ error:
     return EXIT_FAILURE;
 }
 
+/* returns:
+ *  0 - imp successfully filled
+ * -1 - error, imp not cleaned
+ */
 int
 lyp_check_import(struct lys_module *module, const char *value, struct lys_import *imp)
 {
-    int count;
+    int i;
+    struct lys_module *dup = NULL;
+    LY_LOG_LEVEL verb;
 
-    /* check for circular import, store it if passed */
-    if (!module->ctx->models.parsing) {
-        count = 0;
-    } else {
-        for (count = 0; module->ctx->models.parsing[count]; ++count) {
-            if (ly_strequal(value, module->ctx->models.parsing[count], 1)) {
-                LOGERR(LY_EVALID, "Circular import dependency on the module \"%s\".", value);
-                goto error;
+    /* check for importing a single module in multiple revisions */
+    for (i = 0; i < module->imp_size; i++) {
+        if (!module->imp[i].module) {
+            /* skip the not yet filled records */
+            continue;
+        }
+        if (ly_strequal(module->imp[i].module->name, value, 1)) {
+            /* check revisions, including multiple revisions of a single module is error */
+            if (imp->rev[0] && (!module->imp[i].module->rev_size || strcmp(module->imp[i].module->rev[0].date, imp->rev))) {
+                /* the already imported module has
+                 * - no revision, but here we require some
+                 * - different revision than the one required here */
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "import");
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Importing multiple revisions of module \"%s\".", value);
+                return -1;
+            } else if (!imp->rev[0]) {
+                /* no revision, remember the duplication, but check revisions after loading the module
+                 * because the current revision can be the same (then it is ok) or it can differ (then it
+                 * is error */
+                dup = module->imp[i].module;
+                break;
             }
+
+            /* there is duplication, but since prefixes differs (checked in caller of this function),
+             * it is ok */
+            imp->module = module->imp[i].module;
+            return 0;
         }
     }
-    ++count;
-    module->ctx->models.parsing =
-        ly_realloc(module->ctx->models.parsing, (count + 1) * sizeof *module->ctx->models.parsing);
-    if (!module->ctx->models.parsing) {
-        LOGMEM;
-        goto error;
+
+    /* circular import check */
+    if (lyp_check_circmod(module, value, 1)) {
+        return -1;
     }
-    module->ctx->models.parsing[count - 1] = value;
-    module->ctx->models.parsing[count] = NULL;
 
     /* try to load the module */
+    if (!imp->rev[0]) {
+        /* no revision specified, try to load the newest module from the search locations into the context */
+        verb = ly_log_level;
+        ly_verb(LY_LLSILENT);
+        (struct lys_module *)ly_ctx_load_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
+        ly_verb(verb);
+        if (ly_errno == LY_ESYS) {
+            /* it is ok, that the e.g. input file was not found */
+            ly_errno = LY_SUCCESS;
+        } else if (ly_errno != LY_SUCCESS) {
+            /* but it is not ok if e.g. the input data were found and they are invalid */
+            lyp_check_circmod_pop(module);
+            return -1;
+        }
+
+        /* If the loaded module (if any) is really the newest, it will be loaded on the next line
+         * by ly_ctx_get_module() */
+    }
     imp->module = (struct lys_module *)ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
     if (!imp->module) {
         /* whether to use a user callback is decided in the function */
         imp->module = (struct lys_module *)ly_ctx_load_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
     }
 
-    /* remove the new module name now that its parsing is finished (even if failed) */
-    if (module->ctx->models.parsing[count] || !ly_strequal(module->ctx->models.parsing[count - 1], value, 1)) {
-        LOGINT;
-    }
-    --count;
-    if (count) {
-        module->ctx->models.parsing[count] = NULL;
-    } else {
-        free(module->ctx->models.parsing);
-        module->ctx->models.parsing = NULL;
-    }
+    /* update the list of currently being parsed modules */
+    lyp_check_circmod_pop(module);
 
     /* check the result */
     if (!imp->module) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "import");
         LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
-        goto error;
+        return -1;
     }
 
-    return EXIT_SUCCESS;
+    if (dup) {
+        /* check the revisions */
+        if ((dup != imp->module) ||
+                (dup->rev_size != imp->module->rev_size && (!dup->rev_size || imp->module->rev_size)) ||
+                (dup->rev_size && strcmp(dup->rev[0].date, imp->module->rev[0].date))) {
+            /* - modules are not the same
+             * - one of modules has no revision (except they both has no revision)
+             * - revisions of the modules are not the same */
+            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "import");
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Importing multiple revisions of module \"%s\".", value);
+            return -1;
+        }
+    }
 
-error:
-
-    return EXIT_FAILURE;
+    return 0;
 }
 
 /* Propagate imports and includes into the main module */
 int
 lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodule)
 {
-    int i, j, r;
+    uint8_t i, j;
+    size_t size;
     struct lys_include *aux_inc;
     struct lys_import *aux_imp;
+    struct lys_import *impiter;
+    struct lys_include *inciter;
+    struct ly_set *set;
+
+    set = ly_set_new();
 
     /* propagate imports into the main module */
-    for (i = r = 0; i < submodule->imp_size; i++) {
+    for (i = 0; i < submodule->imp_size; i++) {
         for (j = 0; j < module->imp_size; j++) {
             if (submodule->imp[i].module == module->imp[j].module &&
                     !strcmp(submodule->imp[i].rev, module->imp[j].rev)) {
@@ -1684,40 +1802,46 @@ lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodu
         }
         if (j == module->imp_size) {
             /* new import */
-            r++;
+            ly_set_add(set, &submodule->imp[i], LY_SET_OPT_USEASLIST);
         }
     }
-    if (r) {
-        aux_imp = realloc(module->imp, (module->imp_size + r) * sizeof *module->imp);
+    if (set->number) {
+        if (!(void*)module->imp) {
+            /* no import array in main module */
+            i = 0;
+        } else {
+            /* get array size by searching for stop block */
+            for (i = 0; (void*)module->imp[i].module != (void*)0x1; i++);
+        }
+        size = (i + set->number) * sizeof *module->imp;
+        aux_imp = realloc(module->imp, size + sizeof(void*));
         if (!aux_imp) {
             LOGMEM;
             goto error;
         }
         module->imp = aux_imp;
-        for (i = r = 0; i < submodule->imp_size; i++) {
-            for (j = 0; j < module->imp_size; j++) {
-                if (submodule->imp[i].module == module->imp[j].module) {
-                    break;
-                }
+        memset(&module->imp[module->imp_size + set->number], 0, (i - module->imp_size) * sizeof *module->imp);
+        module->imp[i + set->number].module = (void*)0x1; /* set stop block */
+
+        for (i = 0; i < set->number; i++) {
+            impiter = (struct lys_import *)set->set.g[i];
+
+            /* check prefix uniqueness */
+            if (dup_prefix_check(impiter->prefix, module)) {
+                LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "prefix", impiter->prefix);
+                goto error;
             }
-            if (j == module->imp_size) {
-                /* new import */
-                /* check prefix uniqueness */
-                if (dup_prefix_check(submodule->imp[i].prefix, module)) {
-                    LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "prefix", submodule->imp[i].prefix);
-                    goto error;
-                }
-                memcpy(&module->imp[module->imp_size + r], &submodule->imp[i], sizeof *submodule->imp);
-                module->imp[module->imp_size + r].prefix = lydict_insert(module->ctx, module->imp[module->imp_size + r].prefix, 0);
-                module->imp[module->imp_size + r].external = 1;
-                r++;
-            }
+
+            memcpy(&module->imp[module->imp_size], impiter, sizeof *module->imp);
+            module->imp[module->imp_size].prefix = lydict_insert(module->ctx, impiter->prefix, 0);
+            module->imp[module->imp_size].external = 1;
+            module->imp_size++;
         }
-        module->imp_size += r;
+        ly_set_clean(set);
     }
 
     /* propagate includes into the main module */
-    for (i = r = 0; i < submodule->inc_size; i++) {
+    for (i = 0; i < submodule->inc_size; i++) {
         for (j = 0; j < module->inc_size; j++) {
             if (submodule->inc[i].submodule == module->inc[j].submodule) {
                 break;
@@ -1725,35 +1849,36 @@ lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodu
         }
         if (j == module->inc_size) {
             /* new include */
-            r++;
+            ly_set_add(set, &submodule->inc[i], LY_SET_OPT_USEASLIST);
         }
     }
 
-    if (r) {
-        aux_inc = realloc(module->inc, (module->inc_size + r) * sizeof *module->inc);
+    if (set->number) {
+        for (i = 0; (void*)module->inc[i].submodule != (void*)0x1; i++); /* get array size by searching for stop block */
+        size = (i + set->number) * sizeof *module->inc;
+        aux_inc = realloc(module->inc, size + sizeof(void*));
         if (!aux_inc) {
             LOGMEM;
             goto error;
         }
         module->inc = aux_inc;
-        for (i = r = 0; i < submodule->inc_size; i++) {
-            for (j = 0; j < module->inc_size; j++) {
-                if (submodule->inc[i].submodule == module->inc[j].submodule) {
-                    break;
-                }
-            }
-            if (j == module->inc_size) {
-                /* new include */
-                memcpy(&module->inc[module->inc_size + r], &submodule->inc[i], sizeof *submodule->inc);
-                module->inc[module->inc_size + r].external = 1;
-                r++;
-            }
+        memset(&module->inc[module->inc_size + set->number], 0, (i - module->inc_size) * sizeof *module->inc);
+        module->inc[i + set->number].submodule = (void*)0x1; /* set stop block */
+
+        for (i = 0; i < set->number; i++) {
+            inciter = (struct lys_include *)set->set.g[i];
+
+            memcpy(&module->inc[module->inc_size], inciter, sizeof *module->inc);
+            module->inc[module->inc_size].external = 1;
+            module->inc_size++;
         }
-        module->inc_size += r;
     }
+
+    ly_set_free(set);
     return EXIT_SUCCESS;
 
 error:
+    ly_set_free(set);
     return EXIT_FAILURE;
 }
 

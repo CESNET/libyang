@@ -233,7 +233,7 @@ int yang_check_deviate_unique(struct lys_module *module, struct type_deviation *
 int yang_check_deviation(struct lys_module *module, struct type_deviation *dev, struct unres_schema *unres);
 
 int yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, char *value,
-                      char *rev, int inc_size, struct unres_schema *unres);
+                      char *rev, struct unres_schema *unres);
 
 int yang_use_extension(struct lys_module *module, struct lys_node *data_node, void *actual, char *value);
 
