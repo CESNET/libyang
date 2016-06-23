@@ -2380,7 +2380,7 @@ uses_opt_stmt: @EMPTYDIR@ { if (read_all) {
                               YYABORT;
                             }
                           }
-                          store_flags((struct lys_node *)$$.uses.ptr_uses, size_arrays->node[size_arrays->next].flags, config_inherit);
+                          store_flags((struct lys_node *)$$.uses.ptr_uses, size_arrays->node[size_arrays->next].flags, 0);
                           size_arrays->next++;
                         } else {
                           $$.index = size_arrays->size;

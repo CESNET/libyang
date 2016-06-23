@@ -5861,7 +5861,7 @@ yyreduce:
                               YYABORT;
                             }
                           }
-                          store_flags((struct lys_node *)(yyval.nodes).uses.ptr_uses, size_arrays->node[size_arrays->next].flags, config_inherit);
+                          store_flags((struct lys_node *)(yyval.nodes).uses.ptr_uses, size_arrays->node[size_arrays->next].flags, 0);
                           size_arrays->next++;
                         } else {
                           (yyval.nodes).index = size_arrays->size;

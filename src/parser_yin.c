@@ -64,7 +64,7 @@ static struct lys_node *read_yin_leaflist(struct lys_module *module, struct lys_
 static struct lys_node *read_yin_list(struct lys_module *module,struct lys_node *parent, struct lyxml_elem *yin,
                                       int resolve, struct unres_schema *unres);
 static struct lys_node *read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
-                                      int resolve, struct unres_schema *unres);
+                                      struct unres_schema *unres);
 static struct lys_node *read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
                                           int resolve, struct unres_schema *unres);
 static struct lys_when *read_yin_when(struct lys_module *module, struct lyxml_elem *yin);
@@ -2003,7 +2003,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
         } else if (!strcmp(child->name, "list")) {
             node = read_yin_list(module, (struct lys_node *)aug, child, 0, unres);
         } else if (!strcmp(child->name, "uses")) {
-            node = read_yin_uses(module, (struct lys_node *)aug, child, 0, unres);
+            node = read_yin_uses(module, (struct lys_node *)aug, child, unres);
         } else if (!strcmp(child->name, "choice")) {
             node = read_yin_case(module, (struct lys_node *)aug, child, 0, unres);
         } else if (!strcmp(child->name, "case")) {
@@ -2676,7 +2676,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         } else if (!strcmp(sub->name, "choice")) {
             node = read_yin_choice(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "uses")) {
-            node = read_yin_uses(module, retval, sub, resolve, unres);
+            node = read_yin_uses(module, retval, sub, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
             node = read_yin_anyxml(module, retval, sub, resolve, unres);
         }
@@ -3630,7 +3630,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         } else if (!strcmp(sub->name, "choice")) {
             node = read_yin_choice(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "uses")) {
-            node = read_yin_uses(module, retval, sub, resolve, unres);
+            node = read_yin_uses(module, retval, sub, unres);
         } else if (!strcmp(sub->name, "grouping")) {
             node = read_yin_grouping(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
@@ -3835,7 +3835,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
         } else if (!strcmp(sub->name, "choice")) {
             node = read_yin_choice(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "uses")) {
-            node = read_yin_uses(module, retval, sub, resolve, unres);
+            node = read_yin_uses(module, retval, sub, unres);
         } else if (!strcmp(sub->name, "grouping")) {
             node = read_yin_grouping(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
@@ -3954,7 +3954,7 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
         } else if (!strcmp(sub->name, "choice")) {
             node = read_yin_choice(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "uses")) {
-            node = read_yin_uses(module, retval, sub, resolve, unres);
+            node = read_yin_uses(module, retval, sub, unres);
         } else if (!strcmp(sub->name, "grouping")) {
             node = read_yin_grouping(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
@@ -4084,7 +4084,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
         } else if (!strcmp(sub->name, "choice")) {
             node = read_yin_choice(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "uses")) {
-            node = read_yin_uses(module, retval, sub, resolve, unres);
+            node = read_yin_uses(module, retval, sub, unres);
         } else if (!strcmp(sub->name, "grouping")) {
             node = read_yin_grouping(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
@@ -4218,7 +4218,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
         } else if (!strcmp(sub->name, "choice")) {
             node = read_yin_choice(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "uses")) {
-            node = read_yin_uses(module, retval, sub, resolve, unres);
+            node = read_yin_uses(module, retval, sub, unres);
         } else if (!strcmp(sub->name, "grouping")) {
             node = read_yin_grouping(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
@@ -4387,8 +4387,7 @@ error:
  * we just get information but we do not apply augment or refine to it.
  */
 static struct lys_node *
-read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
-              struct unres_schema *unres)
+read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct unres_schema *unres)
 {
     struct lyxml_elem *sub, *next;
     struct lys_node *retval;
@@ -4410,7 +4409,7 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     uses->name = lydict_insert(module->ctx, value, 0);
 
     if (read_yin_common(module, parent, retval, yin, OPT_MODULE
-            | (parent && (parent->nodetype == LYS_GROUPING) ? 0 : OPT_NACMEXT) | (resolve ? OPT_INHERIT : 0))) {
+            | (parent && (parent->nodetype == LYS_GROUPING) ? 0 : OPT_NACMEXT))) {
         goto error;
     }
 
@@ -4499,16 +4498,6 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     if (unres_schema_add_node(module, unres, uses, UNRES_USES, NULL) == -1) {
         goto error;
-    }
-
-    if (resolve) {
-        /* inherit config flag */
-        if (parent) {
-            retval->flags |= parent->flags & LYS_CONFIG_MASK;
-        } else {
-            /* default config is true */
-            retval->flags |= LYS_CONFIG_W;
-        }
     }
 
     return retval;
@@ -4979,7 +4968,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
         } else if (!strcmp(child->name, "choice")) {
             node = read_yin_choice(trg, NULL, child, 1, unres);
         } else if (!strcmp(child->name, "uses")) {
-            node = read_yin_uses(trg, NULL, child, 1, unres);
+            node = read_yin_uses(trg, NULL, child, unres);
         } else if (!strcmp(child->name, "anyxml")) {
             node = read_yin_anyxml(trg, NULL, child, 1, unres);
         } else if (!strcmp(child->name, "rpc")) {
