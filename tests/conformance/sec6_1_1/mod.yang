@@ -1,6 +1,7 @@
 module mod {
     namespace "uri://mod";
-    pref/* this must be ignored */ix m;
+    /* this must be ignored */
+    prefix m;
 
     container cont;// this as well
 }
