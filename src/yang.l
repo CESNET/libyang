@@ -127,7 +127,8 @@
 <PATH>"]" |
 <PATH>"=" |
 <PATH>"(" |
-<PATH>")"  {return yytext[0];}
+<PATH>")" |
+<PATH>"+" {return yytext[0];}
 <PATH>".." {return DOUBLEDOT;}
 <PATH>\n  |
 <PATH>\r\n { yylloc->last_column = 0; return EOL;}
