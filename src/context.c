@@ -393,6 +393,9 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
         }
     } else {
         module = lyp_search_file(ctx, NULL, name, revision, NULL);
+        if (module) {
+            ((struct lys_module *)module)->implemented = 1;
+        }
     }
 
     return module;
