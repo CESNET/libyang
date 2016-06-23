@@ -102,11 +102,13 @@ extern "C" {
  * Similarly, data trees can be parsed by \b lyd_parse_*() functions. Note, that functions for schemas have \b lys_
  * prefix while functions for instance data have \b lyd_ prefix.
  *
- * Context can hold multiple revisons of the same schema.
+ * Context can hold multiple revisions of the same schema, but only one of them can be implemented. The schema is
+ * marked as implemented when it is explicitly loaded by ly_ctx_load_module() or other lys_parse*() functions. The
+ * schema is not implemented only when it was loaded automatically as other schema's import.
  *
- * Context holds all modules and their submodules internally and they can appear in multiple revisions. To get
+ * Context holds all modules and their submodules internally. To get
  * a specific module or submodule, use ly_ctx_get_module() and ly_ctx_get_submodule(). There are some additional
- * alternatives to these functions (with different parameters_. If you need to do something with all the modules or
+ * alternatives to these functions (with different parameters). If you need to do something with all the modules or
  * submodules in the context, it is advised to iterate over them using ly_ctx_get_module_iter(), it is
  * the most efficient way. Alternatively, the ly_ctx_info() function can be used to get complex information
  * about the schemas in the context in the form of data tree defined by
@@ -797,6 +799,9 @@ const struct lys_module *ly_ctx_get_module_older(const struct ly_ctx *ctx, const
  * @brief Try to find the model in the searchpath of \p ctx and load it into it. If custom missing
  * module callback is set, it is used instead.
  *
+ * If there is a possibility that the requested module is already in the context, you should call
+ * the ly_ctx_get_module() first to avoid a lot of work performed by ly_ctx_load_module().
+ *
  * @param[in] ctx Context to add to.
  * @param[in] name Name of the module to load.
  * @param[in] revision Optional revision date of the module. If not specified, it is
@@ -814,7 +819,7 @@ const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name
  * @param[in] user_data User-supplied callback data.
  * @param[out] format Format of the returned module data.
  * @param[out] free_module_data Callback for freeing the returned module data. If not set, the data will be left untouched.
- * @return Requested module data or NULL on error.
+ * @return Requested module data or NULL if the callback is not able to provide the requested schema content for any reason.
  */
 typedef char *(*ly_module_clb)(const char *name, const char *revision, void *user_data, LYS_INFORMAT *format,
                                void (**free_module_data)(void *model_data));
