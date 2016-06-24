@@ -1962,7 +1962,7 @@ yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, ch
     struct lys_module *trg;
     const char *str;
     int rc;
-    int ret = EXIT_SUCCESS;
+    int ret = 0;
 
     str = lydict_insert_zc(module->ctx, value);
     trg = (submodule) ? (struct lys_module *)submodule : module;
@@ -1975,7 +1975,7 @@ yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, ch
         memcpy(&trg->inc[trg->inc_size], &inc, sizeof inc);
         trg->inc_size++;
     } else if (rc == -1) {
-        ret = EXIT_FAILURE;
+        ret = -1;
     }
 
     lydict_remove(module->ctx, str);

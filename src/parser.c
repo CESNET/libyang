@@ -1684,11 +1684,11 @@ lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, co
         goto error;
     }
 
-    return EXIT_SUCCESS;
+    return 0;
 
 error:
 
-    return EXIT_FAILURE;
+    return -1;
 }
 
 /* returns:

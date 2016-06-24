@@ -2383,7 +2383,7 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
 
 error:
 
-    return EXIT_FAILURE;
+    return -1;
 }
 
 /* logs directly
