@@ -4928,16 +4928,22 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
         }
     }
 
-    if (submodule && lyp_propagate_submodule(module, submodule)) {
-        goto error;
-    }
-    if (!submodule && module->inc_size) {
-        /* update the size of the array, it can be smaller due to possible duplicities
+    if (!submodule) {
+        /* update the size of the arrays, they can be smaller due to possible duplicities
          * found in submodules */
-        module->inc = ly_realloc(module->inc, module->inc_size * sizeof *module->inc);
-        if (!module->inc) {
-            LOGMEM;
-            goto error;
+        if (module->inc_size) {
+            module->inc = ly_realloc(module->inc, module->inc_size * sizeof *module->inc);
+            if (!module->inc) {
+                LOGMEM;
+                goto error;
+            }
+        }
+        if (module->imp_size) {
+            module->imp = ly_realloc(module->imp, module->imp_size * sizeof *module->imp);
+            if (!module->imp) {
+                LOGMEM;
+                goto error;
+            }
         }
     }
 

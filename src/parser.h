@@ -103,11 +103,11 @@ int lyp_check_import(struct lys_module *module, const char *value, struct lys_im
  * @brief Propagate imports and includes into the main module
  *
  * @param module Main module
- * @param submodule
+ * @param inc Filled include structure
  * @param line
  * @return 0 for success, 1 for failure
  */
-int lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodule);
+int lyp_propagate_submodule(struct lys_module *module, struct lys_include *inc);
 
 int lyp_ctx_add_module(struct lys_module **module);
 

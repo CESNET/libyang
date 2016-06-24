@@ -242,16 +242,22 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 /* to simplify code, store the module/submodule being processed as trg */
 
 start: module_stmt
- |  submodule_stmt { if (read_all && lyp_propagate_submodule(module, submodule)) {
-                       YYABORT;
-                     }
-                     if (!submodule && module->inc_size) {
+ |  submodule_stmt { if (!submodule) {
                        /* update the size of the array, it can be smaller due to possible duplicities
                         * found in submodules */
-                       module->inc = ly_realloc(module->inc, module->inc_size * sizeof *module->inc);
-                       if (!module->inc) {
-                         LOGMEM;
-                         YYABORT;
+                       if  (module->inc_size) {
+                         module->inc = ly_realloc(module->inc, module->inc_size * sizeof *module->inc);
+                         if (!module->inc) {
+                           LOGMEM;
+                           YYABORT;
+                         }
+                       }
+                       if (module->imp_size) {
+                         module->imp = ly_realloc(module->imp, module->imp_size * sizeof *module->imp);
+                         if (!module->imp) {
+                           LOGMEM;
+                           YYABORT;
+                         }
                        }
                      }
                    }

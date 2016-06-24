@@ -1679,6 +1679,11 @@ lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, co
         goto error;
     }
 
+    /* propagate submodule's includes and imports into the main module */
+    if (submodule && lyp_propagate_submodule(module, inc)) {
+        goto error;
+    }
+
     return EXIT_SUCCESS;
 
 error:
@@ -1786,26 +1791,25 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
 
 /* Propagate imports and includes into the main module */
 int
-lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodule)
+lyp_propagate_submodule(struct lys_module *module, struct lys_include *inc)
 {
     uint8_t i, j;
     size_t size;
     struct lys_include *aux_inc;
     struct lys_import *aux_imp;
     struct lys_import *impiter;
-    struct lys_include *inciter;
     struct ly_set *set;
 
     set = ly_set_new();
 
     /* propagate imports into the main module */
-    for (i = 0; i < submodule->imp_size; i++) {
+    for (i = 0; i < inc->submodule->imp_size; i++) {
         for (j = 0; j < module->imp_size; j++) {
-            if (submodule->imp[i].module == module->imp[j].module &&
-                    !strcmp(submodule->imp[i].rev, module->imp[j].rev)) {
+            if (inc->submodule->imp[i].module == module->imp[j].module &&
+                    !strcmp(inc->submodule->imp[i].rev, module->imp[j].rev)) {
                 /* check prefix match */
-                if (!ly_strequal(submodule->imp[i].prefix, module->imp[j].prefix, 1)) {
-                    LOGVAL(LYE_INID, LY_VLOG_NONE, NULL, submodule->imp[i].prefix,
+                if (!ly_strequal(inc->submodule->imp[i].prefix, module->imp[j].prefix, 1)) {
+                    LOGVAL(LYE_INID, LY_VLOG_NONE, NULL, inc->submodule->imp[i].prefix,
                            "non-matching prefixes of imported module in main module and submodule");
                     goto error;
                 }
@@ -1814,7 +1818,7 @@ lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodu
         }
         if (j == module->imp_size) {
             /* new import */
-            ly_set_add(set, &submodule->imp[i], LY_SET_OPT_USEASLIST);
+            ly_set_add(set, &inc->submodule->imp[i], LY_SET_OPT_USEASLIST);
         }
     }
     if (set->number) {
@@ -1849,44 +1853,26 @@ lyp_propagate_submodule(struct lys_module *module, struct lys_submodule *submodu
             module->imp[module->imp_size].external = 1;
             module->imp_size++;
         }
-        ly_set_clean(set);
     }
-
-    /* propagate includes into the main module */
-    for (i = 0; i < submodule->inc_size; i++) {
-        for (j = 0; j < module->inc_size; j++) {
-            if (submodule->inc[i].submodule == module->inc[j].submodule) {
-                break;
-            }
-        }
-        if (j == module->inc_size) {
-            /* new include */
-            ly_set_add(set, &submodule->inc[i], LY_SET_OPT_USEASLIST);
-        }
-    }
-
-    if (set->number) {
-        for (i = 0; (void*)module->inc[i].submodule != (void*)0x1; i++); /* get array size by searching for stop block */
-        size = (i + set->number) * sizeof *module->inc;
-        aux_inc = realloc(module->inc, size + sizeof(void*));
-        if (!aux_inc) {
-            LOGMEM;
-            goto error;
-        }
-        module->inc = aux_inc;
-        memset(&module->inc[module->inc_size + set->number], 0, (i - module->inc_size) * sizeof *module->inc);
-        module->inc[i + set->number].submodule = (void*)0x1; /* set stop block */
-
-        for (i = 0; i < set->number; i++) {
-            inciter = (struct lys_include *)set->set.g[i];
-
-            memcpy(&module->inc[module->inc_size], inciter, sizeof *module->inc);
-            module->inc[module->inc_size].external = 1;
-            module->inc_size++;
-        }
-    }
-
     ly_set_free(set);
+    set = NULL;
+
+    /* propagate the included submodule into the main module */
+    for (i = 0; (void*)module->inc[i].submodule != (void*)0x1; i++); /* get array size by searching for stop block */
+    size = (i + 1) * sizeof *module->inc;
+    aux_inc = realloc(module->inc, size + sizeof(void*));
+    if (!aux_inc) {
+        LOGMEM;
+        goto error;
+    }
+    module->inc = aux_inc;
+    memset(&module->inc[module->inc_size + 1], 0, (i - module->inc_size) * sizeof *module->inc);
+    module->inc[i + 1].submodule = (void*)0x1; /* set stop block */
+
+    memcpy(&module->inc[module->inc_size], inc, sizeof *module->inc);
+    module->inc[module->inc_size].external = 1;
+    module->inc_size++;
+
     return EXIT_SUCCESS;
 
 error:
