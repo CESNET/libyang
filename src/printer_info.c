@@ -282,7 +282,7 @@ info_print_type_detail(struct lyout *out, const struct lys_type *type, int uni)
 
         break;
     case LY_TYPE_BOOL:
-        ly_print(out, "%-*s%s\n", INDENT_LEN, "Base type: ", "bool");
+        ly_print(out, "%-*s%s\n", INDENT_LEN, "Base type: ", "boolean");
         break;
     case LY_TYPE_DEC64:
         ly_print(out, "%-*s%s\n", INDENT_LEN, "Base type: ", "decimal64");
@@ -296,7 +296,7 @@ info_print_type_detail(struct lyout *out, const struct lys_type *type, int uni)
         ly_print(out, "%-*s%s\n", INDENT_LEN, "Base type: ", "empty");
         break;
     case LY_TYPE_ENUM:
-        ly_print(out, "%-*s%s\n", INDENT_LEN, "Base type: ", "enum");
+        ly_print(out, "%-*s%s\n", INDENT_LEN, "Base type: ", "enumeration");
 
         assert(type->info.enums.count);
         if (!uni) {
