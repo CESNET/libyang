@@ -25,7 +25,7 @@ struct state {
     struct lyd_node *dt;
 };
 
-static const char *data =
+static const char *if_data =
 "{"
   "\"ietf-interfaces:interfaces\": {"
     "\"interface\": ["
@@ -150,54 +150,59 @@ static const char *data =
 "}"
 ;
 
-static int
-setup_f(void **state)
-{
-    struct state *st;
-    const char *augschema = "ietf-ip";
-    const char *typeschema = "iana-if-type";
-    const char *ietfdir = TESTS_DIR"/schema/yin/ietf/";
-    const struct lys_module *mod;
+static const char *num_data =
+"{"
+  "\"numbers:nums\": {"
+    "\"num1\": 9223372036854775807,"
+    "\"num2\": 18446744073709551615,"
+    "\"num3\": -2147483648,"
+    "\"num4\": 4294967295,"
+    "\"num5\": 9.87654321e+4,"
+    "\"num6\": 987654321098765E-10,"
+    "\"num7\": -922337203685477580.8,"
+    "\"num8\": 922337203685477580.7,"
+    "\"num9\": -9.223372036854775808,"
+    "\"num10\": 9.223372036854775807,"
+    "\"num11\": -92233720368.54775808e-10,"
+    "\"num12\": 92233720.36854775807e10"
+  "}"
+"}"
+;
 
-    (*state) = st = calloc(1, sizeof *st);
-    if (!st) {
+static int
+setup_f(struct state **state, const char *search_dir, const char **modules, int module_count)
+{
+    const struct lys_module *mod;
+    int i;
+
+    (*state) = calloc(1, sizeof **state);
+    if (!(*state)) {
         fprintf(stderr, "Memory allocation error.\n");
         return -1;
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(ietfdir);
-    if (!st->ctx) {
+    (*state)->ctx = ly_ctx_new(search_dir);
+    if (!(*state)->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         goto error;
     }
 
-    /* schema */
-    mod = ly_ctx_load_module(st->ctx, augschema, NULL);
-    if (!mod) {
-        fprintf(stderr, "Failed to load data module \"%s\".\n", augschema);
-        goto error;
-    }
-    lys_features_enable(mod, "*");
-
-    mod = ly_ctx_get_module(st->ctx, "ietf-interfaces", NULL);
-    if (!mod) {
-        fprintf(stderr, "Failed to get data module \"ietf-interfaces\".\n");
-        goto error;
-    }
-    lys_features_enable(mod, "*");
-
-    mod = ly_ctx_load_module(st->ctx, typeschema, NULL);
-    if (!mod) {
-        fprintf(stderr, "Failed to load data module \"%s\".\n", typeschema);
-        goto error;
+    /* schemas */
+    for (i = 0; i < module_count; ++i) {
+        mod = ly_ctx_load_module((*state)->ctx, modules[i], NULL);
+        if (!mod) {
+            fprintf(stderr, "Failed to load data module \"%s\".\n", modules[i]);
+            goto error;
+        }
+        lys_features_enable(mod, "*");
     }
 
     return 0;
 
 error:
-    ly_ctx_destroy(st->ctx, NULL);
-    free(st);
+    ly_ctx_destroy((*state)->ctx, NULL);
+    free(*state);
     (*state) = NULL;
 
     return -1;
@@ -217,18 +222,83 @@ teardown_f(void **state)
 }
 
 static void
-test_parse(void **state)
+test_parse_if(void **state)
 {
-    struct state *st = (*state);
+    struct state *st;
+    const char *modules[] = {"ietf-interfaces", "ietf-ip", "iana-if-type"};
+    int module_count = 3;
 
-    st->dt = lyd_parse_mem(st->ctx, data, LYD_JSON, LYD_OPT_CONFIG);
+    if (setup_f(&st, TESTS_DIR "/schema/yin/ietf", modules, module_count)) {
+        fail();
+    }
+
+    (*state) = st;
+
+    st->dt = lyd_parse_mem(st->ctx, if_data, LYD_JSON, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->dt, NULL);
 }
 
-int main(void)
+static void
+test_parse_numbers(void **state)
+{
+    struct lyd_node_leaf_list *leaf;
+    struct state *st;
+    const char *modules[] = {"numbers"};
+    int module_count = 1;
+
+    if (setup_f(&st, TESTS_DIR "/data/files", modules, module_count)) {
+        fail();
+    }
+
+    (*state) = st;
+
+    st->dt = lyd_parse_mem(st->ctx, num_data, LYD_JSON, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt, NULL);
+
+    /* num1 */
+    leaf = (struct lyd_node_leaf_list *)st->dt->child;
+
+    /* num2 */
+    leaf = (struct lyd_node_leaf_list *)leaf->next;
+
+    /* num3 */
+    leaf = (struct lyd_node_leaf_list *)leaf->next;
+
+    /* num4 */
+    leaf = (struct lyd_node_leaf_list *)leaf->next;
+
+    /* num5 */
+    leaf = (struct lyd_node_leaf_list *)leaf->next;
+
+    /* num6 */
+    leaf = (struct lyd_node_leaf_list *)leaf->next;
+
+    /* num7 */
+    leaf = (struct lyd_node_leaf_list *)leaf->next;
+
+    /* num8 */
+    leaf = (struct lyd_node_leaf_list *)leaf->next;
+
+    /* num9 */
+    leaf = (struct lyd_node_leaf_list *)leaf->next;
+
+    /* num10 */
+    leaf = (struct lyd_node_leaf_list *)leaf->next;
+
+    /* num11 */
+    leaf = (struct lyd_node_leaf_list *)leaf->next;
+
+    /* num12 */
+    leaf = (struct lyd_node_leaf_list *)leaf->next;
+
+}
+
+int
+main(void)
 {
     const struct CMUnitTest tests[] = {
-                    cmocka_unit_test_setup_teardown(test_parse, setup_f, teardown_f),
+                    cmocka_unit_test_teardown(test_parse_if, teardown_f),
+                    cmocka_unit_test_teardown(test_parse_numbers, teardown_f),
                     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
