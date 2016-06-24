@@ -1674,7 +1674,9 @@ lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, co
 
     /* check the result */
     if (!inc->submodule) {
-        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "include");
+        if (!ly_vecode) {
+            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "include");
+        }
         LOGERR(LY_EVALID, "Including \"%s\" module into \"%s\" failed.", value, module->name);
         goto error;
     }
@@ -1767,7 +1769,9 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
 
     /* check the result */
     if (!imp->module) {
-        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "import");
+        if (!ly_vecode) {
+            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "import");
+        }
         LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
         return -1;
     }
