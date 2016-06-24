@@ -16,6 +16,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <limits.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -237,12 +238,121 @@ lyjson_parse_number(const char *data)
         }
     }
 
+    if ((data[len] == 'e') || (data[len] == 'E')) {
+        ++len;
+        if ((data[len] == '+') || (data[len] == '-')) {
+            ++len;
+        }
+        while (isdigit(data[len])) {
+            ++len;
+        }
+    }
+
     if (data[len] && (data[len] != ',') && (data[len] != ']') && (data[len] != '}') && !lyjson_isspace(data[len])) {
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid character in JSON Number value ('%c').", data[len]);
         return 0;
     }
 
     return len;
+}
+
+static char *
+lyjson_convert_enumber(const char *number, unsigned int num_len, char *e_ptr)
+{
+    char *ptr, *num;
+    const char *number_ptr;
+    long int e_val;
+    int dot_pos, chars_to_dot, minus;
+    unsigned int num_len_no_e;
+
+    if (*number == '-') {
+        minus = 1;
+        ++number;
+        --num_len;
+    } else {
+        minus = 0;
+    }
+
+    num_len_no_e = e_ptr - number;
+
+    errno = 0;
+    ++e_ptr;
+    e_val = strtol(e_ptr, &ptr, 10);
+    if (errno) {
+        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Exponent out-of-bounds in a JSON Number value (%.*s).",
+               num_len - (e_ptr - number), e_ptr);
+        return NULL;
+    } else if (ptr != number + num_len) {
+        /* we checked this already */
+        LOGINT;
+        return NULL;
+    }
+
+    if ((ptr = strnchr(number, '.', num_len_no_e))) {
+        dot_pos = ptr - number;
+    } else {
+        dot_pos = num_len_no_e;
+    }
+
+    dot_pos += e_val;
+
+    /* allocate enough memory */
+    if (dot_pos < 1) {
+        /* (.XXX)XXX[.]XXXX */
+        num = malloc((minus ? 1 : 0) + -dot_pos + 2 + (num_len_no_e - (ptr ? 1 : 0)) + 1);
+    } else if (dot_pos < (signed)num_len_no_e) {
+        /* XXXX(.)XX.XXX */
+        num = malloc((minus ? 1 : 0) + num_len_no_e + (ptr ? 0 : 1) + 1);
+    } else {
+        /* XXX[.]XXXX(XXX.) */
+        num = malloc((minus ? 1 : 0) + (dot_pos - (ptr ? 2 : 1)) + 1);
+    }
+
+    if (!num) {
+        LOGMEM;
+        return NULL;
+    }
+    if (minus) {
+        strcpy(num, "-");
+    } else {
+        num[0] = '\0';
+    }
+
+    if (dot_pos < 1) {
+        strcat(num, "0.");
+    }
+    if (dot_pos < 0) {
+        sprintf(num + strlen(num), "%0*d", -dot_pos, 0);
+    }
+
+    chars_to_dot = dot_pos;
+    for (ptr = num + strlen(num), number_ptr = number; number_ptr - number < num_len_no_e; ) {
+        if (!chars_to_dot) {
+            *ptr = '.';
+            ++ptr;
+            chars_to_dot = -1;
+        } else if (isdigit(*number_ptr)) {
+            *ptr = *number_ptr;
+            ++ptr;
+            ++number_ptr;
+            if (chars_to_dot > 0) {
+                --chars_to_dot;
+            }
+        } else if (*number_ptr == '.') {
+            ++number_ptr;
+        } else {
+            LOGINT;
+            free(num);
+            return NULL;
+        }
+    }
+    *ptr = '\0';
+
+    if (dot_pos > (signed)num_len_no_e) {
+        sprintf(num + strlen(num), "%0*d", dot_pos - num_len_no_e, 0);
+    }
+
+    return num;
 }
 
 static unsigned int
@@ -381,7 +491,16 @@ repeat:
             LOGPATH(LY_VLOG_LYD, leaf);
             return 0;
         }
-        leaf->value_str = lydict_insert(ctx, &data[len], r);
+        /* if it's a number with 'e' or 'E', get rid of it first */
+        if ((str = strnchr(&data[len], 'e', r)) || (str = strnchr(&data[len], 'E', r))) {
+            str = lyjson_convert_enumber(&data[len], r, str);
+            if (!str) {
+                return 0;
+            }
+            leaf->value_str = lydict_insert_zc(ctx, str);
+        } else {
+            leaf->value_str = lydict_insert(ctx, &data[len], r);
+        }
         len += r;
     } else if (data[len] == 'f' || data[len] == 't') {
         /* boolean */
