@@ -232,7 +232,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     struct lys_restr **restr;
     struct lys_type_bit bit;
     struct lys_type *type_der;
-    int i, j, rc;
+    int i, j, rc, val_set;
     int ret = -1;
     int64_t v, v_;
     int64_t p, p_;
@@ -509,7 +509,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             LOGMEM;
             goto error;
         }
-        v = 0;
+
+        val_set = v = 0;
         i = -1;
         LY_TREE_FOR(yin->child, next) {
             i++;
@@ -543,7 +544,6 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 }
             }
 
-            v_ = -1;
             LY_TREE_FOR(next->child, node) {
                 if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
                     /* garbage */
@@ -563,7 +563,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     type->info.enums.enm[i].value = v_;
 
                     /* keep the highest enum value for automatic increment */
-                    if (type->info.enums.enm[i].value > v) {
+                    if (!val_set || type->info.enums.enm[i].value > v) {
                         v = type->info.enums.enm[i].value;
                         v++;
                     } else {
@@ -577,12 +577,13 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                             }
                         }
                     }
+                    val_set = 1;
                 } else {
                     LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name);
                     goto error;
                 }
             }
-            if (v_ == -1) {
+            if (!val_set) {
                 /* assign value automatically */
                 if (v > INT32_MAX) {
                     LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "2147483648", "enum/value");
