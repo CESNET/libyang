@@ -89,9 +89,9 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options)
     leaf->value_type = ((struct lys_node_leaf *)node->schema)->type.base;
 
     if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
-        resolve = 0;
-    } else {
         resolve = 1;
+    } else {
+        resolve = 0;
     }
 
     if ((leaf->value_type == LY_TYPE_IDENT) || (leaf->value_type == LY_TYPE_INST)) {
