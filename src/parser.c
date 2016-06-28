@@ -655,9 +655,9 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
     int c, i, j, d;
     int found;
 
-    assert(node && (node->value_type == stype->base));
+    assert(node && ((node->value_type & LY_DATA_TYPE_MASK) == stype->base));
 
-    switch (node->value_type) {
+    switch (node->value_type & LY_DATA_TYPE_MASK) {
     case LY_TYPE_BINARY:
         if (validate_length_range(0, (node->value_str ? strlen(node->value_str) : 0), 0, 0, stype,
                                   node->value_str, (struct lyd_node *)node)) {
@@ -803,7 +803,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
 
         if (parse_int(dec, __INT64_C(-9223372036854775807) - __INT64_C(1), __INT64_C(9223372036854775807), 10, &num,
                       (struct lyd_node *)node)
-                || validate_length_range(2, 0, 0, ((long double)num)/(1 << type->info.dec64.dig), stype,
+                || validate_length_range(2, 0, 0, ((long double)num) / type->info.dec64.div, stype,
                                          node->value_str, (struct lyd_node *)node)) {
             return EXIT_FAILURE;
         }
@@ -861,7 +861,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
             return EXIT_FAILURE;
         }
 
-        if (!resolve) {
+        if (resolve) {
             node->value_type |= LY_TYPE_INST_UNRES;
         }
         break;
@@ -872,12 +872,13 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
             return EXIT_FAILURE;
         }
 
-        if (!resolve) {
+        if (resolve) {
             type = &((struct lys_node_leaf *)node->schema)->type.info.lref.target->type;
             while (type->base == LY_TYPE_LEAFREF) {
                 type = &type->info.lref.target->type;
             }
             node->value_type = type->base | LY_TYPE_LEAFREF_UNRES;
+            return lyp_parse_value_(node, type, resolve);
         }
         break;
 
