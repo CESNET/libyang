@@ -861,7 +861,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
             return EXIT_FAILURE;
         }
 
-        if (resolve) {
+        if (!resolve) {
             node->value_type |= LY_TYPE_INST_UNRES;
         }
         break;
@@ -872,7 +872,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
             return EXIT_FAILURE;
         }
 
-        if (resolve) {
+        if (!resolve) {
             type = &((struct lys_node_leaf *)node->schema)->type.info.lref.target->type;
             while (type->base == LY_TYPE_LEAFREF) {
                 type = &type->info.lref.target->type;
