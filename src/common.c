@@ -254,6 +254,8 @@ strnodetype(LYS_NODE type)
         return "rpc";
     case LYS_USES:
         return "uses";
+    case LYS_ACTION:
+        return "action";
     }
 
     return NULL;

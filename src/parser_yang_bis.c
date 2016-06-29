@@ -6357,7 +6357,7 @@ yyreduce:
   case 421:
 
     { if (read_all) {
-                                                 if (!(actual = yang_read_node(trg, NULL, s, LYS_RPC, sizeof(struct lys_node_rpc)))) {
+                                                 if (!(actual = yang_read_node(trg, NULL, s, LYS_RPC, sizeof(struct lys_node_rpc_action)))) {
                                                    YYABORT;
                                                  }
                                                  data_node = actual;
@@ -6523,7 +6523,7 @@ yyreduce:
                                        LOGMEM;
                                        YYABORT;
                                      }
-                                     if (!(actual = yang_read_node(trg, actual, s, LYS_INPUT, sizeof(struct lys_node_rpc_inout)))) {
+                                     if (!(actual = yang_read_node(trg, actual, s, LYS_INPUT, sizeof(struct lys_node_inout)))) {
                                       YYABORT;
                                      }
                                      data_node = actual;
@@ -6615,7 +6615,7 @@ yyreduce:
                                          LOGMEM;
                                          YYABORT;
                                        }
-                                       if (!(actual = yang_read_node(trg, actual, s, LYS_OUTPUT, sizeof(struct lys_node_rpc_inout)))) {
+                                       if (!(actual = yang_read_node(trg, actual, s, LYS_OUTPUT, sizeof(struct lys_node_inout)))) {
                                         YYABORT;
                                        }
                                        data_node = actual;

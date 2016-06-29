@@ -1243,13 +1243,14 @@ yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *valu
             ((struct lys_node_list *)parent)->tpdf_size++;
             break;
         case LYS_RPC:
-            ret = &((struct lys_node_rpc *)parent)->tpdf[((struct lys_node_rpc *)parent)->tpdf_size];
-            ((struct lys_node_rpc *)parent)->tpdf_size++;
+        case LYS_ACTION:
+            ret = &((struct lys_node_rpc_action *)parent)->tpdf[((struct lys_node_rpc_action *)parent)->tpdf_size];
+            ((struct lys_node_rpc_action *)parent)->tpdf_size++;
             break;
         case LYS_INPUT:
         case LYS_OUTPUT:
-            ret = &((struct lys_node_rpc_inout *)parent)->tpdf[((struct lys_node_rpc_inout *)parent)->tpdf_size];
-            ((struct lys_node_rpc_inout *)parent)->tpdf_size++;
+            ret = &((struct lys_node_inout *)parent)->tpdf[((struct lys_node_inout *)parent)->tpdf_size];
+            ((struct lys_node_inout *)parent)->tpdf_size++;
             break;
         case LYS_NOTIF:
             ret = &((struct lys_node_notif *)parent)->tpdf[((struct lys_node_notif *)parent)->tpdf_size];

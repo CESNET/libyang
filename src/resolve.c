@@ -2469,8 +2469,9 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
                 break;
 
             case LYS_RPC:
-                tpdf_size = ((struct lys_node_rpc *)parent)->tpdf_size;
-                tpdf = ((struct lys_node_rpc *)parent)->tpdf;
+            case LYS_ACTION:
+                tpdf_size = ((struct lys_node_rpc_action *)parent)->tpdf_size;
+                tpdf = ((struct lys_node_rpc_action *)parent)->tpdf;
                 break;
 
             case LYS_NOTIF:
@@ -2480,8 +2481,8 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
 
             case LYS_INPUT:
             case LYS_OUTPUT:
-                tpdf_size = ((struct lys_node_rpc_inout *)parent)->tpdf_size;
-                tpdf = ((struct lys_node_rpc_inout *)parent)->tpdf;
+                tpdf_size = ((struct lys_node_inout *)parent)->tpdf_size;
+                tpdf = ((struct lys_node_inout *)parent)->tpdf;
                 break;
 
             default:

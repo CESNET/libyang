@@ -937,7 +937,7 @@ info_print_case(struct lyout *out, const struct lys_node *node)
 static void
 info_print_input(struct lyout *out, const struct lys_node *node)
 {
-    struct lys_node_rpc_inout *input = (struct lys_node_rpc_inout *)node;
+    struct lys_node_inout *input = (struct lys_node_inout *)node;
 
     assert(lys_parent(node) && lys_parent(node)->nodetype == LYS_RPC);
 
@@ -950,7 +950,7 @@ info_print_input(struct lyout *out, const struct lys_node *node)
 static void
 info_print_output(struct lyout *out, const struct lys_node *node)
 {
-    struct lys_node_rpc_inout *output = (struct lys_node_rpc_inout *)node;
+    struct lys_node_inout *output = (struct lys_node_inout *)node;
 
     assert(lys_parent(node) && lys_parent(node)->nodetype == LYS_RPC);
 

@@ -553,7 +553,7 @@ tree_print_rpc(struct lyout *out, const struct lys_module *module, int level, ch
 {
     char *new_indent;
     struct lys_node *sub;
-    struct lys_node_rpc *rpc = (struct lys_node_rpc *)node;
+    struct lys_node_rpc_action *rpc = (struct lys_node_rpc_action *)node;
 
     if (lys_is_disabled(node, 0)) {
         return;

@@ -1805,7 +1805,7 @@ lys_grp_free(struct ly_ctx *ctx, struct lys_node_grp *grp)
 }
 
 static void
-lys_rpc_inout_free(struct ly_ctx *ctx, struct lys_node_rpc_inout *io)
+lys_inout_free(struct ly_ctx *ctx, struct lys_node_inout *io)
 {
     int i;
 
@@ -2077,13 +2077,14 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
         break;
     case LYS_GROUPING:
     case LYS_RPC:
+    case LYS_ACTION:
     case LYS_NOTIF:
         lys_grp_free(ctx, (struct lys_node_grp *)node);
         break;
 
     case LYS_INPUT:
     case LYS_OUTPUT:
-        lys_rpc_inout_free(ctx, (struct lys_node_rpc_inout *)node);
+        lys_inout_free(ctx, (struct lys_node_inout *)node);
         break;
     case LYS_UNKNOWN:
         LOGINT;
@@ -2251,12 +2252,12 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
     struct lys_node_uses *uses_orig = (struct lys_node_uses *)node;
     struct lys_node_grp *grp = NULL;
     struct lys_node_grp *grp_orig = (struct lys_node_grp *)node;
-    struct lys_node_rpc *rpc = NULL;
-    struct lys_node_rpc *rpc_orig = (struct lys_node_rpc *)node;
-    struct lys_node_rpc_inout *io = NULL;
-    struct lys_node_rpc_inout *io_orig = (struct lys_node_rpc_inout *)node;
-    struct lys_node_rpc *ntf = NULL;
-    struct lys_node_rpc *ntf_orig = (struct lys_node_rpc *)node;
+    struct lys_node_rpc_action *rpc = NULL;
+    struct lys_node_rpc_action *rpc_orig = (struct lys_node_rpc_action *)node;
+    struct lys_node_inout *io = NULL;
+    struct lys_node_inout *io_orig = (struct lys_node_inout *)node;
+    struct lys_node_rpc_action *ntf = NULL;
+    struct lys_node_rpc_action *ntf_orig = (struct lys_node_rpc_action *)node;
     struct lys_node_case *cs = NULL;
     struct lys_node_case *cs_orig = (struct lys_node_case *)node;
 
@@ -2311,6 +2312,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
         break;
 
     case LYS_RPC:
+    case LYS_ACTION:
         rpc = calloc(1, sizeof *rpc);
         retval = (struct lys_node *)rpc;
         break;

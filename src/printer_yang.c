@@ -1073,7 +1073,7 @@ yang_print_input_output(struct lyout *out, int level, const struct lys_node *nod
 {
     int i;
     struct lys_node *sub;
-    struct lys_node_rpc_inout *inout = (struct lys_node_rpc_inout *)node;
+    struct lys_node_inout *inout = (struct lys_node_inout *)node;
 
     ly_print(out, "%*s%s {\n", LEVEL, INDENT, (inout->nodetype == LYS_INPUT ? "input" : "output"));
 
@@ -1101,7 +1101,7 @@ yang_print_rpc(struct lyout *out, int level, const struct lys_node *node)
 {
     int i, flag = 0;
     struct lys_node *sub;
-    struct lys_node_rpc *rpc = (struct lys_node_rpc *)node;
+    struct lys_node_rpc_action *rpc = (struct lys_node_rpc_action *)node;
 
     ly_print(out, "%*srpc %s", LEVEL, INDENT, node->name);
 

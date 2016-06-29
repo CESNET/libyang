@@ -204,13 +204,14 @@ typedef enum lys_nodetype {
     LYS_OUTPUT = 0x0400,         /**< output statement node */
     LYS_GROUPING = 0x0800,       /**< grouping statement node */
     LYS_USES = 0x1000,           /**< uses statement node */
-    LYS_AUGMENT = 0x2000         /**< augment statement node */
+    LYS_AUGMENT = 0x2000,        /**< augment statement node */
+    LYS_ACTION = 0x4000          /**< action statement node */
 } LYS_NODE;
 
 /* all nodes sharing the node namespace except RPCs and notifications */
 #define LYS_NO_RPC_NOTIF_NODE 0x007F
 
-#define LYS_ANY 0x3FFF
+#define LYS_ANY 0x7FFF
 
 /**
  * @brief Main schema node structure representing YANG module.
@@ -1049,7 +1050,7 @@ struct lys_node_case {
  * member.
  *
  */
-struct lys_node_rpc_inout {
+struct lys_node_inout {
     const char *name;
     void *fill1[2];                  /**< padding for compatibility with ::lys_node - dsc and ref */
     uint16_t fill2[1];               /**< padding for compatibility with ::lys_node - flags and nacm */
@@ -1110,7 +1111,7 @@ struct lys_node_notif {
  * Beginning of the structure is completely compatible with ::lys_node structure extending it by the #tpdf_size and
  * #tpdf members.
  */
-struct lys_node_rpc {
+struct lys_node_rpc_action {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
@@ -1118,7 +1119,7 @@ struct lys_node_rpc {
     uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 
-    LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_RPC */
+    LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_RPC or #LYS_ACTION */
     struct lys_node *parent;         /**< pointer to the parent node, NULL in case of a top level node */
     struct lys_node *child;          /**< pointer to the first child node */
     struct lys_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
