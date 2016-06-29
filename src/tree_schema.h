@@ -657,9 +657,8 @@ struct lys_node {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t features_size;           /**< number of elements in the #features array */
-    struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
-                                          definitions themselves, but the array of if-feature references */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    const char **iffeature;          /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 };
 
@@ -689,9 +688,8 @@ struct lys_node_container {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t features_size;           /**< number of elements in the #features array */
-    struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
-                                          definitions themselves, but the array of if-feature references */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    const char **iffeature;          /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific container's data */
@@ -731,9 +729,8 @@ struct lys_node_choice {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t features_size;           /**< number of elements in the #features array */
-    struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
-                                          definitions themselves, but the array of if-feature references */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    const char **iffeature;          /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific choice's data */
@@ -773,9 +770,8 @@ struct lys_node_leaf {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t features_size;           /**< number of elements in the #features array */
-    struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
-                                          definitions themselves, but the array of if-feature references */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    const char **iffeature;          /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific leaf's data */
@@ -821,9 +817,8 @@ struct lys_node_leaflist {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t features_size;           /**< number of elements in the #features array */
-    struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
-                                          definitions themselves, but the array of if-feature references */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    const char **iffeature;          /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific leaf-list's data */
@@ -865,9 +860,8 @@ struct lys_node_list {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t features_size;           /**< number of elements in the #features array */
-    struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
-                                          definitions themselves, but the array of if-feature references */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    const char **iffeature;          /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific list's data */
@@ -915,9 +909,8 @@ struct lys_node_anyxml {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t features_size;           /**< number of elements in the #features array */
-    struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
-                                          definitions themselves, but the array of if-feature references */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    const char **iffeature;          /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific anyxml's data */
@@ -956,9 +949,8 @@ struct lys_node_uses {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t features_size;           /**< number of elements in the #features array */
-    struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
-                                          definitions themselves, but the array of if-feature references */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    const char **iffeature;          /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific uses's data */
@@ -1004,9 +996,8 @@ struct lys_node_grp {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t features_size;           /**< number of elements in the #features array */
-    struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
-                                          definitions themselves, but the array of if-feature references */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    const char **iffeature;          /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific grouping's data */
@@ -1039,9 +1030,8 @@ struct lys_node_case {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t features_size;           /**< number of elements in the #features array */
-    struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
-                                          definitions themselves, but the array of if-feature references */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    const char **iffeature;          /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific case's data */
@@ -1105,9 +1095,8 @@ struct lys_node_notif {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t features_size;           /**< number of elements in the #features array */
-    struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
-                                          definitions themselves, but the array of if-feature references */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    const char **iffeature;          /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific rpc's data */
@@ -1138,9 +1127,8 @@ struct lys_node_rpc {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t features_size;           /**< number of elements in the #features array */
-    struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
-                                          definitions themselves, but the array of if-feature references */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    const char **iffeature;          /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific rpc's data */
@@ -1183,9 +1171,8 @@ struct lys_node_augment {
     struct lys_node *target;         /**< pointer to the target node */
 
     /* again compatible members with ::lys_node */
-    uint8_t features_size;           /**< number of elements in the #features array */
-    struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
-                                          definitions themselves, but the array of if-feature references */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    const char **iffeature;          /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
 };
@@ -1338,9 +1325,8 @@ struct lys_feature {
     uint16_t padding:2;
     struct lys_module *module;       /**< link to the features's data model (mandatory) */
 
-    uint8_t features_size;           /**< number of elements in the #features array */
-    struct lys_feature **features;   /**< array of pointers to feature definitions, this is not the array of feature
-                                          definitions themselves, but the array of if-feature references */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    const char **iffeature;          /**< array of if-feature expressions */
 };
 
 /**
@@ -1477,9 +1463,9 @@ int lys_features_state(const struct lys_module *module, const char *feature);
  * - 1 to check if-feature in all ascendant schema nodes
  * - 2 to check if-feature in all ascendant schema nodes until there a node having an instance in a data tree
  * @return - NULL if enabled,
- * - pointer to the disabling feature if disabled.
+ * - pointer to the unsatisfied (or incorrect) if-feature expression if disabled (or on error).
  */
-const struct lys_feature *lys_is_disabled(const struct lys_node *node, int recursive);
+const char *lys_is_disabled(const struct lys_node *node, int recursive);
 
 /**
  * @brief Get next schema tree (sibling) node element that can be instantiated in a data tree. Returned node can

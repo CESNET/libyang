@@ -221,16 +221,18 @@ yin_print_snode_common2(struct lyout *out, int level, const struct lys_node *nod
 }
 
 static void
-yin_print_iffeature(struct lyout *out, int level, const struct lys_module *module, const struct lys_feature *feat)
+yin_print_iffeature(struct lyout *out, int level, const struct lys_module *module, const char *iffeature)
 {
-    struct lys_module *mod;
+    const char *str;
 
     ly_print(out, "%*s<if-feature name=\"", LEVEL, INDENT);
-    mod = lys_main_module(feat->module);
-    if (lys_main_module(module) != mod) {
-        ly_print(out, "%s:", transform_module_name2import_prefix(module, mod->name));
+    str = transform_json2schema(module, iffeature);
+    if (!str) {
+        str = lydict_insert(module->ctx, "(error)", 0);
     }
-    ly_print(out, "%s\"/>\n", feat->name);
+    ly_print(out, "%s\"/>\n", str);
+
+    lydict_remove(module->ctx, str);
 }
 
 static void
@@ -238,15 +240,15 @@ yin_print_feature(struct lyout *out, int level, const struct lys_feature *feat)
 {
     int i, close;
 
-    close = (yin_has_snode_common((struct lys_node *)feat) || feat->features_size ? 0 : 1);
+    close = (yin_has_snode_common((struct lys_node *)feat) || feat->iffeature_size ? 0 : 1);
 
     yin_print_open(out, level, "feature", "name", feat->name, close);
 
     if (!close) {
         level++;
         yin_print_snode_common(out, level, (struct lys_node *)feat);
-        for (i = 0; i < feat->features_size; ++i) {
-            yin_print_iffeature(out, level, feat->module, feat->features[i]);
+        for (i = 0; i < feat->iffeature_size; ++i) {
+            yin_print_iffeature(out, level, feat->module, feat->iffeature[i]);
         }
         level--;
 
@@ -672,8 +674,8 @@ yin_print_augment(struct lyout *out, int level, const struct lys_module *module,
     yin_print_nacmext(out, level, (struct lys_node *)augment, module);
     yin_print_snode_common(out, level, (struct lys_node *)augment);
 
-    for (i = 0; i < augment->features_size; i++) {
-        yin_print_iffeature(out, level, module, augment->features[i]);
+    for (i = 0; i < augment->iffeature_size; i++) {
+        yin_print_iffeature(out, level, module, augment->iffeature[i]);
     }
 
     if (augment->when) {
@@ -756,8 +758,8 @@ yin_print_container(struct lyout *out, int level, const struct lys_node *node)
         yin_print_when(out, level, node->module, cont->when);
     }
 
-    for (i = 0; i < cont->features_size; i++) {
-        yin_print_iffeature(out, level, node->module, cont->features[i]);
+    for (i = 0; i < cont->iffeature_size; i++) {
+        yin_print_iffeature(out, level, node->module, cont->iffeature[i]);
     }
 
     for (i = 0; i < cont->must_size; i++) {
@@ -801,8 +803,8 @@ yin_print_case(struct lyout *out, int level, const struct lys_node *node)
     yin_print_nacmext(out, level, node, node->module);
     yin_print_snode_common2(out, level, node);
 
-    for (i = 0; i < cas->features_size; i++) {
-        yin_print_iffeature(out, level, node->module, cas->features[i]);
+    for (i = 0; i < cas->iffeature_size; i++) {
+        yin_print_iffeature(out, level, node->module, cas->iffeature[i]);
     }
 
     if (cas->when) {
@@ -840,8 +842,8 @@ yin_print_choice(struct lyout *out, int level, const struct lys_node *node)
 
     yin_print_snode_common2(out, level, node);
 
-    for (i = 0; i < choice->features_size; i++) {
-        yin_print_iffeature(out, level, node->module, choice->features[i]);
+    for (i = 0; i < choice->iffeature_size; i++) {
+        yin_print_iffeature(out, level, node->module, choice->iffeature[i]);
     }
 
     if (choice->when) {
@@ -874,8 +876,8 @@ yin_print_leaf(struct lyout *out, int level, const struct lys_node *node)
     if (leaf->when) {
         yin_print_when(out, level, node->module, leaf->when);
     }
-    for (i = 0; i < leaf->features_size; i++) {
-        yin_print_iffeature(out, level, node->module, leaf->features[i]);
+    for (i = 0; i < leaf->iffeature_size; i++) {
+        yin_print_iffeature(out, level, node->module, leaf->iffeature[i]);
     }
     for (i = 0; i < leaf->must_size; i++) {
         yin_print_must(out, level, node->module, &leaf->must[i]);
@@ -899,7 +901,7 @@ yin_print_anyxml(struct lyout *out, int level, const struct lys_node *node)
     int i, close;
     struct lys_node_anyxml *anyxml = (struct lys_node_anyxml *)node;
 
-    close = (yin_has_nacmext(node) || yin_has_snode_common2(node) || anyxml->features_size || anyxml->must_size
+    close = (yin_has_nacmext(node) || yin_has_snode_common2(node) || anyxml->iffeature_size || anyxml->must_size
             || anyxml->when ? 0 : 1);
 
     yin_print_open(out, level, "anyxml", "name", anyxml->name, close);
@@ -908,8 +910,8 @@ yin_print_anyxml(struct lyout *out, int level, const struct lys_node *node)
         level++;
         yin_print_nacmext(out, level, node, node->module);
         yin_print_snode_common2(out, level, node);
-        for (i = 0; i < anyxml->features_size; i++) {
-            yin_print_iffeature(out, level, node->module, anyxml->features[i]);
+        for (i = 0; i < anyxml->iffeature_size; i++) {
+            yin_print_iffeature(out, level, node->module, anyxml->iffeature[i]);
         }
         for (i = 0; i < anyxml->must_size; i++) {
             yin_print_must(out, level, node->module, &anyxml->must[i]);
@@ -936,8 +938,8 @@ yin_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
     if (llist->when) {
         yin_print_when(out, level, llist->module, llist->when);
     }
-    for (i = 0; i < llist->features_size; i++) {
-        yin_print_iffeature(out, level, node->module, llist->features[i]);
+    for (i = 0; i < llist->iffeature_size; i++) {
+        yin_print_iffeature(out, level, node->module, llist->iffeature[i]);
     }
     for (i = 0; i < llist->must_size; i++) {
         yin_print_must(out, level, node->module, &llist->must[i]);
@@ -975,8 +977,8 @@ yin_print_list(struct lyout *out, int level, const struct lys_node *node)
     if (list->when) {
         yin_print_when(out, level, list->module, list->when);
     }
-    for (i = 0; i < list->features_size; i++) {
-        yin_print_iffeature(out, level, node->module, list->features[i]);
+    for (i = 0; i < list->iffeature_size; i++) {
+        yin_print_iffeature(out, level, node->module, list->iffeature[i]);
     }
     for (i = 0; i < list->must_size; i++) {
         yin_print_must(out, level, list->module, &list->must[i]);
@@ -1052,7 +1054,7 @@ yin_print_uses(struct lyout *out, int level, const struct lys_node *node)
     struct lys_node_uses *uses = (struct lys_node_uses *)node;
     struct lys_module *mod;
 
-    close = (yin_has_nacmext(node) || yin_has_snode_common(node) || uses->features_size || uses->when
+    close = (yin_has_nacmext(node) || yin_has_snode_common(node) || uses->iffeature_size || uses->when
             || uses->refine_size || uses->augment_size ? 0 : 1);
 
     ly_print(out, "%*s<uses name=\"", LEVEL, INDENT);
@@ -1068,8 +1070,8 @@ yin_print_uses(struct lyout *out, int level, const struct lys_node *node)
         level++;
         yin_print_nacmext(out, level, node, node->module);
         yin_print_snode_common(out, level, node);
-        for (i = 0; i < uses->features_size; i++) {
-            yin_print_iffeature(out, level, node->module, uses->features[i]);
+        for (i = 0; i < uses->iffeature_size; i++) {
+            yin_print_iffeature(out, level, node->module, uses->iffeature[i]);
         }
         if (uses->when) {
             yin_print_when(out, level, node->module, uses->when);
@@ -1123,7 +1125,7 @@ yin_print_rpc(struct lyout *out, int level, const struct lys_node *node)
     struct lys_node *sub;
     struct lys_node_rpc *rpc = (struct lys_node_rpc *)node;
 
-    close = (yin_has_snode_common(node) || rpc->features_size || rpc->tpdf_size || node->child ? 0 : 1);
+    close = (yin_has_snode_common(node) || rpc->iffeature_size || rpc->tpdf_size || node->child ? 0 : 1);
 
     yin_print_open(out, level, "rpc", "name", node->name, close);
 
@@ -1131,8 +1133,8 @@ yin_print_rpc(struct lyout *out, int level, const struct lys_node *node)
         level++;
         yin_print_snode_common(out, level, node);
 
-        for (i = 0; i < rpc->features_size; i++) {
-            yin_print_iffeature(out, level, node->module, rpc->features[i]);
+        for (i = 0; i < rpc->iffeature_size; i++) {
+            yin_print_iffeature(out, level, node->module, rpc->iffeature[i]);
         }
 
         for (i = 0; i < rpc->tpdf_size; i++) {
@@ -1159,7 +1161,7 @@ yin_print_notif(struct lyout *out, int level, const struct lys_node *node)
     struct lys_node *sub;
     struct lys_node_notif *notif = (struct lys_node_notif *)node;
 
-    close = (yin_has_snode_common(node) || notif->features_size || notif->tpdf_size || node->child ? 0 : 1);
+    close = (yin_has_snode_common(node) || notif->iffeature_size || notif->tpdf_size || node->child ? 0 : 1);
 
     yin_print_open(out, level, "notification", "name", node->name, close);
 
@@ -1167,8 +1169,8 @@ yin_print_notif(struct lyout *out, int level, const struct lys_node *node)
         level++;
         yin_print_snode_common(out, level, node);
 
-        for (i = 0; i < notif->features_size; i++) {
-            yin_print_iffeature(out, level, node->module, notif->features[i]);
+        for (i = 0; i < notif->iffeature_size; i++) {
+            yin_print_iffeature(out, level, node->module, notif->iffeature[i]);
         }
 
         for (i = 0; i < notif->tpdf_size; i++) {

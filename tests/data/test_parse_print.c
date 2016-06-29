@@ -60,6 +60,7 @@ setup_f(void **state)
         fprintf(stderr, "Failed to load data model \"%s\".\n", schema);
         goto error;
     }
+    lys_features_enable(st->mod, "feat2");
     lys_features_enable(st->mod, "*");
 
     st->mod = lys_parse_path(st->ctx, schemadev, LYS_IN_YIN);

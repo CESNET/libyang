@@ -955,6 +955,238 @@ parse_schema_json_predicate(const char *id, const char **name, int *nam_len, con
 }
 
 /**
+ * @brief Resolve (find) a feature definition. Logs directly.
+ *
+ * @param[in] feat_name Feature name to resolve.
+ * @param[in] len Length of \p feat_name.
+ * @param[in] node Node with the if-feature expression.
+ *
+ * @return 0 on disabled, 1 on enabled, 2 on forward reference, -1 on error.
+ */
+static int
+resolve_iffeature_feature(const char *feat_name, uint16_t len, const struct lys_node *node)
+{
+    char *str;
+    const char *mod_name, *name;
+    int mod_name_len, nam_len, i, j;
+    const struct lys_module *module;
+
+    /* check prefix */
+    if ((i = parse_node_identifier(feat_name, &mod_name, &mod_name_len, &name, &nam_len)) < 1) {
+        LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, feat_name[-i], &feat_name[-i]);
+        return -1;
+    }
+
+    module = lys_get_import_module(lys_node_module(node), NULL, 0, mod_name, mod_name_len);
+    if (!module) {
+        /* identity refers unknown data model */
+        LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, mod_name_len, mod_name);
+        return -1;
+    }
+
+    /* search in the identified module ... */
+    for (j = 0; j < module->features_size; j++) {
+        if (!strcmp(name, module->features[j].name)) {
+            /* check status */
+            if (lyp_check_status(node->flags, lys_node_module(node), node->name, module->features[j].flags,
+                                 module->features[j].module, module->features[j].name, node)) {
+                return -1;
+            }
+            return (module->features[j].flags & LYS_FENABLED ? 1 : 0);
+        }
+    }
+    /* ... and all its submodules */
+    for (i = 0; i < module->inc_size; i++) {
+        if (!module->inc[i].submodule) {
+            /* not yet resolved */
+            continue;
+        }
+        for (j = 0; j < module->inc[i].submodule->features_size; j++) {
+            if (!strcmp(name, module->inc[i].submodule->features[j].name)) {
+                /* check status */
+                if (lyp_check_status(node->flags, lys_node_module(node), node->name,
+                                     module->inc[i].submodule->features[j].flags,
+                                     module->inc[i].submodule->features[j].module,
+                                     module->inc[i].submodule->features[j].name, node)) {
+                    return -1;
+                }
+                return (module->inc[i].submodule->features[j].flags & LYS_FENABLED ? 1 : 0);
+            }
+        }
+    }
+
+    /* not found */
+    str = strndup(feat_name, len);
+    LOGVAL(LYE_INRESOLV, LY_VLOG_NONE, NULL, "feature", str);
+    free(str);
+    return 2;
+}
+
+static int
+resolve_iffeature_factor(const char *factor, uint16_t len, const struct lys_node *node)
+{
+    uint16_t cur_len;
+    int ret;
+
+    if (isspace(factor[0])) {
+        LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, factor[0], factor);
+        return -1;
+    }
+
+    if ((len > 4) && (factor[0] == 'n') && (factor[1] == 'o') && (factor[2] == 't') && isspace(factor[3])) {
+        /* not-keyword sep if-feature-factor */
+        cur_len = 4;
+        while (isspace(factor[cur_len])) {
+            ++cur_len;
+            if (cur_len > len) {
+                LOGVAL(LYE_EOF, LY_VLOG_NONE, NULL);
+                return -1;
+            }
+        }
+
+        ret = resolve_iffeature_factor(factor + cur_len, len - cur_len, node);
+        if ((ret == -1) || (ret == 2)) {
+            return ret;;
+        }
+        return !ret;
+    } else if (factor[0] == '(') {
+        /* "(" sep if-feature-expr sep ")" */
+        if (factor[len] != ')') {
+            LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, factor[len], &factor[len]);
+            return -1;
+        }
+        cur_len = 1;
+        while (isspace(factor[cur_len])) {
+            ++cur_len;
+        }
+
+        --len;
+        while (isspace(factor[len])) {
+            --len;
+        }
+
+        return resolve_iffeature_expr(factor + cur_len, len - cur_len, node);
+    } else {
+        /* identifier-ref-arg */
+        return resolve_iffeature_feature(factor, len, node);
+    }
+}
+
+static int
+resolve_iffeature_term(const char *term, uint16_t len, const struct lys_node *node)
+{
+    uint16_t cur_len, factor_len, and_len;
+    int ret1, ret2;
+
+    if (isspace(term[0])) {
+        LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, term[0], term);
+        return -1;
+    }
+
+    cur_len = 0;
+    factor_len = 0;
+    and_len = 0;
+    while (cur_len < len) {
+        ++cur_len;
+        if ((cur_len > 1) && isspace(term[cur_len - 2]) && !and_len && (term[cur_len - 1] == 'a')) {
+            and_len = 1;
+        } else if ((and_len == 1) && (term[cur_len - 1] == 'n')) {
+            and_len = 2;
+        } else if ((and_len == 2) && (term[cur_len - 1] == 'd')) {
+            and_len = 3;
+        } else if ((and_len == 3) && isspace(term[cur_len - 1])) {
+            and_len = 4;
+            break;
+        } else if (!isspace(term[cur_len - 1])) {
+            factor_len = cur_len;
+        }
+    }
+
+    if (and_len == 4) {
+        /* if-feature-factor sep and-keyword sep if-feature-term */
+        while (isspace(term[cur_len])) {
+            ++cur_len;
+            if (cur_len > len) {
+                LOGVAL(LYE_EOF, LY_VLOG_NONE, NULL);
+                return -1;
+            }
+        }
+        ret1 = resolve_iffeature_factor(term, factor_len, node);
+        if ((ret1 == -1) || (ret1 == 2)) {
+            return ret1;
+        }
+        ret2 = resolve_iffeature_term(term + cur_len, len - cur_len, node);
+        if ((ret2 == -1) || (ret2 == 2)) {
+            return ret2;
+        }
+        return ret1 && ret2;
+
+    } else {
+        /* if-feature-factor */
+        if (and_len) {
+            factor_len = cur_len;
+        }
+        return resolve_iffeature_factor(term, factor_len, node);
+    }
+}
+
+int
+resolve_iffeature_expr(const char *expr, uint16_t len, const struct lys_node *node)
+{
+    uint16_t cur_len, term_len, or_len;
+    int ret1, ret2;
+
+    if (isspace(expr[0])) {
+        LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, expr[0], expr);
+        return -1;
+    }
+
+    cur_len = 0;
+    term_len = 0;
+    or_len = 0;
+    while (cur_len < len) {
+        ++cur_len;
+        if ((cur_len > 1) && isspace(expr[cur_len - 2]) && !or_len && (expr[cur_len - 1] == 'o')) {
+            or_len = 1;
+        } else if ((or_len == 1) && (expr[cur_len - 1] == 'r')) {
+            or_len = 2;
+        } else if ((or_len == 2) && isspace(expr[cur_len - 1])) {
+            or_len = 3;
+            break;
+        } else if (!isspace(expr[cur_len - 1])) {
+            term_len = cur_len;
+        }
+    }
+
+    if (or_len == 3) {
+        /* if-feature-term sep or-keyword sep if-feature-expr */
+        while (isspace(expr[cur_len])) {
+            ++cur_len;
+            if (cur_len > len) {
+                LOGVAL(LYE_EOF, LY_VLOG_NONE, NULL);
+                return -1;
+            }
+        }
+        ret1 = resolve_iffeature_term(expr, term_len, node);
+        if ((ret1 == -1) || (ret1 == 2)) {
+            return ret1;
+        }
+        ret2 = resolve_iffeature_expr(expr + cur_len, len - cur_len, node);
+        if ((ret2 == -1) || (ret2 == 2)) {
+            return ret2;
+        }
+        return ret1 || ret2;
+
+    } else {
+        /* if-feature-term */
+        if (or_len) {
+            term_len = cur_len;
+        }
+        return resolve_iffeature_term(expr, term_len, node);
+    }
+}
+
+/**
  * @brief Resolve (find) a data node based on a schema-nodeid.
  *
  * Used for resolving unique statements - so id is expected to be relative and local (without reference to a different
@@ -2499,82 +2731,6 @@ resolve_unique(struct lys_node *parent, const char *uniq_str_path)
 error:
 
     return rc;
-}
-
-/**
- * @brief Resolve (find) a feature definition. Logs directly.
- *
- * @param[in] name Feature name.
- * @param[in] module Module to search in.
- * @param[out] ret Pointer to the resolved feature. Can be NULL.
- *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
- */
-static int
-resolve_feature(const char *id, const struct lys_module *module, struct lys_feature **ret)
-{
-    const char *mod_name, *name;
-    int mod_name_len, nam_len, i, j;
-    struct lys_node *node;
-
-    assert(id);
-    assert(module);
-
-    /* check prefix */
-    if ((i = parse_node_identifier(id, &mod_name, &mod_name_len, &name, &nam_len)) < 1) {
-        LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, id[-i], &id[-i]);
-        return -1;
-    }
-
-    module = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
-    if (!module) {
-        /* identity refers unknown data model */
-        LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, mod_name_len, mod_name);
-        return -1;
-    }
-
-    /* search in the identified module ... */
-    for (j = 0; j < module->features_size; j++) {
-        if (!strcmp(name, module->features[j].name)) {
-            if (ret) {
-                /* check status */
-                node = (struct lys_node *)*ret;
-                if (lyp_check_status(node->flags, node->module, node->name, module->features[j].flags,
-                                 module->features[j].module, module->features[j].name, node)) {
-                    return -1;
-                }
-                *ret = &module->features[j];
-            }
-            return EXIT_SUCCESS;
-        }
-    }
-    /* ... and all its submodules */
-    for (i = 0; i < module->inc_size; i++) {
-        if (!module->inc[i].submodule) {
-            /* not yet resolved */
-            continue;
-        }
-        for (j = 0; j < module->inc[i].submodule->features_size; j++) {
-            if (!strcmp(name, module->inc[i].submodule->features[j].name)) {
-                if (ret) {
-                    /* check status */
-                    node = (struct lys_node *)*ret;
-                    if (lyp_check_status(node->flags, node->module, node->name,
-                                     module->inc[i].submodule->features[j].flags,
-                                     module->inc[i].submodule->features[j].module,
-                                     module->inc[i].submodule->features[j].name, node)) {
-                        return -1;
-                    }
-                    *ret = &(module->inc[i].submodule->features[j]);
-                }
-                return EXIT_SUCCESS;
-            }
-        }
-    }
-
-    /* not found */
-    LOGVAL(LYE_INRESOLV, LY_VLOG_NONE, NULL, "feature", id);
-    return EXIT_FAILURE;
 }
 
 void
@@ -4475,31 +4631,31 @@ static int
 resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, void *str_snode,
                           struct unres_schema *unres)
 {
+    /* has_str - whether the str_snode is a string in a dictionary that needs to be freed */
     int rc = -1, has_str = 0, tpdf_flag = 0;
     struct lys_node *node;
-    const char *base_name;
+    const char *expr;
 
     struct lys_ident *ident;
     struct lys_type *stype;
-    struct lys_feature **feat_ptr;
     struct lys_node_choice *choic;
     struct lyxml_elem *yin;
     struct yang_type *yang;
 
     switch (type) {
     case UNRES_IDENT:
-        base_name = str_snode;
+        expr = str_snode;
         has_str = 1;
         ident = item;
 
-        rc = resolve_base_ident(mod, ident, base_name, "identity", NULL);
+        rc = resolve_base_ident(mod, ident, expr, "identity", NULL);
         break;
     case UNRES_TYPE_IDENTREF:
-        base_name = str_snode;
+        expr = str_snode;
         has_str = 1;
         stype = item;
 
-        rc = resolve_base_ident(mod, NULL, base_name, "type", stype);
+        rc = resolve_base_ident(mod, NULL, expr, "type", stype);
         break;
     case UNRES_TYPE_LEAFREF:
         node = str_snode;
@@ -4565,28 +4721,32 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         }
         break;
     case UNRES_IFFEAT:
-        base_name = str_snode;
-        has_str = 1;
-        feat_ptr = item;
+        node = str_snode;
+        expr = item;
 
-        rc = resolve_feature(base_name, mod, feat_ptr);
+        rc = resolve_iffeature_expr(expr, strlen(expr), node);
+        if (rc == 2) {
+            rc = EXIT_FAILURE;
+        } else if (rc == 1) {
+            rc = EXIT_SUCCESS;
+        }
         break;
     case UNRES_USES:
         rc = resolve_unres_schema_uses(item, unres);
         break;
     case UNRES_TYPE_DFLT:
-        base_name = str_snode;
+        expr = str_snode;
         has_str = 1;
         stype = item;
 
-        rc = check_default(stype, base_name, mod);
+        rc = check_default(stype, expr, mod);
         break;
     case UNRES_CHOICE_DFLT:
-        base_name = str_snode;
+        expr = str_snode;
         has_str = 1;
         choic = item;
 
-        choic->dflt = resolve_choice_dflt(choic, base_name);
+        choic->dflt = resolve_choice_dflt(choic, expr);
         if (choic->dflt) {
             rc = EXIT_SUCCESS;
         } else {
@@ -4654,7 +4814,7 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "derived type", type_name);
         break;
     case UNRES_IFFEAT:
-        LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "if-feature", (char *)str_node);
+        LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "if-feature", (char *)item);
         break;
     case UNRES_USES:
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "uses", ((struct lys_node_uses *)item)->name);
@@ -4959,7 +5119,6 @@ unres_schema_free_item(struct ly_ctx *ctx, struct unres_schema *unres, uint32_t 
         break;
     case UNRES_IDENT:
     case UNRES_TYPE_IDENTREF:
-    case UNRES_IFFEAT:
     case UNRES_TYPE_DFLT:
     case UNRES_CHOICE_DFLT:
     case UNRES_LIST_KEYS:

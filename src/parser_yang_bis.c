@@ -3614,9 +3614,9 @@ yyreduce:
 
     { if (read_all) {
                              if (size_arrays->node[size_arrays->next].if_features) {
-                               ((struct lys_feature*)actual)->features = calloc(size_arrays->node[size_arrays->next].if_features,
-                                                                                sizeof *((struct lys_feature*)actual)->features);
-                               if (!((struct lys_feature*)actual)->features) {
+                               ((struct lys_feature*)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features,
+                                                                                sizeof *((struct lys_feature*)actual)->iffeature);
+                               if (!((struct lys_feature*)actual)->iffeature) {
                                  LOGMEM;
                                  YYABORT;
                                }
@@ -4558,8 +4558,8 @@ yyreduce:
                                (yyval.nodes).container = actual;
                                actual_type = CONTAINER_KEYWORD;
                                if (size_arrays->node[size_arrays->next].if_features) {
-                                 (yyval.nodes).container->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).container->features);
-                                 if (!(yyval.nodes).container->features) {
+                                 (yyval.nodes).container->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).container->iffeature);
+                                 if (!(yyval.nodes).container->iffeature) {
                                    LOGMEM;
                                    YYABORT;
                                  }
@@ -4740,8 +4740,8 @@ yyreduce:
                             (yyval.nodes).node.flag = 0;
                             actual_type = LEAF_KEYWORD;
                             if (size_arrays->node[size_arrays->next].if_features) {
-                              (yyval.nodes).node.ptr_leaf->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).node.ptr_leaf->features);
-                              if (!(yyval.nodes).node.ptr_leaf->features) {
+                              (yyval.nodes).node.ptr_leaf->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).node.ptr_leaf->iffeature);
+                              if (!(yyval.nodes).node.ptr_leaf->iffeature) {
                                 LOGMEM;
                                 YYABORT;
                               }
@@ -4933,8 +4933,8 @@ yyreduce:
                                (yyval.nodes).node.flag = 0;
                                actual_type = LEAF_LIST_KEYWORD;
                                if (size_arrays->node[size_arrays->next].if_features) {
-                                 (yyval.nodes).node.ptr_leaflist->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).node.ptr_leaflist->features);
-                                 if (!(yyval.nodes).node.ptr_leaflist->features) {
+                                 (yyval.nodes).node.ptr_leaflist->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).node.ptr_leaflist->iffeature);
+                                 if (!(yyval.nodes).node.ptr_leaflist->iffeature) {
                                    LOGMEM;
                                    YYABORT;
                                  }
@@ -5168,8 +5168,8 @@ yyreduce:
                           (yyval.nodes).node.flag = 0;
                           actual_type = LIST_KEYWORD;
                           if (size_arrays->node[size_arrays->next].if_features) {
-                            (yyval.nodes).node.ptr_list->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).node.ptr_list->features);
-                            if (!(yyval.nodes).node.ptr_list->features) {
+                            (yyval.nodes).node.ptr_list->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).node.ptr_list->iffeature);
+                            if (!(yyval.nodes).node.ptr_list->iffeature) {
                               LOGMEM;
                               YYABORT;
                             }
@@ -5441,8 +5441,8 @@ yyreduce:
                             (yyval.nodes).choice.s = NULL;
                             actual_type = CHOICE_KEYWORD;
                             if (size_arrays->node[size_arrays->next].if_features) {
-                              (yyval.nodes).choice.ptr_choice->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).choice.ptr_choice->features);
-                              if (!(yyval.nodes).choice.ptr_choice->features) {
+                              (yyval.nodes).choice.ptr_choice->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).choice.ptr_choice->iffeature);
+                              if (!(yyval.nodes).choice.ptr_choice->iffeature) {
                                 LOGMEM;
                                 YYABORT;
                               }
@@ -5609,8 +5609,8 @@ yyreduce:
                           (yyval.nodes).cs = actual;
                           actual_type = CASE_KEYWORD;
                           if (size_arrays->node[size_arrays->next].if_features) {
-                            (yyval.nodes).cs->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).cs->features);
-                            if (!(yyval.nodes).cs->features) {
+                            (yyval.nodes).cs->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).cs->iffeature);
+                            if (!(yyval.nodes).cs->iffeature) {
                               LOGMEM;
                               YYABORT;
                             }
@@ -5706,15 +5706,15 @@ yyreduce:
                             (yyval.nodes).anyxml = actual;
                             actual_type = ANYXML_KEYWORD;
                             if (size_arrays->node[size_arrays->next].if_features) {
-                              (yyval.nodes).anyxml->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).anyxml->features);
-                              if (!(yyval.nodes).anyxml->features) {
+                              (yyval.nodes).anyxml->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).anyxml->iffeature);
+                              if (!(yyval.nodes).anyxml->iffeature) {
                                 LOGMEM;
                                 YYABORT;
                               }
                             }
                             if (size_arrays->node[size_arrays->next].must) {
                               (yyval.nodes).anyxml->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *(yyval.nodes).anyxml->must);
-                              if (!(yyval.nodes).anyxml->features || !(yyval.nodes).anyxml->must) {
+                              if (!(yyval.nodes).anyxml->iffeature || !(yyval.nodes).anyxml->must) {
                                 LOGMEM;
                                 YYABORT;
                               }
@@ -5847,8 +5847,8 @@ yyreduce:
                           (yyval.nodes).uses.config_inherit = config_inherit;
                           actual_type = USES_KEYWORD;
                           if (size_arrays->node[size_arrays->next].if_features) {
-                            (yyval.nodes).uses.ptr_uses->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).uses.ptr_uses->features);
-                            if (!(yyval.nodes).uses.ptr_uses->features) {
+                            (yyval.nodes).uses.ptr_uses->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).uses.ptr_uses->iffeature);
+                            if (!(yyval.nodes).uses.ptr_uses->iffeature) {
                               LOGMEM;
                               YYABORT;
                             }
@@ -6247,8 +6247,8 @@ yyreduce:
                              (yyval.nodes).node.flag = 0;
                              actual_type = AUGMENT_KEYWORD;
                              if (size_arrays->node[size_arrays->next].if_features) {
-                               (yyval.nodes).node.ptr_augment->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).node.ptr_augment->features);
-                               if (!(yyval.nodes).node.ptr_augment->features) {
+                               (yyval.nodes).node.ptr_augment->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).node.ptr_augment->iffeature);
+                               if (!(yyval.nodes).node.ptr_augment->iffeature) {
                                  LOGMEM;
                                  YYABORT;
                                }
@@ -6381,8 +6381,8 @@ yyreduce:
                          (yyval.nodes).node.flag = 0;
                          actual_type = RPC_KEYWORD;
                          if (size_arrays->node[size_arrays->next].if_features) {
-                           (yyval.nodes).node.ptr_rpc->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).node.ptr_rpc->features);
-                           if (!(yyval.nodes).node.ptr_rpc->features) {
+                           (yyval.nodes).node.ptr_rpc->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).node.ptr_rpc->iffeature);
+                           if (!(yyval.nodes).node.ptr_rpc->iffeature) {
                              LOGMEM;
                              YYABORT;
                            }
@@ -6669,8 +6669,8 @@ yyreduce:
                                   (yyval.nodes).notif = actual;
                                   actual_type = NOTIFICATION_KEYWORD;
                                   if (size_arrays->node[size_arrays->next].if_features) {
-                                    (yyval.nodes).notif->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).notif->features);
-                                    if (!(yyval.nodes).notif->features) {
+                                    (yyval.nodes).notif->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).notif->iffeature);
+                                    if (!(yyval.nodes).notif->iffeature) {
                                       LOGMEM;
                                       YYABORT;
                                     }

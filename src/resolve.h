@@ -97,6 +97,8 @@ int parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len
 int parse_schema_json_predicate(const char *id, const char **name, int *nam_len, const char **value, int *val_len,
                                 int *has_predicate);
 
+int resolve_iffeature_expr(const char *expr, uint16_t len, const struct lys_node *node);
+
 struct lyd_node *resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start);
 
 int resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_module *module,

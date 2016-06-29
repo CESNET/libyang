@@ -40,19 +40,25 @@ static int
 lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, struct lys_type *old,
              struct unres_schema *unres);
 
-API const struct lys_feature *
+API const char *
 lys_is_disabled(const struct lys_node *node, int recursive)
 {
-    int i;
+    int i, ret;
 
 check:
     if (node->nodetype != LYS_INPUT && node->nodetype != LYS_OUTPUT) {
         /* input/output does not have if-feature, so skip them */
 
         /* check local if-features */
-        for (i = 0; i < node->features_size; i++) {
-            if (!(node->features[i]->flags & LYS_FENABLED)) {
-                return node->features[i];
+        for (i = 0; i < node->iffeature_size; i++) {
+            ret = resolve_iffeature_expr(node->iffeature[i], strlen(node->iffeature[i]), node);
+            if ((ret == -1) || (ret == 2)) {
+                /* we already checked that! */
+                LOGINT;
+                return node->iffeature[i];
+            }
+            if (!ret) {
+                return node->iffeature[i];
             }
         }
     }
@@ -1638,6 +1644,17 @@ lys_when_free(struct ly_ctx *ctx, struct lys_when *w)
 }
 
 static void
+lys_iffeature_free(struct ly_ctx *ctx, const char **iffeature, uint8_t iffeature_size)
+{
+    uint8_t i;
+
+    for (i = 0; i < iffeature_size; ++i) {
+        lydict_remove(ctx, iffeature[i]);
+    }
+    free(iffeature);
+}
+
+static void
 lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment *aug, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     struct lys_node *next, *sub;
@@ -1653,7 +1670,7 @@ lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment *aug, void (*privat
     lydict_remove(ctx, aug->dsc);
     lydict_remove(ctx, aug->ref);
 
-    free(aug->features);
+    lys_iffeature_free(ctx, aug->iffeature, aug->iffeature_size);
 
     lys_when_free(ctx, aug->when);
 }
@@ -1911,7 +1928,7 @@ lys_feature_free(struct ly_ctx *ctx, struct lys_feature *f)
     lydict_remove(ctx, f->name);
     lydict_remove(ctx, f->dsc);
     lydict_remove(ctx, f->ref);
-    free(f->features);
+    lys_iffeature_free(ctx, f->iffeature, f->iffeature_size);
 }
 
 static void
@@ -2018,7 +2035,7 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
     /* common part */
     lydict_remove(ctx, node->name);
     if (!(node->nodetype & (LYS_INPUT | LYS_OUTPUT))) {
-        free(node->features);
+        lys_iffeature_free(ctx, node->iffeature, node->iffeature_size);
         lydict_remove(ctx, node->dsc);
         lydict_remove(ctx, node->ref);
     }
@@ -2337,19 +2354,18 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
 
     retval->prev = retval;
 
-    retval->features_size = node->features_size;
-    retval->features = calloc(retval->features_size, sizeof *retval->features);
-    if (!retval->features) {
+    retval->iffeature_size = node->iffeature_size;
+    retval->iffeature = calloc(retval->iffeature_size, sizeof *retval->iffeature);
+    if (!retval->iffeature) {
         LOGMEM;
         goto error;
     }
 
     if (!shallow) {
-        for (i = 0; i < node->features_size; ++i) {
-            retval->features[i] = (struct lys_feature *)retval;
-            if (unres_schema_dup(module, unres, &node->features[i], UNRES_IFFEAT, &retval->features[i])) {
-                retval->features[i] = node->features[i];
-            }
+        for (i = 0; i < node->iffeature_size; ++i) {
+            retval->iffeature[i] = node->iffeature[i];
+            /* was it resolved or not, who knows, who cares? */
+            unres_schema_dup(module, unres, (char *)node->iffeature[i], UNRES_IFFEAT, (char *)retval->iffeature[i]);
         }
 
         /* connect it to the parent */
@@ -2366,7 +2382,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
             }
         }
     } else {
-        memcpy(retval->features, node->features, retval->features_size * sizeof *retval->features);
+        memcpy(retval->iffeature, node->iffeature, retval->iffeature_size * sizeof *retval->iffeature);
     }
 
     /*
@@ -2688,7 +2704,7 @@ static int
 lys_features_change(const struct lys_module *module, const char *name, int op)
 {
     int all = 0;
-    int i, j, k;
+    int i, j, k, ret;
 
     if (!module || !name || !strlen(name)) {
         return EXIT_FAILURE;
@@ -2702,13 +2718,24 @@ lys_features_change(const struct lys_module *module, const char *name, int op)
     /* module itself */
     for (i = 0; i < module->features_size; i++) {
         if (all || !strcmp(module->features[i].name, name)) {
+            /* check referenced features if they are enabled */
+            for (j = 0; j < module->features[i].iffeature_size; j++) {
+                ret = resolve_iffeature_expr(module->features[i].iffeature[j],
+                                             strlen(module->features[i].iffeature[j]),
+                                             (struct lys_node *)&module->features[i]);
+                if ((ret == -1) || (ret == 2)) {
+                    LOGINT;
+                    return EXIT_FAILURE;
+                }
+                if (!ret) {
+                    LOGERR(LY_EINVAL, "Feature \"%s\" depends on unsatisfied if-feature expression \"%s\".",
+                           module->features[i].name, module->features[i].iffeature[j]);
+                    return EXIT_FAILURE;
+                }
+            }
+
             if (op) {
                 module->features[i].flags |= LYS_FENABLED;
-                /* enable referenced features (recursion) */
-                for (k = 0; k < module->features[i].features_size; k++) {
-                    lys_features_change(module->features[i].features[k]->module,
-                                       module->features[i].features[k]->name, op);
-                }
             } else {
                 module->features[i].flags &= ~LYS_FENABLED;
             }
@@ -2719,13 +2746,29 @@ lys_features_change(const struct lys_module *module, const char *name, int op)
     }
 
     /* submodules */
-    for (j = 0; j < module->inc_size; j++) {
-        for (i = 0; i < module->inc[j].submodule->features_size; i++) {
-            if (all || !strcmp(module->inc[j].submodule->features[i].name, name)) {
+    for (i = 0; i < module->inc_size; i++) {
+        for (j = 0; j < module->inc[i].submodule->features_size; j++) {
+            if (all || !strcmp(module->inc[i].submodule->features[j].name, name)) {
+                /* check referenced features if they are enabled */
+                for (k = 0; k < module->inc[i].submodule->features[j].iffeature_size; k++) {
+                    ret = resolve_iffeature_expr(module->inc[i].submodule->features[j].iffeature[k],
+                                                 strlen(module->inc[i].submodule->features[j].iffeature[k]),
+                                                 (struct lys_node *)&module->inc[i].submodule->features[j]);
+                    if ((ret == -1) || (ret == 2)) {
+                        LOGINT;
+                        return EXIT_FAILURE;
+                    }
+                    if (!ret) {
+                        LOGERR(LY_EINVAL, "Feature \"%s\" depends on unsatisfied if-feature expression \"%s\".",
+                            module->inc[i].submodule->features[j].name, module->features[i].iffeature[j]);
+                        return EXIT_FAILURE;
+                    }
+                }
+
                 if (op) {
-                    module->inc[j].submodule->features[i].flags |= LYS_FENABLED;
+                    module->inc[i].submodule->features[j].flags |= LYS_FENABLED;
                 } else {
-                    module->inc[j].submodule->features[i].flags &= ~LYS_FENABLED;
+                    module->inc[i].submodule->features[j].flags &= ~LYS_FENABLED;
                 }
                 if (!all) {
                     return EXIT_SUCCESS;

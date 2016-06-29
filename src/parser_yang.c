@@ -211,20 +211,18 @@ yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct u
     }
     free(value);
 
-    /* hack - store pointer to the parent node for later status check */
     if (type == FEATURE_KEYWORD) {
         f = (struct lys_feature *) ptr;
-        f->features[f->features_size] = f;
-        ret = unres_schema_add_str(module, unres, &f->features[f->features_size], UNRES_IFFEAT, exp);
-        f->features_size++;
+        f->iffeature[f->iffeature_size] = exp;
+        ret = unres_schema_add_node(module, unres, (char *)exp, UNRES_IFFEAT, (struct lys_node *)f);
+        f->iffeature_size++;
     } else {
         n = (struct lys_node *) ptr;
-        n->features[n->features_size] = (struct lys_feature *) n;
-        ret = unres_schema_add_str(module, unres, &n->features[n->features_size], UNRES_IFFEAT, exp);
-        n->features_size++;
+        n->iffeature[n->iffeature_size] = exp;
+        ret = unres_schema_add_node(module, unres, (char *)exp, UNRES_IFFEAT, n);
+        n->iffeature_size++;
     }
 
-    lydict_remove(module->ctx, exp);
     if (ret == -1) {
 
         return EXIT_FAILURE;

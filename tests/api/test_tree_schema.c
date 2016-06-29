@@ -97,14 +97,14 @@ char lys_module_b[669] =
     }\
     container x {\
         leaf bar-leaf {\
-            if-feature bar;\
+            if-feature \"bar\";\
             type string;\
         }\
         uses gg {\
-            if-feature bar;\
+            if-feature \"bar\";\
         }\
         leaf baz {\
-            if-feature foo;\
+            if-feature \"foo\";\
             type string;\
         }\
         leaf bubba {\
@@ -112,14 +112,14 @@ char lys_module_b[669] =
         }\
     }\
     augment \"/x\" {\
-        if-feature bar;\
+        if-feature \"bar\";\
         container bar-y;\
     }\
     rpc bar-rpc {\
-        if-feature bar;\
+        if-feature \"bar\";\
     }\
     rpc foo-rpc {\
-        if-feature foo;\
+        if-feature \"foo\";\
     }\
 }";
 
@@ -201,14 +201,14 @@ module a {\n\
 \n\
   container x {\n\
     leaf bar-leaf {\n\
-      if-feature bar;\n\
+      if-feature \"bar\";\n\
       type string;\n\
     }\n\
     uses gg {\n\
-      if-feature bar;\n\
+      if-feature \"bar\";\n\
     }\n\
     leaf baz {\n\
-      if-feature foo;\n\
+      if-feature \"foo\";\n\
       type string;\n\
     }\n\
     leaf bubba {\n\
@@ -217,15 +217,15 @@ module a {\n\
   }\n\
 \n\
   rpc bar-rpc {\n\
-    if-feature bar;\n\
+    if-feature \"bar\";\n\
   }\n\
 \n\
   rpc foo-rpc {\n\
-    if-feature foo;\n\
+    if-feature \"foo\";\n\
   }\n\
 \n\
   augment \"/x\" {\n\
-    if-feature bar;\n\
+    if-feature \"bar\";\n\
     container bar-y;\n\
   }\n\
 }\n";
@@ -577,7 +577,7 @@ test_lys_is_disabled(void **state)
     (void) state; /* unused */
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     const struct lys_module *module;
-    const struct lys_feature *feature = NULL;
+    const char *iffeature = NULL;
     int rc;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
@@ -585,20 +585,20 @@ test_lys_is_disabled(void **state)
         fail();
     }
 
-    feature = lys_is_disabled(module->data->child, 2);
-    if (!feature) {
+    iffeature = lys_is_disabled(module->data->child, 2);
+    if (!iffeature) {
         fail();
     }
 
-    assert_string_equal("bar", feature->name);
+    assert_string_equal("bar", iffeature);
 
     rc = lys_features_enable(module, "bar");
     if (rc) {
         fail();
     }
 
-    feature = lys_is_disabled(module->data->child, 2);
-    if (feature) {
+    iffeature = lys_is_disabled(module->data->child, 2);
+    if (iffeature) {
         fail();
     }
 }
