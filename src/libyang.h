@@ -1176,6 +1176,7 @@ typedef enum {
     LYVE_CIRC_LEAFREFS,/**< circular chain of leafrefs detected (schema) */
     LYVE_CIRC_IMPORTS, /**< circular chain of imports detected (schema) */
     LYVE_CIRC_INCLUDES,/**< circular chain of includes detected (schema) */
+    LYVE_INVER,        /**< non-matching YANG versions of module and its submodules (schema) */
 
     LYVE_OBSDATA,      /**< obsolete data instantiation (data) */
     /* */

@@ -3086,7 +3086,7 @@ yyreduce:
 
   case 24:
 
-    { if (strlen(yyget_text(scanner))!=1 || yyget_text(scanner)[0]!='1') {
+    { if (strcmp(yyget_text(scanner), "1") && strcmp(yyget_text(scanner), "1.1")) {
                                                YYABORT;
                                              }
                                            }
@@ -3096,7 +3096,7 @@ yyreduce:
   case 26:
 
     { if (read_all) {
-                 if (strlen(s)!=1 || s[0]!='1') {
+                 if (strcmp(s, "1") && strcmp(s, "1.1")) {
                    free(s);
                    YYABORT;
                  }

@@ -4689,20 +4689,36 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 goto error;
             }
         } else if (!strcmp(child->name, "yang-version")) {
-            /* TODO: support YANG 1.1 ? */
             if (version_flag) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
             }
             GETVAL(value, child, "value");
-            if (strcmp(value, "1")) {
+            if (strcmp(value, "1") && strcmp(value, "1.1")) {
                 LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "yang-version");
                 goto error;
             }
             version_flag = 1;
-            if (!submodule) {
-                module->version = 1;
-            } /* TODO else check for the submodule's same version as in main module, waits for YANG 1.1 support */
+            if (!strcmp(value, "1")) {
+                if (submodule) {
+                    if (module->version > 1) {
+                        LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
+                        goto error;
+                    }
+                } else {
+                    module->version = 1;
+                }
+            } else {
+                if (submodule) {
+                    if (module->version != 2) {
+                        LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
+                        goto error;
+                    }
+                } else {
+                    module->version = 2;
+                }
+            }
+
             lyxml_free(ctx, child);
 
         } else if (!strcmp(child->name, "extension")) {

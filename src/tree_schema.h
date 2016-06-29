@@ -234,7 +234,7 @@ struct lys_module {
     uint8_t version:5;               /**< yang-version:
                                           - 0 = not specified, YANG 1.0 as default,
                                           - 1 = YANG 1.0,
-                                          - 2 = YANG 1.1 not yet supported */
+                                          - 2 = YANG 1.1 */
     uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
 

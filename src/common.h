@@ -166,6 +166,7 @@ typedef enum {
     LYE_CIRC_LEAFREFS,
     LYE_CIRC_IMPORTS,
     LYE_CIRC_INCLUDES,
+    LYE_INVER,
 
     LYE_OBSDATA,
     LYE_OBSTYPE,

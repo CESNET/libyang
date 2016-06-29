@@ -385,12 +385,12 @@ submodule_header_stmts: @EMPTYDIR@ { $$ = 0; }
 
 yang_version_stmt: YANG_VERSION_KEYWORD sep yang_version_arg_str stmtend;
 
-yang_version_arg_str: NON_NEGATIVE_INTEGER { if (strlen(yyget_text(scanner))!=1 || yyget_text(scanner)[0]!='1') {
+yang_version_arg_str: NON_NEGATIVE_INTEGER { if (strcmp(yyget_text(scanner), "1") && strcmp(yyget_text(scanner), "1.1")) {
                                                YYABORT;
                                              }
                                            } optsep
   | string_1 { if (read_all) {
-                 if (strlen(s)!=1 || s[0]!='1') {
+                 if (strcmp(s, "1") && strcmp(s, "1.1")) {
                    free(s);
                    YYABORT;
                  }
@@ -3765,7 +3765,7 @@ string_opt_part2: @EMPTYDIR@
 
 string_opt_part3: @EMPTYDIR@
   |  string_opt_part3 '+' optsep STRING optsep
-  
+
 unknown_statement_end: ';'
   |  '{' optsep unknown_statement2_opt '}'
 
