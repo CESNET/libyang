@@ -430,6 +430,11 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
         }
     }
 
+    if (!strcmp(leaf->value_str, val_str)) {
+        /* the value remains the same */
+        return EXIT_SUCCESS;
+    }
+
     backup = leaf->value_str;
     memcpy(&backup_val, &leaf->value, sizeof backup);
     leaf->value_str = lydict_insert(leaf->schema->module->ctx, val_str ? val_str : "", 0);
@@ -445,6 +450,9 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
 
     /* value is correct, remove backup */
     lydict_remove(leaf->schema->module->ctx, backup);
+
+    /* clear the default flag, the value is different */
+    leaf->dflt = 0;
 
     if (leaf->schema->flags & LYS_UNIQUE) {
         /* locate the first parent list */
