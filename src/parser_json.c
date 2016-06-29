@@ -338,9 +338,9 @@ json_get_value(struct lyd_node_leaf_list *leaf, const char *data, int options)
     ctx = leaf->schema->module->ctx;
 
     if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
-        resolve = 1;
-    } else {
         resolve = 0;
+    } else {
+        resolve = 1;
     }
 
     stype = &((struct lys_node_leaf *)leaf->schema)->type;
