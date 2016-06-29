@@ -182,7 +182,7 @@ typedef enum {
 
 /* shortcuts for common in and out formats */
 #define LYS_YANG 1       /**< YANG schema format, used for #LYS_INFORMAT and #LYS_OUTFORMAT */
-#define LY_YIN 2         /**< YIN schema format, used for #LYS_INFORMAT and #LYS_OUTFORMAT */
+#define LYS_YIN 2        /**< YIN schema format, used for #LYS_INFORMAT and #LYS_OUTFORMAT */
 
 /**
  * @brief YANG schema node types
