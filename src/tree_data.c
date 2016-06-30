@@ -430,7 +430,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
         }
     }
 
-    if (!strcmp(leaf->value_str, val_str)) {
+    if (!strcmp(leaf->value_str, val_str ? val_str : "")) {
         /* the value remains the same */
         return EXIT_SUCCESS;
     }
