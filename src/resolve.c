@@ -971,18 +971,6 @@ resolve_iffeature_feature(const char *feat_name, uint16_t len, const struct lys_
     int mod_name_len, nam_len, i, j;
     const struct lys_module *module;
 
-    /* TODO where to resolve if-feature, grouping context or uses context? */
-    /* find a node from the correct module, in case we are in a grouping */
-    /*while (lys_parent(node)) {
-        node = lys_parent(node);
-        if (node->nodetype == LYS_GROUPING) {
-            * not resolved yet *
-            LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Resolving \"if-feature\" in an unresolved grouping (not in \"uses\").");
-            return 2;
-            break;
-        }
-    }*/
-
     /* check prefix */
     if ((i = parse_node_identifier(feat_name, &mod_name, &mod_name_len, &name, &nam_len)) < 1) {
         LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, feat_name[-i], &feat_name[-i]);
