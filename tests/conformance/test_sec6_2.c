@@ -104,7 +104,7 @@ TEST_NAME(void **state)
         if (schema_format == LYS_IN_YANG) {
             /* convert the modules */
             for (j = 0; j < TEST_SCHEMA_COUNT; ++j) {
-                sprintf(buf, TESTS_DIR "/../yang2yin "
+                sprintf(buf, BUILD_DIR "/yang2yin "
                              TESTS_DIR "/conformance/" TEST_DIR "/mod%d.yang "
                              TESTS_DIR "/conformance/" TEST_DIR "/mod%d.yin", j + 1, j + 1);
                 ret = system(buf);

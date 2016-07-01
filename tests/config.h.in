@@ -13,4 +13,4 @@
  */
 
 #define TESTS_DIR "@CMAKE_SOURCE_DIR@/tests"
-
+#define BUILD_DIR "@PROJECT_BINARY_DIR@"
