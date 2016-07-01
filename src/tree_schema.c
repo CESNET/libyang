@@ -2954,7 +2954,7 @@ lys_leaf_add_leafref_target(struct lys_node_leaf *leafref_target, struct lys_nod
 {
     struct lys_node_leaf *iter = leafref_target;
 
-    if (leafref_target->nodetype != LYS_LEAF) {
+    if (!(leafref_target->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
         LOGINT;
         return -1;
     }
@@ -2970,7 +2970,7 @@ lys_leaf_add_leafref_target(struct lys_node_leaf *leafref_target, struct lys_nod
     }
 
     /* create fake child - the ly_set structure to hold the list of
-     * leafrefs referencing the leaf */
+     * leafrefs referencing the leaf(-list) */
     if (!leafref_target->child) {
         leafref_target->child = (void*)ly_set_new();
         if (!leafref_target->child) {
