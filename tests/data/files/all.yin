@@ -2,7 +2,7 @@
 <module name="all"
         xmlns="urn:ietf:params:xml:ns:yang:yin:1"
         xmlns:all_mod="urn:all">
-  <yang-version value="1"/>
+  <yang-version value="1.1"/>
   <namespace uri="urn:all"/>
   <prefix value="all_mod"/>
   <revision date="2016-05-23"/>
@@ -150,6 +150,18 @@
         <type name="uint32"/>
       </leaf>
       <anyxml name="axml1"/>
+      <action name="act1">
+        <input>
+          <leaf name="leaf24">
+            <type name="string"/>
+          </leaf>
+        </input>
+        <output>
+          <leaf name="leaf25">
+            <type name="string"/>
+          </leaf>
+        </output>
+      </action>
     </list>
     <leaf-list name="llist1">
       <type name="tdef1"/>

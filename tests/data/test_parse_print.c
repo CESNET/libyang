@@ -211,6 +211,8 @@ test_parse_print_xml(void **state)
     const char *data = TESTS_DIR"/data/files/all-data.xml";
     const char *rpc = TESTS_DIR"/data/files/all-rpc.xml";
     const char *rpcreply = TESTS_DIR"/data/files/all-rpcreply.xml";
+    const char *act = TESTS_DIR"/data/files/all-act.xml";
+    const char *actreply = TESTS_DIR"/data/files/all-actreply.xml";
     const char *notif = TESTS_DIR"/data/files/all-notif.xml";
 
     /* data */
@@ -272,6 +274,56 @@ test_parse_print_xml(void **state)
     assert_int_equal(rpc_schema->nodetype, LYS_RPC);
 
     st->dt = lyd_parse_path(st->ctx, rpcreply, LYD_XML, LYD_OPT_RPCREPLY, rpc_schema);
+    assert_ptr_not_equal(st->dt, NULL);
+    lyd_print_mem(&(st->str2), st->dt->child, LYD_XML, LYP_FORMAT);
+
+    assert_string_equal(st->str1, st->str2);
+
+    close(fd);
+    fd = -1;
+    free(st->str1);
+    st->str1 = NULL;
+    free(st->str2);
+    st->str2 = NULL;
+    lyd_free(st->dt);
+    st->dt = NULL;
+
+    /* act */
+    fd = open(act, O_RDONLY);
+    fstat(fd, &s);
+    st->str1 = malloc(s.st_size + 1);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
+    st->str1[s.st_size] = '\0';
+
+    st->dt = lyd_parse_path(st->ctx, act, LYD_XML, LYD_OPT_RPC);
+    assert_ptr_not_equal(st->dt, NULL);
+    lyd_print_mem(&(st->str2), st->dt, LYD_XML, LYP_FORMAT);
+
+    assert_string_equal(st->str1, st->str2);
+
+    close(fd);
+    fd = -1;
+    free(st->str1);
+    st->str1 = NULL;
+    free(st->str2);
+    st->str2 = NULL;
+    lyd_free(st->dt);
+    st->dt = NULL;
+
+    /* actreply */
+    fd = open(actreply, O_RDONLY);
+    fstat(fd, &s);
+    st->str1 = malloc(s.st_size + 1);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
+    st->str1[s.st_size] = '\0';
+
+    rpc_schema = ly_ctx_get_node(st->ctx, NULL, "/all:cont1/list1/act1");
+    assert_ptr_not_equal(rpc_schema, NULL);
+    assert_int_equal(rpc_schema->nodetype, LYS_ACTION);
+
+    st->dt = lyd_parse_path(st->ctx, actreply, LYD_XML, LYD_OPT_RPCREPLY, rpc_schema);
     assert_ptr_not_equal(st->dt, NULL);
     lyd_print_mem(&(st->str2), st->dt->child, LYD_XML, LYP_FORMAT);
 
