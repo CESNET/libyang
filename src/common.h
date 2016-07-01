@@ -91,7 +91,7 @@ char *ly_buf(void);
 /*
  * logger
  */
-extern volatile uint8_t ly_log_level;
+extern volatile int8_t ly_log_level;
 
 void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 

@@ -24,7 +24,7 @@
 #include "tree_internal.h"
 
 extern LY_ERR ly_errno_int;
-volatile uint8_t ly_log_level = LY_LLERR;
+volatile int8_t ly_log_level = LY_LLERR;
 static void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg, const char *path);
 static volatile int path_flag = 1;
 

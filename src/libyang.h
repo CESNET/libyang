@@ -1082,11 +1082,11 @@ void ly_set_free(struct ly_set *set);
  * @brief Verbosity levels of the libyang logger.
  */
 typedef enum {
-    LY_LLSILENT,   /**< Print no messages. */
-    LY_LLERR,      /**< Print only error messages, default value. */
-    LY_LLWRN,      /**< Print error and warning messages. */
-    LY_LLVRB,      /**< Besides errors and warnings, print some other verbose messages. */
-    LY_LLDBG       /**< Print all messages including some development debug messages. */
+    LY_LLSILENT = -1, /**< Print no messages. */
+    LY_LLERR = 0,     /**< Print only error messages, default value. */
+    LY_LLWRN,         /**< Print error and warning messages. */
+    LY_LLVRB,         /**< Besides errors and warnings, print some other verbose messages. */
+    LY_LLDBG          /**< Print all messages including some development debug messages. */
 } LY_LOG_LEVEL;
 
 /**
