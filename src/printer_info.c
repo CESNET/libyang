@@ -994,6 +994,23 @@ info_print_rpc(struct lyout *out, const struct lys_node *node)
     info_print_snode(out, (struct lys_node *)rpc, rpc->child, "Data:");
 }
 
+static void
+info_print_action(struct lyout *out, const struct lys_node *node)
+{
+    struct lys_node_rpc_action *act = (struct lys_node_rpc_action *)node;
+
+    ly_print(out, "%-*s%s\n", INDENT_LEN, "Action: ", act->name);
+    ly_print(out, "%-*s%s\n", INDENT_LEN, "Module: ", act->module->name);
+    info_print_text(out, act->dsc, "Desc: ");
+    info_print_text(out, act->ref, "Reference: ");
+    info_print_flags(out, act->flags, LYS_STATUS_MASK, 0);
+    info_print_if_feature(out, act->iffeature, act->iffeature_size);
+    info_print_typedef(out, act->tpdf, act->tpdf_size);
+    info_print_nacmext(out, act->nacm);
+
+    info_print_snode(out, (struct lys_node *)act, act->child, "Data:");
+}
+
 int
 info_print_model(struct lyout *out, const struct lys_module *module, const char *target_node)
 {
@@ -1128,6 +1145,8 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
             break;
         case LYS_RPC:
             info_print_rpc(out, target);
+        case LYS_ACTION:
+            info_print_action(out, target);
             break;
         case LYS_INPUT:
             info_print_input(out, target);

@@ -67,6 +67,8 @@ static struct lys_node *read_yin_uses(struct lys_module *module, struct lys_node
                                       struct unres_schema *unres);
 static struct lys_node *read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
                                           int resolve, struct unres_schema *unres);
+static struct lys_node *read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
+                                            int resolve, struct unres_schema *unres);
 static struct lys_when *read_yin_when(struct lys_module *module, struct lyxml_elem *yin);
 
 /* logs directly */
@@ -2010,6 +2012,8 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
             node = read_yin_case(module, (struct lys_node *)aug, child, 0, unres);
         } else if (!strcmp(child->name, "anyxml")) {
             node = read_yin_anyxml(module, (struct lys_node *)aug, child, 0, unres);
+        } else if (!strcmp(child->name, "action")) {
+            node = read_yin_rpc_action(module, (struct lys_node *)aug, child, 0, unres);
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
             goto error;
@@ -3420,7 +3424,8 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 !strcmp(sub->name, "choice") ||
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
-                !strcmp(sub->name, "anyxml")) {
+                !strcmp(sub->name, "anyxml") ||
+                !strcmp(sub->name, "action")) {
             lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
 
@@ -3635,6 +3640,8 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             node = read_yin_grouping(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
             node = read_yin_anyxml(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "action")) {
+            node = read_yin_rpc_action(module, retval, sub, resolve, unres);
         } else {
             LOGINT;
             goto error;
@@ -3756,7 +3763,8 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
                 !strcmp(sub->name, "choice") ||
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
-                !strcmp(sub->name, "anyxml")) {
+                !strcmp(sub->name, "anyxml") ||
+                !strcmp(sub->name, "action")) {
             lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
 
@@ -3840,6 +3848,8 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
             node = read_yin_grouping(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
             node = read_yin_anyxml(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "action")) {
+            node = read_yin_rpc_action(module, retval, sub, resolve, unres);
         }
         if (!node) {
             goto error;
@@ -3905,7 +3915,8 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
                 !strcmp(sub->name, "choice") ||
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
-                !strcmp(sub->name, "anyxml")) {
+                !strcmp(sub->name, "anyxml") ||
+                !strcmp(sub->name, "action")) {
             lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
 
@@ -3959,6 +3970,8 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
             node = read_yin_grouping(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
             node = read_yin_anyxml(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "action")) {
+            node = read_yin_rpc_action(module, retval, sub, resolve, unres);
         }
         if (!node) {
             goto error;
@@ -4245,8 +4258,8 @@ error:
 
 /* logs directly */
 static struct lys_node *
-read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
-             struct unres_schema *unres)
+read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
+                    struct unres_schema *unres)
 {
     struct lyxml_elem *sub, *next, root;
     struct lys_node *node = NULL;
@@ -4254,6 +4267,16 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
     struct lys_node_rpc_action *rpc;
     int r;
     int c_tpdf = 0, c_ftrs = 0;
+
+    if (!strcmp(yin->name, "action")) {
+        for (node = parent; node; node = lys_parent(node)) {
+            if (node->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)
+                    || ((node->nodetype == LYS_LIST) && !((struct lys_node_list *)node)->keys_size)) {
+                LOGVAL(LYE_INPAR, LY_VLOG_NONE, NULL, strnodetype(node->nodetype), "action");
+                return NULL;
+            }
+        }
+    }
 
     /* init */
     memset(&root, 0, sizeof root);
@@ -4263,7 +4286,7 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
         LOGMEM;
         return NULL;
     }
-    rpc->nodetype = LYS_RPC;
+    rpc->nodetype = (!strcmp(yin->name, "rpc") ? LYS_RPC : LYS_ACTION);
     rpc->prev = (struct lys_node *)rpc;
     retval = (struct lys_node *)rpc;
 
@@ -4292,8 +4315,8 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
             lyxml_add_child(module->ctx, &root, sub);
         } else if (!strcmp(sub->name, "output")) {
             if (rpc->child
-                && (rpc->child->nodetype == LYS_INPUT
-                    || (rpc->child->next && rpc->child->next->nodetype == LYS_INPUT))) {
+                && (rpc->child->nodetype == LYS_OUTPUT
+                    || (rpc->child->next && rpc->child->next->nodetype == LYS_OUTPUT))) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
                 goto error;
             }
@@ -4356,9 +4379,7 @@ read_yin_rpc(struct lys_module *module, struct lys_node *parent, struct lyxml_el
     LY_TREE_FOR_SAFE(root.child, next, sub) {
         if (!strcmp(sub->name, "grouping")) {
             node = read_yin_grouping(module, retval, sub, resolve, unres);
-        } else if (!strcmp(sub->name, "input")) {
-            node = read_yin_input_output(module, retval, sub, resolve, unres);
-        } else if (!strcmp(sub->name, "output")) {
+        } else if (!strcmp(sub->name, "input") || !strcmp(sub->name, "output")) {
             node = read_yin_input_output(module, retval, sub, resolve, unres);
         }
         if (!node) {
@@ -4994,7 +5015,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
         } else if (!strcmp(child->name, "anyxml")) {
             node = read_yin_anyxml(trg, NULL, child, 1, unres);
         } else if (!strcmp(child->name, "rpc")) {
-            node = read_yin_rpc(trg, NULL, child, 0, unres);
+            node = read_yin_rpc_action(trg, NULL, child, 0, unres);
         } else if (!strcmp(child->name, "notification")) {
             node = read_yin_notif(trg, NULL, child, 0, unres);
         }

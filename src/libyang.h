@@ -1147,6 +1147,7 @@ typedef enum {
     LYVE_EOF,          /**< unexpected end of input data */
     LYVE_INSTMT,       /**< invalid statement (schema) */
     /* */
+    LYVE_INPAR,        /**< invalid (in)direct parent (schema) */
     LYVE_INID,         /**< invalid identifier (schema) */
     LYVE_INDATE,       /**< invalid date format */
     LYVE_INARG,        /**< invalid value of a statement argument (schema) */

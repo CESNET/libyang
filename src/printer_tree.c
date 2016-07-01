@@ -39,7 +39,7 @@ sibling_is_valid_child(const struct lys_node *node, int including, const struct 
 
     /* has a following printed child */
     LY_TREE_FOR((struct lys_node *)(including ? node : node->next), cur) {
-        if (module->type && (cur->module != module)) {
+        if (module != lys_node_module(cur)) {
             continue;
         }
 
@@ -89,7 +89,7 @@ create_indent(int level, const char *old_indent, const struct lys_node *node, in
     }
 
     /* next is a node that will actually be printed */
-    has_next = sibling_is_valid_child(node, 0, module);
+    has_next = sibling_is_valid_child(node, 0, lys_main_module(module));
 
     if (has_next && !next_is_case) {
         strcat(new_indent, "|  ");
@@ -238,7 +238,7 @@ tree_print_container(struct lyout *out, const struct lys_module *module, int lev
             continue;
         }
         tree_print_snode(out, module, level, new_indent, max_child_len, sub,
-                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_USES,
+                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_USES | LYS_ACTION,
                          spec_config);
     }
 
@@ -527,7 +527,7 @@ tree_print_list(struct lyout *out, const struct lys_module *module, int level, c
             continue;
         }
         tree_print_snode(out, module, level, new_indent, max_child_len, sub,
-                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_ANYXML,
+                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_ANYXML | LYS_ACTION,
                          spec_config);
     }
 
@@ -548,8 +548,8 @@ tree_print_uses(struct lyout *out, const struct lys_module *module, int level, c
 }
 
 static void
-tree_print_rpc(struct lyout *out, const struct lys_module *module, int level, char *indent,
-               const struct lys_node *node)
+tree_print_rpc_action(struct lyout *out, const struct lys_module *module, int level, char *indent,
+                      const struct lys_node *node)
 {
     char *new_indent;
     struct lys_node *sub;
@@ -670,6 +670,9 @@ tree_print_snode(struct lyout *out, const struct lys_module *module, int level, 
     case LYS_USES:
         tree_print_uses(out, module, level, indent, max_name_len, node, spec_config);
         break;
+    case LYS_ACTION:
+        tree_print_rpc_action(out, module, level, indent, node);
+        break;
     case LYS_CASE:
         /* a very special case of cases in an augment */
         tree_print_case(out, module, level, indent, max_name_len, node, 0, spec_config);
@@ -760,7 +763,7 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
                 break;
             }
             if (node->nodetype == LYS_RPC) {
-                tree_print_rpc(out, module, level, indent, node);
+                tree_print_rpc_action(out, module, level, indent, node);
                 have_rpcs--;
             }
         }

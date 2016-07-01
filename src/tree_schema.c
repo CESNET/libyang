@@ -950,6 +950,13 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     case LYS_CONTAINER:
     case LYS_LIST:
     case LYS_GROUPING:
+        if (!(child->nodetype &
+                (LYS_ANYXML | LYS_CHOICE | LYS_CONTAINER | LYS_GROUPING | LYS_LEAF |
+                 LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_ACTION))) {
+            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), strnodetype(parent->nodetype));
+            return EXIT_FAILURE;
+        }
+        break;
     case LYS_USES:
     case LYS_INPUT:
     case LYS_OUTPUT:
@@ -960,7 +967,6 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
             LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), strnodetype(parent->nodetype));
             return EXIT_FAILURE;
         }
-
         break;
     case LYS_CHOICE:
         if (!(child->nodetype &
@@ -977,6 +983,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
         }
         break;
     case LYS_RPC:
+    case LYS_ACTION:
         if (!(child->nodetype & (LYS_INPUT | LYS_OUTPUT | LYS_GROUPING))) {
             LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), "rpc");
             return EXIT_FAILURE;
@@ -992,7 +999,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     case LYS_AUGMENT:
         if (!(child->nodetype &
                 (LYS_ANYXML | LYS_CASE | LYS_CHOICE | LYS_CONTAINER | LYS_LEAF
-                | LYS_LEAFLIST | LYS_LIST | LYS_USES))) {
+                | LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_ACTION))) {
             LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), strnodetype(parent->nodetype));
             return EXIT_FAILURE;
         }

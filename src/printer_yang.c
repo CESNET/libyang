@@ -672,7 +672,7 @@ yang_print_augment(struct lyout *out, int level, const struct lys_module *module
         }
         yang_print_snode(out, level, sub,
                          LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                         LYS_USES | LYS_ANYXML | LYS_CASE);
+                         LYS_USES | LYS_ANYXML | LYS_CASE | LYS_ACTION);
     }
 
     level--;
@@ -770,7 +770,7 @@ yang_print_container(struct lyout *out, int level, const struct lys_node *node)
         yang_print_open(out, &flag);
         yang_print_snode(out, level, sub,
                          LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                         LYS_USES | LYS_GROUPING | LYS_ANYXML);
+                         LYS_USES | LYS_GROUPING | LYS_ANYXML | LYS_ACTION);
     }
 
     level--;
@@ -994,7 +994,7 @@ yang_print_list(struct lyout *out, int level, const struct lys_node *node)
         }
         yang_print_snode(out, level, sub,
                          LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                         LYS_USES | LYS_GROUPING | LYS_ANYXML);
+                         LYS_USES | LYS_GROUPING | LYS_ANYXML | LYS_ACTION);
     }
     level--;
     ly_print(out, "%*s}\n", LEVEL, INDENT);
@@ -1019,7 +1019,7 @@ yang_print_grouping(struct lyout *out, int level, const struct lys_node *node)
     LY_TREE_FOR(node->child, sub) {
         yang_print_snode(out, level, sub,
                          LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                         LYS_USES | LYS_GROUPING | LYS_ANYXML);
+                         LYS_USES | LYS_GROUPING | LYS_ANYXML | LYS_ACTION);
     }
 
     level--;
@@ -1097,13 +1097,13 @@ yang_print_input_output(struct lyout *out, int level, const struct lys_node *nod
 }
 
 static void
-yang_print_rpc(struct lyout *out, int level, const struct lys_node *node)
+yang_print_rpc_action(struct lyout *out, int level, const struct lys_node *node)
 {
     int i, flag = 0;
     struct lys_node *sub;
     struct lys_node_rpc_action *rpc = (struct lys_node_rpc_action *)node;
 
-    ly_print(out, "%*srpc %s", LEVEL, INDENT, node->name);
+    ly_print(out, "%*s%s %s", LEVEL, INDENT, (node->nodetype == LYS_RPC ? "rpc" : "action"), node->name);
 
     level++;
     yang_print_snode_common(out, level, node, &flag);
@@ -1198,6 +1198,9 @@ yang_print_snode(struct lyout *out, int level, const struct lys_node *node, int 
         break;
     case LYS_CASE:
         yang_print_case(out, level, node);
+        break;
+    case LYS_ACTION:
+        yang_print_rpc_action(out, level, node);
         break;
     case LYS_INPUT:
     case LYS_OUTPUT:
@@ -1339,7 +1342,7 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
         ly_print(out, "\n");
         switch(node->nodetype) {
         case LYS_RPC:
-            yang_print_rpc(out, level, node);
+            yang_print_rpc_action(out, level, node);
             break;
         case LYS_NOTIF:
             yang_print_notif(out, level, node);

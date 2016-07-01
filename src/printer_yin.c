@@ -689,7 +689,7 @@ yin_print_augment(struct lyout *out, int level, const struct lys_module *module,
         }
         yin_print_snode(out, level, sub,
                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                        LYS_USES | LYS_ANYXML | LYS_CASE);
+                        LYS_USES | LYS_ANYXML | LYS_CASE | LYS_ACTION);
     }
     level--;
 
@@ -783,7 +783,7 @@ yin_print_container(struct lyout *out, int level, const struct lys_node *node)
         }
         yin_print_snode(out, level, sub,
                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                        LYS_USES | LYS_GROUPING | LYS_ANYXML);
+                        LYS_USES | LYS_GROUPING | LYS_ANYXML | LYS_ACTION);
     }
     level--;
 
@@ -1014,7 +1014,7 @@ yin_print_list(struct lyout *out, int level, const struct lys_node *node)
         }
         yin_print_snode(out, level, sub,
                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                        LYS_USES | LYS_GROUPING | LYS_ANYXML);
+                        LYS_USES | LYS_GROUPING | LYS_ANYXML | LYS_ACTION);
     }
     level--;
 
@@ -1040,7 +1040,7 @@ yin_print_grouping(struct lyout *out, int level, const struct lys_node *node)
     LY_TREE_FOR(node->child, sub) {
         yin_print_snode(out, level, sub,
                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                        LYS_USES | LYS_GROUPING | LYS_ANYXML);
+                        LYS_USES | LYS_GROUPING | LYS_ANYXML | LYS_ACTION);
     }
     level--;
 
@@ -1119,7 +1119,7 @@ yin_print_input_output(struct lyout *out, int level, const struct lys_node *node
 }
 
 static void
-yin_print_rpc(struct lyout *out, int level, const struct lys_node *node)
+yin_print_rpc_action(struct lyout *out, int level, const struct lys_node *node)
 {
     int i, close;
     struct lys_node *sub;
@@ -1127,7 +1127,7 @@ yin_print_rpc(struct lyout *out, int level, const struct lys_node *node)
 
     close = (yin_has_snode_common(node) || rpc->iffeature_size || rpc->tpdf_size || node->child ? 0 : 1);
 
-    yin_print_open(out, level, "rpc", "name", node->name, close);
+    yin_print_open(out, level, (node->nodetype == LYS_RPC ? "rpc" : "action"), "name", node->name, close);
 
     if (!close) {
         level++;
@@ -1150,7 +1150,7 @@ yin_print_rpc(struct lyout *out, int level, const struct lys_node *node)
         }
         level--;
 
-        yin_print_close(out, level, "rpc");
+        yin_print_close(out, level, (node->nodetype == LYS_RPC ? "rpc" : "action"));
     }
 }
 
@@ -1222,6 +1222,9 @@ yin_print_snode(struct lyout *out, int level, const struct lys_node *node, int m
         break;
     case LYS_CASE:
         yin_print_case(out, level, node);
+        break;
+    case LYS_ACTION:
+        yin_print_rpc_action(out, level, node);
         break;
     case LYS_INPUT:
     case LYS_OUTPUT:
@@ -1392,7 +1395,7 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
 
         switch (node->nodetype) {
         case LYS_RPC:
-            yin_print_rpc(out, level, node);
+            yin_print_rpc_action(out, level, node);
             break;
         case LYS_NOTIF:
             yin_print_notif(out, level, node);
