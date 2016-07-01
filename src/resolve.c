@@ -971,6 +971,18 @@ resolve_iffeature_feature(const char *feat_name, uint16_t len, const struct lys_
     int mod_name_len, nam_len, i, j;
     const struct lys_module *module;
 
+    /* TODO where to resolve if-feature, grouping context or uses context? */
+    /* find a node from the correct module, in case we are in a grouping */
+    /*while (lys_parent(node)) {
+        node = lys_parent(node);
+        if (node->nodetype == LYS_GROUPING) {
+            * not resolved yet *
+            LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Resolving \"if-feature\" in an unresolved grouping (not in \"uses\").");
+            return 2;
+            break;
+        }
+    }*/
+
     /* check prefix */
     if ((i = parse_node_identifier(feat_name, &mod_name, &mod_name_len, &name, &nam_len)) < 1) {
         LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, feat_name[-i], &feat_name[-i]);
@@ -986,7 +998,7 @@ resolve_iffeature_feature(const char *feat_name, uint16_t len, const struct lys_
 
     /* search in the identified module ... */
     for (j = 0; j < module->features_size; j++) {
-        if (!strcmp(name, module->features[j].name)) {
+        if (!strncmp(name, module->features[j].name, nam_len) && !module->features[j].name[nam_len]) {
             /* check status */
             if (lyp_check_status(node->flags, lys_node_module(node), node->name, module->features[j].flags,
                                  module->features[j].module, module->features[j].name, node)) {
@@ -1002,7 +1014,8 @@ resolve_iffeature_feature(const char *feat_name, uint16_t len, const struct lys_
             continue;
         }
         for (j = 0; j < module->inc[i].submodule->features_size; j++) {
-            if (!strcmp(name, module->inc[i].submodule->features[j].name)) {
+            if (!strncmp(name, module->inc[i].submodule->features[j].name, nam_len)
+                    && !module->inc[i].submodule->features[j].name[nam_len]) {
                 /* check status */
                 if (lyp_check_status(node->flags, lys_node_module(node), node->name,
                                      module->inc[i].submodule->features[j].flags,
@@ -1051,8 +1064,8 @@ resolve_iffeature_factor(const char *factor, uint16_t len, const struct lys_node
         return !ret;
     } else if (factor[0] == '(') {
         /* "(" sep if-feature-expr sep ")" */
-        if (factor[len] != ')') {
-            LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, factor[len], &factor[len]);
+        if (factor[len - 1] != ')') {
+            LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, factor[len - 1], &factor[len - 1]);
             return -1;
         }
         cur_len = 1;
@@ -1061,7 +1074,7 @@ resolve_iffeature_factor(const char *factor, uint16_t len, const struct lys_node
         }
 
         --len;
-        while (isspace(factor[len])) {
+        while (isspace(factor[len - 1])) {
             --len;
         }
 
@@ -1081,6 +1094,8 @@ resolve_iffeature_term(const char *term, uint16_t len, const struct lys_node *no
     if (isspace(term[0])) {
         LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, term[0], term);
         return -1;
+    } else if (term[0] == '(') {
+        return resolve_iffeature_factor(term, len, node);
     }
 
     cur_len = 0;
@@ -1139,6 +1154,8 @@ resolve_iffeature_expr(const char *expr, uint16_t len, const struct lys_node *no
     if (isspace(expr[0])) {
         LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, expr[0], expr);
         return -1;
+    } else if (expr[0] == '(') {
+        return resolve_iffeature_factor(expr, len, node);
     }
 
     cur_len = 0;
@@ -5069,7 +5086,7 @@ unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item,
         return -1;
     }
 
-    if ((type == UNRES_TYPE_LEAFREF) || (type == UNRES_USES) || (type == UNRES_TYPE_DFLT)) {
+    if ((type == UNRES_TYPE_LEAFREF) || (type == UNRES_USES) || (type == UNRES_TYPE_DFLT) || (type == UNRES_IFFEAT)) {
         if (unres_schema_add_node(mod, unres, new_item, type, unres->str_snode[i]) == -1) {
             LOGINT;
             return -1;

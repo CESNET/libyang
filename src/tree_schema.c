@@ -2372,7 +2372,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
 
     if (!shallow) {
         for (i = 0; i < node->iffeature_size; ++i) {
-            retval->iffeature[i] = node->iffeature[i];
+            retval->iffeature[i] = lydict_insert(ctx, node->iffeature[i], 0);
             /* was it resolved or not, who knows, who cares? */
             unres_schema_dup(module, unres, (char *)node->iffeature[i], UNRES_IFFEAT, (char *)retval->iffeature[i]);
         }
