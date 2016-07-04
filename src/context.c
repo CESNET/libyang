@@ -39,12 +39,27 @@
 #include IETF_YANG_TYPES_PATH
 #include IETF_YANG_LIB_PATH
 
+#define INTERNAL_MODULES_COUNT 4
+static struct internal_modules_s {
+    const char *name;
+    const char *revision;
+    const char *data;
+    uint8_t implemented;
+    LYS_INFORMAT format;
+} internal_modules[INTERNAL_MODULES_COUNT] = {
+    {"yang", "2016-02-11", (const char*)yang_2016_02_11_yin, 1, LYS_IN_YIN},
+    {"ietf-inet-types", "2013-07-15", (const char*)ietf_inet_types_2013_07_15_yin, 0, LYS_IN_YIN},
+    {"ietf-yang-types", "2013-07-15", (const char*)ietf_yang_types_2013_07_15_yin, 0, LYS_IN_YIN},
+    {"ietf-yang-library", "2016-02-01", (const char*)ietf_yang_library_2016_02_01_yin, 1, LYS_IN_YIN}
+};
+
 API struct ly_ctx *
 ly_ctx_new(const char *search_dir)
 {
     struct ly_ctx *ctx;
     struct lys_module *module;
     char *cwd;
+    int i;
 
     ctx = calloc(1, sizeof *ctx);
     if (!ctx) {
@@ -82,32 +97,14 @@ ly_ctx_new(const char *search_dir)
     }
     ctx->models.module_set_id = 1;
 
-    /* load (fake) YANG module */
-    if (!lys_parse_mem(ctx, (char *)yang_2016_02_11_yin, LYS_IN_YIN)) {
-        ly_ctx_destroy(ctx, NULL);
-        return NULL;
-    }
-
-    /* load ietf-inet-types */
-    module = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_inet_types_2013_07_15_yin, LYS_IN_YIN);
-    if (!module) {
-        ly_ctx_destroy(ctx, NULL);
-        return NULL;
-    }
-    module->implemented = 0;
-
-    /* load ietf-yang-types */
-    module = (struct lys_module *)lys_parse_mem(ctx, (char *)ietf_yang_types_2013_07_15_yin, LYS_IN_YIN);
-    if (!module) {
-        ly_ctx_destroy(ctx, NULL);
-        return NULL;
-    }
-    module->implemented = 0;
-
-    /* load ietf-yang-library */
-    if (!lys_parse_mem(ctx, (char *)ietf_yang_library_2016_02_01_yin, LYS_IN_YIN)) {
-        ly_ctx_destroy(ctx, NULL);
-        return NULL;
+    /* load internal modules */
+    for (i = 0; i < INTERNAL_MODULES_COUNT; i++) {
+        module = (struct lys_module *)lys_parse_mem(ctx, internal_modules[i].data, internal_modules[i].format);
+        if (!module) {
+            ly_ctx_destroy(ctx, NULL);
+            return NULL;
+        }
+        module->implemented = internal_modules[i].implemented;
     }
 
     return ctx;
@@ -365,6 +362,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
 {
     const struct lys_module *module;
     char *module_data;
+    int i;
     void (*module_data_free)(void *module_data) = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
@@ -373,10 +371,20 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
         return NULL;
     }
 
+    /* exception for internal modules */
+    for (i = 0; i < INTERNAL_MODULES_COUNT; i++) {
+        if (ly_strequal(name, internal_modules[i].name, 0)) {
+            if (!revision || ly_strequal(revision, internal_modules[i].revision, 0)) {
+                /* return internal module */
+                return ly_ctx_get_module(ctx, name, revision);
+            }
+        }
+    }
+
     if (ctx->module_clb) {
         module_data = ctx->module_clb(name, revision, ctx->module_clb_data, &format, &module_data_free);
         if (!module_data) {
-            LOGERR(LY_EVALID, "User module retrieval callback failed!");
+            LOGERR(0, "User module retrieval callback failed!");
             return NULL;
         }
         module = lys_parse_mem(ctx, module_data, format);
@@ -385,6 +393,9 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
         }
     } else {
         module = lyp_search_file(ctx, NULL, name, revision, NULL);
+        if (module) {
+            ((struct lys_module *)module)->implemented = 1;
+        }
     }
 
     return module;

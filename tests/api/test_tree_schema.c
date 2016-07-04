@@ -174,18 +174,15 @@ module: a\n\
    |  +--rw bar-sub2\n\
    +--rw x\n\
       +--rw bubba?      string\n\
-      +--rw bar-y\n\
-notifications:\n\
-   +---n bar-notif\n\
-   +---n fox-notif\n";
+      +--rw bar-y\n";
 
 char *result_yang = "\
 module a {\n\
   namespace \"urn:a\";\n\
   prefix a_mod;\n\
 \n\
-  include \"asub\";\n\
   include \"atop\";\n\
+  include \"asub\";\n\
 \n\
   revision \"2015-01-01\" {\n\
     description\n\
@@ -240,8 +237,8 @@ char *result_yin = "\
         xmlns:a_mod=\"urn:a\">\n\
   <namespace uri=\"urn:a\"/>\n\
   <prefix value=\"a_mod\"/>\n\
-  <include module=\"asub\"/>\n\
   <include module=\"atop\"/>\n\
+  <include module=\"asub\"/>\n\
   <revision date=\"2015-01-01\">\n\
     <description>\n\
       <text>version 1</text>\n\

@@ -3539,7 +3539,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 {
     struct ly_ctx *ctx;
     struct lys_node *node = NULL, *next, *iter;
-    struct lys_node *node_aux;
+    struct lys_node *node_aux, *parent;
     struct lys_refine *rfn;
     struct lys_restr *must, **old_must;
     int i, j, rc, parent_flags;
@@ -3611,8 +3611,9 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
         /* config on any nodetype */
         if (rfn->flags & LYS_CONFIG_MASK) {
-            if (lys_parent(node) &&
-                    ((lys_parent(node)->flags & LYS_CONFIG_MASK) != (rfn->flags & LYS_CONFIG_MASK)) &&
+            for (parent = lys_parent(node); parent && parent->nodetype == LYS_USES; parent = lys_parent(parent));
+            if (parent && parent->nodetype != LYS_GROUPING &&
+                    ((parent->flags & LYS_CONFIG_MASK) != (rfn->flags & LYS_CONFIG_MASK)) &&
                     (rfn->flags & LYS_CONFIG_W)) {
                 /* setting config true under config false is prohibited */
                 LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, "config", "refine");
@@ -4624,7 +4625,7 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
 {
     struct lyxml_elem *xml;
     struct lyxml_attr *attr;
-    const char *type_name;
+    const char *type_name = NULL;
 
     switch (type) {
     case UNRES_IDENT:
@@ -4723,6 +4724,10 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
                 /* print the error */
                 resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
                 return -1;
+            } else {
+                /* forward reference, erase ly_errno */
+                ly_errno = LY_SUCCESS;
+                ly_vecode = LYVE_SUCCESS;
             }
         }
     } while (res_count && (res_count < unres_count));
@@ -4824,13 +4829,19 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
     ly_vlog_hide(0);
     if (rc != EXIT_FAILURE) {
         if (rc == -1 && ly_errno == LY_EVALID) {
-            path = strdup(ly_errpath());
-            LOGERR(LY_EVALID, "%s%s%s%s", msg = strdup(ly_errmsg()),
-                   path[0] ? " (path: " : "", path[0] ? path : "", path[0] ? ")" : "");
-            free(path);
-            free(msg);
+            if (ly_log_level >= LY_LLERR) {
+                path = strdup(ly_errpath());
+                msg = strdup(ly_errmsg());
+                LOGERR(LY_EVALID, "%s%s%s%s", msg, path[0] ? " (path: " : "", path[0] ? path : "", path[0] ? ")" : "");
+                free(path);
+                free(msg);
+            }
         }
         return rc;
+    } else {
+        /* erase info about validation errors */
+        ly_errno = LY_SUCCESS;
+        ly_vecode = LYVE_SUCCESS;
     }
 
     print_unres_schema_item_fail(item, type, snode);
@@ -5191,11 +5202,14 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
                     if (!root) {
                         /* false when condition */
                         ly_vlog_hide(0);
-                        path = strdup(ly_errpath());
-                        LOGERR(LY_EVALID, "%s%s%s%s", msg = strdup(ly_errmsg()), path[0] ? " (path: " : "",
-                               path[0] ? path : "", path[0] ? ")" : "");
-                        free(path);
-                        free(msg);
+                        if (ly_log_level >= LY_LLERR) {
+                            path = strdup(ly_errpath());
+                            msg = strdup(ly_errmsg());
+                            LOGERR(LY_EVALID, "%s%s%s%s", msg,
+                                   path[0] ? " (path: " : "", path[0] ? path : "", path[0] ? ")" : "");
+                            free(path);
+                            free(msg);
+                        }
                         return -1;
                     } /* follows else */
 
@@ -5256,6 +5270,10 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
             } else if (rc == -1) {
                 ly_vlog_hide(0);
                 return -1;
+            } else {
+                /* forward reference, erase ly_errno */
+                ly_errno = LY_SUCCESS;
+                ly_vecode = LYVE_SUCCESS;
             }
         }
         first = 0;
@@ -5264,11 +5282,13 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
     /* do we have some unresolved when-stmt? */
     if (when_stmt > resolved) {
         ly_vlog_hide(0);
-        path = strdup(ly_errpath());
-        LOGERR(LY_EVALID, "%s%s%s%s", msg = strdup(ly_errmsg()), path[0] ? " (path: " : "",
-               path[0] ? path : "", path[0] ? ")" : "");
-        free(path);
-        free(msg);
+        if (ly_log_level >= LY_LLERR) {
+            path = strdup(ly_errpath());
+            msg = strdup(ly_errmsg());
+            LOGERR(LY_EVALID, "%s%s%s%s", msg, path[0] ? " (path: " : "", path[0] ? path : "", path[0] ? ")" : "");
+            free(path);
+            free(msg);
+        }
         return -1;
     }
 

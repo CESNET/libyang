@@ -25,6 +25,8 @@ struct ly_modules_list {
     int used;
     struct lys_module **list;
     const char **parsing;
+    uint8_t parsing_size;
+    uint8_t parsing_number;
     uint16_t module_set_id;
 };
 
