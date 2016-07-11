@@ -364,7 +364,7 @@ struct lys_type_bit {
 struct lys_type_info_bits {
     struct lys_type_bit *bit;/**< array of bit definitions */
     int count;               /**< number of bit definitions in the bit array */
-} bits;                      /**< part for #LY_TYPE_BITS */
+};
 
 /**
  * @brief Container for information about decimal64 types (#LY_TYPE_DEC64), used in ::lys_type_info.
