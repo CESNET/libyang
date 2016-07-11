@@ -2892,6 +2892,7 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
+    /* insert the node into the schema tree */
     if (lys_node_addchild(parent, lys_main_module(module), retval)) {
         goto error;
     }
@@ -3016,6 +3017,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
+    /* insert the node into the schema tree */
     if (lys_node_addchild(parent, lys_main_module(module), retval)) {
         goto error;
     }
@@ -3188,6 +3190,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
+    /* insert the node into the schema tree */
     if (lys_node_addchild(parent, lys_main_module(module), retval)) {
         goto error;
     }
@@ -3408,6 +3411,11 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
+    /* insert the node into the schema tree */
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
+        goto error;
+    }
+
     /* process list's specific children */
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
@@ -3618,10 +3626,6 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
     }
 
-    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
-        goto error;
-    }
-
     /* last part - process data nodes */
     LY_TREE_FOR_SAFE(root.child, next, sub) {
         if (!strcmp(sub->name, "container")) {
@@ -3725,6 +3729,11 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
+    /* insert the node into the schema tree */
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
+        goto error;
+    }
+
     /* process container's specific children */
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns) {
@@ -3826,10 +3835,6 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
         }
     }
 
-    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
-        goto error;
-    }
-
     /* last part - process data nodes */
     LY_TREE_FOR_SAFE(root.child, next, sub) {
         if (!strcmp(sub->name, "container")) {
@@ -3900,6 +3905,11 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
+    /* insert the node into the schema tree */
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
+        goto error;
+    }
+
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
             /* garbage */
@@ -3943,10 +3953,6 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
         if (r) {
             goto error;
         }
-    }
-
-    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
-        goto error;
     }
 
     /* last part - process data nodes */
@@ -4034,6 +4040,11 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
+    /* insert the node into the schema tree */
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
+        goto error;
+    }
+
     /* data statements */
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
@@ -4078,10 +4089,6 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
         if (r) {
             goto error;
         }
-    }
-
-    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
-        goto error;
     }
 
     /* last part - process data nodes */
@@ -4151,6 +4158,11 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
+    /* insert the node into the schema tree */
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
+        goto error;
+    }
+
     /* process rpc's specific children */
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
@@ -4212,10 +4224,6 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
                 goto error;
             }
         }
-    }
-
-    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
-        goto error;
     }
 
     /* last part - process data nodes */
@@ -4296,6 +4304,11 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
+    /* insert the node into the schema tree */
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
+        goto error;
+    }
+
     /* process rpc's specific children */
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
@@ -4371,10 +4384,6 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
         }
     }
 
-    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
-        goto error;
-    }
-
     /* last part - process data nodes */
     LY_TREE_FOR_SAFE(root.child, next, sub) {
         if (!strcmp(sub->name, "grouping")) {
@@ -4436,6 +4445,11 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
+    /* insert the node into the schema tree */
+    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
+        goto error;
+    }
+
     /* get other properties of uses */
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (!sub->ns || strcmp(sub->ns->value, LY_NSYIN)) {
@@ -4489,10 +4503,6 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             LOGMEM;
             goto error;
         }
-    }
-
-    if (lys_node_addchild(parent, lys_main_module(module), retval)) {
-        goto error;
     }
 
     LY_TREE_FOR(yin->child, sub) {
