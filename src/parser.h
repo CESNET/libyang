@@ -74,6 +74,7 @@ int lyp_check_status(uint16_t flags1, struct lys_module *mod1, const char *name1
                      uint16_t flags2, struct lys_module *mod2, const char *name2,
                      const struct lys_node *node);
 
+int dup_typedef_check(const char *type, struct lys_tpdf *tpdf, int size);
 /**
  * @brief Get know if the node is part of the RPC's input/output
  *

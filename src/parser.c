@@ -1256,7 +1256,7 @@ lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *
 }
 
 /* does not log */
-static int
+int
 dup_typedef_check(const char *type, struct lys_tpdf *tpdf, int size)
 {
     int i;
