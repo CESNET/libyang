@@ -3539,7 +3539,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 {
     struct ly_ctx *ctx;
     struct lys_node *node = NULL, *next, *iter;
-    struct lys_node *node_aux, *parent;
+    struct lys_node *node_aux, *parent, *tmp;
     struct lys_refine *rfn;
     struct lys_restr *must, **old_must;
     int i, j, rc, parent_flags;
@@ -3570,6 +3570,12 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
             LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, uses->grp->name, "uses");
             LOGVAL(LYE_SPEC, LY_VLOG_LYS, uses, "Copying data from grouping failed.");
             return -1;
+        }
+        /* test the name of siblings */
+        LY_TREE_FOR((uses->parent) ? uses->parent->child : lys_main_module(uses->module)->data, tmp) {
+            if ((struct lys_node_uses*)tmp != uses && tmp->name == node_aux->name) {
+                return -1;
+            }
         }
     }
     ctx = uses->module->ctx;
