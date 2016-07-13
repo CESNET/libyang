@@ -1202,6 +1202,7 @@ typedef enum {
     LYVE_NOREQINS,     /**< required instance does not exits (data) */
     LYVE_NOLEAFREF,    /**< leaf pointed to by leafref does not exist (data) */
     LYVE_NOMANDCHOICE, /**< no mandatory choice case branch exists (data) */
+    LYVE_INACT,        /**< action contains some other node than container or list with keys (data) */
 
     LYVE_XPATH_INTOK,  /**< unexpected XPath token */
     LYVE_XPATH_EOF,    /**< unexpected end of an XPath expression */

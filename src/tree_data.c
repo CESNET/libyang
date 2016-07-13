@@ -52,7 +52,7 @@ lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, int options)
 
     assert(ctx);
 
-    if (data && lys_parent(data->schema)) {
+    if (data && lys_parent(data->schema) && (data->schema->nodetype != LYS_ACTION)) {
         LOGERR(LY_EINVAL, "Subtree are not top-level data.");
         return EXIT_FAILURE;
     }
@@ -83,11 +83,16 @@ lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, int options)
             return EXIT_FAILURE;
         }
     } else if (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) {
-        if (!data || data->parent || (data->prev != data) || (data->schema->nodetype != LYS_RPC)) {
-            LOGERR(LY_EINVAL, "Subtree is not a single RPC.");
+        if (!data || data->parent || (data->prev != data) || !(data->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
+            LOGERR(LY_EINVAL, "Subtree is not a single RPC/reply.");
             return EXIT_FAILURE;
         }
         if (ly_check_mandatory(data, NULL, 1, (options & LYD_OPT_RPCREPLY) ? 1 : 0)) {
+            return EXIT_FAILURE;
+        }
+    } else if (options & LYD_OPT_ACTION) {
+        if (!data || data->parent || (data->prev != data) || !(data->schema->nodetype & (LYS_CONTAINER | LYS_LIST))) {
+            LOGERR(LY_EINVAL, "Subtree is not a single action.");
             return EXIT_FAILURE;
         }
     } else {
@@ -142,7 +147,7 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
 static struct lyd_node *
 lyd_parse_data_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, va_list ap)
 {
-    const struct lys_node *rpc = NULL;
+    const struct lys_node *rpc_act = NULL;
 
     if (lyp_check_options(options)) {
         LOGERR(LY_EINVAL, "%s: Invalid options (multiple data type flags set).", __func__);
@@ -150,14 +155,14 @@ lyd_parse_data_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int opt
     }
 
     if (options & LYD_OPT_RPCREPLY) {
-        rpc = va_arg(ap,  struct lys_node*);
-        if (!rpc || (rpc->nodetype != LYS_RPC)) {
+        rpc_act = va_arg(ap,  struct lys_node *);
+        if (!rpc_act || !(rpc_act->nodetype & (LYS_RPC | LYS_ACTION))) {
             LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
             return NULL;
         }
     }
 
-    return lyd_parse_(ctx, rpc, data, format, options);
+    return lyd_parse_(ctx, rpc_act, data, format, options);
 }
 
 API struct lyd_node *
@@ -271,7 +276,7 @@ lyd_new_find_schema(struct lyd_node *parent, const struct lys_module *module, in
     return siblings;
 }
 
-static struct lyd_node *
+struct lyd_node *
 _lyd_new(struct lyd_node *parent, const struct lys_node *schema)
 {
     struct lyd_node *ret;
@@ -313,7 +318,7 @@ lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *na
         return NULL;
     }
 
-    if (lys_get_data_sibling(module, siblings, name, LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC, &snode)
+    if (lys_get_data_sibling(module, siblings, name, LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC | LYS_ACTION, &snode)
             || !snode) {
         ly_errno = LY_EINVAL;
         return NULL;
@@ -582,7 +587,7 @@ lyd_new_output(struct lyd_node *parent, const struct lys_module *module, const c
         return NULL;
     }
 
-    if (lys_get_data_sibling(module, siblings, name, LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC, &snode)
+    if (lys_get_data_sibling(module, siblings, name, LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC | LYS_ACTION, &snode)
             || !snode) {
         return NULL;
     }
@@ -834,7 +839,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         /* find the schema node */
         schild = NULL;
         while ((schild = lys_getnext(schild, sparent, module, 0))) {
-            if (schild->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_NOTIF | LYS_RPC)) {
+            if (schild->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_NOTIF | LYS_RPC | LYS_ACTION)) {
                 /* module comparison */
                 if (mod_name) {
                     node_mod_name = lys_node_module(schild)->name;
@@ -881,6 +886,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, c
         case LYS_LIST:
         case LYS_NOTIF:
         case LYS_RPC:
+        case LYS_ACTION:
             node = _lyd_new(is_relative ? parent : NULL, schild);
             break;
         case LYS_LEAF:
@@ -2267,13 +2273,13 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 
     /* check placing the node to the appropriate place according to the schema */
     for (sparent = lys_parent(node->schema);
-         sparent && !(sparent->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_NOTIF));
+         sparent && !(sparent->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_ACTION | LYS_NOTIF));
          sparent = lys_parent(sparent));
     if (sparent != parent->schema) {
         return EXIT_FAILURE;
     }
 
-    if (node->parent != parent || (invalid = lyp_is_rpc(node->schema))) {
+    if (node->parent != parent || (invalid = lyp_is_rpc_action(node->schema))) {
         /* it is not just moving under a parent node or it is in an RPC where
          * nodes order matters, so the validation will be necessary */
         invalid++;
@@ -2322,17 +2328,17 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
 
     /* check placing the node to the appropriate place according to the schema */
     for (par1 = lys_parent(sibling->schema);
-         par1 && !(par1->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF));
+         par1 && !(par1->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_INPUT | LYS_OUTPUT | LYS_ACTION | LYS_NOTIF));
          par1 = lys_parent(par1));
     for (par2 = lys_parent(node->schema);
-         par2 && !(par2->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF));
+         par2 && !(par2->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_INPUT | LYS_OUTPUT | LYS_ACTION | LYS_NOTIF));
          par2 = lys_parent(par2));
     if (par1 != par2) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
 
-    if (node->parent != sibling->parent || (invalid = lyp_is_rpc(node->schema)) || !node->parent) {
+    if (node->parent != sibling->parent || (invalid = lyp_is_rpc_action(node->schema)) || !node->parent) {
         /* a) it is not just moving under a parent node (invalid = 1) or
          * b) it is in an RPC where nodes order matters (invalid = 2) or
          * c) it is top-level where we don't know if it is the same tree (invalid = 1),
@@ -2597,7 +2603,7 @@ lyd_schema_sort(struct lyd_node *sibling, int recursive)
     /* sort all the children recursively */
     if (recursive) {
         LY_TREE_FOR(sibling, node) {
-            if ((node->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_NOTIF))
+            if ((node->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_ACTION | LYS_NOTIF))
                     && lyd_schema_sort(node->child, recursive)) {
                 return -1;
             }
@@ -2626,7 +2632,7 @@ lyd_validate_leafref(struct lyd_node_leaf_list *leafref)
 API int
 lyd_validate(struct lyd_node **node, int options, ...)
 {
-    struct lyd_node *root, *next1, *next2, *iter, *to_free = NULL;
+    struct lyd_node *root, *next1, *next2, *iter, *action = NULL, *to_free = NULL;
     struct ly_ctx *ctx = NULL;
     int ret = EXIT_FAILURE, ap_flag = 0;
     va_list ap;
@@ -2670,6 +2676,11 @@ lyd_validate(struct lyd_node **node, int options, ...)
         }
     }
 
+    if ((options & LYD_OPT_RPC) && *node && ((*node)->schema->nodetype != LYS_RPC)) {
+        options &= ~LYD_OPT_RPC;
+        options |= LYD_OPT_ACTION;
+    }
+
     if (lyd_check_topmandatory(*node, ctx, options)) {
         goto error;
     }
@@ -2679,6 +2690,12 @@ lyd_validate(struct lyd_node **node, int options, ...)
             if (to_free) {
                 lyd_free(to_free);
                 to_free = NULL;
+            }
+
+            if ((options & LYD_OPT_ACTION) && (iter->schema->nodetype == LYS_ACTION)) {
+                options &= ~LYD_OPT_ACTION;
+                options |= LYD_OPT_RPC;
+                action = iter;
             }
 
             if (lyv_data_context(iter, options, unres)) {
@@ -2756,7 +2773,12 @@ nextsiblings:
     }
 
     /* add default values if needed */
-    if (lyd_defaults_add_unres(node, options, ctx, unres)) {
+    if (action) {
+        /* it will not get deleted */
+        if (lyd_defaults_add_unres(&action, options, ctx, unres)) {
+            goto error;
+        }
+    } else if (lyd_defaults_add_unres(node, options, ctx, unres)) {
         goto error;
     }
 
@@ -2974,6 +2996,7 @@ lyd_dup(const struct lyd_node *node, int recursive)
         case LYS_LIST:
         case LYS_NOTIF:
         case LYS_RPC:
+        case LYS_ACTION:
             new_node = malloc(sizeof *new_node);
             if (!new_node) {
                 LOGMEM;
@@ -3623,7 +3646,7 @@ lyd_get_node2(const struct lyd_node *data, const struct lys_node *schema)
     unsigned int i, j;
 
     if (!data || !schema ||
-            !(schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_ANYXML | LYS_NOTIF | LYS_RPC))) {
+            !(schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_ANYXML | LYS_NOTIF | LYS_RPC | LYS_ACTION))) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
@@ -3650,7 +3673,7 @@ lyd_get_node2(const struct lyd_node *data, const struct lys_node *schema)
         if (siter->nodetype == LYS_AUGMENT) {
             siter = ((struct lys_node_augment *)siter)->target;
             continue;
-        } else if (siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_ANYXML | LYS_NOTIF | LYS_RPC)) {
+        } else if (siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_ANYXML | LYS_NOTIF | LYS_RPC | LYS_RPC)) {
             /* standard data node */
             ly_set_add(spath, (void*)siter, LY_SET_OPT_USEASLIST);
 
@@ -4329,12 +4352,12 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
             break;
         case LYS_INPUT:
         case LYS_OUTPUT:
-            assert(options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY));
+            assert(options & (LYD_OPT_RPC | LYD_OPT_ACTION | LYD_OPT_RPCREPLY));
             if ((siter->nodetype == LYS_INPUT) && (options & LYD_OPT_RPCREPLY)) {
                 /* skip input */
                 break;
             }
-            if ((siter->nodetype == LYS_OUTPUT) && (options & LYD_OPT_RPC)) {
+            if ((siter->nodetype == LYS_OUTPUT) && (options & (LYD_OPT_RPC | LYD_OPT_ACTION))) {
                 /* skip output */
                 break;
             }
@@ -4406,7 +4429,7 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
             }
         }
 
-        if (iter->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_NOTIF)) {
+        if (iter->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
             if ((options & LYD_WD_MASK) == LYD_WD_EXPLICIT
                     && ((iter->schema->flags & LYS_CONFIG_W) && !(iter->schema->flags & LYS_INCL_STATUS))) {
                 /* do not process config data in explicit mode */
@@ -4582,16 +4605,12 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
             LOGERR(LY_EINVAL, "Cannot add default values to RPC, RPC reply, and notification without at least the empty container.");
             return EXIT_FAILURE;
         }
-        if ((options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) && ((*root)->schema->nodetype != LYS_RPC)) {
-            LOGERR(LY_EINVAL, "Not valid RPC data.");
+        if ((options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) && !((*root)->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
+            LOGERR(LY_EINVAL, "Not valid RPC/action data.");
             return EXIT_FAILURE;
         }
         if ((options & LYD_OPT_NOTIF) && ((*root)->schema->nodetype != LYS_NOTIF)) {
             LOGERR(LY_EINVAL, "Not valid notification data.");
-            return EXIT_FAILURE;
-        }
-        if (!(options & LYD_OPT_NOSIBLINGS) && ((*root)->prev != (*root))) {
-            LOGERR(LY_EINVAL, "Additional invalid data with an RPC, RPC reply, or notification.");
             return EXIT_FAILURE;
         }
     } else if (*root && (*root)->parent) {

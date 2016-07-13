@@ -240,6 +240,7 @@ repeat:
         goto repeat;
 
     case LYS_RPC:
+    case LYS_ACTION:
     case LYS_NOTIF:
     case LYS_CONTAINER:
     case LYS_LEAF:

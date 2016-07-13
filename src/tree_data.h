@@ -379,7 +379,7 @@ char *lyd_path(struct lyd_node *node);
 #define LYD_OPT_RPC        0x10 /**< Data represents RPC's input parameters. */
 #define LYD_OPT_RPCREPLY   0x20 /**< Data represents RPC's output parameters (maps to NETCONF <rpc-reply> data). */
 #define LYD_OPT_NOTIF      0x40 /**< Data represents an event notification data. */
-/* 0x80 reserved, formerly LYD_OPT_FILTER */
+/* 0x80 reserved, formerly LYD_OPT_FILTER, now used internally */
 #define LYD_OPT_TYPEMASK   0xff /**< Mask to filter data type options. Always only a single data type option (only
                                      single bit from the lower 8 bits) can be set. */
 

@@ -378,6 +378,7 @@ xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int to
     switch (node->schema->nodetype) {
     case LYS_NOTIF:
     case LYS_RPC:
+    case LYS_ACTION:
     case LYS_CONTAINER:
         xml_print_container(out, level, node, toplevel);
         break;
@@ -402,15 +403,42 @@ xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int to
 int
 xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
 {
-    const struct lyd_node *node;
+    const struct lyd_node *node, *next;
+    int level, action = 0;
+
+    assert(root);
+
+    level = (options & LYP_FORMAT ? 1 : 0);
+
+    /* learn whether we are printing an action first */
+    LY_TREE_DFS_BEGIN(root, next, node) {
+        if (node->schema->nodetype == LYS_ACTION) {
+            action = 1;
+            break;
+        }
+        LY_TREE_DFS_END(root, next, node);
+    }
+
+    if (action) {
+        ly_print(out, "%*s<action xmlns=\"urn:ietf:params:xml:ns:yang:1\">%s", LEVEL, INDENT, level ? "\n" : "");
+        if (level) {
+            ++level;
+        }
+    }
 
     /* content */
     LY_TREE_FOR(root, node) {
-        xml_print_node(out, (options & LYP_FORMAT ? 1 : 0), node, 1);
+        xml_print_node(out, level, node, 1);
         if (!(options & LYP_WITHSIBLINGS)) {
             break;
         }
     }
+
+    if (action) {
+        --level;
+        ly_print(out, "%*s</action>%s", LEVEL, INDENT, level ? "\n" : "");
+    }
+
     ly_print_flush(out);
 
     return EXIT_SUCCESS;

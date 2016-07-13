@@ -25,7 +25,7 @@
 #include "tree_internal.h"
 #include "xml_internal.h"
 
-static int
+int
 lyv_keys(const struct lyd_node *list)
 {
     struct lyd_node *child;
@@ -95,7 +95,7 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
     }
 
     /* check elements order in case of RPC's input and output */
-    if (node->validity && lyp_is_rpc(node->schema)) {
+    if (node->validity && lyp_is_rpc_action(node->schema)) {
         if ((node->prev != node) && node->prev->next) {
             for (siter = lys_getnext(node->schema, lys_parent(node->schema), node->schema->module, 0);
                     siter;
@@ -138,7 +138,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
 
         /* mandatory children */
         if ((schema->nodetype & (LYS_CONTAINER | LYS_LIST))
-                && !(options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
+                && !(options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_ACTION))) {
             if (ly_check_mandatory(node, NULL, (options & LYD_OPT_TYPEMASK) ? 0 : 1, (options & LYD_OPT_RPCREPLY) ? 1 : 0)) {
                 return EXIT_FAILURE;
             }

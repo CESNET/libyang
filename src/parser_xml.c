@@ -116,8 +116,8 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options)
 
 /* logs directly */
 static int
-xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node *schema_parent, struct lyd_node *parent,
-               struct lyd_node *prev, int options, struct unres_data *unres, struct lyd_node **result)
+xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev, int options,
+               struct unres_data *unres, struct lyd_node **result, struct lyd_node **action)
 {
     struct lyd_node *diter, *dlast, *first_sibling;
     struct lys_node *schema = NULL;
@@ -142,9 +142,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     }
 
     /* find schema node */
-    if (schema_parent) {
-        schema = xml_data_search_schemanode(xml, schema_parent->child, options);
-    } else if (!parent) {
+    if (!parent) {
         /* starting in root */
         for (i = 0; i < ctx->models.used; i++) {
             /* match data model based on namespace */
@@ -154,6 +152,10 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
                     /* skip nodes in module's data which are not expected here according to options' data type */
                     if (options & LYD_OPT_RPC) {
                         if (schema->nodetype != LYS_RPC) {
+                            continue;
+                        }
+                    } else if (options & LYD_OPT_ACTION) {
+                        if (!(schema->nodetype & (LYS_CONTAINER | LYS_LIST))) {
                             continue;
                         }
                     } else if (options & LYD_OPT_NOTIF) {
@@ -192,6 +194,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     case LYS_LIST:
     case LYS_NOTIF:
     case LYS_RPC:
+    case LYS_ACTION:
         *result = calloc(1, sizeof **result);
         havechildren = 1;
         break;
@@ -357,6 +360,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             ((struct lyd_node_anyxml *)*result)->xml_struct = 0;
             ((struct lyd_node_anyxml *)*result)->value.str = lydict_insert(ctx, xml->content, 0);
         }
+    } else if (schema->nodetype == LYS_ACTION) {
+        options &= ~LYS_ACTION;
+        options |= LYS_RPC;
     }
 
     /* first part of validation checks */
@@ -433,14 +439,22 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
         }
     }
 
+    if ((*result)->schema->nodetype == LYS_ACTION) {
+        if (!(options & LYD_OPT_ACTION) || *action) {
+            LOGVAL(LYE_SPEC, LY_VLOG_LYD, (*result), "Unexpected action node \"%s\".", (*result)->schema->name);
+            goto error;
+        }
+        *action = *result;
+    }
+
     /* process children */
     if (havechildren && xml->child) {
         diter = dlast = NULL;
         LY_TREE_FOR_SAFE(xml->child, next, child) {
             if (schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
-                r = xml_parse_data(ctx, child, NULL, *result, dlast, 0, unres, &diter);
+                r = xml_parse_data(ctx, child, *result, dlast, 0, unres, &diter, action);
             } else {
-                r = xml_parse_data(ctx, child, NULL, *result, dlast, options, unres, &diter);
+                r = xml_parse_data(ctx, child, *result, dlast, options, unres, &diter, action);
             }
             if (r) {
                 goto error;
@@ -499,8 +513,8 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     va_list ap;
     int r;
     struct unres_data *unres = NULL;
-    struct lys_node *rpc = NULL;
-    struct lyd_node *result = NULL, *iter, *last;
+    struct lys_node *rpc_act = NULL;
+    struct lyd_node *result = NULL, *iter, *last, *reply_parent = NULL, *action = NULL;
     struct lyxml_elem *xmlstart, *xmlelem, *xmlaux;
 
     ly_errno = LY_SUCCESS;
@@ -529,11 +543,13 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 
     va_start(ap, options);
     if (options & LYD_OPT_RPCREPLY) {
-        rpc = va_arg(ap,  struct lys_node*);
-        if (!rpc || (rpc->nodetype != LYS_RPC)) {
+        rpc_act = va_arg(ap,  struct lys_node *);
+        if (!rpc_act || !(rpc_act->nodetype & (LYS_RPC | LYS_ACTION))) {
             LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
             goto error;
         }
+        reply_parent = _lyd_new(NULL, rpc_act);
+        result = reply_parent;
     }
 
     if (!(options & LYD_OPT_NOSIBLINGS)) {
@@ -549,10 +565,18 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     } else {
         xmlstart = *root;
     }
-    iter = result = last = NULL;
 
+    if ((options & LYD_OPT_RPC)
+            && !strcmp(xmlstart->name, "action") && !strcmp(xmlstart->ns->value, "urn:ietf:params:xml:ns:yang:1")) {
+        /* it's an action, not a simple RPC */
+        xmlstart = xmlstart->child;
+        options &= ~LYD_OPT_RPC;
+        options |= LYD_OPT_ACTION;
+    }
+
+    iter = last = NULL;
     LY_TREE_FOR_SAFE(xmlstart, xmlaux, xmlelem) {
-        r = xml_parse_data(ctx, xmlelem, rpc, NULL, last, options, unres, &iter);
+        r = xml_parse_data(ctx, xmlelem, reply_parent, last, options, unres, &iter, &action);
         if (r) {
             goto error;
         } else if (options & LYD_OPT_DESTRUCT) {
@@ -572,28 +596,17 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         }
     }
 
-    if (options & LYD_OPT_RPCREPLY) {
-        last = result;
-        result = lyd_new_output(NULL, lys_node_module(rpc), rpc->name);
-        /* insert all the output parameters into RPC */
-        do {
-            iter = last;
-            last = iter->next;
-            if (lyd_insert(result, iter)) {
-                LOGINT;
-                lyd_free_withsiblings(last);
-                goto error;
-            }
-        } while (last);
-    }
-
     /* check for missing top level mandatory nodes */
     if (lyd_check_topmandatory(result, ctx, options)) {
         goto error;
     }
 
     /* add/validate default values, unres */
-    if (lyd_defaults_add_unres(&result, options, ctx, unres)) {
+    if (action) {
+        if (lyd_defaults_add_unres(&action, options, ctx, unres)) {
+            goto error;
+        }
+    } else if (lyd_defaults_add_unres(&result, options, ctx, unres)) {
         goto error;
     }
 

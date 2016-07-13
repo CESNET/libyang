@@ -192,6 +192,7 @@ typedef enum {
     LYE_NOREQINS,
     LYE_NOLEAFREF,
     LYE_NOMANDCHOICE,
+    LYE_INACT,
 
     LYE_XPATH_INTOK,
     LYE_XPATH_EOF,

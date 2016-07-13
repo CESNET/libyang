@@ -75,12 +75,12 @@ int lyp_check_status(uint16_t flags1, struct lys_module *mod1, const char *name1
                      const struct lys_node *node);
 
 /**
- * @brief Get know if the node is part of the RPC's input/output
+ * @brief Get know if the node is part of the RPC/action's input/output
  *
  * @param node Schema node to be examined.
  * @return 1 for true, 0 for false
  */
-int lyp_is_rpc(struct lys_node *node);
+int lyp_is_rpc_action(struct lys_node *node);
 
 /**
  * @brief Check validity of parser options.

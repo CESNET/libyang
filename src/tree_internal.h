@@ -59,6 +59,11 @@ struct internal_modules {
 #define LY_NSNACM "urn:ietf:params:xml:ns:yang:ietf-netconf-acm"
 
 /**
+ * @brief internal parser flag for actions
+ */
+#define LYD_OPT_ACTION 0x80
+
+/**
  * @brief Internal list of built-in types
  */
 struct ly_types {
@@ -284,6 +289,15 @@ void lys_free(struct lys_module *module, void (*private_destructor)(const struct
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on failure.
  */
 int ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema, int status, int rpc_output);
+
+/**
+ * @brief Create a data container knowing it's schema node.
+ *
+ * @param[in] parent Data parent of the new node.
+ * @param[in] schema Schema node of the new node.
+ * @return New node, NULL on error.
+ */
+struct lyd_node *_lyd_new(struct lyd_node *parent, const struct lys_node *schema);
 
 /**
  * @brief Find the parent node of an attribute.
