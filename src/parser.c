@@ -1255,6 +1255,46 @@ lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *
     return ret;
 }
 
+
+/* does not log */
+static
+int
+dup_identity_check(const char *id, struct lys_ident *ident, uint32_t size)
+{
+    uint32_t i;
+
+    for (i = 0; i < size; i++) {
+        if (id == ident[i].name) {
+            /* name collision */
+            return EXIT_FAILURE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int
+dup_identities_check(const char *id, struct lys_module *module)
+{
+    struct lys_module *main;    
+    int i;
+
+    if (dup_identity_check(id, module->ident, module->ident_size)) {
+        LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "identity", id);
+        return EXIT_FAILURE;
+    }
+
+    /* check identity in submodules */
+    main = lys_main_module(module);
+    for (i = 0; i < main->inc_size && main->inc[i].submodule; ++i)
+    if (dup_identity_check(id, main->inc[i].submodule->ident, main->inc[i].submodule->ident_size)) {
+        LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "identity", id);
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
 /* does not log */
 int
 dup_typedef_check(const char *type, struct lys_tpdf *tpdf, int size)
