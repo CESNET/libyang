@@ -1145,6 +1145,7 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
             break;
         case LYS_RPC:
             info_print_rpc(out, target);
+            break;
         case LYS_ACTION:
             info_print_action(out, target);
             break;
