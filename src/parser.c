@@ -1255,6 +1255,46 @@ lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *
     return ret;
 }
 
+
+/* does not log */
+static
+int
+dup_identity_check(const char *id, struct lys_ident *ident, uint32_t size)
+{
+    uint32_t i;
+
+    for (i = 0; i < size; i++) {
+        if (id == ident[i].name) {
+            /* name collision */
+            return EXIT_FAILURE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int
+dup_identities_check(const char *id, struct lys_module *module)
+{
+    struct lys_module *main;    
+    int i;
+
+    if (dup_identity_check(id, module->ident, module->ident_size)) {
+        LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "identity", id);
+        return EXIT_FAILURE;
+    }
+
+    /* check identity in submodules */
+    main = lys_main_module(module);
+    for (i = 0; i < main->inc_size && main->inc[i].submodule; ++i)
+    if (dup_identity_check(id, main->inc[i].submodule->ident, main->inc[i].submodule->ident_size)) {
+        LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "identity", id);
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
 /* does not log */
 int
 dup_typedef_check(const char *type, struct lys_tpdf *tpdf, int size)
@@ -1312,9 +1352,10 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, struct lys_module *modu
     int size;
     struct lys_tpdf *tpdf;
     struct lys_node *node;
+    struct lys_module *main;
 
     assert(id);
-
+    
     /* check id syntax */
     if (!(id[0] >= 'A' && id[0] <= 'Z') && !(id[0] >= 'a' && id[0] <= 'z') && id[0] != '_') {
         LOGVAL(LYE_INID, LY_VLOG_NONE, NULL, id, "invalid start character");
@@ -1348,6 +1389,7 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, struct lys_module *modu
         break;
     case LY_IDENT_TYPE:
         assert(module);
+        main = lys_main_module(module);
 
         /* check collision with the built-in types */
         if (!strcmp(id, "binary") || !strcmp(id, "bits") ||
@@ -1396,8 +1438,8 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, struct lys_module *modu
         }
 
         /* check submodule's top-level names */
-        for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
-            if (dup_typedef_check(id, module->inc[i].submodule->tpdf, module->inc[i].submodule->tpdf_size)) {
+        for (i = 0; i < main->inc_size && main->inc[i].submodule; i++) {
+            if (dup_typedef_check(id, main->inc[i].submodule->tpdf, main->inc[i].submodule->tpdf_size)) {
                 LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "typedef", id);
                 return EXIT_FAILURE;
             }
@@ -1423,6 +1465,7 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, struct lys_module *modu
         break;
     case LY_IDENT_FEATURE:
         assert(module);
+        main = lys_main_module(module);
 
         /* check feature name uniqness*/
         /* check features in the current module */
@@ -1432,8 +1475,8 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, struct lys_module *modu
         }
 
         /* and all its submodules */
-        for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
-            if (dup_feature_check(id, (struct lys_module *)module->inc[i].submodule)) {
+        for (i = 0; i < main->inc_size && main->inc[i].submodule; i++) {
+            if (dup_feature_check(id, (struct lys_module *)main->inc[i].submodule)) {
                 LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "feature", id);
                 return EXIT_FAILURE;
             }

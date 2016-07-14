@@ -311,6 +311,10 @@ yang_read_identity(struct lys_module *module, char *value)
     ret = &module->ident[module->ident_size];
     ret->name = lydict_insert_zc(module->ctx, value);
     ret->module = module;
+    if (dup_identities_check(ret->name, module)) {
+        lydict_remove(module->ctx, ret->name);
+        return NULL;
+    }
     module->ident_size++;
     return ret;
 }
