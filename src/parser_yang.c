@@ -31,6 +31,60 @@ yang_check_string(struct lys_module *module, const char **target, char *what, ch
     }
 }
 
+static int
+yang_check_typedef_identif(struct lys_node *root, struct lys_node *node, char *id)
+{
+    struct lys_node *child, *next;
+    int size;
+    struct lys_tpdf *tpdf;
+
+    if (root) {
+        node = root;
+    }
+
+    do {
+        LY_TREE_DFS_BEGIN(node, next, child) {
+            if (child->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_GROUPING | LYS_RPC | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF)) {
+                switch (child->nodetype) {
+                case LYS_CONTAINER:
+                    tpdf = ((struct lys_node_container *)child)->tpdf;
+                    size = ((struct lys_node_container *)child)->tpdf_size;
+                    break;
+                case LYS_LIST:
+                    tpdf = ((struct lys_node_list *)child)->tpdf;
+                    size = ((struct lys_node_list *)child)->tpdf_size;
+                    break;
+                case LYS_GROUPING:
+                    tpdf = ((struct lys_node_grp *)child)->tpdf;
+                    size = ((struct lys_node_grp *)child)->tpdf_size;
+                    break;
+                case LYS_RPC:
+                    tpdf = ((struct lys_node_rpc_action *)child)->tpdf;
+                    size = ((struct lys_node_rpc_action *)child)->tpdf_size;
+                    break;
+                case LYS_INPUT:
+                case LYS_OUTPUT:
+                    tpdf = ((struct lys_node_inout *)child)->tpdf;
+                    size = ((struct lys_node_inout *)child)->tpdf_size;
+                    break;
+                case LYS_NOTIF:
+                    tpdf = ((struct lys_node_notif *)child)->tpdf;
+                    size = ((struct lys_node_notif *)child)->tpdf_size;
+                    break;
+                default:
+                    size = 0;
+                    break;
+                }
+                if (size && dup_typedef_check(id, tpdf, size)) {
+                    LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "typedef", id);
+                    return EXIT_FAILURE;
+                }
+            } 
+        LY_TREE_DFS_END(node, next, child)}
+    } while (root && (node = node->next));
+    return EXIT_SUCCESS;
+}
+
 int
 yang_read_common(struct lys_module *module, char *value, enum yytokentype type)
 {
@@ -252,6 +306,10 @@ yang_read_identity(struct lys_module *module, char *value)
     ret = &module->ident[module->ident_size];
     ret->name = lydict_insert_zc(module->ctx, value);
     ret->module = module;
+    if (dup_identities_check(ret->name, module)) {
+        lydict_remove(module->ctx, ret->name);
+        return NULL;
+    }
     module->ident_size++;
     return ret;
 }
@@ -1218,11 +1276,14 @@ void *
 yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *value)
 {
     struct lys_tpdf *ret;
+    struct lys_node *root;
 
-    if (lyp_check_identifier(value, LY_IDENT_TYPE, module, parent)) {
+    root = (parent) ? NULL : lys_main_module(module)->data;
+    if (lyp_check_identifier(value, LY_IDENT_TYPE, module, parent) || yang_check_typedef_identif(root, parent, value)) {
         free(value);
         return NULL;
     }
+
     if (!parent) {
         ret = &module->tpdf[module->tpdf_size];
         module->tpdf_size++;
