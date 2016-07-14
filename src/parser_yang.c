@@ -76,7 +76,7 @@ yang_check_typedef_identif(struct lys_node *root, struct lys_node *node, char *i
                     size = 0;
                     break;
                 }
-                if (dup_typedef_check(id, tpdf, size)) {
+                if (size && dup_typedef_check(id, tpdf, size)) {
                     LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "typedef", id);
                     return EXIT_FAILURE;
                 }
