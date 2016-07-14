@@ -151,16 +151,20 @@ info_print_flags(struct lyout *out, uint16_t flags, uint16_t mask, int is_list)
 }
 
 static void
-info_print_if_feature(struct lyout *out, const char **iffeature, uint8_t iffeature_size)
+info_print_if_feature(struct lyout *out, const struct lys_module *module,
+                      struct lys_iffeature *iffeature, uint8_t iffeature_size)
 {
     int i;
 
     ly_print(out, "%-*s", INDENT_LEN, "If-feats: ");
 
     if (iffeature_size) {
-        ly_print(out, "%s\n", iffeature[0]);
+        ly_print_iffeature(out, module, &iffeature[0]);
+        ly_print(out, "\n");
         for (i = 1; i < iffeature_size; ++i) {
-            ly_print(out, "%*s%s\n", INDENT_LEN, "", iffeature[i]);
+            ly_print(out, "%*s", INDENT_LEN, "");
+            ly_print_iffeature(out, module, &iffeature[i]);
+            ly_print(out, "\n");
         }
     } else {
         ly_print(out, "\n");
@@ -722,7 +726,7 @@ info_print_feature_detail(struct lyout *out, const struct lys_feature *feat)
     info_print_text(out, feat->dsc, "Desc: ");
     info_print_text(out, feat->ref, "Reference: ");
     info_print_flags(out, feat->flags, LYS_STATUS_MASK | LYS_FENABLED, 0);
-    info_print_if_feature(out, feat->iffeature, feat->iffeature_size);
+    info_print_if_feature(out, feat->module, feat->iffeature, feat->iffeature_size);
 }
 
 static void
@@ -793,7 +797,7 @@ info_print_container(struct lyout *out, const struct lys_node *node)
     info_print_text(out, cont->ref, "Reference: ");
     info_print_flags(out, cont->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK, 0);
     info_print_text(out, cont->presence, "Presence: ");
-    info_print_if_feature(out, cont->iffeature, cont->iffeature_size);
+    info_print_if_feature(out, cont->module, cont->iffeature, cont->iffeature_size);
     info_print_when(out, cont->when);
     info_print_must(out, cont->must, cont->must_size);
     info_print_typedef(out, cont->tpdf, cont->tpdf_size);
@@ -818,7 +822,7 @@ info_print_choice(struct lyout *out, const struct lys_node *node)
     } else {
         ly_print(out, "\n");
     }
-    info_print_if_feature(out, choice->iffeature, choice->iffeature_size);
+    info_print_if_feature(out, choice->module, choice->iffeature, choice->iffeature_size);
     info_print_when(out, choice->when);
     info_print_nacmext(out, choice->nacm);
 
@@ -838,7 +842,7 @@ info_print_leaf(struct lyout *out, const struct lys_node *node)
     info_print_text(out, leaf->type.der->name, "Type: ");
     info_print_text(out, leaf->units, "Units: ");
     info_print_text(out, leaf->dflt, "Default: ");
-    info_print_if_feature(out, leaf->iffeature, leaf->iffeature_size);
+    info_print_if_feature(out, leaf->module, leaf->iffeature, leaf->iffeature_size);
     info_print_when(out, leaf->when);
     info_print_must(out, leaf->must, leaf->must_size);
     info_print_nacmext(out, leaf->nacm);
@@ -857,7 +861,7 @@ info_print_leaflist(struct lyout *out, const struct lys_node *node)
     info_print_text(out, llist->type.der->name, "Type: ");
     info_print_text(out, llist->units, "Units: ");
     info_print_list_constr(out, llist->min, llist->max);
-    info_print_if_feature(out, llist->iffeature, llist->iffeature_size);
+    info_print_if_feature(out, llist->module, llist->iffeature, llist->iffeature_size);
     info_print_when(out, llist->when);
     info_print_must(out, llist->must, llist->must_size);
     info_print_nacmext(out, llist->nacm);
@@ -874,7 +878,7 @@ info_print_list(struct lyout *out, const struct lys_node *node)
     info_print_text(out, list->ref, "Reference: ");
     info_print_flags(out, list->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK | LYS_USERORDERED, 1);
     info_print_list_constr(out, list->min, list->max);
-    info_print_if_feature(out, list->iffeature, list->iffeature_size);
+    info_print_if_feature(out, list->module, list->iffeature, list->iffeature_size);
     info_print_when(out, list->when);
     info_print_must(out, list->must, list->must_size);
     info_print_keys(out, list->keys, list->keys_size);
@@ -895,7 +899,7 @@ info_print_anyxml(struct lyout *out, const struct lys_node *node)
     info_print_text(out, axml->dsc, "Desc: ");
     info_print_text(out, axml->ref, "Reference: ");
     info_print_flags(out, axml->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK, 0);
-    info_print_if_feature(out, axml->iffeature, axml->iffeature_size);
+    info_print_if_feature(out, axml->module, axml->iffeature, axml->iffeature_size);
     info_print_when(out, axml->when);
     info_print_must(out, axml->must, axml->must_size);
     info_print_nacmext(out, axml->nacm);
@@ -927,7 +931,7 @@ info_print_case(struct lyout *out, const struct lys_node *node)
     info_print_text(out, cas->dsc, "Desc: ");
     info_print_text(out, cas->ref, "Reference: ");
     info_print_flags(out, cas->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK, 0);
-    info_print_if_feature(out, cas->iffeature, cas->iffeature_size);
+    info_print_if_feature(out, cas->module, cas->iffeature, cas->iffeature_size);
     info_print_when(out, cas->when);
     info_print_nacmext(out, cas->nacm);
 
@@ -970,7 +974,7 @@ info_print_notif(struct lyout *out, const struct lys_node *node)
     info_print_text(out, ntf->dsc, "Desc: ");
     info_print_text(out, ntf->ref, "Reference: ");
     info_print_flags(out, ntf->flags, LYS_STATUS_MASK, 0);
-    info_print_if_feature(out, ntf->iffeature, ntf->iffeature_size);
+    info_print_if_feature(out, ntf->module, ntf->iffeature, ntf->iffeature_size);
     info_print_typedef(out, ntf->tpdf, ntf->tpdf_size);
     info_print_nacmext(out, ntf->nacm);
 
@@ -987,7 +991,7 @@ info_print_rpc(struct lyout *out, const struct lys_node *node)
     info_print_text(out, rpc->dsc, "Desc: ");
     info_print_text(out, rpc->ref, "Reference: ");
     info_print_flags(out, rpc->flags, LYS_STATUS_MASK, 0);
-    info_print_if_feature(out, rpc->iffeature, rpc->iffeature_size);
+    info_print_if_feature(out, rpc->module, rpc->iffeature, rpc->iffeature_size);
     info_print_typedef(out, rpc->tpdf, rpc->tpdf_size);
     info_print_nacmext(out, rpc->nacm);
 
@@ -1004,7 +1008,7 @@ info_print_action(struct lyout *out, const struct lys_node *node)
     info_print_text(out, act->dsc, "Desc: ");
     info_print_text(out, act->ref, "Reference: ");
     info_print_flags(out, act->flags, LYS_STATUS_MASK, 0);
-    info_print_if_feature(out, act->iffeature, act->iffeature_size);
+    info_print_if_feature(out, act->module, act->iffeature, act->iffeature_size);
     info_print_typedef(out, act->tpdf, act->tpdf_size);
     info_print_nacmext(out, act->nacm);
 

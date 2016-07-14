@@ -213,18 +213,16 @@ yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct u
 
     if (type == FEATURE_KEYWORD) {
         f = (struct lys_feature *) ptr;
-        f->iffeature[f->iffeature_size] = exp;
-        ret = unres_schema_add_node(module, unres, (char *)exp, UNRES_IFFEAT, (struct lys_node *)f);
+        ret = resolve_iffeature_compile(&f->iffeature[f->iffeature_size], exp, (struct lys_node *)f, unres);
         f->iffeature_size++;
     } else {
         n = (struct lys_node *) ptr;
-        n->iffeature[n->iffeature_size] = exp;
-        ret = unres_schema_add_node(module, unres, (char *)exp, UNRES_IFFEAT, n);
+        ret = resolve_iffeature_compile(&n->iffeature[n->iffeature_size], exp, n, unres);
         n->iffeature_size++;
     }
+    lydict_remove(module->ctx, exp);
 
-    if (ret == -1) {
-
+    if (ret) {
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;

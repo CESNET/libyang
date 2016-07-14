@@ -92,25 +92,24 @@ read_yin_subnode(struct ly_ctx *ctx, struct lyxml_elem *node, const char *name)
 
 /* logs directly */
 static int
-fill_yin_iffeature(struct lys_node *parent, struct lyxml_elem *yin, const char **iffeat_expr, struct unres_schema *unres)
+fill_yin_iffeature(struct lys_node *parent, struct lyxml_elem *yin, struct lys_iffeature *iffeat, struct unres_schema *unres)
 {
     int r;
     const char *value;
 
     GETVAL(value, yin, "name");
     if (!(value = transform_schema2json(parent->module, value))) {
+error:
         return EXIT_FAILURE;
     }
 
-    *iffeat_expr = value;
-
-    r = unres_schema_add_node(parent->module, unres, (char *)value, UNRES_IFFEAT, parent);
-    if (!r) {
-        return EXIT_SUCCESS;
+    r = resolve_iffeature_compile(iffeat, value, parent, unres);
+    lydict_remove(parent->module->ctx, value);
+    if (r) {
+        return EXIT_FAILURE;
     }
 
-error:
-    return EXIT_FAILURE;
+    return EXIT_SUCCESS;
 }
 
 /* logs directly */

@@ -960,16 +960,20 @@ parse_schema_json_predicate(const char *id, const char **name, int *nam_len, con
  * @param[in] feat_name Feature name to resolve.
  * @param[in] len Length of \p feat_name.
  * @param[in] node Node with the if-feature expression.
+ * @param[out] feature Pointer to be set to point to the feature definition, if feature not found
+ * (return code 1), the pointer is untouched.
  *
- * @return 0 on disabled, 1 on enabled, 2 on forward reference, -1 on error.
+ * @return 0 on success, 1 on forward reference, -1 on error.
  */
 static int
-resolve_iffeature_feature(const char *feat_name, uint16_t len, const struct lys_node *node)
+resolve_feature(const char *feat_name, uint16_t len, const struct lys_node *node, struct lys_feature **feature)
 {
     char *str;
     const char *mod_name, *name;
     int mod_name_len, nam_len, i, j;
     const struct lys_module *module;
+
+    assert(feature);
 
     /* check prefix */
     if ((i = parse_node_identifier(feat_name, &mod_name, &mod_name_len, &name, &nam_len)) < 1) {
@@ -984,6 +988,21 @@ resolve_iffeature_feature(const char *feat_name, uint16_t len, const struct lys_
         return -1;
     }
 
+    if (module != node->module && module == lys_node_module(node)) {
+        /* first, try to search directly in submodule where the feature was mentioned */
+        for (j = 0; j < node->module->features_size; j++) {
+            if (!strncmp(name, node->module->features[j].name, nam_len) && !node->module->features[j].name[nam_len]) {
+                /* check status */
+                if (lyp_check_status(node->flags, lys_node_module(node), node->name, node->module->features[j].flags,
+                                     node->module->features[j].module, node->module->features[j].name, node)) {
+                    return -1;
+                }
+                *feature = &node->module->features[j];
+                return 0;
+            }
+        }
+    }
+
     /* search in the identified module ... */
     for (j = 0; j < module->features_size; j++) {
         if (!strncmp(name, module->features[j].name, nam_len) && !module->features[j].name[nam_len]) {
@@ -992,7 +1011,8 @@ resolve_iffeature_feature(const char *feat_name, uint16_t len, const struct lys_
                                  module->features[j].module, module->features[j].name, node)) {
                 return -1;
             }
-            return (module->features[j].flags & LYS_FENABLED ? 1 : 0);
+            *feature = &module->features[j];
+            return 0;
         }
     }
     /* ... and all its submodules */
@@ -1011,7 +1031,8 @@ resolve_iffeature_feature(const char *feat_name, uint16_t len, const struct lys_
                                      module->inc[i].submodule->features[j].name, node)) {
                     return -1;
                 }
-                return (module->inc[i].submodule->features[j].flags & LYS_FENABLED ? 1 : 0);
+                *feature = &module->inc[i].submodule->features[j];
+                return 0;
             }
         }
     }
@@ -1020,175 +1041,359 @@ resolve_iffeature_feature(const char *feat_name, uint16_t len, const struct lys_
     str = strndup(feat_name, len);
     LOGVAL(LYE_INRESOLV, LY_VLOG_NONE, NULL, "feature", str);
     free(str);
-    return 2;
+    return 1;
 }
 
+/*
+ * @return
+ *  -  0 if enabled
+ *  -  1 if disabled
+ *  - -1 if not usable by its if-feature expression
+ */
 static int
-resolve_iffeature_factor(const char *factor, uint16_t len, const struct lys_node *node)
+resolve_feature_value(const struct lys_feature *feat)
 {
-    uint16_t cur_len;
-    int ret;
+    int i;
 
-    if (isspace(factor[0])) {
-        LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, factor[0], factor);
-        return -1;
-    }
-
-    if ((len > 4) && (factor[0] == 'n') && (factor[1] == 'o') && (factor[2] == 't') && isspace(factor[3])) {
-        /* not-keyword sep if-feature-factor */
-        cur_len = 4;
-        while (isspace(factor[cur_len])) {
-            ++cur_len;
-            if (cur_len > len) {
-                LOGVAL(LYE_EOF, LY_VLOG_NONE, NULL);
-                return -1;
-            }
-        }
-
-        ret = resolve_iffeature_factor(factor + cur_len, len - cur_len, node);
-        if ((ret == -1) || (ret == 2)) {
-            return ret;;
-        }
-        return !ret;
-    } else if (factor[0] == '(') {
-        /* "(" sep if-feature-expr sep ")" */
-        if (factor[len - 1] != ')') {
-            LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, factor[len - 1], &factor[len - 1]);
+    for (i = 0; i < feat->iffeature_size; i++) {
+        if (resolve_iffeature(&feat->iffeature[i])) {
             return -1;
         }
-        cur_len = 1;
-        while (isspace(factor[cur_len])) {
-            ++cur_len;
-        }
-
-        --len;
-        while (isspace(factor[len - 1])) {
-            --len;
-        }
-
-        return resolve_iffeature_expr(factor + cur_len, len - cur_len, node);
-    } else {
-        /* identifier-ref-arg */
-        return resolve_iffeature_feature(factor, len, node);
     }
+
+    return feat->flags & LYS_FENABLED ? 0 : 1;
 }
 
 static int
-resolve_iffeature_term(const char *term, uint16_t len, const struct lys_node *node)
+resolve_iffeature_recursive(struct lys_iffeature *expr, int *index_e, int *index_f)
 {
-    uint16_t cur_len, factor_len, and_len;
-    int ret1, ret2;
+    uint8_t op;
+    int rc, a, b;
 
-    if (isspace(term[0])) {
-        LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, term[0], term);
-        return -1;
-    } else if (term[0] == '(') {
-        return resolve_iffeature_factor(term, len, node);
-    }
+    op = iff_getop(expr->expr, *index_e);
+    (*index_e)++;
 
-    cur_len = 0;
-    factor_len = 0;
-    and_len = 0;
-    while (cur_len < len) {
-        ++cur_len;
-        if ((cur_len > 1) && isspace(term[cur_len - 2]) && !and_len && (term[cur_len - 1] == 'a')) {
-            and_len = 1;
-        } else if ((and_len == 1) && (term[cur_len - 1] == 'n')) {
-            and_len = 2;
-        } else if ((and_len == 2) && (term[cur_len - 1] == 'd')) {
-            and_len = 3;
-        } else if ((and_len == 3) && isspace(term[cur_len - 1])) {
-            and_len = 4;
-            break;
-        } else if (!isspace(term[cur_len - 1])) {
-            factor_len = cur_len;
+    switch (op) {
+    case LYS_IFF_F:
+        /* resolve feature */
+        return resolve_feature_value(expr->features[(*index_f)++]);
+    case LYS_IFF_NOT:
+        rc = resolve_iffeature_recursive(expr, index_e, index_f);
+        if (rc == -1) {
+            /* one of the referenced feature is hidden by its if-feature,
+             * so this if-feature expression is always false */
+            return -1;
+        } else {
+            /* invert result */
+            return rc ? 0 : 1;
+        }
+    case LYS_IFF_AND:
+    case LYS_IFF_OR:
+        a = resolve_iffeature_recursive(expr, index_e, index_f);
+        b = resolve_iffeature_recursive(expr, index_e, index_f);
+        if (a == -1 || b == -1) {
+            /* one of the referenced feature is hidden by its if-feature,
+             * so this if-feature expression is always false */
+            return -1;
+        } else if (op == LYS_IFF_AND) {
+            return a && b;
+        } else { /* LYS_IFF_OR */
+            return a || b;
         }
     }
 
-    if (and_len == 4) {
-        /* if-feature-factor sep and-keyword sep if-feature-term */
-        while (isspace(term[cur_len])) {
-            ++cur_len;
-            if (cur_len > len) {
-                LOGVAL(LYE_EOF, LY_VLOG_NONE, NULL);
-                return -1;
+    return -1;
+}
+
+int
+resolve_iffeature(struct lys_iffeature *expr)
+{
+    int rc = -1;
+    int index_e = 0, index_f = 0;
+
+    if (expr->expr) {
+        rc = resolve_iffeature_recursive(expr, &index_e, &index_f);
+    }
+    return (rc == 0) ? 0 : 1;
+}
+
+struct iff_stack {
+    int size;
+    int index;     /* first empty item */
+    uint8_t *stack;
+};
+
+static int
+iff_stack_push(struct iff_stack *stack, uint8_t value)
+{
+    if (stack->index == stack->size) {
+        stack->size += 4;
+        stack->stack = ly_realloc(stack->stack, stack->size * sizeof *stack->stack);
+        if (!stack->stack) {
+            LOGMEM;
+            stack->size = 0;
+            return EXIT_FAILURE;
+        }
+    }
+
+    stack->stack[stack->index++] = value;
+    return EXIT_SUCCESS;
+}
+
+static uint8_t
+iff_stack_pop(struct iff_stack *stack)
+{
+    stack->index--;
+    return stack->stack[stack->index];
+}
+
+static void
+iff_stack_clean(struct iff_stack *stack)
+{
+    stack->size = 0;
+    free(stack->stack);
+}
+
+static void
+iff_setop(uint8_t *list, uint8_t op, int pos)
+{
+    uint8_t *item;
+    uint8_t mask = 3;
+
+    assert(pos >= 0);
+    assert(op <= 3); /* max 2 bits */
+
+    item = &list[pos / 4];
+    mask = mask << 2 * (pos % 4);
+    *item = (*item) & ~mask;
+    *item = (*item) | (op << 2 * (pos % 4));
+}
+
+uint8_t
+iff_getop(uint8_t *list, int pos)
+{
+    uint8_t *item;
+    uint8_t mask = 3, result;
+
+    assert(pos >= 0);
+
+    item = &list[pos / 4];
+    result = (*item) & (mask << 2 * (pos % 4));
+    return result >> 2 * (pos % 4);
+}
+
+#define LYS_IFF_LP 0x04 /* ( */
+#define LYS_IFF_RP 0x08 /* ) */
+
+void
+resolve_iffeature_getsizes(struct lys_iffeature *iffeat, unsigned int *expr_size, unsigned int *feat_size)
+{
+    unsigned int e = 0, f = 0, r = 0;
+    uint8_t op;
+
+    assert(iffeat);
+
+    if (!iffeat->expr) {
+        goto result;
+    }
+
+    do {
+        op = iff_getop(iffeat->expr, e++);
+        switch (op) {
+        case LYS_IFF_NOT:
+            if (!r) {
+                r += 1;
             }
+            break;
+        case LYS_IFF_AND:
+        case LYS_IFF_OR:
+            if (!r) {
+                r += 2;
+            } else {
+                r += 1;
+            }
+            break;
+        case LYS_IFF_F:
+            f++;
+            if (r) {
+                r--;
+            }
+            break;
         }
-        ret1 = resolve_iffeature_factor(term, factor_len, node);
-        if ((ret1 == -1) || (ret1 == 2)) {
-            return ret1;
-        }
-        ret2 = resolve_iffeature_term(term + cur_len, len - cur_len, node);
-        if ((ret2 == -1) || (ret2 == 2)) {
-            return ret2;
-        }
-        return ret1 && ret2;
+    } while(r);
 
-    } else {
-        /* if-feature-factor */
-        if (and_len) {
-            factor_len = cur_len;
-        }
-        return resolve_iffeature_factor(term, factor_len, node);
+result:
+    if (expr_size) {
+        *expr_size = e;
+    }
+    if (feat_size) {
+        *feat_size = f;
     }
 }
 
 int
-resolve_iffeature_expr(const char *expr, uint16_t len, const struct lys_node *node)
+resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, struct lys_node *node,
+                          struct unres_schema *unres)
 {
-    uint16_t cur_len, term_len, or_len;
-    int ret1, ret2;
+    const char *c = value;
+    int r, rc = EXIT_FAILURE;
+    int i, j, last_not;
+    unsigned int f_size = 0, expr_size = 0;
+    uint8_t op;
+    struct iff_stack stack = {0, 0, NULL};
 
-    if (isspace(expr[0])) {
-        LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, expr[0], expr);
-        return -1;
-    } else if (expr[0] == '(') {
-        return resolve_iffeature_factor(expr, len, node);
+    assert(c);
+
+    if (isspace(c[0])) {
+        LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, c[0], c);
+        return EXIT_FAILURE;
     }
 
-    cur_len = 0;
-    term_len = 0;
-    or_len = 0;
-    while (cur_len < len) {
-        ++cur_len;
-        if ((cur_len > 1) && isspace(expr[cur_len - 2]) && !or_len && (expr[cur_len - 1] == 'o')) {
-            or_len = 1;
-        } else if ((or_len == 1) && (expr[cur_len - 1] == 'r')) {
-            or_len = 2;
-        } else if ((or_len == 2) && isspace(expr[cur_len - 1])) {
-            or_len = 3;
-            break;
-        } else if (!isspace(expr[cur_len - 1])) {
-            term_len = cur_len;
+    /* pre-parse the expression to get sizes for arrays, also do some syntax checks of the expression */
+    for (i = j = last_not = 0; c[i]; i++) {
+        if (c[i] == '(') {
+            j++;
+            continue;
+        } else if (c[i] == ')') {
+            j--;
+            continue;
+        } else if (isspace(c[i])) {
+            continue;
+        }
+
+        if (!strncmp(&c[i], "not", r = 3) || !strncmp(&c[i], "and", r = 3) || !strncmp(&c[i], "or", r = 2)) {
+            if (c[i + r] == '\0') {
+                LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, c[i], c);
+                return EXIT_FAILURE;
+            } else if (!isspace(c[i + r])) {
+                /* feature name starting with the not/and/or */
+                last_not = 0;
+                f_size++;
+            } else if (c[i] == 'n') { /* not operation */
+                if (last_not) {
+                    /* double not */
+                    expr_size = expr_size - 2;
+                    last_not = 0;
+                } else {
+                    last_not = 1;
+                }
+            } else {
+                /* not a not operation */
+                last_not = 0;
+            }
+            i += r;
+        } else {
+            f_size++;
+            last_not = 0;
+        }
+        expr_size++;
+
+        while (!isspace(c[i])) {
+            if (!c[i] || c[i] == ')') {
+                i--;
+                break;
+            }
+            i++;
         }
     }
+    if (j) {
+        /* not matching count of ( and ) */
+        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "if-feature");
+        return EXIT_FAILURE;
+    }
 
-    if (or_len == 3) {
-        /* if-feature-term sep or-keyword sep if-feature-expr */
-        while (isspace(expr[cur_len])) {
-            ++cur_len;
-            if (cur_len > len) {
-                LOGVAL(LYE_EOF, LY_VLOG_NONE, NULL);
-                return -1;
+    /* allocate the memory */
+    iffeat_expr->expr = calloc((j = (expr_size / 4) + ((expr_size % 4) ? 1 : 0)), sizeof *iffeat_expr->expr);
+    iffeat_expr->features = malloc(f_size * sizeof *iffeat_expr->features);
+    stack.size = expr_size;
+    stack.stack = malloc(expr_size * sizeof *stack.stack);
+    if (!stack.stack || !iffeat_expr->expr || !iffeat_expr->features) {
+        LOGMEM;
+        goto error;
+    }
+    f_size--; expr_size--; /* used as indexes from now */
+
+    for (i--; i >= 0; i--) {
+        if (c[i] == ')') {
+            /* push it on stack */
+            iff_stack_push(&stack, LYS_IFF_RP);
+            continue;
+        } else if (c[i] == '(') {
+            /* pop from the stack into result all operators until ) */
+            while((op = iff_stack_pop(&stack)) != LYS_IFF_RP) {
+                iff_setop(iffeat_expr->expr, op, expr_size--);
+            }
+            continue;
+        } else if (isspace(c[i])) {
+            continue;
+        }
+
+        /* end operator or operand -> find beginning and get what is it */
+        j = i + 1;
+        while (i >= 0 && !isspace(c[i]) && c[i] != '(') {
+            i--;
+        }
+        i++; /* get back by one step */
+
+        if (!strncmp(&c[i], "not ", 4)) {
+            if (stack.index && stack.stack[stack.index - 1] == LYS_IFF_NOT) {
+                /* double not */
+                iff_stack_pop(&stack);
+            } else {
+                /* not has the highest priority, so do not pop from the stack
+                 * as in case of AND and OR */
+                iff_stack_push(&stack, LYS_IFF_NOT);
+            }
+        } else if (!strncmp(&c[i], "and ", 4)) {
+            /* as for OR - pop from the stack all operators with the same or higher
+             * priority and store them to the result, then push the AND to the stack */
+            while (stack.index && stack.stack[stack.index - 1] <= LYS_IFF_AND) {
+                op = iff_stack_pop(&stack);
+                iff_setop(iffeat_expr->expr, op, expr_size--);
+            }
+            iff_stack_push(&stack, LYS_IFF_AND);
+        } else if (!strncmp(&c[i], "or ", 3)) {
+            while (stack.index && stack.stack[stack.index - 1] <= LYS_IFF_OR) {
+                op = iff_stack_pop(&stack);
+                iff_setop(iffeat_expr->expr, op, expr_size--);
+            }
+            iff_stack_push(&stack, LYS_IFF_OR);
+        } else {
+            /* feature name, length is j - i */
+
+            /* add it to the result */
+            iff_setop(iffeat_expr->expr, LYS_IFF_F, expr_size--);
+
+            /* now get the link to the feature definition. Since it can be
+             * forward referenced, we have hack for unres - until resolved,
+             * the feature name is stored instead of link to the lys_feature */
+            iffeat_expr->features[f_size] = (void*)strndup(&c[i], j - i);
+            r = unres_schema_add_node(node->module, unres, &iffeat_expr->features[f_size], UNRES_IFFEAT, node);
+            f_size--;
+
+            if (r == -1) {
+                goto error;
             }
         }
-        ret1 = resolve_iffeature_term(expr, term_len, node);
-        if ((ret1 == -1) || (ret1 == 2)) {
-            return ret1;
-        }
-        ret2 = resolve_iffeature_expr(expr + cur_len, len - cur_len, node);
-        if ((ret2 == -1) || (ret2 == 2)) {
-            return ret2;
-        }
-        return ret1 || ret2;
-
-    } else {
-        /* if-feature-term */
-        if (or_len) {
-            term_len = cur_len;
-        }
-        return resolve_iffeature_term(expr, term_len, node);
     }
+    while (stack.index) {
+        op = iff_stack_pop(&stack);
+        iff_setop(iffeat_expr->expr, op, expr_size--);
+    }
+
+    if (++expr_size || ++f_size) {
+        /* not all expected operators and operands found */
+        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "if-feature");
+        rc = EXIT_FAILURE;
+    } else {
+        rc = EXIT_SUCCESS;
+    }
+
+error:
+    /* cleanup */
+    iff_stack_clean(&stack);
+
+    return rc;
 }
 
 /**
@@ -4728,13 +4933,12 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         break;
     case UNRES_IFFEAT:
         node = str_snode;
-        expr = item;
+        expr = *((const char **)item);
 
-        rc = resolve_iffeature_expr(expr, strlen(expr), node);
-        if (rc == 2) {
-            rc = EXIT_FAILURE;
-        } else if (rc == 1) {
-            rc = EXIT_SUCCESS;
+        rc = resolve_feature(expr, strlen(expr), node, item);
+        if (!rc) {
+            /* success */
+            free((char *)expr);
         }
         break;
     case UNRES_USES:
@@ -5059,7 +5263,7 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
  * @param[in] type Type of the old unresolved item.
  * @param[in] new_item New item to use in the duplicate.
  *
- * @return EXIT_SUCCESS on success, -1 on error.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE if item is not in unres, -1 on error.
  */
 int
 unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, void *new_item)
@@ -5071,7 +5275,7 @@ unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item,
     i = unres_schema_find(unres, item, type);
 
     if (i == -1) {
-        return -1;
+        return EXIT_FAILURE;
     }
 
     if ((type == UNRES_TYPE_LEAFREF) || (type == UNRES_USES) || (type == UNRES_TYPE_DFLT) || (type == UNRES_IFFEAT)) {

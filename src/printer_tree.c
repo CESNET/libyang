@@ -145,7 +145,8 @@ tree_print_type(struct lyout *out, const struct lys_type *type)
 }
 
 static void
-tree_print_features(struct lyout *out, const char **iffeature, uint8_t iffeature_size)
+tree_print_features(struct lyout *out, const struct lys_module *module,
+                    struct lys_iffeature *iffeature, uint8_t iffeature_size)
 {
     int i;
 
@@ -158,7 +159,7 @@ tree_print_features(struct lyout *out, const char **iffeature, uint8_t iffeature
         if (i > 0) {
             ly_print(out, ",");
         }
-        ly_print(out, "%s", iffeature[i]);
+        ly_print_iffeature(out, module, &iffeature[i]);
     }
     ly_print(out, "}?");
 }
@@ -223,7 +224,7 @@ tree_print_container(struct lyout *out, const struct lys_module *module, int lev
 
     ly_print(out, "%s%s", cont->name, (cont->presence ? "!" : ""));
 
-    tree_print_features(out, cont->iffeature, cont->iffeature_size);
+    tree_print_features(out, module, cont->iffeature, cont->iffeature_size);
 
     ly_print(out, "\n");
 
@@ -281,7 +282,7 @@ tree_print_choice(struct lyout *out, const struct lys_module *module, int level,
         ly_print(out, " <%s>", choice->dflt->name);
     }
 
-    tree_print_features(out, choice->iffeature, choice->iffeature_size);
+    tree_print_features(out, module, choice->iffeature, choice->iffeature_size);
 
     ly_print(out, "\n");
 
@@ -322,7 +323,7 @@ tree_print_case(struct lyout *out, const struct lys_module *module, int level, c
 
     ly_print(out, "%s)", cas->name);
 
-    tree_print_features(out, cas->iffeature, cas->iffeature_size);
+    tree_print_features(out, module, cas->iffeature, cas->iffeature_size);
 
     ly_print(out, "\n");
 
@@ -379,7 +380,7 @@ tree_print_anyxml(struct lyout *out, const struct lys_module *module, char *inde
     ly_print(out, "%s%s%*sanyxml", anyxml->name, (anyxml->flags & LYS_MAND_TRUE ? " " : "?"),
             3 + (int)((max_name_len - strlen(anyxml->name)) - prefix_len), "   ");
 
-    tree_print_features(out, anyxml->iffeature, anyxml->iffeature_size);
+    tree_print_features(out, module, anyxml->iffeature, anyxml->iffeature_size);
 
     ly_print(out, "\n");
 }
@@ -437,7 +438,7 @@ tree_print_leaf(struct lyout *out, const struct lys_module *module, char *indent
         ly_print(out, " <%s>", leaf->dflt);
     }
 
-    tree_print_features(out, leaf->iffeature, leaf->iffeature_size);
+    tree_print_features(out, module, leaf->iffeature, leaf->iffeature_size);
 
     ly_print(out, "\n");
 }
@@ -471,7 +472,7 @@ tree_print_leaflist(struct lyout *out, const struct lys_module *module, char *in
 
     tree_print_type(out, &leaflist->type);
 
-    tree_print_features(out, leaflist->iffeature, leaflist->iffeature_size);
+    tree_print_features(out, module, leaflist->iffeature, leaflist->iffeature_size);
 
     ly_print(out, "\n");
 }
@@ -512,7 +513,7 @@ tree_print_list(struct lyout *out, const struct lys_module *module, int level, c
         ly_print(out, "%s%s", list->keys[i]->name, i + 1 < list->keys_size ? " " : "]");
     }
 
-    tree_print_features(out, list->iffeature, list->iffeature_size);
+    tree_print_features(out, module, list->iffeature, list->iffeature_size);
 
     ly_print(out, "\n");
 
@@ -562,7 +563,7 @@ tree_print_rpc_action(struct lyout *out, const struct lys_module *module, int le
     ly_print(out, "%s%s---x %s", indent,
             (rpc->flags & LYS_STATUS_DEPRC ? "x" : (rpc->flags & LYS_STATUS_OBSLT ? "o" : "+")), rpc->name);
 
-    tree_print_features(out, rpc->iffeature, rpc->iffeature_size);
+    tree_print_features(out, module, rpc->iffeature, rpc->iffeature_size);
 
     ly_print(out, "\n");
 
@@ -601,7 +602,7 @@ tree_print_notif(struct lyout *out, const struct lys_module *module, int level, 
             (notif->flags & LYS_STATUS_DEPRC ? "x" : (notif->flags & LYS_STATUS_OBSLT ? "o" : "+")),
             notif->name);
 
-    tree_print_features(out, notif->iffeature, notif->iffeature_size);
+    tree_print_features(out, module, notif->iffeature, notif->iffeature_size);
 
     ly_print(out, "\n");
 

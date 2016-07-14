@@ -541,6 +541,19 @@ struct lys_type {
      */
 };
 
+#define LYS_IFF_NOT  0x00
+#define LYS_IFF_AND  0x01
+#define LYS_IFF_OR   0x02
+#define LYS_IFF_F    0x03
+
+/**
+ * @brief Compiled if-feature expression structure
+ */
+struct lys_iffeature {
+    uint8_t *expr;                   /**< 2bits array describing the if-feature expression in prefix format */
+    struct lys_feature **features;   /**< array of pointers to the features used in expression */
+};
+
 /**
  * @defgroup nacmflags NACM flags
  * @ingroup schematree
@@ -659,7 +672,7 @@ struct lys_node {
                                           node in the list. */
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    const char **iffeature;          /**< array of if-feature expressions */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 };
 
@@ -690,7 +703,7 @@ struct lys_node_container {
                                           node in the list. */
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    const char **iffeature;          /**< array of if-feature expressions */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific container's data */
@@ -731,7 +744,7 @@ struct lys_node_choice {
                                           node in the list. */
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    const char **iffeature;          /**< array of if-feature expressions */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific choice's data */
@@ -772,7 +785,7 @@ struct lys_node_leaf {
                                           node in the list. */
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    const char **iffeature;          /**< array of if-feature expressions */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific leaf's data */
@@ -819,7 +832,7 @@ struct lys_node_leaflist {
                                           node in the list. */
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    const char **iffeature;          /**< array of if-feature expressions */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific leaf-list's data */
@@ -862,7 +875,7 @@ struct lys_node_list {
                                           node in the list. */
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    const char **iffeature;          /**< array of if-feature expressions */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific list's data */
@@ -911,7 +924,7 @@ struct lys_node_anyxml {
                                           node in the list. */
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    const char **iffeature;          /**< array of if-feature expressions */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific anyxml's data */
@@ -951,7 +964,7 @@ struct lys_node_uses {
                                           node in the list. */
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    const char **iffeature;          /**< array of if-feature expressions */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific uses's data */
@@ -998,7 +1011,7 @@ struct lys_node_grp {
                                           node in the list. */
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    const char **iffeature;          /**< array of if-feature expressions */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific grouping's data */
@@ -1032,7 +1045,7 @@ struct lys_node_case {
                                           node in the list. */
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    const char **iffeature;          /**< array of if-feature expressions */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific case's data */
@@ -1097,7 +1110,7 @@ struct lys_node_notif {
                                           node in the list. */
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    const char **iffeature;          /**< array of if-feature expressions */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific rpc's data */
@@ -1129,7 +1142,7 @@ struct lys_node_rpc_action {
                                           node in the list. */
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    const char **iffeature;          /**< array of if-feature expressions */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
     /* specific rpc's data */
@@ -1173,7 +1186,7 @@ struct lys_node_augment {
 
     /* again compatible members with ::lys_node */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    const char **iffeature;          /**< array of if-feature expressions */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
 
 };
@@ -1327,7 +1340,7 @@ struct lys_feature {
     struct lys_module *module;       /**< link to the features's data model (mandatory) */
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    const char **iffeature;          /**< array of if-feature expressions */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
 };
 
 /**
@@ -1464,9 +1477,9 @@ int lys_features_state(const struct lys_module *module, const char *feature);
  * - 1 to check if-feature in all ascendant schema nodes
  * - 2 to check if-feature in all ascendant schema nodes until there a node having an instance in a data tree
  * @return - NULL if enabled,
- * - pointer to the unsatisfied (or incorrect) if-feature expression if disabled (or on error).
+ * - pointer to the node with the unsatisfied (disabling) if-feature expression.
  */
-const char *lys_is_disabled(const struct lys_node *node, int recursive);
+const struct lys_node *lys_is_disabled(const struct lys_node *node, int recursive);
 
 /**
  * @brief Get next schema tree (sibling) node element that can be instantiated in a data tree. Returned node can

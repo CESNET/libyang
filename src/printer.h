@@ -49,6 +49,7 @@ struct lyout {
 int ly_print(struct lyout *out, const char *format, ...);
 void ly_print_flush(struct lyout *out);
 int ly_write(struct lyout *out, const char *buf, size_t count);
+int ly_print_iffeature(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr);
 
 int yang_print_model(struct lyout *out, const struct lys_module *module);
 int yin_print_model(struct lyout *out, const struct lys_module *module);

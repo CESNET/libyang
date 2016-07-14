@@ -134,6 +134,75 @@ ly_write(struct lyout *out, const char *buf, size_t count)
 }
 
 static int
+write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr, int *index_e, int *index_f)
+{
+    int count = 0, brackets_flag = *index_e;
+    uint8_t op;
+
+    op = iff_getop(expr->expr, *index_e);
+    (*index_e)++;
+
+    switch (op) {
+    case LYS_IFF_F:
+        if (lys_main_module(expr->features[*index_f]->module) != lys_main_module(module)) {
+            count += ly_print(out, "%s:", transform_module_name2import_prefix(module, lys_main_module(expr->features[*index_f]->module)->name));
+        }
+        count += ly_print(out, expr->features[*index_f]->name);
+        (*index_f)++;
+        break;
+    case LYS_IFF_NOT:
+        op = iff_getop(expr->expr, *index_e);
+        if (op == LYS_IFF_F) {
+            /* negation about sole feature */
+            brackets_flag = 0;
+        } else {
+            /* negation around expression */
+            brackets_flag = 1;
+        }
+
+        count += ly_print(out, "not ");
+        if (brackets_flag) {
+            count += ly_print(out, "(");
+        }
+        count += write_iff(out, module, expr, index_e, index_f);
+        if (brackets_flag) {
+                count += ly_print(out, ")");
+        }
+        break;
+    case LYS_IFF_AND:
+    case LYS_IFF_OR:
+        if (brackets_flag && op == LYS_IFF_AND) {
+            /* AND does not need brackets */
+            brackets_flag = 0;
+        }
+
+        if (brackets_flag) {
+            count += ly_print(out, "(");
+        }
+        count += write_iff(out, module, expr, index_e, index_f);
+        count += ly_print(out, " %s ", op == LYS_IFF_OR ? "or" : "and");
+        count += write_iff(out, module, expr, index_e, index_f);
+        if (brackets_flag) {
+            count += ly_print(out, ")");
+        }
+    }
+
+    return count;
+}
+
+int
+ly_print_iffeature(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr)
+{
+    int index_e = 0, index_f = 0;
+
+    if (expr->expr) {
+        return write_iff(out, module, expr, &index_e, &index_f);
+    }
+
+    return 0;
+}
+
+static int
 lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
 {
     int ret;

@@ -577,7 +577,7 @@ test_lys_is_disabled(void **state)
     (void) state; /* unused */
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     const struct lys_module *module;
-    const char *iffeature = NULL;
+    const struct lys_node *node = NULL;
     int rc;
 
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
@@ -585,20 +585,20 @@ test_lys_is_disabled(void **state)
         fail();
     }
 
-    iffeature = lys_is_disabled(module->data->child, 2);
-    if (!iffeature) {
+    node = lys_is_disabled(module->data->child, 2);
+    if (!node) {
         fail();
     }
 
-    assert_string_equal("bar", iffeature);
+    assert_string_equal("/a:top", node->name);
 
     rc = lys_features_enable(module, "bar");
     if (rc) {
         fail();
     }
 
-    iffeature = lys_is_disabled(module->data->child, 2);
-    if (iffeature) {
+    node = lys_is_disabled(module->data->child, 2);
+    if (node) {
         fail();
     }
 }

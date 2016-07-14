@@ -97,7 +97,15 @@ int parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len
 int parse_schema_json_predicate(const char *id, const char **name, int *nam_len, const char **value, int *val_len,
                                 int *has_predicate);
 
-int resolve_iffeature_expr(const char *expr, uint16_t len, const struct lys_node *node);
+/**
+ * @param[in] expr compiled if-feature expression
+ * @return 0 if enabled, 1 if disabled
+ */
+int resolve_iffeature(struct lys_iffeature *expr);
+void resolve_iffeature_getsizes(struct lys_iffeature *iffeat, unsigned int *expr_size, unsigned int *feat_size);
+int resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, struct lys_node *node,
+                              struct unres_schema *unres);
+uint8_t iff_getop(uint8_t *list, int pos);
 
 struct lyd_node *resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start);
 
