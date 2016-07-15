@@ -114,6 +114,42 @@ yang_read_common(struct lys_module *module, char *value, enum yytokentype type)
 }
 
 int
+yang_check_version(struct lys_module *module, struct lys_submodule *submodule, char *value, int repeat)
+{
+    int ret = EXIT_SUCCESS;
+
+    if (repeat) {
+        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "yang version", "module"); 
+        ret = EXIT_FAILURE; 
+    } else {
+        if (!strcmp(value, "1")) {
+            if (submodule) {
+                if (module->version > 1) {
+                    LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
+                    ret = EXIT_FAILURE;
+                 }
+            } else {
+                module->version = 1;
+            }
+        } else if (!strcmp(value, "1.1")) {
+            if (submodule) {
+                if (module->version != 2) {
+                    LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
+                    ret = EXIT_FAILURE;
+                }
+            } else {
+                module->version = 2;
+            }
+        } else {
+            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "yang-version");
+            ret = EXIT_FAILURE;
+        } 
+    }
+    free(value);
+    return ret;
+}
+
+int
 yang_read_prefix(struct lys_module *module, void *save, char *value, enum yytokentype type)
 {
     int ret = 0;

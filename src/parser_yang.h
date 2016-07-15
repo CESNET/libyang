@@ -116,6 +116,8 @@ int yang_read_common(struct lys_module *module,char *value, enum yytokentype typ
 
 int yang_read_prefix(struct lys_module *module, void *save, char *value, enum yytokentype type);
 
+int yang_check_version(struct lys_module *module, struct lys_submodule *submodule, char *value, int repeat);
+
 /**
  * @brief Add node to the array
  *

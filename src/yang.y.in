@@ -338,7 +338,14 @@ module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { if (read_all) {
              '}' optsep
 
 module_header_stmts: @EMPTYDIR@  { $$ = 0; }
-  |  module_header_stmts yang_version_stmt { if ($1) { LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "yang version", "module"); YYABORT; } $$ = 1; }
+  |  module_header_stmts yang_version_stmt { if (read_all) { 
+                                               if (yang_check_version(module, submodule, s, $1)) {
+                                                 YYABORT;
+                                               }
+                                               $$ = 1;
+                                               s = NULL; 
+                                             }
+                                           }
   |  module_header_stmts namespace_stmt { if (read_all && yang_read_common(module, s, NAMESPACE_KEYWORD)) {YYABORT;} s=NULL; }
   |  module_header_stmts prefix_stmt { if (read_all && yang_read_prefix(module, NULL, s, MODULE_KEYWORD)) {YYABORT;} s=NULL; }
   ;
@@ -383,19 +390,7 @@ submodule_header_stmts: @EMPTYDIR@ { $$ = 0; }
                             }
      belongs_to_stmt
 
-yang_version_stmt: YANG_VERSION_KEYWORD sep yang_version_arg_str stmtend;
-
-yang_version_arg_str: NON_NEGATIVE_INTEGER { if (strcmp(yyget_text(scanner), "1") && strcmp(yyget_text(scanner), "1.1")) {
-                                               YYABORT;
-                                             }
-                                           } optsep
-  | string_1 { if (read_all) {
-                 if (strcmp(s, "1") && strcmp(s, "1.1")) {
-                   free(s);
-                   YYABORT;
-                 }
-               }
-             }
+yang_version_stmt: YANG_VERSION_KEYWORD sep string stmtend;
 
 namespace_stmt: NAMESPACE_KEYWORD sep string stmtend;
 
