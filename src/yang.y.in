@@ -1919,6 +1919,7 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                               YYABORT;
                             }
                           }
+                          $$.node.ptr_list->keys_size = size_arrays->node[size_arrays->next].keys;
                           store_flags((struct lys_node *)$$.node.ptr_list, size_arrays->node[size_arrays->next].flags, config_inherit);
                           size_arrays->next++;
                         } else {
@@ -1954,6 +1955,9 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                 $1.node.ptr_list->keys = (struct lys_node_leaf **)s;
                                 $$ = $1;
                                 s=NULL;
+                              } else {
+                                /* list has keys */
+                                size_arrays->node[$1.index].keys = 1;
                               }
                             }
   |  list_opt_stmt unique_stmt { if (read_all) {

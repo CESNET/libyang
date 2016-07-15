@@ -50,6 +50,7 @@ struct lys_node_array{
         uint pattern;
         uint bit;
         uint deviate;
+        uint keys;
     };
     uint16_t refine;
     uint16_t augment;
