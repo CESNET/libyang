@@ -1862,6 +1862,9 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
                 }
 
                 if ((iter->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) && iter->child) {
+                    while (!matchlist->match->set.d[i] || matchlist->match->set.d[i]->schema != iter->schema) {
+                        i++;
+                    }
                     next1 = matchlist->match->set.d[i]->child;
                     if (!next1) {
                         parent = matchlist->match->set.d[i];
@@ -1917,6 +1920,9 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
                 }
 
                 if ((iter->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) && iter->child) {
+                    while (!mlaux->match->set.d[i] || mlaux->match->set.d[i]->schema != iter->schema) {
+                        i++;
+                    }
                     next1 = mlaux->match->set.d[i]->child;
                     if (!next1) {
                         parent = mlaux->match->set.d[i];
