@@ -127,6 +127,10 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
         return EXIT_FAILURE;
     }
 
+    if (dup_identities_check(ident->name, module)) {
+        return EXIT_FAILURE;
+    }
+
     LY_TREE_FOR(yin->child, node) {
         if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
             /* garbage */
