@@ -167,6 +167,8 @@ void *yang_read_when(struct lys_module *module, struct lys_node *node, enum yyto
 */
 void * yang_read_node(struct lys_module *module, struct lys_node *parent, char *value, int nodetype, int sizeof_struct);
 
+void *yang_read_action(struct lys_module *module, struct lys_node *parent, char *value);
+
 int yang_read_default(struct lys_module *module, void *node, char *value, enum yytokentype type);
 
 int yang_read_units(struct lys_module *module, void *node, char *value, enum yytokentype type);

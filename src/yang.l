@@ -113,6 +113,7 @@
 "true" { return TRUE_KEYWORD; }
 "unbounded" { return UNBOUNDED_KEYWORD; }
 "user" { return USER_KEYWORD; }
+"action" {return ACTION_KEYWORD; }
 "{" |
 "}" |
 ";" | 
