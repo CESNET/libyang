@@ -1267,6 +1267,9 @@ lyxml_dump_text(struct lyout *out, const char *text)
             /* not needed, just for readability */
             n += ly_print(out, "&gt;");
             break;
+        case '"':
+            n += ly_print(out, "&quot;");
+            break;
         default:
             ly_write(out, &text[i], 1);
             n++;
