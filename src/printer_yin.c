@@ -329,7 +329,7 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
         }
         break;
     case LY_TYPE_LEAFREF:
-        if (type->info.lref.path) {
+        if (ly_strequal(type->der->name, "leafref", 0)) {
             close = 0;
         }
         break;
