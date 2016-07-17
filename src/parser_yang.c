@@ -887,6 +887,12 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 if (lys_leaf_add_leafref_target(type_der->info.lref.target, (struct lys_node *)typ->type->parent)) {
                     goto error;
                 }
+
+                if (!typ->type->info.lref.path) {
+                    /* copy leafref definition into the derived type */
+                    typ->type->info.lref.target = typ->type->der->type.info.lref.target;
+                    typ->type->info.lref.path = lydict_insert(module->ctx, typ->type->der->type.info.lref.path, 0);
+                }
             }
         } else {
             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
