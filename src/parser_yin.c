@@ -229,13 +229,13 @@ error:
 /* logs directly, returns EXIT_SUCCESS, EXIT_FAILURE, -1 */
 int
 fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_type *type,
-              struct unres_schema *unres)
+              int tpdftype, struct unres_schema *unres)
 {
     const char *value, *name;
+    struct lys_node *siter;
     struct lyxml_elem *next, *node;
     struct lys_restr **restr;
     struct lys_type_bit bit;
-    struct lys_type *type_der;
     int i, j, rc, val_set;
     int ret = -1;
     int64_t v, v_;
@@ -734,6 +734,15 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         break;
 
     case LY_TYPE_LEAFREF:
+        /* flag resolving for later use */
+        if (!tpdftype) {
+            for (siter = parent; siter && siter->nodetype != LYS_GROUPING; siter = lys_parent(siter));
+            if (siter) {
+                /* just a flag - do not resolve */
+                tpdftype = 1;
+            }
+        }
+
         /* RFC 6020 9.9.2 - path */
         LY_TREE_FOR(yin->child, node) {
             if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
@@ -753,7 +762,15 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 if (!type->info.lref.path) {
                     goto error;
                 }
-                if (unres_schema_add_node(module, unres, type, UNRES_TYPE_LEAFREF, parent) == -1) {
+
+                /* try to resolve leafref path only when this is instantiated
+                 * leaf, so it is not:
+                 * - typedef's type,
+                 * - in  grouping definition,
+                 * - just instantiated in a grouping definition,
+                 * because in those cases the nodes referenced in path might not be present
+                 * and it is not a bug.  */
+                if (!tpdftype && unres_schema_add_node(module, unres, type, UNRES_TYPE_LEAFREF, parent) == -1) {
                     goto error;
                 }
 
@@ -763,21 +780,23 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
         }
 
-        if (!type->info.lref.path && !type->der->type.der) {
-            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "path", "type");
-            goto error;
-        } else if (type->der->type.der && parent) {
-            for (type_der = &type->der->type; !type_der->info.lref.path && type_der->der; type_der = &type_der->der->type);
-            assert(type_der->info.lref.path && type_der->info.lref.target);
-            /* add pointer to leafref target, only on leaves (not in typedefs) */
-            if (lys_leaf_add_leafref_target(type_der->info.lref.target, (struct lys_node *)type->parent)) {
-                goto error;
-            }
-        }
         if (!type->info.lref.path) {
-            /* copy leafref definition into the derived type */
-            type->info.lref.target = type->der->type.info.lref.target;
-            type->info.lref.path = lydict_insert(module->ctx, type->der->type.info.lref.path, 0);
+            if (!type->der->type.der) {
+                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "path", "type");
+                goto error;
+            } else {
+                /* copy leafref definition into the derived type */
+                type->info.lref.path = lydict_insert(module->ctx, type->der->type.info.lref.path, 0);
+                /* and resolve the path at the place we are (if not in grouping/typedef) */
+                if (!tpdftype && unres_schema_add_node(module, unres, type, UNRES_TYPE_LEAFREF, parent) == -1) {
+                    goto error;
+                }
+
+                /* add pointer to leafref target, only on leaves (not in typedefs) */
+                if (type->info.lref.target && lys_leaf_add_leafref_target(type->info.lref.target, (struct lys_node *)type->parent)) {
+                    goto error;
+                }
+            }
         }
 
         break;
@@ -888,7 +907,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         /* ... and fill the structures */
         LY_TREE_FOR(yin->child, node) {
             type->info.uni.types[type->info.uni.count].parent = type->parent;
-            rc = fill_yin_type(module, parent, node, &type->info.uni.types[type->info.uni.count], unres);
+            rc = fill_yin_type(module, parent, node, &type->info.uni.types[type->info.uni.count], tpdftype, unres);
             if (!rc) {
                 type->info.uni.count++;
 
@@ -978,7 +997,7 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
             /* HACK for unres */
             tpdf->type.der = (struct lys_tpdf *)node;
             tpdf->type.parent = tpdf;
-            if (unres_schema_add_node(module, unres, &tpdf->type, UNRES_TYPE_DER, parent)) {
+            if (unres_schema_add_node(module, unres, &tpdf->type, UNRES_TYPE_DER_TPDF, parent)) {
                 goto error;
             }
             has_type = 1;

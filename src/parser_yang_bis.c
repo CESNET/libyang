@@ -3822,7 +3822,7 @@ yyreduce:
                    actual_type = TYPEDEF_KEYWORD;
                    (yyvsp[-3].nodes).node.flag |= LYS_TYPE_DEF;
                    (yyval.nodes) = (yyvsp[-3].nodes);
-                   if (unres_schema_add_node(trg, unres, &(yyvsp[-3].nodes).node.ptr_tpdf->type, UNRES_TYPE_DER, tpdf_parent)) {
+                   if (unres_schema_add_node(trg, unres, &(yyvsp[-3].nodes).node.ptr_tpdf->type, UNRES_TYPE_DER_TPDF, tpdf_parent)) {
                      YYABORT;
                    }
                  }
