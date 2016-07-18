@@ -3573,7 +3573,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
         }
         /* test the name of siblings */
         LY_TREE_FOR((uses->parent) ? uses->parent->child : lys_main_module(uses->module)->data, tmp) {
-            if ((struct lys_node_uses*)tmp != uses && ly_strequal(tmp->name, node_aux->name, 1)) {
+            if (!(tmp->nodetype & (LYS_USES | LYS_GROUPING | LYS_CASE)) && ly_strequal(tmp->name, node_aux->name, 1)) {
                 return -1;
             }
         }

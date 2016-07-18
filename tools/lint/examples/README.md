@@ -104,9 +104,11 @@ Failed to parse data.
 
 **Multiple top-level elements in a single document**
 
-In contrast to standard XML parsers, yanglint accepts not a well-formed
-XML documents with multiple top-level element. In YANG/NETCONF, this
-represents data defined by multiple data models.
+As a feature and in conflict with the XML definition, yanglint (and libyang)
+is able to read XML files with multiple top-level elements. Such documents
+are not well-formed according to the XML spec, but it fits to how the YANG
+interconnects data trees (defined as top-level elements of a single schema
+or by multiple schemas).
 
 Preparation:
 
@@ -125,6 +127,19 @@ Command and its ouput:
 ```
 > data -s datastore.xml
 ```
+
+**Different data content types**
+
+Since NETCONF requires the data described by YANG to be used in different
+situations (e.g. as <edit-config data>, result of the <get> with status data
+included or as a result of the <get-config> without the status data and
+possibly filtered, so without specified subtrees), it must be possible to
+specify which kind of data is going to be parsed. In `yanglint`, this is done
+via `-x` option. The list of supported modes can be displayed by the `-h`
+option given to the `data` command. In general, the `auto` value lets the
+yanglint to recognize the data type automatically by the additional top-level
+elements added to the parsed data. This is the same way as pyang use. Note,
+that the automatic data type recognition is available only for the XML input.
 
 **Malformed XML data**
 

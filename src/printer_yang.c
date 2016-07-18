@@ -427,7 +427,7 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
         }
         break;
     case LY_TYPE_LEAFREF:
-        if (type->info.lref.path) {
+        if (ly_strequal(type->der->name, "leafref", 0)) {
             yang_print_open(out, &flag);
             str = transform_json2schema(module, type->info.lref.path);
             ly_print(out, "%*spath \"%s\";\n", LEVEL, INDENT, str);

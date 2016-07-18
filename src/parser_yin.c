@@ -774,6 +774,12 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
         }
+        if (!type->info.lref.path) {
+            /* copy leafref definition into the derived type */
+            type->info.lref.target = type->der->type.info.lref.target;
+            type->info.lref.path = lydict_insert(module->ctx, type->der->type.info.lref.path, 0);
+        }
+
         break;
 
     case LY_TYPE_STRING:
