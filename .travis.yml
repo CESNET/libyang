@@ -31,7 +31,7 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" = "linux" -a "$CC" = "gcc" ]; then pip install --user codecov; export CFLAGS="-coverage"; fi
 
 script:
-  - mkdir build && cd build && cmake .. && make -j2 && ctest -V
+  - mkdir build && cd build && cmake .. && make -j2 && ctest --output-on-failure
 
 after_success:
   - if [ "$TRAVIS_OS_NAME" = "linux" -a "$CC" = "gcc" ]; then codecov; fi
