@@ -272,7 +272,7 @@ print_set_debug(struct lyxp_set *set)
 
         if (isnan(set->val.num)) {
             str_num = strdup("NaN");
-        } else if ((set->val.num == 0) || (set->val.num == -0)) {
+        } else if ((set->val.num == 0) || (set->val.num == -0.0f)) {
             str_num = strdup("0");
         } else if (isinf(set->val.num) && !signbit(set->val.num)) {
             str_num = strdup("Infinity");
@@ -3124,8 +3124,8 @@ xpath_round(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_nod
     lyxp_set_cast(args[0], LYXP_SET_NUMBER, cur_node, options);
 
     /* cover only the cases where floor can't be used */
-    if ((args[0]->val.num == -0) || ((args[0]->val.num < 0) && (args[0]->val.num >= -0.5))) {
-        set_fill_number(set, -0, ctx);
+    if ((args[0]->val.num == -0.0f) || ((args[0]->val.num < 0) && (args[0]->val.num >= -0.5))) {
+        set_fill_number(set, -0.0f, ctx);
     } else {
         args[0]->val.num += 0.5;
         if (xpath_floor(args, 1, cur_node, args[0], options)) {
@@ -6788,7 +6788,7 @@ lyxp_set_print_xml(FILE *f, struct lyxp_set *set)
 
         if (isnan(set->value.num)) {
             str_num = strdup("NaN");
-        } else if ((set->value.num == 0) || (set->value.num == -0)) {
+        } else if ((set->value.num == 0) || (set->value.num == -0.0f)) {
             str_num = strdup("0");
         } else if (isinf(set->value.num) && !signbit(set->value.num)) {
             str_num = strdup("Infinity");
@@ -6880,7 +6880,7 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct lyd_
         case LYXP_SET_NUMBER:
             if (isnan(set->val.num)) {
                 set->val.str = lydict_insert(ctx, "NaN", 0);
-            } else if ((set->val.num == 0) || (set->val.num == -0)) {
+            } else if ((set->val.num == 0) || (set->val.num == -0.0f)) {
                 set->val.str = lydict_insert(ctx, "0", 0);
             } else if (isinf(set->val.num) && !signbit(set->val.num)) {
                 set->val.str = lydict_insert(ctx, "Infinity", 0);
@@ -6957,7 +6957,7 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct lyd_
     if (target == LYXP_SET_BOOLEAN) {
         switch (set->type) {
         case LYXP_SET_NUMBER:
-            if ((set->val.num == 0) || (set->val.num == -0) || isnan(set->val.num)) {
+            if ((set->val.num == 0) || (set->val.num == -0.0f) || isnan(set->val.num)) {
                 set->val.bool = 0;
             } else {
                 set->val.bool = 1;
