@@ -1,11 +1,19 @@
-os: linux
-sudo: required
-dist: trusty
 language: c
 
-compiler:
-  - clang
-  - gcc
+matrix:
+  include:
+    - os: linux
+      dist: trusty
+      sudo: required
+      compiler: clang
+    - os: linux
+      dist: trusty
+      sudo: required
+      compiler: gcc
+    - os: osx
+      compiler: gcc
+  allow_failures:
+    - os: osx
 
 branches:
   only:
@@ -18,11 +26,11 @@ before_install:
   - cd cmocka-1.0.1 && mkdir build && cd build
   - cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr .. && make -j2 && sudo make install
   - cd ../..
-  - if [ "${CC}" = "gcc" ]; then pip install --user codecov; export CFLAGS="-coverage"; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$CC" = "gcc" ]; then pip install --user codecov; export CFLAGS="-coverage"; fi
 
 script:
   - mkdir build && cd build && cmake .. && make -j2 && ctest -V
 
 after_success:
-  - if [ "${CC}" = "gcc" ]; then codecov; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$CC" = "gcc" ]; then codecov; fi
 
