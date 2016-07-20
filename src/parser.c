@@ -287,7 +287,10 @@ opendir_search:
                 } else {
                     /* exact revision */
                     free(match_name);
-                    asprintf(&match_name, "%s/%s", wd, file->d_name);
+                    if (asprintf(&match_name, "%s/%s", wd, file->d_name) == -1) {
+                        LOGMEM;
+                        goto cleanup;
+                    }
                     match_len = dir_len + 1 + len;
                     match_format = format;
                     goto matched;
@@ -295,7 +298,10 @@ opendir_search:
             } else {
                 /* continue trying to find exact revision match, use this only if not found */
                 free(match_name);
-                asprintf(&match_name, "%s/%s", wd, file->d_name);
+                if (asprintf(&match_name, "%s/%s", wd, file->d_name) == -1) {
+                    LOGMEM;
+                    goto cleanup;
+                }
                 match_len = dir_len + 1 +len;
                 match_format = format;
                 continue;
@@ -313,7 +319,10 @@ opendir_search:
                 free(match_name);
             }
 
-            asprintf(&match_name, "%s/%s", wd, file->d_name);
+            if (asprintf(&match_name, "%s/%s", wd, file->d_name) == -1) {
+                LOGMEM;
+                goto cleanup;
+            }
             match_len = dir_len + 1 + len;
             match_format = format;
             continue;
@@ -1278,7 +1287,7 @@ dup_identity_check(const char *id, struct lys_ident *ident, uint32_t size)
 int
 dup_identities_check(const char *id, struct lys_module *module)
 {
-    struct lys_module *mainmod;    
+    struct lys_module *mainmod;
     int i;
 
     if (dup_identity_check(id, module->ident, module->ident_size)) {
