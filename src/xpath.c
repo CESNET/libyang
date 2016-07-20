@@ -751,6 +751,35 @@ set_dup_node_check(struct lyxp_set *set, void *node, enum lyxp_node_type node_ty
 }
 
 /**
+ * @brief Remove duplicate entries in a sorted node set.
+ *
+ * @param[in] set Sorted set to check.
+ *
+ * @return EXIT_SUCCESS if no duplicates were found,
+ *         EXIT_FAILURE otherwise.
+ */
+static int
+set_sorted_dup_node_clean(struct lyxp_set *set)
+{
+    uint32_t i = 0;
+    int ret = EXIT_SUCCESS;
+
+    if (set->used > 1) {
+        while (i < set->used - 1) {
+            if ((set->val.nodes[i].node == set->val.nodes[i + 1].node)
+                    && (set->val.nodes[i].type == set->val.nodes[i + 1].type)) {
+                set_remove_node(set, i + 1);
+            ret = EXIT_FAILURE;
+            } else {
+                ++i;
+            }
+        }
+    }
+
+    return ret;
+}
+
+/**
  * @brief Insert a node into a set. Context position aware.
  *
  * @param[in] set Set to use.
@@ -1151,35 +1180,6 @@ set_sort(struct lyxp_set *set, const struct lyd_node *cur_node, int options)
 
     LOGDBG("XPATH: SORT END %d", ret);
     print_set_debug(set);
-
-    return ret;
-}
-
-/**
- * @brief Remove duplicate entries in a sorted node set.
- *
- * @param[in] set Sorted set to check.
- *
- * @return EXIT_SUCCESS if no duplicates were found,
- *         EXIT_FAILURE otherwise.
- */
-static int
-set_sorted_dup_node_clean(struct lyxp_set *set)
-{
-    uint32_t i = 0;
-    int ret = EXIT_SUCCESS;
-
-    if (set->used > 1) {
-        while (i < set->used - 1) {
-            if ((set->val.nodes[i].node == set->val.nodes[i + 1].node)
-                    && (set->val.nodes[i].type == set->val.nodes[i + 1].type)) {
-                set_remove_node(set, i + 1);
-            ret = EXIT_FAILURE;
-            } else {
-                ++i;
-            }
-        }
-    }
 
     return ret;
 }
