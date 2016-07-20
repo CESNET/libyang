@@ -147,6 +147,7 @@ struct lyxp_expr {
 enum lyxp_set_type {
     LYXP_SET_EMPTY = 0,
     LYXP_SET_NODE_SET,
+    LYXP_SET_SNODE_SET,
     LYXP_SET_BOOLEAN,
     LYXP_SET_NUMBER,
     LYXP_SET_STRING
@@ -179,25 +180,32 @@ struct lyxp_set {
             enum lyxp_node_type type;
             uint32_t pos;
         } *nodes;
+        struct lyxp_set_snodes {
+            struct lys_node *snode;
+            enum lyxp_node_type type;
+            /* 0 - snode was traversed, but not currently in the context,
+             * 1 - snode currently in context,
+             * 2 - snode in context and just added, so skip it for the current operation,
+             * >=3 - snode is not in context because we are in a predicate and this snode was used/will be used later */
+            uint32_t in_ctx;
+        } *snodes;
         struct lyxp_set_attrs {
             struct lyd_attr *attr;
             enum lyxp_node_type type;
-            uint32_t pos; /* if node_type is LYXP_NODE_ATTR, it is the parent node position */
+            uint32_t pos; /* if node_type is LYXP_SET_NODE_ATTR, it is the parent node position */
         } *attrs;
         const char *str;
         long double num;
         int bool;
     } val;
 
-    /* this is valid only for type == LYXP_NODE_SET */
+    /* this is valid only for type LYXP_SET_NODE_SET and LYXP_SET_SNODE_SET */
     uint32_t used;
     uint32_t size;
+    /* this is valid only for type LYXP_SET_NODE_SET */
     uint32_t ctx_pos;
     uint32_t ctx_size;
 };
-
-#define LYXP_MUST 0x01 /* apply must data tree access restrictions */
-#define LYXP_WHEN 0x02 /* apply when data tree access restrictions and consider LYD_WHEN flags in data nodes */
 
 /**
  * @brief Evaluate the XPath expression \p expr on data. Be careful when using this function, the result can often
@@ -210,10 +218,37 @@ struct lyxp_set {
  * the \p set to empty (if allocated statically) or free it (if allocated dynamically) to
  * prevent memory leaks.
  * @param[in] options Whether to apply some evaluation restrictions.
+ * LYXP_MUST - apply must data tree access restrictions.
+ * LYXP_WHEN - apply when data tree access restrictions and consider LYD_WHEN flags in data nodes.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on unresolved when dependency, -1 on error.
  */
 int lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *set, int options);
+
+/**
+ * @brief Get all the partial XPath nodes (atoms) that are required for \p expr to be evaluated.
+ *
+ * @param[in] expr XPath expression to be evaluated. Must be in JSON format (prefixes are model names).
+ * @param[in] cur_snode Current (context) schema node.
+ * @param[out] set Result set. Must be valid and in the same libyang context as \p cur_snode.
+ * To be safe, always either zero or cast the \p set to empty. After done using, either cast
+ * the \p set to empty (if allocated statically) or free it (if allocated dynamically) to
+ * prevent memory leaks.
+ * @param[in] options Whether to apply some evaluation restrictions, one flag must always be used.
+ * LYXP_SNODE - no special data tree access modifiers.
+ * LYXP_SNODE_MUST - apply must data tree access restrictions.
+ * LYXP_SNODE_WHEN - apply when data tree access restrictions.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
+int lyxp_atomize(const char *expr, const struct lys_node *cur_snode, struct lyxp_set *set, int options);
+
+/* these are used only internally */
+#define LYXP_SNODE 0x04
+#define LYXP_SNODE_MUST 0x08
+#define LYXP_SNODE_WHEN 0x10
+
+#define LYXP_SNODE_ALL 0x1C
 
 /**
  * @brief Check the syntax of an XPath expression \p expr. Since it's only syntactic,

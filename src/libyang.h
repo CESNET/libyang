@@ -1204,6 +1204,7 @@ typedef enum {
     LYVE_NOMANDCHOICE, /**< no mandatory choice case branch exists (data) */
     LYVE_INACT,        /**< action contains some other node than container or list with keys (data) */
 
+    LYVE_XPATH_INSNODE,/**< schema node not found */
     LYVE_XPATH_INTOK,  /**< unexpected XPath token */
     LYVE_XPATH_EOF,    /**< unexpected end of an XPath expression */
     LYVE_XPATH_INOP,   /**< invalid XPath operation operands */

@@ -1505,6 +1505,22 @@ const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys
 #define LYS_GETNEXT_WITHINOUT    0x08 /**< lys_getnext() option to allow returning #LYS_INPUT and #LYS_OUTPUT nodes instead of immediately looking into them */
 
 /**
+ * @brief Get all the partial XPath nodes (atoms) that are required for \p expr to be evaluated.
+ *
+ * @param[in] cur_snode Current (context) schema node.
+ * @param[in] expr XPath expression to be evaluated. Must be in JSON data format (prefixes are model names).
+ * @param[in] options Whether to apply some evaluation restrictions LYXP_*.
+ * @param[out] atoms Array of simple XPath paths identifying the atoms.
+ * @param[out] atom_count Number of \p atoms returned.
+ *
+ * @return 0 on success, -1 on error.
+ */
+int lys_xpath_atomize(const struct lys_node *cur_snode, const char *expr, int options, char ***atoms, uint32_t *atom_count);
+
+#define LYXP_MUST 0x01 /**< lys_xpath_atomize() option to apply must statement data tree access restrictions */
+#define LYXP_WHEN 0x02 /**< lys_xpath_atomize() option to apply when statement data tree access restrictions */
+
+/**
  * @brief Return parent node in the schema tree.
  *
  * In case of augmenting node, it returns the target tree node where the augmenting

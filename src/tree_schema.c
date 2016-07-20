@@ -31,6 +31,7 @@
 #include "parser.h"
 #include "resolve.h"
 #include "xml.h"
+#include "xpath.h"
 #include "xml_internal.h"
 #include "tree_internal.h"
 #include "validation.h"
@@ -2990,6 +2991,135 @@ lys_leaf_add_leafref_target(struct lys_node_leaf *leafref_target, struct lys_nod
     }
     ly_set_add((struct ly_set *)leafref_target->child, leafref, 0);
 
+    return 0;
+}
+
+static const char *
+lys_data_path_reverse(const struct lys_node *node, char * const buf, uint32_t buf_len)
+{
+    struct lys_module *prev_mod;
+    uint32_t str_len, mod_len, buf_idx;
+
+    if (!(node->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
+        LOGINT;
+        return NULL;
+    }
+
+    buf_idx = buf_len - 1;
+    buf[buf_idx] = '\0';
+
+    while (node) {
+        if (lys_parent(node)) {
+            prev_mod = lys_node_module(lys_parent(node));
+        } else {
+            prev_mod = NULL;
+        }
+
+        if (node->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+            str_len = strlen(node->name);
+
+            if (prev_mod != node->module) {
+                mod_len = strlen(node->module->name);
+            } else {
+                mod_len = 0;
+            }
+
+            if (buf_idx < 1 + (mod_len ? mod_len + 1 : 0) + str_len) {
+                LOGINT;
+                return NULL;
+            }
+
+            buf_idx -= 1 + (mod_len ? mod_len + 1 : 0) + str_len;
+
+            buf[buf_idx] = '/';
+            if (mod_len) {
+                memcpy(buf + buf_idx + 1, node->module->name, mod_len);
+                buf[buf_idx + 1 + mod_len] = ':';
+            }
+            memcpy(buf + buf_idx + 1 + (mod_len ? mod_len + 1 : 0), node->name, str_len);
+        }
+
+        node = lys_parent(node);
+    }
+
+    return buf + buf_idx;
+}
+
+API int
+lys_xpath_atomize(const struct lys_node *cur_snode, const char *expr, int options, char ***atoms, uint32_t *atom_count)
+{
+    char *buf = ly_buf(), *buf_backup = NULL;
+    struct lyxp_set *set;
+    uint32_t i;
+
+    if (!cur_snode || !expr || !atoms || !atom_count) {
+        return -1;
+    }
+
+    set = calloc(1, sizeof *set);
+    if (!set) {
+        LOGMEM;
+        return -1;
+    }
+
+    if (options & LYXP_MUST) {
+        options &= ~LYXP_MUST;
+        options |= LYXP_SNODE_MUST;
+    } else if (options & LYXP_WHEN) {
+        options &= ~LYXP_WHEN;
+        options |= LYXP_SNODE_WHEN;
+    } else {
+        options |= LYXP_SNODE;
+    }
+
+    if (lyxp_atomize(expr, cur_snode, set, options)) {
+        free(set->val.snodes);
+        free(set);
+        return -1;
+    }
+
+    if (ly_buf_used && buf[0]) {
+        buf_backup = strndup(buf, LY_BUF_SIZE - 1);
+    }
+    ly_buf_used++;
+
+    *atoms = malloc(set->used * sizeof **atoms);
+    if (!(*atoms)) {
+        LOGMEM;
+        free(set->val.snodes);
+        free(set);
+        return -1;
+    }
+    *atom_count = set->used;
+    for (i = 0; i < set->used; ++i) {
+        switch (set->val.snodes[i].type) {
+        case LYXP_NODE_ELEM:
+            (*atoms)[i] = strdup(lys_data_path_reverse(set->val.snodes[i].snode, buf, LY_BUF_SIZE));
+            break;
+        case LYXP_NODE_ROOT_ALL:
+        case LYXP_NODE_ROOT_CONFIG:
+        case LYXP_NODE_ROOT_STATE:
+        case LYXP_NODE_ROOT_NOTIF:
+        case LYXP_NODE_ROOT_RPC:
+        case LYXP_NODE_ROOT_OUTPUT:
+            (*atoms)[i] = strdup("/");
+            break;
+        default:
+            /* ignore text, attr should not appear ever */
+            break;
+        }
+    }
+
+    if (buf_backup) {
+        /* return previous internal buffer content */
+        strcpy(buf, buf_backup);
+        free(buf_backup);
+        buf_backup = NULL;
+    }
+    ly_buf_used--;
+
+    free(set->val.snodes);
+    free(set);
     return 0;
 }
 
