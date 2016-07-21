@@ -47,12 +47,10 @@
         <config value="true"/>
         <mandatory value="false"/>
         <description>
-          <text>
-            "dsc"
-          </text>
+          <text>dsc</text>
         </description>
         <reference>
-          <text>"none"</text>
+          <text>none</text>
         </reference>
         <must condition="24 - 4 = number('20')"/>
         <default value="25"/>

@@ -668,8 +668,8 @@ struct lyd_node *lyd_new_output_anyxml_xml(struct lyd_node *parent, const struct
  * If \p path points to a list key and the list does not exist, the key value from the predicate is used
  * and \p value is ignored.
  *
- * @param[in] data_tree Existing data tree to add to/modify. It is expected to be valid. If creating RPCs,
- * there should only be one RPC and either input or output. Can be NULL.
+ * @param[in] data_tree Existing data tree to add to/modify. If creating RPCs, there should only be one RPC and
+ * either input or output. Can be NULL.
  * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
  * @param[in] path Simple data XPath of the new node. It can contain only simple node addressing with optional
  * module names as prefixes. List nodes must have predicates, one for each list key in the correct order and

@@ -5,6 +5,8 @@ set(data_tests test_data_initialization test_leafref_remove test_instid_remove t
 set(schema_yin_tests test_print_transform)
 set(schema_tests test_ietf test_augment test_typedef test_import test_include)
 
+include_directories(SYSTEM ${CMOCKA_INCLUDE_DIR})
+
 foreach(test_name IN LISTS api_tests)
     add_executable(${test_name} api/${test_name}.c)
     target_link_libraries(${test_name} ${CMOCKA_LIBRARIES} yang)

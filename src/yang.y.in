@@ -917,7 +917,7 @@ type_opt_stmt: @EMPTYDIR@ { $$.node.ptr_tpdf = actual;
                    actual_type = TYPEDEF_KEYWORD;
                    $1.node.flag |= LYS_TYPE_DEF;
                    $$ = $1;
-                   if (unres_schema_add_node(trg, unres, &$1.node.ptr_tpdf->type, UNRES_TYPE_DER, tpdf_parent) == -1) {
+                   if (unres_schema_add_node(trg, unres, &$1.node.ptr_tpdf->type, UNRES_TYPE_DER_TPDF, tpdf_parent) == -1) {
                      YYABORT;
                    }
                  }

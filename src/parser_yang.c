@@ -767,13 +767,13 @@ end:
 }
 
 int
-yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, struct unres_schema *unres)
+yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, int tpdftype, struct unres_schema *unres)
 {
     int i, rc;
     int ret = -1;
     const char *name, *value;
     LY_DATA_TYPE base;
-    struct lys_type *type_der;
+    struct lys_node *siter;
 
     base = typ->base;
     value = transform_schema2json(module, typ->name);
@@ -910,6 +910,15 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 goto error;
             }
         } else if (typ->type->base == LY_TYPE_LEAFREF) {
+            /* flag resolving for later use */
+            if (!tpdftype) {
+                for (siter = parent; siter && siter->nodetype != LYS_GROUPING; siter = lys_parent(siter));
+                if (siter) {
+                    /* just a flag - do not resolve */
+                    tpdftype = 1;
+                }
+            }
+
             if (typ->type->info.lref.path) {
                 value = typ->type->info.lref.path;
                 /* store in the JSON format */
@@ -918,20 +927,29 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 if (!typ->type->info.lref.path) {
                     goto error;
                 }
-                if (unres_schema_add_node(module, unres, typ->type, UNRES_TYPE_LEAFREF, parent) == -1) {
+                /* try to resolve leafref path only when this is instantiated
+                 * leaf, so it is not:
+                 * - typedef's type,
+                 * - in  grouping definition,
+                 * - just instantiated in a grouping definition,
+                 * because in those cases the nodes referenced in path might not be present
+                 * and it is not a bug.  */
+                if (!tpdftype && unres_schema_add_node(module, unres, typ->type, UNRES_TYPE_LEAFREF, parent) == -1) {
                     goto error;
                 }
             } else if (!typ->type->der->type.der) {
                 LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "path", "type");
                 goto error;
             } else {
-                for (type_der = &typ->type->der->type; !type_der->info.lref.path && type_der->der; type_der = &type_der->der->type);
-                if (!type_der->info.lref.path || !type_der->info.lref.target) {
-                    LOGINT;
+                /* copy leafref definition into the derived type */
+                typ->type->info.lref.path = lydict_insert(module->ctx, typ->type->der->type.info.lref.path, 0);
+                /* and resolve the path at the place we are (if not in grouping/typedef) */
+                if (!tpdftype && unres_schema_add_node(module, unres, typ->type, UNRES_TYPE_LEAFREF, parent) == -1) {
                     goto error;
                 }
+
                 /* add pointer to leafref target, only on leaves (not in typedefs) */
-                if (lys_leaf_add_leafref_target(type_der->info.lref.target, (struct lys_node *)typ->type->parent)) {
+                if (typ->type->info.lref.target && lys_leaf_add_leafref_target(typ->type->info.lref.target, (struct lys_node *)typ->type->parent)) {
                     goto error;
                 }
             }
@@ -963,7 +981,8 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             goto error;
         }
         for (i = 0; i < typ->type->info.uni.count; i++) {
-            if (unres_schema_add_node(module, unres, &typ->type->info.uni.types[i], UNRES_TYPE_DER, parent) == -1) {
+            if (unres_schema_add_node(module, unres, &typ->type->info.uni.types[i],
+                                      tpdftype ? UNRES_TYPE_DER_TPDF : UNRES_TYPE_DER, parent) == -1) {
                 goto error;
             }
             if (typ->type->info.uni.types[i].base == LY_TYPE_EMPTY) {
