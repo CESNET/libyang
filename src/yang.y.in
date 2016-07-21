@@ -339,12 +339,12 @@ module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { if (read_all) {
              '}' optsep
 
 module_header_stmts: @EMPTYDIR@  { $$ = 0; }
-  |  module_header_stmts yang_version_stmt { if (read_all) { 
+  |  module_header_stmts yang_version_stmt { if (read_all) {
                                                if (yang_check_version(module, submodule, s, $1)) {
                                                  YYABORT;
                                                }
                                                $$ = 1;
-                                               s = NULL; 
+                                               s = NULL;
                                              }
                                            }
   |  module_header_stmts namespace_stmt { if (read_all && yang_read_common(module, s, NAMESPACE_KEYWORD)) {YYABORT;} s=NULL; }
@@ -919,7 +919,7 @@ type_opt_stmt: @EMPTYDIR@ { $$.node.ptr_tpdf = actual;
                    actual_type = TYPEDEF_KEYWORD;
                    $1.node.flag |= LYS_TYPE_DEF;
                    $$ = $1;
-                   if (unres_schema_add_node(trg, unres, &$1.node.ptr_tpdf->type, UNRES_TYPE_DER, tpdf_parent)) {
+                   if (unres_schema_add_node(trg, unres, &$1.node.ptr_tpdf->type, UNRES_TYPE_DER, tpdf_parent) == -1) {
                      YYABORT;
                    }
                  }
@@ -1658,7 +1658,7 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                      actual = $1.node.ptr_leaf;
                      actual_type = LEAF_KEYWORD;
                      $1.node.flag |= LYS_TYPE_DEF;
-                     if (unres_schema_add_node(trg, unres, &$1.node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *)$1.node.ptr_leaf)) {
+                     if (unres_schema_add_node(trg, unres, &$1.node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *)$1.node.ptr_leaf) == -1) {
                        YYABORT;
                      }
                    }
@@ -1777,7 +1777,7 @@ leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                    actual = $1.node.ptr_leaflist;
                    actual_type = LEAF_LIST_KEYWORD;
                    $1.node.flag |= LYS_TYPE_DEF;
-                   if (unres_schema_add_node(trg, unres, &$1.node.ptr_leaflist->type, UNRES_TYPE_DER, (struct lys_node *)$1.node.ptr_leaflist)) {
+                   if (unres_schema_add_node(trg, unres, &$1.node.ptr_leaflist->type, UNRES_TYPE_DER, (struct lys_node *)$1.node.ptr_leaflist) == -1) {
                      YYABORT;
                    }
                  }
@@ -3335,7 +3335,7 @@ deviate_replace_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                   }
                                 }
   |  deviate_replace_opt_stmt type_stmt stmtsep { if (read_all) {
-                                            if (unres_schema_add_node(trg, unres, $1.deviation->deviate->type, UNRES_TYPE_DER, $1.deviation->target)) {
+                                            if (unres_schema_add_node(trg, unres, $1.deviation->deviate->type, UNRES_TYPE_DER, $1.deviation->target) == -1) {
                                               YYABORT;
                                             }
                                           }

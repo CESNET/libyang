@@ -972,7 +972,7 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
             /* HACK for unres */
             tpdf->type.der = (struct lys_tpdf *)node;
             tpdf->type.parent = tpdf;
-            if (unres_schema_add_node(module, unres, &tpdf->type, UNRES_TYPE_DER, parent)) {
+            if (unres_schema_add_node(module, unres, &tpdf->type, UNRES_TYPE_DER, parent) == -1) {
                 goto error;
             }
             has_type = 1;
@@ -1655,7 +1655,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 lys_type_free(ctx, t);
                 /* HACK for unres */
                 t->der = (struct lys_tpdf *)child;
-                if (unres_schema_add_node(module, unres, t, UNRES_TYPE_DER, dev_target)) {
+                if (unres_schema_add_node(module, unres, t, UNRES_TYPE_DER, dev_target) == -1) {
                     goto error;
                 }
                 d->type = t;
@@ -1935,8 +1935,6 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         if (leaf_dflt_check[i]->dflt) {
             rc = unres_schema_add_str(module, unres, &leaf_dflt_check[i]->type, UNRES_TYPE_DFLT, leaf_dflt_check[i]->dflt);
             if (rc == -1) {
-                goto error;
-            } else if (rc == EXIT_FAILURE) {
                 LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, leaf_dflt_check[i]->dflt, "default");
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Leaf \"%s\" default value no longer matches its type.", dev->target_name);
                 goto error;
@@ -3040,7 +3038,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             /* HACK for unres */
             leaf->type.der = (struct lys_tpdf *)sub;
             leaf->type.parent = (struct lys_tpdf *)leaf;
-            if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DER, retval)) {
+            if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DER, retval) == -1) {
                 leaf->type.der = NULL;
                 goto error;
             }
@@ -3213,7 +3211,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             /* HACK for unres */
             llist->type.der = (struct lys_tpdf *)sub;
             llist->type.parent = (struct lys_tpdf *)llist;
-            if (unres_schema_add_node(module, unres, &llist->type, UNRES_TYPE_DER, retval)) {
+            if (unres_schema_add_node(module, unres, &llist->type, UNRES_TYPE_DER, retval) == -1) {
                 llist->type.der = NULL;
                 goto error;
             }

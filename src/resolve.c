@@ -2800,7 +2800,9 @@ check_default(struct lys_type *type, const char *value, struct lys_module *modul
         /* it was converted to JSON format before, nothing else sensible we can do */
 
     } else {
-        ret = lyp_parse_value(&node, NULL, 1);
+        if (lyp_parse_value(&node, NULL, 1)) {
+            ret = -1;
+        }
     }
 
 finish:
@@ -5169,7 +5171,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
  * @param[in] type Type of the unresolved item.
  * @param[in] str String argument.
  *
- * @return EXIT_SUCCESS on success or storing the item in unres, -1 on error.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on storing the item in unres, -1 on error.
  */
 int
 unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
@@ -5187,7 +5189,7 @@ unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *i
  * @param[in] type Type of the unresolved item. UNRES_TYPE_DER is handled specially!
  * @param[in] snode Schema node argument.
  *
- * @return EXIT_SUCCESS on success or storing the item in unres, -1 on error.
+ * @return EXIT_SUCCESS on success, EXIT_FIALURE on storing the item in unres, -1 on error.
  */
 int
 unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
@@ -5257,7 +5259,7 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
     }
     unres->module[unres->count-1] = mod;
 
-    return EXIT_SUCCESS;
+    return rc;
 }
 
 /**

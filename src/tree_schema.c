@@ -1354,7 +1354,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
                 new->info.ident.ref = old->info.ident.ref;
             } else {
                 i = unres_schema_find(unres, old, UNRES_TYPE_IDENTREF);
-                if (i > -1 && unres_schema_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i])) {
+                if (i > -1 && (unres_schema_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i]) == -1)) {
                     return -1;
                 }
             }
@@ -1380,7 +1380,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
         case LY_TYPE_LEAFREF:
             if (old->info.lref.path) {
                 new->info.lref.path = lydict_insert(mod->ctx, old->info.lref.path, 0);
-                if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent)) {
+                if (unres_schema_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent) == -1) {
                     return -1;
                 }
             }
@@ -1469,7 +1469,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
         }
         new->parent = (struct lys_tpdf *)parent;
         /* all these unres additions can fail even though they did not before */
-        if (!new->der || unres_schema_add_node(mod, unres, new, UNRES_TYPE_DER, parent)) {
+        if (!new->der || (unres_schema_add_node(mod, unres, new, UNRES_TYPE_DER, parent) == -1)) {
             return -1;
         }
         return EXIT_SUCCESS;

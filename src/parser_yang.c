@@ -79,7 +79,7 @@ yang_check_typedef_identif(struct lys_node *root, struct lys_node *node, char *i
                     LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "typedef", id);
                     return EXIT_FAILURE;
                 }
-            } 
+            }
         LY_TREE_DFS_END(node, next, child)}
     } while (root && (node = node->next));
     return EXIT_SUCCESS;
@@ -119,8 +119,8 @@ yang_check_version(struct lys_module *module, struct lys_submodule *submodule, c
     int ret = EXIT_SUCCESS;
 
     if (repeat) {
-        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "yang version", "module"); 
-        ret = EXIT_FAILURE; 
+        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "yang version", "module");
+        ret = EXIT_FAILURE;
     } else {
         if (!strcmp(value, "1")) {
             if (submodule) {
@@ -143,7 +143,7 @@ yang_check_version(struct lys_module *module, struct lys_submodule *submodule, c
         } else {
             LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "yang-version");
             ret = EXIT_FAILURE;
-        } 
+        }
     }
     free(value);
     return ret;
@@ -963,7 +963,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             goto error;
         }
         for (i = 0; i < typ->type->info.uni.count; i++) {
-            if (unres_schema_add_node(module, unres, &typ->type->info.uni.types[i], UNRES_TYPE_DER, parent)) {
+            if (unres_schema_add_node(module, unres, &typ->type->info.uni.types[i], UNRES_TYPE_DER, parent) == -1) {
                 goto error;
             }
             if (typ->type->info.uni.types[i].base == LY_TYPE_EMPTY) {
@@ -2051,8 +2051,6 @@ yang_check_deviation(struct lys_module *module, struct type_deviation *dev, stru
                 if (dev->deviation->deviate[i].dflt || dev->deviation->deviate[i].type) {
                     rc = unres_schema_add_str(module, unres, &((struct lys_node_leaf *)dev->target)->type, UNRES_TYPE_DFLT, ((struct lys_node_leaf *)dev->target)->dflt);
                     if (rc == -1) {
-                      return EXIT_FAILURE;
-                    } else if (rc == EXIT_FAILURE) {
                         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Leaf \"%s\" default value no longer matches its type.", dev->deviation->target_name);
                         return EXIT_FAILURE;
                     }

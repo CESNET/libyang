@@ -2960,12 +2960,12 @@ yyreduce:
 
   case 13:
 
-    { if (read_all) { 
+    { if (read_all) {
                                                if (yang_check_version(module, submodule, s, (yyvsp[-1].i))) {
                                                  YYABORT;
                                                }
                                                (yyval.i) = 1;
-                                               s = NULL; 
+                                               s = NULL;
                                              }
                                            }
 
@@ -3697,10 +3697,8 @@ yyreduce:
                                     actual = tpdf_parent;
 
                                     /* check default value */
-                                    if ((yyvsp[0].nodes).node.ptr_tpdf->dflt) {
-                                      if (unres_schema_add_str(trg, unres, &(yyvsp[0].nodes).node.ptr_tpdf->type, UNRES_TYPE_DFLT, (yyvsp[0].nodes).node.ptr_tpdf->dflt) == -1) {
-                                        YYABORT;
-                                      }
+                                    if (unres_schema_add_str(trg, unres, &(yyvsp[0].nodes).node.ptr_tpdf->type, UNRES_TYPE_DFLT, (yyvsp[0].nodes).node.ptr_tpdf->dflt) == -1) {
+                                      YYABORT;
                                     }
                                   }
                                 }
@@ -3756,7 +3754,7 @@ yyreduce:
                    actual_type = TYPEDEF_KEYWORD;
                    (yyvsp[-3].nodes).node.flag |= LYS_TYPE_DEF;
                    (yyval.nodes) = (yyvsp[-3].nodes);
-                   if (unres_schema_add_node(trg, unres, &(yyvsp[-3].nodes).node.ptr_tpdf->type, UNRES_TYPE_DER, tpdf_parent)) {
+                   if (unres_schema_add_node(trg, unres, &(yyvsp[-3].nodes).node.ptr_tpdf->type, UNRES_TYPE_DER, tpdf_parent) == -1) {
                      YYABORT;
                    }
                  }
@@ -4666,16 +4664,14 @@ yyreduce:
                                     LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, (yyvsp[0].nodes).node.ptr_leaf, "type", "leaf");
                                     YYABORT;
                                   }
-                                  if ((yyvsp[0].nodes).node.ptr_leaf->dflt) {
-                                    if ((yyvsp[0].nodes).node.ptr_leaf->flags & LYS_MAND_TRUE) {
-                                      /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
-                                      LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, (yyvsp[0].nodes).node.ptr_leaf, "mandatory", "leaf");
-                                      LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
-                                      YYABORT;
-                                    }
-                                    if (unres_schema_add_str(trg, unres, &(yyvsp[0].nodes).node.ptr_leaf->type, UNRES_TYPE_DFLT, (yyvsp[0].nodes).node.ptr_leaf->dflt) == -1) {
-                                      YYABORT;
-                                    }
+                                  if ((yyvsp[0].nodes).node.ptr_leaf->dflt && ((yyvsp[0].nodes).node.ptr_leaf->flags & LYS_MAND_TRUE)) {
+                                    /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
+                                    LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, (yyvsp[0].nodes).node.ptr_leaf, "mandatory", "leaf");
+                                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
+                                    YYABORT;
+                                  }
+                                  if (unres_schema_add_str(trg, unres, &(yyvsp[0].nodes).node.ptr_leaf->type, UNRES_TYPE_DFLT, (yyvsp[0].nodes).node.ptr_leaf->dflt) == -1) {
+                                    YYABORT;
                                   }
                                 }
                               }
@@ -4749,7 +4745,7 @@ yyreduce:
                      actual = (yyvsp[-2].nodes).node.ptr_leaf;
                      actual_type = LEAF_KEYWORD;
                      (yyvsp[-2].nodes).node.flag |= LYS_TYPE_DEF;
-                     if (unres_schema_add_node(trg, unres, &(yyvsp[-2].nodes).node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *)(yyvsp[-2].nodes).node.ptr_leaf)) {
+                     if (unres_schema_add_node(trg, unres, &(yyvsp[-2].nodes).node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *)(yyvsp[-2].nodes).node.ptr_leaf) == -1) {
                        YYABORT;
                      }
                    }
@@ -4942,7 +4938,7 @@ yyreduce:
                    actual = (yyvsp[-2].nodes).node.ptr_leaflist;
                    actual_type = LEAF_LIST_KEYWORD;
                    (yyvsp[-2].nodes).node.flag |= LYS_TYPE_DEF;
-                   if (unres_schema_add_node(trg, unres, &(yyvsp[-2].nodes).node.ptr_leaflist->type, UNRES_TYPE_DER, (struct lys_node *)(yyvsp[-2].nodes).node.ptr_leaflist)) {
+                   if (unres_schema_add_node(trg, unres, &(yyvsp[-2].nodes).node.ptr_leaflist->type, UNRES_TYPE_DER, (struct lys_node *)(yyvsp[-2].nodes).node.ptr_leaflist) == -1) {
                      YYABORT;
                    }
                  }
@@ -7135,7 +7131,7 @@ yyreduce:
   case 514:
 
     { if (read_all) {
-                                            if (unres_schema_add_node(trg, unres, (yyvsp[-2].nodes).deviation->deviate->type, UNRES_TYPE_DER, (yyvsp[-2].nodes).deviation->target)) {
+                                            if (unres_schema_add_node(trg, unres, (yyvsp[-2].nodes).deviation->deviate->type, UNRES_TYPE_DER, (yyvsp[-2].nodes).deviation->target) == -1) {
                                               YYABORT;
                                             }
                                           }
