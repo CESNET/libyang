@@ -420,7 +420,7 @@ parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret,
     strptr = NULL;
     *ret = strtoll(val_str, &strptr, base);
     if (errno || (*ret < min) || (*ret > max)) {
-        LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, val_str);
+        LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
         return EXIT_FAILURE;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
@@ -450,7 +450,7 @@ parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret, struct ly
     strptr = NULL;
     *ret = strtoull(val_str, &strptr, base);
     if (errno || (*ret > max)) {
-        LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, val_str);
+        LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
         return EXIT_FAILURE;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
@@ -550,7 +550,7 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
             return EXIT_FAILURE;
         }
 
-        LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, (val_str ? val_str : ""));
+        LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, (val_str ? val_str : ""), restr->expr);
         if (restr && restr->emsg) {
             LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, restr->emsg);
         }
@@ -586,7 +586,7 @@ validate_pattern(const char *val_str, struct lys_type *type, struct lyd_node *no
         }
 
         if (pcre_exec(precomp, NULL, val_str, strlen(val_str), 0, 0, NULL, 0)) {
-            LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, val_str);
+            LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, val_str, type->info.str.patterns[i].expr);
             if (type->info.str.patterns[i].emsg) {
                 LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, type->info.str.patterns[i].emsg);
             }

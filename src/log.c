@@ -176,7 +176,7 @@ const char *ly_errs[] = {
 /* LYE_INVALATTR */    "Invalid \"%s\" attribute value \"%s\".",
 /* LYE_INATTR */       "Invalid attribute \"%s\" in \"%s\" element.",
 /* LYE_MISSATTR */     "Missing attribute \"%s\" in \"%s\" element.",
-/* LYE_NOCONSTR */     "Value \"%s\" does not satisfy a constraint (range, length, or pattern).",
+/* LYE_NOCONSTR */     "Value \"%s\" does not satisfy the constraint \"%s\" (range, length, or pattern).",
 /* LYE_INCHAR */       "Unexpected character(s) '%c' (%.15s).",
 /* LYE_INPRED */       "Predicate resolution failed on \"%s\".",
 /* LYE_MCASEDATA */    "Data for more than one case branch of \"%s\" choice present.",
