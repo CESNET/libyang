@@ -903,6 +903,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 free(type->info.uni.types);
                 type->info.uni.types = NULL;
                 type->info.uni.count = 0;
+                type->der = NULL;
+                type->base = LY_TYPE_DER;
 
                 if (rc == EXIT_FAILURE) {
                     ret = EXIT_FAILURE;
