@@ -1004,11 +1004,10 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
         goto error;
     }
 
-    /* check default value */
-    if (tpdf->dflt) {
-        if (unres_schema_add_str(module, unres, &tpdf->type, UNRES_TYPE_DFLT, tpdf->dflt) == -1) {
-            goto error;
-        }
+    /* check default value (if not defined, there still could be some restrictions
+     * that need to be checked against a default value from a derived type) */
+    if (unres_schema_add_str(module, unres, &tpdf->type, UNRES_TYPE_DFLT, tpdf->dflt) == -1) {
+        goto error;
     }
 
     return EXIT_SUCCESS;
@@ -3109,16 +3108,17 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "type", yin->name);
         goto error;
     }
-    if (leaf->dflt) {
-        if (unres_schema_add_str(module, unres, &leaf->type, UNRES_TYPE_DFLT, leaf->dflt) == -1) {
-            goto error;
-        }
-        if (leaf->flags & LYS_MAND_TRUE) {
-            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "mandatory", "leaf");
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
-                   "The \"mandatory\" statement is forbidden on leaf with the \"default\" statement.");
-            goto error;
-        }
+    if (leaf->dflt && (leaf->flags & LYS_MAND_TRUE)) {
+        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "mandatory", "leaf");
+        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+               "The \"mandatory\" statement is forbidden on leaf with the \"default\" statement.");
+        goto error;
+    }
+
+    /* check default value (if not defined, there still could be some restrictions
+     * that need to be checked against a default value from a derived type) */
+    if (unres_schema_add_str(module, unres, &leaf->type, UNRES_TYPE_DFLT, leaf->dflt) == -1) {
+        goto error;
     }
 
     /* middle part - process nodes with cardinality of 0..n */

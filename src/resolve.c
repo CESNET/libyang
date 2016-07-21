@@ -2769,8 +2769,75 @@ check_leafref:
 static int
 check_default(struct lys_type *type, const char *value, struct lys_module *module)
 {
+    struct lys_tpdf *base_tpdf;
     struct lyd_node_leaf_list node;
     int ret = EXIT_SUCCESS;
+
+    if (type->base == LY_TYPE_DER) {
+        /* the type was not resolved yet, nothing to do for now */
+        return EXIT_FAILURE;
+    }
+
+    if (!value) {
+        /* we do not have a new default value, so is there any to check even, in some base type? */
+        for (base_tpdf = type->der; base_tpdf->type.der; base_tpdf = base_tpdf->type.der) {
+            if (base_tpdf->dflt) {
+                value = base_tpdf->dflt;
+                break;
+            }
+        }
+
+        if (!value) {
+            /* no default value, nothing to check, all is well */
+            return EXIT_SUCCESS;
+        }
+
+        /* so there is a default value in a base type, but can the default value be no longer valid (did we define some new restrictions)? */
+        switch (type->base) {
+        case LY_TYPE_BITS:
+        case LY_TYPE_ENUM:
+        case LY_TYPE_IDENT:
+        case LY_TYPE_INST:
+        case LY_TYPE_LEAFREF:
+        case LY_TYPE_BOOL:
+        case LY_TYPE_EMPTY:
+            /* these have no restrictions, so we would do the exact same work as the unres in the base typedef */
+            return EXIT_SUCCESS;
+        case LY_TYPE_DEC64:
+            if (type->info.dec64.range) {
+                break;
+            }
+            return EXIT_SUCCESS;
+        case LY_TYPE_BINARY:
+            if (type->info.binary.length) {
+                break;
+            }
+            return EXIT_SUCCESS;
+        case LY_TYPE_INT8:
+        case LY_TYPE_INT16:
+        case LY_TYPE_INT32:
+        case LY_TYPE_INT64:
+        case LY_TYPE_UINT8:
+        case LY_TYPE_UINT16:
+        case LY_TYPE_UINT32:
+        case LY_TYPE_UINT64:
+            if (type->info.num.range) {
+                break;
+            }
+            return EXIT_SUCCESS;
+        case LY_TYPE_STRING:
+            if (type->info.str.length || type->info.str.patterns) {
+                break;
+            }
+            return EXIT_SUCCESS;
+        case LY_TYPE_UNION:
+            /* way too much trouble learning whether we need to check the default again, so just do it */
+            break;
+        default:
+            LOGINT;
+            return -1;
+        }
+    }
 
     /* dummy leaf */
     memset(&node, 0, sizeof node);

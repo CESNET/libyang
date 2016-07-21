@@ -880,10 +880,8 @@ typedef_stmt: TYPEDEF_KEYWORD sep typedef_arg_str
                                     actual = tpdf_parent;
 
                                     /* check default value */
-                                    if ($6.node.ptr_tpdf->dflt) {
-                                      if (unres_schema_add_str(trg, unres, &$6.node.ptr_tpdf->type, UNRES_TYPE_DFLT, $6.node.ptr_tpdf->dflt) == -1) {
-                                        YYABORT;
-                                      }
+                                    if (unres_schema_add_str(trg, unres, &$6.node.ptr_tpdf->type, UNRES_TYPE_DFLT, $6.node.ptr_tpdf->dflt) == -1) {
+                                      YYABORT;
                                     }
                                   }
                                 }
@@ -1597,16 +1595,14 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                     LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaf, "type", "leaf");
                                     YYABORT;
                                   }
-                                  if ($7.node.ptr_leaf->dflt) {
-                                    if ($7.node.ptr_leaf->flags & LYS_MAND_TRUE) {
-                                      /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
-                                      LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaf, "mandatory", "leaf");
-                                      LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
-                                      YYABORT;
-                                    }
-                                    if (unres_schema_add_str(trg, unres, &$7.node.ptr_leaf->type, UNRES_TYPE_DFLT, $7.node.ptr_leaf->dflt) == -1) {
-                                      YYABORT;
-                                    }
+                                  if ($7.node.ptr_leaf->dflt && ($7.node.ptr_leaf->flags & LYS_MAND_TRUE)) {
+                                    /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
+                                    LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaf, "mandatory", "leaf");
+                                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
+                                    YYABORT;
+                                  }
+                                  if (unres_schema_add_str(trg, unres, &$7.node.ptr_leaf->type, UNRES_TYPE_DFLT, $7.node.ptr_leaf->dflt) == -1) {
+                                    YYABORT;
                                   }
                                 }
                               }
