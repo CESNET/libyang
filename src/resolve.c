@@ -2784,6 +2784,7 @@ check_default(struct lys_type *type, const char *value, struct lys_module *modul
     node.schema->name = strdup("default");
     if (!node.schema->name) {
         LOGMEM;
+        free(node.schema);
         return -1;
     }
     node.schema->module = module;
