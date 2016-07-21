@@ -3539,14 +3539,14 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                     return EXIT_FAILURE;
                 }
             } else if (parent_times > 0) {
-                /* node is the parent already, skip one ".." */
                 if (parent_tpdf) {
                     /* the path is not allowed to contain relative path since we are in top level typedef */
                     LOGVAL(LYE_NORESOLV, 0, NULL, "leafref", path);
                     return -1;
                 }
 
-                for (i = 0, node = parent; i < parent_times; i++) {
+                /* node is the parent already, skip one ".." */
+                for (i = 1, node = parent; i < parent_times; i++) {
                     /* path is supposed to be evaluated in data tree, so we have to skip
                      * all schema nodes that cannot be instantiated in data tree */
                     for (node = lys_parent(node);
@@ -3560,9 +3560,6 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                     }
 
                 }
-
-                /* get first node for lys_get_sibling */
-                node = node->child;
             } else {
                 LOGINT;
                 return -1;
