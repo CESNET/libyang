@@ -3010,6 +3010,9 @@ lys_leaf_add_leafref_target(struct lys_node_leaf *leafref_target, struct lys_nod
     return 0;
 }
 
+/* not needed currently */
+#if 0
+
 static const char *
 lys_data_path_reverse(const struct lys_node *node, char * const buf, uint32_t buf_len)
 {
@@ -3061,21 +3064,23 @@ lys_data_path_reverse(const struct lys_node *node, char * const buf, uint32_t bu
     return buf + buf_idx;
 }
 
-API int
-lys_xpath_atomize(const struct lys_node *cur_snode, const char *expr, int options, char ***atoms, uint32_t *atom_count)
+#endif
+
+API struct ly_set *
+lys_xpath_atomize(const struct lys_node *cur_snode, const char *expr, int options)
 {
-    char *buf = ly_buf(), *buf_backup = NULL;
     struct lyxp_set *set;
+    struct ly_set *ret_set;
     uint32_t i;
 
-    if (!cur_snode || !expr || !atoms || !atom_count) {
-        return -1;
+    if (!cur_snode || !expr) {
+        return NULL;
     }
 
     set = calloc(1, sizeof *set);
     if (!set) {
         LOGMEM;
-        return -1;
+        return NULL;
     }
 
     if (options & LYXP_MUST) {
@@ -3091,52 +3096,30 @@ lys_xpath_atomize(const struct lys_node *cur_snode, const char *expr, int option
     if (lyxp_atomize(expr, cur_snode, set, options)) {
         free(set->val.snodes);
         free(set);
-        return -1;
+        return NULL;
     }
 
-    if (ly_buf_used && buf[0]) {
-        buf_backup = strndup(buf, LY_BUF_SIZE - 1);
-    }
-    ly_buf_used++;
+    ret_set = ly_set_new();
 
-    *atoms = malloc(set->used * sizeof **atoms);
-    if (!(*atoms)) {
-        LOGMEM;
-        free(set->val.snodes);
-        free(set);
-        return -1;
-    }
-    *atom_count = set->used;
     for (i = 0; i < set->used; ++i) {
         switch (set->val.snodes[i].type) {
         case LYXP_NODE_ELEM:
-            (*atoms)[i] = strdup(lys_data_path_reverse(set->val.snodes[i].snode, buf, LY_BUF_SIZE));
-            break;
-        case LYXP_NODE_ROOT_ALL:
-        case LYXP_NODE_ROOT_CONFIG:
-        case LYXP_NODE_ROOT_STATE:
-        case LYXP_NODE_ROOT_NOTIF:
-        case LYXP_NODE_ROOT_RPC:
-        case LYXP_NODE_ROOT_OUTPUT:
-            (*atoms)[i] = strdup("/");
+            if (ly_set_add(ret_set, set->val.snodes[i].snode, LY_SET_OPT_USEASLIST)) {
+                ly_set_free(ret_set);
+                free(set->val.snodes);
+                free(set);
+                return NULL;
+            }
             break;
         default:
-            /* ignore text, attr should not appear ever */
+            /* ignore roots, text and attr should not appear ever */
             break;
         }
     }
 
-    if (buf_backup) {
-        /* return previous internal buffer content */
-        strcpy(buf, buf_backup);
-        free(buf_backup);
-        buf_backup = NULL;
-    }
-    ly_buf_used--;
-
     free(set->val.snodes);
     free(set);
-    return 0;
+    return ret_set;
 }
 
 static void
