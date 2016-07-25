@@ -2165,18 +2165,16 @@ lyd_insert_setinvalid(struct lyd_node *node)
             /* select next elem to process */
             /* go into children */
             next = elem->child;
-            /* got through siblings */
+            /* go through siblings */
             if (!next) {
 nextsibling:
                 next = elem->next;
                 if (!next) {
-                    /* no children */
+                    /* no sibling */
                     if (elem == node) {
                         /* we are done, back in start node */
                         break;
                     }
-                    /* try siblings */
-                    next = elem->next;
                 }
             }
             /* go back to parents */
