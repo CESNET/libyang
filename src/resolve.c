@@ -3602,8 +3602,8 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
         }
     } while (id[0]);
 
-    /* the target must be leaf or leaf-list */
-    if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+    /* the target must be leaf or leaf-list (in YANG 1.1 only) */
+    if ((node->nodetype != LYS_LEAF) && ((lys_node_module(parent)->version != 2) || (node->nodetype != LYS_LEAFLIST))) {
         LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, "leafref", path);
         return -1;
     }
