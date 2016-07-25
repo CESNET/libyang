@@ -97,6 +97,9 @@ typedef union lyd_value_u {
  */
 #define LYD_VAL_OK       0x00    /**< node is successfully validated including whole subtree */
 #define LYD_VAL_UNIQUE   0x01    /**< Unique value(s) changed, applicable only to ::lys_node_list data nodes */
+#define LYD_VAL_MAND     0x02    /**< Some child added/removed and it is needed to perform check for mandatory
+                                      node or min/max constraints of direct list/leaflist children, applicable only
+                                      to ::lys_node_list and ::lys_node_container data nodes */
 #define LYD_VAL_NOT      0x07    /**< node was not validated yet */
 #define LYD_VAL_INUSE    0x08    /**< Internal flag for note about various processing on data, should be used only
                                       internally and removed before the libyang returns to the caller */
@@ -797,6 +800,14 @@ struct ly_set *lyd_get_node(const struct lyd_node *data, const char *expr);
  * In case of error, NULL is returned.
  */
 struct ly_set *lyd_get_node2(const struct lyd_node *data, const struct lys_node *schema);
+
+/**
+ * @brief Get the first sibling of the given node.
+ *
+ * @param[in] node Node which first sibling is going to be the result.
+ * @return The first sibling of the given node or the node itself if it is the first child of the parent.
+ */
+struct lyd_node *lyd_first_sibling(struct lyd_node *node);
 
 /**
  * @brief Resolve the leafref.

@@ -2078,6 +2078,7 @@ movedone:
     }
 
     diff_ordset_free(ordset);
+    ordset = NULL;
 
     if (index2) {
         /* append result2 with newly created
@@ -2171,18 +2172,16 @@ lyd_insert_setinvalid(struct lyd_node *node)
             /* select next elem to process */
             /* go into children */
             next = elem->child;
-            /* got through siblings */
+            /* go through siblings */
             if (!next) {
 nextsibling:
                 next = elem->next;
                 if (!next) {
-                    /* no children */
+                    /* no sibling */
                     if (elem == node) {
                         /* we are done, back in start node */
                         break;
                     }
-                    /* try siblings */
-                    next = elem->next;
                 }
             }
             /* go back to parents */
@@ -2193,6 +2192,20 @@ nextsibling:
                 }
                 /* parent was actually already processed, so go to the parent's sibling */
                 next = elem->parent->next;
+            }
+        }
+    }
+
+    if (node->parent) {
+        /* if the inserted node is list/leaflist with constraint on max instances,
+         * invalidate the parent to make it validate this */
+        if (node->schema->nodetype & LYS_LEAFLIST) {
+            if (((struct lys_node_leaflist *)node->schema)->max) {
+                node->parent->validity |= LYD_VAL_MAND;
+            }
+        } else if (node->schema->nodetype & LYS_LIST) {
+            if (((struct lys_node_list *)node->schema)->max) {
+                node->parent->validity |= LYD_VAL_MAND;
             }
         }
     }
@@ -2870,7 +2883,7 @@ lyd_unlink_internal(struct lyd_node *node, int permanent)
 
         /* invalidate parent to make sure it will be checked in future validation */
         if (node->parent) {
-            node->parent->validity = LYD_VAL_NOT;
+            node->parent->validity = LYD_VAL_MAND;
         }
     }
 
@@ -3727,6 +3740,21 @@ error:
     ly_set_free(spath);
 
     return NULL;
+}
+
+API struct lyd_node *
+lyd_first_sibling(struct lyd_node *node)
+{
+    struct lyd_node *start;
+
+    /* get the first sibling */
+    if (node->parent) {
+        start = node->parent->child;
+    } else {
+        for (start = node; start->prev->next; start = start->prev);
+    }
+
+    return start;
 }
 
 API struct ly_set *
