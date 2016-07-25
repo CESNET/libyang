@@ -394,6 +394,8 @@ yang_version_arg_str: NON_NEGATIVE_INTEGER { if (strlen(yyget_text(scanner))!=1 
                    free(s);
                    YYABORT;
                  }
+                 free(s);
+                 s = NULL;
                }
              }
 
