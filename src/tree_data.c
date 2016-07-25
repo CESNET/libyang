@@ -2072,6 +2072,7 @@ movedone:
     }
 
     diff_ordset_free(ordset);
+    ordset = NULL;
 
     if (index2) {
         /* append result2 with newly created
