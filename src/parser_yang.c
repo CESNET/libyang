@@ -578,6 +578,11 @@ yang_read_action(struct lys_module *module, struct lys_node *parent, char *value
 {
     struct lys_node *node;
 
+    if (module->version != 2) {
+        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "action");
+        return NULL;
+    }
+
     for (node = parent; node; node = lys_parent(node)) {
         if (node->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)
                 || ((node->nodetype == LYS_LIST) && !((struct lys_node_list *)node)->keys_size)) {
