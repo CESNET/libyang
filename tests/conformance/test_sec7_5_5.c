@@ -99,6 +99,8 @@ TEST_MODULE(void **state)
             } else {
                 assert_ptr_not_equal(st->node, NULL);
             }
+            lyd_free(st->node);
+            st->node = NULL;
         }
 
         if (schema_format == LYS_IN_YANG) {

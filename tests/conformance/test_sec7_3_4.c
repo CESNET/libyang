@@ -61,7 +61,7 @@ teardown_f(void **state)
 {
     struct state *st = (*state);
 
-    lyd_free(st->node);
+    lyd_free_withsiblings(st->node);
     ly_ctx_destroy(st->ctx, NULL);
     free(st);
     (*state) = NULL;
@@ -99,6 +99,8 @@ TEST_MODULE(void **state)
             } else {
                 assert_ptr_not_equal(st->node, NULL);
             }
+            lyd_free_withsiblings(st->node);
+            st->node = NULL;
         }
 
         if (schema_format == LYS_IN_YANG) {
