@@ -98,8 +98,14 @@ fill_yin_iffeature(struct lys_node *parent, struct lyxml_elem *yin, struct lys_i
     const char *value;
 
     GETVAL(value, yin, "name");
-    if (!(value = transform_schema2json(parent->module, value))) {
+
+    if ((lys_node_module(parent)->version != 2) && ((value[0] == '(') || strchr(value, ' '))) {
+        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "if-feature");
 error:
+        return EXIT_FAILURE;
+    }
+
+    if (!(value = transform_schema2json(parent->module, value))) {
         return EXIT_FAILURE;
     }
 

@@ -295,6 +295,12 @@ yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct u
     struct lys_feature *f;
     struct lys_node *n;
 
+    if ((module->version != 2) && ((value[0] == '(') || strchr(value, ' '))) {
+        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "if-feature");
+        free(value);
+        return EXIT_FAILURE;
+    }
+
     if (!(exp = transform_schema2json(module, value))) {
         free(value);
         return EXIT_FAILURE;
