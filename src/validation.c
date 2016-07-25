@@ -118,7 +118,7 @@ int
 lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
 {
     const struct lys_node *schema, *siter;
-    struct lyd_node *diter, *start;
+    struct lyd_node *diter, *start = NULL;
     struct lys_ident *ident;
     struct lys_tpdf *tpdf;
 
@@ -128,7 +128,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
 
     schema = node->schema; /* shortcut */
 
-    if (node->validity) {
+    if (node->validity & LYD_VAL_MAND) {
         /* check presence and correct order of all keys in case of list */
         if (schema->nodetype == LYS_LIST && !(options & (LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
             if (lyv_keys(node)) {
@@ -136,25 +136,17 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
             }
         }
 
-        /* mandatory children */
+        /* check for mandatory children */
         if ((schema->nodetype & (LYS_CONTAINER | LYS_LIST))
                 && !(options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
             if (ly_check_mandatory(node, NULL, (options & LYD_OPT_TYPEMASK) ? 0 : 1, (options & LYD_OPT_RPCREPLY) ? 1 : 0)) {
                 return EXIT_FAILURE;
             }
-        }
+        } else if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML)) {
+            /* check number of instances (similar to list uniqueness) for non-list nodes */
 
-        /* get the first sibling */
-        if (node->parent) {
-            start = node->parent->child;
-        } else {
-            for (start = node; start->prev->next; start = start->prev);
-        }
-
-        /* keep this check the last since in case of filter it affects the data and can modify the tree */
-        /* check number of instances (similar to list uniqueness) for non-list nodes */
-        if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML)) {
             /* find duplicity */
+            start = lyd_first_sibling(node);
             for (diter = start; diter; diter = diter->next) {
                 if (diter->schema == schema && diter != node) {
                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, node, schema->name,
@@ -162,43 +154,50 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
                     return EXIT_FAILURE;
                 }
             }
-        } else if (schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-            /* uniqueness of list/leaflist instances */
+        }
 
-            /* get the first list/leaflist instance sibling */
-            if (options & (LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
-                /* skip key uniqueness check in case of get/get-config data */
-                start = NULL;
-            } else {
-                diter = start;
-                start = NULL;
-                while(diter) {
-                    if (diter == node) {
-                        diter = diter->next;
-                        continue;
-                    }
+        /* remove the flag */
+        node->validity &= ~LYD_VAL_MAND;
+    }
 
-                    if (diter->schema == node->schema) {
-                        /* the same list instance */
-                        start = diter;
-                        break;
-                    }
+    if ((schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) && (node->validity & LYD_VAL_UNIQUE)) {
+        /* get the first list/leaflist instance sibling */
+        if (options & (LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
+            /* skip key uniqueness check in case of get/get-config data */
+            start = NULL;
+        } else {
+            diter = start ? start : lyd_first_sibling(node);
+            start = NULL;
+            while (diter) {
+                if (diter == node) {
                     diter = diter->next;
-                }
-            }
-
-            /* check uniqueness of the list/leaflist instances (compare values) */
-            for (diter = start; diter; diter = diter->next) {
-                if (diter->schema != node->schema || diter == node ||
-                        diter->validity) { /* skip comparison that will be done in future when checking diter as node */
                     continue;
                 }
-                if (lyd_list_equal(diter, node, 1)) { /* comparing keys and unique combinations */
-                    return EXIT_FAILURE;
+
+                if (diter->schema == node->schema) {
+                    /* the same list instance */
+                    start = diter;
+                    break;
                 }
+                diter = diter->next;
             }
         }
 
+        /* check uniqueness of the list/leaflist instances (compare values) */
+        for (diter = start; diter; diter = diter->next) {
+            if (diter->schema != node->schema || diter == node || diter->validity) { /* skip comparison that will be done in future when checking diter as node */
+                continue;
+            }
+            if (lyd_list_equal(diter, node, 1)) { /* comparing keys and unique combinations */
+                return EXIT_FAILURE;
+            }
+        }
+
+        /* remove the flag */
+        node->validity &= ~LYD_VAL_UNIQUE;
+    }
+
+    if (node->validity) {
         /* status - of the node's schema node itself and all its parents that
          * cannot have their own instance (like a choice statement) */
         siter = node->schema;
