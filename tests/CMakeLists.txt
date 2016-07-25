@@ -4,7 +4,7 @@ set(api_tests test_libyang test_tree_schema test_xml test_dict test_tree_data te
 set(data_tests test_data_initialization test_leafref_remove test_instid_remove test_keys test_autodel test_when test_defaults test_emptycont test_unique test_mandatory test_json test_parse_print)
 set(schema_yin_tests test_print_transform)
 set(schema_tests test_ietf test_augment test_typedef test_import test_include)
-set(conformance_tests test_sec6_1_1 test_sec6_2 test_sec5_1 test_sec5_5 test_sec6_1_3 test_sec6_2_1 test_sec7_1 test_sec7_2 test_sec7_3 test_sec7_3_1 test_sec7_3_4 test_sec7_5_2 test_sec7_5_5)
+set(conformance_tests test_sec6_1_1 test_sec6_2 test_sec5_1 test_sec5_5 test_sec6_1_3 test_sec6_2_1 test_sec7_1 test_sec7_2 test_sec7_3 test_sec7_3_1 test_sec7_3_4 test_sec7_5_2 test_sec7_5_4 test_sec7_5_5)
 
 include_directories(SYSTEM ${CMOCKA_INCLUDE_DIR})
 
