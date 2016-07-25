@@ -434,7 +434,7 @@ check_mand_check(const struct lys_node *node, const struct lys_node *stop, const
             return EXIT_FAILURE;
         }
         if (max && (minmax > max)) {
-            LOGVAL(LYE_NOMAX, LY_VLOG_LYD, toplevel ? NULL : data, node->name);
+            LOGVAL(LYE_NOMAX, LY_VLOG_LYD, data, node->name);
             return EXIT_FAILURE;
         }
     }
