@@ -1645,9 +1645,6 @@ int
 lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, const char *value,
                   struct lys_include *inc, struct unres_schema *unres)
 {
-    char *module_data;
-    void (*module_data_free)(void *module_data) = NULL;
-    LYS_INFORMAT format = LYS_IN_UNKNOWN;
     int i, j;
 
     /* check that the submodule was not included yet (previous submodule could have included it) */
@@ -1704,23 +1701,8 @@ lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, co
             }
         }
     } else {
-        if (module->ctx->module_clb) {
-            module_data = module->ctx->module_clb(value, inc->rev[0] ? inc->rev : NULL, module->ctx->module_clb_data,
-                                                  &format, &module_data_free);
-            if (module_data) {
-                inc->submodule = lys_submodule_parse(module, module_data, format, unres);
-                if (module_data_free) {
-                    module_data_free(module_data);
-                } else {
-                    free(module_data);
-                }
-            } else {
-                LOGERR(LY_EVALID, "User module retrieval callback failed!");
-            }
-        } else {
-            inc->submodule = (struct lys_submodule *)lyp_search_file(module->ctx, module, value,
-                                                                     inc->rev[0] ? inc->rev : NULL, unres);
-        }
+        inc->submodule = (struct lys_submodule *)ly_ctx_load_sub_module(module->ctx, module, value,
+                                                                        inc->rev[0] ? inc->rev : NULL, unres);
     }
 
     /* update the list of currently being parsed modules */
@@ -1798,7 +1780,7 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
         /* no revision specified, try to load the newest module from the search locations into the context */
         verb = ly_log_level;
         ly_verb(LY_LLSILENT);
-        ly_ctx_load_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
+        ly_ctx_load_sub_module(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL, NULL);
         ly_verb(verb);
         if (ly_errno == LY_ESYS) {
             /* it is ok, that the e.g. input file was not found */
@@ -1815,7 +1797,7 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
     imp->module = (struct lys_module *)ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
     if (!imp->module) {
         /* whether to use a user callback is decided in the function */
-        imp->module = (struct lys_module *)ly_ctx_load_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
+        imp->module = (struct lys_module *)ly_ctx_load_sub_module(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL, NULL);
     }
 
     /* update the list of currently being parsed modules */

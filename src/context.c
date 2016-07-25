@@ -357,48 +357,68 @@ ly_ctx_get_module_clb(const struct ly_ctx *ctx, void **user_data)
     return ctx->module_clb;
 }
 
-API const struct lys_module *
-ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
+struct lys_module *
+ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
+                       struct unres_schema *unres)
 {
-    const struct lys_module *module;
+    struct lys_module *mod;
     char *module_data;
     int i;
     void (*module_data_free)(void *module_data) = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
-    if (!ctx || !name) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
     /* exception for internal modules */
-    for (i = 0; i < INTERNAL_MODULES_COUNT; i++) {
-        if (ly_strequal(name, internal_modules[i].name, 0)) {
-            if (!revision || ly_strequal(revision, internal_modules[i].revision, 0)) {
-                /* return internal module */
-                return ly_ctx_get_module(ctx, name, revision);
+    if (!module) {
+        for (i = 0; i < INTERNAL_MODULES_COUNT; i++) {
+            if (ly_strequal(name, internal_modules[i].name, 0)) {
+                if (!revision || ly_strequal(revision, internal_modules[i].revision, 0)) {
+                    /* return internal module */
+                    return (struct lys_module *)ly_ctx_get_module(ctx, name, revision);
+                }
             }
         }
     }
 
     if (ctx->module_clb) {
-        module_data = ctx->module_clb(name, revision, ctx->module_clb_data, &format, &module_data_free);
+        if (module) {
+            mod = lys_main_module(module);
+            module_data = ctx->module_clb(mod->name, (mod->rev_size ? mod->rev[0].date : NULL), name, revision, ctx->module_clb_data, &format, &module_data_free);
+        } else {
+            module_data = ctx->module_clb(name, revision, NULL, NULL, ctx->module_clb_data, &format, &module_data_free);
+        }
         if (!module_data) {
             LOGERR(0, "User module retrieval callback failed!");
             return NULL;
         }
-        module = lys_parse_mem(ctx, module_data, format);
+
+        if (module) {
+            mod = (struct lys_module *)lys_submodule_parse(module, module_data, format, unres);
+        } else {
+            mod = (struct lys_module *)lys_parse_mem(ctx, module_data, format);
+        }
+
         if (module_data_free) {
             module_data_free(module_data);
         }
     } else {
-        module = lyp_search_file(ctx, NULL, name, revision, NULL);
-        if (module) {
-            ((struct lys_module *)module)->implemented = 1;
+        mod = lyp_search_file(ctx, module, name, revision, unres);
+        if (mod) {
+            mod->implemented = 1;
         }
     }
 
-    return module;
+    return mod;
+}
+
+API const struct lys_module *
+ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
+{
+    if (!ctx || !name) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    return ly_ctx_load_sub_module(ctx, NULL, name, revision, NULL);
 }
 
 API const struct lys_module *

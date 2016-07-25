@@ -814,15 +814,17 @@ const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name
 /**
  * @brief Callback for retrieving missing included or imported models in a custom way.
  *
- * @param[in] name Missing module name.
- * @param[in] revision Optional missing module revision.
+ * @param[in] mod_name Missing module name.
+ * @param[in] mod_rev Optional missing module revision.
+ * @param[in] submod_name Optional missing submodule name.
+ * @param[in] submod_rev Optional missing submodule revision.
  * @param[in] user_data User-supplied callback data.
  * @param[out] format Format of the returned module data.
  * @param[out] free_module_data Callback for freeing the returned module data. If not set, the data will be left untouched.
  * @return Requested module data or NULL if the callback is not able to provide the requested schema content for any reason.
  */
-typedef char *(*ly_module_clb)(const char *name, const char *revision, void *user_data, LYS_INFORMAT *format,
-                               void (**free_module_data)(void *model_data));
+typedef char *(*ly_module_clb)(const char *mod_name, const char *mod_rev, const char *submod_name, const char *sub_rev,
+                               void *user_data, LYS_INFORMAT *format, void (**free_module_data)(void *model_data));
 
 /**
  * @brief Set missing include or import model callback.
