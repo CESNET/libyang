@@ -2249,8 +2249,8 @@ autodelete:
         }
 
         sparent = lys_parent(iter->schema);
-        if ((sparent->nodetype == LYS_CHOICE && sparent == schoice) /* another implicit case */
-                || (sparent->nodetype == LYS_CASE && sparent != scase && lys_parent(sparent) == schoice) /* another case */
+        if (sparent && ((sparent->nodetype == LYS_CHOICE && sparent == schoice) /* another implicit case */
+                || (sparent->nodetype == LYS_CASE && sparent != scase && lys_parent(sparent) == schoice)) /* another case */
                 ) {
             if (autodelete) {
                 if (iter == nodel) {
