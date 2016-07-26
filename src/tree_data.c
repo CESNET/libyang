@@ -44,7 +44,6 @@ int
 lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, int options)
 {
     int i;
-    struct lyd_node *node;
 
     if ((options & LYD_OPT_NOSIBLINGS) || (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
         return EXIT_SUCCESS;
@@ -52,19 +51,7 @@ lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, int options)
 
     assert(ctx);
 
-    if (data && lys_parent(data->schema) && (data->schema->nodetype != LYS_ACTION)) {
-        LOGERR(LY_EINVAL, "Subtree are not top-level data.");
-        return EXIT_FAILURE;
-    }
-
     if (!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_DATA | LYD_OPT_CONFIG))) {
-        LY_TREE_FOR(data, node) {
-            if (lys_parent(node->schema) || (node->schema->nodetype & (LYS_NOTIF | LYS_RPC))) {
-                LOGERR(LY_EINVAL, "Subtree includes non-data nodes (a notification, an RPC, or an RPC output).");
-                return EXIT_FAILURE;
-            }
-        }
-
         /* check for missing mandatory elements (from the top level) according to schemas in context */
         for (i = 0; i < ctx->models.used; i++) {
             if (!ctx->models.list[i]->data) {
