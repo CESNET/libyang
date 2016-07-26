@@ -4169,10 +4169,12 @@ lyd_wd_add_empty(struct lyd_node *parent, struct lys_node *schema, struct unres_
     char *c;
     int index = 0;
 
-    if (parent) {
-        index = sprintf(path, "%s:%s", lys_node_module(schema)->name, schema->name);
-    } else {
-        index = sprintf(path, "/%s:%s", lys_node_module(schema)->name, schema->name);
+    if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF)) {
+        if (parent) {
+            index = sprintf(path, "%s:%s", lys_node_module(schema)->name, schema->name);
+        } else {
+            index = sprintf(path, "/%s:%s", lys_node_module(schema)->name, schema->name);
+        }
     }
 
     LY_TREE_DFS_BEGIN(schema, next, siter) {
@@ -4369,24 +4371,24 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
             path[0] = '\0';
             break;
         case LYS_CHOICE:
-            if (((struct lys_node_choice *)siter)->dflt) {
-                /* check that no case is instantiated */
-                iter = lyd_wd_get_choice_inst(subroot->child, siter);
-                if (!iter) {
+            /* check that no case is instantiated */
+            iter = lyd_wd_get_choice_inst(subroot->child, siter);
+            if (!iter) {
+                if (((struct lys_node_choice *)siter)->dflt) {
                     /* go to the default case */
                     lyd_wd_add_inner(subroot, ((struct lys_node_choice *)siter)->dflt, unres, options);
-                } else if (lys_parent(iter->schema)->nodetype == LYS_CASE) {
-                    /* add missing default nodes from present choice case */
-                    lyd_wd_add_inner(subroot, lys_parent(iter->schema)->child, unres, options);
-                } else { /* shorthand case */
-                    if (!(iter->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-                        /* go into */
-                        lyd_wd_add_inner(iter, iter->schema->child, unres, options);
-                    }
                 }
-                if (ly_errno != LY_SUCCESS) {
-                    return EXIT_FAILURE;
+            } else if (lys_parent(iter->schema)->nodetype == LYS_CASE) {
+                /* add missing default nodes from present choice case */
+                lyd_wd_add_inner(subroot, lys_parent(iter->schema)->child, unres, options);
+            } else { /* shorthand case */
+                if (!(iter->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+                    /* go into */
+                    lyd_wd_add_inner(iter, iter->schema->child, unres, options);
                 }
+            }
+            if (ly_errno != LY_SUCCESS) {
+                return EXIT_FAILURE;
             }
             break;
         case LYS_INPUT:
