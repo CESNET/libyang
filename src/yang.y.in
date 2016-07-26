@@ -796,6 +796,12 @@ feature_opt_stmt: @EMPTYDIR@ { if (read_all) {
   |  feature_opt_stmt if_feature_stmt { if (read_all) {
                                           if (yang_read_if_feature(trg, actual, s, unres, FEATURE_KEYWORD)) {YYABORT;}
                                           s=NULL;
+                                          /* check for circular dependencies */
+                                          if (((struct lys_feature *)actual)->iffeature_size) {
+                                            if (unres_schema_add_node(module, unres, (struct lys_feature *)actual, UNRES_FEATURE, NULL) == -1) {
+                                                YYABORT;
+                                            }
+                                          }
                                         } else {
                                           size_arrays->node[$1].if_features++;
                                         }

@@ -1097,6 +1097,13 @@ fill_yin_feature(struct lys_module *module, struct lyxml_elem *yin, struct lys_f
         }
     }
 
+    /* check for circular dependencies */
+    if (f->iffeature_size) {
+        if (unres_schema_add_node(module, unres, f, UNRES_FEATURE, NULL) == -1) {
+            goto error;
+        }
+    }
+
     return EXIT_SUCCESS;
 
 error:

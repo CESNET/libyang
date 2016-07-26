@@ -4906,10 +4906,13 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
                           struct unres_schema *unres)
 {
     /* has_str - whether the str_snode is a string in a dictionary that needs to be freed */
-    int rc = -1, has_str = 0, tpdf_flag = 0;
+    int rc = -1, has_str = 0, tpdf_flag = 0, i, k;
+    unsigned int j;
     struct lys_node *node;
     const char *expr;
 
+    struct ly_set *refs, *procs;
+    struct lys_feature *ref, *feat;
     struct lys_ident *ident;
     struct lys_type *stype;
     struct lys_node_choice *choic;
@@ -5007,6 +5010,51 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
             free((char *)expr);
         }
         break;
+    case UNRES_FEATURE:
+        feat = (struct lys_feature *)item;
+
+        if (feat->iffeature_size) {
+            refs = ly_set_new();
+            procs = ly_set_new();
+            ly_set_add(procs, feat, 0);
+
+            while (procs->number) {
+                ref = procs->set.g[procs->number - 1];
+                ly_set_rm_index(procs, procs->number - 1);
+
+                for (i = 0; i < ref->iffeature_size; i++) {
+                    resolve_iffeature_getsizes(&ref->iffeature[i], NULL, &j);
+                    for (; j > 0 ; j--) {
+                        if (unres_schema_find(unres, &ref->iffeature[i].features[j - 1], UNRES_IFFEAT) == -1) {
+                            if (ref->iffeature[i].features[j - 1] == feat) {
+                                LOGVAL(LYE_CIRC_FEATURES, LY_VLOG_NONE, NULL, feat->name);
+                                goto featurecheckdone;
+                            }
+
+                            if (ref->iffeature[i].features[j - 1]->iffeature_size) {
+                                k = refs->number;
+                                if (ly_set_add(refs, ref->iffeature[i].features[j - 1], 0) == k) {
+                                    /* not yet seen feature, add it for processing */
+                                    ly_set_add(procs, ref->iffeature[i].features[j - 1], 0);
+                                }
+                            }
+                        } else {
+                            /* forward reference */
+                            rc = EXIT_FAILURE;
+                            goto featurecheckdone;
+                        }
+                    }
+
+                }
+            }
+            rc = EXIT_SUCCESS;
+
+featurecheckdone:
+            ly_set_free(refs);
+            ly_set_free(procs);
+        }
+
+        break;
     case UNRES_USES:
         rc = resolve_unres_schema_uses(item, unres);
         break;
@@ -5093,6 +5141,10 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
     case UNRES_IFFEAT:
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "if-feature", (char *)item);
         break;
+    case UNRES_FEATURE:
+        LOGVRB("There are unresolved if-features for \"%s\" feature circular dependency check, it will be attempted later",
+               ((struct lys_feature *)item)->name);
+        break;
     case UNRES_USES:
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "uses", ((struct lys_node_uses *)item)->name);
         break;
@@ -5144,8 +5196,10 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
 
         for (i = 0; i < unres->count; ++i) {
             /* we do not need to have UNRES_TYPE_IDENTREF resolved, we need its type's base only,
-             * but UNRES_TYPE_LEAFREF must be resolved (for storing leafref target pointers) */
-            if ((unres->type[i] != UNRES_USES) && (unres->type[i] != UNRES_TYPE_DER)
+             * but UNRES_TYPE_LEAFREF must be resolved (for storing leafref target pointers);
+             * if-features are resolved here to make sure that we will have all if-features for
+             * later check of feature circular dependency */
+            if ((unres->type[i] != UNRES_USES) && (unres->type[i] != UNRES_IFFEAT) && (unres->type[i] != UNRES_TYPE_DER)
                     && (unres->type[i] != UNRES_TYPE_DER_TPDF) && (unres->type[i] != UNRES_TYPE_LEAFREF)) {
                 continue;
             }
@@ -5345,7 +5399,8 @@ unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item,
         return EXIT_FAILURE;
     }
 
-    if ((type == UNRES_TYPE_LEAFREF) || (type == UNRES_USES) || (type == UNRES_TYPE_DFLT) || (type == UNRES_IFFEAT)) {
+    if ((type == UNRES_TYPE_LEAFREF) || (type == UNRES_USES) || (type == UNRES_TYPE_DFLT) ||
+            (type == UNRES_IFFEAT) || (type == UNRES_FEATURE)) {
         if (unres_schema_add_node(mod, unres, new_item, type, unres->str_snode[i]) == -1) {
             LOGINT;
             return -1;
@@ -5366,9 +5421,9 @@ unres_schema_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type)
 {
     uint32_t ret = -1, i;
 
-    for (i = 0; i < unres->count; ++i) {
-        if ((unres->item[i] == item) && (unres->type[i] == type)) {
-            ret = i;
+    for (i = unres->count; i > 0; i--) {
+        if ((unres->item[i - 1] == item) && (unres->type[i - 1] == type)) {
+            ret = i - 1;
             break;
         }
     }

@@ -31,6 +31,7 @@ enum UNRES_ITEM {
     UNRES_TYPE_DER,      /* unresolved derived type defined in leaf/leaflist */
     UNRES_TYPE_DER_TPDF, /* unresolved derived type defined as typedef */
     UNRES_IFFEAT,        /* unresolved if-feature */
+    UNRES_FEATURE,       /* feature for circular check, it must be postponed when all if-features are resolved */
     UNRES_USES,          /* unresolved uses grouping (refines and augments in it are resolved as well) */
     UNRES_TYPE_DFLT,     /* validate default type value */
     UNRES_CHOICE_DFLT,   /* check choice default case */
