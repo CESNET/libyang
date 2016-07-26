@@ -446,7 +446,7 @@ int
 ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema, int status, int rpc_output)
 {
     const struct lys_node *siter, *saux, *saux2, *parent = NULL, *parent2;
-    const struct lyd_node *diter;
+    const struct lyd_node *diter, *datasearch;
     int found;
 
     assert(data || schema);
@@ -454,10 +454,12 @@ ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema, i
     if (schema) {
         /* schema is preferred regardless the data */
         siter = schema;
+        datasearch = data;
     } else {
         /* !schema && data */
         schema = data->schema;
         siter = data->schema->child;
+        datasearch = data->child;
     }
 
 repeat:
@@ -507,7 +509,7 @@ repeat_choice:
                 case LYS_LEAFLIST:
                 case LYS_LIST:
                 case LYS_ANYXML:
-                    LY_TREE_FOR(data->child, diter) {
+                    LY_TREE_FOR(datasearch, diter) {
                         if (diter->schema == siter) {
                             break;
                         }
