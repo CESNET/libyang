@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module name="b"
+        xmlns="urn:ietf:params:xml:ns:yang:yin:1"
+        xmlns:b_mod="urn:b">
+  <namespace uri="urn:b"/>
+  <prefix value="b_mod"/>
+  <include module="bsub"/>
+  <include module="btop"/>
+  <revision date="2016-03-01">
+    <description>
+      <text>version 2</text>
+    </description>
+    <reference>
+      <text>RFC XXXX</text>
+    </reference>
+  </revision>
+  <revision date="2015-01-01">
+    <description>
+      <text>version 1</text>
+    </description>
+    <reference>
+      <text>RFC XXXX</text>
+    </reference>
+  </revision>
+  <feature name="foo"/>
+  <grouping name="gg">
+    <leaf name="bar-gggg">
+      <type name="string"/>
+    </leaf>
+  </grouping>
+  <container name="x">
+    <leaf name="bar-leaf">
+      <if-feature name="bar"/>
+      <type name="string"/>
+    </leaf>
+    <uses name="gg">
+      <if-feature name="bar"/>
+    </uses>
+    <leaf name="baz">
+      <if-feature name="foo"/>
+      <type name="string"/>
+    </leaf>
+    <leaf name="bubba">
+      <type name="string"/>
+    </leaf>
+  </container>
+  <augment target-node="/x">
+    <if-feature name="bar">
+      <if-feature name="bar"/>
+    </if-feature>
+    <container name="bar-y">
+      <if-feature name="bar"/>
+    </container>
+  </augment>
+  <rpc name="bar-rpc">
+    <if-feature name="bar"/>
+  </rpc>
+  <rpc name="foo-rpc">
+    <if-feature name="foo"/>
+  </rpc>
+</module>

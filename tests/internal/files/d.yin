@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module name="d"
+        xmlns="urn:ietf:params:xml:ns:yang:yin:1"
+        xmlns:a="urn:d">
+  <namespace uri="urn:d"/>
+  <prefix value="d_mod"/>
+
+  <revision date="2016-03-01">
+    <description>
+      <text>version 2</text>
+    </description>
+    <reference>
+      <text>RFC XXXX</text>
+    </reference>
+  </revision>
+  <revision date="2015-01-01">
+    <description>
+      <text>version 1</text>
+    </description>
+    <reference>
+      <text>RFC XXXX</text>
+    </reference>
+  </revision>
+
+  <container name="y">
+    <leaf name="why">
+      <type name="string"/>
+      <mandatory value="true"/>
+    </leaf>
+    <leaf name="me">
+      <type name="string"/>
+    </leaf>
+  </container>
+
+  <container name="z">
+    <leaf name="not">
+      <type name="string"/>
+    </leaf>
+    <leaf name="you">
+      <type name="string"/>
+    </leaf>
+  </container>
+
+</module>
