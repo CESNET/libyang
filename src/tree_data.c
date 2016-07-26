@@ -3774,6 +3774,24 @@ ly_set_free(struct ly_set *set)
     free(set);
 }
 
+API struct ly_set *
+ly_set_dup(const struct ly_set *set)
+{
+    struct ly_set *new;
+
+    if (!set) {
+        return NULL;
+    }
+
+    new = malloc(sizeof *new);
+    new->number = set->number;
+    new->size = set->size;
+    new->set.g = malloc(new->size * sizeof *(new->set.g));
+    memcpy(new->set.g, set->set.g, new->size * sizeof *(new->set.g));
+
+    return new;
+}
+
 API int
 ly_set_add(struct ly_set *set, void *node, int options)
 {

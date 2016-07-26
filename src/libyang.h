@@ -1001,6 +1001,14 @@ struct ly_set {
 struct ly_set *ly_set_new(void);
 
 /**
+ * @brief Duplicate the existing set.
+ *
+ * @param[in] set Original set to duplicate
+ * @return Duplication of the original set.
+ */
+struct ly_set *ly_set_dup(const struct ly_set *set);
+
+/**
  * @brief Add a ::lyd_node or ::lys_node object into the set
  *
  * Since it is a set, the function checks for duplicity and if the
@@ -1177,6 +1185,7 @@ typedef enum {
     LYVE_INRESOLV,     /**< no resolvents found (schema) */
     LYVE_INSTATUS,     /**< invalid derivation because of status (schema) */
     LYVE_CIRC_LEAFREFS,/**< circular chain of leafrefs detected (schema) */
+    LYVE_CIRC_FEATURES,/**< circular chain of features detected (schema) */
     LYVE_CIRC_IMPORTS, /**< circular chain of imports detected (schema) */
     LYVE_CIRC_INCLUDES,/**< circular chain of includes detected (schema) */
     LYVE_INVER,        /**< non-matching YANG versions of module and its submodules (schema) */
