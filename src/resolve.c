@@ -1830,7 +1830,7 @@ resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_
 /* cannot return LYS_GROUPING, LYS_AUGMENT, LYS_USES, logs directly
  * data_nodeid - 0 schema nodeid, 1 - data nodeid with RPC input, 2 - data nodeid with RPC output */
 const struct lys_node *
-resolve_json_schema_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start, int data_nodeid)
+resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start, int data_nodeid)
 {
     char *module_name = ly_buf(), *buf_backup = NULL, *str;
     const char *name, *mod_name, *id;

@@ -642,7 +642,7 @@ ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *no
     }
 
     /* sets error and everything */
-    node = resolve_json_schema_nodeid(nodeid, ctx, start, 0);
+    node = resolve_json_nodeid(nodeid, ctx, start, 0);
 
     return node;
 }
@@ -657,7 +657,7 @@ ly_ctx_get_node2(struct ly_ctx *ctx, const struct lys_node *start, const char *n
         return NULL;
     }
 
-    node = resolve_json_schema_nodeid(nodeid, ctx, start, (rpc_output ? 2 : 1));
+    node = resolve_json_nodeid(nodeid, ctx, start, (rpc_output ? 2 : 1));
 
     return node;
 }
