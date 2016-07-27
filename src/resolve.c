@@ -1264,7 +1264,7 @@ resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, 
 
         if (!strncmp(&c[i], "not", r = 3) || !strncmp(&c[i], "and", r = 3) || !strncmp(&c[i], "or", r = 2)) {
             if (c[i + r] == '\0') {
-                LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, c[i], c);
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "if-feature");
                 return EXIT_FAILURE;
             } else if (!isspace(c[i + r])) {
                 /* feature name starting with the not/and/or */
