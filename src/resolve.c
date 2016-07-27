@@ -5239,11 +5239,16 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         ly_vlog_hide(0);
 
         for (i = 0; i < unres->count; ++i) {
-            if ((unres->type[i] != UNRES_USES) && (unres->type[i] != UNRES_TYPE_DER)
+            if ((unres->type[i] != UNRES_USES) && (unres->type[i] != UNRES_IFFEAT) && (unres->type[i] != UNRES_TYPE_DER)
                     && (unres->type[i] != UNRES_TYPE_DER_TPDF) && (unres->type[i] != UNRES_TYPE_LEAFREF)) {
                 continue;
             }
             resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
+
+            /* free the allocated resources */
+            if (unres->type[i] == UNRES_IFFEAT) {
+                free(*((char **)unres->item[i]));
+            }
         }
         return -1;
     }
