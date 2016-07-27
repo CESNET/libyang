@@ -823,7 +823,7 @@ feature_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                        s = NULL;
                                      }
 
-if_feature_stmt: IF_FEATURE_KEYWORD sep identifier_ref_arg_str stmtend;
+if_feature_stmt: IF_FEATURE_KEYWORD sep string stmtend;
 
 identity_stmt: IDENTITY_KEYWORD sep identifier_arg_str { if (read_all) {
                                                            if (!(actual = yang_read_identity(trg,s))) {YYABORT;}
