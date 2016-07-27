@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.6)
 set(api_tests test_libyang test_tree_schema test_xml test_dict test_tree_data test_xpath test_diff test_merge)
 set(data_tests test_data_initialization test_leafref_remove test_instid_remove test_keys test_autodel test_when test_defaults test_emptycont test_unique test_mandatory test_json test_parse_print)
 set(schema_yin_tests test_print_transform)
-set(schema_tests test_ietf test_augment test_typedef test_import test_include)
+set(schema_tests test_ietf test_augment test_typedef test_import test_include test_feature)
 
 include_directories(SYSTEM ${CMOCKA_INCLUDE_DIR})
 
