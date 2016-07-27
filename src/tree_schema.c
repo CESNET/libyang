@@ -3243,6 +3243,8 @@ lys_deviation_add_ext_imports(struct lys_module *dev_target_module, struct lys_m
         } else {
             memset(dev_target_module->imp[dev_target_module->imp_size - 1].rev, 0, LY_REV_SIZE);
         }
+        dev_target_module->imp[dev_target_module->imp_size - 1].dsc = NULL;
+        dev_target_module->imp[dev_target_module->imp_size - 1].ref = NULL;
         dev_target_module->imp[dev_target_module->imp_size - 1].external = 2;
     } else {
         /* it could have been added by another deviating module that imported this deviating module */
