@@ -150,7 +150,7 @@ yang_check_version(struct lys_module *module, struct lys_submodule *submodule, c
 }
 
 int
-yang_read_prefix(struct lys_module *module, void *save, char *value, enum yytokentype type)
+yang_read_prefix(struct lys_module *module, struct lys_import *imp, char *value)
 {
     int ret = 0;
 
@@ -158,18 +158,11 @@ yang_read_prefix(struct lys_module *module, void *save, char *value, enum yytoke
         free(value);
         return EXIT_FAILURE;
     }
-    switch (type){
-    case MODULE_KEYWORD:
+
+    if (imp) {
+        ret = yang_check_string(module, &imp->prefix, "prefix", "import", value);
+    } else {
         ret = yang_check_string(module, &module->prefix, "prefix", "module", value);
-        break;
-    case IMPORT_KEYWORD:
-        ((struct lys_import *)save)->prefix = lydict_insert_zc(module->ctx, value);
-        break;
-    default:
-        free(value);
-        LOGINT;
-        ret = EXIT_FAILURE;
-        break;
     }
 
     return ret;
@@ -181,6 +174,10 @@ yang_fill_import(struct lys_module *module, struct lys_import *imp, char *value)
     const char *exp;
     int rc;
 
+    if (!imp->prefix) {
+        LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "prefix", "import");
+        return EXIT_FAILURE;
+    }
     exp = lydict_insert_zc(module->ctx, value);
     rc = lyp_check_import(module, exp, imp);
     lydict_remove(module->ctx, exp);
@@ -203,6 +200,10 @@ yang_read_description(struct lys_module *module, void *node, char *value, char *
     } else {
         if (!strcmp("revision", where)) {
             ret = yang_check_string(module, &((struct lys_revision *)node)->dsc, dsc, where, value);
+        } else if (!strcmp("import", where)){
+            ret = yang_check_string(module, &((struct lys_import *)node)->dsc, dsc, where, value);
+        } else if (!strcmp("include", where)){
+            ret = yang_check_string(module, &((struct lys_include *)node)->dsc, dsc, where, value);
         } else {
             ret = yang_check_string(module, &((struct lys_node *)node)->dsc, dsc, where, value);
         }
@@ -221,6 +222,10 @@ yang_read_reference(struct lys_module *module, void *node, char *value, char *wh
     } else {
         if (!strcmp("revision", where)) {
             ret = yang_check_string(module, &((struct lys_revision *)node)->ref, ref, where, value);
+        } else if (!strcmp("import", where)){
+            ret = yang_check_string(module, &((struct lys_import *)node)->ref, ref, where, value);
+        } else if (!strcmp("include", where)){
+            ret = yang_check_string(module, &((struct lys_include *)node)->ref, ref, where, value);
         } else {
             ret = yang_check_string(module, &((struct lys_node *)node)->ref, ref, where, value);
         }
@@ -2094,9 +2099,8 @@ yang_check_deviation(struct lys_module *module, struct type_deviation *dev, stru
 
 int
 yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, char *value,
-                  char *rev, struct unres_schema *unres)
+                  struct lys_include *inc, struct unres_schema *unres)
 {
-    struct lys_include inc;
     struct lys_module *trg;
     const char *str;
     int rc;
@@ -2104,13 +2108,10 @@ yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, ch
 
     str = lydict_insert_zc(module->ctx, value);
     trg = (submodule) ? (struct lys_module *)submodule : module;
-    inc.submodule = NULL;
-    inc.external = 0;
-    memcpy(inc.rev, rev, LY_REV_SIZE);
-    rc = lyp_check_include(module, submodule, str, &inc, unres);
+    rc = lyp_check_include(module, submodule, str, inc, unres);
     if (!rc) {
         /* success, copy the filled data into the final array */
-        memcpy(&trg->inc[trg->inc_size], &inc, sizeof inc);
+        memcpy(&trg->inc[trg->inc_size], inc, sizeof *inc);
         trg->inc_size++;
     } else if (rc == -1) {
         ret = -1;
