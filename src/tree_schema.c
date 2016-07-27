@@ -52,7 +52,7 @@ check:
 
         /* check local if-features */
         for (i = 0; i < node->iffeature_size; i++) {
-            if (resolve_iffeature(&node->iffeature[i])) {
+            if (!resolve_iffeature(&node->iffeature[i])) {
                 return node;
             }
         }
@@ -2773,7 +2773,7 @@ lys_features_change(const struct lys_module *module, const char *name, int op)
             if (op) {
                 /* check referenced features if they are enabled */
                 for (j = 0; j < module->features[i].iffeature_size; j++) {
-                    if (resolve_iffeature(&module->features[i].iffeature[j])) {
+                    if (!resolve_iffeature(&module->features[i].iffeature[j])) {
                         LOGERR(LY_EINVAL, "Feature \"%s\" is disabled by its %d. if-feature condition.",
                                module->features[i].name, j + 1);
                         return EXIT_FAILURE;
@@ -2797,7 +2797,7 @@ lys_features_change(const struct lys_module *module, const char *name, int op)
                 if (op) {
                     /* check referenced features if they are enabled */
                     for (k = 0; k < module->inc[i].submodule->features[j].iffeature_size; k++) {
-                        if (resolve_iffeature(&module->inc[i].submodule->features[j].iffeature[k])) {
+                        if (!resolve_iffeature(&module->inc[i].submodule->features[j].iffeature[k])) {
                             LOGERR(LY_EINVAL, "Feature \"%s\" is disabled by its %d. if-feature condition.",
                                 module->inc[i].submodule->features[j].name, k + 1);
                             return EXIT_FAILURE;

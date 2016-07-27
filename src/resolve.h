@@ -101,7 +101,7 @@ int parse_schema_json_predicate(const char *id, const char **name, int *nam_len,
 
 /**
  * @param[in] expr compiled if-feature expression
- * @return 0 if enabled, 1 if disabled
+ * @return 1 if enabled, 0 if disabled
  */
 int resolve_iffeature(struct lys_iffeature *expr);
 void resolve_iffeature_getsizes(struct lys_iffeature *iffeat, unsigned int *expr_size, unsigned int *feat_size);

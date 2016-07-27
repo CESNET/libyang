@@ -1046,8 +1046,8 @@ resolve_feature(const char *feat_name, uint16_t len, const struct lys_node *node
 
 /*
  * @return
- *  -  0 if enabled
- *  -  1 if disabled
+ *  -  1 if enabled
+ *  -  0 if disabled
  *  - -1 if not usable by its if-feature expression
  */
 static int
@@ -1056,12 +1056,12 @@ resolve_feature_value(const struct lys_feature *feat)
     int i;
 
     for (i = 0; i < feat->iffeature_size; i++) {
-        if (resolve_iffeature(&feat->iffeature[i])) {
+        if (!resolve_iffeature(&feat->iffeature[i])) {
             return -1;
         }
     }
 
-    return feat->flags & LYS_FENABLED ? 0 : 1;
+    return feat->flags & LYS_FENABLED ? 1 : 0;
 }
 
 static int
@@ -1114,7 +1114,7 @@ resolve_iffeature(struct lys_iffeature *expr)
     if (expr->expr) {
         rc = resolve_iffeature_recursive(expr, &index_e, &index_f);
     }
-    return (rc == 0) ? 0 : 1;
+    return (rc == 1) ? 1 : 0;
 }
 
 struct iff_stack {
@@ -1237,8 +1237,8 @@ resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, 
 {
     const char *c = value;
     int r, rc = EXIT_FAILURE;
-    int i, j, last_not;
-    unsigned int f_size = 0, expr_size = 0;
+    int i, j, last_not, checkversion = 0;
+    unsigned int f_size = 0, expr_size = 0, f_exp = 1;
     uint8_t op;
     struct iff_stack stack = {0, 0, NULL};
 
@@ -1252,6 +1252,7 @@ resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, 
     /* pre-parse the expression to get sizes for arrays, also do some syntax checks of the expression */
     for (i = j = last_not = 0; c[i]; i++) {
         if (c[i] == '(') {
+            checkversion = 1;
             j++;
             continue;
         } else if (c[i] == ')') {
@@ -1277,7 +1278,8 @@ resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, 
                 } else {
                     last_not = 1;
                 }
-            } else {
+            } else { /* and, or */
+                f_exp++;
                 /* not a not operation */
                 last_not = 0;
             }
@@ -1296,10 +1298,19 @@ resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, 
             i++;
         }
     }
-    if (j) {
+    if (j || f_exp != f_size) {
         /* not matching count of ( and ) */
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "if-feature");
         return EXIT_FAILURE;
+    }
+
+    if (checkversion || expr_size > 1) {
+        /* check that we have 1.1 module */
+        if (node->module->version != 2) {
+            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "if-feature");
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "YANG 1.1 if-feature expression found in 1.0 module.");
+            return EXIT_FAILURE;
+        }
     }
 
     /* allocate the memory */
