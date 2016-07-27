@@ -170,11 +170,9 @@ const char *lys_module_a_with_typo = \
 char *result_tree = "\
 module: a\n\
    +--rw top\n\
-   |  +--rw bar-sub\n\
    |  +--rw bar-sub2\n\
    +--rw x\n\
-      +--rw bubba?      string\n\
-      +--rw bar-y\n";
+      +--rw bubba?      string\n";
 
 char *result_yang = "\
 module a {\n\
