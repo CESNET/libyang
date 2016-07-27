@@ -151,31 +151,18 @@ write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeatu
         (*index_f)++;
         break;
     case LYS_IFF_NOT:
-        op = iff_getop(expr->expr, *index_e);
-        if (op == LYS_IFF_F) {
-            /* negation about sole feature */
-            brackets_flag = 0;
-        } else {
-            /* negation around expression */
-            brackets_flag = 1;
-        }
-
         count += ly_print(out, "not ");
-        if (brackets_flag) {
-            count += ly_print(out, "(");
-        }
         count += write_iff(out, module, expr, index_e, index_f);
-        if (brackets_flag) {
-                count += ly_print(out, ")");
-        }
         break;
     case LYS_IFF_AND:
-    case LYS_IFF_OR:
-        if (brackets_flag && op == LYS_IFF_AND) {
-            /* AND does not need brackets */
-            brackets_flag = 0;
+        if (brackets_flag) {
+            /* AND need brackets only if previous op was not */
+            if (*index_e < 2 || iff_getop(expr->expr, *index_e - 2) != LYS_IFF_NOT) {
+                brackets_flag = 0;
+            }
         }
-
+        /* no break */
+    case LYS_IFF_OR:
         if (brackets_flag) {
             count += ly_print(out, "(");
         }
