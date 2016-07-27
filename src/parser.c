@@ -1890,6 +1890,8 @@ lyp_propagate_submodule(struct lys_module *module, struct lys_include *inc)
 
             memcpy(&module->imp[module->imp_size], impiter, sizeof *module->imp);
             module->imp[module->imp_size].prefix = lydict_insert(module->ctx, impiter->prefix, 0);
+            module->imp[module->imp_size].dsc = lydict_insert(module->ctx, impiter->dsc, 0);
+            module->imp[module->imp_size].ref = lydict_insert(module->ctx, impiter->ref, 0);
             module->imp[module->imp_size].external = 1;
             module->imp_size++;
         }

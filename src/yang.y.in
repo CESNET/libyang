@@ -176,6 +176,8 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 %type <uint> fraction_digits_arg_str
 %type <uint> position_value_arg_str
 %type <uint> extension_opt_stmt
+%type <i> import_opt_stmt
+%type <i> include_opt_stmt
 %type <i> module_header_stmts
 %type <i> submodule_header_stmts
 %type <str> tmp_identifier_arg_str
@@ -348,7 +350,7 @@ module_header_stmts: @EMPTYDIR@  { $$ = 0; }
                                              }
                                            }
   |  module_header_stmts namespace_stmt { if (read_all && yang_read_common(module, s, NAMESPACE_KEYWORD)) {YYABORT;} s=NULL; }
-  |  module_header_stmts prefix_stmt { if (read_all && yang_read_prefix(module, NULL, s, MODULE_KEYWORD)) {YYABORT;} s=NULL; }
+  |  module_header_stmts prefix_stmt { if (read_all && yang_read_prefix(module, NULL, s)) {YYABORT;} s=NULL; }
   ;
 
 submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str { if (read_all) {
@@ -427,16 +429,11 @@ import_stmt: IMPORT_KEYWORD sep tmp_identifier_arg_str {
                    size_arrays->imp++;
                  } else {
                    actual = &trg->imp[trg->imp_size];
+                   actual_type=IMPORT_KEYWORD;
                  }
              }
              '{' stmtsep
-                 prefix_stmt { if (read_all) {
-                                 if (yang_read_prefix(trg, actual, s, IMPORT_KEYWORD)) {YYABORT;}
-                                 s=NULL;
-                                 actual_type=IMPORT_KEYWORD;
-                               }
-                             }
-                 revision_date_opt
+                 import_opt_stmt
              '}' stmtsep { if (read_all) {
                              $$ = trg;
                              if (yang_fill_import(trg, actual, $3)) {
@@ -447,10 +444,49 @@ import_stmt: IMPORT_KEYWORD sep tmp_identifier_arg_str {
                            }
                          }
 
+import_opt_stmt: @EMPTYDIR@ { $$ = 0; }
+  |  import_opt_stmt prefix_stmt { if (read_all && yang_read_prefix(trg, actual, s)) {
+                                     YYABORT;
+                                   }
+                                   s = NULL;
+                                   $$ = $1;
+                                 }
+  |  import_opt_stmt description_stmt { if (read_all) {
+                                          if (trg->version != 2) {
+                                            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "description");
+                                          }
+                                          if (yang_read_description(trg, actual, s, "import")) {
+                                            YYABORT;
+                                          }
+                                        }
+                                        s = NULL;
+                                        $$ = $1;
+                                      }
+  |  import_opt_stmt reference_stmt { if (read_all) {
+                                        if (trg->version != 2) {
+                                          LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "reference");
+                                        }
+                                        if (yang_read_reference(trg, actual, s, "import")) {
+                                          YYABORT;
+                                        }
+                                      }
+                                      s = NULL;
+                                      $$ = $1;
+                                    }
+  |  import_opt_stmt revision_date_stmt { if (read_all) {
+                                            if ($1) {
+                                              LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "revision-date", "import");
+                                              YYABORT;
+                                            }
+                                          }
+                                          $$ = 1;
+                                        }
+
 tmp_identifier_arg_str: identifier_arg_str { $$ = s; s = NULL; }
 
 include_stmt: INCLUDE_KEYWORD sep tmp_identifier_arg_str { if (read_all) {
-                                                             memset(rev, 0, LY_REV_SIZE);
+                                                             memset(&inc, 0, sizeof inc);
+                                                             actual = &inc;
                                                              actual_type = INCLUDE_KEYWORD;
                                                            }
                                                            else {
@@ -460,7 +496,7 @@ include_stmt: INCLUDE_KEYWORD sep tmp_identifier_arg_str { if (read_all) {
               include_end stmtsep { if (read_all) {
                                       $$ = trg;
                                       int rc;
-                                      rc = yang_fill_include(module, submodule, $3, rev, unres);
+                                      rc = yang_fill_include(module, submodule, $3, actual, unres);
                                       if (!rc) {
                                         s = NULL;
                                         trg = $$;
@@ -473,18 +509,47 @@ include_stmt: INCLUDE_KEYWORD sep tmp_identifier_arg_str { if (read_all) {
 
 include_end: ';'
   | '{' stmtsep
-     revision_date_opt
+     include_opt_stmt
     '}'
 
-revision_date_opt: @EMPTYDIR@
-  | revision_date_stmt;
+include_opt_stmt: @EMPTYDIR@ { $$ = 0; }
+  |  include_opt_stmt description_stmt { if (read_all) {
+                                           if (trg->version != 2) {
+                                             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "description");
+                                           }
+                                           if (yang_read_description(trg, actual, s, "import")) {
+                                            YYABORT;
+                                           }
+                                         }
+                                         s = NULL;
+                                         $$ = $1;
+                                       }
+  |  include_opt_stmt reference_stmt { if (read_all) {
+                                         if (trg->version != 2) {
+                                           LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "reference");
+                                         }
+                                         if (yang_read_reference(trg, actual, s, "import")) {
+                                          YYABORT;
+                                         }
+                                       }
+                                       s = NULL;
+                                       $$ = $1;
+                                     }
+  |  include_opt_stmt revision_date_stmt { if (read_all) {
+                                             if ($1) {
+                                               LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "revision-date", "include");
+                                               YYABORT;
+                                             }
+                                           }
+                                           $$ = 1;
+                                         }
 
 revision_date_stmt: REVISION_DATE_KEYWORD sep date_arg_str
                     stmtend { if (read_all) {
                                  if (actual_type==IMPORT_KEYWORD) {
                                      memcpy(((struct lys_import *)actual)->rev, s, LY_REV_SIZE-1);
                                  } else {                              // INCLUDE KEYWORD
-                                     memcpy(rev, s, LY_REV_SIZE - 1);
+                                     memcpy(((struct lys_include *)actual)->rev, s, LY_REV_SIZE-1);
                                  }
                                  free(s);
                                  s = NULL;
@@ -503,7 +568,7 @@ belongs_to_stmt: BELONGS_TO_KEYWORD sep identifier_arg_str { if (read_all) {
                                                            }
                  '{' stmtsep
                      prefix_stmt { if (read_all) {
-                                     if (yang_read_prefix(trg, NULL, s, MODULE_KEYWORD)) {
+                                     if (yang_read_prefix(trg, NULL, s)) {
                                        YYABORT;
                                      }
                                      s = NULL;

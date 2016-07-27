@@ -2152,6 +2152,8 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
     /* just free the import array, imported modules will stay in the context */
     for (i = 0; i < module->imp_size; i++) {
         lydict_remove(ctx, module->imp[i].prefix);
+        lydict_remove(ctx, module->imp[i].dsc);
+        lydict_remove(ctx, module->imp[i].ref);
     }
     free(module->imp);
 
@@ -2191,6 +2193,8 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
 
     /* include */
     for (i = 0; i < module->inc_size; i++) {
+        lydict_remove(ctx, module->inc[i].dsc);
+        lydict_remove(ctx, module->inc[i].ref);
         /* complete submodule free is done only from main module since
          * submodules propagate their includes to the main module */
         if (!module->type) {
@@ -3213,6 +3217,8 @@ lys_deviation_add_ext_imports(struct lys_module *dev_target_module, struct lys_m
         dev_target_module->imp[dev_target_module->imp_size - 1].module = dev_module->imp[i].module;
         dev_target_module->imp[dev_target_module->imp_size - 1].prefix = lydict_insert(dev_module->ctx, dev_module->imp[i].prefix, 0);
         memcpy(dev_target_module->imp[dev_target_module->imp_size - 1].rev, dev_module->imp[i].rev, LY_REV_SIZE);
+        dev_target_module->imp[dev_target_module->imp_size - 1].dsc = lydict_insert(dev_module->ctx, dev_module->imp[i].dsc, 0);
+        dev_target_module->imp[dev_target_module->imp_size - 1].ref = lydict_insert(dev_module->ctx, dev_module->imp[i].ref, 0);
         dev_target_module->imp[dev_target_module->imp_size - 1].external = 1;
     }
 
@@ -3237,6 +3243,8 @@ lys_deviation_add_ext_imports(struct lys_module *dev_target_module, struct lys_m
         } else {
             memset(dev_target_module->imp[dev_target_module->imp_size - 1].rev, 0, LY_REV_SIZE);
         }
+        dev_target_module->imp[dev_target_module->imp_size - 1].dsc = NULL;
+        dev_target_module->imp[dev_target_module->imp_size - 1].ref = NULL;
         dev_target_module->imp[dev_target_module->imp_size - 1].external = 2;
     } else {
         /* it could have been added by another deviating module that imported this deviating module */

@@ -115,7 +115,7 @@ char * yang_read_string(const char *input, int size, int indent);
 
 int yang_read_common(struct lys_module *module,char *value, enum yytokentype type);
 
-int yang_read_prefix(struct lys_module *module, void *save, char *value, enum yytokentype type);
+int yang_read_prefix(struct lys_module *module, struct lys_import *imp, char *value);
 
 int yang_check_version(struct lys_module *module, struct lys_submodule *submodule, char *value, int repeat);
 
@@ -238,7 +238,7 @@ int yang_check_deviate_unique(struct lys_module *module, struct type_deviation *
 int yang_check_deviation(struct lys_module *module, struct type_deviation *dev, struct unres_schema *unres);
 
 int yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, char *value,
-                      char *rev, struct unres_schema *unres);
+                      struct lys_include *inc, struct unres_schema *unres);
 
 int yang_use_extension(struct lys_module *module, struct lys_node *data_node, void *actual, char *value);
 

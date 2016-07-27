@@ -2354,17 +2354,30 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
             if (imp->rev[0]) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
-            } else if (!imp->prefix) {
-                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
-                       "The \"prefix\" statement is expected before the \"revision-date\".");
-                goto error;
             }
             GETVAL(value, child, "date");
             if (lyp_check_date(value)) {
                 goto error;
             }
             memcpy(imp->rev, value, LY_REV_SIZE - 1);
+        } else if ((module->version == 2) && !strcmp(child->name, "description")) {
+            if (imp->dsc) {
+                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
+                goto error;
+            }
+            imp->dsc = read_yin_subnode(module->ctx, child, "text");
+            if (!imp->dsc) {
+                goto error;
+            }
+        } else if ((module->version == 2) && !strcmp(child->name, "reference")) {
+            if (imp->ref) {
+                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
+                goto error;
+            }
+            imp->ref = read_yin_subnode(module->ctx, child, "text");
+            if (!imp->ref) {
+                goto error;
+            }
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
             goto error;
@@ -2414,6 +2427,24 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
                 goto error;
             }
             memcpy(inc->rev, value, LY_REV_SIZE - 1);
+        } else if ((module->version == 2) && !strcmp(child->name, "description")) {
+            if (inc->dsc) {
+                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
+                goto error;
+            }
+            inc->dsc = read_yin_subnode(module->ctx, child, "text");
+            if (!inc->dsc) {
+                goto error;
+            }
+        } else if ((module->version == 2) && !strcmp(child->name, "reference")) {
+            if (inc->ref) {
+                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
+                goto error;
+            }
+            inc->ref = read_yin_subnode(module->ctx, child, "text");
+            if (!inc->ref) {
+                goto error;
+            }
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
             goto error;
