@@ -831,7 +831,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
         module = ly_ctx_get_module(ctx, prefix, NULL);
         if (module) {
             /* get the proper schema node */
-            LY_TREE_FOR(module->data, schema) {
+            while ((schema = (struct lys_node *)lys_getnext(schema, NULL, module, 0))) {
                 /* skip nodes in module's data which are not expected here according to options' data type */
                 if (options & LYD_OPT_RPC) {
                     if (schema->nodetype != LYS_RPC) {
@@ -843,10 +843,11 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
                     }
                 } else if (!(options & LYD_OPT_RPCREPLY)) {
                     /* rest of the data types except RPCREPLY which cannot be here */
-                    if (schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
+                    if (schema->nodetype & (LYS_INPUT | LYS_OUTPUT | LYS_NOTIF)) {
                         continue;
                     }
                 }
+
                 if (!strcmp(schema->name, name)) {
                     break;
                 }
