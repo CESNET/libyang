@@ -3217,6 +3217,8 @@ lys_deviation_add_ext_imports(struct lys_module *dev_target_module, struct lys_m
         dev_target_module->imp[dev_target_module->imp_size - 1].module = dev_module->imp[i].module;
         dev_target_module->imp[dev_target_module->imp_size - 1].prefix = lydict_insert(dev_module->ctx, dev_module->imp[i].prefix, 0);
         memcpy(dev_target_module->imp[dev_target_module->imp_size - 1].rev, dev_module->imp[i].rev, LY_REV_SIZE);
+        dev_target_module->imp[dev_target_module->imp_size - 1].dsc = lydict_insert(dev_module->ctx, dev_module->imp[i].dsc, 0);
+        dev_target_module->imp[dev_target_module->imp_size - 1].ref = lydict_insert(dev_module->ctx, dev_module->imp[i].ref, 0);
         dev_target_module->imp[dev_target_module->imp_size - 1].external = 1;
     }
 
