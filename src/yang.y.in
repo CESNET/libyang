@@ -3486,16 +3486,18 @@ ordered_by_stmt: ORDERED_BY_KEYWORD sep ordered_by_arg_str stmtend { $$ = $3; }
 
 ordered_by_arg_str: USER_KEYWORD optsep { $$ = LYS_USERORDERED; }
   |  SYSTEM_KEYWORD optsep { $$ = LYS_SYSTEMORDERED; }
-  |  string_1 { if (!strcmp(s, "user")) {
-                  $$ = LYS_USERORDERED;
-                } else if (!strcmp(s, "system")) {
-                  $$ = LYS_SYSTEMORDERED;
-                } else {
+  |  string_1 { if (read_all) {
+                  if (!strcmp(s, "user")) {
+                    $$ = LYS_USERORDERED;
+                  } else if (!strcmp(s, "system")) {
+                    $$ = LYS_SYSTEMORDERED;
+                  } else {
+                    free(s);
+                    YYABORT;
+                  }
                   free(s);
-                  YYABORT;
+                  s=NULL;
                 }
-                free(s);
-                s=NULL;
               }
 
 must_stmt: MUST_KEYWORD sep string { if (read_all) {
