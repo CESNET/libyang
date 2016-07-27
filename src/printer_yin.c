@@ -1309,6 +1309,12 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
         if (module->imp[i].rev[0]) {
             yin_print_open(out, level, "revision-date", "date", module->imp[i].rev, 1);
         }
+        if (module->imp[i].dsc) {
+            yin_print_text(out, level, "description", module->imp[i].dsc);
+        }
+        if (module->imp[i].ref) {
+            yin_print_text(out, level, "reference", module->imp[i].ref);
+        }
         level--;
 
         yin_print_close(out, level, "import");
@@ -1324,6 +1330,12 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
         if (!close) {
             level++;
             yin_print_open(out, level, "revision-date", "date", module->inc[i].rev, 1);
+            if (module->inc[i].dsc) {
+                yin_print_text(out, level, "description", module->inc[i].dsc);
+            }
+            if (module->inc[i].ref) {
+                yin_print_text(out, level, "reference", module->inc[i].ref);
+            }
             level--;
 
             yin_print_close(out, level, "include");

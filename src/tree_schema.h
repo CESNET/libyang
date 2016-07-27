@@ -1281,6 +1281,8 @@ struct lys_import {
     struct lys_module *module;       /**< link to the imported module (mandatory) */
     const char *prefix;              /**< prefix for the data from the imported schema (mandatory) */
     char rev[LY_REV_SIZE];           /**< revision-date of the imported module (optional) */
+    const char *dsc;                 /**< description (optional) */
+    const char *ref;                 /**< reference (optional) */
     uint8_t external;                /**< 0 - normal import, 1 import record from a submodule or a deviating module, 2 for a deviating module */
 };
 
@@ -1290,6 +1292,8 @@ struct lys_import {
 struct lys_include {
     struct lys_submodule *submodule; /**< link to the included submodule (mandatory) */
     char rev[LY_REV_SIZE];           /**< revision-date of the included submodule (optional) */
+    const char *dsc;                 /**< description (optional) */
+    const char *ref;                 /**< reference (optional) */
     uint8_t external;                /**< flag for include records from submodules */
 };
 

@@ -2152,6 +2152,8 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
     /* just free the import array, imported modules will stay in the context */
     for (i = 0; i < module->imp_size; i++) {
         lydict_remove(ctx, module->imp[i].prefix);
+        lydict_remove(ctx, module->imp[i].dsc);
+        lydict_remove(ctx, module->imp[i].ref);
     }
     free(module->imp);
 
@@ -2191,6 +2193,8 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
 
     /* include */
     for (i = 0; i < module->inc_size; i++) {
+        lydict_remove(ctx, module->inc[i].dsc);
+        lydict_remove(ctx, module->inc[i].ref);
         /* complete submodule free is done only from main module since
          * submodules propagate their includes to the main module */
         if (!module->type) {
