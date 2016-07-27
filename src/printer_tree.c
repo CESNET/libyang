@@ -645,7 +645,7 @@ static void
 tree_print_snode(struct lyout *out, const struct lys_module *module, int level, char *indent,
                  unsigned int max_name_len, const struct lys_node *node, int mask, int spec_config)
 {
-    if (lys_is_disabled(node, 0)) {
+    if (lys_is_disabled(node, (node->parent && node->parent->nodetype == LYS_AUGMENT) ? 1 : 0)) {
         return;
     }
 
