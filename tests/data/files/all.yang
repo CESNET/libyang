@@ -3,7 +3,6 @@ module all {
   namespace "urn:all";
   prefix all_mod;
 
-
   revision 2016-05-23;
   revision 2016-05-22;
 

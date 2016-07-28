@@ -232,11 +232,14 @@ struct lys_module {
     const char *contact;             /**< contact information for the module */
     const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
     uint8_t type:1;                  /**< 0 - structure type used to distinguish structure from ::lys_submodule */
-    uint8_t version:5;               /**< yang-version:
+    uint8_t version:4;               /**< yang-version:
                                           - 0 = not specified, YANG 1.0 as default,
                                           - 1 = YANG 1.0,
                                           - 2 = YANG 1.1 */
-    uint8_t deviated:1;              /**< deviated flag (true/false) if the module is deviated by some other module */
+    uint8_t deviated:2;              /**< deviated flag:
+                                          - 0 = not deviated,
+                                          - 1 = the module is deviated by another module,
+                                          - 2 = deviation applied to this module are temporarily off */
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
 
     /* array sizes */
@@ -1283,7 +1286,6 @@ struct lys_import {
     char rev[LY_REV_SIZE];           /**< revision-date of the imported module (optional) */
     const char *dsc;                 /**< description (optional) */
     const char *ref;                 /**< reference (optional) */
-    uint8_t external;                /**< 0 - normal import, 1 import record from a submodule or a deviating module, 2 for a deviating module */
 };
 
 /**

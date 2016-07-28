@@ -468,25 +468,32 @@ ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod)
 static int
 ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod)
 {
-    int i;
-    const char *revision;
+    uint32_t i = 0, j;
+    const struct lys_module *mod;
     struct lyd_node *cont;
+    const char *ptr;
 
-    for (i = 0; i < cur_mod->imp_size; ++i) {
-        /* marks a deviating module */
-        if (cur_mod->imp[i].external == 2) {
-            revision = (cur_mod->imp[i].module->rev_size ? cur_mod->imp[i].module->rev[0].date : "");
-
-            cont = lyd_new(parent, NULL, "deviation");
-            if (!cont) {
-                return EXIT_FAILURE;
+    if (cur_mod->deviated) {
+        while ((mod = ly_ctx_get_module_iter(cur_mod->ctx, &i))) {
+            if (mod == cur_mod) {
+                continue;
             }
 
-            if (!lyd_new_leaf(cont, NULL, "name", cur_mod->imp[i].module->name)) {
-                return EXIT_FAILURE;
-            }
-            if (!lyd_new_leaf(cont, NULL, "revision", revision)) {
-                return EXIT_FAILURE;
+            for (j = 0; j < mod->deviation_size; ++j) {
+                ptr = strstr(mod->deviation[j].target_name, cur_mod->name);
+                if (ptr && ptr[strlen(cur_mod->name)] == ':') {
+                    cont = lyd_new(parent, NULL, "deviation");
+                    if (!cont) {
+                        return EXIT_FAILURE;
+                    }
+
+                    if (!lyd_new_leaf(cont, NULL, "name", mod->name)) {
+                        return EXIT_FAILURE;
+                    }
+                    if (!lyd_new_leaf(cont, NULL, "revision", (mod->rev_size ? mod->rev[0].date : ""))) {
+                        return EXIT_FAILURE;
+                    }
+                }
             }
         }
     }

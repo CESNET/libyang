@@ -2108,6 +2108,7 @@ const struct lys_module *
 lys_get_import_module(const struct lys_module *module, const char *prefix, int pref_len, const char *name, int name_len)
 {
     const struct lys_module *main_module;
+    char *str;
     int i;
 
     assert(!prefix || !name);
@@ -2128,11 +2129,24 @@ lys_get_import_module(const struct lys_module *module, const char *prefix, int p
         return main_module;
     }
 
+    /* standard import */
     for (i = 0; i < module->imp_size; ++i) {
         if ((!prefix || (!strncmp(module->imp[i].prefix, prefix, pref_len) && !module->imp[i].prefix[pref_len]))
                 && (!name || (!strncmp(module->imp[i].module->name, name, name_len) && !module->imp[i].module->name[name_len]))) {
             return module->imp[i].module;
         }
+    }
+
+    /* module required by a foreign grouping, deviation, or submodule */
+    if (name) {
+        str = strndup(name, name_len);
+        if (!str) {
+            LOGMEM;
+            return NULL;
+        }
+        main_module = ly_ctx_get_module(module->ctx, str, NULL);
+        free(str);
+        return main_module;
     }
 
     return NULL;
@@ -3129,15 +3143,11 @@ lys_xpath_atomize(const struct lys_node *cur_snode, const char *expr, int option
 }
 
 static void
-lys_switch_deviation(struct lys_deviation *dev, struct lys_module *dev_module)
+lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *target_module)
 {
     int ret;
     char *parent_path;
     struct lys_node *target;
-    const struct lys_module *target_module;
-
-    target_module = lys_get_import_module(dev_module, NULL, 0, dev->target_name + 1,
-                                          strcspn(dev->target_name, ":") - 1);
 
     if (dev->deviate[0].mod == LY_DEVIATE_NO) {
         if (dev->orig_node) {
@@ -3186,93 +3196,32 @@ lys_switch_deviation(struct lys_deviation *dev, struct lys_module *dev_module)
     }
 }
 
-void
-lys_deviation_add_ext_imports(struct lys_module *dev_target_module, struct lys_module *dev_module)
-{
-    int i, j;
-
-    /* mark the target module as deviated */
-    dev_target_module->deviated = 1;
-
-    /* copy our imports to the deviated module (deviations may need them to work) */
-    for (i = 0; i < dev_module->imp_size; ++i) {
-        for (j = 0; j < dev_target_module->imp_size; ++j) {
-            if (dev_module->imp[i].module == dev_target_module->imp[j].module) {
-                break;
-            }
-        }
-
-        if (j < dev_target_module->imp_size) {
-            /* import is already there */
-            continue;
-        }
-
-        /* copy the import, mark it as external */
-        ++dev_target_module->imp_size;
-        dev_target_module->imp = ly_realloc(dev_target_module->imp, dev_target_module->imp_size * sizeof *dev_target_module->imp);
-        if (!dev_target_module->imp) {
-            LOGMEM;
-            return;
-        }
-        dev_target_module->imp[dev_target_module->imp_size - 1].module = dev_module->imp[i].module;
-        dev_target_module->imp[dev_target_module->imp_size - 1].prefix = lydict_insert(dev_module->ctx, dev_module->imp[i].prefix, 0);
-        memcpy(dev_target_module->imp[dev_target_module->imp_size - 1].rev, dev_module->imp[i].rev, LY_REV_SIZE);
-        dev_target_module->imp[dev_target_module->imp_size - 1].dsc = lydict_insert(dev_module->ctx, dev_module->imp[i].dsc, 0);
-        dev_target_module->imp[dev_target_module->imp_size - 1].ref = lydict_insert(dev_module->ctx, dev_module->imp[i].ref, 0);
-        dev_target_module->imp[dev_target_module->imp_size - 1].external = 1;
-    }
-
-    /* copy ourselves to the deviated module as a special import (if we haven't yet, there could be more deviations of the same module) */
-    for (i = 0; i < dev_target_module->imp_size; ++i) {
-        if (dev_target_module->imp[i].module == dev_module) {
-            break;
-        }
-    }
-
-    if (i == dev_target_module->imp_size) {
-        ++dev_target_module->imp_size;
-        dev_target_module->imp = ly_realloc(dev_target_module->imp, dev_target_module->imp_size * sizeof *dev_target_module->imp);
-        if (!dev_target_module->imp) {
-            LOGMEM;
-            return;
-        }
-        dev_target_module->imp[dev_target_module->imp_size - 1].module = dev_module;
-        dev_target_module->imp[dev_target_module->imp_size - 1].prefix = lydict_insert(dev_module->ctx, dev_module->prefix, 0);
-        if (dev_module->rev_size) {
-            memcpy(dev_target_module->imp[dev_target_module->imp_size - 1].rev, dev_module->rev[0].date, LY_REV_SIZE);
-        } else {
-            memset(dev_target_module->imp[dev_target_module->imp_size - 1].rev, 0, LY_REV_SIZE);
-        }
-        dev_target_module->imp[dev_target_module->imp_size - 1].dsc = NULL;
-        dev_target_module->imp[dev_target_module->imp_size - 1].ref = NULL;
-        dev_target_module->imp[dev_target_module->imp_size - 1].external = 2;
-    } else {
-        /* it could have been added by another deviating module that imported this deviating module */
-        dev_target_module->imp[i].external = 2;
-    }
-}
-
 /* temporarily removes or applies deviations, updates module deviation flag accordingly */
 void
 lys_switch_deviations(struct lys_module *module)
 {
-    uint8_t i, j, changes = 0;
+    uint32_t i = 0, j;
+    const struct lys_module *mod;
+    const char *ptr;
 
-    for (i = 0; i < module->imp_size; ++i) {
-        if (module->imp[i].external == 2) {
-            for (j = 0; j < module->imp[i].module->deviation_size; ++j) {
-                lys_switch_deviation(&module->imp[i].module->deviation[j], module->imp[i].module);
+    if (module->deviated) {
+        while ((mod = ly_ctx_get_module_iter(module->ctx, &i))) {
+            if (mod == module) {
+                continue;
             }
 
-            changes = 1;
+            for (j = 0; j < mod->deviation_size; ++j) {
+                ptr = strstr(mod->deviation[j].target_name, module->name);
+                if (ptr && ptr[strlen(module->name)] == ':') {
+                    lys_switch_deviation(&mod->deviation[j], module);
+                }
+            }
         }
-    }
 
-    if (changes) {
-        if (module->deviated) {
-            module->deviated = 0;
-        } else {
+        if (module->deviated == 2) {
             module->deviated = 1;
+        } else {
+            module->deviated = 2;
         }
     }
 }
@@ -3291,7 +3240,7 @@ lys_sub_module_apply_devs_augs(struct lys_module *module)
     for (i = 0; i < module->deviation_size; ++i) {
         lys_switch_deviation(&module->deviation[i], module);
         assert(module->deviation[i].orig_node);
-        lys_deviation_add_ext_imports(lys_node_module(module->deviation[i].orig_node), module);
+        lys_node_module(module->deviation[i].orig_node)->deviated = 1;
     }
 
     /* re-apply augments */
@@ -3316,35 +3265,39 @@ lys_sub_module_apply_devs_augs(struct lys_module *module)
 void
 lys_sub_module_remove_devs_augs(struct lys_module *module)
 {
-    int i, j, flag;
+    uint32_t i = 0, j;
     struct lys_node *last, *elem;
-    struct lys_module *orig_mod;
+    const struct lys_module *mod;
+    struct lys_module *target_mod;
+    const char *ptr;
 
     /* remove applied deviations */
     for (i = 0; i < module->deviation_size; ++i) {
         lys_switch_deviation(&module->deviation[i], module);
+        target_mod = lys_node_module(module->deviation[i].orig_node);
+        assert(target_mod->deviated == 1);
 
-        /* remove our deviation import, clear deviated flag is possible */
-        orig_mod = lys_node_module(module->deviation[i].orig_node);
-        flag = 0;
-        for (j = 0; j < orig_mod->imp_size; ++j) {
-            if (orig_mod->imp[j].external == 2) {
-                if (orig_mod->imp[j].module == lys_main_module(module)) {
-                    /* our deviation import, remove it */
-                    --orig_mod->imp_size;
-                    if (j < orig_mod->imp_size) {
-                        memcpy(&orig_mod->imp[j], &orig_mod->imp[j + 1], (orig_mod->imp_size - j) * sizeof *orig_mod->imp);
-                    }
-                    --j;
-                } else {
-                    /* some other deviation, we cannot clear the deviated flag */
-                    flag = 1;
+        /* clear the deviation flag if possible */
+        while ((mod = ly_ctx_get_module_iter(module->ctx, &i))) {
+            if ((mod == module) || (mod == target_mod)) {
+                continue;
+            }
+
+            for (j = 0; j < mod->deviation_size; ++j) {
+                ptr = strstr(mod->deviation[j].target_name, target_mod->name);
+                if (ptr && (ptr[strlen(target_mod->name)] == ':')) {
+                    /* some other module deviation targets the inspected module, flag remains */
+                    break;
                 }
             }
+
+            if (j < mod->deviation_size) {
+                break;
+            }
         }
-        if (!flag) {
-            /* it's safe to clear the deviated flag */
-            orig_mod->deviated = 0;
+
+        if (!mod) {
+            target_mod->deviated = 0;
         }
     }
 

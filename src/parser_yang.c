@@ -1490,7 +1490,7 @@ yang_read_deviation(struct lys_module *module, char *value)
         goto error;
     }
 
-    lys_deviation_add_ext_imports(lys_node_module(dev_target), module);
+    lys_node_module(dev_target)->deviated = 1;
 
     /*save pointer to the deviation and deviated target*/
     deviation->deviation = dev;
