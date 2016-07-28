@@ -2225,7 +2225,7 @@ lyv_multicases(struct lyd_node *node, struct lys_node *schemanode, struct lyd_no
 autodelete:
     /* remove all nodes from other cases than 'sparent' */
     LY_TREE_FOR_SAFE(first_sibling, next, iter) {
-        if (node && iter == node) {
+        if (schemanode == iter->schema) {
             continue;
         }
 
