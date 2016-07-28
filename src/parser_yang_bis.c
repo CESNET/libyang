@@ -7429,7 +7429,7 @@ yyreduce:
                     char *endptr;
 
                     val = strtoul(s, &endptr, 10);
-                    if (val > UINT32_MAX || *endptr) {
+                    if (val == 0 | val > UINT32_MAX || *endptr) {
                         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "max-elements");
                         free(s);
                         YYABORT;
