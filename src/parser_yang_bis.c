@@ -611,10 +611,10 @@ static const yytype_uint16 yyrline[] =
     1530,  1537,  1537,  1545,  1546,  1552,  1558,  1563,  1568,  1568,
     1573,  1573,  1581,  1581,  1588,  1595,  1588,  1615,  1643,  1643,
     1645,  1652,  1657,  1652,  1667,  1668,  1668,  1676,  1679,  1685,
-    1691,  1697,  1702,  1708,  1715,  1708,  1734,  1762,  1762,  1764,
-    1771,  1776,  1771,  1786,  1787,  1787,  1795,  1801,  1815,  1829,
-    1841,  1847,  1852,  1858,  1865,  1858,  1890,  1932,  1932,  1934,
-    1941,  1941,  1949,  1959,  1967,  1973,  1987,  2001,  2013,  2019,
+    1691,  1697,  1702,  1708,  1715,  1708,  1730,  1758,  1758,  1760,
+    1767,  1772,  1767,  1782,  1783,  1783,  1791,  1797,  1812,  1827,
+    1839,  1845,  1850,  1856,  1863,  1856,  1888,  1930,  1930,  1932,
+    1939,  1939,  1947,  1957,  1965,  1971,  1986,  2001,  2013,  2019,
     2024,  2029,  2029,  2037,  2037,  2042,  2042,  2050,  2050,  2061,
     2063,  2062,  2080,  2101,  2101,  2103,  2116,  2128,  2136,  2144,
     2152,  2161,  2170,  2170,  2180,  2181,  2184,  2185,  2186,  2187,
@@ -4915,10 +4915,6 @@ yyreduce:
                                                 */
                                              (yyvsp[0].nodes).node.ptr_leaflist->flags &= 0x7F;
                                            }
-                                           if ((yyvsp[0].nodes).node.ptr_leaflist->max && (yyvsp[0].nodes).node.ptr_leaflist->min > (yyvsp[0].nodes).node.ptr_leaflist->max) {
-                                             LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[0].nodes).node.ptr_leaflist, "\"min-elements\" is bigger than \"max-elements\".");
-                                             YYABORT;
-                                           }
                                            if (!((yyvsp[0].nodes).node.flag & LYS_TYPE_DEF)) {
                                              LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, (yyvsp[0].nodes).node.ptr_leaflist, "type", "leaf-list");
                                              YYABORT;
@@ -5051,6 +5047,7 @@ yyreduce:
                                               if ((yyvsp[-1].nodes).node.ptr_leaflist->max && ((yyvsp[-1].nodes).node.ptr_leaflist->min > (yyvsp[-1].nodes).node.ptr_leaflist->max)) {
                                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "min-elements");
                                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+                                                YYABORT;
                                               }
                                             }
                                           }
@@ -5070,6 +5067,7 @@ yyreduce:
                                               if ((yyvsp[-1].nodes).node.ptr_leaflist->min > (yyvsp[-1].nodes).node.ptr_leaflist->max) {
                                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "max-elements");
                                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"max-elements\" is smaller than \"min-elements\".");
+                                                YYABORT;
                                               }
                                             }
                                           }
@@ -5292,6 +5290,7 @@ yyreduce:
                                          if ((yyvsp[-1].nodes).node.ptr_list->max && ((yyvsp[-1].nodes).node.ptr_list->min > (yyvsp[-1].nodes).node.ptr_list->max)) {
                                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "min-elements");
                                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+                                           YYABORT;
                                          }
                                        }
                                      }
@@ -5311,6 +5310,7 @@ yyreduce:
                                          if ((yyvsp[-1].nodes).node.ptr_list->min > (yyvsp[-1].nodes).node.ptr_list->max) {
                                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "min-elements");
                                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"max-elements\" is smaller than \"min-elements\".");
+                                           YYABORT;
                                          }
                                        }
                                      }

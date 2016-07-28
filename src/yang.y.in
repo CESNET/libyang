@@ -1719,10 +1719,6 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                                 */
                                              $7.node.ptr_leaflist->flags &= 0x7F;
                                            }
-                                           if ($7.node.ptr_leaflist->max && $7.node.ptr_leaflist->min > $7.node.ptr_leaflist->max) {
-                                             LOGVAL(LYE_SPEC, LY_VLOG_LYS, $7.node.ptr_leaflist, "\"min-elements\" is bigger than \"max-elements\".");
-                                             YYABORT;
-                                           }
                                            if (!($7.node.flag & LYS_TYPE_DEF)) {
                                              LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaflist, "type", "leaf-list");
                                              YYABORT;
@@ -1809,6 +1805,7 @@ leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                               if ($1.node.ptr_leaflist->max && ($1.node.ptr_leaflist->min > $1.node.ptr_leaflist->max)) {
                                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "min-elements");
                                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+                                                YYABORT;
                                               }
                                             }
                                           }
@@ -1823,6 +1820,7 @@ leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                               if ($1.node.ptr_leaflist->min > $1.node.ptr_leaflist->max) {
                                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "max-elements");
                                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"max-elements\" is smaller than \"min-elements\".");
+                                                YYABORT;
                                               }
                                             }
                                           }
@@ -1981,6 +1979,7 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                          if ($1.node.ptr_list->max && ($1.node.ptr_list->min > $1.node.ptr_list->max)) {
                                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "min-elements");
                                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+                                           YYABORT;
                                          }
                                        }
                                      }
@@ -1995,6 +1994,7 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                          if ($1.node.ptr_list->min > $1.node.ptr_list->max) {
                                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "min-elements");
                                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"max-elements\" is smaller than \"min-elements\".");
+                                           YYABORT;
                                          }
                                        }
                                      }
