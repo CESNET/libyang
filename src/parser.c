@@ -165,7 +165,7 @@ lyp_check_options(int options)
  * @param[in] fd MUST be a regular file (will be used by mmap)
  */
 struct lys_module *
-lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *revision)
+lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *revision, int implement)
 {
     struct lys_module *module = NULL;
     struct stat sb;
@@ -194,10 +194,10 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *rev
     }
     switch (format) {
     case LYS_IN_YIN:
-        module = yin_read_module(ctx, addr, revision, 0);
+        module = yin_read_module(ctx, addr, revision, implement);
         break;
     case LYS_IN_YANG:
-        module = yang_read_module(ctx, addr, sb.st_size + 2, revision, 0);
+        module = yang_read_module(ctx, addr, sb.st_size + 2, revision, implement);
         break;
     default:
         LOGERR(LY_EINVAL, "%s: Invalid format parameter.", __func__);
@@ -211,7 +211,7 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *rev
 /* if module is !NULL, then the function searches for submodule */
 struct lys_module *
 lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
-                struct unres_schema *unres)
+                int implement, struct unres_schema *unres)
 {
     size_t len, flen, match_len = 0, dir_len;
     int fd;
@@ -375,7 +375,7 @@ matched:
     if (module) {
         result = (struct lys_module *)lys_submodule_read(module, fd, match_format, unres);
     } else {
-        result = lys_read_import(ctx, fd, match_format, revision);
+        result = lys_read_import(ctx, fd, match_format, revision, implement);
     }
     close(fd);
 
@@ -1702,7 +1702,7 @@ lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, co
         }
     } else {
         inc->submodule = (struct lys_submodule *)ly_ctx_load_sub_module(module->ctx, module, value,
-                                                                        inc->rev[0] ? inc->rev : NULL, unres);
+                                                                        inc->rev[0] ? inc->rev : NULL, 1, unres);
     }
 
     /* update the list of currently being parsed modules */
@@ -1780,7 +1780,7 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
         /* no revision specified, try to load the newest module from the search locations into the context */
         verb = ly_log_level;
         ly_verb(LY_LLSILENT);
-        ly_ctx_load_sub_module(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL, NULL);
+        ly_ctx_load_sub_module(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL, 0, NULL);
         ly_verb(verb);
         if (ly_errno == LY_ESYS) {
             /* it is ok, that the e.g. input file was not found */
@@ -1797,7 +1797,7 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
     imp->module = (struct lys_module *)ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
     if (!imp->module) {
         /* whether to use a user callback is decided in the function */
-        imp->module = (struct lys_module *)ly_ctx_load_sub_module(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL, NULL);
+        imp->module = (struct lys_module *)ly_ctx_load_sub_module(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL, 0, NULL);
     }
 
     /* update the list of currently being parsed modules */

@@ -57,7 +57,7 @@ enum LY_IDENT {
 };
 
 struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
-                                   const char *revision, struct unres_schema *unres);
+                                   const char *revision, int implement, struct unres_schema *unres);
 
 struct lys_type *lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *found);
 

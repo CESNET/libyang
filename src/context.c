@@ -359,7 +359,7 @@ ly_ctx_get_module_clb(const struct ly_ctx *ctx, void **user_data)
 
 struct lys_module *
 ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
-                       struct unres_schema *unres)
+                       int implement, struct unres_schema *unres)
 {
     struct lys_module *mod;
     char *module_data;
@@ -401,10 +401,7 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
             module_data_free(module_data);
         }
     } else {
-        mod = lyp_search_file(ctx, module, name, revision, unres);
-        if (mod) {
-            mod->implemented = 1;
-        }
+        mod = lyp_search_file(ctx, module, name, revision, implement, unres);
     }
 
     return mod;
@@ -418,7 +415,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
         return NULL;
     }
 
-    return ly_ctx_load_sub_module(ctx, NULL, name, revision, NULL);
+    return ly_ctx_load_sub_module(ctx, NULL, name, revision, 1, NULL);
 }
 
 API const struct lys_module *
