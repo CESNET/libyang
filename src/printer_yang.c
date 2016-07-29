@@ -1074,6 +1074,9 @@ yang_print_input_output(struct lyout *out, int level, const struct lys_node *nod
     for (i = 0; i < inout->tpdf_size; i++) {
         yang_print_typedef(out, level, node->module, &inout->tpdf[i]);
     }
+    for (i = 0; i < inout->must_size; i++) {
+        yang_print_must(out, level, node->module, &inout->must[i]);
+    }
 
     LY_TREE_FOR(node->child, sub) {
         /* augments */
@@ -1144,6 +1147,11 @@ yang_print_notif(struct lyout *out, int level, const struct lys_node *node)
     for (i = 0; i < notif->tpdf_size; i++) {
         yang_print_open(out, &flag);
         yang_print_typedef(out, level, node->module, &notif->tpdf[i]);
+    }
+
+    for (i = 0; i < notif->must_size; i++) {
+        yang_print_open(out, &flag);
+        yang_print_must(out, level, node->module, &notif->must[i]);
     }
 
     LY_TREE_FOR(node->child, sub) {

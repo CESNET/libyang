@@ -947,6 +947,7 @@ info_print_input(struct lyout *out, const struct lys_node *node)
 
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Input of: ", lys_parent(node)->name);
     info_print_typedef(out, input->tpdf, input->tpdf_size);
+    info_print_must(out, input->must, input->must_size);
 
     info_print_snode(out, (struct lys_node *)input, input->child, "Children:");
 }
@@ -960,6 +961,7 @@ info_print_output(struct lyout *out, const struct lys_node *node)
 
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Output of: ", lys_parent(node)->name);
     info_print_typedef(out, output->tpdf, output->tpdf_size);
+    info_print_must(out, output->must, output->must_size);
 
     info_print_snode(out, (struct lys_node *)output, output->child, "Children:");
 }
@@ -976,6 +978,7 @@ info_print_notif(struct lyout *out, const struct lys_node *node)
     info_print_flags(out, ntf->flags, LYS_STATUS_MASK, 0);
     info_print_if_feature(out, ntf->module, ntf->iffeature, ntf->iffeature_size);
     info_print_typedef(out, ntf->tpdf, ntf->tpdf_size);
+    info_print_must(out, ntf->must, ntf->must_size);
     info_print_nacmext(out, ntf->nacm);
 
     info_print_snode(out, (struct lys_node *)ntf, ntf->child, "Params:");
