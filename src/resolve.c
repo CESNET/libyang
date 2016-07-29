@@ -3977,8 +3977,10 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
     struct lys_node *node_aux, *parent, *tmp;
     struct lys_refine *rfn;
     struct lys_restr *must, **old_must;
+    struct lys_iffeature *iff, **old_iff;
     int i, j, rc, parent_flags;
     uint8_t size, *old_size;
+    unsigned int usize, usize1, usize2;
 
     assert(uses->grp);
     /* HACK just check that the grouping is resolved */
@@ -4213,6 +4215,36 @@ nextsibling:
             }
 
             *old_must = must;
+            *old_size = size;
+        }
+
+        /* if-feature in leaf, leaf-list, list, container or anyxml */
+        if (rfn->iffeature_size) {
+            old_size = &node->iffeature_size;
+            old_iff = &node->iffeature;
+
+            size = *old_size + rfn->iffeature_size;
+            iff = realloc(*old_iff, size * sizeof *rfn->iffeature);
+            if (!iff) {
+                LOGMEM;
+                return -1;
+            }
+            for (i = 0, j = *old_size; i < rfn->iffeature_size; i++, j++) {
+                resolve_iffeature_getsizes(&rfn->iffeature[i], &usize1, &usize2);
+                if (usize1) {
+                    /* there is something to duplicate */
+                    /* duplicate compiled expression */
+                    usize = (usize1 / 4) + (usize1 % 4) ? 1 : 0;
+                    iff[j].expr = malloc(usize * sizeof *iff[j].expr);
+                    memcpy(iff[j].expr, rfn->iffeature[i].expr, usize * sizeof *iff[j].expr);
+
+                    /* duplicate list of feature pointers */
+                    iff[j].features = malloc(usize2 * sizeof *iff[i].features);
+                    memcpy(iff[j].features, rfn->iffeature[i].features, usize2 * sizeof *iff[j].features);
+                }
+            }
+
+            *old_iff = iff;
             *old_size = size;
         }
     }

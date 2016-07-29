@@ -2107,15 +2107,19 @@ error:
 
 /* logs directly */
 static int
-fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_refine *rfn)
+fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine *rfn, struct unres_schema *unres)
 {
+    struct lys_module *module;
     struct lyxml_elem *sub, *next;
     const char *value;
     char *endptr;
     int f_mand = 0, f_min = 0, f_max = 0;
-    int c_must = 0;
+    int c_must = 0, c_ftrs = 0;
     int r;
     unsigned long int val;
+
+    assert(uses);
+    module = uses->module; /* shorthand */
 
     if (read_yin_common(module, NULL, (struct lys_node *)rfn, yin, OPT_CONFIG)) {
         goto error;
@@ -2284,7 +2288,7 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
             GETVAL(value, sub, "value");
             rfn->mod.presence = lydict_insert(module->ctx, value, strlen(value));
         } else if (!strcmp(sub->name, "must")) {
-            /* leaf-list, list, container or anyxml */
+            /* leafm leaf-list, list, container or anyxml */
             /* check possibility of statements combination */
             if (rfn->target_type) {
                 rfn->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML);
@@ -2300,6 +2304,22 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
             c_must++;
             continue;
 
+        } else if ((module->version >= 2) && !strcmp(sub->name, "if-feature")) {
+            /* leaf, leaf-list, list, container or anyxml */
+            /* check possibility of statements combination */
+            if (rfn->target_type) {
+                rfn->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML);
+                if (!rfn->target_type) {
+                    LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
+                    goto error;
+                }
+            } else {
+                rfn->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML;
+            }
+
+            c_ftrs++;
+            continue;
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
             goto error;
@@ -2316,11 +2336,27 @@ fill_yin_refine(struct lys_module *module, struct lyxml_elem *yin, struct lys_re
             goto error;
         }
     }
-    LY_TREE_FOR(yin->child, sub) {
-        r = fill_yin_must(module, sub, &rfn->must[rfn->must_size]);
-        rfn->must_size++;
-        if (r) {
+    if (c_ftrs) {
+        rfn->iffeature = calloc(c_must, sizeof *rfn->iffeature);
+        if (!rfn->iffeature) {
+            LOGMEM;
             goto error;
+        }
+    }
+
+    LY_TREE_FOR(yin->child, sub) {
+        if (!strcmp(sub->name, "if-feature")) {
+            r = fill_yin_iffeature(uses, sub, &rfn->iffeature[rfn->iffeature_size], unres);
+            rfn->iffeature_size++;
+            if (r) {
+                goto error;
+            }
+        } else {
+            r = fill_yin_must(module, sub, &rfn->must[rfn->must_size]);
+            rfn->must_size++;
+            if (r) {
+                goto error;
+            }
         }
     }
 
@@ -4616,7 +4652,7 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     LY_TREE_FOR(yin->child, sub) {
         if (!strcmp(sub->name, "refine")) {
-            r = fill_yin_refine(module, sub, &uses->refine[uses->refine_size]);
+            r = fill_yin_refine(retval, sub, &uses->refine[uses->refine_size], unres);
             uses->refine_size++;
             if (r) {
                 goto error;

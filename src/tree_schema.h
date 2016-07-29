@@ -1244,7 +1244,9 @@ struct lys_refine {
                                           - ORed #LYS_NODE values if there are some limitations */
 
     uint8_t must_size;               /**< number of elements in the #must array */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
     struct lys_restr *must;          /**< array of additional must restrictions to be added to the target */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
 
     union lys_refine_mod mod;        /**< mutually exclusive target modifications according to the possible target_type */
 };
