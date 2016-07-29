@@ -1215,7 +1215,7 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
 
     /* (sub)module-header-stmts */
     if (module->type) {
-        ly_print(out, "submodule %s {%s\n", module->name, (module->deviated ? " // DEVIATED" : ""));
+        ly_print(out, "submodule %s {%s\n", module->name, (module->deviated == 1 ? " // DEVIATED" : ""));
         level++;
         if (module->version) {
             ly_print(out, "%*syang-version %s;\n", LEVEL, INDENT,
@@ -1227,7 +1227,7 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
         level--;
         ly_print(out, "%*s}\n", LEVEL, INDENT);
     } else {
-        ly_print(out, "module %s {%s\n", module->name, (module->deviated ? " // DEVIATED" : ""));
+        ly_print(out, "module %s {%s\n", module->name, (module->deviated == 1 ? " // DEVIATED" : ""));
         level++;
         if (module->version) {
             ly_print(out, "%*syang-version %s;\n", LEVEL, INDENT, module->version == 2 ? "1.1" : "1");
@@ -1241,9 +1241,6 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
         ly_print(out, "\n");
     }
     for (i = 0; i < module->imp_size; i++) {
-        if (module->imp[i].external) {
-            continue;
-        }
         ly_print(out, "%*simport %s {\n", LEVEL, INDENT, module->imp[i].module->name);
         level++;
         ly_print(out, "%*sprefix %s;\n", LEVEL, INDENT, module->imp[i].prefix);

@@ -1326,7 +1326,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Deviating own module is not allowed.");
         goto error;
     }
-    lys_deviation_add_ext_imports(lys_node_module(dev_target), module);
+    lys_node_module(dev_target)->deviated = 1;
 
     LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {

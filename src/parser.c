@@ -1833,71 +1833,9 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
 int
 lyp_propagate_submodule(struct lys_module *module, struct lys_include *inc)
 {
-    uint8_t i, j;
+    uint8_t i;
     size_t size;
     struct lys_include *aux_inc;
-    struct lys_import *aux_imp;
-    struct lys_import *impiter;
-    struct ly_set *set;
-
-    set = ly_set_new();
-
-    /* propagate imports into the main module */
-    for (i = 0; i < inc->submodule->imp_size; i++) {
-        for (j = 0; j < module->imp_size; j++) {
-            if (inc->submodule->imp[i].module == module->imp[j].module &&
-                    !strcmp(inc->submodule->imp[i].rev, module->imp[j].rev)) {
-                /* check prefix match */
-                if (!ly_strequal(inc->submodule->imp[i].prefix, module->imp[j].prefix, 1)) {
-                    LOGVAL(LYE_INID, LY_VLOG_NONE, NULL, inc->submodule->imp[i].prefix,
-                           "non-matching prefixes of imported module in main module and submodule");
-                    goto error;
-                }
-                break;
-            }
-        }
-        if (j == module->imp_size) {
-            /* new import */
-            ly_set_add(set, &inc->submodule->imp[i], LY_SET_OPT_USEASLIST);
-        }
-    }
-    if (set->number) {
-        if (!(void*)module->imp) {
-            /* no import array in main module */
-            i = 0;
-        } else {
-            /* get array size by searching for stop block */
-            for (i = 0; (void*)module->imp[i].module != (void*)0x1; i++);
-        }
-        size = (i + set->number) * sizeof *module->imp;
-        aux_imp = realloc(module->imp, size + sizeof(void*));
-        if (!aux_imp) {
-            LOGMEM;
-            goto error;
-        }
-        module->imp = aux_imp;
-        memset(&module->imp[module->imp_size + set->number], 0, (i - module->imp_size) * sizeof *module->imp);
-        module->imp[i + set->number].module = (void*)0x1; /* set stop block */
-
-        for (i = 0; i < set->number; i++) {
-            impiter = (struct lys_import *)set->set.g[i];
-
-            /* check prefix uniqueness */
-            if (dup_prefix_check(impiter->prefix, module)) {
-                LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "prefix", impiter->prefix);
-                goto error;
-            }
-
-            memcpy(&module->imp[module->imp_size], impiter, sizeof *module->imp);
-            module->imp[module->imp_size].prefix = lydict_insert(module->ctx, impiter->prefix, 0);
-            module->imp[module->imp_size].dsc = lydict_insert(module->ctx, impiter->dsc, 0);
-            module->imp[module->imp_size].ref = lydict_insert(module->ctx, impiter->ref, 0);
-            module->imp[module->imp_size].external = 1;
-            module->imp_size++;
-        }
-    }
-    ly_set_free(set);
-    set = NULL;
 
     /* propagate the included submodule into the main module */
     for (i = 0; (void*)module->inc[i].submodule != (void*)0x1; i++); /* get array size by searching for stop block */
@@ -1905,7 +1843,7 @@ lyp_propagate_submodule(struct lys_module *module, struct lys_include *inc)
     aux_inc = realloc(module->inc, size + sizeof(void*));
     if (!aux_inc) {
         LOGMEM;
-        goto error;
+        return EXIT_FAILURE;
     }
     module->inc = aux_inc;
     memset(&module->inc[module->inc_size + 1], 0, (i - module->inc_size) * sizeof *module->inc);
@@ -1916,10 +1854,6 @@ lyp_propagate_submodule(struct lys_module *module, struct lys_include *inc)
     module->inc_size++;
 
     return EXIT_SUCCESS;
-
-error:
-    ly_set_free(set);
-    return EXIT_FAILURE;
 }
 
 int

@@ -1244,9 +1244,6 @@ yin_print_namespaces(struct lyout *out, const struct lys_module *module)
         ly_print(out, "\n%*sxmlns:%s=\"%s\"", lvl, INDENT, module->prefix, module->ns);
     }
     for (i = 0; i < module->imp_size; ++i) {
-        if (module->imp[i].external) {
-            continue;
-        }
         ly_print(out, "\n%*sxmlns:%s=\"%s\"", lvl, INDENT, module->imp[i].prefix, module->imp[i].module->ns);
     }
 }
@@ -1262,7 +1259,7 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
 
     ly_print(out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
 
-    if (module->deviated) {
+    if (module->deviated == 1) {
         ly_print(out, "<!-- DEVIATED -->\n");
     }
 
@@ -1299,9 +1296,6 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
 
     /* linkage-stmts */
     for (i = 0; i < module->imp_size; i++) {
-        if (module->imp[i].external) {
-            continue;
-        }
         yin_print_open(out, level, "import", "module", module->imp[i].module->name, 0);
 
         level++;

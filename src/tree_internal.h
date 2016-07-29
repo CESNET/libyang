@@ -409,8 +409,6 @@ int lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, int option
  */
 int lyd_defaults_add_unres(struct lyd_node **node, int options, struct ly_ctx *ctx, struct unres_data *unres);
 
-void lys_deviation_add_ext_imports(struct lys_module *dev_target_module, struct lys_module *dev_module);
-
 void lys_switch_deviations(struct lys_module *module);
 
 void lys_sub_module_remove_devs_augs(struct lys_module *module);
