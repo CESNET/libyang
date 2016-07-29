@@ -671,9 +671,9 @@ struct lys_node {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 };
 
 /**
@@ -702,16 +702,18 @@ struct lys_node_container {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
     /* specific container's data */
+    uint8_t must_size;               /**< number of elements in the #must array */
+    uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
+    uint8_t padding[1];              /**< padding for 32b alignment */
+
     struct lys_when *when;           /**< when statement (optional) */
     const char *presence;            /**< presence description, used also as a presence flag (optional) */
 
-    uint8_t must_size;               /**< number of elements in the #must array */
-    uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
 
     struct lys_restr *must;          /**< array of must constraints */
     struct lys_tpdf *tpdf;           /**< array of typedefs */
@@ -743,9 +745,11 @@ struct lys_node_choice {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+
+    uint8_t padding[3];              /**< padding for 32b alignment */
 
     /* specific choice's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -784,16 +788,18 @@ struct lys_node_leaf {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
     /* specific leaf's data */
+    uint8_t padding[2];              /**< padding for 32b alignment */
+    uint8_t must_size;               /**< number of elements in the #must array */
+
     struct lys_when *when;           /**< when statement (optional) */
     struct lys_type type;            /**< YANG data type definition of the leaf (mandatory) */
     const char *units;               /**< units of the data type (optional) */
 
-    uint8_t must_size;               /**< number of elements in the #must array */
     struct lys_restr *must;          /**< array of must constraints */
 
     /* to this point, struct lys_node_leaf is compatible with struct lys_node_leaflist */
@@ -831,16 +837,18 @@ struct lys_node_leaflist {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
     /* specific leaf-list's data */
+    uint8_t padding[2];              /**< padding for 32b alignment */
+    uint8_t must_size;               /**< number of elements in the #must array */
+
     struct lys_when *when;           /**< when statement (optional) */
     struct lys_type type;            /**< YANG data type definition of the leaf (mandatory) */
     const char *units;               /**< units of the data type (optional) */
 
-    uint8_t must_size;               /**< number of elements in the #must array */
     struct lys_restr *must;          /**< array of must constraints */
 
     /* to this point, struct lys_node_leaflist is compatible with struct lys_node_leaf */
@@ -874,25 +882,26 @@ struct lys_node_list {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
     /* specific list's data */
+    uint8_t must_size;               /**< number of elements in the #must array */
+    uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
+    uint8_t keys_size;               /**< number of elements in the #keys array */
+
     struct lys_when *when;           /**< when statement (optional) */
 
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
 
-    uint8_t must_size;               /**< number of elements in the #must array */
-    uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
-    uint8_t keys_size;               /**< number of elements in the #keys array */
-    uint8_t unique_size;             /**< number of elements in the #unique array (number of unique statements) */
-
     struct lys_restr *must;          /**< array of must constraints */
     struct lys_tpdf *tpdf;           /**< array of typedefs */
     struct lys_node_leaf **keys;     /**< array of pointers to the key nodes */
     struct lys_unique *unique;       /**< array of unique statement structures */
+
+    uint8_t unique_size;             /**< number of elements in the #unique array (number of unique statements) */
 };
 
 /**
@@ -923,13 +932,15 @@ struct lys_node_anyxml {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
     /* specific anyxml's data */
-    struct lys_when *when;           /**< when statement (optional) */
+    uint8_t padding[2];              /**< padding for 32b alignment */
     uint8_t must_size;               /**< number of elements in the #must array */
+
+    struct lys_when *when;           /**< when statement (optional) */
     struct lys_restr *must;          /**< array of must constraints */
 };
 
@@ -963,16 +974,17 @@ struct lys_node_uses {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
     /* specific uses's data */
+    uint8_t padding[1];              /**< padding for 32b alignment */
+    uint8_t refine_size;            /**< number of elements in the #refine array */
+    uint8_t augment_size;           /**< number of elements in the #augment array */
+
     struct lys_when *when;           /**< when statement (optional) */
     struct lys_node_grp *grp;        /**< referred grouping definition (mandatory) */
-
-    uint16_t refine_size;            /**< number of elements in the #refine array */
-    uint16_t augment_size;           /**< number of elements in the #augment array */
 
     struct lys_refine *refine;       /**< array of refine changes to the referred grouping */
     struct lys_node_augment *augment;/**< array of local augments to the referred grouping */
@@ -1010,9 +1022,9 @@ struct lys_node_grp {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
     /* specific grouping's data */
     uint8_t tpdf_size;               /**< number of elements in #tpdf array */
@@ -1044,11 +1056,12 @@ struct lys_node_case {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
     /* specific case's data */
+    uint8_t padding[3];              /**< padding for 32b alignment */
     struct lys_when *when;           /**< when statement (optional) */
 };
 
@@ -1078,12 +1091,11 @@ struct lys_node_inout {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    /* specific list's data */
-    uint8_t tpdf_size;                /**< number of elements in the #tpdf array */
-    struct lys_tpdf *tpdf;            /**< array of typedefs */
+    void *priv;                      /**< private caller's data, not used by libyang */
 
-    /* again ::lys_node compatible data */
-    void *priv;                       /**< private caller's data, not used by libyang */
+    /* specific inout's data */
+    struct lys_tpdf *tpdf;           /**< array of typedefs */
+    uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
 };
 
 /**
@@ -1109,11 +1121,12 @@ struct lys_node_notif {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
     /* specific rpc's data */
+    uint8_t padding[2];              /**< padding for 32b alignment */
     uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
     struct lys_tpdf *tpdf;           /**< array of typedefs */
 };
@@ -1141,11 +1154,12 @@ struct lys_node_rpc_action {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
 
-    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
     /* specific rpc's data */
+    uint8_t padding[2];              /**< padding for 32b alignment */
     uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
     struct lys_tpdf *tpdf;           /**< array of typedefs */
 };
@@ -1185,10 +1199,9 @@ struct lys_node_augment {
     struct lys_node *target;         /**< pointer to the target node */
 
     /* again compatible members with ::lys_node */
-    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
-    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     void *priv;                      /**< private caller's data, not used by libyang */
-
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 };
 
 /**
