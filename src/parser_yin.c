@@ -2360,7 +2360,7 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
                 goto error;
             }
             memcpy(imp->rev, value, LY_REV_SIZE - 1);
-        } else if ((module->version == 2) && !strcmp(child->name, "description")) {
+        } else if ((module->version >= 2) && !strcmp(child->name, "description")) {
             if (imp->dsc) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
@@ -2369,7 +2369,7 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
             if (!imp->dsc) {
                 goto error;
             }
-        } else if ((module->version == 2) && !strcmp(child->name, "reference")) {
+        } else if ((module->version >= 2) && !strcmp(child->name, "reference")) {
             if (imp->ref) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
@@ -2427,7 +2427,7 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
                 goto error;
             }
             memcpy(inc->rev, value, LY_REV_SIZE - 1);
-        } else if ((module->version == 2) && !strcmp(child->name, "description")) {
+        } else if ((module->version >= 2) && !strcmp(child->name, "description")) {
             if (inc->dsc) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
@@ -2436,7 +2436,7 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
             if (!inc->dsc) {
                 goto error;
             }
-        } else if ((module->version == 2) && !strcmp(child->name, "reference")) {
+        } else if ((module->version >= 2) && !strcmp(child->name, "reference")) {
             if (inc->ref) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
@@ -4140,11 +4140,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
         } else if (!strcmp(sub->name, "typedef")) {
             c_tpdf++;
 
-        } else if (!strcmp(sub->name, "must")) {
-            if (module->version < 2) {
-                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
-                goto error;
-            }
+        } else if ((module->version >= 2) && !strcmp(sub->name, "must")) {
             c_must++;
 
         } else {
@@ -4282,11 +4278,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
             c_tpdf++;
         } else if (!strcmp(sub->name, "if-feature")) {
             c_ftrs++;
-        } else if (!strcmp(sub->name, "must")) {
-            if (module->version < 2) {
-                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
-                goto error;
-            }
+        } else if ((module->version >= 2) && !strcmp(sub->name, "must")) {
             c_must++;
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
@@ -4390,7 +4382,7 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
     int c_tpdf = 0, c_ftrs = 0;
 
     if (!strcmp(yin->name, "action")) {
-        if (module->version != 2) {
+        if (module->version < 2) {
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "action");
             return NULL;
         }
@@ -4857,7 +4849,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 }
             } else {
                 if (submodule) {
-                    if (module->version != 2) {
+                    if (module->version < 2) {
                         LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
                         goto error;
                     }
