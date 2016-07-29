@@ -12,6 +12,8 @@ validation: validation.c
 validation_xml: validation_xml.c
 	$(CC) $(CFLAGS) -lxml2 -lxslt $< -o $@
 
+sizes: sizes.c
+	$(CC) $(CFLAGS) $< -o $@
 
 test: validation validation_xml
 	@rm -rf data.xml data_xml.xml addloop_result.xml; \
@@ -32,5 +34,5 @@ test: validation validation_xml
 	TIME=" time  : %Es\n memory: %MKb" time ./validation_xml perftest.yin data_xml.xml perftest-config.rng perftest-schematron.xsl; \
 
 clean:
-	rm -rf validation validation_xml addloop data.xml data_xml.xml addloop_result.xml
+	rm -rf sizes validation validation_xml addloop data.xml data_xml.xml addloop_result.xml
 
