@@ -2748,11 +2748,13 @@ nextsiblings:
                 iter = iter->parent;
 
                 /* if we have empty non-presence container, we can remove it */
-                if (!(options & LYD_OPT_KEEPEMPTYCONT) && to_free && !to_free->next && (to_free->prev == to_free) &&
-                        (iter->schema->nodetype == LYS_CONTAINER) &&
+                if (to_free && !(options & LYD_OPT_KEEPEMPTYCONT) && !to_free->next && to_free->prev == to_free &&
+                        iter->schema->nodetype == LYS_CONTAINER &&
                         !((struct lys_node_container *)iter->schema)->presence) {
-                    lyd_free(to_free);
                     to_free = iter;
+                } else {
+                    lyd_free(to_free);
+                    to_free = NULL;
                 }
 
                 /* parent is already processed, go to its sibling */
@@ -3934,8 +3936,10 @@ nextsiblings:
                 if (to_free && !(options & LYD_OPT_KEEPEMPTYCONT) && !to_free->next && to_free->prev == to_free &&
                         iter->schema->nodetype == LYS_CONTAINER &&
                         !((struct lys_node_container *)iter->schema)->presence) {
-                    lyd_free(to_free);
                     to_free = iter;
+                } else {
+                    lyd_free(to_free);
+                    to_free = NULL;
                 }
 
                 /* parent is already processed, go to its sibling */
@@ -4024,8 +4028,10 @@ nextsiblings:
                 if (to_free && !(options & LYD_OPT_KEEPEMPTYCONT) && !to_free->next && to_free->prev == to_free &&
                         iter->schema->nodetype == LYS_CONTAINER &&
                         !((struct lys_node_container *)iter->schema)->presence) {
-                    lyd_free(to_free);
                     to_free = iter;
+                } else {
+                    lyd_free(to_free);
+                    to_free = NULL;
                 }
 
                 /* parent is already processed, go to its sibling */
