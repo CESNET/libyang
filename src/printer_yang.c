@@ -524,6 +524,9 @@ yang_print_refine(struct lyout *out, int level, const struct lys_module *module,
     for (i = 0; i < refine->must_size; ++i) {
         yang_print_must(out, level, module, &refine->must[i]);
     }
+    for (i = 0; i < refine->iffeature_size; i++) {
+        yang_print_iffeature(out, level, module, &refine->iffeature[i]);
+    }
 
     if (refine->target_type & (LYS_LEAF | LYS_CHOICE)) {
         if (refine->mod.dflt != NULL) {
