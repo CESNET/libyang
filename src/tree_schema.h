@@ -1096,6 +1096,8 @@ struct lys_node_inout {
     /* specific inout's data */
     struct lys_tpdf *tpdf;           /**< array of typedefs */
     uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
+    uint8_t must_size;               /**< number of elements in the #must array */
+    struct lys_restr *must;          /**< array of must constraints */
 };
 
 /**
@@ -1126,9 +1128,11 @@ struct lys_node_notif {
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
     /* specific rpc's data */
-    uint8_t padding[2];              /**< padding for 32b alignment */
+    uint8_t padding[1];              /**< padding for 32b alignment */
     uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
+    uint8_t must_size;               /**< number of elements in the #must array */
     struct lys_tpdf *tpdf;           /**< array of typedefs */
+    struct lys_restr *must;          /**< array of must constraints */
 };
 
 /**

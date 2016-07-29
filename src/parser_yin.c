@@ -4080,7 +4080,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
     struct lys_node *retval = NULL;
     struct lys_node_inout *inout;
     int r;
-    int c_tpdf = 0;
+    int c_tpdf = 0, c_must = 0;
 
     /* init */
     memset(&root, 0, sizeof root);
@@ -4140,6 +4140,13 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
         } else if (!strcmp(sub->name, "typedef")) {
             c_tpdf++;
 
+        } else if (!strcmp(sub->name, "must")) {
+            if (module->version < 2) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
+                goto error;
+            }
+            c_must++;
+
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
             goto error;
@@ -4154,12 +4161,27 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
             goto error;
         }
     }
+    if (c_must) {
+        inout->must = calloc(c_must, sizeof *inout->must);
+        if (!inout->must) {
+            LOGMEM;
+            goto error;
+        }
+    }
 
     LY_TREE_FOR(yin->child, sub) {
-        r = fill_yin_typedef(module, retval, sub, &inout->tpdf[inout->tpdf_size], unres);
-        inout->tpdf_size++;
-        if (r) {
-            goto error;
+        if (!strcmp(sub->name, "must")) {
+            r = fill_yin_must(module, sub, &inout->must[inout->must_size]);
+            inout->must_size++;
+            if (r) {
+                goto error;
+            }
+        } else { /* typedef */
+            r = fill_yin_typedef(module, retval, sub, &inout->tpdf[inout->tpdf_size], unres);
+            inout->tpdf_size++;
+            if (r) {
+                goto error;
+            }
         }
     }
 
@@ -4211,7 +4233,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
     struct lys_node *retval;
     struct lys_node_notif *notif;
     int r;
-    int c_tpdf = 0, c_ftrs = 0;
+    int c_tpdf = 0, c_ftrs = 0, c_must = 0;
 
     memset(&root, 0, sizeof root);
 
@@ -4260,6 +4282,12 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
             c_tpdf++;
         } else if (!strcmp(sub->name, "if-feature")) {
             c_ftrs++;
+        } else if (!strcmp(sub->name, "must")) {
+            if (module->version < 2) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
+                goto error;
+            }
+            c_must++;
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
             goto error;
@@ -4281,6 +4309,13 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
             goto error;
         }
     }
+    if (c_must) {
+        notif->must = calloc(c_must, sizeof *notif->must);
+        if (!notif->must) {
+            LOGMEM;
+            goto error;
+        }
+    }
 
     LY_TREE_FOR(yin->child, sub) {
         if (!strcmp(sub->name, "typedef")) {
@@ -4292,6 +4327,12 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
         } else if (!strcmp(sub->name, "if-feature")) {
             r = fill_yin_iffeature(retval, sub, &notif->iffeature[notif->iffeature_size], unres);
             notif->iffeature_size++;
+            if (r) {
+                goto error;
+            }
+        } else if (!strcmp(sub->name, "must")) {
+            r = fill_yin_must(module, sub, &notif->must[notif->must_size]);
+            notif->must_size++;
             if (r) {
                 goto error;
             }
