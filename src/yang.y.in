@@ -3774,7 +3774,7 @@ unknown_statement_end: ';'
   |  '{' optsep unknown_statement2_opt '}'
 
 unknown_statement2_opt: @EMPTYDIR@
-  |  node_identifier string_opt unknown_statement2_end;
+  |  unknown_statement2_opt node_identifier string_opt unknown_statement2_end;
 
 unknown_statement2_end: ';' optsep
   |  '{' optsep unknown_statement2_opt '}' optsep
