@@ -1279,7 +1279,8 @@ yang_check_enum(struct yang_type *typ, struct lys_type_enum *enm, int64_t *value
     for (i = 0; i < j; i++) {
         if (typ->type->info.enums.enm[i].value == typ->type->info.enums.enm[j].value) {
             LOGVAL(LYE_ENUM_DUPVAL, LY_VLOG_NONE, NULL,
-                   typ->type->info.enums.enm[j].value, typ->type->info.enums.enm[j].name);
+                   typ->type->info.enums.enm[j].value, typ->type->info.enums.enm[j].name,
+                   typ->type->info.enums.enm[i].name);
             goto error;
         }
     }
@@ -1339,7 +1340,7 @@ yang_check_bit(struct yang_type *typ, struct lys_type_bit *bit, int64_t *value, 
     /* check that the value is unique */
     for (i = 0; i < j; i++) {
         if (typ->type->info.bits.bit[i].pos == bit->pos) {
-            LOGVAL(LYE_BITS_DUPVAL, LY_VLOG_NONE, NULL, bit->pos, bit->name);
+            LOGVAL(LYE_BITS_DUPVAL, LY_VLOG_NONE, NULL, bit->pos, bit->name, typ->type->info.bits.bit[i].name);
             goto error;
         }
     }

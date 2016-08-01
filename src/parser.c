@@ -869,8 +869,10 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
         break;
 
     case LY_TYPE_BITS:
-        /* locate bits structure with the bits definitions */
-        for (type = stype; type->der->type.der; type = &type->der->type);
+        /* locate bits structure with the bits definitions
+         * since YANG 1.1 allows restricted bits, it is the first
+         * bits type with some explicit bit specification */
+        for (type = stype; !type->info.bits.count; type = &type->der->type);
 
         /* allocate the array of  pointers to bits definition */
         node->value.bit = calloc(type->info.bits.count, sizeof *node->value.bit);
@@ -1025,8 +1027,10 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
             return EXIT_FAILURE;
         }
 
-        /* locate enums structure with the enumeration definitions */
-        for (type = stype; type->der->type.der; type = &type->der->type);
+        /* locate enums structure with the enumeration definitions,
+         * since YANG 1.1 allows restricted enums, it is the first
+         * enum type with some explicit enum specification */
+        for (type = stype; !type->info.enums.count; type = &type->der->type);
 
         /* find matching enumeration value */
         for (i = 0; i < type->info.enums.count; i++) {

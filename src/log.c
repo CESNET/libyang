@@ -146,10 +146,14 @@ const char *ly_errs[] = {
 /* LYE_DUPLEAFLIST */  "Duplicated instance of \"%s\" leaf-list (\"%s\").",
 /* LYE_DUPLIST */      "Duplicated instance of \"%s\" list.",
 /* LYE_NOUNIQ */       "Unique data leaf(s) \"%s\" not satisfied in \"%s\" and \"%s\".",
-/* LYE_ENUM_DUPVAL */  "The value \"%d\" of \"%s\" enum has already been assigned to another enum value.",
+/* LYE_ENUM_INVAL */   "Invalid value \"%d\" of \"%s\" enum - restricted enum value does not match the base type value.",
+/* LYE_ENUM_INNAME */  "Invalid enum name \"%s\" - restricted enum must use only base type enum names.",
+/* LYE_ENUM_DUPVAL */  "The value \"%d\" of \"%s\" enum has already been assigned to \"%s\" enum.",
 /* LYE_ENUM_DUPNAME */ "The enum name \"%s\" has already been assigned to another enum.",
 /* LYE_ENUM_WS */      "The enum name \"%s\" includes invalid leading or trailing whitespaces.",
-/* LYE_BITS_DUPVAL */  "The position \"%d\" of \"%s\" bits has already been used to another named bit.",
+/* LYE_BITS_INVAL */   "Invalid position \"%d\" of \"%s\" bit - restricted bits position does not match the base type position.",
+/* LYE_BITS_INNAME */  "Invalid bit name \"%s\" - restricted bits must use only base type bits names.",
+/* LYE_BITS_DUPVAL */  "The position \"%d\" of \"%s\" bit has already been assigned to \"%s\" bit.",
 /* LYE_BITS_DUPNAME */ "The bit name \"%s\" has already been assigned to another bit.",
 /* LYE_INMOD */        "Module name \"%s\" refers to an unknown module.",
 /* LYE_INMOD_LEN */    "Module name \"%.*s\" refers to an unknown module.",
@@ -233,11 +237,15 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_DUPLEAFLIST,  /* LYE_DUPLEAFLIST */
     LYVE_DUPLIST,      /* LYE_DUPLIST */
     LYVE_NOUNIQ,       /* LYE_NOUNIQ */
-    LYVE_ENUM_DUPVAL,  /* LYE_ENUM_DUPVAL */
-    LYVE_ENUM_DUPNAME, /* LYE_ENUM_DUPNAME */
+    LYVE_ENUM_INVAL,   /* LYE_ENUM_INVAL */
+    LYVE_ENUM_INNAME,  /* LYE_ENUM_INNAME */
+    LYVE_ENUM_INVAL,   /* LYE_ENUM_DUPVAL */
+    LYVE_ENUM_INNAME,  /* LYE_ENUM_DUPNAME */
     LYVE_ENUM_WS,      /* LYE_ENUM_WS */
-    LYVE_BITS_DUPVAL,  /* LYE_BITS_DUPVAL */
-    LYVE_BITS_DUPNAME, /* LYE_BITS_DUPNAME */
+    LYVE_BITS_INVAL,   /* LYE_BITS_INVAL */
+    LYVE_BITS_INNAME,  /* LYE_BITS_INNAME */
+    LYVE_BITS_INVAL,   /* LYE_BITS_DUPVAL */
+    LYVE_BITS_INNAME,  /* LYE_BITS_DUPNAME */
     LYVE_INMOD,        /* LYE_INMOD */
     LYVE_INMOD,        /* LYE_INMOD_LEN */
     LYVE_KEY_NLEAF,    /* LYE_KEY_NLEAF */

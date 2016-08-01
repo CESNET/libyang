@@ -1169,11 +1169,15 @@ typedef enum {
     LYVE_DUPLEAFLIST,  /**< multiple instances of leaf-list */
     LYVE_DUPLIST,      /**< multiple instances of list */
     LYVE_NOUNIQ,       /**< unique leaves match on 2 list instances (data) */
-    LYVE_ENUM_DUPVAL,  /**< duplicated enum value (schema) */
-    LYVE_ENUM_DUPNAME, /**< duplicated enum name (schema) */
+    LYVE_ENUM_INVAL,   /**< invalid enum value (schema) */
+    LYVE_ENUM_INNAME,  /**< invalid enum name (schema) */
+    /* */
+    /* */
     LYVE_ENUM_WS,      /**< enum name with leading/trailing whitespaces (schema) */
-    LYVE_BITS_DUPVAL,  /**< duplicated bits value (schema) */
-    LYVE_BITS_DUPNAME, /**< duplicated bits name (schema) */
+    LYVE_BITS_INVAL,   /**< invalid bits value (schema) */
+    LYVE_BITS_INNAME,  /**< invalid bits name (schema) */
+    /* */
+    /* */
     LYVE_INMOD,        /**< invalid module name */
     /* */
     LYVE_KEY_NLEAF,    /**< list key is not a leaf (schema) */

@@ -241,7 +241,9 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     struct lys_node *siter;
     struct lyxml_elem *next, *node;
     struct lys_restr **restr;
-    struct lys_type_bit bit;
+    struct lys_type_bit bit, *bits_sc;
+    struct lys_type_enum *enms_sc; /* shortcut */
+    struct lys_type *dertype;
     int i, j, rc, val_set;
     int ret = -1;
     int64_t v, v_;
@@ -314,15 +316,21 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
         }
-        if (!type->der->type.der && !type->info.bits.count) {
-            /* type is derived directly from buit-in bits type and bit statement is required */
-            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "bit", "type");
-            goto error;
-        }
-        if (type->der->type.der && type->info.bits.count) {
-            /* type is not directly derived from buit-in bits type and bit statement is prohibited */
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "bit");
-            goto error;
+        dertype = &type->der->type;
+        if (!dertype->der) {
+            if (!type->info.bits.count) {
+                /* type is derived directly from buit-in bits type and bit statement is required */
+                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "bit", "type");
+                goto error;
+            }
+        } else {
+            for (; !dertype->info.enums.count; dertype = &dertype->der->type);
+            if (module->version < 2 && type->info.bits.count) {
+                /* type is not directly derived from buit-in bits type and bit statement is prohibited,
+                 * since YANG 1.1 the bit statements can be used to restrict the base bits type */
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "bit");
+                goto error;
+            }
         }
 
         type->info.bits.bit = calloc(type->info.bits.count, sizeof *type->info.bits.bit);
@@ -346,14 +354,30 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
 
-            /* check the name uniqueness */
-            for (j = 0; j < i; j++) {
-                if (!strcmp(type->info.bits.bit[j].name, type->info.bits.bit[i].name)) {
-                    LOGVAL(LYE_BITS_DUPNAME, LY_VLOG_NONE, NULL, type->info.bits.bit[i].name);
+            if (!dertype->der) { /* directly derived type from bits built-in type */
+                /* check the name uniqueness */
+                for (j = 0; j < i; j++) {
+                    if (!strcmp(type->info.bits.bit[j].name, type->info.bits.bit[i].name)) {
+                        LOGVAL(LYE_BITS_DUPNAME, LY_VLOG_NONE, NULL, type->info.bits.bit[i].name);
+                        type->info.bits.count = i + 1;
+                        goto error;
+                    }
+                }
+            } else {
+                /* restricted bits type - the name MUST be used in the base type */
+                bits_sc = dertype->info.bits.bit;
+                for (j = 0; j < dertype->info.bits.count; j++) {
+                    if (ly_strequal(bits_sc[j].name, value, 1)) {
+                        break;
+                    }
+                }
+                if (j == dertype->info.bits.count) {
+                    LOGVAL(LYE_BITS_INNAME, LY_VLOG_NONE, NULL, value);
                     type->info.bits.count = i + 1;
                     goto error;
                 }
             }
+
 
             p_ = -1;
             LY_TREE_FOR(next->child, node) {
@@ -363,6 +387,12 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 }
 
                 if (!strcmp(node->name, "position")) {
+                    if (p_ != -1) {
+                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, next->name);
+                        type->info.bits.count = i + 1;
+                        goto error;
+                    }
+
                     GETVAL(value, node, "value");
                     p_ = strtoll(value, NULL, 10);
 
@@ -374,18 +404,21 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     }
                     type->info.bits.bit[i].pos = (uint32_t)p_;
 
-                    /* keep the highest enum value for automatic increment */
-                    if (type->info.bits.bit[i].pos >= p) {
-                        p = type->info.bits.bit[i].pos;
-                        p++;
-                    } else {
-                        /* check that the value is unique */
-                        for (j = 0; j < i; j++) {
-                            if (type->info.bits.bit[j].pos == type->info.bits.bit[i].pos) {
-                                LOGVAL(LYE_BITS_DUPVAL, LY_VLOG_NONE, NULL,
-                                       type->info.bits.bit[i].pos, type->info.bits.bit[i].name);
-                                type->info.bits.count = i + 1;
-                                goto error;
+                    if (!dertype->der) { /* directly derived type from bits built-in type */
+                        /* keep the highest enum value for automatic increment */
+                        if (type->info.bits.bit[i].pos >= p) {
+                            p = type->info.bits.bit[i].pos;
+                            p++;
+                        } else {
+                            /* check that the value is unique */
+                            for (j = 0; j < i; j++) {
+                                if (type->info.bits.bit[j].pos == type->info.bits.bit[i].pos) {
+                                    LOGVAL(LYE_BITS_DUPVAL, LY_VLOG_NONE, NULL,
+                                           type->info.bits.bit[i].pos, type->info.bits.bit[i].name,
+                                           type->info.bits.bit[j].name);
+                                    type->info.bits.count = i + 1;
+                                    goto error;
+                                }
                             }
                         }
                     }
@@ -394,16 +427,36 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     goto error;
                 }
             }
-            if (p_ == -1) {
-                /* assign value automatically */
-                if (p > UINT32_MAX) {
-                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "4294967295", "bit/position");
-                    type->info.bits.count = i + 1;
-                    goto error;
+
+            if (!dertype->der) { /* directly derived type from bits built-in type */
+                if (p_ == -1) {
+                    /* assign value automatically */
+                    if (p > UINT32_MAX) {
+                        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "4294967295", "bit/position");
+                        type->info.bits.count = i + 1;
+                        goto error;
+                    }
+                    type->info.bits.bit[i].pos = (uint32_t)p;
+                    type->info.bits.bit[i].flags |= LYS_AUTOASSIGNED;
+                    p++;
                 }
-                type->info.bits.bit[i].pos = (uint32_t)p;
-                type->info.bits.bit[i].flags |= LYS_AUTOASSIGNED;
-                p++;
+            } else { /* restricted bits type */
+                if (p_ == -1) {
+                    /* automatically assign position from base type */
+                    type->info.bits.bit[i].pos = bits_sc[j].pos;
+                    type->info.bits.bit[i].flags |= LYS_AUTOASSIGNED;
+                } else {
+                    /* check that the assigned position corresponds to the original
+                     * position of the bit in the base type */
+                    if (p_ != bits_sc[j].pos) {
+                        /* p_ - assigned position in restricted bits
+                         * bits_sc[j].pos - position assigned to the corresponding bit (detected above) in base type */
+                        LOGVAL(LYE_BITS_INVAL, LY_VLOG_NONE, NULL, type->info.bits.bit[i].pos,
+                               type->info.bits.bit[i].name);
+                        type->info.bits.count = i + 1;
+                        goto error;
+                    }
+                }
             }
 
             /* keep them ordered by position */
@@ -503,15 +556,21 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
         }
-        if (!type->der->type.der && !type->info.enums.count) {
-            /* type is derived directly from buit-in enumeartion type and enum statement is required */
-            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "enum", "type");
-            goto error;
-        }
-        if (type->der->type.der && type->info.enums.count) {
-            /* type is not directly derived from buit-in enumeration type and enum statement is prohibited */
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "enum");
-            goto error;
+        dertype = &type->der->type;
+        if (!dertype->der) {
+            if (!type->info.enums.count) {
+                /* type is derived directly from buit-in enumeartion type and enum statement is required */
+                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "enum", "type");
+                goto error;
+            }
+        } else {
+            for (; !dertype->info.enums.count; dertype = &dertype->der->type);
+            if (module->version < 2 && type->info.enums.count) {
+                /* type is not directly derived from built-in enumeration type and enum statement is prohibited
+                 * in YANG 1.0, since YANG 1.1 enum statements can be used to restrict the base enumeration type */
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "enum");
+                goto error;
+            }
         }
 
         type->info.enums.enm = calloc(type->info.enums.count, sizeof *type->info.enums.enm);
@@ -520,7 +579,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             goto error;
         }
 
-        val_set = v = 0;
+        v = 0;
         i = -1;
         LY_TREE_FOR(yin->child, next) {
             i++;
@@ -545,15 +604,31 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
 
-            /* check the name uniqueness */
-            for (j = 0; j < i; j++) {
-                if (!strcmp(type->info.enums.enm[j].name, type->info.enums.enm[i].name)) {
-                    LOGVAL(LYE_ENUM_DUPNAME, LY_VLOG_NONE, NULL, type->info.enums.enm[i].name);
+            if (!dertype->der) { /* directly derived type from enumeration built-in type */
+                /* check the name uniqueness */
+                for (j = 0; j < i; j++) {
+                    if (ly_strequal(type->info.enums.enm[j].name, value, 1)) {
+                        LOGVAL(LYE_ENUM_DUPNAME, LY_VLOG_NONE, NULL, value);
+                        type->info.enums.count = i + 1;
+                        goto error;
+                    }
+                }
+            } else {
+                /* restricted enumeration type - the name MUST be used in the base type */
+                enms_sc = dertype->info.enums.enm;
+                for (j = 0; j < dertype->info.enums.count; j++) {
+                    if (ly_strequal(enms_sc[j].name, value, 1)) {
+                        break;
+                    }
+                }
+                if (j == dertype->info.enums.count) {
+                    LOGVAL(LYE_ENUM_INNAME, LY_VLOG_NONE, NULL, value);
                     type->info.enums.count = i + 1;
                     goto error;
                 }
             }
 
+            val_set = 0;
             LY_TREE_FOR(next->child, node) {
                 if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
                     /* garbage */
@@ -561,6 +636,12 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 }
 
                 if (!strcmp(node->name, "value")) {
+                    if (val_set) {
+                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, next->name);
+                        type->info.enums.count = i + 1;
+                        goto error;
+                    }
+
                     GETVAL(value, node, "value");
                     v_ = strtoll(value, NULL, 10);
 
@@ -572,18 +653,21 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     }
                     type->info.enums.enm[i].value = v_;
 
-                    /* keep the highest enum value for automatic increment */
-                    if (!val_set || type->info.enums.enm[i].value > v) {
-                        v = type->info.enums.enm[i].value;
-                        v++;
-                    } else {
-                        /* check that the value is unique */
-                        for (j = 0; j < i; j++) {
-                            if (type->info.enums.enm[j].value == type->info.enums.enm[i].value) {
-                                LOGVAL(LYE_ENUM_DUPVAL, LY_VLOG_NONE, NULL,
-                                       type->info.enums.enm[i].value, type->info.enums.enm[i].name);
-                                type->info.enums.count = i + 1;
-                                goto error;
+                    if (!dertype->der) { /* directly derived type from enumeration built-in type */
+                        /* keep the highest enum value for automatic increment */
+                        if (type->info.enums.enm[i].value > v) {
+                            v = type->info.enums.enm[i].value;
+                            v++;
+                        } else {
+                            /* check that the value is unique */
+                            for (j = 0; j < i; j++) {
+                                if (type->info.enums.enm[j].value == type->info.enums.enm[i].value) {
+                                    LOGVAL(LYE_ENUM_DUPVAL, LY_VLOG_NONE, NULL,
+                                           type->info.enums.enm[i].value, type->info.enums.enm[i].name,
+                                           type->info.enums.enm[j].name);
+                                    type->info.enums.count = i + 1;
+                                    goto error;
+                                }
                             }
                         }
                     }
@@ -593,16 +677,36 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     goto error;
                 }
             }
-            if (!val_set) {
-                /* assign value automatically */
-                if (v > INT32_MAX) {
-                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "2147483648", "enum/value");
-                    type->info.enums.count = i + 1;
-                    goto error;
+
+            if (!dertype->der) { /* directly derived type from enumeration */
+                if (!val_set) {
+                    /* assign value automatically */
+                    if (v > INT32_MAX) {
+                        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "2147483648", "enum/value");
+                        type->info.enums.count = i + 1;
+                        goto error;
+                    }
+                    type->info.enums.enm[i].value = v;
+                    type->info.enums.enm[i].flags |= LYS_AUTOASSIGNED;
+                    v++;
                 }
-                type->info.enums.enm[i].value = v;
-                type->info.enums.enm[i].flags |= LYS_AUTOASSIGNED;
-                v++;
+            } else { /* restricted enum type */
+                if (!val_set) {
+                    /* automatically assign value from base type */
+                    type->info.enums.enm[i].value = enms_sc[j].value;
+                    type->info.enums.enm[i].flags |= LYS_AUTOASSIGNED;
+                } else {
+                    /* check that the assigned value corresponds to the original
+                     * value of the enum in the base type */
+                    if (v_ != enms_sc[j].value) {
+                        /* v_ - assigned value in restricted enum
+                         * enms_sc[j].value - value assigned to the corresponding enum (detected above) in base type */
+                        LOGVAL(LYE_ENUM_INVAL, LY_VLOG_NONE, NULL,
+                               type->info.enums.enm[i].value, type->info.enums.enm[i].name);
+                        type->info.enums.count = i + 1;
+                        goto error;
+                    }
+                }
             }
         }
         break;
