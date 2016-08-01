@@ -2955,10 +2955,12 @@ check_key(struct lys_node_list *list, int index, const char *name, int len)
         return -1;
     }
 
-    /* key is not when-conditional */
-    if (key->when) {
-        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, key, "when", "leaf");
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, key, "Key definition cannot depend on a \"when\" condition.");
+    /* key is not when/if-feature -conditional */
+    j = 0;
+    if (key->when || (key->iffeature_size && (j = 1))) {
+        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, key, j ? "if-feature" : "when", "leaf");
+        LOGVAL(LYE_SPEC, LY_VLOG_LYS, key, "Key definition cannot depend on a \"%s\" condition.",
+               j ? "if-feature" : "when");
         return -1;
     }
 
