@@ -5044,6 +5044,12 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
                 stype->der = (struct lys_tpdf *)yin;
             }
         }
+        if (!rc) {
+            /* it does not make sense to have leaf-list of empty type */
+            if (!tpdf_flag && node->nodetype == LYS_LEAFLIST && stype->base == LY_TYPE_EMPTY) {
+                LOGWRN("The leaf-list \"%s\" is of \"empty\" type, which does not make sense.", node->name);
+            }
+        }
         break;
     case UNRES_IFFEAT:
         node = str_snode;
