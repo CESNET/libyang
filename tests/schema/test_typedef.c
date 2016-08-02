@@ -125,12 +125,191 @@ test_typedef_yang(void **state)
     assert_string_equal(st->str1, st->str2);
 }
 
+static void
+test_typedef_11in10(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yin_enums = "<module name=\"x1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+"  <namespace uri=\"urn:x1\"/><prefix value=\"x1\"/>"
+"  <typedef name=\"e1\"><type name=\"enumeration\">"
+"    <enum name=\"one\"/><enum name=\"two\"/>"
+"  </type><default value=\"one\"/></typedef>"
+"  <leaf name=\"l\"><type name=\"e1\">"
+"    <enum name=\"one\"/>"
+"  </type></leaf>"
+"</module>";
+
+    const char *yang_enums = "module x2 {"
+"  namespace \"urn:x2\"; prefix x2;"
+"  typedef e1 { type enumeration { enum one; enum two; } default one; }"
+"  leaf l { type e1 { enum one; } } }";
+
+    const char *yin_bits = "<module name=\"y1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+"  <namespace uri=\"urn:y1\"/><prefix value=\"y1\"/>"
+"  <typedef name=\"b1\"><type name=\"bits\">"
+"    <bit name=\"one\"/><bit name=\"two\"/>"
+"  </type><default value=\"one\"/></typedef>"
+"  <leaf name=\"l\"><type name=\"b1\">"
+"    <bit name=\"one\"/>"
+"  </type></leaf>"
+"</module>";
+
+    const char *yang_bits = "module y2 {"
+"  namespace \"urn:y2\"; prefix y2;"
+"  typedef b1 { type bits { bit one; bit two; } default one; }"
+"  leaf l { type b1 { bit one; } } }";
+
+    mod = lys_parse_mem(st->ctx, yin_enums, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_INSTMT);
+
+    mod = lys_parse_mem(st->ctx, yin_bits, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_INSTMT);
+
+    mod = lys_parse_mem(st->ctx, yang_enums, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_INSTMT);
+
+    mod = lys_parse_mem(st->ctx, yang_bits, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_INSTMT);
+}
+
+static void
+test_typedef_11_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *enums1 = "<module name=\"x\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+"  <yang-version value=\"1.1\"/>"
+"  <namespace uri=\"urn:x\"/><prefix value=\"x\"/>"
+"  <typedef name=\"e1\"><type name=\"enumeration\">"
+"    <enum name=\"one\"/><enum name=\"two\"/>"
+"  </type><default value=\"one\"/></typedef>"
+"  <leaf name=\"l\"><type name=\"e1\">"
+"    <enum name=\"two\"/>"
+"  </type></leaf>"
+"</module>";
+
+    const char *enums2 = "<module name=\"x\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+"  <yang-version value=\"1.1\"/>"
+"  <namespace uri=\"urn:x\"/><prefix value=\"x\"/>"
+"  <typedef name=\"e1\"><type name=\"enumeration\">"
+"    <enum name=\"one\"/><enum name=\"two\"/>"
+"  </type><default value=\"one\"/></typedef>"
+"  <leaf name=\"l\"><type name=\"e1\">"
+"    <enum name=\"one\"><value value=\"1\"/></enum>"
+"  </type></leaf>"
+"</module>";
+
+    const char *enums3 = "<module name=\"x\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+"  <yang-version value=\"1.1\"/>"
+"  <namespace uri=\"urn:x\"/><prefix value=\"x\"/>"
+"  <typedef name=\"e1\"><type name=\"enumeration\">"
+"    <enum name=\"one\"/><enum name=\"two\"/>"
+"  </type><default value=\"one\"/></typedef>"
+"  <leaf name=\"l\"><type name=\"e1\">"
+"    <enum name=\"three\"/>"
+"  </type></leaf>"
+"</module>";
+
+    const char *enums4 = "<module name=\"x\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+"  <yang-version value=\"1.1\"/>"
+"  <namespace uri=\"urn:x\"/><prefix value=\"x\"/>"
+"  <typedef name=\"e1\"><type name=\"enumeration\">"
+"    <enum name=\"one\"/><enum name=\"two\"/>"
+"  </type><default value=\"one\"/></typedef>"
+"  <leaf name=\"l\"><type name=\"e1\">"
+"    <enum name=\"one\"/>"
+"  </type></leaf>"
+"</module>";
+
+    const char *bits1 = "<module name=\"y\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+"  <yang-version value=\"1.1\"/>"
+"  <namespace uri=\"urn:y\"/><prefix value=\"y\"/>"
+"  <typedef name=\"b1\"><type name=\"bits\">"
+"    <bit name=\"one\"/><bit name=\"two\"/>"
+"  </type><default value=\"one\"/></typedef>"
+"  <leaf name=\"l\"><type name=\"b1\">"
+"    <bit name=\"two\"/>"
+"  </type></leaf>"
+"</module>";
+
+    const char *bits2 = "<module name=\"y\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+"  <yang-version value=\"1.1\"/>"
+"  <namespace uri=\"urn:y\"/><prefix value=\"y\"/>"
+"  <typedef name=\"b1\"><type name=\"bits\">"
+"    <bit name=\"one\"/><bit name=\"two\"/>"
+"  </type><default value=\"one\"/></typedef>"
+"  <leaf name=\"l\"><type name=\"b1\">"
+"    <bit name=\"one\"><position value=\"1\"/></bit>"
+"  </type></leaf>"
+"</module>";
+
+    const char *bits3 = "<module name=\"y\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+"  <yang-version value=\"1.1\"/>"
+"  <namespace uri=\"urn:y\"/><prefix value=\"y\"/>"
+"  <typedef name=\"b1\"><type name=\"bits\">"
+"    <bit name=\"one\"/><bit name=\"two\"/>"
+"  </type><default value=\"one\"/></typedef>"
+"  <leaf name=\"l\"><type name=\"b1\">"
+"    <bit name=\"three\"/>"
+"  </type></leaf>"
+"</module>";
+
+    const char *bits4 = "<module name=\"y\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+"  <yang-version value=\"1.1\"/>"
+"  <namespace uri=\"urn:y\"/><prefix value=\"y\"/>"
+"  <typedef name=\"b1\"><type name=\"bits\">"
+"    <bit name=\"one\"/><bit name=\"two\"/>"
+"  </type><default value=\"one\"/></typedef>"
+"  <leaf name=\"l\"><type name=\"b1\">"
+"    <bit name=\"one\"/>"
+"  </type></leaf>"
+"</module>";
+
+    mod = lys_parse_mem(st->ctx, enums1, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+
+    mod = lys_parse_mem(st->ctx, enums2, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_ENUM_INVAL);
+
+    mod = lys_parse_mem(st->ctx, enums3, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_ENUM_INNAME);
+
+    mod = lys_parse_mem(st->ctx, enums4, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+
+
+    mod = lys_parse_mem(st->ctx, bits1, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+
+    mod = lys_parse_mem(st->ctx, bits2, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_BITS_INVAL);
+
+    mod = lys_parse_mem(st->ctx, bits3, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_BITS_INNAME);
+
+    mod = lys_parse_mem(st->ctx, bits4, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+}
+
 int
 main(void)
 {
     const struct CMUnitTest cmut[] = {
         cmocka_unit_test_setup_teardown(test_typedef_yin, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_yang, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_11in10, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_11_yin, setup_ctx, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
