@@ -121,6 +121,12 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
     struct lyd_node *diter, *start = NULL;
     struct lys_ident *ident;
     struct lys_tpdf *tpdf;
+    struct lys_type *type;
+    struct lyd_node_leaf_list *leaf;
+    int i, j;
+    uint8_t iff_size;
+    struct lys_iffeature *iff;
+    const char *id, *idname;
 
     assert(node);
     assert(node->schema);
@@ -229,6 +235,59 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
                     LOGPATH(LY_VLOG_LYD, node);
                     return EXIT_FAILURE;
                 }
+            }
+        }
+    }
+
+    if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+        /* since feature can be enabled/disabled, do this check despite the validity flag,
+         * - check if the type value (enum, bit, identity) is disabled via feature  */
+        leaf = (struct lyd_node_leaf_list *)node;
+        switch (leaf->value_type) {
+        case LY_TYPE_BITS:
+            id = "Bit";
+            /* get the count of bits */
+            for (type = &((struct lys_node_leaf *)leaf->schema)->type; !type->info.bits.count; type = &type->der->type);
+            for (j = iff_size = 0; j < type->info.bits.count; j++) {
+                if (!leaf->value.bit[j]) {
+                    continue;
+                }
+                idname = leaf->value.bit[j]->name;
+                iff_size = leaf->value.bit[j]->iffeature_size;
+                iff = leaf->value.bit[j]->iffeature;
+                break;
+nextbit:
+                iff_size = 0;
+            }
+            break;
+        case LY_TYPE_ENUM:
+            id = "Enum";
+            idname = leaf->value_str;
+            iff_size = leaf->value.enm->iffeature_size;
+            iff = leaf->value.enm->iffeature;
+            break;
+        case LY_TYPE_IDENT:
+            id = "Identity";
+            idname = leaf->value_str;
+            iff_size = leaf->value.ident->iffeature_size;
+            iff = leaf->value.ident->iffeature;
+            break;
+        default:
+            iff_size = 0;
+            break;
+        }
+
+        if (iff_size) {
+            for (i = 0; i < iff_size; i++) {
+                if (!resolve_iffeature(&iff[i])) {
+                    LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, leaf->value_str, schema->name);
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, "%s \"%s\" is disabled by its if-feature condition.",
+                           id, idname);
+                    return EXIT_FAILURE;
+                }
+            }
+            if (leaf->value_type == LY_TYPE_BITS) {
+                goto nextbit;
             }
         }
     }

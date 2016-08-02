@@ -178,7 +178,7 @@ test_typedef_11in10(void **state)
 }
 
 static void
-test_typedef_11_yin(void **state)
+test_typedef_11_enums_yin(void **state)
 {
     struct state *st = (*state);
     const struct lys_module *mod;
@@ -226,6 +226,28 @@ test_typedef_11_yin(void **state)
 "  </type></leaf>"
 "</module>";
 
+    mod = lys_parse_mem(st->ctx, enums1, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+
+    mod = lys_parse_mem(st->ctx, enums2, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_ENUM_INVAL);
+
+    mod = lys_parse_mem(st->ctx, enums3, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_ENUM_INNAME);
+
+    mod = lys_parse_mem(st->ctx, enums4, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+}
+
+static void
+test_typedef_11_bits_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+
     const char *bits1 = "<module name=\"y\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
 "  <yang-version value=\"1.1\"/>"
 "  <namespace uri=\"urn:y\"/><prefix value=\"y\"/>"
@@ -270,22 +292,6 @@ test_typedef_11_yin(void **state)
 "  </type></leaf>"
 "</module>";
 
-    mod = lys_parse_mem(st->ctx, enums1, LYS_IN_YIN);
-    assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
-
-    mod = lys_parse_mem(st->ctx, enums2, LYS_IN_YIN);
-    assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_ENUM_INVAL);
-
-    mod = lys_parse_mem(st->ctx, enums3, LYS_IN_YIN);
-    assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_ENUM_INNAME);
-
-    mod = lys_parse_mem(st->ctx, enums4, LYS_IN_YIN);
-    assert_ptr_not_equal(mod, NULL);
-
-
     mod = lys_parse_mem(st->ctx, bits1, LYS_IN_YIN);
     assert_ptr_equal(mod, NULL);
     assert_int_equal(ly_vecode, LYVE_INVAL);
@@ -302,6 +308,126 @@ test_typedef_11_yin(void **state)
     assert_ptr_not_equal(mod, NULL);
 }
 
+static void
+test_typedef_11_iff_ident_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+
+    const char *idents = "<module name=\"x\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+"  <yang-version value=\"1.1\"/>"
+"  <namespace uri=\"urn:x\"/><prefix value=\"x\"/><feature name=\"x\"/>"
+"  <identity name=\"ibase\"/>"
+"  <identity name=\"one\"><base name=\"ibase\"/><if-feature name=\"x\"/></identity>"
+"  <identity name=\"two\"><base name=\"ibase\"/></identity>"
+"  <leaf name=\"l\"><type name=\"identityref\"><base name=\"ibase\"/></type></leaf></module>";
+
+    struct lyd_node *root;
+    const char *data1 = "<l xmlns=\"urn:x\">one</l>";
+    const char *data2 = "<l xmlns=\"urn:x\">two</l>";
+
+    mod = lys_parse_mem(st->ctx, idents, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+
+    root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(root, NULL);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+
+    root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(root, NULL);
+    lyd_free_withsiblings(root);
+
+    lys_features_enable(mod, "x");
+    root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(root, NULL);
+
+    lys_features_disable(mod, "x");
+    assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG), 0);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+
+    lyd_free_withsiblings(root);
+}
+
+static void
+test_typedef_11_iff_enums_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+
+    const char *idents = "<module name=\"x\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+"  <yang-version value=\"1.1\"/>"
+"  <namespace uri=\"urn:x\"/><prefix value=\"x\"/><feature name=\"x\"/>"
+"  <typedef name=\"myenum\"><type name=\"enumeration\">"
+"    <enum name=\"one\"><if-feature name=\"x\"/></enum><enum name=\"two\"/>"
+"  </type></typedef>"
+"  <leaf name=\"l\"><type name=\"myenum\"/></leaf></module>";
+
+    struct lyd_node *root;
+    const char *data1 = "<l xmlns=\"urn:x\">one</l>";
+    const char *data2 = "<l xmlns=\"urn:x\">two</l>";
+
+    mod = lys_parse_mem(st->ctx, idents, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+
+    root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(root, NULL);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+
+    root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(root, NULL);
+    lyd_free_withsiblings(root);
+
+    lys_features_enable(mod, "x");
+    root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(root, NULL);
+
+    lys_features_disable(mod, "x");
+    assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG), 0);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+
+    lyd_free_withsiblings(root);
+}
+
+static void
+test_typedef_11_iff_bits_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+
+    const char *idents = "<module name=\"x\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+"  <yang-version value=\"1.1\"/>"
+"  <namespace uri=\"urn:x\"/><prefix value=\"x\"/><feature name=\"x\"/>"
+"  <typedef name=\"mybits\"><type name=\"bits\">"
+"    <bit name=\"one\"><if-feature name=\"x\"/></bit><bit name=\"two\"/>"
+"  </type></typedef>"
+"  <leaf name=\"l\"><type name=\"mybits\"/></leaf></module>";
+
+    struct lyd_node *root;
+    const char *data1 = "<l xmlns=\"urn:x\">one</l>";
+    const char *data2 = "<l xmlns=\"urn:x\">two</l>";
+
+    mod = lys_parse_mem(st->ctx, idents, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+
+    root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(root, NULL);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+
+    root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(root, NULL);
+    lyd_free_withsiblings(root);
+
+    lys_features_enable(mod, "x");
+    root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(root, NULL);
+
+    lys_features_disable(mod, "x");
+    assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG), 0);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+
+    lyd_free_withsiblings(root);
+}
+
 int
 main(void)
 {
@@ -309,7 +435,11 @@ main(void)
         cmocka_unit_test_setup_teardown(test_typedef_yin, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_yang, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11in10, setup_ctx, teardown_ctx),
-        cmocka_unit_test_setup_teardown(test_typedef_11_yin, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_11_enums_yin, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_11_bits_yin, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_11_iff_ident_yin, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_11_iff_enums_yin, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_11_iff_bits_yin, setup_ctx, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);

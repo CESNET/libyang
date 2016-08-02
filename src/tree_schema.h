@@ -354,12 +354,15 @@ struct lys_type_info_binary {
  * @brief Single bit value specification for ::lys_type_info_bits.
  */
 struct lys_type_bit {
-    const char *name;    /**< bit's name (mandatory) */
-    const char *dsc;     /**< bit's description (optional) */
-    const char *ref;     /**< bit's reference (optional) */
-    uint8_t flags;       /**< bit's flags, whether the position was auto-assigned
-                              and the status(one of LYS_NODE_STATUS_* values or 0 for default) */
-    uint32_t pos;        /**< bit's position (mandatory) */
+    const char *name;                /**< bit's name (mandatory) */
+    const char *dsc;                 /**< bit's description (optional) */
+    const char *ref;                 /**< bit's reference (optional) */
+    uint16_t flags;                  /**< bit's flags, whether the position was auto-assigned
+                                          and the status(one of LYS_NODE_STATUS_* values or 0 for default) */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    uint8_t padding[1];              /**< padding for 32b alignment */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    uint32_t pos;                    /**< bit's position (mandatory) */
 };
 
 /**
@@ -384,12 +387,15 @@ struct lys_type_info_dec64 {
  * @brief Single enumeration value specification for ::lys_type_info_enums.
  */
 struct lys_type_enum {
-    const char *name;        /**< enum's name (mandatory) */
-    const char *dsc;         /**< enum's description (optional) */
-    const char *ref;         /**< enum's reference (optional) */
-    uint8_t flags;           /**< enum's flags, whether the value was auto-assigned
-                                  and the status(one of LYS_NODE_STATUS_* values or 0 for default) */
-    int32_t value;           /**< enum's value (mandatory) */
+    const char *name;                /**< enum's name (mandatory) */
+    const char *dsc;                 /**< enum's description (optional) */
+    const char *ref;                 /**< enum's reference (optional) */
+    uint16_t flags;                  /**< enum's flags, whether the value was auto-assigned
+                                          and the status(one of LYS_NODE_STATUS_* values or 0 for default) */
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    uint8_t padding[1];              /**< padding for 32b alignment */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    int32_t value;                   /**< enum's value (mandatory) */
 };
 
 /**
@@ -1397,8 +1403,11 @@ struct lys_ident {
     const char *name;                /**< identity name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint8_t flags;                   /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values are allowed */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values are allowed */
     struct lys_module *module;       /**< pointer to the module where the identity is defined */
+
+    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
 
     struct lys_ident *base;          /**< pointer to the base identity */
     struct lys_ident **der;          /**< array of pointers to the derived identities */

@@ -4492,7 +4492,8 @@ resolve_identref(struct lys_ident *base, const char *ident_name, struct lyd_node
 
     if (!strcmp(base->name, name) && (!mod_name
             || (!strncmp(base->module->name, mod_name, mod_name_len) && !base->module->name[mod_name_len]))) {
-        return base;
+        der = base;
+        goto match;
     }
 
     if (base->der) {
@@ -4500,13 +4501,24 @@ resolve_identref(struct lys_ident *base, const char *ident_name, struct lyd_node
             if (!strcmp(der->name, name) &&
                     (!mod_name || (!strncmp(der->module->name, mod_name, mod_name_len) && !der->module->name[mod_name_len]))) {
                 /* we have match */
-                return der;
+                goto match;
             }
         }
     }
 
     LOGVAL(LYE_INRESOLV, LY_VLOG_LYD, node, "identityref", ident_name);
     return NULL;
+
+match:
+    for (i = 0; i < der->iffeature_size; i++) {
+        if (!resolve_iffeature(&der->iffeature[i])) {
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, der->name, node->schema->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, "Identity \"%s\" is disabled by its if-feature condition.",
+                   der->name);
+            return NULL;
+        }
+    }
+    return der;
 }
 
 /**

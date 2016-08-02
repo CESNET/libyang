@@ -1294,6 +1294,18 @@ lys_restr_free(struct ly_ctx *ctx, struct lys_restr *restr)
     lydict_remove(ctx, restr->emsg);
 }
 
+static void
+lys_iffeature_free(struct lys_iffeature *iffeature, uint8_t iffeature_size)
+{
+    uint8_t i;
+
+    for (i = 0; i < iffeature_size; ++i) {
+        free(iffeature[i].expr);
+        free(iffeature[i].features);
+    }
+    free(iffeature);
+}
+
 static int
 type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, struct lys_type *old,
               LY_DATA_TYPE base, int tpdftype, struct unres_schema *unres)
@@ -1504,6 +1516,7 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type)
             lydict_remove(ctx, type->info.bits.bit[i].name);
             lydict_remove(ctx, type->info.bits.bit[i].dsc);
             lydict_remove(ctx, type->info.bits.bit[i].ref);
+            lys_iffeature_free(type->info.bits.bit[i].iffeature, type->info.bits.bit[i].iffeature_size);
         }
         free(type->info.bits.bit);
         break;
@@ -1518,6 +1531,7 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type)
             lydict_remove(ctx, type->info.enums.enm[i].name);
             lydict_remove(ctx, type->info.enums.enm[i].dsc);
             lydict_remove(ctx, type->info.enums.enm[i].ref);
+            lys_iffeature_free(type->info.enums.enm[i].iffeature, type->info.enums.enm[i].iffeature_size);
         }
         free(type->info.enums.enm);
         break;
@@ -1648,18 +1662,6 @@ lys_when_free(struct ly_ctx *ctx, struct lys_when *w)
     lydict_remove(ctx, w->ref);
 
     free(w);
-}
-
-static void
-lys_iffeature_free(struct lys_iffeature *iffeature, uint8_t iffeature_size)
-{
-    uint8_t i;
-
-    for (i = 0; i < iffeature_size; ++i) {
-        free(iffeature[i].expr);
-        free(iffeature[i].features);
-    }
-    free(iffeature);
 }
 
 static void
@@ -1797,6 +1799,7 @@ lys_ident_free(struct ly_ctx *ctx, struct lys_ident *ident)
     lydict_remove(ctx, ident->name);
     lydict_remove(ctx, ident->dsc);
     lydict_remove(ctx, ident->ref);
+    lys_iffeature_free(ident->iffeature, ident->iffeature_size);
 
 }
 

@@ -904,7 +904,17 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
             for (found = 0; i < type->info.bits.count; i++) {
                 if (!strncmp(type->info.bits.bit[i].name, &node->value_str[c], len)
                         && !type->info.bits.bit[i].name[len]) {
-                    /* we have match, store the pointer */
+                    /* we have match, check if the value is enabled ... */
+                    for (j = 0; j < type->info.bits.bit[i].iffeature_size; j++) {
+                        if (!resolve_iffeature(&type->info.bits.bit[i].iffeature[i])) {
+                            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
+                            LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, "Bit \"%s\" is disabled by its if-feature condition.",
+                                   type->info.bits.bit[i].name);
+                            return EXIT_FAILURE;
+                        }
+                    }
+
+                    /* ... and then store the pointer */
                     node->value.bit[i] = &type->info.bits.bit[i];
 
                     /* stop searching */
@@ -1035,7 +1045,17 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
         /* find matching enumeration value */
         for (i = 0; i < type->info.enums.count; i++) {
             if (!strcmp(node->value_str, type->info.enums.enm[i].name)) {
-                /* we have match, store pointer to the definition */
+                /* we have match, check if the value is enabled ... */
+                for (j = 0; j < type->info.enums.enm[i].iffeature_size; j++) {
+                    if (!resolve_iffeature(&type->info.enums.enm[i].iffeature[i])) {
+                        LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
+                        LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, "Enum \"%s\" is disabled by its if-feature condition.",
+                               node->value_str);
+                        return EXIT_FAILURE;
+                    }
+                }
+
+                /* ... and store pointer to the definition */
                 node->value.enm = &type->info.enums.enm[i];
                 break;
             }
