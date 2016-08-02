@@ -454,7 +454,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                         /* p_ - assigned position in restricted bits
                          * bits_sc[j].pos - position assigned to the corresponding bit (detected above) in base type */
                         LOGVAL(LYE_BITS_INVAL, LY_VLOG_NONE, NULL, type->info.bits.bit[i].pos,
-                               type->info.bits.bit[i].name);
+                               type->info.bits.bit[i].name, bits_sc[j].pos);
                         type->info.bits.count = i + 1;
                         goto error;
                     }
@@ -706,7 +706,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                         /* v_ - assigned value in restricted enum
                          * enms_sc[j].value - value assigned to the corresponding enum (detected above) in base type */
                         LOGVAL(LYE_ENUM_INVAL, LY_VLOG_NONE, NULL,
-                               type->info.enums.enm[i].value, type->info.enums.enm[i].name);
+                               type->info.enums.enm[i].value, type->info.enums.enm[i].name, enms_sc[j].value);
                         type->info.enums.count = i + 1;
                         goto error;
                     }
