@@ -241,8 +241,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     struct lys_node *siter;
     struct lyxml_elem *next, *node;
     struct lys_restr **restr;
-    struct lys_type_bit bit, *bits_sc;
-    struct lys_type_enum *enms_sc; /* shortcut */
+    struct lys_type_bit bit, *bits_sc = NULL;
+    struct lys_type_enum *enms_sc = NULL; /* shortcut */
     struct lys_type *dertype;
     int i, j, rc, val_set;
     int ret = -1;
