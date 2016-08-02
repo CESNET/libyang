@@ -313,6 +313,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 type->info.bits.count++;
             } else {
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name);
+                type->info.bits.count = 0;
                 goto error;
             }
         }
@@ -329,6 +330,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 /* type is not directly derived from buit-in bits type and bit statement is prohibited,
                  * since YANG 1.1 the bit statements can be used to restrict the base bits type */
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "bit");
+                type->info.bits.count = 0;
                 goto error;
             }
         }
@@ -553,6 +555,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 type->info.enums.count++;
             } else {
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name);
+                type->info.enums.count = 0;
                 goto error;
             }
         }
@@ -569,6 +572,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 /* type is not directly derived from built-in enumeration type and enum statement is prohibited
                  * in YANG 1.0, since YANG 1.1 enum statements can be used to restrict the base enumeration type */
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "enum");
+                type->info.enums.count = 0;
                 goto error;
             }
         }
