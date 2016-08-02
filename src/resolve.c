@@ -2773,7 +2773,7 @@ check_leafref:
 static int
 check_default(struct lys_type *type, const char *value, struct lys_module *module)
 {
-    struct lys_tpdf *base_tpdf;
+    struct lys_tpdf *base_tpdf = NULL;
     struct lyd_node_leaf_list node;
     int ret = EXIT_SUCCESS;
 
@@ -2798,14 +2798,24 @@ check_default(struct lys_type *type, const char *value, struct lys_module *modul
 
         /* so there is a default value in a base type, but can the default value be no longer valid (did we define some new restrictions)? */
         switch (type->base) {
-        case LY_TYPE_BITS:
-        case LY_TYPE_ENUM:
         case LY_TYPE_IDENT:
         case LY_TYPE_INST:
         case LY_TYPE_LEAFREF:
         case LY_TYPE_BOOL:
         case LY_TYPE_EMPTY:
             /* these have no restrictions, so we would do the exact same work as the unres in the base typedef */
+            return EXIT_SUCCESS;
+        case LY_TYPE_BITS:
+            /* the default value must match the restricted list of values, if the type was restricted */
+            if (type->info.bits.count) {
+                break;
+            }
+            return EXIT_SUCCESS;
+        case LY_TYPE_ENUM:
+            /* the default value must match the restricted list of values, if the type was restricted */
+            if (type->info.enums.count) {
+                break;
+            }
             return EXIT_SUCCESS;
         case LY_TYPE_DEC64:
             if (type->info.dec64.range) {
@@ -2852,7 +2862,7 @@ check_default(struct lys_type *type, const char *value, struct lys_module *modul
         LOGMEM;
         return -1;
     }
-    node.schema->name = strdup("default");
+    node.schema->name = strdup("fake-default");
     if (!node.schema->name) {
         LOGMEM;
         free(node.schema);
@@ -2874,6 +2884,16 @@ check_default(struct lys_type *type, const char *value, struct lys_module *modul
     } else {
         if (lyp_parse_value(&node, NULL, 1)) {
             ret = -1;
+            if (base_tpdf) {
+                /* default value was is defined in some base typedef */
+                if ((type->base == LY_TYPE_BITS && type->der->type.der) ||
+                        (type->base == LY_TYPE_ENUM && type->der->type.der)) {
+                    /* we have refined bits/enums */
+                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                           "Invalid value \"%s\" of the default statement inherited to \"%s\" from \"%s\" base type.",
+                           value, type->parent->name, base_tpdf->name);
+                }
+            }
         }
     }
 
