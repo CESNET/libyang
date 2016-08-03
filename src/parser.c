@@ -1845,7 +1845,7 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
     return 0;
 }
 
-/* Propagate imports and includes into the main module */
+/* Propagate includes into the main module */
 int
 lyp_propagate_submodule(struct lys_module *module, struct lys_include *inc)
 {
