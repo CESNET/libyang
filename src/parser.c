@@ -1489,14 +1489,6 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, struct lys_module *modu
             LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "prefix", id);
             return EXIT_FAILURE;
         }
-
-        /* and all its submodules */
-        for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
-            if (dup_prefix_check(id, (struct lys_module *)module->inc[i].submodule)) {
-                LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "prefix", id);
-                return EXIT_FAILURE;
-            }
-        }
         break;
     case LY_IDENT_FEATURE:
         assert(module);
