@@ -4282,6 +4282,29 @@ nextsibling:
     return EXIT_SUCCESS;
 }
 
+static int
+identity_backlink_update(struct lys_ident *der, struct lys_ident *base)
+{
+    int i;
+
+    assert(der && base);
+
+    base->der = ly_realloc(base->der, (base->der_size + 1) * sizeof *(base->der));
+    if (!base->der) {
+        LOGMEM;
+        return EXIT_FAILURE;
+    }
+    base->der[base->der_size++] = der;
+
+    for (i = 0; i < base->base_size; i++) {
+        if (identity_backlink_update(der, base->base[i])) {
+            return EXIT_FAILURE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
 /**
  * @brief Resolve base identity recursively. Does not log.
  *
@@ -4294,10 +4317,10 @@ nextsibling:
  */
 static int
 resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident, const char *basename,
-                       struct lys_ident **ret)
+                       struct unres_schema *unres, struct lys_ident **ret)
 {
     uint32_t i, j;
-    struct lys_ident *base = NULL, *base_iter;
+    struct lys_ident *base = NULL;
 
     assert(ret);
 
@@ -4336,38 +4359,33 @@ resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident,
 matchfound:
     /* we found it somewhere */
     if (base) {
-        /* check for circular reference */
-        for (base_iter = base; base_iter; base_iter = base_iter->base) {
-            if (ident == base_iter) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, base_iter->name, "base");
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Circular reference of \"%s\" identity.", basename);
-                return EXIT_FAILURE;
+        /* is it already completely resolved? */
+        for (i = 0; i < unres->count; i++) {
+            if ((unres->item[i] == ident) && (unres->type[i] == UNRES_IDENT) && (unres->str_snode[i] != basename)) {
+                /* identity found, but not yet resolved, so do not return it in *res and try it again later */
+
+                /* simple check for circular reference,
+                 * the complete check is done as a side effect of using only completely
+                 * resolved identities (previous check of unres content) */
+                if (ly_strequal((const char *)unres->str_snode[i], ident->name, 1)) {
+                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, basename, "base");
+                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Circular reference of \"%s\" identity.", basename);
+                    return EXIT_FAILURE;
+                }
+
+                return EXIT_SUCCESS;
             }
         }
+
         /* checks done, store the result */
-        ident->base = base;
+        ident->base[ident->base_size++] = base;
+        *ret = base;
 
-        /* maintain backlinks to the derived identitise */
-        while (base) {
-            /* 1. get current number of backlinks */
-            if (base->der) {
-                for (i = 0; base->der[i]; i++);
-            } else {
-                i = 0;
-            }
-            base->der = ly_realloc(base->der, (i + 2) * sizeof *(base->der));
-            if (!base->der) {
-                LOGMEM;
-                return EXIT_FAILURE;
-            }
-            base->der[i] = ident;
-            base->der[i + 1] = NULL; /* array termination */
+        /* maintain backlinks to the derived identities */
+        return identity_backlink_update(ident, base);
 
-            base = base->base;
-        }
-
-        *ret = ident->base;
-        return EXIT_SUCCESS;
+    } else if (!ident) {
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
@@ -4386,10 +4404,10 @@ matchfound:
  */
 static int
 resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, const char *basename, const char* parent,
-                   struct lys_type *type)
+                   struct lys_type *type, struct unres_schema *unres)
 {
     const char *name;
-    int i, mod_name_len = 0;
+    int mod_name_len = 0;
     struct lys_ident *target, **ret;
     uint16_t flags;
     struct lys_module *mod;
@@ -4433,18 +4451,10 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
     }
 
     /* search in the identified module ... */
-    if (resolve_base_ident_sub(module, ident, name, ret)) {
-        return EXIT_FAILURE;
+    if (resolve_base_ident_sub(module, ident, name, unres, ret)) {
+        return -1;
     } else if (*ret) {
         goto success;
-    }
-    /* and all its submodules */
-    for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
-        if (resolve_base_ident_sub((struct lys_module *)module->inc[i].submodule, ident, name, ret)) {
-            return EXIT_FAILURE;
-        } else if (*ret) {
-            goto success;
-        }
     }
 
     LOGVAL(LYE_INRESOLV, LY_VLOG_NONE, NULL, parent, basename);
@@ -4496,14 +4506,14 @@ resolve_identref(struct lys_ident *base, const char *ident_name, struct lyd_node
         goto match;
     }
 
-    if (base->der) {
-        for (der = base->der[i = 0]; base->der[i]; der = base->der[++i]) {
-            if (!strcmp(der->name, name) &&
-                    (!mod_name || (!strncmp(der->module->name, mod_name, mod_name_len) && !der->module->name[mod_name_len]))) {
-                /* we have match */
-                goto match;
-            }
+    for (i = 0; i < base->der_size; i++) {
+        der = base->der[i]; /* shortcut */
+        if (!strcmp(der->name, name) &&
+                (!mod_name || (!strncmp(der->module->name, mod_name, mod_name_len) && !der->module->name[mod_name_len]))) {
+            /* we have match */
+            goto match;
         }
+
     }
 
     LOGVAL(LYE_INRESOLV, LY_VLOG_LYD, node, "identityref", ident_name);
@@ -5002,14 +5012,14 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         has_str = 1;
         ident = item;
 
-        rc = resolve_base_ident(mod, ident, expr, "identity", NULL);
+        rc = resolve_base_ident(mod, ident, expr, "identity", NULL, unres);
         break;
     case UNRES_TYPE_IDENTREF:
         expr = str_snode;
         has_str = 1;
         stype = item;
 
-        rc = resolve_base_ident(mod, NULL, expr, "type", stype);
+        rc = resolve_base_ident(mod, NULL, expr, "type", stype, unres);
         break;
     case UNRES_TYPE_LEAFREF:
         node = str_snode;
@@ -5278,14 +5288,14 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         res_count = 0;
 
         for (i = 0; i < unres->count; ++i) {
-            /* we do not need to have UNRES_TYPE_IDENTREF resolved, we need its type's base only,
-             * but UNRES_TYPE_LEAFREF must be resolved (for storing leafref target pointers);
+            /* UNRES_TYPE_LEAFREF must be resolved (for storing leafref target pointers);
              * if-features are resolved here to make sure that we will have all if-features for
              * later check of feature circular dependency */
-            if ((unres->type[i] != UNRES_USES) && (unres->type[i] != UNRES_IFFEAT) && (unres->type[i] != UNRES_TYPE_DER)
-                    && (unres->type[i] != UNRES_TYPE_DER_TPDF) && (unres->type[i] != UNRES_TYPE_LEAFREF)) {
+            if (unres->type[i] > UNRES_IDENT) {
                 continue;
             }
+            /* processes UNRES_USES, UNRES_IFFEAT, UNRES_TYPE_DER, UNRES_TYPE_DER_TPDF, UNRES_TYPE_LEAFREF,
+             * UNRES_IDENT */
 
             ++unres_count;
             rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
@@ -5311,8 +5321,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         ly_vlog_hide(0);
 
         for (i = 0; i < unres->count; ++i) {
-            if ((unres->type[i] != UNRES_USES) && (unres->type[i] != UNRES_IFFEAT) && (unres->type[i] != UNRES_TYPE_DER)
-                    && (unres->type[i] != UNRES_TYPE_DER_TPDF) && (unres->type[i] != UNRES_TYPE_LEAFREF)) {
+            if (unres->type[i] > UNRES_IDENT) {
                 continue;
             }
             resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);

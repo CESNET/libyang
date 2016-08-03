@@ -706,14 +706,20 @@ info_print_ident_detail(struct lyout *out, const struct lys_ident *ident)
     info_print_text(out, ident->dsc, "Desc: ");
     info_print_text(out, ident->ref, "Reference: ");
     info_print_flags(out, ident->flags, LYS_STATUS_MASK, 0);
-    info_print_text(out, (ident->base ? ident->base->name : NULL), "Base: ");
+
+    ly_print(out, "%-*s", INDENT_LEN, "Base: ");
+    for (i = 0; i < ident->base_size; i++) {
+        ly_print(out, "%*s%s\n", i ? INDENT_LEN : 0, "", ident->base[i]->name);
+    }
+    if (!i) {
+        ly_print(out, "\n");
+    }
 
     ly_print(out, "%-*s", INDENT_LEN, "Derived: ");
-    if (ident->der) {
-        for (i = 0; ident->der[i]; i++) {
-            ly_print(out, "%*s%s\n", i ? INDENT_LEN : 0, "", ident->der[i]->name);
-        }
-    } else {
+    for (i = 0; i < ident->der_size; i++) {
+        ly_print(out, "%*s%s\n", i ? INDENT_LEN : 0, "", ident->der[i]->name);
+    }
+    if (!i) {
         ly_print(out, "\n");
     }
 }
