@@ -836,7 +836,7 @@ identity_stmt: IDENTITY_KEYWORD sep identifier_arg_str { if (read_all) {
 
 identity_end: ';'
   |  '{' stmtsep
-         identity_opt_stmt { if (read_all && yang_read_base(module, actual, $3, unres)) {
+         identity_opt_stmt { if (read_all && yang_read_base(trg, actual, $3, unres)) {
                                YYABORT;
                              }
                            }

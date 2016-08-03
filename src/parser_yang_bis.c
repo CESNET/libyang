@@ -3691,7 +3691,7 @@ yyreduce:
 
   case 118:
 
-    { if (read_all && yang_read_base(module, actual, (yyvsp[0].str), unres)) {
+    { if (read_all && yang_read_base(trg, actual, (yyvsp[0].str), unres)) {
                                YYABORT;
                              }
                            }
