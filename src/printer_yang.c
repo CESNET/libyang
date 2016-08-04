@@ -442,9 +442,13 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
         for (i = 0; i < type->info.str.pat_count; i++) {
             yang_print_open(out, &flag);
             ly_print(out, "%*spattern \"", LEVEL, INDENT);
-            yang_encode(out, type->info.str.patterns[i].expr, -1);
+            yang_encode(out, &type->info.str.patterns[i].expr[1], -1);
             ly_print(out, "\"");
             flag2 = 0;
+            if (type->info.str.patterns[0].expr[0] == 0x15) {
+                yang_print_open(out, &flag2);
+                yang_print_text(out, level, "modifier", "invert-match", 1);
+            }
             yang_print_restr(out, level + 1, &type->info.str.patterns[i], &flag2);
             yang_print_close(out, level, flag2);
         }

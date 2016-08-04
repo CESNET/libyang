@@ -87,11 +87,18 @@ static void
 yin_print_restr(struct lyout *out, int level, const char *elem_name, const struct lys_restr *restr)
 {
     int close;
+    int pattern = 0;
 
-    close = (restr->dsc || restr->ref || restr->eapptag || restr->emsg ? 0 : 1);
+    if (restr->expr[0] == 0x06 || restr->expr[0] == 0x15) {
+        pattern = 1;
+    }
+    close = (restr->dsc || restr->ref || restr->eapptag || restr->emsg || restr->expr[0] == 0x15 ? 0 : 1);
 
-    yin_print_open(out, level, elem_name, "value", restr->expr, close);
+    yin_print_open(out, level, elem_name, "value", pattern ? &restr->expr[1] : restr->expr , close);
     if (!close) {
+        if (restr->expr[0] == 0x15) {
+            yin_print_open(out, level + 1, "modifier", "value", "invert-match", 1);
+        }
         yin_print_restr_sub(out, level + 1, restr);
 
         yin_print_close(out, level, elem_name);

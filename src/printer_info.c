@@ -368,9 +368,11 @@ int_range:
 
             ly_print(out, "%-*s", INDENT_LEN, "Pattern: ");
             if (type->info.str.pat_count) {
-                ly_print(out, "%s\n", type->info.str.patterns[0].expr);
+                ly_print(out, "%s%s\n", &type->info.str.patterns[0].expr[1],
+                         type->info.str.patterns[0].expr[0] == 0x15 ? " (invert-match)" : "");
                 for (i = 1; i < type->info.str.pat_count; ++i) {
-                    ly_print(out, "%*s%s\n", INDENT_LEN, "", type->info.str.patterns[i].expr);
+                    ly_print(out, "%*s%s%s\n", INDENT_LEN, "", &type->info.str.patterns[i].expr[1],
+                             type->info.str.patterns[i].expr[0] == 0x15 ? " (invert-match)" : "");
                 }
             } else {
                 ly_print(out, "\n");

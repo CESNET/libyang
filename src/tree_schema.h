@@ -448,7 +448,11 @@ struct lys_type_info_str {
     struct lys_restr *length;/**< length restriction (optional), see
                                   [RFC 6020 sec. 9.4.4](http://tools.ietf.org/html/rfc6020#section-9.4.4) */
     struct lys_restr *patterns; /**< array of pattern restrictions (optional), see
-                                  [RFC 6020 sec. 9.4.6](http://tools.ietf.org/html/rfc6020#section-9.4.6) */
+                                  [RFC 6020 sec. 9.4.6](http://tools.ietf.org/html/rfc6020#section-9.4.6)
+                                  In each pattern, the first byte of expr is modifier:
+                                  - 0x06 (ACK) for match
+                                  - 0x15 (NACK) for invert-match
+                                  So the expression itself always starts at expr[1] */
     int pat_count;           /**< number of pattern definitions in the patterns array */
 };
 

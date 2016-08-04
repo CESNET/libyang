@@ -1161,12 +1161,21 @@ error:
 void *
 yang_read_pattern(struct lys_module *module, struct yang_type *typ, char *value)
 {
+    char *buf;
+    size_t len;
+
     if (lyp_check_pattern(value, NULL)) {
         free(value);
         return NULL;
     }
 
-    typ->type->info.str.patterns[typ->type->info.str.pat_count].expr = lydict_insert_zc(module->ctx, value);
+    len = strlen(value);
+    buf = malloc((len + 2) * sizeof *buf); /* modifier byte + value + terminating NULL byte */
+    buf[0] = 0x06; /* ACK - TODO: read modifier and set proper value as in YIN parser */
+    strcpy(&buf[1], value);
+    free(value);
+
+    typ->type->info.str.patterns[typ->type->info.str.pat_count].expr = lydict_insert_zc(module->ctx, buf);
     typ->type->info.str.pat_count++;
     return &typ->type->info.str.patterns[typ->type->info.str.pat_count-1];
 }

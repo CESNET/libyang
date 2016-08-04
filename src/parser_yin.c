@@ -262,7 +262,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 {
     const char *value, *name;
     struct lys_node *siter;
-    struct lyxml_elem *next, *node;
+    struct lyxml_elem *next, *next2, *node, *child;
     struct lys_restr **restr;
     struct lys_type_bit bit, *bits_sc = NULL;
     struct lys_type_enum *enms_sc = NULL; /* shortcut */
@@ -271,6 +271,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     int ret = -1;
     int64_t v, v_;
     int64_t p, p_;
+    size_t len;
+    char *buf, modifier;
 
     GETVAL(value, yin, "name");
     value = transform_schema2json(module, value);
@@ -1044,14 +1046,44 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
             LY_TREE_FOR(yin->child, node) {
                 GETVAL(value, node, "value");
-
                 if (lyp_check_pattern(value, NULL)) {
                     free(type->info.str.patterns);
                     type->info.str.patterns = NULL;
                     goto error;
                 }
 
-                type->info.str.patterns[type->info.str.pat_count].expr = lydict_insert(module->ctx, value, 0);
+                modifier = 0x06; /* ACK */
+                name = NULL;
+                LY_TREE_FOR_SAFE(node->child, next2, child) {
+                    if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
+                        /* garbage */
+                        lyxml_free(module->ctx, child);
+                        continue;
+                    }
+
+                    if (module->version >= 2 && !strcmp(child->name, "modifier")) {
+                        if (name) {
+                            LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "modifier", node->name);
+                            goto error;
+                        }
+
+                        GETVAL(name, child, "value");
+                        if (!strcmp(name, "invert-match")) {
+                            modifier = 0x15; /* NACK */
+                        } else {
+                            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, name, "modifier");
+                            goto error;
+                        }
+                        lyxml_free(module->ctx, child);
+                    }
+                }
+
+                len = strlen(value);
+                buf = malloc((len + 2) * sizeof *buf); /* modifier byte + value + terminating NULL byte */
+                buf[0] = modifier;
+                strcpy(&buf[1], value);
+
+                type->info.str.patterns[type->info.str.pat_count].expr = lydict_insert_zc(module->ctx, buf);
 
                 /* get possible sub-statements */
                 if (read_restr_substmt(module->ctx, &type->info.str.patterns[type->info.str.pat_count], node)) {

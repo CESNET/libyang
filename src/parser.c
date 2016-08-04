@@ -566,7 +566,7 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
 static int
 validate_pattern(const char *val_str, struct lys_type *type, struct lyd_node *node)
 {
-    int i;
+    int i, rc;
     pcre *precomp;
 
     assert(type->base == LY_TYPE_STRING);
@@ -580,13 +580,14 @@ validate_pattern(const char *val_str, struct lys_type *type, struct lyd_node *no
     }
 
     for (i = 0; i < type->info.str.pat_count; ++i) {
-        if (lyp_check_pattern(type->info.str.patterns[i].expr, &precomp)) {
+        if (lyp_check_pattern(&type->info.str.patterns[i].expr[1], &precomp)) {
             LOGINT;
             return EXIT_FAILURE;
         }
 
-        if (pcre_exec(precomp, NULL, val_str, strlen(val_str), 0, 0, NULL, 0)) {
-            LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, val_str, type->info.str.patterns[i].expr);
+        rc = pcre_exec(precomp, NULL, val_str, strlen(val_str), 0, 0, NULL, 0);
+        if ((rc && type->info.str.patterns[i].expr[0] == 0x06) || (!rc && type->info.str.patterns[i].expr[0] == 0x15)) {
+            LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, val_str, &type->info.str.patterns[i].expr[1]);
             if (type->info.str.patterns[i].emsg) {
                 LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, type->info.str.patterns[i].emsg);
             }

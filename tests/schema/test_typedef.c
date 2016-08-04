@@ -428,6 +428,50 @@ test_typedef_11_iff_bits_yin(void **state)
     lyd_free_withsiblings(root);
 }
 
+static void
+test_typedef_11_pattern_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+
+    const char *modstr = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+"<module name=\"x\"\n"
+"        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+"        xmlns:x=\"urn:x\">\n"
+"  <yang-version value=\"1.1\"/>\n"
+"  <namespace uri=\"urn:x\"/>\n  <prefix value=\"x\"/>\n"
+"  <leaf name=\"l\">\n    <type name=\"string\">\n"
+"      <pattern value=\"[a-zA-Z_][a-zA-Z0-9\\-_.]*\"/>\n"
+"      <pattern value=\"[nN][oO][tT].*\">\n        <modifier value=\"invert-match\"/>\n      </pattern>\n"
+"    </type>\n  </leaf>\n</module>\n";
+    char *printed;
+
+    struct lyd_node *root;
+    const char *data1 = "<l xmlns=\"urn:x\">enabled</l>"; /* legal */
+    const char *data2 = "<l xmlns=\"urn:x\">10</l>";      /* ilegal, starts with number */
+    const char *data3 = "<l xmlns=\"urn:x\">notoric</l>"; /* ilegal, starts with not */
+
+    mod = lys_parse_mem(st->ctx, modstr, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&printed, mod, LYS_OUT_YIN, NULL);
+    assert_ptr_not_equal(printed, NULL);
+    assert_string_equal(printed, modstr);
+    free(printed);
+
+    root = lyd_parse_mem(st->ctx, data3, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(root, NULL);
+    assert_int_equal(ly_vecode, LYVE_NOCONSTR);
+
+    root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(root, NULL);
+    assert_int_equal(ly_vecode, LYVE_NOCONSTR);
+
+    root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(root, NULL);
+    lyd_free_withsiblings(root);
+}
+
 int
 main(void)
 {
@@ -440,6 +484,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_typedef_11_iff_ident_yin, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_iff_enums_yin, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_iff_bits_yin, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_11_pattern_yin, setup_ctx, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
