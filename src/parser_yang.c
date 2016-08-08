@@ -298,6 +298,7 @@ yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct u
     const char *exp;
     int ret;
     struct lys_feature *f;
+    struct lys_ident *i;
     struct lys_node *n;
 
     if ((module->version != 2) && ((value[0] == '(') || strchr(value, ' '))) {
@@ -316,6 +317,10 @@ yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct u
         f = (struct lys_feature *) ptr;
         ret = resolve_iffeature_compile(&f->iffeature[f->iffeature_size], exp, (struct lys_node *)f, unres);
         f->iffeature_size++;
+    } else if (type == IDENTITY_KEYWORD){
+        i = (struct lys_ident *) ptr;
+        ret = resolve_iffeature_compile(&i->iffeature[i->iffeature_size], exp, (struct lys_node *)i, unres);
+        i->iffeature_size++;
     } else {
         n = (struct lys_node *) ptr;
         ret = resolve_iffeature_compile(&n->iffeature[n->iffeature_size], exp, n, unres);
@@ -366,10 +371,6 @@ yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, 
 {
     const char *exp;
 
-    if (!value) {
-        /* base statement not found */
-        return EXIT_SUCCESS;
-    }
     exp = transform_schema2json(module, value);
     free(value);
     if (!exp) {

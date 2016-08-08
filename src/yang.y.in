@@ -182,7 +182,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 %type <i> submodule_header_stmts
 %type <str> tmp_identifier_arg_str
 %type <str> message_opt_stmt
-%type <str> identity_opt_stmt
+%type <i> identity_opt_stmt
 %type <i> status_stmt
 %type <i> status_read_stmt
 %type <i> status_arg_str
@@ -901,39 +901,80 @@ identity_stmt: IDENTITY_KEYWORD sep identifier_arg_str { if (read_all) {
 
 identity_end: ';'
   |  '{' stmtsep
-         identity_opt_stmt { if (read_all && yang_read_base(trg, actual, $3, unres)) {
-                               YYABORT;
-                             }
-                           }
+         identity_opt_stmt
       '}'
   ;
 
-identity_opt_stmt: @EMPTYDIR@ { $$ = NULL; }
+identity_opt_stmt: @EMPTYDIR@ { if (read_all) {
+                                  struct lys_ident *ident = actual;
+
+                                  if (size_arrays->node[size_arrays->next].base > 1 && (trg->version < 2)) {
+                                    LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "base", "identity");
+                                    YYABORT;
+                                  }
+
+                                  if ((trg->version < 2) && size_arrays->node[size_arrays->next].if_features) {
+                                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature", "identity");
+                                    YYABORT;
+                                  }
+
+                                  if (size_arrays->node[size_arrays->next].base) {
+                                    ident->base_size = 0;
+                                    ident->base = calloc(size_arrays->node[size_arrays->next].base, sizeof *ident->base);
+                                    if (!ident->base) {
+                                      LOGMEM;
+                                      YYABORT;
+                                    }
+                                  }
+
+                                  if (size_arrays->node[size_arrays->next].if_features) {
+                                      ident->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *ident->iffeature);
+                                      if (!ident->iffeature) {
+                                          LOGMEM;
+                                          YYABORT;
+                                      }
+                                  }
+
+                                  ident->flags |= size_arrays->node[size_arrays->next].flags;
+                                  size_arrays->next++;
+                                } else {
+                                  $$ = size_arrays->size;
+                                  if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                    LOGMEM;
+                                    YYABORT;
+                                  }
+                                }
+                              }
   |  identity_opt_stmt base_stmt { if (read_all) {
-                                     if ($1) {
-                                       LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "base", "identity");
-                                       free(s);
-                                       free($1);
+                                     if (yang_read_base(trg, actual, s, unres)) {
                                        YYABORT;
                                      }
-                                     $$ = s;
                                      s = NULL;
+                                   } else {
+                                     size_arrays->node[$1].base++;
                                    }
                                  }
-  |  identity_opt_stmt status_stmt { if (read_all) {
-                                       if (yang_check_flags((uint16_t*)&((struct lys_ident *)actual)->flags, LYS_STATUS_MASK, "status", "identity", $2, 1)) {
-                                         YYABORT;
+  |  identity_opt_stmt if_feature_stmt { if (read_all) {
+                                           if (yang_read_if_feature(trg, actual, s, unres, IDENTITY_KEYWORD)) {
+                                             YYABORT;
+                                           }
+                                           s=NULL;
+                                         } else {
+                                           size_arrays->node[$1].if_features++;
+                                         }
                                        }
-                                     }
-                                   }
+  |  identity_opt_stmt status_read_stmt { if (!read_all) {
+                                            if (yang_check_flags(&size_arrays->node[$1].flags, LYS_STATUS_MASK, "status", "identity", $2, 0)) {
+                                              YYABORT;
+                                            }
+                                          }
+                                        }
   |  identity_opt_stmt description_stmt { if (read_all && yang_read_description(trg, actual, s, "identity")) {
-                                            free($1);
                                             YYABORT;
                                           }
                                           s = NULL;
                                         }
   |  identity_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, "identity")) {
-                                          free($1);
                                           YYABORT;
                                         }
                                         s = NULL;
