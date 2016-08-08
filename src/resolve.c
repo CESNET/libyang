@@ -4361,7 +4361,7 @@ matchfound:
     if (base) {
         /* is it already completely resolved? */
         for (i = 0; i < unres->count; i++) {
-            if ((unres->item[i] == ident) && (unres->type[i] == UNRES_IDENT) && (unres->str_snode[i] != basename)) {
+            if ((unres->item[i] == base) && (unres->type[i] == UNRES_IDENT)) {
                 /* identity found, but not yet resolved, so do not return it in *res and try it again later */
 
                 /* simple check for circular reference,
