@@ -263,23 +263,59 @@ repeat:
 }
 
 static const struct lys_node *
-check_mand_getnext(const struct lys_node *last, const struct lys_node *parent, const struct lys_module *module)
+check_mand_getnext(const struct lys_node *last, const struct lys_node *parent, const struct lyd_node *data,
+                   const struct lys_module *module)
 {
-    const struct lys_node *next;
+    const struct lys_node *next, *saux;
+    struct lyxp_set set;
+    struct lys_when *when;
+    int i;
 
-    next = lys_getnext(last, parent, module, LYS_GETNEXT_WITHCHOICE);
+    memset(&set, 0, sizeof set);
 
 repeat:
-    if (next && next->nodetype == LYS_CONTAINER) {
-        if (((struct lys_node_container *)next)->presence) {
-            /* mandatory elements under the non-existing presence
-             * container are not mandatory - 7.6.5, rule 1 */
-            next = next->next;
-        } else {
+    next = lys_getnext(last, parent, module, LYS_GETNEXT_WITHCHOICE);
+    while (next && next->nodetype == LYS_CONTAINER) {
+        if (!((struct lys_node_container *)next)->presence && next->child) {
             /* go into */
             next = next->child;
+            continue;
         }
+        /* mandatory elements under the non-existing presence
+         * container are not mandatory - 7.6.5, rule 1 */
+        last = next;
         goto repeat;
+    }
+
+    /* check the when condition */
+    for (saux = next; saux && saux != parent; ) {
+        if (saux->nodetype == LYS_AUGMENT) {
+            when = ((struct lys_node_augment *)saux)->when;
+        } else {
+            /* in other cases it is at the same place */
+            when = ((struct lys_node_leaf *)saux)->when;
+        }
+
+        if (when) {
+            /* check when condition */
+            /* TODO we use data, which is ok for conditions with absolute path, but not for relative paths,
+             * changes in both lyxp_eval() and here are needed! */
+            lyxp_eval(when->cond, data, &set, LYXP_WHEN);
+            lyxp_set_cast(&set, LYXP_SET_BOOLEAN, data, LYXP_WHEN);
+            i = set.val.bool;
+            lyxp_set_cast(&set, LYXP_SET_EMPTY, data, 0);
+            if (!i) {
+                /* stop the loop, when condition is false */
+                last = saux;
+                goto repeat;
+            }
+        }
+
+        if (saux->nodetype == LYS_AUGMENT) {
+            saux = ((struct lys_node_augment *)saux)->target;
+        } else {
+            saux = saux->parent;
+        }
     }
 
     return next;
@@ -449,9 +485,11 @@ ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema, i
 {
     const struct lys_node *siter, *saux, *saux2, *parent = NULL, *parent2;
     const struct lyd_node *diter, *datasearch;
-    int found;
+    struct lyxp_set set;
+    int found, i;
 
     assert(data || schema);
+    memset(&set, 0, sizeof set);
 
     if (schema) {
         /* schema is preferred regardless the data */
@@ -483,8 +521,20 @@ repeat:
             }
             /* ... and then the subtree */
             if (siter->nodetype == LYS_CONTAINER && !((struct lys_node_container *)siter)->presence) {
+                if (((struct lys_node_container *)siter)->when) {
+                    /* check if the subtree is enabled */
+                    lyxp_eval(((struct lys_node_container *)siter)->when->cond, data, &set, LYXP_WHEN);
+                    lyxp_set_cast(&set, LYXP_SET_BOOLEAN, data, LYXP_WHEN);
+                    i = set.val.bool;
+                    lyxp_set_cast(&set, LYXP_SET_EMPTY, data, 0);
+                    if (!i) {
+                        /* skip */
+                        siter = siter->next;
+                        break;
+                    }
+                }
                 saux = NULL;
-                while ((saux = check_mand_getnext(saux, siter, NULL))) {
+                while ((saux = check_mand_getnext(saux, siter, data, NULL))) {
                     if ((status || (saux->flags & LYS_CONFIG_W)) && check_mand_check(saux, lys_parent(siter), data)) {
                         return EXIT_FAILURE;
                     }
@@ -493,6 +543,18 @@ repeat:
             siter = siter->next;
             break;
         case LYS_CHOICE:
+            if (((struct lys_node_choice *)siter)->when) {
+                /* check if the subtree is enabled */
+                lyxp_eval(((struct lys_node_choice *)siter)->when->cond, data, &set, LYXP_WHEN);
+                lyxp_set_cast(&set, LYXP_SET_BOOLEAN, data, LYXP_WHEN);
+                i = set.val.bool;
+                lyxp_set_cast(&set, LYXP_SET_EMPTY, data, 0);
+                if (!i) {
+                    /* skip */
+                    siter = siter->next;
+                    break;
+                }
+            }
             /* search for instance */
             saux = siter;
             siter = siter->child;
@@ -521,7 +583,7 @@ repeat_choice:
                         /* check presence of mandatory siblings */
                         if (parent2 && parent2->nodetype == LYS_CASE) {
                             saux2 = NULL;
-                            while ((saux2 = check_mand_getnext(saux2, parent2, NULL))) {
+                            while ((saux2 = check_mand_getnext(saux2, parent2, data, NULL))) {
                                 if (check_mand_check(saux2, lys_parent(saux), data)) {
                                     return EXIT_FAILURE;
                                 }
@@ -586,9 +648,24 @@ repeat_choice:
                 siter = siter->next;
                 break;
             }
-            /* fallthrough */
+            /* go into */
+            parent = siter;
+            siter = siter->child;
+            break;
         case LYS_USES:
         case LYS_CASE:
+            if (((struct lys_node_case *)siter)->when) {
+                /* check if the subtree is enabled */
+                lyxp_eval(((struct lys_node_case *)siter)->when->cond, data, &set, LYXP_WHEN);
+                lyxp_set_cast(&set, LYXP_SET_BOOLEAN, data, LYXP_WHEN);
+                i = set.val.bool;
+                lyxp_set_cast(&set, LYXP_SET_EMPTY, data, 0);
+                if (!i) {
+                    /* skip */
+                    siter = siter->next;
+                    break;
+                }
+            }
             /* go into */
             parent = siter;
             siter = siter->child;
