@@ -178,6 +178,87 @@ test_typedef_11in10(void **state)
 }
 
 static void
+test_typedef_11_multidents_yang(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    struct lyd_node *root;
+    const char *schema = "module x {"
+"  yang-version 1.1;"
+"  namespace \"urn:x\";"
+"  prefix x;"
+"  identity des3 { base des; }"
+"  identity des { base crypto-alg; base symmetric-key; }"
+"  identity rsa { base crypto-alg; base public-key; }"
+"  identity crypto-alg;"
+"  identity symmetric-key;"
+"  identity public-key;"
+"  leaf l1 { type identityref { base crypto-alg; } }"
+"  leaf l2 { type identityref { base public-key; } } }";
+
+    const char *data1 = "<l1 xmlns=\"urn:x\">des</l1><l2 xmlns=\"urn:x\">des</l2>";
+    const char *data2 = "<l1 xmlns=\"urn:x\">des3</l1><l2 xmlns=\"urn:x\">des3</l2>";
+    const char *data3 = "<l1 xmlns=\"urn:x\">rsa</l1><l2 xmlns=\"urn:x\">rsa</l2>";
+
+    mod = lys_parse_mem(st->ctx, schema, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(root, NULL);
+    assert_string_equal(ly_errmsg(), "Failed to resolve identityref \"des\".");
+    assert_string_equal(ly_errpath(), "/x:l2");
+
+    root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(root, NULL);
+    assert_string_equal(ly_errmsg(), "Failed to resolve identityref \"des3\".");
+    assert_string_equal(ly_errpath(), "/x:l2");
+
+    root = lyd_parse_mem(st->ctx, data3, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(root, NULL);
+    lyd_free_withsiblings(root);
+}
+
+static void
+test_typedef_11_multidents_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    struct lyd_node *root;
+    const char *schema = "<module name=\"x\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+"  <yang-version value=\"1.1\"/>"
+"  <namespace uri=\"urn:x\"/><prefix value=\"x\"/>"
+"  <identity name=\"des3\"><base name=\"des\"/></identity>"
+"  <identity name=\"des\"><base name=\"crypto-alg\"/><base name=\"symmetric-key\"/></identity>"
+"  <identity name=\"rsa\"><base name=\"crypto-alg\"/><base name=\"public-key\"/></identity>"
+"  <identity name=\"crypto-alg\"/>"
+"  <identity name=\"symmetric-key\"/>"
+"  <identity name=\"public-key\"/>"
+"  <leaf name=\"l1\"><type name=\"identityref\"><base name=\"crypto-alg\"/></type></leaf>"
+"  <leaf name=\"l2\"><type name=\"identityref\"><base name=\"public-key\"/></type></leaf></module>";
+
+    const char *data1 = "<l1 xmlns=\"urn:x\">des</l1><l2 xmlns=\"urn:x\">des</l2>";
+    const char *data2 = "<l1 xmlns=\"urn:x\">des3</l1><l2 xmlns=\"urn:x\">des3</l2>";
+    const char *data3 = "<l1 xmlns=\"urn:x\">rsa</l1><l2 xmlns=\"urn:x\">rsa</l2>";
+
+    mod = lys_parse_mem(st->ctx, schema, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+
+    root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(root, NULL);
+    assert_string_equal(ly_errmsg(), "Failed to resolve identityref \"des\".");
+    assert_string_equal(ly_errpath(), "/x:l2");
+
+    root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(root, NULL);
+    assert_string_equal(ly_errmsg(), "Failed to resolve identityref \"des3\".");
+    assert_string_equal(ly_errpath(), "/x:l2");
+
+    root = lyd_parse_mem(st->ctx, data3, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(root, NULL);
+    lyd_free_withsiblings(root);
+}
+
+static void
 test_typedef_11_enums_yin(void **state)
 {
     struct state *st = (*state);
@@ -440,6 +521,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_typedef_11_iff_ident_yin, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_iff_enums_yin, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_iff_bits_yin, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_11_multidents_yin, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_11_multidents_yang, setup_ctx, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
