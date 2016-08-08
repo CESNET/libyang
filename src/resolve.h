@@ -21,18 +21,15 @@
  * @brief Type of an unresolved item (in either SCHEMA or DATA)
  */
 enum UNRES_ITEM {
-    UNRES_RESOLVED,      /* a resolved item */
-    UNRES_DELETE,        /* prepared for auto-delete */
-
     /* SCHEMA */
-    UNRES_IDENT,         /* unresolved derived identities */
-    UNRES_TYPE_IDENTREF, /* check identityref value */
-    UNRES_TYPE_LEAFREF,  /* check leafref value */
+    UNRES_USES,          /* unresolved uses grouping (refines and augments in it are resolved as well) */
+    UNRES_IFFEAT,        /* unresolved if-feature */
     UNRES_TYPE_DER,      /* unresolved derived type defined in leaf/leaflist */
     UNRES_TYPE_DER_TPDF, /* unresolved derived type defined as typedef */
-    UNRES_IFFEAT,        /* unresolved if-feature */
+    UNRES_TYPE_LEAFREF,  /* check leafref value */
+    UNRES_IDENT,         /* unresolved derived identities */
+    UNRES_TYPE_IDENTREF, /* check identityref value */
     UNRES_FEATURE,       /* feature for circular check, it must be postponed when all if-features are resolved */
-    UNRES_USES,          /* unresolved uses grouping (refines and augments in it are resolved as well) */
     UNRES_TYPE_DFLT,     /* validate default type value */
     UNRES_CHOICE_DFLT,   /* check choice default case */
     UNRES_LIST_KEYS,     /* list keys */
@@ -44,7 +41,11 @@ enum UNRES_ITEM {
     UNRES_INSTID,        /* unresolved instance-identifier reference */
     UNRES_WHEN,          /* unresolved when condition */
     UNRES_MUST,          /* unresolved must condition */
-    UNRES_EMPTYCONT      /* empty container that will get auto-deleted */
+    UNRES_EMPTYCONT,     /* empty container that will get auto-deleted */
+
+    /* generic */
+    UNRES_RESOLVED,      /* a resolved item */
+    UNRES_DELETE,        /* prepared for auto-delete */
 };
 
 /**

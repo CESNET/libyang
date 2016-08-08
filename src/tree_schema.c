@@ -1795,6 +1795,7 @@ lys_ident_free(struct ly_ctx *ctx, struct lys_ident *ident)
         return;
     }
 
+    free(ident->base);
     free(ident->der);
     lydict_remove(ctx, ident->name);
     lydict_remove(ctx, ident->dsc);

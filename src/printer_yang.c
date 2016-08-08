@@ -701,21 +701,21 @@ yang_print_typedef(struct lyout *out, int level, const struct lys_module *module
 static void
 yang_print_identity(struct lyout *out, int level, const struct lys_ident *ident)
 {
-    int flag = 0;
+    int flag = 0, i;
     struct lys_module *mod;
 
     ly_print(out, "%*sidentity %s", LEVEL, INDENT, ident->name);
     level++;
 
     yang_print_snode_common(out, level, (struct lys_node *)ident, &flag);
-    if (ident->base) {
+    for (i = 0; i < ident->base_size; i++) {
         yang_print_open(out, &flag);
         ly_print(out, "%*sbase ", LEVEL, INDENT);
-        mod = lys_main_module(ident->base->module);
+        mod = lys_main_module(ident->base[i]->module);
         if (lys_main_module(ident->module) != mod) {
             ly_print(out, "%s:", transform_module_name2import_prefix(ident->module, mod->name));
         }
-        ly_print(out, "%s;\n", ident->base->name);
+        ly_print(out, "%s;\n", ident->base[i]->name);
     }
 
     level--;

@@ -124,8 +124,8 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
 {
     struct lyxml_elem *node, *next;
     const char *value;
-    int base_flag = 0, rc;
-    int c_ftrs = 0;
+    int rc;
+    int c_ftrs = 0, c_base = 0;
 
     GETVAL(value, yin, "name");
     ident->name = value;
@@ -146,12 +146,40 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
         }
 
         if (!strcmp(node->name, "base")) {
-            if (base_flag) {
+            if (c_base && (module->version < 2)) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "base", "identity");
                 return EXIT_FAILURE;
             }
-            base_flag = 1;
+            c_base++;
 
+        } else if ((module->version >= 2) && !strcmp(node->name, "if-feature")) {
+            c_ftrs++;
+
+        } else {
+            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name, "identity");
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (c_base) {
+        ident->base_size = 0;
+        ident->base = calloc(c_base, sizeof *ident->base);
+        if (!ident->base) {
+            LOGMEM;
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (c_ftrs) {
+        ident->iffeature = calloc(c_ftrs, sizeof *ident->iffeature);
+        if (!ident->iffeature) {
+            LOGMEM;
+            return EXIT_FAILURE;
+        }
+    }
+
+    LY_TREE_FOR(yin->child, node) {
+        if (!strcmp(node->name, "base")) {
             GETVAL(value, node, "name");
             value = transform_schema2json(module, value);
             if (!value) {
@@ -163,30 +191,12 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
                 return EXIT_FAILURE;
             }
             lydict_remove(module->ctx, value);
-            lyxml_free(module->ctx, node);
-
-        } else if ((module->version >= 2) && !strcmp(node->name, "if-feature")) {
-            c_ftrs++;
-
-        } else {
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name, "identity");
-            return EXIT_FAILURE;
-        }
-    }
-
-    if (c_ftrs) {
-        ident->iffeature = calloc(c_ftrs, sizeof *ident->iffeature);
-        if (!ident->iffeature) {
-            LOGMEM;
-            goto error;
-        }
-    }
-
-    LY_TREE_FOR(yin->child, node) {
-        rc = fill_yin_iffeature((struct lys_node *)ident, node, &ident->iffeature[ident->iffeature_size], unres);
-        ident->iffeature_size++;
-        if (rc) {
-            goto error;
+        } else if (!strcmp(node->name, "if-feature")) {
+            rc = fill_yin_iffeature((struct lys_node *)ident, node, &ident->iffeature[ident->iffeature_size], unres);
+            ident->iffeature_size++;
+            if (rc) {
+                return EXIT_FAILURE;
+            }
         }
     }
 

@@ -1411,9 +1411,11 @@ struct lys_ident {
     struct lys_module *module;       /**< pointer to the module where the identity is defined */
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    uint8_t base_size;               /**< number of elements in the #base array */
+    uint16_t der_size;               /**< number of elements in the #der array */
     struct lys_iffeature *iffeature; /**< array of if-feature expressions */
 
-    struct lys_ident *base;          /**< pointer to the base identity */
+    struct lys_ident **base;         /**< array of pointers to the base identities */
     struct lys_ident **der;          /**< array of pointers to the derived identities */
 };
 

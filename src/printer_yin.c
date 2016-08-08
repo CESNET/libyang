@@ -721,7 +721,7 @@ yin_print_typedef(struct lyout *out, int level, const struct lys_module *module,
 static void
 yin_print_identity(struct lyout *out, int level, const struct lys_ident *ident)
 {
-    int close;
+    int close, i;
     struct lys_module *mod;
 
     close = (yin_has_snode_common((struct lys_node *)ident) || ident->base ? 0 : 1);
@@ -731,13 +731,13 @@ yin_print_identity(struct lyout *out, int level, const struct lys_ident *ident)
     if (!close) {
         level++;
         yin_print_snode_common(out, level, (struct lys_node *)ident);
-        if (ident->base) {
+        for (i = 0; i < ident->base_size; i++) {
             ly_print(out, "%*s<base name=\"", LEVEL, INDENT);
-            mod = lys_main_module(ident->base->module);
+            mod = lys_main_module(ident->base[i]->module);
             if (lys_main_module(ident->module) != mod) {
                 ly_print(out, "%s:", transform_module_name2import_prefix(ident->module, mod->name));
             }
-            ly_print(out, "%s\"/>\n", ident->base->name);
+            ly_print(out, "%s\"/>\n", ident->base[i]->name);
         }
         level--;
 
