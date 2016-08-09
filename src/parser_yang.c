@@ -300,6 +300,8 @@ yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct u
     struct lys_feature *f;
     struct lys_ident *i;
     struct lys_node *n;
+    struct lys_type_enum *e;
+    struct lys_type_bit *b;
 
     if ((module->version != 2) && ((value[0] == '(') || strchr(value, ' '))) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "if-feature");
@@ -313,18 +315,32 @@ yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct u
     }
     free(value);
 
-    if (type == FEATURE_KEYWORD) {
+    switch (type) {
+    case FEATURE_KEYWORD:
         f = (struct lys_feature *) ptr;
         ret = resolve_iffeature_compile(&f->iffeature[f->iffeature_size], exp, (struct lys_node *)f, unres);
         f->iffeature_size++;
-    } else if (type == IDENTITY_KEYWORD){
+        break;
+    case IDENTITY_KEYWORD:
         i = (struct lys_ident *) ptr;
         ret = resolve_iffeature_compile(&i->iffeature[i->iffeature_size], exp, (struct lys_node *)i, unres);
         i->iffeature_size++;
-    } else {
+        break;
+    case ENUM_KEYWORD:
+        e = &((struct yang_type *)ptr)->type->info.enums.enm[((struct yang_type *)ptr)->type->info.enums.count - 1];
+        ret = resolve_iffeature_compile(&e->iffeature[e->iffeature_size], exp, (struct lys_node *)((struct yang_type *)ptr)->type->parent, unres);
+        e->iffeature_size++;
+        break;
+    case BIT_KEYWORD:
+        b = &((struct yang_type *)ptr)->type->info.bits.bit[((struct yang_type *)ptr)->type->info.bits.count - 1];
+        ret = resolve_iffeature_compile(&b->iffeature[b->iffeature_size], exp, (struct lys_node *)((struct yang_type *)ptr)->type->parent, unres);
+        b->iffeature_size++;
+        break;
+    default:
         n = (struct lys_node *) ptr;
         ret = resolve_iffeature_compile(&n->iffeature[n->iffeature_size], exp, n, unres);
         n->iffeature_size++;
+        break;
     }
     lydict_remove(module->ctx, exp);
 
