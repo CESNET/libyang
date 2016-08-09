@@ -432,6 +432,12 @@ yang_read_must(struct lys_module *module, struct lys_node *node, char *value, en
     case DELETE_KEYWORD:
         retval = &((struct type_deviation *)node)->deviate->must[((struct type_deviation *)node)->deviate->must_size++];
         break;
+    case NOTIFICATION_KEYWORD:
+        retval = &((struct lys_node_notif *)node)->must[((struct lys_node_notif *)node)->must_size++];
+        break;
+    case INPUT_KEYWORD:
+        retval = &((struct lys_node_inout *)node)->must[((struct lys_node_inout *)node)->must_size++];
+        break;
     default:
         goto error;
         break;

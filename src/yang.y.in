@@ -3084,9 +3084,20 @@ input_output_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                   $$.node.ptr_inout = actual;
                                   $$.node.flag = 0;
                                   actual_type = INPUT_KEYWORD;
+                                  if (trg->version < 2 && size_arrays->node[size_arrays->next].must) {
+                                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "must");
+                                    YYABORT;
+                                  }
                                   if (size_arrays->node[size_arrays->next].tpdf) {
                                     $$.node.ptr_inout->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.node.ptr_inout->tpdf);
                                     if (!$$.node.ptr_inout->tpdf) {
+                                      LOGMEM;
+                                      YYABORT;
+                                    }
+                                  }
+                                  if (size_arrays->node[size_arrays->next].must) {
+                                    $$.node.ptr_inout->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.node.ptr_inout->must);
+                                    if (!$$.node.ptr_inout->must) {
                                       LOGMEM;
                                       YYABORT;
                                     }
@@ -3100,6 +3111,14 @@ input_output_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                   }
                                 }
                               }
+  |  input_output_opt_stmt must_stmt { if (read_all) {
+                                         actual = $1.node.ptr_inout;
+                                         actual_type = INPUT_KEYWORD;
+                                       } else {
+                                         size_arrays->node[$1.index].must++;
+                                       }
+                                     }
+     stmtsep
   |  input_output_opt_stmt typedef_stmt { if (read_all) {
                                                     actual = $1.node.ptr_inout;
                                                     actual_type = INPUT_KEYWORD;
@@ -3180,6 +3199,17 @@ notification_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                       YYABORT;
                                     }
                                   }
+                                  if (trg->version < 2 && size_arrays->node[size_arrays->next].must) {
+                                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "must");
+                                    YYABORT;
+                                  }
+                                  if (size_arrays->node[size_arrays->next].must) {
+                                    $$.notif->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.notif->must);
+                                    if (!$$.notif->must) {
+                                      LOGMEM;
+                                      YYABORT;
+                                    }
+                                  }
                                   store_flags((struct lys_node *)$$.notif, size_arrays->node[size_arrays->next].flags, 0);
                                   size_arrays->next++;
                                 } else {
@@ -3190,6 +3220,14 @@ notification_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                   }
                                 }
                               }
+  |  notification_opt_stmt must_stmt { if (read_all) {
+                                      actual = $1.notif;
+                                      actual_type = NOTIFICATION_KEYWORD;
+                                    } else {
+                                      size_arrays->node[$1.index].must++;
+                                    }
+                                  }
+     stmtsep
   |  notification_opt_stmt if_feature_stmt { if (read_all) {
                                                if (yang_read_if_feature(trg, $1.notif, s, unres, NOTIFICATION_KEYWORD)) {YYABORT;}
                                                s=NULL;
