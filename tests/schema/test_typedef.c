@@ -259,6 +259,55 @@ test_typedef_11_multidents_yin(void **state)
 }
 
 static void
+test_typedef_11_enums_yang(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *enums1 = "module x {"
+"  yang-version \"1.1\";"
+"  namespace \"urn:x\";"
+"  prefix x;"
+"  typedef e1 { type enumeration { enum one; enum two; } default one; }"
+"  leaf l { type e1 { enum two; } } }";
+
+    const char *enums2 = "module x {"
+"  yang-version 1.1;"
+"  namespace \"urn:x\";"
+"  prefix x;"
+"  typedef e1 { type \"enumeration\" { enum \"one\"; enum two; } default \"one\"; }"
+"  leaf l { type e1 { enum one { value 1; } } } }";
+
+    const char *enums3 = "module x {"
+"  yang-version 1.1;"
+"  namespace \"urn:x\";"
+"  prefix \"x\";"
+"  typedef e1 { type enumeration { enum one; enum two; } default one; }"
+"  leaf l { type e1 { enum three; } } }";
+
+    const char *enums4 = "module x {"
+"  yang-version 1.1;"
+"  namespace \"urn:x\";"
+"  prefix x;"
+"  typedef e1 { type enumeration { enum one; enum two; } default one; }"
+"  leaf l { type e1 { enum one; } } }";
+
+    mod = lys_parse_mem(st->ctx, enums1, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+
+    mod = lys_parse_mem(st->ctx, enums2, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_ENUM_INVAL);
+
+    mod = lys_parse_mem(st->ctx, enums3, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_ENUM_INNAME);
+
+    mod = lys_parse_mem(st->ctx, enums4, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+}
+
+static void
 test_typedef_11_enums_yin(void **state)
 {
     struct state *st = (*state);
@@ -320,6 +369,56 @@ test_typedef_11_enums_yin(void **state)
     assert_int_equal(ly_vecode, LYVE_ENUM_INNAME);
 
     mod = lys_parse_mem(st->ctx, enums4, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+}
+
+static void
+test_typedef_11_bits_yang(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+
+    const char *bits1 = "module y {"
+"  yang-version \"1.1\";"
+"  namespace \"urn:y\";"
+"  prefix \"y\";"
+"  typedef b1 { type \"bits\" { bit \"one\"; bit two; } default one; }"
+"  leaf l { type b1 { bit two; } } }";
+
+    const char *bits2 = "module y {"
+"  yang-version 1.1;"
+"  namespace \"urn:y\";"
+"  prefix y;"
+"  typedef b1 { type bits { bit one; bit two; } default one; }"
+"  leaf l { type b1 { bit one { position 1; } } } }";
+
+    const char *bits3 = "module y {"
+"  yang-version 1.1;"
+"  namespace \"urn:y\";"
+"  prefix y;"
+"  typedef b1 { type bits { bit one; bit two; } default \"one\"; }"
+"  leaf l { type b1 { bit three; } } }";
+
+    const char *bits4 = "module y {"
+"  yang-version 1.1;"
+"  namespace \"urn:y\";"
+"  prefix y;"
+"  typedef b1 { type bits { bit one; bit two; } default one; }"
+"  leaf l { type b1 { bit one; } } }";
+
+    mod = lys_parse_mem(st->ctx, bits1, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+
+    mod = lys_parse_mem(st->ctx, bits2, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_BITS_INVAL);
+
+    mod = lys_parse_mem(st->ctx, bits3, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_BITS_INNAME);
+
+    mod = lys_parse_mem(st->ctx, bits4, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 }
 
@@ -683,7 +782,9 @@ main(void)
         cmocka_unit_test_setup_teardown(test_typedef_yang, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11in10, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_enums_yin, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_11_enums_yang, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_bits_yin, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_11_bits_yang, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_iff_ident_yin, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_iff_ident_yang, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_iff_enums_yin, setup_ctx, teardown_ctx),
