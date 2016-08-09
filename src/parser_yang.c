@@ -802,11 +802,16 @@ end:
 int
 yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, int tpdftype, struct unres_schema *unres)
 {
-    int i, rc;
+    int i, j, rc;
     int ret = -1;
     const char *name, *value;
     LY_DATA_TYPE base;
     struct lys_node *siter;
+    struct lys_type *dertype;
+    struct lys_type_enum *enms_sc = NULL;
+    struct lys_type_bit *bits_sc = NULL;
+    struct lys_type_bit bit_tmp;
+
 
     base = typ->base;
     value = transform_schema2json(module, typ->name);
@@ -910,15 +915,51 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
             goto error;
         }
-        if (!typ->type->der->type.der && !typ->type->info.bits.count) {
-            /* type is derived directly from buit-in enumeartion type and enum statement is required */
-            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "enum", "type");
-            goto error;
-        }
-        if (typ->type->der->type.der && typ->type->info.enums.count) {
-            /* type is not directly derived from buit-in enumeration type and enum statement is prohibited */
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "enum");
-            goto error;
+        dertype = &typ->type->der->type;
+
+        if (!dertype->der) {
+            if (!typ->type->info.enums.count) {
+                /* type is derived directly from buit-in enumeartion type and enum statement is required */
+                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "enum", "type");
+                goto error;
+            }
+        } else {
+            for (; !dertype->info.enums.count; dertype = &dertype->der->type);
+            if (module->version < 2 && typ->type->info.enums.count) {
+                /* type is not directly derived from built-in enumeration type and enum statement is prohibited
+                 * in YANG 1.0, since YANG 1.1 enum statements can be used to restrict the base enumeration type */
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "enum");
+                goto error;
+            }
+
+            /* restricted enumeration type - the name MUST be used in the base type */
+            enms_sc = dertype->info.enums.enm;
+            for(i = 0; i < typ->type->info.enums.count; i++) {
+                for (j = 0; j < dertype->info.enums.count; j++) {
+                    if (ly_strequal(enms_sc[j].name, typ->type->info.enums.enm[i].name, 1)) {
+                        break;
+                    }
+                }
+                if (j == dertype->info.enums.count) {
+                    LOGVAL(LYE_ENUM_INNAME, LY_VLOG_NONE, NULL, typ->type->info.enums.enm[i].name);
+                    goto error;
+                }
+
+                if (typ->type->info.enums.enm[i].flags & LYS_AUTOASSIGNED) {
+                    /* automatically assign value from base type */
+                    typ->type->info.enums.enm[i].value = enms_sc[j].value;
+                } else {
+                    /* check that the assigned value corresponds to the original
+                     * value of the enum in the base type */
+                    if (typ->type->info.enums.enm[i].value != enms_sc[j].value) {
+                        /* typ->type->info.enums.enm[i].value - assigned value in restricted enum
+                         * enms_sc[j].value - value assigned to the corresponding enum (detected above) in base type */
+                        LOGVAL(LYE_ENUM_INVAL, LY_VLOG_NONE, NULL, typ->type->info.enums.enm[i].value,
+                               typ->type->info.enums.enm[i].name, enms_sc[j].value);
+                        goto error;
+                    }
+                }
+            }
         }
         break;
     case LY_TYPE_BITS:
@@ -926,15 +967,64 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
             goto error;
         }
-        if (!typ->type->der->type.der && !typ->type->info.bits.count) {
-            /* type is derived directly from buit-in bits type and bit statement is required */
-            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "bit", "type");
-            goto error;
+        dertype = &typ->type->der->type;
+
+        if (!dertype->der) {
+            if (!typ->type->info.bits.count) {
+                /* type is derived directly from buit-in bits type and bit statement is required */
+                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "bit", "type");
+                goto error;
+            }
+        } else {
+            for (; !dertype->info.enums.count; dertype = &dertype->der->type);
+            if (module->version < 2 && typ->type->info.bits.count) {
+                /* type is not directly derived from buit-in bits type and bit statement is prohibited,
+                 * since YANG 1.1 the bit statements can be used to restrict the base bits type */
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "bit");
+                goto error;
+            }
+
+            bits_sc = dertype->info.bits.bit;
+            for (i = 0; i < typ->type->info.bits.count; i++) {
+                for (j = 0; j < dertype->info.bits.count; j++) {
+                    if (ly_strequal(bits_sc[j].name, typ->type->info.bits.bit[i].name, 1)) {
+                        break;
+                    }
+                }
+                if (j == dertype->info.bits.count) {
+                    LOGVAL(LYE_BITS_INNAME, LY_VLOG_NONE, NULL, typ->type->info.bits.bit[i].name);
+                    goto error;
+                }
+
+                /* restricted bits type */
+                if (typ->type->info.bits.bit[i].flags & LYS_AUTOASSIGNED) {
+                    /* automatically assign position from base type */
+                    typ->type->info.bits.bit[i].pos = bits_sc[j].pos;
+                } else {
+                    /* check that the assigned position corresponds to the original
+                     * position of the bit in the base type */
+                    if (typ->type->info.bits.bit[i].pos != bits_sc[j].pos) {
+                        /* typ->type->info.bits.bit[i].pos - assigned position in restricted bits
+                         * bits_sc[j].pos - position assigned to the corresponding bit (detected above) in base type */
+                        LOGVAL(LYE_BITS_INVAL, LY_VLOG_NONE, NULL, typ->type->info.bits.bit[i].pos,
+                               typ->type->info.bits.bit[i].name, bits_sc[j].pos);
+                        goto error;
+                    }
+                }
+            }
         }
-        if (typ->type->der->type.der && typ->type->info.bits.count) {
-            /* type is not directly derived from buit-in bits type and bit statement is prohibited */
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "bit");
-            goto error;
+
+        for (i = typ->type->info.bits.count - 1; i > 0; i--) {
+            j = i;
+
+            /* keep them ordered by position */
+            while (j && typ->type->info.bits.bit[j - 1].pos > typ->type->info.bits.bit[j].pos) {
+                /* switch them */
+                memcpy(&bit_tmp, &typ->type->info.bits.bit[j], sizeof bit_tmp);
+                memcpy(&typ->type->info.bits.bit[j], &typ->type->info.bits.bit[j - 1], sizeof bit_tmp);
+                memcpy(&typ->type->info.bits.bit[j - 1], &bit_tmp, sizeof bit_tmp);
+                j--;
+            }
         }
         break;
     case LY_TYPE_LEAFREF:
@@ -1349,7 +1439,6 @@ int
 yang_check_bit(struct yang_type *typ, struct lys_type_bit *bit, int64_t *value, int assign)
 {
     int i,j;
-    struct lys_type_bit bit_tmp;
 
     if (!assign) {
         /* assign value automatically */
@@ -1369,15 +1458,6 @@ yang_check_bit(struct yang_type *typ, struct lys_type_bit *bit, int64_t *value, 
             LOGVAL(LYE_BITS_DUPVAL, LY_VLOG_NONE, NULL, bit->pos, bit->name, typ->type->info.bits.bit[i].name);
             goto error;
         }
-    }
-
-    /* keep them ordered by position */
-    while (j && typ->type->info.bits.bit[j - 1].pos > typ->type->info.bits.bit[j].pos) {
-        /* switch them */
-        memcpy(&bit_tmp, &typ->type->info.bits.bit[j], sizeof bit_tmp);
-        memcpy(&typ->type->info.bits.bit[j], &typ->type->info.bits.bit[j - 1], sizeof bit_tmp);
-        memcpy(&typ->type->info.bits.bit[j - 1], &bit_tmp, sizeof bit_tmp);
-        j--;
     }
 
     return EXIT_SUCCESS;
