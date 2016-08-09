@@ -1826,8 +1826,28 @@ lys_inout_free(struct ly_ctx *ctx, struct lys_node_inout *io)
         lys_tpdf_free(ctx, &io->tpdf[i]);
     }
     free(io->tpdf);
+
+    for (i = 0; i < io->must_size; i++) {
+        lys_restr_free(ctx, &io->must[i]);
+    }
+    free(io->must);
 }
 
+static void
+lys_notif_free(struct ly_ctx *ctx, struct lys_node_notif *notif)
+{
+    int i;
+
+    for (i = 0; i < notif->must_size; i++) {
+        lys_restr_free(ctx, &notif->must[i]);
+    }
+    free(notif->must);
+
+    for (i = 0; i < notif->tpdf_size; i++) {
+        lys_tpdf_free(ctx, &notif->tpdf[i]);
+    }
+    free(notif->tpdf);
+}
 static void
 lys_anyxml_free(struct ly_ctx *ctx, struct lys_node_anyxml *anyxml)
 {
@@ -2090,10 +2110,11 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
     case LYS_GROUPING:
     case LYS_RPC:
     case LYS_ACTION:
-    case LYS_NOTIF:
         lys_grp_free(ctx, (struct lys_node_grp *)node);
         break;
-
+    case LYS_NOTIF:
+        lys_notif_free(ctx, (struct lys_node_notif *)node);
+        break;
     case LYS_INPUT:
     case LYS_OUTPUT:
         lys_inout_free(ctx, (struct lys_node_inout *)node);
