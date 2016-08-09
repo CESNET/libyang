@@ -2934,7 +2934,7 @@ yyreduce:
 
     { if (read_all) {
                       if (yyget_text(scanner)[0] == '"') {
-                        s = yang_read_string(yyget_text(scanner) + 1, yyget_leng(scanner) - 2, yylloc.first_column);
+                        s = yang_read_string(yyget_text(scanner) + 1, yyget_leng(scanner) - 2, yylloc.first_column, (trg) ? trg->version : 0);
                         if (!s) {
                           YYABORT;
                         }
@@ -2956,7 +2956,7 @@ yyreduce:
     { if (read_all){
                 char *temp;
                 if (yyget_text(scanner)[0] == '"') {
-                  temp = yang_read_string(yyget_text(scanner) + 1, yyget_leng(scanner) - 2, yylloc.first_column);
+                  temp = yang_read_string(yyget_text(scanner) + 1, yyget_leng(scanner) - 2, yylloc.first_column, (trg) ? trg->version : 0);
                   if (!temp) {
                     YYABORT;
                   }

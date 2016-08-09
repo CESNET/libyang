@@ -2557,7 +2557,7 @@ read_indent(const char *input, int indent, int size, int in_index, int *out_inde
 }
 
 char *
-yang_read_string(const char *input, int size, int indent)
+yang_read_string(const char *input, int size, int indent, int version)
 {
     int space, count;
     int in_index, out_index;
@@ -2586,7 +2586,13 @@ yang_read_string(const char *input, int size, int indent)
                 value[out_index] = '"';
                 ++in_index;
             } else {
-                value[out_index] = input[in_index];
+                if (version < 2) {
+                    value[out_index] = input[in_index];
+                } else {
+                    /* YANG 1.1 backslash must not be followed by any other character */
+                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, input);
+                    goto error;
+                }
             }
         } else {
             value[out_index] = input[in_index];
