@@ -116,10 +116,11 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options)
 
 /* logs directly */
 static int
-xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev, int options,
-               struct unres_data *unres, struct lyd_node **result, struct lyd_node **action)
+xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *first_sibling,
+               struct lyd_node *prev, int options, struct unres_data *unres, struct lyd_node **result,
+               struct lyd_node **action)
 {
-    struct lyd_node *diter, *dlast, *first_sibling;
+    struct lyd_node *diter, *dlast;
     struct lys_node *schema = NULL;
     struct lyd_attr *dattr, *dattr_iter;
     struct lyxml_attr *attr;
@@ -202,13 +203,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         prev->next = *result;
 
         /* fix the "last" pointer */
-        if (parent) {
-            diter = parent->child;
-        } else {
-            for (diter = prev; diter->prev != prev; diter = diter->prev);
-        }
-        diter->prev = *result;
-        first_sibling = diter;
+        first_sibling->prev = *result;
     } else {
         (*result)->prev = *result;
         first_sibling = *result;
@@ -429,9 +424,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         diter = dlast = NULL;
         LY_TREE_FOR_SAFE(xml->child, next, child) {
             if (schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
-                r = xml_parse_data(ctx, child, *result, dlast, 0, unres, &diter, action);
+                r = xml_parse_data(ctx, child, *result, (*result)->child, dlast, 0, unres, &diter, action);
             } else {
-                r = xml_parse_data(ctx, child, *result, dlast, options, unres, &diter, action);
+                r = xml_parse_data(ctx, child, *result, (*result)->child, dlast, options, unres, &diter, action);
             }
             if (r) {
                 goto error;
@@ -559,7 +554,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 
     iter = last = NULL;
     LY_TREE_FOR_SAFE(xmlstart, xmlaux, xmlelem) {
-        r = xml_parse_data(ctx, xmlelem, reply_parent, last, options, unres, &iter, &action);
+        r = xml_parse_data(ctx, xmlelem, reply_parent, result, last, options, unres, &iter, &action);
         if (r) {
             goto error;
         } else if (options & LYD_OPT_DESTRUCT) {
