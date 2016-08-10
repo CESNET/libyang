@@ -1173,7 +1173,12 @@ attr_repeat:
     }
 
     /* validation successful */
-    result->validity = LYD_VAL_OK;
+    if (result->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+        /* postpone checking when there will be all list/leaflist instances */
+        result->validity = LYD_VAL_UNIQUE;
+    } else {
+        result->validity = LYD_VAL_OK;
+    }
 
     if (!(*parent)) {
         *parent = result;
@@ -1211,7 +1216,9 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
     struct lyd_node *result = NULL, *next = NULL, *iter = NULL;
     struct unres_data *unres = NULL;
     unsigned int len = 0, r;
+    int i;
     struct attr_cont *attrs = NULL;
+    struct ly_set *set;
 
     ly_errno = LY_SUCCESS;
 
@@ -1277,6 +1284,28 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
         LOGERR(LY_EVALID, "Model for the data to be linked with not found.");
         goto error;
     }
+
+    /* check for uniquness of top-level lists/leaflists because
+     * only the inner instances were tested in lyv_data_content() */
+    set = ly_set_new();
+    LY_TREE_FOR(result, iter) {
+        if (!(iter->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(iter->validity & LYD_VAL_UNIQUE)) {
+            continue;
+        }
+
+        /* check each list/leaflist only once */
+        i = set->number;
+        if (ly_set_add(set, iter->schema, 0) != i) {
+            /* already checked */
+            continue;
+        }
+
+        if (lyv_data_unique(iter, result)) {
+            ly_set_free(set);
+            goto error;
+        }
+    }
+    ly_set_free(set);
 
     /* check for missing top level mandatory nodes */
     if (!(options & LYD_OPT_TRUSTED) && lyd_check_topmandatory(result, ctx, options)) {

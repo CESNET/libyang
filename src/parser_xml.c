@@ -463,7 +463,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     }
 
     /* validation successful */
-    (*result)->validity = LYD_VAL_OK;
+    if ((*result)->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+        /* postpone checking when there will be all list/leaflist instances */
+        (*result)->validity = LYD_VAL_UNIQUE;
+    } else {
+        (*result)->validity = LYD_VAL_OK;
+    }
 
     return ret;
 
@@ -488,11 +493,12 @@ API struct lyd_node *
 lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 {
     va_list ap;
-    int r;
+    int r, i;
     struct unres_data *unres = NULL;
     struct lys_node *rpc_act = NULL;
     struct lyd_node *result = NULL, *iter, *last, *reply_parent = NULL, *action = NULL;
     struct lyxml_elem *xmlstart, *xmlelem, *xmlaux;
+    struct ly_set *set;
 
     ly_errno = LY_SUCCESS;
 
@@ -572,6 +578,28 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
             break;
         }
     }
+
+    /* check for uniquness of top-level lists/leaflists because
+     * only the inner instances were tested in lyv_data_content() */
+    set = ly_set_new();
+    LY_TREE_FOR(result, iter) {
+        if (!(iter->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(iter->validity & LYD_VAL_UNIQUE)) {
+            continue;
+        }
+
+        /* check each list/leaflist only once */
+        i = set->number;
+        if (ly_set_add(set, iter->schema, 0) != i) {
+            /* already checked */
+            continue;
+        }
+
+        if (lyv_data_unique(iter, result)) {
+            ly_set_free(set);
+            goto error;
+        }
+    }
+    ly_set_free(set);
 
     /* check for missing top level mandatory nodes */
     if (!(options & LYD_OPT_TRUSTED) && lyd_check_topmandatory(result, ctx, options)) {
