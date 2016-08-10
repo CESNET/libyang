@@ -54,6 +54,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
   uint32_t uint;
   char *str;
   void *v;
+  char ch;
   struct lys_module *inc;
   struct yang_type *type;
   union {
@@ -165,6 +166,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 %token UNBOUNDED_KEYWORD
 %token USER_KEYWORD
 %token ACTION_KEYWORD
+%token MODIFIER_KEYWORD
 
 %type <uint> positive_integer_value
 %type <uint> non_negative_integer_value
@@ -200,7 +202,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 %type <i> integer_value
 %type <i> feature_opt_stmt
 %type <v> length_arg_str
-%type <v> pattern_arg_str
+%type <str> pattern_arg_str
 %type <v> range_arg_str
 %type <v> enum_arg_str
 %type <v> bit_arg_str
@@ -228,8 +230,12 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 %type <nodes> deviate_replace_opt_stmt
 %type <inc> include_stmt
 %type <inc> import_stmt
+%type <ch> pattern_opt_stmt
+%type <ch> pattern_end
+%type <ch> modifier_stmt
 
 %destructor { free($$); } tmp_identifier_arg_str
+%destructor { free($$); } pattern_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
 %destructor { if (read_all) {
                 free($$.deviation);
@@ -1208,9 +1214,6 @@ message_opt_stmt: @EMPTYDIR@ { switch (actual_type) {
                            case LENGTH_KEYWORD:
                              $$ = "length";
                              break;
-                           case PATTERN_KEYWORD:
-                             $$ = "pattern";
-                             break;
                            case RANGE_KEYWORD:
                              $$ = "range";
                              break;
@@ -1237,25 +1240,79 @@ message_opt_stmt: @EMPTYDIR@ { switch (actual_type) {
                                        s = NULL;
                                      }
 
-pattern_stmt: PATTERN_KEYWORD sep pattern_arg_str pattern_end stmtsep { actual = $3;
-                                                                        actual_type = TYPE_KEYWORD;
+pattern_stmt: PATTERN_KEYWORD sep pattern_arg_str pattern_end stmtsep { if (read_all) {
+                                                                          if (yang_read_pattern(trg, actual, $3, $4)) {
+                                                                            YYABORT;
+                                                                          }
+                                                                          actual = yang_type;
+                                                                          actual_type = TYPE_KEYWORD;
+                                                                        }
                                                                       }
 
 pattern_arg_str: string { if (read_all) {
-                            $$ = actual;
-                            if (!(actual = yang_read_pattern(trg, actual, s))) {
-                              YYABORT;
-                            }
-                            actual_type = PATTERN_KEYWORD;
+                            struct yang_type *tmp = (struct yang_type *)actual;
+
+                            yang_type = actual;
+                            actual = &tmp->type->info.str.patterns[tmp->type->info.str.pat_count];
+                            tmp->type->info.str.pat_count++;
+                            $$ = s;
                             s = NULL;
+                          } else {
+                            $$ = NULL;
                           }
                         }
 
-pattern_end: ';'
+pattern_end: ';' { $$ = 0x06; }
   |  '{' stmtsep
-         message_opt_stmt
-     '}'
-  ;
+         pattern_opt_stmt
+     '}' { $$ = $3; }
+
+pattern_opt_stmt: @EMPTYDIR@ { $$ = 0x06; /* ACK */ }
+  |  pattern_opt_stmt modifier_stmt { if (read_all) {
+                                        if (trg->version < 2) {
+                                          LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "modifier");
+                                          YYABORT;
+                                        }
+                                        if ($1 != 0x06) {
+                                          LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "modifier", "pattern");
+                                          YYABORT;
+                                        }
+                                        $$ = $2;
+                                      }
+                                    }
+  |  pattern_opt_stmt error_message_stmt { if (read_all && yang_read_message(trg, actual, s, "pattern", ERROR_MESSAGE_KEYWORD)) {
+                                             YYABORT;
+                                           }
+                                           s = NULL;
+                                         }
+  |  pattern_opt_stmt error_app_tag_stmt { if (read_all && yang_read_message(trg, actual, s, "pattern", ERROR_APP_TAG_KEYWORD)) {
+                                             YYABORT;
+                                           }
+                                           s = NULL;
+                                         }
+  |  pattern_opt_stmt description_stmt { if (read_all && yang_read_description(trg, actual, s, "pattern")) {
+                                           YYABORT;
+                                          }
+                                          s = NULL;
+                                        }
+  |  pattern_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, "pattern")) {
+                                         YYABORT;
+                                       }
+                                       s = NULL;
+                                     }
+
+modifier_stmt: MODIFIER_KEYWORD sep string stmtend { if (read_all) {
+                                                       if (!strcmp(s, "invert-match")) {
+                                                         $$ = 0x15;
+                                                         free(s);
+                                                         s = NULL;
+                                                       } else {
+                                                         LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, s);
+                                                         free(s);
+                                                         YYABORT;
+                                                       }
+                                                     }
+                                                   }
 
 enum_specification: { if (read_all) {
                         if (size_arrays->node[size_arrays->next].enm) {
@@ -4133,6 +4190,7 @@ identifier: IDENTIFIER
   |  UNBOUNDED_KEYWORD
   |  USER_KEYWORD
   |  ACTION_KEYWORD
+  |  MODIFIER_KEYWORD
   ;
 
 identifiers: identifier { if (read_all) {

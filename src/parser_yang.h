@@ -187,7 +187,7 @@ int yang_check_type(struct lys_module *module, struct lys_node *parent, struct y
 
 void yang_delete_type(struct lys_module *module, struct yang_type *stype);
 
-void *yang_read_pattern(struct lys_module *module, struct yang_type *typ, char *value);
+int yang_read_pattern(struct lys_module *module, struct lys_restr *pattern, char *value, char modifier);
 
 void *yang_read_range(struct  lys_module *module, struct yang_type *typ, char *value);
 
