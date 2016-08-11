@@ -1367,6 +1367,7 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
 {
     int i, j;
     const char *value, *vaux;
+    struct unres_list_uniq *unique_info;
 
     /* get unique value (list of leafs supposed to be unique */
     GETVAL(value, yin, "tag");
@@ -1407,11 +1408,15 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
 
         /* try to resolve leaf */
         if (unres) {
-            if (unres_schema_add_str(module, unres, parent, UNRES_LIST_UNIQ, unique->expr[i]) == -1){
+            unique_info = malloc(sizeof *unique_info);
+            unique_info->list = parent;
+            unique_info->expr = unique->expr[i];
+            unique_info->trg_type = &unique->trg_type;
+            if (unres_schema_add_node(module, unres, unique_info, UNRES_LIST_UNIQ, NULL) == -1){
                 goto error;
             }
         } else {
-            if (resolve_unique(parent, unique->expr[i])) {
+            if (resolve_unique(parent, unique->expr[i], &unique->trg_type)) {
                 goto error;
             }
         }

@@ -1360,6 +1360,7 @@ struct lys_tpdf {
 struct lys_unique {
     const char **expr;               /**< array of unique expressions specifying target leafs to be unique */
     uint8_t expr_size;               /**< size of the #expr array */
+    uint8_t trg_type;                /**< config of the targets: 0 - not specified; 1 - config true; 2 - config false */
 };
 
 /**

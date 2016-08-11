@@ -2301,6 +2301,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
     struct ly_ctx *ctx = module->ctx;
     int i, j, rc;
     unsigned int size, size1, size2;
+    struct unres_list_uniq *unique_info;
 
     struct lys_node_container *cont = NULL;
     struct lys_node_container *cont_orig = (struct lys_node_container *)node;
@@ -2623,7 +2624,11 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
                 list->unique[i].expr[j] = lydict_insert(ctx, list_orig->unique[i].expr[j], 0);
 
                 /* if it stays in unres list, duplicate it also there */
-                unres_schema_dup(module, unres, &list_orig->unique[i], UNRES_LIST_UNIQ, &list->unique[i]);
+                unique_info = malloc(sizeof *unique_info);
+                unique_info->list = (struct lys_node *)list;
+                unique_info->expr = list->unique[i].expr[j];
+                unique_info->trg_type = &list->unique[i].trg_type;
+                unres_schema_dup(module, unres, &list_orig, UNRES_LIST_UNIQ, unique_info);
             }
         }
 

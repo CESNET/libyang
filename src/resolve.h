@@ -49,6 +49,15 @@ enum UNRES_ITEM {
 };
 
 /**
+ * @brief auxiliary structure to hold all necessary information for UNRES_LIST_UNIQ
+ */
+struct unres_list_uniq {
+    struct lys_node *list;
+    const char *expr;
+    uint8_t *trg_type;
+};
+
+/**
  * @brief Unresolved items in DATA
  */
 struct unres_data {
@@ -134,7 +143,7 @@ int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struc
 int resolve_superior_type(const char *name, const char *prefix, const struct lys_module *module,
                           const struct lys_node *parent, struct lys_tpdf **ret);
 
-int resolve_unique(struct lys_node *parent, const char *uniq_str_path);
+int resolve_unique(struct lys_node *parent, const char *uniq_str_path, uint8_t *trg_type);
 
 /* get know if resolve_when() is applicable to the node (there is when condition connected with this node) */
 int resolve_applies_when(const struct lyd_node *node);

@@ -2996,7 +2996,7 @@ check_key(struct lys_node_list *list, int index, const char *name, int len)
  * @return EXIT_SUCCESS on succes, EXIT_FAILURE on forward reference, -1 on error.
  */
 int
-resolve_unique(struct lys_node *parent, const char *uniq_str_path)
+resolve_unique(struct lys_node *parent, const char *uniq_str_path, uint8_t *trg_type)
 {
     int rc;
     const struct lys_node *leaf = NULL;
@@ -3021,13 +3021,30 @@ resolve_unique(struct lys_node *parent, const char *uniq_str_path)
     if (leaf->nodetype != LYS_LEAF) {
         LOGVAL(LYE_INARG, LY_VLOG_LYS, parent, uniq_str_path, "unique");
         LOGVAL(LYE_SPEC, LY_VLOG_LYS, parent, "Target is not a leaf.");
-        rc = -1;
-        goto error;
+        return -1;
     }
 
     /* check status */
     if (lyp_check_status(parent->flags, parent->module, parent->name, leaf->flags, leaf->module, leaf->name, leaf)) {
         return -1;
+    }
+
+    /* check that all unique's targets are of the same config type */
+    if (*trg_type) {
+        if (((*trg_type == 1) && (leaf->flags & LYS_CONFIG_R)) || ((*trg_type == 2) && (leaf->flags & LYS_CONFIG_W))) {
+            LOGVAL(LYE_INARG, LY_VLOG_LYS, parent, uniq_str_path, "unique");
+            LOGVAL(LYE_SPEC, LY_VLOG_LYS, parent,
+                   "Leaf \"%s\" referenced in unique statement is config %s, but previous referenced leaf is config %s.",
+                   uniq_str_path, *trg_type == 1 ? "false" : "true", *trg_type == 1 ? "true" : "false");
+            return -1;
+        }
+    } else {
+        /* first unique */
+        if (leaf->flags & LYS_CONFIG_W) {
+            *trg_type = 1;
+        } else {
+            *trg_type = 2;
+        }
     }
 
     /* set leaf's unique flag */
@@ -5005,6 +5022,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
     struct lys_node_choice *choic;
     struct lyxml_elem *yin;
     struct yang_type *yang;
+    struct unres_list_uniq *unique_info;
 
     switch (type) {
     case UNRES_IDENT:
@@ -5175,8 +5193,8 @@ featurecheckdone:
         rc = resolve_list_keys(item, str_snode);
         break;
     case UNRES_LIST_UNIQ:
-        has_str = 1;
-        rc = resolve_unique(item, str_snode);
+        unique_info = (struct unres_list_uniq *)item;
+        rc = resolve_unique(unique_info->list, unique_info->expr, unique_info->trg_type);
         break;
     case UNRES_AUGMENT:
         rc = resolve_augment(item, NULL);
@@ -5425,6 +5443,10 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
                 free(msg);
             }
         }
+        if (type == UNRES_LIST_UNIQ) {
+            /* free the allocated structure */
+            free(item);
+        }
         return rc;
     } else {
         /* erase info about validation errors */
@@ -5487,17 +5509,27 @@ int
 unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type, void *new_item)
 {
     int i;
+    struct unres_list_uniq aux_uniq;
 
     assert(item && new_item && ((type != UNRES_LEAFREF) && (type != UNRES_INSTID) && (type != UNRES_WHEN)));
 
+    /* hack for UNRES_LIST_UNIQ, which stores multiple items behind its item */
+    if (type == UNRES_LIST_UNIQ) {
+        aux_uniq.list = item;
+        aux_uniq.expr = ((struct unres_list_uniq *)new_item)->expr;
+        item = &aux_uniq;
+    }
     i = unres_schema_find(unres, item, type);
 
     if (i == -1) {
+        if (type == UNRES_LIST_UNIQ) {
+            free(new_item);
+        }
         return EXIT_FAILURE;
     }
 
     if ((type == UNRES_TYPE_LEAFREF) || (type == UNRES_USES) || (type == UNRES_TYPE_DFLT) ||
-            (type == UNRES_IFFEAT) || (type == UNRES_FEATURE)) {
+            (type == UNRES_IFFEAT) || (type == UNRES_FEATURE) || (type == UNRES_LIST_UNIQ)) {
         if (unres_schema_add_node(mod, unres, new_item, type, unres->str_snode[i]) == -1) {
             LOGINT;
             return -1;
@@ -5517,11 +5549,24 @@ int
 unres_schema_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type)
 {
     uint32_t ret = -1, i;
+    struct unres_list_uniq *aux_uniq1, *aux_uniq2;
 
     for (i = unres->count; i > 0; i--) {
-        if ((unres->item[i - 1] == item) && (unres->type[i - 1] == type)) {
-            ret = i - 1;
-            break;
+        if (unres->type[i - 1] != type) {
+            continue;
+        }
+        if (type != UNRES_LIST_UNIQ) {
+            if (unres->item[i - 1] == item) {
+                ret = i - 1;
+                break;
+            }
+        } else {
+            aux_uniq1 = (struct unres_list_uniq *)unres->item[i - 1];
+            aux_uniq2 = (struct unres_list_uniq *)item;
+            if ((aux_uniq1->list == aux_uniq2->list) && ly_strequal(aux_uniq1->expr, aux_uniq2->expr, 0)) {
+                ret = i - 1;
+                break;
+            }
         }
     }
 
@@ -5552,8 +5597,10 @@ unres_schema_free_item(struct ly_ctx *ctx, struct unres_schema *unres, uint32_t 
     case UNRES_TYPE_DFLT:
     case UNRES_CHOICE_DFLT:
     case UNRES_LIST_KEYS:
-    case UNRES_LIST_UNIQ:
         lydict_remove(ctx, (const char *)unres->str_snode[i]);
+        break;
+    case UNRES_LIST_UNIQ:
+        free(unres->item[i]);
         break;
     default:
         break;

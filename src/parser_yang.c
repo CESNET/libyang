@@ -701,6 +701,7 @@ yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct l
 {
     int i, j;
     char *vaux;
+    struct unres_list_uniq *unique_info;
 
     /* count the number of unique leafs in the value */
     vaux = value;
@@ -737,11 +738,15 @@ yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct l
         }
         /* try to resolve leaf */
         if (unres) {
-            if (unres_schema_add_str(module, unres, (struct lys_node *) list, UNRES_LIST_UNIQ, unique->expr[i]) == -1) {
+            unique_info = malloc(sizeof *unique_info);
+            unique_info->list = (struct lys_node *)list;
+            unique_info->expr = unique->expr[i];
+            unique_info->trg_type = &unique->trg_type;
+            if (unres_schema_add_node(module, unres, unique_info, UNRES_LIST_UNIQ, NULL) == -1) {
                 goto error;
             }
         } else {
-            if (resolve_unique((struct lys_node *)list, unique->expr[i])) {
+            if (resolve_unique((struct lys_node *)list, unique->expr[i], &unique->trg_type)) {
                 goto error;
             }
         }
