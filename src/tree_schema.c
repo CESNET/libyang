@@ -186,6 +186,9 @@ lys_getnext(const struct lys_node *last, const struct lys_node *parent, const st
             assert(module);
             next = last = module->data;
         }
+    } else if ((last->nodetype == LYS_USES) && (options & LYS_GETNEXT_INTOUSES) && last->child) {
+        /* continue with uses content */
+        next = last->child;
     } else {
         /* continue after the last returned value */
         next = last->next;
@@ -199,14 +202,16 @@ repeat:
         next = next->next;
     }
 
-    if (!next) {
-        if (!last || lys_parent(last) == parent) {
+    if (!next) {     /* cover case when parent is augment */
+        if (!last || last->parent == parent || lys_parent(last) == parent) {
             /* no next element */
             return NULL;
         }
         last = lys_parent(last);
         next = last->next;
         goto repeat;
+    } else {
+        last = next;
     }
 
     switch (next->nodetype) {
@@ -214,45 +219,66 @@ repeat:
     case LYS_OUTPUT:
         if (options & LYS_GETNEXT_WITHINOUT) {
             return next;
-        } else {
+        } else if (next->child) {
             next = next->child;
-            goto repeat;
+        } else {
+            next = next->next;
         }
-        break;
+        goto repeat;
 
     case LYS_CASE:
         if (options & LYS_GETNEXT_WITHCASE) {
             return next;
-        } else {
+        } else if (next->child) {
             next = next->child;
-            goto repeat;
+        } else {
+            next = next->next;
         }
-        break;
+        goto repeat;
 
     case LYS_USES:
         /* go into */
-        next = next->child;
+        if (options & LYS_GETNEXT_WITHUSES) {
+            return next;
+        } else if (next->child) {
+            next = next->child;
+        } else {
+            next = next->next;
+        }
         goto repeat;
 
     case LYS_RPC:
     case LYS_ACTION:
     case LYS_NOTIF:
-    case LYS_CONTAINER:
     case LYS_LEAF:
     case LYS_ANYXML:
     case LYS_LIST:
     case LYS_LEAFLIST:
         return next;
 
+    case LYS_CONTAINER:
+        if (!((struct lys_node_container *)next)->presence && (options & LYS_GETNEXT_INTONPCONT)) {
+            if (next->child) {
+                /* go into */
+                next = next->child;
+            } else {
+                next = next->next;
+            }
+            goto repeat;
+        } else {
+            return next;
+        }
+
     case LYS_CHOICE:
         if (options & LYS_GETNEXT_WITHCHOICE) {
             return next;
-        } else {
+        } else if (next->child) {
             /* go into */
             next = next->child;
-            goto repeat;
+        } else {
+            next = next->next;
         }
-        break;
+        goto repeat;
 
     default:
         /* we should not be here */
