@@ -3921,34 +3921,34 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
 
     assert(aug);
 
-    /* resolve target node */
-    rc = resolve_augment_schema_nodeid(aug->target_name, siblings, (siblings ? NULL : aug->module), (const struct lys_node **)&aug->target);
-    if (rc == -1) {
-        return -1;
-    }
-    if (rc > 0) {
-        LOGVAL(LYE_INCHAR, LY_VLOG_LYS, aug, aug->target_name[rc - 1], &aug->target_name[rc - 1]);
-        return -1;
-    }
     if (!aug->target) {
-        LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, aug, "augment", aug->target_name);
-        return EXIT_FAILURE;
-    }
+        /* resolve target node */
+        rc = resolve_augment_schema_nodeid(aug->target_name, siblings, (siblings ? NULL : aug->module), (const struct lys_node **)&aug->target);
+        if (rc == -1) {
+            return -1;
+        }
+        if (rc > 0) {
+            LOGVAL(LYE_INCHAR, LY_VLOG_LYS, aug, aug->target_name[rc - 1], &aug->target_name[rc - 1]);
+            return -1;
+        }
+        if (!aug->target) {
+            LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, aug, "augment", aug->target_name);
+            return EXIT_FAILURE;
+        }
 
-    if (!aug->child) {
-        /* nothing to do */
-        LOGWRN("Augment \"%s\" without children.", aug->target_name);
-        return EXIT_SUCCESS;
+        if (!aug->child) {
+            /* nothing to do */
+            LOGWRN("Augment \"%s\" without children.", aug->target_name);
+            return EXIT_SUCCESS;
+        }
     }
 
     /* check for mandatory nodes - if the target node is in another module
      * the added nodes cannot be mandatory
      */
     if (!aug->parent && (lys_node_module((struct lys_node *)aug) != lys_node_module(aug->target))
-            && lyp_check_mandatory((struct lys_node *)aug)) {
-        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, aug, "mandatory", "augment node");
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, aug, "When augmenting data in another module, mandatory nodes are not allowed.");
-        return -1;
+            && (rc = lyp_check_mandatory_augment(aug))) {
+        return rc;
     }
 
     /* check augment target type and then augment nodes type */
@@ -4623,6 +4623,9 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
         if (par_grp && !(uses->flags & LYS_USESGRP)) {
             ((struct lys_node_grp *)par_grp)->nacm++;
             uses->flags |= LYS_USESGRP;
+        } else {
+            /* instantiate grouping only when it is completely resolved */
+            uses->grp = NULL;
         }
         return EXIT_FAILURE;
     }
@@ -5181,9 +5184,11 @@ featurecheckdone:
         has_str = 1;
         choic = item;
 
-        choic->dflt = resolve_choice_dflt(choic, expr);
+        if (!choic->dflt) {
+            choic->dflt = resolve_choice_dflt(choic, expr);
+        }
         if (choic->dflt) {
-            rc = EXIT_SUCCESS;
+            rc = lyp_check_mandatory_choice((struct lys_node *)choic);
         } else {
             rc = EXIT_FAILURE;
         }
@@ -5312,7 +5317,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
                 continue;
             }
             /* processes UNRES_USES, UNRES_IFFEAT, UNRES_TYPE_DER, UNRES_TYPE_DER_TPDF, UNRES_TYPE_LEAFREF,
-             * UNRES_IDENT */
+             * UNRES_CHOICE_DFLT and UNRES_IDENT */
 
             ++unres_count;
             rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);

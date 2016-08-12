@@ -1983,6 +1983,8 @@ error:
 int
 yang_read_deviate_mandatory(struct type_deviation *dev, uint8_t value)
 {
+    struct lys_node *parent;
+
     if (dev->deviate->flags & LYS_MAND_MASK) {
         LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "mandatory", "deviate");
         goto error;
@@ -2028,6 +2030,22 @@ yang_read_deviate_mandatory(struct type_deviation *dev, uint8_t value)
 
     /* ... and replace it with the value specified in deviation */
     dev->target->flags |= dev->deviate->flags & LYS_MAND_MASK;
+
+    /* check for mandatory node in default case, first find the closest parent choice to the changed node */
+    for (parent = dev->target->parent;
+         parent && !(parent->nodetype & (LYS_CHOICE | LYS_GROUPING | LYS_ACTION));
+         parent = parent->parent) {
+        if (parent->nodetype == LYS_CONTAINER && ((struct lys_node_container *)parent)->presence) {
+            /* stop also on presence containers */
+            break;
+        }
+    }
+    /* and if it is a choice with the default case, check it for presence of a mandatory node in it */
+    if (parent && parent->nodetype == LYS_CHOICE && ((struct lys_node_choice *)parent)->dflt) {
+        if (lyp_check_mandatory_choice(parent)) {
+            goto error;
+        }
+    }
 
     return EXIT_SUCCESS;
 

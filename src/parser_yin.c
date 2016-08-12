@@ -1532,7 +1532,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     int i, j, rc;
     struct ly_ctx *ctx;
     struct lys_deviate *d = NULL;
-    struct lys_node *node = NULL, *dev_target = NULL;
+    struct lys_node *node = NULL, *parent, *dev_target = NULL;
     struct lys_node_choice *choice = NULL;
     struct lys_node_leaf *leaf = NULL, **leaf_dflt_check = NULL;
     struct lys_node_list *list = NULL;
@@ -1850,12 +1850,24 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Adding property that already exists.");
                         goto error;
                     }
+
                     /* check collision with default-stmt */
-                    if ((dev_target->nodetype == LYS_LEAF) && ((struct lys_node_leaf *)(dev_target))->dflt) {
-                        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, child->name, child->parent->name);
-                        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
-                               "Adding the \"mandatory\" statement is forbidden on leaf with the \"default\" statement.");
-                        goto error;
+                    if (d->flags & LYS_MAND_TRUE) {
+                        if (dev_target->nodetype == LYS_CHOICE) {
+                            if (((struct lys_node_choice *)(dev_target))->dflt) {
+                                LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, child->name, child->parent->name);
+                                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                                       "Adding the \"mandatory\" statement is forbidden on choice with the \"default\" statement.");
+                                goto error;
+                            }
+                        } else if (dev_target->nodetype == LYS_LEAF) {
+                            if (((struct lys_node_leaf *)(dev_target))->dflt) {
+                                LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, child->name, child->parent->name);
+                                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                                       "Adding the \"mandatory\" statement is forbidden on leaf with the \"default\" statement.");
+                                goto error;
+                            }
+                        }
                     }
 
                     dev_target->flags |= d->flags & LYS_MAND_MASK;
@@ -1873,6 +1885,22 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     /* del mandatory is forbidden */
                     LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "mandatory", "deviate delete");
                     goto error;
+                }
+
+                /* check for mandatory node in default case, first find the closest parent choice to the changed node */
+                for (parent = dev_target->parent;
+                     parent && !(parent->nodetype & (LYS_CHOICE | LYS_GROUPING | LYS_ACTION));
+                     parent = parent->parent) {
+                    if (parent->nodetype == LYS_CONTAINER && ((struct lys_node_container *)parent)->presence) {
+                        /* stop also on presence containers */
+                        break;
+                    }
+                }
+                /* and if it is a choice with the default case, check it for presence of a mandatory node in it */
+                if (parent && parent->nodetype == LYS_CHOICE && ((struct lys_node_choice *)parent)->dflt) {
+                    if (lyp_check_mandatory_choice(parent)) {
+                        goto error;
+                    }
                 }
             } else if (!strcmp(child->name, "min-elements")) {
                 if (f_min) {
