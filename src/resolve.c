@@ -5204,10 +5204,9 @@ featurecheckdone:
         break;
     }
 
-    if (has_str && (!rc || rc != EXIT_FAILURE)) {
-        /* the string is no more needed in case of success
-         * or fatal error. In case of forward reference,
-         * we will try to resolve the string later */
+    if (has_str && !rc) {
+        /* the string is no more needed in case of success.
+         * In case of forward reference, we will try to resolve the string later */
         lydict_remove(mod->ctx, str_snode);
     }
 
@@ -5405,7 +5404,16 @@ int
 unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
                      const char *str)
 {
-    return unres_schema_add_node(mod, unres, item, type, (struct lys_node *)lydict_insert(mod->ctx, str, 0));
+    int rc;
+    const char *dictstr;
+
+    dictstr = lydict_insert(mod->ctx, str, 0);
+    rc = unres_schema_add_node(mod, unres, item, type, (struct lys_node *)dictstr);
+
+    if (rc == -1) {
+        lydict_remove(mod->ctx, dictstr);
+    }
+    return rc;
 }
 
 /**
