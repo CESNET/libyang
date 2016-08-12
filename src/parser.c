@@ -1603,7 +1603,7 @@ lyp_check_mandatory_augment(struct lys_node_augment *aug)
         return EXIT_SUCCESS;
     }
 
-    if ((aug->flags & LYS_MAND_TRUE) || (node = lyp_check_mandatory_((struct lys_node *)aug))) {
+    if ((node = lyp_check_mandatory_((struct lys_node *)aug))) {
         if (node != (struct lys_node *)aug) {
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "mandatory");
             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
