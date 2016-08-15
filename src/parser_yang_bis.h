@@ -158,7 +158,6 @@ union YYSTYPE
     uint32_t index;
     struct lys_node_container *container;
     struct lys_node_anyxml *anyxml;
-    struct type_choice choice;
     struct type_node node;
     struct lys_node_case *cs;
     struct lys_node_grp *grouping;
