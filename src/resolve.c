@@ -2303,13 +2303,6 @@ check_leafref:
             match = match->type.der;
             assert(match);
         }
-        if (!match->type.info.lref.target) {
-            /* lefref not resolved yet, not good enough */
-            if (ret) {
-                *ret = NULL;
-            }
-            return EXIT_FAILURE;
-        }
     }
     return EXIT_SUCCESS;
 }
@@ -3018,13 +3011,16 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
         }
         pke_parsed += i;
 
-        /* parent is actually the parent of this leaf, so skip the first ".." */
         for (i = 0, dst_node = parent; i < dest_parent_times; ++i) {
             if (!dst_node) {
                 LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path_key_expr);
                 return 0;
             }
-            dst_node = lys_parent(dst_node);
+            /* path is supposed to be evaluated in data tree, so we have to skip
+             * all schema nodes that cannot be instantiated in data tree */
+            for (dst_node = lys_parent(dst_node);
+                 dst_node && !(dst_node->nodetype & (LYS_CONTAINER | LYS_LIST));
+                 dst_node = lys_parent(dst_node));
         }
         while (1) {
             if (!dest_pref) {
@@ -3106,38 +3102,27 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                     return EXIT_FAILURE;
                 }
             } else if (parent_times > 0) {
-                /* node is the parent already, skip one ".." */
                 if (parent_tpdf) {
                     /* the path is not allowed to contain relative path since we are in top level typedef */
                     LOGVAL(LYE_NORESOLV, 0, NULL, "leafref", path);
                     return -1;
                 }
 
-                node = lys_parent(parent);
-                i = 0;
-                while (1) {
+                /* node is the parent already, skip one ".." */
+                for (i = 1, node = parent; i < parent_times; i++) {
+                    /* path is supposed to be evaluated in data tree, so we have to skip
+                     * all schema nodes that cannot be instantiated in data tree */
+                    for (node = lys_parent(node);
+                         node && !(node->nodetype & (LYS_CONTAINER | LYS_LIST));
+                         node = lys_parent(node));
+
                     if (!node) {
                         LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent,
                                "leafref", path);
                         return EXIT_FAILURE;
                     }
 
-                    /* this node is a wrong node, we actually need the augment target */
-                    if (node->nodetype == LYS_AUGMENT) {
-                        node = ((struct lys_node_augment *)node)->target;
-                        if (!node) {
-                            continue;
-                        }
-                    }
-
-                    ++i;
-                    if (i == parent_times) {
-                        break;
-                    }
-                    node = lys_parent(node);
                 }
-
-                node = node->child;
             } else {
                 LOGINT;
                 return -1;
@@ -3427,7 +3412,9 @@ inherit_config_flag(struct lys_node *node, int flags)
         if (!(node->nodetype & (LYS_USES | LYS_GROUPING))) {
             node->flags = (node->flags & ~LYS_CONFIG_MASK) | flags;
         }
-        inherit_config_flag(node->child, flags);
+        if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
+            inherit_config_flag(node->child, flags);
+        }
     }
 }
 
@@ -4530,6 +4517,9 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         }
 
         break;
+    case UNRES_TYPE_DER_TPDF:
+        tpdf_flag = 1;
+        /* no break */
     case UNRES_TYPE_DER:
         /* parent */
         node = str_snode;
@@ -4541,7 +4531,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
 
         if (yin->flags & LY_YANG_STRUCTURE_FLAG) {
             yang = (struct yang_type *)yin;
-            rc = yang_check_type(mod, node, yang, unres);
+            rc = yang_check_type(mod, node, yang, tpdf_flag, unres);
 
             if (rc) {
                 if (rc == -1) {
@@ -4560,7 +4550,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
             }
 
         } else {
-            rc = fill_yin_type(mod, node, yin, stype, unres);
+            rc = fill_yin_type(mod, node, yin, stype, tpdf_flag, unres);
             if (!rc) {
                 /* we need to always be able to free this, it's safe only in this case */
                 lyxml_free(mod->ctx, yin);
@@ -4644,6 +4634,7 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "leafref",
                ((struct lys_type *)item)->info.lref.path);
         break;
+    case UNRES_TYPE_DER_TPDF:
     case UNRES_TYPE_DER:
         xml = (struct lyxml_elem *)((struct lys_type *)item)->der;
         if (xml->flags & LY_YANG_STRUCTURE_FLAG) {
@@ -4715,7 +4706,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
             /* we do not need to have UNRES_TYPE_IDENTREF resolved, we need its type's base only,
              * but UNRES_TYPE_LEAFREF must be resolved (for storing leafref target pointers) */
             if ((unres->type[i] != UNRES_USES) && (unres->type[i] != UNRES_TYPE_DER)
-                    && (unres->type[i] != UNRES_TYPE_LEAFREF)) {
+                    && (unres->type[i] != UNRES_TYPE_DER_TPDF) && (unres->type[i] != UNRES_TYPE_LEAFREF)) {
                 continue;
             }
 
@@ -4744,7 +4735,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
 
         for (i = 0; i < unres->count; ++i) {
             if ((unres->type[i] != UNRES_USES) && (unres->type[i] != UNRES_TYPE_DER)
-                    && (unres->type[i] != UNRES_TYPE_LEAFREF)) {
+                    && (unres->type[i] != UNRES_TYPE_DER_TPDF) && (unres->type[i] != UNRES_TYPE_LEAFREF)) {
                 continue;
             }
             resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
@@ -4853,7 +4844,7 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
     print_unres_schema_item_fail(item, type, snode);
 
     /* HACK unlinking is performed here so that we do not do any (NS) copying in vain */
-    if (type == UNRES_TYPE_DER) {
+    if (type == UNRES_TYPE_DER || type == UNRES_TYPE_DER_TPDF) {
         yin = (struct lyxml_elem *)((struct lys_type *)item)->der;
         if (!(yin->flags & LY_YANG_STRUCTURE_FLAG)) {
             lyxml_unlink_elem(mod->ctx, yin, 1);
@@ -4952,6 +4943,7 @@ unres_schema_free_item(struct ly_ctx *ctx, struct unres_schema *unres, uint32_t 
     struct yang_type *yang;
 
     switch (unres->type[i]) {
+    case UNRES_TYPE_DER_TPDF:
     case UNRES_TYPE_DER:
         yin = (struct lyxml_elem *)((struct lys_type *)unres->item[i])->der;
         if (yin->flags & LY_YANG_STRUCTURE_FLAG) {

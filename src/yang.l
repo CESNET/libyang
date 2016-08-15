@@ -117,7 +117,7 @@
 "}" |
 ";" | 
 "+"  { return yytext[0];}  /* unsolved problem with concatenate string '+' */
-\"([\n\t !#-~]|\r\n)*\" {return STRING;}
+\"([\n\t !#-~]|\\\"|\r\n)*\" {return STRING;}
 "'"([\n\t -&\(-~]|\r\n)*"'" {return STRING;}
 "0" {return ZERO;}
 "-"[1-9][0-9]* {return INTEGER;}
@@ -135,7 +135,7 @@
 <PATH>[ \t]+ { return WHITESPACE;}
 <PATH>";" |
 <PATH>"{" {BEGIN INITIAL; return yytext[0];}
-<PATH>\"([\n\t !#-~]|\r\n)*\" {return STRING;}
+<PATH>\"([\n\t !#-~]|\\\"|\r\n)*\" {return STRING;}
 <PATH>"'"([\n\t -&\(-~]|\r\n)*"'" {return STRING;}
 <PATH>"//" {BEGIN COMMENT2;}
 <PATH>"/*" {BEGIN COMMENT1;}

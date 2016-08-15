@@ -35,6 +35,7 @@
 #define LYS_DATADEF 0x04
 #define LYS_TYPE_DEF 0x08
 #define LYS_TYPE_BASE 0x40
+#define LYS_CHOICE_DEFAULT 0x10
 
 struct lys_node_array{
     uint8_t if_features;
@@ -70,11 +71,6 @@ struct lys_array_size {
     struct lys_node_array *node;
 };
 
-struct type_choice {
-  char *s;
-  struct lys_node_choice *ptr_choice;
-};
-
 struct type_node {
     union {
         struct lys_node_leaflist *ptr_leaflist;
@@ -84,6 +80,7 @@ struct type_node {
         struct lys_node_augment *ptr_augment;
         struct lys_node_rpc *ptr_rpc;
         struct lys_node_rpc_inout *ptr_inout;
+        struct lys_node_choice *ptr_choice;
     };
     uint8_t flag;
 };
@@ -177,7 +174,7 @@ void *yang_read_type(struct lys_module *module, void *parent, char *value, enum 
 
 void *yang_read_length(struct lys_module *module, struct yang_type *typ, char *value);
 
-int yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, struct unres_schema *unres);
+int yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, int tpdftype, struct unres_schema *unres);
 
 void yang_delete_type(struct lys_module *module, struct yang_type *stype);
 

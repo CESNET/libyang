@@ -28,7 +28,8 @@ enum UNRES_ITEM {
     UNRES_IDENT,         /* unresolved derived identities */
     UNRES_TYPE_IDENTREF, /* check identityref value */
     UNRES_TYPE_LEAFREF,  /* check leafref value */
-    UNRES_TYPE_DER,      /* unresolved derived type */
+    UNRES_TYPE_DER,      /* unresolved derived type defined in leaf/leaflist */
+    UNRES_TYPE_DER_TPDF, /* unresolved derived type defined as typedef */
     UNRES_IFFEAT,        /* unresolved if-feature */
     UNRES_USES,          /* unresolved uses grouping (refines and augments in it are resolved as well) */
     UNRES_TYPE_DFLT,     /* validate default type value */

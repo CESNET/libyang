@@ -44,7 +44,6 @@ int
 lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, int options)
 {
     int i;
-    struct lyd_node *node;
 
     if ((options & LYD_OPT_NOSIBLINGS) || (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
         return EXIT_SUCCESS;
@@ -52,19 +51,7 @@ lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, int options)
 
     assert(ctx);
 
-    if (data && lys_parent(data->schema)) {
-        LOGERR(LY_EINVAL, "Subtree are not top-level data.");
-        return EXIT_FAILURE;
-    }
-
     if (!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_DATA | LYD_OPT_CONFIG))) {
-        LY_TREE_FOR(data, node) {
-            if (lys_parent(node->schema) || (node->schema->nodetype & (LYS_NOTIF | LYS_RPC))) {
-                LOGERR(LY_EINVAL, "Subtree includes non-data nodes (a notification, an RPC, or an RPC output).");
-                return EXIT_FAILURE;
-            }
-        }
-
         /* check for missing mandatory elements (from the top level) according to schemas in context */
         for (i = 0; i < ctx->models.used; i++) {
             if (!ctx->models.list[i]->data) {
@@ -2072,6 +2059,7 @@ movedone:
     }
 
     diff_ordset_free(ordset);
+    ordset = NULL;
 
     if (index2) {
         /* append result2 with newly created
@@ -2165,18 +2153,16 @@ lyd_insert_setinvalid(struct lyd_node *node)
             /* select next elem to process */
             /* go into children */
             next = elem->child;
-            /* got through siblings */
+            /* go through siblings */
             if (!next) {
 nextsibling:
                 next = elem->next;
                 if (!next) {
-                    /* no children */
+                    /* no sibling */
                     if (elem == node) {
                         /* we are done, back in start node */
                         break;
                     }
-                    /* try siblings */
-                    next = elem->next;
                 }
             }
             /* go back to parents */
@@ -2187,6 +2173,20 @@ nextsibling:
                 }
                 /* parent was actually already processed, so go to the parent's sibling */
                 next = elem->parent->next;
+            }
+        }
+    }
+
+    if (node->parent) {
+        /* if the inserted node is list/leaflist with constraint on max instances,
+         * invalidate the parent to make it validate this */
+        if (node->schema->nodetype & LYS_LEAFLIST) {
+            if (((struct lys_node_leaflist *)node->schema)->max) {
+                node->parent->validity |= LYD_VAL_MAND;
+            }
+        } else if (node->schema->nodetype & LYS_LIST) {
+            if (((struct lys_node_list *)node->schema)->max) {
+                node->parent->validity |= LYD_VAL_MAND;
             }
         }
     }
@@ -2225,13 +2225,13 @@ lyv_multicases(struct lyd_node *node, struct lys_node *schemanode, struct lyd_no
 autodelete:
     /* remove all nodes from other cases than 'sparent' */
     LY_TREE_FOR_SAFE(first_sibling, next, iter) {
-        if (node && iter == node) {
+        if (schemanode == iter->schema) {
             continue;
         }
 
         sparent = lys_parent(iter->schema);
-        if ((sparent->nodetype == LYS_CHOICE && sparent == schoice) /* another implicit case */
-                || (sparent->nodetype == LYS_CASE && sparent != scase && lys_parent(sparent) == schoice) /* another case */
+        if (sparent && ((sparent->nodetype == LYS_CHOICE && sparent == schoice) /* another implicit case */
+                || (sparent->nodetype == LYS_CASE && sparent != scase && lys_parent(sparent) == schoice)) /* another case */
                 ) {
             if (autodelete) {
                 if (iter == nodel) {
@@ -2731,11 +2731,13 @@ nextsiblings:
                 iter = iter->parent;
 
                 /* if we have empty non-presence container, we can remove it */
-                if (!(options & LYD_OPT_KEEPEMPTYCONT) && to_free && !to_free->next && (to_free->prev == to_free) &&
-                        (iter->schema->nodetype == LYS_CONTAINER) &&
+                if (to_free && !(options & LYD_OPT_KEEPEMPTYCONT) && !to_free->next && to_free->prev == to_free &&
+                        iter->schema->nodetype == LYS_CONTAINER &&
                         !((struct lys_node_container *)iter->schema)->presence) {
-                    lyd_free(to_free);
                     to_free = iter;
+                } else {
+                    lyd_free(to_free);
+                    to_free = NULL;
                 }
 
                 /* parent is already processed, go to its sibling */
@@ -2848,7 +2850,7 @@ lyd_unlink_internal(struct lyd_node *node, int permanent)
 
         /* invalidate parent to make sure it will be checked in future validation */
         if (node->parent) {
-            node->parent->validity = LYD_VAL_NOT;
+            node->parent->validity = LYD_VAL_MAND;
         }
     }
 
@@ -3706,6 +3708,21 @@ error:
     return NULL;
 }
 
+API struct lyd_node *
+lyd_first_sibling(struct lyd_node *node)
+{
+    struct lyd_node *start;
+
+    /* get the first sibling */
+    if (node->parent) {
+        start = node->parent->child;
+    } else {
+        for (start = node; start->prev->next; start = start->prev);
+    }
+
+    return start;
+}
+
 API struct ly_set *
 ly_set_new(void)
 {
@@ -3878,8 +3895,10 @@ nextsiblings:
                 if (to_free && !(options & LYD_OPT_KEEPEMPTYCONT) && !to_free->next && to_free->prev == to_free &&
                         iter->schema->nodetype == LYS_CONTAINER &&
                         !((struct lys_node_container *)iter->schema)->presence) {
-                    lyd_free(to_free);
                     to_free = iter;
+                } else {
+                    lyd_free(to_free);
+                    to_free = NULL;
                 }
 
                 /* parent is already processed, go to its sibling */
@@ -3968,8 +3987,10 @@ nextsiblings:
                 if (to_free && !(options & LYD_OPT_KEEPEMPTYCONT) && !to_free->next && to_free->prev == to_free &&
                         iter->schema->nodetype == LYS_CONTAINER &&
                         !((struct lys_node_container *)iter->schema)->presence) {
-                    lyd_free(to_free);
                     to_free = iter;
+                } else {
+                    lyd_free(to_free);
+                    to_free = NULL;
                 }
 
                 /* parent is already processed, go to its sibling */
@@ -3999,24 +4020,33 @@ nextsiblings:
 }
 
 /*
- * data First data node on level where to search for instance of the choice data
- * schema Schema node of the choice
+ * Returns choice's case that was instantiated in data tree
+ * cases - set of all cases (from all choices) that were instantiated in data tree
+ * choice - choice node to be examined
  */
-static struct lyd_node *
-lyd_wd_get_choice_inst(struct lyd_node *data, struct lys_node *schema)
+static struct lys_node *
+lyd_wd_get_inst_case(struct ly_set *cases, struct lys_node *choice)
 {
-    struct lyd_node *iter;
-    struct lys_node *sparent;
+    struct lys_node *siter, *cs;
+    unsigned int i;
 
-    /* check that no case is instantiated */
-    LY_TREE_FOR(data, iter) {
-        for (sparent = lys_parent(iter->schema); sparent; sparent = lys_parent(sparent)) {
-            if (!(sparent->nodetype & (LYS_CASE | LYS_CHOICE | LYS_USES))) {
-                sparent = NULL;
-                break;
-            } else if (sparent == schema) {
-                /* instance found */
-                return iter;
+    if (!cases) {
+        return NULL;
+    }
+
+    LY_TREE_FOR(choice->child, siter) {
+        for (i = 0; i < cases->number; i++) {
+            if (cases->set.s[i] == siter) {
+                ly_set_rm_index(cases, i);
+                return siter;
+            } else {
+                for (cs = lys_parent(cases->set.s[i]); cs && (cs->nodetype & (LYS_CHOICE | LYS_CASE)); cs = lys_parent(cs)) {
+                    if (cs == siter) {
+                        siter = cases->set.s[i];
+                        ly_set_rm_index(cases, i);
+                        return siter;
+                    }
+                }
             }
         }
     }
@@ -4113,10 +4143,12 @@ lyd_wd_add_empty(struct lyd_node *parent, struct lys_node *schema, struct unres_
     char *c;
     int index = 0;
 
-    if (parent) {
-        index = sprintf(path, "%s:%s", lys_node_module(schema)->name, schema->name);
-    } else {
-        index = sprintf(path, "/%s:%s", lys_node_module(schema)->name, schema->name);
+    if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF)) {
+        if (parent) {
+            index = sprintf(path, "%s:%s", lys_node_module(schema)->name, schema->name);
+        } else {
+            index = sprintf(path, "/%s:%s", lys_node_module(schema)->name, schema->name);
+        }
     }
 
     LY_TREE_DFS_BEGIN(schema, next, siter) {
@@ -4236,22 +4268,49 @@ nextsibling:
 static int
 lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres_data *unres, int options)
 {
-    struct lys_node *siter;
+    struct lys_node *siter, *sch;
     struct lyd_node *iter;
-    struct ly_set *nodeset;
+    struct ly_set *nodeset, *caseset = NULL;
     char *path = ly_buf(); /* initiated from lyd_wd_top() */
+    int rc = EXIT_FAILURE, chcase = 0;
 
     assert(subroot);
 
-    LY_TREE_FOR(subroot->child, iter) {
-        if (iter->schema->nodetype != LYS_LIST) {
-            continue;
+    sch = lys_parent(schema);
+    if (sch) {
+        /* only one choice's case will be processed,
+         * so detect processing of a node under the
+         * case */
+        if (sch->nodetype == LYS_CHOICE) {
+            /* shorthand case */
+            chcase = 1;
+        } else if (sch->nodetype == LYS_CASE) {
+            chcase = 2;
         }
+    }
 
-        /* LYS_LIST - go into */
-        lyd_wd_add_inner(iter, iter->schema->child, unres, options);
-        if (ly_errno != LY_SUCCESS) {
-            return EXIT_FAILURE;
+    if (!chcase) {
+        /* skip processing of the existing nodes since it was done previously
+         * when processing parent choice */
+        LY_TREE_FOR(subroot->child, iter) {
+            /* examine if the case (even shorthand) is instantiated */
+            siter = lys_parent(iter->schema);
+            if (siter && (siter->nodetype & (LYS_CHOICE | LYS_CASE))) {
+                if (!caseset) {
+                    caseset = ly_set_new();
+                }
+                ly_set_add(caseset, (siter->nodetype == LYS_CASE) ? siter : iter->schema, 0);
+            }
+
+            /* recursion */
+            if ((iter->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) &&
+                    ((options & LYD_WD_MASK) != LYD_WD_EXPLICIT
+                    || ((iter->schema->flags & LYS_CONFIG_W) && (iter->schema->flags & LYS_INCL_STATUS)))) {
+                lyd_wd_add_inner(iter, iter->schema->child, unres, options);
+                if (ly_errno != LY_SUCCESS) {
+                    goto error;
+                }
+            } /* else explicit mode with no status data in subtree -> do nothing */
         }
     }
 
@@ -4274,7 +4333,7 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
             nodeset = lyd_get_node(subroot, path);
             path[0] = '\0';
             if (!nodeset) {
-                return EXIT_FAILURE;
+                goto error;
             }
 
             if (nodeset->number == 1) {
@@ -4298,7 +4357,7 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
             }
             ly_set_free(nodeset);
             if (ly_errno != LY_SUCCESS) {
-                return EXIT_FAILURE;
+                goto error;
             }
 
             break;
@@ -4308,29 +4367,24 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
             if (ly_errno != LY_SUCCESS) {
                 LOGVAL(LYE_SPEC, LY_VLOG_LYD, subroot, "Creating default element \"%s\" failed.", path);
                 path[0] = '\0';
-                return EXIT_FAILURE;
+                goto error;
             } /* else if default, it was already connected into parent */
             path[0] = '\0';
             break;
         case LYS_CHOICE:
-            if (((struct lys_node_choice *)siter)->dflt) {
-                /* check that no case is instantiated */
-                iter = lyd_wd_get_choice_inst(subroot->child, siter);
-                if (!iter) {
+            /* check that no case is instantiated */
+            sch = lyd_wd_get_inst_case(caseset, siter);
+            if (!sch) {
+                if (((struct lys_node_choice *)siter)->dflt) {
                     /* go to the default case */
                     lyd_wd_add_inner(subroot, ((struct lys_node_choice *)siter)->dflt, unres, options);
-                } else if (lys_parent(iter->schema)->nodetype == LYS_CASE) {
-                    /* add missing default nodes from present choice case */
-                    lyd_wd_add_inner(subroot, lys_parent(iter->schema)->child, unres, options);
-                } else { /* shorthand case */
-                    if (!(iter->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-                        /* go into */
-                        lyd_wd_add_inner(iter, iter->schema->child, unres, options);
-                    }
                 }
-                if (ly_errno != LY_SUCCESS) {
-                    return EXIT_FAILURE;
-                }
+            } else if (sch->nodetype == LYS_CASE) {
+                /* add missing default nodes from present choice case */
+                lyd_wd_add_inner(subroot, sch->child, unres, options);
+            }
+            if (ly_errno != LY_SUCCESS) {
+                goto error;
             }
             break;
         case LYS_INPUT:
@@ -4350,7 +4404,7 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
             /* go into */
             lyd_wd_add_inner(subroot, siter->child, unres, options);
             if (ly_errno != LY_SUCCESS) {
-                return EXIT_FAILURE;
+                goto error;
             }
             break;
         default:
@@ -4358,21 +4412,25 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
             break;
         }
 
-        if (lys_parent(siter) && (lys_parent(siter)->nodetype == LYS_CHOICE)) {
-            /* only the default case is processed */
-            return EXIT_SUCCESS;
+        if (chcase == 1) {
+            /* only one choice's case is processed, so we are done here */
+            break;
         }
     }
 
-    return EXIT_SUCCESS;
+    rc = EXIT_SUCCESS;
+
+error:
+    ly_set_free(caseset);
+    return rc;
 }
 
 static int
 lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct ly_ctx *ctx)
 {
-    struct lys_node *siter;
+    struct lys_node *siter, *sch;
     struct lyd_node *iter;
-    struct ly_set *topset = NULL, *nodeset;
+    struct ly_set *topset = NULL, *nodeset, *caseset = NULL;
     unsigned int i;
     int ret = EXIT_FAILURE;
     char *path = ly_buf(), *buf_backup = NULL;
@@ -4428,6 +4486,16 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
             /* done, do not add any missing siblings */
             ret = EXIT_SUCCESS;
             goto cleanup;
+        }
+
+        /* examine if the node is in case and its siblings with default values
+         * should be created */
+        siter = lys_parent(iter->schema);
+        if (siter && (siter->nodetype & (LYS_CHOICE | LYS_CASE))) {
+            if (!caseset) {
+                caseset = ly_set_new();
+            }
+            ly_set_add(caseset, (siter->nodetype == LYS_CASE) ? siter : iter->schema, 0);
         }
     }
 
@@ -4511,16 +4579,21 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
                 }
                 break;
             case LYS_CHOICE:
-                if (((struct lys_node_choice *)siter)->dflt) {
-                    /* check that no case is instantiated */
-                    iter = lyd_wd_get_choice_inst(*root, siter);
-                    if (!iter) {
+                /* check that no case is instantiated */
+                sch = lyd_wd_get_inst_case(caseset, siter);
+                if (!sch) {
+                    if (((struct lys_node_choice *)siter)->dflt) {
                         /* go to the default case */
                         iter = lyd_wd_add_empty(NULL, ((struct lys_node_choice *)siter)->dflt, unres, options);
-                        if (ly_errno != LY_SUCCESS) {
-                            goto cleanup;
-                        }
                     }
+                } else if (sch->nodetype == LYS_CASE) {
+                    /* add missing default nodes from present choice case */
+                    iter = lyd_wd_add_empty(NULL, sch, unres, options);
+                } else {
+                    iter = NULL;
+                }
+                if (ly_errno != LY_SUCCESS) {
+                    goto cleanup;
                 }
                 break;
             case LYS_USES:
@@ -4559,6 +4632,7 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
 
 cleanup:
     ly_set_free(topset);
+    ly_set_free(caseset);
 
     if (buf_backup) {
         /* return previous internal buffer content */

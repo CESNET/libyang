@@ -1134,8 +1134,11 @@ lyxml_parse_mem(struct ly_ctx *ctx, const char *data, int options)
 
 repeat:
     /* process document */
-    while (*c) {
-        if (is_xmlws(*c)) {
+    while (1) {
+        if (!*c) {
+            /* eof */
+            return first;
+        } else if (is_xmlws(*c)) {
             /* skip whitespaces */
             ign_xmlws(c);
         } else if (!memcmp(c, "<?", 2)) {

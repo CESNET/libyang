@@ -970,13 +970,13 @@ cmd_verb(const char *arg)
 
     verb = arg + 5;
     if (!strcmp(verb, "error") || !strcmp(verb, "0")) {
-        ly_verb(0);
+        ly_verb(LY_LLERR);
     } else if (!strcmp(verb, "warning") || !strcmp(verb, "1")) {
-        ly_verb(1);
+        ly_verb(LY_LLWRN);
     } else if (!strcmp(verb, "verbose")  || !strcmp(verb, "2")) {
-        ly_verb(2);
+        ly_verb(LY_LLVRB);
     } else if (!strcmp(verb, "debug")  || !strcmp(verb, "3")) {
-        ly_verb(3);
+        ly_verb(LY_LLDBG);
     } else {
         fprintf(stderr, "Unknown verbosity \"%s\"\n", verb);
         return 1;

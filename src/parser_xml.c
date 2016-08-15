@@ -150,26 +150,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             /* match data model based on namespace */
             if (ly_strequal(ctx->models.list[i]->ns, xml->ns->value, 1)) {
                 /* get the proper schema node */
-                LY_TREE_FOR(ctx->models.list[i]->data, schema) {
-                    /* skip nodes in module's data which are not expected here according to options' data type */
-                    if (options & LYD_OPT_RPC) {
-                        if (schema->nodetype != LYS_RPC) {
-                            continue;
-                        }
-                    } else if (options & LYD_OPT_NOTIF) {
-                        if (schema->nodetype != LYS_NOTIF) {
-                            continue;
-                        }
-                    } else if (!(options & LYD_OPT_RPCREPLY)) {
-                        /* rest of the data types except RPCREPLY which cannot be here */
-                        if (schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
-                            continue;
-                        }
-                    }
-                    if (ly_strequal(schema->name, xml->name, 1)) {
-                        break;
-                    }
-                }
+                schema = xml_data_search_schemanode(xml, ctx->models.list[i]->data, options);
                 break;
             }
         }
