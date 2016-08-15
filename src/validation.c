@@ -230,6 +230,7 @@ lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
             if (!uniquetables) {
                 LOGMEM;
                 ret = EXIT_FAILURE;
+                n = 0;
                 goto unique_cleanup;
             }
             for (j = 0; j < n; j++) {

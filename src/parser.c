@@ -550,7 +550,7 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
             return EXIT_FAILURE;
         }
 
-        LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, (val_str ? val_str : ""), restr->expr);
+        LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, (val_str ? val_str : ""), restr ? restr->expr : "");
         if (restr && restr->emsg) {
             LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, restr->emsg);
         }
