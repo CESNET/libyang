@@ -3238,7 +3238,7 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
                 struct unres_schema *unres)
 {
     struct lys_node *retval;
-    struct lys_node_leaf *anyxml;
+    struct lys_node_anyxml *anyxml;
     struct lyxml_elem *sub, *next;
     const char *value;
     int r;
