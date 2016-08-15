@@ -379,7 +379,7 @@ int lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *si
  */
 int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int printval);
 
-const char *lyd_get_default(const char* unique_expr, struct lyd_node *list);
+const char *lyd_get_unique_default(const char* unique_expr, struct lyd_node *list);
 
 /**
  * @brief Check for (validate) top-level mandatory nodes of a data tree.

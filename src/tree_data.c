@@ -3297,7 +3297,7 @@ lyd_free_withsiblings(struct lyd_node *node)
  * pointer to the default value
  */
 const char *
-lyd_get_default(const char* unique_expr, struct lyd_node *list)
+lyd_get_unique_default(const char* unique_expr, struct lyd_node *list)
 {
     const struct lys_node *parent;
     const struct lys_node_leaf *sleaf = NULL;
@@ -3543,7 +3543,7 @@ uniquecheck:
                         val1 = ((struct lyd_node_leaf_list *)diter)->value_str;
                     } else {
                         /* use default value */
-                        val1 = lyd_get_default(slist->unique[i].expr[j], first);
+                        val1 = lyd_get_unique_default(slist->unique[i].expr[j], first);
                         if (ly_errno) {
                             return -1;
                         }
@@ -3555,7 +3555,7 @@ uniquecheck:
                         val2 = ((struct lyd_node_leaf_list *)diter)->value_str;
                     } else {
                         /* use default value */
-                        val2 = lyd_get_default(slist->unique[i].expr[j], second);
+                        val2 = lyd_get_unique_default(slist->unique[i].expr[j], second);
                         if (ly_errno) {
                             return -1;
                         }

@@ -2018,7 +2018,11 @@ lys_deviation_free(struct lys_module *module, struct lys_deviation *dev)
     }
 
     for (i = 0; i < dev->deviate_size; i++) {
-        lydict_remove(ctx, dev->deviate[i].dflt);
+        for (j = 0; j < dev->deviate[i].dflt_size; j++) {
+            lydict_remove(ctx, dev->deviate[i].dflt);
+        }
+        free(dev->deviate[i].dflt);
+
         lydict_remove(ctx, dev->deviate[i].units);
 
         if (dev->deviate[i].mod == LY_DEVIATE_DEL) {

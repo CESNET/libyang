@@ -274,7 +274,7 @@ lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
                         id = ((struct lyd_node_leaf_list *)diter)->value_str;
                     } else {
                         /* use default value */
-                        id = lyd_get_default(slist->unique[j].expr[i], set->set.d[u]);
+                        id = lyd_get_unique_default(slist->unique[j].expr[i], set->set.d[u]);
                         if (ly_errno) {
                             ret = EXIT_FAILURE;
                             goto unique_cleanup;
