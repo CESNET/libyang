@@ -2599,7 +2599,7 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
         }
     }
     if (c_ftrs) {
-        rfn->iffeature = calloc(c_must, sizeof *rfn->iffeature);
+        rfn->iffeature = calloc(c_ftrs, sizeof *rfn->iffeature);
         if (!rfn->iffeature) {
             LOGMEM;
             goto error;
