@@ -1049,6 +1049,9 @@ yang_delete_type(struct lys_module *module, struct yang_type *stype)
 {
     int i;
 
+    if (!stype) {
+        return;
+    }
     stype->type->base = stype->base;
     stype->type->der = NULL;
     lydict_remove(module->ctx, stype->name);

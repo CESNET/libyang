@@ -230,10 +230,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
                 free($$.deviation);
               }
             } deviation_opt_stmt
-%destructor { if (read_all) {
-                yang_delete_type(module, $$);
-              }
-            } type_stmtsep
+%destructor { yang_delete_type(module, $$); } type_stmtsep
 
 %initial-action { yylloc.last_column = 0; }
 
@@ -963,6 +960,8 @@ type_end: ';'
 /* store pointer to the structure of yang_type */
 type_stmtsep: stmtsep { if (read_all) {
                           $$ = actual;
+                        } else {
+                          $$ = NULL;
                         }
                       }
 
