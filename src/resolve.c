@@ -4390,7 +4390,7 @@ matchfound:
                     return -1;
                 }
 
-                return EXIT_SUCCESS;
+                return EXIT_FAILURE;
             }
         }
 
