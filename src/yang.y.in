@@ -2950,10 +2950,7 @@ notification_stmt: NOTIFICATION_KEYWORD sep identifier_arg_str { if (read_all) {
                                                                }
                    notification_end { config_inherit = ENABLE_INHERIT; }
 
-notification_end: ';' { if (read_all) {
-                          size_arrays->next++;
-                        }
-                      }
+notification_end: ';'
   |  '{' stmtsep
          notification_opt_stmt
       '}' ;
