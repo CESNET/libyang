@@ -4330,7 +4330,7 @@ identity_backlink_update(struct lys_ident *der, struct lys_ident *base)
  * @param[in] basename Base name of the identity.
  * @param[out] ret Pointer to the resolved identity. Can be NULL.
  *
- * @return EXIT_SUCCESS on success (but ret can still be NULL), EXIT_FAILURE on error.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on crucial error.
  */
 static int
 resolve_base_ident_sub(const struct lys_module *module, struct lys_ident *ident, const char *basename,
@@ -4387,7 +4387,7 @@ matchfound:
                 if (ly_strequal((const char *)unres->str_snode[i], ident->name, 1)) {
                     LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, basename, "base");
                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Circular reference of \"%s\" identity.", basename);
-                    return EXIT_FAILURE;
+                    return -1;
                 }
 
                 return EXIT_SUCCESS;
@@ -4399,13 +4399,12 @@ matchfound:
         *ret = base;
 
         /* maintain backlinks to the derived identities */
-        return identity_backlink_update(ident, base);
+        return identity_backlink_update(ident, base) ? -1 : EXIT_SUCCESS;
 
-    } else if (!ident) {
-        return EXIT_FAILURE;
     }
 
-    return EXIT_SUCCESS;
+    /* base not found (maybe a forward reference) */
+    return EXIT_FAILURE;
 }
 
 /**
@@ -4424,7 +4423,7 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
                    struct lys_type *type, struct unres_schema *unres)
 {
     const char *name;
-    int mod_name_len = 0;
+    int mod_name_len = 0, rc;
     struct lys_ident *target, **ret;
     uint16_t flags;
     struct lys_module *mod;
@@ -4468,23 +4467,20 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
     }
 
     /* search in the identified module ... */
-    if (resolve_base_ident_sub(module, ident, name, unres, ret)) {
-        return -1;
-    } else if (*ret) {
-        goto success;
+    rc = resolve_base_ident_sub(module, ident, name, unres, ret);
+    if (!rc) {
+        assert(*ret);
+
+        /* check status */
+        if (lyp_check_status(flags, mod, ident ? ident->name : "of type",
+                             (*ret)->flags, (*ret)->module, (*ret)->name, NULL)) {
+            rc = -1;
+        }
+    } else if (rc == EXIT_FAILURE) {
+        LOGVAL(LYE_INRESOLV, LY_VLOG_NONE, NULL, parent, basename);
     }
 
-    LOGVAL(LYE_INRESOLV, LY_VLOG_NONE, NULL, parent, basename);
-    return EXIT_FAILURE;
-
-success:
-    /* check status */
-    if (lyp_check_status(flags, mod, ident ? ident->name : "of type",
-                         (*ret)->flags, (*ret)->module, (*ret)->name, NULL)) {
-        return -1;
-    }
-
-    return EXIT_SUCCESS;
+    return rc;
 }
 
 /**
