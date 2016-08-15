@@ -5716,7 +5716,7 @@ yyreduce:
                             }
                             if (size_arrays->node[size_arrays->next].must) {
                               (yyval.nodes).anyxml->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *(yyval.nodes).anyxml->must);
-                              if (!(yyval.nodes).anyxml->features || !(yyval.nodes).anyxml->must) {
+                              if (!(yyval.nodes).anyxml->must) {
                                 LOGMEM;
                                 YYABORT;
                               }

@@ -2283,7 +2283,7 @@ anyxml_opt_stmt: @EMPTYDIR@ { if (read_all) {
                             }
                             if (size_arrays->node[size_arrays->next].must) {
                               $$.anyxml->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.anyxml->must);
-                              if (!$$.anyxml->features || !$$.anyxml->must) {
+                              if (!$$.anyxml->must) {
                                 LOGMEM;
                                 YYABORT;
                               }
