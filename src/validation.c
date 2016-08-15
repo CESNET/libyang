@@ -279,7 +279,15 @@ lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
                             goto unique_cleanup;
                         }
                     }
+                    if (!id) {
+                        /* unique item not present nor has default value */
+                        break;
+                    }
                     hash = dict_hash_multi(hash, id, strlen(id));
+                }
+                if (!id) {
+                    /* skip this list instance since its unique set is incomplete */
+                    continue;
                 }
 
                 /* finish the hash value */
