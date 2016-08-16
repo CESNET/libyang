@@ -3180,7 +3180,7 @@ lys_xpath_atomize(const struct lys_node *cur_snode, const char *expr, int option
     for (i = 0; i < set->used; ++i) {
         switch (set->val.snodes[i].type) {
         case LYXP_NODE_ELEM:
-            if (ly_set_add(ret_set, set->val.snodes[i].snode, LY_SET_OPT_USEASLIST)) {
+            if (ly_set_add(ret_set, set->val.snodes[i].snode, LY_SET_OPT_USEASLIST) == -1) {
                 ly_set_free(ret_set);
                 free(set->val.snodes);
                 free(set);
