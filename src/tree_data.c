@@ -4139,6 +4139,99 @@ lyd_wd_get_inst_case(struct ly_set *cases, struct lys_node *choice)
 }
 
 static struct lyd_node *
+lyd_wd_add_leaflist(struct ly_ctx *ctx, struct lyd_node *parent, struct lys_node_leaflist *llist,
+                    const char *path, struct unres_data *unres, int options, int check_existence)
+{
+    struct lyd_node *ret = NULL, *iter, *last;
+    struct lys_tpdf *tpdf;
+    const char **dflt;
+    uint8_t dflt_size, i;
+    struct ly_set *nodeset;
+
+    if (llist->module->version < 2) {
+        /* default values on leaf-lists are allowed from YANG 1.1 */
+        return NULL;
+    } else if ((options & LYD_WD_MASK) == LYD_WD_EXPLICIT && (llist->flags & LYS_CONFIG_W)) {
+        /* do not process config data in explicit mode */
+        return NULL;
+    } else if (lys_is_disabled((struct lys_node *)llist, 0)) {
+        /* ignore disabled data */
+        return NULL;
+    }
+
+    if (llist->dflt_size) {
+        /* there are default values */
+        dflt_size = llist->dflt_size;
+        dflt = llist->dflt;
+    } else if (!llist->min) {
+        /* get the default value from the type */
+        for (tpdf = llist->type.der; tpdf && !dflt; tpdf = tpdf->type.der) {
+            dflt = &tpdf->dflt;
+            dflt_size = 1;
+        }
+    }
+
+    if (!dflt_size) {
+        /* no default values to use */
+        return NULL;
+    }
+
+    if (check_existence && parent) {
+        /* check presence of any instance of the leaf-list */
+        nodeset = lyd_get_node(parent, path);
+        if (nodeset && nodeset->number) {
+            ly_set_free(nodeset);
+            return NULL;
+        }
+        ly_set_free(nodeset);
+    }
+
+    for (i = 0; i < dflt_size; i++) {
+        last = lyd_new_path(parent, ctx, path, dflt[i], options & LYD_OPT_RPCREPLY ? LYD_PATH_OPT_OUTPUT : 0);
+        if ((options & (LYD_WD_ALL_TAG | LYD_WD_IMPL_TAG)) && last) {
+            /* remember the created nodes (if necessary) in unres */
+            for (iter = last; ; iter = iter->child) {
+                if ((!(options & LYD_OPT_TYPEMASK) || (options & LYD_OPT_CONFIG)) && (iter->when_status & LYD_WHEN)) {
+                    if (unres_data_add(unres, (struct lyd_node *)iter, UNRES_WHEN)) {
+                        goto error;
+                    }
+                }
+                if (resolve_applies_must(iter) && unres_data_add(unres, iter, UNRES_MUST) == -1) {
+                    goto error;
+                }
+
+                if (iter->schema->nodetype == LYS_LEAFLIST) {
+                    break;
+                }
+            }
+            /* we are in the added leaf-list instance */
+            if (((struct lyd_node_leaf_list *)iter)->value_type == LY_TYPE_LEAFREF) {
+                if (unres_data_add(unres, (struct lyd_node *)iter, UNRES_LEAFREF)) {
+                    goto error;
+                }
+            } else if (((struct lyd_node_leaf_list *)iter)->value_type == LY_TYPE_INST) {
+                if (unres_data_add(unres, (struct lyd_node *)iter, UNRES_INSTID)) {
+                    goto error;
+                }
+            }
+
+            /* add tag */
+            iter->dflt = 1;
+        }
+
+        if (!ret) {
+            ret = last;
+        }
+    }
+
+    return ret;
+
+error:
+    lyd_free_withsiblings(ret);
+    return NULL;
+}
+
+static struct lyd_node *
 lyd_wd_add_leaf(struct ly_ctx *ctx, struct lyd_node *parent, struct lys_node_leaf *leaf,
                 const char *path, struct unres_data *unres, int options, int check_existence)
 {
@@ -4259,6 +4352,22 @@ lyd_wd_add_empty(struct lyd_node *parent, struct lys_node *schema, struct unres_
                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Creating default element \"%s\" failed.", path);
                 } else {
                     LOGVAL(LYE_SPEC, LY_VLOG_LYD, parent, "Creating default element \"%s\" failed.", path);
+                }
+                path[0] = '\0';
+                return NULL;
+            } else if (iter && !parent) {
+                parent = ret = iter;
+            } /* else already connected in parent */
+            break;
+        case LYS_LEAFLIST:
+            iter = lyd_wd_add_leaflist(siter->module->ctx, parent, (struct lys_node_leaflist *)siter, path, unres,
+                                       options, parent ? 1 : 0);
+            if (ly_errno != LY_SUCCESS) {
+                if (!parent) {
+                    lyd_free_withsiblings(ret);
+                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Creating default leaf-list elements \"%s\" failed.", path);
+                } else {
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, parent, "Creating default leaf-list elements \"%s\" failed.", path);
                 }
                 path[0] = '\0';
                 return NULL;
@@ -4450,6 +4559,16 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
             lyd_wd_add_leaf(siter->module->ctx, subroot, (struct lys_node_leaf *)siter, path, unres, options, 1);
             if (ly_errno != LY_SUCCESS) {
                 LOGVAL(LYE_SPEC, LY_VLOG_LYD, subroot, "Creating default element \"%s\" failed.", path);
+                path[0] = '\0';
+                goto error;
+            } /* else if default, it was already connected into parent */
+            path[0] = '\0';
+            break;
+        case LYS_LEAFLIST:
+            sprintf(path, "%s:%s", lys_node_module(siter)->name, siter->name);
+            lyd_wd_add_leaflist(siter->module->ctx, subroot, (struct lys_node_leaflist *)siter, path, unres, options, 1);
+            if (ly_errno != LY_SUCCESS) {
+                LOGVAL(LYE_SPEC, LY_VLOG_LYD, subroot, "Creating default leaf-list elements \"%s\" failed.", path);
                 path[0] = '\0';
                 goto error;
             } /* else if default, it was already connected into parent */
@@ -4659,6 +4778,25 @@ lyd_wd_top(struct lyd_node **root, struct unres_data *unres, int options, struct
                         *root = iter;
                     }
                     /* avoid lyd_insert_after() after the switch since leaf is already added into the tree */
+                    iter = NULL;
+                }
+                break;
+            case LYS_LEAFLIST:
+                sprintf(path, "/%s:%s", lys_node_module(siter)->name, siter->name);
+                iter = lyd_wd_add_leaflist(siter->module->ctx, *root, (struct lys_node_leaflist *)siter, path, unres,
+                                           options, 1);
+                if (ly_errno != LY_SUCCESS) {
+                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Creating default leaf-list elements \"%s\" failed.", path);
+                    path[0] = '\0';
+                    goto cleanup;
+                }
+                path[0] = '\0';
+
+                if (iter) {
+                    if (!(*root)) {
+                        *root = iter;
+                    }
+                    /* avoid lyd_insert_after() after the switch since leaf-list instance is already added into the tree */
                     iter = NULL;
                 }
                 break;
