@@ -39,8 +39,11 @@
 struct lys_node_array{
     uint8_t if_features;
     uint8_t must;
+    union {
+        uint8_t tpdf;
+        uint8_t dflt;
+    };
     uint8_t unique;
-    uint8_t tpdf;
     union {
         uint uni;
         uint16_t flags;
@@ -96,6 +99,7 @@ struct type_deviation {
     struct lys_deviate *deviate;
     struct lys_restr **trg_must;
     uint8_t *trg_must_size;
+    struct ly_set *dflt_check;
 };
 
 struct type_uses {
@@ -221,7 +225,9 @@ int yang_fill_unique(struct lys_module *module, struct lys_node_list *list, stru
 
 int yang_read_deviate_unique(struct type_deviation *dev, uint8_t c_uniq);
 
-int yang_read_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *value);
+int yang_read_deviate_default(struct lys_module *module, struct type_deviation *dev, uint8_t c_dflt);
+
+int yang_fill_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *exp);
 
 int yang_read_deviate_config(struct type_deviation *dev, uint8_t value);
 
@@ -236,7 +242,7 @@ int yang_check_deviate_must(struct ly_ctx *ctx, struct type_deviation *dev);
 
 int yang_check_deviate_unique(struct lys_module *module, struct type_deviation *dev, char *value);
 
-int yang_check_deviation(struct lys_module *module, struct type_deviation *dev, struct unres_schema *unres);
+int yang_check_deviation(struct lys_module *module, struct ly_set *dflt_check, struct unres_schema *unres);
 
 int yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, char *value,
                       struct lys_include *inc, struct unres_schema *unres);

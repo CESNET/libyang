@@ -1620,6 +1620,12 @@ yang_read_deviation(struct lys_module *module, char *value)
     deviation->deviation = dev;
     deviation->target = dev_target;
 
+    deviation->dflt_check = ly_set_new();
+    if (!deviation->dflt_check) {
+        LOGMEM;
+        goto error;
+    }
+
     return deviation;
 
 error:
@@ -1844,105 +1850,73 @@ error:
 }
 
 int
-yang_read_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *value)
+yang_read_deviate_default(struct lys_module *module, struct type_deviation *dev, uint8_t c_dflt)
 {
-    int rc;
-    struct lys_node_choice *choice;
-    struct lys_node_leaf *leaf;
-    struct lys_node *node;
+    int i;
+    struct lys_node_leaflist *llist;
 
-    if (dev->deviate->dflt) {
-        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "default", "deviate");
-        free(value);
+    /* check target node type */
+    if (module->version < 2 && dev->target->nodetype == LYS_LEAFLIST) {
+        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "default");
+        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Target node does not allow \"default\" property.");
+        goto error;
+    } else if (c_dflt > 1 && dev->target->nodetype != LYS_LEAFLIST) { /* from YANG 1.1 */
+        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "default");
+        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Target node does not allow multiple \"default\" properties.");
+        goto error;
+    } else if (!(dev->target->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_CHOICE))) {
+        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "default");
+        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Target node does not allow \"default\" property.");
         goto error;
     }
 
-    dev->deviate->dflt = lydict_insert_zc(ctx, value);
-
-    if (dev->target->nodetype == LYS_CHOICE) {
-        choice = (struct lys_node_choice *)dev->target;
-
-        rc = resolve_choice_default_schema_nodeid(dev->deviate->dflt, choice->child, (const struct lys_node **)&node);
-        if (rc || !node) {
-            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->deviate->dflt, "default");
+    if (dev->deviate->mod == LY_DEVIATE_ADD) {
+        /* check that there is no current value */
+        if ((dev->target->nodetype == LYS_LEAF && ((struct lys_node_leaf *)dev->target)->dflt) ||
+                (dev->target->nodetype == LYS_CHOICE && ((struct lys_node_choice *)dev->target)->dflt)) {
+            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "default");
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Adding property that already exists.");
             goto error;
         }
-        if (dev->deviate->mod == LY_DEVIATE_DEL) {
-            if (!choice->dflt || (choice->dflt != node)) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->deviate->dflt, "default");
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Value differs from the target being deleted.");
-                goto error;
-            }
-            choice->dflt = NULL;
-        } else {
-            if (dev->deviate->mod == LY_DEVIATE_ADD) {
-                /* check that there is no current value */
-                if (choice->dflt) {
-                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "default");
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Adding property that already exists.");
-                    goto error;
-                } else if (choice->flags & LYS_MAND_TRUE) {
-                    LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "default", "choice");
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"default\" statement is forbidden on choices with \"mandatory\".");
-                    goto error;
-                }
-            } else { /* replace*/
-                if (!choice->dflt) {
-                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "default");
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Replacing a property that does not exist.");
-                    goto error;
-                }
-            }
 
-            choice->dflt = node;
-            if (!choice->dflt) {
-                /* default branch not found */
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->deviate->dflt, "default");
-                goto error;
-            }
+        /* check collision with mandatory/min-elements */
+        if ((dev->target->flags & LYS_MAND_TRUE) ||
+                (dev->target->nodetype == LYS_LEAFLIST && ((struct lys_node_leaflist *)dev->target)->min)) {
+            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "default", "deviation");
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                   "Adding the \"default\" statement is forbidden on %s statement.",
+                   (dev->target->flags & LYS_MAND_TRUE) ? "nodes with the \"mandatory\"" : "leaflists with non-zero \"min-elements\"");
+            goto error;
         }
-    } else if (dev->target->nodetype == LYS_LEAF) {
-        leaf = (struct lys_node_leaf *)dev->target;
-
-        if (dev->deviate->mod == LY_DEVIATE_DEL) {
-            if (!leaf->dflt || !ly_strequal(leaf->dflt, dev->deviate->dflt, 1)) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->deviate->dflt, "default");
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Value differs from the target being deleted.");
-                goto error;
-            }
-            /* remove value */
-            lydict_remove(ctx, leaf->dflt);
-            leaf->dflt = NULL;
-        } else {
-            if (dev->deviate->mod == LY_DEVIATE_ADD) {
-                /* check that there is no current value */
-                if (leaf->dflt) {
-                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "default");
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Adding property that already exists.");
-                    goto error;
-                } else if (leaf->flags & LYS_MAND_TRUE) {
-                    /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
-                    LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "default", "leaf");
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"default\" statement is forbidden on leaf with \"mandatory\".");
-                    goto error;
-                }
-            } else { /* replace*/
-                if (!leaf->dflt) {
-                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "default");
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Replacing a property that does not exist.");
-                    goto error;
-                }
-            }
-            /* remove value */
-            lydict_remove(ctx, leaf->dflt);
-
-            /* set new value */
-            leaf->dflt = lydict_insert(ctx, dev->deviate->dflt, 0);
+    } else if (dev->deviate->mod == LY_DEVIATE_RPL) {
+        /* check that there was a value before */
+        if (((dev->target->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && !((struct lys_node_leaf *)dev->target)->dflt) ||
+                (dev->target->nodetype == LYS_CHOICE && !((struct lys_node_choice *)dev->target)->dflt)) {
+            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "default");
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Replacing a property that does not exist.");
+            goto error;
         }
-    } else {
-        /* invalid target for default value */
-        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "default");
-        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Target node does not allow \"default\" property.");
+    }
+
+    if (dev->target->nodetype == LYS_LEAFLIST) {
+        /* reallocate default list in the target */
+        llist = (struct lys_node_leaflist *)dev->target;
+        if (dev->deviate->mod == LY_DEVIATE_ADD) {
+            /* reallocate (enlarge) the unique array of the target */
+            llist->dflt = ly_realloc(llist->dflt, (c_dflt + llist->dflt_size) * sizeof *dev->deviate->dflt);
+        } else if (dev->deviate->mod == LY_DEVIATE_RPL) {
+            /* reallocate (replace) the unique array of the target */
+            for (i = 0; i < llist->dflt_size; i++) {
+                lydict_remove(llist->module->ctx, llist->dflt[i]);
+            }
+            llist->dflt = ly_realloc(llist->dflt, c_dflt * sizeof *dev->deviate->dflt);
+            llist->dflt_size = 0;
+        }
+    }
+
+    dev->deviate->dflt = calloc(c_dflt, sizeof *dev->deviate->dflt);
+    if (!dev->deviate->dflt) {
+        LOGMEM;
         goto error;
     }
 
@@ -1951,6 +1925,105 @@ yang_read_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *
 error:
     return EXIT_FAILURE;
 }
+
+int
+yang_fill_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *exp)
+{
+    struct lys_node *node;
+    struct lys_node_choice *choice;
+    struct lys_node_leaf *leaf;
+    struct lys_node_leaflist *llist;
+    int rc, i;
+    unsigned int u;
+    const char *value;
+
+    value = lydict_insert_zc(ctx, exp);
+    u = strlen(value);
+    dev->deviate->dflt[dev->deviate->dflt_size++] = value;
+
+    if (dev->target->nodetype == LYS_CHOICE) {
+        choice = (struct lys_node_choice *)dev->target;
+        rc = resolve_choice_default_schema_nodeid(value, choice->child, (const struct lys_node **)&node);
+        if (rc || !node) {
+            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "default");
+            goto error;
+        }
+        if (dev->deviate->mod == LY_DEVIATE_DEL) {
+            if (!choice->dflt || (choice->dflt != node)) {
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "default");
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Value differs from the target being deleted.");
+                goto error;
+            }
+        } else { /* add or replace */
+            choice->dflt = node;
+            if (!choice->dflt) {
+                /* default branch not found */
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "default");
+                goto error;
+            }
+        }
+    } else if (dev->target->nodetype == LYS_LEAF) {
+        leaf = (struct lys_node_leaf *)dev->target;
+        if (dev->deviate->mod == LY_DEVIATE_DEL) {
+            if (!leaf->dflt || !ly_strequal(leaf->dflt, value, 1)) {
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "default");
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Value differs from the target being deleted.");
+                goto error;
+            }
+            /* remove value */
+            lydict_remove(ctx, leaf->dflt);
+            leaf->dflt = NULL;
+        } else { /* add (already checked) and replace */
+            /* remove value */
+            lydict_remove(ctx, leaf->dflt);
+
+            /* set new value */
+            leaf->dflt = lydict_insert(ctx, value, u);
+
+            /* remember to check it later (it may not fit now, but the type can be deviated too) */
+            ly_set_add(dev->dflt_check, dev->target, 0);
+        }
+    } else { /* LYS_LEAFLIST */
+        llist = (struct lys_node_leaflist *)dev->target;
+        if (dev->deviate->mod == LY_DEVIATE_DEL) {
+            /* find and remove the value in target list */
+            for (i = 0; i < llist->dflt_size; i++) {
+                if (llist->dflt[i] && ly_strequal(llist->dflt[i], value, 1)) {
+                    /* match, remove the value */
+                    lydict_remove(llist->module->ctx, llist->dflt[i]);
+                    llist->dflt[i] = NULL;
+                    break;
+                }
+            }
+            if (i == llist->dflt_size) {
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "default");
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The default value to delete not found in the target node.");
+                goto error;
+            }
+        } else {
+            /* add or replace, anyway we place items into the deviate's list
+               which propagates to the target */
+            /* we just want to check that the value isn't already in the list */
+            for (i = 0; i < llist->dflt_size; i++) {
+                if (ly_strequal(llist->dflt[i], value, 1)) {
+                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "default");
+                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", value);
+                    goto error;
+                }
+            }
+            /* store it in target node */
+            llist->dflt[llist->dflt_size++] = lydict_insert(ctx, value, u);
+
+            /* remember to check it later (it may not fit now, but the type can be deviated too) */
+            ly_set_add(dev->dflt_check, dev->target, 0);
+        }
+    }
+
+    return EXIT_SUCCESS;
+error:
+    return EXIT_FAILURE;
+}
+
 
 int
 yang_read_deviate_config(struct type_deviation *dev, uint8_t value)
@@ -2218,25 +2291,43 @@ error:
 }
 
 int
-yang_check_deviation(struct lys_module *module, struct type_deviation *dev, struct unres_schema *unres)
+yang_check_deviation(struct lys_module *module, struct ly_set *dflt_check, struct unres_schema *unres)
 {
     int i, rc;
+    unsigned int u;
+    const char *value, *target_name;
+    struct lys_node_leaflist *llist;
+    struct lys_node_leaf *leaf;
 
-    if (dev->target->nodetype == LYS_LEAF) {
-        for(i = 0; i < dev->deviation->deviate_size; ++i) {
-            if (dev->deviation->deviate[i].mod != LY_DEVIATE_DEL) {
-                if (dev->deviation->deviate[i].dflt || dev->deviation->deviate[i].type) {
-                    rc = unres_schema_add_str(module, unres, &((struct lys_node_leaf *)dev->target)->type, UNRES_TYPE_DFLT, ((struct lys_node_leaf *)dev->target)->dflt);
-                    if (rc == -1) {
-                        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Leaf \"%s\" default value no longer matches its type.", dev->deviation->target_name);
-                        return EXIT_FAILURE;
-                    }
+    /* now check whether default value, if any, matches the type */
+    for (u = 0; u < dflt_check->number; ++u) {
+        value = NULL;
+        rc = EXIT_SUCCESS;
+        if (dflt_check->set.s[u]->nodetype == LYS_LEAF) {
+            leaf = (struct lys_node_leaf *)dflt_check->set.s[u];
+            target_name = leaf->name;
+            rc = unres_schema_add_str(module, unres, &leaf->type, UNRES_TYPE_DFLT, value = leaf->dflt);
+        } else { /* LYS_LEAFLIST */
+            llist = (struct lys_node_leaflist *)dflt_check->set.s[u];
+            target_name = llist->name;
+            for (i = 0; i < llist->dflt_size; i++) {
+                rc = unres_schema_add_str(module, unres, &llist->type, UNRES_TYPE_DFLT, value = llist->dflt[i]);
+                if (rc == -1) {
                     break;
                 }
             }
         }
+        if (rc == -1) {
+            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "default");
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                   "The default value \"%s\" of the deviated node \"%s\"no longer matches its type.",
+                   target_name);
+            return EXIT_FAILURE;
+        }
     }
+
     return EXIT_SUCCESS;
+
 }
 
 int

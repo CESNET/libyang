@@ -1924,6 +1924,11 @@ lys_leaflist_free(struct ly_ctx *ctx, struct lys_node_leaflist *llist)
     }
     free(llist->must);
 
+    for (i = 0; i < llist->dflt_size; i++) {
+        lydict_remove(ctx, llist->dflt[i]);
+    }
+    free(llist->dflt);
+
     lys_when_free(ctx, llist->when);
 
     lys_type_free(ctx, &llist->type);
@@ -2019,7 +2024,7 @@ lys_deviation_free(struct lys_module *module, struct lys_deviation *dev)
 
     for (i = 0; i < dev->deviate_size; i++) {
         for (j = 0; j < dev->deviate[i].dflt_size; j++) {
-            lydict_remove(ctx, dev->deviate[i].dflt);
+            lydict_remove(ctx, dev->deviate[i].dflt[j]);
         }
         free(dev->deviate[i].dflt);
 
