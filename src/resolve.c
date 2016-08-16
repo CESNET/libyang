@@ -2712,7 +2712,7 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
             }
 
             for (i = 0; i < tpdf_size; i++) {
-                if (!strcmp(tpdf[i].name, name) && tpdf[i].type.base) {
+                if (!strcmp(tpdf[i].name, name) && tpdf[i].type.base > 0) {
                     match = &tpdf[i];
                     goto check_leafref;
                 }
@@ -2730,7 +2730,7 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
 
     /* search in top level typedefs */
     for (i = 0; i < module->tpdf_size; i++) {
-        if (!strcmp(module->tpdf[i].name, name) && module->tpdf[i].type.base) {
+        if (!strcmp(module->tpdf[i].name, name) && module->tpdf[i].type.base > 0) {
             match = &module->tpdf[i];
             goto check_leafref;
         }
@@ -2739,7 +2739,7 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
     /* search in submodules */
     for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
         for (j = 0; j < module->inc[i].submodule->tpdf_size; j++) {
-            if (!strcmp(module->inc[i].submodule->tpdf[j].name, name) && module->inc[i].submodule->tpdf[j].type.base) {
+            if (!strcmp(module->inc[i].submodule->tpdf[j].name, name) && module->inc[i].submodule->tpdf[j].type.base > 0) {
                 match = &module->inc[i].submodule->tpdf[j];
                 goto check_leafref;
             }
@@ -2777,7 +2777,7 @@ check_default(struct lys_type *type, const char *value, struct lys_module *modul
     struct lyd_node_leaf_list node;
     int ret = EXIT_SUCCESS;
 
-    if (type->base == LY_TYPE_DER) {
+    if (type->base <= LY_TYPE_DER) {
         /* the type was not resolved yet, nothing to do for now */
         return EXIT_FAILURE;
     }
@@ -5011,7 +5011,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
     /* has_str - whether the str_snode is a string in a dictionary that needs to be freed */
     int rc = -1, has_str = 0, tpdf_flag = 0, i, k;
     unsigned int j;
-    struct lys_node *node;
+    struct lys_node *node, *par_grp;
     const char *expr;
 
     struct ly_set *refs, *procs;
@@ -5103,10 +5103,22 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
                 stype->der = (struct lys_tpdf *)yin;
             }
         }
-        if (!rc) {
+        if (rc == EXIT_SUCCESS) {
             /* it does not make sense to have leaf-list of empty type */
             if (!tpdf_flag && node->nodetype == LYS_LEAFLIST && stype->base == LY_TYPE_EMPTY) {
                 LOGWRN("The leaf-list \"%s\" is of \"empty\" type, which does not make sense.", node->name);
+            }
+        } else if (rc == EXIT_FAILURE && stype->base != LY_TYPE_INGRP) {
+            /* forward reference - in case the type is in grouping, we have to make the grouping unusable
+             * by uses statement until the type is resolved. We do that the same way as uses statements inside
+             * grouping - the grouping's nacm member (not used un grouping) is used to increase the number of
+             * so far unresolved items (uses and types). The grouping cannot be used unless the nacm value is 0.
+             * To remember that the grouping already increased grouping's nacm, the LY_TYPE_INGRP is used as value
+             * of the type's base member. */
+            for (par_grp = node; par_grp && (par_grp->nodetype != LYS_GROUPING); par_grp = lys_parent(par_grp));
+            if (par_grp) {
+                ((struct lys_node_grp *)par_grp)->nacm++;
+                stype->base = LY_TYPE_INGRP;
             }
         }
         break;

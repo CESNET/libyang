@@ -263,10 +263,6 @@ info_print_type_detail(struct lyout *out, const struct lys_type *type, int uni)
     }
 
     switch (type->base) {
-    case LY_TYPE_DER:
-        /* unused, but what the hack */
-        ly_print(out, "%-*s%s\n", INDENT_LEN, "Base type: ", "derived");
-        break;
     case LY_TYPE_BINARY:
         ly_print(out, "%-*s%s\n", INDENT_LEN, "Base type: ", "binary");
         if (!uni) {
@@ -388,6 +384,11 @@ int_range:
                 info_print_type_detail(out, &type->info.uni.types[i], 1);
             }
         }
+        break;
+    default:
+        /* unused outside libyang, we never should be here */
+        LOGINT;
+        ly_print(out, "%-*s%s\n", INDENT_LEN, "Base type: ", "UNKNOWN");
         break;
     }
 

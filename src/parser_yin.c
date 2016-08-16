@@ -324,6 +324,22 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         goto error;
     }
     lydict_remove(module->ctx, value);
+
+    if (type->base == LY_TYPE_INGRP) {
+        /* resolved type in grouping, decrease the grouping's nacm number to indicate that one less
+         * unresolved item left inside the grouping */
+        for (siter = parent; siter && (siter->nodetype != LYS_GROUPING); siter = lys_parent(siter));
+        if (siter) {
+            if (!((struct lys_node_grp *)siter)->nacm) {
+                LOGINT;
+                goto error;
+            }
+            ((struct lys_node_grp *)siter)->nacm--;
+        } else {
+            LOGINT;
+            goto error;
+        }
+    }
     type->base = type->der->type.base;
 
     /* check status */
