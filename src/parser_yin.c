@@ -1657,6 +1657,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             dev->orig_node = dev_target;
 
             dev->deviate_size = 1;
+            ly_set_free(dflt_check);
             return EXIT_SUCCESS;
         } else if (!strcmp(value, "add")) {
             dev->deviate[dev->deviate_size].mod = LY_DEVIATE_ADD;
@@ -2294,7 +2295,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     }
 
     /* now check whether default value, if any, matches the type */
-    for (u = 0; u < dflt_check->size; ++u) {
+    for (u = 0; u < dflt_check->number; ++u) {
         value = NULL;
         rc = EXIT_SUCCESS;
         if (dflt_check->set.s[u]->nodetype == LYS_LEAF) {
