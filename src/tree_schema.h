@@ -1235,8 +1235,6 @@ struct lys_refine_mod_list {
  * @brief Union to hold target modification in ::lys_refine.
  */
 union lys_refine_mod {
-    const char *dflt;            /**< new default value. Applicable to #LYS_LEAF and #LYS_CHOICE target nodes. In case of
-                                      #LYS_CHOICE, it must be possible to resolve the value to the default branch node */
     const char *presence;        /**< presence description. Applicable to #LYS_CONTAINER target node */
     struct lys_refine_mod_list list;  /**< container for list's attributes,
                                       applicable to #LYS_LIST and #LYS_LEAFLIST target nodes */
@@ -1257,8 +1255,12 @@ struct lys_refine {
 
     uint8_t must_size;               /**< number of elements in the #must array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    uint8_t dflt_size;               /**< number of elements in the #dflt array */
     struct lys_restr *must;          /**< array of additional must restrictions to be added to the target */
     struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    const char **dflt;               /**< array of new default values. Applicable to #LYS_LEAF, #LYS_LEAFLIST and
+                                          #LYS_CHOICE target nodes, but multiple defaults are valid only in case of
+                                          #LYS_LEAFLIST.*/
 
     union lys_refine_mod mod;        /**< mutually exclusive target modifications according to the possible target_type */
 };

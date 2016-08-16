@@ -2453,7 +2453,7 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
     const char *value;
     char *endptr;
     int f_mand = 0, f_min = 0, f_max = 0;
-    int c_must = 0, c_ftrs = 0;
+    int c_must = 0, c_ftrs = 0, c_dflt = 0;
     int r;
     unsigned long int val;
 
@@ -2479,26 +2479,26 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
 
         /* limited applicability */
         if (!strcmp(sub->name, "default")) {
-            /* leaf or choice */
-            if (rfn->mod.dflt) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
-                goto error;
-            }
+            /* leaf, leaf-list or choice */
 
             /* check possibility of statements combination */
             if (rfn->target_type) {
-                rfn->target_type &= (LYS_LEAF | LYS_CHOICE);
+                if (c_dflt) {
+                    /* multiple defaults are allowed only in leaf-list */
+                    rfn->target_type &= LYS_LEAFLIST;
+                } else {
+                    rfn->target_type &= (LYS_LEAFLIST | LYS_LEAF | LYS_CHOICE);
+                }
                 if (!rfn->target_type) {
                     LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, sub->name, yin->name);
                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                     goto error;
                 }
             } else {
-                rfn->target_type = LYS_LEAF | LYS_CHOICE;
+                rfn->target_type = LYS_LEAF | LYS_LEAFLIST | LYS_CHOICE;
             }
 
-            GETVAL(value, sub, "value");
-            rfn->mod.dflt = lydict_insert(module->ctx, value, strlen(value));
+            c_dflt++;
         } else if (!strcmp(sub->name, "mandatory")) {
             /* leaf, choice or anyxml */
             if (f_mand) {
@@ -2682,6 +2682,13 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
             goto error;
         }
     }
+    if (c_dflt) {
+        rfn->dflt = calloc(c_ftrs, sizeof *rfn->dflt);
+        if (!rfn->dflt) {
+            LOGMEM;
+            goto error;
+        }
+    }
 
     LY_TREE_FOR(yin->child, sub) {
         if (!strcmp(sub->name, "if-feature")) {
@@ -2690,12 +2697,24 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
             if (r) {
                 goto error;
             }
-        } else {
+        } else if (!strcmp(sub->name, "must")) {
             r = fill_yin_must(module, sub, &rfn->must[rfn->must_size]);
             rfn->must_size++;
             if (r) {
                 goto error;
             }
+        } else { /* default */
+            GETVAL(value, sub, "value");
+
+            /* check for duplicity */
+            for (r = 0; r < rfn->dflt_size; r++) {
+                if (ly_strequal(rfn->dflt[r], value, 1)) {
+                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "default");
+                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", value);
+                    goto error;
+                }
+            }
+            rfn->dflt[rfn->dflt_size++] = lydict_insert(module->ctx, value, strlen(value));
         }
     }
 
@@ -3837,7 +3856,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
     }
 
     if (llist->dflt_size && llist->min) {
-        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "min-elements", "leaf");
+        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "min-elements", "leaf-list");
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
                "The \"min-elements\" statement with non-zero value is forbidden on leaf-lists with the \"default\" statement.");
         goto error;

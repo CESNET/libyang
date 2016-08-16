@@ -4014,6 +4014,8 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
     struct ly_ctx *ctx;
     struct lys_node *node = NULL, *next, *iter;
     struct lys_node *node_aux, *parent, *tmp;
+    struct lys_node_leaflist *llist;
+    struct lys_node_leaf *leaf;
     struct lys_refine *rfn;
     struct lys_restr *must, **old_must;
     struct lys_iffeature *iff, **old_iff;
@@ -4161,18 +4163,48 @@ nextsibling:
         }
 
         /* default value ... */
-        if (rfn->mod.dflt) {
+        if (rfn->dflt_size) {
             if (node->nodetype == LYS_LEAF) {
                 /* leaf */
-                lydict_remove(ctx, ((struct lys_node_leaf *)node)->dflt);
-                ((struct lys_node_leaf *)node)->dflt = lydict_insert(ctx, rfn->mod.dflt, 0);
+                leaf = (struct lys_node_leaf *)node;
+
+                lydict_remove(ctx, leaf->dflt);
+                leaf->dflt = lydict_insert(ctx, rfn->dflt[0], 0);
+
+                /* check the default value */
+                if (unres_schema_add_str(leaf->module, unres, &leaf->type, UNRES_TYPE_DFLT, leaf->dflt) == -1) {
+                    return -1;
+                }
             } else if (node->nodetype == LYS_CHOICE) {
                 /* choice */
-                rc = resolve_choice_default_schema_nodeid(rfn->mod.dflt, node->child,
+                rc = resolve_choice_default_schema_nodeid(rfn->dflt[0], node->child,
                                                           (const struct lys_node **)&((struct lys_node_choice *)node)->dflt);
                 if (rc || !((struct lys_node_choice *)node)->dflt) {
-                    LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, rfn->mod.dflt, "default");
+                    LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, rfn->dflt[0], "default");
                     return -1;
+                }
+            } else if (node->nodetype == LYS_LEAFLIST) {
+                /* leaf-list */
+                llist = (struct lys_node_leaflist *)node;
+
+                /* remove complete set of defaults in target */
+                for (i = 0; i < llist->dflt_size; i++) {
+                    lydict_remove(ctx, llist->dflt[i]);
+                }
+                free(llist->dflt);
+
+                /* copy the default set from refine */
+                llist->dflt_size = rfn->dflt_size;
+                llist->dflt = malloc(llist->dflt_size * sizeof *llist->dflt);
+                for (i = 0; i < llist->dflt_size; i++) {
+                    llist->dflt[i] = lydict_insert(ctx, rfn->dflt[i], 0);
+                }
+
+                /* check default value */
+                for (i = 0; i < llist->dflt_size; i++) {
+                    if (unres_schema_add_str(llist->module, unres, &llist->type, UNRES_TYPE_DFLT, llist->dflt[i]) == -1) {
+                        return -1;
+                    }
                 }
             }
         }
@@ -4285,6 +4317,17 @@ nextsibling:
 
             *old_iff = iff;
             *old_size = size;
+        }
+
+        /* additional checks */
+        if (node->nodetype == LYS_LEAFLIST) {
+            llist = (struct lys_node_leaflist *)node;
+            if (llist->dflt_size && llist->min) {
+                LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, rfn->dflt_size ? "default" : "min-elements", "refine");
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                       "The \"min-elements\" statement with non-zero value is forbidden on leaf-lists with the \"default\" statement.");
+                return -1;
+            }
         }
     }
 
