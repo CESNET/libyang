@@ -71,6 +71,42 @@ error:
 }
 
 static int
+setup_clean_f(void **state)
+{
+    struct state *st;
+    const char *ncwdfile = TESTS_DIR"/schema/yin/ietf/ietf-netconf-with-defaults.yin";
+    const char *ietfdir = TESTS_DIR"/schema/yin/ietf/";
+
+    (*state) = st = calloc(1, sizeof *st);
+    if (!st) {
+        fprintf(stderr, "Memory allocation error");
+        return -1;
+    }
+
+    /* libyang context */
+    st->ctx = ly_ctx_new(ietfdir);
+    if (!st->ctx) {
+        fprintf(stderr, "Failed to create context.\n");
+        goto error;
+    }
+
+    /* schemas */
+    if (!lys_parse_path(st->ctx, ncwdfile, LYS_IN_YIN)) {
+        fprintf(stderr, "Failed to load data model \"%s\".\n", ncwdfile);
+        goto error;
+    }
+
+    return 0;
+
+error:
+    ly_ctx_destroy(st->ctx, NULL);
+    free(st);
+    (*state) = NULL;
+
+    return -1;
+}
+
+static int
 teardown_f(void **state)
 {
     struct state *st = (*state);
@@ -474,6 +510,141 @@ test_feature(void **state)
     assert_string_equal(st->xml, xml);
 }
 
+static void
+test_leaflist_in10(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yang = "module x {"
+"  namespace \"urn:x\";"
+"  prefix x;"
+"  leaf-list ll {"
+"    type string;"
+"    default \"one\";"
+"  }}";
+
+    const char *yin = "<module name=\"x\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+"  <namespace uri=\"urn:x\"/>"
+"  <prefix value=\"x\"/>"
+"  <leaf-list name=\"ll\">"
+"    <type name=\"string\"/>"
+"    <default value=\"one\"/>"
+"  </leaf-list></module>";
+
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_INSTMT);
+
+    mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_INSTMT);
+}
+
+static void
+test_leaflist_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yin = "<module name=\"x\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+"  <yang-version value=\"1.1\"/>"
+"  <namespace uri=\"urn:x\"/>"
+"  <prefix value=\"x\"/>"
+"  <leaf-list name=\"ll\">"
+"    <type name=\"string\"/>"
+"    <default value=\"one\"/>"
+"    <default value=\"two\"/>"
+"  </leaf-list></module>";
+
+    const char *xml_empty = "<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
+"<enable-nacm>true</enable-nacm>"
+"<read-default>permit</read-default>"
+"<write-default>deny</write-default>"
+"<exec-default>permit</exec-default>"
+"<enable-external-groups>true</enable-external-groups>"
+"</nacm><ll xmlns=\"urn:x\">one</ll><ll xmlns=\"urn:x\">two</ll>";
+
+    const char *xml_one = "<ll xmlns=\"urn:x\">one</ll>"
+"<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
+"<enable-nacm>true</enable-nacm>"
+"<read-default>permit</read-default>"
+"<write-default>deny</write-default>"
+"<exec-default>permit</exec-default>"
+"<enable-external-groups>true</enable-external-groups>"
+"</nacm>";
+
+    mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->dt = NULL;
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, st->ctx), 0);
+    assert_ptr_not_equal(st->dt, NULL);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_ptr_not_equal(st->xml, NULL);
+    assert_string_equal(st->xml, xml_empty);
+
+    free(st->xml);
+    lyd_free_withsiblings(st->dt);
+
+    assert_ptr_not_equal(st->dt = lyd_new_path(NULL, st->ctx, "/x:ll", "one", 0), NULL);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, st->ctx), 0);
+    assert_ptr_not_equal(st->dt, NULL);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_ptr_not_equal(st->xml, NULL);
+    assert_string_equal(st->xml, xml_one);
+}
+
+static void
+test_leaflist_yang(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yang = "module x {"
+"  yang-version 1.1;"
+"  namespace \"urn:x\";"
+"  prefix x;"
+"  leaf-list ll {"
+"    type string;"
+"    default \"one\";"
+"    default \"two\";"
+"  }}";
+    const char *xml_empty = "<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
+"<enable-nacm>true</enable-nacm>"
+"<read-default>permit</read-default>"
+"<write-default>deny</write-default>"
+"<exec-default>permit</exec-default>"
+"<enable-external-groups>true</enable-external-groups>"
+"</nacm><ll xmlns=\"urn:x\">one</ll><ll xmlns=\"urn:x\">two</ll>";
+
+    const char *xml_three = "<ll xmlns=\"urn:x\">three</ll>"
+"<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
+"<enable-nacm>true</enable-nacm>"
+"<read-default>permit</read-default>"
+"<write-default>deny</write-default>"
+"<exec-default>permit</exec-default>"
+"<enable-external-groups>true</enable-external-groups>"
+"</nacm>";
+
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->dt = NULL;
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, st->ctx), 0);
+    assert_ptr_not_equal(st->dt, NULL);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_ptr_not_equal(st->xml, NULL);
+    assert_string_equal(st->xml, xml_empty);
+
+    free(st->xml);
+    lyd_free_withsiblings(st->dt);
+
+    assert_ptr_not_equal(st->dt = lyd_new_path(NULL, st->ctx, "/x:ll", "three", 0), NULL);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, st->ctx), 0);
+    assert_ptr_not_equal(st->dt, NULL);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_ptr_not_equal(st->xml, NULL);
+    assert_string_equal(st->xml, xml_three);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -487,7 +658,10 @@ int main(void)
                     cmocka_unit_test_setup_teardown(test_rpc_input_default, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_rpc_output_default, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_notif_default, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_feature, setup_f, teardown_f), };
+                    cmocka_unit_test_setup_teardown(test_feature, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_leaflist_in10, setup_clean_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_leaflist_yang, setup_clean_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_leaflist_yin, setup_clean_f, teardown_f), };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
