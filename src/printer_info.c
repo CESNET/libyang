@@ -1054,9 +1054,9 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
                 *strchr(target_node + 9, '/') = '\0';
                 grouping_target = (char *)(target_node + strlen(target_node) + 1);
             }
-            rc = resolve_absolute_schema_nodeid(target_node + 9, module, LYS_GROUPING, (const struct lys_node **)&target);
+            rc = resolve_absolute_schema_nodeid(target_node + 8, module, LYS_GROUPING, (const struct lys_node **)&target);
             if (rc || !target) {
-                ly_print(out, "Grouping %s not found.\n", target_node+9);
+                ly_print(out, "Grouping %s not found.\n", target_node + 8);
                 return EXIT_FAILURE;
             }
         } else if (!strncmp(target_node, "typedef/", 8)) {
