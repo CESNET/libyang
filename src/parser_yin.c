@@ -1885,7 +1885,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 d->type = t;
 
                 /* check leaf default later (type may not fit now, but default can be deviated later too) */
-                if (dev_target->nodetype == LYS_LEAF) {
+                if (dev_target->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
                     ly_set_add(dflt_check, dev_target, 0);
                 }
             } else if (!strcmp(child->name, "unique")) {
