@@ -531,12 +531,11 @@ yang_print_refine(struct lyout *out, int level, const struct lys_module *module,
     for (i = 0; i < refine->iffeature_size; i++) {
         yang_print_iffeature(out, level, module, &refine->iffeature[i]);
     }
+    for (i = 0; i < refine->dflt_size; ++i) {
+        ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, refine->dflt[i]);
+    }
 
-    if (refine->target_type & (LYS_LEAF | LYS_CHOICE)) {
-        if (refine->mod.dflt != NULL) {
-            ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, refine->mod.dflt);
-        }
-    } else if (refine->target_type == LYS_CONTAINER) {
+    if (refine->target_type == LYS_CONTAINER) {
         if (refine->mod.presence != NULL) {
             yang_print_text(out, level, "presence", refine->mod.presence, 1);
         }

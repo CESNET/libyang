@@ -2761,6 +2761,36 @@ refine_body_opt_stmts: @EMPTYDIR@ { if (read_all) {
                                     }
                                     $$.refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML;
                                   }
+                                  if (size_arrays->node[size_arrays->next].dflt) {
+                                    $$.refine->dflt = calloc(size_arrays->node[size_arrays->next].dflt, sizeof *$$.refine->dflt);
+                                    if (!$$.refine->dflt) {
+                                      LOGMEM;
+                                      YYABORT;
+                                    }
+                                    if (size_arrays->node[size_arrays->next].dflt > 1) {
+                                      if (trg->version < 2) {
+                                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "default", "refine");
+                                        YYABORT;
+                                      }
+                                      $$.refine->target_type = LYS_LEAFLIST;
+                                    } else {
+                                      if ($$.refine->target_type) {
+                                        if (trg->version < 2) {
+                                          $$.refine->target_type &= (LYS_LEAF | LYS_CHOICE);
+                                        } else {
+                                          /* YANG 1.1 */
+                                          $$.refine->target_type &= (LYS_LEAF | LYS_LEAFLIST | LYS_CHOICE);
+                                        }
+                                      } else {
+                                        if (trg->version < 2) {
+                                          $$.refine->target_type = LYS_LEAF | LYS_CHOICE;
+                                        } else {
+                                          /* YANG 1.1 */
+                                          $$.refine->target_type = LYS_LEAF | LYS_LEAFLIST | LYS_CHOICE;
+                                        }
+                                      }
+                                    }
+                                  }
                                   size_arrays->next++;
                                 } else {
                                   $$.index = size_arrays->size;
@@ -2802,27 +2832,23 @@ refine_body_opt_stmts: @EMPTYDIR@ { if (read_all) {
                                            }
                                          }
   |  refine_body_opt_stmts default_stmt { if (read_all) {
-                                            if ($1.refine->target_type) {
-                                              if ($1.refine->target_type & (LYS_LEAF | LYS_CHOICE)) {
-                                                $1.refine->target_type &= (LYS_LEAF | LYS_CHOICE);
-                                                if ($1.refine->mod.dflt) {
-                                                  LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "default", "refine");
-                                                  free(s);
-                                                  YYABORT;
+                                            int i;
+
+                                            $1.refine->dflt[$1.refine->dflt_size] = lydict_insert_zc(trg->ctx, s);
+                                            /* check for duplicity */
+                                            for (i = 0; i < $1.refine->dflt_size; ++i) {
+                                                if (ly_strequal($1.refine->dflt[i], $1.refine->dflt[$1.refine->dflt_size], 1)) {
+                                                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, $1.refine->dflt[$1.refine->dflt_size], "default");
+                                                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", $1.refine->dflt[$1.refine->dflt_size]);
+                                                    $1.refine->dflt_size++;
+                                                    YYABORT;
                                                 }
-                                                $1.refine->mod.dflt = lydict_insert_zc(trg->ctx, s);
-                                              } else {
-                                                free(s);
-                                                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "default", "refine");
-                                                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
-                                                YYABORT;
-                                              }
-                                            } else {
-                                              $1.refine->target_type = LYS_LEAF | LYS_CHOICE;
-                                              $1.refine->mod.dflt = lydict_insert_zc(trg->ctx, s);
                                             }
+                                            $1.refine->dflt_size++;
                                             s = NULL;
                                             $$ = $1;
+                                          } else {
+                                            size_arrays->node[$1.index].dflt++;
                                           }
                                         }
   |  refine_body_opt_stmts config_stmt { if (read_all) {
