@@ -551,12 +551,11 @@ yin_print_refine(struct lyout *out, int level, const struct lys_module *module, 
     for (i = 0; i < refine->iffeature_size; i++) {
         yin_print_iffeature(out, level, module, &refine->iffeature[i]);
     }
+    for (i = 0; i < refine->dflt_size; ++i) {
+        yin_print_open(out, level, "default", "value", refine->dflt[i], 1);
+    }
 
-    if (refine->target_type & (LYS_LEAF | LYS_CHOICE)) {
-        if (refine->mod.dflt) {
-            yin_print_open(out, level, "default", "value", refine->mod.dflt, 1);
-        }
-    } else if (refine->target_type == LYS_CONTAINER) {
+    if (refine->target_type == LYS_CONTAINER) {
         if (refine->mod.presence) {
             yin_print_open(out, level, "presence", "value", refine->mod.presence, 1);
         }

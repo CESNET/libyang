@@ -2485,9 +2485,18 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
             if (rfn->target_type) {
                 if (c_dflt) {
                     /* multiple defaults are allowed only in leaf-list */
+                    if (module->version < 2) {
+                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                        goto error;
+                    }
                     rfn->target_type &= LYS_LEAFLIST;
                 } else {
-                    rfn->target_type &= (LYS_LEAFLIST | LYS_LEAF | LYS_CHOICE);
+                    if (module->version < 2) {
+                        rfn->target_type &= (LYS_LEAF | LYS_CHOICE);
+                    } else {
+                        /* YANG 1.1 */
+                        rfn->target_type &= (LYS_LEAFLIST | LYS_LEAF | LYS_CHOICE);
+                    }
                 }
                 if (!rfn->target_type) {
                     LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, sub->name, yin->name);
@@ -2495,10 +2504,16 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
                     goto error;
                 }
             } else {
-                rfn->target_type = LYS_LEAF | LYS_LEAFLIST | LYS_CHOICE;
+                if (module->version < 2) {
+                    rfn->target_type = LYS_LEAF | LYS_CHOICE;
+                } else {
+                    /* YANG 1.1 */
+                    rfn->target_type = LYS_LEAFLIST | LYS_LEAF | LYS_CHOICE;
+                }
             }
 
             c_dflt++;
+            continue;
         } else if (!strcmp(sub->name, "mandatory")) {
             /* leaf, choice or anyxml */
             if (f_mand) {
@@ -2683,7 +2698,7 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
         }
     }
     if (c_dflt) {
-        rfn->dflt = calloc(c_ftrs, sizeof *rfn->dflt);
+        rfn->dflt = calloc(c_dflt, sizeof *rfn->dflt);
         if (!rfn->dflt) {
             LOGMEM;
             goto error;
