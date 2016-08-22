@@ -195,6 +195,7 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     switch (leaf->value_type & LY_DATA_TYPE_MASK) {
     case LY_TYPE_BINARY:
     case LY_TYPE_STRING:
+    case LY_TYPE_LEAFREF:
     case LY_TYPE_BITS:
     case LY_TYPE_ENUM:
     case LY_TYPE_BOOL:
@@ -240,14 +241,6 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
             ly_print(out, "/>");
         }
         lydict_remove(node->schema->module->ctx, xml_expr);
-        break;
-
-    case LY_TYPE_LEAFREF:
-        ly_print(out, ">");
-        if (leaf->value.leafref) {
-            lyxml_dump_text(out, ((struct lyd_node_leaf_list *)(leaf->value.leafref))->value_str);
-        }
-        ly_print(out, "</%s>", node->schema->name);
         break;
 
     case LY_TYPE_EMPTY:
