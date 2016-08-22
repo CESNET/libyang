@@ -213,6 +213,7 @@ struct lyxp_set {
  *
  * @param[in] expr XPath expression to evaluate. Must be in JSON format (prefixes are model names).
  * @param[in] cur_node Current (context) data node.
+ * @param[in] cur_node_type Current (context) data node type.
  * @param[out] set Result set. Must be valid and in the same libyang context as \p cur_node.
  * To be safe, always either zero or cast the \p set to empty. After done using, either cast
  * the \p set to empty (if allocated statically) or free it (if allocated dynamically) to
@@ -223,7 +224,8 @@ struct lyxp_set {
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on unresolved when dependency, -1 on error.
  */
-int lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *set, int options);
+int lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_type cur_node_type,
+              struct lyxp_set *set, int options);
 
 /**
  * @brief Get all the partial XPath nodes (atoms) that are required for \p expr to be evaluated.

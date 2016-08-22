@@ -3661,7 +3661,7 @@ lyd_get_node(const struct lyd_node *data, const char *expr)
 
     memset(&xp_set, 0, sizeof xp_set);
 
-    if (lyxp_eval(expr, data, &xp_set, 0) != EXIT_SUCCESS) {
+    if (lyxp_eval(expr, data, LYXP_NODE_ELEM, &xp_set, 0) != EXIT_SUCCESS) {
         return NULL;
     }
 

@@ -4752,7 +4752,7 @@ resolve_must(struct lyd_node *node)
     }
 
     for (i = 0; i < must_size; ++i) {
-        if (lyxp_eval(must[i].expr, node, &set, LYXP_MUST)) {
+        if (lyxp_eval(must[i].expr, node, LYXP_NODE_ELEM, &set, LYXP_MUST)) {
             return -1;
         }
 
@@ -4778,22 +4778,34 @@ resolve_must(struct lyd_node *node)
  *
  * @param[in] node Data node, whose conditional definition is being decided.
  * @param[in] schema Schema node with a when condition.
+ * @param[out] ctx_node Context node.
+ * @param[out] ctx_node_type Context node type.
  *
- * @return Context node.
+ * @return EXIT_SUCCESS on success, -1 on error.
  */
-static struct lyd_node *
-resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema)
+static int
+resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema, struct lyd_node **ctx_node,
+                      enum lyxp_node_type *ctx_node_type)
 {
     struct lyd_node *parent;
     struct lys_node *sparent;
+    enum lyxp_node_type node_type;
     uint16_t i, data_depth, schema_depth;
 
     /* find a not schema-only node */
+    node_type = LYXP_NODE_ELEM;
     while (schema->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE | LYS_AUGMENT | LYS_INPUT | LYS_OUTPUT)) {
-        schema = lys_parent(schema);
-        if (!schema) {
-            return NULL;
+        sparent = lys_parent(schema);
+        if (!sparent) {
+            /* context node is the document root (fake root in our case) */
+            if (schema->flags & LYS_CONFIG_W) {
+                node_type = LYXP_NODE_ROOT_CONFIG;
+            } else {
+                node_type = LYXP_NODE_ROOT_STATE;
+            }
+            break;
         }
+        schema = sparent;
     }
 
     /* get node depths */
@@ -4804,18 +4816,27 @@ resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema)
         }
     }
     if (data_depth < schema_depth) {
-        return NULL;
+        return -1;
     }
 
     /* find the corresponding data node */
     for (i = 0; i < data_depth - schema_depth; ++i) {
         node = node->parent;
     }
-    if (node->schema != schema) {
-        return NULL;
+    if ((data_depth > 1) && (schema_depth > 1)) {
+        if (node->schema != schema) {
+            return -1;
+        }
+    } else {
+        /* special fake root, move it to the beginning of the list */
+        while (node->prev->next) {
+            node = node->prev;
+        }
     }
 
-    return node;
+    *ctx_node = node;
+    *ctx_node_type = node_type;
+    return EXIT_SUCCESS;
 }
 
 int
@@ -4885,13 +4906,14 @@ resolve_when(struct lyd_node *node)
     struct lyd_node *ctx_node = NULL;
     struct lys_node *parent;
     struct lyxp_set set;
+    enum lyxp_node_type ctx_node_type;
     int rc = 0;
 
     assert(node);
     memset(&set, 0, sizeof set);
 
     if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC)) && (((struct lys_node_container *)node->schema)->when)) {
-        rc = lyxp_eval(((struct lys_node_container *)node->schema)->when->cond, node, &set, LYXP_WHEN);
+        rc = lyxp_eval(((struct lys_node_container *)node->schema)->when->cond, node, LYXP_NODE_ELEM, &set, LYXP_WHEN);
         if (rc) {
             if (rc == 1) {
                 LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
@@ -4920,14 +4942,13 @@ resolve_when(struct lyd_node *node)
     while (parent && (parent->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE))) {
         if (((struct lys_node_uses *)parent)->when) {
             if (!ctx_node) {
-                ctx_node = resolve_when_ctx_node(node, parent);
-                if (!ctx_node) {
+                rc = resolve_when_ctx_node(node, parent, &ctx_node, &ctx_node_type);
+                if (rc) {
                     LOGINT;
-                    rc = -1;
                     goto cleanup;
                 }
             }
-            rc = lyxp_eval(((struct lys_node_uses *)parent)->when->cond, ctx_node, &set, LYXP_WHEN);
+            rc = lyxp_eval(((struct lys_node_uses *)parent)->when->cond, ctx_node, ctx_node_type, &set, LYXP_WHEN);
             if (rc) {
                 if (rc == 1) {
                     LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)parent)->when->cond);
@@ -4951,14 +4972,13 @@ resolve_when(struct lyd_node *node)
 check_augment:
         if ((parent->parent && (parent->parent->nodetype == LYS_AUGMENT) && (((struct lys_node_augment *)parent->parent)->when))) {
             if (!ctx_node) {
-                ctx_node = resolve_when_ctx_node(node, parent->parent);
-                if (!ctx_node) {
+                rc = resolve_when_ctx_node(node, parent->parent, &ctx_node, &ctx_node_type);
+                if (rc) {
                     LOGINT;
-                    rc = -1;
                     goto cleanup;
                 }
             }
-            rc = lyxp_eval(((struct lys_node_augment *)parent->parent)->when->cond, ctx_node, &set, LYXP_WHEN);
+            rc = lyxp_eval(((struct lys_node_augment *)parent->parent)->when->cond, ctx_node, ctx_node_type, &set, LYXP_WHEN);
             if (rc) {
                 if (rc == 1) {
                     LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)parent->parent)->when->cond);

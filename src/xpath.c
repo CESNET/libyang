@@ -7061,7 +7061,8 @@ eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, s
 }
 
 int
-lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *set, int options)
+lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_type cur_node_type, struct lyxp_set *set,
+          int options)
 {
     struct lyxp_expr *exp;
     uint16_t exp_idx = 0;
@@ -7093,7 +7094,7 @@ lyxp_eval(const char *expr, const struct lyd_node *cur_node, struct lyxp_set *se
 
     exp_idx = 0;
     lyxp_set_cast(set, LYXP_SET_EMPTY, cur_node, options);
-    set_insert_node(set, (struct lyd_node *)cur_node, 0, LYXP_NODE_ELEM, 0);
+    set_insert_node(set, (struct lyd_node *)cur_node, 0, cur_node_type, 0);
 
     rc = eval_expr(exp, &exp_idx, (struct lyd_node *)cur_node, set, options);
     if (rc == -1) {
