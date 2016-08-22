@@ -3198,7 +3198,7 @@ lyd_free(struct lyd_node *node)
         }
     } else { /* LYS_LEAF | LYS_LEAFLIST */
         /* free value */
-        switch (((struct lyd_node_leaf_list *)node)->value_type) {
+        switch (((struct lyd_node_leaf_list *)node)->value_type & LY_DATA_TYPE_MASK) {
         case LY_TYPE_BITS:
             if (((struct lyd_node_leaf_list *)node)->value.bit) {
                 free(((struct lyd_node_leaf_list *)node)->value.bit);

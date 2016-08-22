@@ -855,7 +855,8 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
 
     assert(node && (node->value_type == stype->base));
 
-    switch (node->value_type) {
+switchtype:
+    switch (node->value_type & LY_DATA_TYPE_MASK) {
     case LY_TYPE_BINARY:
         if (validate_length_range(0, (node->value_str ? strlen(node->value_str) : 0), 0, 0, stype,
                                   node->value_str, (struct lyd_node *)node)) {
@@ -1076,6 +1077,10 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
                 type = &type->info.lref.target->type;
             }
             node->value_type = type->base | LY_TYPE_LEAFREF_UNRES;
+
+            /* get the value according to the target's type */
+            stype = type;
+            goto switchtype;
         }
         break;
 
