@@ -845,8 +845,8 @@ lyp_check_pattern(const char *pattern, pcre **pcre_precomp)
  *
  * resolve - whether resolve identityrefs and leafrefs (which must be in JSON form)
  */
-static int
-lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve)
+int
+lyp_parse_value_type(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve)
 {
     #define DECSIZE 21
     struct lys_type *type;
@@ -1229,7 +1229,7 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
                 }
             }
 
-            if (!lyp_parse_value_(leaf, type, resolve)) {
+            if (!lyp_parse_value_type(leaf, type, resolve)) {
                 /* success, erase set ly_errno and ly_vecode */
                 ly_errno = LY_SUCCESS;
                 ly_vecode = LYVE_SUCCESS;
@@ -1255,8 +1255,7 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
         }
     } else {
         memset(&leaf->value, 0, sizeof leaf->value);
-        if (lyp_parse_value_(leaf, stype, resolve)) {
-            ly_errno = LY_EVALID;
+        if (lyp_parse_value_type(leaf, stype, resolve)) {
             return EXIT_FAILURE;
         }
     }
