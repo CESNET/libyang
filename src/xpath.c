@@ -3761,7 +3761,9 @@ moveto_get_root(const struct lyd_node *cur_node, int options, enum lyxp_node_typ
     const struct lyd_node *root, *prev;
     int is_output = 0;
 
-    assert(cur_node && root_type);
+    if (!cur_node) {
+        return NULL;
+    }
 
     if (!options) {
         /* special kind of root that can access everything */
@@ -3882,15 +3884,12 @@ moveto_root(struct lyxp_set *set, struct lyd_node *cur_node, int options)
         return;
     }
 
-    if (!cur_node) {
-        LOGINT;
-        return;
-    }
-
     root = moveto_get_root(cur_node, options, &root_type);
 
     lyxp_set_cast(set, LYXP_SET_EMPTY, cur_node, options);
-    set_insert_node(set, root, 0, root_type, 0);
+    if (root) {
+        set_insert_node(set, root, 0, root_type, 0);
+    }
 }
 
 static void
@@ -4030,6 +4029,8 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
     if (!set || (set->type == LYXP_SET_EMPTY)) {
         return EXIT_SUCCESS;
     }
+
+    assert(cur_node);
 
     if (set->type != LYXP_SET_NODE_SET) {
         LOGVAL(LYE_XPATH_INOP_1, LY_VLOG_NONE, NULL, "path operator", print_set_type(set));
@@ -4230,7 +4231,6 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
     int pref_len, all = 0, replace, match, ret;
     struct lyd_node *next, *elem, *start;
     struct lys_module *moveto_mod;
-    struct ly_ctx *ctx;
     enum lyxp_node_type root_type;
 
     if (!set || (set->type == LYXP_SET_EMPTY)) {
@@ -4242,13 +4242,12 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
         return -1;
     }
 
-    ctx = cur_node->schema->module->ctx;
     moveto_get_root(cur_node, options, &root_type);
 
     /* prefix */
-    if (strnchr(qname, ':', qname_len)) {
+    if (strnchr(qname, ':', qname_len) && cur_node) {
         pref_len = strnchr(qname, ':', qname_len) - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, ctx, 1);
+        moveto_mod = moveto_resolve_model(qname, pref_len, cur_node->schema->module->ctx, 1);
         if (!moveto_mod) {
             return -1;
         }
@@ -4509,7 +4508,6 @@ moveto_attr(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
     int replaced, all = 0, pref_len;
     struct lys_module *moveto_mod;
     struct lyd_attr *sub;
-    struct ly_ctx *ctx;
 
     if (!set || (set->type == LYXP_SET_EMPTY)) {
         return EXIT_SUCCESS;
@@ -4520,12 +4518,10 @@ moveto_attr(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
         return -1;
     }
 
-    ctx = cur_node->schema->module->ctx;
-
     /* prefix */
-    if (strnchr(qname, ':', qname_len)) {
+    if (strnchr(qname, ':', qname_len) && cur_node) {
         pref_len = strnchr(qname, ':', qname_len) - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, ctx, 1);
+        moveto_mod = moveto_resolve_model(qname, pref_len, cur_node->schema->module->ctx, 1);
         if (!moveto_mod) {
             return -1;
         }
@@ -6894,7 +6890,7 @@ lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_type
     uint16_t exp_idx = 0;
     int rc = -1;
 
-    if (!expr || !cur_node || !set) {
+    if (!expr || !set) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
@@ -6919,11 +6915,13 @@ lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_type
     print_expr_struct_debug(exp);
 
     exp_idx = 0;
-    lyxp_set_cast(set, LYXP_SET_EMPTY, cur_node, options);
-    set_insert_node(set, (struct lyd_node *)cur_node, 0, cur_node_type, 0);
+    memset(set, 0, sizeof *set);
+    if (cur_node) {
+        set_insert_node(set, (struct lyd_node *)cur_node, 0, cur_node_type, 0);
+    }
 
     rc = eval_expr(exp, &exp_idx, (struct lyd_node *)cur_node, set, options);
-    if (rc == -1) {
+    if ((rc == -1) && cur_node) {
         LOGPATH(LY_VLOG_LYD, cur_node);
     }
 
