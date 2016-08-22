@@ -3165,9 +3165,11 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
         }
     } while (id[0]);
 
-    /* the target must be leaf or leaf-list */
-    if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+    /* the target must be leaf */
+    if (!(node->nodetype & LYS_LEAF)) {
         LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, "leafref", path);
+        LOGVAL(LYE_SPEC, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent,
+               "Leafref target \"%s\" is not a leaf.", path);
         return -1;
     }
 
