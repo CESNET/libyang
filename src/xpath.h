@@ -194,7 +194,7 @@ struct lyxp_set {
             enum lyxp_node_type type;
             uint32_t pos; /* if node_type is LYXP_SET_NODE_ATTR, it is the parent node position */
         } *attrs;
-        const char *str;
+        char *str;
         long double num;
         int bool;
     } val;
@@ -277,8 +277,7 @@ void lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct
  * @brief Free contents of an XPath \p set.
  *
  * @param[in] set Set to free.
- * @param[in] ctx libyang context to use.
  */
-void lyxp_set_free(struct lyxp_set *set, struct ly_ctx *ctx);
+void lyxp_set_free(struct lyxp_set *set);
 
 #endif /* _XPATH_H */
