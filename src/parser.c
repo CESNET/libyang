@@ -410,7 +410,7 @@ parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret,
 {
     char *strptr;
 
-    if (!val_str) {
+    if (!val_str || !val_str[0]) {
         LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
         return EXIT_FAILURE;
     }
@@ -441,7 +441,7 @@ parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret, struct ly
 {
     char *strptr;
 
-    if (!val_str) {
+    if (!val_str || !val_str[0]) {
         LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
         return EXIT_FAILURE;
     }
@@ -952,7 +952,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
         break;
 
     case LY_TYPE_DEC64:
-        if (!node->value_str) {
+        if (!node->value_str || !node->value_str[0]) {
             LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
             return EXIT_FAILURE;
         }
