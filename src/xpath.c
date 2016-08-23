@@ -3825,8 +3825,8 @@ moveto_snode_get_root(const struct lys_node *cur_node, int options, enum lyxp_no
 
     assert(cur_node && root_type);
 
-    if (!options) {
-        /* special kind of root that can access everything */
+    if (options & LYXP_SNODE) {
+        /* general root that can access everything */
         for (root = cur_node; lys_parent(root); root = lys_parent(root));
         root = lys_getnext(NULL, NULL, root->module, 0);
         *root_type = LYXP_NODE_ROOT_ALL;
