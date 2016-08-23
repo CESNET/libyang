@@ -2854,6 +2854,9 @@ xpath_local_name(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cu
         if (set_sort(args[0], cur_node, options) > 1) {
             LOGERR(LY_EINT, "XPath set was expected to be sorted, but is not (%s).", __func__);
         }
+#else
+    /* suppress unused variable warning */
+    (void)cur_node;
 #endif
 
         item = &args[0]->val.nodes[0];
@@ -2939,6 +2942,9 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyd_node 
         if (set_sort(args[0], cur_node, options) > 1) {
             LOGERR(LY_EINT, "XPath set was expected to be sorted, but is not (%s).", __func__);
         }
+#else
+    /* suppress unused variable warning */
+    (void)cur_node;
 #endif
 
         item = &args[0]->val.nodes[0];
