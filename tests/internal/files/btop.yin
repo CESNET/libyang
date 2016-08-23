@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<submodule name="btop"
+           xmlns="urn:ietf:params:xml:ns:yang:yin:1"
+           xmlns:b_pref2="urn:b">
+  <belongs-to module="b">
+    <prefix value="b_pref2"/>
+  </belongs-to>
+  <feature name="bar"/>
+  <container name="top"/>
+</submodule>

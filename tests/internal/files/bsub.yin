@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<submodule name="bsub"
+           xmlns="urn:ietf:params:xml:ns:yang:yin:1"
+           xmlns:b_pref="urn:b">
+  <belongs-to module="b">
+    <prefix value="b_pref"/>
+  </belongs-to>
+  <include module="btop"/>
+  <feature name="fox"/>
+  <notification name="bar-notif">
+    <if-feature name="bar"/>
+  </notification>
+  <notification name="fox-notif">
+    <if-feature name="fox"/>
+  </notification>
+  <augment target-node="/b_pref:top">
+    <if-feature name="bar">
+      <if-feature name="bar"/>
+    </if-feature>
+    <container name="bar-sub">
+      <if-feature name="bar"/>
+    </container>
+  </augment>
+  <augment target-node="/top">
+    <container name="bar-sub2"/>
+  </augment>
+</submodule>
