@@ -139,7 +139,8 @@ extern int yydebug;
     UNBOUNDED_KEYWORD = 349,
     USER_KEYWORD = 350,
     ACTION_KEYWORD = 351,
-    MODIFIER_KEYWORD = 352
+    MODIFIER_KEYWORD = 352,
+    ANYDATA_KEYWORD = 353
   };
 #endif
 

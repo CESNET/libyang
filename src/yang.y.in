@@ -167,6 +167,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 %token USER_KEYWORD
 %token ACTION_KEYWORD
 %token MODIFIER_KEYWORD
+%token ANYDATA_KEYWORD
 
 %type <uint> positive_integer_value
 %type <uint> non_negative_integer_value
@@ -1702,6 +1703,7 @@ data_def_stmt: container_stmt
   |  list_stmt
   |  choice_stmt
   |  anyxml_stmt
+  |  anydata_stmt
   |  uses_stmt
   ;
 
@@ -2426,6 +2428,7 @@ short_case_stmt: container_stmt
   |  leaf_list_stmt
   |  list_stmt
   |  anyxml_stmt
+  |  anydata_stmt
   ;
 
 case_stmt: CASE_KEYWORD sep identifier_arg_str { if (read_all) {
@@ -2501,7 +2504,20 @@ anyxml_stmt: ANYXML_KEYWORD sep identifier_arg_str { if (read_all) {
                                                        }
                                                        s=NULL;
                                                      }
+                                                     actual_type = ANYXML_KEYWORD;
                                                    }
+             anyxml_end;
+
+anydata_stmt: ANYDATA_KEYWORD sep identifier_arg_str { if (read_all) {
+                                                         if (!(actual = yang_read_node(trg, actual, s, LYS_ANYDATA, sizeof(struct lys_node_anydata)))) {YYABORT;}
+                                                         data_node = actual;
+                                                         if (data_node->parent && (data_node->parent->nodetype == LYS_GROUPING)) {
+                                                           data_node = NULL;
+                                                         }
+                                                         s = NULL;
+                                                       }
+                                                       actual_type = ANYDATA_KEYWORD;
+                                                     }
              anyxml_end;
 
 anyxml_end: ';'
@@ -2510,23 +2526,23 @@ anyxml_end: ';'
      '}' ;
 
 anyxml_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                            $$.anydata = actual;
-                            actual_type = ANYXML_KEYWORD;
+                            $$.node.ptr_anydata = actual;
+                            $$.node.flag = actual_type;
                             if (size_arrays->node[size_arrays->next].if_features) {
-                              $$.anydata->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.anydata->iffeature);
-                              if (!$$.anydata->iffeature) {
+                              $$.node.ptr_anydata->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_anydata->iffeature);
+                              if (!$$.node.ptr_anydata->iffeature) {
                                 LOGMEM;
                                 YYABORT;
                               }
                             }
                             if (size_arrays->node[size_arrays->next].must) {
-                              $$.anydata->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.anydata->must);
-                              if (!$$.anydata->iffeature || !$$.anydata->must) {
+                              $$.node.ptr_anydata->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.node.ptr_anydata->must);
+                              if (!$$.node.ptr_anydata->must) {
                                 LOGMEM;
                                 YYABORT;
                               }
                             }
-                            store_flags((struct lys_node *)$$.anydata, size_arrays->node[size_arrays->next].flags, config_inherit);
+                            store_flags((struct lys_node *)$$.node.ptr_anydata, size_arrays->node[size_arrays->next].flags, config_inherit);
                             size_arrays->next++;
                           } else {
                             $$.index = size_arrays->size;
@@ -2536,47 +2552,50 @@ anyxml_opt_stmt: @EMPTYDIR@ { if (read_all) {
                             }
                           }
                         }
-  |  anyxml_opt_stmt when_stmt { actual = $1.anydata; actual_type = ANYXML_KEYWORD; }
+  |  anyxml_opt_stmt when_stmt { actual = $1.node.ptr_anydata; actual_type = $1.node.flag; }
      stmtsep
   |  anyxml_opt_stmt if_feature_stmt { if (read_all) {
-                                         if (yang_read_if_feature(trg, $1.anydata, s, unres, ANYXML_KEYWORD)) {YYABORT;}
+                                         if (yang_read_if_feature(trg, $1.node.ptr_anydata, s, unres, $1.node.flag)) {YYABORT;}
                                          s=NULL;
                                        } else {
                                          size_arrays->node[$1.index].if_features++;
                                        }
                                      }
   |  anyxml_opt_stmt must_stmt { if (read_all) {
-                                   actual = $1.anydata;
-                                   actual_type = ANYXML_KEYWORD;
+                                   actual = $1.node.ptr_anydata;
+                                   actual_type = $1.node.flag;
                                  } else {
                                    size_arrays->node[$1.index].must++;
                                  }
                                }
      stmtsep
   |  anyxml_opt_stmt config_read_stmt { if (!read_all) {
-                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "anyxml", $2, 0)) {
+                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config",
+                                                               (actual_type == ANYXML_KEYWORD) ? "anyxml" : "anydata", $2, 0)) {
                                             YYABORT;
                                           }
                                         }
                                       }
   |  anyxml_opt_stmt mandatory_read_stmt { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_MAND_MASK, "mandatory", "anyxml", $2, 0)) {
+                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_MAND_MASK, "mandatory",
+                                                                  (actual_type == ANYXML_KEYWORD) ? "anyxml" : "anydata", $2, 0)) {
                                                YYABORT;
                                              }
                                            }
                                          }
   |  anyxml_opt_stmt status_read_stmt { if (!read_all) {
-                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "anyxml", $2, 0)) {
+                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status",
+                                                               (actual_type == ANYXML_KEYWORD) ? "anyxml" : "anydata", $2, 0)) {
                                             YYABORT;
                                           }
                                         }
                                       }
-  |  anyxml_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.anydata, s, "anyxml")) {
+  |  anyxml_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.node.ptr_anydata, s, ($1.node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata")) {
                                           YYABORT;
                                         }
                                         s = NULL;
                                       }
-  |  anyxml_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.anydata, s, "anyxml")) {
+  |  anyxml_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.node.ptr_anydata, s, ($1.node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata")) {
                                         YYABORT;
                                       }
                                       s = NULL;
@@ -4187,6 +4206,7 @@ identifier: IDENTIFIER
   |  USER_KEYWORD
   |  ACTION_KEYWORD
   |  MODIFIER_KEYWORD
+  |  ANYDATA_KEYWORD
   ;
 
 identifiers: identifier { if (read_all) {

@@ -115,6 +115,7 @@
 "user" { return USER_KEYWORD; }
 "action" {return ACTION_KEYWORD; }
 "modifier" {return MODIFIER_KEYWORD; }
+"anydata" {return ANYDATA_KEYWORD; }
 "{" |
 "}" |
 ";" | 

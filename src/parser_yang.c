@@ -410,6 +410,7 @@ yang_read_must(struct lys_module *module, struct lys_node *node, char *value, en
     case CONTAINER_KEYWORD:
         retval = &((struct lys_node_container *)node)->must[((struct lys_node_container *)node)->must_size++];
         break;
+    case ANYDATA_KEYWORD:
     case ANYXML_KEYWORD:
         retval = &((struct lys_node_anydata *)node)->must[((struct lys_node_anydata *)node)->must_size++];
         break;
@@ -503,9 +504,10 @@ yang_read_when(struct lys_module *module, struct lys_node *node, enum yytokentyp
         }
         ((struct lys_node_container *)node)->when = retval;
         break;
+    case ANYDATA_KEYWORD:
     case ANYXML_KEYWORD:
         if (((struct lys_node_anydata *)node)->when) {
-            LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, node, "when", "anyxml");
+            LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, node, "when", (type == ANYXML_KEYWORD) ? "anyxml" : "anydata");
             goto error;
         }
         ((struct lys_node_anydata *)node)->when = retval;
