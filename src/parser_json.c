@@ -375,7 +375,7 @@ lyjson_parse_boolean(const char *data)
 }
 
 static unsigned int
-json_get_anyxml(struct lyd_node_anyxml *axml, const char *data)
+json_get_anyxml(struct lyd_node_anydata *axml, const char *data)
 {
     struct ly_ctx *ctx;
     unsigned int len = 0, r;
@@ -966,7 +966,8 @@ attr_repeat:
         result = calloc(1, sizeof(struct lyd_node_leaf_list));
         break;
     case LYS_ANYXML:
-        result = calloc(1, sizeof(struct lyd_node_anyxml));
+    case LYS_ANYDATA:
+        result = calloc(1, sizeof(struct lyd_node_anydata));
         break;
     default:
         LOGINT;
@@ -1010,8 +1011,8 @@ attr_repeat:
 
         len += r;
         len += skip_ws(&data[len]);
-    } else if (schema->nodetype == LYS_ANYXML) {
-        r = json_get_anyxml((struct lyd_node_anyxml *)result, &data[len]);
+    } else if (schema->nodetype & LYS_ANYDATA) {
+        r = json_get_anyxml((struct lyd_node_anydata *)result, &data[len]);
         if (!r) {
             goto error;
         }

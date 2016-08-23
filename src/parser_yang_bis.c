@@ -237,7 +237,7 @@ union YYSTYPE
   union {
     uint32_t index;
     struct lys_node_container *container;
-    struct lys_node_anyxml *anyxml;
+    struct lys_node_anydata *anydata;
     struct type_choice choice;
     struct type_node node;
     struct lys_node_case *cs;
@@ -6076,7 +6076,7 @@ yyreduce:
   case 371:
 
     { if (read_all) {
-                                                       if (!(actual = yang_read_node(trg,actual,s,LYS_ANYXML,sizeof(struct lys_node_anyxml)))) {YYABORT;}
+                                                       if (!(actual = yang_read_node(trg,actual,s,LYS_ANYXML,sizeof(struct lys_node_anydata)))) {YYABORT;}
                                                        data_node = actual;
                                                        if (data_node->parent && (data_node->parent->nodetype == LYS_GROUPING)) {
                                                          data_node = NULL;
@@ -6090,23 +6090,23 @@ yyreduce:
   case 375:
 
     { if (read_all) {
-                            (yyval.nodes).anyxml = actual;
+                            (yyval.nodes).anydata = actual;
                             actual_type = ANYXML_KEYWORD;
                             if (size_arrays->node[size_arrays->next].if_features) {
-                              (yyval.nodes).anyxml->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).anyxml->iffeature);
-                              if (!(yyval.nodes).anyxml->iffeature) {
+                              (yyval.nodes).anydata->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *(yyval.nodes).anydata->iffeature);
+                              if (!(yyval.nodes).anydata->iffeature) {
                                 LOGMEM;
                                 YYABORT;
                               }
                             }
                             if (size_arrays->node[size_arrays->next].must) {
-                              (yyval.nodes).anyxml->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *(yyval.nodes).anyxml->must);
-                              if (!(yyval.nodes).anyxml->iffeature || !(yyval.nodes).anyxml->must) {
+                              (yyval.nodes).anydata->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *(yyval.nodes).anydata->must);
+                              if (!(yyval.nodes).anydata->iffeature || !(yyval.nodes).anydata->must) {
                                 LOGMEM;
                                 YYABORT;
                               }
                             }
-                            store_flags((struct lys_node *)(yyval.nodes).anyxml, size_arrays->node[size_arrays->next].flags, config_inherit);
+                            store_flags((struct lys_node *)(yyval.nodes).anydata, size_arrays->node[size_arrays->next].flags, config_inherit);
                             size_arrays->next++;
                           } else {
                             (yyval.nodes).index = size_arrays->size;
@@ -6121,14 +6121,14 @@ yyreduce:
 
   case 376:
 
-    { actual = (yyvsp[-1].nodes).anyxml; actual_type = ANYXML_KEYWORD; }
+    { actual = (yyvsp[-1].nodes).anydata; actual_type = ANYXML_KEYWORD; }
 
     break;
 
   case 378:
 
     { if (read_all) {
-                                         if (yang_read_if_feature(trg, (yyvsp[-1].nodes).anyxml, s, unres, ANYXML_KEYWORD)) {YYABORT;}
+                                         if (yang_read_if_feature(trg, (yyvsp[-1].nodes).anydata, s, unres, ANYXML_KEYWORD)) {YYABORT;}
                                          s=NULL;
                                        } else {
                                          size_arrays->node[(yyvsp[-1].nodes).index].if_features++;
@@ -6140,7 +6140,7 @@ yyreduce:
   case 379:
 
     { if (read_all) {
-                                   actual = (yyvsp[-1].nodes).anyxml;
+                                   actual = (yyvsp[-1].nodes).anydata;
                                    actual_type = ANYXML_KEYWORD;
                                  } else {
                                    size_arrays->node[(yyvsp[-1].nodes).index].must++;
@@ -6184,7 +6184,7 @@ yyreduce:
 
   case 384:
 
-    { if (read_all && yang_read_description(trg, (yyvsp[-1].nodes).anyxml, s, "anyxml")) {
+    { if (read_all && yang_read_description(trg, (yyvsp[-1].nodes).anydata, s, "anyxml")) {
                                           YYABORT;
                                         }
                                         s = NULL;
@@ -6194,7 +6194,7 @@ yyreduce:
 
   case 385:
 
-    { if (read_all && yang_read_reference(trg, (yyvsp[-1].nodes).anyxml, s, "anyxml")) {
+    { if (read_all && yang_read_reference(trg, (yyvsp[-1].nodes).anydata, s, "anyxml")) {
                                         YYABORT;
                                       }
                                       s = NULL;

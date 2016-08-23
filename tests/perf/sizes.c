@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
     fprintf(stdout, "%8lu struct lys_node_leaf\n", x = sizeof(struct lys_node_leaf)); suma += x;
     fprintf(stdout, "%8lu struct lys_node_leaflist\n", x = sizeof(struct lys_node_leaflist)); suma += x;
     fprintf(stdout, "%8lu struct lys_node_list\n", x = sizeof(struct lys_node_list)); suma += x;
-    fprintf(stdout, "%8lu struct lys_node_anyxml\n", x = sizeof(struct lys_node_anyxml)); suma += x;
+    fprintf(stdout, "%8lu struct lys_node_anyxml\n", x = sizeof(struct lys_node_anydata)); suma += x;
     fprintf(stdout, "%8lu struct lys_node_uses\n", x = sizeof(struct lys_node_uses)); suma += x;
     fprintf(stdout, "%8lu struct lys_node_grp\n", x = sizeof(struct lys_node_grp)); suma += x;
     fprintf(stdout, "%8lu struct lys_node_case\n", x = sizeof(struct lys_node_case)); suma += x;
@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
     fprintf(stdout, "%8lu struct lyd_attr\n", x = sizeof(struct lyd_attr)); suma += x;
     fprintf(stdout, "%8lu struct lyd_node\n", x = sizeof(struct lyd_node)); suma += x;
     fprintf(stdout, "%8lu struct lyd_node_leaf_list\n", x = sizeof(struct lyd_node_leaf_list)); suma += x;
-    fprintf(stdout, "%8lu struct lyd_node_anyxml\n", x = sizeof(struct lyd_node_anyxml)); suma += x;
+    fprintf(stdout, "%8lu struct lyd_node_anyxml\n", x = sizeof(struct lyd_node_anydata)); suma += x;
     fprintf(stdout, "%8lu struct lyd_difflist\n", x = sizeof(struct lyd_difflist)); suma += x;
     fprintf(stdout, "DATA TREE SUM %8lu\n\n", suma);
 

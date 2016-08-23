@@ -899,19 +899,19 @@ info_print_list(struct lyout *out, const struct lys_node *node)
 }
 
 static void
-info_print_anyxml(struct lyout *out, const struct lys_node *node)
+info_print_anydata(struct lyout *out, const struct lys_node *node)
 {
-    struct lys_node_anyxml *axml = (struct lys_node_anyxml *)node;
+    struct lys_node_anydata *any = (struct lys_node_anydata *)node;
 
-    ly_print(out, "%-*s%s\n", INDENT_LEN, "Anyxml: ", axml->name);
-    ly_print(out, "%-*s%s\n", INDENT_LEN, "Module: ", axml->module->name);
-    info_print_text(out, axml->dsc, "Desc: ");
-    info_print_text(out, axml->ref, "Reference: ");
-    info_print_flags(out, axml->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK, 0);
-    info_print_if_feature(out, axml->module, axml->iffeature, axml->iffeature_size);
-    info_print_when(out, axml->when);
-    info_print_must(out, axml->must, axml->must_size);
-    info_print_nacmext(out, axml->nacm);
+    ly_print(out, "%-*s%s\n", INDENT_LEN, "%s: ", any->nodetype == LYS_ANYXML ? "Anyxml" : "Anydata", any->name);
+    ly_print(out, "%-*s%s\n", INDENT_LEN, "Module: ", any->module->name);
+    info_print_text(out, any->dsc, "Desc: ");
+    info_print_text(out, any->ref, "Reference: ");
+    info_print_flags(out, any->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK, 0);
+    info_print_if_feature(out, any->module, any->iffeature, any->iffeature_size);
+    info_print_when(out, any->when);
+    info_print_must(out, any->must, any->must_size);
+    info_print_nacmext(out, any->nacm);
 }
 
 static void
@@ -1151,7 +1151,8 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
             info_print_list(out, target);
             break;
         case LYS_ANYXML:
-            info_print_anyxml(out, target);
+        case LYS_ANYDATA:
+            info_print_anydata(out, target);
             break;
         case LYS_CASE:
             info_print_case(out, target);

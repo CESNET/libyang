@@ -114,7 +114,7 @@ typedef union lyd_value_u {
  * Completely fits to containers and choices and is compatible (can be used interchangeably except the #child member)
  * with all other lyd_node_* structures. All data nodes are provides as ::lyd_node structure by default.
  * According to the schema's ::lys_node#nodetype member, the specific object is supposed to be cast to
- * ::lyd_node_leaf_list or ::lyd_node_anyxml structures. This structure fits only to #LYS_CONTAINER, #LYS_LIST and
+ * ::lyd_node_leaf_list or ::lyd_node_anydata structures. This structure fits only to #LYS_CONTAINER, #LYS_LIST and
  * #LYS_CHOICE values.
  *
  * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
@@ -176,21 +176,21 @@ struct lyd_node_leaf_list {
                                           (LY_TYPE_LEAFREF_UNRES | leafref target value_type) and (value.leafref == NULL) */
 };
 
-union lyd_node_anyxml_value {
+union lyd_node_anydata_value {
     const char *str;
     struct lyxml_elem *xml;
 };
 
 /**
- * @brief Structure for data nodes defined as #LYS_ANYXML.
+ * @brief Structure for data nodes defined as #LYS_ANYDATA or #LYS_ANYXML.
  *
  * Extension for ::lyd_node structure - replaces the ::lyd_node#child member by new #value member. The first five
  * members (#schema, #attr, #next, #prev and #parent) are compatible with the ::lyd_node's members.
  *
  * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
  */
-struct lyd_node_anyxml {
-    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_anyxml
+struct lyd_node_anydata {
+    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_anydata
                                           structure */
     uint8_t validity:4;              /**< [validity flags](@ref validityflags) */
     uint8_t dflt:1;                  /**< flag for default node (applicable only on leafs) to be marked with default attribute */
@@ -209,7 +209,7 @@ struct lyd_node_anyxml {
 
     /* anyxml's specific members */
     uint8_t xml_struct;              /**< 1 for value.xml, 0 for value.str */
-    union lyd_node_anyxml_value value; /**< anyxml value, everything is in the dictionary, there can be more XML siblings */
+    union lyd_node_anydata_value value; /**< anydata/anyxml value */
 };
 
 /**

@@ -360,7 +360,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
             if (ly_check_mandatory(node, NULL, (options & LYD_OPT_TYPEMASK) ? 0 : 1, (options & LYD_OPT_RPCREPLY) ? 1 : 0)) {
                 return EXIT_FAILURE;
             }
-        } else if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML)) {
+        } else if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYDATA)) {
             /* check number of instances (similar to list uniqueness) for non-list nodes */
 
             /* find duplicity */
@@ -407,7 +407,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
                 return EXIT_FAILURE;
             }
             siter = lys_parent(siter);
-        } while (siter && !(siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML)));
+        } while (siter && !(siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA)));
 
         /* status of the identity value */
         if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {

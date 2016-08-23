@@ -160,7 +160,7 @@ union YYSTYPE
   union {
     uint32_t index;
     struct lys_node_container *container;
-    struct lys_node_anyxml *anyxml;
+    struct lys_node_anydata *anydata;
     struct type_choice choice;
     struct type_node node;
     struct lys_node_case *cs;

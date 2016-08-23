@@ -111,12 +111,12 @@ extern "C" {
     (NEXT) = (ELEM)->child;                                                   \
     if (sizeof(typeof(*(START))) == sizeof(struct lyd_node)) {                \
         /* child exception for leafs, leaflists and anyxml without children */\
-        if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) { \
+        if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
         }                                                                     \
     } else if (sizeof(typeof(*(START))) == sizeof(struct lys_node)) {         \
         /* child exception for leafs, leaflists and anyxml without children */\
-        if (((struct lys_node *)(ELEM))->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) { \
+        if (((struct lys_node *)(ELEM))->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
         }                                                                     \
     }                                                                         \
@@ -205,7 +205,8 @@ typedef enum lys_nodetype {
     LYS_GROUPING = 0x0800,       /**< grouping statement node */
     LYS_USES = 0x1000,           /**< uses statement node */
     LYS_AUGMENT = 0x2000,        /**< augment statement node */
-    LYS_ACTION = 0x4000          /**< action statement node */
+    LYS_ACTION = 0x4000,         /**< action statement node */
+    LYS_ANYDATA = 0x8020         /**< anydata statement node, in tests it can be used for both #LYS_ANYXML and #LYS_ANYDATA */
 } LYS_NODE;
 
 /* all nodes sharing the node namespace except RPCs and notifications */
@@ -635,9 +636,9 @@ struct lys_iffeature {
 #define LYS_RFN_MAXSET   0x08        /**< refine has max-elements set */
 #define LYS_RFN_MINSET   0x10        /**< refine has min-elements set */
 #define LYS_MAND_TRUE    0x40        /**< mandatory true; applicable only to
-                                          ::lys_node_choice, ::lys_node_leaf and ::lys_node_anyxml */
+                                          ::lys_node_choice, ::lys_node_leaf and ::lys_node_anydata */
 #define LYS_MAND_FALSE   0x80        /**< mandatory false; applicable only to
-                                          ::lys_node_choice, ::lys_node_leaf and ::lys_node_anyxml */
+                                          ::lys_node_choice, ::lys_node_leaf and ::lys_node_anydata */
 #define LYS_INCL_STATUS  0x80        /**< flag that the subtree includes status node(s), applicable only to
                                           ::lys_node_container and lys_node_list */
 #define LYS_MAND_MASK    0xc0        /**< mask for mandatory values */
@@ -919,17 +920,17 @@ struct lys_node_list {
 };
 
 /**
- * @brief Schema anyxml node structure.
+ * @brief Schema anydata (and anyxml) node structure.
  *
  * Beginning of the structure is completely compatible with ::lys_node structure extending it by the #when, #must_size
  * and #must members.
  *
- * ::lys_node_anyxml is terminating node in the schema tree, so the #child member value is always NULL.
+ * ::lys_node_anydata is terminating node in the schema tree, so the #child member value is always NULL.
  *
- * The anyxml schema node can be instantiated in the data tree, so the ::lys_node_anyxml can be directly referenced from
- * ::lyd_node#schema.
+ * The anydata and anyxml schema nodes can be instantiated in the data tree, so the ::lys_node_anydata can be directly
+ * referenced from ::lyd_node#schema.
  */
-struct lys_node_anyxml {
+struct lys_node_anydata {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
@@ -937,7 +938,7 @@ struct lys_node_anyxml {
     uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 
-    LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_ANYXML */
+    LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_ANYDATA or #LYS_ANYXML */
     struct lys_node *parent;         /**< pointer to the parent node, NULL in case of a top level node */
     struct lys_node *child;          /**< always NULL */
     struct lys_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */

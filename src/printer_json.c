@@ -291,10 +291,10 @@ json_print_leaf_list(struct lyout *out, int level, const struct lyd_node *node, 
 }
 
 static void
-json_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
+json_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
 {
     const char *schema = NULL;
-    struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
+    struct lyd_node_anydata *any = (struct lyd_node_anydata *)node;
     char *xml;
 
     if (toplevel || !node->parent || nscmp(node, node->parent)) {
@@ -305,19 +305,19 @@ json_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int
         ly_print(out, "%*s\"%s\": ", LEVEL, INDENT, node->schema->name);
     }
 
-    if (axml->xml_struct) {
-        if (axml->value.xml) {
-            lyxml_print_mem(&xml, axml->value.xml, LYXML_PRINT_SIBLINGS);
+    if (any->xml_struct) {
+        if (any->value.xml) {
+            lyxml_print_mem(&xml, any->value.xml, LYXML_PRINT_SIBLINGS);
             json_print_string(out, xml);
             free(xml);
         }
     } else {
-        if (axml->value.str) {
-            json_print_string(out, axml->value.str);
+        if (any->value.str) {
+            json_print_string(out, any->value.str);
         }
     }
     /* it checks both xml and str, it's a union */
-    if (!axml->value.str) {
+    if (!any->value.str) {
         ly_print(out, "[null]");
     }
 
@@ -379,11 +379,12 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
             }
             break;
         case LYS_ANYXML:
+        case LYS_ANYDATA:
             if (node->prev->next) {
                 /* print the previous comma */
                 ly_print(out, ",%s", (level ? "\n" : ""));
             }
-            json_print_anyxml(out, level, node, toplevel);
+            json_print_anydata(out, level, node, toplevel);
             break;
         default:
             LOGINT;

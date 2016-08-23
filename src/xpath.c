@@ -241,8 +241,9 @@ print_set_debug(struct lyxp_set *set)
                 }
                 break;
             case LYXP_NODE_TEXT:
-                if (item->node->schema->nodetype == LYS_ANYXML) {
-                    LOGDBG("XPATH:\t%d (pos %u): TEXT <anyxml>", i + 1, item->pos);
+                if (item->node->schema->nodetype & LYS_ANYDATA) {
+                    LOGDBG("XPATH:\t%d (pos %u): TEXT <%s>", i + 1, item->pos,
+                           item->node->schema->nodetype == LYS_ANYXML ? "anyxml" : "anydata");
                 } else {
                     LOGDBG("XPATH:\t%d (pos %u): TEXT %s", i + 1, item->pos,
                            ((struct lyd_node_leaf_list *)item->node)->value_str);
@@ -433,10 +434,11 @@ cast_string_recursive(struct lyd_node *node, int fake_cont, enum lyxp_node_type 
         break;
 
     case LYS_ANYXML:
-        if (((struct lyd_node_anyxml *)node)->xml_struct) {
-            lyxml_print_mem(&buf, ((struct lyd_node_anyxml *)node)->value.xml, 0);
+    case LYS_ANYDATA:
+        if (((struct lyd_node_anydata *)node)->xml_struct) {
+            lyxml_print_mem(&buf, ((struct lyd_node_anydata *)node)->value.xml, 0);
         } else {
-            buf = strdup(((struct lyd_node_anyxml *)node)->value.str);
+            buf = strdup(((struct lyd_node_anydata *)node)->value.str);
             if (!buf) {
                 LOGMEM;
                 return;
@@ -1035,7 +1037,7 @@ dfs_search:
         /* select element for the next run - children first */
         next = elem->child;
         /* child exception for lyd_node_leaf and lyd_node_leaflist, but not the root */
-        if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+        if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
             next = NULL;
         }
         if (!next) {
@@ -4095,7 +4097,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
             }
 
         /* skip nodes without children - leaves, leaflists, and anyxmls (ouput root will eval to true) */
-        } else if (!(set->val.nodes[i].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
+        } else if (!(set->val.nodes[i].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
 
             LY_TREE_FOR(set->val.nodes[i].node->child, sub) {
                 ret = moveto_node_check(sub, root_type, name_dict, moveto_mod, options);
@@ -4189,7 +4191,7 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
             }
 
         /* skip nodes without children - leaves, leaflists, and anyxmls (ouput root will eval to true) */
-        } else if (!(set->val.snodes[i].snode->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
+        } else if (!(set->val.snodes[i].snode->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
             sub = NULL;
             while ((sub = lys_getnext(sub, set->val.snodes[i].snode, NULL, 0))) {
                 if (!moveto_snode_check(sub, root_type, name_dict, moveto_mod)) {
@@ -4328,7 +4330,7 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
             /* TREE DFS NEXT ELEM */
             /* select element for the next run - children first */
             next = elem->child;
-            if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+            if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
                 next = NULL;
             }
             if (!next) {
@@ -4466,7 +4468,7 @@ next_iter:
             /* TREE DFS NEXT ELEM */
             /* select element for the next run - children first */
             next = elem->child;
-            if (elem->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+            if (elem->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
                 next = NULL;
             }
             if (!next) {
@@ -4772,8 +4774,8 @@ moveto_self(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int o
             continue;
         }
 
-        /* skip anyxmls */
-        if (set->val.nodes[i].node->schema->nodetype == LYS_ANYXML) {
+        /* skip anydata/anyxml */
+        if (set->val.nodes[i].node->schema->nodetype & LYS_ANYDATA) {
             continue;
         }
 

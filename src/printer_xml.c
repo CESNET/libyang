@@ -82,7 +82,7 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node)
     }
 
     /* add node children nodes and attribute modules */
-    if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
+    if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
         /* get with-defaults module */
         wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
 
@@ -329,10 +329,10 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
 }
 
 static void
-xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
+xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
 {
     char *buf;
-    struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
+    struct lyd_node_anydata *axml = (struct lyd_node_anydata *)node;
     const char *ns;
 
     if (toplevel || !node->parent || nscmp(node, node->parent)) {
@@ -385,7 +385,8 @@ xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int to
         xml_print_list(out, level, node, 1, toplevel);
         break;
     case LYS_ANYXML:
-        xml_print_anyxml(out, level, node, toplevel);
+    case LYS_ANYDATA:
+        xml_print_anydata(out, level, node, toplevel);
         break;
     default:
         LOGINT;
