@@ -213,7 +213,11 @@ struct lyxp_set {
  *
  * @param[in] expr XPath expression to evaluate. Must be in JSON format (prefixes are model names).
  * @param[in] cur_node Current (context) data node.
- * @param[in] cur_node_type Current (context) data node type.
+ * @param[in] cur_node_type Current (context) data node type. For every standard case use #LYXP_NODE_ELEM. But there are
+ * cases when the context node \p cur_node is actually supposed to be the XML root, there is no such data node. So, in
+ * this case just pass any top-level node into \p cur_node and use an enum value for this kind of root
+ * (#LYXP_NODE_ROOT_STATE if \p cur_node has config false and so on). #LYXP_NODE_TEXT and #LYXP_NODE_ATTR can also be used,
+ * but there are no use-cases in YANG.
  * @param[out] set Result set. Must be valid and in the same libyang context as \p cur_node.
  * To be safe, always either zero or cast the \p set to empty. After done using, either cast
  * the \p set to empty (if allocated statically) or free it (if allocated dynamically) to
