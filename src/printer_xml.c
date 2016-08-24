@@ -82,7 +82,7 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node)
     }
 
     /* add node children nodes and attribute modules */
-    if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
+    if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
         /* get with-defaults module */
         wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
 
@@ -329,10 +329,11 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
 }
 
 static void
-xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
+xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
 {
     char *buf;
-    struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
+    struct lyd_node *iter;
+    struct lyd_node_anydata *any = (struct lyd_node_anydata *)node;
     const char *ns;
 
     if (toplevel || !node->parent || nscmp(node, node->parent)) {
@@ -347,22 +348,33 @@ xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int 
         xml_print_ns(out, node);
     }
     xml_print_attrs(out, node);
-    ly_print(out, ">");
-
-    if (axml->xml_struct) {
-        if (axml->value.xml) {
-            lyxml_print_mem(&buf, axml->value.xml, LYXML_PRINT_FORMAT | LYXML_PRINT_SIBLINGS);
-            ly_print(out, "\n%s", buf);
-            free(buf);
-        }
+    if (!(void*)any->value.tree) {
+        /* no content */
+        ly_print(out, "/>%s", level ? "\n" : "");
     } else {
-        if (axml->value.str) {
-            ly_print(out, "%s", axml->value.str);
+        /* close opening tag ... */
+        ly_print(out, ">");
+        /* ... and print anydata content */
+        switch (any->value_type) {
+        case LYD_ANYDATA_CONSTSTRING:
+        case LYD_ANYDATA_STRING:
+            lyxml_dump_text(out, any->value.str);
+            break;
+        case LYD_ANYDATA_DATATREE:
+            LY_TREE_FOR(any->value.tree, iter) {
+                xml_print_node(out, level ? level + 1 : 0, iter, 0);
+            }
+            break;
+        case LYD_ANYDATA_XML:
+            lyxml_print_mem(&buf, any->value.xml, (level ? LYXML_PRINT_FORMAT : 0) | LYXML_PRINT_SIBLINGS);
+            ly_print(out, "%s%s", level ? "\n" : "", buf);
+            free(buf);
+            break;
         }
-    }
 
-    /* closing tag */
-    ly_print(out, "%*s</%s>%s", LEVEL, INDENT, node->schema->name, level ? "\n" : "");
+        /* closing tag */
+        ly_print(out, "%*s</%s>%s", LEVEL, INDENT, node->schema->name, level ? "\n" : "");
+    }
 }
 
 void
@@ -385,7 +397,8 @@ xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int to
         xml_print_list(out, level, node, 1, toplevel);
         break;
     case LYS_ANYXML:
-        xml_print_anyxml(out, level, node, toplevel);
+    case LYS_ANYDATA:
+        xml_print_anydata(out, level, node, toplevel);
         break;
     default:
         LOGINT;

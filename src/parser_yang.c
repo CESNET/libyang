@@ -410,8 +410,9 @@ yang_read_must(struct lys_module *module, struct lys_node *node, char *value, en
     case CONTAINER_KEYWORD:
         retval = &((struct lys_node_container *)node)->must[((struct lys_node_container *)node)->must_size++];
         break;
+    case ANYDATA_KEYWORD:
     case ANYXML_KEYWORD:
-        retval = &((struct lys_node_anyxml *)node)->must[((struct lys_node_anyxml *)node)->must_size++];
+        retval = &((struct lys_node_anydata *)node)->must[((struct lys_node_anydata *)node)->must_size++];
         break;
     case LEAF_KEYWORD:
         retval = &((struct lys_node_leaf *)node)->must[((struct lys_node_leaf *)node)->must_size++];
@@ -503,12 +504,13 @@ yang_read_when(struct lys_module *module, struct lys_node *node, enum yytokentyp
         }
         ((struct lys_node_container *)node)->when = retval;
         break;
+    case ANYDATA_KEYWORD:
     case ANYXML_KEYWORD:
-        if (((struct lys_node_anyxml *)node)->when) {
-            LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, node, "when", "anyxml");
+        if (((struct lys_node_anydata *)node)->when) {
+            LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, node, "when", (type == ANYXML_KEYWORD) ? "anyxml" : "anydata");
             goto error;
         }
-        ((struct lys_node_anyxml *)node)->when = retval;
+        ((struct lys_node_anydata *)node)->when = retval;
         break;
     case CHOICE_KEYWORD:
         if (((struct lys_node_choice *)node)->when) {
@@ -1786,8 +1788,9 @@ yang_read_deviate_must(struct type_deviation *dev, uint8_t c_must)
         dev->trg_must_size = &((struct lys_node_list *)dev->target)->must_size;
         break;
     case LYS_ANYXML:
-        dev->trg_must = &((struct lys_node_anyxml *)dev->target)->must;
-        dev->trg_must_size = &((struct lys_node_anyxml *)dev->target)->must_size;
+    case LYS_ANYDATA:
+        dev->trg_must = &((struct lys_node_anydata *)dev->target)->must;
+        dev->trg_must_size = &((struct lys_node_anydata *)dev->target)->must_size;
         break;
     default:
         LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "must");
@@ -2007,7 +2010,7 @@ yang_read_deviate_mandatory(struct type_deviation *dev, uint8_t value)
     }
 
     /* check target node type */
-    if (!(dev->target->nodetype & (LYS_LEAF | LYS_CHOICE | LYS_ANYXML))) {
+    if (!(dev->target->nodetype & (LYS_LEAF | LYS_CHOICE | LYS_ANYDATA))) {
         LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "mandatory");
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Target node does not allow \"mandatory\" property.");
         goto error;
@@ -2343,6 +2346,7 @@ nacm_inherit(struct lys_module *module)
                     break;
                 case LYS_CHOICE:
                 case LYS_ANYXML:
+                case LYS_ANYDATA:
                 case LYS_USES:
                     if (elem->parent->nodetype != LYS_GROUPING) {
                         elem->nacm |= elem->parent->nacm;

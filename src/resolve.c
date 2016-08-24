@@ -1536,7 +1536,7 @@ schema_nodeid_siblingcheck(const struct lys_node *sibling, int8_t *shorthand, co
 
     if (!sh) {
         /* move down the tree, if possible */
-        if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+        if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
             return -1;
         }
         *start = sibling->child;
@@ -2008,7 +2008,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 
                 if (data_nodeid || !shorthand) {
                     /* move down the tree, if possible */
-                    if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                    if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
                         LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
                         return NULL;
                     }
@@ -2095,6 +2095,15 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
     return 0;
 }
 
+/**
+ * @brief get the closest parent of the node (or the node itself) identified by the nodeid (path)
+ *
+ * @param[in] nodeid Node data path to find
+ * @param[in] llist_value If the \p nodeid identifies leaf-list, this is expected value of the leaf-list instance.
+ * @param[in] options Bitmask of options flags, see @ref pathoptions.
+ * @param[out] parsed Number of characters processed in \p id
+ * @return The closes parent (or the node itself) from the path
+ */
 struct lyd_node *
 resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, struct lyd_node *start, int options,
                                  int *parsed)
@@ -2198,10 +2207,8 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                             || (llist_value && strcmp(llist_value, llist->value_str))) {
                         continue;
                     }
-                }
-
-                /* list, we need predicates'n'stuff then */
-                if (sibling->schema->nodetype == LYS_LIST) {
+                } else if (sibling->schema->nodetype == LYS_LIST) {
+                    /* list, we need predicates'n'stuff then */
                     r = 0;
                     if (!has_predicate) {
                         LOGVAL(LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, name);
@@ -2228,7 +2235,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                 }
 
                 /* move down the tree, if possible */
-                if (sibling->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                if (sibling->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
                     LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
                     *parsed = -1;
                     return NULL;
@@ -3104,7 +3111,7 @@ resolve_data(const struct lys_module *mod, const char *name, int nam_len, struct
         parents->node[0] = NULL;
     }
     for (i = 0; i < parents->count;) {
-        if (parents->node[i] && (parents->node[i]->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
+        if (parents->node[i] && (parents->node[i]->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
             /* skip */
             ++i;
             continue;
@@ -3618,7 +3625,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
             first_iter = 0;
         } else {
             /* move down the tree, if possible */
-            if (node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+            if (node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
                 LOGVAL(LYE_INCHAR, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, name[0], name);
                 return -1;
             }
@@ -3902,7 +3909,7 @@ inherit_config_flag(struct lys_node *node, int flags)
         if (!(node->nodetype & (LYS_USES | LYS_GROUPING))) {
             node->flags = (node->flags & ~LYS_CONFIG_MASK) | flags;
         }
-        if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
+        if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
             inherit_config_flag(node->child, flags);
         }
     }
@@ -3957,7 +3964,7 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
     /* check augment target type and then augment nodes type */
     if (aug->target->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF)) {
         LY_TREE_FOR(aug->child, sub) {
-            if (!(sub->nodetype & (LYS_ANYXML | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES | LYS_CHOICE))) {
+            if (!(sub->nodetype & (LYS_ANYDATA | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES | LYS_CHOICE))) {
                 LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, aug, strnodetype(sub->nodetype), "augment");
                 LOGVAL(LYE_SPEC, LY_VLOG_LYS, aug, "Cannot augment \"%s\" with a \"%s\".",
                        strnodetype(aug->target->nodetype), strnodetype(sub->nodetype));
@@ -3966,7 +3973,7 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
         }
     } else if (aug->target->nodetype == LYS_CHOICE) {
         LY_TREE_FOR(aug->child, sub) {
-            if (!(sub->nodetype & (LYS_CASE | LYS_ANYXML | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST))) {
+            if (!(sub->nodetype & (LYS_CASE | LYS_ANYDATA | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST))) {
                 LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, aug, strnodetype(sub->nodetype), "augment");
                 LOGVAL(LYE_SPEC, LY_VLOG_LYS, aug, "Cannot augment \"%s\" with a \"%s\".",
                        strnodetype(aug->target->nodetype), strnodetype(sub->nodetype));
@@ -4134,7 +4141,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                 iter->flags |= (rfn->flags & LYS_CONFIG_MASK);
 
                 /* select next iter - modified LY_TREE_DFS_END */
-                if (iter->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                if (iter->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
                     next = NULL;
                 } else {
                     next = iter->child;
@@ -4182,7 +4189,7 @@ nextsibling:
 
         /* mandatory on leaf, anyxml or choice */
         if (rfn->flags & LYS_MAND_MASK) {
-            if (node->nodetype & (LYS_LEAF | LYS_ANYXML | LYS_CHOICE)) {
+            if (node->nodetype & (LYS_LEAF | LYS_ANYDATA | LYS_CHOICE)) {
                 /* remove current value */
                 node->flags &= ~LYS_MAND_MASK;
 
@@ -4234,8 +4241,9 @@ nextsibling:
                 old_must = &((struct lys_node_container *)node)->must;
                 break;
             case LYS_ANYXML:
-                old_size = &((struct lys_node_anyxml *)node)->must_size;
-                old_must = &((struct lys_node_anyxml *)node)->must;
+            case LYS_ANYDATA:
+                old_size = &((struct lys_node_anydata *)node)->must_size;
+                old_must = &((struct lys_node_anydata *)node)->must;
                 break;
             default:
                 LOGINT;
@@ -4568,7 +4576,7 @@ resolve_choice_dflt(struct lys_node_choice *choic, const char *dflt)
             }
         }
 
-        if (ly_strequal(child->name, dflt, 1) && (child->nodetype & (LYS_ANYXML | LYS_CASE
+        if (ly_strequal(child->name, dflt, 1) && (child->nodetype & (LYS_ANYDATA | LYS_CASE
                 | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST))) {
             return child;
         }
@@ -4746,8 +4754,9 @@ resolve_must(struct lyd_node *node)
         must = ((struct lys_node_list *)node->schema)->must;
         break;
     case LYS_ANYXML:
-        must_size = ((struct lys_node_anyxml *)node->schema)->must_size;
-        must = ((struct lys_node_anyxml *)node->schema)->must;
+    case LYS_ANYDATA:
+        must_size = ((struct lys_node_anydata *)node->schema)->must_size;
+        must = ((struct lys_node_anydata *)node->schema)->must;
         break;
     default:
         must_size = 0;
@@ -4814,7 +4823,7 @@ resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema, struct lyd
     /* get node depths */
     for (parent = node, data_depth = 0; parent; parent = parent->parent, ++data_depth);
     for (sparent = lys_parent(schema), schema_depth = 1; sparent; sparent = lys_parent(sparent)) {
-        if (sparent->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_NOTIF | LYS_RPC)) {
+        if (sparent->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_NOTIF | LYS_RPC)) {
             ++schema_depth;
         }
     }
@@ -4855,7 +4864,8 @@ resolve_applies_must(const struct lyd_node *node)
     case LYS_LIST:
         return ((struct lys_node_list *)node->schema)->must_size;
     case LYS_ANYXML:
-        return ((struct lys_node_anyxml *)node->schema)->must_size;
+    case LYS_ANYDATA:
+        return ((struct lys_node_anydata *)node->schema)->must_size;
     default:
         return 0;
     }

@@ -256,6 +256,8 @@ strnodetype(LYS_NODE type)
         return "uses";
     case LYS_ACTION:
         return "action";
+    case LYS_ANYDATA:
+        return "anydata";
     }
 
     return NULL;

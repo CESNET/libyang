@@ -182,7 +182,8 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         havechildren = 0;
         break;
     case LYS_ANYXML:
-        *result = calloc(1, sizeof(struct lyd_node_anyxml));
+    case LYS_ANYDATA:
+        *result = calloc(1, sizeof(struct lyd_node_anydata));
         havechildren = 0;
         break;
     default:
@@ -315,7 +316,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         if (xml_get_value(*result, xml, options)) {
             goto error;
         }
-    } else if (schema->nodetype == LYS_ANYXML) {
+    } else if (schema->nodetype & LYS_ANYDATA) {
         /* store children values */
         if (xml->child) {
             child = xml->child;
@@ -326,11 +327,11 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                 lyxml_correct_elem_ns(ctx, next, 1, 1);
             }
 
-            ((struct lyd_node_anyxml *)*result)->xml_struct = 1;
-            ((struct lyd_node_anyxml *)*result)->value.xml = child;
+            ((struct lyd_node_anydata *)*result)->value_type = LYD_ANYDATA_XML;
+            ((struct lyd_node_anydata *)*result)->value.xml = child;
         } else {
-            ((struct lyd_node_anyxml *)*result)->xml_struct = 0;
-            ((struct lyd_node_anyxml *)*result)->value.str = lydict_insert(ctx, xml->content, 0);
+            ((struct lyd_node_anydata *)*result)->value_type = LYD_ANYDATA_CONSTSTRING;
+            ((struct lyd_node_anydata *)*result)->value.str = lydict_insert(ctx, xml->content, 0);
         }
     } else if (schema->nodetype == LYS_ACTION) {
         options &= ~LYS_ACTION;

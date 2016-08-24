@@ -672,7 +672,7 @@ yang_print_augment(struct lyout *out, int level, const struct lys_module *module
         }
         yang_print_snode(out, level, sub,
                          LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                         LYS_USES | LYS_ANYXML | LYS_CASE | LYS_ACTION);
+                         LYS_USES | LYS_ANYDATA | LYS_CASE | LYS_ACTION);
     }
 
     level--;
@@ -770,7 +770,7 @@ yang_print_container(struct lyout *out, int level, const struct lys_node *node)
         yang_print_open(out, &flag);
         yang_print_snode(out, level, sub,
                          LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                         LYS_USES | LYS_GROUPING | LYS_ANYXML | LYS_ACTION);
+                         LYS_USES | LYS_GROUPING | LYS_ANYDATA | LYS_ACTION);
     }
 
     level--;
@@ -804,7 +804,7 @@ yang_print_case(struct lyout *out, int level, const struct lys_node *node)
         }
         yang_print_snode(out, level, sub,
                          LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                         LYS_USES | LYS_ANYXML);
+                         LYS_USES | LYS_ANYDATA);
     }
 
     level--;
@@ -842,7 +842,7 @@ yang_print_choice(struct lyout *out, int level, const struct lys_node *node)
             continue;
         }
         yang_print_snode(out, level, sub,
-                         LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_CASE);
+                         LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_CASE);
     }
     level--;
     ly_print(out, "%*s}\n", LEVEL, INDENT);
@@ -881,26 +881,26 @@ yang_print_leaf(struct lyout *out, int level, const struct lys_node *node)
 }
 
 static void
-yang_print_anyxml(struct lyout *out, int level, const struct lys_node *node)
+yang_print_anydata(struct lyout *out, int level, const struct lys_node *node)
 {
     int i, flag = 0;
-    struct lys_node_anyxml *anyxml = (struct lys_node_anyxml *)node;
+    struct lys_node_anydata *any = (struct lys_node_anydata *)node;
 
-    ly_print(out, "%*sanyxml %s", LEVEL, INDENT, anyxml->name);
+    ly_print(out, "%*s%s %s", LEVEL, INDENT, any->nodetype == LYS_ANYXML ? "anyxml" : "anydata", any->name);
     level++;
     yang_print_nacmext(out, level, node, node->module, &flag);
     yang_print_snode_common2(out, level, node, &flag);
-    for (i = 0; i < anyxml->iffeature_size; i++) {
+    for (i = 0; i < any->iffeature_size; i++) {
         yang_print_open(out, &flag);
-        yang_print_iffeature(out, level, node->module, &anyxml->iffeature[i]);
+        yang_print_iffeature(out, level, node->module, &any->iffeature[i]);
     }
-    for (i = 0; i < anyxml->must_size; i++) {
+    for (i = 0; i < any->must_size; i++) {
         yang_print_open(out, &flag);
-        yang_print_must(out, level, node->module, &anyxml->must[i]);
+        yang_print_must(out, level, node->module, &any->must[i]);
     }
-    if (anyxml->when) {
+    if (any->when) {
         yang_print_open(out, &flag);
-        yang_print_when(out, level, node->module, anyxml->when);
+        yang_print_when(out, level, node->module, any->when);
     }
     level--;
     yang_print_close(out, level, flag);
@@ -994,7 +994,7 @@ yang_print_list(struct lyout *out, int level, const struct lys_node *node)
         }
         yang_print_snode(out, level, sub,
                          LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                         LYS_USES | LYS_GROUPING | LYS_ANYXML | LYS_ACTION);
+                         LYS_USES | LYS_GROUPING | LYS_ANYDATA | LYS_ACTION);
     }
     level--;
     ly_print(out, "%*s}\n", LEVEL, INDENT);
@@ -1019,7 +1019,7 @@ yang_print_grouping(struct lyout *out, int level, const struct lys_node *node)
     LY_TREE_FOR(node->child, sub) {
         yang_print_snode(out, level, sub,
                          LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                         LYS_USES | LYS_GROUPING | LYS_ANYXML | LYS_ACTION);
+                         LYS_USES | LYS_GROUPING | LYS_ANYDATA | LYS_ACTION);
     }
 
     level--;
@@ -1092,7 +1092,7 @@ yang_print_input_output(struct lyout *out, int level, const struct lys_node *nod
         }
         yang_print_snode(out, level, sub,
                          LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                         LYS_USES | LYS_GROUPING | LYS_ANYXML);
+                         LYS_USES | LYS_GROUPING | LYS_ANYDATA);
     }
 
     level--;
@@ -1169,7 +1169,7 @@ yang_print_notif(struct lyout *out, int level, const struct lys_node *node)
         yang_print_open(out, &flag);
         yang_print_snode(out, level, sub,
                          LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                         LYS_USES | LYS_GROUPING | LYS_ANYXML);
+                         LYS_USES | LYS_GROUPING | LYS_ANYDATA);
     }
 
     level--;
@@ -1202,7 +1202,8 @@ yang_print_snode(struct lyout *out, int level, const struct lys_node *node, int 
         yang_print_grouping(out, level, node);
         break;
     case LYS_ANYXML:
-        yang_print_anyxml(out, level, node);
+    case LYS_ANYDATA:
+        yang_print_anydata(out, level, node);
         break;
     case LYS_CASE:
         yang_print_case(out, level, node);
@@ -1367,7 +1368,7 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
         default:
             yang_print_snode(out, level, node,
                              LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                             LYS_USES | LYS_GROUPING | LYS_ANYXML);
+                             LYS_USES | LYS_GROUPING | LYS_ANYDATA);
             break;
         }
     }

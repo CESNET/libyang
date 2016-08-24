@@ -43,6 +43,25 @@ typedef enum {
 } LYD_FORMAT;
 
 /**
+ * @brief List of possible value types stored in ::lyd_node_anydata.
+ */
+typedef enum {
+    LYD_ANYDATA_CONSTSTRING, /**< value is constant string (const char *) which is internally duplicated for storing
+                                  in the anydata structure; XML sensitive characters (such as & or \>) are automatically
+                                  escaped when the anydata is printed in XML format */
+    LYD_ANYDATA_STRING,      /**< value is dynamically allocated string (char*), so the data are used directly without
+                                  duplication and caller is supposed to not manipulate with the data after a successful
+                                  call (including calling free() on the provided data); XML sensitive characters
+                                  (such as & or \>) are automatically escaped when the anydata is printed in XML format */
+    LYD_ANYDATA_DATATREE,    /**< value is struct lyd_node* (first sibling), the structure is directly connected into
+                                  the anydata node without duplication, caller is supposed to not manipulate with the
+                                  data after a successful call (including calling lyd_free() on the provided data) */
+    LYD_ANYDATA_XML          /**< value is struct lyxml_elem*, the structure is directly connected into
+                                  the anydata node without duplication, caller is supposed to not manipulate with the
+                                  data after a successful call (including calling lyxml_free() on the provided data)*/
+} LYD_ANYDATA_VALUETYPE;
+
+/**
  * @brief Attribute structure.
  *
  * The structure provides information about attributes of a data element. Such attributes partially
@@ -114,7 +133,7 @@ typedef union lyd_value_u {
  * Completely fits to containers and choices and is compatible (can be used interchangeably except the #child member)
  * with all other lyd_node_* structures. All data nodes are provides as ::lyd_node structure by default.
  * According to the schema's ::lys_node#nodetype member, the specific object is supposed to be cast to
- * ::lyd_node_leaf_list or ::lyd_node_anyxml structures. This structure fits only to #LYS_CONTAINER, #LYS_LIST and
+ * ::lyd_node_leaf_list or ::lyd_node_anydata structures. This structure fits only to #LYS_CONTAINER, #LYS_LIST and
  * #LYS_CHOICE values.
  *
  * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
@@ -176,21 +195,16 @@ struct lyd_node_leaf_list {
                                           (LY_TYPE_LEAFREF_UNRES | leafref target value_type) and (value.leafref == NULL) */
 };
 
-union lyd_node_anyxml_value {
-    const char *str;
-    struct lyxml_elem *xml;
-};
-
 /**
- * @brief Structure for data nodes defined as #LYS_ANYXML.
+ * @brief Structure for data nodes defined as #LYS_ANYDATA or #LYS_ANYXML.
  *
  * Extension for ::lyd_node structure - replaces the ::lyd_node#child member by new #value member. The first five
  * members (#schema, #attr, #next, #prev and #parent) are compatible with the ::lyd_node's members.
  *
  * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
  */
-struct lyd_node_anyxml {
-    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_anyxml
+struct lyd_node_anydata {
+    struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_anydata
                                           structure */
     uint8_t validity:4;              /**< [validity flags](@ref validityflags) */
     uint8_t dflt:1;                  /**< flag for default node (applicable only on leafs) to be marked with default attribute */
@@ -208,8 +222,13 @@ struct lyd_node_anyxml {
     /* struct lyd_node *child; should be here, but is not */
 
     /* anyxml's specific members */
-    uint8_t xml_struct;              /**< 1 for value.xml, 0 for value.str */
-    union lyd_node_anyxml_value value; /**< anyxml value, everything is in the dictionary, there can be more XML siblings */
+    LYD_ANYDATA_VALUETYPE value_type;/**< type of the stored anydata value */
+    union {
+        const char *str;             /**< string value, in case of printing as XML, characters like '<' or '&' are escaped */
+        struct lyxml_elem *xml;      /**< xml tree */
+        struct lyd_node *tree;       /**< libyang data tree, does not change the root's parent, so it is not possible
+                                          to get from the data tree into the anydata/anyxml */
+    } value;
 };
 
 /**
@@ -563,30 +582,21 @@ struct lyd_node *lyd_new_leaf(struct lyd_node *parent, const struct lys_module *
 int lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str);
 
 /**
- * @brief Create a new anyxml node in a data tree with a string value.
+ * @brief Create a new anydata or anyxml node in a data tree.
+ *
+ * This function is supposed to be a replacement for the lyd_new_anyxml_str() and lyd_new_anyxml_xml().
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
- * @param[in] name Schema node name of the new data node.
- * @param[in] val_str Well-formed XML string value of the node being created. Must be dynamically allocated
- * and is freed with the data.
+ * @param[in] name Schema node name of the new data node. The schema node determines if the anydata or anyxml node
+ *            is created.
+ * @param[in] value Pointer to the value data to be stored in the anydata/anyxml node. The type of the data is
+ *            determined according to the \p value_type parameter.
+ * @param[in] value_type Type of the provided data \p value.
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_new_anyxml_str(struct lyd_node *parent, const struct lys_module *module, const char *name,
-                                    char *val_str);
-
-/**
- * @brief Create a new anyxml node in a data tree with an XML structure value.
- *
- * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
- * @param[in] module Module with the node being created.
- * @param[in] name Schema node name of the new data node.
- * @param[in] val_xml XML structure value of the node being created. There can be more siblings,
- * they are freed with the data.
- * @return New node, NULL on error.
- */
-struct lyd_node *lyd_new_anyxml_xml(struct lyd_node *parent, const struct lys_module *module, const char *name,
-                                    struct lyxml_elem *val_xml);
+struct lyd_node *lyd_new_anydata(struct lyd_node *parent, const struct lys_module *module, const char *name,
+                                 void *value, LYD_ANYDATA_VALUETYPE value_type);
 
 /**
  * @brief Create a new container node in a data tree. Ignore RPC input nodes and instead use RPC output ones.
@@ -614,32 +624,22 @@ struct lyd_node *lyd_new_output_leaf(struct lyd_node *parent, const struct lys_m
                                      const char *val_str);
 
 /**
- * @brief Create a new anyxml node in a data tree with a string value. Ignore RPC input nodes and instead use
+ * @brief Create a new anydata or anyxml node in a data tree. Ignore RPC input nodes and instead use
  * RPC output ones.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
- * @param[in] name Schema node name of the new data node.
- * @param[in] val_str Well-formed XML string value of the node being created. Must be dynamically allocated
- * and is freed with the data.
+ * @param[in] name Schema node name of the new data node. The schema node determines if the anydata or anyxml node
+ *            is created.
+ * @param[in] value Pointer to the value data to be stored in the anydata/anyxml node. The type of the data is
+ *            determined according to the \p value_type parameter. Data are supposed to be dynamically allocated.
+ *            Since it is directly attached into the created data node, caller is supposed to not manipulate with
+ *            the data after a successful call (including calling free() on the provided data).
+ * @param[in] value_type Type of the provided data \p value.
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_new_output_anyxml_str(struct lyd_node *parent, const struct lys_module *module, const char *name,
-                                           char *val_str);
-
-/**
- * @brief Create a new anyxml node in a data tree with an XML structure value. Ignore RPC input nodes and
- * instead use RPC output ones.
- *
- * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
- * @param[in] module Module with the node being created.
- * @param[in] name Schema node name of the new data node.
- * @param[in] val_xml XML structure value of the node being created. There can be more siblings,
- * they are freed with the data.
- * @return New node, NULL on error.
- */
-struct lyd_node *lyd_new_output_anyxml_xml(struct lyd_node *parent, const struct lys_module *module, const char *name,
-                                           struct lyxml_elem *val_xml);
+struct lyd_node *lyd_new_output_anydata(struct lyd_node *parent, const struct lys_module *module, const char *name,
+                                        void *value, LYD_ANYDATA_VALUETYPE value_type);
 
 /**
  * @defgroup pathoptions Data path creation options
@@ -678,15 +678,17 @@ struct lyd_node *lyd_new_output_anyxml_xml(struct lyd_node *parent, const struct
  * module names as prefixes. List nodes must have predicates, one for each list key in the correct order and
  * with its value as well, leaves and leaf-lists can have predicates too that have preference over \p value,
  * see @ref howtoxpath.
- * @param[in] value Value of the new leaf/lealf-list. If creating anyxml, this value is internally duplicated
- * (for other options use lyd_*_new_anyxml_*()). If creating nodes of other types, set to NULL.
+ * @param[in] value Value of the new leaf/lealf-list (const char*). If creating anydata or anyxml, the following
+ *            \p value_type parameter is required to be specified correctly. If creating nodes of other types, the
+ *            parameter is ignored.
+ * @param[in] value_type Type of the provided \p value parameter in case of creating anydata or anyxml node.
  * @param[in] options Bitmask of options flags, see @ref pathoptions.
  * @return First created (or updated with #LYD_PATH_OPT_UPDATE) node,
  * NULL if #LYD_PATH_OPT_UPDATE was used and the full path exists or the leaf original value matches \p value,
  * NULL and ly_errno is set on error.
  */
-struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, const char *value,
-                              int options);
+struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, void *value,
+                              LYD_ANYDATA_VALUETYPE value_type, int options);
 
 /**
  * @brief Create a copy of the specified data tree \p node. Namespaces are copied as needed,

@@ -44,7 +44,7 @@ sibling_is_valid_child(const struct lys_node *node, int including, const struct 
         }
 
         if (!lys_is_disabled(cur, 0)) {
-            if (cur->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_CHOICE |
+            if (cur->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_CHOICE |
                     LYS_INPUT | LYS_OUTPUT | LYS_CASE)) {
                 return 1;
             }
@@ -119,8 +119,7 @@ get_max_name_len(const struct lys_module *module, const struct lys_node *node)
                 max_name_len = uses_max_name_len;
             }
         } else if (sub->nodetype &
-                (LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST
-                | LYS_ANYXML | LYS_CASE)) {
+                (LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_CASE)) {
             mod = lys_node_module(sub);
             name_len = strlen(sub->name) + (module == mod ? 0 : strlen(mod->name) + 1);
             if (name_len > max_name_len) {
@@ -187,7 +186,7 @@ tree_print_inout(struct lyout *out, const struct lys_module *module, int level, 
             continue;
         }
         tree_print_snode(out, module, level, new_indent, max_child_len, sub,
-                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_USES,
+                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_USES,
                          spec_config);
     }
 
@@ -239,7 +238,7 @@ tree_print_container(struct lyout *out, const struct lys_module *module, int lev
             continue;
         }
         tree_print_snode(out, module, level, new_indent, max_child_len, sub,
-                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_USES | LYS_ACTION,
+                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_USES | LYS_ACTION,
                          spec_config);
     }
 
@@ -297,7 +296,7 @@ tree_print_choice(struct lyout *out, const struct lys_module *module, int level,
             continue;
         }
         tree_print_choice_content(out, module, level, new_indent, max_child_len, sub,
-                                  LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML,
+                                  LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA,
                                   spec_config);
     }
 
@@ -332,7 +331,7 @@ tree_print_case(struct lyout *out, const struct lys_module *module, int level, c
 
     if (shorthand) {
         tree_print_snode(out, module, level, new_indent, max_name_len, node,
-                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_USES,
+                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_USES,
                          spec_config);
     } else {
         LY_TREE_FOR(node->child, sub) {
@@ -341,7 +340,7 @@ tree_print_case(struct lyout *out, const struct lys_module *module, int level, c
                 continue;
             }
             tree_print_snode(out, module, level, new_indent, max_name_len, sub,
-                             LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_USES,
+                             LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_USES,
                              spec_config);
         }
     }
@@ -350,20 +349,20 @@ tree_print_case(struct lyout *out, const struct lys_module *module, int level, c
 }
 
 static void
-tree_print_anyxml(struct lyout *out, const struct lys_module *module, char *indent, unsigned int max_name_len,
+tree_print_anydata(struct lyout *out, const struct lys_module *module, char *indent, unsigned int max_name_len,
                   const struct lys_node *node, int spec_config)
 {
     uint8_t prefix_len;
     struct lys_module *nodemod;
-    struct lys_node_anyxml *anyxml = (struct lys_node_anyxml *)node;
+    struct lys_node_anydata *any = (struct lys_node_anydata *)node;
 
     assert(spec_config >= 0 && spec_config <= 2);
 
     ly_print(out, "%s%s--", indent,
-            (anyxml->flags & LYS_STATUS_DEPRC ? "x" : (anyxml->flags & LYS_STATUS_OBSLT ? "o" : "+")));
+            (any->flags & LYS_STATUS_DEPRC ? "x" : (any->flags & LYS_STATUS_OBSLT ? "o" : "+")));
 
     if (spec_config == 0) {
-        ly_print(out, "%s ", (anyxml->flags & LYS_CONFIG_W ? "rw" : "ro"));
+        ly_print(out, "%s ", (any->flags & LYS_CONFIG_W ? "rw" : "ro"));
     } else if (spec_config == 1) {
         ly_print(out, "-w ");
     } else if (spec_config == 2) {
@@ -377,10 +376,11 @@ tree_print_anyxml(struct lyout *out, const struct lys_module *module, char *inde
         prefix_len = strlen(nodemod->name)+1;
     }
 
-    ly_print(out, "%s%s%*sanyxml", anyxml->name, (anyxml->flags & LYS_MAND_TRUE ? " " : "?"),
-            3 + (int)((max_name_len - strlen(anyxml->name)) - prefix_len), "   ");
+    ly_print(out, "%s%s%*s%s", any->name, (any->flags & LYS_MAND_TRUE ? " " : "?"),
+            3 + (int)((max_name_len - strlen(any->name)) - prefix_len), "   ",
+            any->nodetype == LYS_ANYXML ? "anyxml" : "anydata");
 
-    tree_print_features(out, module, anyxml->iffeature, anyxml->iffeature_size);
+    tree_print_features(out, module, any->iffeature, any->iffeature_size);
 
     ly_print(out, "\n");
 }
@@ -528,7 +528,7 @@ tree_print_list(struct lyout *out, const struct lys_module *module, int level, c
             continue;
         }
         tree_print_snode(out, module, level, new_indent, max_child_len, sub,
-                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_ANYXML | LYS_ACTION,
+                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_ANYDATA | LYS_ACTION,
                          spec_config);
     }
 
@@ -543,7 +543,7 @@ tree_print_uses(struct lyout *out, const struct lys_module *module, int level, c
 
     LY_TREE_FOR(node->child, sub) {
         tree_print_snode(out, module, level, indent, max_name_len, sub,
-                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_ANYXML,
+                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_ANYDATA,
                          spec_config);
     }
 }
@@ -617,7 +617,7 @@ tree_print_notif(struct lyout *out, const struct lys_module *module, int level, 
             continue;
         }
         tree_print_snode(out, module, level, new_indent, max_child_len, sub,
-                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_USES, 2);
+                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_USES, 2);
     }
 
     free(new_indent);
@@ -666,7 +666,8 @@ tree_print_snode(struct lyout *out, const struct lys_module *module, int level, 
         tree_print_list(out, module, level, indent, node, spec_config);
         break;
     case LYS_ANYXML:
-        tree_print_anyxml(out, module, indent, max_name_len, node, spec_config);
+    case LYS_ANYDATA:
+        tree_print_anydata(out, module, indent, max_name_len, node, spec_config);
         break;
     case LYS_USES:
         tree_print_uses(out, module, level, indent, max_name_len, node, spec_config);
@@ -730,8 +731,7 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
             break;
         default:
             tree_print_snode(out, module, level, indent, max_child_len, node,
-                             LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST
-                             | LYS_ANYXML | LYS_USES, 0);
+                             LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_USES, 0);
             break;
         }
     }
@@ -751,8 +751,7 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
                 continue;
             }
             tree_print_snode(out, module, level, indent, max_child_len, node,
-                             LYS_CHOICE | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST
-                             | LYS_LIST | LYS_ANYXML | LYS_USES, 0);
+                             LYS_CHOICE | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_USES, 0);
         }
     }
 
