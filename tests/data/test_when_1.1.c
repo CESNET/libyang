@@ -78,7 +78,7 @@ test_unlink_uses(void **state)
     st->mod = lys_parse_path(st->ctx, TESTS_DIR"/data/files/when-unlink.yin", LYS_IN_YIN);
     assert_ptr_not_equal(st->mod, NULL);
 
-    st->dt = lyd_new_path(NULL, st->ctx, "/when-unlink:top/e", "val_e", 0);
+    st->dt = lyd_new_path(NULL, st->ctx, "/when-unlink:top/e", "val_e", 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
@@ -96,7 +96,7 @@ test_unlink_choice(void **state)
     st->mod = lys_parse_path(st->ctx, TESTS_DIR"/data/files/when-unlink.yin", LYS_IN_YIN);
     assert_ptr_not_equal(st->mod, NULL);
 
-    st->dt = lyd_new_path(NULL, st->ctx, "/when-unlink:top/cas2", NULL, 0);
+    st->dt = lyd_new_path(NULL, st->ctx, "/when-unlink:top/cas2", NULL, 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
@@ -115,9 +115,9 @@ test_unlink_case(void **state)
     st->mod = lys_parse_path(st->ctx, TESTS_DIR"/data/files/when-unlink.yin", LYS_IN_YIN);
     assert_ptr_not_equal(st->mod, NULL);
 
-    st->dt = lyd_new_path(NULL, st->ctx, "/when-unlink:top/a", "val_a", 0);
+    st->dt = lyd_new_path(NULL, st->ctx, "/when-unlink:top/a", "val_a", 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
-    node = lyd_new_path(st->dt, st->ctx, "/when-unlink:top/b", "val_b", 0);
+    node = lyd_new_path(st->dt, st->ctx, "/when-unlink:top/b", "val_b", 0, 0);
     assert_ptr_not_equal(node, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
@@ -136,9 +136,9 @@ test_unlink_augment(void **state)
     st->mod = lys_parse_path(st->ctx, TESTS_DIR"/data/files/when-unlink.yin", LYS_IN_YIN);
     assert_ptr_not_equal(st->mod, NULL);
 
-    st->dt = lyd_new_path(NULL, st->ctx, "/when-unlink:top/d", "1", 0);
+    st->dt = lyd_new_path(NULL, st->ctx, "/when-unlink:top/d", "1", 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
-    node = lyd_new_path(st->dt, st->ctx, "/when-unlink:top/d", "2", 0);
+    node = lyd_new_path(st->dt, st->ctx, "/when-unlink:top/d", "2", 0, 0);
     assert_ptr_not_equal(node, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
@@ -156,7 +156,7 @@ test_dummy(void **state)
     st->mod = lys_parse_path(st->ctx, TESTS_DIR"/data/files/when-dummy.yin", LYS_IN_YIN);
     assert_ptr_not_equal(st->mod, NULL);
 
-    st->dt = lyd_new_path(NULL, st->ctx, "/when-dummy:c", "value", 0);
+    st->dt = lyd_new_path(NULL, st->ctx, "/when-dummy:c", "value", 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 1);
@@ -174,15 +174,15 @@ test_dependency_autodel(void **state)
     st->mod = lys_parse_path(st->ctx, TESTS_DIR"/data/files/when-depend.yin", LYS_IN_YIN);
     assert_ptr_not_equal(st->mod, NULL);
 
-    st->dt = lyd_new_path(NULL, st->ctx, "/when-depend:top/a", "val_a", 0);
+    st->dt = lyd_new_path(NULL, st->ctx, "/when-depend:top/a", "val_a", 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
-    node = lyd_new_path(st->dt, st->ctx, "/when-depend:top/b", "val_b", 0);
+    node = lyd_new_path(st->dt, st->ctx, "/when-depend:top/b", "val_b", 0, 0);
     assert_ptr_not_equal(node, NULL);
-    node = lyd_new_path(st->dt, st->ctx, "/when-depend:top/d", "1", 0);
+    node = lyd_new_path(st->dt, st->ctx, "/when-depend:top/d", "1", 0, 0);
     assert_ptr_not_equal(node, NULL);
-    node = lyd_new_path(st->dt, st->ctx, "/when-depend:top/d", "2", 0);
+    node = lyd_new_path(st->dt, st->ctx, "/when-depend:top/d", "2", 0, 0);
     assert_ptr_not_equal(node, NULL);
-    node = lyd_new_path(st->dt, st->ctx, "/when-depend:top/e", "val_e", 0);
+    node = lyd_new_path(st->dt, st->ctx, "/when-depend:top/e", "val_e", 0, 0);
     assert_ptr_not_equal(node, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
@@ -200,15 +200,15 @@ test_dependency_circular(void **state)
     st->mod = lys_parse_path(st->ctx, TESTS_DIR"/data/files/when-circdepend.yin", LYS_IN_YIN);
     assert_ptr_not_equal(st->mod, NULL);
 
-    st->dt = lyd_new_path(NULL, st->ctx, "/when-circdepend:top/a", "val_a", 0);
+    st->dt = lyd_new_path(NULL, st->ctx, "/when-circdepend:top/a", "val_a", 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
-    node = lyd_new_path(st->dt, st->ctx, "/when-circdepend:top/b", "val_b", 0);
+    node = lyd_new_path(st->dt, st->ctx, "/when-circdepend:top/b", "val_b", 0, 0);
     assert_ptr_not_equal(node, NULL);
-    node = lyd_new_path(st->dt, st->ctx, "/when-circdepend:top/d", "1", 0);
+    node = lyd_new_path(st->dt, st->ctx, "/when-circdepend:top/d", "1", 0, 0);
     assert_ptr_not_equal(node, NULL);
-    node = lyd_new_path(st->dt, st->ctx, "/when-circdepend:top/d", "2", 0);
+    node = lyd_new_path(st->dt, st->ctx, "/when-circdepend:top/d", "2", 0, 0);
     assert_ptr_not_equal(node, NULL);
-    node = lyd_new_path(st->dt, st->ctx, "/when-circdepend:top/e", "val_e", 0);
+    node = lyd_new_path(st->dt, st->ctx, "/when-circdepend:top/e", "val_e", 0, 0);
     assert_ptr_not_equal(node, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 1);
@@ -225,7 +225,7 @@ test_unlink_all(void **state)
     st->mod = lys_parse_path(st->ctx, TESTS_DIR"/data/files/when-unlinkall.yin", LYS_IN_YIN);
     assert_ptr_not_equal(st->mod, NULL);
 
-    st->dt = lyd_new_path(NULL, st->ctx, "/when-unlinkall:a", "val_a", 0);
+    st->dt = lyd_new_path(NULL, st->ctx, "/when-unlinkall:a", "val_a", 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
