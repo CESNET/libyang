@@ -94,6 +94,9 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
     }
 
     if (hide) {
+        if (free_flag) {
+            free(msg);
+        }
         return;
     }
 
