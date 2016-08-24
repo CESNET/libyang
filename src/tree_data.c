@@ -506,9 +506,9 @@ lyd_create_anydata(struct lyd_node *parent, const struct lys_node *schema, void 
     return (struct lyd_node*)ret;
 }
 
-API struct lyd_node
-*lyd_new_anydata(struct lyd_node *parent, const struct lys_module *module, const char *name,
-                 void *value, LYD_ANYDATA_VALUETYPE value_type)
+API struct lyd_node *
+lyd_new_anydata(struct lyd_node *parent, const struct lys_module *module, const char *name,
+                void *value, LYD_ANYDATA_VALUETYPE value_type)
 {
     const struct lys_node *siblings, *snode;
 
