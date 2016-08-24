@@ -4846,8 +4846,8 @@ resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema, struct lyd
             return -1;
         }
     } else {
-        /* special fake root, move it to the beginning of the list */
-        while (node->prev->next) {
+        /* special fake root, move it to the beginning of the list, if any */
+        while (node && node->prev->next) {
             node = node->prev;
         }
     }
