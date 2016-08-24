@@ -1031,6 +1031,43 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
     return NULL;
 }
 
+struct lyd_node *
+lyd_new_dummy(struct lyd_node *parent, const struct lys_node *schema)
+{
+    struct lyd_node *ret;
+
+    switch (schema->nodetype) {
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
+        ret = lyd_create_leaf(schema, NULL);
+        if (ret && parent) {
+            if (lyd_insert(parent, ret)) {
+                lyd_free(ret);
+                return NULL;
+            }
+        }
+        break;
+    case LYS_CONTAINER:
+    case LYS_LIST:
+        ret = _lyd_new(parent, schema);
+        break;
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        ret = lyd_create_anydata(parent, schema, "", LYD_ANYDATA_CONSTSTRING);
+        break;
+    default:
+        return NULL;
+    }
+
+    if (!ret) {
+        return NULL;
+    }
+
+    /* we say it is valid and it is dummy */
+    ret->validity = LYD_VAL_INUSE;
+    return ret;
+}
+
 /* both target and source were validated */
 static void
 lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)

@@ -300,6 +300,17 @@ int ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schem
 struct lyd_node *_lyd_new(struct lyd_node *parent, const struct lys_node *schema);
 
 /**
+ * @brief Create a dummy node for XPath evaluation. After done using, it should be removed.
+ *
+ * @param[in] parent Data parent of the new node.
+ * @param[in] schema Schema node of the new node, must be of nodetype that
+ * appears also in data.
+ *
+ * @return New dummy node, NULL on error.
+ */
+struct lyd_node *lyd_new_dummy(struct lyd_node *parent, const struct lys_node *schema);
+
+/**
  * @brief Find the parent node of an attribute.
  *
  * @param[in] root Root element of the data tree with the attribute.
