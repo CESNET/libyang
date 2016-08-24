@@ -212,7 +212,8 @@ struct lyxp_set {
  * be confusing without thorough understanding of XPath evaluation rules defined in RFC 6020.
  *
  * @param[in] expr XPath expression to evaluate. Must be in JSON format (prefixes are model names).
- * @param[in] cur_node Current (context) data node.
+ * @param[in] cur_node Current (context) data node. If the node has #LYD_VAL_INUSE flag, it is considered dummy (intended
+ * for but not restricted to evaluation with the LYXP_WHEN flag).
  * @param[in] cur_node_type Current (context) data node type. For every standard case use #LYXP_NODE_ELEM. But there are
  * cases when the context node \p cur_node is actually supposed to be the XML root, there is no such data node. So, in
  * this case just pass any top-level node into \p cur_node and use an enum value for this kind of root
@@ -274,8 +275,10 @@ int lyxp_syntax_check(const char *expr);
  * @param[in] target Target type to cast \p set into.
  * @param[in] cur_node Current (context) data node. Cannot be NULL.
  * @param[in] options Whether to apply some evaluation restrictions.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
  */
-void lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct lyd_node *cur_node, int options);
+int lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct lyd_node *cur_node, int options);
 
 /**
  * @brief Free contents of an XPath \p set.
