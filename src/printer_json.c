@@ -305,20 +305,24 @@ json_print_anydata(struct lyout *out, int level, const struct lyd_node *node, in
         ly_print(out, "%*s\"%s\": ", LEVEL, INDENT, node->schema->name);
     }
 
-    if (any->xml_struct) {
-        if (any->value.xml) {
+    if (!(void*)any->value.tree) {
+        /* no content */
+        ly_print(out, "[null]");
+    } else {
+        switch (any->value_type) {
+        case LYD_ANYDATA_CONSTSTRING:
+        case LYD_ANYDATA_STRING:
+            json_print_string(out, any->value.str);
+            break;
+        case LYD_ANYDATA_DATATREE:
+            json_print_nodes(out, level, any->value.tree, 1, 0);
+            break;
+        case LYD_ANYDATA_XML:
             lyxml_print_mem(&xml, any->value.xml, LYXML_PRINT_SIBLINGS);
             json_print_string(out, xml);
             free(xml);
+            break;
         }
-    } else {
-        if (any->value.str) {
-            json_print_string(out, any->value.str);
-        }
-    }
-    /* it checks both xml and str, it's a union */
-    if (!any->value.str) {
-        ly_print(out, "[null]");
     }
 
     /* print attributes as sibling leaf */

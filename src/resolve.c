@@ -2095,6 +2095,15 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
     return 0;
 }
 
+/**
+ * @brief get the closest parent of the node (or the node itself) identified by the nodeid (path)
+ *
+ * @param[in] nodeid Node data path to find
+ * @param[in] llist_value If the \p nodeid identifies leaf-list, this is expected value of the leaf-list instance.
+ * @param[in] options Bitmask of options flags, see @ref pathoptions.
+ * @param[out] parsed Number of characters processed in \p id
+ * @return The closes parent (or the node itself) from the path
+ */
 struct lyd_node *
 resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, struct lyd_node *start, int options,
                                  int *parsed)
@@ -2198,10 +2207,8 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                             || (llist_value && strcmp(llist_value, llist->value_str))) {
                         continue;
                     }
-                }
-
-                /* list, we need predicates'n'stuff then */
-                if (sibling->schema->nodetype == LYS_LIST) {
+                } else if (sibling->schema->nodetype == LYS_LIST) {
+                    /* list, we need predicates'n'stuff then */
                     r = 0;
                     if (!has_predicate) {
                         LOGVAL(LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, name);

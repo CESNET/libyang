@@ -327,10 +327,10 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                 lyxml_correct_elem_ns(ctx, next, 1, 1);
             }
 
-            ((struct lyd_node_anydata *)*result)->xml_struct = 1;
+            ((struct lyd_node_anydata *)*result)->value_type = LYD_ANYDATA_XML;
             ((struct lyd_node_anydata *)*result)->value.xml = child;
         } else {
-            ((struct lyd_node_anydata *)*result)->xml_struct = 0;
+            ((struct lyd_node_anydata *)*result)->value_type = LYD_ANYDATA_CONSTSTRING;
             ((struct lyd_node_anydata *)*result)->value.str = lydict_insert(ctx, xml->content, 0);
         }
     } else if (schema->nodetype == LYS_ACTION) {

@@ -537,6 +537,7 @@ repeat_choice:
                 case LYS_LEAF:
                 case LYS_LEAFLIST:
                 case LYS_LIST:
+                case LYS_ANYXML:
                 case LYS_ANYDATA:
                     LY_TREE_FOR(datasearch, diter) {
                         if (diter->schema == siter) {

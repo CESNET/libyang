@@ -378,6 +378,7 @@ cast_string_recursive(struct lyd_node *node, int fake_cont, enum lyxp_node_type 
     char *buf, *line, *ptr;
     const char *value_str;
     struct lyd_node *child;
+    struct lyd_node_anydata *any;
 
     if ((root_type == LYXP_NODE_ROOT_CONFIG) && (node->schema->flags & LYS_CONFIG_R)) {
         return;
@@ -435,15 +436,29 @@ cast_string_recursive(struct lyd_node *node, int fake_cont, enum lyxp_node_type 
 
     case LYS_ANYXML:
     case LYS_ANYDATA:
-        if (((struct lyd_node_anydata *)node)->xml_struct) {
-            lyxml_print_mem(&buf, ((struct lyd_node_anydata *)node)->value.xml, 0);
+        any = (struct lyd_node_anydata *)node;
+        if (!(void*)any->value.tree) {
+            /* no content */
+            buf = strdup("");
         } else {
-            buf = strdup(((struct lyd_node_anydata *)node)->value.str);
-            if (!buf) {
-                LOGMEM;
-                return;
+            switch (any->value_type) {
+            case LYD_ANYDATA_CONSTSTRING:
+            case LYD_ANYDATA_STRING:
+                buf = strdup(any->value.str);
+                if (!buf) {
+                    LOGMEM;
+                    return;
+                }
+                break;
+            case LYD_ANYDATA_DATATREE:
+                lyd_print_mem(&buf, any->value.tree, LYD_XML, LYP_WITHSIBLINGS);
+                break;
+            case LYD_ANYDATA_XML:
+                lyxml_print_mem(&buf, any->value.xml, LYXML_PRINT_SIBLINGS);
+                break;
             }
         }
+
         line = strtok_r(buf, "\n", &ptr);
         do {
             cast_string_realloc(indent * 2 + strlen(line) + 1, str, used, size);
