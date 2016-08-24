@@ -3818,6 +3818,10 @@ lyd_first_sibling(struct lyd_node *node)
 {
     struct lyd_node *start;
 
+    if (!node) {
+        return NULL;
+    }
+
     /* get the first sibling */
     if (node->parent) {
         start = node->parent->child;
