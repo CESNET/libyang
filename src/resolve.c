@@ -4857,6 +4857,136 @@ resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema, struct lyd
     return EXIT_SUCCESS;
 }
 
+/**
+ * @brief Temporarily unlink nodes as per YANG 1.1 RFC section 7.21.5 for when XPath evaluation.
+ * The context nodes is adjusted if needed.
+ *
+ * @param[in] snode Schema node, whose children instances need to be unlinked.
+ * @param[in,out] node Data siblings where to look for the children of \p snode. If it is unlinked,
+ * it is moved to point to another sibling still in the original tree.
+ * @param[in,out] ctx_node When context node, adjusted if needed.
+ * @param[in] ctx_node_type Context node type, just for information to detect invalid situations.
+ * @param[out] unlinked_nodes Unlinked siblings. Can be safely appended to \p node afterwards.
+ * Ordering may change, but there will be no semantic change.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
+static int
+resolve_when_unlink_nodes(struct lys_node *snode, struct lyd_node **node, struct lyd_node **ctx_node,
+                          enum lyxp_node_type ctx_node_type, struct lyd_node **unlinked_nodes)
+{
+    struct lyd_node *next, *elem;
+
+    switch (snode->nodetype) {
+    case LYS_AUGMENT:
+    case LYS_USES:
+    case LYS_CHOICE:
+    case LYS_CASE:
+        LY_TREE_FOR(snode->child, snode) {
+            if (resolve_when_unlink_nodes(snode, node, ctx_node, ctx_node_type, unlinked_nodes)) {
+                return -1;
+            }
+        }
+        break;
+    case LYS_CONTAINER:
+    case LYS_LIST:
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        LY_TREE_FOR_SAFE(lyd_first_sibling(*node), next, elem) {
+            if (elem->schema == snode) {
+
+                if (elem == *ctx_node) {
+                    /* We are going to unlink our context node! This normally cannot happen,
+                     * but we use normal top-level data nodes for faking a document root node,
+                     * so if this is the context node, we just use the next top-level node.
+                     * Additionally, it can even happen that there are no top-level data nodes left,
+                     * all were unlinked, so in this case we pass NULL as the context node/data tree,
+                     * lyxp_eval() can handle this special situation.
+                     */
+                    if (ctx_node_type == LYXP_NODE_ELEM) {
+                        LOGINT;
+                        return -1;
+                    }
+
+                    if (elem->prev == elem) {
+                        /* unlinking last top-level element, use an empty data tree */
+                        *ctx_node = NULL;
+                    } else {
+                        /* in this case just use the previous/last top-level data node */
+                        *ctx_node = elem->prev;
+                    }
+                } else if (elem == *node) {
+                    /* We are going to unlink the currently processed node. This does not matter that
+                     * much, but we would lose access to the original data tree, so just move our
+                     * pointer somewhere still inside it.
+                     */
+                    if ((*node)->prev != *node) {
+                        *node = (*node)->prev;
+                    } else {
+                        /* the processed node with sibings were all unlinked, oh well */
+                        *node = NULL;
+                    }
+                }
+
+                /* temporarily unlink the node */
+                lyd_unlink(elem);
+                if (*unlinked_nodes) {
+                    if (lyd_insert_after(*unlinked_nodes, elem)) {
+                        LOGINT;
+                        return -1;
+                    }
+                } else {
+                    *unlinked_nodes = elem;
+                }
+
+                if (snode->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYDATA)) {
+                    /* there can be only one instance */
+                    break;
+                }
+            }
+        }
+        break;
+    default:
+        LOGINT;
+        return -1;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/**
+ * @brief Relink the unlinked nodes back.
+ *
+ * @param[in] node Data node to link the nodes back to. It can actually be the adjusted context node,
+ * we simply need a sibling from the original data tree.
+ * @param[in] unlinked_nodes Unlinked nodes to relink to \p node.
+ * @param[in] ctx_node_type Context node type to distinguish between \p node being the parent
+ * or the sibling of \p unlinked_nodes.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
+static int
+resolve_when_relink_nodes(struct lyd_node *node, struct lyd_node *unlinked_nodes, enum lyxp_node_type ctx_node_type)
+{
+    struct lyd_node *elem;
+
+    LY_TREE_FOR_SAFE(unlinked_nodes, unlinked_nodes, elem) {
+        if (ctx_node_type == LYXP_NODE_ELEM) {
+            if (lyd_insert(node, elem)) {
+                return -1;
+            }
+        } else {
+            if (lyd_insert_after(node, elem)) {
+                return -1;
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
 int
 resolve_applies_must(const struct lyd_node *node)
 {
@@ -4922,7 +5052,7 @@ check_augment:
 static int
 resolve_when(struct lyd_node *node)
 {
-    struct lyd_node *ctx_node = NULL;
+    struct lyd_node *ctx_node = NULL, *unlinked_nodes, *tmp_node;
     struct lys_node *sparent;
     struct lyxp_set set;
     enum lyxp_node_type ctx_node_type;
@@ -4932,7 +5062,10 @@ resolve_when(struct lyd_node *node)
     memset(&set, 0, sizeof set);
 
     if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC)) && (((struct lys_node_container *)node->schema)->when)) {
+        /* make the node dummy for the evaluation */
+        node->validity |= LYD_VAL_INUSE;
         rc = lyxp_eval(((struct lys_node_container *)node->schema)->when->cond, node, LYXP_NODE_ELEM, &set, LYXP_WHEN);
+        node->validity &= ~LYD_VAL_INUSE;
         if (rc) {
             if (rc == 1) {
                 LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
@@ -4967,7 +5100,24 @@ resolve_when(struct lyd_node *node)
                     goto cleanup;
                 }
             }
-            rc = lyxp_eval(((struct lys_node_uses *)parent)->when->cond, ctx_node, ctx_node_type, &set, LYXP_WHEN);
+
+            unlinked_nodes = NULL;
+            /* we do not want our node pointer to change */
+            tmp_node = node;
+            rc = resolve_when_unlink_nodes(sparent, &tmp_node, &ctx_node, ctx_node_type, &unlinked_nodes);
+            if (rc) {
+                goto cleanup;
+            }
+
+            rc = lyxp_eval(((struct lys_node_uses *)sparent)->when->cond, ctx_node, ctx_node_type, &set, LYXP_WHEN);
+
+            if (unlinked_nodes && ctx_node) {
+                if (resolve_when_relink_nodes(ctx_node, unlinked_nodes, ctx_node_type)) {
+                    rc = -1;
+                    goto cleanup;
+                }
+            }
+
             if (rc) {
                 if (rc == 1) {
                     LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)sparent)->when->cond);
@@ -4997,7 +5147,26 @@ check_augment:
                     goto cleanup;
                 }
             }
-            rc = lyxp_eval(((struct lys_node_augment *)parent->parent)->when->cond, ctx_node, ctx_node_type, &set, LYXP_WHEN);
+
+            unlinked_nodes = NULL;
+            tmp_node = node;
+            rc = resolve_when_unlink_nodes(sparent->parent, &tmp_node, &ctx_node, ctx_node_type, &unlinked_nodes);
+            if (rc) {
+                goto cleanup;
+            }
+
+            rc = lyxp_eval(((struct lys_node_augment *)sparent->parent)->when->cond, ctx_node, ctx_node_type, &set, LYXP_WHEN);
+
+            /* reconnect nodes, if ctx_node is NULL then all the nodes were unlinked, but linked together,
+             * so the tree did not actually change and there is nothing for us to do
+             */
+            if (unlinked_nodes && ctx_node) {
+                if (resolve_when_relink_nodes(ctx_node, unlinked_nodes, ctx_node_type)) {
+                    rc = -1;
+                    goto cleanup;
+                }
+            }
+
             if (rc) {
                 if (rc == 1) {
                     LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)sparent->parent)->when->cond);
