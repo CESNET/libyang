@@ -4807,7 +4807,11 @@ resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema, struct lyd
     /* find a not schema-only node */
     node_type = LYXP_NODE_ELEM;
     while (schema->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE | LYS_AUGMENT | LYS_INPUT | LYS_OUTPUT)) {
-        sparent = lys_parent(schema);
+        if (schema->nodetype == LYS_AUGMENT) {
+            sparent = ((struct lys_node_augment *)schema)->target;
+        } else {
+            sparent = schema->parent;
+        }
         if (!sparent) {
             /* context node is the document root (fake root in our case) */
             if (schema->flags & LYS_CONFIG_W) {
@@ -4822,7 +4826,9 @@ resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema, struct lyd
 
     /* get node depths */
     for (parent = node, data_depth = 0; parent; parent = parent->parent, ++data_depth);
-    for (sparent = lys_parent(schema), schema_depth = 1; sparent; sparent = lys_parent(sparent)) {
+    for (sparent = schema, schema_depth = 0;
+            sparent;
+            sparent = (sparent->nodetype == LYS_AUGMENT ? ((struct lys_node_augment *)sparent)->target : sparent->parent)) {
         if (sparent->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_NOTIF | LYS_RPC)) {
             ++schema_depth;
         }
@@ -4893,7 +4899,7 @@ check_augment:
 
         if ((parent->parent && (parent->parent->nodetype == LYS_AUGMENT) &&
                 (((struct lys_node_augment *)parent->parent)->when))) {
-
+            return 1;
         }
         parent = lys_parent(parent);
     }
