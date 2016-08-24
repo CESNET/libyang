@@ -6526,6 +6526,8 @@ eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_no
             set_snode_clear_ctx(set);
         } else {
             if (moveto_op_math(set, &set2, &exp->expr[exp->expr_pos[this_op]], cur_node, options)) {
+                lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, options);
+                lyxp_set_cast(&set2, LYXP_SET_EMPTY, cur_node, options);
                 return -1;
             }
         }
@@ -6617,6 +6619,8 @@ eval_additive_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
             set_snode_clear_ctx(set);
         } else {
             if (moveto_op_math(set, &set2, &exp->expr[exp->expr_pos[this_op]], cur_node, options)) {
+                lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, options);
+                lyxp_set_cast(&set2, LYXP_SET_EMPTY, cur_node, options);
                 return -1;
             }
         }
@@ -6710,6 +6714,8 @@ eval_relational_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *
             set_snode_clear_ctx(set);
         } else {
             if (moveto_op_comp(set, &set2, &exp->expr[exp->expr_pos[this_op]], cur_node, options)) {
+                lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, options);
+                lyxp_set_cast(&set2, LYXP_SET_EMPTY, cur_node, options);
                 return -1;
             }
         }
@@ -6800,6 +6806,8 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
             set_snode_clear_ctx(set);
         } else {
             if (moveto_op_comp(set, &set2, &exp->expr[exp->expr_pos[this_op]], cur_node, options)) {
+                lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, options);
+                lyxp_set_cast(&set2, LYXP_SET_EMPTY, cur_node, options);
                 return -1;
             }
         }
