@@ -4923,7 +4923,7 @@ static int
 resolve_when(struct lyd_node *node)
 {
     struct lyd_node *ctx_node = NULL;
-    struct lys_node *parent;
+    struct lys_node *sparent;
     struct lyxp_set set;
     enum lyxp_node_type ctx_node_type;
     int rc = 0;
@@ -4943,9 +4943,9 @@ resolve_when(struct lyd_node *node)
         /* set boolean result of the condition */
         lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, LYXP_WHEN);
         if (!set.val.bool) {
-            ly_vlog_hide(1);
-            LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
             ly_vlog_hide(0);
+            LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
+            ly_vlog_hide(1);
             node->when_status |= LYD_WHEN_FALSE;
             goto cleanup;
         }
@@ -4954,14 +4954,14 @@ resolve_when(struct lyd_node *node)
         lyxp_set_cast(&set, LYXP_SET_EMPTY, node, 0);
     }
 
-    parent = node->schema;
+    sparent = node->schema;
     goto check_augment;
 
     /* check when in every schema node that affects node */
-    while (parent && (parent->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE))) {
-        if (((struct lys_node_uses *)parent)->when) {
+    while (sparent && (sparent->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE))) {
+        if (((struct lys_node_uses *)sparent)->when) {
             if (!ctx_node) {
-                rc = resolve_when_ctx_node(node, parent, &ctx_node, &ctx_node_type);
+                rc = resolve_when_ctx_node(node, sparent, &ctx_node, &ctx_node_type);
                 if (rc) {
                     LOGINT;
                     goto cleanup;
@@ -4970,16 +4970,16 @@ resolve_when(struct lyd_node *node)
             rc = lyxp_eval(((struct lys_node_uses *)parent)->when->cond, ctx_node, ctx_node_type, &set, LYXP_WHEN);
             if (rc) {
                 if (rc == 1) {
-                    LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)parent)->when->cond);
+                    LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)sparent)->when->cond);
                 }
                 goto cleanup;
             }
 
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, LYXP_WHEN);
             if (!set.val.bool) {
-                ly_vlog_hide(1);
-                LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)parent)->when->cond);
                 ly_vlog_hide(0);
+                LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)sparent)->when->cond);
+                ly_vlog_hide(1);
                 node->when_status |= LYD_WHEN_FALSE;
                 goto cleanup;
             }
@@ -4989,9 +4989,9 @@ resolve_when(struct lyd_node *node)
         }
 
 check_augment:
-        if ((parent->parent && (parent->parent->nodetype == LYS_AUGMENT) && (((struct lys_node_augment *)parent->parent)->when))) {
+        if ((sparent->parent && (sparent->parent->nodetype == LYS_AUGMENT) && (((struct lys_node_augment *)sparent->parent)->when))) {
             if (!ctx_node) {
-                rc = resolve_when_ctx_node(node, parent->parent, &ctx_node, &ctx_node_type);
+                rc = resolve_when_ctx_node(node, sparent->parent, &ctx_node, &ctx_node_type);
                 if (rc) {
                     LOGINT;
                     goto cleanup;
@@ -5000,7 +5000,7 @@ check_augment:
             rc = lyxp_eval(((struct lys_node_augment *)parent->parent)->when->cond, ctx_node, ctx_node_type, &set, LYXP_WHEN);
             if (rc) {
                 if (rc == 1) {
-                    LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)parent->parent)->when->cond);
+                    LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)sparent->parent)->when->cond);
                 }
                 goto cleanup;
             }
@@ -5008,9 +5008,9 @@ check_augment:
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, LYXP_WHEN);
 
             if (!set.val.bool) {
-                ly_vlog_hide(1);
-                LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)parent->parent)->when->cond);
                 ly_vlog_hide(0);
+                LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)sparent->parent)->when->cond);
+                ly_vlog_hide(1);
                 node->when_status |= LYD_WHEN_FALSE;
                goto cleanup;
             }
@@ -5019,13 +5019,12 @@ check_augment:
             lyxp_set_cast(&set, LYXP_SET_EMPTY, ctx_node, 0);
         }
 
-        parent = lys_parent(parent);
+        sparent = lys_parent(sparent);
     }
 
     node->when_status |= LYD_WHEN_TRUE;
 
 cleanup:
-
     /* free xpath set content */
     lyxp_set_cast(&set, LYXP_SET_EMPTY, ctx_node ? ctx_node : node, 0);
 
