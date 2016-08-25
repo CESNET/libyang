@@ -2075,21 +2075,15 @@ error:
 int
 yang_read_deviate_minmax(struct type_deviation *dev, uint32_t value, int type)
 {
-    uint32_t *ui32val;
+    uint32_t *ui32val, *min, *max;
 
     /* check target node type */
     if (dev->target->nodetype == LYS_LEAFLIST) {
-        if (type) {
-            ui32val = &((struct lys_node_leaflist *)dev->target)->max;
-        } else {
-            ui32val = &((struct lys_node_leaflist *)dev->target)->min;
-        }
+        max = &((struct lys_node_leaflist *)dev->target)->max;
+        min = &((struct lys_node_leaflist *)dev->target)->min;
     } else if (dev->target->nodetype == LYS_LIST) {
-        if (type) {
-            ui32val = &((struct lys_node_list *)dev->target)->max;
-        } else {
-            ui32val = &((struct lys_node_list *)dev->target)->min;
-        }
+        max = &((struct lys_node_list *)dev->target)->max;
+        min = &((struct lys_node_list *)dev->target)->min;
     } else {
         LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, (type) ? "max-elements" : "min-elements");
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Target node does not allow \"%s\" property.", (type) ? "max-elements" : "min-elements");
@@ -2099,9 +2093,11 @@ yang_read_deviate_minmax(struct type_deviation *dev, uint32_t value, int type)
     if (type) {
         dev->deviate->max = value;
         dev->deviate->max_set = 1;
+        ui32val = max;
     } else {
         dev->deviate->min = value;
         dev->deviate->min_set = 1;
+        ui32val = min;
     }
 
     if (dev->deviate->mod == LY_DEVIATE_ADD) {
@@ -2119,6 +2115,18 @@ yang_read_deviate_minmax(struct type_deviation *dev, uint32_t value, int type)
     /* add (already checked) and replace */
     /* set new value specified in deviation */
     *ui32val = value;
+
+    /* check min-elements is smaller than max-elements */
+    if (*max && *min > *max) {
+        if (type) {
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"max-elements\".", value);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"max-elements\" is smaller than \"min-elements\".");
+        } else {
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"min-elements\".", value);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+        }
+        goto error;
+    }
 
     return EXIT_SUCCESS;
 
