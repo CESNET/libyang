@@ -21,20 +21,17 @@
  * @brief Type of an unresolved item (in either SCHEMA or DATA)
  */
 enum UNRES_ITEM {
-    UNRES_RESOLVED,      /* a resolved item */
-    UNRES_DELETE,        /* prepared for auto-delete */
-
     /* SCHEMA */
-    UNRES_IDENT,         /* unresolved derived identities */
-    UNRES_TYPE_IDENTREF, /* check identityref value */
-    UNRES_TYPE_LEAFREF,  /* check leafref value */
+    UNRES_USES,          /* unresolved uses grouping (refines and augments in it are resolved as well) */
+    UNRES_IFFEAT,        /* unresolved if-feature */
     UNRES_TYPE_DER,      /* unresolved derived type defined in leaf/leaflist */
     UNRES_TYPE_DER_TPDF, /* unresolved derived type defined as typedef */
-    UNRES_IFFEAT,        /* unresolved if-feature */
-    UNRES_FEATURE,       /* feature for circular check, it must be postponed when all if-features are resolved */
-    UNRES_USES,          /* unresolved uses grouping (refines and augments in it are resolved as well) */
-    UNRES_TYPE_DFLT,     /* validate default type value */
+    UNRES_TYPE_LEAFREF,  /* check leafref value */
     UNRES_CHOICE_DFLT,   /* check choice default case */
+    UNRES_IDENT,         /* unresolved derived identities */
+    UNRES_TYPE_IDENTREF, /* check identityref value */
+    UNRES_FEATURE,       /* feature for circular check, it must be postponed when all if-features are resolved */
+    UNRES_TYPE_DFLT,     /* validate default type value */
     UNRES_LIST_KEYS,     /* list keys */
     UNRES_LIST_UNIQ,     /* list uniques */
     UNRES_AUGMENT,       /* unresolved augment targets */
@@ -44,7 +41,20 @@ enum UNRES_ITEM {
     UNRES_INSTID,        /* unresolved instance-identifier reference */
     UNRES_WHEN,          /* unresolved when condition */
     UNRES_MUST,          /* unresolved must condition */
-    UNRES_EMPTYCONT      /* empty container that will get auto-deleted */
+    UNRES_EMPTYCONT,     /* empty container that will get auto-deleted */
+
+    /* generic */
+    UNRES_RESOLVED,      /* a resolved item */
+    UNRES_DELETE,        /* prepared for auto-delete */
+};
+
+/**
+ * @brief auxiliary structure to hold all necessary information for UNRES_LIST_UNIQ
+ */
+struct unres_list_uniq {
+    struct lys_node *list;
+    const char *expr;
+    uint8_t *trg_type;
 };
 
 /**
@@ -133,7 +143,7 @@ int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struc
 int resolve_superior_type(const char *name, const char *prefix, const struct lys_module *module,
                           const struct lys_node *parent, struct lys_tpdf **ret);
 
-int resolve_unique(struct lys_node *parent, const char *uniq_str_path);
+int resolve_unique(struct lys_node *parent, const char *uniq_str_path, uint8_t *trg_type);
 
 /* get know if resolve_when() is applicable to the node (there is when condition connected with this node) */
 int resolve_applies_when(const struct lyd_node *node);

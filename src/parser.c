@@ -410,7 +410,7 @@ parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret,
 {
     char *strptr;
 
-    if (!val_str) {
+    if (!val_str || !val_str[0]) {
         LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
         return EXIT_FAILURE;
     }
@@ -441,7 +441,7 @@ parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret, struct ly
 {
     char *strptr;
 
-    if (!val_str) {
+    if (!val_str || !val_str[0]) {
         LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
         return EXIT_FAILURE;
     }
@@ -550,7 +550,7 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, long double fnu
             return EXIT_FAILURE;
         }
 
-        LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, (val_str ? val_str : ""), restr->expr);
+        LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, (val_str ? val_str : ""), restr ? restr->expr : "");
         if (restr && restr->emsg) {
             LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, restr->emsg);
         }
@@ -845,8 +845,8 @@ lyp_check_pattern(const char *pattern, pcre **pcre_precomp)
  *
  * resolve - whether resolve identityrefs and leafrefs (which must be in JSON form)
  */
-static int
-lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve)
+int
+lyp_parse_value_type(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve)
 {
     #define DECSIZE 21
     struct lys_type *type;
@@ -859,7 +859,8 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
 
     assert(node && (node->value_type == stype->base));
 
-    switch (node->value_type) {
+switchtype:
+    switch (node->value_type & LY_DATA_TYPE_MASK) {
     case LY_TYPE_BINARY:
         if (validate_length_range(0, (node->value_str ? strlen(node->value_str) : 0), 0, 0, stype,
                                   node->value_str, (struct lyd_node *)node)) {
@@ -952,7 +953,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
         break;
 
     case LY_TYPE_DEC64:
-        if (!node->value_str) {
+        if (!node->value_str || !node->value_str[0]) {
             LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
             return EXIT_FAILURE;
         }
@@ -1104,6 +1105,10 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
                 type = &type->info.lref.target->type;
             }
             node->value_type = type->base | LY_TYPE_LEAFREF_UNRES;
+
+            /* get the value according to the target's type */
+            stype = type;
+            goto switchtype;
         }
         break;
 
@@ -1224,7 +1229,7 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
                 }
             }
 
-            if (!lyp_parse_value_(leaf, type, resolve)) {
+            if (!lyp_parse_value_type(leaf, type, resolve)) {
                 /* success, erase set ly_errno and ly_vecode */
                 ly_errno = LY_SUCCESS;
                 ly_vecode = LYVE_SUCCESS;
@@ -1250,8 +1255,7 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
         }
     } else {
         memset(&leaf->value, 0, sizeof leaf->value);
-        if (lyp_parse_value_(leaf, stype, resolve)) {
-            ly_errno = LY_EVALID;
+        if (lyp_parse_value_type(leaf, stype, resolve)) {
             return EXIT_FAILURE;
         }
     }
@@ -1545,24 +1549,97 @@ error:
     return EXIT_FAILURE;
 }
 
-/* does not log */
-int
-lyp_check_mandatory(struct lys_node *node)
+/**
+ * @return
+ * NULL - success
+ * root - not yet resolvable
+ * other node - mandatory node under the root
+ */
+static const struct lys_node *
+lyp_check_mandatory_(const struct lys_node *root)
 {
-    struct lys_node *child;
+    int mand_flag = 0;
+    const struct lys_node *iter = NULL;
 
-    assert(node);
+    while ((iter = lys_getnext(iter, root, NULL, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHUSES | LYS_GETNEXT_INTOUSES | LYS_GETNEXT_INTONPCONT))) {
+        if (iter->nodetype == LYS_USES) {
+            if (!((struct lys_node_uses *)iter)->grp) {
+                /* not yet resolved uses */
+                return root;
+            } else {
+                /* go into uses */
+                continue;
+            }
+        }
+        if (iter->nodetype == LYS_CHOICE) {
+            /* skip it, it was already checked for direct mandatory node in default */
+            continue;
+        }
+        if (iter->nodetype == LYS_LIST) {
+            if (((struct lys_node_list *)iter)->min) {
+                mand_flag = 1;
+            }
+        } else if (iter->nodetype == LYS_LEAFLIST) {
+            if (((struct lys_node_leaflist *)iter)->min) {
+                mand_flag = 1;
+            }
+        } else if (iter->flags & LYS_MAND_TRUE) {
+            mand_flag = 1;
+        }
 
-    if (node->flags & LYS_MAND_TRUE) {
+        if (mand_flag) {
+            return iter;
+        }
+    }
+
+    return NULL;
+}
+
+/* logs directly */
+int
+lyp_check_mandatory_augment(struct lys_node_augment *aug)
+{
+    const struct lys_node *node;
+
+    if (aug->when) {
+        /* clarification from YANG 1.1 - augmentation can add mandatory nodes when it is
+         * conditional with a when statement */
+        return EXIT_SUCCESS;
+    }
+
+    if ((node = lyp_check_mandatory_((struct lys_node *)aug))) {
+        if (node != (struct lys_node *)aug) {
+            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "mandatory");
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                   "Mandatory node \"%s\" appears in augment of \"%s\" without when condition.",
+                   node->name, aug->target_name);
+            return -1;
+        }
         return EXIT_FAILURE;
     }
 
-    if (node->nodetype == LYS_CASE || node->nodetype == LYS_CHOICE) {
-        LY_TREE_FOR(node->child, child) {
-            if (lyp_check_mandatory(child)) {
-                return EXIT_FAILURE;
-            }
+    return EXIT_SUCCESS;
+}
+
+/**
+ * @brief check that a mandatory node is not directly under the default case.
+ * @param[in] node choice with default node
+ * @return EXIT_SUCCESS if the constraint is fulfilled, EXIT_FAILURE otherwise
+ */
+int
+lyp_check_mandatory_choice(struct lys_node *node)
+{
+    const struct lys_node *mand, *dflt = ((struct lys_node_choice *)node)->dflt;
+
+    if ((mand = lyp_check_mandatory_(dflt))) {
+        if (mand != dflt) {
+            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "mandatory");
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                   "Mandatory node \"%s\" is directly under the default case \"%s\" of the \"%s\" choice.",
+                   mand->name, dflt->name, node->name);
+            return -1;
         }
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;

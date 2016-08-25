@@ -53,8 +53,8 @@ static struct lys_node *read_yin_choice(struct lys_module *module, struct lys_no
                                         int resolve, struct unres_schema *unres);
 static struct lys_node *read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
                                       int resolve, struct unres_schema *unres);
-static struct lys_node *read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
-                                        int resolve, struct unres_schema *unres);
+static struct lys_node *read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
+                                         LYS_NODE type, int resolve, struct unres_schema *unres);
 static struct lys_node *read_yin_container(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
                                            int resolve, struct unres_schema *unres);
 static struct lys_node *read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
@@ -124,8 +124,8 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
 {
     struct lyxml_elem *node, *next;
     const char *value;
-    int base_flag = 0, rc;
-    int c_ftrs = 0;
+    int rc;
+    int c_ftrs = 0, c_base = 0;
 
     GETVAL(value, yin, "name");
     ident->name = value;
@@ -146,12 +146,40 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
         }
 
         if (!strcmp(node->name, "base")) {
-            if (base_flag) {
+            if (c_base && (module->version < 2)) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "base", "identity");
                 return EXIT_FAILURE;
             }
-            base_flag = 1;
+            c_base++;
 
+        } else if ((module->version >= 2) && !strcmp(node->name, "if-feature")) {
+            c_ftrs++;
+
+        } else {
+            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name, "identity");
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (c_base) {
+        ident->base_size = 0;
+        ident->base = calloc(c_base, sizeof *ident->base);
+        if (!ident->base) {
+            LOGMEM;
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (c_ftrs) {
+        ident->iffeature = calloc(c_ftrs, sizeof *ident->iffeature);
+        if (!ident->iffeature) {
+            LOGMEM;
+            return EXIT_FAILURE;
+        }
+    }
+
+    LY_TREE_FOR(yin->child, node) {
+        if (!strcmp(node->name, "base")) {
             GETVAL(value, node, "name");
             value = transform_schema2json(module, value);
             if (!value) {
@@ -163,30 +191,12 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
                 return EXIT_FAILURE;
             }
             lydict_remove(module->ctx, value);
-            lyxml_free(module->ctx, node);
-
-        } else if ((module->version >= 2) && !strcmp(node->name, "if-feature")) {
-            c_ftrs++;
-
-        } else {
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name, "identity");
-            return EXIT_FAILURE;
-        }
-    }
-
-    if (c_ftrs) {
-        ident->iffeature = calloc(c_ftrs, sizeof *ident->iffeature);
-        if (!ident->iffeature) {
-            LOGMEM;
-            goto error;
-        }
-    }
-
-    LY_TREE_FOR(yin->child, node) {
-        rc = fill_yin_iffeature((struct lys_node *)ident, node, &ident->iffeature[ident->iffeature_size], unres);
-        ident->iffeature_size++;
-        if (rc) {
-            goto error;
+        } else if (!strcmp(node->name, "if-feature")) {
+            rc = fill_yin_iffeature((struct lys_node *)ident, node, &ident->iffeature[ident->iffeature_size], unres);
+            ident->iffeature_size++;
+            if (rc) {
+                return EXIT_FAILURE;
+            }
         }
     }
 
@@ -314,6 +324,22 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         goto error;
     }
     lydict_remove(module->ctx, value);
+
+    if (type->base == LY_TYPE_INGRP) {
+        /* resolved type in grouping, decrease the grouping's nacm number to indicate that one less
+         * unresolved item left inside the grouping */
+        for (siter = parent; siter && (siter->nodetype != LYS_GROUPING); siter = lys_parent(siter));
+        if (siter) {
+            if (!((struct lys_node_grp *)siter)->nacm) {
+                LOGINT;
+                goto error;
+            }
+            ((struct lys_node_grp *)siter)->nacm--;
+        } else {
+            LOGINT;
+            goto error;
+        }
+    }
     type->base = type->der->type.base;
 
     /* check status */
@@ -1357,6 +1383,7 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
 {
     int i, j;
     const char *value, *vaux;
+    struct unres_list_uniq *unique_info;
 
     /* get unique value (list of leafs supposed to be unique */
     GETVAL(value, yin, "tag");
@@ -1397,11 +1424,15 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
 
         /* try to resolve leaf */
         if (unres) {
-            if (unres_schema_add_str(module, unres, parent, UNRES_LIST_UNIQ, unique->expr[i]) == -1){
+            unique_info = malloc(sizeof *unique_info);
+            unique_info->list = parent;
+            unique_info->expr = unique->expr[i];
+            unique_info->trg_type = &unique->trg_type;
+            if (unres_schema_add_node(module, unres, unique_info, UNRES_LIST_UNIQ, NULL) == -1){
                 goto error;
             }
         } else {
-            if (resolve_unique(parent, unique->expr[i])) {
+            if (resolve_unique(parent, unique->expr[i], &unique->trg_type)) {
                 goto error;
             }
         }
@@ -1517,7 +1548,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     int i, j, rc;
     struct ly_ctx *ctx;
     struct lys_deviate *d = NULL;
-    struct lys_node *node = NULL, *dev_target = NULL;
+    struct lys_node *node = NULL, *parent, *dev_target = NULL;
     struct lys_node_choice *choice = NULL;
     struct lys_node_leaf *leaf = NULL, **leaf_dflt_check = NULL;
     struct lys_node_list *list = NULL;
@@ -1812,7 +1843,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
 
                 /* check target node type */
-                if (!(dev_target->nodetype & (LYS_LEAF | LYS_CHOICE | LYS_ANYXML))) {
+                if (!(dev_target->nodetype & (LYS_LEAF | LYS_CHOICE | LYS_ANYDATA))) {
                     LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Target node does not allow \"%s\" property.", child->name);
                     goto error;
@@ -1835,12 +1866,24 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Adding property that already exists.");
                         goto error;
                     }
+
                     /* check collision with default-stmt */
-                    if ((dev_target->nodetype == LYS_LEAF) && ((struct lys_node_leaf *)(dev_target))->dflt) {
-                        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, child->name, child->parent->name);
-                        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
-                               "Adding the \"mandatory\" statement is forbidden on leaf with the \"default\" statement.");
-                        goto error;
+                    if (d->flags & LYS_MAND_TRUE) {
+                        if (dev_target->nodetype == LYS_CHOICE) {
+                            if (((struct lys_node_choice *)(dev_target))->dflt) {
+                                LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, child->name, child->parent->name);
+                                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                                       "Adding the \"mandatory\" statement is forbidden on choice with the \"default\" statement.");
+                                goto error;
+                            }
+                        } else if (dev_target->nodetype == LYS_LEAF) {
+                            if (((struct lys_node_leaf *)(dev_target))->dflt) {
+                                LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, child->name, child->parent->name);
+                                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                                       "Adding the \"mandatory\" statement is forbidden on leaf with the \"default\" statement.");
+                                goto error;
+                            }
+                        }
                     }
 
                     dev_target->flags |= d->flags & LYS_MAND_MASK;
@@ -1858,6 +1901,22 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     /* del mandatory is forbidden */
                     LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "mandatory", "deviate delete");
                     goto error;
+                }
+
+                /* check for mandatory node in default case, first find the closest parent choice to the changed node */
+                for (parent = dev_target->parent;
+                     parent && !(parent->nodetype & (LYS_CHOICE | LYS_GROUPING | LYS_ACTION));
+                     parent = parent->parent) {
+                    if (parent->nodetype == LYS_CONTAINER && ((struct lys_node_container *)parent)->presence) {
+                        /* stop also on presence containers */
+                        break;
+                    }
+                }
+                /* and if it is a choice with the default case, check it for presence of a mandatory node in it */
+                if (parent && parent->nodetype == LYS_CHOICE && ((struct lys_node_choice *)parent)->dflt) {
+                    if (lyp_check_mandatory_choice(parent)) {
+                        goto error;
+                    }
                 }
             } else if (!strcmp(child->name, "min-elements")) {
                 if (f_min) {
@@ -2010,8 +2069,9 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 trg_must_size = &((struct lys_node_list *)dev_target)->must_size;
                 break;
             case LYS_ANYXML:
-                trg_must = &((struct lys_node_anyxml *)dev_target)->must;
-                trg_must_size = &((struct lys_node_anyxml *)dev_target)->must_size;
+            case LYS_ANYDATA:
+                trg_must = &((struct lys_node_anydata *)dev_target)->must;
+                trg_must_size = &((struct lys_node_anydata *)dev_target)->must_size;
                 break;
             default:
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
@@ -2270,7 +2330,9 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
         } else if (!strcmp(child->name, "case")) {
             node = read_yin_case(module, (struct lys_node *)aug, child, 0, unres);
         } else if (!strcmp(child->name, "anyxml")) {
-            node = read_yin_anyxml(module, (struct lys_node *)aug, child, 0, unres);
+            node = read_yin_anydata(module, (struct lys_node *)aug, child, LYS_ANYXML, 0, unres);
+        } else if (!strcmp(child->name, "anydata")) {
+            node = read_yin_anydata(module, (struct lys_node *)aug, child, LYS_ANYDATA, 0, unres);
         } else if (!strcmp(child->name, "action")) {
             node = read_yin_rpc_action(module, (struct lys_node *)aug, child, 0, unres);
         } else {
@@ -2392,14 +2454,14 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
 
             /* check possibility of statements combination */
             if (rfn->target_type) {
-                rfn->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_ANYXML);
+                rfn->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_ANYDATA);
                 if (!rfn->target_type) {
                     LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, sub->name, yin->name);
                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                     goto error;
                 }
             } else {
-                rfn->target_type = LYS_LEAF | LYS_CHOICE | LYS_ANYXML;
+                rfn->target_type = LYS_LEAF | LYS_CHOICE | LYS_ANYDATA;
             }
 
             GETVAL(value, sub, "value");
@@ -2510,14 +2572,14 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
             /* leafm leaf-list, list, container or anyxml */
             /* check possibility of statements combination */
             if (rfn->target_type) {
-                rfn->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML);
+                rfn->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA);
                 if (!rfn->target_type) {
                     LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, sub->name, yin->name);
                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                     goto error;
                 }
             } else {
-                rfn->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML;
+                rfn->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA;
             }
 
             c_must++;
@@ -2527,14 +2589,14 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
             /* leaf, leaf-list, list, container or anyxml */
             /* check possibility of statements combination */
             if (rfn->target_type) {
-                rfn->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML);
+                rfn->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA);
                 if (!rfn->target_type) {
                     LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, sub->name, yin->name);
                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                     goto error;
                 }
             } else {
-                rfn->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML;
+                rfn->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA;
             }
 
             c_ftrs++;
@@ -2556,7 +2618,7 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
         }
     }
     if (c_ftrs) {
-        rfn->iffeature = calloc(c_must, sizeof *rfn->iffeature);
+        rfn->iffeature = calloc(c_ftrs, sizeof *rfn->iffeature);
         if (!rfn->iffeature) {
             LOGMEM;
             goto error;
@@ -3008,7 +3070,9 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         } else if (!strcmp(sub->name, "uses")) {
             node = read_yin_uses(module, retval, sub, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
-            node = read_yin_anyxml(module, retval, sub, resolve, unres);
+            node = read_yin_anydata(module, retval, sub, LYS_ANYXML, resolve, unres);
+        } else if (!strcmp(sub->name, "anydata")) {
+            node = read_yin_anydata(module, retval, sub, LYS_ANYDATA, resolve, unres);
         }
         if (!node) {
             goto error;
@@ -3090,7 +3154,11 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
                 goto error;
             }
         } else if (!strcmp(sub->name, "anyxml")) {
-            if (!(node = read_yin_anyxml(module, retval, sub, resolve, unres))) {
+            if (!(node = read_yin_anydata(module, retval, sub, LYS_ANYXML, resolve, unres))) {
+                goto error;
+            }
+        } else if (!strcmp(sub->name, "anydata")) {
+            if (!(node = read_yin_anydata(module, retval, sub, LYS_ANYDATA, resolve, unres))) {
                 goto error;
             }
         } else if (!strcmp(sub->name, "default")) {
@@ -3191,11 +3259,11 @@ error:
 
 /* logs directly */
 static struct lys_node *
-read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, int resolve,
-                struct unres_schema *unres)
+read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, LYS_NODE type, int resolve,
+                 struct unres_schema *unres)
 {
     struct lys_node *retval;
-    struct lys_node_leaf *anyxml;
+    struct lys_node_anydata *anyxml;
     struct lyxml_elem *sub, *next;
     const char *value;
     int r;
@@ -3207,7 +3275,7 @@ read_yin_anyxml(struct lys_module *module, struct lys_node *parent, struct lyxml
         LOGMEM;
         return NULL;
     }
-    anyxml->nodetype = LYS_ANYXML;
+    anyxml->nodetype = type;
     anyxml->prev = (struct lys_node *)anyxml;
     retval = (struct lys_node *)anyxml;
 
@@ -3970,7 +4038,9 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         } else if (!strcmp(sub->name, "grouping")) {
             node = read_yin_grouping(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
-            node = read_yin_anyxml(module, retval, sub, resolve, unres);
+            node = read_yin_anydata(module, retval, sub, LYS_ANYXML, resolve, unres);
+        } else if (!strcmp(sub->name, "anydata")) {
+            node = read_yin_anydata(module, retval, sub, LYS_ANYDATA, resolve, unres);
         } else if (!strcmp(sub->name, "action")) {
             node = read_yin_rpc_action(module, retval, sub, resolve, unres);
         } else {
@@ -4179,7 +4249,9 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
         } else if (!strcmp(sub->name, "grouping")) {
             node = read_yin_grouping(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
-            node = read_yin_anyxml(module, retval, sub, resolve, unres);
+            node = read_yin_anydata(module, retval, sub, LYS_ANYXML, resolve, unres);
+        } else if (!strcmp(sub->name, "anydata")) {
+            node = read_yin_anydata(module, retval, sub, LYS_ANYDATA, resolve, unres);
         } else if (!strcmp(sub->name, "action")) {
             node = read_yin_rpc_action(module, retval, sub, resolve, unres);
         }
@@ -4302,7 +4374,9 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
         } else if (!strcmp(sub->name, "grouping")) {
             node = read_yin_grouping(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
-            node = read_yin_anyxml(module, retval, sub, resolve, unres);
+            node = read_yin_anydata(module, retval, sub, LYS_ANYXML, resolve, unres);
+        } else if (!strcmp(sub->name, "anydata")) {
+            node = read_yin_anydata(module, retval, sub, LYS_ANYDATA, resolve, unres);
         } else if (!strcmp(sub->name, "action")) {
             node = read_yin_rpc_action(module, retval, sub, resolve, unres);
         }
@@ -4453,7 +4527,9 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
         } else if (!strcmp(sub->name, "grouping")) {
             node = read_yin_grouping(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
-            node = read_yin_anyxml(module, retval, sub, resolve, unres);
+            node = read_yin_anydata(module, retval, sub, LYS_ANYXML, resolve, unres);
+        } else if (!strcmp(sub->name, "anydata")) {
+            node = read_yin_anydata(module, retval, sub, LYS_ANYDATA, resolve, unres);
         }
         if (!node) {
             goto error;
@@ -4603,7 +4679,9 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
         } else if (!strcmp(sub->name, "grouping")) {
             node = read_yin_grouping(module, retval, sub, resolve, unres);
         } else if (!strcmp(sub->name, "anyxml")) {
-            node = read_yin_anyxml(module, retval, sub, resolve, unres);
+            node = read_yin_anydata(module, retval, sub, LYS_ANYXML, resolve, unres);
+        } else if (!strcmp(sub->name, "anydata")) {
+            node = read_yin_anydata(module, retval, sub, LYS_ANYDATA, resolve, unres);
         }
         if (!node) {
             goto error;
@@ -5387,7 +5465,9 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
         } else if (!strcmp(child->name, "uses")) {
             node = read_yin_uses(trg, NULL, child, unres);
         } else if (!strcmp(child->name, "anyxml")) {
-            node = read_yin_anyxml(trg, NULL, child, 1, unres);
+            node = read_yin_anydata(trg, NULL, child, LYS_ANYXML, 1, unres);
+        } else if (!strcmp(child->name, "anydata")) {
+            node = read_yin_anydata(trg, NULL, child, LYS_ANYDATA, 1, unres);
         } else if (!strcmp(child->name, "rpc")) {
             node = read_yin_rpc_action(trg, NULL, child, 0, unres);
         } else if (!strcmp(child->name, "notification")) {

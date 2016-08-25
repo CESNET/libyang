@@ -83,6 +83,7 @@ const char *lys_module_a = \
       <type name=\"int64\"/>                          \
     </leaf>                                           \
   </container>                                        \
+  <anyxml name=\"any\"/>                              \
   <augment target-node=\"/x\">                        \
     <if-feature name=\"bar\"/>                        \
     <container name=\"bar-y\"/>                       \
@@ -511,38 +512,40 @@ test_lyd_new_path(void **state)
 {
     (void) state; /* unused */
     struct lyd_node *node, *root;
+    char *str;
+    struct lyxml_elem *xml;
 
-    root = lyd_new_path(NULL, ctx, "/a:x/bar-gggg", "a", 0);
+    root = lyd_new_path(NULL, ctx, "/a:x/bar-gggg", "a", 0, 0);
     assert_non_null(root);
     assert_string_equal(root->schema->name, "x");
     assert_string_equal(root->child->schema->name, "bar-gggg");
 
-    node = lyd_new_path(root, NULL, "bubba", "b", 0);
+    node = lyd_new_path(root, NULL, "bubba", "b", 0, 0);
     assert_non_null(node);
     assert_string_equal(node->schema->name, "bubba");
 
-    node = lyd_new_path(root, NULL, "/a:x/number32", "3", 0);
+    node = lyd_new_path(root, NULL, "/a:x/number32", "3", 0, 0);
     assert_non_null(node);
     assert_string_equal(node->schema->name, "number32");
 
-    node = lyd_new_path(root, NULL, "a:number64", "64", 0);
+    node = lyd_new_path(root, NULL, "a:number64", "64", 0, 0);
     assert_non_null(node);
     assert_string_equal(node->schema->name, "number64");
 
-    node = lyd_new_path(root, NULL, "/a:l[key1='111'][key2='222']", NULL, 0);
+    node = lyd_new_path(root, NULL, "/a:l[key1='111'][key2='222']", NULL, 0, 0);
     assert_non_null(node);
     assert_string_equal(node->schema->name, "l");
     assert_ptr_not_equal(root->prev, root);
 
     lyd_free_withsiblings(root);
 
-    root = lyd_new_path(NULL, ctx, "/a:l[key1='1'][key2='2']", NULL, 0);
+    root = lyd_new_path(NULL, ctx, "/a:l[key1='1'][key2='2']", NULL, 0, 0);
     assert_non_null(root);
     assert_string_equal(root->schema->name, "l");
     assert_string_equal(root->child->schema->name, "key1");
     assert_string_equal(root->child->next->schema->name, "key2");
 
-    node = lyd_new_path(root, NULL, "/a:l[key1='11'][key2='22']/value", "val", 0);
+    node = lyd_new_path(root, NULL, "/a:l[key1='11'][key2='22']/value", "val", 0, 0);
     assert_non_null(node);
     assert_ptr_not_equal(root->prev, root);
     assert_string_equal(node->schema->name, "l");
@@ -550,19 +553,48 @@ test_lyd_new_path(void **state)
     assert_string_equal(node->child->next->schema->name, "key2");
     assert_string_equal(node->child->next->next->schema->name, "value");
 
-    node = lyd_new_path(root, NULL, "/a:l[key1='1'][key2='2']/value", "val2", 0);
+    node = lyd_new_path(root, NULL, "/a:l[key1='1'][key2='2']/value", "val2", 0, 0);
     assert_non_null(node);
     assert_string_equal(node->schema->name, "value");
 
     lyd_free_withsiblings(root);
 
-    root = lyd_new_path(NULL, ctx, "/a:rpc1/x/input-leaf2", "dudu", 0);
+    root = lyd_new_path(NULL, ctx, "/a:any", "test <&>\"", LYD_ANYDATA_CONSTSTRING, 0);
+    assert_non_null(root);
+    str = NULL;
+    lyd_print_mem(&str, root, LYD_XML, 0);
+    assert_non_null(root);
+    assert_string_equal(str, "<any xmlns=\"urn:a\">test &lt;&amp;&gt;&quot;</any>");
+    free(str);
+    lyd_free(root);
+
+    xml = lyxml_parse_mem(ctx, "<test>&lt;</test>", 0);
+    assert_non_null(xml);
+    root = lyd_new_path(NULL, ctx, "/a:any", xml, LYD_ANYDATA_XML, 0);
+    xml = NULL;
+    assert_non_null(root);
+    lyd_print_mem(&str, root, LYD_XML, 0);
+    assert_non_null(root);
+    assert_string_equal(str, "<any xmlns=\"urn:a\"><test>&lt;</test></any>");
+    free(str);
+
+    node = root;
+    root = lyd_new_path(NULL, ctx, "/a:any", node, LYD_ANYDATA_DATATREE, 0);
+    assert_non_null(root);
+    str = NULL;
+    lyd_print_mem(&str, root, LYD_XML, 0);
+    assert_non_null(root);
+    assert_string_equal(str, "<any xmlns=\"urn:a\"><any xmlns=\"urn:a\"><test>&lt;</test></any></any>");
+    free(str);
+    lyd_free(root);
+
+    root = lyd_new_path(NULL, ctx, "/a:rpc1/x/input-leaf2", "dudu", 0, 0);
     assert_non_null(root);
     assert_string_equal(root->schema->name, "rpc1");
     assert_string_equal(root->child->schema->name, "x");
     assert_string_equal(root->child->child->schema->name, "input-leaf2");
 
-    node = lyd_new_path(root, NULL, "/a:rpc1/input-leaf1", "bubu", 0);
+    node = lyd_new_path(root, NULL, "/a:rpc1/input-leaf1", "bubu", 0, 0);
     assert_non_null(node);
     assert_string_equal(node->schema->name, "input-leaf1");
     assert_string_equal(root->child->schema->name, "input-leaf1");
@@ -570,20 +602,20 @@ test_lyd_new_path(void **state)
 
     lyd_free(root);
 
-    root = lyd_new_path(NULL, ctx, "/a:rpc1/rpc-container", NULL, LYD_PATH_OPT_OUTPUT);
+    root = lyd_new_path(NULL, ctx, "/a:rpc1/rpc-container", NULL, 0, LYD_PATH_OPT_OUTPUT);
     assert_non_null(root);
     assert_string_equal(root->schema->name, "rpc1");
 
-    node = lyd_new_path(root->child, NULL, "output-leaf3", "cc", LYD_PATH_OPT_OUTPUT);
+    node = lyd_new_path(root->child, NULL, "output-leaf3", "cc", 0, LYD_PATH_OPT_OUTPUT);
     assert_non_null(node);
     assert_string_equal(node->schema->name, "output-leaf3");
 
-    node = lyd_new_path(root, NULL, "/a:rpc1/output-leaf1", "aa", LYD_PATH_OPT_OUTPUT);
+    node = lyd_new_path(root, NULL, "/a:rpc1/output-leaf1", "aa", 0, LYD_PATH_OPT_OUTPUT);
     assert_non_null(node);
     assert_string_equal(node->schema->name, "output-leaf1");
     assert_ptr_equal(node, root->child);
 
-    node = lyd_new_path(root, NULL, "/a:rpc1/output-leaf2", "bb", LYD_PATH_OPT_OUTPUT);
+    node = lyd_new_path(root, NULL, "/a:rpc1/output-leaf2", "bb", 0, LYD_PATH_OPT_OUTPUT);
     assert_non_null(node);
     assert_string_equal(node->schema->name, "output-leaf2");
     assert_string_equal(node->prev->schema->name, "output-leaf1");
@@ -822,7 +854,7 @@ test_lyd_validate_leafref(void **state)
     struct lyd_node_leaf_list *lr;
     int rc;
 
-    root = lyd_new_path(NULL, ctx, "/leafrefs:lrtests/link", "jedna", 0);
+    root = lyd_new_path(NULL, ctx, "/leafrefs:lrtests/link", "jedna", 0, 0);
     assert_ptr_not_equal(root, NULL);
     assert_ptr_not_equal(root->child, NULL);
 
@@ -833,7 +865,7 @@ test_lyd_validate_leafref(void **state)
     assert_int_equal(rc, EXIT_FAILURE);
     assert_ptr_equal(lr->value.leafref, NULL);
 
-    list = lyd_new_path(root, ctx, "/leafrefs:lrtests/target[id='1']/name", "jedna", 0);
+    list = lyd_new_path(root, ctx, "/leafrefs:lrtests/target[id='1']/name", "jedna", 0, 0);
     assert_ptr_not_equal(list, NULL);
     assert_ptr_not_equal(list->child, NULL);
     assert_ptr_equal(list->parent, root);

@@ -116,10 +116,11 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options)
 
 /* logs directly */
 static int
-xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *prev, int options,
-               struct unres_data *unres, struct lyd_node **result, struct lyd_node **action)
+xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *first_sibling,
+               struct lyd_node *prev, int options, struct unres_data *unres, struct lyd_node **result,
+               struct lyd_node **action)
 {
-    struct lyd_node *diter, *dlast, *first_sibling;
+    struct lyd_node *diter, *dlast;
     struct lys_node *schema = NULL;
     struct lyd_attr *dattr, *dattr_iter;
     struct lyxml_attr *attr;
@@ -181,7 +182,8 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         havechildren = 0;
         break;
     case LYS_ANYXML:
-        *result = calloc(1, sizeof(struct lyd_node_anyxml));
+    case LYS_ANYDATA:
+        *result = calloc(1, sizeof(struct lyd_node_anydata));
         havechildren = 0;
         break;
     default:
@@ -202,13 +204,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         prev->next = *result;
 
         /* fix the "last" pointer */
-        if (parent) {
-            diter = parent->child;
-        } else {
-            for (diter = prev; diter->prev != prev; diter = diter->prev);
-        }
-        diter->prev = *result;
-        first_sibling = diter;
+        first_sibling->prev = *result;
     } else {
         (*result)->prev = *result;
         first_sibling = *result;
@@ -320,7 +316,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         if (xml_get_value(*result, xml, options)) {
             goto error;
         }
-    } else if (schema->nodetype == LYS_ANYXML) {
+    } else if (schema->nodetype & LYS_ANYDATA) {
         /* store children values */
         if (xml->child) {
             child = xml->child;
@@ -331,11 +327,11 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                 lyxml_correct_elem_ns(ctx, next, 1, 1);
             }
 
-            ((struct lyd_node_anyxml *)*result)->xml_struct = 1;
-            ((struct lyd_node_anyxml *)*result)->value.xml = child;
+            ((struct lyd_node_anydata *)*result)->value_type = LYD_ANYDATA_XML;
+            ((struct lyd_node_anydata *)*result)->value.xml = child;
         } else {
-            ((struct lyd_node_anyxml *)*result)->xml_struct = 0;
-            ((struct lyd_node_anyxml *)*result)->value.str = lydict_insert(ctx, xml->content, 0);
+            ((struct lyd_node_anydata *)*result)->value_type = LYD_ANYDATA_CONSTSTRING;
+            ((struct lyd_node_anydata *)*result)->value.str = lydict_insert(ctx, xml->content, 0);
         }
     } else if (schema->nodetype == LYS_ACTION) {
         options &= ~LYS_ACTION;
@@ -429,9 +425,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         diter = dlast = NULL;
         LY_TREE_FOR_SAFE(xml->child, next, child) {
             if (schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
-                r = xml_parse_data(ctx, child, *result, dlast, 0, unres, &diter, action);
+                r = xml_parse_data(ctx, child, *result, (*result)->child, dlast, 0, unres, &diter, action);
             } else {
-                r = xml_parse_data(ctx, child, *result, dlast, options, unres, &diter, action);
+                r = xml_parse_data(ctx, child, *result, (*result)->child, dlast, options, unres, &diter, action);
             }
             if (r) {
                 goto error;
@@ -463,7 +459,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     }
 
     /* validation successful */
-    (*result)->validity = LYD_VAL_OK;
+    if ((*result)->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+        /* postpone checking when there will be all list/leaflist instances */
+        (*result)->validity = LYD_VAL_UNIQUE;
+    } else {
+        (*result)->validity = LYD_VAL_OK;
+    }
 
     return ret;
 
@@ -488,11 +489,12 @@ API struct lyd_node *
 lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 {
     va_list ap;
-    int r;
+    int r, i;
     struct unres_data *unres = NULL;
     struct lys_node *rpc_act = NULL;
     struct lyd_node *result = NULL, *iter, *last, *reply_parent = NULL, *action = NULL;
     struct lyxml_elem *xmlstart, *xmlelem, *xmlaux;
+    struct ly_set *set;
 
     ly_errno = LY_SUCCESS;
 
@@ -526,7 +528,6 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
             goto error;
         }
         reply_parent = _lyd_new(NULL, rpc_act);
-        result = reply_parent;
     }
 
     if (!(options & LYD_OPT_NOSIBLINGS)) {
@@ -553,7 +554,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 
     iter = last = NULL;
     LY_TREE_FOR_SAFE(xmlstart, xmlaux, xmlelem) {
-        r = xml_parse_data(ctx, xmlelem, reply_parent, last, options, unres, &iter, &action);
+        r = xml_parse_data(ctx, xmlelem, reply_parent, result, last, options, unres, &iter, &action);
         if (r) {
             goto error;
         } else if (options & LYD_OPT_DESTRUCT) {
@@ -572,6 +573,32 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
             break;
         }
     }
+
+    if (reply_parent) {
+        result = reply_parent;
+    }
+
+    /* check for uniquness of top-level lists/leaflists because
+     * only the inner instances were tested in lyv_data_content() */
+    set = ly_set_new();
+    LY_TREE_FOR(result, iter) {
+        if (!(iter->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(iter->validity & LYD_VAL_UNIQUE)) {
+            continue;
+        }
+
+        /* check each list/leaflist only once */
+        i = set->number;
+        if (ly_set_add(set, iter->schema, 0) != i) {
+            /* already checked */
+            continue;
+        }
+
+        if (lyv_data_unique(iter, result)) {
+            ly_set_free(set);
+            goto error;
+        }
+    }
+    ly_set_free(set);
 
     /* check for missing top level mandatory nodes */
     if (!(options & LYD_OPT_TRUSTED) && lyd_check_topmandatory(result, ctx, options)) {

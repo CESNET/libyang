@@ -300,6 +300,17 @@ int ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schem
 struct lyd_node *_lyd_new(struct lyd_node *parent, const struct lys_node *schema);
 
 /**
+ * @brief Create a dummy node for XPath evaluation. After done using, it should be removed.
+ *
+ * @param[in] parent Data parent of the new node.
+ * @param[in] schema Schema node of the new node, must be of nodetype that
+ * appears also in data.
+ *
+ * @return New dummy node, NULL on error.
+ */
+struct lyd_node *lyd_new_dummy(struct lyd_node *parent, const struct lys_node *schema);
+
+/**
  * @brief Find the parent node of an attribute.
  *
  * @param[in] root Root element of the data tree with the attribute.
@@ -368,12 +379,18 @@ int lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *si
  *
  * @param[in] first First data node to compare.
  * @param[in] second Second node to compare.
+ * @param[in] action Option to specify what will be checked:
+ *            -1 - compare keys and all uniques
+ *             0 - compare only keys
+ *             n - compare n-th unique
  * @param[in] printval Flag for printing validation errors, useful for internal (non-validation) use of this function
  * @return 1 if both the nodes are the same from the YANG point of view,
  *         0 if they differ,
  *         -1 on error.
  */
-int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int printval);
+int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int printval);
+
+const char *lyd_get_default(const char* unique_expr, struct lyd_node *list);
 
 /**
  * @brief Check for (validate) top-level mandatory nodes of a data tree.

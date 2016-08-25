@@ -51,6 +51,7 @@ struct lys_node_array{
         uint bit;
         uint deviate;
         uint keys;
+        uint base;
     };
     uint16_t refine;
     uint16_t augment;
@@ -82,11 +83,12 @@ struct type_node {
         struct lys_node_list *ptr_list;
         struct lys_node_leaf *ptr_leaf;
         struct lys_tpdf *ptr_tpdf;
+        struct lys_node_anydata *ptr_anydata;
         struct lys_node_augment *ptr_augment;
         struct lys_node_rpc_action *ptr_rpc;
         struct lys_node_inout *ptr_inout;
     };
-    uint8_t flag;
+    uint flag;
 };
 
 struct type_deviation {
@@ -111,7 +113,7 @@ struct yang_type {
 
 #include "parser_yang_bis.h"
 
-char * yang_read_string(const char *input, int size, int indent);
+char * yang_read_string(const char *input, int size, int indent, int version);
 
 int yang_read_common(struct lys_module *module,char *value, enum yytokentype type);
 
@@ -186,7 +188,7 @@ int yang_check_type(struct lys_module *module, struct lys_node *parent, struct y
 
 void yang_delete_type(struct lys_module *module, struct yang_type *stype);
 
-void *yang_read_pattern(struct lys_module *module, struct yang_type *typ, char *value);
+int yang_read_pattern(struct lys_module *module, struct lys_restr *pattern, char *value, char modifier);
 
 void *yang_read_range(struct  lys_module *module, struct yang_type *typ, char *value);
 

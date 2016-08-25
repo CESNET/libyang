@@ -6,7 +6,7 @@ set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and tool
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
 set(LIBYANG_MINOR_VERSION 10)
-set(LIBYANG_MICRO_VERSION 32)
+set(LIBYANG_MICRO_VERSION 61)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 
@@ -32,7 +32,7 @@ else()
 		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
 		COMMAND bison -Wno-other -l -o parser_yang_bis.c --defines=parser_yang_bis.h yang.y
 		COMMAND flex -L -o parser_yang_lex.c --header-file=parser_yang_lex.h yang.l
-		COMMAND ${SED_TOOL} -i 's/int yychar\;/int yychar\;\\nchar *s = NULL, *tmp_s = NULL\;\\nstruct lys_include inc\;\\nstruct lys_module *trg = NULL\;\\nstruct lys_node *tpdf_parent = NULL, *data_node = NULL\;\\nvoid *actual = NULL\;\\nint config_inherit = 0, actual_type = 0\;\\nint64_t cnt_val\;/' parser_yang_bis.c
+		COMMAND ${SED_TOOL} -i 's/int yychar\;/int yychar\;\\nchar *s = NULL, *tmp_s = NULL\;\\nstruct lys_include inc\;\\nstruct lys_module *trg = NULL\;\\nstruct lys_node *tpdf_parent = NULL, *data_node = NULL\;\\nvoid *actual = NULL\;\\nint config_inherit = 0, actual_type = 0\;\\nint64_t cnt_val\;\\nvoid *yang_type = NULL\;/' parser_yang_bis.c
 	)
 endif()
 

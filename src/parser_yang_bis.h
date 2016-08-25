@@ -138,7 +138,9 @@ extern int yydebug;
     TRUE_KEYWORD = 348,
     UNBOUNDED_KEYWORD = 349,
     USER_KEYWORD = 350,
-    ACTION_KEYWORD = 351
+    ACTION_KEYWORD = 351,
+    MODIFIER_KEYWORD = 352,
+    ANYDATA_KEYWORD = 353
   };
 #endif
 
@@ -153,12 +155,13 @@ union YYSTYPE
   uint32_t uint;
   char *str;
   void *v;
+  char ch;
   struct lys_module *inc;
   struct yang_type *type;
   union {
     uint32_t index;
     struct lys_node_container *container;
-    struct lys_node_anyxml *anyxml;
+    struct lys_node_anydata *anydata;
     struct type_choice choice;
     struct type_node node;
     struct lys_node_case *cs;
