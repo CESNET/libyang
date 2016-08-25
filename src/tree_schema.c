@@ -2005,6 +2005,10 @@ lys_deviation_free(struct lys_module *module, struct lys_deviation *dev)
     lydict_remove(ctx, dev->dsc);
     lydict_remove(ctx, dev->ref);
 
+    if (!dev->deviate) {
+        return ;
+    }
+
     /* the module was freed, but we only need the context from orig_node, use ours */
     if (dev->deviate[0].mod == LY_DEVIATE_NO) {
         /* it's actually a node subtree, we need to update modules on all the nodes :-/ */
@@ -3209,6 +3213,10 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *target_
     char *parent_path;
     struct lys_node *target;
 
+    if (!dev->deviate) {
+        return ;
+    }
+
     if (dev->deviate[0].mod == LY_DEVIATE_NO) {
         if (dev->orig_node) {
             /* removing not-supported deviation ... */
@@ -3333,8 +3341,13 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
 
     /* remove applied deviations */
     for (i = 0; i < module->deviation_size; ++i) {
+        if (module->deviation[i].orig_node) {
+            target_mod = lys_node_module(module->deviation[i].orig_node);
+        } else {
+            target_mod = (struct lys_module *)lys_get_import_module(module, NULL, 0, module->deviation[i].target_name + 1,
+                                                                    strcspn(module->deviation[i].target_name, ":") - 1);
+        }
         lys_switch_deviation(&module->deviation[i], module);
-        target_mod = lys_node_module(module->deviation[i].orig_node);
         assert(target_mod->deviated == 1);
 
         /* clear the deviation flag if possible */
