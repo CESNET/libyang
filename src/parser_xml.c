@@ -554,18 +554,14 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     }
 
     if (options & LYD_OPT_RPCREPLY) {
-        last = result;
+        iter = result;
         result = lyd_new_output(NULL, lys_node_module(rpc), rpc->name);
         /* insert all the output parameters into RPC */
-        do {
-            iter = last;
-            last = iter->next;
-            if (lyd_insert(result, iter)) {
-                LOGINT;
-                lyd_free_withsiblings(last);
-                goto error;
-            }
-        } while (last);
+        if (lyd_insert(result, iter)) {
+            LOGINT;
+            lyd_free_withsiblings(iter);
+            goto error;
+        }
     }
 
     /* check for missing top level mandatory nodes */
