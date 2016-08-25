@@ -528,7 +528,6 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
             goto error;
         }
         reply_parent = _lyd_new(NULL, rpc_act);
-        result = reply_parent;
     }
 
     if (!(options & LYD_OPT_NOSIBLINGS)) {
@@ -573,6 +572,10 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
             /* stop after the first processed root */
             break;
         }
+    }
+
+    if (reply_parent) {
+        result = reply_parent;
     }
 
     /* check for uniquness of top-level lists/leaflists because
