@@ -493,6 +493,8 @@ ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod)
                     if (!lyd_new_leaf(cont, NULL, "revision", (mod->rev_size ? mod->rev[0].date : ""))) {
                         return EXIT_FAILURE;
                     }
+
+                    break;
                 }
             }
         }
