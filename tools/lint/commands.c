@@ -618,6 +618,9 @@ cmd_xpath(const char *arg)
             case LYS_ANYXML:
                 printf("\tAnyxml ");
                 break;
+            case LYS_ANYDATA:
+                printf("\tAnydata ");
+                break;
             default:
                 printf("\tUnknown ");
                 break;

@@ -246,8 +246,8 @@ test_df2(void **state)
     st->dt = lyd_new(NULL, st->mod, "df");
     assert_ptr_not_equal(st->dt, NULL);
     /* lists */
-    assert_ptr_not_equal(lyd_new_path(st->dt, NULL, "/defaults:df/defaults:list[name='a']", NULL, 0), NULL);
-    assert_ptr_not_equal((node = lyd_new_path(st->dt, NULL, "/defaults:df/defaults:list[name='b']", NULL, 0)), NULL);
+    assert_ptr_not_equal(lyd_new_path(st->dt, NULL, "/defaults:df/defaults:list[name='a']", NULL, 0, 0), NULL);
+    assert_ptr_not_equal((node = lyd_new_path(st->dt, NULL, "/defaults:df/defaults:list[name='b']", NULL, 0, 0)), NULL);
     assert_ptr_not_equal(lyd_new_leaf(node, NULL, "value", "1"), NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
@@ -374,7 +374,7 @@ test_rpc_input_default(void **state)
                          "<inleaf2 ncwd:default=\"true\">def1</inleaf2>"
                        "</rpc1>";
 
-    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:rpc1/inleaf1[.='hi']", NULL, 0);
+    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:rpc1/inleaf1[.='hi']", NULL, 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPC), 0);
@@ -390,7 +390,7 @@ test_rpc_input_default(void **state)
     lyd_free(st->dt);
     st->dt = NULL;
 
-    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:rpc1", NULL, 0);
+    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:rpc1", NULL, 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPC), 0);
@@ -415,7 +415,7 @@ test_rpc_output_default(void **state)
                          "<outleaf1 ncwd:default=\"true\">def2</outleaf1>"
                        "</rpc1>";
 
-    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:rpc1/outleaf2[.='hai']", NULL, LYD_PATH_OPT_OUTPUT);
+    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:rpc1/outleaf2[.='hai']", NULL, 0, LYD_PATH_OPT_OUTPUT);
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPCREPLY), 0);
@@ -431,7 +431,7 @@ test_rpc_output_default(void **state)
     lyd_free(st->dt);
     st->dt = NULL;
 
-    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:rpc1", NULL, LYD_PATH_OPT_OUTPUT);
+    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:rpc1", NULL, 0, LYD_PATH_OPT_OUTPUT);
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPCREPLY), 0);
@@ -456,7 +456,7 @@ test_notif_default(void **state)
                          "<ntfleaf1 ncwd:default=\"true\">def3</ntfleaf1>"
                        "</notif>";
 
-    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:notif/ntfleaf2[.='helloo']", NULL, 0);
+    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:notif/ntfleaf2[.='helloo']", NULL, 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_NOTIF), 0);
@@ -472,7 +472,7 @@ test_notif_default(void **state)
     lyd_free(st->dt);
     st->dt = NULL;
 
-    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:notif", NULL, 0);
+    st->dt = lyd_new_path(NULL, st->ctx, "/defaults:notif", NULL, 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_NOTIF), 0);
@@ -585,7 +585,7 @@ test_leaflist_yin(void **state)
     free(st->xml);
     lyd_free_withsiblings(st->dt);
 
-    assert_ptr_not_equal(st->dt = lyd_new_path(NULL, st->ctx, "/x:ll", "one", 0), NULL);
+    assert_ptr_not_equal(st->dt = lyd_new_path(NULL, st->ctx, "/x:ll", "one", 0, 0), NULL);
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, st->ctx), 0);
     assert_ptr_not_equal(st->dt, NULL);
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
@@ -637,7 +637,7 @@ test_leaflist_yang(void **state)
     free(st->xml);
     lyd_free_withsiblings(st->dt);
 
-    assert_ptr_not_equal(st->dt = lyd_new_path(NULL, st->ctx, "/x:ll", "three", 0), NULL);
+    assert_ptr_not_equal(st->dt = lyd_new_path(NULL, st->ctx, "/x:ll", "three", 0, 0), NULL);
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, st->ctx), 0);
     assert_ptr_not_equal(st->dt, NULL);
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);

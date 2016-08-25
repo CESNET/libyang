@@ -1536,7 +1536,7 @@ schema_nodeid_siblingcheck(const struct lys_node *sibling, int8_t *shorthand, co
 
     if (!sh) {
         /* move down the tree, if possible */
-        if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+        if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
             return -1;
         }
         *start = sibling->child;
@@ -2008,7 +2008,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 
                 if (data_nodeid || !shorthand) {
                     /* move down the tree, if possible */
-                    if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                    if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
                         LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
                         return NULL;
                     }
@@ -2095,6 +2095,15 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
     return 0;
 }
 
+/**
+ * @brief get the closest parent of the node (or the node itself) identified by the nodeid (path)
+ *
+ * @param[in] nodeid Node data path to find
+ * @param[in] llist_value If the \p nodeid identifies leaf-list, this is expected value of the leaf-list instance.
+ * @param[in] options Bitmask of options flags, see @ref pathoptions.
+ * @param[out] parsed Number of characters processed in \p id
+ * @return The closes parent (or the node itself) from the path
+ */
 struct lyd_node *
 resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, struct lyd_node *start, int options,
                                  int *parsed)
@@ -2198,10 +2207,8 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                             || (llist_value && strcmp(llist_value, llist->value_str))) {
                         continue;
                     }
-                }
-
-                /* list, we need predicates'n'stuff then */
-                if (sibling->schema->nodetype == LYS_LIST) {
+                } else if (sibling->schema->nodetype == LYS_LIST) {
+                    /* list, we need predicates'n'stuff then */
                     r = 0;
                     if (!has_predicate) {
                         LOGVAL(LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, name);
@@ -2228,7 +2235,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                 }
 
                 /* move down the tree, if possible */
-                if (sibling->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                if (sibling->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
                     LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
                     *parsed = -1;
                     return NULL;
@@ -2712,7 +2719,7 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
             }
 
             for (i = 0; i < tpdf_size; i++) {
-                if (!strcmp(tpdf[i].name, name) && tpdf[i].type.base) {
+                if (!strcmp(tpdf[i].name, name) && tpdf[i].type.base > 0) {
                     match = &tpdf[i];
                     goto check_leafref;
                 }
@@ -2730,7 +2737,7 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
 
     /* search in top level typedefs */
     for (i = 0; i < module->tpdf_size; i++) {
-        if (!strcmp(module->tpdf[i].name, name) && module->tpdf[i].type.base) {
+        if (!strcmp(module->tpdf[i].name, name) && module->tpdf[i].type.base > 0) {
             match = &module->tpdf[i];
             goto check_leafref;
         }
@@ -2739,7 +2746,7 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
     /* search in submodules */
     for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
         for (j = 0; j < module->inc[i].submodule->tpdf_size; j++) {
-            if (!strcmp(module->inc[i].submodule->tpdf[j].name, name) && module->inc[i].submodule->tpdf[j].type.base) {
+            if (!strcmp(module->inc[i].submodule->tpdf[j].name, name) && module->inc[i].submodule->tpdf[j].type.base > 0) {
                 match = &module->inc[i].submodule->tpdf[j];
                 goto check_leafref;
             }
@@ -2777,7 +2784,7 @@ check_default(struct lys_type *type, const char *value, struct lys_module *modul
     struct lyd_node_leaf_list node;
     int ret = EXIT_SUCCESS;
 
-    if (type->base == LY_TYPE_DER) {
+    if (type->base <= LY_TYPE_DER) {
         /* the type was not resolved yet, nothing to do for now */
         return EXIT_FAILURE;
     }
@@ -3104,7 +3111,7 @@ resolve_data(const struct lys_module *mod, const char *name, int nam_len, struct
         parents->node[0] = NULL;
     }
     for (i = 0; i < parents->count;) {
-        if (parents->node[i] && (parents->node[i]->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
+        if (parents->node[i] && (parents->node[i]->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
             /* skip */
             ++i;
             continue;
@@ -3618,7 +3625,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
             first_iter = 0;
         } else {
             /* move down the tree, if possible */
-            if (node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+            if (node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
                 LOGVAL(LYE_INCHAR, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, name[0], name);
                 return -1;
             }
@@ -3655,6 +3662,9 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
     /* the target must be leaf or leaf-list (in YANG 1.1 only) */
     if ((node->nodetype != LYS_LEAF) && ((lys_node_module(parent)->version != 2) || (node->nodetype != LYS_LEAFLIST))) {
         LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, "leafref", path);
+        LOGVAL(LYE_SPEC, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent,
+               "Leafref target \"%s\" is not a leaf%s.", path,
+               lys_node_module(parent)->version != 2 ? "" : " nor a leaf-list");
         return -1;
     }
 
@@ -3899,7 +3909,7 @@ inherit_config_flag(struct lys_node *node, int flags)
         if (!(node->nodetype & (LYS_USES | LYS_GROUPING))) {
             node->flags = (node->flags & ~LYS_CONFIG_MASK) | flags;
         }
-        if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
+        if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
             inherit_config_flag(node->child, flags);
         }
     }
@@ -3954,7 +3964,7 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
     /* check augment target type and then augment nodes type */
     if (aug->target->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF)) {
         LY_TREE_FOR(aug->child, sub) {
-            if (!(sub->nodetype & (LYS_ANYXML | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES | LYS_CHOICE))) {
+            if (!(sub->nodetype & (LYS_ANYDATA | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES | LYS_CHOICE))) {
                 LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, aug, strnodetype(sub->nodetype), "augment");
                 LOGVAL(LYE_SPEC, LY_VLOG_LYS, aug, "Cannot augment \"%s\" with a \"%s\".",
                        strnodetype(aug->target->nodetype), strnodetype(sub->nodetype));
@@ -3963,7 +3973,7 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
         }
     } else if (aug->target->nodetype == LYS_CHOICE) {
         LY_TREE_FOR(aug->child, sub) {
-            if (!(sub->nodetype & (LYS_CASE | LYS_ANYXML | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST))) {
+            if (!(sub->nodetype & (LYS_CASE | LYS_ANYDATA | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST))) {
                 LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, aug, strnodetype(sub->nodetype), "augment");
                 LOGVAL(LYE_SPEC, LY_VLOG_LYS, aug, "Cannot augment \"%s\" with a \"%s\".",
                        strnodetype(aug->target->nodetype), strnodetype(sub->nodetype));
@@ -4133,7 +4143,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                 iter->flags |= (rfn->flags & LYS_CONFIG_MASK);
 
                 /* select next iter - modified LY_TREE_DFS_END */
-                if (iter->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML)) {
+                if (iter->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
                     next = NULL;
                 } else {
                     next = iter->child;
@@ -4211,7 +4221,7 @@ nextsibling:
 
         /* mandatory on leaf, anyxml or choice */
         if (rfn->flags & LYS_MAND_MASK) {
-            if (node->nodetype & (LYS_LEAF | LYS_ANYXML | LYS_CHOICE)) {
+            if (node->nodetype & (LYS_LEAF | LYS_ANYDATA | LYS_CHOICE)) {
                 /* remove current value */
                 node->flags &= ~LYS_MAND_MASK;
 
@@ -4263,8 +4273,9 @@ nextsibling:
                 old_must = &((struct lys_node_container *)node)->must;
                 break;
             case LYS_ANYXML:
-                old_size = &((struct lys_node_anyxml *)node)->must_size;
-                old_must = &((struct lys_node_anyxml *)node)->must;
+            case LYS_ANYDATA:
+                old_size = &((struct lys_node_anydata *)node)->must_size;
+                old_must = &((struct lys_node_anydata *)node)->must;
                 break;
             default:
                 LOGINT;
@@ -4608,7 +4619,7 @@ resolve_choice_dflt(struct lys_node_choice *choic, const char *dflt)
             }
         }
 
-        if (ly_strequal(child->name, dflt, 1) && (child->nodetype & (LYS_ANYXML | LYS_CASE
+        if (ly_strequal(child->name, dflt, 1) && (child->nodetype & (LYS_ANYDATA | LYS_CASE
                 | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST))) {
             return child;
         }
@@ -4786,8 +4797,9 @@ resolve_must(struct lyd_node *node)
         must = ((struct lys_node_list *)node->schema)->must;
         break;
     case LYS_ANYXML:
-        must_size = ((struct lys_node_anyxml *)node->schema)->must_size;
-        must = ((struct lys_node_anyxml *)node->schema)->must;
+    case LYS_ANYDATA:
+        must_size = ((struct lys_node_anydata *)node->schema)->must_size;
+        must = ((struct lys_node_anydata *)node->schema)->must;
         break;
     default:
         must_size = 0;
@@ -4795,7 +4807,7 @@ resolve_must(struct lyd_node *node)
     }
 
     for (i = 0; i < must_size; ++i) {
-        if (lyxp_eval(must[i].expr, node, &set, LYXP_MUST)) {
+        if (lyxp_eval(must[i].expr, node, LYXP_NODE_ELEM, &set, LYXP_MUST)) {
             return -1;
         }
 
@@ -4821,44 +4833,201 @@ resolve_must(struct lyd_node *node)
  *
  * @param[in] node Data node, whose conditional definition is being decided.
  * @param[in] schema Schema node with a when condition.
+ * @param[out] ctx_node Context node.
+ * @param[out] ctx_node_type Context node type.
  *
- * @return Context node.
+ * @return EXIT_SUCCESS on success, -1 on error.
  */
-static struct lyd_node *
-resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema)
+static int
+resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema, struct lyd_node **ctx_node,
+                      enum lyxp_node_type *ctx_node_type)
 {
     struct lyd_node *parent;
     struct lys_node *sparent;
+    enum lyxp_node_type node_type;
     uint16_t i, data_depth, schema_depth;
 
     /* find a not schema-only node */
+    node_type = LYXP_NODE_ELEM;
     while (schema->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE | LYS_AUGMENT | LYS_INPUT | LYS_OUTPUT)) {
-        schema = lys_parent(schema);
-        if (!schema) {
-            return NULL;
+        if (schema->nodetype == LYS_AUGMENT) {
+            sparent = ((struct lys_node_augment *)schema)->target;
+        } else {
+            sparent = schema->parent;
         }
+        if (!sparent) {
+            /* context node is the document root (fake root in our case) */
+            if (schema->flags & LYS_CONFIG_W) {
+                node_type = LYXP_NODE_ROOT_CONFIG;
+            } else {
+                node_type = LYXP_NODE_ROOT_STATE;
+            }
+            break;
+        }
+        schema = sparent;
     }
 
     /* get node depths */
     for (parent = node, data_depth = 0; parent; parent = parent->parent, ++data_depth);
-    for (sparent = lys_parent(schema), schema_depth = 1; sparent; sparent = lys_parent(sparent)) {
-        if (sparent->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_NOTIF | LYS_RPC)) {
+    for (sparent = schema, schema_depth = 0;
+            sparent;
+            sparent = (sparent->nodetype == LYS_AUGMENT ? ((struct lys_node_augment *)sparent)->target : sparent->parent)) {
+        if (sparent->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_NOTIF | LYS_RPC)) {
             ++schema_depth;
         }
     }
     if (data_depth < schema_depth) {
-        return NULL;
+        return -1;
     }
 
     /* find the corresponding data node */
     for (i = 0; i < data_depth - schema_depth; ++i) {
         node = node->parent;
     }
-    if (node->schema != schema) {
-        return NULL;
+    if ((data_depth > 1) && (schema_depth > 1)) {
+        if (node->schema != schema) {
+            return -1;
+        }
+    } else {
+        /* special fake root, move it to the beginning of the list, if any */
+        while (node && node->prev->next) {
+            node = node->prev;
+        }
     }
 
-    return node;
+    *ctx_node = node;
+    *ctx_node_type = node_type;
+    return EXIT_SUCCESS;
+}
+
+/**
+ * @brief Temporarily unlink nodes as per YANG 1.1 RFC section 7.21.5 for when XPath evaluation.
+ * The context nodes is adjusted if needed.
+ *
+ * @param[in] snode Schema node, whose children instances need to be unlinked.
+ * @param[in,out] node Data siblings where to look for the children of \p snode. If it is unlinked,
+ * it is moved to point to another sibling still in the original tree.
+ * @param[in,out] ctx_node When context node, adjusted if needed.
+ * @param[in] ctx_node_type Context node type, just for information to detect invalid situations.
+ * @param[out] unlinked_nodes Unlinked siblings. Can be safely appended to \p node afterwards.
+ * Ordering may change, but there will be no semantic change.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
+static int
+resolve_when_unlink_nodes(struct lys_node *snode, struct lyd_node **node, struct lyd_node **ctx_node,
+                          enum lyxp_node_type ctx_node_type, struct lyd_node **unlinked_nodes)
+{
+    struct lyd_node *next, *elem;
+
+    switch (snode->nodetype) {
+    case LYS_AUGMENT:
+    case LYS_USES:
+    case LYS_CHOICE:
+    case LYS_CASE:
+        LY_TREE_FOR(snode->child, snode) {
+            if (resolve_when_unlink_nodes(snode, node, ctx_node, ctx_node_type, unlinked_nodes)) {
+                return -1;
+            }
+        }
+        break;
+    case LYS_CONTAINER:
+    case LYS_LIST:
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        LY_TREE_FOR_SAFE(lyd_first_sibling(*node), next, elem) {
+            if (elem->schema == snode) {
+
+                if (elem == *ctx_node) {
+                    /* We are going to unlink our context node! This normally cannot happen,
+                     * but we use normal top-level data nodes for faking a document root node,
+                     * so if this is the context node, we just use the next top-level node.
+                     * Additionally, it can even happen that there are no top-level data nodes left,
+                     * all were unlinked, so in this case we pass NULL as the context node/data tree,
+                     * lyxp_eval() can handle this special situation.
+                     */
+                    if (ctx_node_type == LYXP_NODE_ELEM) {
+                        LOGINT;
+                        return -1;
+                    }
+
+                    if (elem->prev == elem) {
+                        /* unlinking last top-level element, use an empty data tree */
+                        *ctx_node = NULL;
+                    } else {
+                        /* in this case just use the previous/last top-level data node */
+                        *ctx_node = elem->prev;
+                    }
+                } else if (elem == *node) {
+                    /* We are going to unlink the currently processed node. This does not matter that
+                     * much, but we would lose access to the original data tree, so just move our
+                     * pointer somewhere still inside it.
+                     */
+                    if ((*node)->prev != *node) {
+                        *node = (*node)->prev;
+                    } else {
+                        /* the processed node with sibings were all unlinked, oh well */
+                        *node = NULL;
+                    }
+                }
+
+                /* temporarily unlink the node */
+                lyd_unlink(elem);
+                if (*unlinked_nodes) {
+                    if (lyd_insert_after(*unlinked_nodes, elem)) {
+                        LOGINT;
+                        return -1;
+                    }
+                } else {
+                    *unlinked_nodes = elem;
+                }
+
+                if (snode->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYDATA)) {
+                    /* there can be only one instance */
+                    break;
+                }
+            }
+        }
+        break;
+    default:
+        LOGINT;
+        return -1;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/**
+ * @brief Relink the unlinked nodes back.
+ *
+ * @param[in] node Data node to link the nodes back to. It can actually be the adjusted context node,
+ * we simply need a sibling from the original data tree.
+ * @param[in] unlinked_nodes Unlinked nodes to relink to \p node.
+ * @param[in] ctx_node_type Context node type to distinguish between \p node being the parent
+ * or the sibling of \p unlinked_nodes.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
+static int
+resolve_when_relink_nodes(struct lyd_node *node, struct lyd_node *unlinked_nodes, enum lyxp_node_type ctx_node_type)
+{
+    struct lyd_node *elem;
+
+    LY_TREE_FOR_SAFE(unlinked_nodes, unlinked_nodes, elem) {
+        if (ctx_node_type == LYXP_NODE_ELEM) {
+            if (lyd_insert(node, elem)) {
+                return -1;
+            }
+        } else {
+            if (lyd_insert_after(node, elem)) {
+                return -1;
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
 }
 
 int
@@ -4874,7 +5043,8 @@ resolve_applies_must(const struct lyd_node *node)
     case LYS_LIST:
         return ((struct lys_node_list *)node->schema)->must_size;
     case LYS_ANYXML:
-        return ((struct lys_node_anyxml *)node->schema)->must_size;
+    case LYS_ANYDATA:
+        return ((struct lys_node_anydata *)node->schema)->must_size;
     default:
         return 0;
     }
@@ -4902,7 +5072,7 @@ check_augment:
 
         if ((parent->parent && (parent->parent->nodetype == LYS_AUGMENT) &&
                 (((struct lys_node_augment *)parent->parent)->when))) {
-
+            return 1;
         }
         parent = lys_parent(parent);
     }
@@ -4925,16 +5095,20 @@ check_augment:
 static int
 resolve_when(struct lyd_node *node)
 {
-    struct lyd_node *ctx_node = NULL;
-    struct lys_node *parent;
+    struct lyd_node *ctx_node = NULL, *unlinked_nodes, *tmp_node;
+    struct lys_node *sparent;
     struct lyxp_set set;
+    enum lyxp_node_type ctx_node_type;
     int rc = 0;
 
     assert(node);
     memset(&set, 0, sizeof set);
 
     if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC)) && (((struct lys_node_container *)node->schema)->when)) {
-        rc = lyxp_eval(((struct lys_node_container *)node->schema)->when->cond, node, &set, LYXP_WHEN);
+        /* make the node dummy for the evaluation */
+        node->validity |= LYD_VAL_INUSE;
+        rc = lyxp_eval(((struct lys_node_container *)node->schema)->when->cond, node, LYXP_NODE_ELEM, &set, LYXP_WHEN);
+        node->validity &= ~LYD_VAL_INUSE;
         if (rc) {
             if (rc == 1) {
                 LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
@@ -4945,9 +5119,9 @@ resolve_when(struct lyd_node *node)
         /* set boolean result of the condition */
         lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, LYXP_WHEN);
         if (!set.val.bool) {
-            ly_vlog_hide(1);
-            LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
             ly_vlog_hide(0);
+            LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
+            ly_vlog_hide(1);
             node->when_status |= LYD_WHEN_FALSE;
             goto cleanup;
         }
@@ -4956,33 +5130,49 @@ resolve_when(struct lyd_node *node)
         lyxp_set_cast(&set, LYXP_SET_EMPTY, node, 0);
     }
 
-    parent = node->schema;
+    sparent = node->schema;
     goto check_augment;
 
     /* check when in every schema node that affects node */
-    while (parent && (parent->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE))) {
-        if (((struct lys_node_uses *)parent)->when) {
+    while (sparent && (sparent->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE))) {
+        if (((struct lys_node_uses *)sparent)->when) {
             if (!ctx_node) {
-                ctx_node = resolve_when_ctx_node(node, parent);
-                if (!ctx_node) {
+                rc = resolve_when_ctx_node(node, sparent, &ctx_node, &ctx_node_type);
+                if (rc) {
                     LOGINT;
+                    goto cleanup;
+                }
+            }
+
+            unlinked_nodes = NULL;
+            /* we do not want our node pointer to change */
+            tmp_node = node;
+            rc = resolve_when_unlink_nodes(sparent, &tmp_node, &ctx_node, ctx_node_type, &unlinked_nodes);
+            if (rc) {
+                goto cleanup;
+            }
+
+            rc = lyxp_eval(((struct lys_node_uses *)sparent)->when->cond, ctx_node, ctx_node_type, &set, LYXP_WHEN);
+
+            if (unlinked_nodes && ctx_node) {
+                if (resolve_when_relink_nodes(ctx_node, unlinked_nodes, ctx_node_type)) {
                     rc = -1;
                     goto cleanup;
                 }
             }
-            rc = lyxp_eval(((struct lys_node_uses *)parent)->when->cond, ctx_node, &set, LYXP_WHEN);
+
             if (rc) {
                 if (rc == 1) {
-                    LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)parent)->when->cond);
+                    LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)sparent)->when->cond);
                 }
                 goto cleanup;
             }
 
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, LYXP_WHEN);
             if (!set.val.bool) {
-                ly_vlog_hide(1);
-                LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)parent)->when->cond);
                 ly_vlog_hide(0);
+                LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)sparent)->when->cond);
+                ly_vlog_hide(1);
                 node->when_status |= LYD_WHEN_FALSE;
                 goto cleanup;
             }
@@ -4992,19 +5182,37 @@ resolve_when(struct lyd_node *node)
         }
 
 check_augment:
-        if ((parent->parent && (parent->parent->nodetype == LYS_AUGMENT) && (((struct lys_node_augment *)parent->parent)->when))) {
+        if ((sparent->parent && (sparent->parent->nodetype == LYS_AUGMENT) && (((struct lys_node_augment *)sparent->parent)->when))) {
             if (!ctx_node) {
-                ctx_node = resolve_when_ctx_node(node, parent->parent);
-                if (!ctx_node) {
+                rc = resolve_when_ctx_node(node, sparent->parent, &ctx_node, &ctx_node_type);
+                if (rc) {
                     LOGINT;
+                    goto cleanup;
+                }
+            }
+
+            unlinked_nodes = NULL;
+            tmp_node = node;
+            rc = resolve_when_unlink_nodes(sparent->parent, &tmp_node, &ctx_node, ctx_node_type, &unlinked_nodes);
+            if (rc) {
+                goto cleanup;
+            }
+
+            rc = lyxp_eval(((struct lys_node_augment *)sparent->parent)->when->cond, ctx_node, ctx_node_type, &set, LYXP_WHEN);
+
+            /* reconnect nodes, if ctx_node is NULL then all the nodes were unlinked, but linked together,
+             * so the tree did not actually change and there is nothing for us to do
+             */
+            if (unlinked_nodes && ctx_node) {
+                if (resolve_when_relink_nodes(ctx_node, unlinked_nodes, ctx_node_type)) {
                     rc = -1;
                     goto cleanup;
                 }
             }
-            rc = lyxp_eval(((struct lys_node_augment *)parent->parent)->when->cond, ctx_node, &set, LYXP_WHEN);
+
             if (rc) {
                 if (rc == 1) {
-                    LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)parent->parent)->when->cond);
+                    LOGVAL(LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)sparent->parent)->when->cond);
                 }
                 goto cleanup;
             }
@@ -5012,9 +5220,9 @@ check_augment:
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, LYXP_WHEN);
 
             if (!set.val.bool) {
-                ly_vlog_hide(1);
-                LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)parent->parent)->when->cond);
                 ly_vlog_hide(0);
+                LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)sparent->parent)->when->cond);
+                ly_vlog_hide(1);
                 node->when_status |= LYD_WHEN_FALSE;
                goto cleanup;
             }
@@ -5023,13 +5231,12 @@ check_augment:
             lyxp_set_cast(&set, LYXP_SET_EMPTY, ctx_node, 0);
         }
 
-        parent = lys_parent(parent);
+        sparent = lys_parent(sparent);
     }
 
     node->when_status |= LYD_WHEN_TRUE;
 
 cleanup:
-
     /* free xpath set content */
     lyxp_set_cast(&set, LYXP_SET_EMPTY, ctx_node ? ctx_node : node, 0);
 
@@ -5054,7 +5261,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
     /* has_str - whether the str_snode is a string in a dictionary that needs to be freed */
     int rc = -1, has_str = 0, tpdf_flag = 0, i, k;
     unsigned int j;
-    struct lys_node *node;
+    struct lys_node *node, *par_grp;
     const char *expr;
 
     struct ly_set *refs, *procs;
@@ -5146,10 +5353,22 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
                 stype->der = (struct lys_tpdf *)yin;
             }
         }
-        if (!rc) {
+        if (rc == EXIT_SUCCESS) {
             /* it does not make sense to have leaf-list of empty type */
             if (!tpdf_flag && node->nodetype == LYS_LEAFLIST && stype->base == LY_TYPE_EMPTY) {
                 LOGWRN("The leaf-list \"%s\" is of \"empty\" type, which does not make sense.", node->name);
+            }
+        } else if (rc == EXIT_FAILURE && stype->base != LY_TYPE_INGRP) {
+            /* forward reference - in case the type is in grouping, we have to make the grouping unusable
+             * by uses statement until the type is resolved. We do that the same way as uses statements inside
+             * grouping - the grouping's nacm member (not used un grouping) is used to increase the number of
+             * so far unresolved items (uses and types). The grouping cannot be used unless the nacm value is 0.
+             * To remember that the grouping already increased grouping's nacm, the LY_TYPE_INGRP is used as value
+             * of the type's base member. */
+            for (par_grp = node; par_grp && (par_grp->nodetype != LYS_GROUPING); par_grp = lys_parent(par_grp));
+            if (par_grp) {
+                ((struct lys_node_grp *)par_grp)->nacm++;
+                stype->base = LY_TYPE_INGRP;
             }
         }
         break;
@@ -5957,11 +6176,12 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
                 progress = 1;
             } else if (rc == -1) {
                 ly_vlog_hide(0);
+                /* print only this last error */
+                resolve_unres_data_item(unres->node[i], unres->type[i]);
                 return -1;
             } else {
                 /* forward reference, erase ly_errno */
                 ly_errno = LY_SUCCESS;
-                ly_vecode = LYVE_SUCCESS;
             }
         }
         first = 0;

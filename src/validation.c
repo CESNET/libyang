@@ -52,6 +52,7 @@ int
 lyv_data_context(const struct lyd_node *node, int options, struct unres_data *unres)
 {
     const struct lys_node *siter = NULL;
+    struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
 
     assert(node);
     assert(unres);
@@ -63,20 +64,26 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
     }
 
     /* check leafref/instance-identifier */
-    if ((node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) &&
-            !(options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
-        /* remove possible unres flags from type */
-        ((struct lyd_node_leaf_list *)node)->value_type &= LY_DATA_TYPE_MASK;
-
-        /* if leafref or instance-identifier, store the node for later resolving */
-        if (((struct lyd_node_leaf_list *)node)->value_type == LY_TYPE_LEAFREF &&
-                !((struct lyd_node_leaf_list *)node)->value.leafref) {
-            if (unres_data_add(unres, (struct lyd_node *)node, UNRES_LEAFREF)) {
-                return EXIT_FAILURE;
+    if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+        if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
+            /* if leafref or instance-identifier, parse the value according to the
+             * target's type, because the target leaf does not need to be present */
+            if (leaf->value_type == LY_TYPE_LEAFREF || leaf->value_type == LY_TYPE_INST) {
+                memset(&leaf->value, 0, sizeof leaf->value);
+                if (lyp_parse_value_type(leaf, &((struct lys_node_leaf *)leaf->schema)->type, 0)) {
+                    return EXIT_FAILURE;
+                }
             }
-        } else if (((struct lyd_node_leaf_list *)node)->value_type == LY_TYPE_INST) {
-            if (unres_data_add(unres, (struct lyd_node *)node, UNRES_INSTID)) {
-                return EXIT_FAILURE;
+        } else {
+            /* if leafref or instance-identifier, store the node for later resolving */
+            if (leaf->value_type == LY_TYPE_LEAFREF && !leaf->value.leafref) {
+                if (unres_data_add(unres, (struct lyd_node *)node, UNRES_LEAFREF)) {
+                    return EXIT_FAILURE;
+                }
+            } else if (leaf->value_type == LY_TYPE_INST) {
+                if (unres_data_add(unres, (struct lyd_node *)node, UNRES_INSTID)) {
+                    return EXIT_FAILURE;
+                }
             }
         }
     }
@@ -353,7 +360,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
             if (ly_check_mandatory(node, NULL, (options & LYD_OPT_TYPEMASK) ? 0 : 1, (options & LYD_OPT_RPCREPLY) ? 1 : 0)) {
                 return EXIT_FAILURE;
             }
-        } else if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYXML)) {
+        } else if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYDATA)) {
             /* check number of instances (similar to list uniqueness) for non-list nodes */
 
             /* find duplicity */
@@ -400,7 +407,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
                 return EXIT_FAILURE;
             }
             siter = lys_parent(siter);
-        } while (siter && !(siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML)));
+        } while (siter && !(siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA)));
 
         /* status of the identity value */
         if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {

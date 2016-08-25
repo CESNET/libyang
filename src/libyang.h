@@ -1227,6 +1227,7 @@ typedef enum {
     LYVE_XPATH_INCTX,  /**< invalid XPath context type */
     LYVE_XPATH_INARGCOUNT, /**< invalid number of arguments for an XPath function */
     LYVE_XPATH_INARGTYPE, /**< invalid type of arguments for an XPath function */
+    LYVE_XPATH_DUMMY,  /**< invaid use of the XPath dummy node */
 
     LYVE_PATH_INCHAR,  /**< invalid characters (path) */
     LYVE_PATH_INMOD,   /**< invalid module name (path) */

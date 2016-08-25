@@ -410,7 +410,7 @@ parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret,
 {
     char *strptr;
 
-    if (!val_str) {
+    if (!val_str || !val_str[0]) {
         LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
         return EXIT_FAILURE;
     }
@@ -441,7 +441,7 @@ parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret, struct ly
 {
     char *strptr;
 
-    if (!val_str) {
+    if (!val_str || !val_str[0]) {
         LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
         return EXIT_FAILURE;
     }
@@ -845,8 +845,8 @@ lyp_check_pattern(const char *pattern, pcre **pcre_precomp)
  *
  * resolve - whether resolve identityrefs and leafrefs (which must be in JSON form)
  */
-static int
-lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve)
+int
+lyp_parse_value_type(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve)
 {
     #define DECSIZE 21
     struct lys_type *type;
@@ -859,7 +859,8 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
 
     assert(node && (node->value_type == stype->base));
 
-    switch (node->value_type) {
+switchtype:
+    switch (node->value_type & LY_DATA_TYPE_MASK) {
     case LY_TYPE_BINARY:
         if (validate_length_range(0, (node->value_str ? strlen(node->value_str) : 0), 0, 0, stype,
                                   node->value_str, (struct lyd_node *)node)) {
@@ -952,7 +953,7 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
         break;
 
     case LY_TYPE_DEC64:
-        if (!node->value_str) {
+        if (!node->value_str || !node->value_str[0]) {
             LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
             return EXIT_FAILURE;
         }
@@ -1104,6 +1105,10 @@ lyp_parse_value_(struct lyd_node_leaf_list *node, struct lys_type *stype, int re
                 type = &type->info.lref.target->type;
             }
             node->value_type = type->base | LY_TYPE_LEAFREF_UNRES;
+
+            /* get the value according to the target's type */
+            stype = type;
+            goto switchtype;
         }
         break;
 
@@ -1224,7 +1229,7 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
                 }
             }
 
-            if (!lyp_parse_value_(leaf, type, resolve)) {
+            if (!lyp_parse_value_type(leaf, type, resolve)) {
                 /* success, erase set ly_errno and ly_vecode */
                 ly_errno = LY_SUCCESS;
                 ly_vecode = LYVE_SUCCESS;
@@ -1250,8 +1255,7 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
         }
     } else {
         memset(&leaf->value, 0, sizeof leaf->value);
-        if (lyp_parse_value_(leaf, stype, resolve)) {
-            ly_errno = LY_EVALID;
+        if (lyp_parse_value_type(leaf, stype, resolve)) {
             return EXIT_FAILURE;
         }
     }
