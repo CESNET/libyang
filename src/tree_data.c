@@ -2349,7 +2349,8 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
         invalid++;
     }
 
-    if (node->parent || (node->prev != node)) {
+    /* unlink only if it is not a list of siblings without a parent and node is the first sibling */
+    if (node->parent || node->prev->next) {
         lyd_unlink_internal(node, invalid);
     }
 
