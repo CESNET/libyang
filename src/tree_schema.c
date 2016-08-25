@@ -2750,18 +2750,16 @@ lys_node_switch(struct lys_node *dst, struct lys_node *src)
     assert((dst->module == src->module) && ly_strequal(dst->name, src->name, 1) && (dst->nodetype == src->nodetype));
 
     /* sibling next */
-    if (dst->prev != dst) {
+    if (dst->prev->next) {
         dst->prev->next = src;
     }
 
     /* sibling prev */
     if (dst->next) {
         dst->next->prev = src;
-    }
-
-    /* parent child prev */
-    if (!dst->next && dst->parent) {
-        dst->parent->child->prev = src;
+    } else {
+        for (child = dst->prev; child->prev->next; child = child->prev);
+        child->prev = src;
     }
 
     /* next */
