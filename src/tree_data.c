@@ -4090,7 +4090,7 @@ lyd_wd_add_leaf(struct ly_ctx *ctx, struct lyd_node *parent, struct lys_node_lea
             ly_set_free(nodeset);
         }
         ret = lyd_new_path(parent, ctx, path, dflt, options & LYD_OPT_RPCREPLY ? LYD_PATH_OPT_OUTPUT : 0);
-        if ((options & (LYD_WD_ALL_TAG | LYD_WD_IMPL_TAG)) && ret) {
+        if (ret) {
             /* remember the created nodes (if necessary) in unres */
             for (iter = ret; ; iter = iter->child) {
                 if ((!(options & LYD_OPT_TYPEMASK) || (options & LYD_OPT_CONFIG)) && (iter->when_status & LYD_WHEN)) {
@@ -4121,8 +4121,10 @@ lyd_wd_add_leaf(struct ly_ctx *ctx, struct lyd_node *parent, struct lys_node_lea
                 }
             }
 
-            /* add tag */
-            iter->dflt = 1;
+            if (options & (LYD_WD_ALL_TAG | LYD_WD_IMPL_TAG | LYD_WD_ALL)) {
+                /* add tag */
+                iter->dflt = 1;
+            }
         }
         return ret;
     }
