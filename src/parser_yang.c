@@ -2386,19 +2386,27 @@ nacm_inherit(struct lys_module *module)
     }
 }
 
-void
+int
 store_flags(struct lys_node *node, uint8_t flags, int config_inherit)
 {
     node->flags |= flags;
-    if (!(node->flags & LYS_CONFIG_MASK) && config_inherit) {
-        /* get config flag from parent */
-        if (node->parent) {
-            node->flags |= node->parent->flags & LYS_CONFIG_MASK;
-        } else {
-            /* default config is true */
-            node->flags |= LYS_CONFIG_W;
+    if (!(node->flags & LYS_CONFIG_MASK)) {
+        if (config_inherit) {
+            /* get config flag from parent */
+            if (node->parent) {
+                node->flags |= node->parent->flags & LYS_CONFIG_MASK;
+            } else {
+                /* default config is true */
+                node->flags |= LYS_CONFIG_W;
+            }
         }
+    } else if ((node->flags & LYS_CONFIG_W) && node->parent && (node->parent->flags & LYS_CONFIG_R)) {
+        LOGVAL(LYE_INARG, LY_VLOG_LYS, node, "true", "config");
+        LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "State nodes cannot have configuration nodes as children.");
+        return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 static int

@@ -855,7 +855,9 @@ feature_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                  YYABORT;
                                }
                              }
-                             store_flags((struct lys_node *)actual, size_arrays->node[size_arrays->next].flags, 0);
+                             if (store_flags((struct lys_node *)actual, size_arrays->node[size_arrays->next].flags, 0)) {
+                                 YYABORT;
+                             }
                              size_arrays->next++;
                            } else {
                              $$ = size_arrays->size;
@@ -1371,7 +1373,7 @@ enum_opt_stmt: @EMPTYDIR@ { if (read_all) {
                               }
 
                               if (size_arrays->node[size_arrays->next].if_features) {
-                                ((struct lys_type_enum *)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, 
+                                ((struct lys_type_enum *)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features,
                                                                                      sizeof *((struct lys_type_enum *)actual)->iffeature);
                                 if (!((struct lys_type_enum *)actual)->iffeature) {
                                   LOGMEM;
@@ -1548,7 +1550,7 @@ bit_opt_stmt: @EMPTYDIR@ { if (read_all) {
                               }
 
                               if (size_arrays->node[size_arrays->next].if_features) {
-                                ((struct lys_type_bit *)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, 
+                                ((struct lys_type_bit *)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features,
                                                                                      sizeof *((struct lys_type_bit *)actual)->iffeature);
                                 if (!((struct lys_type_bit *)actual)->iffeature) {
                                   LOGMEM;
@@ -1659,7 +1661,9 @@ grouping_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                    YYABORT;
                                  }
                                }
-                               store_flags((struct lys_node *)$$.grouping, size_arrays->node[size_arrays->next].flags, 0);
+                               if (store_flags((struct lys_node *)$$.grouping, size_arrays->node[size_arrays->next].flags, 0)) {
+                                   YYABORT;
+                               }
                                size_arrays->next++;
                              } else {
                                $$.index = size_arrays->size;
@@ -1745,7 +1749,9 @@ container_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                    YYABORT;
                                  }
                                }
-                               store_flags((struct lys_node *)$$.container, size_arrays->node[size_arrays->next].flags, config_inherit);
+                               if (store_flags((struct lys_node *)$$.container, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                   YYABORT;
+                               }
                                size_arrays->next++;
                              } else {
                                $$.index = size_arrays->size;
@@ -1863,7 +1869,9 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                 YYABORT;
                               }
                             }
-                            store_flags((struct lys_node *)$$.node.ptr_leaf, size_arrays->node[size_arrays->next].flags, config_inherit);
+                            if (store_flags((struct lys_node *)$$.node.ptr_leaf, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                YYABORT;
+                            }
                             size_arrays->next++;
                           } else {
                             $$.index = size_arrays->size;
@@ -1982,7 +1990,9 @@ leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                    YYABORT;
                                  }
                                }
-                               store_flags((struct lys_node *)$$.node.ptr_leaflist, size_arrays->node[size_arrays->next].flags, config_inherit);
+                               if (store_flags((struct lys_node *)$$.node.ptr_leaflist, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                   YYABORT;
+                               }
                                size_arrays->next++;
                              } else {
                                $$.index = size_arrays->size;
@@ -2153,7 +2163,9 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                             }
                           }
                           $$.node.ptr_list->keys_size = size_arrays->node[size_arrays->next].keys;
-                          store_flags((struct lys_node *)$$.node.ptr_list, size_arrays->node[size_arrays->next].flags, config_inherit);
+                          if (store_flags((struct lys_node *)$$.node.ptr_list, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                              YYABORT;
+                          }
                           size_arrays->next++;
                         } else {
                           $$.index = size_arrays->size;
@@ -2330,7 +2342,9 @@ choice_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                 YYABORT;
                               }
                             }
-                            store_flags((struct lys_node *)$$.choice.ptr_choice, size_arrays->node[size_arrays->next].flags, config_inherit);
+                            if (store_flags((struct lys_node *)$$.choice.ptr_choice, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                YYABORT;
+                            }
                             size_arrays->next++;
                           } else {
                             $$.index = size_arrays->size;
@@ -2454,7 +2468,9 @@ case_opt_stmt: @EMPTYDIR@ { if (read_all) {
                               YYABORT;
                             }
                           }
-                          store_flags((struct lys_node *)$$.cs, size_arrays->node[size_arrays->next].flags, 1);
+                          if (store_flags((struct lys_node *)$$.cs, size_arrays->node[size_arrays->next].flags, 1)) {
+                              YYABORT;
+                          }
                           size_arrays->next++;
                         } else {
                           $$.index = size_arrays->size;
@@ -2542,7 +2558,9 @@ anyxml_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                 YYABORT;
                               }
                             }
-                            store_flags((struct lys_node *)$$.node.ptr_anydata, size_arrays->node[size_arrays->next].flags, config_inherit);
+                            if (store_flags((struct lys_node *)$$.node.ptr_anydata, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                YYABORT;
+                            }
                             size_arrays->next++;
                           } else {
                             $$.index = size_arrays->size;
@@ -2647,7 +2665,9 @@ uses_opt_stmt: @EMPTYDIR@ { if (read_all) {
                               YYABORT;
                             }
                           }
-                          store_flags((struct lys_node *)$$.uses.ptr_uses, size_arrays->node[size_arrays->next].flags, 0);
+                          if (store_flags((struct lys_node *)$$.uses.ptr_uses, size_arrays->node[size_arrays->next].flags, 0)) {
+                              YYABORT;
+                          }
                           size_arrays->next++;
                         } else {
                           $$.index = size_arrays->size;
@@ -3060,7 +3080,9 @@ rpc_opt_stmt: @EMPTYDIR@ { if (read_all) {
                              YYABORT;
                            }
                          }
-                         store_flags((struct lys_node *)$$.node.ptr_rpc, size_arrays->node[size_arrays->next].flags, 0);
+                         if (store_flags((struct lys_node *)$$.node.ptr_rpc, size_arrays->node[size_arrays->next].flags, 0)) {
+                             YYABORT;
+                         }
                          size_arrays->next++;
                        } else {
                          $$.index = size_arrays->size;
@@ -3282,7 +3304,9 @@ notification_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                       YYABORT;
                                     }
                                   }
-                                  store_flags((struct lys_node *)$$.notif, size_arrays->node[size_arrays->next].flags, 0);
+                                  if (store_flags((struct lys_node *)$$.notif, size_arrays->node[size_arrays->next].flags, 0)) {
+                                      YYABORT;
+                                  }
                                   size_arrays->next++;
                                 } else {
                                   $$.index = size_arrays->size;

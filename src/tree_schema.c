@@ -1052,6 +1052,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
         lys_node_unlink(child);
     }
 
+    /* connect the child correctly */
     if (!parent) {
         if (module->data) {
             module->data->prev->next = child;
@@ -1077,6 +1078,16 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
             iter->parent = parent;
         }
         parent->child->prev = iter;
+    }
+
+    /* check config value */
+    if (parent && !(parent->nodetype & (LYS_GROUPING | LYS_AUGMENT))) {
+        for (iter = child; iter && !(iter->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); iter = iter->parent);
+        if (!iter && (parent->flags & LYS_CONFIG_R) && (child->flags & LYS_CONFIG_W)) {
+            LOGVAL(LYE_INARG, LY_VLOG_LYS, child, "true", "config");
+            LOGVAL(LYE_SPEC, LY_VLOG_LYS, child, "State nodes cannot have configuration nodes as children.");
+            return EXIT_FAILURE;
+        }
     }
 
     /* propagate information about status data presence */
