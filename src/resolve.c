@@ -4837,16 +4837,16 @@ resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema, struct lyd
         return -1;
     }
 
-    /* find the corresponding data node */
-    for (i = 0; i < data_depth - schema_depth; ++i) {
-        node = node->parent;
-    }
-    if ((data_depth > 1) && (schema_depth > 1)) {
+    if (schema_depth) {
+        /* find the corresponding data node */
+        for (i = 0; i < data_depth - schema_depth; ++i) {
+            node = node->parent;
+        }
         if (node->schema != schema) {
             return -1;
         }
     } else {
-        /* special fake root, move it to the beginning of the list, if any */
+        /* special fake document root, move it to the beginning of the list, if any */
         while (node && node->prev->next) {
             node = node->prev;
         }
