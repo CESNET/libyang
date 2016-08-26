@@ -3962,6 +3962,16 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
             LOGWRN("Augment \"%s\" without children.", aug->target_name);
             return EXIT_SUCCESS;
         }
+
+        /* reconnect augmenting data into the target - add them to the target child list */
+        if (aug->target->child) {
+            sub = aug->target->child->prev; /* remember current target's last node */
+            sub->next = aug->child;         /* connect augmenting data after target's last node */
+            aug->target->child->prev = aug->child->prev; /* new target's last node is last augmenting node */
+            aug->child->prev = sub;         /* finish connecting of both child lists */
+        } else {
+            aug->target->child = aug->child;
+        }
     }
 
     /* check for mandatory nodes - if the target node is in another module
@@ -4009,15 +4019,6 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
         if (lys_check_id(sub, aug->target, NULL)) {
             return -1;
         }
-    }
-    /* reconnect augmenting data into the target - add them to the target child list */
-    if (aug->target->child) {
-        sub = aug->target->child->prev; /* remember current target's last node */
-        sub->next = aug->child;         /* connect augmenting data after target's last node */
-        aug->target->child->prev = aug->child->prev; /* new target's last node is last augmenting node */
-        aug->child->prev = sub;         /* finish connecting of both child lists */
-    } else {
-        aug->target->child = aug->child;
     }
 
     return EXIT_SUCCESS;
