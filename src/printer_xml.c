@@ -441,7 +441,9 @@ xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
     }
 
     if (action) {
-        --level;
+        if (level) {
+            --level;
+        }
         ly_print(out, "%*s</action>%s", LEVEL, INDENT, level ? "\n" : "");
     }
 
