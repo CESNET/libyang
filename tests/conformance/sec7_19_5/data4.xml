@@ -1,0 +1,4 @@
+<ccc xmlns="urn:cesnet:mod2">
+    <test>true</test>
+</ccc>
+<ssh xmlns="urn:cesnet:mod2"/>
