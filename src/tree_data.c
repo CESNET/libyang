@@ -1433,6 +1433,10 @@ lyd_new_dummy(struct lyd_node *root, struct lyd_node *parent, const struct lys_n
         default:
             goto error;
         }
+        if (!iter) {
+            LOGINT;
+            goto error;
+        }
 
         /* we say it is valid and it is dummy */
         iter->validity = LYD_VAL_INUSE;
