@@ -1433,6 +1433,10 @@ lyd_new_dummy(struct lyd_node *root, struct lyd_node *parent, const struct lys_n
         default:
             goto error;
         }
+        if (!iter) {
+            LOGINT;
+            goto error;
+        }
 
         /* we say it is valid and it is dummy */
         iter->validity = LYD_VAL_INUSE;
@@ -4906,6 +4910,7 @@ lyd_wd_add_inner(struct lyd_node *subroot, struct lys_node *schema, struct unres
                 } else if ((options & LYD_WD_MASK) == LYD_WD_EXPLICIT
                         && ((siter->flags & LYS_CONFIG_W) && !(siter->flags & LYS_INCL_STATUS))) {
                     /* do not process config data in explicit mode */
+                    ly_set_free(nodeset);
                     continue;
                 }
                 lyd_wd_add_empty(subroot, siter, unres, options);
