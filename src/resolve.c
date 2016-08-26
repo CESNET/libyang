@@ -3939,86 +3939,87 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
 {
     int rc;
     struct lys_node *sub;
+    const struct lys_node *aug_target;
 
-    assert(aug);
+    assert(aug && !aug->target);
 
-    if (!aug->target) {
-        /* resolve target node */
-        rc = resolve_augment_schema_nodeid(aug->target_name, siblings, (siblings ? NULL : aug->module), (const struct lys_node **)&aug->target);
-        if (rc == -1) {
-            return -1;
-        }
-        if (rc > 0) {
-            LOGVAL(LYE_INCHAR, LY_VLOG_LYS, aug, aug->target_name[rc - 1], &aug->target_name[rc - 1]);
-            return -1;
-        }
-        if (!aug->target) {
-            LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, aug, "augment", aug->target_name);
-            return EXIT_FAILURE;
-        }
+    /* resolve target node */
+    rc = resolve_augment_schema_nodeid(aug->target_name, siblings, (siblings ? NULL : aug->module), &aug_target);
+    if (rc == -1) {
+        return -1;
+    }
+    if (rc > 0) {
+        LOGVAL(LYE_INCHAR, LY_VLOG_LYS, aug, aug->target_name[rc - 1], &aug->target_name[rc - 1]);
+        return -1;
+    }
+    if (!aug_target) {
+        LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, aug, "augment", aug->target_name);
+        return EXIT_FAILURE;
+    }
 
-        if (!aug->child) {
-            /* nothing to do */
-            LOGWRN("Augment \"%s\" without children.", aug->target_name);
-            return EXIT_SUCCESS;
-        }
-
-        /* reconnect augmenting data into the target - add them to the target child list */
-        if (aug->target->child) {
-            sub = aug->target->child->prev; /* remember current target's last node */
-            sub->next = aug->child;         /* connect augmenting data after target's last node */
-            aug->target->child->prev = aug->child->prev; /* new target's last node is last augmenting node */
-            aug->child->prev = sub;         /* finish connecting of both child lists */
-        } else {
-            aug->target->child = aug->child;
-        }
+    if (!aug->child) {
+        /* nothing to do */
+        LOGWRN("Augment \"%s\" without children.", aug->target_name);
+        return EXIT_SUCCESS;
     }
 
     /* check for mandatory nodes - if the target node is in another module
      * the added nodes cannot be mandatory
      */
-    if (!aug->parent && (lys_node_module((struct lys_node *)aug) != lys_node_module(aug->target))
+    if (!aug->parent && (lys_node_module((struct lys_node *)aug) != lys_node_module(aug_target))
             && (rc = lyp_check_mandatory_augment(aug))) {
         return rc;
     }
 
     /* check augment target type and then augment nodes type */
-    if (aug->target->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF)) {
+    if (aug_target->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF)) {
         LY_TREE_FOR(aug->child, sub) {
             if (!(sub->nodetype & (LYS_ANYDATA | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES | LYS_CHOICE))) {
                 LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, aug, strnodetype(sub->nodetype), "augment");
                 LOGVAL(LYE_SPEC, LY_VLOG_LYS, aug, "Cannot augment \"%s\" with a \"%s\".",
-                       strnodetype(aug->target->nodetype), strnodetype(sub->nodetype));
+                       strnodetype(aug_target->nodetype), strnodetype(sub->nodetype));
                 return -1;
             }
         }
-    } else if (aug->target->nodetype == LYS_CHOICE) {
+    } else if (aug_target->nodetype == LYS_CHOICE) {
         LY_TREE_FOR(aug->child, sub) {
             if (!(sub->nodetype & (LYS_CASE | LYS_ANYDATA | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST))) {
                 LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, aug, strnodetype(sub->nodetype), "augment");
                 LOGVAL(LYE_SPEC, LY_VLOG_LYS, aug, "Cannot augment \"%s\" with a \"%s\".",
-                       strnodetype(aug->target->nodetype), strnodetype(sub->nodetype));
+                       strnodetype(aug_target->nodetype), strnodetype(sub->nodetype));
                 return -1;
             }
         }
     } else {
         LOGVAL(LYE_INARG, LY_VLOG_LYS, aug, aug->target_name, "target-node");
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, aug, "Invalid augment target node type \"%s\".", strnodetype(aug->target->nodetype));
+        LOGVAL(LYE_SPEC, LY_VLOG_LYS, aug, "Invalid augment target node type \"%s\".", strnodetype(aug_target->nodetype));
         return -1;
     }
 
     /* inherit config information from actual parent */
     LY_TREE_FOR(aug->child, sub) {
-        if (inherit_config_flag(sub, aug->target->flags & LYS_CONFIG_MASK)) {
+        if (inherit_config_flag(sub, aug_target->flags & LYS_CONFIG_MASK)) {
             return -1;
         }
     }
 
     /* check identifier uniqueness as in lys_node_addchild() */
     LY_TREE_FOR(aug->child, sub) {
-        if (lys_check_id(sub, aug->target, NULL)) {
+        if (lys_check_id(sub, (struct lys_node *)aug_target, NULL)) {
             return -1;
         }
+    }
+
+    /* finally reconnect augmenting data into the target - add them to the target child list,
+     * by setting aug->target we know the augment is fully resolved now */
+    aug->target = (struct lys_node *)aug_target;
+    if (aug->target->child) {
+        sub = aug->target->child->prev; /* remember current target's last node */
+        sub->next = aug->child;         /* connect augmenting data after target's last node */
+        aug->target->child->prev = aug->child->prev; /* new target's last node is last augmenting node */
+        aug->child->prev = sub;         /* finish connecting of both child lists */
+    } else {
+        aug->target->child = aug->child;
     }
 
     return EXIT_SUCCESS;
