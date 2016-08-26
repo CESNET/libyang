@@ -25,6 +25,7 @@
 #include <limits.h>
 #include <errno.h>
 #include <math.h>
+#include <pcre.h>
 
 #include "xpath.h"
 #include "libyang.h"
@@ -36,6 +37,7 @@
 #include "common.h"
 #include "resolve.h"
 #include "printer.h"
+#include "parser.h"
 #include "dict_private.h"
 
 static const  struct lyd_node *moveto_get_root(const struct lyd_node *cur_node, int options,
@@ -2458,6 +2460,56 @@ error:
  */
 
 /**
+ * @brief Execute the YANG 1.1 bit-is-set(node-set, string) function. Returns LYXP_SET_BOOLEAN
+ *        depending on whether the first node bit value from the second argument is set.
+ *
+ * @param[in] args Array of arguments.
+ * @param[in] arg_count Count of elements in \p args.
+ * @param[in] cur_node Original context node.
+ * @param[in,out] set Context and result set at the same time.
+ * @param[in] options Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
+static int
+xpath_bit_is_set(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
+                 int options)
+{
+    struct lyd_node_leaf_list *leaf;
+    int i, bits_count;
+
+    if (arg_count != 2) {
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "bit-is-set(node-set, string)");
+        return -1;
+    }
+
+    if ((args[0]->type != LYXP_SET_NODE_SET) && (args[0]->type != LYXP_SET_EMPTY)) {
+        LOGVAL(LYE_XPATH_INARGTYPE, LY_VLOG_NONE, NULL, 1, print_set_type(args[0]), "bit-is-set(node-set, string)");
+        return -1;
+    }
+    if (lyxp_set_cast(args[1], LYXP_SET_STRING, cur_node, options)) {
+        return -1;
+    }
+
+    set_fill_boolean(set, 0);
+    if (args[0]->type == LYXP_SET_NODE_SET) {
+        leaf = (struct lyd_node_leaf_list *)args[0]->val.nodes[0].node;
+        if ((leaf->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
+                && (((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_BITS)) {
+            bits_count = ((struct lys_node_leaf *)leaf->schema)->type.info.bits.count;
+            for (i = 0; i < bits_count; ++i) {
+                if (leaf->value.bit[i] && ly_strequal(leaf->value.bit[i]->name, args[1]->val.str, 0)) {
+                    set_fill_boolean(set, 1);
+                    break;
+                }
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/**
  * @brief Execute the XPath boolean(object) function. Returns LYXP_SET_BOOLEAN
  *        with the argument converted to boolean.
  *
@@ -2667,6 +2719,256 @@ xpath_current(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_n
     } else {
         /* position is filled later */
         set_insert_node(set, cur_node, 0, LYXP_NODE_ELEM, 0);
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/**
+ * @brief Execute the YANG 1.1 deref(node-set) function. Returns LYXP_SET_NODE_SET with either
+ *        leafref or instance-identifier target node(s).
+ *
+ * @param[in] args Array of arguments.
+ * @param[in] arg_count Count of elements in \p args.
+ * @param[in] cur_node Original context node.
+ * @param[in,out] set Context and result set at the same time.
+ * @param[in] options Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
+static int
+xpath_deref(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
+            int options)
+{
+    struct lyd_node_leaf_list *leaf;
+    struct lys_node_leaf *sleaf;
+
+    if (arg_count != 1) {
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "deref(node-set)");
+        return -1;
+    }
+
+    if ((args[0]->type != LYXP_SET_NODE_SET) && (args[0]->type != LYXP_SET_SNODE_SET)
+            && (args[0]->type != LYXP_SET_EMPTY)) {
+        LOGVAL(LYE_XPATH_INARGTYPE, LY_VLOG_NONE, NULL, 1, print_set_type(args[0]), "deref(node-set)");
+        return -1;
+    }
+
+    if (options & LYXP_SNODE_ALL) {
+        assert(args[0]->type == LYXP_SET_SNODE_SET);
+        set_snode_clear_ctx(set);
+
+        sleaf = (struct lys_node_leaf *)args[0]->val.snodes[0].snode;
+        if ((sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && (sleaf->type.base == LY_TYPE_LEAFREF)) {
+            assert(sleaf->type.info.lref.path && sleaf->type.info.lref.target);
+            set_insert_node(set, sleaf->type.info.lref.target, 0, LYXP_NODE_ELEM, 0);
+        }
+        set_snode_insert_node(set, (struct lys_node *)cur_node, LYXP_NODE_ELEM);
+    } else {
+        lyxp_set_cast(set, LYXP_SET_EMPTY, cur_node, options);
+        if (args[0]->type != LYXP_SET_EMPTY) {
+            leaf = (struct lyd_node_leaf_list *)args[0]->val.nodes[0].node;
+            sleaf = (struct lys_node_leaf *)leaf->schema;
+            if ((sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))
+                    && ((sleaf->type.base == LY_TYPE_LEAFREF) || (sleaf->type.base == LY_TYPE_INST))) {
+                if (leaf->value_type & LY_TYPE_LEAFREF_UNRES) {
+                    /* this is bad */
+                    LOGINT;
+                    return -1;
+                }
+                /* works for both leafref and instid */
+                set_insert_node(set, leaf->value.leafref, 0, LYXP_NODE_ELEM, 0);
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/* return 0 - match, 1 - mismatch */
+static int
+xpath_derived_from_ident_cmp(struct lys_ident *ident, const char *ident_str)
+{
+    const char *ptr;
+    int len;
+
+    ptr = strchr(ident_str, ':');
+    if (ptr) {
+        len = ptr - ident_str;
+        if (strncmp(ident->module->name, ident_str, len)
+                || ident->module->name[len]) {
+            /* module name mismatch BUG we expect JSON format prefix, but if the 2nd argument was
+             * not a literal, we may easily be mistaken */
+            return 1;
+        }
+        ++ptr;
+    } else {
+        ptr = ident_str;
+    }
+
+    len = strlen(ptr);
+    if (strncmp(ident->name, ptr, len) || ident->name[len]) {
+        /* name mismatch */
+        return 1;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Execute the YANG 1.1 derived-from(node-set, string) function. Returns LYXP_SET_BOOLEAN depending
+ *        on whether the first argument nodes contain a node of an identity derived from the second
+ *        argument identity.
+ *
+ * @param[in] args Array of arguments.
+ * @param[in] arg_count Count of elements in \p args.
+ * @param[in] cur_node Original context node.
+ * @param[in,out] set Context and result set at the same time.
+ * @param[in] options Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
+static int
+xpath_derived_from(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
+                   int options)
+{
+    uint16_t i, j;
+    struct lyd_node_leaf_list *leaf;
+    struct lys_node_leaf *sleaf;
+
+    if (arg_count != 2) {
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "derived-from(node-set, string)");
+        return -1;
+    }
+
+    if ((args[0]->type != LYXP_SET_NODE_SET) && (args[0]->type != LYXP_SET_EMPTY)) {
+        LOGVAL(LYE_XPATH_INARGTYPE, LY_VLOG_NONE, NULL, 1, print_set_type(args[0]), "derived-from(node-set, string)");
+        return -1;
+    }
+    if (lyxp_set_cast(args[1], LYXP_SET_STRING, cur_node, options)) {
+        return -1;
+    }
+
+    set_fill_boolean(set, 0);
+    if (args[0]->type != LYXP_SET_EMPTY) {
+        for (i = 0; i < args[0]->used; ++i) {
+            leaf = (struct lyd_node_leaf_list *)args[0]->val.nodes[i].node;
+            sleaf = (struct lys_node_leaf *)leaf->schema;
+            if ((sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && (sleaf->type.base == LY_TYPE_IDENT)) {
+                for (j = 0; j < leaf->value.ident->base_size; ++j) {
+                    if (!xpath_derived_from_ident_cmp(leaf->value.ident->base[j], args[1]->val.str)) {
+                        set_fill_boolean(set, 1);
+                        break;
+                    }
+                }
+
+                if (j < leaf->value.ident->base_size) {
+                    break;
+                }
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/**
+ * @brief Execute the YANG 1.1 derived-from-or-self(node-set, string) function. Returns LYXP_SET_BOOLEAN depending
+ *        on whether the first argument nodes contain a node of an identity that either is or is derived from
+ *        the second argument identity.
+ *
+ * @param[in] args Array of arguments.
+ * @param[in] arg_count Count of elements in \p args.
+ * @param[in] cur_node Original context node.
+ * @param[in,out] set Context and result set at the same time.
+ * @param[in] options Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
+static int
+xpath_derived_from_or_self(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
+                           int options)
+{
+    uint16_t i, j;
+    struct lyd_node_leaf_list *leaf;
+    struct lys_node_leaf *sleaf;
+
+    if (arg_count != 2) {
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "derived-from-or-self(node-set, string)");
+        return -1;
+    }
+
+    if ((args[0]->type != LYXP_SET_NODE_SET) && (args[0]->type != LYXP_SET_EMPTY)) {
+        LOGVAL(LYE_XPATH_INARGTYPE, LY_VLOG_NONE, NULL, 1, print_set_type(args[0]), "derived-from-or-self(node-set, string)");
+        return -1;
+    }
+    if (lyxp_set_cast(args[1], LYXP_SET_STRING, cur_node, options)) {
+        return -1;
+    }
+
+    set_fill_boolean(set, 0);
+    if (args[0]->type != LYXP_SET_EMPTY) {
+        for (i = 0; i < args[0]->used; ++i) {
+            leaf = (struct lyd_node_leaf_list *)args[0]->val.nodes[i].node;
+            sleaf = (struct lys_node_leaf *)leaf->schema;
+            if ((sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && (sleaf->type.base == LY_TYPE_IDENT)) {
+                if (!xpath_derived_from_ident_cmp(leaf->value.ident, args[1]->val.str)) {
+                    set_fill_boolean(set, 1);
+                    break;
+                }
+
+                for (j = 0; j < leaf->value.ident->base_size; ++j) {
+                    if (!xpath_derived_from_ident_cmp(leaf->value.ident->base[j], args[1]->val.str)) {
+                        set_fill_boolean(set, 1);
+                        break;
+                    }
+                }
+
+                if (j < leaf->value.ident->base_size) {
+                    break;
+                }
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/**
+ * @brief Execute the YANG 1.1 enum-value(node-set) function. Returns LYXP_SET_NUMBER
+ *        with the integer value of the first node's enum value, otherwise NaN.
+ *
+ * @param[in] args Array of arguments.
+ * @param[in] arg_count Count of elements in \p args.
+ * @param[in] cur_node Original context node.
+ * @param[in,out] set Context and result set at the same time.
+ * @param[in] options Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
+static int
+xpath_enum_value(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *UNUSED(cur_node), struct lyxp_set *set,
+                 int UNUSED(options))
+{
+    struct lyd_node_leaf_list *leaf;
+
+    if (arg_count != 1) {
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "enum-value(node-set)");
+        return -1;
+    }
+
+    if ((args[0]->type != LYXP_SET_NODE_SET) && (args[0]->type != LYXP_SET_EMPTY)) {
+        LOGVAL(LYE_XPATH_INARGTYPE, LY_VLOG_NONE, NULL, 1, print_set_type(args[0]), "enum-value(node-set)");
+        return -1;
+    }
+
+    set_fill_number(set, NAN);
+    if (args[0]->type == LYXP_SET_NODE_SET) {
+        leaf = (struct lyd_node_leaf_list *)args[0]->val.nodes[0].node;
+        if ((leaf->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
+                && (((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_ENUM)) {
+            set_fill_number(set, leaf->value.enm->value);
+        }
     }
 
     return EXIT_SUCCESS;
@@ -3251,6 +3553,50 @@ xpath_position(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *UNUS
 
     /* UNUSED in 'Release' build type */
     (void)options;
+    return EXIT_SUCCESS;
+}
+
+/**
+ * @brief Execute the YANG 1.1 re-match(string, string) function. Returns LYXP_SET_BOOLEAN
+ *        depending on whether the second argument regex matches the first argument string. For details refer to
+ *        YANG 1.1 RFC section 10.2.1.
+ *
+ * @param[in] args Array of arguments.
+ * @param[in] arg_count Count of elements in \p args.
+ * @param[in] cur_node Original context node.
+ * @param[in,out] set Context and result set at the same time.
+ * @param[in] options Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
+static int
+xpath_re_match(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lyxp_set *set,
+               int options)
+{
+    pcre *precomp;
+
+    if (arg_count != 2) {
+        LOGVAL(LYE_XPATH_INARGCOUNT, LY_VLOG_NONE, NULL, arg_count, "re-match(string, string)");
+        return -1;
+    }
+
+    if (lyxp_set_cast(args[0], LYXP_SET_STRING, cur_node, options)) {
+        return -1;
+    }
+    if (lyxp_set_cast(args[1], LYXP_SET_STRING, cur_node, options)) {
+        return -1;
+    }
+
+    if (lyp_check_pattern(args[1]->val.str, &precomp)) {
+        return -1;
+    }
+    if (pcre_exec(precomp, NULL, args[0]->val.str, strlen(args[0]->val.str), 0, 0, NULL, 0)) {
+        set_fill_boolean(set, 0);
+    } else {
+        set_fill_boolean(set, 1);
+    }
+    free(precomp);
+
     return EXIT_SUCCESS;
 }
 
@@ -5981,6 +6327,8 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
                 xpath_func = &xpath_floor;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "round", 5)) {
                 xpath_func = &xpath_round;
+            } else if (!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "deref", 5)) {
+                xpath_func = &xpath_deref;
             }
             break;
         case 6:
@@ -6006,6 +6354,8 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
                 xpath_func = &xpath_contains;
             } else if (!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "position", 8)) {
                 xpath_func = &xpath_position;
+            } else if (!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "re-match", 8)) {
+                xpath_func = &xpath_re_match;
             }
             break;
         case 9:
@@ -6018,11 +6368,20 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
         case 10:
             if (!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "local-name", 10)) {
                 xpath_func = &xpath_local_name;
+            } else if (!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "enum-value", 10)) {
+                xpath_func = &xpath_enum_value;
+            } else if (!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "bit-is-set", 10)) {
+                xpath_func = &xpath_bit_is_set;
             }
             break;
         case 11:
             if (!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "starts-with", 11)) {
                 xpath_func = &xpath_starts_with;
+            }
+            break;
+        case 12:
+            if (!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "derived-from", 12)) {
+                xpath_func = &xpath_derived_from;
             }
             break;
         case 13:
@@ -6042,6 +6401,11 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
         case 16:
             if (!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "substring-before", 16)) {
                 xpath_func = &xpath_substring_before;
+            }
+            break;
+        case 20:
+            if (!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "derived-from-or-self", 20)) {
+                xpath_func = &xpath_derived_from_or_self;
             }
             break;
         }
@@ -6239,6 +6603,12 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
                 /* the only function returning node-set - thus relevant */
                 if ((exp->tok_len[*exp_idx] == 7) && !strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "current", 7)) {
                     xpath_current(NULL, 0, cur_node, set, options);
+                } else if ((exp->tok_len[*exp_idx] == 5) && !strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "deref", 5)) {
+                    ret = eval_function_call(exp, exp_idx, cur_node, set, options);
+                    if (ret) {
+                        return ret;
+                    }
+                    goto predicate;
                 } else {
                     set_snode_clear_ctx(set);
                 }
