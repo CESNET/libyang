@@ -4988,47 +4988,62 @@ resolve_when_relink_nodes(struct lyd_node *node, struct lyd_node *unlinked_nodes
 }
 
 int
-resolve_applies_must(const struct lyd_node *node)
+resolve_applies_must(const struct lys_node *schema)
 {
-    switch (node->schema->nodetype) {
+    assert(schema);
+
+    switch (schema->nodetype) {
     case LYS_CONTAINER:
-        return ((struct lys_node_container *)node->schema)->must_size;
+        return ((struct lys_node_container *)schema)->must_size;
     case LYS_LEAF:
-        return ((struct lys_node_leaf *)node->schema)->must_size;
+        return ((struct lys_node_leaf *)schema)->must_size;
     case LYS_LEAFLIST:
-        return ((struct lys_node_leaflist *)node->schema)->must_size;
+        return ((struct lys_node_leaflist *)schema)->must_size;
     case LYS_LIST:
-        return ((struct lys_node_list *)node->schema)->must_size;
+        return ((struct lys_node_list *)schema)->must_size;
     case LYS_ANYXML:
     case LYS_ANYDATA:
-        return ((struct lys_node_anydata *)node->schema)->must_size;
+        return ((struct lys_node_anydata *)schema)->must_size;
     default:
         return 0;
     }
 }
 
 int
-resolve_applies_when(const struct lyd_node *node)
+resolve_applies_when(const struct lys_node *schema, int mode, const struct lys_node *stop)
 {
-    struct lys_node *parent;
+    const struct lys_node *parent;
 
-    assert(node);
+    assert(schema);
 
-    if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC)) && (((struct lys_node_container *)node->schema)->when)) {
+    if (!(schema->nodetype & (LYS_NOTIF | LYS_RPC)) && (((struct lys_node_container *)schema)->when)) {
         return 1;
     }
 
-    parent = node->schema;
+    parent = schema;
     goto check_augment;
 
-    while (parent && (parent->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE))) {
-        if (((struct lys_node_uses *)parent)->when) {
+    while (parent) {
+        /* stop conditions */
+        if (!mode) {
+            /* stop on node that can be instantiated in data tree */
+            if (!(parent->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE))) {
+                break;
+            }
+        } else {
+            /* stop on the specified node */
+            if (parent == stop) {
+                break;
+            }
+        }
+
+        if (((const struct lys_node_uses *)parent)->when) {
             return 1;
         }
 check_augment:
 
         if ((parent->parent && (parent->parent->nodetype == LYS_AUGMENT) &&
-                (((struct lys_node_augment *)parent->parent)->when))) {
+                (((const struct lys_node_augment *)parent->parent)->when))) {
             return 1;
         }
         parent = lys_parent(parent);
@@ -5046,11 +5061,11 @@ check_augment:
  * @return
  *  -1 - error, ly_errno is set
  *   0 - true "when" statement
- *   0, ly_vecode = LYVE_NOCOND - false "when" statement
+ *   0, ly_vecode = LYVE_NOWHEN - false "when" statement
  *   1, ly_vecode = LYVE_INWHEN - nodes needed to resolve are conditional and not yet resolved (under another "when")
  */
-static int
-resolve_when(struct lyd_node *node)
+int
+resolve_when(struct lyd_node *node, int *result)
 {
     struct lyd_node *ctx_node = NULL, *unlinked_nodes, *tmp_node;
     struct lys_node *sparent;
@@ -5196,6 +5211,14 @@ check_augment:
 cleanup:
     /* free xpath set content */
     lyxp_set_cast(&set, LYXP_SET_EMPTY, ctx_node ? ctx_node : node, 0);
+
+    if (result) {
+        if (node->when_status & LYD_WHEN_TRUE) {
+            *result = 1;
+        } else {
+            *result = 0;
+        }
+    }
 
     return rc;
 }
@@ -5935,7 +5958,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
         break;
 
     case UNRES_WHEN:
-        if ((rc = resolve_when(node))) {
+        if ((rc = resolve_when(node, NULL))) {
             return rc;
         }
         break;

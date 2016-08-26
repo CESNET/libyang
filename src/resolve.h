@@ -145,13 +145,19 @@ int resolve_superior_type(const char *name, const char *prefix, const struct lys
 
 int resolve_unique(struct lys_node *parent, const char *uniq_str_path, uint8_t *trg_type);
 
-/* get know if resolve_when() is applicable to the node (there is when condition connected with this node) */
-int resolve_applies_when(const struct lyd_node *node);
-int resolve_applies_must(const struct lyd_node *node);
+/* get know if resolve_when() is applicable to the node (there is when condition connected with this node)
+ *
+ * @param[in] mode 0 - search for when in parent until there is another possible data node
+ *                 2 - search for when until reached the stop node, if NULL, search in all parents
+ */
+int resolve_applies_when(const struct lys_node *schema, int mode, const struct lys_node *stop);
+int resolve_applies_must(const struct lys_node *schema);
 
 struct lys_ident *resolve_identref(struct lys_ident *base, const char *ident_name, struct lyd_node *node);
 
 int resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres);
+
+int resolve_when(struct lyd_node *node, int *result);
 
 int unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
                          const char *str);

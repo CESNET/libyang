@@ -994,7 +994,7 @@ attr_repeat:
     }
     result->schema = schema;
     result->validity = LYD_VAL_NOT;
-    if (resolve_applies_when(result)) {
+    if (resolve_applies_when(schema, 0, NULL)) {
         result->when_status = LYD_WHEN;
     }
 
@@ -1302,13 +1302,13 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
     }
     ly_set_free(set);
 
-    /* check for missing top level mandatory nodes */
-    if (!(options & LYD_OPT_TRUSTED) && lyd_check_topmandatory(result, ctx, options)) {
+    /* add/validate default values, unres */
+    if (lyd_defaults_add_unres(&result, options, ctx, unres)) {
         goto error;
     }
 
-    /* add/validate default values, unres */
-    if (lyd_defaults_add_unres(&result, options, ctx, unres)) {
+    /* check for missing top level mandatory nodes */
+    if (!(options & LYD_OPT_TRUSTED) && lyd_check_mandatory_tree(result, ctx, options)) {
         goto error;
     }
 

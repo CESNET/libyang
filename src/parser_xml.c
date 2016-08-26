@@ -211,7 +211,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     }
     (*result)->schema = schema;
     (*result)->validity = LYD_VAL_NOT;
-    if (resolve_applies_when(*result)) {
+    if (resolve_applies_when(schema, 0, NULL)) {
         (*result)->when_status = LYD_WHEN;
     }
 
@@ -600,17 +600,17 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     }
     ly_set_free(set);
 
-    /* check for missing top level mandatory nodes */
-    if (!(options & LYD_OPT_TRUSTED) && lyd_check_topmandatory(result, ctx, options)) {
-        goto error;
-    }
-
     /* add/validate default values, unres */
     if (action) {
         if (lyd_defaults_add_unres(&action, options, ctx, unres)) {
             goto error;
         }
     } else if (lyd_defaults_add_unres(&result, options, ctx, unres)) {
+        goto error;
+    }
+
+    /* check for missing mandatory nodes */
+    if (!(options & LYD_OPT_TRUSTED) && lyd_check_mandatory_tree(result, ctx, options)) {
         goto error;
     }
 
