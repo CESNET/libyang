@@ -3896,23 +3896,34 @@ error:
  *
  * @param[in] node Siblings and their children to have flags changed.
  * @param[in] flags Flags to assign to all the nodes.
+ *
+ * @return 0 on success, -1 on error.
  */
-static void
+static int
 inherit_config_flag(struct lys_node *node, int flags)
 {
     assert(!(flags ^ (flags & LYS_CONFIG_MASK)));
     LY_TREE_FOR(node, node) {
         if (node->flags & LYS_CONFIG_SET) {
             /* skip nodes with an explicit config value */
+            if ((flags & LYS_CONFIG_R) && (node->flags & LYS_CONFIG_W)) {
+                LOGVAL(LYE_INARG, LY_VLOG_LYS, node, "true", "config");
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "State nodes cannot have configuration nodes as children.");
+                return -1;
+            }
             continue;
         }
         if (!(node->nodetype & (LYS_USES | LYS_GROUPING))) {
             node->flags = (node->flags & ~LYS_CONFIG_MASK) | flags;
         }
         if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
-            inherit_config_flag(node->child, flags);
+            if (inherit_config_flag(node->child, flags)) {
+                return -1;
+            }
         }
     }
+
+    return 0;
 }
 
 /**
@@ -3988,7 +3999,9 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
 
     /* inherit config information from actual parent */
     LY_TREE_FOR(aug->child, sub) {
-        inherit_config_flag(sub, aug->target->flags & LYS_CONFIG_MASK);
+        if (inherit_config_flag(sub, aug->target->flags & LYS_CONFIG_MASK)) {
+            return -1;
+        }
     }
 
     /* check identifier uniqueness as in lys_node_addchild() */
@@ -4027,7 +4040,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
     struct lys_refine *rfn;
     struct lys_restr *must, **old_must;
     struct lys_iffeature *iff, **old_iff;
-    int i, j, rc, parent_flags;
+    int i, j, rc, parent_config;
     uint8_t size, *old_size;
     unsigned int usize, usize1, usize2;
 
@@ -4043,10 +4056,10 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
     /* get proper parent (config) flags */
     for (node_aux = lys_parent((struct lys_node *)uses); node_aux && (node_aux->nodetype == LYS_USES); node_aux = lys_parent(node_aux));
     if (node_aux) {
-        parent_flags = node_aux->flags & LYS_CONFIG_MASK;
+        parent_config = node_aux->flags & LYS_CONFIG_MASK;
     } else {
         /* default */
-        parent_flags = LYS_CONFIG_W;
+        parent_config = LYS_CONFIG_W;
     }
 
     /* copy the data nodes from grouping into the uses context */
@@ -4055,20 +4068,22 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
         if (!node) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, uses->grp->name, "uses");
             LOGVAL(LYE_SPEC, LY_VLOG_LYS, uses, "Copying data from grouping failed.");
-            return -1;
+            goto fail;
         }
         /* test the name of siblings */
         LY_TREE_FOR((uses->parent) ? uses->parent->child : lys_main_module(uses->module)->data, tmp) {
             if (!(tmp->nodetype & (LYS_USES | LYS_GROUPING | LYS_CASE)) && ly_strequal(tmp->name, node_aux->name, 1)) {
-                return -1;
+                goto fail;
             }
         }
     }
     ctx = uses->module->ctx;
 
-    if (parent_flags) {
+    if (parent_config) {
         assert(uses->child);
-        inherit_config_flag(uses->child, parent_flags);
+        if (inherit_config_flag(uses->child, parent_config)) {
+            goto fail;
+        }
     }
 
     /* we managed to copy the grouping, the rest must be possible to resolve */
@@ -4080,13 +4095,13 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                                               1, 0, (const struct lys_node **)&node);
         if (rc || !node) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, rfn->target_name, "refine");
-            return -1;
+            goto fail;
         }
 
         if (rfn->target_type && !(node->nodetype & rfn->target_type)) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, rfn->target_name, "refine");
             LOGVAL(LYE_SPEC, LY_VLOG_LYS, uses, "Refine substatements not applicable to the target-node.");
-            return -1;
+            goto fail;
         }
 
         /* description on any nodetype */
@@ -4112,7 +4127,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                 LOGVAL(LYE_SPEC, LY_VLOG_LYS, uses,
                        "changing config from 'false' to 'true' is prohibited while "
                        "the target's parent is still config 'false'.");
-                return -1;
+                goto fail;
             }
 
             node->flags &= ~LYS_CONFIG_MASK;
@@ -4133,7 +4148,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                         LOGVAL(LYE_SPEC, LY_VLOG_LYS, uses,
                                "changing config from 'true' to 'false' is prohibited while the target "
                                "has still a children with explicit config 'true'.");
-                        return -1;
+                        goto fail;
                     }
                 }
                 /* change config */
@@ -4182,7 +4197,7 @@ nextsibling:
                                                           (const struct lys_node **)&((struct lys_node_choice *)node)->dflt);
                 if (rc || !((struct lys_node_choice *)node)->dflt) {
                     LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, rfn->mod.dflt, "default");
-                    return -1;
+                    goto fail;
                 }
             }
         }
@@ -4247,14 +4262,14 @@ nextsibling:
                 break;
             default:
                 LOGINT;
-                return -1;
+                goto fail;
             }
 
             size = *old_size + rfn->must_size;
             must = realloc(*old_must, size * sizeof *rfn->must);
             if (!must) {
                 LOGMEM;
-                return -1;
+                goto fail;
             }
             for (i = 0, j = *old_size; i < rfn->must_size; i++, j++) {
                 must[j].expr = lydict_insert(ctx, rfn->must[i].expr, 0);
@@ -4277,7 +4292,7 @@ nextsibling:
             iff = realloc(*old_iff, size * sizeof *rfn->iffeature);
             if (!iff) {
                 LOGMEM;
-                return -1;
+                goto fail;
             }
             for (i = 0, j = *old_size; i < rfn->iffeature_size; i++, j++) {
                 resolve_iffeature_getsizes(&rfn->iffeature[i], &usize1, &usize2);
@@ -4303,11 +4318,17 @@ nextsibling:
     for (i = 0; i < uses->augment_size; i++) {
         rc = resolve_augment(&uses->augment[i], uses->child);
         if (rc) {
-            return -1;
+            goto fail;
         }
     }
 
     return EXIT_SUCCESS;
+
+fail:
+    LY_TREE_FOR_SAFE(uses->child, next, iter) {
+        lys_node_free(iter, NULL, 0);
+    }
+    return -1;
 }
 
 static int
