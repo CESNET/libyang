@@ -121,11 +121,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                struct lyd_node **action)
 {
     struct lyd_node *diter, *dlast;
-    struct lys_node *schema = NULL;
+    struct lys_node *schema = NULL, *target;
+    struct lys_node_augment *aug;
     struct lyd_attr *dattr, *dattr_iter;
     struct lyxml_attr *attr;
     struct lyxml_elem *child, *next;
-    int i, havechildren, r, flag;
+    int i, j, havechildren, r, flag;
     int ret = 0;
     const char *str = NULL;
 
@@ -150,6 +151,33 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             if (ly_strequal(ctx->models.list[i]->ns, xml->ns->value, 1)) {
                 /* get the proper schema node */
                 schema = xml_data_search_schemanode(xml, ctx->models.list[i]->data, options);
+                if (!schema) {
+                    /* it still can be the specific case of this module containing an augment of another module
+                     * top-level choice or top-level choice's case, bleh */
+                    for (j = 0; j < ctx->models.list[i]->augment_size; ++j) {
+                        aug = &ctx->models.list[i]->augment[j];
+                        target = aug->target;
+                        if (target->nodetype & (LYS_CHOICE | LYS_CASE)) {
+                            /* 1) okay, the target is choice or case */
+                            while (target && (target->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES))) {
+                                target = lys_parent(target);
+                            }
+                            /* 2) now, the data node will be top-level, there are only non-data schema nodes */
+                            if (!target) {
+                                while ((schema = (struct lys_node *)lys_getnext(schema, (struct lys_node *)aug, NULL, 0))) {
+                                    /* 3) alright, even the name matches, we found our schema node */
+                                    if (ly_strequal(schema->name, xml->name, 1)) {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (schema) {
+                            break;
+                        }
+                    }
+                }
                 break;
             }
         }
