@@ -4286,7 +4286,7 @@ lyd_wd_add_leaf(struct ly_ctx *ctx, struct lyd_node *parent, struct lys_node_lea
                 }
             }
 
-            if (options & (LYD_WD_ALL_TAG | LYD_WD_IMPL_TAG | LYD_WD_ALL)) {
+            if (options & (LYD_WD_ALL_TAG | LYD_WD_IMPL_TAG)) {
                 /* add tag */
                 iter->dflt = 1;
             }
