@@ -392,10 +392,17 @@ yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, 
     if (!exp) {
         return EXIT_FAILURE;
     }
+
+    /* temporarily decrement identity_size due to resolve base */
+    module->ident_size--;
     if (unres_schema_add_str(module, unres, ident, UNRES_IDENT, exp) == -1) {
         lydict_remove(module->ctx, exp);
+        /* undo change identity_size */
+        module->ident_size++;
         return EXIT_FAILURE;
     }
+    /* undo change identity_size */
+    module->ident_size++;
 
     lydict_remove(module->ctx, exp);
     return EXIT_SUCCESS;
