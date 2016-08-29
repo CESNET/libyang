@@ -2440,6 +2440,7 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
 
     /* finally parse our restriction */
     seg_ptr = str_restr;
+    tmp_intv = NULL;
     while (1) {
         if (!tmp_local_intv) {
             assert(!local_intv);
@@ -2549,12 +2550,48 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
             goto error;
         }
 
+        /* check min and max in correct order*/
+        if (kind == 0) {
+            /* current segment */
+            if (tmp_local_intv->value.uval.min > tmp_local_intv->value.uval.max) {
+                goto error;
+            }
+            if (tmp_local_intv->value.uval.min < local_umin || tmp_local_intv->value.uval.max > local_umax) {
+                goto error;
+            }
+            /* segments sholud be ascending order */
+            if (tmp_intv && (tmp_intv->value.uval.max > tmp_local_intv->value.uval.min)) {
+                goto error;
+            }
+        } else if (kind == 1) {
+            if (tmp_local_intv->value.sval.min > tmp_local_intv->value.sval.max) {
+                goto error;
+            }
+            if (tmp_local_intv->value.sval.min < local_smin || tmp_local_intv->value.sval.max > local_smax) {
+                goto error;
+            }
+            if (tmp_intv && (tmp_intv->value.sval.max > tmp_local_intv->value.sval.min)) {
+                goto error;
+            }
+        } else if (kind == 2) {
+            if (tmp_local_intv->value.fval.min > tmp_local_intv->value.fval.max) {
+                goto error;
+            }
+            if (tmp_local_intv->value.fval.min < local_fmin || tmp_local_intv->value.fval.max > local_fmax) {
+                goto error;
+            }
+            if (tmp_intv && (tmp_intv->value.fval.max > tmp_local_intv->value.fval.min)) {
+                goto error;
+            }
+        }
+
         /* next segment (next OR) */
         seg_ptr = strchr(seg_ptr, '|');
         if (!seg_ptr) {
             break;
         }
         seg_ptr++;
+        tmp_intv = tmp_local_intv;
     }
 
     /* check local restrictions against superior ones */
