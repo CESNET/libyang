@@ -254,8 +254,8 @@ lyd_check_mandatory_subtree(struct lyd_node *tree, struct lyd_node *subtree, str
     case LYS_CHOICE:
         /* get existing node in the data tree from the choice */
         iter = NULL;
-        if (subtree) {
-            LY_TREE_FOR(toplevel ? subtree : subtree->child, iter) {
+        if ((toplevel && tree) || (!toplevel && subtree)) {
+            LY_TREE_FOR(toplevel ? tree : subtree->child, iter) {
                 for (siter = lys_parent(iter->schema), siter_prev = iter->schema;
                         siter && (siter->nodetype & (LYS_CASE | LYS_USES | LYS_CHOICE));
                         siter_prev = siter, siter = lys_parent(siter)) {
