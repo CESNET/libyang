@@ -4118,7 +4118,7 @@ string_opt_part1: @EMPTYDIR@
   |  sep
 
 string_opt_part2: @EMPTYDIR@
-  |  strings
+  |  strings optsep
   |  STRING optsep string_opt_part3
 
 string_opt_part3: @EMPTYDIR@
