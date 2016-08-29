@@ -97,7 +97,9 @@ lyd_check_mandatory_data(struct lyd_node *root, struct lyd_node *last_parent,
                 /* evaluate when statements */
                 dummy = lyd_new_dummy(root, last_parent, schema);
                 for (current = dummy; current; current = current->child) {
+                    ly_vlog_hide(1);
                     resolve_when(current, &state);
+                    ly_vlog_hide(0);
                     if (!state) {
                         /* when evaluates to false */
                         lyd_free(dummy);
@@ -176,9 +178,10 @@ lyd_check_mandatory_data(struct lyd_node *root, struct lyd_node *last_parent,
  * - mandatory statement in leaf, choice, anyxml and anydata
  * - min-elements and max-elements in list and leaf-list
  *
- * @param[in] root Depend ons \p toplevel flag:
- *                 toplevel = 1, then root is the first, top level element of the tree (if any)
- *                 toplevel = 0, root is the parent data node of the possible instances of the schema node being checked
+ * @param[in] tree Data tree, needed for case that subtree is NULL (in case of not existing data nodes to explore)
+ * @param[in] subtree Depend ons \p toplevel flag:
+ *                 toplevel = 1, then subtree is ignored, instead the tree is taken to search in top level data elements (if any)
+ *                 toplevel = 0, subtree is the parent data node of the possible instances of the schema node being checked
  * @param[in] last_parent The last present parent data node (so it does not need to be a direct parent) of the possible
  *                 instances of the schema node being checked
  * @param[in] schema The schema node being checked for mandatory nodes
@@ -187,8 +190,8 @@ lyd_check_mandatory_data(struct lyd_node *root, struct lyd_node *last_parent,
  * @return EXIT_SUCCESS or EXIT_FAILURE if there are missing mandatory nodes
  */
 static int
-lyd_check_mandatory_subtree(struct lyd_node *root, struct lyd_node *last_parent, struct lys_node *schema,
-                            int toplevel, int options)
+lyd_check_mandatory_subtree(struct lyd_node *tree, struct lyd_node *subtree, struct lyd_node *last_parent,
+                            struct lys_node *schema, int toplevel, int options)
 {
     struct lys_node *siter, *siter_prev;
     struct lyd_node *iter;
@@ -200,8 +203,8 @@ lyd_check_mandatory_subtree(struct lyd_node *root, struct lyd_node *last_parent,
 
     if (schema->nodetype & (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_ANYXML | LYS_CONTAINER)) {
         /* data node */
-        if (root) {
-            present = toplevel ? lyd_get_node_siblings(root, schema) : lyd_get_node_siblings(root->child, schema);
+        if ((toplevel && tree) || (!toplevel && subtree)) {
+            present = toplevel ? lyd_get_node_siblings(tree, schema) : lyd_get_node_siblings(subtree->child, schema);
             if (!present) {
                 goto error;
             }
@@ -216,20 +219,20 @@ lyd_check_mandatory_subtree(struct lyd_node *root, struct lyd_node *last_parent,
     case LYS_ANYXML:
     case LYS_ANYDATA:
         /* check the schema item */
-        if (lyd_check_mandatory_data(root, last_parent, present, schema, options)) {
+        if (lyd_check_mandatory_data(tree, last_parent, present, schema, options)) {
             goto error;
         }
         break;
     case LYS_LIST:
         /* check the schema item */
-        if (lyd_check_mandatory_data(root, last_parent, present, schema, options)) {
+        if (lyd_check_mandatory_data(tree, last_parent, present, schema, options)) {
             goto error;
         }
 
         /* go recursively */
         for (u = 0; u < present->number; u++) {
             LY_TREE_FOR(schema->child, siter) {
-                if (lyd_check_mandatory_subtree(present->set.d[u], present->set.d[u], siter, 0, options)) {
+                if (lyd_check_mandatory_subtree(tree, present->set.d[u], present->set.d[u], siter, 0, options)) {
                     goto error;
                 }
             }
@@ -240,7 +243,7 @@ lyd_check_mandatory_subtree(struct lyd_node *root, struct lyd_node *last_parent,
         if (present->number || !((struct lys_node_container *)schema)->presence) {
             /* if we have existing or non-presence container, go recursively */
             LY_TREE_FOR(schema->child, siter) {
-                if (lyd_check_mandatory_subtree(present->number ? present->set.d[0] : NULL,
+                if (lyd_check_mandatory_subtree(tree, present->number ? present->set.d[0] : NULL,
                                                 present->number ? present->set.d[0] : last_parent,
                                                 siter, 0, options)) {
                     goto error;
@@ -251,8 +254,8 @@ lyd_check_mandatory_subtree(struct lyd_node *root, struct lyd_node *last_parent,
     case LYS_CHOICE:
         /* get existing node in the data tree from the choice */
         iter = NULL;
-        if (root) {
-            LY_TREE_FOR(toplevel ? root : root->child, iter) {
+        if (subtree) {
+            LY_TREE_FOR(toplevel ? subtree : subtree->child, iter) {
                 for (siter = lys_parent(iter->schema), siter_prev = iter->schema;
                         siter && (siter->nodetype & (LYS_CASE | LYS_USES | LYS_CHOICE));
                         siter_prev = siter, siter = lys_parent(siter)) {
@@ -273,8 +276,8 @@ lyd_check_mandatory_subtree(struct lyd_node *root, struct lyd_node *last_parent,
         if (!iter) {
             if (((struct lys_node_choice *)schema)->dflt) {
                 /* there is a default case */
-                if (lyd_check_mandatory_subtree(root, last_parent, ((struct lys_node_choice *)schema)->dflt, toplevel,
-                                                options)) {
+                if (lyd_check_mandatory_subtree(tree, subtree, last_parent, ((struct lys_node_choice *)schema)->dflt,
+                                                toplevel, options)) {
                     goto error;
                 }
             } else if (schema->flags & LYS_MAND_TRUE) {
@@ -287,12 +290,9 @@ lyd_check_mandatory_subtree(struct lyd_node *root, struct lyd_node *last_parent,
             /* since iter != NULL, siter must be also != NULL and we also know siter_prev
              * which points to the child of schema leading towards the instantiated data */
             assert(siter && siter_prev);
-            if (lyd_check_mandatory_subtree(root, last_parent, siter_prev, toplevel, options)) {
+            if (lyd_check_mandatory_subtree(tree, subtree, last_parent, siter_prev, toplevel, options)) {
                 goto error;
             }
-        }
-        if (!root || toplevel) {
-            /* the only chance for mandatory is the default case */
         }
         break;
     case LYS_CASE:
@@ -302,7 +302,7 @@ lyd_check_mandatory_subtree(struct lyd_node *root, struct lyd_node *last_parent,
     case LYS_ACTION:
         /* go recursively */
         LY_TREE_FOR(schema->child, siter) {
-            if (lyd_check_mandatory_subtree(root, last_parent, siter, toplevel, options)) {
+            if (lyd_check_mandatory_subtree(tree, subtree, last_parent, siter, toplevel, options)) {
                 goto error;
             }
         }
@@ -340,13 +340,13 @@ lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options)
 
     if (!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_DATA | LYD_OPT_CONFIG))) {
         if (options & LYD_OPT_NOSIBLINGS) {
-            if (root && lyd_check_mandatory_subtree(root, NULL, root->schema, 1, options)) {
+            if (root && lyd_check_mandatory_subtree(root, NULL, NULL, root->schema, 1, options)) {
                 return EXIT_FAILURE;
             }
         } else {
             for (i = 0; i < ctx->models.used; i++) {
                 LY_TREE_FOR(ctx->models.list[i]->data, siter) {
-                    if (lyd_check_mandatory_subtree(root, NULL, siter, 1, options)) {
+                    if (lyd_check_mandatory_subtree(root, NULL, NULL, siter, 1, options)) {
                         return EXIT_FAILURE;
                     }
                 }
@@ -357,7 +357,7 @@ lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options)
             LOGERR(LY_EINVAL, "Subtree is not a single notification.");
             return EXIT_FAILURE;
         }
-        if (root->schema->child && lyd_check_mandatory_subtree(root, root, root->schema->child, 0, options)) {
+        if (root->schema->child && lyd_check_mandatory_subtree(root, root, root, root->schema->child, 0, options)) {
             return EXIT_FAILURE;
         }
     } else if (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) {
@@ -370,7 +370,7 @@ lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options)
         } else { /* LYD_OPT_RPCREPLY */
             for (siter = root->schema->child; siter && siter->nodetype != LYS_OUTPUT; siter = siter->next);
         }
-        if (siter && lyd_check_mandatory_subtree(root, root, siter, 0, options)) {
+        if (siter && lyd_check_mandatory_subtree(root, root, root, siter, 0, options)) {
             return EXIT_FAILURE;
         }
     } else if (options & LYD_OPT_ACTION) {
@@ -395,7 +395,7 @@ lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options)
         if (!iter) {
             LOGERR(LY_EINVAL, "Subtree does not contain action.");
             return EXIT_FAILURE;
-        } else if (lyd_check_mandatory_subtree(iter, iter, iter->schema, 0, options)) {
+        } else if (lyd_check_mandatory_subtree(root, iter, iter, iter->schema, 0, options)) {
             return EXIT_FAILURE;
         }
     } else {
@@ -1451,6 +1451,12 @@ lyd_new_dummy(struct lyd_node *root, struct lyd_node *parent, const struct lys_n
     }
 
     ly_set_free(spath);
+
+    if (!dummy->parent) {
+        /* connect dummy nodes into the data tree */
+        lyd_insert_before(root, dummy);
+    }
+
     return dummy;
 
 error:

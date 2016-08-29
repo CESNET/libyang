@@ -5156,9 +5156,7 @@ resolve_when(struct lyd_node *node, int *result)
         /* set boolean result of the condition */
         lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, LYXP_WHEN);
         if (!set.val.bool) {
-            ly_vlog_hide(0);
             LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
-            ly_vlog_hide(1);
             node->when_status |= LYD_WHEN_FALSE;
             goto cleanup;
         }
@@ -5207,9 +5205,7 @@ resolve_when(struct lyd_node *node, int *result)
 
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, LYXP_WHEN);
             if (!set.val.bool) {
-                ly_vlog_hide(0);
                 LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)sparent)->when->cond);
-                ly_vlog_hide(1);
                 node->when_status |= LYD_WHEN_FALSE;
                 goto cleanup;
             }
@@ -5257,9 +5253,7 @@ check_augment:
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, LYXP_WHEN);
 
             if (!set.val.bool) {
-                ly_vlog_hide(0);
                 LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)sparent->parent)->when->cond);
-                ly_vlog_hide(1);
                 node->when_status |= LYD_WHEN_FALSE;
                goto cleanup;
             }
