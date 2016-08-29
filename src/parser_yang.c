@@ -2319,6 +2319,11 @@ yang_use_extension(struct lys_module *module, struct lys_node *data_node, void *
     }
     /* find prefix anf identificator*/
     identif = strchr(prefix, ':');
+    if (!identif) {
+        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, prefix);
+        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The extension must have prefix.");
+        goto error;
+    }
     *identif = '\0';
     identif++;
 
