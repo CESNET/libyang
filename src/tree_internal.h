@@ -272,25 +272,6 @@ void lys_node_free(struct lys_node *node, void (*private_destructor)(const struc
 void lys_free(struct lys_module *module, void (*private_destructor)(const struct lys_node *node, void *priv), int remove_from_ctx);
 
 /**
- * @brief Check presence of all the mandatory elements in the given data tree subtree. Logs directly.
- *
- * Besides the mandatory statements, also min-elements and max-elements constraints in
- * lists and leaf-list are checked.
- *
- * If \p schema is NULL, iterate over and check \p data schema children. If \p schema is set, it is iterated over
- * its siblings.
- *
- * @param[in] data Root node for the searching subtree. Expecting that all child instances
- * mandatory nodes were already checked. Note that the \p start node itself is not checked since it must be present.
- * @param[in] schema To check mandatory elements in empty data tree (\p data is NULL), we need
- * the first schema node in a schema to be checked.
- * @param[in] status Include status (read-only) nodes.
- * @param[in] rpc_output Expect RPC output nodes instead RPC input ones.
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on failure.
- */
-int ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema, int status, int rpc_output);
-
-/**
  * @brief Create a data container knowing it's schema node.
  *
  * @param[in] parent Data parent of the new node.
@@ -302,13 +283,15 @@ struct lyd_node *_lyd_new(struct lyd_node *parent, const struct lys_node *schema
 /**
  * @brief Create a dummy node for XPath evaluation. After done using, it should be removed.
  *
- * @param[in] parent Data parent of the new node.
- * @param[in] schema Schema node of the new node, must be of nodetype that
- * appears also in data.
+ * @param[in] data Any data node of the tree where the dummy node will be created
+ * @param[in] parent To optimize searching in data tree (and to avoid issues with lists), caller can specify a
+ *                   parent node that exists in the data tree.
+ * @param[in] schema Schema node of the dummy node to create, must be of nodetype that
+ * appears also in data tree.
  *
- * @return New dummy node, NULL on error.
+ * @return The first created node needed for the dummy node in the given tree.
  */
-struct lyd_node *lyd_new_dummy(struct lyd_node *parent, const struct lys_node *schema);
+struct lyd_node *lyd_new_dummy(struct lyd_node *data, struct lyd_node *parent, const struct lys_node *schema);
 
 /**
  * @brief Find the parent node of an attribute.
@@ -393,7 +376,8 @@ int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, 
 const char *lyd_get_unique_default(const char* unique_expr, struct lyd_node *list);
 
 /**
- * @brief Check for (validate) top-level mandatory nodes of a data tree.
+ * @brief Check for (validate) mandatory nodes of a data tree. Checks recursively whole data tree. Requires all when
+ * statement to be solved.
  *
  * @param[in] data Data tree to validate.
  * @param[in] ctx libyang context.
@@ -401,7 +385,7 @@ const char *lyd_get_unique_default(const char* unique_expr, struct lyd_node *lis
  * @param[in] options Standard @ref parseroptions.
  * @return EXIT_SUCCESS or EXIT_FAILURE.
  */
-int lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, int options);
+int lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options);
 
 /**
  * @brief Add default values, \p resolve unres, and finally

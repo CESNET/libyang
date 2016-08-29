@@ -289,358 +289,6 @@ repeat:
 
 }
 
-static const struct lys_node *
-check_mand_getnext(const struct lys_node *last, const struct lys_node *parent, const struct lys_module *module)
-{
-    const struct lys_node *next;
-
-    next = lys_getnext(last, parent, module, LYS_GETNEXT_WITHCHOICE);
-
-repeat:
-    if (next && next->nodetype == LYS_CONTAINER) {
-        if (((struct lys_node_container *)next)->presence) {
-            /* mandatory elements under the non-existing presence
-             * container are not mandatory - 7.6.5, rule 1 */
-            next = next->next;
-        } else {
-            /* go into */
-            next = next->child;
-        }
-        goto repeat;
-    }
-
-    return next;
-}
-
-static int
-check_mand_check(const struct lys_node *node, const struct lys_node *stop, const struct lyd_node *data)
-{
-    const struct lys_node *siter = NULL, *missing_parent = NULL;
-    struct lys_node *parent = NULL;
-    const struct lyd_node *diter = NULL;
-    struct ly_set *set = NULL;
-    unsigned int i, toplevel = (stop && stop->nodetype != LYS_OUTPUT) ? 0 : 1;
-    uint32_t minmax, min, max;
-
-    if (data) {
-        /* go to the correct data level */
-        for (parent = lys_parent(node); parent && parent != stop; parent = lys_parent(parent)) {
-            /* 7.6.5, rule 1 (presence container), checking presence
-             * is not needed since it is done in check_mand_getnext()
-             */
-
-            if (parent->nodetype != LYS_CONTAINER) {
-                /* not interested in LYS_USES, LYS_CASE or LYS_CHOICE,
-                 * because they are not instantiated in data tree */
-                continue;
-            }
-            /* add the parent to the list for searching in data tree */
-            if (!set) {
-                set = ly_set_new();
-            }
-            /* ignore return - memory error is logged and we will
-             * check at least the rest of nodes we have */
-            (void)ly_set_add(set, parent, LY_SET_OPT_USEASLIST);
-        }
-        if (set) {
-            for (i = set->number; i > 0; ) {
-                i--;
-                LY_TREE_FOR(toplevel ? data : data->child, diter) {
-                    if (diter->schema == set->set.s[i]) {
-                        break;
-                    }
-                }
-                if (!diter) {
-                    /* instance not found */
-                    missing_parent = set->set.s[i];
-                    break;
-                }
-                data = diter;
-                toplevel = 0;
-                if (data->validity == LYD_VAL_OK) {
-                    /* already checked */
-                    ly_set_free(set);
-                    return EXIT_SUCCESS;
-                }
-            }
-            ly_set_free(set);
-        }
-    } else {
-        missing_parent = node;
-    }
-
-    if (node->flags & LYS_MAND_TRUE) {
-        if (missing_parent) {
-            LOGVAL(LYE_MISSELEM, LY_VLOG_LYD, toplevel ? NULL : data, node->name,
-                   (lys_parent(node) ? lys_parent(node)->name : lys_node_module(node)->name));
-            return EXIT_FAILURE;
-        }
-
-        switch (node->nodetype) {
-        case LYS_LEAF:
-        case LYS_ANYDATA:
-        case LYS_CHOICE:
-            if (lys_parent(node) && lys_parent(node)->nodetype == LYS_CASE) {
-                /* 7.6.5, rule 2 */
-                /* 7.9.4, rule 1 */
-
-                /* try to find the node's siblings in data */
-                LY_TREE_FOR(toplevel ? data : data->child, diter) {
-                    LY_TREE_FOR(lys_parent(node)->child, siter) {
-                        if (siter == diter->schema) {
-                            /* some sibling exists, rule applies */
-                            break;
-                        }
-                    }
-                    if (siter) {
-                        break;
-                    }
-                }
-                if (!siter) {
-                    /* no sibling exists */
-                    return EXIT_SUCCESS;
-                }
-            }
-
-            if (node->nodetype == LYS_CHOICE) {
-                siter = NULL;
-                LY_TREE_FOR(toplevel ? data : data->child, diter) {
-                    while ((siter = lys_getnext(siter, node, NULL, 0))) {
-                        if (diter->schema == siter) {
-                            return EXIT_SUCCESS;
-                        }
-                    }
-                }
-            } else {
-                LY_TREE_FOR(toplevel ? data : data->child, diter) {
-                    if (diter->schema == node) {
-                        return EXIT_SUCCESS;
-                    }
-                }
-            }
-
-            /* instance not found */
-            /* 7.6.5, rule 3 (or 2) */
-            /* 7.9.4, rule 2 */
-            if (node->nodetype == LYS_CHOICE) {
-                LOGVAL(LYE_NOMANDCHOICE, LY_VLOG_LYD, toplevel ? NULL : data, node->name);
-            } else {
-                LOGVAL(LYE_MISSELEM, LY_VLOG_LYD, toplevel ? NULL : data, node->name,
-                   (lys_parent(node) ? lys_parent(node)->name : lys_node_module(node)->name));
-            }
-            break;
-        default:
-            /* error */
-            LOGINT;
-            break;
-        }
-        return EXIT_FAILURE;
-
-    } else if (node->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-        /* search for number of instances */
-        minmax = 0;
-        if (!missing_parent) {
-            LY_TREE_FOR(toplevel ? data : data->child, diter) {
-                if (diter->schema == node) {
-                    minmax++;
-                    /* remember the last instance, we will use it in the log message */
-                    data = diter;
-                }
-            }
-        }
-
-        /* check the specified constraints */
-        if (node->nodetype == LYS_LIST) {
-            min = ((struct lys_node_list *)node)->min;
-            max = ((struct lys_node_list *)node)->max;
-        } else {
-            min = ((struct lys_node_leaflist *)node)->min;
-            max = ((struct lys_node_leaflist *)node)->max;
-        }
-
-        if (min && (minmax < min)) {
-            LOGVAL(LYE_NOMIN, LY_VLOG_LYD, toplevel ? NULL : data, node->name);
-            return EXIT_FAILURE;
-        }
-        if (max && (minmax > max)) {
-            LOGVAL(LYE_NOMAX, LY_VLOG_LYD, data, node->name);
-            return EXIT_FAILURE;
-        }
-    }
-
-    return EXIT_SUCCESS;
-}
-
-int
-ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema, int status, int rpc_output)
-{
-    const struct lys_node *siter, *saux, *saux2, *parent = NULL, *parent2;
-    const struct lyd_node *diter, *datasearch;
-    int found;
-
-    assert(data || schema);
-
-    if (schema) {
-        /* schema is preferred regardless the data */
-        siter = schema;
-        datasearch = data;
-    } else {
-        /* !schema && data */
-        schema = data->schema;
-        siter = data->schema->child;
-        datasearch = data->child;
-    }
-
-repeat:
-    while (siter) {
-        if (lys_is_disabled(siter, 2) || (!status && (siter->flags & LYS_CONFIG_R))) {
-            siter = siter->next;
-            continue;
-        }
-
-        switch (siter->nodetype) {
-        case LYS_CONTAINER:
-        case LYS_LEAF:
-        case LYS_ANYDATA:
-        case LYS_LIST:
-        case LYS_LEAFLIST:
-            /* check if there is some mandatory node; first test the siter itself ... */
-            if (check_mand_check(siter, lys_parent(siter), data)) {
-                return EXIT_FAILURE;
-            }
-            /* ... and then the subtree */
-            if (siter->nodetype == LYS_CONTAINER && !((struct lys_node_container *)siter)->presence) {
-                saux = NULL;
-                while ((saux = check_mand_getnext(saux, siter, NULL))) {
-                    if ((status || (saux->flags & LYS_CONFIG_W)) && check_mand_check(saux, lys_parent(siter), data)) {
-                        return EXIT_FAILURE;
-                    }
-                }
-            }
-            siter = siter->next;
-            break;
-        case LYS_CHOICE:
-            /* search for instance */
-            saux = siter;
-            siter = siter->child;
-            found = 0;
-            parent2 = NULL;
-repeat_choice:
-            while (siter && data) {
-                if (lys_is_disabled(siter, 2) || (!status && (siter->flags & LYS_CONFIG_R))) {
-                    siter = siter->next;
-                    continue;
-                }
-
-                switch (siter->nodetype) {
-                case LYS_CONTAINER:
-                case LYS_LEAF:
-                case LYS_LEAFLIST:
-                case LYS_LIST:
-                case LYS_ANYXML:
-                case LYS_ANYDATA:
-                    LY_TREE_FOR(datasearch, diter) {
-                        if (diter->schema == siter) {
-                            break;
-                        }
-                    }
-                    if (diter) {
-                        /* got instance */
-                        /* check presence of mandatory siblings */
-                        if (parent2 && parent2->nodetype == LYS_CASE) {
-                            saux2 = NULL;
-                            while ((saux2 = check_mand_getnext(saux2, parent2, NULL))) {
-                                if (check_mand_check(saux2, lys_parent(saux), data)) {
-                                    return EXIT_FAILURE;
-                                }
-                            }
-                        }
-                        siter = parent2 = NULL;
-                        found = 1;
-                        break;
-                    }
-                    siter = siter->next;
-                    break;
-                case LYS_CASE:
-                case LYS_CHOICE:
-                case LYS_USES:
-                    /* go into */
-                    if (!parent2) {
-                        parent2 = siter;
-                    }
-                    siter = siter->child;
-                    break;
-                case LYS_AUGMENT:
-                case LYS_GROUPING:
-                    /* skip */
-                    siter = siter->next;
-                    break;
-                default:
-                    /* error */
-                    break;
-                }
-            }
-
-            if (parent2) {
-                siter = parent2->next;
-                if (lys_parent(parent2) == saux) {
-                    parent2 = NULL;
-                } else {
-                    parent2 = lys_parent(parent2);
-                }
-                goto repeat_choice;
-            }
-
-            if (!found && (saux->flags & LYS_MAND_TRUE)) {
-                LOGVAL(LYE_MISSELEM, LY_VLOG_LYD, data, saux->name,
-                       (lys_parent(saux) ? lys_parent(saux)->name : lys_node_module(saux)->name));
-                return EXIT_FAILURE;
-            }
-
-            /* go to next */
-            siter = saux->next;
-
-            break;
-        case LYS_INPUT:
-            if (rpc_output) {
-                /* skip */
-                siter = siter->next;
-                break;
-            }
-            /* fallthrough */
-        case LYS_OUTPUT:
-            if ((siter->nodetype == LYS_OUTPUT) && !rpc_output) {
-                /* skip */
-                siter = siter->next;
-                break;
-            }
-            /* fallthrough */
-        case LYS_USES:
-        case LYS_CASE:
-            /* go into */
-            parent = siter;
-            siter = siter->child;
-            break;
-        default:
-            /* can ignore, go to next */
-            siter = siter->next;
-            break;
-        }
-    }
-
-    if (parent) {
-        siter = parent->next;
-        if (lys_parent(parent) == schema) {
-            parent = NULL;
-        } else {
-            parent = lys_parent(parent);
-        }
-        goto repeat;
-    }
-
-    return EXIT_SUCCESS;
-}
-
 void
 lys_node_unlink(struct lys_node *node)
 {
@@ -1052,6 +700,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
         lys_node_unlink(child);
     }
 
+    /* connect the child correctly */
     if (!parent) {
         if (module->data) {
             module->data->prev->next = child;
@@ -1077,6 +726,16 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
             iter->parent = parent;
         }
         parent->child->prev = iter;
+    }
+
+    /* check config value */
+    if (parent && !(parent->nodetype & (LYS_GROUPING | LYS_AUGMENT))) {
+        for (iter = child; iter && !(iter->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); iter = iter->parent);
+        if (!iter && (parent->flags & LYS_CONFIG_R) && (child->flags & LYS_CONFIG_W)) {
+            LOGVAL(LYE_INARG, LY_VLOG_LYS, child, "true", "config");
+            LOGVAL(LYE_SPEC, LY_VLOG_LYS, child, "State nodes cannot have configuration nodes as children.");
+            return EXIT_FAILURE;
+        }
     }
 
     /* propagate information about status data presence */
@@ -2032,6 +1691,10 @@ lys_deviation_free(struct lys_module *module, struct lys_deviation *dev)
     lydict_remove(ctx, dev->target_name);
     lydict_remove(ctx, dev->dsc);
     lydict_remove(ctx, dev->ref);
+
+    if (!dev->deviate) {
+        return ;
+    }
 
     /* the module was freed, but we only need the context from orig_node, use ours */
     if (dev->deviate[0].mod == LY_DEVIATE_NO) {
@@ -3244,6 +2907,10 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *target_
     char *parent_path;
     struct lys_node *target;
 
+    if (!dev->deviate) {
+        return ;
+    }
+
     if (dev->deviate[0].mod == LY_DEVIATE_NO) {
         if (dev->orig_node) {
             /* removing not-supported deviation ... */
@@ -3368,8 +3035,13 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
 
     /* remove applied deviations */
     for (i = 0; i < module->deviation_size; ++i) {
+        if (module->deviation[i].orig_node) {
+            target_mod = lys_node_module(module->deviation[i].orig_node);
+        } else {
+            target_mod = (struct lys_module *)lys_get_import_module(module, NULL, 0, module->deviation[i].target_name + 1,
+                                                                    strcspn(module->deviation[i].target_name, ":") - 1);
+        }
         lys_switch_deviation(&module->deviation[i], module);
-        target_mod = lys_node_module(module->deviation[i].orig_node);
         assert(target_mod->deviated == 1);
 
         /* clear the deviation flag if possible */

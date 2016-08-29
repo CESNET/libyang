@@ -856,7 +856,9 @@ feature_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                  YYABORT;
                                }
                              }
-                             store_flags((struct lys_node *)actual, size_arrays->node[size_arrays->next].flags, 0);
+                             if (store_flags((struct lys_node *)actual, size_arrays->node[size_arrays->next].flags, 0)) {
+                                 YYABORT;
+                             }
                              size_arrays->next++;
                            } else {
                              $$ = size_arrays->size;
@@ -1038,6 +1040,9 @@ type_opt_stmt: @EMPTYDIR@ { $$.node.ptr_tpdf = actual;
                    $1.node.flag |= LYS_TYPE_DEF;
                    $$ = $1;
                    if (unres_schema_add_node(trg, unres, &$1.node.ptr_tpdf->type, UNRES_TYPE_DER_TPDF, tpdf_parent) == -1) {
+                     lydict_remove(trg->ctx, ((struct yang_type *)$1.node.ptr_tpdf->type.der)->name);
+                     free($1.node.ptr_tpdf->type.der);
+                     $1.node.ptr_tpdf->type.der = NULL;
                      YYABORT;
                    }
                  }
@@ -1372,7 +1377,7 @@ enum_opt_stmt: @EMPTYDIR@ { if (read_all) {
                               }
 
                               if (size_arrays->node[size_arrays->next].if_features) {
-                                ((struct lys_type_enum *)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, 
+                                ((struct lys_type_enum *)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features,
                                                                                      sizeof *((struct lys_type_enum *)actual)->iffeature);
                                 if (!((struct lys_type_enum *)actual)->iffeature) {
                                   LOGMEM;
@@ -1549,7 +1554,7 @@ bit_opt_stmt: @EMPTYDIR@ { if (read_all) {
                               }
 
                               if (size_arrays->node[size_arrays->next].if_features) {
-                                ((struct lys_type_bit *)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, 
+                                ((struct lys_type_bit *)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features,
                                                                                      sizeof *((struct lys_type_bit *)actual)->iffeature);
                                 if (!((struct lys_type_bit *)actual)->iffeature) {
                                   LOGMEM;
@@ -1660,7 +1665,9 @@ grouping_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                    YYABORT;
                                  }
                                }
-                               store_flags((struct lys_node *)$$.grouping, size_arrays->node[size_arrays->next].flags, 0);
+                               if (store_flags((struct lys_node *)$$.grouping, size_arrays->node[size_arrays->next].flags, 0)) {
+                                   YYABORT;
+                               }
                                size_arrays->next++;
                              } else {
                                $$.index = size_arrays->size;
@@ -1746,7 +1753,9 @@ container_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                    YYABORT;
                                  }
                                }
-                               store_flags((struct lys_node *)$$.container, size_arrays->node[size_arrays->next].flags, config_inherit);
+                               if (store_flags((struct lys_node *)$$.container, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                   YYABORT;
+                               }
                                size_arrays->next++;
                              } else {
                                $$.index = size_arrays->size;
@@ -1864,7 +1873,9 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                 YYABORT;
                               }
                             }
-                            store_flags((struct lys_node *)$$.node.ptr_leaf, size_arrays->node[size_arrays->next].flags, config_inherit);
+                            if (store_flags((struct lys_node *)$$.node.ptr_leaf, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                YYABORT;
+                            }
                             size_arrays->next++;
                           } else {
                             $$.index = size_arrays->size;
@@ -1893,6 +1904,9 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                      actual_type = LEAF_KEYWORD;
                      $1.node.flag |= LYS_TYPE_DEF;
                      if (unres_schema_add_node(trg, unres, &$1.node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *)$1.node.ptr_leaf) == -1) {
+                       lydict_remove(trg->ctx, ((struct yang_type *)$1.node.ptr_leaf->type.der)->name);
+                       free($1.node.ptr_leaf->type.der);
+                       $1.node.ptr_leaf->type.der = NULL;
                        YYABORT;
                      }
                    }
@@ -2010,7 +2024,9 @@ leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                    YYABORT;
                                  }
                                }
-                               store_flags((struct lys_node *)$$.node.ptr_leaflist, size_arrays->node[size_arrays->next].flags, config_inherit);
+                               if (store_flags((struct lys_node *)$$.node.ptr_leaflist, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                   YYABORT;
+                               }
                                size_arrays->next++;
                              } else {
                                $$.index = size_arrays->size;
@@ -2039,6 +2055,9 @@ leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                    actual_type = LEAF_LIST_KEYWORD;
                    $1.node.flag |= LYS_TYPE_DEF;
                    if (unres_schema_add_node(trg, unres, &$1.node.ptr_leaflist->type, UNRES_TYPE_DER, (struct lys_node *)$1.node.ptr_leaflist) == -1) {
+                     lydict_remove(trg->ctx, ((struct yang_type *)$1.node.ptr_leaflist->type.der)->name);
+                     free($1.node.ptr_leaflist->type.der);
+                     $1.node.ptr_leaflist->type.der = NULL;
                      YYABORT;
                    }
                  }
@@ -2198,7 +2217,9 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                             }
                           }
                           $$.node.ptr_list->keys_size = size_arrays->node[size_arrays->next].keys;
-                          store_flags((struct lys_node *)$$.node.ptr_list, size_arrays->node[size_arrays->next].flags, config_inherit);
+                          if (store_flags((struct lys_node *)$$.node.ptr_list, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                              YYABORT;
+                          }
                           size_arrays->next++;
                         } else {
                           $$.index = size_arrays->size;
@@ -2375,7 +2396,9 @@ choice_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                 YYABORT;
                               }
                             }
-                            store_flags((struct lys_node *)$$.choice.ptr_choice, size_arrays->node[size_arrays->next].flags, config_inherit);
+                            if (store_flags((struct lys_node *)$$.choice.ptr_choice, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                YYABORT;
+                            }
                             size_arrays->next++;
                           } else {
                             $$.index = size_arrays->size;
@@ -2499,7 +2522,9 @@ case_opt_stmt: @EMPTYDIR@ { if (read_all) {
                               YYABORT;
                             }
                           }
-                          store_flags((struct lys_node *)$$.cs, size_arrays->node[size_arrays->next].flags, 1);
+                          if (store_flags((struct lys_node *)$$.cs, size_arrays->node[size_arrays->next].flags, 1)) {
+                              YYABORT;
+                          }
                           size_arrays->next++;
                         } else {
                           $$.index = size_arrays->size;
@@ -2587,7 +2612,9 @@ anyxml_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                 YYABORT;
                               }
                             }
-                            store_flags((struct lys_node *)$$.node.ptr_anydata, size_arrays->node[size_arrays->next].flags, config_inherit);
+                            if (store_flags((struct lys_node *)$$.node.ptr_anydata, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                YYABORT;
+                            }
                             size_arrays->next++;
                           } else {
                             $$.index = size_arrays->size;
@@ -2597,7 +2624,11 @@ anyxml_opt_stmt: @EMPTYDIR@ { if (read_all) {
                             }
                           }
                         }
-  |  anyxml_opt_stmt when_stmt { actual = $1.node.ptr_anydata; actual_type = $1.node.flag; }
+  |  anyxml_opt_stmt when_stmt { if (read_all) {
+                                   actual = $1.node.ptr_anydata;
+                                   actual_type = $1.node.flag;
+                                 }
+                               }
      stmtsep
   |  anyxml_opt_stmt if_feature_stmt { if (read_all) {
                                          if (yang_read_if_feature(trg, $1.node.ptr_anydata, s, unres, $1.node.flag)) {YYABORT;}
@@ -2692,7 +2723,9 @@ uses_opt_stmt: @EMPTYDIR@ { if (read_all) {
                               YYABORT;
                             }
                           }
-                          store_flags((struct lys_node *)$$.uses.ptr_uses, size_arrays->node[size_arrays->next].flags, 0);
+                          if (store_flags((struct lys_node *)$$.uses.ptr_uses, size_arrays->node[size_arrays->next].flags, 0)) {
+                              YYABORT;
+                          }
                           size_arrays->next++;
                         } else {
                           $$.index = size_arrays->size;
@@ -3131,7 +3164,9 @@ rpc_opt_stmt: @EMPTYDIR@ { if (read_all) {
                              YYABORT;
                            }
                          }
-                         store_flags((struct lys_node *)$$.node.ptr_rpc, size_arrays->node[size_arrays->next].flags, 0);
+                         if (store_flags((struct lys_node *)$$.node.ptr_rpc, size_arrays->node[size_arrays->next].flags, 0)) {
+                             YYABORT;
+                         }
                          size_arrays->next++;
                        } else {
                          $$.index = size_arrays->size;
@@ -3353,7 +3388,9 @@ notification_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                       YYABORT;
                                     }
                                   }
-                                  store_flags((struct lys_node *)$$.notif, size_arrays->node[size_arrays->next].flags, 0);
+                                  if (store_flags((struct lys_node *)$$.notif, size_arrays->node[size_arrays->next].flags, 0)) {
+                                      YYABORT;
+                                  }
                                   size_arrays->next++;
                                 } else {
                                   $$.index = size_arrays->size;
@@ -3741,6 +3778,9 @@ deviate_replace_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                     }
   |  deviate_replace_opt_stmt type_stmt stmtsep { if (read_all) {
                                             if (unres_schema_add_node(trg, unres, $1.deviation->deviate->type, UNRES_TYPE_DER, $1.deviation->target) == -1) {
+                                              lydict_remove(trg->ctx, ((struct yang_type *)$1.deviation->deviate->type->der)->name);
+                                              free($1.deviation->deviate->type->der);
+                                              $1.deviation->deviate->type->der = NULL;
                                               YYABORT;
                                             }
                                             ly_set_add($1.deviation->dflt_check, $1.deviation->target, 0);

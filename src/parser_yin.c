@@ -1460,7 +1460,7 @@ deviate_minmax(struct lys_node *target, struct lyxml_elem *node, struct lys_devi
     const char *value;
     char *endptr;
     unsigned long val;
-    uint32_t *ui32val;
+    uint32_t *ui32val, *min, *max;
 
     /* del min/max is forbidden */
     if (d->mod == LY_DEVIATE_DEL) {
@@ -1470,17 +1470,11 @@ deviate_minmax(struct lys_node *target, struct lyxml_elem *node, struct lys_devi
 
     /* check target node type */
     if (target->nodetype == LYS_LEAFLIST) {
-        if (type) {
-            ui32val = &((struct lys_node_leaflist *)target)->max;
-        } else {
-            ui32val = &((struct lys_node_leaflist *)target)->min;
-        }
+        max = &((struct lys_node_leaflist *)target)->max;
+        min = &((struct lys_node_leaflist *)target)->min;
     } else if (target->nodetype == LYS_LIST) {
-        if (type) {
-            ui32val = &((struct lys_node_list *)target)->max;
-        } else {
-            ui32val = &((struct lys_node_list *)target)->min;
-        }
+        max = &((struct lys_node_list *)target)->max;
+        min = &((struct lys_node_list *)target)->min;
     } else {
         LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name);
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Target node does not allow \"%s\" property.", node->name);
@@ -1495,6 +1489,7 @@ deviate_minmax(struct lys_node *target, struct lyxml_elem *node, struct lys_devi
     if (type && !strcmp(value, "unbounded")) {
         d->max = val = 0;
         d->max_set = 1;
+        ui32val = max;
     } else {
         /* convert it to uint32_t */
         errno = 0;
@@ -1507,9 +1502,11 @@ deviate_minmax(struct lys_node *target, struct lyxml_elem *node, struct lys_devi
         if (type) {
             d->max = (uint32_t)val;
             d->max_set = 1;
+            ui32val = max;
         } else {
             d->min = (uint32_t)val;
             d->min_set = 1;
+            ui32val = min;
         }
     }
 
@@ -1528,6 +1525,18 @@ deviate_minmax(struct lys_node *target, struct lyxml_elem *node, struct lys_devi
     /* add (already checked) and replace */
     /* set new value specified in deviation */
     *ui32val = (uint32_t)val;
+
+    /* check min-elements is smaller than max-elements */
+    if (*max && *min > *max) {
+        if (type) {
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"max-elements\".", value);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"max-elements\" is smaller than \"min-elements\".");
+        } else {
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"min-elements\".", value);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+        }
+        goto error;
+    }
 
     return EXIT_SUCCESS;
 
@@ -1628,6 +1637,9 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             LOGMEM;
             goto error;
         }
+    } else {
+        LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "deviate", "deviation");
+        goto error;
     }
 
     LY_TREE_FOR(yin->child, develem) {

@@ -392,10 +392,17 @@ yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, 
     if (!exp) {
         return EXIT_FAILURE;
     }
+
+    /* temporarily decrement identity_size due to resolve base */
+    module->ident_size--;
     if (unres_schema_add_str(module, unres, ident, UNRES_IDENT, exp) == -1) {
         lydict_remove(module->ctx, exp);
+        /* undo change identity_size */
+        module->ident_size++;
         return EXIT_FAILURE;
     }
+    /* undo change identity_size */
+    module->ident_size++;
 
     lydict_remove(module->ctx, exp);
     return EXIT_SUCCESS;
@@ -818,15 +825,13 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     int i, j, rc;
     int ret = -1;
     const char *name, *value;
-    LY_DATA_TYPE base;
+    LY_DATA_TYPE base = 0;
     struct lys_node *siter;
     struct lys_type *dertype;
     struct lys_type_enum *enms_sc = NULL;
     struct lys_type_bit *bits_sc = NULL;
     struct lys_type_bit bit_tmp;
 
-
-    base = typ->base;
     value = transform_schema2json(module, typ->name);
     if (!value) {
         goto error;
@@ -881,6 +886,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             goto error;
         }
     }
+    base = typ->base;
     typ->type->base = typ->type->der->type.base;
     if (base == 0) {
         base = typ->type->der->type.base;
@@ -1164,6 +1170,9 @@ error:
     if (typ->type->module_name) {
         lydict_remove(module->ctx, typ->type->module_name);
         typ->type->module_name = NULL;
+    }
+    if (base) {
+        typ->type->base = base;
     }
     return ret;
 }
@@ -2148,21 +2157,15 @@ error:
 int
 yang_read_deviate_minmax(struct type_deviation *dev, uint32_t value, int type)
 {
-    uint32_t *ui32val;
+    uint32_t *ui32val, *min, *max;
 
     /* check target node type */
     if (dev->target->nodetype == LYS_LEAFLIST) {
-        if (type) {
-            ui32val = &((struct lys_node_leaflist *)dev->target)->max;
-        } else {
-            ui32val = &((struct lys_node_leaflist *)dev->target)->min;
-        }
+        max = &((struct lys_node_leaflist *)dev->target)->max;
+        min = &((struct lys_node_leaflist *)dev->target)->min;
     } else if (dev->target->nodetype == LYS_LIST) {
-        if (type) {
-            ui32val = &((struct lys_node_list *)dev->target)->max;
-        } else {
-            ui32val = &((struct lys_node_list *)dev->target)->min;
-        }
+        max = &((struct lys_node_list *)dev->target)->max;
+        min = &((struct lys_node_list *)dev->target)->min;
     } else {
         LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, (type) ? "max-elements" : "min-elements");
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Target node does not allow \"%s\" property.", (type) ? "max-elements" : "min-elements");
@@ -2172,9 +2175,11 @@ yang_read_deviate_minmax(struct type_deviation *dev, uint32_t value, int type)
     if (type) {
         dev->deviate->max = value;
         dev->deviate->max_set = 1;
+        ui32val = max;
     } else {
         dev->deviate->min = value;
         dev->deviate->min_set = 1;
+        ui32val = min;
     }
 
     if (dev->deviate->mod == LY_DEVIATE_ADD) {
@@ -2192,6 +2197,18 @@ yang_read_deviate_minmax(struct type_deviation *dev, uint32_t value, int type)
     /* add (already checked) and replace */
     /* set new value specified in deviation */
     *ui32val = value;
+
+    /* check min-elements is smaller than max-elements */
+    if (*max && *min > *max) {
+        if (type) {
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"max-elements\".", value);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"max-elements\" is smaller than \"min-elements\".");
+        } else {
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"min-elements\".", value);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+        }
+        goto error;
+    }
 
     return EXIT_SUCCESS;
 
@@ -2469,19 +2486,34 @@ nacm_inherit(struct lys_module *module)
     }
 }
 
-void
+int
 store_flags(struct lys_node *node, uint8_t flags, int config_inherit)
 {
+    struct lys_node *elem;
+
     node->flags |= flags;
-    if (!(node->flags & LYS_CONFIG_MASK) && config_inherit) {
-        /* get config flag from parent */
-        if (node->parent) {
-            node->flags |= node->parent->flags & LYS_CONFIG_MASK;
-        } else {
-            /* default config is true */
-            node->flags |= LYS_CONFIG_W;
+    if (!(node->flags & LYS_CONFIG_MASK)) {
+        if (config_inherit) {
+            /* get config flag from parent */
+            if (node->parent) {
+                node->flags |= node->parent->flags & LYS_CONFIG_MASK;
+            } else {
+                /* default config is true */
+                node->flags |= LYS_CONFIG_W;
+            }
+        }
+    } else {
+        /* do we even care about config flags? */
+        for (elem = node; elem && !(elem->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); elem = elem->parent);
+
+        if (!elem && (node->flags & LYS_CONFIG_W) && node->parent && (node->parent->flags & LYS_CONFIG_R)) {
+            LOGVAL(LYE_INARG, LY_VLOG_LYS, node, "true", "config");
+            LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "State nodes cannot have configuration nodes as children.");
+            return EXIT_FAILURE;
         }
     }
+
+    return EXIT_SUCCESS;
 }
 
 static int

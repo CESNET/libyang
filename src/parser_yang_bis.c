@@ -599,72 +599,72 @@ static const yytype_uint16 yyrline[] =
      721,   722,   723,   725,   725,   744,   745,   749,   750,   757,
      764,   775,   787,   787,   789,   790,   794,   796,   797,   798,
      809,   811,   812,   811,   815,   816,   817,   818,   835,   835,
-     844,   845,   850,   869,   882,   888,   893,   899,   901,   901,
-     910,   911,   916,   956,   965,   974,   980,   985,   991,   995,
-     993,  1010,  1020,  1020,  1027,  1030,  1030,  1045,  1046,  1052,
-    1058,  1063,  1069,  1070,  1076,  1081,  1082,  1083,  1090,  1098,
-    1103,  1107,  1137,  1138,  1142,  1143,  1144,  1152,  1165,  1171,
-    1172,  1190,  1194,  1204,  1205,  1210,  1222,  1227,  1232,  1237,
-    1243,  1252,  1265,  1266,  1270,  1271,  1283,  1288,  1293,  1298,
-    1304,  1317,  1317,  1336,  1337,  1340,  1352,  1362,  1363,  1368,
-    1392,  1401,  1410,  1416,  1421,  1427,  1439,  1440,  1458,  1463,
-    1464,  1469,  1471,  1473,  1477,  1481,  1496,  1496,  1515,  1516,
-    1518,  1529,  1539,  1540,  1545,  1569,  1578,  1587,  1593,  1598,
-    1604,  1616,  1617,  1632,  1634,  1636,  1638,  1640,  1640,  1647,
-    1648,  1653,  1673,  1679,  1684,  1689,  1690,  1697,  1698,  1701,
-    1702,  1703,  1704,  1705,  1706,  1707,  1708,  1711,  1711,  1719,
-    1720,  1725,  1759,  1759,  1761,  1768,  1768,  1776,  1777,  1783,
-    1789,  1794,  1799,  1799,  1804,  1804,  1809,  1809,  1817,  1817,
-    1824,  1831,  1824,  1849,  1877,  1877,  1879,  1886,  1891,  1886,
-    1901,  1902,  1902,  1910,  1913,  1919,  1925,  1931,  1936,  1942,
-    1949,  1942,  1984,  2023,  2023,  2025,  2032,  2037,  2032,  2047,
-    2064,  2065,  2065,  2073,  2079,  2093,  2107,  2119,  2125,  2130,
-    2136,  2143,  2136,  2168,  2211,  2211,  2213,  2220,  2220,  2228,
-    2241,  2249,  2255,  2269,  2283,  2295,  2301,  2306,  2311,  2311,
-    2319,  2319,  2324,  2324,  2329,  2329,  2337,  2337,  2348,  2350,
-    2349,  2367,  2388,  2388,  2390,  2403,  2415,  2423,  2431,  2439,
-    2448,  2457,  2457,  2467,  2468,  2471,  2472,  2473,  2474,  2475,
-    2476,  2479,  2479,  2487,  2488,  2492,  2512,  2512,  2514,  2521,
-    2527,  2532,  2537,  2537,  2544,  2544,  2556,  2556,  2568,  2569,
-    2573,  2600,  2600,  2602,  2609,  2609,  2617,  2624,  2631,  2638,
-    2643,  2649,  2649,  2665,  2666,  2670,  2705,  2705,  2707,  2714,
-    2720,  2725,  2730,  2730,  2738,  2738,  2753,  2753,  2762,  2763,
-    2768,  2769,  2772,  2822,  2829,  2853,  2873,  2892,  2911,  2934,
-    2957,  2962,  2968,  2977,  2968,  2984,  2985,  2988,  2997,  2988,
-    3009,  3030,  3030,  3032,  3039,  3048,  3053,  3058,  3058,  3066,
-    3066,  3074,  3074,  3084,  3085,  3088,  3088,  3099,  3099,  3110,
-    3111,  3116,  3144,  3151,  3157,  3162,  3167,  3167,  3175,  3175,
-    3180,  3180,  3192,  3192,  3205,  3219,  3205,  3226,  3257,  3257,
-    3265,  3265,  3273,  3273,  3278,  3278,  3288,  3302,  3288,  3309,
-    3309,  3319,  3323,  3328,  3366,  3366,  3374,  3381,  3387,  3392,
-    3397,  3397,  3405,  3405,  3410,  3410,  3417,  3426,  3417,  3440,
-    3460,  3468,  3476,  3486,  3487,  3489,  3494,  3496,  3497,  3498,
-    3501,  3503,  3503,  3509,  3510,  3514,  3541,  3549,  3557,  3573,
-    3583,  3590,  3597,  3608,  3620,  3620,  3626,  3627,  3647,  3674,
-    3682,  3693,  3703,  3714,  3714,  3720,  3721,  3725,  3742,  3749,
-    3757,  3767,  3774,  3781,  3792,  3804,  3804,  3807,  3808,  3812,
-    3813,  3818,  3824,  3826,  3827,  3826,  3830,  3831,  3832,  3847,
-    3849,  3850,  3849,  3853,  3854,  3855,  3870,  3872,  3874,  3875,
-    3896,  3898,  3899,  3900,  3921,  3923,  3924,  3925,  3937,  3937,
-    3945,  3946,  3951,  3953,  3954,  3956,  3957,  3959,  3961,  3961,
-    3970,  3973,  3973,  3984,  3987,  3997,  4018,  4020,  4021,  4024,
-    4024,  4043,  4043,  4052,  4052,  4061,  4064,  4066,  4068,  4069,
-    4071,  4073,  4075,  4076,  4078,  4080,  4081,  4083,  4084,  4086,
-    4088,  4091,  4095,  4097,  4098,  4100,  4101,  4103,  4105,  4116,
-    4117,  4120,  4121,  4133,  4134,  4136,  4137,  4139,  4140,  4146,
-    4147,  4150,  4151,  4152,  4178,  4179,  4182,  4183,  4184,  4187,
-    4187,  4195,  4197,  4198,  4200,  4201,  4202,  4204,  4205,  4207,
-    4208,  4210,  4211,  4213,  4214,  4216,  4217,  4220,  4221,  4224,
-    4226,  4227,  4230,  4230,  4239,  4241,  4242,  4243,  4244,  4245,
-    4246,  4247,  4249,  4250,  4251,  4252,  4253,  4254,  4255,  4256,
-    4257,  4258,  4259,  4260,  4261,  4262,  4263,  4264,  4265,  4266,
-    4267,  4268,  4269,  4270,  4271,  4272,  4273,  4274,  4275,  4276,
-    4277,  4278,  4279,  4280,  4281,  4282,  4283,  4284,  4285,  4286,
-    4287,  4288,  4289,  4290,  4291,  4292,  4293,  4294,  4295,  4296,
+     844,   845,   850,   871,   884,   890,   895,   901,   903,   903,
+     912,   913,   918,   958,   967,   976,   982,   987,   993,   997,
+     995,  1012,  1022,  1022,  1029,  1032,  1032,  1050,  1051,  1057,
+    1063,  1068,  1074,  1075,  1081,  1086,  1087,  1088,  1095,  1103,
+    1108,  1112,  1142,  1143,  1147,  1148,  1149,  1157,  1170,  1176,
+    1177,  1195,  1199,  1209,  1210,  1215,  1227,  1232,  1237,  1242,
+    1248,  1257,  1270,  1271,  1275,  1276,  1288,  1293,  1298,  1303,
+    1309,  1322,  1322,  1341,  1342,  1345,  1357,  1367,  1368,  1373,
+    1397,  1406,  1415,  1421,  1426,  1432,  1444,  1445,  1463,  1468,
+    1469,  1474,  1476,  1478,  1482,  1486,  1501,  1501,  1520,  1521,
+    1523,  1534,  1544,  1545,  1550,  1574,  1583,  1592,  1598,  1603,
+    1609,  1621,  1622,  1637,  1639,  1641,  1643,  1645,  1645,  1652,
+    1653,  1658,  1680,  1686,  1691,  1696,  1697,  1704,  1705,  1708,
+    1709,  1710,  1711,  1712,  1713,  1714,  1715,  1718,  1718,  1726,
+    1727,  1732,  1768,  1768,  1770,  1777,  1777,  1785,  1786,  1792,
+    1798,  1803,  1808,  1808,  1813,  1813,  1818,  1818,  1826,  1826,
+    1833,  1840,  1833,  1858,  1888,  1888,  1890,  1897,  1902,  1897,
+    1915,  1916,  1916,  1924,  1927,  1933,  1939,  1945,  1950,  1956,
+    1963,  1956,  1998,  2039,  2039,  2041,  2048,  2053,  2048,  2066,
+    2083,  2084,  2084,  2092,  2098,  2112,  2126,  2138,  2144,  2149,
+    2155,  2162,  2155,  2187,  2232,  2232,  2234,  2241,  2241,  2249,
+    2262,  2270,  2276,  2290,  2304,  2316,  2322,  2327,  2332,  2332,
+    2340,  2340,  2345,  2345,  2350,  2350,  2358,  2358,  2369,  2371,
+    2370,  2388,  2411,  2411,  2413,  2426,  2438,  2446,  2454,  2462,
+    2471,  2480,  2480,  2490,  2491,  2494,  2495,  2496,  2497,  2498,
+    2499,  2502,  2502,  2510,  2511,  2515,  2537,  2537,  2539,  2546,
+    2552,  2557,  2562,  2562,  2569,  2569,  2581,  2581,  2593,  2594,
+    2598,  2627,  2627,  2633,  2640,  2640,  2648,  2655,  2662,  2669,
+    2674,  2680,  2680,  2696,  2697,  2701,  2738,  2738,  2740,  2747,
+    2753,  2758,  2763,  2763,  2771,  2771,  2786,  2786,  2795,  2796,
+    2801,  2802,  2805,  2855,  2862,  2886,  2906,  2925,  2944,  2967,
+    2990,  2995,  3001,  3010,  3001,  3017,  3018,  3021,  3030,  3021,
+    3042,  3063,  3063,  3065,  3072,  3081,  3086,  3091,  3091,  3099,
+    3099,  3107,  3107,  3117,  3118,  3121,  3121,  3132,  3132,  3143,
+    3144,  3149,  3179,  3186,  3192,  3197,  3202,  3202,  3210,  3210,
+    3215,  3215,  3227,  3227,  3240,  3254,  3240,  3261,  3292,  3292,
+    3300,  3300,  3308,  3308,  3313,  3313,  3323,  3337,  3323,  3344,
+    3344,  3354,  3358,  3363,  3403,  3403,  3411,  3418,  3424,  3429,
+    3434,  3434,  3442,  3442,  3447,  3447,  3454,  3463,  3454,  3477,
+    3497,  3505,  3513,  3523,  3524,  3526,  3531,  3533,  3534,  3535,
+    3538,  3540,  3540,  3546,  3547,  3551,  3578,  3586,  3594,  3610,
+    3620,  3627,  3634,  3645,  3657,  3657,  3663,  3664,  3684,  3711,
+    3719,  3730,  3740,  3751,  3751,  3757,  3758,  3762,  3779,  3789,
+    3797,  3807,  3814,  3821,  3832,  3844,  3844,  3847,  3848,  3852,
+    3853,  3858,  3864,  3866,  3867,  3866,  3870,  3871,  3872,  3887,
+    3889,  3890,  3889,  3893,  3894,  3895,  3910,  3912,  3914,  3915,
+    3936,  3938,  3939,  3940,  3961,  3963,  3964,  3965,  3977,  3977,
+    3985,  3986,  3991,  3993,  3994,  3996,  3997,  3999,  4001,  4001,
+    4010,  4013,  4013,  4024,  4027,  4037,  4058,  4060,  4061,  4064,
+    4064,  4083,  4083,  4092,  4092,  4101,  4104,  4106,  4108,  4109,
+    4111,  4113,  4115,  4116,  4118,  4120,  4121,  4123,  4124,  4126,
+    4128,  4131,  4135,  4137,  4138,  4140,  4141,  4143,  4145,  4156,
+    4157,  4160,  4161,  4173,  4174,  4176,  4177,  4179,  4180,  4186,
+    4187,  4190,  4191,  4192,  4218,  4219,  4222,  4223,  4224,  4227,
+    4227,  4235,  4237,  4238,  4240,  4241,  4242,  4244,  4245,  4247,
+    4248,  4250,  4251,  4253,  4254,  4256,  4257,  4260,  4261,  4264,
+    4266,  4267,  4270,  4270,  4279,  4281,  4282,  4283,  4284,  4285,
+    4286,  4287,  4289,  4290,  4291,  4292,  4293,  4294,  4295,  4296,
     4297,  4298,  4299,  4300,  4301,  4302,  4303,  4304,  4305,  4306,
     4307,  4308,  4309,  4310,  4311,  4312,  4313,  4314,  4315,  4316,
     4317,  4318,  4319,  4320,  4321,  4322,  4323,  4324,  4325,  4326,
-    4327,  4328,  4329,  4332,  4341
+    4327,  4328,  4329,  4330,  4331,  4332,  4333,  4334,  4335,  4336,
+    4337,  4338,  4339,  4340,  4341,  4342,  4343,  4344,  4345,  4346,
+    4347,  4348,  4349,  4350,  4351,  4352,  4353,  4354,  4355,  4356,
+    4357,  4358,  4359,  4360,  4361,  4362,  4363,  4364,  4365,  4366,
+    4367,  4368,  4369,  4372,  4381
 };
 #endif
 
@@ -3758,7 +3758,9 @@ yyreduce:
                                  YYABORT;
                                }
                              }
-                             store_flags((struct lys_node *)actual, size_arrays->node[size_arrays->next].flags, 0);
+                             if (store_flags((struct lys_node *)actual, size_arrays->node[size_arrays->next].flags, 0)) {
+                                 YYABORT;
+                             }
                              size_arrays->next++;
                            } else {
                              (yyval.i) = size_arrays->size;
@@ -4004,6 +4006,9 @@ yyreduce:
                    (yyvsp[-3].nodes).node.flag |= LYS_TYPE_DEF;
                    (yyval.nodes) = (yyvsp[-3].nodes);
                    if (unres_schema_add_node(trg, unres, &(yyvsp[-3].nodes).node.ptr_tpdf->type, UNRES_TYPE_DER_TPDF, tpdf_parent) == -1) {
+                     lydict_remove(trg->ctx, ((struct yang_type *)(yyvsp[-3].nodes).node.ptr_tpdf->type.der)->name);
+                     free((yyvsp[-3].nodes).node.ptr_tpdf->type.der);
+                     (yyvsp[-3].nodes).node.ptr_tpdf->type.der = NULL;
                      YYABORT;
                    }
                  }
@@ -4473,7 +4478,7 @@ yyreduce:
                               }
 
                               if (size_arrays->node[size_arrays->next].if_features) {
-                                ((struct lys_type_enum *)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, 
+                                ((struct lys_type_enum *)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features,
                                                                                      sizeof *((struct lys_type_enum *)actual)->iffeature);
                                 if (!((struct lys_type_enum *)actual)->iffeature) {
                                   LOGMEM;
@@ -4698,7 +4703,7 @@ yyreduce:
                               }
 
                               if (size_arrays->node[size_arrays->next].if_features) {
-                                ((struct lys_type_bit *)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, 
+                                ((struct lys_type_bit *)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features,
                                                                                      sizeof *((struct lys_type_bit *)actual)->iffeature);
                                 if (!((struct lys_type_bit *)actual)->iffeature) {
                                   LOGMEM;
@@ -4839,7 +4844,9 @@ yyreduce:
                                    YYABORT;
                                  }
                                }
-                               store_flags((struct lys_node *)(yyval.nodes).grouping, size_arrays->node[size_arrays->next].flags, 0);
+                               if (store_flags((struct lys_node *)(yyval.nodes).grouping, size_arrays->node[size_arrays->next].flags, 0)) {
+                                   YYABORT;
+                               }
                                size_arrays->next++;
                              } else {
                                (yyval.nodes).index = size_arrays->size;
@@ -4950,7 +4957,9 @@ yyreduce:
                                    YYABORT;
                                  }
                                }
-                               store_flags((struct lys_node *)(yyval.nodes).container, size_arrays->node[size_arrays->next].flags, config_inherit);
+                               if (store_flags((struct lys_node *)(yyval.nodes).container, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                   YYABORT;
+                               }
                                size_arrays->next++;
                              } else {
                                (yyval.nodes).index = size_arrays->size;
@@ -5132,7 +5141,9 @@ yyreduce:
                                 YYABORT;
                               }
                             }
-                            store_flags((struct lys_node *)(yyval.nodes).node.ptr_leaf, size_arrays->node[size_arrays->next].flags, config_inherit);
+                            if (store_flags((struct lys_node *)(yyval.nodes).node.ptr_leaf, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                YYABORT;
+                            }
                             size_arrays->next++;
                           } else {
                             (yyval.nodes).index = size_arrays->size;
@@ -5180,6 +5191,9 @@ yyreduce:
                      actual_type = LEAF_KEYWORD;
                      (yyvsp[-2].nodes).node.flag |= LYS_TYPE_DEF;
                      if (unres_schema_add_node(trg, unres, &(yyvsp[-2].nodes).node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *)(yyvsp[-2].nodes).node.ptr_leaf) == -1) {
+                       lydict_remove(trg->ctx, ((struct yang_type *)(yyvsp[-2].nodes).node.ptr_leaf->type.der)->name);
+                       free((yyvsp[-2].nodes).node.ptr_leaf->type.der);
+                       (yyvsp[-2].nodes).node.ptr_leaf->type.der = NULL;
                        YYABORT;
                      }
                    }
@@ -5352,7 +5366,9 @@ yyreduce:
                                    YYABORT;
                                  }
                                }
-                               store_flags((struct lys_node *)(yyval.nodes).node.ptr_leaflist, size_arrays->node[size_arrays->next].flags, config_inherit);
+                               if (store_flags((struct lys_node *)(yyval.nodes).node.ptr_leaflist, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                   YYABORT;
+                               }
                                size_arrays->next++;
                              } else {
                                (yyval.nodes).index = size_arrays->size;
@@ -5400,6 +5416,9 @@ yyreduce:
                    actual_type = LEAF_LIST_KEYWORD;
                    (yyvsp[-2].nodes).node.flag |= LYS_TYPE_DEF;
                    if (unres_schema_add_node(trg, unres, &(yyvsp[-2].nodes).node.ptr_leaflist->type, UNRES_TYPE_DER, (struct lys_node *)(yyvsp[-2].nodes).node.ptr_leaflist) == -1) {
+                     lydict_remove(trg->ctx, ((struct yang_type *)(yyvsp[-2].nodes).node.ptr_leaflist->type.der)->name);
+                     free((yyvsp[-2].nodes).node.ptr_leaflist->type.der);
+                     (yyvsp[-2].nodes).node.ptr_leaflist->type.der = NULL;
                      YYABORT;
                    }
                  }
@@ -5624,7 +5643,9 @@ yyreduce:
                             }
                           }
                           (yyval.nodes).node.ptr_list->keys_size = size_arrays->node[size_arrays->next].keys;
-                          store_flags((struct lys_node *)(yyval.nodes).node.ptr_list, size_arrays->node[size_arrays->next].flags, config_inherit);
+                          if (store_flags((struct lys_node *)(yyval.nodes).node.ptr_list, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                              YYABORT;
+                          }
                           size_arrays->next++;
                         } else {
                           (yyval.nodes).index = size_arrays->size;
@@ -5888,7 +5909,9 @@ yyreduce:
                                 YYABORT;
                               }
                             }
-                            store_flags((struct lys_node *)(yyval.nodes).choice.ptr_choice, size_arrays->node[size_arrays->next].flags, config_inherit);
+                            if (store_flags((struct lys_node *)(yyval.nodes).choice.ptr_choice, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                YYABORT;
+                            }
                             size_arrays->next++;
                           } else {
                             (yyval.nodes).index = size_arrays->size;
@@ -6056,7 +6079,9 @@ yyreduce:
                               YYABORT;
                             }
                           }
-                          store_flags((struct lys_node *)(yyval.nodes).cs, size_arrays->node[size_arrays->next].flags, 1);
+                          if (store_flags((struct lys_node *)(yyval.nodes).cs, size_arrays->node[size_arrays->next].flags, 1)) {
+                              YYABORT;
+                          }
                           size_arrays->next++;
                         } else {
                           (yyval.nodes).index = size_arrays->size;
@@ -6176,7 +6201,9 @@ yyreduce:
                                 YYABORT;
                               }
                             }
-                            store_flags((struct lys_node *)(yyval.nodes).node.ptr_anydata, size_arrays->node[size_arrays->next].flags, config_inherit);
+                            if (store_flags((struct lys_node *)(yyval.nodes).node.ptr_anydata, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                YYABORT;
+                            }
                             size_arrays->next++;
                           } else {
                             (yyval.nodes).index = size_arrays->size;
@@ -6191,7 +6218,11 @@ yyreduce:
 
   case 381:
 
-    { actual = (yyvsp[-1].nodes).node.ptr_anydata; actual_type = (yyvsp[-1].nodes).node.flag; }
+    { if (read_all) {
+                                   actual = (yyvsp[-1].nodes).node.ptr_anydata;
+                                   actual_type = (yyvsp[-1].nodes).node.flag;
+                                 }
+                               }
 
     break;
 
@@ -6327,7 +6358,9 @@ yyreduce:
                               YYABORT;
                             }
                           }
-                          store_flags((struct lys_node *)(yyval.nodes).uses.ptr_uses, size_arrays->node[size_arrays->next].flags, 0);
+                          if (store_flags((struct lys_node *)(yyval.nodes).uses.ptr_uses, size_arrays->node[size_arrays->next].flags, 0)) {
+                              YYABORT;
+                          }
                           size_arrays->next++;
                         } else {
                           (yyval.nodes).index = size_arrays->size;
@@ -6918,7 +6951,9 @@ yyreduce:
                              YYABORT;
                            }
                          }
-                         store_flags((struct lys_node *)(yyval.nodes).node.ptr_rpc, size_arrays->node[size_arrays->next].flags, 0);
+                         if (store_flags((struct lys_node *)(yyval.nodes).node.ptr_rpc, size_arrays->node[size_arrays->next].flags, 0)) {
+                             YYABORT;
+                         }
                          size_arrays->next++;
                        } else {
                          (yyval.nodes).index = size_arrays->size;
@@ -7240,7 +7275,9 @@ yyreduce:
                                       YYABORT;
                                     }
                                   }
-                                  store_flags((struct lys_node *)(yyval.nodes).notif, size_arrays->node[size_arrays->next].flags, 0);
+                                  if (store_flags((struct lys_node *)(yyval.nodes).notif, size_arrays->node[size_arrays->next].flags, 0)) {
+                                      YYABORT;
+                                  }
                                   size_arrays->next++;
                                 } else {
                                   (yyval.nodes).index = size_arrays->size;
@@ -7758,6 +7795,9 @@ yyreduce:
 
     { if (read_all) {
                                             if (unres_schema_add_node(trg, unres, (yyvsp[-2].nodes).deviation->deviate->type, UNRES_TYPE_DER, (yyvsp[-2].nodes).deviation->target) == -1) {
+                                              lydict_remove(trg->ctx, ((struct yang_type *)(yyvsp[-2].nodes).deviation->deviate->type->der)->name);
+                                              free((yyvsp[-2].nodes).deviation->deviate->type->der);
+                                              (yyvsp[-2].nodes).deviation->deviate->type->der = NULL;
                                               YYABORT;
                                             }
                                             ly_set_add((yyvsp[-2].nodes).deviation->dflt_check, (yyvsp[-2].nodes).deviation->target, 0);

@@ -158,7 +158,7 @@ int yang_read_presence(struct lys_module *module, struct lys_node_container *con
 
 int yang_read_config(void *node, int value, enum yytokentype type);
 
-void store_flags(struct lys_node *node, uint8_t flags, int config_inherit);
+int store_flags(struct lys_node *node, uint8_t flags, int config_inherit);
 
 void *yang_read_when(struct lys_module *module, struct lys_node *node, enum yytokentype type, char *value);
 

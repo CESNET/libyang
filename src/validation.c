@@ -354,13 +354,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
             }
         }
 
-        /* check for mandatory children */
-        if ((schema->nodetype & (LYS_CONTAINER | LYS_LIST))
-                && !(options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_ACTION))) {
-            if (ly_check_mandatory(node, NULL, (options & LYD_OPT_TYPEMASK) ? 0 : 1, (options & LYD_OPT_RPCREPLY) ? 1 : 0)) {
-                return EXIT_FAILURE;
-            }
-        } else if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYDATA)) {
+        if (schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYDATA)) {
             /* check number of instances (similar to list uniqueness) for non-list nodes */
 
             /* find duplicity */
@@ -487,7 +481,7 @@ nextbit:
     }
 
     /* check must conditions */
-    if (resolve_applies_must(node) && unres_data_add(unres, node, UNRES_MUST) == -1) {
+    if (resolve_applies_must(node->schema) && unres_data_add(unres, node, UNRES_MUST) == -1) {
         return EXIT_FAILURE;
     }
 
