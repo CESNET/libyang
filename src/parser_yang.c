@@ -825,15 +825,13 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     int i, j, rc;
     int ret = -1;
     const char *name, *value;
-    LY_DATA_TYPE base;
+    LY_DATA_TYPE base = 0;
     struct lys_node *siter;
     struct lys_type *dertype;
     struct lys_type_enum *enms_sc = NULL;
     struct lys_type_bit *bits_sc = NULL;
     struct lys_type_bit bit_tmp;
 
-
-    base = typ->base;
     value = transform_schema2json(module, typ->name);
     if (!value) {
         goto error;
@@ -888,6 +886,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             goto error;
         }
     }
+    base = typ->base;
     typ->type->base = typ->type->der->type.base;
     if (base == 0) {
         base = typ->type->der->type.base;
@@ -1171,6 +1170,9 @@ error:
     if (typ->type->module_name) {
         lydict_remove(module->ctx, typ->type->module_name);
         typ->type->module_name = NULL;
+    }
+    if (base) {
+        typ->type->base = base;
     }
     return ret;
 }

@@ -1039,6 +1039,9 @@ type_opt_stmt: @EMPTYDIR@ { $$.node.ptr_tpdf = actual;
                    $1.node.flag |= LYS_TYPE_DEF;
                    $$ = $1;
                    if (unres_schema_add_node(trg, unres, &$1.node.ptr_tpdf->type, UNRES_TYPE_DER_TPDF, tpdf_parent) == -1) {
+                     lydict_remove(trg->ctx, ((struct yang_type *)$1.node.ptr_tpdf->type.der)->name);
+                     free($1.node.ptr_tpdf->type.der);
+                     $1.node.ptr_tpdf->type.der = NULL;
                      YYABORT;
                    }
                  }
@@ -1900,6 +1903,9 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                      actual_type = LEAF_KEYWORD;
                      $1.node.flag |= LYS_TYPE_DEF;
                      if (unres_schema_add_node(trg, unres, &$1.node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *)$1.node.ptr_leaf) == -1) {
+                       lydict_remove(trg->ctx, ((struct yang_type *)$1.node.ptr_leaf->type.der)->name);
+                       free($1.node.ptr_leaf->type.der);
+                       $1.node.ptr_leaf->type.der = NULL;
                        YYABORT;
                      }
                    }
@@ -2021,6 +2027,9 @@ leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                    actual_type = LEAF_LIST_KEYWORD;
                    $1.node.flag |= LYS_TYPE_DEF;
                    if (unres_schema_add_node(trg, unres, &$1.node.ptr_leaflist->type, UNRES_TYPE_DER, (struct lys_node *)$1.node.ptr_leaflist) == -1) {
+                     lydict_remove(trg->ctx, ((struct yang_type *)$1.node.ptr_leaflist->type.der)->name);
+                     free($1.node.ptr_leaflist->type.der);
+                     $1.node.ptr_leaflist->type.der = NULL;
                      YYABORT;
                    }
                  }
@@ -3652,6 +3661,9 @@ deviate_replace_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                 }
   |  deviate_replace_opt_stmt type_stmt stmtsep { if (read_all) {
                                             if (unres_schema_add_node(trg, unres, $1.deviation->deviate->type, UNRES_TYPE_DER, $1.deviation->target) == -1) {
+                                              lydict_remove(trg->ctx, ((struct yang_type *)$1.deviation->deviate->type->der)->name);
+                                              free($1.deviation->deviate->type->der);
+                                              $1.deviation->deviate->type->der = NULL;
                                               YYABORT;
                                             }
                                           }

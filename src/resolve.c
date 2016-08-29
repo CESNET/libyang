@@ -5373,15 +5373,8 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
             rc = yang_check_type(mod, node, yang, tpdf_flag, unres);
 
             if (rc) {
-                if (rc == -1) {
-                    yang->type->base = yang->base;
-                    lydict_remove(mod->ctx, yang->name);
-                    free(yang);
-                    stype->der = NULL;
-                } else {
-                    /* may try again later */
-                    stype->der = (struct lys_tpdf *)yang;
-                }
+                /* may try again later */
+                stype->der = (struct lys_tpdf *)yang;
             } else {
                 /* we need to always be able to free this, it's safe only in this case */
                 lydict_remove(mod->ctx, yang->name);
