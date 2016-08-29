@@ -3895,16 +3895,17 @@ error:
  * Does not log.
  *
  * @param[in] node Siblings and their children to have flags changed.
+ * @param[in] ignore Flag to ignore check if parent is LYS_NOTIF, LYS_INPUT, LYS_OUTPUT, LYS_RPC.
  * @param[in] flags Flags to assign to all the nodes.
  *
  * @return 0 on success, -1 on error.
  */
 static int
-inherit_config_flag(struct lys_node *node, int flags)
+inherit_config_flag(struct lys_node *node, int ignore, int flags)
 {
     assert(!(flags ^ (flags & LYS_CONFIG_MASK)));
     LY_TREE_FOR(node, node) {
-        if (node->flags & LYS_CONFIG_SET) {
+        if (!ignore && (node->flags & LYS_CONFIG_SET)) {
             /* skip nodes with an explicit config value */
             if ((flags & LYS_CONFIG_R) && (node->flags & LYS_CONFIG_W)) {
                 LOGVAL(LYE_INARG, LY_VLOG_LYS, node, "true", "config");
@@ -3917,7 +3918,7 @@ inherit_config_flag(struct lys_node *node, int flags)
             node->flags = (node->flags & ~LYS_CONFIG_MASK) | flags;
         }
         if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
-            if (inherit_config_flag(node->child, flags)) {
+            if (inherit_config_flag(node->child, ignore, flags)) {
                 return -1;
             }
         }
@@ -3937,9 +3938,9 @@ inherit_config_flag(struct lys_node *node, int flags)
 static int
 resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
 {
-    int rc;
+    int rc, ignore_config;
     struct lys_node *sub;
-    const struct lys_node *aug_target;
+    const struct lys_node *aug_target, *parent;
 
     assert(aug && !aug->target);
 
@@ -3997,8 +3998,10 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
     }
 
     /* inherit config information from actual parent */
+    for(parent = aug_target; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); parent = parent->parent);
+    ignore_config = (parent) ? 1 : 0;
     LY_TREE_FOR(aug->child, sub) {
-        if (inherit_config_flag(sub, aug_target->flags & LYS_CONFIG_MASK)) {
+        if (inherit_config_flag(sub, ignore_config, aug_target->flags & LYS_CONFIG_MASK)) {
             return -1;
         }
     }
@@ -4042,7 +4045,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
     struct lys_refine *rfn;
     struct lys_restr *must, **old_must;
     struct lys_iffeature *iff, **old_iff;
-    int i, j, rc, parent_config;
+    int i, j, rc, parent_config, ignore_config;
     uint8_t size, *old_size;
     unsigned int usize, usize1, usize2;
 
@@ -4083,7 +4086,9 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
     if (parent_config) {
         assert(uses->child);
-        if (inherit_config_flag(uses->child, parent_config)) {
+        for(parent = node; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); parent = parent->parent);
+        ignore_config = (parent) ? 1 : 0;
+        if (inherit_config_flag(uses->child, ignore_config, parent_config)) {
             goto fail;
         }
     }
