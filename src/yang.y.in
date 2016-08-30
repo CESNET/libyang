@@ -1433,10 +1433,10 @@ value_stmt: VALUE_KEYWORD sep integer_value_arg_str
                         ((struct lys_type_enum *)actual)->value = $3;
 
                         /* keep the highest enum value for automatic increment */
-                        if ($3 > cnt_val) {
+                        if ($3 >= cnt_val) {
                           cnt_val = $3;
+                          cnt_val++;
                         }
-                        cnt_val++;
                       }
                     }
 
@@ -1610,10 +1610,10 @@ position_stmt: POSITION_KEYWORD sep position_value_arg_str
                            ((struct lys_type_bit *)actual)->pos = $3;
 
                            /* keep the highest position value for automatic increment */
-                           if ($3 > cnt_val) {
+                           if ($3 >= cnt_val) {
                              cnt_val = $3;
+                             cnt_val++;
                            }
-                           cnt_val++;
                          }
                        }
 

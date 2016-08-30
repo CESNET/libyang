@@ -4588,10 +4588,10 @@ yyreduce:
                         ((struct lys_type_enum *)actual)->value = (yyvsp[-1].i);
 
                         /* keep the highest enum value for automatic increment */
-                        if ((yyvsp[-1].i) > cnt_val) {
+                        if ((yyvsp[-1].i) >= cnt_val) {
                           cnt_val = (yyvsp[-1].i);
+                          cnt_val++;
                         }
-                        cnt_val++;
                       }
                     }
 
@@ -4813,10 +4813,10 @@ yyreduce:
                            ((struct lys_type_bit *)actual)->pos = (yyvsp[-1].uint);
 
                            /* keep the highest position value for automatic increment */
-                           if ((yyvsp[-1].uint) > cnt_val) {
+                           if ((yyvsp[-1].uint) >= cnt_val) {
                              cnt_val = (yyvsp[-1].uint);
+                             cnt_val++;
                            }
-                           cnt_val++;
                          }
                        }
 
