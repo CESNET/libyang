@@ -467,10 +467,10 @@ yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, 
 {
     int ret;
 
-    if (message==ERROR_APP_TAG_KEYWORD) {
+    if (message == ERROR_APP_TAG_KEYWORD) {
         ret = yang_check_string(module, &save->eapptag, "error_app_tag", what, value);
     } else {
-        ret = yang_check_string(module, &save->emsg, "error_app_tag", what, value);
+        ret = yang_check_string(module, &save->emsg, "error_message", what, value);
     }
     return ret;
 }
