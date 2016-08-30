@@ -1120,6 +1120,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 /* get possible sub-statements */
                 if (read_restr_substmt(module->ctx, &type->info.str.patterns[type->info.str.pat_count], node)) {
                     free(type->info.str.patterns);
+                    type->info.str.patterns = NULL;
                     goto error;
                 }
                 type->info.str.pat_count++;
