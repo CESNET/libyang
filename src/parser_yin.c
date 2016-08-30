@@ -737,19 +737,25 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     type->info.enums.enm[i].value = v_;
 
                     if (!dertype->der) { /* directly derived type from enumeration built-in type */
-                        /* keep the highest enum value for automatic increment */
-                        if (type->info.enums.enm[i].value > v) {
+                        if (!i) {
+                            /* change value, which is assigned automatically, if first enum has value. */
                             v = type->info.enums.enm[i].value;
                             v++;
                         } else {
-                            /* check that the value is unique */
-                            for (j = 0; j < i; j++) {
-                                if (type->info.enums.enm[j].value == type->info.enums.enm[i].value) {
-                                    LOGVAL(LYE_ENUM_DUPVAL, LY_VLOG_NONE, NULL,
-                                           type->info.enums.enm[i].value, type->info.enums.enm[i].name,
-                                           type->info.enums.enm[j].name);
-                                    type->info.enums.count = i + 1;
-                                    goto error;
+                            /* keep the highest enum value for automatic increment */
+                            if (type->info.enums.enm[i].value >= v) {
+                                v = type->info.enums.enm[i].value;
+                                v++;
+                            } else {
+                                /* check that the value is unique */
+                                for (j = 0; j < i; j++) {
+                                    if (type->info.enums.enm[j].value == type->info.enums.enm[i].value) {
+                                        LOGVAL(LYE_ENUM_DUPVAL, LY_VLOG_NONE, NULL,
+                                               type->info.enums.enm[i].value, type->info.enums.enm[i].name,
+                                               type->info.enums.enm[j].name);
+                                        type->info.enums.count = i + 1;
+                                        goto error;
+                                    }
                                 }
                             }
                         }

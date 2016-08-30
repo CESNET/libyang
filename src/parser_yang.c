@@ -1439,6 +1439,10 @@ yang_check_enum(struct yang_type *typ, struct lys_type_enum *enm, int64_t *value
         enm->value = *value;
         enm->flags |= LYS_AUTOASSIGNED;
         (*value)++;
+    } else if (typ->type->info.enums.enm == enm) {
+        /* change value, which is assigned automatically, if first enum has value. */
+        *value = typ->type->info.enums.enm[0].value;
+        (*value)++;
     }
 
     /* check that the value is unique */
