@@ -1393,6 +1393,13 @@ yang_read_enum(struct lys_module *module, struct yang_type *typ, char *value)
     struct lys_type_enum *enm;
     int i;
 
+    if (!value[0]) {
+        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "enum name");
+        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Enum name must not be empty.");
+        free(value);
+        goto error;
+    }
+
     enm = &typ->type->info.enums.enm[typ->type->info.enums.count];
     enm->name = lydict_insert_zc(module->ctx, value);
 
