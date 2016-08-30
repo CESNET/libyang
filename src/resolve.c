@@ -2560,7 +2560,7 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
                 goto error;
             }
             /* segments sholud be ascending order */
-            if (tmp_intv && (tmp_intv->value.uval.max > tmp_local_intv->value.uval.min)) {
+            if (tmp_intv && (tmp_intv->value.uval.max >= tmp_local_intv->value.uval.min)) {
                 goto error;
             }
         } else if (kind == 1) {
@@ -2570,7 +2570,7 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
             if (tmp_local_intv->value.sval.min < local_smin || tmp_local_intv->value.sval.max > local_smax) {
                 goto error;
             }
-            if (tmp_intv && (tmp_intv->value.sval.max > tmp_local_intv->value.sval.min)) {
+            if (tmp_intv && (tmp_intv->value.sval.max >= tmp_local_intv->value.sval.min)) {
                 goto error;
             }
         } else if (kind == 2) {
@@ -2580,7 +2580,7 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
             if (tmp_local_intv->value.fval.min < local_fmin || tmp_local_intv->value.fval.max > local_fmax) {
                 goto error;
             }
-            if (tmp_intv && (tmp_intv->value.fval.max > tmp_local_intv->value.fval.min)) {
+            if (tmp_intv && (tmp_intv->value.fval.max >= tmp_local_intv->value.fval.min)) {
                 goto error;
             }
         }
