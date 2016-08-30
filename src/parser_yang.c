@@ -1078,6 +1078,10 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             }
 
             if (typ->type->info.lref.path) {
+                if (typ->type->der->type.der) {
+                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "path");
+                    goto error;
+                }
                 value = typ->type->info.lref.path;
                 /* store in the JSON format */
                 typ->type->info.lref.path = transform_schema2json(module, value);
