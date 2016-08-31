@@ -372,10 +372,6 @@ char *lyd_path(struct lyd_node *node);
  * behavior) takes effect only in case of #LYD_OPT_DATA or #LYD_OPT_CONFIG type of data.
  * - whenever the parser see empty non-presence container, it is automatically removed to minimize memory usage. This
  * behavior can be changed by #LYD_OPT_KEEPEMPTYCONT.
- * - for validation, parser needs to add default nodes into the data tree. By default, these additional (implicit)
- * nodes are removed before the parser returns. However, if caller use one of the LYD_WD_* option, the default nodes
- * added by parser are kept in the resulting tree or even the explicit nodes with the default values can be removed
- * (in case of #LYD_WD_TRIM option).
  * @{
  */
 
@@ -423,22 +419,6 @@ char *lyd_path(struct lyd_node *node);
                                        If used, libyang generates validation error instead of silently removing the
                                        constrained subtree. */
 #define LYD_OPT_KEEPEMPTYCONT 0x4000 /**< Do not automatically delete empty non-presence containers. */
-
-#define LYD_WD_MASK        0x1F0000  /**< Mask for with-defaults modes */
-#define LYD_WD_EXPLICIT    0x100000  /**< Explicit mode - add missing default status data, but only in case the data
-                                          type is supposed to include status data (all except #LYD_OPT_CONFIG,
-                                          #LYD_OPT_GETCONFIG and #LYD_OPT_EDIT */
-#define LYD_WD_TRIM        0x010000  /**< Remove all nodes with the value equal to their default value */
-#define LYD_WD_ALL         0x020000  /**< Explicitly add all missing nodes with their default value */
-#define LYD_WD_ALL_TAG     0x040000  /**< Same as LYD_WD_ALL but also adds attribute 'default' with value 'true' to
-                                          all nodes that has its default value. The 'default' attribute has namespace:
-                                          urn:ietf:params:xml:ns:netconf:default:1.0 and thus the attributes are
-                                          created only when the ietf-netconf-with-defaults module is present in libyang
-                                          context. */
-#define LYD_WD_IMPL_TAG    0x080000  /**< Same as LYD_WD_ALL_TAG but the attributes are added only to the nodes that
-                                          are being created and were not part of the original data tree despite their
-                                          value is equal to their default value. There is the same limitation regarding
-                                          the presence of ietf-netconf-with-defaults module in libyang context. */
 
 /**@} parseroptions */
 
@@ -836,65 +816,13 @@ int lyd_validate_leafref(struct lyd_node_leaf_list *leafref);
 int lyd_validate(struct lyd_node **node, int options, ...);
 
 /**
- * @brief Add default nodes into the data tree.
+ * @brief Get know if the node contain (despite implicit or explicit) default value.
  *
- * The function expects that the provided data tree is valid. If not, the result is undefined - in general, the
- * result is not more invalid than the provided data tree input, so if the input data tree is invalid, result will
- * be also invalid and the process of adding default values could be incomplete.
- *
- * Since default nodes are also needed by the validation process, to optimize your application you can add default
- * values directly in lyd_validate() and lyd_parse*() functions using appropriate options value. By default, these
- * functions remove the default nodes at the end of their processing.
- *
- * The \p ctx parameter is optional and it is used to get schemas to add a top level default nodes according to the
- * following rules:
- * - \p root points to an inner (non top-level) node
- *   - the \p root is taken as a subroot and default nodes are being added only inside this subtree, \p ctx is not used
- * - \p root points to a top-level node or to an empty tree
- *   - \p ctx is specified
- *     - \p options include #LYD_OPT_NOSIBLINGS
- *       - default nodes being added are limited to the schemas mentioned by the \p root node and its siblings,
- *       - NOSIBLINGS has meaning "no sibling schema" here,
- *       - \p root pointing an empty tree is an error in this case
- *     - \p options does not include #LYD_OPT_NOSIBLINGS
- *       - (top-level) default nodes from all schemas in the \p ctx are added into the tree
- *   - \p ctx is not specified
- *     - \p options include #LYD_OPT_NOSIBLINGS
- *       - only the node pointed by \p root is affected, so the node is actually handled as a subroot
- *       - \p root pointing an empty tree is an error in this case
- *     - \p options does not include #LYD_OPT_NOSIBLINGS
- *       - default nodes being added are limited to the schemas mentioned by the \p root node and its siblings,
- *       - \p root pointing an empty tree is an error in this case
- *
- * @param[in] ctx Optional parameter, for details see the previous paragraph.
- * @param[in] root Data tree root. In case of #LYD_WD_TRIM the data tree can be modified so the root can be changed or
- *            removed. In other modes and with empty data tree, new default nodes can be created so the root pointer
- *            will contain/return the newly created data tree.
- * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions - besides
- *            the #LYD_OPT_NOSIBLINGS described above, only the LYD_WD_* options are allowed to select functionality:
- * - #LYD_WD_TRIM - remove all nodes that have value equal to their default value
- * - #LYD_WD_EXPLICIT - add only status default nodes
- * - #LYD_WD_ALL - add all (status as well as config) default nodes
- * - #LYD_WD_ALL_TAG - add default nodes and add attribute 'default' with value 'true' to all nodes having their default value
- * - #LYD_WD_IMPL_TAG - add default nodes, but add attribute 'default' only to the added nodes
- * @note The LYD_WD_*_TAG modes require to have ietf-netconf-with-defaults module in the context of the data tree.
- * @note If you already added some tagged default nodes (by parser or previous call of lyd_validate()), you should
- * specify the same LYD_WD_*_TAG in all subsequent call to lyd_validate(). Otherwise, the tagged nodes will be removed.
- * @return EXIT_SUCCESS ot EXIT_FAILURE
+ * @param[in] node The leaf or leaf-list to check. Note, that leaf-list is marked as default only when the complete
+ *                 and only the default set is present (node's siblings are also checked).
+ * @return 1 if the node contains the default value, 0 otherwise.
  */
-int lyd_wd_add(struct ly_ctx *ctx, struct lyd_node **root, int options);
-
-/**
- * @brief Remove all default nodes, respectively all nodes with set ::lyd_node#dflt added by
- * #LYD_WD_ALL_TAG or #LYD_WD_IMPL_TAG options in lyd_wd_add(), lyd_validate() or lyd_parse_*() functions.
- *
- * @param[in] root Data tree root. The data tree can be modified so the root can be changed or completely removed.
- * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
- *            If #LYD_WD_EXPLICIT is found in options, the default status nodes are kept, so it is better to
- *            erase all LYD_WD_* flags from the value.
- * @return EXIT_SUCCESS or EXIT_FAILURE
- */
-int lyd_wd_cleanup(struct lyd_node **root, int options);
+int lyd_wd_default(struct lyd_node_leaf_list *node);
 
 /**
  * @brief Unlink the specified data subtree. All referenced namespaces are copied.

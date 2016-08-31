@@ -283,15 +283,20 @@ struct lyd_node *_lyd_new(struct lyd_node *parent, const struct lys_node *schema
 /**
  * @brief Create a dummy node for XPath evaluation. After done using, it should be removed.
  *
+ * The function must be used very carefully:
+ * - there must not be a list node to create
+ *
  * @param[in] data Any data node of the tree where the dummy node will be created
  * @param[in] parent To optimize searching in data tree (and to avoid issues with lists), caller can specify a
  *                   parent node that exists in the data tree.
  * @param[in] schema Schema node of the dummy node to create, must be of nodetype that
  * appears also in data tree.
+ * @param[in] value Optional value to be set in the dummy node
  *
  * @return The first created node needed for the dummy node in the given tree.
  */
-struct lyd_node *lyd_new_dummy(struct lyd_node *data, struct lyd_node *parent, const struct lys_node *schema);
+struct lyd_node *lyd_new_dummy(struct lyd_node *data, struct lyd_node *parent, const struct lys_node *schema,
+                               const char *value);
 
 /**
  * @brief Find the parent node of an attribute.

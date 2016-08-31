@@ -135,10 +135,11 @@ test_empty(void **state)
                       "</df><hidden xmlns=\"urn:libyang:tests:defaults\">"
                         "<foo>42</foo><baz>42</baz></hidden>";
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, st->ctx), 0);
+    st->dt = NULL;
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, st->ctx), 0);
     assert_ptr_not_equal(st->dt, NULL);
 
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml);
 }
@@ -166,11 +167,11 @@ test_status(void **state)
                       "</df><hidden xmlns=\"urn:libyang:tests:defaults\">"
                         "<papa>42</papa></hidden>";
 
-    assert_ptr_not_equal((st->dt = lyd_parse_mem(st->ctx, xml_min, LYD_XML, LYD_OPT_DATA | LYD_WD_EXPLICIT)), NULL);
+    assert_ptr_not_equal((st->dt = lyd_parse_mem(st->ctx, xml_min, LYD_XML, LYD_OPT_DATA)), NULL);
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_DATA, st->ctx), 0);
     assert_ptr_not_equal(st->dt, NULL);
 
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_EXPLICIT), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml);
 }
@@ -193,11 +194,10 @@ test_empty_tag(void **state)
                           "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
                         "<foo ncwd:default=\"true\">42</foo><baz ncwd:default=\"true\">42</baz></hidden>";
 
-    lyd_wd_add(st->ctx, &(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL_TAG);
-    assert_ptr_not_equal(st->dt, NULL);
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL), 0);
+    st->dt = NULL;
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, st->ctx), 0);
 
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml);
 }
@@ -208,9 +208,15 @@ test_df1(void **state)
     struct state *st = (*state);
     struct lyd_node *node;
     const char *xml = "<df xmlns=\"urn:libyang:tests:defaults\">"
-                        "<bar><ho>1</ho><hi>42</hi></bar>"
+                        "<bar><hi>42</hi><ho>1</ho></bar>"
                         "<foo>42</foo><b1_1>42</b1_1>"
-                      "</df><hidden xmlns=\"urn:libyang:tests:defaults\">"
+                      "</df><nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
+                        "<enable-nacm>true</enable-nacm>"
+                        "<read-default>permit</read-default>"
+                        "<write-default>deny</write-default>"
+                        "<exec-default>permit</exec-default>"
+                        "<enable-external-groups>true</enable-external-groups>"
+                      "</nacm><hidden xmlns=\"urn:libyang:tests:defaults\">"
                         "<foo>42</foo><baz>42</baz></hidden>";
 
     st->dt = lyd_new(NULL, st->mod, "df");
@@ -224,9 +230,7 @@ test_df1(void **state)
     assert_ptr_not_equal(lyd_new_leaf(node, NULL, "ho", "1"), NULL);
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
 
-    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL), 0);
-
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml);
 }
@@ -240,7 +244,13 @@ test_df2(void **state)
                         "<list><name>a</name><value>42</value></list>"
                         "<list><name>b</name><value>1</value></list>"
                         "<foo>42</foo><b1_1>42</b1_1>"
-                      "</df><hidden xmlns=\"urn:libyang:tests:defaults\">"
+                      "</df><nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
+                        "<enable-nacm>true</enable-nacm>"
+                        "<read-default>permit</read-default>"
+                        "<write-default>deny</write-default>"
+                        "<exec-default>permit</exec-default>"
+                        "<enable-external-groups>true</enable-external-groups>"
+                      "</nacm><hidden xmlns=\"urn:libyang:tests:defaults\">"
                         "<foo>42</foo><baz>42</baz></hidden>";
 
     st->dt = lyd_new(NULL, st->mod, "df");
@@ -251,9 +261,8 @@ test_df2(void **state)
     assert_ptr_not_equal(lyd_new_leaf(node, NULL, "value", "1"), NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
-    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL), 0);
 
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml);
 }
@@ -264,15 +273,28 @@ test_df3(void **state)
     struct state *st = (*state);
     struct lyd_node *node;
     const char *xml1 = "<df xmlns=\"urn:libyang:tests:defaults\">"
-                        "<a1>1</a1>"
                         "<foo>42</foo><b1_1>42</b1_1>"
-                      "</df><hidden xmlns=\"urn:libyang:tests:defaults\">"
+                        "<a1>1</a1>"
+                      "</df><nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
+                        "<enable-nacm>true</enable-nacm>"
+                        "<read-default>permit</read-default>"
+                        "<write-default>deny</write-default>"
+                        "<exec-default>permit</exec-default>"
+                        "<enable-external-groups>true</enable-external-groups>"
+                      "</nacm><hidden xmlns=\"urn:libyang:tests:defaults\">"
                         "<foo>42</foo><baz>42</baz></hidden>";
     const char *xml2 = "<df xmlns=\"urn:libyang:tests:defaults\" "
                           "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
                         "<c><x ncwd:default=\"true\">42</x></c>"
                         "<foo ncwd:default=\"true\">42</foo><b1_1 ncwd:default=\"true\">42</b1_1>"
-                      "</df><hidden xmlns=\"urn:libyang:tests:defaults\" "
+                      "</df><nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\" "
+                          "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+                        "<enable-nacm ncwd:default=\"true\">true</enable-nacm>"
+                        "<read-default ncwd:default=\"true\">permit</read-default>"
+                        "<write-default ncwd:default=\"true\">deny</write-default>"
+                        "<exec-default ncwd:default=\"true\">permit</exec-default>"
+                        "<enable-external-groups ncwd:default=\"true\">true</enable-external-groups>"
+                      "</nacm><hidden xmlns=\"urn:libyang:tests:defaults\" "
                           "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
                         "<foo ncwd:default=\"true\">42</foo><baz ncwd:default=\"true\">42</baz></hidden>";
 
@@ -282,22 +304,19 @@ test_df3(void **state)
     /* select - c */
     assert_ptr_not_equal((node = lyd_new(st->dt, NULL, "c")), NULL);
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
-    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL_TAG), 0);
 
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml2);
 
-    assert_int_equal(lyd_wd_cleanup(&(st->dt), 0), 0);
     free(st->xml);
     st->xml = NULL;
 
     /* select - a */
     assert_ptr_not_equal(lyd_new_leaf(st->dt, NULL, "a1", "1"), NULL);
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
-    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL), 0);
 
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml1);
 }
@@ -307,19 +326,39 @@ test_df4(void **state)
 {
     struct state *st = (*state);
     const char *xml1 = "<df xmlns=\"urn:libyang:tests:defaults\">"
-                        "<b1_2>x</b1_2><foo>42</foo><b1_1>42</b1_1>"
-                      "</df><hidden xmlns=\"urn:libyang:tests:defaults\">"
+                        "<foo>42</foo><b1_2>x</b1_2><b1_1>42</b1_1>"
+                      "</df><nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
+                        "<enable-nacm>true</enable-nacm>"
+                        "<read-default>permit</read-default>"
+                        "<write-default>deny</write-default>"
+                        "<exec-default>permit</exec-default>"
+                        "<enable-external-groups>true</enable-external-groups>"
+                      "</nacm><hidden xmlns=\"urn:libyang:tests:defaults\">"
                         "<foo>42</foo><baz>42</baz></hidden>";
     const char *xml2 = "<df xmlns=\"urn:libyang:tests:defaults\" "
                           "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
-                        "<b2>1</b2><foo ncwd:default=\"true\">42</foo>"
-                      "</df><hidden xmlns=\"urn:libyang:tests:defaults\" "
+                        "<foo ncwd:default=\"true\">42</foo><b2>1</b2>"
+                      "</df><nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\" "
+                          "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+                        "<enable-nacm ncwd:default=\"true\">true</enable-nacm>"
+                        "<read-default ncwd:default=\"true\">permit</read-default>"
+                        "<write-default ncwd:default=\"true\">deny</write-default>"
+                        "<exec-default ncwd:default=\"true\">permit</exec-default>"
+                        "<enable-external-groups ncwd:default=\"true\">true</enable-external-groups>"
+                      "</nacm><hidden xmlns=\"urn:libyang:tests:defaults\" "
                           "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
                         "<foo ncwd:default=\"true\">42</foo><baz ncwd:default=\"true\">42</baz></hidden>";
     const char *xml3 = "<df xmlns=\"urn:libyang:tests:defaults\" "
                           "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
                         "<s2a>1</s2a><foo ncwd:default=\"true\">42</foo>"
-                      "</df><hidden xmlns=\"urn:libyang:tests:defaults\" "
+                      "</df><nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\" "
+                          "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+                        "<enable-nacm ncwd:default=\"true\">true</enable-nacm>"
+                        "<read-default ncwd:default=\"true\">permit</read-default>"
+                        "<write-default ncwd:default=\"true\">deny</write-default>"
+                        "<exec-default ncwd:default=\"true\">permit</exec-default>"
+                        "<enable-external-groups ncwd:default=\"true\">true</enable-external-groups>"
+                      "</nacm><hidden xmlns=\"urn:libyang:tests:defaults\" "
                           "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
                         "<foo ncwd:default=\"true\">42</foo><baz ncwd:default=\"true\">42</baz></hidden>";
 
@@ -329,35 +368,30 @@ test_df4(void **state)
     /* select2 - s2a */
     assert_ptr_not_equal(lyd_new_leaf(st->dt, NULL, "s2a", "1"), NULL);
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
-    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL_TAG), 0);
 
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml3);
 
-    assert_int_equal(lyd_wd_cleanup(&(st->dt), 0), 0);
     free(st->xml);
     st->xml = NULL;
 
     /* select2 - s2b - b2 */
     assert_ptr_not_equal(lyd_new_leaf(st->dt, NULL, "b2", "1"), NULL);
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
-    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL_TAG), 0);
 
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml2);
 
-    assert_int_equal(lyd_wd_cleanup(&(st->dt), 0), 0);
     free(st->xml);
     st->xml = NULL;
 
     /* select2 - s2b - b1 */
     assert_ptr_not_equal(lyd_new_leaf(st->dt, NULL, "b1_2", "x"), NULL);
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
-    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL), 0);
 
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml1);
 }
@@ -378,13 +412,11 @@ test_rpc_input_default(void **state)
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPC), 0);
-    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_RPC | LYD_WD_ALL_TAG), 0);
 
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml1);
 
-    assert_int_equal(lyd_wd_cleanup(&(st->dt), 0), 0);
     free(st->xml);
     st->xml = NULL;
     lyd_free(st->dt);
@@ -394,13 +426,10 @@ test_rpc_input_default(void **state)
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPC), 0);
-    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_RPC | LYD_WD_ALL_TAG), 0);
 
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml2);
-
-    assert_int_equal(lyd_wd_cleanup(&(st->dt), 0), 0);
 }
 
 static void
@@ -408,8 +437,8 @@ test_rpc_output_default(void **state)
 {
     struct state *st = (*state);
     const char *xml1 = "<rpc1 xmlns=\"urn:libyang:tests:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
-                         "<outleaf1 ncwd:default=\"true\">def2</outleaf1>"
                          "<outleaf2>hai</outleaf2>"
+                         "<outleaf1 ncwd:default=\"true\">def2</outleaf1>"
                        "</rpc1>";
     const char *xml2 = "<rpc1 xmlns=\"urn:libyang:tests:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
                          "<outleaf1 ncwd:default=\"true\">def2</outleaf1>"
@@ -419,13 +448,11 @@ test_rpc_output_default(void **state)
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPCREPLY), 0);
-    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_RPCREPLY | LYD_WD_ALL_TAG), 0);
 
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml1);
 
-    assert_int_equal(lyd_wd_cleanup(&(st->dt), 0), 0);
     free(st->xml);
     st->xml = NULL;
     lyd_free(st->dt);
@@ -435,13 +462,10 @@ test_rpc_output_default(void **state)
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPCREPLY), 0);
-    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_RPCREPLY | LYD_WD_ALL_TAG), 0);
 
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml2);
-
-    assert_int_equal(lyd_wd_cleanup(&(st->dt), 0), 0);
 }
 
 static void
@@ -460,13 +484,11 @@ test_notif_default(void **state)
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_NOTIF), 0);
-    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_NOTIF | LYD_WD_ALL_TAG), 0);
 
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml1);
 
-    assert_int_equal(lyd_wd_cleanup(&(st->dt), 0), 0);
     free(st->xml);
     st->xml = NULL;
     lyd_free(st->dt);
@@ -476,13 +498,10 @@ test_notif_default(void **state)
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_NOTIF), 0);
-    assert_int_equal(lyd_wd_add(NULL, &(st->dt), LYD_OPT_NOTIF | LYD_WD_ALL_TAG), 0);
 
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml2);
-
-    assert_int_equal(lyd_wd_cleanup(&(st->dt), 0), 0);
 }
 
 static void
@@ -502,10 +521,10 @@ test_feature(void **state)
                         "<foo>42</foo><baz>42</baz></hidden>";
 
     assert_int_equal(lys_features_enable(st->mod, "unhide"), 0);
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, st->ctx), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, st->ctx), 0);
     assert_ptr_not_equal(st->dt, NULL);
 
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml);
 }
@@ -576,9 +595,9 @@ test_leaflist_yin(void **state)
     assert_ptr_not_equal(mod, NULL);
 
     st->dt = NULL;
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, st->ctx), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, st->ctx), 0);
     assert_ptr_not_equal(st->dt, NULL);
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml_empty);
 
@@ -586,9 +605,9 @@ test_leaflist_yin(void **state)
     lyd_free_withsiblings(st->dt);
 
     assert_ptr_not_equal(st->dt = lyd_new_path(NULL, st->ctx, "/x:ll", "one", 0, 0), NULL);
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, st->ctx), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, st->ctx), 0);
     assert_ptr_not_equal(st->dt, NULL);
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml_one);
 }
@@ -628,9 +647,9 @@ test_leaflist_yang(void **state)
     assert_ptr_not_equal(mod, NULL);
 
     st->dt = NULL;
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, st->ctx), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, st->ctx), 0);
     assert_ptr_not_equal(st->dt, NULL);
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml_empty);
 
@@ -638,9 +657,9 @@ test_leaflist_yang(void **state)
     lyd_free_withsiblings(st->dt);
 
     assert_ptr_not_equal(st->dt = lyd_new_path(NULL, st->ctx, "/x:ll", "three", 0, 0), NULL);
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_WD_ALL, st->ctx), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, st->ctx), 0);
     assert_ptr_not_equal(st->dt, NULL);
-    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS), 0);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL), 0);
     assert_ptr_not_equal(st->xml, NULL);
     assert_string_equal(st->xml, xml_three);
 }

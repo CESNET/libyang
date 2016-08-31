@@ -481,40 +481,53 @@ extern "C" {
  * @page howtodatawd Default Values
  *
  * libyang provide support for work with default values as defined in [RFC 6243](https://tools.ietf.org/html/rfc6243).
- * This document defines 4 modes for adding/removing default nodes to/from a data tree, libyang adds the fifth mode:
+ * This document defines 4 modes for handling default nodes in a data tree, libyang adds the fifth mode:
  * - \b explicit - Only the explicitly set configuration data. But in the case of status data, missing default
- *                 data are added into the tree. In libyang, this mode is represented by #LYD_WD_EXPLICIT option.
- * - \b trim - Data nodes containing the schema default value are removed. This mode is applied using #LYD_WD_TRIM option.
+ *                 data are added into the tree. In libyang, this mode is represented by #LYP_WD_EXPLICIT option.
+ * - \b trim - Data nodes containing the schema default value are removed. This mode is applied using #LYP_WD_TRIM option.
  * - \b report-all - All the missing default data are added into the data tree. This mode is represented by
- *                 #LYD_WD_ALL option.
+ *                 #LYP_WD_ALL option.
  * - \b report-all-tagged - In this case, all the missing default data are added as in case of the `report-all` mode,
  *                 but additionally all the nodes (existing as well as added) containing the schema default value
- *                 are tagged (see the note below). libyang uses #LYD_WD_ALL_TAG option for this mode.
+ *                 are tagged (see the note below). libyang uses #LYP_WD_ALL_TAG option for this mode.
  * - \b report-implicit-tagged - The last mode is similar to the previous one, except only the added nodes are tagged.
- *                 This is the libyang's extension and it is represented by #LYD_WD_IMPL_TAG option.
+ *                 This is the libyang's extension and it is represented by #LYP_WD_IMPL_TAG option.
  *
- * In the data nodes, the tag is represented as set ::lyd_node's `dflt` member. However, when the data tree is printed,
- * the tag is automatically printed as XML/JSON attribute as defined in [RFC 6243](https://tools.ietf.org/html/rfc6243).
- * This conversion is done only if the context includes the ietf-netconf-with-defaults schema. Otherwise, both
- * #LYD_WD_ALL_TAG and #LYD_WD_IMPL_TAG have the same result as #LYD_WD_ALL.
+ * libyang automatically adds/maintain the default nodes when a data tree is being parsed or validated. Note, that in a
+ * modified data tree (via e.g. lys_insert() or lys_free()), some of the default nodes can be missing or they can be
+ * present by mistake. Such a data tree is again corrected during the next lyd_validate() call.
  *
- * The base function for with-defaults capability is lyd_wd_add(), which modifies the data tree according to the
- * required with-defaults mode. However, the with-defaults modes can be applied directly by the data parser
- * functions and by lyd_validate().
+ * The implicit (default) nodes, created by libyang, are marked with the ::lyd_node#dflt flag which applies to the
+ * leafs and leaf-lists. In case of containers, the flag means that the container holds only a default node(s).
  *
- * With the lyd_wd_cleanup(), caller is able to remove all the data nodes marked with the defaults tag (set via
- * #LYD_WD_ALL_TAG or #LYD_WD_IMPL_TAG).
+ * The presence of the default nodes during the data tree lifetime is affected by the LYD_OPT_ flag used to
+ * parse/validate the tree:
+ * - #LYD_OPT_DATA - all the default nodes are present despite they are configuration or status nodes
+ * - #LYD_OPT_CONFIG - only the configuration data nodes are added into the tree
+ * - #LYD_OPT_GET, #LYD_OPT_GETCONFIG, #LYD_OPT_EDIT - no default nodes are added
+ * - #LYD_OPT_RPC, #LYD_OPT_RPCREPLY, #LYD_OPT_NOTIF - the default nodes from the particular subtree are added
+ *
+ * The with default modes described above are supported when the data tree is being printed with the
+ * [LYP_WD_ printer flags](@ref printerflags). Note, that in case of #LYP_WD_ALL_TAG and #LYP_WD_IMPL_TAG modes,
+ * the XML/JSON attributes are printed only if the context includes the ietf-netconf-with-defaults schema. Otherwise,
+ * these modes have the same result as #LYP_WD_ALL.
+ *
+ * To get know if the particular leaf or leaf-list node contains default value (despite implicit or explicit), you can
+ * use lyd_wd_default().
  *
  * Functions List
  * --------------
- * - lyd_wd_add()
- * - lyd_wd_cleanup()
+ * - lyd_wd_default()
  *
  * - lyd_parse_mem()
  * - lyd_parse_fd()
  * - lyd_parse_path()
  * - lyd_parse_xml()
  * - lyd_validate()
+ * - lyd_print_mem()
+ * - lyd_print_fd()
+ * - lyd_print_file()
+ * - lyd_print_clb()
  */
 
 /**
@@ -539,6 +552,9 @@ extern "C" {
  * to have a full control of the output data - libyang passes to the callback a private argument (some internal
  * data provided by a caller of lyd_print_clb()), string buffer and number of characters to print. Note that the
  * callback is supposed to be called multiple times during the lyd_print_clb() execution.
+ *
+ * To print the data tree with default nodes according to the with-defaults capability defined in
+ * [RFC 6243](https://tools.ietf.org/html/rfc6243), check the [page about the default values](@ref howtodatawd).
  *
  * Functions List
  * --------------
@@ -1074,6 +1090,20 @@ void ly_set_free(struct ly_set *set);
  */
 #define LYP_WITHSIBLINGS 0x01 /**< Flag for printing also the (following) sibling nodes of the data node. */
 #define LYP_FORMAT       0x02 /**< Flag for formatted output. */
+#define LYP_WD_MASK      0xF0 /**< Mask for with-defaults modes */
+#define LYP_WD_EXPLICIT  0x00 /**< Explicit mode - print only data explicitly being present in the data tree.
+                                   Note that this is the default value when no WD option is specified. */
+#define LYP_WD_TRIM      0x10 /**< Do not print the nodes with the value equal to their default value */
+#define LYP_WD_ALL       0x20 /**< Include implicit default nodes */
+#define LYP_WD_ALL_TAG   0x40 /**< Same as #LYP_WD_ALL but also adds attribute 'default' with value 'true' to
+                                   all nodes that has its default value. The 'default' attribute has namespace:
+                                   urn:ietf:params:xml:ns:netconf:default:1.0 and thus the attributes are
+                                   printed only when the ietf-netconf-with-defaults module is present in libyang
+                                   context. */
+#define LYP_WD_IMPL_TAG  0x80 /**< Same as LYP_WD_ALL_TAG but the attributes are added only to the nodes that
+                                   are not explicitly present in the original data tree despite their
+                                   value is equal to their default value.  There is the same limitation regarding
+                                   the presence of ietf-netconf-with-defaults module in libyang context. */
 
 /**
  * @}
