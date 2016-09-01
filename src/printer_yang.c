@@ -531,12 +531,11 @@ yang_print_refine(struct lyout *out, int level, const struct lys_module *module,
     for (i = 0; i < refine->iffeature_size; i++) {
         yang_print_iffeature(out, level, module, &refine->iffeature[i]);
     }
+    for (i = 0; i < refine->dflt_size; ++i) {
+        ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, refine->dflt[i]);
+    }
 
-    if (refine->target_type & (LYS_LEAF | LYS_CHOICE)) {
-        if (refine->mod.dflt != NULL) {
-            ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, refine->mod.dflt);
-        }
-    } else if (refine->target_type == LYS_CONTAINER) {
+    if (refine->target_type == LYS_CONTAINER) {
         if (refine->mod.presence != NULL) {
             yang_print_text(out, level, "presence", refine->mod.presence, 1);
         }
@@ -561,7 +560,7 @@ static void
 yang_print_deviation(struct lyout *out, int level, const struct lys_module *module,
                      const struct lys_deviation *deviation)
 {
-    int i, j;
+    int i, j, k;
     const char *str;
 
     str = transform_json2schema(module, deviation->target_name);
@@ -602,8 +601,8 @@ yang_print_deviation(struct lyout *out, int level, const struct lys_module *modu
             ly_print(out, "%*smandatory false;\n", LEVEL, INDENT);
         }
 
-        if (deviation->deviate[i].dflt) {
-            ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, deviation->deviate[i].dflt);
+        for (k = 0; k < deviation->deviate[i].dflt_size; ++k) {
+            ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, deviation->deviate[i].dflt[k]);
         }
 
         if (deviation->deviate[i].min_set) {
@@ -927,6 +926,9 @@ yang_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
     }
     yang_print_snode_common2(out, level, node, NULL);
     yang_print_type(out, level, node->module, &llist->type);
+    for (i = 0; i < llist->dflt_size; ++i) {
+        ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, llist->dflt[i]);
+    }
     if (llist->units != NULL) {
         ly_print(out, "%*sunits \"%s\";\n", LEVEL, INDENT, llist->units);
     }

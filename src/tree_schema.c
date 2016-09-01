@@ -1438,6 +1438,28 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
     return new;
 }
 
+static const char **
+lys_dflt_dup(struct ly_ctx *ctx, const char **old, int size)
+{
+    int i;
+    const char **result;
+
+    if (!size) {
+        return NULL;
+    }
+
+    result = calloc(size, sizeof *result);
+    if (!result) {
+        LOGMEM;
+        return NULL;
+    }
+
+    for (i = 0; i < size; i++) {
+        result[i] = lydict_insert(ctx, old[i], 0);
+    }
+    return result;
+}
+
 static struct lys_refine *
 lys_refine_dup(struct lys_module *mod, struct lys_refine *old, int size)
 {
@@ -1463,9 +1485,10 @@ lys_refine_dup(struct lys_module *mod, struct lys_refine *old, int size)
         result[i].must_size = old[i].must_size;
         result[i].must = lys_restr_dup(mod->ctx, old[i].must, old[i].must_size);
 
-        if (result[i].target_type & (LYS_LEAF | LYS_CHOICE)) {
-            result[i].mod.dflt = lydict_insert(mod->ctx, old[i].mod.dflt, 0);
-        } else if (result[i].target_type == LYS_CONTAINER) {
+        result[i].dflt_size = old[i].dflt_size;
+        result[i].dflt = lys_dflt_dup(mod->ctx, old[i].dflt, old[i].dflt_size);
+
+        if (result[i].target_type == LYS_CONTAINER) {
             result[i].mod.presence = lydict_insert(mod->ctx, old[i].mod.presence, 0);
         } else if (result[i].target_type & (LYS_LIST | LYS_LEAFLIST)) {
             result[i].mod.list = old[i].mod.list;
@@ -1586,6 +1609,11 @@ lys_leaflist_free(struct ly_ctx *ctx, struct lys_node_leaflist *llist)
     }
     free(llist->must);
 
+    for (i = 0; i < llist->dflt_size; i++) {
+        lydict_remove(ctx, llist->dflt[i]);
+    }
+    free(llist->dflt);
+
     lys_when_free(ctx, llist->when);
 
     lys_type_free(ctx, &llist->type);
@@ -1684,7 +1712,11 @@ lys_deviation_free(struct lys_module *module, struct lys_deviation *dev)
     }
 
     for (i = 0; i < dev->deviate_size; i++) {
-        lydict_remove(ctx, dev->deviate[i].dflt);
+        for (j = 0; j < dev->deviate[i].dflt_size; j++) {
+            lydict_remove(ctx, dev->deviate[i].dflt[j]);
+        }
+        free(dev->deviate[i].dflt);
+
         lydict_remove(ctx, dev->deviate[i].units);
 
         if (dev->deviate[i].mod == LY_DEVIATE_DEL) {
@@ -1720,9 +1752,12 @@ lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses, void (*private_des
         }
         free(uses->refine[i].must);
 
-        if (uses->refine[i].target_type & (LYS_LEAF | LYS_CHOICE)) {
-            lydict_remove(ctx, uses->refine[i].mod.dflt);
-        } else if (uses->refine[i].target_type & LYS_CONTAINER) {
+        for (j = 0; j < uses->refine[i].dflt_size; j++) {
+            lydict_remove(ctx, uses->refine[i].dflt[i]);
+        }
+        free(uses->refine[i].dflt);
+
+        if (uses->refine[i].target_type & LYS_CONTAINER) {
             lydict_remove(ctx, uses->refine[i].mod.presence);
         }
     }

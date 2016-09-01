@@ -276,22 +276,29 @@ void lys_free(struct lys_module *module, void (*private_destructor)(const struct
  *
  * @param[in] parent Data parent of the new node.
  * @param[in] schema Schema node of the new node.
+ * @param[in] dflt Set dflt flag in the created data nodes
  * @return New node, NULL on error.
  */
-struct lyd_node *_lyd_new(struct lyd_node *parent, const struct lys_node *schema);
+struct lyd_node *_lyd_new(struct lyd_node *parent, const struct lys_node *schema, int dflt);
 
 /**
  * @brief Create a dummy node for XPath evaluation. After done using, it should be removed.
+ *
+ * The function must be used very carefully:
+ * - there must not be a list node to create
  *
  * @param[in] data Any data node of the tree where the dummy node will be created
  * @param[in] parent To optimize searching in data tree (and to avoid issues with lists), caller can specify a
  *                   parent node that exists in the data tree.
  * @param[in] schema Schema node of the dummy node to create, must be of nodetype that
  * appears also in data tree.
+ * @param[in] value Optional value to be set in the dummy node
+ * @param[in] dflt Set dflt flag in the created data nodes
  *
  * @return The first created node needed for the dummy node in the given tree.
  */
-struct lyd_node *lyd_new_dummy(struct lyd_node *data, struct lyd_node *parent, const struct lys_node *schema);
+struct lyd_node *lyd_new_dummy(struct lyd_node *data, struct lyd_node *parent, const struct lys_node *schema,
+                               const char *value, int dflt);
 
 /**
  * @brief Find the parent node of an attribute.
@@ -373,7 +380,7 @@ int lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *si
  */
 int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int printval);
 
-const char *lyd_get_default(const char* unique_expr, struct lyd_node *list);
+const char *lyd_get_unique_default(const char* unique_expr, struct lyd_node *list);
 
 /**
  * @brief Check for (validate) mandatory nodes of a data tree. Checks recursively whole data tree. Requires all when

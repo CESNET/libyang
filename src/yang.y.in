@@ -237,6 +237,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 %destructor { free($$); } pattern_arg_str
 %destructor { if (read_all && $$.choice.s) { free($$.choice.s); } } choice_opt_stmt
 %destructor { if (read_all) {
+                ly_set_free($$.deviation->dflt_check);
                 free($$.deviation);
               }
             } deviation_opt_stmt
@@ -1960,22 +1961,38 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                                            }
                   '{' stmtsep
                       leaf_list_opt_stmt { if (read_all) {
+                                             int i;
+
                                              if ($7.node.ptr_leaflist->flags & LYS_CONFIG_R) {
                                                /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
                                                 * ignore oredering MASK - 0x7F
                                                 */
-                                             $7.node.ptr_leaflist->flags &= 0x7F;
-                                           }
+                                               $7.node.ptr_leaflist->flags &= 0x7F;
+                                             }
                                            if ($7.node.ptr_leaflist->max && $7.node.ptr_leaflist->min > $7.node.ptr_leaflist->max) {
                                              LOGVAL(LYE_SPEC, LY_VLOG_LYS, $7.node.ptr_leaflist, "\"min-elements\" is bigger than \"max-elements\".");
                                              YYABORT;
                                            }
-                                           if (!($7.node.flag & LYS_TYPE_DEF)) {
-                                             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaflist, "type", "leaf-list");
-                                             YYABORT;
+                                             if (!($7.node.flag & LYS_TYPE_DEF)) {
+                                               LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaflist, "type", "leaf-list");
+                                               YYABORT;
+                                             }
+                                             if ($7.node.ptr_leaflist->dflt_size && $7.node.ptr_leaflist->min) {
+                                               LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "min-elements", "leaf-list");
+                                               LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                                                      "The \"min-elements\" statement with non-zero value is forbidden on leaf-lists with the \"default\" statement.");
+                                               YYABORT;
+                                             }
+
+                                             /* check default value (if not defined, there still could be some restrictions
+                                              * that need to be checked against a default value from a derived type) */
+                                             for (i = 0; i < $7.node.ptr_leaflist->dflt_size; i++) {
+                                               if (unres_schema_add_str(module, unres, &$7.node.ptr_leaflist->type, UNRES_TYPE_DFLT, $7.node.ptr_leaflist->dflt[i]) == -1) {
+                                                 YYABORT;
+                                               }
+                                             }
                                            }
                                          }
-                                       }
                 '}' ;
 
 leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
@@ -1992,6 +2009,17 @@ leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                if (size_arrays->node[size_arrays->next].must) {
                                  $$.node.ptr_leaflist->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.node.ptr_leaflist->must);
                                  if (!$$.node.ptr_leaflist->must) {
+                                   LOGMEM;
+                                   YYABORT;
+                                 }
+                               }
+                               if (size_arrays->node[size_arrays->next].dflt) {
+                                 if (trg->version < 2) {
+                                   LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "default");
+                                   YYABORT;
+                                 }
+                                 $$.node.ptr_leaflist->dflt = calloc(size_arrays->node[size_arrays->next].dflt, sizeof *$$.node.ptr_leaflist->dflt);
+                                 if (!$$.node.ptr_leaflist->dflt) {
                                    LOGMEM;
                                    YYABORT;
                                  }
@@ -2035,6 +2063,23 @@ leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                  }
                }
      stmtsep { $$ = $1; }
+  |  leaf_list_opt_stmt default_stmt { if (read_all) {
+                                         int i;
+
+                                         /* check for duplicity */
+                                         for (i = 0; i < $1.node.ptr_leaflist->dflt_size; i++) {
+                                           if (ly_strequal($1.node.ptr_leaflist->dflt[i], s, 0)) {
+                                             LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "default");
+                                             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", s);
+                                             free(s);
+                                             YYABORT;
+                                           }
+                                         }
+                                         $1.node.ptr_leaflist->dflt[$1.node.ptr_leaflist->dflt_size++] = lydict_insert_zc(module->ctx, s);
+                                       } else {
+                                         size_arrays->node[$1.index].dflt++;
+                                       }
+                                     }
   |  leaf_list_opt_stmt units_stmt { if (read_all && yang_read_units(trg, $1.node.ptr_leaflist, s, LEAF_LIST_KEYWORD)) {YYABORT;} s = NULL; }
   |  leaf_list_opt_stmt must_stmt { if (read_all) {
                                       actual = $1.node.ptr_leaflist;
@@ -2768,6 +2813,36 @@ refine_body_opt_stmts: @EMPTYDIR@ { if (read_all) {
                                     }
                                     $$.refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML;
                                   }
+                                  if (size_arrays->node[size_arrays->next].dflt) {
+                                    $$.refine->dflt = calloc(size_arrays->node[size_arrays->next].dflt, sizeof *$$.refine->dflt);
+                                    if (!$$.refine->dflt) {
+                                      LOGMEM;
+                                      YYABORT;
+                                    }
+                                    if (size_arrays->node[size_arrays->next].dflt > 1) {
+                                      if (trg->version < 2) {
+                                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "default", "refine");
+                                        YYABORT;
+                                      }
+                                      $$.refine->target_type = LYS_LEAFLIST;
+                                    } else {
+                                      if ($$.refine->target_type) {
+                                        if (trg->version < 2) {
+                                          $$.refine->target_type &= (LYS_LEAF | LYS_CHOICE);
+                                        } else {
+                                          /* YANG 1.1 */
+                                          $$.refine->target_type &= (LYS_LEAF | LYS_LEAFLIST | LYS_CHOICE);
+                                        }
+                                      } else {
+                                        if (trg->version < 2) {
+                                          $$.refine->target_type = LYS_LEAF | LYS_CHOICE;
+                                        } else {
+                                          /* YANG 1.1 */
+                                          $$.refine->target_type = LYS_LEAF | LYS_LEAFLIST | LYS_CHOICE;
+                                        }
+                                      }
+                                    }
+                                  }
                                   size_arrays->next++;
                                 } else {
                                   $$.index = size_arrays->size;
@@ -2809,27 +2884,23 @@ refine_body_opt_stmts: @EMPTYDIR@ { if (read_all) {
                                            }
                                          }
   |  refine_body_opt_stmts default_stmt { if (read_all) {
-                                            if ($1.refine->target_type) {
-                                              if ($1.refine->target_type & (LYS_LEAF | LYS_CHOICE)) {
-                                                $1.refine->target_type &= (LYS_LEAF | LYS_CHOICE);
-                                                if ($1.refine->mod.dflt) {
-                                                  LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "default", "refine");
-                                                  free(s);
-                                                  YYABORT;
+                                            int i;
+
+                                            $1.refine->dflt[$1.refine->dflt_size] = lydict_insert_zc(trg->ctx, s);
+                                            /* check for duplicity */
+                                            for (i = 0; i < $1.refine->dflt_size; ++i) {
+                                                if (ly_strequal($1.refine->dflt[i], $1.refine->dflt[$1.refine->dflt_size], 1)) {
+                                                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, $1.refine->dflt[$1.refine->dflt_size], "default");
+                                                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", $1.refine->dflt[$1.refine->dflt_size]);
+                                                    $1.refine->dflt_size++;
+                                                    YYABORT;
                                                 }
-                                                $1.refine->mod.dflt = lydict_insert_zc(trg->ctx, s);
-                                              } else {
-                                                free(s);
-                                                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "default", "refine");
-                                                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
-                                                YYABORT;
-                                              }
-                                            } else {
-                                              $1.refine->target_type = LYS_LEAF | LYS_CHOICE;
-                                              $1.refine->mod.dflt = lydict_insert_zc(trg->ctx, s);
                                             }
+                                            $1.refine->dflt_size++;
                                             s = NULL;
                                             $$ = $1;
+                                          } else {
+                                            size_arrays->node[$1.index].dflt++;
                                           }
                                         }
   |  refine_body_opt_stmts config_stmt { if (read_all) {
@@ -3394,9 +3465,10 @@ deviation_stmt: DEVIATION_KEYWORD sep deviation_arg_str { if (read_all) {
                                               LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "deviate", "deviation");
                                               YYABORT;
                                             }
-                                            if (yang_check_deviation(trg, actual, unres)) {
+                                            if (yang_check_deviation(trg, $7.deviation->dflt_check, unres)) {
                                               YYABORT;
                                             }
+                                            ly_set_free($7.deviation->dflt_check);
                                             free($7.deviation);
                                           }
                                         }
@@ -3409,6 +3481,7 @@ deviation_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                  $$.deviation->deviation->deviate = calloc(size_arrays->node[size_arrays->next].deviate, sizeof *$$.deviation->deviation->deviate);
                                  if (!$$.deviation->deviation->deviate) {
                                    LOGMEM;
+                                   ly_set_free($$.deviation->dflt_check);
                                    YYABORT;
                                  }
                                }
@@ -3422,6 +3495,7 @@ deviation_opt_stmt: @EMPTYDIR@ { if (read_all) {
                              }
                            }
   |  deviation_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.deviation->deviation, s, "deviation")) {
+                                             ly_set_free($1.deviation->dflt_check);
                                              free($1.deviation);
                                              YYABORT;
                                            }
@@ -3429,6 +3503,7 @@ deviation_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                            $$ = $1;
                                          }
   |  deviation_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.deviation->deviation, s, "deviation")) {
+                                           ly_set_free($1.deviation->dflt_check);
                                            free($1.deviation);
                                            YYABORT;
                                          }
@@ -3486,6 +3561,11 @@ deviate_add_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                       YYABORT;
                                     }
                                   }
+                                  if (size_arrays->node[size_arrays->next].dflt) {
+                                    if (yang_read_deviate_default(trg, actual, size_arrays->node[size_arrays->next].dflt)) {
+                                      YYABORT;
+                                    }
+                                  }
                                   size_arrays->next++;
                                } else {
                                  $$.index = size_arrays->size;
@@ -3528,11 +3608,13 @@ deviate_add_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                         }
                                       }
   |  deviate_add_opt_stmt default_stmt { if (read_all) {
-                                           if (yang_read_deviate_default(trg->ctx, $1.deviation, s)) {
+                                           if (yang_fill_deviate_default(trg->ctx, $1.deviation, s)) {
                                              YYABORT;
                                            }
                                            s = NULL;
                                            $$ = $1;
+                                         } else {
+                                           size_arrays->node[$1.index].dflt++;
                                          }
                                        }
   |  deviate_add_opt_stmt config_stmt { if (read_all) {
@@ -3581,7 +3663,23 @@ deviate_delete_stmt: DELETE_KEYWORD optsep { if (read_all && yang_read_deviate(a
 deviate_delete_end: ';'
   |  '{' stmtsep
          deviate_delete_opt_stmt
-      '}' ;
+      '}' { if (read_all) {
+              struct lys_node_leaflist *llist;
+              int i,j;
+
+              if ($3.deviation->deviate->dflt_size && $3.deviation->target->nodetype == LYS_LEAFLIST) {
+                /* consolidate the final list in the target after removing items from it */
+                llist = (struct lys_node_leaflist *)$3.deviation->target;
+                for (i = j = 0; j < llist->dflt_size; j++) {
+                  llist->dflt[i] = llist->dflt[j];
+                  if (llist->dflt[i]) {
+                    i++;
+                  }
+                }
+                llist->dflt_size = i + 1;
+              }
+            }
+          }
 
 deviate_delete_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                     $$.deviation = actual;
@@ -3593,6 +3691,11 @@ deviate_delete_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                     }
                                     if (size_arrays->node[size_arrays->next].unique) {
                                       if (yang_read_deviate_unique(actual, size_arrays->node[size_arrays->next].unique)) {
+                                        YYABORT;
+                                      }
+                                    }
+                                    if (size_arrays->node[size_arrays->next].dflt) {
+                                      if (yang_read_deviate_default(trg, actual, size_arrays->node[size_arrays->next].dflt)) {
                                         YYABORT;
                                       }
                                     }
@@ -3635,11 +3738,13 @@ deviate_delete_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                            }
                                          }
   |  deviate_delete_opt_stmt default_stmt { if (read_all) {
-                                              if (yang_read_deviate_default(trg->ctx, $1.deviation, s)) {
+                                              if (yang_fill_deviate_default(trg->ctx, $1.deviation, s)) {
                                                 YYABORT;
                                               }
                                               s = NULL;
                                               $$ = $1;
+                                            } else {
+                                              size_arrays->node[$1.index].dflt++;
                                             }
                                           }
 
@@ -3655,10 +3760,22 @@ deviate_replace_end: ';'
      '}' ;
 
 deviate_replace_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                                    $$.deviation = actual;
-                                    actual_type = REPLACE_KEYWORD;
-                                  }
-                                }
+                                         $$.deviation = actual;
+                                         actual_type = REPLACE_KEYWORD;
+                                         if (size_arrays->node[size_arrays->next].dflt) {
+                                           if (yang_read_deviate_default(trg, actual, size_arrays->node[size_arrays->next].dflt)) {
+                                             YYABORT;
+                                           }
+                                        }
+                                        size_arrays->next++;
+                                      } else {
+                                        $$.index = size_arrays->size;
+                                        if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                          LOGMEM;
+                                          YYABORT;
+                                        }
+                                      }
+                                    }
   |  deviate_replace_opt_stmt type_stmt stmtsep { if (read_all) {
                                             if (unres_schema_add_node(trg, unres, $1.deviation->deviate->type, UNRES_TYPE_DER, $1.deviation->target) == -1) {
                                               lydict_remove(trg->ctx, ((struct yang_type *)$1.deviation->deviate->type->der)->name);
@@ -3666,6 +3783,7 @@ deviate_replace_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                               $1.deviation->deviate->type->der = NULL;
                                               YYABORT;
                                             }
+                                            ly_set_add($1.deviation->dflt_check, $1.deviation->target, 0);
                                           }
                                         }
   |  deviate_replace_opt_stmt units_stmt { if (read_all) {
@@ -3677,11 +3795,13 @@ deviate_replace_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                            }
                                          }
   |  deviate_replace_opt_stmt default_stmt { if (read_all) {
-                                               if (yang_read_deviate_default(trg->ctx, $1.deviation, s)) {
+                                               if (yang_fill_deviate_default(trg->ctx, $1.deviation, s)) {
                                                  YYABORT;
                                                }
                                                s = NULL;
                                                $$ = $1;
+                                             } else {
+                                               size_arrays->node[$1.index].dflt++;
                                              }
                                            }
   |  deviate_replace_opt_stmt config_stmt { if (read_all) {

@@ -298,7 +298,7 @@ int
 cmd_data(const char *arg)
 {
     int c, argc, option_index, ret = 1;
-    int options = 0;
+    int options = 0, printopt = 0;
     size_t len;
     char **argv = NULL, *ptr;
     const char *out_path = NULL;
@@ -337,13 +337,13 @@ cmd_data(const char *arg)
         switch (c) {
         case 'd':
             if (!strcmp(optarg, "all")) {
-                options = (options & ~LYD_WD_MASK) | LYD_WD_ALL;
+                printopt = (printopt & ~LYP_WD_MASK) | LYP_WD_ALL;
             } else if (!strcmp(optarg, "all-tagged")) {
-                options = (options & ~LYD_WD_MASK) | LYD_WD_ALL_TAG;
+                printopt = (printopt & ~LYP_WD_MASK) | LYP_WD_ALL_TAG;
             } else if (!strcmp(optarg, "trim")) {
-                options = (options & ~LYD_WD_MASK) | LYD_WD_TRIM;
+                printopt = (printopt & ~LYP_WD_MASK) | LYP_WD_TRIM;
             } else if (!strcmp(optarg, "implicit-tagged")) {
-                options = (options & ~LYD_WD_MASK) | LYD_WD_IMPL_TAG;
+                printopt = (printopt & ~LYP_WD_MASK) | LYP_WD_IMPL_TAG;
             }
             break;
         case 'h':
@@ -487,7 +487,7 @@ cmd_data(const char *arg)
     }
 
     if (outformat != LYD_UNKNOWN) {
-        lyd_print_file(output, data, outformat, LYP_WITHSIBLINGS | LYP_FORMAT);
+        lyd_print_file(output, data, outformat, LYP_WITHSIBLINGS | LYP_FORMAT | printopt);
     }
 
     ret = 0;

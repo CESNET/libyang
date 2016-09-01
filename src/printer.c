@@ -384,3 +384,88 @@ lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
 
     return lyd_print_(&out, root, format, options);
 }
+
+int
+lyd_wd_toprint(const struct lyd_node *node, int options)
+{
+    const struct lyd_node *subroot, *next, *elem;
+    int flag = 0;
+
+    if (options & LYP_WD_TRIM) {
+        /* do not print default nodes */
+        if (node->dflt) {
+            /* implicit default node */
+            return 0;
+        } else if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+            if (lyd_wd_default((struct lyd_node_leaf_list *)node)) {
+                /* explicit default node */
+                return 0;
+            }
+        } else if ((node->schema->nodetype & (LYS_CONTAINER)) && !((struct lys_node_container *)node->schema)->presence) {
+            /* get know if non-presence container contains non-default node */
+            for (subroot = node->child; subroot && !flag; subroot = subroot->next) {
+                LY_TREE_DFS_BEGIN(subroot, next, elem) {
+                    if (elem->dflt) {
+                        /* skip subtree */
+                        goto trim_dfs_nextsibling;
+                    } else if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+                        if (!lyd_wd_default((struct lyd_node_leaf_list *)elem)) {
+                            /* non-default node */
+                            flag = 1;
+                            break;
+                        }
+                    }
+
+                    /* modified LY_TREE_DFS_END */
+                    /* select element for the next run - children first */
+                    /* child exception for leafs, leaflists and anyxml without children */
+                    if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
+                        next = NULL;
+                    } else {
+                        next = elem->child;
+                    }
+                    if (!next) {
+trim_dfs_nextsibling:
+                        /* no children */
+                        if (elem == subroot) {
+                            /* we are done, (START) has no children */
+                            break;
+                        }
+                        /* try siblings */
+                        next = elem->next;
+                    }
+                    while (!next) {
+                        /* parent is already processed, go to its sibling */
+                        elem = elem->parent;
+                        /* no siblings, go back through parents */
+                        if (elem->parent == subroot->parent) {
+                            /* we are done, no next element to process */
+                            break;
+                        }
+                        next = elem->next;
+                    }
+                }
+            }
+            if (!flag) {
+                /* only default nodes in subtree, do not print the container */
+                return 0;
+            }
+        }
+    } else if (node->dflt && !(options & LYP_WD_MASK) && (node->schema->flags & LYS_CONFIG_W)) {
+        /* LYP_WD_EXPLICIT
+         * - print only if it contains status data in its subtree */
+        LY_TREE_DFS_BEGIN(node, next, elem)
+        {
+            if (elem->schema->flags & LYS_CONFIG_R) {
+                flag = 1;
+                break;
+            }
+            LY_TREE_DFS_END(node, next, elem)
+        }
+        if (!flag) {
+            return 0;
+        }
+    }
+
+    return 1;
+}

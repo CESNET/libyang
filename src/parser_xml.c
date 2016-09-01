@@ -555,7 +555,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
             LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
             goto error;
         }
-        reply_parent = _lyd_new(NULL, rpc_act);
+        reply_parent = _lyd_new(NULL, rpc_act, 0);
     }
 
     if (!(options & LYD_OPT_NOSIBLINGS)) {

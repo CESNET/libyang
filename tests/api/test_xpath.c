@@ -374,7 +374,7 @@ test_functions_operators(void **state)
 
     st->set = lyd_get_node(st->dt, "//interface[name='iface2']//. | //ip | //interface[number((1 mod (20 - 15)) div 1)]//.");
     assert_ptr_not_equal(st->set, NULL);
-    assert_int_equal(st->set->number, 64);
+    assert_int_equal(st->set->number, 68);
     ly_set_free(st->set);
     st->set = NULL;
 
