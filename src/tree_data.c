@@ -4429,7 +4429,7 @@ lyd_wd_default(struct lyd_node_leaf_list *node)
     struct lys_node_leaflist *llist;
     struct lyd_node *iter;
     struct lys_tpdf *tpdf;
-    const char *dflt, **dflts;
+    const char *dflt = NULL, **dflts = NULL;
     uint8_t dflts_size = 0, c, i;
 
     if (!node || !(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
