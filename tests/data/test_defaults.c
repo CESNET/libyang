@@ -177,6 +177,36 @@ test_status(void **state)
 }
 
 static void
+test_trim1(void **state)
+{
+    struct state *st = (*state);
+    const char *xml_in = "<df xmlns=\"urn:libyang:tests:defaults\">"
+                           "<foo>1</foo><bar><hi>42</hi><ho>1</ho></bar><llist>42</llist>"
+                           "<list><name>test</name><value>42</value></list>"
+                         "</df>";
+    const char *xml_out ="<df xmlns=\"urn:libyang:tests:defaults\"><foo>1</foo><bar><ho>1</ho></bar>"
+                         "<llist>42</llist><list><name>test</name></list></df>";
+
+    assert_ptr_not_equal((st->dt = lyd_parse_mem(st->ctx, xml_in, LYD_XML, LYD_OPT_CONFIG)), NULL);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_TRIM), 0);
+    assert_ptr_not_equal(st->xml, NULL);
+    assert_string_equal(st->xml, xml_out);
+}
+
+static void
+test_trim2(void **state)
+{
+    struct state *st = (*state);
+    const char *xml_in = "<df xmlns=\"urn:libyang:tests:defaults\">"
+                           "<b2>42</b2>"
+                         "</df>";
+
+    assert_ptr_not_equal((st->dt = lyd_parse_mem(st->ctx, xml_in, LYD_XML, LYD_OPT_CONFIG)), NULL);
+    assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_TRIM), 0);
+    assert_ptr_equal(st->xml, NULL);
+}
+
+static void
 test_empty_tag(void **state)
 {
     struct state *st = (*state);
@@ -670,6 +700,8 @@ int main(void)
                     cmocka_unit_test_setup_teardown(test_empty, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_empty_tag, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_status, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_trim1, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_trim2, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_df1, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_df2, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_df3, setup_f, teardown_f),
