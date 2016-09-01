@@ -4462,7 +4462,7 @@ lyd_wd_default(struct lyd_node_leaf_list *node)
         if (!ly_strequal(dflt, node->value_str, 1)) {
             return 0;
         }
-    } else { /* LYS_LEAFLIST */
+    } else if (node->schema->module->version >= 2) { /* LYS_LEAFLIST */
         llist = (struct lys_node_leaflist*)node->schema;
 
         /* get know if there is a default value */
@@ -4523,6 +4523,8 @@ lyd_wd_default(struct lyd_node_leaf_list *node)
             /* different sets of leaf-list instances */
             return 0;
         }
+    } else {
+        return 0;
     }
 
     /* all checks ok */
