@@ -343,25 +343,11 @@ json_print_anydata(struct lyout *out, int level, const struct lyd_node *node, in
 static void
 json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int withsiblings, int toplevel, int options)
 {
-    const struct lyd_node *node, *next, *iter;
-    int status;
+    const struct lyd_node *node, *iter;
 
     LY_TREE_FOR(root, node) {
-
-        if (node->dflt && !(options & LYP_WD_MASK) && (node->schema->flags & LYS_CONFIG_W)) {
-            /* LYP_WD_EXPLICIT
-             * - print only if it contains status data in its subtree */
-            status = 0;
-            LY_TREE_DFS_BEGIN(node, next, iter) {
-                if (iter->schema->flags & LYS_CONFIG_R) {
-                    status = 1;
-                    break;
-                }
-                LY_TREE_DFS_END(node, next, iter)
-            }
-            if (!status) {
-                continue;
-            }
+        if (!lyd_wd_toprint(node, options)) {
+            continue;
         }
 
         switch (node->schema->nodetype) {

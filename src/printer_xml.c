@@ -388,22 +388,8 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
 void
 xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options)
 {
-    const struct lyd_node *next, *elem;
-    int status = 0;
-
-    if (node->dflt && !(options & LYP_WD_MASK) && (node->schema->flags & LYS_CONFIG_W)) {
-        /* LYP_WD_EXPLICIT
-         * - print only if it contains status data in its subtree */
-        LY_TREE_DFS_BEGIN(node, next, elem) {
-            if (elem->schema->flags & LYS_CONFIG_R) {
-                status = 1;
-                break;
-            }
-            LY_TREE_DFS_END(node, next, elem)
-        }
-        if (!status) {
-            return;
-        }
+    if (!lyd_wd_toprint(node, options)) {
+        return;
     }
 
     switch (node->schema->nodetype) {
