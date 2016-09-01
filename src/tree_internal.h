@@ -276,9 +276,10 @@ void lys_free(struct lys_module *module, void (*private_destructor)(const struct
  *
  * @param[in] parent Data parent of the new node.
  * @param[in] schema Schema node of the new node.
+ * @param[in] dflt Set dflt flag in the created data nodes
  * @return New node, NULL on error.
  */
-struct lyd_node *_lyd_new(struct lyd_node *parent, const struct lys_node *schema);
+struct lyd_node *_lyd_new(struct lyd_node *parent, const struct lys_node *schema, int dflt);
 
 /**
  * @brief Create a dummy node for XPath evaluation. After done using, it should be removed.
@@ -292,11 +293,12 @@ struct lyd_node *_lyd_new(struct lyd_node *parent, const struct lys_node *schema
  * @param[in] schema Schema node of the dummy node to create, must be of nodetype that
  * appears also in data tree.
  * @param[in] value Optional value to be set in the dummy node
+ * @param[in] dflt Set dflt flag in the created data nodes
  *
  * @return The first created node needed for the dummy node in the given tree.
  */
 struct lyd_node *lyd_new_dummy(struct lyd_node *data, struct lyd_node *parent, const struct lys_node *schema,
-                               const char *value);
+                               const char *value, int dflt);
 
 /**
  * @brief Find the parent node of an attribute.
