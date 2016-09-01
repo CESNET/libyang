@@ -4966,15 +4966,15 @@ lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, struct unres_data *unres,
             return EXIT_FAILURE;
         }
         if (options & LYD_OPT_RPC) {
-            for (siter = (*root)->schema->child; siter && siter->nodetype != LYS_INPUT; siter = siter->next)
-                ;
+            for (siter = (*root)->schema->child; siter && siter->nodetype != LYS_INPUT; siter = siter->next);
         } else { /* LYD_OPT_RPCREPLY */
-            for (siter = (*root)->schema->child; siter && siter->nodetype != LYS_OUTPUT; siter = siter->next)
-                ;
+            for (siter = (*root)->schema->child; siter && siter->nodetype != LYS_OUTPUT; siter = siter->next);
         }
-        LY_TREE_FOR(siter->child, siter) {
-            if (lyd_wd_add_subtree(root, (*root), (*root), siter, 0, options, unres)) {
-                return EXIT_FAILURE;
+        if (siter) {
+            LY_TREE_FOR(siter->child, siter) {
+                if (lyd_wd_add_subtree(root, (*root), (*root), siter, 0, options, unres)) {
+                    return EXIT_FAILURE;
+                }
             }
         }
     } else if (options & LYD_OPT_ACTION) {
