@@ -831,7 +831,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     case LY_TYPE_IDENT:
         /* RFC 6020 9.10 - base */
 
-        /* get base specification, exactly one must be present */
+        /* get base specification, at least one must be present */
         LY_TREE_FOR_SAFE(yin->child, next, node) {
             if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
                 /* garbage */
@@ -843,11 +843,24 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name);
                 goto error;
             }
+
+            GETVAL(value, yin->child, "name");
+            /* store in the JSON format */
+            value = transform_schema2json(module, value);
+            if (!value) {
+                goto error;
+            }
+            rc = unres_schema_add_str(module, unres, type, UNRES_TYPE_IDENTREF, value);
+            lydict_remove(module->ctx, value);
+
+            if (rc == -1) {
+                goto error;
+            }
         }
 
         if (!yin->child) {
             if (type->der->type.der) {
-                /* this is just a derived type with no base specified/required */
+                /* this is just a derived type with no base required */
                 break;
             }
             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "base", "type");
@@ -855,18 +868,6 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
         if (yin->child->next) {
             LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, yin->child->next->name, yin->name);
-            goto error;
-        }
-        GETVAL(value, yin->child, "name");
-        /* store in the JSON format */
-        value = transform_schema2json(module, value);
-        if (!value) {
-            goto error;
-        }
-        rc = unres_schema_add_str(module, unres, type, UNRES_TYPE_IDENTREF, value);
-        lydict_remove(module->ctx, value);
-
-        if (rc == -1) {
             goto error;
         }
         break;

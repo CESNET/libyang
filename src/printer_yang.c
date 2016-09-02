@@ -383,14 +383,16 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
         }
         break;
     case LY_TYPE_IDENT:
-        if (type->info.ident.ref) {
+        if (type->info.ident.count) {
             yang_print_open(out, &flag);
-            mod = lys_main_module(type->info.ident.ref->module);
-            if (lys_main_module(module) == mod) {
-                ly_print(out, "%*sbase %s;\n", LEVEL, INDENT, type->info.ident.ref->name);
-            } else {
-                ly_print(out, "%*sbase %s:%s;\n", LEVEL, INDENT, transform_module_name2import_prefix(module, mod->name),
-                        type->info.ident.ref->name);
+            for (i = 0; i < type->info.ident.count; ++i) {
+                mod = lys_main_module(type->info.ident.ref[i]->module);
+                if (lys_main_module(module) == mod) {
+                    ly_print(out, "%*sbase %s;\n", LEVEL, INDENT, type->info.ident.ref[i]->name);
+                } else {
+                    ly_print(out, "%*sbase %s:%s;\n", LEVEL, INDENT, transform_module_name2import_prefix(module, mod->name),
+                            type->info.ident.ref[i]->name);
+                }
             }
         }
         break;

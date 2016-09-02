@@ -4518,7 +4518,7 @@ matchfound:
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, const char *basename, const char* parent,
+resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, const char *basename, const char *parent,
                    struct lys_type *type, struct unres_schema *unres)
 {
     const char *name;
@@ -4536,7 +4536,14 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
         mod = ident->module;
     } else {
         /* have type to fill */
-        ret = &type->info.ident.ref;
+        ++type->info.ident.count;
+        type->info.ident.ref = ly_realloc(type->info.ident.ref, type->info.ident.count * sizeof *type->info.ident.ref);
+        if (!type->info.ident.ref) {
+            LOGMEM;
+            return -1;
+        }
+
+        ret = &type->info.ident.ref[type->info.ident.count - 1];
         flags = type->parent->flags;
         mod = type->parent->module;
     }
@@ -4585,21 +4592,20 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
 /**
  * @brief Resolve JSON data format identityref. Logs directly.
  *
- * @param[in] base Base identity.
+ * @param[in] type Identityref type.
  * @param[in] ident_name Identityref name.
  * @param[in] node Node where the identityref is being resolved
  *
  * @return Pointer to the identity resolvent, NULL on error.
  */
 struct lys_ident *
-resolve_identref(struct lys_ident *base, const char *ident_name, struct lyd_node *node)
+resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node *node)
 {
     const char *mod_name, *name;
-    int mod_name_len, rc;
-    int i;
-    struct lys_ident *der;
+    int mod_name_len, rc, i, j;
+    struct lys_ident *der, *cur;
 
-    if (!base || !ident_name) {
+    if (!type || (!type->info.ident.count && !type->der) || !ident_name) {
         return NULL;
     }
 
@@ -4612,35 +4618,41 @@ resolve_identref(struct lys_ident *base, const char *ident_name, struct lyd_node
         return NULL;
     }
 
-    if (!strcmp(base->name, name) && (!mod_name
-            || (!strncmp(base->module->name, mod_name, mod_name_len) && !base->module->name[mod_name_len]))) {
-        der = base;
-        goto match;
-    }
+    /* go through all the bases in all the derived types */
+    while (type->der) {
+        for (i = 0; i < type->info.ident.count; ++i) {
+            cur = type->info.ident.ref[i];
+            if (!strcmp(cur->name, name) && (!mod_name
+                    || (!strncmp(cur->module->name, mod_name, mod_name_len) && !cur->module->name[mod_name_len]))) {
+                goto match;
+            }
 
-    for (i = 0; i < base->der_size; i++) {
-        der = base->der[i]; /* shortcut */
-        if (!strcmp(der->name, name) &&
-                (!mod_name || (!strncmp(der->module->name, mod_name, mod_name_len) && !der->module->name[mod_name_len]))) {
-            /* we have match */
-            goto match;
+            for (j = 0; j < cur->der_size; j++) {
+                der = cur->der[j]; /* shortcut */
+                if (!strcmp(der->name, name) &&
+                        (!mod_name || (!strncmp(der->module->name, mod_name, mod_name_len) && !der->module->name[mod_name_len]))) {
+                    /* we have match */
+                    cur = der;
+                    goto match;
+                }
+            }
         }
-
+        type = &type->der->type;
     }
 
     LOGVAL(LYE_INRESOLV, LY_VLOG_LYD, node, "identityref", ident_name);
     return NULL;
 
 match:
-    for (i = 0; i < der->iffeature_size; i++) {
-        if (!resolve_iffeature(&der->iffeature[i])) {
-            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, der->name, node->schema->name);
+    for (i = 0; i < cur->iffeature_size; i++) {
+        if (!resolve_iffeature(&cur->iffeature[i])) {
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, cur->name, node->schema->name);
             LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, "Identity \"%s\" is disabled by its if-feature condition.",
-                   der->name);
+                   cur->name);
             return NULL;
         }
     }
-    return der;
+    return cur;
 }
 
 /**

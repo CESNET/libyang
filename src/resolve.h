@@ -153,7 +153,7 @@ int resolve_unique(struct lys_node *parent, const char *uniq_str_path, uint8_t *
 int resolve_applies_when(const struct lys_node *schema, int mode, const struct lys_node *stop);
 int resolve_applies_must(const struct lys_node *schema);
 
-struct lys_ident *resolve_identref(struct lys_ident *base, const char *ident_name, struct lyd_node *node);
+struct lys_ident *resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node *node);
 
 int resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres);
 

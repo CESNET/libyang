@@ -311,9 +311,11 @@ info_print_type_detail(struct lyout *out, const struct lys_type *type, int uni)
         break;
     case LY_TYPE_IDENT:
         ly_print(out, "%-*s%s\n", INDENT_LEN, "Base type: ", "identityref");
-        assert(type->info.ident.ref);
-        if (!uni) {
-            info_print_text(out, type->info.ident.ref->name, "Identity: ");
+        if (!uni && type->info.ident.count) {
+            ly_print(out, "%-*s%s\n", INDENT_LEN, "Idents:   ", type->info.ident.ref[0]->name);
+            for (i = 1; i < type->info.ident.count; ++i) {
+                ly_print(out, "%*s%s\n", INDENT_LEN, "", type->info.ident.ref[i]->name);
+            }
         }
         break;
     case LY_TYPE_INST:

@@ -1076,7 +1076,7 @@ switchtype:
             return EXIT_FAILURE;
         }
 
-        node->value.ident = resolve_identref(stype->info.ident.ref, node->value_str, (struct lyd_node *)node);
+        node->value.ident = resolve_identref(stype, node->value_str, (struct lyd_node *)node);
         if (!node->value.ident) {
             return EXIT_FAILURE;
         }

@@ -412,7 +412,8 @@ struct lys_type_info_enums {
  * @brief Container for information about identity types (#LY_TYPE_IDENT), used in ::lys_type_info.
  */
 struct lys_type_info_ident {
-    struct lys_ident *ref;   /**< pointer (reference) to the identity definition (mandatory) */
+    struct lys_ident **ref;   /**< array of pointers (reference) to the identity definition (mandatory) */
+    int count;                /**< number of base identity references */
 };
 
 /**
