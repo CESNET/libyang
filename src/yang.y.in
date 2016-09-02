@@ -179,6 +179,8 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 %type <uint> fraction_digits_arg_str
 %type <uint> position_value_arg_str
 %type <uint> extension_opt_stmt
+%type <i> require_instance_stmt
+%type <i> require_instance_arg_str
 %type <i> enum_opt_stmt
 %type <i> bit_opt_stmt
 %type <i> import_opt_stmt
@@ -1085,18 +1087,6 @@ type_stmtsep: stmtsep { if (read_all) {
 
 type_body_stmts: some_restrictions
   | enum_specification
-  | path_stmt  { /*leafref_specification */
-                 if (read_all) {
-                   ((struct yang_type *)actual)->base = LY_TYPE_LEAFREF;
-                   ((struct yang_type *)actual)->type->info.lref.path = lydict_insert_zc(trg->ctx, s);
-                   s = NULL;
-                 }
-               }
-  | require_instance_stmt  { /*instance_identifier_specification */
-                             if (read_all) {
-                               ((struct yang_type *)actual)->base = LY_TYPE_INST;
-                             }
-                           }
   | bits_specification
   ;
 
@@ -1130,6 +1120,18 @@ some_restrictions: @EMPTYDIR@  { if (read_all) {
                                    $$ = size_arrays->size-1;
                                  }
                                }
+  |  some_restrictions require_instance_stmt { if (read_all && yang_read_require_instance(actual, $2)) {
+                                                 YYABORT;
+                                               }
+                                             }
+  |  some_restrictions path_stmt { if (read_all) {
+                                     /* leafref_specification */
+                                     if (yang_read_leafref_path(trg, actual, s)) {
+                                       YYABORT;
+                                     }
+                                     s = NULL;
+                                   }
+                                 }
   |  some_restrictions base_stmt { if (read_all) {
                                      /* identityref_specification */
                                      if (yang_read_identyref(trg, actual, s , unres)) {
@@ -1472,27 +1474,22 @@ range_end: ';'
 
 path_stmt: PATH_KEYWORD sep path_arg_str stmtend;
 
-require_instance_stmt: REQUIRE_INSTANCE_KEYWORD sep require_instance_arg_str stmtend;
+require_instance_stmt: REQUIRE_INSTANCE_KEYWORD sep require_instance_arg_str stmtend { $$ = $3; }
 
-require_instance_arg_str: TRUE_KEYWORD optsep { if (read_all) {
-                                                  ((struct yang_type *)actual)->type->info.inst.req = 1;
-                                                }
-                                              }
-  |  FALSE_KEYWORD optsep { if (read_all) {
-                              ((struct yang_type *)actual)->type->info.inst.req = -1;
-                            }
-                          }
+require_instance_arg_str: TRUE_KEYWORD optsep { $$ = 1; }
+  |  FALSE_KEYWORD optsep { $$ = -1; }
   |  string_1 { if (read_all) {
                   if (!strcmp(s,"true")) {
-                    ((struct yang_type *)actual)->type->info.inst.req = 1;
+                    $$ = 1;
                   } else if (!strcmp(s,"false")) {
-                    ((struct yang_type *)actual)->type->info.inst.req = -1;
+                    $$ = -1;
                   } else {
                     LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "require-instance");
                     free(s);
                     YYABORT;
                   }
                   free(s);
+                  s = NULL;
                 }
               }
   ;

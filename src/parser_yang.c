@@ -794,6 +794,42 @@ error:
 }
 
 int
+yang_read_leafref_path(struct lys_module *module, struct yang_type *stype, char *value)
+{
+    if (stype->base && (stype->base != LY_TYPE_LEAFREF)) {
+        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "require-instance");
+        goto error;
+    }
+    if (stype->type->info.lref.path) {
+        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "path", "type");
+        goto error;
+    }
+    stype->type->info.lref.path = lydict_insert_zc(module->ctx, value);
+    stype->base = LY_TYPE_LEAFREF;
+    return EXIT_SUCCESS;
+
+error:
+    free(value);
+    return EXIT_FAILURE;
+}
+
+int
+yang_read_require_instance(struct yang_type *stype, int req)
+{
+    if (stype->base && (stype->base != LY_TYPE_LEAFREF)) {
+        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "require-instance");
+        return EXIT_FAILURE;
+    }
+    if (stype->type->info.lref.req) {
+        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "require-instance", "type");
+        return EXIT_FAILURE;
+    }
+    stype->type->info.lref.req = req;
+    stype->base = LY_TYPE_LEAFREF;
+    return EXIT_SUCCESS;
+}
+
+int
 yang_read_identyref(struct lys_module *module, struct yang_type *stype, char *expr, struct unres_schema *unres)
 {
     const char *value;
@@ -825,8 +861,8 @@ yang_read_identyref(struct lys_module *module, struct yang_type *stype, char *ex
 int
 yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, int tpdftype, struct unres_schema *unres)
 {
-    int i, j, rc;
-    int ret = -1;
+    int i, j, rc, ret = -1;
+    int8_t req;
     const char *name, *value;
     LY_DATA_TYPE base = 0;
     struct lys_node *siter;
@@ -1066,7 +1102,15 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         }
         break;
     case LY_TYPE_LEAFREF:
-        if (typ->type->base == LY_TYPE_LEAFREF) {
+        if (typ->type->base == LY_TYPE_INST) {
+            if (typ->type->info.lref.path) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "path");
+                goto error;
+            }
+            if ((req = typ->type->info.lref.req)) {
+                typ->type->info.inst.req = req;
+            }
+        } else if (typ->type->base == LY_TYPE_LEAFREF) {
             /* flag resolving for later use */
             if (!tpdftype) {
                 for (siter = parent; siter && siter->nodetype != LYS_GROUPING; siter = lys_parent(siter));
