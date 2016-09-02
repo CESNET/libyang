@@ -3406,42 +3406,22 @@ resolve_path_arg_data(struct lyd_node *node, const char *path, struct unres_data
         parsed += i;
 
         if (!ret->count) {
-            if (parent_times != -1) {
-                ret->count = 1;
-                ret->node = calloc(1, sizeof *ret->node);
-                if (!ret->node) {
-                    LOGMEM;
-                    rc = -1;
-                    goto error;
+            if (parent_times > 0) {
+                data = node;
+                for (i = 1; i < parent_times; ++i) {
+                    data = data->parent;
                 }
-            }
-            for (i = 0; i < parent_times; ++i) {
-                /* relative path */
-                if (!ret->count) {
-                    /* error, too many .. */
-                    LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, path, node->schema->name);
-                    rc = -1;
-                    goto error;
-                } else if (!ret->node[0]) {
-                    /* first .. */
-                    data = ret->node[0] = node->parent;
-                } else if (!ret->node[0]->parent) {
-                    /* we are in root */
-                    ret->count = 0;
-                    free(ret->node);
-                    ret->node = NULL;
-                } else {
-                    /* multiple .. */
-                    data = ret->node[0] = ret->node[0]->parent;
-                }
+            } else if (!parent_times) {
+                data = node->child;
+            } else {
+                /* absolute path */
+                for (data = node; data->parent; data = data->parent);
             }
 
-            /* absolute path */
-            if (parent_times == -1) {
-                for (data = node; data->parent; data = data->parent);
-                /* we're still parsing it and the pointer is not correct yet */
-                if (data->prev) {
-                    for (; data->prev->next; data = data->prev);
+            /* we may still be parsing it and the pointer is not correct yet */
+            if (data->prev) {
+                while (data->prev->next) {
+                    data = data->prev;
                 }
             }
         }
