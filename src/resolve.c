@@ -6023,8 +6023,12 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
 
         if (!leaf->value.leafref) {
             /* reference not found */
-            LOGVAL(LYE_NOLEAFREF, LY_VLOG_LYD, leaf, sleaf->type.info.lref.path, leaf->value_str);
-            return EXIT_FAILURE;
+            if (sleaf->type.info.lref.req > -1) {
+                LOGVAL(LYE_NOLEAFREF, LY_VLOG_LYD, leaf, sleaf->type.info.lref.path, leaf->value_str);
+                return EXIT_FAILURE;
+            } else {
+                LOGVRB("There is no leafref with the value \"%s\", but it is not required.", leaf->value_str);
+            }
         }
         break;
 
@@ -6039,7 +6043,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
                 LOGVAL(LYE_NOREQINS, LY_VLOG_LYD, leaf, leaf->value_str);
                 return EXIT_FAILURE;
             } else {
-                LOGVRB("There is no instance of \"%s\", but it is not required.", leaf->value_str);
+                LOGVRB("There is no instance identifier \"%s\", but it is not required.", leaf->value_str);
             }
         }
         break;
