@@ -175,7 +175,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 %type <uint> max_elements_stmt
 %type <uint> min_value_arg_str
 %type <uint> min_elements_stmt
-%type <uint> decimal_string_restrictions
+%type <uint> some_restrictions
 %type <uint> fraction_digits_arg_str
 %type <uint> position_value_arg_str
 %type <uint> extension_opt_stmt
@@ -1083,18 +1083,10 @@ type_stmtsep: stmtsep { if (read_all) {
                         }
                       }
 
-type_body_stmts: decimal_string_restrictions
+type_body_stmts: some_restrictions
   | enum_specification
   | path_stmt  { /*leafref_specification */
                  if (read_all) {
-                   ((struct yang_type *)actual)->base = LY_TYPE_LEAFREF;
-                   ((struct yang_type *)actual)->type->info.lref.path = lydict_insert_zc(trg->ctx, s);
-                   s = NULL;
-                 }
-               }
-  | base_stmt  { /*identityref_specification */
-                 if (read_all) {
-                   ((struct yang_type *)actual)->flags |= LYS_TYPE_BASE;
                    ((struct yang_type *)actual)->base = LY_TYPE_LEAFREF;
                    ((struct yang_type *)actual)->type->info.lref.path = lydict_insert_zc(trg->ctx, s);
                    s = NULL;
@@ -1108,50 +1100,57 @@ type_body_stmts: decimal_string_restrictions
   | bits_specification
   ;
 
-
-decimal_string_restrictions: @EMPTYDIR@  { if (read_all) {
-                                         if (size_arrays->node[size_arrays->next].uni && size_arrays->node[size_arrays->next].pattern) {
-                                           LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", ((struct yang_type *)actual)->type->parent->name);
-                                           YYABORT;
-                                         }
-                                         if (size_arrays->node[size_arrays->next].pattern) {
-                                           ((struct yang_type *)actual)->type->info.str.patterns = calloc(size_arrays->node[size_arrays->next].pattern, sizeof(struct lys_restr));
-                                           if (!((struct yang_type *)actual)->type->info.str.patterns) {
-                                             LOGMEM;
-                                             YYABORT;
-                                           }
-                                           ((struct yang_type *)actual)->base = LY_TYPE_STRING;
-                                         }
-                                         if (size_arrays->node[size_arrays->next].uni) {
-                                           ((struct yang_type *)actual)->type->info.uni.types = calloc(size_arrays->node[size_arrays->next].uni, sizeof(struct lys_type));
-                                           if (!((struct yang_type *)actual)->type->info.uni.types) {
-                                             LOGMEM;
-                                             YYABORT;
-                                           }
-                                           ((struct yang_type *)actual)->base = LY_TYPE_UNION;
-                                         }
-                                         size_arrays->next++;
-                                       } else {
-                                         if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                           LOGMEM;
-                                           YYABORT;
-                                         }
-                                         $$ = size_arrays->size-1;
-                                       }
+some_restrictions: @EMPTYDIR@  { if (read_all) {
+                                   if (size_arrays->node[size_arrays->next].uni && size_arrays->node[size_arrays->next].pattern) {
+                                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", ((struct yang_type *)actual)->type->parent->name);
+                                     YYABORT;
+                                   }
+                                   if (size_arrays->node[size_arrays->next].pattern) {
+                                     ((struct yang_type *)actual)->type->info.str.patterns = calloc(size_arrays->node[size_arrays->next].pattern, sizeof(struct lys_restr));
+                                     if (!((struct yang_type *)actual)->type->info.str.patterns) {
+                                       LOGMEM;
+                                       YYABORT;
                                      }
-  |  decimal_string_restrictions length_stmt
-  |  decimal_string_restrictions pattern_stmt { if (!read_all) {
-                                                  size_arrays->node[$1].pattern++; /* count of pattern*/
-                                                }
-                                              }
-  |  decimal_string_restrictions fraction_digits_stmt
-  |  decimal_string_restrictions range_stmt stmtsep
-  |  decimal_string_restrictions union_spec type_stmt stmtsep { if (read_all) {
-                                                                  actual = $2;
-                                                                } else {
-                                                                  size_arrays->node[$1].uni++; /* count of union*/
-                                                                }
-                                                              }
+                                     ((struct yang_type *)actual)->base = LY_TYPE_STRING;
+                                   }
+                                   if (size_arrays->node[size_arrays->next].uni) {
+                                     ((struct yang_type *)actual)->type->info.uni.types = calloc(size_arrays->node[size_arrays->next].uni, sizeof(struct lys_type));
+                                     if (!((struct yang_type *)actual)->type->info.uni.types) {
+                                       LOGMEM;
+                                       YYABORT;
+                                     }
+                                     ((struct yang_type *)actual)->base = LY_TYPE_UNION;
+                                   }
+                                   size_arrays->next++;
+                                 } else {
+                                   if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                     LOGMEM;
+                                     YYABORT;
+                                   }
+                                   $$ = size_arrays->size-1;
+                                 }
+                               }
+  |  some_restrictions base_stmt { if (read_all) {
+                                     /* identityref_specification */
+                                     if (yang_read_identyref(trg, actual, s , unres)) {
+                                       YYABORT;
+                                     }
+                                     s = NULL;
+                                   }
+                                 }
+  |  some_restrictions length_stmt
+  |  some_restrictions pattern_stmt { if (!read_all) {
+                                        size_arrays->node[$1].pattern++; /* count of pattern*/
+                                      }
+                                    }
+  |  some_restrictions fraction_digits_stmt
+  |  some_restrictions range_stmt stmtsep
+  |  some_restrictions union_spec type_stmt stmtsep { if (read_all) {
+                                                        actual = $2;
+                                                      } else {
+                                                        size_arrays->node[$1].uni++; /* count of union*/
+                                                      }
+                                                    }
   ;
 
   union_spec: @EMPTYDIR@ { if (read_all) {

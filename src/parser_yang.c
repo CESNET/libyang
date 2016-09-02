@@ -793,30 +793,33 @@ error:
     return EXIT_FAILURE;
 }
 
-static int
-yang_read_identyref(struct lys_module *module, struct lys_type *type, struct unres_schema *unres)
+int
+yang_read_identyref(struct lys_module *module, struct yang_type *stype, char *expr, struct unres_schema *unres)
 {
-    const char *value, *tmp;
-    int rc, ret = EXIT_FAILURE;
+    const char *value;
+    int rc;
 
-    value = tmp = type->info.lref.path;
-    /* store in the JSON format */
-    value = transform_schema2json(module, value);
-    if (!value) {
-        goto end;
+    if (stype->base && stype->base != LY_TYPE_IDENT) {
+        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "base");
+        return EXIT_FAILURE;
     }
-    rc = unres_schema_add_str(module, unres, type, UNRES_TYPE_IDENTREF, value);
+
+    stype->base = LY_TYPE_IDENT;
+    /* store in the JSON format */
+    value = transform_schema2json(module, expr);
+    free(expr);
+
+    if (!value) {
+        return EXIT_FAILURE;
+    }
+    rc = unres_schema_add_str(module, unres, stype->type, UNRES_TYPE_IDENTREF, value);
     lydict_remove(module->ctx, value);
 
     if (rc == -1) {
-        goto end;
+        return EXIT_FAILURE;
     }
 
-    ret = EXIT_SUCCESS;
-
-end:
-    lydict_remove(module->ctx, tmp);
-    return ret;
+    return EXIT_SUCCESS;
 }
 
 int
@@ -1063,11 +1066,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         }
         break;
     case LY_TYPE_LEAFREF:
-        if (typ->type->base == LY_TYPE_IDENT && (typ->flags & LYS_TYPE_BASE)) {
-            if (yang_read_identyref(module, typ->type, unres)) {
-                goto error;
-            }
-        } else if (typ->type->base == LY_TYPE_LEAFREF) {
+        if (typ->type->base == LY_TYPE_LEAFREF) {
             /* flag resolving for later use */
             if (!tpdftype) {
                 for (siter = parent; siter && siter->nodetype != LYS_GROUPING; siter = lys_parent(siter));
@@ -1121,12 +1120,20 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         }
         break;
     case LY_TYPE_IDENT:
-        if (typ->type->der->type.der) {
-            /* this is just a derived type with no base specified/required */
-            break;
-        } else {
-            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "base", "type");
+        if (typ->type->base != LY_TYPE_IDENT) {
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
             goto error;
+        }
+        if (typ->type->der->type.der) {
+            if (typ->type->info.ident.ref) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "base");
+                goto error;
+            }
+        } else {
+            if (!typ->type->info.ident.ref) {
+                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "base", "type");
+                goto error;
+            }
         }
         break;
     case LY_TYPE_UNION:
