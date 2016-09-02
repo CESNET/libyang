@@ -420,7 +420,7 @@ struct lys_type_info_ident {
  * @brief Container for information about instance-identifier types (#LY_TYPE_INST), used in ::lys_type_info.
  */
 struct lys_type_info_inst {
-    int8_t req;              /**< require-identifier restriction, see
+    int8_t req;              /**< require-instance restriction, see
                                   [RFC 6020 sec. 9.13.2](http://tools.ietf.org/html/rfc6020#section-9.13.2):
                                   - -1 = false,
                                   - 0 not defined,
@@ -442,6 +442,10 @@ struct lys_type_info_lref {
     const char *path;        /**< path to the referred leaf or leaf-list node (mandatory), see
                                   [RFC 6020 sec. 9.9.2](http://tools.ietf.org/html/rfc6020#section-9.9.2) */
     struct lys_node_leaf* target; /**< target schema node according to path */
+    int8_t req;              /**< require-instance restriction:
+                                  - -1 = false,
+                                  - 0 not defined,
+                                  - 1 = true */
 };
 
 /**
