@@ -1753,7 +1753,7 @@ lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses, void (*private_des
         free(uses->refine[i].must);
 
         for (j = 0; j < uses->refine[i].dflt_size; j++) {
-            lydict_remove(ctx, uses->refine[i].dflt[i]);
+            lydict_remove(ctx, uses->refine[i].dflt[j]);
         }
         free(uses->refine[i].dflt);
 
