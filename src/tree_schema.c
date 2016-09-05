@@ -1256,8 +1256,12 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type)
         free(type->info.uni.types);
         break;
 
+    case LY_TYPE_IDENT:
+        free(type->info.ident.ref);
+        break;
+
     default:
-        /* nothing to do for LY_TYPE_IDENT, LY_TYPE_INST, LY_TYPE_BOOL, LY_TYPE_EMPTY */
+        /* nothing to do for LY_TYPE_INST, LY_TYPE_BOOL, LY_TYPE_EMPTY */
         break;
     }
 }
