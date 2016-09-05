@@ -1419,7 +1419,7 @@ lyd_new_dummy(struct lyd_node *root, struct lyd_node *parent, const struct lys_n
     }
 
     iter = parent;
-    while (iter) {
+    while (iter && index) {
         /* search for closer parent on the path */
         LY_TREE_FOR(parent->child, iter) {
             if (iter->schema == spath->set.s[index - 1]) {
@@ -4846,6 +4846,8 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
     case LYS_CASE:
     case LYS_USES:
     case LYS_ACTION:
+    case LYS_INPUT:
+    case LYS_OUTPUT:
     case LYS_NOTIF:
 
         /* recursion */
@@ -5026,10 +5028,8 @@ lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, struct unres_data *unres,
             for (siter = (*root)->schema->child; siter && siter->nodetype != LYS_OUTPUT; siter = siter->next);
         }
         if (siter) {
-            LY_TREE_FOR(siter->child, siter) {
-                if (lyd_wd_add_subtree(root, (*root), (*root), siter, 0, options, unres)) {
-                    return EXIT_FAILURE;
-                }
+            if (lyd_wd_add_subtree(root, (*root), (*root), siter, 0, options, unres)) {
+                return EXIT_FAILURE;
             }
         }
     } else if (options & LYD_OPT_ACTION) {
