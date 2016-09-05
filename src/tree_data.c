@@ -310,6 +310,7 @@ lyd_check_mandatory_subtree(struct lyd_node *tree, struct lyd_node *subtree, str
     case LYS_INPUT:
     case LYS_OUTPUT:
     case LYS_ACTION:
+    case LYS_NOTIF:
         /* go recursively */
         LY_TREE_FOR(schema->child, siter) {
             if (lyd_check_mandatory_subtree(tree, subtree, last_parent, siter, toplevel, options)) {
@@ -367,7 +368,7 @@ lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options)
             LOGERR(LY_EINVAL, "Subtree is not a single notification.");
             return EXIT_FAILURE;
         }
-        if (root->schema->child && lyd_check_mandatory_subtree(root, root, root, root->schema->child, 0, options)) {
+        if (root->schema->child && lyd_check_mandatory_subtree(root, root, root, root->schema, 0, options)) {
             return EXIT_FAILURE;
         }
     } else if (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) {
