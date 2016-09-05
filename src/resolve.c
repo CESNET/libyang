@@ -5464,7 +5464,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
                 for (i = 0; i < ref->iffeature_size; i++) {
                     resolve_iffeature_getsizes(&ref->iffeature[i], NULL, &j);
                     for (; j > 0 ; j--) {
-                        if (unres_schema_find(unres, &ref->iffeature[i].features[j - 1], UNRES_IFFEAT) == -1) {
+                        if (unres_schema_find(unres, -1, &ref->iffeature[i].features[j - 1], UNRES_IFFEAT) == -1) {
                             if (ref->iffeature[i].features[j - 1] == feat) {
                                 LOGVAL(LYE_CIRC_FEATURES, LY_VLOG_NONE, NULL, feat->name);
                                 goto featurecheckdone;
@@ -5857,7 +5857,7 @@ unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item,
         aux_uniq.expr = ((struct unres_list_uniq *)new_item)->expr;
         item = &aux_uniq;
     }
-    i = unres_schema_find(unres, item, type);
+    i = unres_schema_find(unres, -1, item, type);
 
     if (i == -1) {
         if (type == UNRES_LIST_UNIQ) {
@@ -5884,31 +5884,34 @@ unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item,
 
 /* does not log */
 int
-unres_schema_find(struct unres_schema *unres, void *item, enum UNRES_ITEM type)
+unres_schema_find(struct unres_schema *unres, int start_on_backwards, void *item, enum UNRES_ITEM type)
 {
-    uint32_t ret = -1, i;
+    int i;
     struct unres_list_uniq *aux_uniq1, *aux_uniq2;
 
-    for (i = unres->count; i > 0; i--) {
-        if (unres->type[i - 1] != type) {
+    if (start_on_backwards > 0) {
+        i = start_on_backwards;
+    } else {
+        i = unres->count - 1;
+    }
+    for (; i > -1; i--) {
+        if (unres->type[i] != type) {
             continue;
         }
         if (type != UNRES_LIST_UNIQ) {
-            if (unres->item[i - 1] == item) {
-                ret = i - 1;
+            if (unres->item[i] == item) {
                 break;
             }
         } else {
             aux_uniq1 = (struct unres_list_uniq *)unres->item[i - 1];
             aux_uniq2 = (struct unres_list_uniq *)item;
             if ((aux_uniq1->list == aux_uniq2->list) && ly_strequal(aux_uniq1->expr, aux_uniq2->expr, 0)) {
-                ret = i - 1;
                 break;
             }
         }
     }
 
-    return ret;
+    return i;
 }
 
 static void
