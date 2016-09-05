@@ -1052,12 +1052,21 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
             break;
 
         case LY_TYPE_IDENT:
-            if (old->info.ident.ref) {
-                new->info.ident.ref = old->info.ident.ref;
-            } else {
-                i = unres_schema_find(unres, old, UNRES_TYPE_IDENTREF);
-                if (i > -1 && (unres_schema_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i]) == -1)) {
+            if (old->info.ident.count) {
+                new->info.ident.ref = malloc(old->info.ident.count * sizeof *new->info.ident.ref);
+                if (!new->info.ident.ref) {
+                    LOGMEM;
                     return -1;
+                }
+                memcpy(new->info.ident.ref, old->info.ident.ref, old->info.ident.count * sizeof *new->info.ident.ref);
+            } else {
+                /* there can be several unresolved base identities, duplicate them all */
+                i = -1;
+                while ((i = unres_schema_find(unres, i, old, UNRES_TYPE_IDENTREF)) != -1) {
+                    if (unres_schema_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i]) == -1) {
+                        return -1;
+                    }
+                    --i;
                 }
             }
             break;
@@ -1162,7 +1171,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
     new->der = old->der;
     new->parent = (struct lys_tpdf *)parent;
 
-    i = unres_schema_find(unres, old, tpdftype ? UNRES_TYPE_DER_TPDF : UNRES_TYPE_DER);
+    i = unres_schema_find(unres, -1, old, tpdftype ? UNRES_TYPE_DER_TPDF : UNRES_TYPE_DER);
     if (i != -1) {
         /* HACK (serious one) for unres */
         /* nothing else we can do but duplicate it immediately */
@@ -1256,8 +1265,12 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type)
         free(type->info.uni.types);
         break;
 
+    case LY_TYPE_IDENT:
+        free(type->info.ident.ref);
+        break;
+
     default:
-        /* nothing to do for LY_TYPE_IDENT, LY_TYPE_INST, LY_TYPE_BOOL, LY_TYPE_EMPTY */
+        /* nothing to do for LY_TYPE_INST, LY_TYPE_BOOL, LY_TYPE_EMPTY */
         break;
     }
 }
