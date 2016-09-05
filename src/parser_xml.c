@@ -584,6 +584,9 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     LY_TREE_FOR_SAFE(xmlstart, xmlaux, xmlelem) {
         r = xml_parse_data(ctx, xmlelem, reply_parent, result, last, options, unres, &iter, &action);
         if (r) {
+            if (reply_parent) {
+                result = reply_parent;
+            }
             goto error;
         } else if (options & LYD_OPT_DESTRUCT) {
             lyxml_free(ctx, xmlelem);
