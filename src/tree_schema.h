@@ -1049,6 +1049,7 @@ struct lys_node_grp {
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
     /* specific grouping's data */
+    uint8_t padding[2];              /**< padding for 32b alignment */
     uint8_t tpdf_size;               /**< number of elements in #tpdf array */
     struct lys_tpdf *tpdf;           /**< array of typedefs */
 };
