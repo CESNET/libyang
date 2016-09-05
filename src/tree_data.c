@@ -357,7 +357,8 @@ lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options)
         } else {
             for (i = 0; i < ctx->models.used; i++) {
                 LY_TREE_FOR(ctx->models.list[i]->data, siter) {
-                    if (lyd_check_mandatory_subtree(root, NULL, NULL, siter, 1, options)) {
+                    if (!(siter->nodetype & (LYS_RPC | LYS_NOTIF)) &&
+                            lyd_check_mandatory_subtree(root, NULL, NULL, siter, 1, options)) {
                         return EXIT_FAILURE;
                     }
                 }
