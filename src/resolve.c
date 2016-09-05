@@ -4679,6 +4679,9 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
         }
     } else if (rc == EXIT_FAILURE) {
         LOGVAL(LYE_INRESOLV, LY_VLOG_NONE, NULL, parent, basename);
+        if (type) {
+            --type->info.ident.count;
+        }
     }
 
     return rc;
