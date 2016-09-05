@@ -4893,7 +4893,7 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
     struct lys_node *retval;
     struct lys_node_rpc_action *rpc;
     int r;
-    int c_tpdf = 0, c_ftrs = 0;
+    int c_tpdf = 0, c_ftrs = 0, c_input = 0, c_output = 0;
 
     if (!strcmp(yin->name, "action")) {
         if (module->version < 2) {
@@ -4941,21 +4941,19 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
         }
 
         if (!strcmp(sub->name, "input")) {
-            if (rpc->child
-                && (rpc->child->nodetype == LYS_INPUT
-                    || (rpc->child->next && rpc->child->next->nodetype == LYS_INPUT))) {
+            if (c_input) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
                 goto error;
             }
+            c_input++;
             lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
         } else if (!strcmp(sub->name, "output")) {
-            if (rpc->child
-                && (rpc->child->nodetype == LYS_OUTPUT
-                    || (rpc->child->next && rpc->child->next->nodetype == LYS_OUTPUT))) {
+            if (c_output) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
                 goto error;
             }
+            c_output++;
             lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
 
