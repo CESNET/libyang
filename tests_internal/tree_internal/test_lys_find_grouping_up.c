@@ -51,9 +51,9 @@ static int
 teardown_f(void **state)
 {
     (void) state; /* unused */
-    if (ctx)
+    if (ctx) {
         ly_ctx_destroy(ctx, NULL);
-
+    }
     return 0;
 }
 
