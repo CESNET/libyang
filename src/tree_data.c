@@ -4665,7 +4665,7 @@ lyd_wd_add_leaflist(struct lyd_node **tree, struct lyd_node *last_parent, struct
 {
     struct lyd_node *dummy, *current, *first = NULL;
     struct lys_tpdf *tpdf;
-    const char **dflt;
+    const char **dflt = NULL;
     uint8_t dflt_size = 0;
     int i;
 
