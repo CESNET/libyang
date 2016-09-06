@@ -1699,8 +1699,9 @@ API int
 lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options)
 {
     struct lyd_node *node = NULL, *node2, *trg_merge_start, *src_merge_start = NULL;
+    const struct lyd_node *iter;
     struct lys_node *src_snode;
-    int i, src_depth, depth, first_iter, ret;
+    int i, src_depth, depth, first_iter, ret, dflt = 1;
 
     if (!target || !source || (target->schema->module->ctx != source->schema->module->ctx)) {
         ly_errno = LY_EINVAL;
@@ -1734,6 +1735,24 @@ lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options)
     trg_merge_start = target;
     depth = 0;
     first_iter = 1;
+    if (src_depth) {
+        /* we are going to create missing parents in the following loop,
+         * but we will need to know a dflt flag for them. In case the newly
+         * created parent is going to have at least one non-default child,
+         * it will be also non-default, otherwise it will be the default node */
+        if (options & LYD_OPT_NOSIBLINGS) {
+            dflt = source->dflt;
+        } else {
+            LY_TREE_FOR(source, iter) {
+                if (!iter->dflt) {
+                    /* non default sibling -> parent is going to be
+                     * created also as non-default */
+                    dflt = 0;
+                    break;
+                }
+            }
+        }
+    }
     while (1) {
         do {
             for (src_snode = source->schema, i = 0; i < src_depth - depth; src_snode = lys_parent(src_snode), ++i);
@@ -1771,7 +1790,7 @@ lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options)
 
         if (!node) {
             /* it is not there, create it */
-            src_merge_start = _lyd_new(src_merge_start, src_snode, src_merge_start->dflt);
+            src_merge_start = _lyd_new(src_merge_start, src_snode, dflt);
         }
     }
 
