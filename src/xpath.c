@@ -2596,7 +2596,7 @@ xpath_concat(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_no
 
     for (i = 0; i < arg_count; ++i) {
         if (lyxp_set_cast(args[i], LYXP_SET_STRING, cur_node, options)) {
-            free(set);
+            free(str);
             return -1;
         }
 
