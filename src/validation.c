@@ -90,7 +90,7 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
 
     /* check all relevant when conditions */
     if ((node->when_status & LYD_WHEN) &&
-            (!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_CONFIG | LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_RPCREPLY)))) {
+            (!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_CONFIG | LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF)))) {
         if (unres_data_add(unres, (struct lyd_node *)node, UNRES_WHEN)) {
             return EXIT_FAILURE;
         }
