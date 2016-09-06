@@ -59,21 +59,7 @@ teardown_f(void **state)
 
 /**
  * @brief Test for function lys_find_grouping_up() function.
- *
- * Test is constituted of three cases:
- *
- * case trivial success deals with simplest behavior expected from function.
- * Simple two-node tree is created where 'group' node is previous sibling of ordinary node.
- * lys_find_grouping_up() function first checks if its previous sibling is group.
- * Property is checked by comparing pointers of created group node and the one
- * function found.
- *
- * case: no group sibling is simplest failure test. Node has no parent or siblings so
- * function is expected to return NULL pointer.
- *
- * case: top-level augment is a special case in which augment is at the module top-level.
- * Function is expected to return NULL if there is top-level augment and there is no specific module data to handle it.
-*/
+ */
 static void
 test_lys_find_grouping_up(void **state)
 {
@@ -95,7 +81,10 @@ test_lys_find_grouping_up(void **state)
     group->nodetype = LYS_GROUPING;
     group->parent = NULL;
 
-    /* case: trivial success */
+    /* case: trivial success
+     * Simple two-node tree is created where 'group' node is previous sibling
+     * of ordinary node. Property is checked by comparing pointers of created
+     * group node and the one function found. */
     node_yes = calloc(1, sizeof(struct lys_node));
     group->next = node_yes;
     node_yes->name = "Ny";
@@ -110,7 +99,9 @@ test_lys_find_grouping_up(void **state)
     free(node_yes);
     free(group);
 
-    /* case: no group sibling */
+    /* case: no group sibling
+     * The simplest failure test. Node has no parent or siblings so function is
+     * expected to return NULL pointer. */
     node_no = calloc(1, sizeof(struct lys_node));
     node_no->nodetype = LYS_LEAF;
     node_no->module = module;
@@ -120,7 +111,10 @@ test_lys_find_grouping_up(void **state)
 
     assert_null(found_grp);
 
-    /* case: augment  */
+    /* case: top-level augment
+     * A special case in which augment is at the module top-level. Function is
+     * expected to return NULL if there is top-level augment and there is no
+     * specific module data to handle it.  */
     struct lys_node_augment *parent;
     parent = calloc(1,sizeof(struct lys_node_augment));
     node_no->parent = (struct lys_node*)parent;
