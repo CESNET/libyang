@@ -325,13 +325,31 @@ void lyd_free_diff(struct lyd_difflist *diff);
  *            be marked as #LYD_DIFF_CREATED.
  * @param[in] second The second (sub)tree to compare. Without #LYD_OPT_NOSIBLINGS option, all siblings are
  *            taken into comparison. If NULL, all the \p first nodes will be marked as #LYD_DIFF_DELETED.
- * @param[in] options The following @ref parseroptions with the described meanings are accepted:
- *            - #LYD_OPT_NOSIBLINGS - the \p first and the \p second have to instantiate the same schema node and
- *              only their content (subtree) is compared.
+ * @param[in] options The @ref diffoptions are accepted.
  * @return NULL on error, the list of differences on success. In case the trees are the same, the first item in the
  *         lyd_difflist::type array is #LYD_DIFF_END. The returned structure is supposed to be freed by lyd_free_diff().
  */
 struct lyd_difflist *lyd_diff(struct lyd_node *first, struct lyd_node *second, int options);
+
+/**
+ * @defgroup diffoptions Diff options
+ * @ingroup datatree
+ *
+ * @{
+ */
+/* LYD_DIFFOPT_NOSIBLINGS value is the same as LYD_OPT_NOSIBLINGS due to backward compatibility. The LYD_OPT_NOSIBLINGS
+ * was used previously as an option for lyd_diff(). */
+#define LYD_DIFFOPT_NOSIBLINGS   0x0800 /**< The both trees to diff have to instantiate the same schema node so only the
+                                             single subtree is compared. */
+#define LYD_DIFFOPT_WITHDEFAULTS 0x0001 /**< Take default nodes with their values into account and handle them as part
+                                             of both trees. In this case, a node with defined default value cannot be
+                                             deleted, because when it is removed from a tree, it is implicitly replaced
+                                             by the default node, so the node is not #LYD_DIFF_DELETED, but
+                                             #LYD_DIFF_CHANGED. Note that in this case, applying the resulting
+                                             transactions on the first tree does not result to the exact second tree,
+                                             because instead of having implicit default nodes you are going to have
+                                             explicit default nodes. */
+/**@} diffoptions */
 
 /**
  * @brief Build path (usable as XPath) of the data node.

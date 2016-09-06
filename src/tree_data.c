@@ -1409,7 +1409,7 @@ lyd_new_dummy(struct lyd_node *root, struct lyd_node *parent, const struct lys_n
 
     assert(spath->number > 0);
     index = spath->number;
-    if (!parent && !(spath->set.s[index - 1]->nodetype & (LYS_LEAFLIST))) {
+    if (!parent && !(spath->set.s[index - 1]->nodetype & LYS_LEAFLIST)) {
         /* start by searching for the top-level parent */
         LY_TREE_FOR(root, iter) {
             if (iter->schema == spath->set.s[index - 1]) {
@@ -1421,7 +1421,7 @@ lyd_new_dummy(struct lyd_node *root, struct lyd_node *parent, const struct lys_n
     }
 
     iter = parent;
-    while (iter && index) {
+    while (iter && index && !(spath->set.s[index - 1]->nodetype & LYS_LEAFLIST)) {
         /* search for closer parent on the path */
         LY_TREE_FOR(parent->child, iter) {
             if (iter->schema == spath->set.s[index - 1]) {
@@ -1699,8 +1699,9 @@ API int
 lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options)
 {
     struct lyd_node *node = NULL, *node2, *trg_merge_start, *src_merge_start = NULL;
+    const struct lyd_node *iter;
     struct lys_node *src_snode;
-    int i, src_depth, depth, first_iter, ret;
+    int i, src_depth, depth, first_iter, ret, dflt = 1;
 
     if (!target || !source || (target->schema->module->ctx != source->schema->module->ctx)) {
         ly_errno = LY_EINVAL;
@@ -1734,6 +1735,24 @@ lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options)
     trg_merge_start = target;
     depth = 0;
     first_iter = 1;
+    if (src_depth) {
+        /* we are going to create missing parents in the following loop,
+         * but we will need to know a dflt flag for them. In case the newly
+         * created parent is going to have at least one non-default child,
+         * it will be also non-default, otherwise it will be the default node */
+        if (options & LYD_OPT_NOSIBLINGS) {
+            dflt = source->dflt;
+        } else {
+            LY_TREE_FOR(source, iter) {
+                if (!iter->dflt) {
+                    /* non default sibling -> parent is going to be
+                     * created also as non-default */
+                    dflt = 0;
+                    break;
+                }
+            }
+        }
+    }
     while (1) {
         do {
             for (src_snode = source->schema, i = 0; i < src_depth - depth; src_snode = lys_parent(src_snode), ++i);
@@ -1771,7 +1790,7 @@ lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options)
 
         if (!node) {
             /* it is not there, create it */
-            src_merge_start = _lyd_new(src_merge_start, src_snode, src_merge_start->dflt);
+            src_merge_start = _lyd_new(src_merge_start, src_snode, dflt);
         }
     }
 
@@ -1958,13 +1977,13 @@ diff_ordset_free(struct ly_set *set)
 static int
 lyd_diff_compare(struct lyd_node *first, struct lyd_node *second,
                  struct lyd_difflist *diff, unsigned int *size, unsigned int *i, struct ly_set *matchset,
-                 struct ly_set *ordset_keys, struct ly_set *ordset)
+                 struct ly_set *ordset_keys, struct ly_set *ordset, int options)
 {
     int rc;
     char *str1, *str2;
     struct lyd_node_anydata *anydata;
 
-    if (first->dflt) {
+    if (first->dflt && !(options & LYD_DIFFOPT_WITHDEFAULTS)) {
         /* the second one cannot be default (see lyd_diff()),
          * so the nodes differs (first one is default node) */
         return 1;
@@ -2150,12 +2169,12 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
         }
         result = lyd_diff_init_difflist(&size);
         LY_TREE_FOR(second, iter) {
-            if (!iter->dflt) { /* skip the implicit nodes */
+            if (!iter->dflt || (options & LYD_DIFFOPT_WITHDEFAULTS)) { /* skip the implicit nodes */
                 if (lyd_difflist_add(result, &size, index++, LYD_DIFF_CREATED, NULL, iter)) {
                     goto error;
                 }
             }
-            if (options & LYD_OPT_NOSIBLINGS) {
+            if (options & LYD_DIFFOPT_NOSIBLINGS) {
                 break;
             }
         }
@@ -2164,19 +2183,19 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
         /* all nodes from first were deleted */
         result = lyd_diff_init_difflist(&size);
         LY_TREE_FOR(first, iter) {
-            if (!iter->dflt) { /* skip the implicit nodes */
+            if (!iter->dflt || (options & LYD_DIFFOPT_WITHDEFAULTS)) { /* skip the implicit nodes */
                 if (lyd_difflist_add(result, &size, index++, LYD_DIFF_DELETED, iter, NULL)) {
                     goto error;
                 }
             }
-            if (options & LYD_OPT_NOSIBLINGS) {
+            if (options & LYD_DIFFOPT_NOSIBLINGS) {
                 break;
             }
         }
         return result;
     }
 
-    if (options & LYD_OPT_NOSIBLINGS) {
+    if (options & LYD_DIFFOPT_NOSIBLINGS) {
         /* both trees must start at the same (schema) node */
         if (first->schema != second->schema) {
             LOGERR(LY_EINVAL, "%s: incompatible trees to compare with LYD_OPT_NOSIBLINGS option.", __func__);
@@ -2239,7 +2258,7 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
         /* keep right pointer for searching in the first tree */
         elem1 = next1;
 
-        if (elem2->dflt) {
+        if (elem2->dflt && !(options & LYD_DIFFOPT_WITHDEFAULTS)) {
             /* skip default elements, they could not be created or changed, just deleted */
             goto cmp_continue;
         }
@@ -2251,7 +2270,7 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
             }
 
             /* elem2 instance found */
-            rc = lyd_diff_compare(iter, elem2, result, &size, &index, matchlist->match, ordset_keys, ordset);
+            rc = lyd_diff_compare(iter, elem2, result, &size, &index, matchlist->match, ordset_keys, ordset, options);
             if (rc == -1) {
                 goto error;
             } else if (rc == 0) {
@@ -2445,7 +2464,7 @@ cmp_continue:
         if (elem1->validity & LYD_VAL_INUSE) {
             /* erase temporary LYD_VAL_INUSE flag and continue into children */
             elem1->validity &= ~LYD_VAL_INUSE;
-        } else if (!elem1->dflt) {
+        } else if (!elem1->dflt || (options & LYD_DIFFOPT_WITHDEFAULTS)) {
             /* elem1 has no matching node in second, add it into result */
             if (lyd_difflist_add(result, &size, index++, LYD_DIFF_DELETED, elem1, NULL)) {
                 goto error;
@@ -4665,7 +4684,7 @@ lyd_wd_add_leaflist(struct lyd_node **tree, struct lyd_node *last_parent, struct
 {
     struct lyd_node *dummy, *current, *first = NULL;
     struct lys_tpdf *tpdf;
-    const char **dflt;
+    const char **dflt = NULL;
     uint8_t dflt_size = 0;
     int i;
 

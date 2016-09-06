@@ -6,7 +6,7 @@ set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and tool
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
 set(LIBYANG_MINOR_VERSION 10)
-set(LIBYANG_MICRO_VERSION 95)
+set(LIBYANG_MICRO_VERSION 99)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 
@@ -60,9 +60,11 @@ set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
 
 if(CMAKE_BUILD_TYPE STREQUAL debug)
 	option(ENABLE_BUILD_TESTS "Build tests" ON)
+	option(ENABLE_BUILD_TESTS_INTERNAL "Build internal tests" ON)
 	option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)
 else()
 	option(ENABLE_BUILD_TESTS "Build tests" OFF)
+	option(ENABLE_BUILD_TESTS_INTERNAL "Build internal tests" OFF)
 	option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
 endif()
 
@@ -172,6 +174,14 @@ if(ENABLE_BUILD_TESTS)
 		add_subdirectory(tests)
 	endif(CMOCKA_FOUND)
 endif(ENABLE_BUILD_TESTS)
+
+if(ENABLE_BUILD_TESTS_INTERNAL)
+	find_package(CMocka 1.0.0)
+	if(CMOCKA_FOUND)
+		enable_testing()
+		add_subdirectory(tests_internal)
+	endif(CMOCKA_FOUND)
+endif(ENABLE_BUILD_TESTS_INTERNAL)
 
 if(JAVASCRIPT_BINDING)
 	include(swig/javascript/CMakeLists.txt)

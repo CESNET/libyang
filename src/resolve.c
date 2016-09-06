@@ -2895,6 +2895,10 @@ check_default(struct lys_type *type, const char *value, struct lys_module *modul
             LOGINT;
             return -1;
         }
+    } else if (type->base == LY_TYPE_EMPTY) {
+        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "default", type->parent->name);
+        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"empty\" data type cannot have a default value.");
+        return -1;
     }
 
     /* dummy leaf */
