@@ -7,7 +7,7 @@ coverage:
   
   ignore:
   - tests/.*
-  - internal_tests/.*
+  - tests_internal/.*
 
   status:
     project:
