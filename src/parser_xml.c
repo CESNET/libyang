@@ -469,7 +469,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     }
 
     /* if we have empty non-presence container, we can remove it */
-    if (!(options & LYD_OPT_KEEPEMPTYCONT) && schema->nodetype == LYS_CONTAINER && !(*result)->child &&
+    if (schema->nodetype == LYS_CONTAINER && !(*result)->child &&
             !(*result)->attr && !((struct lys_node_container *)schema)->presence) {
         goto clear;
     }

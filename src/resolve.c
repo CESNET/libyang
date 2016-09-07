@@ -6270,21 +6270,19 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
                     /* if it has parent non-presence containers that would be empty, we should actually
                      * remove the container
                      */
-                    if (!(options & LYD_OPT_KEEPEMPTYCONT)) {
-                        for (parent = unres->node[i];
-                                parent->parent && parent->parent->schema->nodetype == LYS_CONTAINER;
-                                parent = parent->parent) {
-                            if (((struct lys_node_container *)parent->parent->schema)->presence) {
-                                /* presence container */
-                                break;
-                            }
-                            if (parent->next || parent->prev != parent) {
-                                /* non empty (the child we are in and we are going to remove is not the only child) */
-                                break;
-                            }
+                    for (parent = unres->node[i];
+                            parent->parent && parent->parent->schema->nodetype == LYS_CONTAINER;
+                            parent = parent->parent) {
+                        if (((struct lys_node_container *)parent->parent->schema)->presence) {
+                            /* presence container */
+                            break;
                         }
-                        unres->node[i] = parent;
+                        if (parent->next || parent->prev != parent) {
+                            /* non empty (the child we are in and we are going to remove is not the only child) */
+                            break;
+                        }
                     }
+                    unres->node[i] = parent;
 
                     /* auto-delete */
                     LOGVRB("auto-delete node \"%s\" due to when condition (%s)", ly_errpath(),

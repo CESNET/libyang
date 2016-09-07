@@ -3394,8 +3394,8 @@ lyd_validate(struct lyd_node **node, int options, ...)
             } else {
                 next2 = iter->child;
 
-                /* if we have empty non-presence container, we can remove it */
-                if (!next2 && !(options & LYD_OPT_KEEPEMPTYCONT) && (iter->schema->nodetype == LYS_CONTAINER)
+                /* if we have empty non-dflt and non-presence container, we can remove it */
+                if (!next2 && !iter->dflt && (iter->schema->nodetype == LYS_CONTAINER)
                         && !((struct lys_node_container *)iter->schema)->presence) {
                     lyd_free(to_free);
                     to_free = iter;
@@ -3414,8 +3414,8 @@ nextsiblings:
             while (!next2) {
                 iter = iter->parent;
 
-                /* if we have empty non-presence container, we can remove it */
-                if (to_free && !(options & LYD_OPT_KEEPEMPTYCONT) && !to_free->next && to_free->prev == to_free &&
+                /* if we have empty non-dflt and non-presence container, we can remove it */
+                if (to_free && !iter->dflt && !to_free->next && to_free->prev == to_free &&
                         iter->schema->nodetype == LYS_CONTAINER &&
                         !((struct lys_node_container *)iter->schema)->presence) {
                     to_free = iter;

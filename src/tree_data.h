@@ -388,8 +388,6 @@ char *lyd_path(struct lyd_node *node);
  * - when parser evaluates when-stmt condition to false, the constrained subtree is automatically removed. If the
  * #LYD_OPT_NOAUTODEL is used, error is raised instead of silent auto delete. The option (and also this default
  * behavior) takes effect only in case of #LYD_OPT_DATA or #LYD_OPT_CONFIG type of data.
- * - whenever the parser see empty non-presence container, it is automatically removed to minimize memory usage. This
- * behavior can be changed by #LYD_OPT_KEEPEMPTYCONT.
  * @{
  */
 
@@ -436,7 +434,6 @@ char *lyd_path(struct lyd_node *node);
                                        applicable only in combination with LYD_OPT_DATA and LYD_OPT_CONFIG flags.
                                        If used, libyang generates validation error instead of silently removing the
                                        constrained subtree. */
-#define LYD_OPT_KEEPEMPTYCONT 0x4000 /**< Do not automatically delete empty non-presence containers. */
 
 /**@} parseroptions */
 

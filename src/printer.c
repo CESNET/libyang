@@ -465,6 +465,18 @@ trim_dfs_nextsibling:
         if (!flag) {
             return 0;
         }
+    } else if (node->dflt && node->schema->nodetype == LYS_CONTAINER && !(options & LYP_KEEPEMPTYCONT)) {
+        /* avoid empty default containers */
+        LY_TREE_DFS_BEGIN(node, next, elem) {
+            if (elem->schema->nodetype != LYS_CONTAINER) {
+                flag = 1;
+                break;
+            }
+            LY_TREE_DFS_END(node, next, elem)
+        }
+        if (!flag) {
+            return 0;
+        }
     }
 
     return 1;
