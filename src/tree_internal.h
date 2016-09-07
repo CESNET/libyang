@@ -427,4 +427,10 @@ int lys_sub_module_set_dev_aug_target_implement(struct lys_module *module);
 
 void lys_submodule_module_data_free(struct lys_submodule *submodule);
 
+/**
+ * @brief Get know if the \p leaf is a key of the \p list
+ * @return 0 for false, position of the key otherwise
+ */
+int lys_is_key(struct lys_node_list *list, struct lys_node_leaf *leaf);
+
 #endif /* LY_TREE_INTERNAL_H_ */

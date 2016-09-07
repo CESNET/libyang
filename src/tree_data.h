@@ -726,8 +726,9 @@ int lyd_merge(struct lyd_node *target, const struct lyd_node *source, int option
  * \p parent.
  *
  * If the node is part of some other tree, it is automatically unlinked.
- * If the node is the first node of a node list (with no parent), all
- * the subsequent nodes are also inserted.
+ * If the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
+ * If the key of a list is being inserted, it is placed into a correct position instead of being placed as the last
+ * element.
  *
  * @param[in] parent Parent node for the \p node being inserted.
  * @param[in] node The node being inserted.

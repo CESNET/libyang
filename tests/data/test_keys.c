@@ -157,30 +157,29 @@ test_keys_inorder2(void **state)
 {
     struct state *st = (*state);
     struct lyd_node *node;
-    int rc;
 
     st->dt = lyd_new(NULL, ly_ctx_get_module(st->ctx, "keys", NULL), "l");
     assert_ptr_not_equal(st->dt, NULL);
 
+    /* libyang is able to put the keys into a correct order */
     node = lyd_new_leaf(st->dt, NULL, "key2", "2");
     assert_ptr_not_equal(node, NULL);
     node = lyd_new_leaf(st->dt, NULL, "key1", "1");
     assert_ptr_not_equal(node, NULL);
 
-    rc = lyd_validate(&(st->dt), LYD_OPT_CONFIG);
-    assert_int_not_equal(rc, 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
 
-    lyd_free(st->dt->child);
+    lyd_free_withsiblings(st->dt->child);
 
-    node = lyd_new_leaf(st->dt, NULL, "value", "a");
-    assert_ptr_not_equal(node, NULL);
+    /* libyang is able to put the keys into a correct order */
     node = lyd_new_leaf(st->dt, NULL, "key2", "2");
     assert_ptr_not_equal(node, NULL);
+    node = lyd_new_leaf(st->dt, NULL, "value", "a");
+    assert_ptr_not_equal(node, NULL);
+    node = lyd_new_leaf(st->dt, NULL, "key1", "1");
+    assert_ptr_not_equal(node, NULL);
 
-    rc = lyd_validate(&(st->dt), LYD_OPT_CONFIG);
-    assert_int_not_equal(rc, 0);
-    assert_string_equal(ly_errmsg(), "Invalid position of the key element.");
-    assert_string_equal(ly_errpath(), "/keys:l[key1='1'][key2='2']/key2");
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
 }
 
 int main(void)

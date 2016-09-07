@@ -3195,3 +3195,17 @@ lys_submodule_module_data_free(struct lys_submodule *submodule)
         }
     }
 }
+
+int
+lys_is_key(struct lys_node_list *list, struct lys_node_leaf *leaf)
+{
+    uint8_t i;
+
+    for (i = 0; i < list->keys_size; i++) {
+        if (list->keys[i] == leaf) {
+            return i + 1;
+        }
+    }
+
+    return 0;
+}

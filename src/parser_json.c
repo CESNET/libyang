@@ -1119,7 +1119,7 @@ attr_repeat:
                 ly_errno = 0;
                 if (!(options & LYD_OPT_TRUSTED) &&
                         (lyv_data_content(list, options, unres) ||
-                         lyv_multicases(list, NULL, first_sibling == list ? NULL : first_sibling, 0, NULL))) {
+                         lyv_multicases(list, NULL, first_sibling == list ? NULL : &first_sibling, 0, NULL))) {
                     if (ly_errno) {
                         goto error;
                     }
@@ -1161,7 +1161,7 @@ attr_repeat:
     ly_errno = 0;
     if (!(options & LYD_OPT_TRUSTED) &&
             (lyv_data_content(result, options, unres) ||
-             lyv_multicases(result, NULL, first_sibling == result ? NULL : first_sibling, 0, NULL))) {
+             lyv_multicases(result, NULL, first_sibling == result ? NULL : &first_sibling, 0, NULL))) {
         if (ly_errno) {
             goto error;
         }

@@ -69,12 +69,13 @@ int lyv_data_unique(struct lyd_node *node, struct lyd_node *start);
  *
  * @param[in] node Data tree node to be checked.
  * @param[in] schemanode Alternative to \p node (node is preferred), schema of the (potential) node
- * @param[in] first_sibling The first sibling of the node where the searching will always start.
+ * @param[in,out] first_sibling The first sibling of the node where the searching will always start. It is updated
+ * when the first_sibling is (even repeatedly) autodeleted
  * @param[in] autodelete Flag to select if the conflicting nodes are supposed to be removed or reported
  * @param[in] nodel Exception for autodelete, if the \p nodel node would be removed, error is reported instead.
  * @return EXIT_SUCCESS or EXIT_FAILURE with set ly_errno.
  */
-int lyv_multicases(struct lyd_node *node, struct lys_node *schemanode, struct lyd_node *first_sibling, int autodelete,
+int lyv_multicases(struct lyd_node *node, struct lys_node *schemanode, struct lyd_node **first_sibling, int autodelete,
                    struct lyd_node *nodel);
 
 #endif /* LY_VALIDATION_H_ */
