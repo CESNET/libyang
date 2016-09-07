@@ -758,6 +758,19 @@ int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
 int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
+ * @brief Insert the \p new element instead of the \p old element.
+ *
+ * If the \p new is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
+ * If the \p new is NULL and \p destroy is true, it works like lyd_free(old).
+ *
+ * @param[in] old The specific node supposed to be replaced.
+ * @param[in] new The new (list of) node(s) to be inserted instead of \p old
+ * @param[in] destroy Flag for freeing the \p old.
+ * @return 0 on success, nonzero in case of error.
+ */
+int lyd_replace(struct lyd_node *old, struct lyd_node *new, int destroy);
+
+/**
  * @brief Order siblings according to the schema node ordering.
  *
  * If the siblings include data nodes from other modules, they are

@@ -2782,22 +2782,35 @@ autodelete:
     return EXIT_SUCCESS;
 }
 
-static int
-lyd_replace(struct lyd_node *old, struct lyd_node *new)
+API int
+lyd_replace(struct lyd_node *old, struct lyd_node *new, int destroy)
 {
-    assert(old);
+    struct lyd_node *iter, *last;
+
+    if (!old) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
 
     if (!new) {
         /* remove the old one */
         goto finish;
     }
 
-    /* isolate new (just for sure) */
-    new->next = NULL;
-    new->prev = new;
+    if (new->parent || new->prev != new) {
+        /* isolate the new node */
+        new->next = NULL;
+        new->prev = new;
+        last = new;
+    } else {
+        /* get the last node of a possible list of nodes to be inserted */
+        for(last = new; last->next; last = last->next) {
+            /* part of the parent changes */
+            last->parent = old->parent;
+        }
+    }
 
     /* parent */
-    new->parent = old->parent;
     if (old->parent) {
         if (old->parent->child == old) {
             old->parent->child = new;
@@ -2818,14 +2831,25 @@ lyd_replace(struct lyd_node *old, struct lyd_node *new)
 
     /* successor */
     if (old->next) {
-        old->next->prev = new;
-        new->next = old->next;
+        old->next->prev = last;
+        last->next = old->next;
         old->next = NULL;
+    } else {
+        /* fix the last pointer */
+        if (new->parent) {
+            new->parent->child->prev = last;
+        } else {
+            /* get the first sibling */
+            for (iter = new; iter->prev != old; iter = iter->prev);
+            iter->prev = last;
+        }
     }
 
 finish:
     /* remove the old one */
-    lyd_free(old);
+    if (destroy) {
+        lyd_free(old);
+    }
     return EXIT_SUCCESS;
 }
 
@@ -2909,7 +2933,7 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
                 LY_TREE_FOR(parent->child, iter) {
                     if (iter->schema == ins->schema && iter->dflt) {
                         /* replace */
-                        lyd_replace(iter, ins);
+                        lyd_replace(iter, ins, 1);
                         break;
                     }
                 }
