@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 
-set(internal_tests test_lys_find_grouping_up)
+set(internal_tests
+  test_lys_find_grouping_up
+  test_lys_node_switch)
 
 include_directories(SYSTEM ${CMOCKA_INCLUDE_DIR})
 
