@@ -159,7 +159,6 @@ generic_init(char *config_file, const char *module, char *yang_folder)
     struct stat sb_config;
     int fd = -1;
 
-
     if (!yang_folder) {
         goto error;
     }
@@ -251,7 +250,7 @@ teardown_f(void **state)
 {
     (void) state; /* unused */
     if (root)
-        lyd_free(root);
+        lyd_free_withsiblings(root);
     if (ctx)
         ly_ctx_destroy(ctx, NULL);
 
@@ -651,9 +650,6 @@ test_lyd_insert(void **state)
 
     result = (struct lyd_node_leaf_list *) root->child;
     assert_string_equal("test", result->value_str);
-    if (root->child->next) {
-        fail();
-    }
 
     new = lyd_new_leaf(root, node->schema->module, "number32", "100");
     if (!new) {
@@ -665,7 +661,7 @@ test_lyd_insert(void **state)
         fail();
     }
 
-    result = (struct lyd_node_leaf_list *) root->child->next;
+    result = (struct lyd_node_leaf_list *) root->child->prev;
     assert_string_equal("100", result->value_str);
 }
 
@@ -679,9 +675,6 @@ test_lyd_insert_before(void **state)
 
     result = (struct lyd_node_leaf_list *) root->child;
     assert_string_equal("test", result->value_str);
-    if (root->child->next) {
-        fail();
-    }
 
     new = lyd_new_leaf(root, root->child->schema->module, "number32", "1");
     if (!new) {
@@ -703,7 +696,7 @@ test_lyd_insert_before(void **state)
         fail();
     }
 
-    result = (struct lyd_node_leaf_list *) root->child->next->next;
+    result = (struct lyd_node_leaf_list *) root->child->prev;
     assert_string_equal("1", result->value_str);
 }
 
@@ -717,9 +710,6 @@ test_lyd_insert_after(void **state)
 
     result = (struct lyd_node_leaf_list *) root->child;
     assert_string_equal("test", result->value_str);
-    if (root->child->next) {
-        fail();
-    }
 
     new = lyd_new_leaf(root, root->child->schema->module, "number32", "1");
     if (!new) {
@@ -929,17 +919,15 @@ test_lyd_unlink(void **state)
         fail();
     }
 
-    result = (struct lyd_node_leaf_list *) node->next;
+    result = (struct lyd_node_leaf_list *) node->prev;
     assert_string_equal("1", result->value_str);
 
-    rc = lyd_unlink(node->next);
+    rc = lyd_unlink(node->prev);
     if (rc) {
         fail();
     }
 
-    if (node->next) {
-        fail();
-    }
+    assert_string_not_equal("1", ((struct lyd_node_leaf_list *)node->prev)->value_str);
 
     lyd_free(new);
 }
