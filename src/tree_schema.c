@@ -2932,7 +2932,7 @@ lys_node_xpath_atomize(const struct lys_node *node, int options)
     }
 
     ret_set = ly_set_new();
-    if (ret_set) {
+    if (!ret_set) {
         return NULL;
     }
 
