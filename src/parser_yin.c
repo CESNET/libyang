@@ -865,6 +865,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "base", "type");
             goto error;
+        } else {
+            if (type->der->type.der) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "base");
+                goto error;
+            }
         }
         if (yin->child->next) {
             LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, yin->child->next->name, yin->name);
