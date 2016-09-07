@@ -2471,7 +2471,13 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
             } else if (kind == 1) {
                 tmp_local_intv->value.sval.min = strtol(ptr, &num_end, 10);
             } else if (kind == 2) {
-                tmp_local_intv->value.fval.min = strtod(ptr, &num_end);
+                for (num_end = (char *)ptr + 1; isdigit(num_end[0]); ++num_end);
+                if ((num_end[0] == '.') && (num_end[1] == '.')) {
+                    /* cannot use strtod, one '.' would be incorrectly parsed */
+                    tmp_local_intv->value.fval.min = strtol(ptr, &num_end, 10);
+                } else {
+                    tmp_local_intv->value.fval.min = strtod(ptr, &num_end);
+                }
             }
 
             ptr = num_end;
@@ -2527,7 +2533,13 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
                 } else if (kind == 1) {
                     tmp_local_intv->value.sval.max = strtol(ptr, &num_end, 10);
                 } else if (kind == 2) {
-                    tmp_local_intv->value.fval.max = strtod(ptr, &num_end);
+                    for (num_end = (char *)ptr + 1; isdigit(num_end[0]); ++num_end);
+                    if ((num_end[0] == '.') && (num_end[1] == '.')) {
+                        /* cannot use strtod, one '.' would be incorrectly parsed */
+                        tmp_local_intv->value.fval.max = strtol(ptr, &num_end, 10);
+                    } else {
+                        tmp_local_intv->value.fval.max = strtod(ptr, &num_end);
+                    }
                 }
             } else if (!strncmp(ptr, "max", 3)) {
                 if (kind == 0) {
