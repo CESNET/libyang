@@ -4987,9 +4987,18 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
         return EXIT_SUCCESS;
     }
 
-    if (!subroot && lys_is_disabled(schema, 0)) {
-        /* ignore disabled data */
-        return EXIT_SUCCESS;
+    /* skip disabled parts of schema */
+    if (!subroot) {
+        if (schema->parent && schema->parent->nodetype == LYS_AUGMENT) {
+            if (lys_is_disabled(schema->parent, 0)) {
+                /* ignore disabled augment */
+                return EXIT_SUCCESS;
+            }
+        }
+        if (lys_is_disabled(schema, 0)) {
+            /* ignore disabled data */
+            return EXIT_SUCCESS;
+        }
     }
 
     switch (schema->nodetype) {
@@ -5005,6 +5014,26 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
             if (((struct lys_node_container *)schema)->presence) {
                 /* stop recursion */
                 break;
+            }
+            /* always create empty NP container even if there is no default node,
+             * because accroding to RFC, the empty NP container is always part of
+             * accessible tree (e.g. for evaluating when and must conditions) */
+            subroot = _lyd_new(last_parent, schema, 1);
+            if (!last_parent) {
+                if (*root) {
+                    lyd_insert_after((*root)->prev, subroot);
+                } else {
+                    *root = subroot;
+                }
+            }
+            last_parent = subroot;
+
+            /* if necessary, remember the created container in unres */
+            if ((subroot->when_status & LYD_WHEN) && unres_data_add(unres, subroot, UNRES_WHEN) == -1) {
+                goto error;
+            }
+            if (resolve_applies_must(subroot->schema) && unres_data_add(unres, subroot, UNRES_MUST) == -1) {
+                goto error;
             }
         }
         /* no break */
