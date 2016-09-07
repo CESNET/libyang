@@ -994,7 +994,7 @@ resolve_feature(const char *feat_name, uint16_t len, const struct lys_node *node
             if (!strncmp(name, node->module->features[j].name, nam_len) && !node->module->features[j].name[nam_len]) {
                 /* check status */
                 if (lyp_check_status(node->flags, lys_node_module(node), node->name, node->module->features[j].flags,
-                                     node->module->features[j].module, node->module->features[j].name, node)) {
+                                     node->module->features[j].module, node->module->features[j].name, NULL)) {
                     return -1;
                 }
                 *feature = &node->module->features[j];
@@ -1008,7 +1008,7 @@ resolve_feature(const char *feat_name, uint16_t len, const struct lys_node *node
         if (!strncmp(name, module->features[j].name, nam_len) && !module->features[j].name[nam_len]) {
             /* check status */
             if (lyp_check_status(node->flags, lys_node_module(node), node->name, module->features[j].flags,
-                                 module->features[j].module, module->features[j].name, node)) {
+                                 module->features[j].module, module->features[j].name, NULL)) {
                 return -1;
             }
             *feature = &module->features[j];
@@ -1028,7 +1028,7 @@ resolve_feature(const char *feat_name, uint16_t len, const struct lys_node *node
                 if (lyp_check_status(node->flags, lys_node_module(node), node->name,
                                      module->inc[i].submodule->features[j].flags,
                                      module->inc[i].submodule->features[j].module,
-                                     module->inc[i].submodule->features[j].name, node)) {
+                                     module->inc[i].submodule->features[j].name, NULL)) {
                     return -1;
                 }
                 *feature = &module->inc[i].submodule->features[j];
@@ -4606,12 +4606,8 @@ matchfound:
         }
 
         /* checks done, store the result */
-        ident->base[ident->base_size++] = base;
         *ret = base;
-
-        /* maintain backlinks to the derived identities */
-        return identity_backlink_update(ident, base) ? -1 : EXIT_SUCCESS;
-
+        return EXIT_SUCCESS;
     }
 
     /* base not found (maybe a forward reference) */
@@ -4693,6 +4689,13 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
         if (lyp_check_status(flags, mod, ident ? ident->name : "of type",
                              (*ret)->flags, (*ret)->module, (*ret)->name, NULL)) {
             rc = -1;
+        } else {
+            if (ident) {
+                ident->base[ident->base_size++] = *ret;
+
+                /* maintain backlinks to the derived identities */
+                rc = identity_backlink_update(ident, *ret) ? -1 : EXIT_SUCCESS;
+            }
         }
     } else if (rc == EXIT_FAILURE) {
         LOGVAL(LYE_INRESOLV, LY_VLOG_NONE, NULL, parent, basename);
@@ -5836,11 +5839,6 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
                 continue;
             }
             resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
-
-            /* free the allocated resources */
-            if (unres->type[i] == UNRES_IFFEAT) {
-                free(*((char **)unres->item[i]));
-            }
         }
         return -1;
     }
@@ -5853,6 +5851,10 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
 
         rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
         if (rc == 0) {
+            if (unres->type[i] == UNRES_LIST_UNIQ) {
+                /* free the allocated structure */
+                free(unres->item[i]);
+            }
             unres->type[i] = UNRES_RESOLVED;
             ++resolved;
         } else if (rc == -1) {
@@ -5948,7 +5950,10 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
         if (type == UNRES_LIST_UNIQ) {
             /* free the allocated structure */
             free(item);
-        }
+        } else if (rc == -1 && type == UNRES_IFFEAT) {
+            /* free the allocated resources */
+            free(*((char **)item));
+         }
         return rc;
     } else {
         /* erase info about validation errors */
@@ -6096,6 +6101,9 @@ unres_schema_free_item(struct ly_ctx *ctx, struct unres_schema *unres, uint32_t 
         } else {
             lyxml_free(ctx, yin);
         }
+        break;
+    case UNRES_IFFEAT:
+        free(*((char **)unres->item[i]));
         break;
     case UNRES_IDENT:
     case UNRES_TYPE_IDENTREF:

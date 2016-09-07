@@ -865,6 +865,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "base", "type");
             goto error;
+        } else {
+            if (type->der->type.der) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "base");
+                goto error;
+            }
         }
         if (yin->child->next) {
             LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, yin->child->next->name, yin->name);
@@ -1914,8 +1919,14 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 /* check target node type */
                 if (dev_target->nodetype == LYS_LEAF) {
                     t = &((struct lys_node_leaf *)dev_target)->type;
+                    if (((struct lys_node_leaf *)dev_target)->dflt) {
+                        ly_set_add(dflt_check, dev_target, 0);
+                    }
                 } else if (dev_target->nodetype == LYS_LEAFLIST) {
                     t = &((struct lys_node_leaflist *)dev_target)->type;
+                    if (((struct lys_node_leaflist *)dev_target)->dflt) {
+                        ly_set_add(dflt_check, dev_target, 0);
+                    }
                 } else {
                     LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Target node does not allow \"%s\" property.", child->name);
@@ -1930,11 +1941,6 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     goto error;
                 }
                 d->type = t;
-
-                /* check leaf default later (type may not fit now, but default can be deviated later too) */
-                if (dev_target->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-                    ly_set_add(dflt_check, dev_target, 0);
-                }
             } else if (!strcmp(child->name, "unique")) {
                 c_uniq++;
                 /* skip lyxml_free() at the end of the loop, this node will be processed later */
