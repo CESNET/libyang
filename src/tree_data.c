@@ -3073,6 +3073,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
                 if (iter->schema == ins->schema && iter->dflt) {
                     if (iter == sibling) {
                         ly_errno = LY_EINVAL;
+                        str = NULL;
                         LOGERR(LY_EINVAL, "Insert request refers node (%s) that is going to be auto-deleted.",
                                str = lyd_path(sibling));
                         free(str);
