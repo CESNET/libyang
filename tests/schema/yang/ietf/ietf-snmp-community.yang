@@ -52,6 +52,14 @@ submodule ietf-snmp-community {
        Version 3 of the Internet-standard Network
        Management Framework";
 
+  revision 2015-01-23 {
+    description
+      "When expression of augment '/snmp:snmp/snmp:target' with
+       non-existing leaves removed.";
+    reference
+      "RFC 7407 Errata";
+  }
+
   revision 2014-12-10 {
     description
       "Initial revision.";
@@ -217,7 +225,6 @@ submodule ietf-snmp-community {
   }
 
   augment /snmp:snmp/snmp:target {
-    when "snmp:v1 or snmp:v2c";
     leaf mms {
       type union {
         type enumeration {

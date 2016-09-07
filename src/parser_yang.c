@@ -451,7 +451,7 @@ yang_read_must(struct lys_module *module, struct lys_node *node, char *value, en
         break;
     }
     retval->expr = transform_schema2json(module, value);
-    if (!retval->expr || lyxp_syntax_check(retval->expr)) {
+    if (!retval->expr) {
         goto error;
     }
     free(value);
@@ -500,7 +500,7 @@ yang_read_when(struct lys_module *module, struct lys_node *node, enum yytokentyp
         return NULL;
     }
     retval->cond = transform_schema2json(module, value);
-    if (!retval->cond || lyxp_syntax_check(retval->cond)) {
+    if (!retval->cond) {
         goto error;
     }
     switch (type) {
@@ -925,6 +925,13 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             goto error;
         }
     }
+
+    /* check status */
+    if (lyp_check_status(typ->type->parent->flags, typ->type->parent->module, typ->type->parent->name,
+                         typ->type->der->flags, typ->type->der->module, typ->type->der->name, parent)) {
+        goto error;
+    }
+
     base = typ->base;
     typ->type->base = typ->type->der->type.base;
     if (base == 0) {
@@ -1878,6 +1885,9 @@ yang_read_deviate_must(struct type_deviation *dev, uint8_t c_must)
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Target node does not allow \"must\" property.");
         goto error;
     }
+
+    /* flag will be checked again, clear it for now */
+    dev->target->flags &= ~LYS_XPATH_DEP;
 
     if (dev->deviate->mod == LY_DEVIATE_ADD) {
         /* reallocate the must array of the target */

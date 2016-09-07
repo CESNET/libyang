@@ -35,6 +35,7 @@ enum UNRES_ITEM {
     UNRES_LIST_KEYS,     /* list keys */
     UNRES_LIST_UNIQ,     /* list uniques */
     UNRES_AUGMENT,       /* unresolved augment targets */
+    UNRES_XPATH,         /* unchecked XPath expression */
 
     /* DATA */
     UNRES_LEAFREF,       /* unresolved leafref reference */
@@ -144,6 +145,9 @@ int resolve_superior_type(const char *name, const char *prefix, const struct lys
                           const struct lys_node *parent, struct lys_tpdf **ret);
 
 int resolve_unique(struct lys_node *parent, const char *uniq_str_path, uint8_t *trg_type);
+
+void resolve_when_ctx_snode(const struct lys_node *schema, struct lys_node **ctx_snode,
+                            enum lyxp_node_type *ctx_snode_type);
 
 /* get know if resolve_when() is applicable to the node (there is when condition connected with this node)
  *

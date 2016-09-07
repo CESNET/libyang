@@ -594,11 +594,11 @@ struct lys_iffeature {
  *
  * Various flags for schema nodes.
  *
- *     1 - container    6 - anyxml            11 - rpc output   16 - type(def)
+ *     1 - container    6 - anydata/anyxml    11 - output       16 - type(def)
  *     2 - choice       7 - case              12 - grouping     17 - identity
  *     3 - leaf         8 - notification      13 - uses         18 - refine
  *     4 - leaflist     9 - rpc               14 - augment
- *     5 - list        10 - rpc input         15 - feature
+ *     5 - list        10 - input             15 - feature
  *
  *                                           1 1 1 1 1 1 1 1 1
  *                         1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8
@@ -627,7 +627,9 @@ struct lys_iffeature {
  *     9 LYS_USERORDERED  | | | |x|x| | | | | | | | | | | | | |
  *       LYS_UNIQUE       | | |x| | | | | | | | | | | | | | | |
  *       LYS_FENABLED     | | | | | | | | | | | | | | |x| | | |
- *
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    10 LYS_XPATH_DEP    |x|x|x|x|x|x|x|x|x|x|x| |x|x| | | | |
+ *    --------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * @{
  */
 #define LYS_CONFIG_W     0x01        /**< config true; */
@@ -654,6 +656,8 @@ struct lys_iffeature {
 #define LYS_AUTOASSIGNED 0x01        /**< value was auto-assigned, applicable only to
                                           ::lys_type enum and bits flags */
 #define LYS_USESGRP      0x01        /**< flag for resolving uses in groupings, applicable only to ::lys_node_uses */
+#define LYS_XPATH_DEP    0x200       /**< flag marking nodes, whose when and/or must expressions depend on nodes
+                                          outside their subtree (applicable only to RPCs, notifications, and actions) */
 /**
  * @}
  */
@@ -1563,18 +1567,50 @@ const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys
 #define LYS_GETNEXT_INTONPCONT   0x40 /**< lys_getnext() option to look into non-presence container, instead of returning container itself */
 
 /**
+ * @brief Types of context nodes, roots other than #LYXP_NODE_ROOT_ALL used only in when conditions.
+ */
+enum lyxp_node_type {
+    LYXP_NODE_ROOT_ALL,         /* access to all the data (node value first top-level node) */
+    LYXP_NODE_ROOT_CONFIG,      /* <running> data context (node value first top-level node) */
+    LYXP_NODE_ROOT_STATE,       /* <running> + state data context (node value first top-level node) */
+    LYXP_NODE_ROOT_NOTIF,       /* notification context (node value LYS_NOTIF) */
+    LYXP_NODE_ROOT_RPC,         /* RPC (input) context (node value LYS_RPC) */
+    LYXP_NODE_ROOT_OUTPUT,      /* RPC output-only context (node value LYS_RPC) */
+
+    LYXP_NODE_ELEM,             /* XML element (most common) */
+    LYXP_NODE_TEXT,             /* XML text element (extremely specific use, unlikely to be ever needed) */
+    LYXP_NODE_ATTR              /* XML attribute (in YANG cannot happen, do not use for the context node) */
+};
+
+/**
  * @brief Get all the partial XPath nodes (atoms) that are required for \p expr to be evaluated.
  *
- * @param[in] cur_snode Current (context) schema node.
+ * @param[in] cur_snode Current (context) schema node. Fake roots are distinguished using \p cur_snode_type
+ * and must be first in the sibling list.
+ * @param[in] cur_snode_type Current (context) schema node type. Most commonly is #LYXP_NODE_ELEM, but if
+ * your context node is supposed to be the root, you can specify what kind of root it is.
  * @param[in] expr XPath expression to be evaluated. Must be in JSON data format (prefixes are model names).
- * @param[in] options Whether to apply some evaluation restrictions LYXP_*.
+ * @param[in] options Whether to apply some evaluation restrictions #LYXP_MUST or #LYXP_WHEN.
  *
  * @return Set of atoms (schema nodes), NULL on error.
  */
-struct ly_set *lys_xpath_atomize(const struct lys_node *cur_snode, const char *expr, int options);
+struct ly_set *lys_xpath_atomize(const struct lys_node *cur_snode, enum lyxp_node_type cur_snode_type,
+                                 const char *expr, int options);
 
 #define LYXP_MUST 0x01 /**< lys_xpath_atomize() option to apply must statement data tree access restrictions */
 #define LYXP_WHEN 0x02 /**< lys_xpath_atomize() option to apply when statement data tree access restrictions */
+
+/**
+ * @brief Call lys_xpath_atomize() on all the when and must expressions of the node. This node must be
+ * a descendant of an input, output, or notification node. This subtree then forms the local subtree.
+ *
+ * @param[in] node Node to examine.
+ * @param[in] options Bitmask of #LYXP_RECURSIVE and #LYXP_NO_LOCAL.
+ */
+struct ly_set *lys_node_xpath_atomize(const struct lys_node *node, int options);
+
+#define LYXP_RECURSIVE 0x01 /**< lys_node_xpath_atomize() option to return schema node dependencies of all the expressions in the subtree */
+#define LYXP_NO_LOCAL 0x02  /**< lys_node_xpath_atomize() option to discard schema node dependencies from the local subtree */
 
 /**
  * @brief Return parent node in the schema tree.

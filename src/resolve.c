@@ -994,7 +994,7 @@ resolve_feature(const char *feat_name, uint16_t len, const struct lys_node *node
             if (!strncmp(name, node->module->features[j].name, nam_len) && !node->module->features[j].name[nam_len]) {
                 /* check status */
                 if (lyp_check_status(node->flags, lys_node_module(node), node->name, node->module->features[j].flags,
-                                     node->module->features[j].module, node->module->features[j].name, node)) {
+                                     node->module->features[j].module, node->module->features[j].name, NULL)) {
                     return -1;
                 }
                 *feature = &node->module->features[j];
@@ -1008,7 +1008,7 @@ resolve_feature(const char *feat_name, uint16_t len, const struct lys_node *node
         if (!strncmp(name, module->features[j].name, nam_len) && !module->features[j].name[nam_len]) {
             /* check status */
             if (lyp_check_status(node->flags, lys_node_module(node), node->name, module->features[j].flags,
-                                 module->features[j].module, module->features[j].name, node)) {
+                                 module->features[j].module, module->features[j].name, NULL)) {
                 return -1;
             }
             *feature = &module->features[j];
@@ -1028,7 +1028,7 @@ resolve_feature(const char *feat_name, uint16_t len, const struct lys_node *node
                 if (lyp_check_status(node->flags, lys_node_module(node), node->name,
                                      module->inc[i].submodule->features[j].flags,
                                      module->inc[i].submodule->features[j].module,
-                                     module->inc[i].submodule->features[j].name, node)) {
+                                     module->inc[i].submodule->features[j].name, NULL)) {
                     return -1;
                 }
                 *feature = &module->inc[i].submodule->features[j];
@@ -2291,6 +2291,7 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
     uint64_t local_umin, local_umax;
     long double local_fmin, local_fmax;
     const char *seg_ptr, *ptr;
+    char *num_end;
     struct len_ran_intv *local_intv = NULL, *tmp_local_intv = NULL, *tmp_intv, *intv = NULL;
 
     switch (type->base) {
@@ -2466,19 +2467,20 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
         }
         if (isdigit(ptr[0]) || (ptr[0] == '+') || (ptr[0] == '-')) {
             if (kind == 0) {
-                tmp_local_intv->value.uval.min = atoll(ptr);
+                tmp_local_intv->value.uval.min = strtol(ptr, &num_end, 10);
             } else if (kind == 1) {
-                tmp_local_intv->value.sval.min = atoll(ptr);
+                tmp_local_intv->value.sval.min = strtol(ptr, &num_end, 10);
             } else if (kind == 2) {
-                tmp_local_intv->value.fval.min = atoll(ptr);
+                for (num_end = (char *)ptr + 1; isdigit(num_end[0]); ++num_end);
+                if ((num_end[0] == '.') && (num_end[1] == '.')) {
+                    /* cannot use strtod, one '.' would be incorrectly parsed */
+                    tmp_local_intv->value.fval.min = strtol(ptr, &num_end, 10);
+                } else {
+                    tmp_local_intv->value.fval.min = strtod(ptr, &num_end);
+                }
             }
 
-            if ((ptr[0] == '+') || (ptr[0] == '-')) {
-                ++ptr;
-            }
-            while (isdigit(ptr[0])) {
-                ++ptr;
-            }
+            ptr = num_end;
         } else if (!strncmp(ptr, "min", 3)) {
             if (kind == 0) {
                 tmp_local_intv->value.uval.min = local_umin;
@@ -2527,11 +2529,17 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
             /* max */
             if (isdigit(ptr[0]) || (ptr[0] == '+') || (ptr[0] == '-')) {
                 if (kind == 0) {
-                    tmp_local_intv->value.uval.max = atoll(ptr);
+                    tmp_local_intv->value.uval.max = strtol(ptr, &num_end, 10);
                 } else if (kind == 1) {
-                    tmp_local_intv->value.sval.max = atoll(ptr);
+                    tmp_local_intv->value.sval.max = strtol(ptr, &num_end, 10);
                 } else if (kind == 2) {
-                    tmp_local_intv->value.fval.max = atoll(ptr);
+                    for (num_end = (char *)ptr + 1; isdigit(num_end[0]); ++num_end);
+                    if ((num_end[0] == '.') && (num_end[1] == '.')) {
+                        /* cannot use strtod, one '.' would be incorrectly parsed */
+                        tmp_local_intv->value.fval.max = strtol(ptr, &num_end, 10);
+                    } else {
+                        tmp_local_intv->value.fval.max = strtod(ptr, &num_end);
+                    }
                 }
             } else if (!strncmp(ptr, "max", 3)) {
                 if (kind == 0) {
@@ -4320,6 +4328,11 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
             *old_must = must;
             *old_size = size;
+
+            /* check XPath dependencies again */
+            if (unres_schema_add_node(node->module, unres, node, UNRES_XPATH, NULL) == -1) {
+                goto fail;
+            }
         }
 
         /* if-feature in leaf, leaf-list, list, container or anyxml */
@@ -4593,12 +4606,8 @@ matchfound:
         }
 
         /* checks done, store the result */
-        ident->base[ident->base_size++] = base;
         *ret = base;
-
-        /* maintain backlinks to the derived identities */
-        return identity_backlink_update(ident, base) ? -1 : EXIT_SUCCESS;
-
+        return EXIT_SUCCESS;
     }
 
     /* base not found (maybe a forward reference) */
@@ -4680,6 +4689,13 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
         if (lyp_check_status(flags, mod, ident ? ident->name : "of type",
                              (*ret)->flags, (*ret)->module, (*ret)->name, NULL)) {
             rc = -1;
+        } else {
+            if (ident) {
+                ident->base[ident->base_size++] = *ret;
+
+                /* maintain backlinks to the derived identities */
+                rc = identity_backlink_update(ident, *ret) ? -1 : EXIT_SUCCESS;
+            }
         }
     } else if (rc == EXIT_FAILURE) {
         LOGVAL(LYE_INRESOLV, LY_VLOG_NONE, NULL, parent, basename);
@@ -4958,10 +4974,49 @@ resolve_must(struct lyd_node *node)
 }
 
 /**
+ * @brief Resolve (find) when condition schema context node. Does not log.
+ *
+ * @param[in] schema Schema node with the when condition.
+ * @param[out] ctx_snode When schema context node.
+ * @param[out] ctx_snode_type Schema context node type.
+ */
+void
+resolve_when_ctx_snode(const struct lys_node *schema, struct lys_node **ctx_snode, enum lyxp_node_type *ctx_snode_type)
+{
+    const struct lys_node *sparent;
+
+    /* find a not schema-only node */
+    *ctx_snode_type = LYXP_NODE_ELEM;
+    while (schema->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE | LYS_AUGMENT | LYS_INPUT | LYS_OUTPUT)) {
+        if (schema->nodetype == LYS_AUGMENT) {
+            sparent = ((struct lys_node_augment *)schema)->target;
+        } else {
+            sparent = schema->parent;
+        }
+        if (!sparent) {
+            /* context node is the document root (fake root in our case) */
+            if (schema->flags & LYS_CONFIG_W) {
+                *ctx_snode_type = LYXP_NODE_ROOT_CONFIG;
+            } else {
+                *ctx_snode_type = LYXP_NODE_ROOT_STATE;
+            }
+            /* move the fake root to the beginning of the list, if any */
+            while (schema->prev->next) {
+                schema = schema->prev;
+            }
+            break;
+        }
+        schema = sparent;
+    }
+
+    *ctx_snode = (struct lys_node *)schema;
+}
+
+/**
  * @brief Resolve (find) when condition context node. Does not log.
  *
  * @param[in] node Data node, whose conditional definition is being decided.
- * @param[in] schema Schema node with a when condition.
+ * @param[in] schema Schema node with the when condition.
  * @param[out] ctx_node Context node.
  * @param[out] ctx_node_type Context node type.
  *
@@ -4976,25 +5031,7 @@ resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema, struct lyd
     enum lyxp_node_type node_type;
     uint16_t i, data_depth, schema_depth;
 
-    /* find a not schema-only node */
-    node_type = LYXP_NODE_ELEM;
-    while (schema->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE | LYS_AUGMENT | LYS_INPUT | LYS_OUTPUT)) {
-        if (schema->nodetype == LYS_AUGMENT) {
-            sparent = ((struct lys_node_augment *)schema)->target;
-        } else {
-            sparent = schema->parent;
-        }
-        if (!sparent) {
-            /* context node is the document root (fake root in our case) */
-            if (schema->flags & LYS_CONFIG_W) {
-                node_type = LYXP_NODE_ROOT_CONFIG;
-            } else {
-                node_type = LYXP_NODE_ROOT_STATE;
-            }
-            break;
-        }
-        schema = sparent;
-    }
+    resolve_when_ctx_snode(schema, &schema, &node_type);
 
     /* get node depths */
     for (parent = node, data_depth = 0; parent; parent = parent->parent, ++data_depth);
@@ -5016,11 +5053,6 @@ resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema, struct lyd
         }
         if (node->schema != schema) {
             return -1;
-        }
-    } else {
-        /* special fake document root, move it to the beginning of the list, if any */
-        while (node && node->prev->next) {
-            node = node->prev;
         }
     }
 
@@ -5390,6 +5422,61 @@ cleanup:
 }
 
 /**
+ * @brief Check all XPath expressions of a node (when and must), set LYS_XPATH_DEP flag if required.
+ *
+ * @param[in] node Node to examine.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
+ */
+static int
+check_xpath(struct lys_node *node)
+{
+    struct lys_node *parent, *elem;
+    struct lyxp_set set;
+    uint32_t i;
+    int rc;
+
+    parent = node;
+    while (parent) {
+        if (parent->nodetype == LYS_GROUPING) {
+            /* unresolved grouping, skip for now */
+            return 0;
+        }
+        if (parent->nodetype == LYS_AUGMENT) {
+            if (!((struct lys_node_augment *)parent)->target) {
+                /* uresolved augment skip for now */
+                return 0;
+            } else {
+                parent = ((struct lys_node_augment *)parent)->target;
+                continue;
+            }
+        }
+        parent = parent->parent;
+    }
+
+    rc = lyxp_node_atomize(node, &set);
+    if (rc) {
+        return rc;
+    }
+
+    /* RPC, action can have neither must nor when */
+    for (parent = node; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT)); parent = lys_parent(parent));
+
+    if (parent) {
+        for (i = 0; i < set.used; ++i) {
+            for (elem = set.val.snodes[i].snode; elem && (elem != parent); elem = lys_parent(elem));
+            if (!elem) {
+                /* not in node's input, output, or, notification subtree, set the flag */
+                node->flags |= LYS_XPATH_DEP;
+                break;
+            }
+        }
+    }
+
+    free(set.val.snodes);
+    return EXIT_SUCCESS;
+}
+
+/**
  * @brief Resolve a single unres schema item. Logs indirectly.
  *
  * @param[in] mod Main module.
@@ -5601,6 +5688,10 @@ featurecheckdone:
     case UNRES_AUGMENT:
         rc = resolve_augment(item, NULL);
         break;
+    case UNRES_XPATH:
+        node = (struct lys_node *)item;
+        rc = check_xpath(node);
+        break;
     default:
         LOGINT;
         break;
@@ -5676,6 +5767,10 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "augment target",
                ((struct lys_node_augment *)item)->target_name);
         break;
+    case UNRES_XPATH:
+        LOGVRB("Resolving %s \"%s\" with the context node \"%s\" failed, it will be attempted later.", "XPath",
+               (char *)str_node, ((struct lys_node *)item)->name);
+        break;
     default:
         LOGINT;
         break;
@@ -5744,11 +5839,6 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
                 continue;
             }
             resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
-
-            /* free the allocated resources */
-            if (unres->type[i] == UNRES_IFFEAT) {
-                free(*((char **)unres->item[i]));
-            }
         }
         return -1;
     }
@@ -5761,6 +5851,10 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
 
         rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
         if (rc == 0) {
+            if (unres->type[i] == UNRES_LIST_UNIQ) {
+                /* free the allocated structure */
+                free(unres->item[i]);
+            }
             unres->type[i] = UNRES_RESOLVED;
             ++resolved;
         } else if (rc == -1) {
@@ -5856,7 +5950,10 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
         if (type == UNRES_LIST_UNIQ) {
             /* free the allocated structure */
             free(item);
-        }
+        } else if (rc == -1 && type == UNRES_IFFEAT) {
+            /* free the allocated resources */
+            free(*((char **)item));
+         }
         return rc;
     } else {
         /* erase info about validation errors */
@@ -6004,6 +6101,9 @@ unres_schema_free_item(struct ly_ctx *ctx, struct unres_schema *unres, uint32_t 
         } else {
             lyxml_free(ctx, yin);
         }
+        break;
+    case UNRES_IFFEAT:
+        free(*((char **)unres->item[i]));
         break;
     case UNRES_IDENT:
     case UNRES_TYPE_IDENTREF:
