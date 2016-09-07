@@ -1388,9 +1388,6 @@ fill_yin_must(struct lys_module *module, struct lyxml_elem *yin, struct lys_rest
     if (!must->expr) {
         goto error;
     }
-    if (lyxp_syntax_check(must->expr)) {
-        goto error;
-    }
 
     return read_restr_substmt(module->ctx, must, yin);
 
@@ -2031,6 +2028,8 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 goto error;
             }
 
+            dev_target->flags &= ~LYS_XPATH_DEP;
+
             if (d->mod == LY_DEVIATE_RPL) {
                 /* replace must is forbidden */
                 LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "must", "deviate replace");
@@ -2184,6 +2183,11 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         goto error;
                     }
                     (*trg_must_size)++;
+                }
+
+                /* check XPath dependencies again */
+                if (*trg_must_size && unres_schema_add_node(dev_target->module, unres, dev_target, UNRES_XPATH, NULL)) {
+                    goto error;
                 }
             } else if (!strcmp(child->name, "unique")) {
                 if (d->mod == LY_DEVIATE_DEL) {
@@ -2487,6 +2491,11 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
         if (unres_schema_add_node(module, unres, aug, UNRES_AUGMENT, NULL) == -1) {
             goto error;
         }
+    }
+
+    /* check XPath dependencies */
+    if (aug->when && (unres_schema_add_node(module, unres, (struct lys_node *)aug, UNRES_XPATH, NULL) == -1)) {
+        goto error;
     }
 
     return EXIT_SUCCESS;
@@ -3069,9 +3078,6 @@ read_yin_when(struct lys_module *module, struct lyxml_elem *yin)
     if (!retval->cond) {
         goto error;
     }
-    if (lyxp_syntax_check(retval->cond)) {
-        goto error;
-    }
 
     LY_TREE_FOR(yin->child, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
@@ -3223,6 +3229,11 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
 
         lyxml_free(module->ctx, sub);
+    }
+
+    /* check XPath dependencies */
+    if (cs->when && (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
+        goto error;
     }
 
     return retval;
@@ -3391,6 +3402,11 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
         lyxml_free(ctx, dflt);
     }
 
+    /* check XPath dependencies */
+    if (choice->when && (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
+        goto error;
+    }
+
     return retval;
 
 error:
@@ -3516,6 +3532,11 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
                 goto error;
             }
         }
+    }
+
+    /* check XPath dependencies */
+    if ((anyxml->when || anyxml->must_size) && (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
+        goto error;
     }
 
     return retval;
@@ -3687,6 +3708,11 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
         }
+    }
+
+    /* check XPath dependencies */
+    if ((leaf->when || leaf->must_size) && (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
+        goto error;
     }
 
     return retval;
@@ -3941,6 +3967,11 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
         if (unres_schema_add_str(module, unres, &llist->type, UNRES_TYPE_DFLT, llist->dflt[r]) == -1) {
             goto error;
         }
+    }
+
+    /* check XPath dependencies */
+    if ((llist->when || llist->must_size) && (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
+        goto error;
     }
 
     return retval;
@@ -4260,6 +4291,11 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
     }
 
+    /* check XPath dependencies */
+    if ((list->when || list->must_size) && (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
+        goto error;
+    }
+
     return retval;
 
 error:
@@ -4441,6 +4477,11 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
         }
 
         lyxml_free(module->ctx, sub);
+    }
+
+    /* check XPath dependencies */
+    if ((cont->when || cont->must_size) && (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
+        goto error;
     }
 
     return retval;
@@ -4719,6 +4760,11 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
         lyxml_free(module->ctx, sub);
     }
 
+    /* check XPath dependencies */
+    if (inout->must_size && (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
+        goto error;
+    }
+
     return retval;
 
 error:
@@ -4869,6 +4915,11 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
         }
 
         lyxml_free(module->ctx, sub);
+    }
+
+    /* check XPath dependencies */
+    if (notif->must_size && (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
+        goto error;
     }
 
     return retval;
@@ -5149,6 +5200,11 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     }
 
     if (unres_schema_add_node(module, unres, uses, UNRES_USES, NULL) == -1) {
+        goto error;
+    }
+
+    /* check XPath dependencies */
+    if (uses->when && (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
         goto error;
     }
 

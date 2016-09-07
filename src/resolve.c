@@ -4320,6 +4320,11 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
             *old_must = must;
             *old_size = size;
+
+            /* check XPath dependencies again */
+            if (unres_schema_add_node(node->module, unres, node, UNRES_XPATH, NULL) == -1) {
+                goto fail;
+            }
         }
 
         /* if-feature in leaf, leaf-list, list, container or anyxml */
@@ -4958,10 +4963,49 @@ resolve_must(struct lyd_node *node)
 }
 
 /**
+ * @brief Resolve (find) when condition schema context node. Does not log.
+ *
+ * @param[in] schema Schema node with the when condition.
+ * @param[out] ctx_snode When schema context node.
+ * @param[out] ctx_snode_type Schema context node type.
+ */
+void
+resolve_when_ctx_snode(const struct lys_node *schema, struct lys_node **ctx_snode, enum lyxp_node_type *ctx_snode_type)
+{
+    const struct lys_node *sparent;
+
+    /* find a not schema-only node */
+    *ctx_snode_type = LYXP_NODE_ELEM;
+    while (schema->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE | LYS_AUGMENT | LYS_INPUT | LYS_OUTPUT)) {
+        if (schema->nodetype == LYS_AUGMENT) {
+            sparent = ((struct lys_node_augment *)schema)->target;
+        } else {
+            sparent = schema->parent;
+        }
+        if (!sparent) {
+            /* context node is the document root (fake root in our case) */
+            if (schema->flags & LYS_CONFIG_W) {
+                *ctx_snode_type = LYXP_NODE_ROOT_CONFIG;
+            } else {
+                *ctx_snode_type = LYXP_NODE_ROOT_STATE;
+            }
+            /* move the fake root to the beginning of the list, if any */
+            while (schema->prev->next) {
+                schema = schema->prev;
+            }
+            break;
+        }
+        schema = sparent;
+    }
+
+    *ctx_snode = (struct lys_node *)schema;
+}
+
+/**
  * @brief Resolve (find) when condition context node. Does not log.
  *
  * @param[in] node Data node, whose conditional definition is being decided.
- * @param[in] schema Schema node with a when condition.
+ * @param[in] schema Schema node with the when condition.
  * @param[out] ctx_node Context node.
  * @param[out] ctx_node_type Context node type.
  *
@@ -4976,25 +5020,7 @@ resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema, struct lyd
     enum lyxp_node_type node_type;
     uint16_t i, data_depth, schema_depth;
 
-    /* find a not schema-only node */
-    node_type = LYXP_NODE_ELEM;
-    while (schema->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE | LYS_AUGMENT | LYS_INPUT | LYS_OUTPUT)) {
-        if (schema->nodetype == LYS_AUGMENT) {
-            sparent = ((struct lys_node_augment *)schema)->target;
-        } else {
-            sparent = schema->parent;
-        }
-        if (!sparent) {
-            /* context node is the document root (fake root in our case) */
-            if (schema->flags & LYS_CONFIG_W) {
-                node_type = LYXP_NODE_ROOT_CONFIG;
-            } else {
-                node_type = LYXP_NODE_ROOT_STATE;
-            }
-            break;
-        }
-        schema = sparent;
-    }
+    resolve_when_ctx_snode(schema, &schema, &node_type);
 
     /* get node depths */
     for (parent = node, data_depth = 0; parent; parent = parent->parent, ++data_depth);
@@ -5016,11 +5042,6 @@ resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema, struct lyd
         }
         if (node->schema != schema) {
             return -1;
-        }
-    } else {
-        /* special fake document root, move it to the beginning of the list, if any */
-        while (node && node->prev->next) {
-            node = node->prev;
         }
     }
 
@@ -5390,6 +5411,61 @@ cleanup:
 }
 
 /**
+ * @brief Check all XPath expressions of a node (when and must), set LYS_XPATH_DEP flag if required.
+ *
+ * @param[in] node Node to examine.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
+ */
+static int
+check_xpath(struct lys_node *node)
+{
+    struct lys_node *parent, *elem;
+    struct lyxp_set set;
+    uint32_t i;
+    int rc;
+
+    parent = node;
+    while (parent) {
+        if (parent->nodetype == LYS_GROUPING) {
+            /* unresolved grouping, skip for now */
+            return 0;
+        }
+        if (parent->nodetype == LYS_AUGMENT) {
+            if (!((struct lys_node_augment *)parent)->target) {
+                /* uresolved augment skip for now */
+                return 0;
+            } else {
+                parent = ((struct lys_node_augment *)parent)->target;
+                continue;
+            }
+        }
+        parent = parent->parent;
+    }
+
+    rc = lyxp_node_atomize(node, &set);
+    if (rc) {
+        return rc;
+    }
+
+    /* RPC, action can have neither must nor when */
+    for (parent = node; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT)); parent = lys_parent(parent));
+
+    if (parent) {
+        for (i = 0; i < set.used; ++i) {
+            for (elem = set.val.snodes[i].snode; elem && (elem != parent); elem = lys_parent(elem));
+            if (!elem) {
+                /* not in node's input, output, or, notification subtree, set the flag */
+                node->flags |= LYS_XPATH_DEP;
+                break;
+            }
+        }
+    }
+
+    free(set.val.snodes);
+    return EXIT_SUCCESS;
+}
+
+/**
  * @brief Resolve a single unres schema item. Logs indirectly.
  *
  * @param[in] mod Main module.
@@ -5601,6 +5677,10 @@ featurecheckdone:
     case UNRES_AUGMENT:
         rc = resolve_augment(item, NULL);
         break;
+    case UNRES_XPATH:
+        node = (struct lys_node *)item;
+        rc = check_xpath(node);
+        break;
     default:
         LOGINT;
         break;
@@ -5675,6 +5755,10 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
     case UNRES_AUGMENT:
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "augment target",
                ((struct lys_node_augment *)item)->target_name);
+        break;
+    case UNRES_XPATH:
+        LOGVRB("Resolving %s \"%s\" with the context node \"%s\" failed, it will be attempted later.", "XPath",
+               (char *)str_node, ((struct lys_node *)item)->name);
         break;
     default:
         LOGINT;

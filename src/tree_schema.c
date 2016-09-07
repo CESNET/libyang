@@ -2865,21 +2865,17 @@ lys_data_path_reverse(const struct lys_node *node, char * const buf, uint32_t bu
 #endif
 
 API struct ly_set *
-lys_xpath_atomize(const struct lys_node *cur_snode, const char *expr, int options)
+lys_xpath_atomize(const struct lys_node *cur_snode, enum lyxp_node_type cur_snode_type, const char *expr, int options)
 {
-    struct lyxp_set *set;
+    struct lyxp_set set;
     struct ly_set *ret_set;
     uint32_t i;
 
-    if (!cur_snode || !expr) {
+    if (!cur_snode || cur_snode->prev->next || !expr) {
         return NULL;
     }
 
-    set = calloc(1, sizeof *set);
-    if (!set) {
-        LOGMEM;
-        return NULL;
-    }
+    memset(&set, 0, sizeof set);
 
     if (options & LYXP_MUST) {
         options &= ~LYXP_MUST;
@@ -2891,32 +2887,97 @@ lys_xpath_atomize(const struct lys_node *cur_snode, const char *expr, int option
         options |= LYXP_SNODE;
     }
 
-    if (lyxp_atomize(expr, cur_snode, set, options)) {
-        free(set->val.snodes);
-        free(set);
+    if (lyxp_atomize(expr, cur_snode, cur_snode_type, &set, options)) {
+        free(set.val.snodes);
         return NULL;
     }
 
     ret_set = ly_set_new();
 
-    for (i = 0; i < set->used; ++i) {
-        switch (set->val.snodes[i].type) {
+    for (i = 0; i < set.used; ++i) {
+        switch (set.val.snodes[i].type) {
         case LYXP_NODE_ELEM:
-            if (ly_set_add(ret_set, set->val.snodes[i].snode, LY_SET_OPT_USEASLIST) == -1) {
+            if (ly_set_add(ret_set, set.val.snodes[i].snode, LY_SET_OPT_USEASLIST) == -1) {
                 ly_set_free(ret_set);
-                free(set->val.snodes);
-                free(set);
+                free(set.val.snodes);
                 return NULL;
             }
             break;
         default:
-            /* ignore roots, text and attr should not appear ever */
+            /* ignore roots, text and attr should not ever appear */
             break;
         }
     }
 
-    free(set->val.snodes);
-    free(set);
+    free(set.val.snodes);
+    return ret_set;
+}
+
+API struct ly_set *
+lys_node_xpath_atomize(const struct lys_node *node, int options)
+{
+    const struct lys_node *next, *elem, *parent, *tmp;
+    struct lyxp_set set;
+    struct ly_set *ret_set;
+    uint16_t i;
+
+    if (!node) {
+        return NULL;
+    }
+
+    for (parent = node; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT)); parent = lys_parent(parent));
+    if (!parent) {
+        /* not in input, output, or notification */
+        return NULL;
+    }
+
+    ret_set = ly_set_new();
+    if (ret_set) {
+        return NULL;
+    }
+
+    LY_TREE_DFS_BEGIN(node, next, elem) {
+        if ((options & LYXP_NO_LOCAL) && !(elem->flags & LYS_XPATH_DEP)) {
+            /* elem has no dependencies from other subtrees and local nodes get discarded */
+            goto next_iter;
+        }
+
+        if (lyxp_node_atomize(elem, &set)) {
+            ly_set_free(ret_set);
+            free(set.val.snodes);
+            return NULL;
+        }
+
+        for (i = 0; i < set.used; ++i) {
+            switch (set.val.snodes[i].type) {
+            case LYXP_NODE_ELEM:
+                if (options & LYXP_NO_LOCAL) {
+                    for (tmp = set.val.snodes[i].snode; tmp && (tmp != parent); tmp = lys_parent(tmp));
+                    if (tmp) {
+                        /* in local subtree, discard */
+                        break;
+                    }
+                }
+                if (ly_set_add(ret_set, set.val.snodes[i].snode, 0) == -1) {
+                    ly_set_free(ret_set);
+                    free(set.val.snodes);
+                    return NULL;
+                }
+                break;
+            default:
+                /* ignore roots, text and attr should not ever appear */
+                break;
+            }
+        }
+
+        free(set.val.snodes);
+        if (!(options & LYXP_RECURSIVE)) {
+            break;
+        }
+next_iter:
+        LY_TREE_DFS_END(node, next, elem);
+    }
+
     return ret_set;
 }
 

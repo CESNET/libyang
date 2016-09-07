@@ -154,22 +154,6 @@ enum lyxp_set_type {
 };
 
 /**
- * @brief Types of nodes that can be in an LYXP_SET_NODE_SET XPath set.
- */
-enum lyxp_node_type {
-    LYXP_NODE_ROOT_ALL,         /* access to all the data (node value first top-level node) */
-    LYXP_NODE_ROOT_CONFIG,      /* <running> data context (node value first top-level node) */
-    LYXP_NODE_ROOT_STATE,       /* <running> + state data context (node value first top-level node) */
-    LYXP_NODE_ROOT_NOTIF,       /* notification context (node value LYS_NOTIF) */
-    LYXP_NODE_ROOT_RPC,         /* RPC (input) context (node value LYS_RPC) */
-    LYXP_NODE_ROOT_OUTPUT,      /* RPC output-only context (node value LYS_RPC) */
-
-    LYXP_NODE_ELEM,
-    LYXP_NODE_TEXT,
-    LYXP_NODE_ATTR
-};
-
-/**
  * @brief XPath set - (partial) result.
  */
 struct lyxp_set {
@@ -237,6 +221,7 @@ int lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_
  *
  * @param[in] expr XPath expression to be evaluated. Must be in JSON format (prefixes are model names).
  * @param[in] cur_snode Current (context) schema node.
+ * @param[in] cur_snode_type Current (context) schema node type.
  * @param[out] set Result set. Must be valid and in the same libyang context as \p cur_snode.
  * To be safe, always either zero or cast the \p set to empty. After done using, either cast
  * the \p set to empty (if allocated statically) or free it (if allocated dynamically) to
@@ -248,7 +233,8 @@ int lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
-int lyxp_atomize(const char *expr, const struct lys_node *cur_snode, struct lyxp_set *set, int options);
+int lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_node_type cur_snode_type,
+                 struct lyxp_set *set, int options);
 
 /* these are used only internally */
 #define LYXP_SNODE 0x04
@@ -258,14 +244,16 @@ int lyxp_atomize(const char *expr, const struct lys_node *cur_snode, struct lyxp
 #define LYXP_SNODE_ALL 0x1C
 
 /**
- * @brief Check the syntax of an XPath expression \p expr. Since it's only syntactic,
- * node and function names may still be invalid.
+ * @brief Works like lyxp_atomize(), but it is executed on all the when and must expressions
+ * which the node has.
  *
- * @param[in] expr XPath expression to check.
+ * @param[in] node Node to examine.
+ * @param[in,out] set Resulting set of atoms merged from all the expressions.
+ * Will be cleared before use.
  *
- * @return EXIT_SUCCESS on pass, -1 on failure.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
-int lyxp_syntax_check(const char *expr);
+int lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set);
 
 /**
  * @brief Cast XPath set to another type.
@@ -286,5 +274,7 @@ int lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct 
  * @param[in] set Set to free.
  */
 void lyxp_set_free(struct lyxp_set *set);
+
+void lyxp_set_snode_merge(struct lyxp_set *set1, struct lyxp_set *set2);
 
 #endif /* _XPATH_H */

@@ -766,41 +766,6 @@ set_fill_set(struct lyxp_set *trg, struct lyxp_set *src)
 }
 
 static void
-set_snode_merge(struct lyxp_set *set1, struct lyxp_set *set2)
-{
-    uint32_t orig_used, i, j;
-
-    assert((set1->type == LYXP_SET_SNODE_SET) && (set2->type == LYXP_SET_SNODE_SET));
-
-    if (set1->used + set2->used > set1->size) {
-        set1->size = set1->used + set2->used;
-        set1->val.snodes = ly_realloc(set1->val.snodes, set1->size * sizeof *set1->val.snodes);
-        if (!set1->val.snodes) {
-            LOGMEM;
-            return;
-        }
-    }
-
-    orig_used = set1->used;
-
-    for (i = 0; i < set2->used; ++i) {
-        for (j = 0; j < orig_used; ++j) {
-            /* detect duplicities */
-            if (set1->val.snodes[j].snode == set2->val.snodes[i].snode) {
-                break;
-            }
-        }
-
-        if (j == orig_used) {
-            memcpy(&set1->val.snodes[set1->used], &set2->val.snodes[i], sizeof *set2->val.snodes);
-            ++set1->used;
-        }
-    }
-
-    free(set2->val.snodes);
-}
-
-static void
 set_snode_clear_ctx(struct lyxp_set *set)
 {
     uint32_t i;
@@ -4150,20 +4115,46 @@ xpath_true(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *UNUSED(c
  */
 
 /**
- * @brief Resolve and find a specific model.
+ * @brief Resolve and find a specific model. Does not log.
+ *
+ * \p cur_snode is required in 2 quite specific cases concerning
+ * XPath on schema. Problem is when we are parsing a submodule
+ * and referencing something in the main module or parsing
+ * a module importing another module that references back
+ * the original module. Then the target module is still being
+ * parsed and it not yet in the context - it fails to resolve.
+ * In these cases we can find the module using \p cur_snode.
  *
  * @param[in] mod_name_ns Either module name or namespace.
  * @param[in] mon_nam_ns_len Length of \p mod_name_ns.
  * @param[in] ctx libyang context.
+ * @param[in] cur_snode Current schema node, on data XPath leave NULL.
  * @param[in] is_name Whether \p mod_name_ns is module name (1) or namespace (0).
  *
  * @return Corresponding module or NULL on error.
  */
 static struct lys_module *
-moveto_resolve_model(const char *mod_name_ns, uint16_t mod_nam_ns_len, struct ly_ctx *ctx, int is_name)
+moveto_resolve_model(const char *mod_name_ns, uint16_t mod_nam_ns_len, struct ly_ctx *ctx, struct lys_node *cur_snode,
+                     int is_name)
 {
     uint16_t i;
     const char *str;
+    struct lys_module *mod;
+
+    if (cur_snode) {
+        mod = lys_node_module(cur_snode);
+        str = (is_name ? mod->name : mod->ns);
+        if (!strncmp(str, mod_name_ns, mod_nam_ns_len) && !str[mod_nam_ns_len]) {
+            return lys_node_module(cur_snode);
+        }
+
+        for (i = 0; i < mod->imp_size; ++i) {
+            str = (is_name ? mod->imp[i].module->name : mod->imp[i].module->ns);
+            if (!strncmp(str, mod_name_ns, mod_nam_ns_len) && !str[mod_nam_ns_len]) {
+                return mod->imp[i].module;
+            }
+        }
+    }
 
     for (i = 0; i < ctx->models.used; ++i) {
         str = (is_name ? ctx->models.list[i]->name : ctx->models.list[i]->ns);
@@ -4172,7 +4163,6 @@ moveto_resolve_model(const char *mod_name_ns, uint16_t mod_nam_ns_len, struct ly
         }
     }
 
-    LOGINT;
     return NULL;
 }
 
@@ -4473,8 +4463,9 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
     /* prefix */
     if ((ptr = strnchr(qname, ':', qname_len))) {
         pref_len = ptr - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, ctx, 1);
+        moveto_mod = moveto_resolve_model(qname, pref_len, ctx, NULL, 1);
         if (!moveto_mod) {
+            LOGINT;
             return -1;
         }
         qname += pref_len + 1;
@@ -4569,8 +4560,9 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
     /* prefix */
     if ((ptr = strnchr(qname, ':', qname_len))) {
         pref_len = ptr - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, ctx, 1);
+        moveto_mod = moveto_resolve_model(qname, pref_len, ctx, cur_node, 1);
         if (!moveto_mod) {
+            LOGINT;
             return -1;
         }
         qname += pref_len + 1;
@@ -4601,8 +4593,10 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
             assert((root_type == LYXP_NODE_ROOT_CONFIG) || (root_type == LYXP_NODE_ROOT_STATE)
                 || (root_type == LYXP_NODE_ROOT_ALL));
 
+            /* it can actually be in any module, it's all <running>, but we know it's moveto_mod (if set),
+             * so use it directly (root node itself is useless in this case) */
             sub = NULL;
-            while ((sub = lys_getnext(sub, NULL, lys_node_module(set->val.snodes[i].snode), 0))) {
+            while ((sub = lys_getnext(sub, NULL, (moveto_mod ? moveto_mod : lys_node_module(set->val.snodes[i].snode)), 0))) {
                 if (!moveto_snode_check(sub, root_type, name_dict, moveto_mod)) {
                     idx = set_snode_insert_node(set, sub, LYXP_NODE_ELEM);
                     /* we need to prevent these nodes to be considered in this moveto */
@@ -4678,8 +4672,9 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
     /* prefix */
     if (strnchr(qname, ':', qname_len) && cur_node) {
         pref_len = strnchr(qname, ':', qname_len) - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, cur_node->schema->module->ctx, 1);
+        moveto_mod = moveto_resolve_model(qname, pref_len, cur_node->schema->module->ctx, NULL, 1);
         if (!moveto_mod) {
+            LOGINT;
             return -1;
         }
         qname += pref_len + 1;
@@ -4819,8 +4814,9 @@ moveto_snode_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char
     /* prefix */
     if (strnchr(qname, ':', qname_len)) {
         pref_len = strnchr(qname, ':', qname_len) - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, ctx, 1);
+        moveto_mod = moveto_resolve_model(qname, pref_len, ctx, cur_node, 1);
         if (!moveto_mod) {
+            LOGINT;
             return -1;
         }
         qname += pref_len + 1;
@@ -4952,8 +4948,9 @@ moveto_attr(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
     /* prefix */
     if (strnchr(qname, ':', qname_len) && cur_node) {
         pref_len = strnchr(qname, ':', qname_len) - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, cur_node->schema->module->ctx, 1);
+        moveto_mod = moveto_resolve_model(qname, pref_len, cur_node->schema->module->ctx, NULL, 1);
         if (!moveto_mod) {
+            LOGINT;
             return -1;
         }
         qname += pref_len + 1;
@@ -5086,8 +5083,9 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
     /* prefix */
     if (strnchr(qname, ':', qname_len)) {
         pref_len = strnchr(qname, ':', qname_len) - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, cur_node->schema->module->ctx, 1);
+        moveto_mod = moveto_resolve_model(qname, pref_len, cur_node->schema->module->ctx, NULL, 1);
         if (!moveto_mod) {
+            LOGINT;
             return -1;
         }
         qname += pref_len + 1;
@@ -6790,7 +6788,7 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_n
 
         /* eval */
         if (options & LYXP_SNODE_ALL) {
-            set_snode_merge(set, &set2);
+            lyxp_set_snode_merge(set, &set2);
         } else if (moveto_union(set, &set2, cur_node, options)) {
             lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, options);
             lyxp_set_cast(&set2, LYXP_SET_EMPTY, cur_node, options);
@@ -6893,7 +6891,7 @@ eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_no
 
         /* eval */
         if (options & LYXP_SNODE_ALL) {
-            set_snode_merge(set, &set2);
+            lyxp_set_snode_merge(set, &set2);
             set_snode_clear_ctx(set);
         } else {
             if (moveto_op_math(set, &set2, &exp->expr[exp->expr_pos[this_op]], cur_node, options)) {
@@ -6986,7 +6984,7 @@ eval_additive_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
 
         /* eval */
         if (options & LYXP_SNODE_ALL) {
-            set_snode_merge(set, &set2);
+            lyxp_set_snode_merge(set, &set2);
             set_snode_clear_ctx(set);
         } else {
             if (moveto_op_math(set, &set2, &exp->expr[exp->expr_pos[this_op]], cur_node, options)) {
@@ -7081,7 +7079,7 @@ eval_relational_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *
 
         /* eval */
         if (options & LYXP_SNODE_ALL) {
-            set_snode_merge(set, &set2);
+            lyxp_set_snode_merge(set, &set2);
             set_snode_clear_ctx(set);
         } else {
             if (moveto_op_comp(set, &set2, &exp->expr[exp->expr_pos[this_op]], cur_node, options)) {
@@ -7173,7 +7171,7 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
 
         /* eval */
         if (options & LYXP_SNODE_ALL) {
-            set_snode_merge(set, &set2);
+            lyxp_set_snode_merge(set, &set2);
             set_snode_clear_ctx(set);
         } else {
             if (moveto_op_comp(set, &set2, &exp->expr[exp->expr_pos[this_op]], cur_node, options)) {
@@ -7271,7 +7269,7 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_nod
         /* eval - just get boolean value actually */
         if (set->type == LYXP_SET_SNODE_SET) {
             set_snode_clear_ctx(&set2);
-            set_snode_merge(set, &set2);
+            lyxp_set_snode_merge(set, &set2);
         } else {
             lyxp_set_cast(&set2, LYXP_SET_BOOLEAN, cur_node, options);
             set_fill_set(set, &set2);
@@ -7364,7 +7362,7 @@ eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, s
         /* eval - just get boolean value actually */
         if (set->type == LYXP_SET_SNODE_SET) {
             set_snode_clear_ctx(&set2);
-            set_snode_merge(set, &set2);
+            lyxp_set_snode_merge(set, &set2);
         } else {
             lyxp_set_cast(&set2, LYXP_SET_BOOLEAN, cur_node, options);
             set_fill_set(set, &set2);
@@ -7420,34 +7418,6 @@ lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_type
 
 finish:
     exp_free(exp);
-    return rc;
-}
-
-int
-lyxp_syntax_check(const char *expr)
-{
-    struct lyxp_expr *exp;
-    uint16_t exp_idx;
-    int rc = -1;
-
-    if (!expr) {
-        ly_errno = LY_EINVAL;
-        return -1;
-    }
-
-    exp = parse_expr(expr);
-    if (exp) {
-        exp_idx = 0;
-        rc = reparse_expr(exp, &exp_idx);
-        if (!rc && (exp->used > exp_idx)) {
-            LOGVAL(LYE_XPATH_INTOK, LY_VLOG_NONE, NULL, "Unknown", &exp->expr[exp->expr_pos[exp_idx]]);
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unparsed characters \"%s\" left at the end of an XPath expression.",
-                   &exp->expr[exp->expr_pos[exp_idx]]);
-            rc = -1;
-        }
-        exp_free(exp);
-    }
-
     return rc;
 }
 
@@ -7730,7 +7700,8 @@ lyxp_set_free(struct lyxp_set *set)
 }
 
 int
-lyxp_atomize(const char *expr, const struct lys_node *cur_snode, struct lyxp_set *set, int options)
+lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_node_type cur_snode_type,
+             struct lyxp_set *set, int options)
 {
     struct lyxp_expr *exp;
     uint16_t exp_idx = 0;
@@ -7758,7 +7729,7 @@ lyxp_atomize(const char *expr, const struct lys_node *cur_snode, struct lyxp_set
     exp_idx = 0;
     memset(set, 0, sizeof *set);
     set->type = LYXP_SET_SNODE_SET;
-    set_snode_insert_node(set, cur_snode, LYXP_NODE_ELEM);
+    set_snode_insert_node(set, cur_snode, cur_snode_type);
 
     rc = eval_expr(exp, &exp_idx, (struct lyd_node *)cur_snode, set, options);
     if (rc == -1) {
@@ -7768,4 +7739,151 @@ lyxp_atomize(const char *expr, const struct lys_node *cur_snode, struct lyxp_set
 finish:
     exp_free(exp);
     return rc;
+}
+
+int
+lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set)
+{
+    struct lys_node *ctx_snode;
+    enum lyxp_node_type ctx_snode_type;
+    struct lyxp_set tmp_set;
+    uint8_t must_size = 0;
+    uint32_t i;
+    struct lys_when *when = NULL;
+    struct lys_restr *must = NULL;
+
+    memset(&tmp_set, 0, sizeof tmp_set);
+    memset(set, 0, sizeof *set);
+
+    switch (node->nodetype) {
+    case LYS_CONTAINER:
+        when = ((struct lys_node_container *)node)->when;
+        must = ((struct lys_node_container *)node)->must;
+        must_size = ((struct lys_node_container *)node)->must_size;
+        break;
+    case LYS_CHOICE:
+        when = ((struct lys_node_choice *)node)->when;
+        break;
+    case LYS_LEAF:
+        when = ((struct lys_node_leaf *)node)->when;
+        must = ((struct lys_node_leaf *)node)->must;
+        must_size = ((struct lys_node_leaf *)node)->must_size;
+        break;
+    case LYS_LEAFLIST:
+        when = ((struct lys_node_leaflist *)node)->when;
+        must = ((struct lys_node_leaflist *)node)->must;
+        must_size = ((struct lys_node_leaflist *)node)->must_size;
+        break;
+    case LYS_LIST:
+        when = ((struct lys_node_list *)node)->when;
+        must = ((struct lys_node_list *)node)->must;
+        must_size = ((struct lys_node_list *)node)->must_size;
+        break;
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        when = ((struct lys_node_anydata *)node)->when;
+        must = ((struct lys_node_anydata *)node)->must;
+        must_size = ((struct lys_node_anydata *)node)->must_size;
+        break;
+    case LYS_CASE:
+        when = ((struct lys_node_case *)node)->when;
+        break;
+    case LYS_NOTIF:
+        must = ((struct lys_node_notif *)node)->must;
+        must_size = ((struct lys_node_notif *)node)->must_size;
+        break;
+    case LYS_INPUT:
+    case LYS_OUTPUT:
+        must = ((struct lys_node_inout *)node)->must;
+        must_size = ((struct lys_node_inout *)node)->must_size;
+        break;
+    case LYS_USES:
+        when = ((struct lys_node_uses *)node)->when;
+        break;
+    case LYS_AUGMENT:
+        when = ((struct lys_node_augment *)node)->when;
+        break;
+    default:
+        LOGINT;
+        return -1;
+    }
+
+    /* check "when" */
+    if (when) {
+        resolve_when_ctx_snode(node, &ctx_snode, &ctx_snode_type);
+        if (lyxp_atomize(when->cond, ctx_snode, ctx_snode_type, &tmp_set, LYXP_SNODE_WHEN)) {
+            free(tmp_set.val.snodes);
+            if ((ly_errno == LY_EVALID) && (ly_vecode == LYVE_XPATH_INSNODE)) {
+                return EXIT_FAILURE;
+            } else {
+                return -1;
+            }
+        }
+
+        lyxp_set_snode_merge(set, &tmp_set);
+        memset(&tmp_set, 0, sizeof tmp_set);
+    }
+
+    /* check "must" */
+    for (i = 0; i < must_size; ++i) {
+        if (lyxp_atomize(must[i].expr, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_MUST)) {
+            free(tmp_set.val.snodes);
+            free(set->val.snodes);
+            if ((ly_errno == LY_EVALID) && (ly_vecode == LYVE_XPATH_INSNODE)) {
+                return EXIT_FAILURE;
+            } else {
+                return -1;
+            }
+        }
+
+        lyxp_set_snode_merge(set, &tmp_set);
+        memset(&tmp_set, 0, sizeof tmp_set);
+    }
+
+    return EXIT_SUCCESS;
+}
+
+void
+lyxp_set_snode_merge(struct lyxp_set *set1, struct lyxp_set *set2)
+{
+    uint32_t orig_used, i, j;
+
+    assert(((set1->type == LYXP_SET_SNODE_SET) || (set1->type == LYXP_SET_EMPTY))
+        && ((set2->type == LYXP_SET_SNODE_SET) || (set2->type == LYXP_SET_EMPTY)));
+
+    if (set2->type == LYXP_SET_EMPTY) {
+        return;
+    }
+
+    if (set1->type == LYXP_SET_EMPTY) {
+        memcpy(set1, set2, sizeof *set1);
+        return;
+    }
+
+    if (set1->used + set2->used > set1->size) {
+        set1->size = set1->used + set2->used;
+        set1->val.snodes = ly_realloc(set1->val.snodes, set1->size * sizeof *set1->val.snodes);
+        if (!set1->val.snodes) {
+            LOGMEM;
+            return;
+        }
+    }
+
+    orig_used = set1->used;
+
+    for (i = 0; i < set2->used; ++i) {
+        for (j = 0; j < orig_used; ++j) {
+            /* detect duplicities */
+            if (set1->val.snodes[j].snode == set2->val.snodes[i].snode) {
+                break;
+            }
+        }
+
+        if (j == orig_used) {
+            memcpy(&set1->val.snodes[set1->used], &set2->val.snodes[i], sizeof *set2->val.snodes);
+            ++set1->used;
+        }
+    }
+
+    free(set2->val.snodes);
 }
