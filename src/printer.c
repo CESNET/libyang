@@ -454,8 +454,7 @@ trim_dfs_nextsibling:
     } else if (node->dflt && !(options & LYP_WD_MASK) && (node->schema->flags & LYS_CONFIG_W)) {
         /* LYP_WD_EXPLICIT
          * - print only if it contains status data in its subtree */
-        LY_TREE_DFS_BEGIN(node, next, elem)
-        {
+        LY_TREE_DFS_BEGIN(node, next, elem) {
             if (elem->schema->flags & LYS_CONFIG_R) {
                 flag = 1;
                 break;
