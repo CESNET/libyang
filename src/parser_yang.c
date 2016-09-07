@@ -925,6 +925,13 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             goto error;
         }
     }
+
+    /* check status */
+    if (lyp_check_status(typ->type->parent->flags, typ->type->parent->module, typ->type->parent->name,
+                         typ->type->der->flags, typ->type->der->module, typ->type->der->name, parent)) {
+        goto error;
+    }
+
     base = typ->base;
     typ->type->base = typ->type->der->type.base;
     if (base == 0) {

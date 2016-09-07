@@ -994,7 +994,7 @@ resolve_feature(const char *feat_name, uint16_t len, const struct lys_node *node
             if (!strncmp(name, node->module->features[j].name, nam_len) && !node->module->features[j].name[nam_len]) {
                 /* check status */
                 if (lyp_check_status(node->flags, lys_node_module(node), node->name, node->module->features[j].flags,
-                                     node->module->features[j].module, node->module->features[j].name, node)) {
+                                     node->module->features[j].module, node->module->features[j].name, NULL)) {
                     return -1;
                 }
                 *feature = &node->module->features[j];
@@ -1008,7 +1008,7 @@ resolve_feature(const char *feat_name, uint16_t len, const struct lys_node *node
         if (!strncmp(name, module->features[j].name, nam_len) && !module->features[j].name[nam_len]) {
             /* check status */
             if (lyp_check_status(node->flags, lys_node_module(node), node->name, module->features[j].flags,
-                                 module->features[j].module, module->features[j].name, node)) {
+                                 module->features[j].module, module->features[j].name, NULL)) {
                 return -1;
             }
             *feature = &module->features[j];
@@ -1028,7 +1028,7 @@ resolve_feature(const char *feat_name, uint16_t len, const struct lys_node *node
                 if (lyp_check_status(node->flags, lys_node_module(node), node->name,
                                      module->inc[i].submodule->features[j].flags,
                                      module->inc[i].submodule->features[j].module,
-                                     module->inc[i].submodule->features[j].name, node)) {
+                                     module->inc[i].submodule->features[j].name, NULL)) {
                     return -1;
                 }
                 *feature = &module->inc[i].submodule->features[j];
@@ -4598,12 +4598,8 @@ matchfound:
         }
 
         /* checks done, store the result */
-        ident->base[ident->base_size++] = base;
         *ret = base;
-
-        /* maintain backlinks to the derived identities */
-        return identity_backlink_update(ident, base) ? -1 : EXIT_SUCCESS;
-
+        return EXIT_SUCCESS;
     }
 
     /* base not found (maybe a forward reference) */
@@ -4685,6 +4681,13 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
         if (lyp_check_status(flags, mod, ident ? ident->name : "of type",
                              (*ret)->flags, (*ret)->module, (*ret)->name, NULL)) {
             rc = -1;
+        } else {
+            if (ident) {
+                ident->base[ident->base_size++] = *ret;
+
+                /* maintain backlinks to the derived identities */
+                rc = identity_backlink_update(ident, *ret) ? -1 : EXIT_SUCCESS;
+            }
         }
     } else if (rc == EXIT_FAILURE) {
         LOGVAL(LYE_INRESOLV, LY_VLOG_NONE, NULL, parent, basename);
