@@ -684,6 +684,18 @@ upper:
                 goto error;
             }
             c = tail;
+            if (*c == '.') {
+                c++;
+                if (type->base == LY_TYPE_UINT64) {
+                    strtoull(c, &tail, 10);
+                } else {
+                    strtoll(c, &tail, 10);
+                }
+                if (errno) {
+                    goto error;
+                }
+                c = tail;
+            }
             while (isspace(*c)) {
                 c++;
             }
@@ -713,6 +725,19 @@ upper:
             goto error;
         }
         c = tail;
+        if (*c == '.') {
+            errno = 0;
+            if (type->base == LY_TYPE_UINT64) {
+                strtoull(c, &tail, 10);
+            } else {
+                strtoll(c, &tail, 10);
+            }
+            if (errno) {
+                /* out of range value */
+                goto error;
+            }
+            c = tail;
+        }
         while (isspace(*c)) {
             c++;
         }

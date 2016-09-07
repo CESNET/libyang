@@ -1831,6 +1831,7 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
     uint64_t local_umin, local_umax;
     long double local_fmin, local_fmax;
     const char *seg_ptr, *ptr;
+    char *num_end;
     struct len_ran_intv *local_intv = NULL, *tmp_local_intv = NULL, *tmp_intv, *intv = NULL;
 
     switch (type->base) {
@@ -2005,19 +2006,14 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
         }
         if (isdigit(ptr[0]) || (ptr[0] == '+') || (ptr[0] == '-')) {
             if (kind == 0) {
-                tmp_local_intv->value.uval.min = atoll(ptr);
+                tmp_local_intv->value.uval.min = strtol(ptr, &num_end, 10);
             } else if (kind == 1) {
-                tmp_local_intv->value.sval.min = atoll(ptr);
+                tmp_local_intv->value.sval.min = strtol(ptr, &num_end, 10);
             } else if (kind == 2) {
-                tmp_local_intv->value.fval.min = atoll(ptr);
+                tmp_local_intv->value.fval.min = strtod(ptr, &num_end);
             }
 
-            if ((ptr[0] == '+') || (ptr[0] == '-')) {
-                ++ptr;
-            }
-            while (isdigit(ptr[0])) {
-                ++ptr;
-            }
+            ptr = num_end;
         } else if (!strncmp(ptr, "min", 3)) {
             if (kind == 0) {
                 tmp_local_intv->value.uval.min = local_umin;
@@ -2066,11 +2062,11 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
             /* max */
             if (isdigit(ptr[0]) || (ptr[0] == '+') || (ptr[0] == '-')) {
                 if (kind == 0) {
-                    tmp_local_intv->value.uval.max = atoll(ptr);
+                    tmp_local_intv->value.uval.max = strtol(ptr, &num_end, 10);
                 } else if (kind == 1) {
-                    tmp_local_intv->value.sval.max = atoll(ptr);
+                    tmp_local_intv->value.sval.max = strtol(ptr, &num_end, 10);
                 } else if (kind == 2) {
-                    tmp_local_intv->value.fval.max = atoll(ptr);
+                    tmp_local_intv->value.fval.max = strtod(ptr, &num_end);
                 }
             } else if (!strncmp(ptr, "max", 3)) {
                 if (kind == 0) {
