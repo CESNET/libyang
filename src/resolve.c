@@ -5831,11 +5831,6 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
                 continue;
             }
             resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
-
-            /* free the allocated resources */
-            if (unres->type[i] == UNRES_IFFEAT) {
-                free(*((char **)unres->item[i]));
-            }
         }
         return -1;
     }
@@ -5848,6 +5843,10 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
 
         rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
         if (rc == 0) {
+            if (unres->type[i] == UNRES_LIST_UNIQ) {
+                /* free the allocated structure */
+                free(unres->item[i]);
+            }
             unres->type[i] = UNRES_RESOLVED;
             ++resolved;
         } else if (rc == -1) {
@@ -5943,7 +5942,10 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
         if (type == UNRES_LIST_UNIQ) {
             /* free the allocated structure */
             free(item);
-        }
+        } else if (rc == -1 && type == UNRES_IFFEAT) {
+            /* free the allocated resources */
+            free(*((char **)item));
+         }
         return rc;
     } else {
         /* erase info about validation errors */
@@ -6091,6 +6093,9 @@ unres_schema_free_item(struct ly_ctx *ctx, struct unres_schema *unres, uint32_t 
         } else {
             lyxml_free(ctx, yin);
         }
+        break;
+    case UNRES_IFFEAT:
+        free(*((char **)unres->item[i]));
         break;
     case UNRES_IDENT:
     case UNRES_TYPE_IDENTREF:

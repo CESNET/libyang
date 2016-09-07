@@ -2245,6 +2245,7 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
   |  list_opt_stmt key_stmt { if (read_all) {
                                 if ($1.node.ptr_list->keys) {
                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_list, "key", "list");
+                                  free(s);
                                   YYABORT;
                                 }
                                 $1.node.ptr_list->keys = (struct lys_node_leaf **)s;
