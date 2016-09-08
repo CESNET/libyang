@@ -582,47 +582,6 @@ test_ly_ctx_get_node(void **state)
 }
 
 static void
-test_ly_ctx_get_node2(void **state)
-{
-    (void) state; /* unused */
-    const struct lys_node *node;
-    const char *nodeid1 = "/a:x/bubba";
-    const char *nodeid2 = "/b:x/bubba";
-    const char *nodeid3 = "/a:x/con/lef";
-
-    node = ly_ctx_get_node2(NULL, root->schema, nodeid1, 0);
-    if (node) {
-        fail();
-    }
-
-    node = ly_ctx_get_node2(ctx, root->schema, NULL, 0);
-    if (node) {
-        fail();
-    }
-
-    node = ly_ctx_get_node2(ctx, root->schema, nodeid1, 0);
-    if (!node) {
-        fail();
-    }
-
-    assert_string_equal("bubba", node->name);
-
-    node = ly_ctx_get_node2(ctx, root->schema, nodeid2, 0);
-    if (!node) {
-        fail();
-    }
-
-    assert_string_equal("bubba", node->name);
-
-    node = ly_ctx_get_node2(ctx, root->schema, nodeid3, 0);
-    if (!node) {
-        fail();
-    }
-
-    assert_string_equal("lef", node->name);
-}
-
-static void
 test_ly_set_new(void **state)
 {
     (void) state; /* unused */
@@ -859,7 +818,6 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule2, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_node, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_ly_ctx_get_node2, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_set_new, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_set_add, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_set_rm, setup_f, teardown_f),
