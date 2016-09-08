@@ -372,7 +372,10 @@ struct lys_type_info_bits {
 struct lys_type_info_dec64 {
     struct lys_restr *range; /**< range restriction (optional), see
                                   [RFC 6020 sec. 9.2.4](http://tools.ietf.org/html/rfc6020#section-9.2.4) */
-    uint8_t dig;             /**< fraction-digits restriction (mandatory) */
+    uint8_t dig;             /**< fraction-digits restriction (mandatory). Note that in case of types not directly
+                                  derived from built-in decimal64, dig is present even it cannot be specified in schema.
+                                  That's because the value is inherited for simpler access to the value and easier
+                                  manipulation with the decimal64 data */
     uint64_t div;            /**< auxiliary value for moving decimal point (dividing the stored value to get the real value) */
 };
 

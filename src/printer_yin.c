@@ -394,7 +394,7 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
             }
             break;
         case LY_TYPE_DEC64:
-            if (type->info.dec64.dig) {
+            if (!type->der->type.der) {
                 yin_print_unsigned(out, level, "fraction-digits", "value", type->info.dec64.dig);
             }
             if (type->info.dec64.range) {

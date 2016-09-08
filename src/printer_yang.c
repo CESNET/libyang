@@ -358,7 +358,7 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
         }
         break;
     case LY_TYPE_DEC64:
-        if (type->info.dec64.dig) {
+        if (!type->der->type.der) {
             yang_print_open(out, &flag);
             ly_print(out, "%*sfraction-digits %d;\n", LEVEL, INDENT, type->info.dec64.dig);
         }

@@ -289,7 +289,8 @@ info_print_type_detail(struct lyout *out, const struct lys_type *type, int uni)
         if (!uni) {
             info_print_text(out, (type->info.dec64.range ? type->info.dec64.range->expr : NULL), "Range: ");
             assert(type->info.dec64.dig);
-            ly_print(out, "%-*s%u\n", INDENT_LEN, "Frac dig: ", type->info.dec64.dig);
+            ly_print(out, "%-*s%u%s\n", INDENT_LEN, "Frac dig: ", type->info.dec64.dig,
+                     type->der->type.der ? " (derived)" : "");
         }
         break;
     case LY_TYPE_EMPTY:
