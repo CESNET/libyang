@@ -4376,8 +4376,19 @@ moveto_node_check(struct lyd_node *node, enum lyxp_node_type root_type, const ch
 
 static int
 moveto_snode_check(const struct lys_node *node, enum lyxp_node_type root_type, const char *node_name,
-                   struct lys_module *moveto_mod)
+                   struct lys_module *moveto_mod, int options)
 {
+    /* RPC input/output check */
+    if (options & LYXP_SNODE_OUTPUT) {
+        if (lys_parent(node) && (lys_parent(node)->nodetype == LYS_INPUT)) {
+            return -1;
+        }
+    } else {
+        if (lys_parent(node) && (lys_parent(node)->nodetype == LYS_OUTPUT)) {
+            return -1;
+        }
+    }
+
     /* module check */
     if (moveto_mod && (lys_node_module(node) != moveto_mod)) {
         return -1;
@@ -4583,7 +4594,7 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
 
         if ((set->val.snodes[i].type == LYXP_NODE_ROOT_NOTIF) || (set->val.snodes[i].type == LYXP_NODE_ROOT_RPC)) {
             assert((root_type == LYXP_NODE_ROOT_NOTIF) || (root_type == LYXP_NODE_ROOT_RPC));
-            if (!moveto_snode_check(set->val.snodes[i].snode, root_type, name_dict, moveto_mod)) {
+            if (!moveto_snode_check(set->val.snodes[i].snode, root_type, name_dict, moveto_mod, options)) {
                 set_snode_insert_node(set, set->val.snodes[i].snode, LYXP_NODE_ELEM);
                 /* replaced this node, it's fine */
             }
@@ -4597,7 +4608,7 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
              * so use it directly (root node itself is useless in this case) */
             sub = NULL;
             while ((sub = lys_getnext(sub, NULL, (moveto_mod ? moveto_mod : lys_node_module(set->val.snodes[i].snode)), 0))) {
-                if (!moveto_snode_check(sub, root_type, name_dict, moveto_mod)) {
+                if (!moveto_snode_check(sub, root_type, name_dict, moveto_mod, options)) {
                     idx = set_snode_insert_node(set, sub, LYXP_NODE_ELEM);
                     /* we need to prevent these nodes to be considered in this moveto */
                     if ((idx < orig_used) && (idx > i)) {
@@ -4611,7 +4622,7 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
         } else if (!(set->val.snodes[i].snode->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
             sub = NULL;
             while ((sub = lys_getnext(sub, set->val.snodes[i].snode, NULL, 0))) {
-                if (!moveto_snode_check(sub, root_type, name_dict, moveto_mod)) {
+                if (!moveto_snode_check(sub, root_type, name_dict, moveto_mod, options)) {
                     idx = set_snode_insert_node(set, sub, LYXP_NODE_ELEM);
                     if ((idx < orig_used) && (idx > i)) {
                         set->val.snodes[idx].in_ctx = 2;
@@ -4851,9 +4862,24 @@ moveto_snode_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char
                 /* valid node, but it is hidden in this context */
                 goto skip_children;
             }
-            if (elem->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT)) {
+            switch (elem->nodetype) {
+            case LYS_USES:
+            case LYS_CHOICE:
+            case LYS_CASE:
                 /* schema-only nodes */
                 goto next_iter;
+            case LYS_INPUT:
+                if (options & LYXP_SNODE_OUTPUT) {
+                    goto skip_children;
+                }
+                goto next_iter;
+            case LYS_OUTPUT:
+                if (!(options & LYXP_SNODE_OUTPUT)) {
+                    goto skip_children;
+                }
+                goto next_iter;
+            default:
+                break;
             }
 
             match = 1;
@@ -5271,6 +5297,17 @@ moveto_snode_self(struct lyxp_set *set, struct lys_node *cur_node, int all_desc,
         if (set->val.snodes[i].snode->nodetype & (LYS_LIST | LYS_CONTAINER)) {
             sub = NULL;
             while ((sub = lys_getnext(sub, set->val.snodes[i].snode, NULL, 0))) {
+                /* RPC input/output check */
+                if (options & LYXP_SNODE_OUTPUT) {
+                    if (lys_parent(sub)->nodetype == LYS_INPUT) {
+                        continue;
+                    }
+                } else {
+                    if (lys_parent(sub)->nodetype == LYS_OUTPUT) {
+                        continue;
+                    }
+                }
+
                 /* context check */
                 if (((root_type == LYXP_NODE_ROOT_RPC) && (sub->nodetype == LYS_OUTPUT))
                         || ((root_type == LYXP_NODE_ROOT_OUTPUT) && (sub->nodetype == LYS_INPUT))) {
@@ -7749,11 +7786,19 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set)
     struct lyxp_set tmp_set;
     uint8_t must_size = 0;
     uint32_t i;
+    int opts;
     struct lys_when *when = NULL;
     struct lys_restr *must = NULL;
 
     memset(&tmp_set, 0, sizeof tmp_set);
     memset(set, 0, sizeof *set);
+
+    /* check if we will be traversing RPC output */
+    opts = 0;
+    for (ctx_snode = lys_parent(node); ctx_snode && (ctx_snode->nodetype != LYS_OUTPUT); ctx_snode = lys_parent(ctx_snode));
+    if (ctx_snode) {
+        opts |= LYXP_SNODE_OUTPUT;
+    }
 
     switch (node->nodetype) {
     case LYS_CONTAINER:
@@ -7811,7 +7856,7 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set)
     /* check "when" */
     if (when) {
         resolve_when_ctx_snode(node, &ctx_snode, &ctx_snode_type);
-        if (lyxp_atomize(when->cond, ctx_snode, ctx_snode_type, &tmp_set, LYXP_SNODE_WHEN)) {
+        if (lyxp_atomize(when->cond, ctx_snode, ctx_snode_type, &tmp_set, LYXP_SNODE_WHEN | opts)) {
             free(tmp_set.val.snodes);
             if ((ly_errno == LY_EVALID) && (ly_vecode == LYVE_XPATH_INSNODE)) {
                 return EXIT_FAILURE;
@@ -7826,7 +7871,7 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set)
 
     /* check "must" */
     for (i = 0; i < must_size; ++i) {
-        if (lyxp_atomize(must[i].expr, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_MUST)) {
+        if (lyxp_atomize(must[i].expr, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_MUST | opts)) {
             free(tmp_set.val.snodes);
             free(set->val.snodes);
             if ((ly_errno == LY_EVALID) && (ly_vecode == LYVE_XPATH_INSNODE)) {

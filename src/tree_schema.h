@@ -1571,10 +1571,13 @@ const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys
  *
  * @param[in] node Context schema node if \p expr is relative, otherwise any node.
  * @param[in] expr XPath expression filtering the matching nodes.
+ * @param[in] options Bitmask of LYS_FIND_* options.
  * @return Set of found schema nodes. If no nodes are matching \p expr or the result
  * would be a number, a string, or a boolean, the returned set is empty. In case of an error, NULL is returned.
  */
-struct ly_set *lys_find_xpath(const struct lys_node *node, const char *expr);
+struct ly_set *lys_find_xpath(const struct lys_node *node, const char *expr, int options);
+
+#define LYS_FIND_OUTPUT 0x01 /**< lys_find_xpath() option to search RPC output nodes instead input ones */
 
 /**
  * @brief Types of context nodes, roots other than #LYXP_NODE_ROOT_ALL used only in when conditions.

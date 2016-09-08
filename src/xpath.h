@@ -240,6 +240,7 @@ int lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_n
 #define LYXP_SNODE 0x04
 #define LYXP_SNODE_MUST 0x08
 #define LYXP_SNODE_WHEN 0x10
+#define LYXP_SNODE_OUTPUT 0x20
 
 #define LYXP_SNODE_ALL 0x1C
 

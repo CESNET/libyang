@@ -2870,6 +2870,7 @@ lys_find_xpath(const struct lys_node *node, const char *expr, int options)
     struct lyxp_set set;
     struct ly_set *ret_set;
     uint32_t i;
+    int opts;
 
     if (!node || !expr) {
         ly_errno = LY_EINVAL;
@@ -2878,8 +2879,13 @@ lys_find_xpath(const struct lys_node *node, const char *expr, int options)
 
     memset(&set, 0, sizeof set);
 
+    opts = LYXP_SNODE;
+    if (options & LYS_FIND_OUTPUT) {
+        opts |= LYXP_SNODE_OUTPUT;
+    }
+
     /* node and nodetype won't matter at all since it is absolute */
-    if (lyxp_atomize(expr, node, LYXP_NODE_ELEM, &set, LYXP_SNODE)) {
+    if (lyxp_atomize(expr, node, LYXP_NODE_ELEM, &set, opts)) {
         free(set.val.snodes);
         return NULL;
     }
