@@ -1570,6 +1570,7 @@ const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys
  * @brief Types of context nodes, roots other than #LYXP_NODE_ROOT_ALL used only in when conditions.
  */
 enum lyxp_node_type {
+    /* XML document roots */
     LYXP_NODE_ROOT_ALL,         /* access to all the data (node value first top-level node) */
     LYXP_NODE_ROOT_CONFIG,      /* <running> data context (node value first top-level node) */
     LYXP_NODE_ROOT_STATE,       /* <running> + state data context (node value first top-level node) */
