@@ -13,7 +13,7 @@
   <leaf13>somebase64string</leaf13>
   <leaf14>ident1</leaf14>
   <leaf15/>
-  <leaf16>/cont1/leaf2</leaf16>
+  <leaf16 xmlns:all_mod="urn:all">/all_mod:cont1/all_mod:leaf2</leaf16>
   <leaf17>ident1</leaf17>
   <list1>
     <leaf18>key1</leaf18>

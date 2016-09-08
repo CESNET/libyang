@@ -14,7 +14,7 @@
     "leaf13": "somebase64string",
     "leaf14": "ident1",
     "leaf15": [null],
-    "leaf16": "/cont1/leaf2",
+    "leaf16": "/all:cont1/all:leaf2",
     "leaf17": "ident1",
     "list1": [
       {

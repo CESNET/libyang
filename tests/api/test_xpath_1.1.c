@@ -27,11 +27,11 @@ struct state {
 };
 
 static const char *data1 =
-"<top xmlns=\"urn:xpath-1.1\">"
+"<top xmlns=\"urn:xpath-1.1\" xmlns:xp=\"urn:xpath-1.1\">"
     "<str1>aabbcc</str1>"
     "<str2>aabb</str2>"
     "<lref>aabbcc</lref>"
-    "<instid>/top/str2</instid>"
+    "<instid>/xp:top/xp:str2</instid>"
     "<identref>ident1</identref>"
     "<enum>two</enum>"
     "<bits>flag1 flag3</bits>"

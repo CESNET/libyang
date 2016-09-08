@@ -836,9 +836,22 @@ int lyd_validate_leafref(struct lyd_node_leaf_list *leafref);
  * @brief Validate \p node data subtree.
  *
  * @param[in,out] node Data tree to be validated. In case the \p options does not includes #LYD_OPT_NOAUTODEL, libyang
- *                 can modify the provided tree including the root \p node.
+ *                     can modify the provided tree including the root \p node.
  * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
- * @param[in] ... libyang context for the data (used only in case the \p node is NULL, so in case of checking empty data tree).
+ * @param[in] ... Variable argument is optional and depends on \p options. If they include:
+ *                #LYD_OPT_DATA:
+ *                #LYD_OPT_CONFIG:
+ *                #LYD_OPT_GET:
+ *                #LYD_OPT_GETCONFIG:
+ *                #LYD_OPT_EDIT:
+ *                  - struct ly_ctx *ctx - context to use when \p node is NULL (for checking an empty tree).
+ *                #LYD_OPT_RPC:
+ *                #LYD_OPT_RPCREPLY:
+ *                #LYD_OPT_NOTIF:
+ *                  - const struct lyd_node *running - additional data tree that will be used when checking
+ *                                                     any "when" or "must" conditions in the \p node tree
+ *                                                     that require some nodes outside their subtree. It
+ *                                                     must start with a top-level element!
  * @return 0 on success, nonzero in case of an error.
  */
 int lyd_validate(struct lyd_node **node, int options, ...);
