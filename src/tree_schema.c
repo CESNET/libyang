@@ -2865,7 +2865,7 @@ lys_data_path_reverse(const struct lys_node *node, char * const buf, uint32_t bu
 #endif
 
 API struct ly_set *
-lys_xpath_node(const struct lys_node *node, const char *expr)
+lys_find_xpath(const struct lys_node *node, const char *expr, int options)
 {
     struct lyxp_set set;
     struct ly_set *ret_set;

@@ -797,7 +797,7 @@ int lyd_schema_sort(struct lyd_node *sibling, int recursive);
  * @return Set of found data nodes. If no nodes are matching \p expr or the result
  * would be a number, a string, or a boolean, the returned set is empty. In case of an error, NULL is returned.
  */
-struct ly_set *lyd_xpath_node(const struct lyd_node *data, const char *expr);
+struct ly_set *lyd_find_xpath(const struct lyd_node *data, const char *expr);
 
 /**
  * @brief Search in the given data for instances of the provided schema node.
@@ -809,7 +809,7 @@ struct ly_set *lyd_xpath_node(const struct lyd_node *data, const char *expr);
  * @return Set of found data nodes. If no data node is found, the returned set is empty.
  * In case of error, NULL is returned.
  */
-struct ly_set *lyd_find_node(const struct lyd_node *data, const struct lys_node *schema);
+struct ly_set *lyd_find_instance(const struct lyd_node *data, const struct lys_node *schema);
 
 /**
  * @brief Get the first sibling of the given node.

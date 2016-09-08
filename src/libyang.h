@@ -386,8 +386,8 @@ extern "C" {
  *
  * Functions List (not assigned to above subsections)
  * --------------------------------------------------
- * - lyd_xpath_node()
- * - lyd_find_node()
+ * - lyd_find_instance()
+ * - lyd_find_xpath()
  */
 
 /**
@@ -569,7 +569,7 @@ extern "C" {
  *
  * Internally, XPath evaluation is performed on \b when and \b must conditions in the schema. For that almost
  * a full XPath 1.0 evaluator was implemented except that only node sets are returned. This XPath implementation
- * is available on data trees by calling lyd_xpath_node() and on schema trees by calling lys_xpath_node().
+ * is available on data trees by calling lyd_find_xpath() and on schema trees by calling lys_find_xpath().
  * This XPath conforms to the YANG specification (RFC 6020 section 6.4). Some useful examples:
  *
  * - get all top-level nodes of the __module-name__
@@ -622,8 +622,8 @@ extern "C" {
  *
  * Functions List
  * --------------
- * - lyd_xpath_node()
- * - lys_xpath_node()
+ * - lyd_find_xpath()
+ * - lys_find_xpath()
  * - lyd_new_path()
  * - ly_ctx_get_node()
  */

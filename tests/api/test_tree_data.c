@@ -802,13 +802,13 @@ test_lyd_schema_sort(void **state)
 }
 
 static void
-test_lyd_xpath_node(void **state)
+test_lyd_find_xpath(void **state)
 {
     (void) state; /* unused */
     struct ly_set *set = NULL;
     struct lyd_node_leaf_list *result;
 
-    set = lyd_xpath_node(root->child, "/a:x/bubba");
+    set = lyd_find_xpath(root->child, "/a:x/bubba");
 
     struct lyd_node *node = *set->set.d;
     result = (struct lyd_node_leaf_list *) node;
@@ -818,13 +818,13 @@ test_lyd_xpath_node(void **state)
 }
 
 static void
-test_lyd_find_node(void **state)
+test_lyd_find_instance(void **state)
 {
     (void) state; /* unused */
     struct ly_set *set = NULL;
     struct lyd_node_leaf_list *result;
 
-    set = lyd_find_node(root->child, root->child->schema);
+    set = lyd_find_instance(root->child, root->child->schema);
     if (!set) {
         fail();
     }
@@ -1480,8 +1480,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lyd_insert_before, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_insert_after, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_schema_sort, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_lyd_xpath_node, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_lyd_find_node, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lyd_find_xpath, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lyd_find_instance, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_validate_leafref, setup_leafrefs, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_validate, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_unlink, setup_f, teardown_f),
