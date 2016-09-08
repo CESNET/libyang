@@ -276,6 +276,4 @@ int lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct 
  */
 void lyxp_set_free(struct lyxp_set *set);
 
-void lyxp_set_snode_merge(struct lyxp_set *set1, struct lyxp_set *set2);
-
 #endif /* _XPATH_H */

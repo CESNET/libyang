@@ -847,6 +847,52 @@ set_snode_dup_node_check(struct lyxp_set *set, const struct lys_node *node, enum
     return -1;
 }
 
+static void
+set_snode_merge(struct lyxp_set *set1, struct lyxp_set *set2)
+{
+    uint32_t orig_used, i, j;
+
+    assert(((set1->type == LYXP_SET_SNODE_SET) || (set1->type == LYXP_SET_EMPTY))
+        && ((set2->type == LYXP_SET_SNODE_SET) || (set2->type == LYXP_SET_EMPTY)));
+
+    if (set2->type == LYXP_SET_EMPTY) {
+        return;
+    }
+
+    if (set1->type == LYXP_SET_EMPTY) {
+        memcpy(set1, set2, sizeof *set1);
+        return;
+    }
+
+    if (set1->used + set2->used > set1->size) {
+        set1->size = set1->used + set2->used;
+        set1->val.snodes = ly_realloc(set1->val.snodes, set1->size * sizeof *set1->val.snodes);
+        if (!set1->val.snodes) {
+            LOGMEM;
+            return;
+        }
+    }
+
+    orig_used = set1->used;
+
+    for (i = 0; i < set2->used; ++i) {
+        for (j = 0; j < orig_used; ++j) {
+            /* detect duplicities */
+            if (set1->val.snodes[j].snode == set2->val.snodes[i].snode) {
+                break;
+            }
+        }
+
+        if (j == orig_used) {
+            memcpy(&set1->val.snodes[set1->used], &set2->val.snodes[i], sizeof *set2->val.snodes);
+            ++set1->used;
+        }
+    }
+
+    free(set2->val.snodes);
+    memset(set2, 0, sizeof *set2);
+}
+
 /**
  * @brief Insert a node into a set. Context position aware.
  *
@@ -6825,7 +6871,7 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_n
 
         /* eval */
         if (options & LYXP_SNODE_ALL) {
-            lyxp_set_snode_merge(set, &set2);
+            set_snode_merge(set, &set2);
         } else if (moveto_union(set, &set2, cur_node, options)) {
             lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, options);
             lyxp_set_cast(&set2, LYXP_SET_EMPTY, cur_node, options);
@@ -6928,7 +6974,7 @@ eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_no
 
         /* eval */
         if (options & LYXP_SNODE_ALL) {
-            lyxp_set_snode_merge(set, &set2);
+            set_snode_merge(set, &set2);
             set_snode_clear_ctx(set);
         } else {
             if (moveto_op_math(set, &set2, &exp->expr[exp->expr_pos[this_op]], cur_node, options)) {
@@ -7021,7 +7067,7 @@ eval_additive_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
 
         /* eval */
         if (options & LYXP_SNODE_ALL) {
-            lyxp_set_snode_merge(set, &set2);
+            set_snode_merge(set, &set2);
             set_snode_clear_ctx(set);
         } else {
             if (moveto_op_math(set, &set2, &exp->expr[exp->expr_pos[this_op]], cur_node, options)) {
@@ -7116,7 +7162,7 @@ eval_relational_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *
 
         /* eval */
         if (options & LYXP_SNODE_ALL) {
-            lyxp_set_snode_merge(set, &set2);
+            set_snode_merge(set, &set2);
             set_snode_clear_ctx(set);
         } else {
             if (moveto_op_comp(set, &set2, &exp->expr[exp->expr_pos[this_op]], cur_node, options)) {
@@ -7208,7 +7254,7 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
 
         /* eval */
         if (options & LYXP_SNODE_ALL) {
-            lyxp_set_snode_merge(set, &set2);
+            set_snode_merge(set, &set2);
             set_snode_clear_ctx(set);
         } else {
             if (moveto_op_comp(set, &set2, &exp->expr[exp->expr_pos[this_op]], cur_node, options)) {
@@ -7306,7 +7352,7 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_nod
         /* eval - just get boolean value actually */
         if (set->type == LYXP_SET_SNODE_SET) {
             set_snode_clear_ctx(&set2);
-            lyxp_set_snode_merge(set, &set2);
+            set_snode_merge(set, &set2);
         } else {
             lyxp_set_cast(&set2, LYXP_SET_BOOLEAN, cur_node, options);
             set_fill_set(set, &set2);
@@ -7399,7 +7445,7 @@ eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, s
         /* eval - just get boolean value actually */
         if (set->type == LYXP_SET_SNODE_SET) {
             set_snode_clear_ctx(&set2);
-            lyxp_set_snode_merge(set, &set2);
+            set_snode_merge(set, &set2);
         } else {
             lyxp_set_cast(&set2, LYXP_SET_BOOLEAN, cur_node, options);
             set_fill_set(set, &set2);
@@ -7865,7 +7911,7 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set)
             }
         }
 
-        lyxp_set_snode_merge(set, &tmp_set);
+        set_snode_merge(set, &tmp_set);
         memset(&tmp_set, 0, sizeof tmp_set);
     }
 
@@ -7881,54 +7927,9 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set)
             }
         }
 
-        lyxp_set_snode_merge(set, &tmp_set);
+        set_snode_merge(set, &tmp_set);
         memset(&tmp_set, 0, sizeof tmp_set);
     }
 
     return EXIT_SUCCESS;
-}
-
-void
-lyxp_set_snode_merge(struct lyxp_set *set1, struct lyxp_set *set2)
-{
-    uint32_t orig_used, i, j;
-
-    assert(((set1->type == LYXP_SET_SNODE_SET) || (set1->type == LYXP_SET_EMPTY))
-        && ((set2->type == LYXP_SET_SNODE_SET) || (set2->type == LYXP_SET_EMPTY)));
-
-    if (set2->type == LYXP_SET_EMPTY) {
-        return;
-    }
-
-    if (set1->type == LYXP_SET_EMPTY) {
-        memcpy(set1, set2, sizeof *set1);
-        return;
-    }
-
-    if (set1->used + set2->used > set1->size) {
-        set1->size = set1->used + set2->used;
-        set1->val.snodes = ly_realloc(set1->val.snodes, set1->size * sizeof *set1->val.snodes);
-        if (!set1->val.snodes) {
-            LOGMEM;
-            return;
-        }
-    }
-
-    orig_used = set1->used;
-
-    for (i = 0; i < set2->used; ++i) {
-        for (j = 0; j < orig_used; ++j) {
-            /* detect duplicities */
-            if (set1->val.snodes[j].snode == set2->val.snodes[i].snode) {
-                break;
-            }
-        }
-
-        if (j == orig_used) {
-            memcpy(&set1->val.snodes[set1->used], &set2->val.snodes[i], sizeof *set2->val.snodes);
-            ++set1->used;
-        }
-    }
-
-    free(set2->val.snodes);
 }
