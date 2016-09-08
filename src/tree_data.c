@@ -4362,23 +4362,28 @@ uniquecheck:
         }
 
         /* compare keys */
-        for (i = 0; i < slist->keys_size; i++) {
-            snode = (struct lys_node *)slist->keys[i];
-            val1 = val2 = NULL;
-            LY_TREE_FOR(first->child, diter) {
-                if (diter->schema == snode) {
-                    val1 = ((struct lyd_node_leaf_list *)diter)->value_str;
-                    break;
+        if (!slist->keys_size) {
+            /* status lists without keys */
+            return 0;
+        } else {
+            for (i = 0; i < slist->keys_size; i++) {
+                snode = (struct lys_node *)slist->keys[i];
+                val1 = val2 = NULL;
+                LY_TREE_FOR(first->child, diter) {
+                    if (diter->schema == snode) {
+                        val1 = ((struct lyd_node_leaf_list *)diter)->value_str;
+                        break;
+                    }
                 }
-            }
-            LY_TREE_FOR(second->child, diter) {
-                if (diter->schema == snode) {
-                    val2 = ((struct lyd_node_leaf_list *)diter)->value_str;
-                    break;
+                LY_TREE_FOR(second->child, diter) {
+                    if (diter->schema == snode) {
+                        val2 = ((struct lyd_node_leaf_list *)diter)->value_str;
+                        break;
+                    }
                 }
-            }
-            if (!ly_strequal(val1, val2, 1)) {
-                return 0;
+                if (!ly_strequal(val1, val2, 1)) {
+                    return 0;
+                }
             }
         }
 
