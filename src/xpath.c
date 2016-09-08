@@ -5710,7 +5710,7 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
             }
 
             if (!rc && set && (options & LYXP_SNODE_ALL)) {
-                for (i = set->used - 1; i > -1; ++i) {
+                for (i = set->used - 1; i > -1; --i) {
                     if (set->val.snodes[i].in_ctx) {
                         break;
                     }
