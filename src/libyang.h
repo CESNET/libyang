@@ -568,8 +568,8 @@ extern "C" {
  * @page howtoxpath XPath Addressing
  *
  * Internally, XPath evaluation is performed on \b when and \b must conditions in the schema. For that almost
- * a full XPath 1.0 evaluator was implemented. This XPath implementation is available on data trees by calling
- * lyd_xpath_node() and on schema trees by calling lys_xpath_node() except that only node sets are returned.
+ * a full XPath 1.0 evaluator was implemented except that only node sets are returned. This XPath implementation
+ * is available on data trees by calling lyd_xpath_node() and on schema trees by calling lys_xpath_node().
  * This XPath conforms to the YANG specification (RFC 6020 section 6.4). Some useful examples:
  *
  * - get all top-level nodes of the __module-name__
