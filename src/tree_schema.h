@@ -1099,7 +1099,7 @@ struct lys_node_case {
  * ::lys_node#dsc, ::lys_node#ref, ::lys_node#flags and ::lys_node#nacm were replaced by empty bytes in fill arrays.
  * The reason to keep these useless bytes in the structure is to keep the #nodetype, #parent, #child, #next and #prev
  * members accessible when functions are using the object via a generic ::lyd_node structure. But note that the
- * ::lys_node#features_size is replaced by the #tpdf_size member and ::lys_node#features is replaced by the #tpdf
+ * ::lys_node#iffeature_size is replaced by the #tpdf_size member and ::lys_node#iffeature is replaced by the #tpdf
  * member.
  *
  */
