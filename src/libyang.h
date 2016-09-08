@@ -614,7 +614,7 @@ extern "C" {
  *     /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision]/submodules
  *
  * Also, `choice`, `case`, `input`, and `output` nodes need to be specified and cannot be skipped in schema XPaths. Use
- * ly_ctx_get_node2() if you want to search based on a data XPath, the same format as what lyd_new_path() uses.
+ * lys_find_xpath() if you want to search based on a data XPath.
  *
  * Also note, that in all cases the node's prefix is specified as the name of the appropriate YANG schema. Any node
  * can be prefixed by the module name. However, if the prefix is omitted, the module name is inherited from the previous
@@ -626,7 +626,6 @@ extern "C" {
  * - lys_xpath_node()
  * - lyd_new_path()
  * - ly_ctx_get_node()
- * - ly_ctx_get_node2()
  */
 
 /**
@@ -925,30 +924,6 @@ const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_
  * @return Resolved schema node or NULL.
  */
 const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid);
-
-/**
- * @brief Get schema node according to the given data node identifier in JSON format.
- *
- * The functionality is almost the same as ly_ctx_get_node(), but this function accepts
- * the data node identifier format (skipped choices, cases, inputs, and outputs). Examples:
- *
- * /ietf-netconf-monitoring:get-schema/identifier
- * /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/ip
- *
- * Since input and output is skipped, there could arise ambiguities if one RPC input
- * contains a parameter with the same name as is in output, hence the flag.
- *
- * Predicates on lists are accepted (ignored) in the form of "<key>(=<value>)"
- * and on leaves/leaf-lists ".(=<value>)".
- *
- * @param[in] ctx Context to work in.
- * @param[in] start Starting node for a relative schema node identifier, in which
- * case it is mandatory.
- * @param[in] nodeid JSON schema node identifier.
- * @param[in] rpc_output Whether to search in RPC output parameters instead input ones.
- * @return Resolved schema node or NULL.
- */
-const struct lys_node *ly_ctx_get_node2(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid, int rpc_output);
 
 /**
  * @brief Free all internal structures of the specified context.

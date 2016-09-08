@@ -1838,10 +1838,9 @@ resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_
     return 0;
 }
 
-/* cannot return LYS_GROUPING, LYS_AUGMENT, LYS_USES, logs directly
- * data_nodeid - 0 schema nodeid, 1 - data nodeid with RPC input, 2 - data nodeid with RPC output */
+/* cannot return LYS_GROUPING, LYS_AUGMENT, LYS_USES, logs directly */
 const struct lys_node *
-resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start, int data_nodeid)
+resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start)
 {
     char *module_name = ly_buf(), *buf_backup = NULL, *str;
     const char *name, *mod_name, *id;
@@ -1919,18 +1918,10 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 
     while (1) {
         sibling = NULL;
-        while ((sibling = lys_getnext(sibling, lys_parent(start), module, (data_nodeid ?
-                0 : LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT)))) {
+        while ((sibling = lys_getnext(sibling, lys_parent(start), module,
+                LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
-
-                /* data RPC input/output check */
-                if ((data_nodeid == 1) && lys_parent(sibling) && (lys_parent(sibling)->nodetype == LYS_OUTPUT)) {
-                    continue;
-                } else if ((data_nodeid == 2) && lys_parent(sibling) && (lys_parent(sibling)->nodetype == LYS_INPUT)) {
-                    continue;
-                }
-
                 /* module check */
                 if (mod_name) {
                     if (mod_name_len > LY_BUF_SIZE - 1) {
@@ -1989,7 +1980,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
                 }
 
                 /* check for shorthand cases - then 'start' does not change */
-                if (!data_nodeid && lys_parent(sibling) && (lys_parent(sibling)->nodetype == LYS_CHOICE) && (sibling->nodetype != LYS_CASE)) {
+                if (lys_parent(sibling) && (lys_parent(sibling)->nodetype == LYS_CHOICE) && (sibling->nodetype != LYS_CASE)) {
                     shorthand = ~shorthand;
                 }
 
@@ -2006,7 +1997,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
                     return sibling;
                 }
 
-                if (data_nodeid || !shorthand) {
+                if (!shorthand) {
                     /* move down the tree, if possible */
                     if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
                         LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
