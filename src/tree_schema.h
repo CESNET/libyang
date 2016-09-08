@@ -1567,6 +1567,16 @@ const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys
 #define LYS_GETNEXT_INTONPCONT   0x40 /**< lys_getnext() option to look into non-presence container, instead of returning container itself */
 
 /**
+ * @brief Search for schema nodes matching the provided XPath expression.
+ *
+ * @param[in] node Context schema node if \p expr is relative, otherwise any node.
+ * @param[in] expr XPath expression filtering the matching nodes.
+ * @return Set of found schema nodes. If no nodes are matching \p expr or the result
+ * would be a number, a string, or a boolean, the returned set is empty. In case of an error, NULL is returned.
+ */
+struct ly_set *lys_xpath_node(const struct lys_node *node, const char *expr);
+
+/**
  * @brief Types of context nodes, roots other than #LYXP_NODE_ROOT_ALL used only in when conditions.
  */
 enum lyxp_node_type {

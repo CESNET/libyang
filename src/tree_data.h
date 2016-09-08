@@ -785,20 +785,19 @@ int lyd_schema_sort(struct lyd_node *sibling, int recursive);
 /**
  * @brief Search in the given data for instances of nodes matching the provided XPath expression.
  *
- * The \p data is used to find the data root and function then searches in the whole tree and all sibling trees.
  * The XPath expression is evaluated on data -> skip all non-data nodes (input, output, choice, case).
  *
  * Expr examples:
  *      "/ietf-yang-library:modules-state/module[name = 'ietf-yang-library']/namespace"
  *      "/ietf-netconf:get-config/source"
  *
- * @param[in] data Node in the data tree considered the context node. If the node is a configuration one,
- * any state nodes in its tree are not accessible!
+ * @param[in] data Node in the data tree considered the context node if \p expr is relative,
+ * otherwise any node.
  * @param[in] expr XPath expression filtering the matching nodes.
- * @return Set of found data nodes (use dset member of ::ly_set). If no nodes are matching \p expr or the result
+ * @return Set of found data nodes. If no nodes are matching \p expr or the result
  * would be a number, a string, or a boolean, the returned set is empty. In case of an error, NULL is returned.
  */
-struct ly_set *lyd_get_node(const struct lyd_node *data, const char *expr);
+struct ly_set *lyd_xpath_node(const struct lyd_node *data, const char *expr);
 
 /**
  * @brief Search in the given data for instances of the provided schema node.
@@ -807,10 +806,10 @@ struct ly_set *lyd_get_node(const struct lyd_node *data, const char *expr);
  *
  * @param[in] data A node in the data tree to search.
  * @param[in] schema Schema node of the data nodes caller want to find.
- * @return Set of found data nodes (use dset member of ::ly_set). If no data node is found, the returned set is empty.
+ * @return Set of found data nodes. If no data node is found, the returned set is empty.
  * In case of error, NULL is returned.
  */
-struct ly_set *lyd_get_node2(const struct lyd_node *data, const struct lys_node *schema);
+struct ly_set *lyd_find_node(const struct lyd_node *data, const struct lys_node *schema);
 
 /**
  * @brief Get the first sibling of the given node.

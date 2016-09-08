@@ -2865,6 +2865,52 @@ lys_data_path_reverse(const struct lys_node *node, char * const buf, uint32_t bu
 #endif
 
 API struct ly_set *
+lys_xpath_node(const struct lys_node *node, const char *expr)
+{
+    struct lyxp_set set;
+    struct ly_set *ret_set;
+    uint32_t i;
+
+    if (!node || !expr) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    memset(&set, 0, sizeof set);
+
+    /* node and nodetype won't matter at all since it is absolute */
+    if (lyxp_atomize(expr, node, LYXP_NODE_ELEM, &set, LYXP_SNODE)) {
+        free(set.val.snodes);
+        return NULL;
+    }
+
+    ret_set = ly_set_new();
+
+    for (i = 0; i < set.used; ++i) {
+        if (!set.val.snodes[i].in_ctx) {
+            continue;
+        }
+        assert(set.val.snodes[i].in_ctx == 1);
+
+        switch (set.val.snodes[i].type) {
+        case LYXP_NODE_ELEM:
+            if (ly_set_add(ret_set, set.val.snodes[i].snode, LY_SET_OPT_USEASLIST) == -1) {
+                ly_set_free(ret_set);
+                free(set.val.snodes);
+                return NULL;
+            }
+            break;
+        default:
+            /* ignore roots, text and attr should not ever appear */
+            break;
+        }
+    }
+
+    free(set.val.snodes);
+    return ret_set;
+}
+
+API struct ly_set *
 lys_xpath_atomize(const struct lys_node *cur_snode, enum lyxp_node_type cur_snode_type, const char *expr, int options)
 {
     struct lyxp_set set;

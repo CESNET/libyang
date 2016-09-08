@@ -3604,7 +3604,7 @@ lyd_unlink_internal(struct lyd_node *node, int permanent)
             if ((iter->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && iter->schema->child) {
                 set = (struct ly_set *)iter->schema->child;
                 for (i = 0; i < set->number; i++) {
-                    data = lyd_get_node2(iter, set->set.s[i]);
+                    data = lyd_find_node(iter, set->set.s[i]);
                     if (data) {
                         for (j = 0; j < data->number; j++) {
                             if (((struct lyd_node_leaf_list *)data->set.d[j])->value.leafref == iter) {
@@ -4092,7 +4092,7 @@ lyd_get_unique_default(const char* unique_expr, struct lyd_node *list)
         case LYS_CONTAINER:
             if (last) {
                 /* find instance in the data */
-                r = lyd_get_node(last, parent->name);
+                r = lyd_xpath_node(last, parent->name);
                 if (!r || r->number > 1) {
                     ly_set_free(r);
                     LOGINT;
@@ -4393,7 +4393,7 @@ uniquecheck:
 }
 
 API struct ly_set *
-lyd_get_node(const struct lyd_node *data, const char *expr)
+lyd_xpath_node(const struct lyd_node *data, const char *expr)
 {
     struct lyxp_set xp_set;
     struct ly_set *set;
@@ -4434,7 +4434,7 @@ lyd_get_node(const struct lyd_node *data, const char *expr)
 }
 
 API struct ly_set *
-lyd_get_node2(const struct lyd_node *data, const struct lys_node *schema)
+lyd_find_node(const struct lyd_node *data, const struct lys_node *schema)
 {
     struct ly_set *ret, *ret_aux, *spath;
     const struct lys_node *siter;

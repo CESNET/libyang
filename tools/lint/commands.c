@@ -591,7 +591,7 @@ cmd_xpath(const char *arg)
         goto cleanup;
     }
 
-    if (!(set = lyd_get_node(data, expr))) {
+    if (!(set = lyd_xpath_node(data, expr))) {
         goto cleanup;
     }
 
