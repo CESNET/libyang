@@ -99,13 +99,13 @@ TEST_LEAFLIST_ORDERED(void **state)
 
         for (j = 0; j < TEST_DATA_FILE_COUNT; ++j) {
             sprintf(buf, TESTS_DIR "/conformance/" TEST_DIR "/data%d.xml", j + 1);
-            st->node = lyd_parse_path(st->ctx, buf, LYD_XML, LYD_OPT_CONFIG | LYD_WD_ALL);
+            st->node = lyd_parse_path(st->ctx, buf, LYD_XML, LYD_OPT_CONFIG);
             if (data_files_fail[j]) {
                 assert_ptr_equal(st->node, NULL);
             } else {
                 assert_ptr_not_equal(st->node, NULL);
                 if (data_ordered_user[j]) {
-                    lyd_print_mem(&st->s, st->node, LYD_XML, LYP_WITHSIBLINGS);
+                    lyd_print_mem(&st->s, st->node, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL);
                     assert_ptr_not_equal(strstr(st->s, user_data), NULL);
                     free(st->s);
                     st->s = NULL;
