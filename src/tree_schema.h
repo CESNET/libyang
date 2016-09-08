@@ -1580,17 +1580,14 @@ struct ly_set *lys_find_xpath(const struct lys_node *node, const char *expr, int
 #define LYS_FIND_OUTPUT 0x01 /**< lys_find_xpath() option to search RPC output nodes instead input ones */
 
 /**
- * @brief Types of context nodes, roots other than #LYXP_NODE_ROOT_ALL used only in when conditions.
+ * @brief Types of context nodes, #LYXP_NODE_ROOT_CONFIG used only in when or must conditions.
  */
 enum lyxp_node_type {
     /* XML document roots */
-    LYXP_NODE_ROOT_ALL,         /* access to all the data (node value first top-level node) */
-    LYXP_NODE_ROOT_CONFIG,      /* <running> data context (node value first top-level node) */
-    LYXP_NODE_ROOT_STATE,       /* <running> + state data context (node value first top-level node) */
-    LYXP_NODE_ROOT_NOTIF,       /* notification context (node value LYS_NOTIF) */
-    LYXP_NODE_ROOT_RPC,         /* RPC (input) context (node value LYS_RPC) */
-    LYXP_NODE_ROOT_OUTPUT,      /* RPC output-only context (node value LYS_RPC) */
+    LYXP_NODE_ROOT,             /* access to all the data (node value first top-level node) */
+    LYXP_NODE_ROOT_CONFIG,      /* <running> data context, no state data (node value first top-level node) */
 
+    /* XML elements */
     LYXP_NODE_ELEM,             /* XML element (most common) */
     LYXP_NODE_TEXT,             /* XML text element (extremely specific use, unlikely to be ever needed) */
     LYXP_NODE_ATTR              /* XML attribute (in YANG cannot happen, do not use for the context node) */
@@ -1600,7 +1597,7 @@ enum lyxp_node_type {
  * @brief Get all the partial XPath nodes (atoms) that are required for \p expr to be evaluated.
  *
  * @param[in] cur_snode Current (context) schema node. Fake roots are distinguished using \p cur_snode_type
- * and must be first in the sibling list.
+ * and then this node can be any node from the module (so, for example, do not put node added by an augment from another module).
  * @param[in] cur_snode_type Current (context) schema node type. Most commonly is #LYXP_NODE_ELEM, but if
  * your context node is supposed to be the root, you can specify what kind of root it is.
  * @param[in] expr XPath expression to be evaluated. Must be in JSON data format (prefixes are model names).

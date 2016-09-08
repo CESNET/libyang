@@ -200,8 +200,8 @@ struct lyxp_set {
  * for but not restricted to evaluation with the LYXP_WHEN flag).
  * @param[in] cur_node_type Current (context) data node type. For every standard case use #LYXP_NODE_ELEM. But there are
  * cases when the context node \p cur_node is actually supposed to be the XML root, there is no such data node. So, in
- * this case just pass any top-level node into \p cur_node and use an enum value for this kind of root
- * (#LYXP_NODE_ROOT_STATE if \p cur_node has config false and so on). #LYXP_NODE_TEXT and #LYXP_NODE_ATTR can also be used,
+ * this case just pass the first top-level node into \p cur_node and use an enum value for this kind of root
+ * (#LYXP_NODE_ROOT_CONFIG if \p cur_node has config true, otherwise #LYXP_NODE_ROOT). #LYXP_NODE_TEXT and #LYXP_NODE_ATTR can also be used,
  * but there are no use-cases in YANG.
  * @param[out] set Result set. Must be valid and in the same libyang context as \p cur_node.
  * To be safe, always either zero or cast the \p set to empty. After done using, either cast
@@ -230,6 +230,7 @@ int lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_
  * LYXP_SNODE - no special data tree access modifiers.
  * LYXP_SNODE_MUST - apply must data tree access restrictions.
  * LYXP_SNODE_WHEN - apply when data tree access restrictions.
+ * LYXP_SNODE_OUTPUT - search RPC/action output instead input
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */

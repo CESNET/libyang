@@ -2923,8 +2923,15 @@ lys_xpath_atomize(const struct lys_node *cur_snode, enum lyxp_node_type cur_snod
     struct ly_set *ret_set;
     uint32_t i;
 
-    if (!cur_snode || cur_snode->prev->next || !expr) {
+    if (!cur_snode || !expr) {
         return NULL;
+    }
+
+    /* adjust the root */
+    if ((cur_snode_type == LYXP_NODE_ROOT) || (cur_snode_type == LYXP_NODE_ROOT_CONFIG)) {
+        do {
+            cur_snode = lys_getnext(NULL, NULL, lys_node_module(cur_snode), 0);
+        } while ((cur_snode_type == LYXP_NODE_ROOT_CONFIG) && (cur_snode->flags & LYS_CONFIG_R));
     }
 
     memset(&set, 0, sizeof set);
