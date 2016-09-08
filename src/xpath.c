@@ -5537,7 +5537,7 @@ moveto_snode_parent(struct lyxp_set *set, struct lys_node *cur_node, int all_des
                 new_type = LYXP_NODE_ROOT_STATE;
             }
 #ifndef NDEBUG
-            for (; node->prev->next; node = node->prev);
+            node = (struct lys_node *)lys_getnext(NULL, NULL, lys_node_module(node), LYS_GETNEXT_WITHCHOICE);
             if (node != root) {
                 LOGINT;
             }

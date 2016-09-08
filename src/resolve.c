@@ -4991,10 +4991,8 @@ resolve_when_ctx_snode(const struct lys_node *schema, struct lys_node **ctx_snod
             } else {
                 *ctx_snode_type = LYXP_NODE_ROOT_STATE;
             }
-            /* move the fake root to the beginning of the list, if any */
-            while (schema->prev->next) {
-                schema = schema->prev;
-            }
+            /* we need the first top-level sibling, but no uses or groupings */
+            schema = lys_getnext(NULL, NULL, lys_node_module(schema), LYS_GETNEXT_WITHCHOICE);
             break;
         }
         schema = sparent;
