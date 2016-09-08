@@ -976,6 +976,12 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "fraction-digits");
                 goto error;
             }
+
+            /* copy fraction-digits specification from parent type for easier internal use */
+            if (typ->type->der->type.der) {
+                typ->type->info.dec64.dig = typ->type->der->type.info.dec64.dig;
+                typ->type->info.dec64.div = typ->type->der->type.info.dec64.div;
+            }
         } else if (typ->type->base >= LY_TYPE_INT8 && typ->type->base <=LY_TYPE_UINT64) {
             if (typ->type->info.dec64.dig) {
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Numerical type could not include fraction statement.");

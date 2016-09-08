@@ -616,6 +616,13 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "fraction-digits");
             goto error;
         }
+
+        /* copy fraction-digits specification from parent type for easier internal use */
+        if (type->der->type.der) {
+            type->info.dec64.dig = type->der->type.info.dec64.dig;
+            type->info.dec64.div = type->der->type.info.dec64.div;
+        }
+
         break;
 
     case LY_TYPE_ENUM:
