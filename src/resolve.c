@@ -4989,10 +4989,10 @@ resolve_when_ctx_snode(const struct lys_node *schema, struct lys_node **ctx_snod
             if (schema->flags & LYS_CONFIG_W) {
                 *ctx_snode_type = LYXP_NODE_ROOT_CONFIG;
             } else {
-                *ctx_snode_type = LYXP_NODE_ROOT_STATE;
+                *ctx_snode_type = LYXP_NODE_ROOT;
             }
             /* we need the first top-level sibling, but no uses or groupings */
-            schema = lys_getnext(NULL, NULL, lys_node_module(schema), LYS_GETNEXT_WITHCHOICE);
+            schema = lys_getnext(NULL, NULL, lys_node_module(schema), 0);
             break;
         }
         schema = sparent;
