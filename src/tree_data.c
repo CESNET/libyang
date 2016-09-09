@@ -3063,6 +3063,7 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before)
 {
     struct lys_node *par1, *par2;
     struct lyd_node *iter, *start = NULL, *ins, *next1, *next2, *last;
+    struct lyd_node *orig_parent = NULL, *orig_prev = NULL, *orig_next = NULL;
     int invalid = 0;
     char *str;
 
@@ -3108,6 +3109,13 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before)
 
     /* unlink only if it is not a list of siblings without a parent and node is not the first sibling */
     if (node->parent || node->prev->next) {
+        /* remember the original position to be able to revert
+         * unlink in case of error */
+        orig_parent = node->parent;
+        if (node->prev != node) {
+            orig_prev = node->prev;
+        }
+        orig_next = node->next;
         lyd_unlink_internal(node, invalid);
     }
 
@@ -3132,7 +3140,7 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before)
             if (lyv_multicases(ins, NULL, &start, 1, sibling) == 2) {
                 LOGVAL(LYE_SPEC, LY_VLOG_LYD, sibling, "Insert request refers node (%s) that is going to be auto-deleted.",
                        ly_errpath());
-                return EXIT_FAILURE;
+                goto error;
             }
         }
 
@@ -3147,7 +3155,7 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before)
                         LOGERR(LY_EINVAL, "Insert request refers node (%s) that is going to be auto-deleted.",
                                str = lyd_path(sibling));
                         free(str);
-                        return EXIT_FAILURE;
+                        goto error;
                     }
                     if (iter == start) {
                         start = next2;
@@ -3165,7 +3173,7 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before)
                         LOGERR(LY_EINVAL, "Insert request refers node (%s) that is going to be auto-deleted.",
                                str = lyd_path(sibling));
                         free(str);
-                        return EXIT_FAILURE;
+                        goto error;
                     }
                     if (iter == start) {
                         start = iter->next;
@@ -3203,6 +3211,19 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before)
     }
 
     return EXIT_SUCCESS;
+
+error:
+    /* insert back to the original position */
+    if (orig_prev) {
+        lyd_insert_after(orig_prev, node);
+    } else if (orig_next) {
+        lyd_insert_before(orig_next, node);
+    } else if (orig_parent) {
+        /* there were no siblings */
+        orig_parent->child = node;
+        node->parent = orig_parent;
+    }
+    return EXIT_FAILURE;
 }
 
 API int
