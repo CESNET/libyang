@@ -993,66 +993,70 @@ static uint32_t
 get_node_pos(const struct lyd_node *node, enum lyxp_node_type node_type, const struct lyd_node *root,
              enum lyxp_node_type root_type, const struct lyd_node **prev, uint32_t *prev_pos)
 {
-    const struct lyd_node *next, *elem;
-    uint32_t pos;
+    const struct lyd_node *next, *elem, *top_sibling;
+    uint32_t pos = 1;
 
-    assert(prev && prev_pos);
+    assert(prev && prev_pos && !root->prev->next);
 
     if ((node_type == LYXP_NODE_ROOT) || (node_type == LYXP_NODE_ROOT_CONFIG)) {
         return 0;
     }
 
-    /* loop init */
     if (*prev) {
-        /* start from previous element */
+        /* start from the previous element instead from the root */
         elem = next = *prev;
         pos = *prev_pos;
-    } else {
-        /* start from root */
-        elem = next = root;
-        pos = 1;
+        for (top_sibling = elem; top_sibling->parent; top_sibling = top_sibling->parent);
+        goto dfs_search;
     }
 
+    LY_TREE_FOR(root, top_sibling) {
+        /* TREE DFS */
+        LY_TREE_DFS_BEGIN(top_sibling, next, elem) {
 dfs_search:
-    /* TREE DFS */
-    for (; elem; elem = next) {
-        if ((root_type == LYXP_NODE_ROOT_CONFIG) && (elem->schema->flags & LYS_CONFIG_R)) {
-            goto skip_children;
-        }
+            if ((root_type == LYXP_NODE_ROOT_CONFIG) && (elem->schema->flags & LYS_CONFIG_R)) {
+                goto skip_children;
+            }
 
-        if (elem == node) {
-            break;
-        }
-        ++pos;
+            if (elem == node) {
+                break;
+            }
+            ++pos;
 
-        /* TREE DFS END */
-        /* select element for the next run - children first */
-        next = elem->child;
-        /* child exception for lyd_node_leaf and lyd_node_leaflist, but not the root */
-        if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
-            next = NULL;
-        }
-        if (!next) {
+            /* TREE DFS END */
+            /* select element for the next run - children first */
+            next = elem->child;
+            /* child exception for lyd_node_leaf and lyd_node_leaflist, but not the root */
+            if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
+                next = NULL;
+            }
+            if (!next) {
 skip_children:
-            /* no children */
-            if (elem == root) {
-                /* we are done, root has no children */
-                elem = NULL;
-                break;
+                /* no children */
+                if (elem == top_sibling) {
+                    /* we are done, root has no children */
+                    elem = NULL;
+                    break;
+                }
+                /* try siblings */
+                next = elem->next;
             }
-            /* try siblings */
-            next = elem->next;
+            while (!next) {
+                /* no siblings, go back through parents */
+                if (elem->parent == top_sibling->parent) {
+                    /* we are done, no next element to process */
+                    elem = NULL;
+                    break;
+                }
+                /* parent is already processed, go to its sibling */
+                elem = elem->parent;
+                next = elem->next;
+            }
         }
-        while (!next) {
-            /* no siblings, go back through parents */
-            if (elem->parent == root->parent) {
-                /* we are done, no next element to process */
-                elem = NULL;
-                break;
-            }
-            /* parent is already processed, go to its sibling */
-            elem = elem->parent;
-            next = elem->next;
+
+        /* node found */
+        if (elem) {
+            break;
         }
     }
 
@@ -1068,7 +1072,7 @@ skip_children:
             *prev = NULL;
             *prev_pos = 0;
 
-            elem = next = root;
+            elem = next = top_sibling = root;
             pos = 1;
             goto dfs_search;
         }
