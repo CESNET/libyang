@@ -4188,7 +4188,6 @@ moveto_get_root(const struct lyd_node *cur_node, int options, enum lyxp_node_typ
     if (cur_node->schema->flags & LYS_CONFIG_W) {
         *root_type = LYXP_NODE_ROOT_CONFIG;
     } else {
-        assert(cur_node->schema->flags & LYS_CONFIG_R);
         *root_type = LYXP_NODE_ROOT;
     }
 
@@ -5281,7 +5280,6 @@ moveto_parent(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int
             if (options && (cur_node->schema->flags & LYS_CONFIG_W)) {
                 new_type = LYXP_NODE_ROOT_CONFIG;
             } else {
-                assert(!options || (cur_node->schema->flags & LYS_CONFIG_R));
                 new_type = LYXP_NODE_ROOT;
             }
             new_node = node;
@@ -5291,7 +5289,6 @@ moveto_parent(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int
             if (options && (cur_node->schema->flags & LYS_CONFIG_W)) {
                 new_type = LYXP_NODE_ROOT_CONFIG;
             } else {
-                assert(!options || (cur_node->schema->flags & LYS_CONFIG_R));
                 new_type = LYXP_NODE_ROOT;
             }
 #ifndef NDEBUG
