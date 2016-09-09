@@ -5469,15 +5469,18 @@ check_xpath(struct lys_node *node)
     }
 
     /* RPC, action can have neither must nor when */
-    for (parent = node; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT)); parent = lys_parent(parent));
+    for (parent = node; parent && !(parent->nodetype & (LYS_RPC | LYS_NOTIF)); parent = lys_parent(parent));
 
     if (parent) {
         for (i = 0; i < set.used; ++i) {
-            for (elem = set.val.snodes[i].snode; elem && (elem != parent); elem = lys_parent(elem));
-            if (!elem) {
-                /* not in node's input, output, or, notification subtree, set the flag */
-                node->flags |= LYS_XPATH_DEP;
-                break;
+            /* skip roots'n'stuff */
+            if (set.val.snodes[i].type == LYXP_NODE_ELEM) {
+                for (elem = set.val.snodes[i].snode; elem && (elem != parent); elem = lys_parent(elem));
+                if (!elem) {
+                    /* not in node's RPC or notification subtree, set the flag */
+                    node->flags |= LYS_XPATH_DEP;
+                    break;
+                }
             }
         }
     }
