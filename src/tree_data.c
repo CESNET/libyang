@@ -2797,7 +2797,7 @@ lyd_replace(struct lyd_node *old, struct lyd_node *new, int destroy)
         goto finish;
     }
 
-    if (new->parent || new->prev != new) {
+    if (new->parent || new->prev->next) {
         /* isolate the new node */
         new->next = NULL;
         new->prev = new;
