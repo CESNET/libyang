@@ -6684,13 +6684,9 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_n
     lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, options);
     /* now we have all the unions in set and no other memory allocated */
 
-    if (set) {
-        if (options & LYXP_SNODE_ALL) {
-            set_snode_clear_ctx(set);
-        } else if (unary_minus > -1) {
-            if (moveto_op_math(set, NULL, &exp->expr[exp->expr_pos[unary_minus]], cur_node, options)) {
-                return -1;
-            }
+    if (set && (unary_minus > -1) && !(options & LYXP_SNODE_ALL)) {
+        if (moveto_op_math(set, NULL, &exp->expr[exp->expr_pos[unary_minus]], cur_node, options)) {
+            return -1;
         }
     }
 
