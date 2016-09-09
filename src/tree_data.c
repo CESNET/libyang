@@ -2853,29 +2853,60 @@ finish:
     return EXIT_SUCCESS;
 }
 
-
-API int
-lyd_insert(struct lyd_node *parent, struct lyd_node *node)
+static int
+lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd_node *node)
 {
-    struct lys_node *sparent;
-    struct lyd_node *iter, *ins, *next1, *next2;
+    struct lys_node *par1, *par2;
+    struct lyd_node *start, *iter, *ins, *next1, *next2;
     int invalid = 0, clrdflt = 0;
+    struct ly_set *llists = NULL;
     int pos, i;
+    int stype = LYS_INPUT | LYS_OUTPUT;
 
-    if (!node || !parent) {
+    assert(parent || sibling);
+
+    /* get first sibling */
+    if (parent) {
+        start = parent->child;
+    } else {
+        for (start = *sibling; start->prev->next; start = start->prev);
+    }
+
+    /* check placing the node to the appropriate place according to the schema */
+    if (!start) {
+        if (!parent) {
+            /* empty tree to insert */
+            if (node->parent || node->prev->next) {
+                /* unlink the node first */
+                lyd_unlink_internal(node, 1);
+            } /* else insert also node's siblings */
+            *sibling = node;
+            return EXIT_SUCCESS;
+        }
+        par1 = parent->schema;
+        if (par1->nodetype == LYS_RPC) {
+            /* it is not clear if the tree being created is going to
+             * be rpc (LYS_INPUT) or rpc-reply (LYS_OUTPUT) so we have to
+             * compare against LYS_RPC in par2
+             */
+            stype = LYS_RPC;
+        }
+    } else if (parent && parent->schema->nodetype != LYS_RPC) {
+        par1 = parent->schema;
+    } else {
+        for (par1 = lys_parent(start->schema);
+             par1 && !(par1->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_INPUT | LYS_OUTPUT | LYS_ACTION | LYS_NOTIF));
+             par1 = lys_parent(par1));
+    }
+    for (par2 = lys_parent(node->schema);
+         par2 && !(par2->nodetype & (LYS_CONTAINER | LYS_LIST | stype | LYS_ACTION | LYS_NOTIF));
+         par2 = lys_parent(par2));
+    if (par1 != par2) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
 
-    /* check placing the node to the appropriate place according to the schema */
-    for (sparent = lys_parent(node->schema);
-         sparent && !(sparent->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_ACTION | LYS_NOTIF));
-         sparent = lys_parent(sparent));
-    if (sparent != parent->schema) {
-        return EXIT_FAILURE;
-    }
-
-    if (node->parent != parent || (invalid = lyp_is_rpc_action(node->schema))) {
+    if (!parent || node->parent != parent || (invalid = lyp_is_rpc_action(node->schema))) {
         /* it is not just moving under a parent node or it is in an RPC where
          * nodes order matters, so the validation will be necessary */
         invalid++;
@@ -2883,8 +2914,11 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 
     /* unlink only if it is not a list of siblings without a parent and node is not the first sibling */
     if (node->parent || node->prev->next) {
+        /* do it permanent if the parents are not exact same or if it is top-level */
         lyd_unlink_internal(node, invalid);
     }
+
+    llists = ly_set_new();
 
     /* process the nodes to insert one by one */
     LY_TREE_FOR_SAFE(node, next1, ins) {
@@ -2892,7 +2926,9 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
             /* auto delete nodes from other cases, if any;
              * this is done only if node->parent != parent */
             iter = parent->child;
-            lyv_multicases(node, NULL, &iter, 1, NULL);
+            if (lyv_multicases(node, NULL, &iter, 1, NULL)) {
+                goto error;
+            }
         }
 
         /* isolate the node to be handled separately */
@@ -2901,44 +2937,67 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 
         iter = NULL;
         if (!ins->dflt) {
-            /* are we inserting list key? */
-            if (parent->schema->nodetype == LYS_LIST && ins->schema->nodetype == LYS_LEAF &&
-                 (pos = lys_is_key((struct lys_node_list *)parent->schema, (struct lys_node_leaf *)ins->schema))) {
-                /* yes, we have a key, get know its position */
-                for (i = 0, iter = parent->child;
-                     iter && i < (pos - 1) && iter->schema->nodetype == LYS_LEAF;
-                     i++, iter = iter->next);
-                if (iter) {
-                    /* insert list's key to the correct position - before the iter */
-                    if (parent->child == iter) {
-                        parent->child = ins;
-                    }
-                    if (iter->prev->next) {
-                        iter->prev->next = ins;
-                    }
-                    ins->prev = iter->prev;
-                    iter->prev = ins;
-                    ins->next = iter;
+            clrdflt = 1;
+        }
+
+        /* are we inserting list key? */
+        if (!ins->dflt && parent && parent->schema->nodetype == LYS_LIST && ins->schema->nodetype == LYS_LEAF
+                && (pos = lys_is_key((struct lys_node_list *)parent->schema, (struct lys_node_leaf *)ins->schema))) {
+            /* yes, we have a key, get know its position */
+            for (i = 0, iter = parent->child;
+                    iter && i < (pos - 1) && iter->schema->nodetype == LYS_LEAF;
+                    i++, iter = iter->next) ;
+            if (iter) {
+                /* insert list's key to the correct position - before the iter */
+                if (parent->child == iter) {
+                    parent->child = ins;
                 }
+                if (iter->prev->next) {
+                    iter->prev->next = ins;
+                }
+                ins->prev = iter->prev;
+                iter->prev = ins;
+                ins->next = iter;
+            }
 
             /* try to find previously present default instance to replace */
-            } else if (ins->schema->nodetype == LYS_LEAFLIST) {
+        } else if (ins->schema->nodetype == LYS_LEAFLIST) {
+            i = (int)llists->number;
+            if (ly_set_add(llists, ins->schema, 0) != i) {
+                /* each leaf-list must be cleared only once */
                 LY_TREE_FOR_SAFE(parent->child, next2, iter) {
-                    if (iter->schema == ins->schema && iter->dflt) {
-                        lyd_free(iter);
-                    }
-                }
-            } else if (ins->schema->nodetype == LYS_LEAF ||
-                    (ins->schema->nodetype == LYS_CONTAINER && !((struct lys_node_container *)ins->schema)->presence)) {
-                LY_TREE_FOR(parent->child, iter) {
-                    if (iter->schema == ins->schema && iter->dflt) {
-                        /* replace */
-                        lyd_replace(iter, ins, 1);
-                        break;
+                    if (iter->schema == ins->schema) {
+                        if (iter->dflt) {
+                            lyd_free(iter);
+                        } else if (ins->dflt) {
+                            /* avoid mixing default and non-default leaflist
+                             * so do not insert the default lieaf-lists */
+                            lyd_free(ins);
+                            goto treefor_continue;
+                        }
                     }
                 }
             }
+        } else if (ins->schema->nodetype == LYS_LEAF || (ins->schema->nodetype == LYS_CONTAINER
+                        && !((struct lys_node_container *)ins->schema)->presence)) {
+            LY_TREE_FOR(parent->child, iter) {
+                if (iter->schema == ins->schema) {
+                    if (ins->dflt && !iter->dflt) {
+                        /* do not insert default node instead of non-default */
+                        lyd_free(ins);
+                        goto treefor_continue;
+                    } else if (!iter->dflt) {
+                        /* both are non-default, keep both and let the caller solve it later */
+                        iter = NULL;
+                    } else {
+                        /* replace */
+                        lyd_replace(iter, ins, 1);
+                    }
+                    break;
+                }
+            }
         }
+
         if (!iter) {
             if (!parent->child) {
                 /* add as the only child of the parent */
@@ -2955,10 +3014,9 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
         if (invalid) {
             lyd_insert_setinvalid(ins);
         }
-        if (!ins->dflt) {
-            clrdflt = 1;
-        }
+treefor_continue:;
     }
+    ly_set_free(llists);
 
     if (clrdflt) {
         /* remove the dflt flag from parents */
@@ -2967,11 +3025,41 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
         }
     }
 
+    if (sibling) {
+        *sibling = start;
+    }
     return EXIT_SUCCESS;
+
+error:
+    ly_set_free(llists);
+    return EXIT_FAILURE;
+}
+
+API int
+lyd_insert(struct lyd_node *parent, struct lyd_node *node)
+{
+    if (!node || !parent || (parent->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    return lyd_insert_common(parent, NULL, node);
+}
+
+API int
+lyd_insert_sibling(struct lyd_node **sibling, struct lyd_node *node)
+{
+    if (!sibling || !node) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    return lyd_insert_common((*sibling) ? (*sibling)->parent : NULL, sibling, node);
+
 }
 
 static int
-lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
+lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before)
 {
     struct lys_node *par1, *par2;
     struct lyd_node *iter, *start = NULL, *ins, *next1, *next2, *last;
@@ -3120,7 +3208,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, int before)
 API int
 lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
 {
-    if (!node || !sibling || lyd_insert_sibling(sibling, node, 1)) {
+    if (!node || !sibling || lyd_insert_nextto(sibling, node, 1)) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
@@ -3131,7 +3219,7 @@ lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
 API int
 lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 {
-    if (!node || !sibling || lyd_insert_sibling(sibling, node, 0)) {
+    if (!node || !sibling || lyd_insert_nextto(sibling, node, 0)) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }

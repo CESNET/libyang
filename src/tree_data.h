@@ -726,6 +726,16 @@ int lyd_merge(struct lyd_node *target, const struct lyd_node *source, int option
  * If the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
  * If the key of a list is being inserted, it is placed into a correct position instead of being placed as the last
  * element.
+ * If the target tree includes the default instance of the node being inserted, the default node is silently replaced
+ * by the new node. On the other hand, if a default node is being inserted and the target tree already contains
+ * non-default instance, the default node is not inserted (it is skipped and freed).
+ * If a non-default node is being inserted and there is already its non-default instance in the target tree, the new
+ * node is inserted and it is up to the caller to solve the presence of multiple instances afterwards.
+ *
+ * Note that this function differs from lyd_insert_before() and lyd_insert_after() because the position of the
+ * node being inserted is determined automatically according to the rules described above. In contrast to
+ * lyd_insert_parent(), lyd_insert() can not be used for top-level elements since the \p parent parameter must not be
+ * NULL.
  *
  * @param[in] parent Parent node for the \p node being inserted.
  * @param[in] node The node being inserted.
@@ -733,6 +743,33 @@ int lyd_merge(struct lyd_node *target, const struct lyd_node *source, int option
  * in the data tree.
  */
 int lyd_insert(struct lyd_node *parent, struct lyd_node *node);
+
+/**
+ * @brief Insert the \p node element as a last sibling of the specified \p sibling element.
+ *
+ * If the node is part of some other tree, it is automatically unlinked.
+ * If the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
+ * If the key of a list is being inserted, it is placed into a correct position instead of being placed as the last
+ * element.
+ * If the target tree includes the default instance of the node being inserted, the default node is silently replaced
+ * (so it is not inserted as the last sibling in this case) by the new node. On the other hand, if a default node is
+ * being inserted and the target tree already contains non-default instance, the default node is not inserted (it is
+ * skipped and freed). If a non-default node is being inserted and there is already its non-default instance in the
+ * target tree, the new node is inserted and it is up to the caller to solve the presence of multiple instances
+ * afterwards.
+ *
+ * Note that this function differs from lyd_insert_before() and lyd_insert_after() because the position of the
+ * node being inserted is determined automatically as in the case of lyd_insert(). In contrast to lyd_insert(),
+ * lyd_insert_sibling() can be used to insert top-level elements.
+ *
+ * @param[in,out] sibling Sibling node as a reference where to insert the \p node. When function succeeds, the sibling
+ * is always set to point to the first sibling node. Note that in some cases described above, the provided sibling
+ * node could be removed from the tree.
+ * @param[in] node The node being inserted.
+ * @return 0 on success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
+ * in the data tree.
+ */
+int lyd_insert_sibling(struct lyd_node **sibling, struct lyd_node *node);
 
 /**
  * @brief Insert the \p node element after the \p sibling element. If \p node and \p siblings are already
@@ -878,14 +915,15 @@ int lyd_wd_default(struct lyd_node_leaf_list *node);
 int lyd_unlink(struct lyd_node *node);
 
 /**
- * @brief Free (and unlink) the specified data (sub)tree.
+ * @brief Free (and unlink) the specified data subtree. Use carefully, since libyang silently creates default nodes,
+ * it is always better to use lyd_free_withsiblings() to free the complete data tree.
  *
  * @param[in] node Root of the (sub)tree to be freed.
  */
 void lyd_free(struct lyd_node *node);
 
 /**
- * @brief Free (and unlink) the specified data (sub)tree and all its siblings (preceding as well as following).
+ * @brief Free (and unlink) the specified data tree and all its siblings (preceding as well as following).
  *
  * @param[in] node One of the siblings root element of the (sub)trees to be freed.
  */
