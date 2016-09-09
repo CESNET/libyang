@@ -3788,7 +3788,7 @@ resolve_predicate(const char *pred, struct unres_data *node_match)
                     goto remove_instid;
                 }
                 /* find the key leaf */
-                for (k = 1, target = node_match->node[j]->child; target && (k < pred_iter); target = target->next);
+                for (k = 1, target = node_match->node[j]->child; target && (k < pred_iter); k++, target = target->next);
                 if (!target) {
                     goto remove_instid;
                 }
@@ -3816,11 +3816,14 @@ remove_instid:
 
     /* check that all list keys were specified */
     if ((pred_iter > 0) && node_match->count) {
-        for (j = 0; j < node_match->count; ++j) {
+        j = 0;
+        while (j < node_match->count) {
             assert(node_match->node[j]->schema->nodetype == LYS_LIST);
             if (pred_iter < ((struct lys_node_list *)node_match->node[j]->schema)->keys_size) {
                 /* not enough predicates, just remove the list instance */
                 unres_data_del(node_match, j);
+            } else {
+                ++j;
             }
         }
 
