@@ -66,6 +66,8 @@ module mod11 {
         }
     }
 
+    uses login;
+
     leaf d {
         type decimal64 {
             fraction-digits 3;

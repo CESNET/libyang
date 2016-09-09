@@ -1,5 +1,10 @@
-<test xmlns="urn:cesnet:mod1">
-    <test>test leaf</test>
-    <list>8</list>
-    <list>10</list>
-</test>
+<presence xmlns="urn:cesnet:mod1">
+    <login>
+        <user>john</user>
+        <password>nbu123</password>
+    </login>
+    <login>
+        <user>admin</user>
+        <password>nbu123</password>
+    </login>
+</presence>

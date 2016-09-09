@@ -27,8 +27,8 @@
 #define TEST_NAME test_sec7_7_5
 #define TEST_SCHEMA_COUNT 2
 #define TEST_SCHEMA_LOAD_FAIL 1,0
-#define TEST_DATA_FILE_COUNT 4
-#define TEST_DATA_FILE_LOAD_FAIL 1,1,0,0
+#define TEST_DATA_FILE_COUNT 3
+#define TEST_DATA_FILE_LOAD_FAIL 1,0,0
 #define TEST_DATA_ORDERED_USER 0,0,0,1
 
 struct state {

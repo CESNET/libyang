@@ -101,7 +101,7 @@ module mod12 {
 
                             min-elements "61";
 
-                            must "../../../../../user = 'Admin'";
+                            must "../../../../user = 'Admin'";
 
                             config "true";
                         }

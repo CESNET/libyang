@@ -27,8 +27,8 @@
 #define TEST_NAME test_sec7_5_5
 #define TEST_SCHEMA_COUNT 1
 #define TEST_SCHEMA_LOAD_FAIL 0
-#define TEST_DATA_FILE_COUNT 4
-#define TEST_DATA_FILE_LOAD_FAIL 0,1,0,0
+#define TEST_DATA_FILE_COUNT 3
+#define TEST_DATA_FILE_LOAD_FAIL 0,0,0
 
 struct state {
     struct ly_ctx *ctx;
@@ -70,7 +70,7 @@ teardown_f(void **state)
 }
 
 static void
-TEST_MODULE(void **state)
+TEST_CONTAINER_PRESENCE(void **state)
 {
     struct state *st = (*state);
     const int schemas_fail[] = {TEST_SCHEMA_LOAD_FAIL};
@@ -136,7 +136,7 @@ int
 main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(TEST_MODULE, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(TEST_CONTAINER_PRESENCE, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

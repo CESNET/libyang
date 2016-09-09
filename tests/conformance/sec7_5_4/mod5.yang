@@ -3,6 +3,10 @@ module mod5 {
     prefix abc;
     namespace "urn:cesnet:mod5";
 
+    import ietf-yang-library {
+        prefix lib;
+    }
+
     rpc rpc_test {
         input {
             container user {
@@ -35,7 +39,7 @@ module mod5 {
                 }
 
                 must "../user/username = 'admin' and " +
-                     "/user/password";
+                     "/rpc_test/user/password";
             }
         }
 
@@ -47,7 +51,7 @@ module mod5 {
                 }
 
                 must "../user/username = 'admin' and " +
-                     "/user/password";
+                     "/rpc_test/user/password";
             }
 
             container user {
@@ -138,7 +142,7 @@ module mod5 {
         must "../user/username = 'admin' and " +
                  "/user/password  ";
 
-        must "/modules-state/module-set-id = 1";
+        must "/lib:modules-state/module-set-id = 1";
     }
 
     notification notif {
@@ -172,7 +176,7 @@ module mod5 {
             }
 
             must "../user/username = 'admin' and " +
-                 "/user/password";
+                 "/notif/user/password";
         }
     }
 }
