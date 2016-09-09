@@ -142,7 +142,7 @@ teardown_f(void **state)
 {
     (void) state; /* unused */
     if (root)
-        lyd_free(root);
+        lyd_free_withsiblings(root);
     if (ctx)
         ly_ctx_destroy(ctx, NULL);
 
@@ -280,7 +280,7 @@ test_ly_ctx_info(void **state)
 
     assert_int_equal(LYD_VAL_OK, node->validity);
 
-    lyd_free(node);
+    lyd_free_withsiblings(node);
 }
 
 static void
