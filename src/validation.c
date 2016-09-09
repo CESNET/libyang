@@ -25,7 +25,7 @@
 #include "tree_internal.h"
 #include "xml_internal.h"
 
-int
+static int
 lyv_keys(const struct lyd_node *list)
 {
     struct lyd_node *child;

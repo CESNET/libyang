@@ -442,6 +442,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     if ((*result)->schema->nodetype == LYS_ACTION) {
         if (!(options & LYD_OPT_ACTION) || *action) {
+            LOGVAL(LYE_INACT, LY_VLOG_LYD, (*result), "action", (*result)->schema->name);
             LOGVAL(LYE_SPEC, LY_VLOG_LYD, (*result), "Unexpected action node \"%s\".", (*result)->schema->name);
             goto error;
         }
@@ -609,6 +610,12 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         result = reply_parent;
     }
 
+    if ((options & LYD_OPT_ACTION) && !action) {
+        ly_vecode = LYVE_INACT;
+        LOGVAL(LYE_SPEC, LY_VLOG_LYD, result, "Missing action node.");
+        goto error;
+    }
+
     /* check for uniquness of top-level lists/leaflists because
      * only the inner instances were tested in lyv_data_content() */
     set = ly_set_new();
@@ -631,18 +638,22 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     }
     ly_set_free(set);
 
-    /* add/validate default values, unres */
+    /* add default values, resolve unres and check for mandatory nodes in final tree */
     if (action) {
+        /* it will not get deleted */
         if (lyd_defaults_add_unres(&action, options, ctx, unres)) {
             goto error;
         }
-    } else if (lyd_defaults_add_unres(&result, options, ctx, unres)) {
-        goto error;
-    }
-
-    /* check for missing mandatory nodes */
-    if (!(options & LYD_OPT_TRUSTED) && lyd_check_mandatory_tree(result, ctx, options)) {
-        goto error;
+        if (!(options & LYD_OPT_TRUSTED) && lyd_check_mandatory_tree(action, ctx, options)) {
+            goto error;
+        }
+    } else {
+        if (lyd_defaults_add_unres(&result, options, ctx, unres)) {
+            goto error;
+        }
+        if (!(options & LYD_OPT_TRUSTED) && lyd_check_mandatory_tree(result, ctx, options)) {
+                goto error;
+            }
     }
 
     free(unres->node);

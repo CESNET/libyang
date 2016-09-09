@@ -334,7 +334,6 @@ int
 lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options)
 {
     struct lys_node *siter;
-    struct lyd_node *iter;
     int i;
 
     assert (root || ctx);
@@ -386,28 +385,11 @@ lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options)
             return EXIT_FAILURE;
         }
     } else if (options & LYD_OPT_ACTION) {
-        if (!root || root->parent || (root->prev != root) || !(root->schema->nodetype & (LYS_CONTAINER | LYS_LIST))) {
-            LOGERR(LY_EINVAL, "Subtree is not a single action.");
+        if (!root || !root->parent || !(root->schema->nodetype & (LYS_ACTION))) {
+            LOGERR(LY_EINVAL, "Subtree is not an action.");
             return EXIT_FAILURE;
         }
-        /* get the action root */
-        for (siter = root->schema, iter = root; siter->nodetype != LYS_ACTION; siter = iter->schema) {
-            if (siter->nodetype & LYS_LEAF) {
-                /* we are at a list's key, try next sibling */
-                iter = iter->next;
-            } else { /* LYS_CONTAINER | LYS_LIST */
-                /* go into */
-                iter = iter->child;
-            }
-            if (!iter) {
-                /* stop the loop */
-                break;
-            }
-        }
-        if (!iter) {
-            LOGERR(LY_EINVAL, "Subtree does not contain action.");
-            return EXIT_FAILURE;
-        } else if (lyd_check_mandatory_subtree(root, iter, iter, iter->schema, 0, options)) {
+        if (lyd_check_mandatory_subtree(root, root, root, root->schema, 0, options)) {
             return EXIT_FAILURE;
         }
     } else {
@@ -3496,9 +3478,12 @@ lyd_validate(struct lyd_node **node, int options, ...)
                 to_free = NULL;
             }
 
-            if ((options & LYD_OPT_ACTION) && (iter->schema->nodetype == LYS_ACTION)) {
-                options &= ~LYD_OPT_ACTION;
-                options |= LYD_OPT_RPC;
+            if (iter->schema->nodetype == LYS_ACTION) {
+                if (!(options & LYD_OPT_ACTION) || action) {
+                    LOGVAL(LYE_INACT, LY_VLOG_LYD, iter, "action", iter->schema->name);
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, iter, "Unexpected action node \"%s\".", iter->schema->name);
+                    goto error;
+                }
                 action = iter;
             }
 
@@ -3605,19 +3590,22 @@ nextsiblings:
     }
     ly_set_free(set);
 
-    /* add default values if needed */
+    /* add default values, resolve unres and check for mandatory nodes in final tree */
     if (action) {
         /* it will not get deleted */
         if (lyd_defaults_add_unres(&action, options, ctx, unres)) {
             goto error;
         }
-    } else if (lyd_defaults_add_unres(node, options, ctx, unres)) {
-        goto error;
-    }
-
-    /* check for mandatory nodes in the tree */
-    if (lyd_check_mandatory_tree(*node, ctx, options)) {
-        goto error;
+        if (lyd_check_mandatory_tree(action, ctx, options)) {
+            goto error;
+        }
+    } else {
+        if (lyd_defaults_add_unres(node, options, ctx, unres)) {
+            goto error;
+        }
+        if (lyd_check_mandatory_tree(*node, ctx, options)) {
+            goto error;
+        }
     }
 
     ret = EXIT_SUCCESS;
@@ -5303,7 +5291,6 @@ static int
 lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, struct unres_data *unres, int options)
 {
     struct lys_node *siter;
-    struct lyd_node *iter;
     int i;
 
     assert(root);
@@ -5342,7 +5329,7 @@ lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, struct unres_data *unres,
             LOGERR(LY_EINVAL, "Subtree is not a single notification.");
             return EXIT_FAILURE;
         }
-        if (lyd_wd_add_subtree(root, (*root), (*root), (*root)->schema, 0, options, unres)) {
+        if (lyd_wd_add_subtree(root, *root, *root, (*root)->schema, 0, options, unres)) {
             return EXIT_FAILURE;
         }
     } else if (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) {
@@ -5357,37 +5344,17 @@ lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, struct unres_data *unres,
             for (siter = (*root)->schema->child; siter && siter->nodetype != LYS_OUTPUT; siter = siter->next);
         }
         if (siter) {
-            if (lyd_wd_add_subtree(root, (*root), (*root), siter, 0, options, unres)) {
+            if (lyd_wd_add_subtree(root, *root, *root, siter, 0, options, unres)) {
                 return EXIT_FAILURE;
             }
         }
     } else if (options & LYD_OPT_ACTION) {
-        if (!(*root) || (*root)->parent || ((*root)->prev != (*root))
-            || !((*root)->schema->nodetype & (LYS_CONTAINER | LYS_LIST))) {
-            LOGERR(LY_EINVAL, "Subtree is not a single action.");
+        if (!(*root) || !(*root)->parent || !((*root)->schema->nodetype & (LYS_ACTION))) {
+            LOGERR(LY_EINVAL, "Subtree is not an action.");
             return EXIT_FAILURE;
         }
-        /* get the action root */
-        for (siter = (*root)->schema, iter = (*root); siter->nodetype != LYS_ACTION; siter = iter->schema) {
-            if (siter->nodetype & LYS_LEAF) {
-                /* we are at a list's key, try next sibling */
-                iter = iter->next;
-            } else { /* LYS_CONTAINER | LYS_LIST */
-                /* go into */
-                iter = iter->child;
-            }
-            if (!iter) {
-                /* stop the loop */
-                break;
-            }
-        }
-        if (!iter) {
-            LOGERR(LY_EINVAL, "Subtree does not contain action.");
+        if (lyd_wd_add_subtree(root, *root, *root, (*root)->schema, 0, options, unres)) {
             return EXIT_FAILURE;
-        } else {
-            if (lyd_wd_add_subtree(root, iter, iter, iter->schema, 0, options, unres)) {
-                return EXIT_FAILURE;
-            }
         }
     } else {
         LOGINT;
