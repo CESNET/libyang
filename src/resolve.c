@@ -648,12 +648,7 @@ parse_predicate(const char *id, const char **model, int *mod_len, const char **n
         }
 
         if (id[0] == '0') {
-            ++parsed;
-            ++id;
-
-            if (isdigit(id[0])) {
-                return -parsed;
-            }
+            return -parsed;
         }
 
         while (isdigit(id[0])) {
@@ -665,70 +660,71 @@ parse_predicate(const char *id, const char **model, int *mod_len, const char **n
             *nam_len = id-(*name);
         }
 
-    /* "." */
-    } else if (id[0] == '.') {
-        if (name) {
-            *name = id;
-        }
-        if (nam_len) {
-            *nam_len = 1;
-        }
-
-        ++parsed;
-        ++id;
-
-    /* node-identifier */
+    /* "." or node-identifier */
     } else {
-        if ((ret = parse_node_identifier(id, model, mod_len, name, nam_len)) < 1) {
-            return -parsed+ret;
-        } else if (model && !*model) {
+        if (id[0] == '.') {
+            if (name) {
+                *name = id;
+            }
+            if (nam_len) {
+                *nam_len = 1;
+            }
+
+            ++parsed;
+            ++id;
+
+        } else {
+            if ((ret = parse_node_identifier(id, model, mod_len, name, nam_len)) < 1) {
+                return -parsed+ret;
+            } else if (model && !*model) {
+                return -parsed;
+            }
+
+            parsed += ret;
+            id += ret;
+        }
+
+        while (isspace(id[0])) {
+            ++parsed;
+            ++id;
+        }
+
+        if (id[0] != '=') {
             return -parsed;
         }
 
-        parsed += ret;
-        id += ret;
-    }
-
-    while (isspace(id[0])) {
-        ++parsed;
-        ++id;
-    }
-
-    if (id[0] != '=') {
-        return -parsed;
-    }
-
-    ++parsed;
-    ++id;
-
-    while (isspace(id[0])) {
-        ++parsed;
-        ++id;
-    }
-
-    /* ((DQUOTE string DQUOTE) / (SQUOTE string SQUOTE)) */
-    if ((id[0] == '\"') || (id[0] == '\'')) {
-        quote = id[0];
-
         ++parsed;
         ++id;
 
-        if ((ptr = strchr(id, quote)) == NULL) {
+        while (isspace(id[0])) {
+            ++parsed;
+            ++id;
+        }
+
+        /* ((DQUOTE string DQUOTE) / (SQUOTE string SQUOTE)) */
+        if ((id[0] == '\"') || (id[0] == '\'')) {
+            quote = id[0];
+
+            ++parsed;
+            ++id;
+
+            if ((ptr = strchr(id, quote)) == NULL) {
+                return -parsed;
+            }
+            ret = ptr-id;
+
+            if (value) {
+                *value = id;
+            }
+            if (val_len) {
+                *val_len = ret;
+            }
+
+            parsed += ret+1;
+            id += ret+1;
+        } else {
             return -parsed;
         }
-        ret = ptr-id;
-
-        if (value) {
-            *value = id;
-        }
-        if (val_len) {
-            *val_len = ret;
-        }
-
-        parsed += ret+1;
-        id += ret+1;
-    } else {
-        return -parsed;
     }
 
     while (isspace(id[0])) {
@@ -3754,7 +3750,7 @@ resolve_predicate(const char *pred, struct unres_data *node_match)
             }
         }
 
-        for (cur_idx = 0, j = 0; j < node_match->count; ++cur_idx) {
+        for (cur_idx = 1, j = 0; j < node_match->count; ++cur_idx) {
             /* target */
             if (name[0] == '.') {
                 /* leaf-list value */
