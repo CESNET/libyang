@@ -5304,7 +5304,6 @@ lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, struct unres_data *unres,
 {
     struct lys_node *siter;
     struct lyd_node *iter;
-    struct ly_set *present;
     int i;
 
     assert(root);
@@ -5320,28 +5319,24 @@ lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, struct unres_data *unres,
         ctx = (*root)->schema->module->ctx;
     }
 
-    if (options & LYD_OPT_NOSIBLINGS) {
-        if (lyd_wd_add_subtree(root, (*root), (*root), (*root)->schema, 0, options, unres)) {
-            return EXIT_FAILURE;
-        }
-        return EXIT_SUCCESS;
-    }
-
     if (!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_DATA | LYD_OPT_CONFIG))) {
-        present = ly_set_new();
-        for (i = 0; i < ctx->models.used; i++) {
-            LY_TREE_FOR(ctx->models.list[i]->data, siter) {
-                if (!(siter->nodetype & (LYS_CONTAINER | LYS_CHOICE | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA |
-                                         LYS_USES))) {
-                    continue;
-                }
-                if (lyd_wd_add_subtree(root, NULL, NULL, siter, 1, options, unres)) {
-                    ly_set_free(present);
-                    return EXIT_FAILURE;
+        if (options & LYD_OPT_NOSIBLINGS) {
+            if (lyd_wd_add_subtree(root, NULL, NULL, (*root)->schema, 1, options, unres)) {
+                return EXIT_FAILURE;
+            }
+        } else {
+            for (i = 0; i < ctx->models.used; i++) {
+                LY_TREE_FOR(ctx->models.list[i]->data, siter) {
+                    if (!(siter->nodetype & (LYS_CONTAINER | LYS_CHOICE | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA |
+                                             LYS_USES))) {
+                        continue;
+                    }
+                    if (lyd_wd_add_subtree(root, NULL, NULL, siter, 1, options, unres)) {
+                        return EXIT_FAILURE;
+                    }
                 }
             }
         }
-        ly_set_free(present);
     } else if (options & LYD_OPT_NOTIF) {
         if (!(*root) || (*root)->parent || ((*root)->prev != (*root)) || ((*root)->schema->nodetype != LYS_NOTIF)) {
             LOGERR(LY_EINVAL, "Subtree is not a single notification.");
