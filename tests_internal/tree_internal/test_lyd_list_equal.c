@@ -112,7 +112,7 @@ test_lyd_list_equal_no_action(struct lyd_node *xs, struct lyd_node *ys)
 
     /* no action, no keys */
     rc = lyd_list_equal(xs, ys, 0, 0);
-    assert_true(rc == 1);
+    assert_true(rc == 0);
 }
 
 /**
