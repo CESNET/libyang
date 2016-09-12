@@ -160,11 +160,19 @@ test_typedef_11in10(void **state)
 "  typedef b1 { type bits { bit one; bit two; } default one; }"
 "  leaf l { type b1 { bit one; } } }";
 
-    const char *yin_union = "<module name=\"x1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+    const char *yin_union1 = "<module name=\"x1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
 "  <namespace uri=\"urn:x1\"/><prefix value=\"x1\"/>"
 "  <typedef name=\"un\"><type name=\"union\">"
 "    <type name=\"string\"/>"
 "    <type name=\"leafref\"><path value=\"../name\"/></type>"
+"  </type></typedef>"
+"</module>";
+
+    const char *yin_union2 = "<module name=\"x1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+"  <namespace uri=\"urn:x1\"/><prefix value=\"x1\"/>"
+"  <typedef name=\"un\"><type name=\"union\">"
+"    <type name=\"string\"/>"
+"    <type name=\"empty\"/>"
 "  </type></typedef>"
 "</module>";
 
@@ -176,7 +184,11 @@ test_typedef_11in10(void **state)
     assert_ptr_equal(mod, NULL);
     assert_int_equal(ly_vecode, LYVE_INSTMT);
 
-    mod = lys_parse_mem(st->ctx, yin_union, LYS_IN_YIN);
+    mod = lys_parse_mem(st->ctx, yin_union1, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_INARG);
+
+    mod = lys_parse_mem(st->ctx, yin_union2, LYS_IN_YIN);
     assert_ptr_equal(mod, NULL);
     assert_int_equal(ly_vecode, LYVE_INARG);
 
@@ -870,6 +882,62 @@ test_typedef_11_union_leafref_yin(void **state)
     lyd_free_withsiblings(root);
 }
 
+static void
+test_typedef_11_union_empty_yin(void **state)
+{
+    struct state *st = (*state);
+    const char *modstr = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+"<module name=\"x\""
+"        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
+"        xmlns:x=\"urn:x\">"
+"  <yang-version value=\"1.1\"/>"
+"  <namespace uri=\"urn:x\"/><prefix value=\"x\"/>"
+"  <typedef name=\"mytype1\">"
+"    <type name=\"union\">"
+"      <type name=\"int32\"/>"
+"      <type name=\"empty\"/>"
+"    </type>"
+"  </typedef>"
+"  <typedef name=\"mytype2\">"
+"    <type name=\"union\">"
+"      <type name=\"int8\"/>"
+"      <type name=\"int16\"/>"
+"    </type>"
+"  </typedef>"
+"  <leaf name=\"value\">"
+"    <type name=\"mytype1\"/>"
+"  </leaf>"
+"  <leaf name=\"integer\">"
+"    <type name=\"mytype2\"/>"
+"  </leaf>"
+"</module>";
+    struct lyd_node *root;
+    const char *data1 = "<integer xmlns=\"urn:x\"/>"; /* illegal */
+    const char *data2 = "<value xmlns=\"urn:x\">xxx</value>"; /* illegal */
+    const char *data3 = "<value xmlns=\"urn:x\">11</value>"; /* legal, int32 */
+    const char *data4 = "<value xmlns=\"urn:x\"/>"; /* legal, empty */
+
+    assert_ptr_not_equal(lys_parse_mem(st->ctx, modstr, LYS_IN_YIN), NULL);
+
+    root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(root, NULL);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+
+    root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(root, NULL);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+
+    root = lyd_parse_mem(st->ctx, data3, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(root, NULL);
+    assert_int_equal(((struct lyd_node_leaf_list *)root)->value_type, LY_TYPE_INT32);
+    lyd_free_withsiblings(root);
+
+    root = lyd_parse_mem(st->ctx, data4, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(root, NULL);
+    assert_int_equal(((struct lyd_node_leaf_list *)root)->value_type, LY_TYPE_EMPTY);
+    lyd_free_withsiblings(root);
+}
+
 int
 main(void)
 {
@@ -891,6 +959,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_typedef_11_multidents_yin, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_multidents_yang, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_union_leafref_yin, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_11_union_empty_yin, setup_ctx, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
