@@ -937,6 +937,8 @@ switchtype:
                             LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
                             LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, "Bit \"%s\" is disabled by its if-feature condition.",
                                    type->info.bits.bit[i].name);
+                            free(node->value.bit);
+                            node->value.bit = NULL;
                             return EXIT_FAILURE;
                         }
                     }
@@ -954,6 +956,8 @@ switchtype:
             if (!found) {
                 /* referenced bit value does not exists */
                 LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
+                free(node->value.bit);
+                node->value.bit = NULL;
                 return EXIT_FAILURE;
             }
 
