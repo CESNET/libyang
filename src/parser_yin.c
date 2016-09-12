@@ -1166,6 +1166,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
 
             if (!strcmp(node->name, "type")) {
+                if (type->der->type.der) {
+                    /* type can be a substatement only in "union" type, not in derived types */
+                    LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "type", "derived type");
+                    goto error;
+                }
                 i++;
             } else {
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name);
@@ -1173,11 +1178,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
         }
 
-        if (!i) {
-            if (type->der->type.der) {
-                /* this is just a derived type with no additional type specified/required */
-                break;
-            }
+        if (!i && !type->der->type.der) {
             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "type", "(union) type");
             goto error;
         }
