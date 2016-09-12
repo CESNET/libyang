@@ -2672,7 +2672,7 @@ nextsibling:
             /* go back to parents */
             while (!next) {
                 elem = elem->parent;
-                if (elem->parent == node) {
+                if (elem->parent == node->parent) {
                     /* we are done, back in start node */
                     break;
                 }
