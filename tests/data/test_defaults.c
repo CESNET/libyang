@@ -462,7 +462,7 @@ test_rpc_input_default(void **state)
     st->dt = lyd_new_path(NULL, st->ctx, "/defaults:rpc1/inleaf1[.='hi']", NULL, 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPC), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPC, NULL), 0);
 
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
     assert_ptr_not_equal(st->xml, NULL);
@@ -476,7 +476,7 @@ test_rpc_input_default(void **state)
     st->dt = lyd_new_path(NULL, st->ctx, "/defaults:rpc1", NULL, 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPC), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPC, NULL), 0);
 
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
     assert_ptr_not_equal(st->xml, NULL);
@@ -498,7 +498,7 @@ test_rpc_output_default(void **state)
     st->dt = lyd_new_path(NULL, st->ctx, "/defaults:rpc1/outleaf2[.='hai']", NULL, 0, LYD_PATH_OPT_OUTPUT);
     assert_ptr_not_equal(st->dt, NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPCREPLY), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPCREPLY, NULL), 0);
 
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
     assert_ptr_not_equal(st->xml, NULL);
@@ -512,7 +512,7 @@ test_rpc_output_default(void **state)
     st->dt = lyd_new_path(NULL, st->ctx, "/defaults:rpc1", NULL, 0, LYD_PATH_OPT_OUTPUT);
     assert_ptr_not_equal(st->dt, NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPCREPLY), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPCREPLY, NULL), 0);
 
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
     assert_ptr_not_equal(st->xml, NULL);
@@ -534,7 +534,7 @@ test_notif_default(void **state)
     st->dt = lyd_new_path(NULL, st->ctx, "/defaults:notif/ntfleaf2[.='helloo']", NULL, 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_NOTIF), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_NOTIF, NULL), 0);
 
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
     assert_ptr_not_equal(st->xml, NULL);
@@ -548,7 +548,7 @@ test_notif_default(void **state)
     st->dt = lyd_new_path(NULL, st->ctx, "/defaults:notif", NULL, 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_NOTIF), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_NOTIF, NULL), 0);
 
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL_TAG), 0);
     assert_ptr_not_equal(st->xml, NULL);
