@@ -5371,7 +5371,7 @@ moveto_snode_parent(struct lyxp_set *set, struct lys_node *cur_node, int all_des
 
         if (set->val.snodes[i].type == LYXP_NODE_ELEM) {
             for (new_node = lys_parent(node);
-                 new_node && (new_node->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE));
+                 new_node && (new_node->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT));
                  new_node = lys_parent(new_node));
         } else {
             /* root does not have a parent */

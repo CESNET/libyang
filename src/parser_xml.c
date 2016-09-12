@@ -520,8 +520,8 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     va_list ap;
     int r, i;
     struct unres_data *unres = NULL;
-    struct lys_node *rpc_act = NULL;
-    struct lyd_node *result = NULL, *iter, *last, *reply_parent = NULL, *action = NULL;
+    const struct lys_node *rpc_act = NULL;
+    struct lyd_node *result = NULL, *iter, *last, *reply_parent = NULL, *action = NULL, *data_tree = NULL;
     struct lyxml_elem *xmlstart, *xmlelem, *xmlaux;
     struct ly_set *set;
 
@@ -551,12 +551,32 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 
     va_start(ap, options);
     if (options & LYD_OPT_RPCREPLY) {
-        rpc_act = va_arg(ap,  struct lys_node *);
+        rpc_act = va_arg(ap, const struct lys_node *);
         if (!rpc_act || !(rpc_act->nodetype & (LYS_RPC | LYS_ACTION))) {
-            LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+            LOGERR(LY_EINVAL, "%s: invalid variable parameter (const struct lys_node *rpc_act).", __func__);
             goto error;
         }
         reply_parent = _lyd_new(NULL, rpc_act, 0);
+
+        data_tree = va_arg(ap, struct lyd_node *);
+        if (data_tree) {
+            LY_TREE_FOR(data_tree, iter) {
+                if (iter->parent) {
+                    /* a sibling is not top-level */
+                    LOGERR(LY_EINVAL, "%s: invalid variable parameter (const struct lyd_node *data_tree).", __func__);
+                    goto error;
+                }
+            }
+
+            /* move it to the beginning */
+            for (; data_tree->prev->next; data_tree = data_tree->prev);
+
+            /* LYD_OPT_NOSIBLINGS cannot be set in this case */
+            if (options & LYD_OPT_NOSIBLINGS) {
+                LOGERR(LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree with LYD_OPT_NOSIBLINGS).", __func__);
+                goto error;
+            }
+        }
     }
 
     if (!(options & LYD_OPT_NOSIBLINGS)) {
@@ -610,10 +630,14 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         result = reply_parent;
     }
 
-    if ((options & LYD_OPT_ACTION) && !action) {
-        ly_vecode = LYVE_INACT;
-        LOGVAL(LYE_SPEC, LY_VLOG_LYD, result, "Missing action node.");
-        goto error;
+    if (options & LYD_OPT_ACTION) {
+        if (!action) {
+            ly_vecode = LYVE_INACT;
+            LOGVAL(LYE_SPEC, LY_VLOG_LYD, result, "Missing action node.");
+            goto error;
+        }
+        options &= ~LYD_OPT_ACTION;
+        options |= LYD_OPT_RPC;
     }
 
     /* check for uniquness of top-level lists/leaflists because
@@ -639,21 +663,13 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     ly_set_free(set);
 
     /* add default values, resolve unres and check for mandatory nodes in final tree */
-    if (action) {
-        /* it will not get deleted */
-        if (lyd_defaults_add_unres(&action, options, ctx, unres)) {
+    if (lyd_defaults_add_unres(&result, options, ctx, data_tree, action, unres)) {
+        goto error;
+    }
+    if (!(options & LYD_OPT_TRUSTED)) {
+        if (lyd_check_mandatory_tree((action ? action : result), ctx, options)) {
             goto error;
         }
-        if (!(options & LYD_OPT_TRUSTED) && lyd_check_mandatory_tree(action, ctx, options)) {
-            goto error;
-        }
-    } else {
-        if (lyd_defaults_add_unres(&result, options, ctx, unres)) {
-            goto error;
-        }
-        if (!(options & LYD_OPT_TRUSTED) && lyd_check_mandatory_tree(result, ctx, options)) {
-                goto error;
-            }
     }
 
     free(unres->node);

@@ -449,9 +449,24 @@ char *lyd_path(struct lyd_node *node);
  * @param[in] data Serialized data in the specified format.
  * @param[in] format Format of the input data to be parsed.
  * @param[in] options Parser options, see @ref parseroptions.
- * @param[in] ... Additional argument must be supplied when #LYD_OPT_RPCREPLY value is specified in \p options. The
- *            argument is supposed to provide pointer to the RPC schema node for the reply's request
- *            (const struct ::lys_node* rpc).
+ * @param[in] ... Variable arguments depend on \p options. If they include:
+ *                - #LYD_OPT_DATA:
+ *                - #LYD_OPT_CONFIG:
+ *                - #LYD_OPT_GET:
+ *                - #LYD_OPT_GETCONFIG:
+ *                - #LYD_OPT_EDIT:
+ *                  - no variable arguments expected.
+ *                - #LYD_OPT_RPC:
+ *                - #LYD_OPT_NOTIF:
+ *                  - struct lyd_node *data_tree - additional data tree that will be used
+ *                    when checking any "when" or "must" conditions in the parsed tree that require
+ *                    some nodes outside their subtree. It must be a list of top-level elements!
+ *                - #LYD_OPT_RPCREPLY:
+ *                  - const struct ::lys_node *rpc_act - pointer to the RPC or action schema node
+ *                    operation of the reply.
+ *                  - struct lyd_node *data_tree - additional data tree that will be used
+ *                    when checking any "when" or "must" conditions in the parsed tree that require
+ *                    some nodes outside their subtree. It must be a list of top-level elements!
  * @return Pointer to the built data tree or NULL in case of empty \p data. To free the returned structure,
  *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
  *         #ly_errno contains appropriate error code (see #LY_ERR).
@@ -472,9 +487,24 @@ struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT 
  * @param[in] fd The standard file descriptor of the file containing the data tree in the specified format.
  * @param[in] format Format of the input data to be parsed.
  * @param[in] options Parser options, see @ref parseroptions.
- * @param[in] ... Additional argument must be supplied when #LYD_OPT_RPCREPLY value is specified in \p options. The
- *            argument is supposed to provide pointer to the RPC schema node for the reply's request
- *            (const struct ::lys_node* rpc).
+ * @param[in] ... Variable arguments depend on \p options. If they include:
+ *                - #LYD_OPT_DATA:
+ *                - #LYD_OPT_CONFIG:
+ *                - #LYD_OPT_GET:
+ *                - #LYD_OPT_GETCONFIG:
+ *                - #LYD_OPT_EDIT:
+ *                  - no variable arguments expected.
+ *                - #LYD_OPT_RPC:
+ *                - #LYD_OPT_NOTIF:
+ *                  - struct lyd_node *data_tree - additional data tree that will be used
+ *                    when checking any "when" or "must" conditions in the parsed tree that require
+ *                    some nodes outside their subtree. It must be a list of top-level elements!
+ *                - #LYD_OPT_RPCREPLY:
+ *                  - const struct ::lys_node *rpc_act - pointer to the RPC or action schema node
+ *                    operation of the reply.
+ *                  - struct lyd_node *data_tree - additional data tree that will be used
+ *                    when checking any "when" or "must" conditions in the parsed tree that require
+ *                    some nodes outside their subtree. It must be a list of top-level elements!
  * @return Pointer to the built data tree or NULL in case of empty file. To free the returned structure,
  *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
  *         #ly_errno contains appropriate error code (see #LY_ERR).
@@ -493,9 +523,24 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
  * @param[in] path Path to the file containing the data tree in the specified format.
  * @param[in] format Format of the input data to be parsed.
  * @param[in] options Parser options, see @ref parseroptions.
- * @param[in] ... Additional argument must be supplied when #LYD_OPT_RPCREPLY value is specified in \p options. The
- *            argument is supposed to provide pointer to the RPC schema node for the reply's request
- *            (const struct ::lys_node* rpc).
+ * @param[in] ... Variable arguments depend on \p options. If they include:
+ *                - #LYD_OPT_DATA:
+ *                - #LYD_OPT_CONFIG:
+ *                - #LYD_OPT_GET:
+ *                - #LYD_OPT_GETCONFIG:
+ *                - #LYD_OPT_EDIT:
+ *                  - no variable arguments expected.
+ *                - #LYD_OPT_RPC:
+ *                - #LYD_OPT_NOTIF:
+ *                  - struct lyd_node *data_tree - additional data tree that will be used
+ *                    when checking any "when" or "must" conditions in the parsed tree that require
+ *                    some nodes outside their subtree. It must be a list of top-level elements!
+ *                - #LYD_OPT_RPCREPLY:
+ *                  - const struct ::lys_node *rpc_act - pointer to the RPC or action schema node
+ *                    operation of the reply.
+ *                  - struct lyd_node *data_tree - additional data tree that will be used
+ *                    when checking any "when" or "must" conditions in the parsed tree that require
+ *                    some nodes outside their subtree. It must be a list of top-level elements!
  * @return Pointer to the built data tree or NULL in case of empty file. To free the returned structure,
  *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
  *         #ly_errno contains appropriate error code (see #LY_ERR).
@@ -524,9 +569,24 @@ struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT
  * @param[in,out] root XML tree to parse (convert) to data tree. By default, parser do not change the XML tree. However,
  *            when #LYD_OPT_DESTRUCT is specified in \p options, parser frees all successfully parsed data.
  * @param[in] options Parser options, see @ref parseroptions.
- * @param[in] ... Additional argument must be supplied when #LYD_OPT_RPCREPLY value is specified in \p options. The
- *            argument is supposed to provide pointer to the RPC schema node for the reply's request
- *            (const struct ::lys_node* rpc).
+ * @param[in] ... Variable arguments depend on \p options. If they include:
+ *                - #LYD_OPT_DATA:
+ *                - #LYD_OPT_CONFIG:
+ *                - #LYD_OPT_GET:
+ *                - #LYD_OPT_GETCONFIG:
+ *                - #LYD_OPT_EDIT:
+ *                  - no variable arguments expected.
+ *                - #LYD_OPT_RPC:
+ *                - #LYD_OPT_NOTIF:
+ *                  - struct lyd_node *data_tree - additional data tree that will be used
+ *                    when checking any "when" or "must" conditions in the parsed tree that require
+ *                    some nodes outside their subtree. It must be a list of top-level elements!
+ *                - #LYD_OPT_RPCREPLY:
+ *                  - const struct ::lys_node *rpc_act - pointer to the RPC or action schema node
+ *                    operation of the reply.
+ *                  - struct lyd_node *data_tree - additional data tree that will be used
+ *                    when checking any "when" or "must" conditions in the parsed tree that require
+ *                    some nodes outside their subtree. It must be a list of top-level elements!
  * @return Pointer to the built data tree or NULL in case of empty \p root. To free the returned structure,
  *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
  *         #ly_errno contains appropriate error code (see #LY_ERR).
@@ -876,19 +936,19 @@ int lyd_validate_leafref(struct lyd_node_leaf_list *leafref);
  *                     can modify the provided tree including the root \p node.
  * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
  * @param[in] ... Variable argument is optional and depends on \p options. If they include:
- *                #LYD_OPT_DATA:
- *                #LYD_OPT_CONFIG:
- *                #LYD_OPT_GET:
- *                #LYD_OPT_GETCONFIG:
- *                #LYD_OPT_EDIT:
+ *                - #LYD_OPT_DATA:
+ *                - #LYD_OPT_CONFIG:
+ *                - #LYD_OPT_GET:
+ *                - #LYD_OPT_GETCONFIG:
+ *                - #LYD_OPT_EDIT:
  *                  - struct ly_ctx *ctx - context to use when \p node is NULL (for checking an empty tree).
- *                #LYD_OPT_RPC:
- *                #LYD_OPT_RPCREPLY:
- *                #LYD_OPT_NOTIF:
- *                  - const struct lyd_node *running - additional data tree that will be used when checking
- *                                                     any "when" or "must" conditions in the \p node tree
- *                                                     that require some nodes outside their subtree. It
- *                                                     must start with a top-level element!
+ *                - #LYD_OPT_RPC:
+ *                - #LYD_OPT_RPCREPLY:
+ *                - #LYD_OPT_NOTIF:
+ *                  - struct ::lyd_node *data_tree - additional data tree that will be used when checking
+ *                                               any "when" or "must" conditions in the \p node tree
+ *                                               that require some nodes outside their subtree. It
+ *                                               must be a list of top-level elements!
  * @return 0 on success, nonzero in case of an error.
  */
 int lyd_validate(struct lyd_node **node, int options, ...);

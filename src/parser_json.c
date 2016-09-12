@@ -1206,7 +1206,7 @@ error:
 }
 
 struct lyd_node *
-lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, int options)
+lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct lys_node *parent, struct lyd_node *data_tree)
 {
     struct lyd_node *result = NULL, *next = NULL, *iter = NULL;
     struct unres_data *unres = NULL;
@@ -1303,7 +1303,7 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
     ly_set_free(set);
 
     /* add/validate default values, unres */
-    if (lyd_defaults_add_unres(&result, options, ctx, unres)) {
+    if (lyd_defaults_add_unres(&result, options, ctx, data_tree, NULL, unres)) {
         goto error;
     }
 

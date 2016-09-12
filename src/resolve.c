@@ -5468,7 +5468,7 @@ check_xpath(struct lys_node *node)
     }
 
     /* RPC, action can have neither must nor when */
-    for (parent = node; parent && !(parent->nodetype & (LYS_RPC | LYS_NOTIF)); parent = lys_parent(parent));
+    for (parent = node; parent && !(parent->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); parent = lys_parent(parent));
 
     if (parent) {
         for (i = 0; i < set.used; ++i) {

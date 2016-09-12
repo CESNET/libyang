@@ -42,7 +42,8 @@ struct lyd_node *xml_read_data(struct ly_ctx *ctx, const char *data, int options
  * @defgroup jsondata JSON data format support
  * @{
  */
-struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, int options);
+struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct lys_node *parent,
+                                struct lyd_node *data_tree);
 
 /**@} jsondata */
 
