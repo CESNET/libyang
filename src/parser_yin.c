@@ -1217,7 +1217,6 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
                 if (rc == EXIT_FAILURE) {
                     ret = EXIT_FAILURE;
-                    goto error;
                 }
                 goto error;
             }

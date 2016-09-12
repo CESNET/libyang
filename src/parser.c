@@ -1239,8 +1239,9 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
         /* turn logging off, we are going to try to validate the value with all the types in order */
         ly_vlog_hide(1);
 
-        type = lyp_get_next_union_type(stype, NULL, &found);
-        while (type) {
+        type = NULL;
+        while ((type = lyp_get_next_union_type(stype, type, &found))) {
+            found = 0;
             leaf->value_type = type->base;
             memset(&leaf->value, 0, sizeof leaf->value);
 
@@ -1252,8 +1253,8 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
                     leaf->value_str = xml->content;
                     xml->content = NULL;
 
-                    found = 0;
                     type = lyp_get_next_union_type(stype, type, &found);
+                    found = 0;
                     continue;
                 }
             }
@@ -1271,8 +1272,6 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
                 xml->content = NULL;
             }
 
-            found = 0;
-            type = lyp_get_next_union_type(stype, type, &found);
         }
 
         ly_vlog_hide(0);
@@ -1303,7 +1302,7 @@ lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *
         if (type->info.uni.types[i].base == LY_TYPE_UNION) {
             ret = lyp_get_next_union_type(&type->info.uni.types[i], prev_type, found);
             if (ret) {
-                break;;
+                break;
             }
             continue;
         }
