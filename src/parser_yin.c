@@ -1196,13 +1196,15 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             if (!rc) {
                 type->info.uni.count++;
 
-                /* union's type cannot be empty or leafref */
-                if (type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_EMPTY) {
-                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "empty", node->name);
-                    rc = -1;
-                } else if (type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_LEAFREF) {
-                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "leafref", node->name);
-                    rc = -1;
+                if (module->version < 2) {
+                    /* union's type cannot be empty or leafref */
+                    if (type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_EMPTY) {
+                        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "empty", node->name);
+                        rc = -1;
+                    } else if (type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_LEAFREF) {
+                        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "leafref", node->name);
+                        rc = -1;
+                    }
                 }
             }
             if (rc) {

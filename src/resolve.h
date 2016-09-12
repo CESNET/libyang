@@ -43,6 +43,8 @@ enum UNRES_ITEM {
     UNRES_WHEN,          /* unresolved when condition */
     UNRES_MUST,          /* unresolved must condition */
     UNRES_EMPTYCONT,     /* empty container that will get auto-deleted */
+    UNRES_UNION,         /* union with leafref which must be checked because the type can change without changing the
+                            value itself, but removing the target node */
 
     /* generic */
     UNRES_RESOLVED,      /* a resolved item */

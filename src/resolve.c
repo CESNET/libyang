@@ -6168,6 +6168,44 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres)
     }
 }
 
+static int
+resolve_leafref(struct lyd_node *node, struct lys_type *type)
+{
+    struct lyd_node_leaf_list *leaf;
+    struct unres_data matches;
+    uint32_t i;
+
+    memset(&matches, 0, sizeof matches);
+    leaf = (struct lyd_node_leaf_list *)node;
+
+    /* EXIT_FAILURE return keeps leaf->value.lefref NULL, handled later */
+    if (resolve_path_arg_data(node, type->info.lref.path, &matches) == -1) {
+        return -1;
+    }
+
+    /* check that value matches */
+    for (i = 0; i < matches.count; ++i) {
+        if (ly_strequal(leaf->value_str, ((struct lyd_node_leaf_list *)matches.node[i])->value_str, 1)) {
+            leaf->value.leafref = matches.node[i];
+            break;
+        }
+    }
+
+    free(matches.node);
+
+    if (!leaf->value.leafref) {
+        /* reference not found */
+        if (type->info.lref.req > -1) {
+            LOGVAL(LYE_NOLEAFREF, LY_VLOG_LYD, leaf, type->info.lref.path, leaf->value_str);
+            return EXIT_FAILURE;
+        } else {
+            LOGVRB("There is no leafref with the value \"%s\", but it is not required.", leaf->value_str);
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
 /**
  * @brief Resolve a single unres data item. Logs directly.
  *
@@ -6179,48 +6217,22 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres)
 int
 resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
 {
-    uint32_t i;
     int rc;
     struct lyd_node_leaf_list *leaf;
     struct lys_node_leaf *sleaf;
     struct lyd_node *parent;
-    struct unres_data matches;
+    struct lys_type *datatype;
 
-    memset(&matches, 0, sizeof matches);
     leaf = (struct lyd_node_leaf_list *)node;
     sleaf = (struct lys_node_leaf *)leaf->schema;
 
     switch (type) {
     case UNRES_LEAFREF:
         assert(sleaf->type.base == LY_TYPE_LEAFREF);
-        /* EXIT_FAILURE return keeps leaf->value.lefref NULL, handled later */
-        if (resolve_path_arg_data(node, sleaf->type.info.lref.path, &matches) == -1) {
-            return -1;
-        }
-
-        /* check that value matches */
-        for (i = 0; i < matches.count; ++i) {
-            if (ly_strequal(leaf->value_str, ((struct lyd_node_leaf_list *)matches.node[i])->value_str, 1)) {
-                leaf->value.leafref = matches.node[i];
-                break;
-            }
-        }
-
-        free(matches.node);
-
-        if (!leaf->value.leafref) {
-            /* reference not found */
-            if (sleaf->type.info.lref.req > -1) {
-                LOGVAL(LYE_NOLEAFREF, LY_VLOG_LYD, leaf, sleaf->type.info.lref.path, leaf->value_str);
-                return EXIT_FAILURE;
-            } else {
-                LOGVRB("There is no leafref with the value \"%s\", but it is not required.", leaf->value_str);
-            }
-        }
-        break;
+        return resolve_leafref(node, &sleaf->type);
 
     case UNRES_INSTID:
-        assert((sleaf->type.base == LY_TYPE_INST) || (sleaf->type.base == LY_TYPE_UNION));
+        assert(sleaf->type.base == LY_TYPE_INST);
         ly_errno = 0;
         leaf->value.instance = resolve_instid(node, leaf->value_str);
         if (!leaf->value.instance) {
@@ -6233,6 +6245,47 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
                 LOGVRB("There is no instance identifier \"%s\", but it is not required.", leaf->value_str);
             }
         }
+        break;
+
+    case UNRES_UNION:
+        assert(sleaf->type.base == LY_TYPE_UNION);
+        datatype = NULL;
+        memset(&leaf->value, 0, sizeof leaf->value);
+        while ((datatype = lyp_get_next_union_type(&sleaf->type, datatype, &rc))) {
+            leaf->value_type = datatype->base;
+
+            if (datatype->base == LY_TYPE_LEAFREF) {
+                /* try to resolve leafref */
+                if (!resolve_leafref(node, datatype)) {
+                    /* success */
+                    break;
+                }
+            } else if (datatype->base == LY_TYPE_INST) {
+                /* try to resolve instance-identifier */
+                ly_errno = 0;
+                leaf->value.instance = resolve_instid(node, leaf->value_str);
+                if (!ly_errno && (leaf->value.instance || datatype->info.inst.req == -1)) {
+                    /* success */
+                    break;
+                }
+            } else {
+                if (!lyp_parse_value_type(leaf, datatype, 1)) {
+                    /* success */
+                    break;
+                }
+            }
+            rc = 0;
+        }
+        /* erase ly_errno and ly_vecode */
+        ly_errno = LY_SUCCESS;
+        ly_vecode = LYVE_SUCCESS;
+
+        if (!datatype) {
+            /* failure */
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, (leaf->value_str ? leaf->value_str : ""), sleaf->name);
+            return EXIT_FAILURE;
+        }
+
         break;
 
     case UNRES_WHEN:
@@ -6277,7 +6330,7 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
 {
     assert(unres && node);
     assert((type == UNRES_LEAFREF) || (type == UNRES_INSTID) || (type == UNRES_WHEN) || (type == UNRES_MUST)
-           || (type == UNRES_EMPTYCONT));
+           || (type == UNRES_UNION) || (type == UNRES_EMPTYCONT));
 
     unres->count++;
     unres->node = ly_realloc(unres->node, unres->count * sizeof *unres->node);
@@ -6318,6 +6371,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
     int rc, progress;
     char *msg, *path;
     struct lyd_node *parent;
+    struct lyd_node_leaf_list *leaf;
 
     assert(unres);
     assert((root && (*root)) || (options & LYD_OPT_NOAUTODEL));
@@ -6497,10 +6551,15 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
          * all the validation errors
          */
         for (i = 0; i < unres->count; ++i) {
-            if (unres->type[i] == UNRES_RESOLVED) {
-                continue;
+            if (unres->type[i] == UNRES_UNION) {
+                /* does not make sense to print specific errors for all
+                 * the data types, just print that the value is invalid */
+                leaf = (struct lyd_node_leaf_list *)unres->node[i];
+                LOGVAL(LYE_INVAL, LY_VLOG_LYD, unres->node[i], (leaf->value_str ? leaf->value_str : ""),
+                       leaf->schema->name);
+            } else if (unres->type[i] != UNRES_RESOLVED) {
+                resolve_unres_data_item(unres->node[i], unres->type[i]);
             }
-            resolve_unres_data_item(unres->node[i], unres->type[i]);
         }
         return -1;
     }

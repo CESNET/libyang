@@ -53,6 +53,8 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
 {
     const struct lys_node *siter = NULL;
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
+    struct lys_type *type;
+    int found = 0;
 
     assert(node);
     assert(unres);
@@ -75,8 +77,20 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
                 }
             }
         } else {
-            /* if leafref or instance-identifier, store the node for later resolving */
-            if (leaf->value_type == LY_TYPE_LEAFREF && !leaf->value.leafref) {
+            /* if union with leafref, leafref itself or instance-identifier, store the node for later resolving */
+            if (((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_UNION) {
+                /* get know if there is leafref in the union types */
+                type = NULL;
+                while ((type = lyp_get_next_union_type(&((struct lys_node_leaf *)leaf->schema)->type, type, &found))) {
+                    found = 0;
+                    if (type->base == LY_TYPE_LEAFREF) {
+                        if (unres_data_add(unres, (struct lyd_node *)node, UNRES_UNION)) {
+                            return EXIT_FAILURE;
+                        }
+                        break;
+                    }
+                }
+            } else if (leaf->value_type == LY_TYPE_LEAFREF && !leaf->value.leafref) {
                 if (unres_data_add(unres, (struct lyd_node *)node, UNRES_LEAFREF)) {
                     return EXIT_FAILURE;
                 }

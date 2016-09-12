@@ -426,7 +426,7 @@ struct lys_type_info_inst {
     int8_t req;              /**< require-instance restriction, see
                                   [RFC 6020 sec. 9.13.2](http://tools.ietf.org/html/rfc6020#section-9.13.2):
                                   - -1 = false,
-                                  - 0 not defined,
+                                  - 0 not defined (true),
                                   - 1 = true */
 };
 
@@ -447,7 +447,7 @@ struct lys_type_info_lref {
     struct lys_node_leaf* target; /**< target schema node according to path */
     int8_t req;              /**< require-instance restriction:
                                   - -1 = false,
-                                  - 0 not defined,
+                                  - 0 not defined (true),
                                   - 1 = true */
 };
 
