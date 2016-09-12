@@ -3374,6 +3374,10 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
 
             /* skip lyxml_free() at the end of the loop, the sub node is processed later */
             continue;
+        } else if (module->version >= 2 && !strcmp(sub->name, "choice")) {
+            if (!(node = read_yin_choice(module, retval, sub, resolve, unres))) {
+                goto error;
+            }
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
             goto error;
