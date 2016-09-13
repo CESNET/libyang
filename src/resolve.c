@@ -3591,7 +3591,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                         const struct lys_node **ret)
 {
     const struct lys_node *node;
-    const struct lys_module *mod;
+    const struct lys_module *mod, *mod2;
     const char *id, *prefix, *name;
     int pref_len, nam_len, parent_times, has_predicate;
     int i, first_iter, rc;
@@ -3600,6 +3600,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
     parent_times = 0;
     id = path;
 
+    mod2 = lys_node_module(parent);
     do {
         if ((i = parse_path_arg(id, &prefix, &pref_len, &name, &nam_len, &parent_times, &has_predicate)) < 1) {
             LOGVAL(LYE_INCHAR, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, id[-i], &id[-i]);
@@ -3673,12 +3674,21 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
             }
 
             i = resolve_path_predicate_schema(id, node, parent);
-            if (!i) {
-                return EXIT_FAILURE;
-            } else if (i < 0) {
-                return -1;
+            if (i <= 0) {
+                if (i == 0) {
+                    return EXIT_FAILURE;
+                } else { /* i < 0 */
+                    return -1;
+                }
             }
             id += i;
+        }
+        mod = lys_node_module(node);
+        if (!mod->implemented && mod != mod2) {
+            /* set the module implemented */
+            if (lys_set_implemented(mod)) {
+                return -1;
+            }
         }
     } while (id[0]);
 
@@ -3700,6 +3710,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
     if (ret) {
         *ret = node;
     }
+
     return EXIT_SUCCESS;
 }
 
@@ -3973,6 +3984,7 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
     int rc, ignore_config;
     struct lys_node *sub;
     const struct lys_node *aug_target, *parent;
+    struct lys_module *mod;
 
     assert(aug && !aug->target);
 
@@ -3990,10 +4002,27 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
         return EXIT_FAILURE;
     }
 
+    /* check that we want to connect augment into its target */
+    mod = lys_main_module(aug->module);
+    if (!mod->implemented) {
+        /* it must be augment only to the same module,
+         * otherwise we do not apply augment in not-implemented
+         * module. If the module is set to be implemented in future,
+         * the augment is being resolved and checked again */
+        for (sub = aug->target; sub; sub = lys_parent(sub)) {
+            if (lys_node_module(sub) != mod) {
+                /* this is not an implemented module and the augment
+                 * target some other module, so avoid its connecting
+                 * to the target */
+                return EXIT_SUCCESS;
+            }
+        }
+    }
+
     if (!aug->child) {
         /* nothing to do */
         LOGWRN("Augment \"%s\" without children.", aug->target_name);
-        return EXIT_SUCCESS;
+        goto success;
     }
 
     /* check for mandatory nodes - if the target node is in another module
@@ -4055,6 +4084,16 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
         aug->child->prev = sub;         /* finish connecting of both child lists */
     } else {
         aug->target->child = aug->child;
+    }
+
+success:
+    if (mod->implemented) {
+        /* make target modules also implemented */
+        for (sub = aug->target; sub; sub = lys_parent(sub)) {
+           if (lys_set_implemented(sub->module)) {
+               return -1;
+           }
+        }
     }
 
     return EXIT_SUCCESS;
@@ -5545,6 +5584,12 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
             node = (struct lys_node *)stype->parent;
         }
 
+        if (!lys_node_module(node)->implemented) {
+            /* not implemented module, don't bother with resolving the leafref
+             * if the module is set to be implemented, tha path will be resolved then */
+            rc = 0;
+            break;
+        }
         rc = resolve_path_arg_schema(stype->info.lref.path, node, tpdf_flag,
                                      (const struct lys_node **)&stype->info.lref.target);
         if (!tpdf_flag && !rc) {

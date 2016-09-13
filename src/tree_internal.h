@@ -416,10 +416,6 @@ void lys_switch_deviations(struct lys_module *module);
 
 void lys_sub_module_remove_devs_augs(struct lys_module *module);
 
-int lys_module_set_implement(struct lys_module *module);
-
-int lys_sub_module_set_dev_aug_target_implement(struct lys_module *module);
-
 void lys_submodule_module_data_free(struct lys_submodule *submodule);
 
 /**

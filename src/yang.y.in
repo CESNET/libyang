@@ -701,8 +701,6 @@ body_stmts: @EMPTYDIR@ { if (read_all) {
                            LOGMEM;
                            YYABORT;
                          }
-                         /* module with deviation - must be implemented (description of /ietf-yang-library:modules-state/module/deviation) */
-                         module->implemented = 1;
                        }
                        actual = NULL;
                      }

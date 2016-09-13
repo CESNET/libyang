@@ -1600,6 +1600,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     uint8_t *trg_must_size = NULL;
     struct lys_restr **trg_must = NULL;
     struct unres_schema tmp_unres;
+    struct lys_module *mod;
 
     ctx = module->ctx;
 
@@ -1620,7 +1621,6 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Deviating own module is not allowed.");
         goto error;
     }
-    lys_node_module(dev_target)->deviated = 1;
 
     LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
@@ -2389,6 +2389,15 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         }
     }
 
+    /* mark all the affected modules as deviated and implemented */
+    for(parent = dev_target; parent; parent = lys_parent(parent)) {
+        mod = lys_node_module(parent);
+        if (module != mod) {
+            mod->deviated = 1;
+            lys_set_implemented(mod);
+        }
+    }
+
     ly_set_free(dflt_check);
     return EXIT_SUCCESS;
 
@@ -2498,11 +2507,11 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
 
     /* aug->child points to the parsed nodes, they must now be
      * connected to the tree and adjusted (if possible right now).
-     * However, if this is augment in a uses, it gets resolved
+     * However, if this is augment in a uses (parent is NULL), it gets resolved
      * when the uses does and cannot be resolved now for sure
      * (the grouping was not yet copied into uses).
      */
-    if (!parent || (parent->nodetype != LYS_USES)) {
+    if (!parent) {
         if (unres_schema_add_node(module, unres, aug, UNRES_AUGMENT, NULL) == -1) {
             goto error;
         }
@@ -5665,9 +5674,6 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             if (r) {
                 goto error;
             }
-            /* module with deviation - must be implemented (description of /ietf-yang-library:modules-state/module/deviation) */
-            module->implemented = 1;
-
         }
     }
 
@@ -5836,7 +5842,6 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
     struct lys_module *module = NULL;
     struct unres_schema *unres;
     const char *value;
-    int i;
 
     unres = calloc(1, sizeof *unres);
     if (!unres) {
@@ -5894,24 +5899,12 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
         goto error;
     }
 
-    if (module->augment_size || module->deviation_size) {
-        if (!module->implemented) {
-            LOGVRB("Module \"%s\" includes augments or deviations, changing conformance to \"implement\".", module->name);
-        }
-        if (lys_module_set_implement(module)) {
+    if (module->deviation_size && !module->implemented) {
+        LOGVRB("Module \"%s\" includes deviations, changing its conformance to \"implement\".", module->name);
+        /* deviations always causes target to be made implemented,
+         * but augents and leafrefs not, so we have to apply them now */
+        if (lys_set_implemented(module)) {
             goto error;
-        }
-
-        if (lys_sub_module_set_dev_aug_target_implement(module)) {
-            goto error;
-        }
-        for (i = 0; i < module->inc_size; ++i) {
-            if (!module->inc[i].submodule) {
-                continue;
-            }
-            if (lys_sub_module_set_dev_aug_target_implement((struct lys_module *)module->inc[i].submodule)) {
-                goto error;
-            }
         }
     }
 

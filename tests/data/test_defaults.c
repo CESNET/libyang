@@ -124,13 +124,7 @@ static void
 test_empty(void **state)
 {
     struct state *st = (*state);
-    const char *xml = "<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
-                        "<enable-nacm>true</enable-nacm>"
-                        "<read-default>permit</read-default>"
-                        "<write-default>deny</write-default>"
-                        "<exec-default>permit</exec-default>"
-                        "<enable-external-groups>true</enable-external-groups>"
-                      "</nacm><df xmlns=\"urn:libyang:tests:defaults\">"
+    const char *xml = "<df xmlns=\"urn:libyang:tests:defaults\">"
                         "<foo>42</foo>"
                         "<llist>42</llist><dllist>1</dllist><dllist>2</dllist><dllist>3</dllist>"
                         "<b1_1>42</b1_1>"
@@ -152,19 +146,11 @@ test_status(void **state)
     struct state *st = (*state);
     const char *xml_min = "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
                           "<module-set-id>5</module-set-id>"
-                          "</modules-state><nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
-                            "<denied-operations>0</denied-operations>"
-                            "<denied-data-writes>0</denied-data-writes>"
-                            "<denied-notifications>0</denied-notifications>"
-                          "</nacm>";
+                          "</modules-state>";
 
     const char *xml = "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
                         "<module-set-id>5</module-set-id>"
-                      "</modules-state><nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
-                        "<denied-operations>0</denied-operations>"
-                        "<denied-data-writes>0</denied-data-writes>"
-                        "<denied-notifications>0</denied-notifications>"
-                      "</nacm><df xmlns=\"urn:libyang:tests:defaults\">"
+                      "</modules-state><df xmlns=\"urn:libyang:tests:defaults\">"
                         "<b1_status>42</b1_status>"
                       "</df><hidden xmlns=\"urn:libyang:tests:defaults\">"
                         "<papa>42</papa></hidden>";
@@ -212,14 +198,7 @@ static void
 test_empty_tag(void **state)
 {
     struct state *st = (*state);
-    const char *xml = "<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\" "
-                          "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
-                        "<enable-nacm ncwd:default=\"true\">true</enable-nacm>"
-                        "<read-default ncwd:default=\"true\">permit</read-default>"
-                        "<write-default ncwd:default=\"true\">deny</write-default>"
-                        "<exec-default ncwd:default=\"true\">permit</exec-default>"
-                        "<enable-external-groups ncwd:default=\"true\">true</enable-external-groups>"
-                      "</nacm><df xmlns=\"urn:libyang:tests:defaults\" "
+    const char *xml = "<df xmlns=\"urn:libyang:tests:defaults\" "
                           "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
                         "<foo ncwd:default=\"true\">42</foo>"
                         "<llist ncwd:default=\"true\">42</llist><dllist ncwd:default=\"true\">1</dllist>"
@@ -247,13 +226,7 @@ test_df1(void **state)
                         "<foo>42</foo>"
                         "<llist>42</llist><dllist>1</dllist><dllist>2</dllist><dllist>3</dllist>"
                         "<b1_1>42</b1_1>"
-                      "</df><nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
-                        "<enable-nacm>true</enable-nacm>"
-                        "<read-default>permit</read-default>"
-                        "<write-default>deny</write-default>"
-                        "<exec-default>permit</exec-default>"
-                        "<enable-external-groups>true</enable-external-groups>"
-                      "</nacm><hidden xmlns=\"urn:libyang:tests:defaults\">"
+                      "</df><hidden xmlns=\"urn:libyang:tests:defaults\">"
                         "<foo>42</foo><baz>42</baz></hidden>";
 
     st->dt = lyd_new(NULL, st->mod, "df");
@@ -283,13 +256,7 @@ test_df2(void **state)
                         "<foo>42</foo>"
                         "<llist>42</llist><dllist>1</dllist><dllist>2</dllist><dllist>3</dllist>"
                         "<b1_1>42</b1_1>"
-                      "</df><nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
-                        "<enable-nacm>true</enable-nacm>"
-                        "<read-default>permit</read-default>"
-                        "<write-default>deny</write-default>"
-                        "<exec-default>permit</exec-default>"
-                        "<enable-external-groups>true</enable-external-groups>"
-                      "</nacm><hidden xmlns=\"urn:libyang:tests:defaults\">"
+                      "</df><hidden xmlns=\"urn:libyang:tests:defaults\">"
                         "<foo>42</foo><baz>42</baz></hidden>";
 
     st->dt = lyd_new(NULL, st->mod, "df");
@@ -316,13 +283,7 @@ test_df3(void **state)
                         "<llist>42</llist><dllist>1</dllist><dllist>2</dllist><dllist>3</dllist>"
                         "<b1_1>42</b1_1>"
                         "<a1>1</a1>"
-                      "</df><nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
-                        "<enable-nacm>true</enable-nacm>"
-                        "<read-default>permit</read-default>"
-                        "<write-default>deny</write-default>"
-                        "<exec-default>permit</exec-default>"
-                        "<enable-external-groups>true</enable-external-groups>"
-                      "</nacm><hidden xmlns=\"urn:libyang:tests:defaults\">"
+                      "</df><hidden xmlns=\"urn:libyang:tests:defaults\">"
                         "<foo>42</foo><baz>42</baz></hidden>";
     const char *xml2 = "<df xmlns=\"urn:libyang:tests:defaults\" "
                           "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
@@ -331,14 +292,7 @@ test_df3(void **state)
                         "<llist ncwd:default=\"true\">42</llist><dllist ncwd:default=\"true\">1</dllist>"
                         "<dllist ncwd:default=\"true\">2</dllist><dllist ncwd:default=\"true\">3</dllist>"
                         "<b1_1 ncwd:default=\"true\">42</b1_1>"
-                      "</df><nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\" "
-                          "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
-                        "<enable-nacm ncwd:default=\"true\">true</enable-nacm>"
-                        "<read-default ncwd:default=\"true\">permit</read-default>"
-                        "<write-default ncwd:default=\"true\">deny</write-default>"
-                        "<exec-default ncwd:default=\"true\">permit</exec-default>"
-                        "<enable-external-groups ncwd:default=\"true\">true</enable-external-groups>"
-                      "</nacm><hidden xmlns=\"urn:libyang:tests:defaults\" "
+                      "</df><hidden xmlns=\"urn:libyang:tests:defaults\" "
                           "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
                         "<foo ncwd:default=\"true\">42</foo><baz ncwd:default=\"true\">42</baz></hidden>";
 
@@ -373,13 +327,7 @@ test_df4(void **state)
                         "<foo>42</foo>"
                         "<llist>42</llist><dllist>1</dllist><dllist>2</dllist><dllist>3</dllist>"
                         "<b1_2>x</b1_2><b1_1>42</b1_1>"
-                      "</df><nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
-                        "<enable-nacm>true</enable-nacm>"
-                        "<read-default>permit</read-default>"
-                        "<write-default>deny</write-default>"
-                        "<exec-default>permit</exec-default>"
-                        "<enable-external-groups>true</enable-external-groups>"
-                      "</nacm><hidden xmlns=\"urn:libyang:tests:defaults\">"
+                      "</df><hidden xmlns=\"urn:libyang:tests:defaults\">"
                         "<foo>42</foo><baz>42</baz></hidden>";
     const char *xml2 = "<df xmlns=\"urn:libyang:tests:defaults\" "
                           "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
@@ -387,14 +335,7 @@ test_df4(void **state)
                         "<llist ncwd:default=\"true\">42</llist><dllist ncwd:default=\"true\">1</dllist>"
                         "<dllist ncwd:default=\"true\">2</dllist><dllist ncwd:default=\"true\">3</dllist>"
                         "<b2>1</b2>"
-                      "</df><nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\" "
-                          "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
-                        "<enable-nacm ncwd:default=\"true\">true</enable-nacm>"
-                        "<read-default ncwd:default=\"true\">permit</read-default>"
-                        "<write-default ncwd:default=\"true\">deny</write-default>"
-                        "<exec-default ncwd:default=\"true\">permit</exec-default>"
-                        "<enable-external-groups ncwd:default=\"true\">true</enable-external-groups>"
-                      "</nacm><hidden xmlns=\"urn:libyang:tests:defaults\" "
+                      "</df><hidden xmlns=\"urn:libyang:tests:defaults\" "
                           "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
                         "<foo ncwd:default=\"true\">42</foo><baz ncwd:default=\"true\">42</baz></hidden>";
     const char *xml3 = "<df xmlns=\"urn:libyang:tests:defaults\" "
@@ -402,14 +343,7 @@ test_df4(void **state)
                         "<s2a>1</s2a><foo ncwd:default=\"true\">42</foo>"
                         "<llist ncwd:default=\"true\">42</llist><dllist ncwd:default=\"true\">1</dllist>"
                         "<dllist ncwd:default=\"true\">2</dllist><dllist ncwd:default=\"true\">3</dllist>"
-                      "</df><nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\" "
-                          "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
-                        "<enable-nacm ncwd:default=\"true\">true</enable-nacm>"
-                        "<read-default ncwd:default=\"true\">permit</read-default>"
-                        "<write-default ncwd:default=\"true\">deny</write-default>"
-                        "<exec-default ncwd:default=\"true\">permit</exec-default>"
-                        "<enable-external-groups ncwd:default=\"true\">true</enable-external-groups>"
-                      "</nacm><hidden xmlns=\"urn:libyang:tests:defaults\" "
+                      "</df><hidden xmlns=\"urn:libyang:tests:defaults\" "
                           "xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
                         "<foo ncwd:default=\"true\">42</foo><baz ncwd:default=\"true\">42</baz></hidden>";
 
@@ -559,13 +493,7 @@ static void
 test_feature(void **state)
 {
     struct state *st = (*state);
-    const char *xml = "<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
-                        "<enable-nacm>true</enable-nacm>"
-                        "<read-default>permit</read-default>"
-                        "<write-default>deny</write-default>"
-                        "<exec-default>permit</exec-default>"
-                        "<enable-external-groups>true</enable-external-groups>"
-                      "</nacm><hiddenleaf xmlns=\"urn:libyang:tests:defaults\">42"
+    const char *xml = "<hiddenleaf xmlns=\"urn:libyang:tests:defaults\">42"
                       "</hiddenleaf><df xmlns=\"urn:libyang:tests:defaults\">"
                         "<foo>42</foo><hiddenleaf>42</hiddenleaf>"
                         "<llist>42</llist><dllist>1</dllist><dllist>2</dllist><dllist>3</dllist>"
@@ -627,22 +555,9 @@ test_leaflist_yin(void **state)
 "    <default value=\"two\"/>"
 "  </leaf-list></module>";
 
-    const char *xml_empty = "<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
-"<enable-nacm>true</enable-nacm>"
-"<read-default>permit</read-default>"
-"<write-default>deny</write-default>"
-"<exec-default>permit</exec-default>"
-"<enable-external-groups>true</enable-external-groups>"
-"</nacm><ll xmlns=\"urn:x\">one</ll><ll xmlns=\"urn:x\">two</ll>";
+    const char *xml_empty = "<ll xmlns=\"urn:x\">one</ll><ll xmlns=\"urn:x\">two</ll>";
 
-    const char *xml_one = "<ll xmlns=\"urn:x\">one</ll>"
-"<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
-"<enable-nacm>true</enable-nacm>"
-"<read-default>permit</read-default>"
-"<write-default>deny</write-default>"
-"<exec-default>permit</exec-default>"
-"<enable-external-groups>true</enable-external-groups>"
-"</nacm>";
+    const char *xml_one = "<ll xmlns=\"urn:x\">one</ll>";
 
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
@@ -679,22 +594,9 @@ test_leaflist_yang(void **state)
 "    default \"one\";"
 "    default \"two\";"
 "  }}";
-    const char *xml_empty = "<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
-"<enable-nacm>true</enable-nacm>"
-"<read-default>permit</read-default>"
-"<write-default>deny</write-default>"
-"<exec-default>permit</exec-default>"
-"<enable-external-groups>true</enable-external-groups>"
-"</nacm><ll xmlns=\"urn:x\">one</ll><ll xmlns=\"urn:x\">two</ll>";
+    const char *xml_empty = "<ll xmlns=\"urn:x\">one</ll><ll xmlns=\"urn:x\">two</ll>";
 
-    const char *xml_three = "<ll xmlns=\"urn:x\">three</ll>"
-"<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">"
-"<enable-nacm>true</enable-nacm>"
-"<read-default>permit</read-default>"
-"<write-default>deny</write-default>"
-"<exec-default>permit</exec-default>"
-"<enable-external-groups>true</enable-external-groups>"
-"</nacm>";
+    const char *xml_three = "<ll xmlns=\"urn:x\">three</ll>";
 
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);

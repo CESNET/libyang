@@ -46,6 +46,10 @@ lys_is_disabled(const struct lys_node *node, int recursive)
 {
     int i;
 
+    if (!node) {
+        return NULL;
+    }
+
 check:
     if (node->nodetype != LYS_INPUT && node->nodetype != LYS_OUTPUT) {
         /* input/output does not have if-feature, so skip them */
@@ -3251,12 +3255,78 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
     }
 }
 
-int
-lys_module_set_implement(struct lys_module *module)
+static int
+lys_set_implemented_recursion(struct lys_module *module, struct unres_schema *unres)
+{
+    struct lys_node *root, *next, *node;
+    uint8_t i;
+
+    for (i = 0; i < module->augment_size; i++) {
+        /* apply augment */
+        if (unres_schema_add_node(module, unres, &module->augment[i], UNRES_AUGMENT, NULL) == -1) {
+            return -1;
+        }
+    }
+    LY_TREE_FOR(module->data, root) {
+        /* handle leafrefs and recursively change the implemented flags in the leafref targets */
+        LY_TREE_DFS_BEGIN(root, next, node) {
+            if (node->nodetype == LYS_GROUPING) {
+                goto nextsibling;
+            }
+            if (node->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+                if (((struct lys_node_leaf *)node)->type.base == LY_TYPE_LEAFREF) {
+                    if (unres_schema_add_node(module, unres, &((struct lys_node_leaf *)node)->type,
+                                              UNRES_TYPE_LEAFREF, node) == -1) {
+                        return EXIT_FAILURE;
+                    }
+                }
+            }
+
+            /* modified LY_TREE_DFS_END */
+            next = node->child;
+            /* child exception for leafs, leaflists and anyxml without children */
+            if (node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
+                next = NULL;
+            }
+            if (!next) {
+nextsibling:
+                /* no children */
+                if (node == root) {
+                    /* we are done, root has no children */
+                    break;
+                }
+                /* try siblings */
+                next = node->next;
+            }
+            while (!next) {
+                /* parent is already processed, go to its sibling */
+                node = lys_parent(node);
+                /* no siblings, go back through parents */
+                if (lys_parent(node) == lys_parent(root)) {
+                    /* we are done, no next element to process */
+                    break;
+                }
+                next = node->next;
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+API int
+lys_set_implemented(const struct lys_module *module)
 {
     struct ly_ctx *ctx;
-    int i;
+    struct unres_schema *unres;
+    int i, j;
 
+    if (!module) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    module = lys_main_module(module);
     if (module->implemented) {
         return EXIT_SUCCESS;
     }
@@ -3274,33 +3344,41 @@ lys_module_set_implement(struct lys_module *module)
         }
     }
 
-    module->implemented = 1;
-    return EXIT_SUCCESS;
-}
-
-int
-lys_sub_module_set_dev_aug_target_implement(struct lys_module *module)
-{
-    int i;
-    struct lys_module *trg_mod;
-
-    for (i = 0; i < module->deviation_size; ++i) {
-        assert(module->deviation[i].orig_node);
-        trg_mod = lys_node_module(module->deviation[i].orig_node);
-        if (lys_module_set_implement(trg_mod)) {
-            return EXIT_FAILURE;
+    unres = calloc(1, sizeof *unres);
+    if (!unres) {
+        LOGMEM;
+        return EXIT_FAILURE;
+    }
+    /* recursively make the module implemented */
+    ((struct lys_module *)module)->implemented = 1;
+    if (lys_set_implemented_recursion((struct lys_module *)module, unres)) {
+        goto error;
+    }
+    /* process augments in submodules */
+    for (i = 0; i < module->inc_size; ++i) {
+        if (!module->inc[i].submodule) {
+            continue;
+        }
+        for (j = 0; j < module->inc[i].submodule->augment_size; j++) {
+            /* apply augment */
+            if (unres_schema_add_node((struct lys_module *)module->inc[i].submodule, unres,
+                                      &module->inc[i].submodule->augment[i], UNRES_AUGMENT, NULL) == -1) {
+                goto error;
+            }
         }
     }
-
-    for (i = 0; i < module->augment_size; ++i) {
-        assert(module->augment[i].target);
-        trg_mod = lys_node_module(module->augment[i].target);
-        if (lys_module_set_implement(trg_mod)) {
-            return EXIT_FAILURE;
-        }
+    /* resolve rest of unres items */
+    if (unres->count && resolve_unres_schema((struct lys_module *)module, unres)) {
+        goto error;
     }
+    unres_schema_free((struct lys_module *)module, &unres);
 
     return EXIT_SUCCESS;
+
+error:
+    ((struct lys_module *)module)->implemented = 0;
+    unres_schema_free((struct lys_module *)module, &unres);
+    return EXIT_FAILURE;
 }
 
 void

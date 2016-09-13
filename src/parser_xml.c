@@ -147,6 +147,10 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     if (!parent) {
         /* starting in root */
         for (i = 0; i < ctx->models.used; i++) {
+            /* skip just imported modules, data can be coupled only with the implemented modules */
+            if (!ctx->models.list[i]->implemented) {
+                continue;
+            }
             /* match data model based on namespace */
             if (ly_strequal(ctx->models.list[i]->ns, xml->ns->value, 1)) {
                 /* get the proper schema node */
@@ -187,6 +191,13 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     }
     if (!schema) {
         if ((options & LYD_OPT_STRICT) || ly_ctx_get_module_by_ns(ctx, xml->ns->value, NULL)) {
+            LOGVAL(LYE_INELEM, LY_VLOG_LYD, parent, xml->name);
+            return -1;
+        } else {
+            return 0;
+        }
+    } else if (!lys_node_module(schema)->implemented) {
+        if (options & LYD_OPT_STRICT) {
             LOGVAL(LYE_INELEM, LY_VLOG_LYD, parent, xml->name);
             return -1;
         } else {

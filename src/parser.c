@@ -1986,6 +1986,7 @@ lyp_ctx_add_module(struct lys_module **module)
     struct lys_module **newlist = NULL;
     struct lys_module *mod;
     int i, match_i = -1, to_implement;
+    int ret = EXIT_SUCCESS;
 
     assert(module);
     mod = (*module);
@@ -2050,7 +2051,9 @@ lyp_ctx_add_module(struct lys_module **module)
 
     if (to_implement) {
         i = match_i;
-        ctx->models.list[i]->implemented = 1;
+        if (lys_set_implemented(ctx->models.list[i])) {
+            ret = EXIT_FAILURE;
+        }
         goto already_in_context;
     }
     ctx->models.list[i] = mod;
@@ -2062,7 +2065,7 @@ already_in_context:
     lys_sub_module_remove_devs_augs(mod);
     lys_free(mod, NULL, 1);
     (*module) = ctx->models.list[i];
-    return EXIT_SUCCESS;
+    return ret;
 }
 
 /**

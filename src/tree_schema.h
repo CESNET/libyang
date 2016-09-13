@@ -1661,6 +1661,25 @@ struct lys_module *lys_node_module(const struct lys_node *node);
 struct lys_module *lys_main_module(const struct lys_module *module);
 
 /**
+ * @brief Mark imported module as "implemented".
+ *
+ * All the modules explicitly loaded are marked as "implemented", but in case of loading module
+ * automatically as an import of another module, it is marked as imported and in that case it
+ * is not allowed to load data of this module. On the other hand, the mandatory data nodes of
+ * such a module are not required nor the (top-level) default nodes defined in this module are
+ * created in the data trees.
+ *
+ * When a module is marked as "implemented" it is not allowed to set it back to "imported".
+ *
+ * Note that it is not possible to mark "implemented" multiple revisions of a same module within
+ * a single context. In such a case the function fails.
+ *
+ * @param[in] module The module to be set implemented.
+ * @return EXIT_SUCCESS or EXIT_FAILURE
+ */
+int lys_set_implemented(const struct lys_module *module);
+
+/**
  * @brief Set a schema private pointer to a user pointer.
  *
  * @param[in] node Node, whose private field will be assigned.

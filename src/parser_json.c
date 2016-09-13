@@ -898,7 +898,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
             }
         }
     }
-    if (!schema) {
+    if (!schema || !lys_node_module(schema)->implemented) {
         LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*parent), name);
         goto error;
     }
