@@ -95,7 +95,7 @@ test_keys_correct2(void **state)
     node = lyd_new_leaf(st->dt, NULL, "value", "a");
     assert_ptr_not_equal(node, NULL);
 
-    rc = lyd_validate(&(st->dt), LYD_OPT_CONFIG);
+    rc = lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL);
     assert_int_equal(rc, 0);
 }
 
@@ -126,7 +126,7 @@ test_keys_missing2(void **state)
     node = lyd_new_leaf(st->dt, NULL, "key1", "1");
     assert_ptr_not_equal(node, NULL);
 
-    rc = lyd_validate(&(st->dt), LYD_OPT_CONFIG);
+    rc = lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL);
     assert_int_not_equal(rc, 0);
 
     lyd_free(node);
@@ -134,7 +134,7 @@ test_keys_missing2(void **state)
     node = lyd_new_leaf(st->dt, NULL, "key2", "2");
     assert_ptr_not_equal(node, NULL);
 
-    rc = lyd_validate(&(st->dt), LYD_OPT_CONFIG);
+    rc = lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL);
     assert_int_not_equal(rc, 0);
 }
 
@@ -167,7 +167,7 @@ test_keys_inorder2(void **state)
     node = lyd_new_leaf(st->dt, NULL, "key1", "1");
     assert_ptr_not_equal(node, NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL), 0);
 
     lyd_free_withsiblings(st->dt->child);
 
@@ -179,7 +179,7 @@ test_keys_inorder2(void **state)
     node = lyd_new_leaf(st->dt, NULL, "key1", "1");
     assert_ptr_not_equal(node, NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL), 0);
 }
 
 int main(void)

@@ -81,7 +81,7 @@ test_unlink_uses(void **state)
     st->dt = lyd_new_path(NULL, st->ctx, "/when-unlink:top/e", "val_e", 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL), 0);
 
     lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS);
     assert_string_equal(st->xml, "<top xmlns=\"urn:libyang:tests:when-unlink\"><e>val_e</e></top>");
@@ -99,7 +99,7 @@ test_unlink_choice(void **state)
     st->dt = lyd_new_path(NULL, st->ctx, "/when-unlink:top/cas2", NULL, 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL), 0);
 
     lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS);
     assert_string_equal(st->xml, "<top xmlns=\"urn:libyang:tests:when-unlink\"><cas2/></top>");
@@ -120,7 +120,7 @@ test_unlink_case(void **state)
     node = lyd_new_path(st->dt, st->ctx, "/when-unlink:top/b", "val_b", 0, 0);
     assert_ptr_not_equal(node, NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL), 0);
 
     lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS);
     assert_string_equal(st->xml, "<top xmlns=\"urn:libyang:tests:when-unlink\"><a>val_a</a><b>val_b</b></top>");
@@ -141,7 +141,7 @@ test_unlink_augment(void **state)
     node = lyd_new_path(st->dt, st->ctx, "/when-unlink:top/d", "2", 0, 0);
     assert_ptr_not_equal(node, NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL), 0);
 
     lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS);
     assert_string_equal(st->xml, "<top xmlns=\"urn:libyang:tests:when-unlink\"><d>1</d><d>2</d></top>");
@@ -159,7 +159,7 @@ test_dummy(void **state)
     st->dt = lyd_new_path(NULL, st->ctx, "/when-dummy:c", "value", 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 1);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL), 1);
     assert_int_equal(ly_errno, LY_EVALID);
     assert_int_equal(ly_vecode, LYVE_XPATH_DUMMY);
 }
@@ -185,7 +185,7 @@ test_dependency_autodel(void **state)
     node = lyd_new_path(st->dt, st->ctx, "/when-depend:top/e", "val_e", 0, 0);
     assert_ptr_not_equal(node, NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL), 0);
 
     assert_ptr_equal(st->dt, NULL);
 }
@@ -211,7 +211,7 @@ test_dependency_circular(void **state)
     node = lyd_new_path(st->dt, st->ctx, "/when-circdepend:top/e", "val_e", 0, 0);
     assert_ptr_not_equal(node, NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 1);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL), 1);
     assert_int_equal(ly_errno, LY_EVALID);
     assert_int_equal(ly_vecode, LYVE_INWHEN);
 }
@@ -228,7 +228,7 @@ test_unlink_all(void **state)
     st->dt = lyd_new_path(NULL, st->ctx, "/when-unlinkall:a", "val_a", 0, 0);
     assert_ptr_not_equal(st->dt, NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL), 0);
 
     lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS);
     assert_string_equal(st->xml, "<a xmlns=\"urn:libyang:tests:when-unlinkall\">val_a</a>");

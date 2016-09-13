@@ -935,23 +935,24 @@ int lyd_validate_leafref(struct lyd_node_leaf_list *leafref);
  * @param[in,out] node Data tree to be validated. In case the \p options does not includes #LYD_OPT_NOAUTODEL, libyang
  *                     can modify the provided tree including the root \p node.
  * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
- * @param[in] ... Variable argument is optional and depends on \p options. If they include:
+ * @param[in] var_arg Variable argument depends on \p options. If they include:
  *                - #LYD_OPT_DATA:
  *                - #LYD_OPT_CONFIG:
  *                - #LYD_OPT_GET:
  *                - #LYD_OPT_GETCONFIG:
  *                - #LYD_OPT_EDIT:
- *                  - struct ly_ctx *ctx - context to use when \p node is NULL (for checking an empty tree).
+ *                  - struct ly_ctx *ctx - context to use when \p node is NULL (for checking an empty tree),
+ *                                         otherwise can be NULL.
  *                - #LYD_OPT_RPC:
  *                - #LYD_OPT_RPCREPLY:
  *                - #LYD_OPT_NOTIF:
  *                  - struct ::lyd_node *data_tree - additional data tree that will be used when checking
- *                                               any "when" or "must" conditions in the \p node tree
- *                                               that require some nodes outside their subtree. It
- *                                               must be a list of top-level elements!
+ *                                                   any "when" or "must" conditions in the \p node tree
+ *                                                   that require some nodes outside their subtree. If set,
+ *                                                   it must be a list of top-level elements!
  * @return 0 on success, nonzero in case of an error.
  */
-int lyd_validate(struct lyd_node **node, int options, ...);
+int lyd_validate(struct lyd_node **node, int options, void *var_arg);
 
 /**
  * @brief Get know if the node contain (despite implicit or explicit) default value.

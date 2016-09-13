@@ -548,7 +548,7 @@ test_typedef_11_iff_ident_yang(void **state)
     assert_ptr_not_equal(root, NULL);
 
     lys_features_disable(mod, "x");
-    assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG), 0);
+    assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG, NULL), 0);
     assert_int_equal(ly_vecode, LYVE_INVAL);
 
     lyd_free_withsiblings(root);
@@ -588,7 +588,7 @@ test_typedef_11_iff_ident_yin(void **state)
     assert_ptr_not_equal(root, NULL);
 
     lys_features_disable(mod, "x");
-    assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG), 0);
+    assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG, NULL), 0);
     assert_int_equal(ly_vecode, LYVE_INVAL);
 
     lyd_free_withsiblings(root);
@@ -628,7 +628,7 @@ test_typedef_11_iff_enums_yang(void **state)
     assert_ptr_not_equal(root, NULL);
 
     lys_features_disable(mod, "x");
-    assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG), 0);
+    assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG, NULL), 0);
     assert_int_equal(ly_vecode, LYVE_INVAL);
 
     lyd_free_withsiblings(root);
@@ -668,7 +668,7 @@ test_typedef_11_iff_enums_yin(void **state)
     assert_ptr_not_equal(root, NULL);
 
     lys_features_disable(mod, "x");
-    assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG), 0);
+    assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG, NULL), 0);
     assert_int_equal(ly_vecode, LYVE_INVAL);
 
     lyd_free_withsiblings(root);
@@ -708,7 +708,7 @@ test_typedef_11_iff_bits_yang(void **state)
     assert_ptr_not_equal(root, NULL);
 
     lys_features_disable(mod, "x");
-    assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG), 0);
+    assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG, NULL), 0);
     assert_int_equal(ly_vecode, LYVE_INVAL);
 
     lyd_free_withsiblings(root);
@@ -748,7 +748,7 @@ test_typedef_11_iff_bits_yin(void **state)
     assert_ptr_not_equal(root, NULL);
 
     lys_features_disable(mod, "x");
-    assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG), 0);
+    assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG, NULL), 0);
     assert_int_equal(ly_vecode, LYVE_INVAL);
 
     lyd_free_withsiblings(root);

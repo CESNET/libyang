@@ -939,7 +939,7 @@ test_lyd_validate(void **state)
     struct lyd_node *node = root;
     int rc;
 
-    rc = lyd_validate(&root, LYD_OPT_CONFIG);
+    rc = lyd_validate(&root, LYD_OPT_CONFIG, NULL);
     if (rc) {
         fail();
     }
@@ -958,7 +958,7 @@ test_lyd_validate(void **state)
         fail();
     }
 
-    rc = lyd_validate(&root, LYD_OPT_CONFIG);
+    rc = lyd_validate(&root, LYD_OPT_CONFIG, NULL);
     if (rc) {
         fail();
     }

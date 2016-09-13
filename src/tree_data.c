@@ -3421,12 +3421,11 @@ lyd_validate_leafref(struct lyd_node_leaf_list *leafref)
 }
 
 API int
-lyd_validate(struct lyd_node **node, int options, ...)
+lyd_validate(struct lyd_node **node, int options, void *var_arg)
 {
     struct lyd_node *root, *next1, *next2, *iter, *action = NULL, *to_free = NULL, *data_tree = NULL;
     struct ly_ctx *ctx = NULL;
-    int ret = EXIT_FAILURE, ap_flag = 0, i;
-    va_list ap;
+    int ret = EXIT_FAILURE, i;
     struct unres_data *unres = NULL;
     struct ly_set *set;
 
@@ -3446,10 +3445,8 @@ lyd_validate(struct lyd_node **node, int options, ...)
     data_tree = *node;
 
     if ((!options || (options & (LYD_OPT_DATA | LYD_OPT_CONFIG | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT))) && !(*node)) {
-        /* get context with schemas from the variable arguments */
-        va_start(ap, options);
-        ap_flag = 1;
-        ctx = va_arg(ap, struct ly_ctx *);
+        /* get context with schemas from the var_arg */
+        ctx = (struct ly_ctx *)var_arg;
         if (!ctx) {
             LOGERR(LY_EINVAL, "%s: invalid variable parameter (struct ly_ctx *ctx).", __func__);
             goto cleanup;
@@ -3459,9 +3456,7 @@ lyd_validate(struct lyd_node **node, int options, ...)
         options &= ~LYD_OPT_NOSIBLINGS;
     } else if (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF)) {
         /* get the additional data tree if given */
-        va_start(ap, options);
-        ap_flag = 1;
-        data_tree = va_arg(ap, struct lyd_node *);
+        data_tree = (struct lyd_node *)var_arg;
         if (data_tree) {
             LY_TREE_FOR(data_tree, iter) {
                 if (iter->parent) {
@@ -3646,9 +3641,6 @@ nextsiblings:
     ret = EXIT_SUCCESS;
 
 cleanup:
-    if (ap_flag) {
-        va_end(ap);
-    }
     if (unres) {
         free(unres->node);
         free(unres->type);
