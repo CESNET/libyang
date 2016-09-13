@@ -3,7 +3,8 @@ cmake_minimum_required(VERSION 2.6)
 set(internal_tests
   test_lys_find_grouping_up
   test_lys_node_switch
-  test_lyd_list_equal)
+  test_lyd_list_equal
+  test_lyd_attr_parent)
 
 include_directories(SYSTEM ${CMOCKA_INCLUDE_DIR})
 
