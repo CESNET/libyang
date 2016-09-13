@@ -1611,7 +1611,7 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source)
                 if (src_elem == src) {
                     /* we are done, src has no children, but we still need to insert it */
                     src_next = NULL;
-                    src_elem = src_elem->child;
+                    goto src_insert;
                 } else {
                     src_next = src_elem->next;
                     /* trg_parent does not change */
@@ -1630,6 +1630,7 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source)
             }
 
             if (!trg_child) {
+src_insert:
                 /* we need to insert the whole subtree */
                 if (lyd_insert(trg_parent_backup, src_elem_backup)) {
                     LOGINT;
