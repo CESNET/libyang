@@ -129,8 +129,8 @@ test_lyd_list_equal_compare_keys(struct lys_node_list *schema, struct lyd_node *
     x_key = calloc(1, sizeof(*x_key));
     y_key = calloc(1, sizeof(*y_key));
 
-    schema->keys = calloc(1, sizeof(*x_key));
-    *schema->keys = (struct lys_node_leaf*)schema;
+    schema->keys = calloc(1, sizeof(*schema->keys));
+    schema->keys[0] = (struct lys_node_leaf*)schema;
     schema->keys_size = 1;
 
     /* Initialize children */
