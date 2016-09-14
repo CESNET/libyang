@@ -1875,6 +1875,34 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
 }
 
 const struct lys_module *
+lys_get_implemented_module(const struct lys_module *mod)
+{
+    struct ly_ctx *ctx;
+    int i;
+
+    if (!mod || mod->implemented) {
+        /* invalid argument or the module itself is implemented */
+        return mod;
+    }
+
+    ctx = mod->ctx;
+    for (i = 0; i < ctx->models.used; i++) {
+        if (!ctx->models.list[i]->implemented) {
+            continue;
+        }
+
+        if (ly_strequal(mod->name, ctx->models.list[i]->name, 1)) {
+            /* we have some revision of the module implemented */
+            return ctx->models.list[i];
+        }
+    }
+
+    /* we have no revision of the module implemented, return the module itself,
+     * it is up to the caller to set the module implemented when needed */
+    return mod;
+}
+
+const struct lys_module *
 lys_get_import_module(const struct lys_module *module, const char *prefix, int pref_len, const char *name, int name_len)
 {
     const struct lys_module *main_module;
@@ -3184,6 +3212,7 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
         } else {
             target_mod = (struct lys_module *)lys_get_import_module(module, NULL, 0, module->deviation[i].target_name + 1,
                                                                     strcspn(module->deviation[i].target_name, ":") - 1);
+            target_mod = (struct lys_module *)lys_get_implemented_module(target_mod);
         }
         lys_switch_deviation(&module->deviation[i], module);
         assert(target_mod->deviated == 1);

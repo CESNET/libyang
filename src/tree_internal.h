@@ -326,6 +326,18 @@ const struct lys_module *lys_get_import_module(const struct lys_module *module, 
                                                const char *name, int name_len);
 
 /**
+ * @brief Find the implemented revision of the given module in the context.
+ *
+ * If there is no revision of the module implemented, the given module is returned
+ * without any change. It is up to the caller to set the module implemented via
+ * lys_set_implemented() when needed.
+ *
+ * @param[in] mod Module to be searched.
+ * @return The implemeneted revision of the module if any, the given module otherwise.
+ */
+const struct lys_module *lys_get_implemented_module(const struct lys_module *mod);
+
+/**
  * @brief Find a specific sibling. Does not log.
  *
  * Since \p mod_name is mandatory, augments are handled.

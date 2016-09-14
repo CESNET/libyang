@@ -1507,13 +1507,16 @@ resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start
 static int
 schema_nodeid_siblingcheck(const struct lys_node *sibling, int8_t *shorthand, const char *id,
                            const struct lys_module *module, const char *mod_name, int mod_name_len,
-                           const struct lys_node **start)
+                           int implemented_mod, const struct lys_node **start)
 {
     const struct lys_module *prefix_mod;
     int sh = 0;
 
     /* module check */
     prefix_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+    if (implemented_mod) {
+        prefix_mod = lys_get_implemented_module(prefix_mod);
+    }
     if (!prefix_mod) {
         return -1;
     }
@@ -1557,6 +1560,7 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
     const struct lys_node *sibling;
     int r, nam_len, mod_name_len, is_relative = -1;
     int8_t shorthand = 0;
+    int implemented_search = 0;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
     const struct lys_module *start_mod;
 
@@ -1580,6 +1584,14 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
     /* absolute-schema-nodeid */
     } else {
         start_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+        if (start_mod != lys_main_module(module)) {
+            /* if the submodule augments the mainmodule (or in general a module augments
+             * itself, we don't want to search for the implemented module but augments
+             * the module anyway. But when augmenting another module, we need the implemented
+             * revision of the module if any */
+            start_mod = lys_get_implemented_module(start_mod);
+            implemented_search = 1;
+        }
         if (!start_mod) {
             return -1;
         }
@@ -1592,7 +1604,8 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
                                       LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
-                r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, &start);
+                r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len,
+                                               implemented_search, &start);
                 if (r == 0) {
                     *ret = sibling;
                     return EXIT_SUCCESS;
@@ -1660,7 +1673,7 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
                                       LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
-                r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, &start);
+                r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, 0, &start);
                 if (r == 0) {
                     if (!(sibling->nodetype & ret_nodetype)) {
                         /* wrong node type, too bad */
@@ -1772,7 +1785,7 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
                                       | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT | LYS_GETNEXT_WITHGROUPING))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
-                r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, &start);
+                r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, 0, &start);
                 if (r == 0) {
                     if (!(sibling->nodetype & ret_nodetype)) {
                         /* wrong node type, too bad */
@@ -3612,6 +3625,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
             if (parent_times == -1) {
                 /* resolve prefix of the module */
                 mod = lys_get_import_module(parent->module, NULL, 0, prefix, pref_len);
+                mod = lys_get_implemented_module(mod);
                 /* get start node */
                 node = mod ? mod->data : NULL;
                 if (!node) {
