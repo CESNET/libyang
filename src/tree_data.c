@@ -2952,17 +2952,18 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
             /* try to find previously present default instance to replace */
         } else if (ins->schema->nodetype == LYS_LEAFLIST) {
             i = (int)llists->number;
-            if (ly_set_add(llists, ins->schema, 0) != i) {
-                /* each leaf-list must be cleared only once */
+            if ((ly_set_add(llists, ins->schema, 0) != i) || ins->dflt) {
+                /* each leaf-list must be cleared only once (except when looking for exact same existing dflt nodes) */
                 LY_TREE_FOR_SAFE(parent->child, next2, iter) {
                     if (iter->schema == ins->schema) {
-                        if (iter->dflt) {
+                        if (ins->dflt) {
+                            /* adding default leaf-list, remove all explicit and the exact same node, if present */
+                            if (!iter->dflt || !strcmp(((struct lyd_node_leaf_list *)iter)->value_str,
+                                                       ((struct lyd_node_leaf_list *)ins)->value_str)) {
+                                lyd_free(iter);
+                            }
+                        } else if (iter->dflt) {
                             lyd_free(iter);
-                        } else if (ins->dflt) {
-                            /* avoid mixing default and non-default leaflist
-                             * so do not insert the default lieaf-lists */
-                            lyd_free(ins);
-                            goto treefor_continue;
                         }
                     }
                 }
@@ -2971,16 +2972,12 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
                         && !((struct lys_node_container *)ins->schema)->presence)) {
             LY_TREE_FOR(parent->child, iter) {
                 if (iter->schema == ins->schema) {
-                    if (ins->dflt && !iter->dflt) {
-                        /* do not insert default node instead of non-default */
-                        lyd_free(ins);
-                        goto treefor_continue;
-                    } else if (!iter->dflt) {
-                        /* both are non-default, keep both and let the caller solve it later */
-                        iter = NULL;
-                    } else {
-                        /* replace */
+                    if (ins->dflt || iter->dflt) {
+                        /* replace existing (either explicit or default) node with the new (either explicit or default) node */
                         lyd_replace(iter, ins, 1);
+                    } else {
+                        /* keep both explicit nodes, let the caller solve it later */
+                        iter = NULL;
                     }
                     break;
                 }
@@ -3003,7 +3000,6 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
         if (invalid) {
             lyd_insert_setinvalid(ins);
         }
-treefor_continue:;
     }
     ly_set_free(llists);
 
@@ -3137,37 +3133,45 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before)
          * inserting the specified node */
         if (ins->schema->nodetype == LYS_LEAFLIST) {
             LY_TREE_FOR_SAFE(start, next2, iter) {
-                if (iter->schema == ins->schema && iter->dflt) {
-                    if (iter == sibling) {
-                        ly_errno = LY_EINVAL;
-                        str = NULL;
-                        LOGERR(LY_EINVAL, "Insert request refers node (%s) that is going to be auto-deleted.",
-                               str = lyd_path(sibling));
-                        free(str);
-                        goto error;
+                if (iter->schema == ins->schema) {
+                    if ((ins->dflt && (!iter->dflt || !strcmp(((struct lyd_node_leaf_list *)iter)->value_str,
+                                                              ((struct lyd_node_leaf_list *)ins)->value_str)))
+                            || (!ins->dflt && iter->dflt)) {
+                        /* iter will get deleted */
+                        if (iter == sibling) {
+                            ly_errno = LY_EINVAL;
+                            str = NULL;
+                            LOGERR(LY_EINVAL, "Insert request refers node (%s) that is going to be auto-deleted.",
+                                str = lyd_path(sibling));
+                            free(str);
+                            goto error;
+                        }
+                        if (iter == start) {
+                            start = next2;
+                        }
+                        lyd_free(iter);
                     }
-                    if (iter == start) {
-                        start = next2;
-                    }
-                    lyd_free(iter);
                 }
             }
         } else if (ins->schema->nodetype == LYS_LEAF ||
                 (ins->schema->nodetype == LYS_CONTAINER && !((struct lys_node_container *)ins->schema)->presence)) {
             LY_TREE_FOR(start, iter) {
-                if (iter->schema == ins->schema && iter->dflt) {
-                    if (iter == sibling) {
-                        ly_errno = LY_EINVAL;
-                        str = NULL;
-                        LOGERR(LY_EINVAL, "Insert request refers node (%s) that is going to be auto-deleted.",
-                               str = lyd_path(sibling));
-                        free(str);
-                        goto error;
+                if (iter->schema == ins->schema) {
+                    if (iter->dflt || ins->dflt) {
+                        /* iter gets deleted */
+                        if (iter == sibling) {
+                            ly_errno = LY_EINVAL;
+                            str = NULL;
+                            LOGERR(LY_EINVAL, "Insert request refers node (%s) that is going to be auto-deleted.",
+                                str = lyd_path(sibling));
+                            free(str);
+                            goto error;
+                        }
+                        if (iter == start) {
+                            start = iter->next;
+                        }
+                        lyd_free(iter);
                     }
-                    if (iter == start) {
-                        start = iter->next;
-                    }
-                    lyd_free(iter);
                     break;
                 }
             }

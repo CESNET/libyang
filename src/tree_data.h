@@ -782,14 +782,15 @@ int lyd_merge(struct lyd_node *target, const struct lyd_node *source, int option
  * @brief Insert the \p node element as child to the \p parent element. The \p node is inserted as a last child of the
  * \p parent.
  *
- * If the node is part of some other tree, it is automatically unlinked.
- * If the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
- * If the key of a list is being inserted, it is placed into a correct position instead of being placed as the last
+ * - if the node is part of some other tree, it is automatically unlinked.
+ * - if the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
+ * - if the key of a list is being inserted, it is placed into a correct position instead of being placed as the last
  * element.
- * If the target tree includes the default instance of the node being inserted, the default node is silently replaced
- * by the new node. On the other hand, if a default node is being inserted and the target tree already contains
- * non-default instance, the default node is not inserted (it is skipped and freed).
- * If a non-default node is being inserted and there is already its non-default instance in the target tree, the new
+ * - if the target tree includes the default instance of the node being inserted, the default node is silently replaced
+ * by the new node. Also, if a default node is being inserted and the target tree already contains
+ * non-default instance, the existing instance is silently replaced. If it contains the exact same default node,
+ * it is replaced as well.
+ * - if a non-default node is being inserted and there is already its non-default instance in the target tree, the new
  * node is inserted and it is up to the caller to solve the presence of multiple instances afterwards.
  *
  * Note that this function differs from lyd_insert_before() and lyd_insert_after() because the position of the
@@ -807,16 +808,16 @@ int lyd_insert(struct lyd_node *parent, struct lyd_node *node);
 /**
  * @brief Insert the \p node element as a last sibling of the specified \p sibling element.
  *
- * If the node is part of some other tree, it is automatically unlinked.
- * If the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
- * If the key of a list is being inserted, it is placed into a correct position instead of being placed as the last
+ * - if the node is part of some other tree, it is automatically unlinked.
+ * - if the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
+ * - if the key of a list is being inserted, it is placed into a correct position instead of being placed as the last
  * element.
- * If the target tree includes the default instance of the node being inserted, the default node is silently replaced
- * (so it is not inserted as the last sibling in this case) by the new node. On the other hand, if a default node is
- * being inserted and the target tree already contains non-default instance, the default node is not inserted (it is
- * skipped and freed). If a non-default node is being inserted and there is already its non-default instance in the
- * target tree, the new node is inserted and it is up to the caller to solve the presence of multiple instances
- * afterwards.
+ * - if the target tree includes the default instance of the node being inserted, the default node is silently replaced
+ * by the new node. Also, if a default node is being inserted and the target tree already contains
+ * non-default instance, the existing instance is silently replaced. If it contains the exact same default node,
+ * it is replaced as well.
+ * - if a non-default node is being inserted and there is already its non-default instance in the target tree, the new
+ * node is inserted and it is up to the caller to solve the presence of multiple instances afterwards.
  *
  * Note that this function differs from lyd_insert_before() and lyd_insert_after() because the position of the
  * node being inserted is determined automatically as in the case of lyd_insert(). In contrast to lyd_insert(),
@@ -835,6 +836,12 @@ int lyd_insert_sibling(struct lyd_node **sibling, struct lyd_node *node);
  * @brief Insert the \p node element after the \p sibling element. If \p node and \p siblings are already
  * siblings (just moving \p node position), skip validation.
  *
+ * - if the target tree includes the default instance of the node being inserted, the default node is silently removed.
+ * Also, if a default node is being inserted and the target tree already contains
+ * non-default instance, the existing instance is removed. If it contains the exact same default node, it is removed as well.
+ * - if a non-default node is being inserted and there is already its non-default instance in the target tree, the new
+ * node is inserted and it is up to the caller to solve the presence of multiple instances afterwards.
+ *
  * @param[in] sibling The data tree node before which the \p node will be inserted.
  * @param[in] node The data tree node to be inserted. If the node is connected somewhere, it is unlinked first.
  * @return 0 on success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
@@ -845,6 +852,12 @@ int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
 /**
  * @brief Insert the \p node element after the \p sibling element. If \p node and \p siblings are already
  * siblings (just moving \p node position), skip validation.
+ *
+ * - if the target tree includes the default instance of the node being inserted, the default node is silently removed.
+ * Also, if a default node is being inserted and the target tree already contains
+ * non-default instance, the existing instance is removed. If it contains the exact same default node, it is removed as well.
+ * - if a non-default node is being inserted and there is already its non-default instance in the target tree, the new
+ * node is inserted and it is up to the caller to solve the presence of multiple instances afterwards.
  *
  * @param[in] sibling The data tree node before which the \p node will be inserted. If \p node and \p siblings
  * are already siblings (just moving \p node position), skip validation.
