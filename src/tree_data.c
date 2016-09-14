@@ -4468,6 +4468,8 @@ uniquecheck:
                     path2 = malloc(LY_BUF_SIZE);
                     if (!path1 || !path2) {
                         LOGMEM;
+                        free(path1);
+                        free(path2);
                         return -1;
                     }
                     idx1 = idx2 = LY_BUF_SIZE - 1;
