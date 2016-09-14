@@ -9,12 +9,16 @@ set(internal_tests
 include_directories(SYSTEM ${CMOCKA_INCLUDE_DIR})
 
 foreach(src IN LISTS libsrc)
-	list(APPEND new_libsrc "../${src}")
+    list(APPEND src_internal "../${src}")
 endforeach(src)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=default")
+add_library(yang_internal ${src_internal})
+target_link_libraries(yang_internal yang)
+
 foreach(test_name IN LISTS internal_tests)
-    add_executable(${test_name} tree_internal/${test_name}.c ${new_libsrc})
-    target_link_libraries(${test_name} ${CMOCKA_LIBRARIES} yang)
+    add_executable(${test_name} tree_internal/${test_name}.c)
+    target_link_libraries(${test_name} ${CMOCKA_LIBRARIES} yang_internal)
     add_test(NAME ${test_name} COMMAND $<TARGET_FILE:${test_name}>)
 endforeach(test_name)
 
