@@ -5557,7 +5557,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
                 msg_sibling->prev = msg_sibling;
                 msg_sibling->parent = NULL;
             } else {
-                assert(data_tree_sibling->prev = msg_sibling);
+                assert(data_tree_sibling->prev == msg_sibling);
                 data_tree_sibling->prev = msg_sibling->prev;
                 data_tree_sibling->prev->next = NULL;
                 msg_sibling->prev = msg_sibling;
