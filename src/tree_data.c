@@ -4200,8 +4200,9 @@ lyd_get_unique_default(const char* unique_expr, struct lyd_node *list)
 
     assert(unique_expr);
 
-    if (resolve_descendant_schema_nodeid(unique_expr, list->schema->child, LYS_LEAF, 1, 1, &parent)) {
-        /* error, but unique expression was checked when the schema was parsed */
+    if (resolve_descendant_schema_nodeid(unique_expr, list->schema->child, LYS_LEAF, 1, 1, &parent) || !parent) {
+        /* error, but unique expression was checked when the schema was parsed so this should not happened */
+        LOGINT;
         return NULL;
     }
 
