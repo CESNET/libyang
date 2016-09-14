@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8.9)
 
 set(internal_tests
   test_lys_find_grouping_up
@@ -8,12 +8,8 @@ set(internal_tests
 
 include_directories(SYSTEM ${CMOCKA_INCLUDE_DIR})
 
-foreach(src IN LISTS libsrc)
-	list(APPEND new_libsrc "../${src}")
-endforeach(src)
-
 foreach(test_name IN LISTS internal_tests)
-    add_executable(${test_name} tree_internal/${test_name}.c ${new_libsrc})
+    add_executable(${test_name} $<TARGET_OBJECTS:yangobj> tree_internal/${test_name}.c)
     target_link_libraries(${test_name} ${CMOCKA_LIBRARIES} yang)
     add_test(NAME ${test_name} COMMAND $<TARGET_FILE:${test_name}>)
 endforeach(test_name)
