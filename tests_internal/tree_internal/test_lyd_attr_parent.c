@@ -75,8 +75,9 @@ test_lyd_attr_parent(void **state)
 
     parent = lyd_attr_parent(root, attr);
 
-    assert_string_equal(parent->attr->name, "test_attr");
+    assert_ptr_not_equal(parent, NULL);
     assert_ptr_equal(parent->attr, attr);
+    assert_string_equal(parent->attr->name, "test_attr");
 
     free(attr);
     free(root);
