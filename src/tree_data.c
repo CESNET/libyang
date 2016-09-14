@@ -2929,7 +2929,7 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
             /* auto delete nodes from other cases, if any;
              * this is done only if node->parent != parent */
             iter = parent->child;
-            if (lyv_multicases(node, NULL, &iter, 1, NULL)) {
+            if (lyv_multicases(ins, NULL, &iter, 1, NULL)) {
                 goto error;
             }
         }
