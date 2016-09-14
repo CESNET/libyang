@@ -1512,6 +1512,8 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
             /* these are, for instance, cases when the resulting data tree will definitely not be valid */
             trg_leaf->value = (lyd_val)0;
         }
+
+        trg_leaf->dflt = src_leaf->dflt;
     } else {
         trg_any = (struct lyd_node_anydata *)target;
         src_any = (struct lyd_node_anydata *)source;
@@ -1554,7 +1556,8 @@ lyd_merge_node_equal(struct lyd_node *node1, struct lyd_node *node2)
     case LYS_ANYDATA:
         return 1;
     case LYS_LEAFLIST:
-        if (!strcmp(((struct lyd_node_leaf_list *)node1)->value_str, ((struct lyd_node_leaf_list *)node2)->value_str)) {
+        if (!strcmp(((struct lyd_node_leaf_list *)node1)->value_str, ((struct lyd_node_leaf_list *)node2)->value_str)
+                && (node1->dflt == node2->dflt)) {
             return 1;
         }
         break;
@@ -1584,7 +1587,7 @@ lyd_merge_node_equal(struct lyd_node *node1, struct lyd_node *node2)
 
 /* spends source */
 static int
-lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source)
+lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source, int options)
 {
     struct lyd_node *trg_parent, *src, *src_backup, *src_elem, *src_elem_backup, *src_next, *trg_child, *trg_parent_backup;
 
@@ -1592,6 +1595,16 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source)
         for (src_elem = src_next = src, trg_parent = target;
             src_elem;
             src_elem = src_next) {
+
+            /* it won't get inserted in this case */
+            if (src_elem->dflt && (options & LYD_OPT_EXPLICIT)) {
+                if (src_elem == src) {
+                    /* we are done with this subtree in this case */
+                    break;
+                }
+                trg_child = (struct lyd_node *)1;
+                goto src_skip;
+            }
 
             LY_TREE_FOR(trg_parent->child, trg_child) {
                 /* schema match, data match? */
@@ -1611,6 +1624,7 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source)
                 src_next = src_elem->child;
                 trg_parent = trg_child;
             } else {
+src_skip:
                 /* no children (or the whole subtree will be inserted), try siblings */
                 if (src_elem == src) {
                     /* we are done, src has no children, but we still need to insert it */
@@ -1658,7 +1672,7 @@ src_insert:
 
 /* spends source */
 static int
-lyd_merge_siblings(struct lyd_node *target, struct lyd_node *source)
+lyd_merge_siblings(struct lyd_node *target, struct lyd_node *source, int options)
 {
     struct lyd_node *trg, *src, *src_backup;
 
@@ -1673,7 +1687,7 @@ lyd_merge_siblings(struct lyd_node *target, struct lyd_node *source)
                 if (trg->schema->nodetype & (LYS_LEAF | LYS_ANYDATA)) {
                     lyd_merge_node_update(trg, src);
                 } else {
-                    if (lyd_merge_parent_children(trg, src->child)) {
+                    if (lyd_merge_parent_children(trg, src->child, options)) {
                         lyd_free_withsiblings(source);
                         return -1;
                     }
@@ -1822,10 +1836,10 @@ lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options)
 
     if (!first_iter) {
         /* !! src_merge start is a child(ren) of trg_merge_start */
-        ret = lyd_merge_parent_children(trg_merge_start, src_merge_start);
+        ret = lyd_merge_parent_children(trg_merge_start, src_merge_start, options);
     } else {
         /* !! src_merge start is a (top-level) sibling(s) of trg_merge_start */
-        ret = lyd_merge_siblings(trg_merge_start, src_merge_start);
+        ret = lyd_merge_siblings(trg_merge_start, src_merge_start, options);
     }
 
     if (target->schema->nodetype == LYS_RPC) {

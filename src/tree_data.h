@@ -771,12 +771,16 @@ struct lyd_node *lyd_dup(const struct lyd_node *node, int recursive);
  * @param[in] target Top-level (or an RPC output child) data tree to merge to. Must be valid.
  * @param[in] source Data tree to merge \p target with. Must be valid (at least as a subtree).
  * @param[in] options Bitmask of 2 option flags:
- * LYD_OPT_DESTRUCT - spend \p source in the function, otherwise \p source is left untouched,
- * LYD_OPT_NOSIBLINGS - merge only the \p source subtree (ignore siblings), otherwise merge
- * \p source and all its succeeding siblings (preceeding ones are still ignored!).
+ * - #LYD_OPT_DESTRUCT - spend \p source in the function, otherwise \p source is left untouched,
+ * - #LYD_OPT_NOSIBLINGS - merge only the \p source subtree (ignore siblings), otherwise merge
+ * \p source and all its succeeding siblings (preceeding ones are still ignored!),
+ * - #LYD_OPT_EXPLICIT - when merging an explicitly set node and a default node, always put
+ * the explicit node into \p target, otherwise the node which is in \p source is used.
  * @return 0 on success, nonzero in case of an error.
  */
 int lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options);
+
+#define LYD_OPT_EXPLICIT 0x0100
 
 /**
  * @brief Insert the \p node element as child to the \p parent element. The \p node is inserted as a last child of the
