@@ -193,7 +193,7 @@ json_print_leaf_list(struct lyout *out, int level, const struct lyd_node *node, 
     const struct lyd_node *list = node;
     int flag_empty = 0, flag_attrs = 0;
 
-    if (!list->child) {
+    if (is_list && !list->child) {
         /* empty, e.g. in case of filter */
         flag_empty = 1;
     }
