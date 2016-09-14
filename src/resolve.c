@@ -568,7 +568,7 @@ parse_instance_identifier(const char *id, const char **model, int *mod_len, cons
     parsed += ret;
     id += ret;
 
-    if (id[0] == '[') {
+    if (id[0] == '[' && has_predicate) {
         *has_predicate = 1;
     }
 
