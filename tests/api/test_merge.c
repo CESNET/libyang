@@ -40,7 +40,7 @@ setup_f(void **state)
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(NULL);
+    st->ctx = ly_ctx_new(TESTS_DIR "/api/files");
     if (!st->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         goto error;
@@ -140,11 +140,62 @@ test_merge(void **state)
     assert_string_equal(st->output, output_template);
 }
 
+static void
+test_merge_dflt1(void **state)
+{
+    struct state *st = (*state);
+    struct lyd_node *tmp;
+
+    assert_ptr_not_equal(ly_ctx_load_module(st->ctx, "merge-dflt", NULL), NULL);
+
+    st->root = lyd_new_path(NULL, st->ctx, "/merge-dflt:top/c", "c_dflt", 0, 0);
+    assert_ptr_not_equal(st->root, NULL);
+    assert_int_equal(lyd_validate(&(st->root), LYD_OPT_CONFIG, NULL), 0);
+
+    st->node = lyd_new_path(NULL, st->ctx, "/merge-dflt:top/a", "a_val", 0, 0);
+    assert_ptr_not_equal(st->node, NULL);
+    tmp = lyd_new_path(st->node, st->ctx, "/merge-dflt:top/b", "b_val", 0, 0);
+    assert_ptr_not_equal(tmp, NULL);
+    assert_int_equal(lyd_validate(&(st->node), LYD_OPT_CONFIG, NULL), 0);
+
+    assert_int_equal(lyd_merge(st->root, st->node, LYD_OPT_DESTRUCT), 0);
+    st->node = NULL;
+
+    /* c should be replaced and now be default */
+    assert_int_equal(st->root->child->dflt, 1);
+}
+
+static void
+test_merge_dflt2(void **state)
+{
+    struct state *st = (*state);
+    struct lyd_node *tmp;
+
+    assert_ptr_not_equal(ly_ctx_load_module(st->ctx, "merge-dflt", NULL), NULL);
+
+    st->root = lyd_new_path(NULL, st->ctx, "/merge-dflt:top/c", "c_dflt", 0, 0);
+    assert_ptr_not_equal(st->root, NULL);
+    assert_int_equal(lyd_validate(&(st->root), LYD_OPT_CONFIG, NULL), 0);
+
+    st->node = lyd_new_path(NULL, st->ctx, "/merge-dflt:top/a", "a_val", 0, 0);
+    assert_ptr_not_equal(st->node, NULL);
+    tmp = lyd_new_path(st->node, st->ctx, "/merge-dflt:top/b", "b_val", 0, 0);
+    assert_ptr_not_equal(tmp, NULL);
+    assert_int_equal(lyd_validate(&(st->node), LYD_OPT_CONFIG, NULL), 0);
+
+    assert_int_equal(lyd_merge(st->root, st->node, LYD_OPT_EXPLICIT), 0);
+
+    /* c should not be replaced, so c remains not default */
+    assert_int_equal(st->root->child->dflt, 0);
+}
+
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_merge, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_merge_dflt1, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_merge_dflt2, setup_f, teardown_f)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
