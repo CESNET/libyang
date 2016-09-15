@@ -444,10 +444,10 @@ extern "C" {
  * of nodes, requires less information about the modified data, and is generally simpler to use. The path format
  * specifics can be found [here](@ref howtoxpath).
  *
- * Working with two data subtrees can also be preformed two ways. Usually, you should use lyd_insert*() functions.
+ * Working with two data subtrees can also be performed two ways. Usually, you should use lyd_insert*() functions.
  * But they always work with a single subtree and it must be placed on an exact and correct location in the other
- * tree. If using lyd_merge(), this information is learnt internally and duplicities (that would invalidate
- * the final data tree) are filtered out at the cost of somewhat reduced effectivity.
+ * tree. If using lyd_merge(), this information is learned internally and duplicities (that would invalidate
+ * the final data tree) are filtered out at the cost of somewhat reduced efficiency.
  *
  * Also remember, that when you are creating/inserting a node, all the objects in that operation must belong to the
  * same context.
@@ -459,6 +459,7 @@ extern "C" {
  * - lyd_dup()
  * - lyd_change_leaf()
  * - lyd_insert()
+ * - lyd_insert_sibling()
  * - lyd_insert_before()
  * - lyd_insert_after()
  * - lyd_insert_attr()
@@ -538,7 +539,7 @@ extern "C" {
 /**
  * @page howtodatawd Default Values
  *
- * libyang provide support for work with default values as defined in [RFC 6243](https://tools.ietf.org/html/rfc6243).
+ * libyang provides support for work with default values as defined in [RFC 6243](https://tools.ietf.org/html/rfc6243).
  * This document defines 4 modes for handling default nodes in a data tree, libyang adds the fifth mode:
  * - \b explicit - Only the explicitly set configuration data. But in the case of status data, missing default
  *                 data are added into the tree. In libyang, this mode is represented by #LYP_WD_EXPLICIT option.
@@ -566,14 +567,14 @@ extern "C" {
  * - #LYD_OPT_GET, #LYD_OPT_GETCONFIG, #LYD_OPT_EDIT - no default nodes are added
  * - #LYD_OPT_RPC, #LYD_OPT_RPCREPLY, #LYD_OPT_NOTIF - the default nodes from the particular subtree are added
  *
- * The with default modes described above are supported when the data tree is being printed with the
+ * The with-default modes described above are supported when the data tree is being printed with the
  * [LYP_WD_ printer flags](@ref printerflags). Note, that in case of #LYP_WD_ALL_TAG and #LYP_WD_IMPL_TAG modes,
  * the XML/JSON attributes are printed only if the context includes the ietf-netconf-with-defaults schema. Otherwise,
  * these modes have the same result as #LYP_WD_ALL. The presence of empty containers (despite they were added explicitly
  * or implicitly as part of accessible data tree) depends on #LYP_KEEPEMPTYCONT option.
  *
  * To get know if the particular leaf or leaf-list node contains default value (despite implicit or explicit), you can
- * use lyd_wd_default().
+ * use lyd_wd_default() function.
  *
  * Functions List
  * --------------
