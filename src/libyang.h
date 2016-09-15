@@ -556,7 +556,8 @@ extern "C" {
  * present by mistake. Such a data tree is again corrected during the next lyd_validate() call.
  *
  * The implicit (default) nodes, created by libyang, are marked with the ::lyd_node#dflt flag which applies to the
- * leafs and leaf-lists. In case of containers, the flag means that the container holds only a default node(s).
+ * leafs and leaf-lists. In case of containers, the flag means that the container holds only a default node(s) or it
+ * is an empty container (according to YANG 1.1 spec, all such containers are part of the accessible data tree).
  *
  * The presence of the default nodes during the data tree lifetime is affected by the LYD_OPT_ flag used to
  * parse/validate the tree:
@@ -568,7 +569,8 @@ extern "C" {
  * The with default modes described above are supported when the data tree is being printed with the
  * [LYP_WD_ printer flags](@ref printerflags). Note, that in case of #LYP_WD_ALL_TAG and #LYP_WD_IMPL_TAG modes,
  * the XML/JSON attributes are printed only if the context includes the ietf-netconf-with-defaults schema. Otherwise,
- * these modes have the same result as #LYP_WD_ALL.
+ * these modes have the same result as #LYP_WD_ALL. The presence of empty containers (despite they were added explicitly
+ * or implicitly as part of accessible data tree) depends on #LYP_KEEPEMPTYCONT option.
  *
  * To get know if the particular leaf or leaf-list node contains default value (despite implicit or explicit), you can
  * use lyd_wd_default().
