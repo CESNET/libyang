@@ -90,21 +90,26 @@ extern "C" {
  *
  * When creating a new context, search dir can be specified (NULL is accepted) to provide directory
  * where libyang will automatically search for schemas being imported or included. The search path
- * can be later changed via ly_ctx_set_searchdir() function. Before exploring the specified search
- * dir, libyang tries to get imported and included schemas from the current working directory first.
- * This automatic searching can be completely avoided when the caller sets module searching callback
+ * can be later changed via ly_ctx_set_searchdir() function. If the search dir is specified, it is explored
+ * first. In case the module is not found, libyang tries to find the (sub)module also in current working working
+ * directory. This automatic searching can be completely avoided when the caller sets module searching callback
  * (#ly_module_clb) via ly_ctx_set_module_clb().
  *
  * Schemas are added into the context using [parser functions](@ref howtoschemasparsers) - \b lys_parse_*().
  * In case of schemas, also ly_ctx_load_module() can be used - in that case the #ly_module_clb or automatic
- * search in working directory and in the searchpath is used.
+ * search in search dir and in the current working directory is used.
  *
  * Similarly, data trees can be parsed by \b lyd_parse_*() functions. Note, that functions for schemas have \b lys_
  * prefix while functions for instance data have \b lyd_ prefix.
  *
- * Context can hold multiple revisions of the same schema, but only one of them can be implemented. The schema is
- * marked as implemented when it is explicitly loaded by ly_ctx_load_module() or other lys_parse*() functions. The
- * schema is not implemented only when it was loaded automatically as other schema's import.
+ * Context can hold multiple revisions of the same schema, but only one of them can be implemented. The schema is not
+ * implemented in case it is automatically loaded as import for another module and it is not referenced in such
+ * a module (and no other) as target of leafref, augment or deviation. All modules with deviation definition are always
+ * marked as implemented. The imported (not implemented) module can be set implemented by lys_set_implemented(). But
+ * the implemented module cannot be changed back to just imported module. The imported modules are used only as a
+ * source of definitions for types (including identities) and uses statements. The data in such a modules are
+ * ignored - caller is not allowed to create the data defined in the model via data parsers, the default nodes are
+ * not added into any data tree and mandatory nodes are not checked in the data trees.
  *
  * Context holds all modules and their submodules internally. To get
  * a specific module or submodule, use ly_ctx_get_module() and ly_ctx_get_submodule(). There are some additional
@@ -142,6 +147,7 @@ extern "C" {
  * - ly_ctx_get_node()
  * - ly_ctx_get_node2()
  * - ly_ctx_destroy()
+ * - lys_set_implemented()
  */
 
 /**
@@ -193,6 +199,9 @@ extern "C" {
  * \note There are many functions to access information from the schema trees. Details are available in
  * the [Schema Tree module](@ref schematree).
  *
+ * For information about difference between implemented and imported modules, see the
+ * [context description](@ref howtocontext).
+ *
  * Functions List (not assigned to above subsections)
  * --------------------------------------------------
  * - lys_getnext()
@@ -200,6 +209,7 @@ extern "C" {
  * - lys_module()
  * - lys_node_module()
  * - lys_set_private()
+ * - lys_set_implemented()
  */
 
 /**
@@ -434,10 +444,10 @@ extern "C" {
  * of nodes, requires less information about the modified data, and is generally simpler to use. The path format
  * specifics can be found [here](@ref howtoxpath).
  *
- * Working with two data subtrees can also be preformed two ways. Usually, you should use lyd_insert*() functions.
+ * Working with two data subtrees can also be performed two ways. Usually, you should use lyd_insert*() functions.
  * But they always work with a single subtree and it must be placed on an exact and correct location in the other
- * tree. If using lyd_merge(), this information is learnt internally and duplicities (that would invalidate
- * the final data tree) are filtered out at the cost of somewhat reduced effectivity.
+ * tree. If using lyd_merge(), this information is learned internally and duplicities (that would invalidate
+ * the final data tree) are filtered out at the cost of somewhat reduced efficiency.
  *
  * Also remember, that when you are creating/inserting a node, all the objects in that operation must belong to the
  * same context.
@@ -449,6 +459,7 @@ extern "C" {
  * - lyd_dup()
  * - lyd_change_leaf()
  * - lyd_insert()
+ * - lyd_insert_sibling()
  * - lyd_insert_before()
  * - lyd_insert_after()
  * - lyd_insert_attr()
@@ -528,7 +539,7 @@ extern "C" {
 /**
  * @page howtodatawd Default Values
  *
- * libyang provide support for work with default values as defined in [RFC 6243](https://tools.ietf.org/html/rfc6243).
+ * libyang provides support for work with default values as defined in [RFC 6243](https://tools.ietf.org/html/rfc6243).
  * This document defines 4 modes for handling default nodes in a data tree, libyang adds the fifth mode:
  * - \b explicit - Only the explicitly set configuration data. But in the case of status data, missing default
  *                 data are added into the tree. In libyang, this mode is represented by #LYP_WD_EXPLICIT option.
@@ -546,7 +557,8 @@ extern "C" {
  * present by mistake. Such a data tree is again corrected during the next lyd_validate() call.
  *
  * The implicit (default) nodes, created by libyang, are marked with the ::lyd_node#dflt flag which applies to the
- * leafs and leaf-lists. In case of containers, the flag means that the container holds only a default node(s).
+ * leafs and leaf-lists. In case of containers, the flag means that the container holds only a default node(s) or it
+ * is an empty container (according to YANG 1.1 spec, all such containers are part of the accessible data tree).
  *
  * The presence of the default nodes during the data tree lifetime is affected by the LYD_OPT_ flag used to
  * parse/validate the tree:
@@ -555,13 +567,14 @@ extern "C" {
  * - #LYD_OPT_GET, #LYD_OPT_GETCONFIG, #LYD_OPT_EDIT - no default nodes are added
  * - #LYD_OPT_RPC, #LYD_OPT_RPCREPLY, #LYD_OPT_NOTIF - the default nodes from the particular subtree are added
  *
- * The with default modes described above are supported when the data tree is being printed with the
+ * The with-default modes described above are supported when the data tree is being printed with the
  * [LYP_WD_ printer flags](@ref printerflags). Note, that in case of #LYP_WD_ALL_TAG and #LYP_WD_IMPL_TAG modes,
  * the XML/JSON attributes are printed only if the context includes the ietf-netconf-with-defaults schema. Otherwise,
- * these modes have the same result as #LYP_WD_ALL.
+ * these modes have the same result as #LYP_WD_ALL. The presence of empty containers (despite they were added explicitly
+ * or implicitly as part of accessible data tree) depends on #LYP_KEEPEMPTYCONT option.
  *
  * To get know if the particular leaf or leaf-list node contains default value (despite implicit or explicit), you can
- * use lyd_wd_default().
+ * use lyd_wd_default() function.
  *
  * Functions List
  * --------------

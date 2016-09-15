@@ -193,6 +193,6 @@ int unres_data_addonly(struct unres_data *unres, struct lyd_node *node, enum UNR
 int unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type);
 void unres_data_del(struct unres_data *unres, uint32_t i);
 
-int resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options);
+int resolve_unres_data(struct unres_data *unres, struct lyd_node **root);
 
 #endif /* _RESOLVE_H */
