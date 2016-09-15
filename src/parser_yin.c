@@ -1015,7 +1015,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 if (!tpdftype && unres_schema_add_node(module, unres, type, UNRES_TYPE_LEAFREF, parent) == -1) {
                     goto error;
                 }
-            } else if (!strcmp(node->name, "require-instance")) {
+            } else if (module->version >= 2 && !strcmp(node->name, "require-instance")) {
                 if (type->info.lref.req) {
                     LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, yin->name);
                     goto error;
