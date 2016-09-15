@@ -125,11 +125,68 @@ test_dependency_action(void **state)
     assert_string_equal(st->xml, "<top xmlns=\"urn:libyang:tests:must-dependact\"><list1><key1>c</key1><key2>d</key2><a>aa</a></list1></top>");
 }
 
+static void
+test_inout(void **state)
+{
+    struct state *st = (struct state *)*state;
+    struct lyd_node *node;
+
+    /* schema */
+    st->mod = lys_parse_path(st->ctx, TESTS_DIR"/data/files/must-inout.yin", LYS_IN_YIN);
+    assert_ptr_not_equal(st->mod, NULL);
+
+    /* input */
+    st->dt = lyd_new_path(NULL, st->ctx, "/must-inout:rpc1/b", "bb", 0, 0);
+    assert_ptr_not_equal(st->dt, NULL);
+
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPC, NULL), 1);
+
+    node = lyd_new_path(st->dt, st->ctx, "/must-inout:rpc1/c", "5", 0, 0);
+    assert_ptr_not_equal(node, NULL);
+
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPC, NULL), 0);
+
+    /* output */
+    st->dt2 = lyd_new_path(NULL, st->ctx, "/must-inout:rpc1/d", "0", 0, LYD_PATH_OPT_OUTPUT);
+    assert_ptr_not_equal(st->dt2, NULL);
+
+    assert_int_equal(lyd_validate(&(st->dt2), LYD_OPT_RPCREPLY, NULL), 1);
+
+    node = lyd_new_path(st->dt2, st->ctx, "/must-inout:rpc1/d", "6", 0, LYD_PATH_OPT_OUTPUT | LYD_PATH_OPT_UPDATE);
+    assert_ptr_not_equal(node, NULL);
+
+    assert_int_equal(lyd_validate(&(st->dt2), LYD_OPT_RPCREPLY, NULL), 0);
+}
+
+static void
+test_notif(void **state)
+{
+    struct state *st = (struct state *)*state;
+    struct lyd_node *node;
+
+    /* schema */
+    st->mod = lys_parse_path(st->ctx, TESTS_DIR"/data/files/must-notif.yin", LYS_IN_YIN);
+    assert_ptr_not_equal(st->mod, NULL);
+
+    /* notif */
+    st->dt = lyd_new_path(NULL, st->ctx, "/must-notif:notif1/b", "bb", 0, 0);
+    assert_ptr_not_equal(st->dt, NULL);
+
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_NOTIF, NULL), 1);
+
+    node = lyd_new_path(st->dt, st->ctx, "/must-notif:notif1/a", "5", 0, 0);
+    assert_ptr_not_equal(node, NULL);
+
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_NOTIF, NULL), 0);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
                     cmocka_unit_test_setup_teardown(test_dependency_rpc, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_dependency_action, setup_f, teardown_f)
+                    cmocka_unit_test_setup_teardown(test_dependency_action, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_inout, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_notif, setup_f, teardown_f)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

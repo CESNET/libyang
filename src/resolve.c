@@ -4967,44 +4967,69 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
  * Logs directly.
  *
  * @param[in] node Data node with optional must statements.
+ * @param[in] inout_parent If set, must in input or output parent of node->schema will be resolved.
  *
  * @return EXIT_SUCCESS on pass, EXIT_FAILURE on fail, -1 on error.
  */
 static int
-resolve_must(struct lyd_node *node)
+resolve_must(struct lyd_node *node, int inout_parent)
 {
     uint8_t i, must_size;
+    struct lys_node *schema;
     struct lys_restr *must;
     struct lyxp_set set;
 
     assert(node);
     memset(&set, 0, sizeof set);
 
-    switch (node->schema->nodetype) {
-    case LYS_CONTAINER:
-        must_size = ((struct lys_node_container *)node->schema)->must_size;
-        must = ((struct lys_node_container *)node->schema)->must;
-        break;
-    case LYS_LEAF:
-        must_size = ((struct lys_node_leaf *)node->schema)->must_size;
-        must = ((struct lys_node_leaf *)node->schema)->must;
-        break;
-    case LYS_LEAFLIST:
-        must_size = ((struct lys_node_leaflist *)node->schema)->must_size;
-        must = ((struct lys_node_leaflist *)node->schema)->must;
-        break;
-    case LYS_LIST:
-        must_size = ((struct lys_node_list *)node->schema)->must_size;
-        must = ((struct lys_node_list *)node->schema)->must;
-        break;
-    case LYS_ANYXML:
-    case LYS_ANYDATA:
-        must_size = ((struct lys_node_anydata *)node->schema)->must_size;
-        must = ((struct lys_node_anydata *)node->schema)->must;
-        break;
-    default:
-        must_size = 0;
-        break;
+    if (inout_parent) {
+        for (schema = lys_parent(node->schema);
+             schema && (schema->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES));
+             schema = lys_parent(schema));
+        if (!schema || !(schema->nodetype & (LYS_INPUT | LYS_OUTPUT))) {
+            LOGINT;
+            return -1;
+        }
+        must_size = ((struct lys_node_inout *)schema)->must_size;
+        must = ((struct lys_node_inout *)schema)->must;
+
+        /* context node is the RPC/action */
+        node = node->parent;
+        if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
+            LOGINT;
+            return -1;
+        }
+    } else {
+        switch (node->schema->nodetype) {
+        case LYS_CONTAINER:
+            must_size = ((struct lys_node_container *)node->schema)->must_size;
+            must = ((struct lys_node_container *)node->schema)->must;
+            break;
+        case LYS_LEAF:
+            must_size = ((struct lys_node_leaf *)node->schema)->must_size;
+            must = ((struct lys_node_leaf *)node->schema)->must;
+            break;
+        case LYS_LEAFLIST:
+            must_size = ((struct lys_node_leaflist *)node->schema)->must_size;
+            must = ((struct lys_node_leaflist *)node->schema)->must;
+            break;
+        case LYS_LIST:
+            must_size = ((struct lys_node_list *)node->schema)->must_size;
+            must = ((struct lys_node_list *)node->schema)->must;
+            break;
+        case LYS_ANYXML:
+        case LYS_ANYDATA:
+            must_size = ((struct lys_node_anydata *)node->schema)->must_size;
+            must = ((struct lys_node_anydata *)node->schema)->must;
+            break;
+        case LYS_NOTIF:
+            must_size = ((struct lys_node_notif *)node->schema)->must_size;
+            must = ((struct lys_node_notif *)node->schema)->must;
+            break;
+        default:
+            must_size = 0;
+            break;
+        }
     }
 
     for (i = 0; i < must_size; ++i) {
@@ -5254,25 +5279,55 @@ resolve_when_relink_nodes(struct lyd_node *node, struct lyd_node *unlinked_nodes
 }
 
 int
-resolve_applies_must(const struct lys_node *schema)
+resolve_applies_must(const struct lyd_node *node)
 {
-    assert(schema);
+    int ret = 0;
+    uint8_t must_size;
+    struct lys_node *schema, *iter;
 
+    assert(node);
+
+    schema = node->schema;
+
+    /* their own must */
     switch (schema->nodetype) {
     case LYS_CONTAINER:
-        return ((struct lys_node_container *)schema)->must_size;
+        must_size = ((struct lys_node_container *)schema)->must_size;
+        break;
     case LYS_LEAF:
-        return ((struct lys_node_leaf *)schema)->must_size;
+        must_size = ((struct lys_node_leaf *)schema)->must_size;
+        break;
     case LYS_LEAFLIST:
-        return ((struct lys_node_leaflist *)schema)->must_size;
+        must_size = ((struct lys_node_leaflist *)schema)->must_size;
+        break;
     case LYS_LIST:
-        return ((struct lys_node_list *)schema)->must_size;
+        must_size = ((struct lys_node_list *)schema)->must_size;
+        break;
     case LYS_ANYXML:
     case LYS_ANYDATA:
-        return ((struct lys_node_anydata *)schema)->must_size;
+        must_size = ((struct lys_node_anydata *)schema)->must_size;
+        break;
+    case LYS_NOTIF:
+        must_size = ((struct lys_node_notif *)schema)->must_size;
+        break;
     default:
-        return 0;
+        must_size = 0;
+        break;
     }
+
+    if (must_size) {
+        ++ret;
+    }
+
+    /* schema may be a direct data child of input/output with must (but it must be first, it needs to be evaluated only once) */
+    if (!node->prev->next) {
+        for (iter = lys_parent(schema); iter && (iter->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES)); iter = lys_parent(iter));
+        if (iter && (iter->nodetype & (LYS_INPUT | LYS_OUTPUT))) {
+            ret += 0x2;
+        }
+    }
+
+    return ret;
 }
 
 int
@@ -6354,7 +6409,13 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
         break;
 
     case UNRES_MUST:
-        if ((rc = resolve_must(node))) {
+        if ((rc = resolve_must(node, 0))) {
+            return rc;
+        }
+        break;
+
+    case UNRES_MUST_INOUT:
+        if ((rc = resolve_must(node, 1))) {
             return rc;
         }
         break;
@@ -6389,7 +6450,7 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
 {
     assert(unres && node);
     assert((type == UNRES_LEAFREF) || (type == UNRES_INSTID) || (type == UNRES_WHEN) || (type == UNRES_MUST)
-           || (type == UNRES_UNION) || (type == UNRES_EMPTYCONT));
+           || (type == UNRES_MUST_INOUT) || (type == UNRES_UNION) || (type == UNRES_EMPTYCONT));
 
     unres->count++;
     unres->node = ly_realloc(unres->node, unres->count * sizeof *unres->node);

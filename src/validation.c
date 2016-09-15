@@ -497,7 +497,11 @@ nextbit:
     }
 
     /* check must conditions */
-    if (resolve_applies_must(node->schema) && unres_data_add(unres, node, UNRES_MUST) == -1) {
+    i = resolve_applies_must(node);
+    if ((i & 0x1) && (unres_data_add(unres, node, UNRES_MUST) == -1)) {
+        return EXIT_FAILURE;
+    }
+    if ((i & 0x2) && (unres_data_add(unres, node, UNRES_MUST_INOUT) == -1)) {
         return EXIT_FAILURE;
     }
 

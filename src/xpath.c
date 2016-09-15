@@ -7643,7 +7643,7 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set)
 
     /* check if we will be traversing RPC output */
     opts = 0;
-    for (ctx_snode = lys_parent(node); ctx_snode && (ctx_snode->nodetype != LYS_OUTPUT); ctx_snode = lys_parent(ctx_snode));
+    for (ctx_snode = (struct lys_node *)node; ctx_snode && (ctx_snode->nodetype != LYS_OUTPUT); ctx_snode = lys_parent(ctx_snode));
     if (ctx_snode) {
         opts |= LYXP_SNODE_OUTPUT;
     }

@@ -42,6 +42,7 @@ enum UNRES_ITEM {
     UNRES_INSTID,        /* unresolved instance-identifier reference */
     UNRES_WHEN,          /* unresolved when condition */
     UNRES_MUST,          /* unresolved must condition */
+    UNRES_MUST_INOUT,    /* unresolved must condition in parent input or output */
     UNRES_EMPTYCONT,     /* empty container that will get auto-deleted */
     UNRES_UNION,         /* union with leafref which must be checked because the type can change without changing the
                             value itself, but removing the target node */
@@ -156,7 +157,12 @@ void resolve_when_ctx_snode(const struct lys_node *schema, struct lys_node **ctx
  *                 2 - search for when until reached the stop node, if NULL, search in all parents
  */
 int resolve_applies_when(const struct lys_node *schema, int mode, const struct lys_node *stop);
-int resolve_applies_must(const struct lys_node *schema);
+
+/* return: 0x0 - no applicable must,
+ *         0x1 - node's schema has must,
+ *         0x2 - node's parent is inout with must,
+ *         0x3 - 0x2 & 0x1 combined */
+int resolve_applies_must(const struct lyd_node *node);
 
 struct lys_ident *resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node *node);
 
