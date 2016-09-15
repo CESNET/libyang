@@ -102,9 +102,14 @@ extern "C" {
  * Similarly, data trees can be parsed by \b lyd_parse_*() functions. Note, that functions for schemas have \b lys_
  * prefix while functions for instance data have \b lyd_ prefix.
  *
- * Context can hold multiple revisions of the same schema, but only one of them can be implemented. The schema is
- * marked as implemented when it is explicitly loaded by ly_ctx_load_module() or other lys_parse*() functions. The
- * schema is not implemented only when it was loaded automatically as other schema's import.
+ * Context can hold multiple revisions of the same schema, but only one of them can be implemented. The schema is not
+ * implemented in case it is automatically loaded as import for another module and it is not referenced in such
+ * a module (and no other) as target of leafref, augment or deviation. All modules with deviation definition are always
+ * marked as implemented. The imported (not implemented) module can be set implemented by lys_set_implemented(). But
+ * the implemented module cannot be changed back to just imported module. The imported modules are used only as a
+ * source of definitions for types (including identities) and uses statements. The data in such a modules are
+ * ignored - caller is not allowed to create the data defined in the model via data parsers, the default nodes are
+ * not added into any data tree and mandatory nodes are not checked in the data trees.
  *
  * Context holds all modules and their submodules internally. To get
  * a specific module or submodule, use ly_ctx_get_module() and ly_ctx_get_submodule(). There are some additional
@@ -142,6 +147,7 @@ extern "C" {
  * - ly_ctx_get_node()
  * - ly_ctx_get_node2()
  * - ly_ctx_destroy()
+ * - lys_set_implemented()
  */
 
 /**
@@ -193,6 +199,9 @@ extern "C" {
  * \note There are many functions to access information from the schema trees. Details are available in
  * the [Schema Tree module](@ref schematree).
  *
+ * For information about difference between implemented and imported modules, see the
+ * [context description](@ref howtocontext).
+ *
  * Functions List (not assigned to above subsections)
  * --------------------------------------------------
  * - lys_getnext()
@@ -200,6 +209,7 @@ extern "C" {
  * - lys_module()
  * - lys_node_module()
  * - lys_set_private()
+ * - lys_set_implemented()
  */
 
 /**
