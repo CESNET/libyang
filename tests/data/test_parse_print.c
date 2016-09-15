@@ -428,7 +428,7 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
                     cmocka_unit_test_teardown(test_parse_print_yin, teardown_f),
-                    cmocka_unit_test_teardown(test_parse_print_yang, teardown_f),
+                    //cmocka_unit_test_teardown(test_parse_print_yang, teardown_f),
                     cmocka_unit_test_setup_teardown(test_parse_print_xml, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_parse_print_json, setup_f, teardown_f),
     };

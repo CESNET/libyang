@@ -163,6 +163,11 @@ module all {
           }
         }
       }
+      notification notif1 {
+        leaf leaf26 {
+            type string;
+        }
+      }
     }
     leaf-list llist1 {
       type tdef1;
