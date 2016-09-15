@@ -5415,7 +5415,7 @@ int
 lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, struct lyd_node *data_tree,
                        struct lyd_node *action, struct unres_data *unres)
 {
-    struct lyd_node *msg_sibling, *msg_parent, *data_tree_sibling, *data_tree_parent;
+    struct lyd_node *msg_sibling = NULL, *msg_parent = NULL, *data_tree_sibling = NULL, *data_tree_parent = NULL;
 
     assert(root && unres && !(options & LYD_OPT_ACTION));
     assert(!data_tree || !data_tree->prev->next);
