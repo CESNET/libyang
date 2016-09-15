@@ -69,6 +69,8 @@ static struct lys_node *read_yin_grouping(struct lys_module *module, struct lys_
                                           int resolve, struct unres_schema *unres);
 static struct lys_node *read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
                                             int resolve, struct unres_schema *unres);
+static struct lys_node *read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
+                                       int resolve, struct unres_schema *unres);
 static struct lys_when *read_yin_when(struct lys_module *module, struct lyxml_elem *yin);
 
 /* logs directly */
@@ -4068,7 +4070,8 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
                 !strcmp(sub->name, "anyxml") ||
-                !strcmp(sub->name, "action")) {
+                !strcmp(sub->name, "action") ||
+                !strcmp(sub->name, "notification")) {
             lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
 
@@ -4283,6 +4286,8 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             node = read_yin_anydata(module, retval, sub, LYS_ANYDATA, resolve, unres);
         } else if (!strcmp(sub->name, "action")) {
             node = read_yin_rpc_action(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "notification")) {
+            node = read_yin_notif(module, retval, sub, resolve, unres);
         } else {
             LOGINT;
             goto error;
@@ -4415,7 +4420,8 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
                 !strcmp(sub->name, "anyxml") ||
-                !strcmp(sub->name, "action")) {
+                !strcmp(sub->name, "action") ||
+                !strcmp(sub->name, "notification")) {
             lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
 
@@ -4499,6 +4505,8 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
             node = read_yin_anydata(module, retval, sub, LYS_ANYDATA, resolve, unres);
         } else if (!strcmp(sub->name, "action")) {
             node = read_yin_rpc_action(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "notification")) {
+            node = read_yin_notif(module, retval, sub, resolve, unres);
         }
         if (!node) {
             goto error;
