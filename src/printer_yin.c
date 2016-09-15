@@ -787,7 +787,7 @@ yin_print_container(struct lyout *out, int level, const struct lys_node *node)
         }
         yin_print_snode(out, level, sub,
                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                        LYS_USES | LYS_GROUPING | LYS_ANYDATA | LYS_ACTION);
+                        LYS_USES | LYS_GROUPING | LYS_ANYDATA | LYS_ACTION | LYS_NOTIF);
     }
     level--;
 
@@ -1022,7 +1022,7 @@ yin_print_list(struct lyout *out, int level, const struct lys_node *node)
         }
         yin_print_snode(out, level, sub,
                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                        LYS_USES | LYS_GROUPING | LYS_ANYDATA | LYS_ACTION);
+                        LYS_USES | LYS_GROUPING | LYS_ANYDATA | LYS_ACTION | LYS_NOTIF);
     }
     level--;
 
@@ -1245,6 +1245,9 @@ yin_print_snode(struct lyout *out, int level, const struct lys_node *node, int m
     case LYS_INPUT:
     case LYS_OUTPUT:
         yin_print_input_output(out, level, node);
+        break;
+    case LYS_NOTIF:
+        yin_print_notif(out, level, node);
         break;
     default:
         break;

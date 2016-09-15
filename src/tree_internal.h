@@ -59,9 +59,9 @@ struct internal_modules {
 #define LY_NSNACM "urn:ietf:params:xml:ns:yang:ietf-netconf-acm"
 
 /**
- * @brief internal parser flag for actions
+ * @brief internal parser flag for actions and inline notifications
  */
-#define LYD_OPT_ACTION 0x80
+#define LYD_OPT_ACT_NOTIF 0x80
 
 /**
  * @brief Internal list of built-in types

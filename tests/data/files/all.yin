@@ -160,6 +160,11 @@
           </leaf>
         </output>
       </action>
+      <notification name="notif1">
+        <leaf name="leaf26">
+          <type name="string"/>
+        </leaf>
+      </notification>
     </list>
     <leaf-list name="llist1">
       <type name="tdef1"/>
