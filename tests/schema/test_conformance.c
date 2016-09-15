@@ -1,7 +1,7 @@
 /**
- * \file test_import.c
+ * \file test_conformance.c
  * \author Radek Krejci <rkrejci@cesnet.cz>
- * \brief libyang tests - module imports
+ * \brief libyang tests - setting up modules as imported or implemented
  *
  * Copyright (c) 2015 CESNET, z.s.p.o.
  *
