@@ -2062,13 +2062,16 @@ leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
   |  leaf_list_opt_stmt default_stmt { if (read_all) {
                                          int i;
 
-                                         /* check for duplicity */
-                                         for (i = 0; i < $1.node.ptr_leaflist->dflt_size; i++) {
-                                           if (ly_strequal($1.node.ptr_leaflist->dflt[i], s, 0)) {
-                                             LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "default");
-                                             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", s);
-                                             free(s);
-                                             YYABORT;
+                                         /* check for duplicity in case of configuration data,
+                                          * in case of status data duplicities are allowed */
+                                         if ($1.node.ptr_leaflist->flags & LYS_CONFIG_W) {
+                                           for (i = 0; i < $1.node.ptr_leaflist->dflt_size; i++) {
+                                             if (ly_strequal($1.node.ptr_leaflist->dflt[i], s, 0)) {
+                                               LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "default");
+                                               LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", s);
+                                               free(s);
+                                               YYABORT;
+                                             }
                                            }
                                          }
                                          $1.node.ptr_leaflist->dflt[$1.node.ptr_leaflist->dflt_size++] = lydict_insert_zc(module->ctx, s);

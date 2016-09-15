@@ -2971,9 +2971,11 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
                 LY_TREE_FOR_SAFE(parent->child, next2, iter) {
                     if (iter->schema == ins->schema) {
                         if (ins->dflt) {
-                            /* adding default leaf-list, remove all explicit and the exact same node, if present */
-                            if (!iter->dflt || !strcmp(((struct lyd_node_leaf_list *)iter)->value_str,
-                                                       ((struct lyd_node_leaf_list *)ins)->value_str)) {
+                            /* adding default leaf-list, remove all explicit and (in case of configuration data)
+                             * the exact same node, if present */
+                            if (!iter->dflt || ((iter->schema->flags & LYS_CONFIG_W) &&
+                                    !strcmp(((struct lyd_node_leaf_list *)iter)->value_str,
+                                            ((struct lyd_node_leaf_list *)ins)->value_str))) {
                                 lyd_free(iter);
                             }
                         } else if (iter->dflt) {
@@ -3148,8 +3150,9 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before)
         if (ins->schema->nodetype == LYS_LEAFLIST) {
             LY_TREE_FOR_SAFE(start, next2, iter) {
                 if (iter->schema == ins->schema) {
-                    if ((ins->dflt && (!iter->dflt || !strcmp(((struct lyd_node_leaf_list *)iter)->value_str,
-                                                              ((struct lyd_node_leaf_list *)ins)->value_str)))
+                    if ((ins->dflt && (!iter->dflt || ((iter->schema->flags & LYS_CONFIG_W) &&
+                                                       !strcmp(((struct lyd_node_leaf_list *)iter)->value_str,
+                                                              ((struct lyd_node_leaf_list *)ins)->value_str))))
                             || (!ins->dflt && iter->dflt)) {
                         /* iter will get deleted */
                         if (iter == sibling) {
@@ -4408,6 +4411,10 @@ lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int 
 
     switch (first->schema->nodetype) {
     case LYS_LEAFLIST:
+        if ((first->schema->flags & LYS_CONFIG_R) && first->schema->module->version >= 2) {
+            /* same values are allowed for status data */
+            return 0;
+        }
         /* compare values */
         if (ly_strequal(((struct lyd_node_leaf_list *)first)->value_str,
                         ((struct lyd_node_leaf_list *)second)->value_str, 1)) {

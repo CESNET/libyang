@@ -3972,12 +3972,15 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
         } else if (!strcmp(sub->name, "default")) {
             GETVAL(value, sub, "value");
 
-            /* check for duplicity */
-            for (r = 0; r < llist->dflt_size; r++) {
-                if (ly_strequal(llist->dflt[r], value, 1)) {
-                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "default");
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", value);
-                    goto error;
+            /* check for duplicity in case of configuration data,
+             * in case of status data duplicities are allowed */
+            if (llist->flags & LYS_CONFIG_W) {
+                for (r = 0; r < llist->dflt_size; r++) {
+                    if (ly_strequal(llist->dflt[r], value, 1)) {
+                        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "default");
+                        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", value);
+                        goto error;
+                    }
                 }
             }
             llist->dflt[llist->dflt_size++] = lydict_insert(module->ctx, value, strlen(value));
