@@ -197,7 +197,6 @@ const char *ly_errs[] = {
 /* LYE_NOREQINS */     "Required instance of \"%s\" does not exists.",
 /* LYE_NOLEAFREF */    "Leafref \"%s\" of value \"%s\" points to a non-existing leaf.",
 /* LYE_NOMANDCHOICE */ "Mandatory choice \"%s\" missing a case branch.",
-/* LYE_INACT */        "Action contains a redundant %s \"%s\".",
 
 /* LYE_XPATH_INSNODE */"Schema node \"%.*s\" not found (%.*s).",
 /* LYE_XPATH_INTOK */  "Unexpected XPath token %s (%.15s).",
@@ -289,7 +288,6 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_NOREQINS,     /* LYE_NOREQINS */
     LYVE_NOLEAFREF,    /* LYE_NOLEAFREF */
     LYVE_NOMANDCHOICE, /* LYE_NOMANDCHOICE */
-    LYVE_INACT,        /* LYE_INACT */
     LYVE_XPATH_INSNODE,/* LYE_XPATH_INSNODE */
 
     LYVE_XPATH_INTOK,  /* LYE_XPATH_INTOK */

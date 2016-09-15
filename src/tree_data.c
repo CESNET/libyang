@@ -336,7 +336,7 @@ lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options)
     int i;
 
     assert(root || ctx);
-    assert(!(options & LYD_OPT_ACTION));
+    assert(!(options & LYD_OPT_ACT_NOTIF));
 
     if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
         /* no check is needed */
@@ -368,7 +368,7 @@ lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options)
             }
         }
     } else if (options & LYD_OPT_NOTIF) {
-        if (!root || root->parent || (root->prev != root) || (root->schema->nodetype != LYS_NOTIF)) {
+        if (!root || (root->schema->nodetype != LYS_NOTIF)) {
             LOGERR(LY_EINVAL, "Subtree is not a single notification.");
             return EXIT_FAILURE;
         }
@@ -3446,7 +3446,7 @@ lyd_validate_leafref(struct lyd_node_leaf_list *leafref)
 API int
 lyd_validate(struct lyd_node **node, int options, void *var_arg)
 {
-    struct lyd_node *root, *next1, *next2, *iter, *action = NULL, *to_free = NULL, *data_tree = NULL;
+    struct lyd_node *root, *next1, *next2, *iter, *act_notif = NULL, *to_free = NULL, *data_tree = NULL;
     struct ly_ctx *ctx = NULL;
     int ret = EXIT_FAILURE, i;
     struct unres_data *unres = NULL;
@@ -3514,8 +3514,10 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
     }
 
     if ((options & LYD_OPT_RPC) && *node && ((*node)->schema->nodetype != LYS_RPC)) {
-        options &= ~LYD_OPT_RPC;
-        options |= LYD_OPT_ACTION;
+        options |= LYD_OPT_ACT_NOTIF;
+    }
+    if ((options & LYD_OPT_NOTIF) && *node && ((*node)->schema->nodetype != LYS_NOTIF)) {
+        options |= LYD_OPT_ACT_NOTIF;
     }
 
     LY_TREE_FOR_SAFE(*node, next1, root) {
@@ -3525,13 +3527,14 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
                 to_free = NULL;
             }
 
-            if (iter->schema->nodetype == LYS_ACTION) {
-                if (!(options & LYD_OPT_ACTION) || action) {
-                    LOGVAL(LYE_INACT, LY_VLOG_LYD, iter, "action", iter->schema->name);
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, iter, "Unexpected action node \"%s\".", iter->schema->name);
+            if (iter->parent && (iter->schema->nodetype & (LYS_ACTION | LYS_NOTIF))) {
+                if (!(options & LYD_OPT_ACT_NOTIF) || act_notif) {
+                    LOGVAL(LYE_INELEM, LY_VLOG_LYD, iter, iter->schema->name);
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, iter, "Unexpected %s node \"%s\".",
+                           (options & LYD_OPT_RPC ? "action" : "notification"), iter->schema->name);
                     goto cleanup;
                 }
-                action = iter;
+                act_notif = iter;
             }
 
             if (lyv_data_context(iter, options, unres)) {
@@ -3615,14 +3618,13 @@ nextsiblings:
 
     }
 
-    if (options & LYD_OPT_ACTION) {
-        if (!action) {
-            ly_vecode = LYVE_INACT;
-            LOGVAL(LYE_SPEC, LY_VLOG_LYD, *node, "Missing action node.");
+    if (options & LYD_OPT_ACT_NOTIF) {
+        if (!act_notif) {
+            ly_vecode = LYVE_INELEM;
+            LOGVAL(LYE_SPEC, LY_VLOG_LYD, *node, "Missing %s node.", (options & LYD_OPT_RPC ? "action" : "notification"));
             goto cleanup;
         }
-        options &= ~LYD_OPT_ACTION;
-        options |= LYD_OPT_RPC;
+        options &= ~LYD_OPT_ACT_NOTIF;
     }
 
     /* check for uniquness of top-level lists/leaflists because
@@ -3648,11 +3650,11 @@ nextsiblings:
     ly_set_free(set);
 
     /* add default values, resolve unres and check for mandatory nodes in final tree */
-    if (lyd_defaults_add_unres(node, options, ctx, data_tree, action, unres)) {
+    if (lyd_defaults_add_unres(node, options, ctx, data_tree, act_notif, unres)) {
         goto cleanup;
     }
-    if (action) {
-        if (lyd_check_mandatory_tree(action, ctx, options)) {
+    if (act_notif) {
+        if (lyd_check_mandatory_tree(act_notif, ctx, options)) {
             goto cleanup;
         }
     } else {
@@ -5345,7 +5347,7 @@ lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, struct unres_data *unres,
     struct lys_node *siter;
     int i;
 
-    assert(root && !(options & LYD_OPT_ACTION));
+    assert(root && !(options & LYD_OPT_ACT_NOTIF));
     assert(*root || ctx);
     assert(!(options & LYD_OPT_NOSIBLINGS) || *root);
 
@@ -5381,7 +5383,7 @@ lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, struct unres_data *unres,
             }
         }
     } else if (options & LYD_OPT_NOTIF) {
-        if (!(*root) || (*root)->parent || ((*root)->prev != (*root)) || ((*root)->schema->nodetype != LYS_NOTIF)) {
+        if (!(*root) || ((*root)->schema->nodetype != LYS_NOTIF)) {
             LOGERR(LY_EINVAL, "Subtree is not a single notification.");
             return EXIT_FAILURE;
         }
@@ -5413,11 +5415,11 @@ lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, struct unres_data *unres,
 
 int
 lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, struct lyd_node *data_tree,
-                       struct lyd_node *action, struct unres_data *unres)
+                       struct lyd_node *act_notif, struct unres_data *unres)
 {
     struct lyd_node *msg_sibling = NULL, *msg_parent = NULL, *data_tree_sibling = NULL, *data_tree_parent = NULL;
 
-    assert(root && unres && !(options & LYD_OPT_ACTION));
+    assert(root && unres && !(options & LYD_OPT_ACT_NOTIF));
     assert(!data_tree || !data_tree->prev->next);
 
     if ((options & LYD_OPT_NOSIBLINGS) && !(*root)) {
@@ -5430,7 +5432,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
             LOGERR(LY_EINVAL, "Cannot add default values to RPC, RPC reply, and notification without at least the empty container.");
             return EXIT_FAILURE;
         }
-        if ((options & LYD_OPT_RPC) && !action && ((*root)->schema->nodetype != LYS_RPC)) {
+        if ((options & LYD_OPT_RPC) && !act_notif && ((*root)->schema->nodetype != LYS_RPC)) {
             LOGERR(LY_EINVAL, "Not valid RPC/action data.");
             return EXIT_FAILURE;
         }
@@ -5438,7 +5440,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
             LOGERR(LY_EINVAL, "Not valid reply data.");
             return EXIT_FAILURE;
         }
-        if ((options & LYD_OPT_NOTIF) && ((*root)->schema->nodetype != LYS_NOTIF)) {
+        if ((options & LYD_OPT_NOTIF) && !act_notif && ((*root)->schema->nodetype != LYS_NOTIF)) {
             LOGERR(LY_EINVAL, "Not valid notification data.");
             return EXIT_FAILURE;
         }
@@ -5451,7 +5453,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
     }
 
     /* add missing default nodes */
-    if (lyd_wd_add((action ? &action : root), ctx, unres, options)) {
+    if (lyd_wd_add((act_notif ? &act_notif : root), ctx, unres, options)) {
         return EXIT_FAILURE;
     }
 
@@ -5464,9 +5466,9 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
 
         /* temporarily link the additional data tree to the RPC/action/notification */
         if (data_tree && (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF))) {
-            if (action) {
+            if (act_notif) {
                 /* fun case */
-                assert(action->parent);
+                assert(act_notif->parent);
 
                 msg_sibling = *root;
                 data_tree_parent = NULL;
@@ -5503,8 +5505,8 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
                         }
                         if (msg_sibling->schema->nodetype == LYS_ACTION) {
                             /* we are done */
-                            assert(action->parent == data_tree_parent);
-                            msg_sibling = action;
+                            assert(act_notif->parent == data_tree_parent);
+                            msg_sibling = act_notif;
                             break;
                         }
                     } else {
