@@ -3020,7 +3020,7 @@ check_key(struct lys_node_list *list, int index, const char *name, int len)
     }
 
     /* type of the leaf is not built-in empty */
-    if (key->type.base == LY_TYPE_EMPTY) {
+    if (key->type.base == LY_TYPE_EMPTY && key->module->version < 2) {
         LOGVAL(LYE_KEY_TYPE, LY_VLOG_LYS, list, key->name);
         return -1;
     }
