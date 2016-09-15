@@ -90,14 +90,14 @@ extern "C" {
  *
  * When creating a new context, search dir can be specified (NULL is accepted) to provide directory
  * where libyang will automatically search for schemas being imported or included. The search path
- * can be later changed via ly_ctx_set_searchdir() function. Before exploring the specified search
- * dir, libyang tries to get imported and included schemas from the current working directory first.
- * This automatic searching can be completely avoided when the caller sets module searching callback
+ * can be later changed via ly_ctx_set_searchdir() function. If the search dir is specified, it is explored
+ * first. In case the module is not found, libyang tries to find the (sub)module also in current working working
+ * directory. This automatic searching can be completely avoided when the caller sets module searching callback
  * (#ly_module_clb) via ly_ctx_set_module_clb().
  *
  * Schemas are added into the context using [parser functions](@ref howtoschemasparsers) - \b lys_parse_*().
  * In case of schemas, also ly_ctx_load_module() can be used - in that case the #ly_module_clb or automatic
- * search in working directory and in the searchpath is used.
+ * search in search dir and in the current working directory is used.
  *
  * Similarly, data trees can be parsed by \b lyd_parse_*() functions. Note, that functions for schemas have \b lys_
  * prefix while functions for instance data have \b lyd_ prefix.

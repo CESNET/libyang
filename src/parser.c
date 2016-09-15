@@ -216,12 +216,12 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     size_t len, flen, match_len = 0, dir_len;
     int fd;
     char *wd, *cwd;
-    DIR *dir;
+    DIR *dir = NULL;
     struct dirent *file;
     char *match_name = NULL;
     LYS_INFORMAT format, match_format = 0;
     struct lys_module *result = NULL;
-    int localsearch = 1;
+    int localsearch = 0;
 
     if (module) {
         /* searching for submodule, try if it is already loaded */
@@ -241,6 +241,18 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
 
     len = strlen(name);
     cwd = wd = get_current_dir_name();
+    if (ctx->models.search_path) {
+        /* try context's search_path first */
+        wd = strdup(ctx->models.search_path);
+        if (!wd) {
+            LOGMEM;
+            goto cleanup;
+        }
+    } else {
+        LOGWRN("No search path defined for the current context.");
+        /* there is no search_path, search only in current working dir */
+        localsearch = 1;
+    }
 
 opendir_search:
     if (cwd != wd) {
@@ -258,98 +270,90 @@ opendir_search:
     if (!dir) {
         LOGWRN("Unable to open directory \"%s\" for searching referenced modules (%s)",
                wd, strerror(errno));
-        /* try search directory */
-        goto searchpath;
-    }
+    } else {
+        while ((file = readdir(dir))) {
+            if (strncmp(name, file->d_name, len) ||
+                    (file->d_name[len] != '.' && file->d_name[len] != '@')) {
+                continue;
+            }
 
-    while ((file = readdir(dir))) {
-        if (strncmp(name, file->d_name, len) ||
-                (file->d_name[len] != '.' && file->d_name[len] != '@')) {
-            continue;
-        }
+            /* get type according to filename suffix */
+            flen = strlen(file->d_name);
+            if (!strcmp(&file->d_name[flen - 4], ".yin")) {
+                format = LYS_IN_YIN;
+            } else if (!strcmp(&file->d_name[flen - 5], ".yang")) {
+                format = LYS_IN_YANG;
+            } else {
+                continue;
+            }
 
-        /* get type according to filename suffix */
-        flen = strlen(file->d_name);
-        if (!strcmp(&file->d_name[flen - 4], ".yin")) {
-            format = LYS_IN_YIN;
-        } else if (!strcmp(&file->d_name[flen - 5], ".yang")) {
-            format = LYS_IN_YANG;
-        } else {
-            continue;
-        }
-
-        if (revision) {
-            if (file->d_name[len] == '@') {
-                /* check revision from the filename */
-                if (strncmp(revision, &file->d_name[len + 1], strlen(revision))) {
-                    /* another revision */
-                    continue;
+            if (revision) {
+                if (file->d_name[len] == '@') {
+                    /* check revision from the filename */
+                    if (strncmp(revision, &file->d_name[len + 1], strlen(revision))) {
+                        /* another revision */
+                        continue;
+                    } else {
+                        /* exact revision */
+                        free(match_name);
+                        if (asprintf(&match_name, "%s/%s", wd, file->d_name) == -1) {
+                            LOGMEM;
+                            goto cleanup;
+                        }
+                        match_len = dir_len + 1 + len;
+                        match_format = format;
+                        goto matched;
+                    }
                 } else {
-                    /* exact revision */
+                    /* continue trying to find exact revision match, use this only if not found */
                     free(match_name);
                     if (asprintf(&match_name, "%s/%s", wd, file->d_name) == -1) {
                         LOGMEM;
                         goto cleanup;
                     }
-                    match_len = dir_len + 1 + len;
+                    match_len = dir_len + 1 +len;
                     match_format = format;
-                    goto matched;
+                    continue;
                 }
             } else {
-                /* continue trying to find exact revision match, use this only if not found */
-                free(match_name);
+                /* remember the revision and try to find the newest one */
+                if (match_name) {
+                    int a;
+                    if (file->d_name[len] != '@' || lyp_check_date(&file->d_name[len + 1])) {
+                        continue;
+                    } else if (match_name[match_len] == '@' &&
+                        (a = strncmp(&match_name[match_len + 1], &file->d_name[len + 1], LY_REV_SIZE - 1)) >= 0) {
+                        continue;
+                    }
+                    free(match_name);
+                }
+
                 if (asprintf(&match_name, "%s/%s", wd, file->d_name) == -1) {
                     LOGMEM;
                     goto cleanup;
                 }
-                match_len = dir_len + 1 +len;
+                match_len = dir_len + 1 + len;
                 match_format = format;
                 continue;
             }
-        } else {
-            /* remember the revision and try to find the newest one */
-            if (match_name) {
-                int a;
-                if (file->d_name[len] != '@' || lyp_check_date(&file->d_name[len + 1])) {
-                    continue;
-                } else if (match_name[match_len] == '@' &&
-                    (a = strncmp(&match_name[match_len + 1], &file->d_name[len + 1], LY_REV_SIZE - 1)) >= 0) {
-                    continue;
-                }
-                free(match_name);
-            }
-
-            if (asprintf(&match_name, "%s/%s", wd, file->d_name) == -1) {
-                LOGMEM;
-                goto cleanup;
-            }
-            match_len = dir_len + 1 + len;
-            match_format = format;
-            continue;
         }
     }
 
-searchpath:
-    if (!ctx->models.search_path) {
-        LOGWRN("No search path defined for the current context.");
-    } else if (localsearch) {
-        /* search in local directory done, try context's search_path */
+    if (!localsearch) {
+        /* after searching in search dir, try current working directory */
         if (dir) {
             closedir(dir);
             dir = NULL;
         }
-        wd = strdup(ctx->models.search_path);
-        if (!wd) {
-            dir = NULL;
-            LOGMEM;
-            goto cleanup;
-        }
-        localsearch = 0;
+        free(wd);
+        wd = cwd;
+        localsearch = 1;
         goto opendir_search;
     }
 
     if (!match_name) {
-        LOGERR(LY_ESYS, "Data model \"%s\" not found (search path is \"%s\")", name, ctx->models.search_path);
+        LOGERR(LY_ESYS, "Data model \"%s\" not found (neither in search path \"%s\" nor in working directory \"%s\")",
+               name, ctx->models.search_path, cwd);
         goto cleanup;
     }
 
