@@ -5546,7 +5546,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
             }
         }
 
-        if (resolve_unres_data(unres, (options & LYD_OPT_NOAUTODEL) ? NULL : root, options)) {
+        if (resolve_unres_data(unres, (options & LYD_OPT_NOAUTODEL) ? NULL : root)) {
             return EXIT_FAILURE;
         }
 

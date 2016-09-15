@@ -6419,12 +6419,11 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
  * @param[in] unres Unres data structure to use.
  * @param[in,out] root Root node of the data tree. If not NULL, auto-delete is performed on false when condition. If
  * NULL and when condition is false the error is raised.
- * @param[in] options Parer options
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 int
-resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options)
+resolve_unres_data(struct unres_data *unres, struct lyd_node **root)
 {
     uint32_t i, j, first = 1, resolved = 0, del_items = 0, when_stmt = 0;
     int rc, progress;
@@ -6433,7 +6432,6 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
     struct lyd_node_leaf_list *leaf;
 
     assert(unres);
-    assert((root && (*root)) || (options & LYD_OPT_NOAUTODEL));
 
     if (!unres->count) {
         return EXIT_SUCCESS;
