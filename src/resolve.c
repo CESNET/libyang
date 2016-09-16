@@ -3521,7 +3521,7 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
             sour_pref = context_node->module->name;
         }
         rc = lys_get_sibling(context_node->child, sour_pref, sour_pref_len, source, sour_len,
-                             LYS_LEAF | LYS_AUGMENT, &src_node);
+                             LYS_LEAF | LYS_LEAFLIST | LYS_AUGMENT, &src_node);
         if (rc) {
             LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path-parsed);
             return 0;
@@ -3571,10 +3571,10 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
         }
 
         /* check source - dest match */
-        if (dst_node->nodetype != LYS_LEAF) {
+        if (dst_node->nodetype != src_node->nodetype) {
             LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path-parsed);
-            LOGVAL(LYE_SPEC, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent,
-                   "Destination node is not a leaf, but %s.", strnodetype(dst_node->nodetype));
+            LOGVAL(LYE_SPEC, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "Destination node is not a %s, but a %s.",
+                   strnodetype(src_node->nodetype), strnodetype(dst_node->nodetype));
             return -parsed;
         }
     } while (has_predicate);
