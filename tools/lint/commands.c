@@ -42,7 +42,7 @@ void
 cmd_print_help(void)
 {
     printf("print [-f (yang | yin | tree | info)] [-t <info-target-node>] [-o <output-file>] <model-name>[@<revision>]\n\n");
-    printf("\tinfo-target-node: <absolute-schema-node> | typedef/<typedef-name> |\n");
+    printf("\tinfo-target-node: <absolute-schema-node> | typedef[<absolute-schema-nodeid]/<typedef-name> |\n");
     printf("\t                  | identity/<identity-name> | feature/<feature-name> |\n");
     printf("\t                  | grouping/<grouping-name>(<absolute-schema-nodeid>) |\n");
     printf("\t                  | type/<absolute-schema-node-leaf-or-leaflist>\n");

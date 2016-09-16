@@ -1034,8 +1034,10 @@ int
 info_print_model(struct lyout *out, const struct lys_module *module, const char *target_node)
 {
     int i, rc;
-    char *grouping_target = NULL;
+    char *spec_target = NULL;
     struct lys_node *target = NULL;
+    struct lys_tpdf *tpdf = NULL;
+    uint8_t tpdf_size = 0;
 
     if (!target_node) {
         if (module->type == 0) {
@@ -1053,10 +1055,10 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
             }
         } else if (!strncmp(target_node, "grouping/", 9)) {
             /* cut the data part off */
-            if (strchr(target_node + 9, '/')) {
+            if ((spec_target = strchr(target_node + 9, '/'))) {
                 /* HACK only temporary */
-                *strchr(target_node + 9, '/') = '\0';
-                grouping_target = (char *)(target_node + strlen(target_node) + 1);
+                spec_target[0] = '\0';
+                ++spec_target;
             }
             rc = resolve_absolute_schema_nodeid(target_node + 8, module, LYS_GROUPING, (const struct lys_node **)&target);
             if (rc || !target) {
@@ -1064,18 +1066,69 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
                 return EXIT_FAILURE;
             }
         } else if (!strncmp(target_node, "typedef/", 8)) {
-            target_node += 8;
-            for (i = 0; i < module->tpdf_size; ++i) {
-                if (!strcmp(module->tpdf[i].name, target_node)) {
+            if ((spec_target = strrchr(target_node + 8, '/'))) {
+                /* schema node typedef */
+                /* HACK only temporary */
+                spec_target[0] = '\0';
+                ++spec_target;
+
+                rc = resolve_absolute_schema_nodeid(target_node + 7, module,
+                                                    LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC | LYS_ACTION,
+                                                    (const struct lys_node **)&target);
+                if (rc || !target) {
+                    /* perhaps it's in a grouping */
+                    rc = resolve_absolute_schema_nodeid(target_node + 7, module, LYS_GROUPING,
+                                                        (const struct lys_node **)&target);
+                }
+                if (!rc && target) {
+                    switch (target->nodetype) {
+                    case LYS_CONTAINER:
+                        tpdf = ((struct lys_node_container *)target)->tpdf;
+                        tpdf_size = ((struct lys_node_container *)target)->tpdf_size;
+                        break;
+                    case LYS_LIST:
+                        tpdf = ((struct lys_node_list *)target)->tpdf;
+                        tpdf_size = ((struct lys_node_list *)target)->tpdf_size;
+                        break;
+                    case LYS_NOTIF:
+                        tpdf = ((struct lys_node_notif *)target)->tpdf;
+                        tpdf_size = ((struct lys_node_notif *)target)->tpdf_size;
+                        break;
+                    case LYS_RPC:
+                    case LYS_ACTION:
+                        tpdf = ((struct lys_node_rpc_action *)target)->tpdf;
+                        tpdf_size = ((struct lys_node_rpc_action *)target)->tpdf_size;
+                        break;
+                    case LYS_GROUPING:
+                        tpdf = ((struct lys_node_grp *)target)->tpdf;
+                        tpdf_size = ((struct lys_node_grp *)target)->tpdf_size;
+                        break;
+                    default:
+                        LOGINT;
+                        return EXIT_FAILURE;
+                    }
+                }
+            } else {
+                /* module typedef */
+                spec_target = (char *)target_node + 8;
+                tpdf = module->tpdf;
+                tpdf_size = module->tpdf_size;
+            }
+
+            for (i = 0; i < tpdf_size; ++i) {
+                if (!strcmp(tpdf[i].name, spec_target)) {
+                    info_print_typedef_detail(out, &tpdf[i]);
                     break;
                 }
             }
-            if (i == module->tpdf_size) {
+            /* HACK return previous hack */
+            --spec_target;
+            spec_target[0] = '/';
+
+            if (i == tpdf_size) {
                 ly_print(out, "Typedef %s not found.\n", target_node);
                 return EXIT_FAILURE;
             }
-
-            info_print_typedef_detail(out, &module->tpdf[i]);
             return EXIT_SUCCESS;
 
         } else if (!strncmp(target_node, "identity/", 9)) {
@@ -1119,22 +1172,22 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
             }
             info_print_type_detail(out, &((struct lys_node_leaf *)target)->type, 0);
             return EXIT_SUCCESS;
-        } else if (!strncmp(target_node, "grouping/", 9) && !grouping_target) {
+        } else if (!strncmp(target_node, "grouping/", 9) && !spec_target) {
             info_print_grouping(out, target);
             return EXIT_SUCCESS;
         }
 
         /* find the node in the grouping */
-        if (grouping_target) {
-            rc = resolve_descendant_schema_nodeid(grouping_target, target->child, LYS_NO_RPC_NOTIF_NODE,
+        if (spec_target) {
+            rc = resolve_descendant_schema_nodeid(spec_target, target->child, LYS_NO_RPC_NOTIF_NODE,
                                                   1, 0, (const struct lys_node **)&target);
             if (rc || !target) {
-                ly_print(out, "Grouping %s child \"%s\" not found.\n", target_node + 9, grouping_target);
+                ly_print(out, "Grouping %s child \"%s\" not found.\n", target_node + 9, spec_target);
                 return EXIT_FAILURE;
             }
             /* HACK return previous hack */
-            --grouping_target;
-            grouping_target[0] = '/';
+            --spec_target;
+            spec_target[0] = '/';
         }
 
         switch (target->nodetype) {
