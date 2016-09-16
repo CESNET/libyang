@@ -77,6 +77,7 @@ const char *lys_module_a = \
       <type name=\"int64\"/>                          \
     </leaf>                                           \
   </container>                                        \
+  <leaf name=\"y\"><type name=\"string\"/></leaf>     \
   <anyxml name=\"any\"/>                              \
   <augment target-node=\"/x\">                        \
     <if-feature name=\"bar\"/>                        \
@@ -675,6 +676,22 @@ test_lyd_insert(void **state)
 
     lyd_free_withsiblings(node);
     lyd_free_withsiblings(new);
+}
+
+static void
+test_lyd_insert_sibling(void **state)
+{
+    (void) state; /* unused */
+    struct lyd_node *new = NULL, *last;
+
+    new = lyd_new_leaf(NULL, root->schema->module, "y", "test");
+    assert_ptr_not_equal(new, NULL);
+    last = root->prev;
+
+    assert_int_equal(lyd_insert_sibling(&root, new), 0);
+    assert_ptr_not_equal(last, root->prev);
+    assert_string_equal(root->prev->schema->name, "y");
+    assert_string_equal(((struct lyd_node_leaf_list *)root->prev)->value_str, "test");
 }
 
 static void
@@ -1541,6 +1558,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lyd_new_path, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_dup, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_insert, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lyd_insert_sibling, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_insert_before, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_insert_after, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_replace, setup_f, teardown_f),
