@@ -3628,10 +3628,8 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             /* HACK for unres */
             leaf->type.der = (struct lys_tpdf *)sub;
             leaf->type.parent = (struct lys_tpdf *)leaf;
-            if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DER, retval) == -1) {
-                leaf->type.der = NULL;
-                goto error;
-            }
+            /* postpone type resolution when if-feature parsing is done since we need
+             * if-feature for check_leafref_features() */
             has_type = 1;
         } else if (!strcmp(sub->name, "default")) {
             if (leaf->dflt) {
@@ -3704,12 +3702,6 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         goto error;
     }
 
-    /* check default value (if not defined, there still could be some restrictions
-     * that need to be checked against a default value from a derived type) */
-    if (unres_schema_add_str(module, unres, &leaf->type, UNRES_TYPE_DFLT, leaf->dflt) == -1) {
-        goto error;
-    }
-
     /* middle part - process nodes with cardinality of 0..n */
     if (c_must) {
         leaf->must = calloc(c_must, sizeof *leaf->must);
@@ -3740,6 +3732,18 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
         }
+    }
+
+    /* finalize type parsing */
+    if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DER, retval) == -1) {
+        leaf->type.der = NULL;
+        goto error;
+    }
+
+    /* check default value (if not defined, there still could be some restrictions
+     * that need to be checked against a default value from a derived type) */
+    if (unres_schema_add_str(module, unres, &leaf->type, UNRES_TYPE_DFLT, leaf->dflt) == -1) {
+        goto error;
     }
 
     /* check XPath dependencies */
@@ -3807,10 +3811,8 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             /* HACK for unres */
             llist->type.der = (struct lys_tpdf *)sub;
             llist->type.parent = (struct lys_tpdf *)llist;
-            if (unres_schema_add_node(module, unres, &llist->type, UNRES_TYPE_DER, retval) == -1) {
-                llist->type.der = NULL;
-                goto error;
-            }
+            /* postpone type resolution when if-feature parsing is done since we need
+             * if-feature for check_leafref_features() */
             has_type = 1;
         } else if (!strcmp(sub->name, "units")) {
             if (llist->units) {
@@ -3987,6 +3989,12 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             }
             llist->dflt[llist->dflt_size++] = lydict_insert(module->ctx, value, strlen(value));
         }
+    }
+
+    /* finalize type parsing */
+    if (unres_schema_add_node(module, unres, &llist->type, UNRES_TYPE_DER, retval) == -1) {
+        llist->type.der = NULL;
+        goto error;
     }
 
     if (llist->dflt_size && llist->min) {

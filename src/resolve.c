@@ -1182,6 +1182,12 @@ iff_getop(uint8_t *list, int pos)
 #define LYS_IFF_LP 0x04 /* ( */
 #define LYS_IFF_RP 0x08 /* ) */
 
+/* internal structure for passing data for UNRES_IFFEAT */
+struct unres_iffeat_data {
+    struct lys_node *node;
+    const char *fname;
+};
+
 void
 resolve_iffeature_getsizes(struct lys_iffeature *iffeat, unsigned int *expr_size, unsigned int *feat_size)
 {
@@ -1238,6 +1244,7 @@ resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, 
     unsigned int f_size = 0, expr_size = 0, f_exp = 1;
     uint8_t op;
     struct iff_stack stack = {0, 0, NULL};
+    struct unres_iffeat_data *iff_data;
 
     assert(c);
 
@@ -1312,7 +1319,7 @@ resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, 
 
     /* allocate the memory */
     iffeat_expr->expr = calloc((j = (expr_size / 4) + ((expr_size % 4) ? 1 : 0)), sizeof *iffeat_expr->expr);
-    iffeat_expr->features = malloc(f_size * sizeof *iffeat_expr->features);
+    iffeat_expr->features = calloc(f_size, sizeof *iffeat_expr->features);
     stack.size = expr_size;
     stack.stack = malloc(expr_size * sizeof *stack.stack);
     if (!stack.stack || !iffeat_expr->expr || !iffeat_expr->features) {
@@ -1373,10 +1380,13 @@ resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, 
             iff_setop(iffeat_expr->expr, LYS_IFF_F, expr_size--);
 
             /* now get the link to the feature definition. Since it can be
-             * forward referenced, we have hack for unres - until resolved,
-             * the feature name is stored instead of link to the lys_feature */
-            iffeat_expr->features[f_size] = (void*)strndup(&c[i], j - i);
-            r = unres_schema_add_node(node->module, unres, &iffeat_expr->features[f_size], UNRES_IFFEAT, node);
+             * forward referenced, we have to keep the feature name in auxiliary
+             * structure passed into unres */
+            iff_data = malloc(sizeof *iff_data);
+            iff_data->node = node;
+            iff_data->fname = lydict_insert(node->module->ctx, &c[i], j - i);
+            r = unres_schema_add_node(node->module, unres, &iffeat_expr->features[f_size], UNRES_IFFEAT,
+                                      (struct lys_node *)iff_data);
             f_size--;
 
             if (r == -1) {
@@ -5532,6 +5542,91 @@ cleanup:
     return rc;
 }
 
+static int
+check_leafref_features(struct lys_type *type)
+{
+    struct lys_node *iter;
+    struct ly_set *src_parents, *trg_parents, *features;
+    unsigned int i, j, size, x;
+    int ret = EXIT_SUCCESS;
+
+    assert(type->parent);
+
+    src_parents = ly_set_new();
+    trg_parents = ly_set_new();
+    features = ly_set_new();
+
+    /* get parents chain of source (leafref) */
+    for (iter = (struct lys_node *)type->parent; iter; iter = iter->parent) {
+        if (iter->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
+            continue;
+        }
+        ly_set_add(src_parents, iter, LY_SET_OPT_USEASLIST);
+    }
+    /* get parents chain of target */
+    for (iter = (struct lys_node *)type->info.lref.target; iter; iter = iter->parent) {
+        if (iter->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
+            continue;
+        }
+        ly_set_add(trg_parents, iter, LY_SET_OPT_USEASLIST);
+    }
+
+    /* compare the features used in if-feature statements in the rest of both
+     * chains of parents. The set of features used for target must be a subset
+     * of features used for the leafref. This is not a perfect, we should compare
+     * the truth tables but it could require too much resources, so we simplify that */
+    for (i = 0; i < src_parents->number; i++) {
+        iter = src_parents->set.s[i]; /* shortcut */
+        if (!iter->iffeature_size) {
+            continue;
+        }
+        for (j = 0; j < iter->iffeature_size; j++) {
+            resolve_iffeature_getsizes(&iter->iffeature[j], NULL, &size);
+            for (; size; size--) {
+                if (!iter->iffeature[j].features[size - 1]) {
+                    /* not yet resolved feature, postpone this check */
+                    ret = EXIT_FAILURE;
+                    goto cleanup;
+                }
+                ly_set_add(features, iter->iffeature[j].features[size - 1], 0);
+            }
+        }
+    }
+    x = features->number;
+    for (i = 0; i < trg_parents->number; i++) {
+        iter = trg_parents->set.s[i]; /* shortcut */
+        if (!iter->iffeature_size) {
+            continue;
+        }
+        for (j = 0; j < iter->iffeature_size; j++) {
+            resolve_iffeature_getsizes(&iter->iffeature[j], NULL, &size);
+            for (; size; size--) {
+                if (!iter->iffeature[j].features[size - 1]) {
+                    /* not yet resolved feature, postpone this check */
+                    ret = EXIT_FAILURE;
+                    goto cleanup;
+                }
+                if ((unsigned int)ly_set_add(features, iter->iffeature[j].features[size - 1], 0) >= x) {
+                    /* the feature is not present in features set of target's parents chain */
+                    LOGVAL(LYE_NORESOLV, LY_VLOG_LYS, type->parent, "leafref", type->info.lref.path);
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, type->parent,
+                           "Leafref is not conditional based on \"%s\" feature as its target.",
+                           iter->iffeature[j].features[size - 1]->name);
+                    ret = -1;
+                    goto cleanup;
+                }
+            }
+        }
+    }
+
+cleanup:
+    ly_set_free(features);
+    ly_set_free(src_parents);
+    ly_set_free(trg_parents);
+
+    return ret;
+}
+
 /**
  * @brief Check all XPath expressions of a node (when and must), set LYS_XPATH_DEP flag if required.
  *
@@ -5619,6 +5714,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
     struct lyxml_elem *yin;
     struct yang_type *yang;
     struct unres_list_uniq *unique_info;
+    struct unres_iffeat_data *iff_data;
 
     switch (type) {
     case UNRES_IDENT:
@@ -5657,6 +5753,12 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
                                      (const struct lys_node **)&stype->info.lref.target);
         if (!tpdf_flag && !rc) {
             assert(stype->info.lref.target);
+            /* check if leafref and its target are under a common if-features */
+            rc = check_leafref_features(stype);
+            if (rc) {
+                break;
+            }
+
             /* store the backlink from leafref target */
             if (lys_leaf_add_leafref_target(stype->info.lref.target, (struct lys_node *)stype->parent)) {
                 rc = -1;
@@ -5719,13 +5821,12 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         }
         break;
     case UNRES_IFFEAT:
-        node = str_snode;
-        expr = *((const char **)item);
-
-        rc = resolve_feature(expr, strlen(expr), node, item);
+        iff_data = str_snode;
+        rc = resolve_feature(iff_data->fname, strlen(iff_data->fname), iff_data->node, item);
         if (!rc) {
             /* success */
-            free((char *)expr);
+            lydict_remove(mod->ctx, iff_data->fname);
+            free(iff_data);
         }
         break;
     case UNRES_FEATURE:
@@ -5743,7 +5844,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
                 for (i = 0; i < ref->iffeature_size; i++) {
                     resolve_iffeature_getsizes(&ref->iffeature[i], NULL, &j);
                     for (; j > 0 ; j--) {
-                        if (unres_schema_find(unres, -1, &ref->iffeature[i].features[j - 1], UNRES_IFFEAT) == -1) {
+                        if (ref->iffeature[i].features[j - 1]) {
                             if (ref->iffeature[i].features[j - 1] == feat) {
                                 LOGVAL(LYE_CIRC_FEATURES, LY_VLOG_NONE, NULL, feat->name);
                                 goto featurecheckdone;
@@ -5832,6 +5933,7 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
 {
     struct lyxml_elem *xml;
     struct lyxml_attr *attr;
+    struct unres_iffeat_data *iff_data;
     const char *type_name = NULL;
 
     switch (type) {
@@ -5862,7 +5964,8 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "derived type", type_name);
         break;
     case UNRES_IFFEAT:
-        LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "if-feature", (char *)item);
+        iff_data = str_node;
+        LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "if-feature", iff_data->fname);
         break;
     case UNRES_FEATURE:
         LOGVRB("There are unresolved if-features for \"%s\" feature circular dependency check, it will be attempted later",
@@ -6137,6 +6240,7 @@ unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item,
 {
     int i;
     struct unres_list_uniq aux_uniq;
+    struct unres_iffeat_data *iff_data;
 
     assert(item && new_item && ((type != UNRES_LEAFREF) && (type != UNRES_INSTID) && (type != UNRES_WHEN)));
 
@@ -6158,6 +6262,15 @@ unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item,
     if ((type == UNRES_TYPE_LEAFREF) || (type == UNRES_USES) || (type == UNRES_TYPE_DFLT) ||
             (type == UNRES_IFFEAT) || (type == UNRES_FEATURE) || (type == UNRES_LIST_UNIQ)) {
         if (unres_schema_add_node(mod, unres, new_item, type, unres->str_snode[i]) == -1) {
+            LOGINT;
+            return -1;
+        }
+    } else if (type == UNRES_IFFEAT) {
+        /* duplicate unres_iffeature_data */
+        iff_data = malloc(sizeof *iff_data);
+        iff_data->fname = lydict_insert(mod->ctx, ((struct unres_iffeat_data *)unres->str_snode[i])->fname, 0);
+        iff_data->node = ((struct unres_iffeat_data *)unres->str_snode[i])->node;
+        if (unres_schema_add_node(mod, unres, new_item, type, (struct lys_node *)iff_data) == -1) {
             LOGINT;
             return -1;
         }
@@ -6208,6 +6321,7 @@ unres_schema_free_item(struct ly_ctx *ctx, struct unres_schema *unres, uint32_t 
 {
     struct lyxml_elem *yin;
     struct yang_type *yang;
+    struct unres_iffeat_data *iff_data;
 
     switch (unres->type[i]) {
     case UNRES_TYPE_DER_TPDF:
@@ -6223,7 +6337,9 @@ unres_schema_free_item(struct ly_ctx *ctx, struct unres_schema *unres, uint32_t 
         }
         break;
     case UNRES_IFFEAT:
-        free(*((char **)unres->item[i]));
+        iff_data = (struct unres_iffeat_data *)unres->str_snode[i];
+        lydict_remove(ctx, iff_data->fname);
+        free(unres->str_snode[i]);
         break;
     case UNRES_IDENT:
     case UNRES_TYPE_IDENTREF:

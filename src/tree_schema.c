@@ -2216,14 +2216,11 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
                 memcpy(retval->iffeature[i].expr, node->iffeature[i].expr, size * sizeof *retval->iffeature[i].expr);
 
                 /* list of feature pointer must be updated to point to the resulting tree */
-                retval->iffeature[i].features = malloc(size2 * sizeof *retval->iffeature[i].features);
+                retval->iffeature[i].features = calloc(size2, sizeof *retval->iffeature[i].features);
                 for (j = 0; (unsigned int)j < size2; j++) {
                     rc = unres_schema_dup(module, unres, &node->iffeature[i].features[j], UNRES_IFFEAT,
                                           &retval->iffeature[i].features[j]);
-                    if (rc == EXIT_SUCCESS) {
-                        /* feature is not resolved, duplicate the expression string */
-                        retval->iffeature[i].features[j] = (void *)strdup((char *)node->iffeature[i].features[j]);
-                    } else if (rc == EXIT_FAILURE) {
+                    if (rc == EXIT_FAILURE) {
                         /* feature is resolved in origin, so copy it
                          * - duplication is used for instantiating groupings
                          * and if-feature inside grouping is supposed to be
@@ -2233,7 +2230,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
                         retval->iffeature[i].features[j] = node->iffeature[i].features[j];
                     } else if (rc == -1) {
                         goto error;
-                    }
+                    } /* else unres was duplicated */
                 }
             }
         }
