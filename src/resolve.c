@@ -6260,7 +6260,7 @@ unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item,
     }
 
     if ((type == UNRES_TYPE_LEAFREF) || (type == UNRES_USES) || (type == UNRES_TYPE_DFLT) ||
-            (type == UNRES_IFFEAT) || (type == UNRES_FEATURE) || (type == UNRES_LIST_UNIQ)) {
+            (type == UNRES_FEATURE) || (type == UNRES_LIST_UNIQ)) {
         if (unres_schema_add_node(mod, unres, new_item, type, unres->str_snode[i]) == -1) {
             LOGINT;
             return -1;
