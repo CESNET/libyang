@@ -2972,17 +2972,15 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
             i = (int)llists->number;
             if ((ly_set_add(llists, ins->schema, 0) != i) || ins->dflt) {
                 /* each leaf-list must be cleared only once (except when looking for exact same existing dflt nodes) */
-                LY_TREE_FOR_SAFE(parent->child, next2, iter) {
+                LY_TREE_FOR_SAFE(start, next2, iter) {
                     if (iter->schema == ins->schema) {
-                        if (ins->dflt) {
-                            /* adding default leaf-list, remove all explicit and (in case of configuration data)
-                             * the exact same node, if present */
-                            if (!iter->dflt || ((iter->schema->flags & LYS_CONFIG_W) &&
-                                    !strcmp(((struct lyd_node_leaf_list *)iter)->value_str,
-                                            ((struct lyd_node_leaf_list *)ins)->value_str))) {
-                                lyd_free(iter);
+                        if ((ins->dflt && (!iter->dflt || ((iter->schema->flags & LYS_CONFIG_W) &&
+                                                           !strcmp(((struct lyd_node_leaf_list *)iter)->value_str,
+                                                                  ((struct lyd_node_leaf_list *)ins)->value_str))))
+                                || (!ins->dflt && iter->dflt)) {
+                            if (iter == start) {
+                                start = next2;
                             }
-                        } else if (iter->dflt) {
                             lyd_free(iter);
                         }
                     }
