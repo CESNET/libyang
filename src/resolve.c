@@ -48,12 +48,6 @@ parse_identifier(const char *id)
 
     assert(id);
 
-    if (((id[0] == 'x') || (id[0] == 'X'))
-            && (id[0] && ((id[1] == 'm') || (id[0] == 'M')))
-            && (id[1] && ((id[2] == 'l') || (id[2] == 'L')))) {
-        return -parsed;
-    }
-
     if (!isalpha(id[0]) && (id[0] != '_')) {
         return -parsed;
     }
