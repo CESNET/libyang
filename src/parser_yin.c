@@ -2475,6 +2475,8 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
             node = read_yin_anydata(module, (struct lys_node *)aug, child, LYS_ANYDATA, 0, unres);
         } else if (!strcmp(child->name, "action")) {
             node = read_yin_rpc_action(module, (struct lys_node *)aug, child, 0, unres);
+        } else if (!strcmp(child->name, "notification")) {
+            node = read_yin_notif(module, (struct lys_node *)aug, child, 0, unres);
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
             goto error;
@@ -4586,7 +4588,8 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
                 !strcmp(sub->name, "anyxml") ||
-                !strcmp(sub->name, "action")) {
+                !strcmp(sub->name, "action") ||
+                !strcmp(sub->name, "notification")) {
             lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
 
@@ -4640,6 +4643,8 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
             node = read_yin_anydata(module, retval, sub, LYS_ANYDATA, resolve, unres);
         } else if (!strcmp(sub->name, "action")) {
             node = read_yin_rpc_action(module, retval, sub, resolve, unres);
+        } else if (!strcmp(sub->name, "notification")) {
+            node = read_yin_notif(module, retval, sub, resolve, unres);
         }
         if (!node) {
             goto error;
