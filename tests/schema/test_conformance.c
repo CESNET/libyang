@@ -145,7 +145,7 @@ test_implemented_info_yin(void **state)
 "  </module>\n"
 "  <module>\n"
 "    <name>ietf-yang-library</name>\n"
-"    <revision>2016-02-01</revision>\n"
+"    <revision>2016-06-21</revision>\n"
 "    <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>\n"
 "    <conformance-type>implement</conformance-type>\n"
 "  </module>\n"

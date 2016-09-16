@@ -31,8 +31,8 @@
 #define YANG_FAKEMODULE_PATH "../models/yang@2016-02-11.h"
 #define IETF_INET_TYPES_PATH "../models/ietf-inet-types@2013-07-15.h"
 #define IETF_YANG_TYPES_PATH "../models/ietf-yang-types@2013-07-15.h"
-#define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2016-02-01.h"
-#define IETF_YANG_LIB_REV "2016-02-01"
+#define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2016-06-21.h"
+#define IETF_YANG_LIB_REV "2016-06-21"
 
 #include YANG_FAKEMODULE_PATH
 #include IETF_INET_TYPES_PATH
@@ -50,7 +50,7 @@ static struct internal_modules_s {
     {"yang", "2016-02-11", (const char*)yang_2016_02_11_yin, 1, LYS_IN_YIN},
     {"ietf-inet-types", "2013-07-15", (const char*)ietf_inet_types_2013_07_15_yin, 0, LYS_IN_YIN},
     {"ietf-yang-types", "2013-07-15", (const char*)ietf_yang_types_2013_07_15_yin, 0, LYS_IN_YIN},
-    {"ietf-yang-library", "2016-02-01", (const char*)ietf_yang_library_2016_02_01_yin, 1, LYS_IN_YIN}
+    {"ietf-yang-library", "2016-06-21", (const char*)ietf_yang_library_2016_06_21_yin, 1, LYS_IN_YIN}
 };
 
 API struct ly_ctx *
@@ -508,14 +508,10 @@ ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod)
 {
     int i;
     char *str;
-    struct lyd_node *cont, *item;
-
-    if (cur_mod->inc_size) {
-        cont = lyd_new(parent, NULL, "submodules");
-    }
+    struct lyd_node *item;
 
     for (i = 0; i < cur_mod->inc_size && cur_mod->inc[i].submodule; ++i) {
-        item = lyd_new(cont, NULL, "submodule");
+        item = lyd_new(parent, NULL, "submodule");
         if (!item) {
             return EXIT_FAILURE;
         }

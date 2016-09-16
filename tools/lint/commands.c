@@ -757,10 +757,10 @@ error:
 
             /* submodules print */
             LY_TREE_FOR(module->child, submodule) {
-                if (!strcmp(submodule->schema->name, "submodules")) {
+                if (!strcmp(submodule->schema->name, "submodule")) {
                     printf(" (");
                     flag = 0;
-                    LY_TREE_FOR(submodule->child, submodule) {
+                    LY_TREE_FOR(submodule, submodule) {
                         if (!strcmp(submodule->schema->name, "submodule")) {
                             LY_TREE_FOR(submodule->child, node) {
                                 if (!strcmp(node->schema->name, "name")) {

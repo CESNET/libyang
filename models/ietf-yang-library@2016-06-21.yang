@@ -9,11 +9,14 @@ module ietf-yang-library {
     prefix inet;
   }
 
+
+
+
   organization
     "IETF NETCONF (Network Configuration) Working Group";
 
   contact
-    "WG Web:   <http://tools.ietf.org/wg/netconf/>
+    "WG Web:   <https://datatracker.ietf.org/wg/netconf/>
      WG List:  <mailto:netconf@ietf.org>
 
      WG Chair: Mehmet Ersue
@@ -46,23 +49,16 @@ module ietf-yang-library {
      Relating to IETF Documents
      (http://trustee.ietf.org/license-info).
 
-     This version of this YANG module is part of RFC XXXX; see
+     This version of this YANG module is part of RFC 7895; see
      the RFC itself for full legal notices.";
 
-  // RFC Ed.: replace XXXX with actual RFC number and remove this
-  // note.
-
-  // RFC Ed.: remove this note
-  // Note: extracted from draft-ietf-netconf-yang-library-04.txt
-
-  // RFC Ed.: update the date below with the date of RFC publication
-  // and remove this note.
-  revision 2016-02-01 {
+  revision 2016-06-21 {
     description
       "Initial revision.";
     reference
-      "RFC XXXX: YANG Module Library.";
+      "RFC 7895: YANG Module Library.";
   }
+
 
   /*
    * Typedefs
@@ -111,6 +107,7 @@ module ietf-yang-library {
       description
         "Common schema leaf parameter for modules and submodules.";
 
+
       leaf schema {
         type inet:uri;
         description
@@ -125,8 +122,8 @@ module ietf-yang-library {
     list module {
       key "name revision";
       description
-        "Each entry represents one module currently
-         supported by the server.";
+        "Each entry represents one revision of one module
+         currently supported by the server.";
 
       uses common-leafs;
       uses schema-leaf;
@@ -141,7 +138,7 @@ module ietf-yang-library {
         type yang:yang-identifier;
         description
           "List of YANG feature names from this module that are
-           supported by the server, regardless whether they are
+           supported by the server, regardless of whether they are
            defined in the module or any included submodule.";
       }
       list deviation {
@@ -171,8 +168,8 @@ module ietf-yang-library {
 
                For YANG version 1.1 modules, there is at most one
                module entry with conformance type 'implement' for a
-               particular module name, since YANG 1.1 requires that
-               at most one revision of a module is implemented.
+               particular module name, since YANG 1.1 requires that,
+               at most, one revision of a module is implemented.
 
                For YANG version 1 modules, there SHOULD NOT be more
                than one module entry for a particular module name.";
@@ -180,13 +177,13 @@ module ietf-yang-library {
           enum import {
             description
               "Indicates that the server imports reusable definitions
-               from the specified revision of the module, but does
-               not implement any protocol accessible objects from
+               from the specified revision of the module but does
+               not implement any protocol-accessible objects from
                this revision.
 
                Multiple module entries for the same module name MAY
-               exist. This can occur if multiple modules import the
-               same module, but specify different revision-dates in
+               exist.  This can occur if multiple modules import the
+               same module but specify different revision dates in
                the import statements.";
           }
         }
@@ -195,22 +192,17 @@ module ietf-yang-library {
           "Indicates the type of conformance the server is claiming
            for the YANG module identified by this entry.";
       }
-      container submodules {
+      list submodule {
+        key "name revision";
         description
-          "Contains information about all the submodules used
-           by the parent module entry";
-
-        list submodule {
-          key "name revision";
-          description
-            "Each entry represents one submodule within the
-             parent module.";
-          uses common-leafs;
-          uses schema-leaf;
-        }
+          "Each entry represents one submodule within the
+           parent module.";
+        uses common-leafs;
+        uses schema-leaf;
       }
     }
   }
+
 
   /*
    * Operational state data nodes
