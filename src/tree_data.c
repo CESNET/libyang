@@ -2928,8 +2928,7 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
         if (invalid == 1) {
             /* auto delete nodes from other cases, if any;
              * this is done only if node->parent != parent */
-            iter = parent->child;
-            if (lyv_multicases(ins, NULL, &iter, 1, NULL)) {
+            if (lyv_multicases(ins, NULL, &start, 1, NULL)) {
                 goto error;
             }
         }
@@ -2961,6 +2960,11 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
                 ins->prev = iter->prev;
                 iter->prev = ins;
                 ins->next = iter;
+
+                /* update start element */
+                if (parent->child != start) {
+                    start = parent->child;
+                }
             }
 
             /* try to find previously present default instance to replace */
@@ -2986,7 +2990,7 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
             }
         } else if (ins->schema->nodetype == LYS_LEAF || (ins->schema->nodetype == LYS_CONTAINER
                         && !((struct lys_node_container *)ins->schema)->presence)) {
-            LY_TREE_FOR(parent->child, iter) {
+            LY_TREE_FOR(start, iter) {
                 if (iter->schema == ins->schema) {
                     if (ins->dflt || iter->dflt) {
                         /* replace existing (either explicit or default) node with the new (either explicit or default) node */
@@ -3001,14 +3005,17 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
         }
 
         if (!iter) {
-            if (!parent->child) {
+            if (!start) {
                 /* add as the only child of the parent */
-                parent->child = ins;
+                start = ins;
+                if (parent) {
+                    parent->child = ins;
+                }
             } else {
                 /* add as the last child of the parent */
-                parent->child->prev->next = ins;
-                ins->prev = parent->child->prev;
-                parent->child->prev = ins;
+                start->prev->next = ins;
+                ins->prev = start->prev;
+                start->prev = ins;
             }
         }
         ins->parent = parent;
