@@ -255,14 +255,12 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     }
 
 opendir_search:
-    if (cwd != wd) {
-        if (chdir(wd)) {
-            LOGERR(LY_ESYS, "Unable to use search directory \"%s\" (%s)",
-                   wd, strerror(errno));
-            free(wd);
-            wd = cwd;
-            goto cleanup;
-        }
+    if (chdir(wd)) {
+        LOGERR(LY_ESYS, "Unable to use search directory \"%s\" (%s)",
+               wd, strerror(errno));
+        free(wd);
+        wd = cwd;
+        goto cleanup;
     }
     dir = opendir(wd);
     dir_len = strlen(wd);
