@@ -298,34 +298,31 @@ json_print_anydata(struct lyout *out, int level, const struct lyd_node *node, in
 {
     const char *schema = NULL;
     struct lyd_node_anydata *any = (struct lyd_node_anydata *)node;
-    char *xml;
 
     if (toplevel || !node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
         schema = lys_node_module(node->schema)->name;
-        ly_print(out, "%*s\"%s:%s\": ", LEVEL, INDENT, schema, node->schema->name);
+        ly_print(out, "%*s\"%s:%s\":%s{%s", LEVEL, INDENT, schema, node->schema->name, (level ? " " : ""), (level ? "\n" : ""));
     } else {
-        ly_print(out, "%*s\"%s\": ", LEVEL, INDENT, node->schema->name);
+        ly_print(out, "%*s\"%s\":%s{%s", LEVEL, INDENT, node->schema->name, (level ? " " : ""), (level ? "\n" : ""));
+    }
+    if (level) {
+        level++;
     }
 
-    if (!(void*)any->value.tree) {
-        /* no content */
-        ly_print(out, "[null]");
-    } else {
-        switch (any->value_type) {
-        case LYD_ANYDATA_CONSTSTRING:
-        case LYD_ANYDATA_STRING:
-            json_print_string(out, any->value.str);
-            break;
-        case LYD_ANYDATA_DATATREE:
-            json_print_nodes(out, level, any->value.tree, 1, 0, options);
-            break;
-        case LYD_ANYDATA_XML:
-            lyxml_print_mem(&xml, any->value.xml, LYXML_PRINT_SIBLINGS);
-            json_print_string(out, xml);
-            free(xml);
-            break;
+    switch (any->value_type) {
+    case LYD_ANYDATA_DATATREE:
+        json_print_nodes(out, level, any->value.tree, 1, 0, options);
+        break;
+    case LYD_ANYDATA_JSON:
+        if (any->value.str) {
+            ly_print(out, "%*s%s\n", LEVEL, INDENT, any->value.str);
         }
+        break;
+    default:
+        /* other formats are not supported */
+        LOGWRN("Unable to print anydata content (type %d) as JSON.", any->value_type);
+        break;
     }
 
     /* print attributes as sibling leaf */
@@ -338,6 +335,12 @@ json_print_anydata(struct lyout *out, int level, const struct lyd_node *node, in
         json_print_attrs(out, (level ? level + 1 : level), node, NULL);
         ly_print(out, "%*s}", LEVEL, INDENT);
     }
+
+
+    if (level) {
+        level--;
+    }
+    ly_print(out, "%*s}", LEVEL, INDENT);
 }
 
 static void
@@ -406,7 +409,7 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
             break;
         }
     }
-    if (level) {
+    if (root && level) {
         ly_print(out, "\n");
     }
 }

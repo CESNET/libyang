@@ -812,9 +812,11 @@ lyd_create_anydata(struct lyd_node *parent, const struct lys_node *schema, void 
     /* set the value */
     switch (value_type) {
     case LYD_ANYDATA_CONSTSTRING:
+    case LYD_ANYDATA_JSON:
         ret->value.str = lydict_insert(schema->module->ctx, (const char *)value, 0);
         break;
     case LYD_ANYDATA_STRING:
+    case LYD_ANYDATA_JSOND:
         ret->value.str = lydict_insert_zc(schema->module->ctx, (char *)value);
         value_type = LYD_ANYDATA_CONSTSTRING;
         break;
@@ -1074,6 +1076,8 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
                     switch (any->value_type) {
                     case LYD_ANYDATA_CONSTSTRING:
                     case LYD_ANYDATA_STRING:
+                    case LYD_ANYDATA_JSON:
+                    case LYD_ANYDATA_JSOND:
                         lydict_remove(ctx, any->value.str);
                         break;
                     case LYD_ANYDATA_DATATREE:
@@ -1086,9 +1090,11 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
                     /* ... and 2) store the new one */
                     switch (value_type) {
                     case LYD_ANYDATA_CONSTSTRING:
+                    case LYD_ANYDATA_JSON:
                         any->value.str = lydict_insert(ctx, (const char*)value, 0);
                         break;
                     case LYD_ANYDATA_STRING:
+                    case LYD_ANYDATA_JSOND:
                         any->value.str = lydict_insert_zc(ctx, (char*)value);
                         value_type = LYD_ANYDATA_CONSTSTRING;
                         break;
@@ -1521,6 +1527,8 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
         switch(trg_any->value_type) {
         case LYD_ANYDATA_CONSTSTRING:
         case LYD_ANYDATA_STRING:
+        case LYD_ANYDATA_JSON:
+        case LYD_ANYDATA_JSOND:
             lydict_remove(ctx, trg_any->value.str);
             break;
         case LYD_ANYDATA_DATATREE:
@@ -3912,6 +3920,8 @@ lyd_dup(const struct lyd_node *node, int recursive)
             switch (old_any->value_type) {
             case LYD_ANYDATA_CONSTSTRING:
             case LYD_ANYDATA_STRING:
+            case LYD_ANYDATA_JSON:
+            case LYD_ANYDATA_JSOND:
                 new_any->value.str = lydict_insert(elem->schema->module->ctx, old_any->value.str, 0);
                 break;
             case LYD_ANYDATA_DATATREE:
@@ -4139,6 +4149,8 @@ lyd_free(struct lyd_node *node)
         switch (((struct lyd_node_anydata *)node)->value_type) {
         case LYD_ANYDATA_CONSTSTRING:
         case LYD_ANYDATA_STRING:
+        case LYD_ANYDATA_JSON:
+        case LYD_ANYDATA_JSOND:
             lydict_remove(node->schema->module->ctx, ((struct lyd_node_anydata *)node)->value.str);
             break;
         case LYD_ANYDATA_DATATREE:

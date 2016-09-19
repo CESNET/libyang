@@ -56,9 +56,16 @@ typedef enum {
     LYD_ANYDATA_DATATREE,    /**< value is struct lyd_node* (first sibling), the structure is directly connected into
                                   the anydata node without duplication, caller is supposed to not manipulate with the
                                   data after a successful call (including calling lyd_free() on the provided data) */
-    LYD_ANYDATA_XML          /**< value is struct lyxml_elem*, the structure is directly connected into
+    LYD_ANYDATA_XML,         /**< value is struct lyxml_elem*, the structure is directly connected into
                                   the anydata node without duplication, caller is supposed to not manipulate with the
                                   data after a successful call (including calling lyxml_free() on the provided data)*/
+    LYD_ANYDATA_JSON,        /**< value is string containing the data modeled by YANG and encoded as I-JSON. The string
+                                  is handled as constant string. In case of using the value as input parameter, the
+                                  #LYD_ANYDATA_JSOND can be used for dynamically allocated string. */
+    LYD_ANYDATA_JSOND        /**< In case of using value as input parameter, this value is supposed to be used for
+                                  dynamically allocated strings (it is actually combination of #LYD_ANYDATA_JSON and
+                                  #LYD_ANYDATA_STRING (and it can be also specified as ORed value of the mentioned
+                                  values. */
 } LYD_ANYDATA_VALUETYPE;
 
 /**

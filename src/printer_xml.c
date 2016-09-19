@@ -366,6 +366,8 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
         switch (any->value_type) {
         case LYD_ANYDATA_CONSTSTRING:
         case LYD_ANYDATA_STRING:
+        case LYD_ANYDATA_JSON:
+        case LYD_ANYDATA_JSOND:
             lyxml_dump_text(out, any->value.str);
             break;
         case LYD_ANYDATA_DATATREE:

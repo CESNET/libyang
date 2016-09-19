@@ -418,6 +418,8 @@ cast_string_recursive(struct lyd_node *node, int fake_cont, enum lyxp_node_type 
             switch (any->value_type) {
             case LYD_ANYDATA_CONSTSTRING:
             case LYD_ANYDATA_STRING:
+            case LYD_ANYDATA_JSON:
+            case LYD_ANYDATA_JSOND:
                 buf = strdup(any->value.str);
                 if (!buf) {
                     LOGMEM;

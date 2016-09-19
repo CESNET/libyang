@@ -375,60 +375,42 @@ lyjson_parse_boolean(const char *data)
 }
 
 static unsigned int
-json_get_anyxml(struct lyd_node_anydata *any, const char *data)
+json_get_anydata(struct lyd_node_anydata *any, const char *data)
 {
-    struct ly_ctx *ctx;
-    unsigned int len = 0, r;
-    char *str;
+    unsigned int len = 0, start, stop, c;
 
-    ctx = any->schema->module->ctx;
-
-    if (data[len] == '"') {
-        /* string representations */
-        ++len;
-        str = lyjson_parse_text(&data[len], &r);
-        if (!str) {
-            LOGPATH(LY_VLOG_LYD, any);
-            return 0;
-        }
-        any->value_type = LYD_ANYDATA_CONSTSTRING;
-        any->value.str = lydict_insert_zc(ctx, str);
-        if (data[len + r] != '"') {
-            LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, any,
-                   "JSON data (missing quotation-mark at the end of string)");
-            return 0;
-        }
-        len += r + 1;
-    } else if (data[len] == '-' || isdigit(data[len])) {
-        /* numeric type */
-        r = lyjson_parse_number(&data[len]);
-        if (!r) {
-            LOGPATH(LY_VLOG_LYD, any);
-            return 0;
-        }
-        any->value_type = LYD_ANYDATA_CONSTSTRING;
-        any->value.str = lydict_insert(ctx, &data[len], r);
-        len += r;
-    } else if (data[len] == 'f' || data[len] == 't') {
-        /* boolean */
-        r = lyjson_parse_boolean(&data[len]);
-        if (!r) {
-            LOGPATH(LY_VLOG_LYD, any);
-            return 0;
-        }
-        any->value_type = LYD_ANYDATA_CONSTSTRING;
-        any->value.str = lydict_insert(ctx, &data[len], r);
-        len += r;
-    } else if (!strncmp(&data[len], "[null]", 6)) {
-        /* empty */
-        any->value_type = LYD_ANYDATA_CONSTSTRING;
-        any->value.str = lydict_insert(ctx, "", 0);
-        len += 6;
-    } else {
-        /* error; TODO support JSON data in anydata */
-        LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, any, "JSON data (unexpected value)");
+    /* anydata (as well as meaningful anyxml) is supposed to be encoded as object */
+    if (data[len] != '{') {
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, any, "Anydata/anyxml content (not an object)");
         return 0;
     }
+
+    /* count opening '{' and closing '}' to get the end of the object without its parsing */
+    c = 1;
+    len++;
+    len += skip_ws(&data[len]);
+    start = stop = len;
+    while (data[len] && c) {
+        switch (data[len]) {
+        case '{':
+            c++;
+            break;
+        case '}':
+            c--;
+            break;
+        default:
+            if (!isspace(data[len])) {
+                stop = len;
+            }
+        }
+        len++;
+    }
+    if (c) {
+        LOGVAL(LYE_EOF, LY_VLOG_LYD, any);
+        return 0;
+    }
+    any->value_type = LYD_ANYDATA_JSON;
+    any->value.str = lydict_insert(any->schema->module->ctx, &data[start], stop - start + 1);
 
     len += skip_ws(&data[len]);
     return len;
@@ -1039,7 +1021,7 @@ attr_repeat:
         len += r;
         len += skip_ws(&data[len]);
     } else if (schema->nodetype & LYS_ANYDATA) {
-        r = json_get_anyxml((struct lyd_node_anydata *)result, &data[len]);
+        r = json_get_anydata((struct lyd_node_anydata *)result, &data[len]);
         if (!r) {
             goto error;
         }
