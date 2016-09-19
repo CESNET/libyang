@@ -3289,7 +3289,8 @@ lys_set_implemented_recursion(struct lys_module *module, struct unres_schema *un
 
     for (i = 0; i < module->augment_size; i++) {
         /* apply augment */
-        if (unres_schema_add_node(module, unres, &module->augment[i], UNRES_AUGMENT, NULL) == -1) {
+        if (!module->augment[i].target
+                && (unres_schema_add_node(module, unres, &module->augment[i], UNRES_AUGMENT, NULL) == -1)) {
             return -1;
         }
     }
@@ -3387,8 +3388,9 @@ lys_set_implemented(const struct lys_module *module)
         }
         for (j = 0; j < module->inc[i].submodule->augment_size; j++) {
             /* apply augment */
-            if (unres_schema_add_node((struct lys_module *)module->inc[i].submodule, unres,
-                                      &module->inc[i].submodule->augment[i], UNRES_AUGMENT, NULL) == -1) {
+            if (!module->inc[i].submodule->augment[i].target
+                    && (unres_schema_add_node((struct lys_module *)module->inc[i].submodule, unres,
+                                              &module->inc[i].submodule->augment[i], UNRES_AUGMENT, NULL) == -1)) {
                 goto error;
             }
         }
