@@ -142,14 +142,35 @@ static void
 test_keys_inorder(void **state)
 {
     struct state *st = (*state);
-    const char *data = "<l xmlns=\"urn:libyang:tests:keys\"><key2>2</key2><key1>1</key1><value>a</value></l>";
+    const char *data, *correct = "<l xmlns=\"urn:libyang:tests:keys\"><key1>1</key1><key2>2</key2><value>a</value></l>";
+    char *printed;
 
-    st->dt = lyd_parse_mem(st->ctx, data, LYD_XML, LYD_OPT_CONFIG);
+    /* invalid order */
+    data = "<l xmlns=\"urn:libyang:tests:keys\"><key2>2</key2><key1>1</key1><value>a</value></l>";
+    st->dt = lyd_parse_mem(st->ctx, data, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     assert_ptr_equal(st->dt, NULL);
 
+    /* invalid order */
+    data = "<l xmlns=\"urn:libyang:tests:keys\"><key1>1</key1><value>a</value><key2>2</key2></l>";
+    st->dt = lyd_parse_mem(st->ctx, data, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+    assert_ptr_equal(st->dt, NULL);
+
+    /* invalid order, not a strict parsing */
+    data = "<l xmlns=\"urn:libyang:tests:keys\"><key2>2</key2><key1>1</key1><value>a</value></l>";
+    st->dt = lyd_parse_mem(st->ctx, data, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt, NULL);
+    assert_int_equal(lyd_print_mem(&printed, st->dt, LYD_XML, 0), 0);
+    assert_string_equal(printed, correct);
+    free(printed);
+    lyd_free_withsiblings(st->dt);
+
+    /* invalid order, not a strict parsing */
     data = "<l xmlns=\"urn:libyang:tests:keys\"><key1>1</key1><value>a</value><key2>2</key2></l>";
     st->dt = lyd_parse_mem(st->ctx, data, LYD_XML, LYD_OPT_CONFIG);
-    assert_ptr_equal(st->dt, NULL);
+    assert_ptr_not_equal(st->dt, NULL);
+    assert_int_equal(lyd_print_mem(&printed, st->dt, LYD_XML, 0), 0);
+    assert_string_equal(printed, correct);
+    free(printed);
 }
 
 static void

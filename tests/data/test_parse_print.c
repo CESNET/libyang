@@ -448,6 +448,51 @@ test_parse_print_json(void **state)
     assert_string_equal(st->str1, st->str2);
 }
 
+static void
+test_parse_print_oookeys_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *xmlin = "<cont1 xmlns=\"urn:all\">"
+                          "<leaf3>-1</leaf3>"
+                          "<list1><leaf18>aaa</leaf18></list1>"
+                          "<list1><leaf19>123</leaf19><leaf18>bbb</leaf18></list1>"
+                        "</cont1>";
+    const char *xmlout = "<cont1 xmlns=\"urn:all\">"
+                          "<leaf3>-1</leaf3>"
+                          "<list1><leaf18>aaa</leaf18></list1>"
+                          "<list1><leaf18>bbb</leaf18><leaf19>123</leaf19></list1>"
+                        "</cont1>";
+    st->dt = NULL;
+
+    /* with strict parsing, it is error since the key is not encoded as the first child */
+    st->dt = lyd_parse_mem(st->ctx, xmlin, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+    assert_ptr_equal(st->dt, NULL);
+    assert_int_equal(ly_vecode, LYVE_INORDER);
+    assert_string_equal(ly_errmsg(), "Invalid position of the key \"leaf18\" in a list \"list1\".");
+
+    /* without strict, it produces only warning, but the data are correctly loaded */
+    st->dt = lyd_parse_mem(st->ctx, xmlin, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt, NULL);
+    assert_int_equal(lyd_print_mem(&st->str1, st->dt, LYD_XML, 0), 0);
+    assert_string_equal(st->str1, xmlout);
+}
+
+static void
+test_parse_print_oookeys_json(void **state)
+{
+    struct state *st = (*state);
+    const char *in = "{\"all:cont1\":{\"leaf3\":-1,\"list1\":[{\"leaf18\":\"a\"},{\"leaf19\":123,\"leaf18\":\"b\"}]}}";
+    const char *out = "{\"all:cont1\":{\"leaf3\":-1,\"list1\":[{\"leaf18\":\"a\"},{\"leaf18\":\"b\",\"leaf19\":123}]}}";
+
+    st->dt = NULL;
+
+    /* in JSON, ordering does not matter, so it will succeed even with strict */
+    st->dt = lyd_parse_mem(st->ctx, in, LYD_JSON, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+    assert_ptr_not_equal(st->dt, NULL);
+    assert_int_equal(lyd_print_mem(&st->str1, st->dt, LYD_JSON, 0), 0);
+    assert_string_equal(st->str1, out);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -455,6 +500,8 @@ int main(void)
                     //cmocka_unit_test_teardown(test_parse_print_yang, teardown_f),
                     cmocka_unit_test_setup_teardown(test_parse_print_xml, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_parse_print_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_parse_print_oookeys_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_parse_print_oookeys_json, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

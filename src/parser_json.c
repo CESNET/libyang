@@ -753,7 +753,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
     unsigned int len = 0;
     unsigned int r;
     unsigned int flag_leaflist = 0;
-    int i;
+    int i, pos;
     char *name, *prefix = NULL, *str = NULL;
     const struct lys_module *module = NULL;
     struct lys_node *schema = NULL;
@@ -978,21 +978,48 @@ attr_repeat:
         goto error;
     }
 
-    result->parent = *parent;
-    if (*parent && !(*parent)->child) {
-        (*parent)->child = result;
-    }
-    if (prev) {
-        result->prev = prev;
-        prev->next = result;
-
-        /* fix the "last" pointer */
-        first_sibling->prev = result;
-    } else {
-        result->prev = result;
-        first_sibling = result;
-    }
+    result->prev = result;
     result->schema = schema;
+    result->parent = *parent;
+    diter = NULL;
+    if (*parent && (*parent)->child && schema->nodetype == LYS_LEAF && (*parent)->schema->nodetype == LYS_LIST &&
+        (pos = lys_is_key((struct lys_node_list *)(*parent)->schema, (struct lys_node_leaf *)schema))) {
+        /* it is key and we need to insert it into a correct place */
+        for (i = 0, diter = (*parent)->child;
+                diter && i < (pos - 1) && diter->schema->nodetype == LYS_LEAF &&
+                    lys_is_key((struct lys_node_list *)(*parent)->schema, (struct lys_node_leaf *)diter->schema);
+                i++, diter = diter->next);
+        if (diter) {
+            /* out of order insertion - insert list's key to the correct position, before the diter */
+            if ((*parent)->child == diter) {
+                (*parent)->child = result;
+                /* update first_sibling */
+                first_sibling = result;
+            }
+            if (diter->prev->next) {
+                diter->prev->next = result;
+            }
+            result->prev = diter->prev;
+            diter->prev = result;
+            result->next = diter;
+        }
+    }
+    if (!diter) {
+        /* simplified (faster) insert as the last node */
+        if (*parent && !(*parent)->child) {
+            (*parent)->child = result;
+        }
+        if (prev) {
+            result->prev = prev;
+            prev->next = result;
+
+            /* fix the "last" pointer */
+            first_sibling->prev = result;
+        } else {
+            result->prev = result;
+            first_sibling = result;
+        }
+    }
     result->validity = LYD_VAL_NOT;
     if (resolve_applies_when(schema, 0, NULL)) {
         result->when_status = LYD_WHEN;
@@ -1119,7 +1146,7 @@ attr_repeat:
                 ly_errno = 0;
                 if (!(options & LYD_OPT_TRUSTED) &&
                         (lyv_data_content(list, options, unres) ||
-                         lyv_multicases(list, NULL, first_sibling == list ? NULL : &first_sibling, 0, NULL))) {
+                         lyv_multicases(list, NULL, prev ? &first_sibling : NULL, 0, NULL))) {
                     if (ly_errno) {
                         goto error;
                     }
@@ -1161,7 +1188,7 @@ attr_repeat:
     ly_errno = 0;
     if (!(options & LYD_OPT_TRUSTED) &&
             (lyv_data_content(result, options, unres) ||
-             lyv_multicases(result, NULL, first_sibling == result ? NULL : &first_sibling, 0, NULL))) {
+             lyv_multicases(result, NULL, prev ? &first_sibling : NULL, 0, NULL))) {
         if (ly_errno) {
             goto error;
         }

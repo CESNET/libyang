@@ -126,7 +126,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     struct lyd_attr *dattr, *dattr_iter;
     struct lyxml_attr *attr;
     struct lyxml_elem *child, *next;
-    int i, j, havechildren, r, flag;
+    int i, j, havechildren, r, flag, pos;
     int ret = 0;
     const char *str = NULL;
 
@@ -234,21 +234,58 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         return -1;
     }
 
-    (*result)->parent = parent;
-    if (parent && !parent->child) {
-        parent->child = *result;
-    }
-    if (prev) {
-        (*result)->prev = prev;
-        prev->next = *result;
-
-        /* fix the "last" pointer */
-        first_sibling->prev = *result;
-    } else {
-        (*result)->prev = *result;
-        first_sibling = *result;
-    }
+    (*result)->prev = *result;
     (*result)->schema = schema;
+    (*result)->parent = parent;
+    diter = NULL;
+    if (parent && parent->child && schema->nodetype == LYS_LEAF && parent->schema->nodetype == LYS_LIST &&
+        (pos = lys_is_key((struct lys_node_list *)parent->schema, (struct lys_node_leaf *)schema))) {
+        /* it is key and we need to insert it into a correct place */
+        for (i = 0, diter = parent->child;
+                diter && i < (pos - 1) && diter->schema->nodetype == LYS_LEAF &&
+                    lys_is_key((struct lys_node_list *)parent->schema, (struct lys_node_leaf *)diter->schema);
+                i++, diter = diter->next);
+        if (diter) {
+            /* out of order insertion - insert list's key to the correct position, before the diter */
+            if (options & LYD_OPT_STRICT) {
+                LOGVAL(LYE_INORDER, LY_VLOG_LYD, *result, schema->name, diter->schema->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_LYD, *result, "Invalid position of the key \"%s\" in a list \"%s\".",
+                       schema->name, parent->schema->name);
+                free(*result);
+                *result = NULL;
+                return -1;
+            } else {
+                LOGWRN("Invalid position of the key \"%s\" in a list \"%s\".", schema->name, parent->schema->name)
+            }
+            if (parent->child == diter) {
+                parent->child = *result;
+                /* update first_sibling */
+                first_sibling = *result;
+            }
+            if (diter->prev->next) {
+                diter->prev->next = *result;
+            }
+            (*result)->prev = diter->prev;
+            diter->prev = *result;
+            (*result)->next = diter;
+        }
+    }
+    if (!diter) {
+        /* simplified (faster) insert as the last node */
+        if (parent && !parent->child) {
+            parent->child = *result;
+        }
+        if (prev) {
+            (*result)->prev = prev;
+            prev->next = *result;
+
+            /* fix the "last" pointer */
+            first_sibling->prev = *result;
+        } else {
+            (*result)->prev = *result;
+            first_sibling = *result;
+        }
+    }
     (*result)->validity = LYD_VAL_NOT;
     if (resolve_applies_when(schema, 0, NULL)) {
         (*result)->when_status = LYD_WHEN;
@@ -472,7 +509,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             } else if (options & LYD_OPT_DESTRUCT) {
                 lyxml_free(ctx, child);
             }
-            if (diter) {
+            if (diter && !diter->next) {
+                /* the child was parsed/created and it was placed as the last child. The child can be inserted
+                 * out of order (not as the last one) in case it is a list's key present out of the correct order */
                 dlast = diter;
             }
         }
@@ -488,7 +527,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     ly_errno = 0;
     if (!(options & LYD_OPT_TRUSTED) &&
             (lyv_data_content(*result, options, unres) ||
-             lyv_multicases(*result, NULL, first_sibling == *result ? NULL : &first_sibling, 0, NULL))) {
+             lyv_multicases(*result, NULL, prev ? &first_sibling : NULL, 0, NULL))) {
         if (ly_errno) {
             goto error;
         } else {
