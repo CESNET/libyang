@@ -96,8 +96,8 @@ struct len_ran_intv {
         } sval;
 
         struct {
-            long double min;
-            long double max;
+            int64_t min;
+            int64_t max;
         } fval;
     } value;
 

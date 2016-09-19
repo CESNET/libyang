@@ -1110,6 +1110,17 @@ int lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int 
 int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
                   const struct lyd_node *root, LYD_FORMAT format, int options);
 
+/**
+ * @brief Get the double value of a decimal64 leaf/leaf-list.
+ *
+ * YANG decimal64 type enables higher precision numbers than IEEE 754 double-precision
+ * format, so this conversion does not have to be lossless.
+ *
+ * @param[in] node Leaf/leaf-list of type decimal64.
+ * @return Closest double equivalent to the decimal64 value.
+ */
+double lyd_dec64_to_double(const struct lyd_node *node);
+
 /**@} */
 
 #ifdef __cplusplus

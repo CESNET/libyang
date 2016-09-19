@@ -626,3 +626,31 @@ ly_strequal_(const char *s1, const char *s2)
         return 0;
     }
 }
+
+int64_t
+dec_pow(uint8_t exp)
+{
+    int64_t ret = 1;
+    uint8_t i;
+
+    for (i = 0; i < exp; ++i) {
+        ret *= 10;
+    }
+
+    return ret;
+}
+
+int
+dec64cmp(int64_t num1, uint8_t dig1, int64_t num2, uint8_t dig2)
+{
+    if (dig1 < dig2) {
+        num2 /= dec_pow(dig2 - dig1);
+    } else if (dig1 > dig2) {
+        num1 /= dec_pow(dig1 - dig2);
+    }
+
+    if (num1 == num2) {
+        return 0;
+    }
+    return (num1 > num2 ? 1 : -1);
+}

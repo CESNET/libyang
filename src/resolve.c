@@ -31,6 +31,75 @@
 #include "tree_internal.h"
 
 /**
+ * @brief Convert a string with a decimal64 value into our representation.
+ * Syntax is expected to be correct.
+ *
+ * @param[in,out] str_num Pointer to the beginning of the decimal64 number, returns the first unparsed character.
+ * @param[in] dig Fraction-digits of the resulting number.
+ * @return Decimal64 base value, fraction-digits equal \p dig.
+ */
+static int64_t
+parse_range_dec64(const char **str_num, uint8_t dig)
+{
+    const char *ptr;
+    int minus = 0;
+    int64_t ret = 0;
+    int8_t str_exp, str_dig = -1;
+
+    ptr = *str_num;
+
+    if (ptr[0] == '-') {
+        minus = 1;
+        ++ptr;
+    }
+
+    for (str_exp = 0; isdigit(ptr[0]) || ((ptr[0] == '.') && (str_dig < 0)); ++ptr) {
+        if (str_exp > 18) {
+            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, *str_num, "range");
+            return 0;
+        }
+
+        if (ptr[0] == '.') {
+            if (ptr[1] == '.') {
+                /* it's the next interval */
+                break;
+            }
+            ++str_dig;
+        } else {
+            ret = ret * 10 + (ptr[0] - 48);
+            if (str_dig > -1) {
+                ++str_dig;
+            }
+            ++str_exp;
+        }
+    }
+    if (str_dig == -1) {
+        /* there are 0 number after the floating point */
+        str_dig = 0;
+    }
+
+    /* it's parsed, now adjust the number based on fraction-digits, if needed */
+    if (str_dig < dig) {
+        if ((str_exp - 1) + (dig - str_dig) > 18) {
+            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, *str_num, "range");
+            return 0;
+        }
+        ret *= dec_pow(dig - str_dig);
+    }
+    if (str_dig > dig) {
+        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, *str_num, "range");
+        return 0;
+    }
+
+    if (minus) {
+        ret *= -1;
+    }
+    *str_num = ptr;
+
+    return ret;
+}
+
+/**
  * @brief Parse an identifier.
  *
  * ;; An identifier MUST NOT start with (('X'|'x') ('M'|'m') ('L'|'l'))
@@ -2298,11 +2367,10 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
 {
     /* 0 - unsigned, 1 - signed, 2 - floating point */
     int kind;
-    int64_t local_smin, local_smax;
+    int64_t local_smin, local_smax, local_fmin, local_fmax;
     uint64_t local_umin, local_umax;
-    long double local_fmin, local_fmax;
+    uint8_t local_fdig;
     const char *seg_ptr, *ptr;
-    char *num_end;
     struct len_ran_intv *local_intv = NULL, *tmp_local_intv = NULL, *tmp_intv, *intv = NULL;
 
     switch (type->base) {
@@ -2317,8 +2385,9 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
         break;
     case LY_TYPE_DEC64:
         kind = 2;
-        local_fmin = ((long double)-9223372036854775808.0) / type->info.dec64.div;
-        local_fmax = ((long double)9223372036854775807.0) / type->info.dec64.div;
+        local_fmin = __INT64_C(-9223372036854775807) - __INT64_C(1);
+        local_fmax = __INT64_C(9223372036854775807);
+        local_fdig = type->info.dec64.dig;
 
         if (!str_restr && type->info.dec64.range) {
             str_restr = type->info.dec64.range->expr;
@@ -2478,20 +2547,12 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
         }
         if (isdigit(ptr[0]) || (ptr[0] == '+') || (ptr[0] == '-')) {
             if (kind == 0) {
-                tmp_local_intv->value.uval.min = strtol(ptr, &num_end, 10);
+                tmp_local_intv->value.uval.min = strtol(ptr, (char **)&ptr, 10);
             } else if (kind == 1) {
-                tmp_local_intv->value.sval.min = strtol(ptr, &num_end, 10);
+                tmp_local_intv->value.sval.min = strtol(ptr, (char **)&ptr, 10);
             } else if (kind == 2) {
-                for (num_end = (char *)ptr + 1; isdigit(num_end[0]); ++num_end);
-                if ((num_end[0] == '.') && (num_end[1] == '.')) {
-                    /* cannot use strtod, one '.' would be incorrectly parsed */
-                    tmp_local_intv->value.fval.min = strtol(ptr, &num_end, 10);
-                } else {
-                    tmp_local_intv->value.fval.min = strtod(ptr, &num_end);
-                }
+                tmp_local_intv->value.fval.min = parse_range_dec64(&ptr, local_fdig);
             }
-
-            ptr = num_end;
         } else if (!strncmp(ptr, "min", 3)) {
             if (kind == 0) {
                 tmp_local_intv->value.uval.min = local_umin;
@@ -2540,17 +2601,11 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
             /* max */
             if (isdigit(ptr[0]) || (ptr[0] == '+') || (ptr[0] == '-')) {
                 if (kind == 0) {
-                    tmp_local_intv->value.uval.max = strtol(ptr, &num_end, 10);
+                    tmp_local_intv->value.uval.max = strtol(ptr, (char **)&ptr, 10);
                 } else if (kind == 1) {
-                    tmp_local_intv->value.sval.max = strtol(ptr, &num_end, 10);
+                    tmp_local_intv->value.sval.max = strtol(ptr, (char **)&ptr, 10);
                 } else if (kind == 2) {
-                    for (num_end = (char *)ptr + 1; isdigit(num_end[0]); ++num_end);
-                    if ((num_end[0] == '.') && (num_end[1] == '.')) {
-                        /* cannot use strtod, one '.' would be incorrectly parsed */
-                        tmp_local_intv->value.fval.max = strtol(ptr, &num_end, 10);
-                    } else {
-                        tmp_local_intv->value.fval.max = strtod(ptr, &num_end);
-                    }
+                    tmp_local_intv->value.fval.max = parse_range_dec64(&ptr, local_fdig);
                 }
             } else if (!strncmp(ptr, "max", 3)) {
                 if (kind == 0) {
@@ -2600,6 +2655,7 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
                 goto error;
             }
             if (tmp_intv && (tmp_intv->value.fval.max >= tmp_local_intv->value.fval.min)) {
+                /* fraction-digits value is always the same (it cannot be changed in derived types) */
                 goto error;
             }
         }
@@ -2651,8 +2707,9 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
                 local_fmin = tmp_local_intv->value.fval.min;
                 local_fmax = tmp_local_intv->value.fval.max;
 
-                 if ((local_fmin >= tmp_intv->value.fval.min) && (local_fmin <= tmp_intv->value.fval.max)) {
-                    if (local_fmax <= tmp_intv->value.fval.max) {
+                 if ((dec64cmp(local_fmin, local_fdig, tmp_intv->value.fval.min, local_fdig) > -1)
+                        && (dec64cmp(local_fmin, local_fdig, tmp_intv->value.fval.max, local_fdig) > 1)) {
+                    if (dec64cmp(local_fmax, local_fdig, tmp_intv->value.fval.max, local_fdig) < 1) {
                         tmp_local_intv = tmp_local_intv->next;
                         continue;
                     } else {

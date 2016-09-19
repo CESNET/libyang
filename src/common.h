@@ -346,4 +346,8 @@ int ly_strequal_(const char *s1, const char *s2);
 #define ly_strequal1(s1, s2) (s1 == s2)
 #define ly_strequal(s1, s2, d) ly_strequal##d(s1, s2)
 
+int64_t dec_pow(uint8_t exp);
+
+int dec64cmp(int64_t num1, uint8_t dig1, int64_t num2, uint8_t dig2);
+
 #endif /* LY_COMMON_H_ */

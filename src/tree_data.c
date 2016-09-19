@@ -5616,3 +5616,15 @@ lyd_node_module(const struct lyd_node *node)
 {
     return node->schema->module->type ? ((struct lys_submodule *)node->schema->module)->belongsto : node->schema->module;
 }
+
+API double
+lyd_dec64_to_double(const struct lyd_node *node)
+{
+    if (!node || !(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
+            || (((struct lys_node_leaf *)node->schema)->type.base != LY_TYPE_DEC64)) {
+        ly_errno = LY_EINVAL;
+        return 0;
+    }
+
+    return atof(((struct lyd_node_leaf_list *)node)->value_str);
+}
