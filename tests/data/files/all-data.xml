@@ -7,7 +7,8 @@
   <leaf6>60000</leaf6>
   <leaf7>4000000000</leaf7>
   <leaf8>5000000000</leaf8>
-  <leaf9>25.012345678</leaf9>
+  <leaf9a>25.012345678</leaf9a>
+  <leaf10>false</leaf10>
   <leaf11>two</leaf11>
   <leaf12>flag0 flag2</leaf12>
   <leaf13>somebase64string</leaf13>
