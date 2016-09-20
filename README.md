@@ -7,26 +7,30 @@
 [![Ohloh Project Status](https://www.openhub.net/p/libyang/widgets/project_thin_badge.gif)](https://www.openhub.net/p/libyang)
 
 libyang is YANG data modelling language parser and toolkit written (and
-providing API) in C.
+providing API) in C. The library is used e.g. in [libnetconf2](https://github.com/CESNET/libnetconf2),
+[Netopeer2](https://github.com/CESNET/Netopeer2) or [sysrepo](https://github.com/sysrepo/sysrepo) projects.
 
 ## Provided Features
 
 * Parsing (and validating) schemas in YANG format.
 * Parsing (and validating) schemas in YIN format.
 * Parsing, validating and printing instance data in XML format.
-* Parsing, validating and printing instance data in JSON format.
+* Parsing, validating and printing instance data in JSON format
+  ([RFC 7951](https://tools.ietf.org/html/rfc7951)).
 * Manipulation with the instance data.
-* Support for adding default values into instance data.
+* Support for default values in the instance data ([RFC 6243](https://tools.ietf.org/html/rfc6243)).
 
-Current implementation covers YANG 1.0 specified by [RFC 6020](https://tools.ietf.org/html/rfc6020).
+Current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020))
+as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950).
 
 ## Planned Features
 
-* YANG 1.1 support.
+* YANG Metadata ([RFC 7952](https://tools.ietf.org/html/rfc7952)).
+* [yanglint](#yanglint) as a full-fledged YANG tool.
 
 ## Requirements
 
-* cmake >= 2.6
+* cmake >= 2.8.9
 * libpcre
 * cmocka >= 1.0.0 (for tests only, see [Tests](#Tests))
 
@@ -122,7 +126,7 @@ $ make
 ```
 
 In case of the `Release` mode, the tests are not built by default (it requires
-additional dependency), but it can be enabled via cmake option:
+additional dependency), but they can be enabled via cmake option:
 ```
 $ cmake -DENABLE_BUILD_TESTS=ON ..
 ```
