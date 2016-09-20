@@ -1104,6 +1104,11 @@ some_restrictions: @EMPTYDIR@  { if (read_all) {
                                      ((struct yang_type *)actual)->base = LY_TYPE_STRING;
                                    }
                                    if (size_arrays->node[size_arrays->next].uni) {
+                                     if (strcmp(((struct yang_type *)actual)->name, "union")) {
+                                       /* type can be a substatement only in "union" type, not in derived types */
+                                       LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "type", "derived type");
+                                       YYABORT;
+                                     }
                                      ((struct yang_type *)actual)->type->info.uni.types = calloc(size_arrays->node[size_arrays->next].uni, sizeof(struct lys_type));
                                      if (!((struct yang_type *)actual)->type->info.uni.types) {
                                        LOGMEM;
