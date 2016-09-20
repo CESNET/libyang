@@ -82,17 +82,20 @@
       <type name="uint64"/>
     </leaf>
     <choice name="choic1">
-      <default value="leaf10"/>
-      <leaf name="leaf9">
+      <default value="leaf9b"/>
+      <leaf name="leaf9a">
         <type name="decimal64">
           <fraction-digits value="9"/>
         </type>
       </leaf>
-      <leaf name="leaf10">
+      <leaf name="leaf9b">
         <type name="boolean"/>
         <default value="false"/>
       </leaf>
     </choice>
+    <leaf name="leaf10">
+      <type name="boolean"/>
+    </leaf>
     <leaf name="leaf11">
       <type name="enumeration">
         <enum name="one"/>
