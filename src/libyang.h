@@ -37,12 +37,12 @@ extern "C" {
  * - Parsing (and validating) schemas in YANG format.
  * - Parsing (and validating) schemas in YIN format.
  * - Parsing, validating and printing instance data in XML format.
- * - Parsing, validating and printing instance data in JSON format.
+ * - Parsing, validating and printing instance data in JSON format ([RFC 7951](https://tools.ietf.org/html/rfc7951)).
  * - Manipulation with the instance data.
- * - Support for adding default values into instance data.
+ * - Support for default values in the instance data ([RFC 6243](https://tools.ietf.org/html/rfc6243)).
  *
- * The current implementation covers YANG 1.0 specified in [RFC 6020](https://tools.ietf.org/html/rfc6020).
- * Future plans include support for [YANG 1.1](https://tools.ietf.org/html/draft-ietf-netmod-rfc6020bis-11).
+ * The current implementation covers YANG 1.0 [RFC 6020](https://tools.ietf.org/html/rfc6020) as well as
+ * [YANG 1.1](https://tools.ietf.org/html/rfc7950).
  *
  * @subsection about-features-others Extra (side-effect) Features
  *
