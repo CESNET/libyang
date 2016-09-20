@@ -4,9 +4,12 @@ set(internal_tests
   test_lys_find_grouping_up
   test_lys_node_switch
   test_lyd_list_equal
-  test_lyd_attr_parent)
+  test_lyd_attr_parent
+  test_lyd_check_mandatory_tree)
 
 include_directories(SYSTEM ${CMOCKA_INCLUDE_DIR})
+
+configure_file("${PROJECT_SOURCE_DIR}/tests_internal/config.h.in" "${PROJECT_SOURCE_DIR}/tests_internal/config.h" ESCAPE_QUOTES @ONLY)
 
 foreach(test_name IN LISTS internal_tests)
     add_executable(${test_name} $<TARGET_OBJECTS:yangobj> tree_internal/${test_name}.c)

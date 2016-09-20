@@ -1,0 +1,29 @@
+module mandatories {
+       namespace "urn:mandatories";
+       prefix "m";
+
+       revision 2016-03-01 {
+                description
+                 "version 2";
+                reference "RFC XXXX";
+       }
+
+       container bigbox {
+                leaf littlething {
+                     type string;
+                     mandatory true;
+                }
+
+                leaf-list thingies {
+                     min-elements 2;
+                     max-elements 4;
+                     type string;
+                }
+       }
+
+       leaf bigthing {
+            type string;
+            mandatory false;
+       }
+}
+
