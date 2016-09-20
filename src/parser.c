@@ -214,8 +214,8 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
                 int implement, struct unres_schema *unres)
 {
     size_t len, flen, match_len = 0, dir_len;
-    int fd;
-    char *wd, *cwd;
+    int fd, i;
+    char *wd;
     DIR *dir = NULL;
     struct dirent *file;
     char *match_name = NULL;
@@ -240,7 +240,6 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     }
 
     len = strlen(name);
-    cwd = wd = get_current_dir_name();
     if (ctx->models.search_path) {
         /* try context's search_path first */
         wd = strdup(ctx->models.search_path);
@@ -251,17 +250,11 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     } else {
         LOGWRN("No search path defined for the current context.");
         /* there is no search_path, search only in current working dir */
+        wd = get_current_dir_name();
         localsearch = 1;
     }
 
 opendir_search:
-    if (chdir(wd)) {
-        LOGERR(LY_ESYS, "Unable to use search directory \"%s\" (%s)",
-               wd, strerror(errno));
-        free(wd);
-        wd = cwd;
-        goto cleanup;
-    }
     dir = opendir(wd);
     dir_len = strlen(wd);
     LOGVRB("Searching for \"%s\" in %s.", name, wd);
@@ -316,11 +309,10 @@ opendir_search:
             } else {
                 /* remember the revision and try to find the newest one */
                 if (match_name) {
-                    int a;
                     if (file->d_name[len] != '@' || lyp_check_date(&file->d_name[len + 1])) {
                         continue;
                     } else if (match_name[match_len] == '@' &&
-                        (a = strncmp(&match_name[match_len + 1], &file->d_name[len + 1], LY_REV_SIZE - 1)) >= 0) {
+                            (strncmp(&match_name[match_len + 1], &file->d_name[len + 1], LY_REV_SIZE - 1) >= 0)) {
                         continue;
                     }
                     free(match_name);
@@ -344,34 +336,45 @@ opendir_search:
             dir = NULL;
         }
         free(wd);
-        wd = cwd;
+        wd = get_current_dir_name();
         localsearch = 1;
         goto opendir_search;
     }
 
     if (!match_name) {
         LOGERR(LY_ESYS, "Data model \"%s\" not found (neither in search path \"%s\" nor in working directory \"%s\")",
-               name, ctx->models.search_path, cwd);
+               name, ctx->models.search_path, wd);
         goto cleanup;
     }
 
 matched:
+    /* cut the format for now */
+    strrchr(match_name, '.')[1] = '\0';
+
+    /* check that the same file was not already loaded */
+    for (i = 0; i < ctx->models.used; ++i) {
+        if (ctx->models.list[i]->filepath && !strcmp(name, ctx->models.list[i]->name)
+                && !strncmp(match_name, ctx->models.list[i]->filepath, strlen(match_name))) {
+            result = ctx->models.list[i];
+            if (implement && !result->implemented) {
+                /* make it implemented now */
+                if (lys_set_implemented(result)) {
+                    result = NULL;
+                }
+            }
+            goto cleanup;
+        }
+    }
+
+    /* add the format back */
+    match_name[strlen(match_name)] = 'y';
+
     /* open the file */
     fd = open(match_name, O_RDONLY);
     if (fd < 0) {
         LOGERR(LY_ESYS, "Unable to open data model file \"%s\" (%s).",
                match_name, strerror(errno));
         goto cleanup;
-    }
-
-    /* go back to cwd if changed */
-    if (cwd != wd) {
-        if (chdir(cwd)) {
-            LOGWRN("Unable to return back to working directory \"%s\" (%s)",
-                   cwd, strerror(errno));
-        }
-        free(wd);
-        wd = cwd;
     }
 
     if (module) {
@@ -390,14 +393,7 @@ matched:
     /* success */
 
 cleanup:
-    if (cwd != wd) {
-        if (chdir(cwd)) {
-            LOGWRN("Unable to return back to working directory \"%s\" (%s)",
-                   cwd, strerror(errno));
-        }
-        free(wd);
-    }
-    free(cwd);
+    free(wd);
     if (dir) {
         closedir(dir);
     }
