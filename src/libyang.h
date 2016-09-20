@@ -391,6 +391,7 @@ extern "C" {
  * --------------------------------------------------
  * - lyd_find_instance()
  * - lyd_find_xpath()
+ * - lyd_leaf_type()
  */
 
 /**
