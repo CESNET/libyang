@@ -1211,12 +1211,14 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                                       tpdftype ? UNRES_TYPE_DER_TPDF : UNRES_TYPE_DER, parent) == -1) {
                 goto error;
             }
-            if (typ->type->info.uni.types[i].base == LY_TYPE_EMPTY) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "empty", typ->name);
-                goto error;
-            } else if (typ->type->info.uni.types[i].base == LY_TYPE_LEAFREF) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "leafref", typ->name);
-                goto error;
+            if (module->version < 2) {
+                if (typ->type->info.uni.types[i].base == LY_TYPE_EMPTY) {
+                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "empty", typ->name);
+                    goto error;
+                } else if (typ->type->info.uni.types[i].base == LY_TYPE_LEAFREF) {
+                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "leafref", typ->name);
+                    goto error;
+                }
             }
         }
         break;
