@@ -2497,6 +2497,11 @@ short_case_stmt: container_stmt
   |  list_stmt
   |  anyxml_stmt
   |  anydata_stmt
+  |  choice_stmt { if (read_all && trg->version < 2 ) {
+                     LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "choice");
+                     YYABORT;
+                   }
+                 }
   ;
 
 case_stmt: CASE_KEYWORD sep identifier_arg_str { if (read_all) {
