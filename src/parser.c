@@ -1128,7 +1128,7 @@ switchtype:
         }
 
         if (!resolve) {
-            type = &((struct lys_node_leaf *)node->schema)->type.info.lref.target->type;
+            type = &stype->info.lref.target->type;
             while (type->base == LY_TYPE_LEAFREF) {
                 type = &type->info.lref.target->type;
             }

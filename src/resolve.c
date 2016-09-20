@@ -5869,17 +5869,17 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
             if (!tpdf_flag && node->nodetype == LYS_LEAFLIST && stype->base == LY_TYPE_EMPTY) {
                 LOGWRN("The leaf-list \"%s\" is of \"empty\" type, which does not make sense.", node->name);
             }
-        } else if (rc == EXIT_FAILURE && stype->base != LY_TYPE_INGRP) {
+        } else if (rc == EXIT_FAILURE && stype->base != LY_TYPE_ERR) {
             /* forward reference - in case the type is in grouping, we have to make the grouping unusable
              * by uses statement until the type is resolved. We do that the same way as uses statements inside
              * grouping - the grouping's nacm member (not used un grouping) is used to increase the number of
              * so far unresolved items (uses and types). The grouping cannot be used unless the nacm value is 0.
-             * To remember that the grouping already increased grouping's nacm, the LY_TYPE_INGRP is used as value
+             * To remember that the grouping already increased grouping's nacm, the LY_TYPE_ERR is used as value
              * of the type's base member. */
             for (par_grp = node; par_grp && (par_grp->nodetype != LYS_GROUPING); par_grp = lys_parent(par_grp));
             if (par_grp) {
                 ((struct lys_node_grp *)par_grp)->nacm++;
-                stype->base = LY_TYPE_INGRP;
+                stype->base = LY_TYPE_ERR;
             }
         }
         break;
@@ -6455,18 +6455,21 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres)
     }
 }
 
+static int resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type);
+
 static int
-resolve_leafref(struct lyd_node *node, struct lys_type *type)
+resolve_leafref(struct lyd_node_leaf_list *leaf, struct lys_type *type)
 {
-    struct lyd_node_leaf_list *leaf;
     struct unres_data matches;
     uint32_t i;
 
+    assert(type->base == LY_TYPE_LEAFREF);
+
+    /* init */
     memset(&matches, 0, sizeof matches);
-    leaf = (struct lyd_node_leaf_list *)node;
 
     /* EXIT_FAILURE return keeps leaf->value.lefref NULL, handled later */
-    if (resolve_path_arg_data(node, type->info.lref.path, &matches) == -1) {
+    if (resolve_path_arg_data((struct lyd_node *)leaf, type->info.lref.path, &matches) == -1) {
         return -1;
     }
 
@@ -6493,6 +6496,146 @@ resolve_leafref(struct lyd_node *node, struct lys_type *type)
     return EXIT_SUCCESS;
 }
 
+API LY_DATA_TYPE
+lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
+{
+    struct lyd_node *node;
+    struct lys_type *type, *type_iter;
+    lyd_val value;
+    int f = 0, r;
+
+    if (!leaf || !(leaf->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+        return LY_TYPE_ERR;
+    }
+
+    if (leaf->value_type > 0 && (leaf->value_type & LY_DATA_TYPE_MASK) != LY_TYPE_UNION &&
+            (leaf->value_type & LY_DATA_TYPE_MASK) != LY_TYPE_LEAFREF) {
+        /* we can get the type directly from the data node (it was already resolved) */
+        return leaf->value_type & LY_DATA_TYPE_MASK;
+    }
+
+    /* init */
+    type = &((struct lys_node_leaf *)leaf->schema)->type;
+    value = leaf->value;
+    ly_vlog_hide(1);
+
+    /* resolve until we get the real data type */
+    while (1) {
+        /* get the correct data type from schema */
+        switch (type->base) {
+        case LY_TYPE_LEAFREF:
+            type = &type->info.lref.target->type;
+            break; /* continue in while loop */
+        case LY_TYPE_UNION:
+            type_iter = NULL;
+            while ((type_iter = lyp_get_next_union_type(type, type_iter, &f))) {
+                if (type_iter->base == LY_TYPE_LEAFREF) {
+                    if (type_iter->info.lref.req == -1) {
+                        /* target not required, so it always succeeds */
+                        break;
+                    } else {
+                        /* try to resolve leafref */
+                        memset(&((struct lyd_node_leaf_list *)leaf)->value, 0, sizeof leaf->value);
+                        r = resolve_leafref((struct lyd_node_leaf_list *)leaf, type_iter);
+                        /* revert leaf's content affected by resolve_leafref */
+                        ((struct lyd_node_leaf_list *)leaf)->value = value;
+                        if (!r) {
+                            /* success, we can continue with the leafref type */
+                            break;
+                        }
+                    }
+                } else if (type_iter->base == LY_TYPE_INST) {
+                    if (type_iter->info.inst.req == -1) {
+                        /* target not required, so it always succeeds */
+                        return LY_TYPE_INST;
+                    } else {
+                        /* try to resolve instance-identifier */
+                        ly_errno = 0;
+                        node = resolve_instid((struct lyd_node *)leaf, leaf->value_str);
+                        if (!ly_errno && node) {
+                            /* the real type is instance-identifier */
+                            return LY_TYPE_INST;
+                        }
+                    }
+                } else {
+                    r = lyp_parse_value_type((struct lyd_node_leaf_list *)leaf, type_iter, 1);
+                    /* revert leaf's content affected by resolve_leafref */
+                    ((struct lyd_node_leaf_list *)leaf)->value = value;
+                    if (!r) {
+                        /* we have the real type */
+                        return type_iter->base;
+                    }
+                }
+                f = 0;
+            }
+            /* erase ly_errno and ly_vecode */
+            ly_errno = LY_SUCCESS;
+            ly_vecode = LYVE_SUCCESS;
+
+            if (!type_iter) {
+                LOGERR(LY_EINVAL, "Unable to get type from union \"%s\" with no valid type.", type->parent->name)
+                return LY_TYPE_ERR;
+            }
+            type = type_iter;
+            break;
+        default:
+            /* we have the real type */
+            ly_vlog_hide(0);
+            return type->base;
+        }
+    }
+
+    ly_vlog_hide(0);
+    return LY_TYPE_ERR;
+}
+
+static int
+resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type)
+{
+    struct lys_type *datatype = NULL;
+    int f = 0;
+
+    assert(type->base == LY_TYPE_UNION);
+
+    memset(&leaf->value, 0, sizeof leaf->value);
+    while ((datatype = lyp_get_next_union_type(type, datatype, &f))) {
+        leaf->value_type = datatype->base;
+
+        if (datatype->base == LY_TYPE_LEAFREF) {
+            /* try to resolve leafref */
+            if (!resolve_leafref(leaf, datatype)) {
+                /* success */
+                break;
+            }
+        } else if (datatype->base == LY_TYPE_INST) {
+            /* try to resolve instance-identifier */
+            ly_errno = 0;
+            leaf->value.instance = resolve_instid((struct lyd_node *)leaf, leaf->value_str);
+            if (!ly_errno && (leaf->value.instance || datatype->info.inst.req == -1)) {
+                /* success */
+                break;
+            }
+        } else {
+            if (!lyp_parse_value_type(leaf, datatype, 1)) {
+                /* success */
+                break;
+            }
+        }
+        f = 0;
+    }
+    /* erase ly_errno and ly_vecode */
+    ly_errno = LY_SUCCESS;
+    ly_vecode = LYVE_SUCCESS;
+
+    if (!datatype) {
+        /* failure */
+        LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, (leaf->value_str ? leaf->value_str : ""), leaf->schema->name);
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
 /**
  * @brief Resolve a single unres data item. Logs directly.
  *
@@ -6508,7 +6651,6 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
     struct lyd_node_leaf_list *leaf;
     struct lys_node_leaf *sleaf;
     struct lyd_node *parent;
-    struct lys_type *datatype;
 
     leaf = (struct lyd_node_leaf_list *)node;
     sleaf = (struct lys_node_leaf *)leaf->schema;
@@ -6516,7 +6658,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
     switch (type) {
     case UNRES_LEAFREF:
         assert(sleaf->type.base == LY_TYPE_LEAFREF);
-        return resolve_leafref(node, &sleaf->type);
+        return resolve_leafref(leaf, &sleaf->type);
 
     case UNRES_INSTID:
         assert(sleaf->type.base == LY_TYPE_INST);
@@ -6536,44 +6678,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
 
     case UNRES_UNION:
         assert(sleaf->type.base == LY_TYPE_UNION);
-        datatype = NULL;
-        memset(&leaf->value, 0, sizeof leaf->value);
-        while ((datatype = lyp_get_next_union_type(&sleaf->type, datatype, &rc))) {
-            leaf->value_type = datatype->base;
-
-            if (datatype->base == LY_TYPE_LEAFREF) {
-                /* try to resolve leafref */
-                if (!resolve_leafref(node, datatype)) {
-                    /* success */
-                    break;
-                }
-            } else if (datatype->base == LY_TYPE_INST) {
-                /* try to resolve instance-identifier */
-                ly_errno = 0;
-                leaf->value.instance = resolve_instid(node, leaf->value_str);
-                if (!ly_errno && (leaf->value.instance || datatype->info.inst.req == -1)) {
-                    /* success */
-                    break;
-                }
-            } else {
-                if (!lyp_parse_value_type(leaf, datatype, 1)) {
-                    /* success */
-                    break;
-                }
-            }
-            rc = 0;
-        }
-        /* erase ly_errno and ly_vecode */
-        ly_errno = LY_SUCCESS;
-        ly_vecode = LYVE_SUCCESS;
-
-        if (!datatype) {
-            /* failure */
-            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, (leaf->value_str ? leaf->value_str : ""), sleaf->name);
-            return EXIT_FAILURE;
-        }
-
-        break;
+        return resolve_union(leaf, &sleaf->type);
 
     case UNRES_WHEN:
         if ((rc = resolve_when(node, NULL))) {

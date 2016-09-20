@@ -205,6 +205,24 @@ error:
 }
 
 static int
+setup_f2(void **state)
+{
+    *state = ly_ctx_new(NULL);
+    if (!*state) {
+        return -1;
+    }
+
+    return 0;
+}
+
+static int
+teardown_f2(void **state)
+{
+    ly_ctx_destroy((struct ly_ctx *)(*state), NULL);
+    return 0;
+}
+
+static int
 setup_f(void **state)
 {
     (void) state; /* unused */
@@ -1544,6 +1562,47 @@ test_lyd_path(void **state)
     free(str);
 }
 
+static void
+test_lyd_leaf_type(void **state)
+{
+    struct ly_ctx *ctx = (struct ly_ctx *)*state;
+    const char *yang = "module x {"
+"  namespace urn:x;"
+"  prefix x;"
+"  yang-version 1.1;"
+"  container x {"
+"    leaf str { type string; }"
+"    leaf e { type enumeration { enum ftp; enum http; } }"
+"    leaf u { type union {"
+"               type leafref { path \"../e\"; }"
+"               type leafref { path \"../str\";}"
+"           }            }"
+"} }";
+    const char *xml1 = "<x xmlns=\"urn:x\"><str>http</str><e>ftp</e><u>http</u></x>";
+    const char *xml2 = "<x xmlns=\"urn:x\"><str>http</str><e>ftp</e><u>ftp</u></x>";
+    const char *xml3 = "<x xmlns=\"urn:x\"><str>http</str><e>ftp</e><u>ssh</u></x>";
+    struct lyd_node *data;
+
+    assert_ptr_not_equal(lys_parse_mem(ctx, yang, LYS_IN_YANG), 0);
+
+    data = lyd_parse_mem(ctx, xml1, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(data, NULL);
+    assert_int_equal(lyd_leaf_type((struct lyd_node_leaf_list *)data->child->prev), LY_TYPE_STRING);
+    lyd_free_withsiblings(data);
+
+    data = lyd_parse_mem(ctx, xml2, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(data, NULL);
+    assert_int_equal(lyd_leaf_type((struct lyd_node_leaf_list *)data->child->prev), LY_TYPE_ENUM);
+    lyd_free_withsiblings(data);
+
+    /* Use trusted flag to avoid getting error on parsing since 'ssh' is invalid value */
+    data = lyd_parse_mem(ctx, xml3, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_TRUSTED);
+    assert_ptr_not_equal(data, NULL);
+    assert_int_equal(lyd_leaf_type((struct lyd_node_leaf_list *)data->child->prev), LY_TYPE_ERR);
+    assert_string_equal(ly_errmsg(), "Unable to get type from union \"u\" with no valid type.");
+    lyd_free_withsiblings(data);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1585,6 +1644,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lyd_print_clb_xml_format, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_print_clb_json, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_path, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lyd_leaf_type, setup_f2, teardown_f2),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

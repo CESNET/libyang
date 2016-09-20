@@ -910,9 +910,9 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     }
     lydict_remove(module->ctx, value);
 
-    if (typ->type->base == LY_TYPE_INGRP) {
+    if (typ->type->base == LY_TYPE_ERR) {
         /* resolved type in grouping, decrease the grouping's nacm number to indicate that one less
-         * unresolved item left inside the grouping */
+         * unresolved item left inside the grouping, LY_TYPE_ERR used as a flag for types inside a grouping.  */
         for (siter = parent; siter && (siter->nodetype != LYS_GROUPING); siter = lys_parent(siter));
         if (siter) {
             if (!((struct lys_node_grp *)siter)->nacm) {

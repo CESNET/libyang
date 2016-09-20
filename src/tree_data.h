@@ -1128,6 +1128,18 @@ int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count),
  */
 double lyd_dec64_to_double(const struct lyd_node *node);
 
+/**
+ * @brief Get the real data type of the leaf/leaf-list node.
+ *
+ * Usually the data type can be obtained directly from the value_type member of the leaf/leaf-list.
+ * However, in case the node is unresolved leafref, it can be more complicated to get the correct
+ * data type, so this function can be used.
+ *
+ * @param[in] leaf The leaf/leaf-list node to be examined.
+ * @return The specific data type of the \p leaf.
+ */
+LY_DATA_TYPE lyd_leaf_type(const struct lyd_node_leaf_list *leaf);
+
 /**@} */
 
 #ifdef __cplusplus
