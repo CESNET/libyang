@@ -4841,6 +4841,11 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
     int r;
     int c_tpdf = 0, c_ftrs = 0, c_must = 0;
 
+    if (parent && (module->version < 2)) {
+        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "notification");
+        return NULL;
+    }
+
     memset(&root, 0, sizeof root);
 
     notif = calloc(1, sizeof *notif);
