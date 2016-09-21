@@ -165,7 +165,7 @@ module all {
       }
       notification notif1 {
         leaf leaf26 {
-            type string;
+          type string;
         }
       }
     }
