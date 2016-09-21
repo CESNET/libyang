@@ -398,9 +398,8 @@ const char *lyd_get_unique_default(const char* unique_expr, struct lyd_node *lis
  * @brief Check for (validate) mandatory nodes of a data tree. Checks recursively whole data tree. Requires all when
  * statement to be solved.
  *
- * @param[in] data Data tree to validate.
- * @param[in] ctx libyang context.
- * @param[in] rpc RPC node should be set in case options & LYD_OPT_RPCREPLY and data == NULL.
+ * @param[in] root Data tree to validate.
+ * @param[in] ctx libyang context (for the case when the data tree is empty - i.e. root == NULL).
  * @param[in] options Standard @ref parseroptions.
  * @return EXIT_SUCCESS or EXIT_FAILURE.
  */
@@ -412,7 +411,7 @@ int lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int opti
  *
  * @param[in] root Data tree root. With empty data tree, new default nodes can be created so the root pointer
  *            will contain/return the newly created data tree.
- * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions. The
+ * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
  * @param[in] ctx Optional parameter. If provided, default nodes from all modules in the context will be added.
  *            If NULL, only the modules explicitly mentioned in data tree are taken into account.
  * @param[in] data_tree Additional data tree to be traversed when evaluating when or must expressions in \p root
