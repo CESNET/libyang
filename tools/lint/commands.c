@@ -53,7 +53,8 @@ cmd_print_help(void)
 void
 cmd_data_help(void)
 {
-    printf("data [-(-s)trict] [-x OPTION] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)]  <data-file-name>\n");
+    printf("data [-(-s)trict] [-x OPTION] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)]"
+           " <data-file-name> [<JSON-rpc/action-schema-nodeid>]\n");
     printf("Accepted OPTIONs:\n");
     printf("\tauto       - resolve data type (one of the following) automatically (as pyang does),\n");
     printf("\t             this option is applicable only in case of XML input data.\n");
@@ -62,7 +63,7 @@ cmd_data_help(void)
     printf("\tgetconfig  - LYD_OPT_GETCONFIG\n");
     printf("\tedit       - LYD_OPT_EDIT\n");
     printf("\trpc        - LYD_OPT_RPC\n");
-    /* printf("\trpcreply   - LYD_OPT_RPCREPLY\n"); */
+    printf("\trpcreply   - LYD_OPT_RPCREPLY (last parameter mandatory in this case)\n");
     printf("\tnotif      - LYD_OPT_NOTIF\n\n");
     printf("Accepted DEFAULTS:\n");
     printf("\tall        - add missing default nodes\n");
@@ -304,6 +305,7 @@ cmd_data(const char *arg)
     const char *out_path = NULL;
     struct lyd_node *data = NULL;
     struct lyxml_elem *xml;
+    const struct lys_node *rpc_act = NULL;
     LYD_FORMAT outformat = LYD_UNKNOWN, informat = LYD_UNKNOWN;
     FILE *output = stdout;
     static struct option long_options[] = {
@@ -384,11 +386,8 @@ cmd_data(const char *arg)
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_EDIT;
             } else if (!strcmp(optarg, "rpc")) {
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
-            /* support for RPC replies is missing, because it requires to provide
-             * also pointer to the reply's RPC request
             } else if (!strcmp(optarg, "rpcreply")) {
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY;
-             */
             } else if (!strcmp(optarg, "notif")) {
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
             } else {
@@ -453,12 +452,18 @@ cmd_data(const char *arg)
         } else if (!strcmp(xml->name, "rpc")) {
             fprintf(stdout, "Parsing %s as <rpc> data.\n", argv[optind]);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
-        /* support for RPC replies is missing, because it requires to provide
-         * also pointer to the reply's RPC request
         } else if (!strcmp(xml->name, "rpc-reply")) {
-            fprintf(stdout, "Parsing %s as <rpc-reply> data.\n");
+            if (optind + 1 == argc) {
+                fprintf(stderr, "RPC reply data require additional argument (JSON schema nodeid of the RPC/action).\n");
+                goto cleanup;
+            }
+            fprintf(stdout, "Parsing %s as <rpc-reply> data.\n", argv[optind]);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY;
-         */
+            rpc_act = ly_ctx_get_node(ctx, NULL, argv[optind + 1]);
+            if (!rpc_act || !(rpc_act->nodetype & (LYS_RPC | LYS_ACTION))) {
+                fprintf(stderr, "Invalid JSON schema nodeid.\n");
+                goto cleanup;
+            }
         } else if (!strcmp(xml->name, "notification")) {
             fprintf(stdout, "Parsing %s as <notification> data.\n", argv[optind]);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
@@ -468,10 +473,21 @@ cmd_data(const char *arg)
             goto cleanup;
         }
 
-        data = lyd_parse_xml(ctx, &xml->child, options);
+        data = lyd_parse_xml(ctx, &xml->child, options, rpc_act, NULL);
         lyxml_free(ctx, xml);
     } else {
-        data = lyd_parse_path(ctx, argv[optind], informat, options);
+        if (options & LYD_OPT_RPCREPLY) {
+            if (optind + 1 == argc) {
+                fprintf(stderr, "RPC reply data require additional argument (schema nodeid of the RPC/action).\n");
+                goto cleanup;
+            }
+            rpc_act = ly_ctx_get_node(ctx, NULL, argv[optind + 1]);
+            if (!rpc_act || !(rpc_act->nodetype & (LYS_RPC | LYS_ACTION))) {
+                fprintf(stderr, "Invalid JSON schema nodeid.\n");
+                goto cleanup;
+            }
+        }
+        data = lyd_parse_path(ctx, argv[optind], informat, options, rpc_act, NULL);
     }
     if (ly_errno) {
         fprintf(stderr, "Failed to parse data.\n");
@@ -487,7 +503,11 @@ cmd_data(const char *arg)
     }
 
     if (outformat != LYD_UNKNOWN) {
-        lyd_print_file(output, data, outformat, LYP_WITHSIBLINGS | LYP_FORMAT | printopt);
+        if (options & LYD_OPT_RPCREPLY) {
+            lyd_print_file(output, data->child, outformat, LYP_WITHSIBLINGS | LYP_FORMAT | printopt);
+        } else {
+            lyd_print_file(output, data, outformat, LYP_WITHSIBLINGS | LYP_FORMAT | printopt);
+        }
     }
 
     ret = 0;
