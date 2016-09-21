@@ -1704,6 +1704,15 @@ grouping_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                             }
   |  grouping_opt_stmt data_def_stmt stmtsep { actual = $1.grouping; actual_type = GROUPING_KEYWORD; }
   |  grouping_opt_stmt action_stmt stmtsep { actual = $1.grouping; actual_type = GROUPING_KEYWORD; }
+  |  grouping_opt_stmt notification_stmt stmtsep { if (read_all) {
+                                                     actual = $1.grouping;
+                                                     actual_type = GROUPING_KEYWORD;
+                                                     if (trg->version < 2) {
+                                                       LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "notification");
+                                                       YYABORT;
+                                                     }
+                                                   }
+                                                 }
   ;
 
 data_def_stmt: container_stmt
@@ -1815,6 +1824,17 @@ container_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                       actual_type = CONTAINER_KEYWORD;
                                       data_node = actual;
                                     }
+     stmtsep
+  |  container_opt_stmt notification_stmt { if (read_all) {
+                                              actual = $1.container;
+                                              actual_type = CONTAINER_KEYWORD;
+                                              data_node = actual;
+                                              if (trg->version < 2) {
+                                                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "notification");
+                                                YYABORT;
+                                              }
+                                            }
+                                          }
      stmtsep
   |  container_opt_stmt typedef_stmt { if (read_all) {
                                                  actual = $1.container;
@@ -2351,6 +2371,17 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                  actual_type = LIST_KEYWORD;
                                  data_node = actual;
                                }
+     stmtsep
+  |  list_opt_stmt notification_stmt { if (read_all) {
+                                         actual = $1.node.ptr_list;
+                                         actual_type = LIST_KEYWORD;
+                                         data_node = actual;
+                                         if (trg->version < 2) {
+                                           LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "notification");
+                                           YYABORT;
+                                         }
+                                       }
+                                     }
      stmtsep
   |  list_opt_stmt data_def_stmt { actual = $1.node.ptr_list;
                                    actual_type = LIST_KEYWORD;
@@ -3114,6 +3145,18 @@ augment_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                     }
                                   }
      stmtsep { $$ = $1; }
+  |  augment_opt_stmt notification_stmt { if (read_all) {
+                                            actual = $1.node.ptr_augment;
+                                            actual_type = AUGMENT_KEYWORD;
+                                            $1.node.flag |= LYS_DATADEF;
+                                            data_node = actual;
+                                            if (trg->version < 2) {
+                                              LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "notification");
+                                              YYABORT;
+                                            }
+                                          }
+                                        }
+     stmtsep { $$ = $1; }
   |  augment_opt_stmt case_stmt { if (read_all) {
                                     actual = $1.node.ptr_augment;
                                     actual_type = AUGMENT_KEYWORD;
@@ -3352,7 +3395,7 @@ output_stmt: OUTPUT_KEYWORD optsep { if (read_all) {
              '}'
 
 notification_stmt: NOTIFICATION_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                                   if (!(actual = yang_read_node(trg, NULL, s, LYS_NOTIF, sizeof(struct lys_node_notif)))) {
+                                                                   if (!(actual = yang_read_node(trg, actual, s, LYS_NOTIF, sizeof(struct lys_node_notif)))) {
                                                                     YYABORT;
                                                                    }
                                                                    data_node = actual;
@@ -3398,7 +3441,7 @@ notification_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                       YYABORT;
                                     }
                                   }
-                                  if (store_flags((struct lys_node *)$$.notif, size_arrays->node[size_arrays->next].flags, 0)) {
+                                  if (store_flags((struct lys_node *)$$.notif, size_arrays->node[size_arrays->next].flags, config_inherit)) {
                                       YYABORT;
                                   }
                                   size_arrays->next++;
