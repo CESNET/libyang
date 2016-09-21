@@ -1124,6 +1124,11 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 typ->type->info.inst.req = req;
             }
         } else if (typ->type->base == LY_TYPE_LEAFREF) {
+            /* require-instance only YANG 1.1 */
+            if (typ->type->info.lref.req && (module->version < 2)) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "require-instance");
+                goto error;
+            }
             /* flag resolving for later use */
             if (!tpdftype) {
                 for (siter = parent; siter && siter->nodetype != LYS_GROUPING; siter = lys_parent(siter));
