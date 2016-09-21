@@ -168,6 +168,13 @@ test_typedef_11in10(void **state)
 "  </type></typedef>"
 "</module>";
 
+    const char *yang_union1 = "module x1 {"
+"  namespace \"urn:x1\"; prefix \"x1\";"
+"  typedef un { type \"union\" {"
+"    type string;"
+"    type \"leafref\" { path \"../name\"; }"
+"  }}}";
+
     const char *yin_union2 = "<module name=\"x1\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
 "  <namespace uri=\"urn:x1\"/><prefix value=\"x1\"/>"
 "  <typedef name=\"un\"><type name=\"union\">"
@@ -175,6 +182,12 @@ test_typedef_11in10(void **state)
 "    <type name=\"empty\"/>"
 "  </type></typedef>"
 "</module>";
+
+    const char *yang_union2 = "module x1 {"
+"  namespace \"urn:x1\"; prefix \"x1\";"
+"  typedef \"un\" { type union {"
+"    type string; type empty; }}"
+"  }";
 
     mod = lys_parse_mem(st->ctx, yin_enums, LYS_IN_YIN);
     assert_ptr_equal(mod, NULL);
@@ -199,6 +212,14 @@ test_typedef_11in10(void **state)
     mod = lys_parse_mem(st->ctx, yang_bits, LYS_IN_YANG);
     assert_ptr_equal(mod, NULL);
     assert_int_equal(ly_vecode, LYVE_INSTMT);
+
+    mod = lys_parse_mem(st->ctx, yang_union1, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_INARG);
+
+    mod = lys_parse_mem(st->ctx, yang_union2, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_INARG);
 }
 
 static void
@@ -798,6 +819,48 @@ test_typedef_11_pattern_yin(void **state)
     lyd_free_withsiblings(root);
 }
 
+static void
+test_typedef_11_pattern_yang(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+
+    const char *modstr = "module x {\n"
+"  yang-version 1.1;\n"
+"  namespace \"urn:x\";\n  prefix x;\n\n"
+"  leaf l {\n    type string {\n"
+"      pattern \"[a-zA-Z_][a-zA-Z0-9\\\\-_.]*\";\n"
+"      pattern \"[nN][oO][tT].*\" {\n        modifier \"invert-match\";\n      }\n"
+"    }\n"
+"  }\n"
+"}\n";
+    char *printed;
+
+    struct lyd_node *root;
+    const char *data1 = "<l xmlns=\"urn:x\">enabled</l>"; /* legal */
+    const char *data2 = "<l xmlns=\"urn:x\">10</l>";      /* ilegal, starts with number */
+    const char *data3 = "<l xmlns=\"urn:x\">notoric</l>"; /* ilegal, starts with not */
+
+    mod = lys_parse_mem(st->ctx, modstr, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+    lys_print_mem(&printed, mod, LYS_OUT_YANG, NULL);
+    assert_ptr_not_equal(printed, NULL);
+    assert_string_equal(printed, modstr);
+    free(printed);
+
+    root = lyd_parse_mem(st->ctx, data3, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(root, NULL);
+    assert_int_equal(ly_vecode, LYVE_NOCONSTR);
+
+    root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(root, NULL);
+    assert_int_equal(ly_vecode, LYVE_NOCONSTR);
+
+    root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(root, NULL);
+    lyd_free_withsiblings(root);
+}
+
 /* this test follows RFC 7950, sec. 9.12.4 */
 static void
 test_typedef_11_union_leafref_yin(void **state)
@@ -883,6 +946,86 @@ test_typedef_11_union_leafref_yin(void **state)
 }
 
 static void
+test_typedef_11_union_leafref_yang(void **state)
+{
+    struct state *st = (*state);
+    const char *modstr = "module \"x\"{"
+"  yang-version 1.1;"
+"  namespace \"urn:x\"; prefix \"x\";"
+"  typedef mytype {"
+"    type \"union\" {"
+"      type int32;"
+"      type enumeration {"
+"        enum \"unbounded\";"
+"      }"
+"    }"
+"  }"
+"  list filter {"
+"    key \"name\";"
+"    leaf name {"
+"      type string;"
+"    }"
+"  }"
+"  leaf filter2 {"
+"    type union {"
+"      type leafref {"
+"        path \"/filter/name\";"
+"      }"
+"      type \"enumeration\" {"
+"        enum \"default-filter\";"
+"      }"
+"    }"
+"  }"
+"  leaf \"filter3\" {"
+"    type union {"
+"      type \"leafref\" {"
+"        path \"/filter/name\";"
+"      }"
+"      type string;"
+"    }"
+"  }"
+"  leaf filter4 {"
+"    type union {"
+"      type \"leafref\" {"
+"        path \"/filter/name\";"
+"        require-instance false;"
+"      }"
+"      type string;"
+"    }"
+"  }"
+"}";
+    struct lyd_node *root;
+    const char *data1 = "<filter xmlns=\"urn:x\"><name>http</name></filter>"
+                        "<filter2 xmlns=\"urn:x\">http</filter2>"; /* legal */
+    const char *data2 = "<filter2 xmlns=\"urn:x\">http</filter2>"; /* illegal, leafref nor enumeration does not match */
+    const char *data3 = "<filter3 xmlns=\"urn:x\">http</filter3>"; /* legal, leafref does not match, but string does */
+    const char *data4 = "<filter4 xmlns=\"urn:x\">http</filter4>"; /* legal, leafref does not need to match */
+
+    assert_ptr_not_equal(lys_parse_mem(st->ctx, modstr, LYS_IN_YANG), NULL);
+
+    root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(root, NULL);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+
+    root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(root, NULL);
+    assert_int_equal(((struct lyd_node_leaf_list *)root->next)->value_type, LY_TYPE_LEAFREF);
+    assert_ptr_equal(root->child, ((struct lyd_node_leaf_list *)root->next)->value.leafref);
+    lyd_free_withsiblings(root);
+
+    root = lyd_parse_mem(st->ctx, data3, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(root, NULL);
+    assert_int_equal(((struct lyd_node_leaf_list *)root)->value_type, LY_TYPE_STRING);
+    lyd_free_withsiblings(root);
+
+    root = lyd_parse_mem(st->ctx, data4, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(root, NULL);
+    assert_int_equal(((struct lyd_node_leaf_list *)root)->value_type, LY_TYPE_LEAFREF);
+    assert_ptr_equal(NULL, ((struct lyd_node_leaf_list *)root)->value.leafref);
+    lyd_free_withsiblings(root);
+}
+
+static void
 test_typedef_11_union_empty_yin(void **state)
 {
     struct state *st = (*state);
@@ -938,6 +1081,59 @@ test_typedef_11_union_empty_yin(void **state)
     lyd_free_withsiblings(root);
 }
 
+static void
+test_typedef_11_union_empty_yang(void **state)
+{
+    struct state *st = (*state);
+    const char *modstr = "module x {"
+"  yang-version \"1.1\";"
+"  namespace \"urn:x\"; prefix \"x\";"
+"  typedef mytype1 {"
+"    type union {"
+"      type int32;"
+"      type empty;"
+"    }"
+"  }"
+"  typedef \"mytype2\" {"
+"    type union {"
+"      type int8;"
+"      type int16;"
+"    }"
+"  }"
+"  leaf value {"
+"    type \"mytype1\";"
+"  }"
+"  leaf integer {"
+"    type mytype2;"
+"  }"
+"}";
+    struct lyd_node *root;
+    const char *data1 = "<integer xmlns=\"urn:x\"/>"; /* illegal */
+    const char *data2 = "<value xmlns=\"urn:x\">xxx</value>"; /* illegal */
+    const char *data3 = "<value xmlns=\"urn:x\">11</value>"; /* legal, int32 */
+    const char *data4 = "<value xmlns=\"urn:x\"/>"; /* legal, empty */
+
+    assert_ptr_not_equal(lys_parse_mem(st->ctx, modstr, LYS_IN_YANG), NULL);
+
+    root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(root, NULL);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+
+    root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(root, NULL);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+
+    root = lyd_parse_mem(st->ctx, data3, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(root, NULL);
+    assert_int_equal(((struct lyd_node_leaf_list *)root)->value_type, LY_TYPE_INT32);
+    lyd_free_withsiblings(root);
+
+    root = lyd_parse_mem(st->ctx, data4, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(root, NULL);
+    assert_int_equal(((struct lyd_node_leaf_list *)root)->value_type, LY_TYPE_EMPTY);
+    lyd_free_withsiblings(root);
+}
+
 int
 main(void)
 {
@@ -956,10 +1152,13 @@ main(void)
         cmocka_unit_test_setup_teardown(test_typedef_11_iff_bits_yin, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_iff_bits_yang, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_pattern_yin, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_11_pattern_yang, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_multidents_yin, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_multidents_yang, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_union_leafref_yin, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_11_union_leafref_yang, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_union_empty_yin, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_11_union_empty_yang, setup_ctx, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
