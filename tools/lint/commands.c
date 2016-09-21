@@ -53,8 +53,8 @@ cmd_print_help(void)
 void
 cmd_data_help(void)
 {
-    printf("data [-(-s)trict] [-x OPTION] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)]"
-           " <data-file-name> [<JSON-rpc/action-schema-nodeid>]\n");
+    printf("data [-(-s)trict] [-x OPTION] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)] [-t <additional-tree-file-name>]\n");
+    printf("     <data-file-name> [<JSON-rpc/action-schema-nodeid>]\n");
     printf("Accepted OPTIONs:\n");
     printf("\tauto       - resolve data type (one of the following) automatically (as pyang does),\n");
     printf("\t             this option is applicable only in case of XML input data.\n");
@@ -69,7 +69,11 @@ cmd_data_help(void)
     printf("\tall        - add missing default nodes\n");
     printf("\tall-tagged - add missing default nodes and mark all the default nodes with the attribute.\n");
     printf("\ttrim       - remove all nodes with a default value\n");
-    printf("\timplicit-tagged    - add missing nodes and mark them with the attribute\n");
+    printf("\timplicit-tagged    - add missing nodes and mark them with the attribute\n\n");
+    printf("Option -t:\n");
+    printf("\tIf RPC/action/notification/RPC reply (for OPTIONs 'rpc', 'rpcreply', and 'notif') includes\n");
+    printf("\tan XPath expression (when/must) that needs access to the configuration data, you can provide\n");
+    printf("\tthem in a file, which will be parsed as 'config'.\n");
 }
 
 void
@@ -303,7 +307,7 @@ cmd_data(const char *arg)
     size_t len;
     char **argv = NULL, *ptr;
     const char *out_path = NULL;
-    struct lyd_node *data = NULL;
+    struct lyd_node *data = NULL, *val_tree = NULL;
     struct lyxml_elem *xml;
     const struct lys_node *rpc_act = NULL;
     LYD_FORMAT outformat = LYD_UNKNOWN, informat = LYD_UNKNOWN;
@@ -315,6 +319,7 @@ cmd_data(const char *arg)
         {"option", required_argument, 0, 'x'},
         {"output", required_argument, 0, 'o'},
         {"strict", no_argument, 0, 's'},
+        {"validation-tree", required_argument, 0, 't'},
         {NULL, 0, 0, 0}
     };
 
@@ -331,7 +336,7 @@ cmd_data(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "d:hf:o:sx:", long_options, &option_index);
+        c = getopt_long(argc, argv, "d:hf:o:sx:t:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -393,6 +398,13 @@ cmd_data(const char *arg)
             } else {
                 fprintf(stderr, "Invalid parser option \"%s\".\n", optarg);
                 cmd_data_help();
+                goto cleanup;
+            }
+            break;
+        case 't':
+            val_tree = lyd_parse_path(ctx, optarg, LYD_XML, LYD_OPT_CONFIG);
+            if (!val_tree) {
+                fprintf(stderr, "Failed to parse the additional data tree for validation.\n");
                 goto cleanup;
             }
             break;
@@ -473,7 +485,13 @@ cmd_data(const char *arg)
             goto cleanup;
         }
 
-        data = lyd_parse_xml(ctx, &xml->child, options, rpc_act, NULL);
+        if (options & LYD_OPT_RPCREPLY) {
+            data = lyd_parse_xml(ctx, &xml->child, options, rpc_act, val_tree);
+        } else if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
+            data = lyd_parse_xml(ctx, &xml->child, options, val_tree);
+        } else {
+            data = lyd_parse_xml(ctx, &xml->child, options);
+        }
         lyxml_free(ctx, xml);
     } else {
         if (options & LYD_OPT_RPCREPLY) {
@@ -486,8 +504,12 @@ cmd_data(const char *arg)
                 fprintf(stderr, "Invalid JSON schema nodeid.\n");
                 goto cleanup;
             }
+            data = lyd_parse_path(ctx, argv[optind], informat, options, rpc_act, val_tree);
+        } else if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
+            data = lyd_parse_path(ctx, argv[optind], informat, options, val_tree);
+        } else {
+            data = lyd_parse_path(ctx, argv[optind], informat, options);
         }
-        data = lyd_parse_path(ctx, argv[optind], informat, options, rpc_act, NULL);
     }
     if (ly_errno) {
         fprintf(stderr, "Failed to parse data.\n");
@@ -520,6 +542,7 @@ cleanup:
         fclose(output);
     }
 
+    lyd_free_withsiblings(val_tree);
     lyd_free_withsiblings(data);
 
     return ret;

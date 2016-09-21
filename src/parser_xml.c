@@ -605,7 +605,8 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
             goto error;
         }
         reply_parent = _lyd_new(NULL, rpc_act, 0);
-
+    }
+    if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF | LYD_OPT_RPCREPLY)) {
         data_tree = va_arg(ap, struct lyd_node *);
         if (data_tree) {
             LY_TREE_FOR(data_tree, iter) {

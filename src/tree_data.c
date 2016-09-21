@@ -419,7 +419,13 @@ lyd_parse_(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, 
         if (ly_errno) {
             return NULL;
         }
-        result = lyd_parse_xml(ctx, &xml, options, parent, data_tree);
+        if (options & LYD_OPT_RPCREPLY) {
+            result = lyd_parse_xml(ctx, &xml, options, parent, data_tree);
+        } else if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
+            result = lyd_parse_xml(ctx, &xml, options, data_tree);
+        } else {
+            result = lyd_parse_xml(ctx, &xml, options);
+        }
         lyxml_free_withsiblings(ctx, xml);
         break;
     case LYD_JSON:
@@ -455,7 +461,8 @@ lyd_parse_data_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int opt
             LOGERR(LY_EINVAL, "%s: invalid variable parameter (const struct lys_node *rpc_act).", __func__);
             return NULL;
         }
-
+    }
+    if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF | LYD_OPT_RPCREPLY)) {
         data_tree = va_arg(ap, struct lyd_node *);
         if (data_tree) {
             LY_TREE_FOR(data_tree, iter) {
