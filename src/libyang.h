@@ -118,8 +118,7 @@ extern "C" {
  * the most efficient way. Alternatively, the ly_ctx_info() function can be used to get complex information
  * about the schemas in the context in the form of data tree defined by
  * <a href="https://tools.ietf.org/html/draft-ietf-netconf-yang-library-04">ietf-yang-library</a> schema.
- * To get a specific node defined in a module in the context, ly_ctx_get_node() and ly_ctx_get_node2() can be used.
- * They differ in parameters used to identify the schema node.
+ * To get a specific node defined in a module in the context, ly_ctx_get_node() can be used.
  *
  * Modules held by a context cannot be removed one after one. The only way how to \em change modules in the
  * context is to create a new context and remove the old one. To remove a context, there is ly_ctx_destroy()
@@ -145,7 +144,6 @@ extern "C" {
  * - ly_ctx_get_submodule()
  * - ly_ctx_get_submodule2()
  * - ly_ctx_get_node()
- * - ly_ctx_get_node2()
  * - ly_ctx_destroy()
  * - lys_set_implemented()
  */
